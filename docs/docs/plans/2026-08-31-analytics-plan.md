@@ -347,23 +347,72 @@ one. An external pager is therefore the fix for a real gap rather than a
 comfort, and since it turns out to cost nothing, there is no longer a reason to
 wait for clinical users before having one.
 
-- [x] Tier one, roughly 5–10 minutes — email, through the channel already
-      configured. Cheap, ignorable, and often self-resolving.
+- [x] Tier one, 5 minutes — Slack and email. **Both confirmed delivering on
+      4 September**, by a temporary uptime check and a policy pointed at
+      exactly tier one's two channels. Email was the control, having already
+      delivered real alerts; Slack was the one that had never sent anything.
+      Both arrived.
 
-      **It says Slack and email everywhere in this document, and that is
-      wrong.** Checked against the live API on 3 September: the tier one
-      policy notifies exactly one channel, `Quill alerts (teaching)`, which is
-      email. `var.slack_webhook_url` has never been set for teaching, so the
-      Slack channel resource sits at `count = 0` and has never existed. The
-      secret is in GitHub and `slack-notify.yml` uses it for CI messages, but
-      the Terraform workflow never passed it, so the monitoring channel was
-      never created. Same secret, two consumers, one of them unwired.
+      For most of this work tier one was **email alone**, and this document
+      said "Slack and email" throughout regardless. Checked against the live
+      API on 3 September: the policy notified one channel.
+      `var.slack_webhook_url` had never been set for teaching, so the Slack
+      resource sat at `count = 0` and had never existed. The secret was in
+      GitHub and `slack-notify.yml` used it for CI messages, but the Terraform
+      workflow never passed it — same secret, two consumers, one of them
+      unwired.
 
-      That matters beyond the missing ping. The argument for putting email on
+      That mattered beyond the missing ping. The argument for putting email on
       both tiers was that Google documents Slack as sharing a delivery service
       with webhooks and its mobile app, so email is the redundant path. With
-      no Slack channel at all, **tier one has no redundancy — it is a single
-      channel, and the slowest one to notice.**
+      no Slack channel at all, tier one had no redundancy: a single channel,
+      and the slowest one to notice.
+- [x] Add `documentation` to all six alert policies. Google fixes the layout
+      of each channel — the Slack card, the email template — but the
+      `documentation` block is included in every channel used here, and
+      supports `$${...}` variable substitution and a subset of Markdown.
+
+      Each alert now says what happened, what it does not mean, and where to
+      look. The uptime ones distinguish the two monitored hosts, which fail
+      for entirely different reasons: the app is Cloud Run behind the load
+      balancer probed at `/api/health`, while the public site is static files
+      in a bucket probed at `/`. The phone-call alert repeats the
+      acknowledge-not-resolve rule, which is the thing most likely to be
+      forgotten at 3am.
+
+      Note the escaping: Terraform reads `${...}` as its own interpolation, so
+      the content uses `$${...}` to pass a literal through to Google. Verified
+      by rendering rather than assumed — get it wrong and the notification
+      shows the variable name instead of the value.
+- [x] Establish that **the phone call cannot be customised**. PagerDuty's
+      documentation says a voice notification speaks the incident count, the
+      service name and the incident title, and nothing else — not
+      `custom_details`. Google's documentation says a custom `subject`
+      "appears in the notification's subject line" but does not say which
+      channels use it, and explicitly does not confirm behaviour for
+      third-party systems.
+
+      Tested on 4 September by firing an alert whose `subject`, `content` and
+      condition display name each carried unmistakable and unrelated text
+      about skiing, routed to PagerDuty alone. **None of it reached the
+      call.** Google composes its own title for the PagerDuty payload and
+      ignores what the policy sets.
+
+      So the documentation added to `uptime_critical` — including the
+      acknowledge-do-not-resolve rule — is visible when the incident is opened
+      in PagerDuty, and is not spoken. Anything that must be heard at 3am has
+      to come from the call's own wording, which is Google's to decide.
+      Changing it would need a PagerDuty Event Orchestration rule rewriting
+      the title from the payload: more machinery than a one-person rota
+      warrants, but the route if it ever matters.
+- [x] Note that adding Slack to tier one also added it to three other
+      policies. `server_errors`, `sql_disk` and `cloud_run_startup` all use
+      `local.notification_channels`, tier one's channel set, so the apply on
+      4 September changed six resources rather than the two expected. Those
+      three were email-only before and now post to Slack as well, which is an
+      improvement — email alone was the weakest single channel — but it means
+      5xx spikes and disk warnings land in `#quill-medical-cicd` alongside
+      CI/CD messages.
 **Decided on 3 September: each tier adds a route the previous one did not.**
 Tier one Slack and email, tier two SMS, tier three the phone call.
 
@@ -742,9 +791,17 @@ No application code. This is infrastructure and a dashboard.
       bytes were deliberately left off — the standard menu, answering nothing
       actionable at this scale, and Cloud Run's built-in dashboards already
       carry them for when digging is needed.
-- [x] Alert on Cloud SQL disk above 80% sustained for 30 minutes. It is the
-      failure that gives days of warning and still takes the service down if
-      nobody happens to look, and nothing watched for it before.
+- [x] Alert on Cloud SQL disk above 80% sustained for 30 minutes.
+
+      **Corrected on 4 September.** This was justified here as "the failure
+      that gives days of warning and still takes the service down if nobody
+      looks". That is wrong for this instance: `disk_autoresize` is enabled in
+      `modules/cloud-sql/main.tf` with no upper limit, so the disk grows on
+      its own rather than filling and stopping writes. The alert is still
+      worth having, but for a different reason — sustained growth means
+      something is expanding faster than expected, and disk that has grown
+      does not shrink again, so it becomes a standing cost. The alert
+      documentation says this, rather than implying an outage is imminent.
 - [x] Add an `app_page_loads` metric counting successful non-API requests to
       the app host — usage of the application, available without touching
       application code. **It counts page loads, not people.** Nothing
