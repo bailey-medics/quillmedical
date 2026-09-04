@@ -5,6 +5,12 @@
 # tokens, passwords) and push protection blocks the push before the
 # secret reaches the remote.
 #
+# Also manages delete_branch_on_merge: branches are deleted on the remote as
+# soon as their PR merges, so a merged branch can't be left lying around to
+# hit the rebase-after-merge trap documented in .claude/rules/ci.md. This
+# only removes the remote branch — deleting a stale local copy is still on
+# each developer (`git fetch --prune` or `git branch -d`).
+#
 # Prerequisites:
 #   - For private repositories, GitHub Advanced Security must be enabled
 #     on the organisation billing plan.
@@ -22,6 +28,8 @@
 
 resource "github_repository" "quillmedical" {
   name = var.github_repository
+
+  delete_branch_on_merge = true
 
   security_and_analysis {
     secret_scanning {
@@ -51,7 +59,6 @@ resource "github_repository" "quillmedical" {
       allow_squash_merge,
       allow_rebase_merge,
       allow_auto_merge,
-      delete_branch_on_merge,
       pages,
       template,
       vulnerability_alerts,

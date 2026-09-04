@@ -24,7 +24,8 @@
     "Tier 3 — Tooling",
     "  Packages: eslint, @types/*, pytest, devDependencies,",
     "            GitHub Actions, pre-commit hooks",
-    "  Policy:   Automerge on CI pass permitted.",
+    "  Policy:   No automerge. Every PR is reviewed and added to the merge",
+    "            queue by hand — see .claude/rules/ci.md.",
     "            Vulnerability alerts still bypass schedule and fire",
     "            immediately, but target main (not clinical-live) — tooling",
     "            vulnerabilities do not require a hotfix release.",
@@ -51,6 +52,7 @@
   "timezone": "Europe/London",
   "schedule": ["on wednesday"],
   "rebaseWhen": "never",
+  "automerge": false,
   "minimumReleaseAge": "3 days",
   "labels": ["dependencies"],
   "vulnerabilityAlerts": {
@@ -69,42 +71,38 @@
       "automerge": false
     },
     {
-      "description": "Group all @types/* packages — automerge on CI pass (Tier 3)",
+      "description": "Group all @types/* packages — no automerge, queued manually (Tier 3)",
       "matchManagers": ["npm"],
       "matchPackageNames": ["@types/**"],
       "groupName": "TypeScript @types packages",
       "groupSlug": "types-packages",
-      "automerge": true,
-      "automergeType": "pr",
+      "automerge": false,
       "labels": ["dependencies"]
     },
     {
-      "description": "Group all devDependencies minor/patch — automerge on CI pass (Tier 3)",
+      "description": "Group all devDependencies minor/patch — no automerge, queued manually (Tier 3)",
       "matchManagers": ["npm", "poetry"],
       "matchDepTypes": ["devDependencies", "dev"],
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "devDependencies (minor and patch)",
       "groupSlug": "dev-deps-minor-patch",
-      "automerge": true,
-      "automergeType": "pr",
+      "automerge": false,
       "labels": ["dependencies"]
     },
     {
-      "description": "Group GitHub Actions version bumps — automerge on CI pass (Tier 3)",
+      "description": "Group GitHub Actions version bumps — no automerge, queued manually (Tier 3)",
       "matchManagers": ["github-actions"],
       "groupName": "GitHub Actions",
       "groupSlug": "github-actions",
-      "automerge": true,
-      "automergeType": "pr",
+      "automerge": false,
       "labels": ["dependencies"]
     },
     {
-      "description": "Pre-commit hook updates — automerge on CI pass (Tier 3)",
+      "description": "Pre-commit hook updates — no automerge, queued manually (Tier 3)",
       "matchManagers": ["pre-commit"],
       "groupName": "pre-commit hooks",
       "groupSlug": "pre-commit-hooks",
-      "automerge": true,
-      "automergeType": "pr",
+      "automerge": false,
       "labels": ["dependencies"]
     },
     {

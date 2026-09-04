@@ -98,24 +98,10 @@ variable "alert_email" {
   default     = ""
 }
 
-variable "alert_sms_number" {
-  description = "E.164 phone number for escalated alerts on a sustained outage (optional). Requires verification by code in the Cloud console before it delivers. Supplied by CI from a secret, never committed."
+variable "slack_channel_display_name" {
+  description = "Display name of a Slack notification channel created by hand in the Cloud console (optional). See docs/docs/infrastructure/monitoring.md."
   type        = string
   default     = ""
-
-  # This repository is public and the plan job posts its output as a pull
-  # request comment. Without this, the number would render in that comment
-  # for anyone to read. Terraform propagates sensitivity through
-  # expressions, so the notification channel's labels map renders as
-  # "(sensitive value)" instead.
-  sensitive = true
-}
-
-variable "slack_webhook_url" {
-  description = "Slack incoming webhook URL for monitoring alerts (optional)"
-  type        = string
-  default     = ""
-  sensitive   = true
 }
 
 variable "cloud_run_services" {

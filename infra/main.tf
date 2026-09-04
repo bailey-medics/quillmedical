@@ -36,6 +36,16 @@ module "secrets" {
       "core-db-password",
       "vapid-private",
       "resend-api-key",
+
+      # Alerting. These reach Terraform from GitHub today, which makes GitHub
+      # a custodian of a credential no workflow actually uses — it only relays
+      # them. Creating the containers here is the first half of moving them:
+      # the values are added by hand afterwards, then a second change switches
+      # Terraform to read them from here and drops the TF_VAR wiring. One
+      # apply cannot do both, because a data source cannot read a version that
+      # does not exist yet.
+      "pagerduty-service-key",
+      "alert-sms-number",
     ],
     var.enable_fhir ? [
       "fhir-db-password",
@@ -44,6 +54,31 @@ module "secrets" {
       "ehrbase-admin-password",
     ] : []
   )
+}
+
+# ---------- Alerting secrets ----------
+#
+# Read from Secret Manager rather than relayed through GitHub. No workflow
+# uses either value; both were only being carried to Terraform, which made
+# GitHub a second custodian of a live credential and a personal number for no
+# benefit. See the secrets rule in CLAUDE.md.
+#
+# Values are set by hand with `gcloud secrets versions add`, per the
+# convention in modules/secrets: Terraform creates the containers, never the
+# versions. The provider marks secret_data sensitive, so neither appears in
+# plan output.
+data "google_secret_manager_secret_version" "pagerduty_service_key" {
+  project = var.project_id
+  secret  = "pagerduty-service-key"
+
+  depends_on = [module.secrets]
+}
+
+data "google_secret_manager_secret_version" "alert_sms_number" {
+  project = var.project_id
+  secret  = "alert-sms-number"
+
+  depends_on = [module.secrets]
 }
 
 # ---------- Networking ----------
@@ -343,12 +378,13 @@ module "monitoring" {
   project_id  = var.project_id
   environment = var.environment
 
-  monitored_hostnames = var.monitored_hostnames
-  app_domain          = var.app_domain
-  alert_email         = var.alert_email
-  alert_sms_number    = var.alert_sms_number
-  slack_webhook_url   = var.slack_webhook_url
-  cloud_run_services  = var.cloud_run_services
+  monitored_hostnames        = var.monitored_hostnames
+  app_domain                 = var.app_domain
+  alert_email                = var.alert_email
+  alert_sms_number           = data.google_secret_manager_secret_version.alert_sms_number.secret_data
+  pagerduty_service_key      = data.google_secret_manager_secret_version.pagerduty_service_key.secret_data
+  slack_channel_display_name = var.slack_channel_display_name
+  cloud_run_services         = var.cloud_run_services
 }
 
 # ---------- Analytics: usage metrics, archive, and the shared dashboard ----------

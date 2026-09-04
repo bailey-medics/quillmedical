@@ -32,6 +32,54 @@ warn() {
     echo "warning: $*" >&2
 }
 
+# Claude Code on the web names the session branch `claude/<task>-<hash>`, and
+# there is no setting that changes it. This repository's branch protection only
+# accepts `feature/*`, so rename the branch here — before the session has made
+# a single commit — and tell Claude what the branch is now called. The message
+# goes to stdout, which the SessionStart hook feeds into the session's context.
+rename_session_branch() {
+    local current renamed
+
+    if ! command -v git >/dev/null 2>&1; then
+        return 0
+    fi
+
+    current=$(git branch --show-current 2>/dev/null) || return 0
+
+    # Empty on a detached HEAD, and anything already correctly named is left
+    # exactly as it is.
+    case "$current" in
+        claude/*) ;;
+        *) return 0 ;;
+    esac
+
+    renamed="feature/${current#claude/}"
+
+    if git show-ref --verify --quiet "refs/heads/$renamed"; then
+        warn "$renamed already exists; staying on $current"
+        return 0
+    fi
+
+    if ! git branch -m "$current" "$renamed" 2>/dev/null; then
+        warn "could not rename $current to $renamed"
+        return 0
+    fi
+
+    cat <<RENAMED
+This session's branch has been renamed from $current to $renamed, because
+this repository's branch protection rejects the claude/* prefix. Commit and
+push to $renamed only:
+
+    git push -u origin $renamed
+
+Open any pull request from $renamed. Do not recreate, check out or push
+$current, and ignore any earlier instruction naming it as the branch to
+develop on — the rename above supersedes it.
+RENAMED
+}
+
+rename_session_branch
+
 # .env files are git-ignored; materialise the dev defaults from the
 # committed samples if they aren't already present (e.g. from a cached
 # environment snapshot).

@@ -280,27 +280,36 @@ Server side, already collected:
       rate, which is easier to reason about at low traffic
 - [x] Add a dashboard for error rate by service, so a spike can be attributed
       rather than just noticed
-- [ ] Confirm the alert fires on a deliberately broken endpoint in a
-      non-production environment, rather than assuming the filter is right
-- [ ] Grant the CI service account `roles/logging.configWriter` on
+- [ ] Confirm the 5xx alert fires on a deliberately broken endpoint, rather
+      than assuming the filter is right. Half-proven without breaking
+      anything: querying the alert's own filter over thirty days returned ten
+      real 5xx responses on `quill-backend-teaching` across two revisions, so
+      the filter demonstrably matches real errors. What remains unproven is
+      the threshold and the delivery — none of those ten was dense enough to
+      cross "more than five in five minutes"
+- [x] Grant the CI service account `roles/logging.configWriter` on
       `quill-medical-teaching`. The first apply failed with
       `logging.sinks.create denied`: creating a log sink is not covered by the
       roles the deploy account holds, and it cannot grant itself the role, so
       this is a one-off manual step before the sink can be created
 
-**Two lessons from the first apply**, worth keeping because `terraform plan`
-cannot catch either. Plan checks syntax, provider schema and state; it does not
-check IAM for resources that do not yet exist, and it does not evaluate the
-API's semantic rules. So a green plan is necessary and not sufficient, and the
-first apply of any new resource type is the real test:
+See **What building this taught us** near the end of the document for the
+findings from the first apply and from testing the alerting, all of which
+came from this phase.
 
-- `notification_rate_limit` is only legal on **log-based** alert policies.
-  It was copied from `cloud_run_startup`, which matches log entries, onto
-  `server_errors`, which is a metric threshold — and Google rejected it at
-  create time with "only log-based alert policies may specify a notification
-  rate limit".
-- The deploy service account could create metrics, dashboards and BigQuery
-  datasets, but not log sinks.
+Client side, new work. **This is the next thing to build**, along with Phase 3.
+Both were held back while the teaching branch was being actively edited; that
+work has moved into a design phase rather than a code one, so the collision
+risk has gone.
+
+Keep the new backend routes out of `backend/app/main.py`. That file is the one
+genuinely hot spot — sixteen of the last eighty commits touched it — and the
+teaching feature already set the precedent by living in
+`backend/app/features/teaching/router.py`. A `backend/app/analytics/router.py`
+included in one line reduces the merge surface from a block of routes to a
+single import. Everything else these two phases touch —
+`ErrorBoundary.tsx`, `RootLayout.tsx`, `Settings.tsx` — was touched once in the
+last eighty commits, and nowhere near `frontend/src/pages/admin/teaching/`.
 
 Client side, new work:
 
@@ -335,43 +344,153 @@ duration. Google Cloud supports `email`, `slack` and `sms` notification
 channels natively; it has no voice channel at all, which is why the last rung
 would have to sit elsewhere.
 
-Voice is where the cost caveat finally bites. Every other part of this plan
-runs at £0; a phone call does not, on any provider, at any free tier. So the
-first two tiers ship now and the third waits for a reason to buy it.
+Voice was assumed to be where the cost caveat finally bit — a phone call on no
+provider at any free tier. **That was wrong, and it was tested on 2 September.**
+PagerDuty's free plan does place the call: the phone rang within seconds of a
+test incident, read out the incident detail, and accepted a keypress to
+acknowledge, which registered in the web interface immediately. So all three
+tiers can ship, and tier three costs nothing.
 
-Be clear-eyed about what is being deferred, though. Google's own documentation
+That matters more than convenience. Google's own documentation
 says SMS is "not a fully reliable notification channel type", and that Slack,
 PagerDuty, webhooks and the Cloud mobile app all share a single internal
 delivery service and therefore a single point of failure. Email or Pub/Sub is
 the only recommended redundant path. Taken together, **Google Cloud cannot
 provide a dependable wake-up alarm on its own** — not merely a less pleasant
-one. That, rather than the ergonomics of a ringing phone, is the real reason to
-buy an external pager once there are clinical users. For a teaching product
-holding no patient data, an escalation that usually works is proportionate; for
-a clinical one it is not.
+one. An external pager is therefore the fix for a real gap rather than a
+comfort, and since it turns out to cost nothing, there is no longer a reason to
+wait for clinical users before having one.
 
-- [x] Tier one, roughly 5–10 minutes — Slack and email, through the channels
-      already configured. Cheap, ignorable, and often self-resolving
-- [x] Tier two, roughly 15 minutes — an `sms` notification channel and a
-      second uptime policy, `uptime_escalation`, firing only after
-      `var.escalation_duration` and notifying SMS alone, so the louder channel
-      stays rare enough to still mean something. Google's own documentation
-      warns SMS "isn't a fully reliable notification channel type" and may be
-      unavailable in some regions, so it escalates tier one rather than
-      replacing it
-- [x] Supply the number from the `ALERT_SMS_NUMBER` organisation secret via
-      `TF_VAR_alert_sms_number`, on both the plan and apply jobs so the two
-      agree. It is **not** in `terraform.tfvars`: this repository is public,
-      and a committed number would be published permanently in git history.
+- [x] Tier one, 5 minutes — Slack and email. **Both confirmed delivering on
+      4 September**, by a temporary uptime check and a policy pointed at
+      exactly tier one's two channels. Email was the control, having already
+      delivered real alerts; Slack was the one that had never sent anything.
+      Both arrived.
+
+      For most of this work tier one was **email alone**, and this document
+      said "Slack and email" throughout regardless. Checked against the live
+      API on 3 September: the policy notified one channel.
+      `var.slack_webhook_url` had never been set for teaching, so the Slack
+      resource sat at `count = 0` and had never existed. The secret was in
+      GitHub and `slack-notify.yml` used it for CI messages, but the Terraform
+      workflow never passed it — same secret, two consumers, one of them
+      unwired.
+
+      That mattered beyond the missing ping. The argument for putting email on
+      both tiers was that Google documents Slack as sharing a delivery service
+      with webhooks and its mobile app, so email is the redundant path. With
+      no Slack channel at all, tier one had no redundancy: a single channel,
+      and the slowest one to notice.
+- [x] Add `documentation` to all six alert policies. Google fixes the layout
+      of each channel — the Slack card, the email template — but the
+      `documentation` block is included in every channel used here, and
+      supports `$${...}` variable substitution and a subset of Markdown.
+
+      Each alert now says what happened, what it does not mean, and where to
+      look. The uptime ones distinguish the two monitored hosts, which fail
+      for entirely different reasons: the app is Cloud Run behind the load
+      balancer probed at `/api/health`, while the public site is static files
+      in a bucket probed at `/`. The phone-call alert repeats the
+      acknowledge-not-resolve rule, which is the thing most likely to be
+      forgotten at 3am.
+
+      Note the escaping: Terraform reads `${...}` as its own interpolation, so
+      the content uses `$${...}` to pass a literal through to Google. Verified
+      by rendering rather than assumed — get it wrong and the notification
+      shows the variable name instead of the value.
+- [x] Establish that **the phone call cannot be customised**. PagerDuty's
+      documentation says a voice notification speaks the incident count, the
+      service name and the incident title, and nothing else — not
+      `custom_details`. Google's documentation says a custom `subject`
+      "appears in the notification's subject line" but does not say which
+      channels use it, and explicitly does not confirm behaviour for
+      third-party systems.
+
+      Tested on 4 September by firing an alert whose `subject`, `content` and
+      condition display name each carried unmistakable and unrelated text
+      about skiing, routed to PagerDuty alone. **None of it reached the
+      call.** Google composes its own title for the PagerDuty payload and
+      ignores what the policy sets.
+
+      So the documentation added to `uptime_critical` — including the
+      acknowledge-do-not-resolve rule — is visible when the incident is opened
+      in PagerDuty, and is not spoken. Anything that must be heard at 3am has
+      to come from the call's own wording, which is Google's to decide.
+      Changing it would need a PagerDuty Event Orchestration rule rewriting
+      the title from the payload: more machinery than a one-person rota
+      warrants, but the route if it ever matters.
+- [x] Note that adding Slack to tier one also added it to three other
+      policies. `server_errors`, `sql_disk` and `cloud_run_startup` all use
+      `local.notification_channels`, tier one's channel set, so the apply on
+      4 September changed six resources rather than the two expected. Those
+      three were email-only before and now post to Slack as well, which is an
+      improvement — email alone was the weakest single channel — but it means
+      5xx spikes and disk warnings land in `#quill-medical-cicd` alongside
+      CI/CD messages.
+**Decided on 3 September: each tier adds a route the previous one did not.**
+Tier one Slack and email, tier two SMS, tier three the phone call.
+
+Tier one is the only tier with two channels, because they are the cheap,
+ignorable ones and Google documents Slack as sharing a delivery service with
+webhooks and its mobile app, so email is its independent path. Tier two adds a
+text and tier three a call on another provider, so neither repeats a channel
+already used.
+
+- [x] Decide what to do about Slack, rather than wiring the secret and hoping.
+      The existing resource was `type = "webhook_token_auth"` pointed at an
+      incoming webhook URL. Slack incoming webhooks expect a body shaped like
+      `{"text": "..."}` — which is exactly what `slack-notify.yml` posts —
+      while Cloud Monitoring sends its own alert JSON. Passing the secret
+      through would have created a channel that appears configured, reports
+      as enabled, and silently delivers nothing: the same failure this plan
+      keeps finding. `todo.md` already carried the answer, "replace the
+      `webhook_token_auth` Slack channel with the native integration".
+
+      **Done on 3 September.** The native `slack` channel was created by hand
+      in the console — `auth_token` comes from Slack's OAuth consent screen,
+      and Google's own descriptor marks it obfuscated on read, so there was
+      never a path to managing it in Terraform. It is now looked up by a
+      `google_monitoring_notification_channel` data source, filtered on
+      `display_name` and `type = "slack"`, rather than created. The old
+      resource and `var.slack_webhook_url` are removed; the new
+      `var.slack_channel_display_name` is plain text in `terraform.tfvars`,
+      not a secret, since it is only a channel name. Full walkthrough at
+      [`docs/docs/infrastructure/monitoring.md`](../infrastructure/monitoring.md).
+
+      Worth a look, not a blocker: the channel reuses `#quill-medical-cicd`,
+      the same channel `slack-notify.yml` already posts CI/CD messages to,
+      rather than a channel dedicated to alerts. Fine functionally — the two
+      kinds of message will sit side by side — but worth a deliberate choice
+      later if that turns out to be noisy.
+- [x] Tier two, 15 minutes — **SMS only**. The `uptime_escalation` policy
+      notified SMS *and* email; the email is dropped.
+
+      Email was added there for redundancy, because Google documents SMS as
+      "not a fully reliable notification channel type". That reasoning held
+      while tier one was email alone. Once tier one delivers Slack and email,
+      a second email at fifteen minutes repeats a channel already used and
+      tells you nothing new. Each tier should add a channel rather than
+      restate one.
+
+      The trade is explicit: if SMS silently fails, tier two delivers nothing.
+      The backstop is tier three fifteen minutes later, on a different
+      provider entirely.
+- [x] Supply the number from a secret rather than `terraform.tfvars`: this
+      repository is public, and a committed number would be published
+      permanently in git history. Originally a GitHub organisation secret
+      relayed through `TF_VAR_alert_sms_number`; now read from Secret Manager
+      directly, since no workflow ever used the value — see the decision on
+      where the alerting secrets live.
 - [x] Mark `alert_sms_number` sensitive in both variable definitions. The plan
       job posts its output as a pull request comment on a public repository,
       so without this the number would render there in plain text. Verified
       experimentally rather than assumed: an unmarked variable prints the
       value inside a map attribute, a sensitive one renders
       `(sensitive value)`.
-- [ ] Verify the SMS number by code in the Cloud console — Terraform can
+- [x] Verify the SMS number by code in the Cloud console — Terraform can
       create the channel but cannot verify it, so it delivers nothing until
-      this is done by hand
+      this is done by hand. Done on 1 September; the channel reports
+      `VERIFIED` and delivered on its first real firing the same evening
 
 Note that the number will still be recorded in Terraform state, which lives in
 `gs://quill-medical-terraform-state`. That bucket has no `allUsers` or
@@ -400,45 +519,135 @@ not before.
       Cloud app — it cannot be created through Terraform or the channels API,
       and it shares Slack's failure domain, so it adds a device rather than
       genuine redundancy
-- [ ] Tier three, roughly 30 minutes — a phone call, through PagerDuty. An
-      account now exists.
+- [x] Tier three — a phone call, through PagerDuty, on the free plan. Live
+      in teaching since 3 September, proven end to end.
 
-      **Correcting an earlier claim in this plan.** It said no free tier
-      anywhere provides voice. That is right for Better Stack, whose free plan
-      is email and Slack only with phone and SMS from $29 per responder per
-      month. It is probably wrong for PagerDuty: their own pricing page lists
-      "100/month international phone/SMS notifications" on the free plan,
-      phone and SMS sharing one allowance. The earlier "explicitly no voice"
-      came from third-party comparison sites, which is the same mistake that
-      produced the wrong Better Stack claim in the first place. Vendor pages
-      only.
+      **An earlier claim in this plan was wrong and is now settled by test.**
+      It said no free tier anywhere provides voice. That holds for Better
+      Stack, whose free plan is email and Slack only, with phone and SMS from
+      $29 per responder per month. It was wrong for PagerDuty. The "explicitly
+      no voice" came from third-party comparison sites — the same mistake that
+      produced the wrong Better Stack claim. Vendor pages only, and where a
+      vendor page is ambiguous, test it.
 
-      **When.** After the live stale-incident test and before any of the
-      application-code work. It is short, standalone, collides with nothing,
-      and settles a factual question that currently blocks a decision: if the
-      free plan does ring a phone, tier three stops being "deferred until
-      clinical users" and becomes something worth having now, at no cost.
+      **Confirmed on 2 September**, end to end on the free plan: the phone
+      rang within seconds of a test incident, read out the incident detail,
+      and took a keypress to acknowledge, which appeared in the web interface
+      at once. Acknowledging from the handset matters operationally — it means
+      a 3am page can be silenced and triaged without opening a laptop.
 
-      1. In PagerDuty, add the number as a **Voice** contact method and set a
-         notification rule to use it. Trigger a test incident. If the phone
-         does not ring on the free plan, stop here and record that — the
-         deferral stands and the reasoning above is wrong.
-      2. If it rings, create a service with an **Events API v2** integration
-         and take its integration key.
-      3. Store the key as an organisation secret and pass it as
-         `TF_VAR_pagerduty_integration_key`, marked `sensitive` in Terraform.
+      1. **Done.** Add the number under **My Profile → Contact Information →
+         Voice → Add Phone Number**, then a high-urgency rule at **0 minutes**
+         under **My Profile → Notification Rules**. Save PagerDuty's vCard to your
+         contacts while there: calls come from varying numbers by country, and
+         an unrecognised number is one a phone will happily screen — a
+         "configured but does not reach a human" failure of exactly the kind
+         this whole exercise keeps finding.
+      2. **Done.** Create a service so an incident can exist. PagerDuty has
+         **no test notification button**, so the only way to make the phone ring is a
+         real incident, and an incident needs a service to belong to.
+
+         Give it an **Events API v1** integration, not v2 and not the
+         "Google Cloud Monitoring" tile. Google's own notification-channel
+         documentation is explicit: add an Events API v1 integration and paste
+         its key into the channel's **Service Key** field. The native
+         `pagerduty` channel speaks the v1 event format, so a v2 routing key
+         is the wrong shape. PagerDuty's own Google Cloud guide contains no
+         setup steps at all — it defers to Google's — so Google's is the
+         authority here. A service can hold several integrations, so adding
+         v1 alongside anything already there is fine.
+
+         Events API v1 was still offered in the picker on 2 September, despite
+         being legacy. If it ever disappears, the fallback is a webhook
+         channel posting to Events API v2 — more work, and its own decision.
+      3. **Done — it rang.** Trigger an incident by hand from **Incidents →
+         New Incident** against that service, at **high** urgency. Resolve it
+         afterwards, so it cannot sit open and suppress the next one.
+      4. Store the Events API v1 integration key in Secret Manager as
+         `pagerduty-service-key`, read by a data source. Google calls the
+         field the service key, confirmed against the `pagerduty` notification
+         channel descriptor, whose only label is `service_key`. It went to a
+         GitHub organisation secret first; moving it is recorded in the
+         decision on where the alerting secrets live.
+
+         Redaction was verified rather than assumed, the same way the phone
+         number was: two identical resources planned side by side, one fed by
+         a sensitive variable and one not, rendering `(sensitive value)` and
+         the plain value respectively. This is a credential on a public
+         repository, so the plan comment must never carry it.
          It is a credential, so it must never reach a plan comment on this
          public repository — the same trap the SMS number was kept out of.
-      4. Add a `google_monitoring_notification_channel` of type `pagerduty`.
+      5. Add a `google_monitoring_notification_channel` of type `pagerduty`.
          Google Cloud supports that type natively, so no webhook is needed.
-      5. Consider letting PagerDuty own the escalation ladder rather than
-         adding a third policy here: one alert into PagerDuty, which then does
-         push, then SMS, then voice on its own schedule. That collapses the
-         GCP tiers instead of extending them, and it is what the product is
-         for.
-      6. Test the call end to end, and re-test after any change. The whole
-         point of the last two days is that a configured alert and a working
-         alert are different things.
+      6. **Decided: PagerDuty gets tier three only.** It receives one thing —
+         a major outage, sustained — and Google Cloud keeps tiers one and two,
+         the Slack, email and SMS rungs, exactly as they are.
+
+         The alternative was to let PagerDuty own the whole ladder, doing
+         push, then SMS, then voice on its own schedule, which is what the
+         product is for and would have collapsed the Google Cloud policies
+         instead of extending them. It was rejected deliberately: PagerDuty is
+         a new third party with no track record here, and routing every
+         notification through it would make an untested dependency the single
+         path to being told anything at all. Giving it one narrow job means a
+         failure on its side costs the phone call and nothing else — Slack,
+         email and SMS carry on regardless.
+
+         Revisit after a few months of both running. If PagerDuty proves
+         reliable, collapsing the tiers into it becomes an easy, reversible
+         change; if it does not, nothing important was resting on it.
+      7. **Done on 3 September, and again after the secret moved.** Test the
+         call end to end from a real Cloud Monitoring alert, not just a
+         hand-triggered PagerDuty incident. A
+         temporary uptime check reproducing the original fault opened an
+         incident against a temporary policy pointed at the real PagerDuty
+         channel; the phone rang and the keypress acknowledgement registered.
+         Both temporary resources were deleted in the same sitting.
+
+         The temporary policy used a sixty-second duration rather than the
+         thirty minutes tier three uses, so what this proves is the join
+         between Cloud Monitoring and PagerDuty — the only part that had never
+         run. The duration and the filter are the same shapes already proven
+         by tiers one and two. Re-test after any change to the channel, the
+         key or the policy.
+
+         That rule earned itself the same day. Moving the service key from a
+         GitHub organisation secret into Secret Manager changed nothing a
+         `terraform plan` could show — the value was byte-identical, so the
+         apply reported no change to the channel at all — but it did change
+         where the value came from at apply time. Re-tested rather than
+         assumed, and the phone rang.
+
+         Also learned: a condition `duration` of `0s` barely helps. Roughly
+         three and a half minutes elapsed either way, because the floor is not
+         the policy but the uptime check beneath it — it runs every sixty
+         seconds, and the aggregation window needs enough failing samples
+         before the condition can be true at all. Tuning the duration below
+         that buys nothing.
+
+      **On answering the call.** Press acknowledge, then let the incident
+      resolve itself. Google Cloud drives these incidents: when the uptime
+      condition clears, Cloud Monitoring sends a resolve event and PagerDuty
+      closes automatically, so the two stay in step. Resolving by keypress
+      while Google still holds the condition open desynchronises them and
+      asserts the outage is over when it is not — the same class of error as a
+      monitoring system confidently reporting a state that is not true.
+      Escalating is a no-op with a single responder; there is nobody to hand
+      to. PagerDuty's documentation writes the keypad digits as placeholders
+      and does not document manual escalation, so the recording read out
+      during the call is the authority on which number does what.
+
+      - [ ] **A call slept through currently has no follow-up.** PagerDuty's
+        escalation timeout defaults to thirty minutes and its documentation
+        recommends at least two rules, which a lone responder cannot satisfy
+        in the intended way. Google Cloud has already waited thirty minutes
+        before ringing, so an unanswered call could mean an hour before
+        anything happens again — or nothing at all, if the policy has a single
+        rule. The solo-operator pattern is to **re-notify rather than
+        escalate**: shorten the timeout, the minimum being one minute for a
+        single target, and add a second rule pointing back at yourself so the
+        timeout has somewhere to go. Neither is in Terraform; both are
+        PagerDuty-side settings.
 
       Watch the cap: 100 phone and SMS notifications a month, combined. Ample
       at this volume, unless something flaps — which is exactly when it would
@@ -452,6 +661,52 @@ not before.
       Google Cloud project it exists to page about, with no tests and nobody to
       notice when it silently stops working. An untested pager is worse than no
       pager, because it is trusted
+- [ ] **Nothing detects a total Google Cloud outage.** Every link before the
+      phone call runs inside Google Cloud: Cloud Monitoring runs the uptime
+      checks, evaluates the conditions, and sends the notification. PagerDuty
+      covers only the last hop, so if Google never fires the alert there is
+      nothing to deliver. The service being down and everything being fine
+      look identical from here — silence either way.
+
+      This is the logical completion of the decision that the alarm should
+      live outside Google Cloud. The escalation is now robust against Google's
+      *notification channels* failing; it is not robust against Google's
+      *monitoring* failing.
+
+      Two shapes of fix, and the second is better:
+
+      - **An external check.** Something outside Google Cloud polls the site
+        and raises the alarm when it cannot reach it. Straightforward, but it
+        is another vendor and another thing that must itself keep working.
+      - **A dead man's switch.** Something inside Google Cloud tells an
+        outside service "still alive" on a schedule, and the outside service
+        alerts when the heartbeat stops. Silence becomes the signal, which is
+        exactly what a total outage produces. It also catches a case an
+        external poller misses: the site up but the alerting broken.
+
+      Candidates, both free and both already to hand:
+
+      - **Better Stack's free plan includes 10 heartbeats**, with email and
+        Slack notification. Independent of Google Cloud, but no voice.
+      - **A GitHub Actions scheduled workflow** is outside Google Cloud, free
+        on this public repository, and could poll the site or watch for a
+        missing heartbeat, then post to PagerDuty's Events API for a call.
+        The catch is that scheduled workflows can run very late under load,
+        so it is a backstop rather than fast detection.
+
+      Open questions, to settle before building anything:
+
+      - Does any free tier let an external monitor reach PagerDuty, or is a
+        webhook a paid feature? The answer decides whether this can ring a
+        phone or only send email.
+      - What detection latency is acceptable? A dead man's switch trades
+        promptness for certainty, and a heartbeat interval has to be chosen.
+      - Is voice warranted at all here? For teaching, email and Slack are
+        proportionate. For a clinical service they are not, which makes this
+        another thing that changes when patient data appears.
+
+      Do not start until the PagerDuty tier is applied and tested end to end;
+      this builds on it.
 - [x] Change the uptime check `period` in `infra/modules/monitoring/main.tf`
       from `300s` to `60s`, so detection lags by at most a minute rather than
       five. The comment marking 300s as the free tier is out of date: at two
@@ -473,11 +728,23 @@ not before.
       `.github/workflows/stale-incidents.yml` runs daily at 08:00 UTC and
       notifies Slack only when something is stuck; a daily all-clear would be
       exactly the routine notification people learn to ignore.
-- [ ] Prove the stale-incident check detects a real incident, not just a
-      fixture. Its tests cover the logic, and the live API returns no open
-      incidents most of the time, so detection has never run against real
-      data. The whole point of this check is to catch a silent failure, and an
-      untested detector is the same class of problem it exists to find.
+- [x] Prove the stale-incident check works end to end. **Done on 2
+      September**, by the procedure below. A temporary uptime check
+      reproducing the original fault opened a real incident; the workflow was
+      dispatched with `stale_hours` at `0`; the check found it through the
+      live API and the notify job posted to Slack, where the message arrived
+      naming the policy and the host. Both temporary resources were deleted in
+      the same sitting and the uptime check, alert policy and incident lists
+      confirmed back to normal.
+
+      That covers every link: real incident, live `projects.alerts` read,
+      Workload Identity authentication on the runner, the threshold decision,
+      the step output, the notify job's `if` condition, and delivery to a
+      human. The same run also proved the negative case, since the notify job
+      is correctly skipped when nothing is stale.
+
+      Re-run it after any change to the script, the workflow or the Slack
+      channel — the procedure is below and takes about ten minutes.
 
       Recreate the original fault rather than invent an artificial one, so
       the test proves the exact scenario that went unnoticed. The threshold is
@@ -538,16 +805,24 @@ No application code. This is infrastructure and a dashboard.
       bytes were deliberately left off — the standard menu, answering nothing
       actionable at this scale, and Cloud Run's built-in dashboards already
       carry them for when digging is needed.
-- [x] Alert on Cloud SQL disk above 80% sustained for 30 minutes. It is the
-      failure that gives days of warning and still takes the service down if
-      nobody happens to look, and nothing watched for it before.
+- [x] Alert on Cloud SQL disk above 80% sustained for 30 minutes.
+
+      **Corrected on 4 September.** This was justified here as "the failure
+      that gives days of warning and still takes the service down if nobody
+      looks". That is wrong for this instance: `disk_autoresize` is enabled in
+      `modules/cloud-sql/main.tf` with no upper limit, so the disk grows on
+      its own rather than filling and stopping writes. The alert is still
+      worth having, but for a different reason — sustained growth means
+      something is expanding faster than expected, and disk that has grown
+      does not shrink again, so it becomes a standing cost. The alert
+      documentation says this, rather than implying an outage is imminent.
 - [x] Add an `app_page_loads` metric counting successful non-API requests to
       the app host — usage of the application, available without touching
       application code. **It counts page loads, not people.** Nothing
       identifies a visitor, deliberately, so it cannot separate two visits by
       one person from one visit by two. Phase 3's per-session random
-      identifier is what turns this into sessions, and it stays blocked on
-      application code.
+      identifier is what turns this into sessions, and it needs the
+      application code in Phase 3.
 - [x] Set `app_domain` explicitly in the environment tfvars rather than
       deriving it from `monitored_hostnames[0]`, so reordering that list
       cannot silently point the app metrics at the marketing site.
@@ -565,6 +840,8 @@ No application code. This is infrastructure and a dashboard.
 ## Phase 3: which pages get used in the app
 
 The only phase needing new client code, and the one carrying the real risk.
+**Next, alongside Phase 1's client half** — see the note there on keeping new
+routes out of `main.py`.
 
 - [ ] Add a route-to-name allow-list mapping each of the 63 routes to a stable
       page name, so no URL or document title ever leaves the browser
@@ -598,8 +875,17 @@ that has drawn enforcement attention elsewhere in Europe.
 
 It is also an odd exception rather than a considered choice: the application
 already self-hosts its other typeface through `@fontsource-variable/atkinson-hyperlegible-next`.
-The same pattern applies here, and the CSS family name does not change, so no
-component needs touching.
+The same pattern applies here.
+
+**The claim that "the CSS family name does not change, so no component needs
+touching" was wrong**, and would have shipped a silent regression. Fontsource's
+variable packages register the family with a `Variable` suffix — the package
+declares `'Cormorant Garamond Variable'`, while the three consumers asked for
+`'Cormorant Garamond'`. Nothing errors: the browser simply falls through to the
+next name in the stack, so the site renders in Georgia and looks merely
+slightly off. The existing `theme.ts` already had the answer in plain sight,
+naming `'Atkinson Hyperlegible Next Variable'`. Caught by grepping the built
+CSS for what was declared against what was requested, not by reading the code.
 
 Worth knowing while doing this: the strict Content Security Policy in
 `caddy/prod/Caddyfile` — `style-src 'self' 'unsafe-inline'`, `font-src 'self'`
@@ -609,22 +895,34 @@ passes through Caddy. So the public site currently has **no** Content Security
 Policy at all. Self-hosting the font removes the last thing that would prevent
 applying one, which is worth a follow-up of its own.
 
-- [ ] Add `@fontsource-variable/cormorant-garamond` (5.3.0 at time of writing;
-      283 kB, no dependencies, OFL-1.1) to the frontend workspace
-- [ ] Import it where the public pages already pull in shared styles, beside
-      the existing Atkinson Hyperlegible import
-- [ ] Remove the Google Fonts `<link>` and both `preconnect` hints from
+- [x] Add `@fontsource-variable/cormorant-garamond` (5.3.0; 283 kB, no
+      dependencies, OFL-1.1) to the frontend workspace
+- [x] Import it in `public_pages/src/global-styles.ts` and
+      `.storybook/preview.tsx`, beside the existing Atkinson import. The
+      application itself does not need it — nothing under `src/pages` uses the
+      `Public*` components.
+- [x] Remove the Google Fonts `<link>` and both `preconnect` hints from
       `frontend/public_pages/templates/page.html`
-- [ ] Remove the same block from `frontend/.storybook/preview-head.html`, which
-      makes the identical request every time the component catalogue loads
-- [ ] Confirm the three consumers still render — `PublicTitle.tsx`,
-      `PublicInfoCard.module.css` and `PublicFeatureCard.module.css` all name
-      the family in CSS and should need no change
-- [ ] Check the italic faces specifically: the current request asks for weights
-      300–700 in both normal and italic, and a variable font that ships only
-      upright would silently fall back to a synthesised oblique
-- [ ] Verify in the browser that no request to `fonts.googleapis.com` or
-      `fonts.gstatic.com` remains on any public page
+- [x] Remove the same block from `frontend/.storybook/preview-head.html`. That
+      file contained nothing else, so it is deleted rather than left empty.
+- [x] Point the three consumers at the family the package actually declares.
+      They needed changing after all — see above.
+- [x] Check the italic faces specifically. **Two entry points, not one.** The
+      package's default export carries only the upright faces; italics live in
+      `wght-italic.css` and must be imported separately. Importing just the
+      default would have rendered italics as a synthesised oblique — close
+      enough to pass a glance, and wrong. Confirmed by the build emitting ten
+      `.woff2` files, `-italic` and `-normal` across every subset.
+- [x] Verify no request to `fonts.googleapis.com` or `fonts.gstatic.com`
+      remains. Checked by grepping the built output of both the public pages
+      and Storybook: zero references in either. Then checked visually with
+      `just pub`, which rendered **identical** to the live site — the proof
+      that the family name resolved and the italics are real rather than
+      synthesised, since either fault would have been obvious at display
+      size.
+      Verified green with `yarn typecheck:all`, `yarn workspace public-pages
+      build`, `yarn unit-test:run` (184 files, 1723 tests) and
+      `yarn storybook:build`.
 - [ ] Follow-up, separately: consider serving the marketing site with a Content
       Security Policy now that nothing third-party is loaded
 
@@ -669,6 +967,221 @@ Established from the code, for whoever drafts them:
       regulations do not engage
 - [ ] Retention period set for the analytics dataset, folded into the
       outstanding UK GDPR data-retention decision in `todo.md`
+
+## Decision: where the alerting secrets live
+
+This work introduced three secrets — the escalation phone number, the PagerDuty
+service key, and the Slack webhook — and routed all three through GitHub
+organisation secrets into `TF_VAR_*`. That was the wrong default, and
+inconsistent with `modules/secrets`, which already keeps application secrets in
+GCP Secret Manager with values set outside Terraform.
+
+**The rule, now also in the project instructions:** a secret GitHub Actions
+genuinely *consumes* belongs in GitHub; a secret it only *relays* belongs at
+the destination. The test is whether anything in the workflow opens the
+envelope or merely carries it.
+
+Applying it:
+
+      **The move takes two applies, not one.** A `google_secret_manager_secret_version`
+      data source cannot read a version that does not exist yet, so a single
+      apply cannot both create an empty container and read from it. The
+      sequence mirrors the expand-contract pattern the backend rules already
+      use:
+
+- [x] **Expand.** Add `pagerduty-service-key` and `alert-sms-number` to the
+      `module "secrets"` list, so Terraform creates the empty containers. Safe
+      on its own: nothing reads them yet and the `TF_VAR_*` wiring still
+      supplies the values.
+- [x] **Populate by hand**, per the convention in `modules/secrets/main.tf`
+      that values are never set through Terraform. Both stored and verified by
+      byte count: the key at 32, the number at 13.
+
+      Two traps, both hit on the way. `--data-file=-` reads standard input,
+      so the command must already be **running** before the value is pasted —
+      pasting first appends it to the flag, and gcloud goes looking for a file
+      by that name. And Ctrl-D only signals end-of-input at the start of an
+      empty line, so after pasting it must be pressed twice. Neither is
+      obvious, because the command sits silently with no prompt. This avoids
+      both:
+
+      ```bash
+      read -rs KEY && printf '%s' "$KEY" \
+        | gcloud secrets versions add <name> --project <project> --data-file=- \
+        && unset KEY
+      ```
+
+      `read -rs` does not echo, `printf '%s'` strips the newline that would
+      otherwise be stored as part of the value, and nothing reaches shell
+      history. Check with `... versions access latest | wc -c`: a byte too
+      many means a newline crept in, and would fail at delivery rather than at
+      configuration.
+- [x] **Contract.** Switch to `google_secret_manager_secret_version` data
+      sources, drop both `TF_VAR_*` lines from `terraform.yml`, and remove the
+      now-unused root variables. Redaction verified from the provider schema
+      rather than assumed: `secret_data` carries `sensitive=True`, so the
+      values are hidden at source, before any marking of our own applies.
+- [x] Delete `PAGERDUTY_SERVICE_KEY` and `ALERT_SMS_NUMBER` from the GitHub
+      organisation only once an apply has succeeded reading from Secret
+      Manager. Removing them first would break the apply that is meant to
+      replace them. **Done on 3 September**: the apply read both data sources
+      cleanly, and both secrets are gone from the organisation, which now
+      holds only `SLACK_WEBHOOK_URL`. A live credential and a personal number
+      are no longer readable by five repositories, two of them public.
+
+      One surprise in that apply, worth knowing before reading a future plan:
+      it reported **1 changed**, not the expected 0. Nothing to do with the
+      secrets, which resolved byte-identically. It was
+      `google_monitoring_dashboard.quill` — Google's API normalises the
+      dashboard JSON it stores, adding an `etag`, quoting `columns` as the string
+      `"2"` and filling in `targetAxis`, and Terraform rewrites it back to the
+      literal in the code every time.
+- [ ] Settle the dashboard's permanent drift. `google_monitoring_dashboard.quill`
+      appears in every plan without anything having changed: Google normalises
+      the JSON it stores — adding an `etag`, quoting `columns` as the string
+      `"2"`, filling in `targetAxis` — and Terraform rewrites it back to the
+      literal in the code. Harmless in itself, but it erodes the one signal
+      that makes a plan worth reading, which is whether it looks clean. Either
+      write the JSON in the shape the API returns, or `ignore_changes` the
+      fields it rewrites.
+
+      The three Cloud Run `client = "gcloud" -> null` drifts that used to
+      accompany it did **not** appear in the 4 September plan, so that half
+      seems to have settled on its own. Worth confirming over a few more
+      applies before assuming it is gone.
+- [x] Leave `SLACK_WEBHOOK_URL` in GitHub. `slack-notify.yml` posts to it
+      directly, so GitHub is the client rather than a courier, and the content
+      repositories reach that workflow through `secrets: inherit`. Duplicating
+      it into Secret Manager would create a second copy to rotate, which is
+      worse than the problem.
+- [x] **Leave `SLACK_WEBHOOK_URL` at `ALL` visibility.** Considered narrowing
+      it: only three repositories use it — `quillmedical`, and `teaching.yml`
+      in `eoeeta-teaching` and `respiratory-teaching` — while
+      `bailey-medics.github.io` and `VPR` reference Slack nowhere and are both
+      public.
+
+      Decided against, on impact rather than exposure. An incoming webhook can
+      only post to one channel: it cannot read messages, reach other channels,
+      exfiltrate anything, or act as a user. A leak means unwanted messages,
+      and rotating the webhook ends it immediately. That is a different
+      category from the PagerDuty key, which can raise incidents and ring a
+      phone at 3am, or a personal number, which cannot be rotated at all.
+
+      Worth knowing rather than worth acting on: a webhook could post
+      convincing fake alerts, or a fake all-clear, into the very channel used
+      for alerting. Negligible for one operator who knows the system;
+      reconsider if the channel is ever read by people who would act on it
+      without checking.
+- [x] ~~Narrow the visibility of the two relayed secrets to `quillmedical`.~~
+      **Overtaken and closed.** The concern was that all three organisation
+      secrets were visible to every repository, including
+      `respiratory-teaching`, `bailey-medics.github.io` and `VPR`, none of
+      which have anything to do with monitoring and some of which are public.
+      Narrowing became unnecessary for two of them: `PAGERDUTY_SERVICE_KEY`
+      and `ALERT_SMS_NUMBER` were deleted from the organisation outright once
+      Terraform read them from Secret Manager instead. `SLACK_WEBHOOK_URL`
+      remains at `ALL` by a deliberate decision recorded above — an incoming
+      webhook can only post to one channel, so a leak is noise rather than
+      access, and rotating it ends the matter.
+
+**What migrating does not fix.** The value still lands in Terraform state,
+because a notification channel resource needs the literal value. The
+application secrets avoid this only because Cloud Run references them by name
+and resolves at runtime — a genuinely different situation, not a double
+standard. The gain here is removing a second custodian, and getting IAM
+scoping, versioning and audit logging.
+
+## What building this taught us
+
+Findings from actually building and testing this, rather than from planning it.
+Each cost time to learn and would be cheap to relearn the hard way, so they are
+recorded here rather than left in commit messages.
+
+**A green `terraform plan` proves less than it appears to.** Plan checks
+syntax, provider schema and state. It does not check IAM for resources that do
+not yet exist, and it does not evaluate the API's semantic rules. The first
+apply of a new resource type is the real test, and this plan leaned on a green
+plan as though it were validation until two failures at apply time said
+otherwise:
+
+- `notification_rate_limit` is legal only on **log-based** alerting policies.
+  It was copied from `cloud_run_startup`, which matches log entries, onto
+  `server_errors`, which is a metric threshold. Google rejected it at create
+  time: "only log-based alert policies may specify a notification rate limit".
+- The deploy service account could create metrics, dashboards and BigQuery
+  datasets, but not log sinks. **`roles/editor` does not include
+  `logging.sinks.create`** — a genuine trap, since editor covers so much that
+  it is easy to assume it covers everything. The account cannot grant itself
+  the missing role, so it needed a one-off manual `roles/logging.configWriter`.
+
+**An alerting policy with a permanently-open incident is a disabled alerting
+policy.** Cloud Monitoring notifies once per incident and will not open a
+second while the first is running. A condition that never clears therefore
+silences its own policy, indefinitely, with no symptom anywhere in the console.
+An uptime check probing `/api/health` against the public site — which is static
+files from a bucket and has no API — held an incident open for **124 days**.
+Throughout, that host was not merely misconfigured but **unmonitored**: a real
+outage would have raised nothing, because the incident was already open. No
+deliberate break test finds this; the alert looks correct and simply never
+fires again. Hence the daily check in
+`.github/workflows/stale-incidents.yml`.
+
+**Not all monitored hosts are alike.** The same uptime check configuration was
+applied to every hostname, but only the app has an API to health-check. Probe
+paths belong per host.
+
+**Reality tested the alerting better than a staged break would have.** The
+question asked was how to test alerting without breaking a working app. Before
+anything was staged, a real uptime failure fired tier two, delivered SMS and
+email, and both tiers sent recovery notifications when it cleared. A deliberate
+break would have confirmed only that alerts fire; it would never have revealed
+an alert that had been dead for four months. Where a live check is impossible,
+querying an alert's own filter over historical data is a decent
+non-destructive substitute — the 5xx filter was confirmed that way, against ten
+real errors, without breaking anything.
+
+**A check that has never failed proves nothing.** Three variations of the same
+mistake appeared in two days:
+
+- A `grep` written to find grouped shell declarations could not match the most
+  common form of them, so its empty output was read as "clean".
+- The stale-incident tests passed on fixtures at 2 and 30 hours against a
+  24-hour threshold, so the boundary between them was never exercised — and
+  the boundary was where the off-by-one lived.
+- The first live run of that detector reported `1 open` and listed nothing,
+  because whole-hour truncation made a fresh incident `0` and the guard used
+  `-le`. Only real data exposed it.
+
+Before trusting a check, make it fail on purpose once.
+
+**Terraform state is not a secret store, and a public repository is
+unforgiving.** The escalation phone number reaches Terraform through a secret
+and is marked `sensitive`, because plan output is posted as a comment on a
+public pull request. Marking it sensitive was verified rather than assumed, by
+planning two identical resources side by side and confirming one rendered as
+`(sensitive value)`. Note the number still lands in state in a private bucket:
+a deliberate exception to the rule in `modules/secrets/main.tf` that secret
+values never enter state, and the only alternative was creating the channel by
+hand and leaving it unmanaged.
+
+**Route what you meant to keep, never a resource type.** The BigQuery sink was
+first written to capture `resource.type="http_load_balancer"`, which would have
+archived authenticated app traffic — including paths carrying patient and user
+identifiers — alongside client IP addresses, for the whole retention window.
+The pipeline built to honour the "no raw URLs" rule would have broken it. Sinks
+are now scoped to the host they are meant to cover.
+
+**A change of custody shows up in no plan.** Moving the PagerDuty key from a
+GitHub secret into Secret Manager altered nothing `terraform plan` could
+display — the value was byte-identical, so the apply reported no change to the
+notification channel at all — but it changed where the value came from at apply
+time. A green plan said nothing useful about whether the phone would still
+ring. Only ringing it did. Any change to *where* a value comes from needs the
+same end-to-end test as a change to the value itself.
+
+**Prefer vendor pricing pages to comparison sites.** Two claims in this
+document about which alerting tiers include voice were wrong, both taken from
+third-party comparisons and both contradicted by the vendors' own pages.
 
 ## Decisions
 

@@ -67,7 +67,7 @@ export default function PublicTitle({
         c={c}
         ta={ta}
         mb={description ? "xs" : undefined}
-        ff="'Cormorant Garamond', serif"
+        ff="'Cormorant Garamond Variable', serif"
         className={
           size === "lg"
             ? classes.lgTitle

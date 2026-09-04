@@ -101,7 +101,7 @@ and tooling that inherits Quill's `mypy --strict`, Ruff, Black and pre-commit ga
   (`backend/app/features/teaching/router.py:620`), new entrants always resolve the highest
   version (`order_by(QuestionBankConfig.version.desc())`), old `QuestionBankConfig` rows
   are retained by the `(organisation_id, question_bank_id, version)` unique constraint so
-  historical records still resolve, and `check_version_lock.py` already *forces* the bump
+  historical records still resolve, and `check_version_lock.py` already _forces_ the bump
   for any assessment change to a live module. So "how do we do this" is mostly "we already
   do" — no new versioning machinery, and specifically no tooling versions, which would be
   per repo rather than per module and would not bind the sync gate at all.
@@ -130,7 +130,7 @@ and tooling that inherits Quill's `mypy --strict`, Ruff, Black and pre-commit ga
   does not gate the merge.
 
 - **Catch it at pull-request time, not just at deploy** — the deploy sweep tells you a
-  live bank broke; a pull-request sweep tells you *before* you merge the change that
+  live bank broke; a pull-request sweep tells you _before_ you merge the change that
   breaks it, which is the difference between "publish version N+1 now" and "publish
   version N+1 while a bank is already failing". The credential objection does not hold:
   `terraform.yml` already runs `google-github-actions/auth` on `pull_request` with
@@ -162,7 +162,7 @@ and tooling that inherits Quill's `mypy --strict`, Ruff, Black and pre-commit ga
   private bucket, so there is no public/private split by prefix, and no infra in this repo
   sets per-prefix access rules. The split costs real complexity — around sixteen call
   sites across `storage.py` and `certificate.py` read the three prefixes separately, and
-  `download_module_from_gcs` exists *solely* to stitch them back together
+  `download_module_from_gcs` exists _solely_ to stitch them back together
   (`modules_prefix`/`assessment_prefix`/`learning_prefix`, `storage.py:614-643`). Moving to
   `modules/<bank_id>/{module.yaml,assessment/,learning/}` deletes that reconstruction
   entirely, makes the pull-request sweep a plain prefix download, and reduces the deploy
@@ -181,7 +181,7 @@ and tooling that inherits Quill's `mypy --strict`, Ruff, Black and pre-commit ga
   `teaching-tooling`, every commit on this branch says tooling, and landing it at
   `teaching/tooling/` makes the history read as one continuous thing. It reads without
   stutter (`tooling/validate.py`, `python -m app.features.teaching.tooling.cli`) and is
-  honest about scope: this is the *code* half of what that repo held, with the workflows
+  honest about scope: this is the _code_ half of what that repo held, with the workflows
   going to `.github/` and the terraform to `infra/github/`. The one weakness is that
   "tooling" is a soft word that invites unrelated scripts into a package with a hard
   dependency constraint — mitigated by the constraint being stated in the package docstring
@@ -258,7 +258,7 @@ Python one: the frontend has no `@mdx-js` dependency and consumes pre-parsed sli
 does not implement, while the reader that actually runs will quietly discard a malformed
 `<Figure>` and render the slide without it. That silent content loss is the real risk, and
 a strict MDX compile at sync would not catch it — it answers the wrong question.
-Resolution in Phase 2: give `mdx_parser.py` a validating mode and run *that* at both gates.
+Resolution in Phase 2: give `mdx_parser.py` a validating mode and run _that_ at both gates.
 
 ## Phase 1: Move the tooling into Quill
 
@@ -348,7 +348,7 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
       `_validate_certificate` runs inside `_validate_assessment_dir`, so a malformed block
       fails a pull request instead of reaching GCS and failing quietly at sync. Note the
       presence requirement for the five text fields was kept deliberately — the model has
-      defaults for all of them, so relying on it alone would have *weakened* the check.
+      defaults for all of them, so relying on it alone would have _weakened_ the check.
       Pydantic's raw pattern message is translated back to "must be a hex colour (e.g.
       #404040)", which is what a clinician editing YAML can act on.
 - [x] Give `backend/app/features/teaching/mdx_parser.py` a validating mode: at least one
@@ -359,7 +359,7 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
       **Correction to this plan: `Video` is not supported anywhere yet.** The Node
       validator listed it and checked its props, but nothing in the stack reads it — no
       `_extract_video`, no `ParsedSlide` field, no frontend mapping — so content following
-      that validator passed CI and rendered a blank slide. YouTube video *is* supported end
+      that validator passed CI and rendered a blank slide. YouTube video _is_ supported end
       to end (`youtube_id` → `video-slide` layout → frontend `youtubeId`); hosted video is
       not. `KNOWN_COMPONENTS` is now the three names that actually have extractors, with
       `Video` listed in `NOT_YET_SUPPORTED` so authors get "hosted video is not implemented
@@ -408,20 +408,20 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
             content validator so it can check against a list of filenames instead of a
             directory. This is the enabling piece: without it the merged validator cannot
             validate anything in the bucket, which is most of what sync does. Confirmed
-            *why* it exists while porting: `download_bank_from_gcs` fetches **only YAML**
+            _why_ it exists while porting: `download_bank_from_gcs` fetches **only YAML**
             — images are deliberately left in the bucket, since downloading them just to
             check a filename would mean paying for the bytes twice. Question directories do
             exist on disk in that mode (they are created for the YAML), so directory
-            scanning stays correct for structure; only the *file listing* comes from the
+            scanning stays correct for structure; only the _file listing_ comes from the
             inventory, via `_files_in`. Added `validate_module_dir` as the single-bank entry
             point sync will call.
       - [x] **Port the per-item checks** — `_validate_uniform_item` (54 lines),
             `_validate_variable_item` (149), `_get_image_files`, `_check_image_naming` and
             `_cross_item_checks`. The largest chunk, ~280 lines, and where the detailed
-            question-level validation lives. The variable per-item pass *subsumes* the
+            question-level validation lives. The variable per-item pass _subsumes_ the
             assessment-level image pass, so that one was removed rather than left to
             double-report a missing or undeclared file; the uniform pair is complementary
-            (assessment level names *which* key is missing, item level checks the count)
+            (assessment level names _which_ key is missing, item level checks the count)
             and both were kept. Question directories are now parsed once and the data
             reused, which is also what `_cross_item_checks` needs for `item_count`.
             **Finding: three of the ported fixtures were never valid content.** The
@@ -435,7 +435,7 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
       - [x] **Port the config and email checks** — `_validate_config` (48 lines) and
             `_validate_email_section`/`_validate_email_sections` (45). Resolved a name
             collision on the way: both validators had a `REQUIRED_ASSESSMENT_FIELDS`
-            meaning different things — the tooling one was the *top-level* required fields,
+            meaning different things — the tooling one was the _top-level_ required fields,
             the sync one the fields inside the nested `assessment:` block. They are now
             `REQUIRED_CONFIG_FIELDS` and `REQUIRED_ASSESSMENT_SECTION_FIELDS`. The email
             checks stay conditional: a bank must carry a template only for the emails it is
@@ -552,7 +552,7 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
         transcription matches what is live.
       - **Deleting the repository will not delete these rulesets** — they are
         organisation-level and survive. What deletion destroys is teaching-tooling's local
-        state, currently the only thing managing them, so apply the import *before*
+        state, currently the only thing managing them, so apply the import _before_
         deleting or they become live but unmanaged.
 - [x] Drop `teaching-tooling`'s own repo-level rulesets (rulesets 3 and 4 in that file).
       Not ported, deliberately: they protect only that repository and disappear with it.
@@ -579,7 +579,7 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
         `quill_backend`, matching how `just ub` works, rather than shelling into the
         `teaching-tooling` checkout with its own venv and npm install. Pulled forward from
         this phase because it is the command a developer actually reaches for, and it was
-        silently running the *old* validators. Version lock is skipped locally: it compares
+        silently running the _old_ validators. Version lock is skipped locally: it compares
         a branch against `origin/main`, which is a pull-request concern
       - `.claude/skills/crp/SKILL.md:18` — drop the `tooling` repository mapping, and with
         it the `argument-hint`. The skill is **generated**, so the row had to go from its
@@ -608,28 +608,45 @@ modules/<bank_id>/assessment/     # was questions/<bank_id>/
 modules/<bank_id>/learning/       # was learning/<bank_id>/
 ```
 
-- [ ] Change the writer: the ported `teaching-pipeline.yml` deploy job becomes a single
+- [x] Change the writer: the ported `teaching-pipeline.yml` deploy job becomes a single
       `gsutil -m rsync -r -d "$module_dir/" "gs://$BUCKET/modules/$bank_id/"` per module,
       replacing three operations and the `assessment` to `questions` rename.
-- [ ] Change the readers — the three prefixes in
+- [x] Change the readers — the three prefixes in
       `backend/app/features/teaching/storage.py` (`questions/`, `learning/`, `modules/`,
       around sixteen call sites), the `certificate-blank.png` blob path at
       `backend/app/features/teaching/certificate.py:328`, and the dev-only static route at
       `backend/app/main.py:5551`. That route is registered only when
       `TEACHING_QUESTION_BANK_PATH` is set without a bucket, so it never exists in
       production and carries no API-compatibility consequence.
-- [ ] Delete the reconstruction logic in `download_module_from_gcs`
+- [x] Delete the reconstruction logic in `download_module_from_gcs`
       (`storage.py:614-643`). With the layouts identical it becomes a plain prefix
       download, which also removes the `app.config` import problem that would otherwise
       complicate the Phase 7 sweep.
-- [ ] Migrate the bucket: `gsutil -m mv` each of the three old prefixes under
+- [x] Migrate the bucket: `gsutil -m mv` each of the three old prefixes under
       `modules/<bank_id>/`, or re-run a content deploy against the new layout and delete
       the old prefixes once the new ones are serving.
-- [ ] No Alembic migration. `QuestionBankItem.images` holds `{"key": filename}` only and
+- [x] No Alembic migration. `QuestionBankItem.images` holds `{"key": filename}` only and
       image URLs are built per request, so nothing persisted contains a prefix. Confirm by
       grepping a synced database for `questions/` before deleting the old prefixes.
-- [ ] Re-sync both banks, then open a learning module and an assessment and confirm images
+- [x] Re-sync both banks, then open a learning module and an assessment and confirm images
       and the certificate background still resolve.
+
+### How the migration actually went
+
+- **Re-deploying beat moving blobs.** The plan offered `gsutil -m mv` or a fresh deploy;
+  the deploy was better, because it proved the new writer in the same act and left the
+  bucket in exactly the state CI will maintain. No object was moved by hand.
+- **Verified object by object before deleting**, not by eye: every one of the 26
+  `questions/` and 3 `learning/` paths existed under its new prefix, with matching sizes.
+  Sizes mattered — a name-only check would have passed on empty files, and this codebase
+  has already been bitten by placeholders and LFS pointers wearing the right names.
+- The database guard the plan asked for came back **0 rows**: nothing persisted carries a
+  bucket prefix, so no Alembic migration was needed, as predicted.
+- **One path is still unproven in the app.** Learning and assessment were confirmed
+  against the live EoEETA module, but the certificate background is only fetched when
+  someone downloads a certificate, so `certificate.py`'s new prefix has not been exercised
+  end to end. The file is present at the new location and the right size; generate a
+  certificate to close this.
 
 ## Phase 7: Close the safety gaps that prompted this
 
@@ -654,7 +671,7 @@ modules/<bank_id>/learning/       # was learning/<bank_id>/
       (`lfs: true` appears nowhere in `pipeline.yml`). A pointer is a ~132-byte text file
       carrying the right name and extension, so it would pass validation and be synced to
       GCS in place of the image. Candidates would then see a broken image in an assessment,
-      where for a visual-diagnosis bank the image *is* the question. Note this is a **size
+      where for a visual-diagnosis bank the image _is_ the question. Note this is a **size
       check's blind spot** — a pointer is 132 bytes, not 0 — so test the PNG/JPEG magic
       bytes rather than `st_size`. No new dependency needed; Pillow reaches the backend only
       transitively via `reportlab`, and must not become a dependency of the `content`
@@ -740,7 +757,7 @@ modules/<bank_id>/learning/       # was learning/<bank_id>/
       (already supported, `sync.py:159`) and the existing `/admin/sync-all` plumbing, and
       report failures to Slack via `.github/workflows/slack-notify.yml`. Validate-only, not
       sync: it answers "which live banks would now fail?" without touching data.
-- [ ] **Run the same sweep in Quill's pull-request CI**, so whoever changes the tooling
+- [x] **Run the same sweep in Quill's pull-request CI**, so whoever changes the tooling
       sees which live banks they would break before merging rather than after deploying.
       Add a job to `ci.yml` (already triggered on `pull_request` to main), gated on paths
       that can change validation behaviour — `backend/app/features/teaching/tooling/**`,
@@ -751,7 +768,20 @@ modules/<bank_id>/learning/       # was learning/<bank_id>/
       affected bank ids as a pull-request comment. Non-blocking to begin with — see the
       decision above — and no database is required, because `sync_question_bank` returns
       from `validate_only=True` (`sync.py:195`) before it touches `db`.
-- [ ] No layout reconstruction is needed, provided Phase 6 has landed: bucket and repo
+      - Built as a shell script over the existing CLI rather than through the backend. The
+        plan's warning about `storage.py` importing `app.config` is real — confirmed by
+        importing it in an empty environment, where it only succeeds because the container
+        carries a `.env` a runner would not have. Downloading the bucket with
+        `gcloud storage cp` and running the validator sidesteps `app.config` entirely, and
+        needs no dependency beyond the tooling package's own pydantic and pyyaml.
+      - Phase 6 is what makes this a download rather than a reconstruction: the prefix is
+        already the shape the validator expects.
+      - Liveness comes from the content, not the database. `module.yaml` carries the
+        status, and the validator already skips retired modules, so the sweep needs no
+        database to avoid reporting frozen content.
+      - Run against the real bucket before wiring it up: both published banks pass today's
+        validator.
+- [x] No layout reconstruction is needed, provided Phase 6 has landed: bucket and repo
       share one shape, so the sweep downloads `modules/<bank_id>/` and runs the validator
       on it directly. If Phase 6 slips, the sweep must reshuffle the three old prefixes
       itself — but do not import `download_module_from_gcs` to do it, because `storage.py`
@@ -762,17 +792,16 @@ modules/<bank_id>/learning/       # was learning/<bank_id>/
 - **`download_module_from_gcs` writes zero-byte placeholder files for images**, so that
   existence checks pass without paying to download the bytes. That is what let the module
   path validate without an inventory. It also means the Phase 7 follow-up to check image
-  *magic bytes* would break this path: every image there is legitimately empty. Whichever
+  _magic bytes_ would break this path: every image there is legitimately empty. Whichever
   way that check is built, it must either run only where real bytes exist, or the
   placeholders must carry a real header.
-
 
 - **Version lock reports rather than raises when there is no repository to compare
   against.** The ported code called `git rev-parse` for the repository root with
   `check=True` and
   then `Path.relative_to`, so a modules directory outside a git repository produced a
-  traceback rather than a violation. That has two distinct failure shapes and *which one
-  occurs depends on where the process was started*: from inside a checkout, `git rev-parse`
+  traceback rather than a violation. That has two distinct failure shapes and _which one
+  occurs depends on where the process was started_: from inside a checkout, `git rev-parse`
   succeeds and `relative_to` raises `ValueError`; with no repository at all, `git rev-parse`
   raises `CalledProcessError`. A test written against the second shape passed locally and
   broke CI on the first. Both now return the same violation, pointing at
@@ -787,7 +816,7 @@ sync path actually does, added here at the maintainer's request.
 **The asymmetry.** `QuestionBankOrgStatus.is_live` defaults to false, so a brand-new bank
 merging to `main` syncs into the database and stays invisible to candidates until an admin
 deliberately opens it. That human promotion step already exists. But `is_live` is per
-*bank*, not per *version*, and the candidate-facing queries take
+_bank_, not per _version_, and the candidate-facing queries take
 `order_by(version.desc()).first()` — so publishing **version N+1 of an already-live bank
 reaches candidates the moment sync completes**, with no human step at all.
 
@@ -796,7 +825,7 @@ not. The second is arguably the higher-risk operation, because it changes an exa
 candidates are already sitting. Two things soften it but neither closes it: in-flight
 candidates are pinned by `Assessment.bank_version` and finish on the version they started,
 and `check_version_lock` refuses any assessment change to a live module without an explicit
-version bump — so publishing a revision is deliberate, just not *separately* deliberate
+version bump — so publishing a revision is deliberate, just not _separately_ deliberate
 from merging.
 
 **The change.** Each organisation gains a pointer to the version its candidates receive.
@@ -823,6 +852,82 @@ they are ready. That also gives a rollback, which does not exist today.
       when. Rolling back is the same operation pointing at an earlier version.
 - [ ] **Admin UI** — surface the two version numbers and a promote control on the existing
       admin teaching page, which already carries the live/closed toggle.
+
+## Follow-up: a decision file for teaching tooling changes
+
+The pull-request sweep answers _"does this change reject content that is already
+published?"_. It does not answer _"did you mean to?"_ — and by this repository's own
+standard, a comment in a diff is not evidence that anyone decided. The destructive-migration
+and API-compatibility gates both exist because markers and labels are text an agent produces
+as readily as the code beside them.
+
+Teaching tooling deserves the same treatment. It decides what counts as valid question bank
+content, so a tightening can invalidate banks that are live.
+
+### What a breaking change is here
+
+Anything that makes previously-valid content invalid, from four sources:
+
+- **A schema tightened** in one of the three Pydantic models (`ModuleYaml`, `CertificateStyle`,
+  `TextFieldStyle`) — a new required field, a narrowed `Literal`, a tighter bound, or
+  `extra="forbid"` newly rejecting a key that was silently ignored.
+- **New or stricter hand-written checks** — there are 56 `add_error` sites in
+  `validate.py`. The image magic-bytes check added in Phase 7 was exactly this: it would
+  have rejected any bank carrying a Git LFS pointer.
+- **`mdx_parser` changes** — a component no longer recognised, or props validated harder.
+- **Version lock rule changes** — status transitions, bump requirements.
+
+Only the first is machine-comparable. `oasdiff` works for the API because the whole
+contract is one document; here most of the contract is imperative code, so a schema diff
+would see a fraction of it. That is why the sweep runs the real validator over real
+published content rather than diffing a specification.
+
+### The design
+
+- [ ] **Identity is a hash of the contract's contents**, not a commit SHA:
+      `backend/app/features/teaching/tooling/` plus
+      `backend/app/features/teaching/mdx_parser.py`, hashed from `git ls-tree`. This is what
+      reconciles "one file per change" with "a file for every commit that changes tooling":
+      each such commit moves the hash, and one file covers however many rules moved with it.
+      Contents rather than SHA so the record survives a rebase, an amend or a squash — and
+      so a reverted change needs no new file, the contract being back in a state already
+      decided on. A prototype hashed identically at `HEAD` and `origin/main` on a branch
+      that had not touched the contract.
+- [ ] **Decision files live in `decision_files/teaching_tooling/`**, snake_case, following
+      Python rather than the older kebab-case `api-compatibility/`.
+- [ ] **`backend/scripts/teaching_tooling_decision.py`** generates one, following
+      `new_compat_decision.py`: prompt for the verdict and the reason, derive a slug, write
+      a timestamped YAML file recording the hash.
+- [ ] **Reuse the existing gate machinery** rather than writing a second copy.
+      `gate-notify.sh` is already gate-agnostic: it takes a marker key, a hash, a message
+      and an all-clear message, so teaching tooling needs a marker key
+      (`teaching-tooling-hash`) and two strings, not a second implementation. It brings the
+      pull-request comment, the `should_notify` signal that drives `slack-notify.yml`, and
+      the ancestor-commit deduplication that stops a chain of commits spamming the channel.
+- [ ] **A revert is a state, not an absence.** Pass `none` as the hash when the contract
+      matches the base, exactly as the API gate does. `gate-notify.sh` then posts an
+      all-clear comment — "the contract is back where it started" — and does **not** send a
+      Slack message, because nothing needs attention. A pull request that never moved the
+      contract stays silent entirely; the all-clear only appears where this gate had
+      previously spoken.
+      - The detector already emits what this needs: `changed` and `tooling_hash`. The
+        workflow passes `none` or the hash accordingly, so no change to the script.
+      - Note this is a different question from whether the sweep runs. After a revert the
+        sweep correctly does not run — there is no changed contract to test published
+        content against — but the pull request should still say so.
+- [ ] **A required-reviewer environment gate**, as the API and destructive-migration
+      changes have. A file in a diff is not proof a human decided; the environment approval
+      is an act nothing in the diff can fake.
+
+### Two checks, two questions
+
+They are easy to confuse and should not be merged:
+
+- The **sweep** asks about _impact_ — which published banks would this reject? Non-blocking,
+  because the remedy lives in another repository and a hard gate would stall a Quill pull
+  request on external work.
+- The **decision file** asks about _intent_ — did you mean to move the contract? Blocking,
+  because that question has no answer outside the author's head.
 
 ## Follow-up: split the pipeline by event
 
@@ -939,7 +1044,7 @@ the image is rebuilt. Running tests is unaffected, since pytest does not go thro
       subtle one: `bool` subclasses `int` in Python, so without the boolean guard it
       validates as `1`.
 - [ ] Run the MDX validating mode over both content repos' `learning/content.mdx` and
-      confirm it passes, then confirm it *fails* on a deliberately malformed `<Figure>` tag
+      confirm it passes, then confirm it _fails_ on a deliberately malformed `<Figure>` tag
       — the case the current parser drops in silence.
 - [ ] Open a draft pull request on `respiratory-teaching` pointed at the new workflow.
       Confirm the checks report as `pipeline / validate` and `pipeline / check-protection`,
@@ -973,6 +1078,30 @@ the image is rebuilt. Running tests is unaffected, since pytest does not go thro
   pass on current content before any repo is cut over.
 - **Terraform state.** Both configurations use local state and manual apply. Take a state
   backup before merging the organisation rulesets in.
+
+## Follow-up: gather the decision files under one directory
+
+Once `decision_files/teaching_tooling/` exists, the API decision files sitting in
+`api-compatibility/` at the repository root are the odd ones out — same purpose, same
+shape, different place and a different naming convention.
+
+- [ ] Move `api-compatibility/` to `decision_files/api_compatibility/`, snake_case to match.
+      Five decision files today, so the move itself is trivial.
+- [ ] Update every consumer. A sweep found **25 files** referencing the path outside the
+      directory itself, which is the real cost of this: `backend/app/paths.py`,
+      `api_compatibility.py`, `new_compat_decision.py`, `compare_migration_code.py`,
+      `compose.dev.yml`, `docs/mkdocs.yml`, `gate-breaking.yml`,
+      `validate-compat-files.sh` and its tests, several documentation pages, and the
+      `.claude` and `.github` instruction files.
+- [ ] Do it in one commit, and check the gate still fails on an undeclared breaking change
+      afterwards. The move is mechanical, but a missed reference would leave the gate
+      looking for decisions in a directory nothing writes to — which fails open, not
+      closed: no files found reads the same as no decisions needed.
+- [ ] Note the merged files are immutable once on `main`, so this is a rename in git rather
+      than a rewrite. Their `generation` and `forces_reload` values must survive untouched.
+
+Best done when no breaking-change pull request is in flight, since it moves the ground
+under the gate that would be judging it.
 
 ## Related
 
