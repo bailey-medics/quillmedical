@@ -378,13 +378,13 @@ module "monitoring" {
   project_id  = var.project_id
   environment = var.environment
 
-  monitored_hostnames   = var.monitored_hostnames
-  app_domain            = var.app_domain
-  alert_email           = var.alert_email
-  alert_sms_number      = data.google_secret_manager_secret_version.alert_sms_number.secret_data
-  pagerduty_service_key = data.google_secret_manager_secret_version.pagerduty_service_key.secret_data
-  slack_webhook_url     = var.slack_webhook_url
-  cloud_run_services    = var.cloud_run_services
+  monitored_hostnames        = var.monitored_hostnames
+  app_domain                 = var.app_domain
+  alert_email                = var.alert_email
+  alert_sms_number           = data.google_secret_manager_secret_version.alert_sms_number.secret_data
+  pagerduty_service_key      = data.google_secret_manager_secret_version.pagerduty_service_key.secret_data
+  slack_channel_display_name = var.slack_channel_display_name
+  cloud_run_services         = var.cloud_run_services
 }
 
 # ---------- Analytics: usage metrics, archive, and the shared dashboard ----------

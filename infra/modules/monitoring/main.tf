@@ -16,16 +16,27 @@ resource "google_monitoring_notification_channel" "email" {
 }
 
 # ---------- Notification channel (Slack) ----------
-resource "google_monitoring_notification_channel" "slack" {
-  count = var.slack_webhook_url != "" ? 1 : 0
+#
+# Looked up rather than created. Terraform can create a webhook_token_auth
+# channel, but Slack incoming webhooks expect a body shaped like
+# {"text": "..."} while Cloud Monitoring sends its own alert JSON — a channel
+# built that way looks configured and delivers nothing. The native slack type
+# is the one that actually posts a readable message, and it needs an
+# auth_token obtained through Slack's OAuth consent screen, which only the
+# console flow can produce. Google's own descriptor marks that field
+# obfuscated on read, so even importing it into state would show a masked
+# value and drift on every subsequent plan.
+#
+# So the channel is created once by hand — see
+# docs/docs/infrastructure/monitoring.md — and referenced here by
+# display_name and type. Nothing about its lifecycle is managed by Terraform;
+# deleting or renaming it in the console silently empties this data source.
+data "google_monitoring_notification_channel" "slack" {
+  count = var.slack_channel_display_name != "" ? 1 : 0
 
   project      = var.project_id
-  display_name = "Quill Slack alerts (${var.environment})"
-  type         = "webhook_token_auth"
-
-  labels = {
-    url = var.slack_webhook_url
-  }
+  type         = "slack"
+  display_name = var.slack_channel_display_name
 }
 
 # ---------- Notification channel (PagerDuty) ----------
@@ -81,26 +92,23 @@ locals {
   # Tier one: cheap, ignorable, often self-resolving.
   notification_channels = concat(
     [google_monitoring_notification_channel.email.id],
-    [for ch in google_monitoring_notification_channel.slack : ch.id],
+    [for ch in data.google_monitoring_notification_channel.slack : ch.id],
   )
 
-  # Tier two: reserved for a failure that has persisted long enough to be
-  # real.
+  # Tier two: SMS, and nothing else.
   #
-  # SMS is paired with email rather than used alone, for two reasons. Google
-  # documents SMS as "not a fully reliable notification channel type", so an
-  # escalation resting on it alone can fail silently. And Google further
-  # documents that Slack, PagerDuty, webhooks and the Cloud mobile app are all
-  # delivered by one internal service and share a single point of failure,
-  # with email or Pub/Sub as the recommended redundant path — so tier one's
-  # Slack rung is not independent cover either. Email is the redundancy.
+  # Email was here as well, for redundancy — Google documents SMS as "not a
+  # fully reliable notification channel type". That held while tier one was
+  # email alone. Now that tier one sends Slack and email, a second email at
+  # fifteen minutes repeats a channel already used and adds nothing. Each tier
+  # introduces a route the previous one did not: a text, then a call.
+  #
+  # The trade is explicit: if SMS fails silently, tier two delivers nothing,
+  # and the backstop is tier three fifteen minutes later on another provider.
+  escalation_channels = [for ch in google_monitoring_notification_channel.sms : ch.id]
+
   # Tier three: the phone call, and nothing else routed through it.
   critical_channels = [for ch in google_monitoring_notification_channel.pagerduty : ch.id]
-
-  escalation_channels = concat(
-    [for ch in google_monitoring_notification_channel.sms : ch.id],
-    [google_monitoring_notification_channel.email.id],
-  )
 }
 
 # ---------- Uptime checks (one per hostname) ----------
