@@ -244,14 +244,20 @@ resource "github_repository_ruleset" "branch_naming" {
       exclude = [
         "refs/heads/main",
         # The merge queue builds each entry on a temporary branch named
-        # gh-readonly-queue/main/pr-<number>-<sha>, which cannot match the
-        # pattern below. Without this exclusion the naming rule rejects that
-        # branch at creation time, so the merge group is never built, no
-        # merge_group event fires, no required check reports, and GitHub drops
-        # the entry with "removed from the merge queue due to failing Branch
-        # Protection rules" — with nothing in the Actions tab to explain it.
-        # Observed on PR #503, the first pull request queued here.
+        # gh-readonly-queue/main/pr-<number>-<sha>. Without an exemption the
+        # naming rule rejects that branch at creation time, so the merge group
+        # is never built, no merge_group event fires, no required check
+        # reports, and GitHub drops the entry with "removed from the merge
+        # queue due to failing Branch Protection rules" — with nothing in the
+        # Actions tab to explain it. Seen on PR #503.
+        #
+        # Both spellings are listed because a bare `**` alone did not match
+        # the two-segment queue ref when it was tried on #503; GitHub's own
+        # ruleset docs write this shape as `refs/heads/releases/**/*`. The
+        # regex below carries the same exemption independently, so the branch
+        # is allowed even if neither pattern matches.
         "refs/heads/gh-readonly-queue/**",
+        "refs/heads/gh-readonly-queue/**/*",
       ]
     }
   }
@@ -259,7 +265,10 @@ resource "github_repository_ruleset" "branch_naming" {
   rules {
     branch_name_pattern {
       operator = "regex"
-      pattern  = "^(feature|hotfix|copilot|renovate)/.+"
+      # gh-readonly-queue is the merge queue's own prefix, not a branch anyone
+      # creates by hand. It is matched here as well as excluded above so the
+      # queue does not depend on fnmatch semantics to function.
+      pattern  = "^(feature|hotfix|copilot|renovate|gh-readonly-queue)/.+"
       name     = "Branch names must follow feature/*, hotfix/*, copilot/*, or renovate/* convention"
       negate   = false
     }
