@@ -65,8 +65,8 @@ Runs when a PR is marked ready for review or updated. Takes ~5–10 minutes.
 
 Shell scripts that back the GitHub Actions workflows live under `.github/scripts/<workflow-name>/`. Any script with non-trivial logic has a [bats](https://github.com/bats-core/bats-core) (Bash Automated Testing System) test file alongside it — e.g. `deploy/resolve-commit.bats` sits next to `deploy/resolve-commit.sh`.
 
-- **Install bats locally:** `brew install bats-core`
-- **Run locally:** `just test-scripts` (alias `ts`) — runs `bats --recursive .github/scripts`
+- **Run locally:** `just test-scripts` (alias `ts`) — runs the suite inside `ubuntu:24.04`, the same image, bats version and invocation as CI. Needs Docker running; bats itself is not installed on the host.
+- **Why the container:** the scripts run on `ubuntu-24.04` runners, so a host run tests a different bash, coreutils and `sha256sum`. `bats --recursive .github/scripts` still works by hand, but a result from it — green or red — is not evidence about CI.
 - **Lint:** `find .github/scripts -name '*.sh' | xargs shellcheck --source-path=SCRIPTDIR` (needs `brew install shellcheck`)
 - **CI:** the `Shell script lint and test` job runs ShellCheck then the full bats suite on every push, using the pinned `bats-core/bats-action`
 
@@ -181,10 +181,10 @@ cd frontend && yarn eslint && yarn prettier:check && yarn typecheck:all && yarn 
 
 # Shell scripts (GitHub Actions) — lint and test
 find .github/scripts -name '*.sh' | xargs shellcheck --source-path=SCRIPTDIR
-just test-scripts   # bats --recursive .github/scripts
+just test-scripts   # runs in ubuntu:24.04, as CI does
 ```
 
-The shell-script checks need [ShellCheck](https://www.shellcheck.net/) (`brew install shellcheck`) and [bats](https://github.com/bats-core/bats-core) (`brew install bats-core`) installed locally. Both are optional for everyday work — CI always runs them — but handy when editing anything under `.github/scripts/`. See [Shell script tests](#shell-script-tests) for the testing convention.
+The shell-script checks need [ShellCheck](https://www.shellcheck.net/) (`brew install shellcheck`) locally; the bats suite brings its own [bats](https://github.com/bats-core/bats-core) in the container and needs only Docker. Both are optional for everyday work — CI always runs them — but handy when editing anything under `.github/scripts/`. See [Shell script tests](#shell-script-tests) for the testing convention.
 
 ### PR not created automatically
 

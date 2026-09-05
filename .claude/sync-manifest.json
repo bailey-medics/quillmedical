@@ -1,7 +1,7 @@
 {
   "version": 1,
   "generatedBy": "/sync-copilot-config",
-  "lastRun": "2026-09-03T06:23:19Z",
+  "lastRun": "2026-09-05T20:23:24Z",
   "notes": [
     "Prompt targets live under .claude/skills/<name>/SKILL.md (a skill is a directory, not a single file). A skill's invocable /name comes from the directory name, never the SKILL.md filename and never a name: frontmatter field (that only sets a display label for personal/project skills).",
     "Targets marked targetRenamed:true deliberately do not use the default source-derived directory name. Copilot's 'name:' frontmatter values were used as the directory names to preserve /crp, /e, and /read-project-instructions.",
@@ -16,7 +16,9 @@
     "2026-09-02: the `final` argument was added to crp on BOTH sides in the same commit (.github/prompts/commit-rebase-push.prompt.md is still the source of truth; the Claude copy was updated in step, not synced over). Hashes below record that reconciled state - this is not outstanding drift.",
     "2026-09-02: the pull request description spec in crp's 'Final' section was tightened on BOTH sides in the same commit (.github/prompts/commit-rebase-push.prompt.md remains the source of truth; the Claude copy was updated in step, not synced over). Hashes below record that reconciled state - this is not outstanding drift.",
     "2026-09-02: a 'never mention AI authorship' rule was added to crp's Never list on BOTH sides in the same commit, and to CLAUDE.md's hand-written '## Claude-specific' section (which this skill never writes into - its hash is refreshed to mean 'last state reconciled'). Not outstanding drift.",
-    "2026-09-03: a secrets-placement rule was added to copilot-instructions.md and merged into CLAUDE.md's Security list - a secret GitHub Actions consumes stays in GitHub, one it only relays belongs at the destination. explain-to-me and follow-the-plan-document also show changed source hashes, but their only differences from the Claude copies remain the ide_selection tags and $ARGUMENTS respectively, exactly as their divergenceReason describes. Hashes refreshed to record the reconciled state; no target content was written for those two."
+    "2026-09-03: a secrets-placement rule was added to copilot-instructions.md and merged into CLAUDE.md's Security list - a secret GitHub Actions consumes stays in GitHub, one it only relays belongs at the destination. explain-to-me and follow-the-plan-document also show changed source hashes, but their only differences from the Claude copies remain the ide_selection tags and $ARGUMENTS respectively, exactly as their divergenceReason describes. Hashes refreshed to record the reconciled state; no target content was written for those two.",
+    "2026-09-04: .claude/rules/workflows.md is DIVERGED and was not written to. Three sections exist only on the Claude side - '### main() and the source guard', '### Readability: one idea per line' and '## Testing scripts with bats' - added by c5d42f61, fb965007 and 61d66bf1, plus two bullets added this run on branch feature/bats-ubuntu-parity covering the containerised local run. The .github source has not changed since 7968f0f2 and is 46 lines to the target's 125. This is ordinary one-way drift, NOT divergentByDesign: none of it is platform-specific, so the fix is to back-port those sections to .github/instructions/workflows.instructions.md (as was done for the skills on feature/backport-skill-improvements). Hashes deliberately NOT refreshed, so the drift keeps being reported until that happens. Syncing source over target would delete 79 lines of live guidance.",
+    "2026-09-04: fix-vs-code-problems and read-project-instructions showed changed target hashes. Both differences are exactly what their divergenceReason describes - the get_errors/mcp__ide__getDiagnostics fallback, and CLAUDE.md plus .claude/rules/ in place of copilot-instructions.md plus instructions/. No target content was written; hashes refreshed to record the reconciled state."
   ],
   "files": [
     {
@@ -101,8 +103,8 @@
       "source": ".github/prompts/fix-vs-code-problems.prompt.md",
       "target": ".claude/skills/fix-vs-code-problems/SKILL.md",
       "sourceSha256": "dd7ec939ae5293d03e018743d82f66895c7d5e8fc05b3d4612af02d642533344",
-      "targetSha256": "a0a9137bd4790489e5e391cf56cc646640ba015793d170b36ba3599aa40d9e9a",
-      "syncedAt": "2026-08-22T20:32:02Z",
+      "targetSha256": "80071ff05b19945b48fce8d75a1e92e6bcdd79a735ffb8dfa67f45e7c5a61914",
+      "syncedAt": "2026-09-05T20:23:24Z",
       "divergentByDesign": true,
       "divergenceReason": "Copilot has a `get_errors` tool; Claude does not, so the Claude copy falls back to the project's own linters. Syncing either direction would replace a working tool call with a workaround, or vice versa."
     },
@@ -133,8 +135,8 @@
       "source": ".github/prompts/read-copilot-instructions.prompt.md",
       "target": ".claude/skills/read-project-instructions/SKILL.md",
       "sourceSha256": "9749fe70a0f63bc1af200cb77513bd5d5352a2919d3549516df5d23f07f8218e",
-      "targetSha256": "2e891c9358e87083285ed9ee39a9354fdc2e0e030e360b68e6e9fbe6d43d7589",
-      "syncedAt": "2026-08-22T20:32:02Z",
+      "targetSha256": "d1bd5bcdeaa20237fd5d23bcd54a7436c6c1d560325866561ac93a57b226ad5b",
+      "syncedAt": "2026-09-05T20:23:24Z",
       "targetRenamed": true,
       "divergentByDesign": true,
       "divergenceReason": "Reads different files by design: copilot-instructions.md and instructions/ on the Copilot side, CLAUDE.md and .claude/rules/ on the Claude side. The Claude copy also notes that those load automatically at session start."
