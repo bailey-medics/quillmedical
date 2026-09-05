@@ -87,6 +87,32 @@ just terraform-github        # queue back on, fix now live on main
 Terraform reads that file from disk, not from git, so no pull request is
 needed to flip it and `main` never carries the queue switched off.
 
+## Every PR opens as a draft, and that is load-bearing
+
+`ci.yml`'s heavy tier and every job in `gate-breaking.yml` trigger on
+`ready_for_review` and `synchronize`, never on `opened` — see that workflow's
+trigger comment for why `opened` is excluded. The exclusion is only safe
+because `auto-pr.yml` creates every PR with `gh pr create --draft`, so marking
+one ready fires those checks a moment later.
+
+Renovate opens its own PRs, and opened them non-draft, which broke that
+invariant quietly. A Renovate PR with a single commit gets no `opened` run, no
+`ready_for_review` (it was never a draft) and no `synchronize` (no second
+commit), so four required contexts — `API breaking-change check`, `API
+breaking-change review gate`, `DB destructive migration check` and `DB
+destructive migration review gate` — were never reported at all. The PR sat on
+"Expected — Waiting for status to be reported" with nothing in the Actions tab,
+failing the same way as the queue faults above. Such PRs only ever came unstuck
+by accident: someone clicked "Update branch", and the `synchronize` that
+produced finally ran the gates.
+
+`renovate.json` now sets `draftPR: true`, so Renovate follows the same
+lifecycle as everything else. **Anything else that opens a PR must open it as a
+draft too**, or have its trigger added to both workflows.
+
+To unstick a PR already in this state, click "Update branch", or convert it to
+a draft and mark it ready again.
+
 ## When you still need to rebase manually
 
 The queue can't resolve real content conflicts for you.
