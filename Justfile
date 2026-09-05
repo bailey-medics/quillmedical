@@ -579,18 +579,10 @@ unit-tests-frontend *ARGS:
 
 
 alias ts := test-scripts
-# Run the shell script tests (bats)
+# Run the shell script tests where CI runs them (ubuntu-24.04 container)
 test-scripts *ARGS:
     #!/usr/bin/env bash
     {{initialise}} "test-scripts"
-    bats --recursive .github/scripts {{ARGS}}
-
-
-alias tsd := test-scripts-docker
-# Run the shell script tests where CI runs them (ubuntu-24.04 container)
-test-scripts-docker *ARGS:
-    #!/usr/bin/env bash
-    {{initialise}} "test-scripts-docker"
 
     just _start-docker-daemon
 

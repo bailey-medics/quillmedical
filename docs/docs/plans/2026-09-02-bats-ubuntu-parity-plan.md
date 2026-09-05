@@ -108,29 +108,31 @@ suite is one too many, and the host one is what produced the false results in bo
 directions that this plan exists to eliminate — leaving it in place invites reaching for
 it out of habit and getting an answer about the wrong platform.
 
-- [ ] Delete the `test-scripts` recipe and its `ts` alias from the `Justfile`
+- [x] Delete the `test-scripts` recipe and its `ts` alias from the `Justfile`
       (`Justfile:567-572`), then rename the Phase 2 recipe to `test-scripts` with the `ts`
       alias, so the familiar name runs the correct thing and no muscle memory is wasted.
-- [ ] Drop bats from the optional prerequisites in `docs/docs/getting-started.md:10`. It is
+- [x] Drop bats from the optional prerequisites in `docs/docs/getting-started.md:10`. It is
       then needed only inside the container, so `brew install bats-core` stops being
       something a developer has to do at all.
-- [ ] Update the three places that present the recipe as a host command:
+- [x] Update the three places that present the recipe as a host command:
       `docs/docs/cicd/index.md:69` and `:184`, and `.github/scripts/README.md:17`. Each
       offers a bare `bats --recursive .github/scripts` as an equivalent, and that
       equivalence is exactly what Phase 2 disproves — the wording needs to make the
       container the suite and the bare call a fallback carrying a platform caveat.
-- [ ] Leave the finished plans alone. The August alembic plan names `just ts` twice as a
+- [x] Leave the finished plans alone. The August alembic plan names `just ts` twice as a
       record of what was run at the time; rewriting that would misreport what happened.
 
 ## Verification
 
-- [x] `just ts` passes on the host — currently impossible, and the measure of Phase 1.
+- [x] The suite passes on the host under a bare `bats` — impossible before, and the
+      measure of Phase 1. (`just ts` meant the host run when this was written; after
+      Phase 3 it means the container.)
 - [x] The containerised run passes, and its bats version matches CI's.
 - [x] `find .github/scripts -name '*.sh' -exec shellcheck --source-path=SCRIPTDIR {} +`
       stays clean, since `create-pr.sh` changes.
 - [ ] CI stays green, confirming the `create-pr.sh` change did not alter behaviour on the
       platform where it already worked.
-- [ ] After Phase 3, `grep -rn 'test-scripts' --exclude-dir=.git .` finds only the
+- [x] After Phase 3, `grep -rn 'test-scripts' --exclude-dir=.git .` finds only the
       containerised recipe and prose describing it — nothing anywhere still tells a
       developer to run the suite on the host.
 
