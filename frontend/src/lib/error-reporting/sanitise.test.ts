@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  fromError,
   sanitiseComponentStack,
+  sanitiseErrorCode,
   sanitiseErrorReport,
   sanitiseMessage,
   sanitiseName,
   sanitiseStack,
+  sanitiseStatus,
 } from "./sanitise";
 
 /**
@@ -27,7 +30,7 @@ const PATIENT_SHAPED: ReadonlyArray<readonly [string, string]> = [
 ];
 
 describe("sanitiseErrorReport", () => {
-  it("keeps the message for an engine error", () => {
+  it("keeps a message that has nothing sensitive in it", () => {
     const report = sanitiseErrorReport({
       name: "TypeError",
       message: "Cannot read properties of undefined (reading 'name')",
@@ -40,21 +43,7 @@ describe("sanitiseErrorReport", () => {
     );
   });
 
-  it("drops the message for an error the engine did not compose", () => {
-    // api.ts copies server-supplied detail straight into Error.message, so
-    // anything not from the engine is treated as untrusted prose.
-    const report = sanitiseErrorReport({
-      name: "Error",
-      message: "Could not save the note for Jane Doe",
-      release: "abc123",
-      source: "boundary",
-    });
-
-    expect(report.message).toBe("");
-    expect(report.name).toBe("Error");
-  });
-
-  it("still reports the error type when the message is dropped", () => {
+  it("keeps the message but redacts the structured shapes in it", () => {
     const report = sanitiseErrorReport({
       name: "ApiError",
       message: "patient 943 476 5919 not found",
@@ -63,7 +52,26 @@ describe("sanitiseErrorReport", () => {
     });
 
     expect(report.name).toBe("ApiError");
-    expect(report.message).toBe("");
+    expect(report.message).not.toContain("943 476 5919");
+    // The rest of the message is what makes the report worth having.
+    expect(report.message).toContain("not found");
+  });
+
+  it("cannot redact a name, which is why the backend must not send one", () => {
+    // Recorded rather than hidden. Names have no pattern, so nothing here can
+    // catch them, and no tightening of these rules would change that. The
+    // defence is that the backend does not put a name in an error response —
+    // the seventeen endpoints that currently might are tracked in
+    // docs/docs/plans/2026-08-31-analytics-plan.md. When that work lands and
+    // this expectation is inverted, this comment goes with it.
+    const report = sanitiseErrorReport({
+      name: "Error",
+      message: "Could not save the note for Jane Doe",
+      release: "abc123",
+      source: "boundary",
+    });
+
+    expect(report.message).toContain("Jane Doe");
   });
 
   it("falls back to a usable name when none is given", () => {
@@ -80,8 +88,8 @@ describe("sanitiseErrorReport", () => {
 
 describe("patient-shaped strings never survive", () => {
   for (const [label, value] of PATIENT_SHAPED) {
-    it(`removes a ${label} from an engine error message`, () => {
-      const out = sanitiseMessage("TypeError", `failed near ${value} here`);
+    it(`removes a ${label} from a message`, () => {
+      const out = sanitiseMessage(`failed near ${value} here`);
 
       expect(out).not.toContain(value);
     });
@@ -104,6 +112,7 @@ describe("patient-shaped strings never survive", () => {
         message: `TypeError near ${value}`,
         stack: `at load (${value})`,
         componentStack: `in Row (${value})`,
+        errorCode: `CODE_${value}`,
         release: value,
         source: "boundary",
       });
@@ -137,7 +146,6 @@ describe("the name field", () => {
 describe("URLs and routes", () => {
   it("removes an absolute URL from a message", () => {
     const out = sanitiseMessage(
-      "TypeError",
       "failed fetching https://teaching.quill-medical.com/api/patients/42/letters",
     );
 
@@ -147,10 +155,7 @@ describe("URLs and routes", () => {
   });
 
   it("removes a bare app route from a message", () => {
-    const out = sanitiseMessage(
-      "TypeError",
-      "render failed at /patients/42/letters",
-    );
+    const out = sanitiseMessage("render failed at /patients/42/letters");
 
     expect(out).not.toContain("patients");
     expect(out).toContain("[path]");
@@ -158,7 +163,6 @@ describe("URLs and routes", () => {
 
   it("removes a query string along with its URL", () => {
     const out = sanitiseMessage(
-      "TypeError",
       "https://example.com/search?nhs=9434765919&name=Jane",
     );
 
@@ -194,7 +198,7 @@ describe("URLs and routes", () => {
 
 describe("size limits", () => {
   it("truncates an over-long message", () => {
-    const out = sanitiseMessage("TypeError", "x".repeat(1000));
+    const out = sanitiseMessage("x".repeat(1000));
 
     expect(out.length).toBeLessThan(1000);
     expect(out).toContain("[truncated]");
@@ -217,5 +221,112 @@ describe("size limits", () => {
 
     expect(report.stack).toBe("");
     expect(report.componentStack).toBe("");
+  });
+});
+
+describe("the error code field", () => {
+  it("keeps a backend code, which is a fixed vocabulary", () => {
+    expect(sanitiseErrorCode("USER_NOT_FOUND")).toBe("USER_NOT_FOUND");
+    expect(sanitiseErrorCode("FHIR_PATIENT_FETCH_FAILED")).toBe(
+      "FHIR_PATIENT_FETCH_FAILED",
+    );
+  });
+
+  it("strips anything that is not code-shaped", () => {
+    // Filtered by character class rather than by the redaction patterns, for
+    // the same reason as the name field: word boundaries do not fire inside a
+    // larger token.
+    expect(sanitiseErrorCode("CODE 943 476 5919")).not.toContain("943");
+    expect(sanitiseErrorCode("jane.doe@example.nhs.uk")).not.toContain("@");
+    expect(sanitiseErrorCode("SW1A 1AA")).not.toContain(" ");
+  });
+});
+
+describe("the status field", () => {
+  it("keeps a real HTTP status", () => {
+    expect(sanitiseStatus(404)).toBe(404);
+    expect(sanitiseStatus(500)).toBe(500);
+  });
+
+  it("drops anything that is not a whole status code", () => {
+    expect(sanitiseStatus(99)).toBeUndefined();
+    expect(sanitiseStatus(600)).toBeUndefined();
+    expect(sanitiseStatus(404.5)).toBeUndefined();
+    expect(sanitiseStatus("404")).toBeUndefined();
+    expect(sanitiseStatus(undefined)).toBeUndefined();
+    expect(sanitiseStatus(null)).toBeUndefined();
+  });
+});
+
+describe("reading properties off a thrown value", () => {
+  it("never reads the email address api.ts attaches to some errors", () => {
+    // api.ts sets `email` on errors from certain auth responses. It is a real
+    // address belonging to a real person, so properties are read by name and
+    // never enumerated.
+    const thrown = Object.assign(new Error("registration failed"), {
+      error_code: "EMAIL_ALREADY_REGISTERED",
+      status: 409,
+      email: "jane.doe@example.nhs.uk",
+    });
+
+    const report = sanitiseErrorReport(fromError(thrown, "abc123", "window"));
+
+    expect(JSON.stringify(report)).not.toContain("jane.doe");
+    expect(JSON.stringify(report)).not.toContain("example.nhs.uk");
+  });
+
+  it("keeps the structured fields api.ts attaches", () => {
+    const thrown = Object.assign(new Error("not found"), {
+      error_code: "USER_NOT_FOUND",
+      status: 404,
+    });
+
+    const report = sanitiseErrorReport(fromError(thrown, "abc123", "window"));
+
+    expect(report.errorCode).toBe("USER_NOT_FOUND");
+    expect(report.status).toBe(404);
+    expect(report.name).toBe("Error");
+  });
+
+  it("survives a thrown value that is not an Error at all", () => {
+    const report = sanitiseErrorReport(
+      fromError("just a string", "abc123", "window"),
+    );
+
+    expect(report.name).toBe("Error");
+    expect(report.message).toBe("");
+    expect(report.status).toBeUndefined();
+  });
+
+  it("carries the component stack through from a boundary", () => {
+    const report = sanitiseErrorReport(
+      fromError(new Error("boom"), "abc123", "boundary", "in Row (at Row.tsx)"),
+    );
+
+    expect(report.componentStack).toContain("in Row");
+    expect(report.source).toBe("boundary");
+  });
+});
+
+describe("truncation stays within the backend's limits", () => {
+  it("counts the marker inside the limit rather than adding it on top", () => {
+    // The backend rejects any field over its own cap. A marker added on top of
+    // a client cap set equal to that one would turn a long field into a
+    // dropped report, which is the failure that is hardest to notice.
+    const report = sanitiseErrorReport({
+      name: "TypeError",
+      message: "x".repeat(5000),
+      stack: "y".repeat(50000),
+      componentStack: "z".repeat(50000),
+      errorCode: "C".repeat(500),
+      release: "r".repeat(500),
+      source: "window",
+    });
+
+    expect(report.message.length).toBeLessThanOrEqual(400);
+    expect(report.stack.length).toBeLessThanOrEqual(4000);
+    expect(report.componentStack.length).toBeLessThanOrEqual(2000);
+    expect(report.errorCode.length).toBeLessThanOrEqual(100);
+    expect(report.release.length).toBeLessThanOrEqual(100);
   });
 });

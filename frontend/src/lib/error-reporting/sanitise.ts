@@ -1,29 +1,42 @@
 /**
  * Sanitising client error reports
  *
- * Everything leaving the browser as an error report passes through here
- * first. The plan's strongest rule is that no raw URL from the authenticated
- * app may be recorded, because app paths carry identifiers directly —
+ * Everything leaving the browser as an error report passes through here first.
+ * The strongest rule is that no raw URL from the authenticated app may be
+ * recorded, because app paths carry identifiers directly —
  * `/api/patients/{patient_id}/letters`, `/api/users/{user_id}` — and a URL is
  * enough to disclose that a person is being treated for something, without a
  * single clinical field.
  *
- * Messages are treated as untrusted rather than as diagnostic text. `api.ts`
- * copies server-supplied `detail` strings straight into `Error.message`, so a
- * message can carry anything the backend put in a response. Names and free
- * text cannot be pattern-matched out, so messages are kept only for errors the
- * JavaScript engine itself composed, where the wording is generated rather
- * than supplied. Everything else keeps its error type and loses its message.
+ * Messages are kept and redacted rather than dropped. An earlier version kept
+ * a message only when the JavaScript engine had composed it, on the grounds
+ * that `api.ts` copies server-supplied `detail` strings into `Error.message`.
+ * Auditing the backend showed that risk to be real but narrow — seventeen
+ * endpoints interpolate a raw exception into `detail`, and every other
+ * interpolation is a fixed vocabulary — so it is being fixed at those sites
+ * instead. Filtering was the weaker move: it cost most of the diagnostic value
+ * to defend against something a filter cannot actually catch, since names have
+ * no pattern.
  *
- * That is deliberately lossy. The purpose here is "where are things going
- * wrong", and the error type, the component stack and the frequency carry most
- * of that; the message is a bonus that is not worth a disclosure.
+ * What the redaction patterns here do catch is the structured shapes — NHS
+ * numbers, dates, postcodes, emails, identifiers and URLs. They are a
+ * backstop, not the primary defence. The primary defence is that the backend
+ * does not put patient data in an error response in the first place.
  */
 
-/** Longest message, stack and component stack retained. */
-const MAX_MESSAGE = 300;
+/**
+ * Longest value retained per field.
+ *
+ * These must stay at or below the backend schema's limits. `truncate` counts
+ * its own marker, so a truncated value never exceeds the figure given here and
+ * a long field cannot turn into a rejected request.
+ */
+const MAX_MESSAGE = 400;
 const MAX_STACK = 4000;
 const MAX_COMPONENT_STACK = 2000;
+const MAX_NAME = 100;
+const MAX_ERROR_CODE = 100;
+const MAX_RELEASE = 100;
 
 /**
  * Marker used to hold a stack position aside while the rest is redacted.
@@ -37,25 +50,10 @@ const SENTINEL = "\uE000";
 const REDACTED = "[redacted]";
 const URL_PLACEHOLDER = "[url]";
 const PATH_PLACEHOLDER = "[path]";
+const TRUNCATION_MARKER = "…[truncated]";
 
 /**
- * Errors whose messages the JavaScript engine composes itself.
- *
- * These wordings come from the runtime, not from application or server code,
- * so they cannot contain user or patient data. Anything else — including
- * every error `api.ts` raises from a server response — loses its message.
- */
-const ENGINE_ERRORS: ReadonlySet<string> = new Set([
-  "TypeError",
-  "ReferenceError",
-  "SyntaxError",
-  "RangeError",
-  "EvalError",
-  "URIError",
-]);
-
-/**
- * Patterns applied to every field, in order.
+ * Patterns applied to every free-text field, in order.
  *
  * Ordering matters: URLs go first, because a URL may itself contain an email
  * address or a run of digits that the later rules would otherwise leave
@@ -64,8 +62,13 @@ const ENGINE_ERRORS: ReadonlySet<string> = new Set([
 const REDACTIONS: ReadonlyArray<readonly [RegExp, string]> = [
   // Absolute URLs, including any query string.
   [/\bhttps?:\/\/[^\s"'`)<>\]]+/gi, URL_PLACEHOLDER],
-  // Email addresses.
-  [/[\w.+-]+@[\w-]+\.[\w.-]+/g, REDACTED],
+  // Email addresses. The repetitions are bounded rather than open-ended:
+  // `[\w.+-]+@` backtracks quadratically over a long run of word characters
+  // with no `@` in it, which a minified stack trace is exactly made of — 2.8
+  // seconds on a 50 KB stack, blocking the main thread while the app is
+  // already broken. The bounds are the real limits from RFC 5321 anyway: 64
+  // characters for the local part, 63 for a domain label.
+  [/[\w.+-]{1,64}@[\w-]{1,63}\.[\w.-]{1,63}/g, REDACTED],
   // UUIDs, which is what most identifiers here look like.
   [
     /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi,
@@ -91,23 +94,28 @@ function redact(text: string): string {
   );
 }
 
-/** Truncates to `max`, marking that it happened. */
+/**
+ * Truncates to `max`, marking that it happened.
+ *
+ * The marker is counted within `max` rather than added to it, so the result is
+ * never longer than the caller asked for. The backend rejects any field over
+ * its own limit, and a marker added on top of a client limit set equal to that
+ * one would turn an over-long field into a dropped report.
+ */
 function truncate(text: string, max: number): string {
-  return text.length <= max ? text : `${text.slice(0, max)}…[truncated]`;
+  if (text.length <= max) return text;
+  const room = Math.max(0, max - TRUNCATION_MARKER.length);
+  return `${text.slice(0, room)}${TRUNCATION_MARKER}`;
 }
 
 /**
  * Sanitises an error message.
  *
- * Returns an empty string for anything the engine did not compose, rather
- * than attempting to scrub prose that may contain a name.
+ * Redacted, not dropped: the structured shapes go, and multi-segment paths go
+ * with them, since an error thrown while handling a route may quote it.
  */
-export function sanitiseMessage(name: string, message: string): string {
-  if (!ENGINE_ERRORS.has(name)) return "";
-
-  // Multi-segment paths go too. A message from the engine will not contain a
-  // route, but an engine error thrown while handling one might quote it.
-  const withoutPaths = redact(message).replace(
+export function sanitiseMessage(message: string): string {
+  const withoutPaths = redact(message ?? "").replace(
     /(?:\/[\w.~%-]+){2,}/g,
     PATH_PLACEHOLDER,
   );
@@ -165,7 +173,37 @@ export function sanitiseComponentStack(componentStack: string): string {
  */
 export function sanitiseName(name: string): string {
   const identifierOnly = (name ?? "").replace(/[^A-Za-z_$]/g, "");
-  return truncate(identifierOnly, 100) || "Error";
+  return truncate(identifierOnly, MAX_NAME) || "Error";
+}
+
+/**
+ * Sanitises a backend error code.
+ *
+ * Codes are a fixed vocabulary the backend chooses — `USER_NOT_FOUND` — so
+ * they carry no user data by construction. They are still filtered by
+ * character class rather than trusted, for the same reason as the name: a
+ * value embedded in a larger token defeats the word-boundary patterns.
+ */
+export function sanitiseErrorCode(code: string): string {
+  // Redact before filtering, not after. Filtering alone only removes the
+  // separators, so `CODE 943 476 5919` collapsed to `CODE9434765919` and
+  // carried the NHS number through intact. Digits cannot simply be dropped
+  // the way the name field drops them, because real codes contain them —
+  // `PRESCRIBE_SCHEDULE_2_DENIED`.
+  const redacted = redact(code ?? "");
+  return truncate(redacted.replace(/[^A-Za-z0-9_]/g, ""), MAX_ERROR_CODE);
+}
+
+/**
+ * Narrows a status to a real HTTP status code.
+ *
+ * Anything outside the range, or not a whole number, is dropped rather than
+ * clamped — a nonsense status is more likely to mean the property was not what
+ * it claimed than to mean a real response.
+ */
+export function sanitiseStatus(status: unknown): number | undefined {
+  if (typeof status !== "number" || !Number.isInteger(status)) return undefined;
+  return status >= 100 && status <= 599 ? status : undefined;
 }
 
 /** Where an error was caught. */
@@ -177,6 +215,8 @@ export type RawErrorReport = {
   message: string;
   stack?: string | undefined;
   componentStack?: string | undefined;
+  errorCode?: string | undefined;
+  status?: number | undefined;
   release: string;
   source: ErrorSource;
 };
@@ -187,9 +227,40 @@ export type SanitisedErrorReport = {
   message: string;
   stack: string;
   componentStack: string;
+  errorCode: string;
+  status: number | undefined;
   release: string;
   source: ErrorSource;
 };
+
+/**
+ * Properties read off a thrown value, and the complete list of them.
+ *
+ * `api.ts` attaches `error_code`, `status` and — on some responses — `email`
+ * to the errors it raises. The email is a real address belonging to a real
+ * person, so this reads properties by name and never enumerates them. Anything
+ * `api.ts` gains later is excluded until someone adds it here deliberately.
+ */
+export function fromError(
+  error: unknown,
+  release: string,
+  source: ErrorSource,
+  componentStack?: string,
+): RawErrorReport {
+  const e = (error ?? {}) as Record<string, unknown>;
+
+  return {
+    name: typeof e["name"] === "string" ? e["name"] : "Error",
+    message: typeof e["message"] === "string" ? e["message"] : "",
+    stack: typeof e["stack"] === "string" ? e["stack"] : undefined,
+    componentStack,
+    errorCode:
+      typeof e["error_code"] === "string" ? e["error_code"] : undefined,
+    status: typeof e["status"] === "number" ? e["status"] : undefined,
+    release,
+    source,
+  };
+}
 
 /**
  * Reduces a raw browser error to the fixed, sanitised shape that may leave
@@ -198,14 +269,14 @@ export type SanitisedErrorReport = {
 export function sanitiseErrorReport(
   input: RawErrorReport,
 ): SanitisedErrorReport {
-  const name = sanitiseName(input.name);
-
   return {
-    name,
-    message: sanitiseMessage(name, input.message ?? ""),
+    name: sanitiseName(input.name),
+    message: sanitiseMessage(input.message ?? ""),
     stack: sanitiseStack(input.stack ?? ""),
     componentStack: sanitiseComponentStack(input.componentStack ?? ""),
-    release: truncate(redact(input.release ?? "").trim(), 100),
+    errorCode: sanitiseErrorCode(input.errorCode ?? ""),
+    status: sanitiseStatus(input.status),
+    release: truncate(redact(input.release ?? "").trim(), MAX_RELEASE),
     source: input.source,
   };
 }

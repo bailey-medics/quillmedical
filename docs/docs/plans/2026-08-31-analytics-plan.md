@@ -166,10 +166,23 @@ These split by purpose, and the split is a rule rather than a preference.
   personal data being processed? Both need answering, but they are not the same
   question.
 
-- **This plan does not engage those regulations at all.** Load-balancer logs
-  and a server-side ping involve no storage on or access to the user's device.
-  That is a stronger position than qualifying for the new statistical purposes
-  exception, because there is no qualification argument to defend at audit.
+- **This plan does not engage the cookie regulations, provided the session
+  identifier stays in memory.** Load-balancer logs and a server-side ping
+  involve no storage on or access to the user's device. That is a stronger
+  position than qualifying for the new statistical purposes exception, because
+  there is no qualification argument to defend at audit. Error reporting keeps
+  that position only because its `session_id` is a JavaScript variable
+  regenerated on each page load: putting it in `sessionStorage` or a cookie
+  would be storage on the device, and error reporting is not plausibly
+  strictly necessary, so it would need consent. A refresh therefore starts a
+  new identifier, which is an accepted cost.
+
+- **Attaching `user_id` makes the error logs personal data under UK GDPR.**
+  That is a deliberate choice, justified by needing to match a support call to
+  an incident, but it has consequences the rest of this plan did not previously
+  carry: retention moves from a deferred question to a required one, subject
+  access requests have to cover the error logs, erasure requests have to reach
+  them, and the impact assessment must describe them.
 
 - **Quill still needs a cookie policy, but not a consent banner.** The session
   and cross-site request forgery cookies it already sets are strictly necessary
@@ -311,21 +324,62 @@ single import. Everything else these two phases touch —
 `ErrorBoundary.tsx`, `RootLayout.tsx`, `Settings.tsx` — was touched once in the
 last eighty commits, and nowhere near `frontend/src/pages/admin/teaching/`.
 
+### What a report carries
+
+Settled after auditing what the backend actually returns in error responses;
+the reasoning is under **Decisions**. The rule each field satisfies is that it
+is a fixed vocabulary, an internal identifier, or text the app authored itself.
+
+- **`name`** — the error class, such as `TypeError`
+- **`message`** — the error text, pattern-redacted rather than dropped. Safe
+  only once the raw-exception leak below is fixed
+- **`error_code`** — the backend's stable code, already attached by `api.ts`
+  and worth more for grouping than the prose ever was
+- **`status`** — the HTTP status, also already attached by `api.ts`
+- **`stack`** and **`component_stack`** — origins and paths stripped, line and
+  column numbers preserved
+- **`route`** — the matched React Router pattern, `/patients/:id`, never the
+  resolved URL
+- **`release`**, **`source`**, **`user_agent`** and **`viewport`**
+- **`session_id`** — random, held **in memory only** and never written to the
+  device, so that a cascade of errors can be recognised as one person's without
+  engaging the cookie regulations. Sent on public pages too, where there is no
+  user to attach
+- **`user_id`** — the internal database identifier, only when signed in, so a
+  support call can be matched to a logged incident and a registered user can be
+  contacted. Never a name, never an email: the identifier resolves to a person
+  through the database, while the log itself stays meaningless to a reader
+- **`breadcrumbs`** — a ring buffer of at most twenty structured events: route
+  changes as patterns, API calls as method plus pattern plus status, and auth
+  events as one of `login`, `logout`, `refresh` or `expired`. No DOM values, no
+  console output, no free text anywhere
+
 Client side, new work:
 
+- [x] Sanitise before sending, with unit tests proving patient-shaped strings
+      never survive it. Merged, and being widened to the shape above rather
+      than replaced
+- [ ] Add a backend ingest endpoint accepting sanitised reports, rate-limited
+      via the existing `slowapi` `@limiter.limit` pattern, and available to
+      unauthenticated pages as well as signed-in ones. First cut written and
+      unreviewed; being reworked to the shape above
+- [ ] Emit reports through the existing JSON logging pipeline in a shape Cloud
+      Error Reporting recognises, so grouping works
+- [x] Keep messages, pattern-redacted, and capture the structured fields
+      `api.ts` already attaches — `error_code` and `status`
+- [x] Never read the `email` property `api.ts` attaches to some errors, with a
+      test that fails if it ever reaches a report. `fromError` reads properties
+      by name and never enumerates them, so anything `api.ts` gains later is
+      excluded until it is added deliberately
+- [ ] Add the context fields: `route` as a matched pattern, `user_agent`,
+      `viewport`, the in-memory `session_id`, and `user_id` when signed in
+- [ ] Record route changes, API calls and auth events into the breadcrumb ring
+      buffer
 - [ ] Extend `componentDidCatch` in
       `frontend/src/components/error-boundary/ErrorBoundary.tsx` to report the
       error as well as logging it
 - [ ] Add a global handler for unhandled promise rejections and errors thrown
       outside React's tree, which the boundary cannot see
-- [ ] Sanitise before sending: strip URLs, query strings, form values and any
-      user-entered text, keeping the error type, the message, the component
-      stack and the release version
-- [ ] Add a backend ingest endpoint accepting sanitised reports, rate-limited
-      via the existing `slowapi` `@limiter.limit` pattern, and available to
-      unauthenticated pages as well as signed-in ones
-- [ ] Emit reports through the existing JSON logging pipeline in a shape Cloud
-      Error Reporting recognises, so grouping works
 - [ ] Alert on new and spiking error groups through the existing notification
       channels in `infra/modules/monitoring`
 - [ ] Tests: sanitiser unit tests proving patient-shaped strings never survive
@@ -333,6 +387,23 @@ Client side, new work:
       (`just ub`)
 - [ ] Storybook story and test for any fallback UI change, per the component
       rules
+
+### Stop the backend handing out raw exception text
+
+Not analytics work, and not a blocker for shipping this phase, but keeping
+error messages depends on it and it is a live problem in its own right.
+Seventeen endpoints return the raw exception to the browser, ten of them on
+patient-data paths — the finding is written up under **What building this
+taught us**.
+
+**This must land before real patient data does**, which is the only reason it
+is safe to ship the reporting first.
+
+- [ ] Replace `detail=str(e)` and `detail=f"...: {e}"` across the seventeen
+      sites with a generic message plus a stable `error_code`, logging the full
+      exception server-side where detail is safe and useful
+- [ ] Add a test or lint rule that fails when an exception is interpolated into
+      an `HTTPException` detail, so the pattern cannot creep back
 
 ### Escalation
 
@@ -1097,6 +1168,54 @@ Findings from actually building and testing this, rather than from planning it.
 Each cost time to learn and would be cheap to relearn the hard way, so they are
 recorded here rather than left in commit messages.
 
+**A redaction pattern is a performance decision as well as a safety one.**
+The email rule was written as `[\w.+-]+@[\w-]+\.[\w.-]+`, which backtracks
+quadratically over a long run of word characters containing no `@` — which is
+precisely what a minified stack trace is. Measured: 31ms at 5 KB, 412ms at
+20 KB, 2828ms at 50 KB. That is the main thread blocked for nearly three
+seconds while the application is already broken, on a code path whose entire
+purpose is to report that fact. Bounding the repetitions to the real limits
+from RFC 5321 — 64 characters for the local part, 63 for a domain label — made
+the same input take 17ms, and the bound is more correct as well as faster. The
+general point is that anything applied to attacker- or accident-controlled text
+of unbounded length needs its worst case measured, not assumed; the test that
+caught this only did so because it used a realistically large stack rather than
+a tidy one.
+
+**Filtering characters is not the same as removing values.** `sanitiseErrorCode`
+stripped everything outside `[A-Za-z0-9_]`, which on `CODE 943 476 5919`
+removed the spaces and produced `CODE9434765919` — the NHS number preserved
+intact, merely reformatted. The name field had already taught this lesson once,
+where a postcode survived inside `TypeSW1A 1AAError`, and the fix there was to
+drop every non-letter. That fix could not be reused, because error codes
+legitimately contain digits: `PRESCRIBE_SCHEDULE_2_DENIED`. Redacting before
+filtering handles both. What actually caught it was the sweep that checks every
+patient-shaped string against every field of a whole report, which is the same
+test that caught the postcode — a per-field test would have passed, because
+each field looked fine in isolation.
+
+**The browser is already being told more than it should be.** Auditing what
+keeping error messages would actually log turned up seventeen endpoints that
+return raw exception text to the client as `detail`, which `api.ts` copies
+into `Error.message`. Ten sit on patient-data paths — `get_demographics`,
+`update_patient`, `write_letter`, `read_letter`, `list_letters` among them —
+where the exception originates in EHRbase, HAPI FHIR or the database and can
+carry a name, an NHS number, a request URL with an identifier in it, or a
+fragment of a clinical document. None of this was introduced by the analytics
+work; it has been reaching browsers all along, and logging it would only have
+made it permanent and searchable. Two lessons came out of it. The first is
+that **a sanitiser cannot solve this class of problem**: NHS numbers, dates,
+postcodes and emails have patterns, and names do not, so no regex catches
+"Patient John Smith not found" and the only real fix is at the source. The
+second is that auditing the actual data before designing the filter would have
+been the cheaper order — the filter was designed first, against an imagined
+threat model, and the audit then showed both that the risk was narrower than
+assumed and that it sat somewhere the filter could never have reached. The
+rest of the finding was reassuring: the remaining interpolations are
+competency names, feature keys, organisation and site identifiers, permission
+levels and valid-type lists, all fixed vocabularies with nothing personal in
+them.
+
 **A green `terraform plan` proves less than it appears to.** Plan checks
 syntax, provider schema and state. It does not check IAM for resources that do
 not yet exist, and it does not evaluate the API's semantic rules. The first
@@ -1184,6 +1303,35 @@ document about which alerting tiers include voice were wrong, both taken from
 third-party comparisons and both contradicted by the vendors' own pages.
 
 ## Decisions
+
+- **Capture as much as possible, then remove the sources of risk** — the first
+  cut inverted this. It dropped the error message unless the error came from
+  the JavaScript engine, on the grounds that messages can carry server text.
+  That threw away most of the diagnostic value to avoid a risk which turned out
+  to live in seventeen identifiable places, and while doing so it missed that
+  `api.ts` already attaches `error_code` and `status` — structured,
+  fixed-vocabulary fields worth more for grouping than the prose it was
+  protecting. Messages are kept and pattern-redacted; the raw-exception sources
+  get fixed where they are. The general form is that filtering is the weaker
+  move whenever the source can be fixed instead, because a filter has to
+  anticipate every shape the risk takes and a fix does not.
+
+- **Identity is an identifier, never a name** — a random `session_id` always,
+  so anonymous errors on public pages still group into one person's cascade,
+  and the internal `user_id` when signed in, so a phone call can be matched to
+  a logged incident and a registered user contacted. Neither is a name or an
+  email. The identifier resolves to a person through the database, which keeps
+  the capability while leaving the log itself meaningless to anyone reading it.
+  The `session_id` stays in memory rather than in storage, which is what keeps
+  the cookie regulations out of scope.
+
+- **Breadcrumbs are allowlisted, not captured** — the usual implementation
+  records DOM interactions, console output and network bodies, which is where
+  most of the reported leaks in error tooling come from. This one records route
+  changes as patterns, API calls as method plus pattern plus status, and four
+  named auth events. It keeps the sequence that explains a crash while carrying
+  no values at all, which is a different risk profile from the same feature
+  name elsewhere.
 
 - **Scope is three questions, not a product analytics capability** — errors,
   public visits, app page views. Everything outside that is explicitly not
