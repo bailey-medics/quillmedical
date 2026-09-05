@@ -359,12 +359,13 @@ Client side, new work:
 - [x] Sanitise before sending, with unit tests proving patient-shaped strings
       never survive it. Merged, and being widened to the shape above rather
       than replaced
-- [ ] Add a backend ingest endpoint accepting sanitised reports, rate-limited
+- [x] Add a backend ingest endpoint accepting sanitised reports, rate-limited
       via the existing `slowapi` `@limiter.limit` pattern, and available to
-      unauthenticated pages as well as signed-in ones. First cut written and
-      unreviewed; being reworked to the shape above
-- [ ] Emit reports through the existing JSON logging pipeline in a shape Cloud
-      Error Reporting recognises, so grouping works
+      unauthenticated pages as well as signed-in ones
+- [x] Emit reports through the existing JSON logging pipeline in a shape Cloud
+      Error Reporting recognises, so grouping works — including its `context`
+      block, so the route, status, user agent and whoever hit the problem are
+      filterable in the console without a custom query
 - [x] Keep messages, pattern-redacted, and capture the structured fields
       `api.ts` already attaches — `error_code` and `status`
 - [x] Never read the `email` property `api.ts` attaches to some errors, with a
@@ -1168,6 +1169,23 @@ Findings from actually building and testing this, rather than from planning it.
 Each cost time to learn and would be cheap to relearn the hard way, so they are
 recorded here rather than left in commit messages.
 
+**Removing characters is not removing information, and a test can hide that.**
+`sanitiseErrorCode` filtered the field down to `[A-Za-z0-9_]`. On
+`CODE 943 476 5919` that produced `CODE9434765919`, which the whole-report
+sweep caught. The same filter on `CODE_1974-03-02` produced `CODE_19740302`,
+which it did not: the assertion looked for the original hyphenated string, and
+mangling the value changed it just enough to pass while leaving the date
+perfectly readable. Redacting first does not rescue it either, because the
+patterns are anchored on word boundaries and `_1974` has none. The fix was to
+stop scrubbing the field at all — an error code is a fixed vocabulary, so the
+schema now rejects any value carrying a separator, and a run of three or more
+digits is redacted on top, since real codes carry a digit or two at most
+(`PRESCRIBE_SCHEDULE_2_DENIED`). The lesson worth keeping is about the test
+rather than the filter: asserting that a sanitised field no longer contains the
+exact input string is a weak check, because any transformation passes it. The
+question to ask is whether the *information* survived, not whether the
+*characters* did.
+
 **A redaction pattern is a performance decision as well as a safety one.**
 The email rule was written as `[\w.+-]+@[\w-]+\.[\w.-]+`, which backtracks
 quadratically over a long run of word characters containing no `@` — which is
@@ -1315,6 +1333,16 @@ third-party comparisons and both contradicted by the vendors' own pages.
   get fixed where they are. The general form is that filtering is the weaker
   move whenever the source can be fixed instead, because a filter has to
   anticipate every shape the risk takes and a fix does not.
+
+- **The server decides who a report belongs to, not the caller** — the shape
+  above lists `user_id`, but the browser never sends it. The endpoint is open
+  to anyone, so a body-supplied identifier would let a caller attribute an
+  error to any user it chose, and a log that can be poisoned is worse than one
+  with a gap in it. The server reads the user from the session cookie when
+  there is one, via a non-raising `get_optional_user` added to `deps.py`, and
+  the schema rejects a report that tries to supply the field rather than
+  ignoring it. A caller who is not signed in is recorded against its session
+  identifier alone.
 
 - **Identity is an identifier, never a name** — a random `session_id` always,
   so anonymous errors on public pages still group into one person's cascade,

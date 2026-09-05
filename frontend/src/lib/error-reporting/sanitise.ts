@@ -190,8 +190,14 @@ export function sanitiseErrorCode(code: string): string {
   // carried the NHS number through intact. Digits cannot simply be dropped
   // the way the name field drops them, because real codes contain them —
   // `PRESCRIBE_SCHEDULE_2_DENIED`.
-  const redacted = redact(code ?? "");
-  return truncate(redacted.replace(/[^A-Za-z0-9_]/g, ""), MAX_ERROR_CODE);
+  // Filtering alone only removes the separators, so `CODE 943 476 5919`
+  // collapsed to `CODE9434765919` and `CODE_1974-03-02` to `CODE_19740302` —
+  // the value intact, merely reformatted. Redacting first does not help
+  // either, because the patterns are anchored on word boundaries which do not
+  // fire inside a larger token. A run of digits is what actually distinguishes
+  // a smuggled value from a real code: those carry a digit or two at most.
+  const redacted = redact(code ?? "").replace(/[^A-Za-z0-9_]/g, "");
+  return truncate(redacted.replace(/\d{3,}/g, REDACTED), MAX_ERROR_CODE);
 }
 
 /**

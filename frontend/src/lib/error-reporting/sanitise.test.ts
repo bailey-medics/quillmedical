@@ -232,6 +232,23 @@ describe("the error code field", () => {
     );
   });
 
+  it("removes a value whose separators have already been stripped", () => {
+    // The gap this closes: filtering to code characters turns
+    // `CODE_1974-03-02` into `CODE_19740302`, which the earlier assertion
+    // passed only because it looked for the original hyphenated string. The
+    // date was still there. A run of digits is what distinguishes a smuggled
+    // value from a real code.
+    expect(sanitiseErrorCode("CODE_1974-03-02")).not.toContain("19740302");
+    expect(sanitiseErrorCode("CODE 943 476 5919")).not.toContain("9434765919");
+  });
+
+  it("keeps a real code that contains a single digit", () => {
+    // Digits cannot simply be dropped: real codes carry them.
+    expect(sanitiseErrorCode("PRESCRIBE_SCHEDULE_2_DENIED")).toBe(
+      "PRESCRIBE_SCHEDULE_2_DENIED",
+    );
+  });
+
   it("strips anything that is not code-shaped", () => {
     // Filtered by character class rather than by the redaction patterns, for
     // the same reason as the name field: word boundaries do not fire inside a

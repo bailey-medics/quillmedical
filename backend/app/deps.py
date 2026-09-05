@@ -51,6 +51,40 @@ def get_current_user(request: Request, db: Session = DEP_GET_SESSION) -> User:
 DEP_CURRENT_USER = Depends(get_current_user)
 
 
+def get_optional_user(
+    request: Request, db: Session = DEP_GET_SESSION
+) -> User | None:
+    """Return the authenticated user, or ``None`` when there is not one.
+
+    The non-raising twin of :func:`get_current_user`, for routes that must
+    serve signed-out callers but want to attribute the request when a valid
+    session does happen to be present. Every failure path returns ``None``:
+    a route using this has already decided that not being signed in is
+    normal, so a missing, expired or invalidated token is not an error.
+
+    Deliberately free of side effects, unlike :func:`get_current_user`, which
+    sets the request roles and the logging context. A route that only wants to
+    know who is calling should not quietly change how the rest of the request
+    is logged.
+    """
+    tok = request.cookies.get("access_token")
+    if not tok:
+        return None
+    try:
+        payload = decode_token(tok)
+    except Exception:
+        return None
+    user = db.scalar(select(User).where(User.username == payload.get("sub")))
+    if not user or not user.is_active:
+        return None
+    if payload.get("tv", 0) != user.token_version:
+        return None
+    return user
+
+
+DEP_OPTIONAL_USER = Depends(get_optional_user)
+
+
 def require_staff(current_user: User = DEP_CURRENT_USER) -> User:
     """Require staff, admin, or superadmin system permissions.
 
