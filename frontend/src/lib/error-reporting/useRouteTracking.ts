@@ -8,6 +8,7 @@
 
 import { useEffect } from "react";
 import { useLocation, useParams } from "react-router-dom";
+import { recordRoute } from "./breadcrumbs";
 import { setCurrentRoute, toRoutePattern } from "./currentRoute";
 
 export function useRouteTracking(): void {
@@ -15,6 +16,8 @@ export function useRouteTracking(): void {
   const params = useParams();
 
   useEffect(() => {
-    setCurrentRoute(toRoutePattern(pathname, params));
+    const pattern = toRoutePattern(pathname, params);
+    setCurrentRoute(pattern);
+    recordRoute(pattern);
   }, [pathname, params]);
 }

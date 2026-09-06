@@ -1,4 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  recordApi,
+  recordAuth,
+  recordRoute,
+  resetBreadcrumbsForTests,
+} from "./breadcrumbs";
 import { resetCurrentRouteForTests, setCurrentRoute } from "./currentRoute";
 import { reportError, resetReportingStateForTests } from "./report";
 
@@ -19,6 +25,7 @@ let beacon: ReturnType<typeof vi.fn>;
 beforeEach(() => {
   resetReportingStateForTests();
   resetCurrentRouteForTests();
+  resetBreadcrumbsForTests();
   beacon = vi.fn().mockReturnValue(true);
   vi.stubGlobal("navigator", {
     sendBeacon: beacon,
@@ -69,6 +76,7 @@ describe("sending a report", () => {
         "status",
         "user_agent",
         "viewport",
+        "breadcrumbs",
       ].sort(),
     );
   });
@@ -267,5 +275,35 @@ describe("the route a report carries", () => {
 
     const [body] = await sentBodies(beacon);
     expect(String(body?.["route"])).not.toContain("943 476 5919");
+  });
+});
+
+describe("the breadcrumb trail a report carries", () => {
+  it("sends the events leading up to the error, oldest first", async () => {
+    recordAuth("login");
+    recordRoute("/patients/:id");
+    recordApi("GET", "/patients/abc123", 500);
+
+    reportError(new Error("boom"), "window");
+
+    const [body] = await sentBodies(beacon);
+    const crumbs = body?.["breadcrumbs"] as Record<string, unknown>[];
+    expect(crumbs.map((c) => c["type"])).toEqual(["auth", "route", "api"]);
+  });
+
+  it("sends an empty trail when nothing has happened yet", async () => {
+    reportError(new Error("boom"), "window");
+
+    const [body] = await sentBodies(beacon);
+    expect(body?.["breadcrumbs"]).toEqual([]);
+  });
+
+  it("never carries an identifier from an API path", async () => {
+    recordApi("GET", "/patients/9434765919/letters", 500);
+
+    reportError(new Error("boom"), "window");
+
+    const [body] = await sentBodies(beacon);
+    expect(JSON.stringify(body)).not.toContain("9434765919");
   });
 });

@@ -10,6 +10,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { api } from "../lib/api";
+import { recordAuth } from "@lib/error-reporting/breadcrumbs";
 
 /**
  * User
@@ -119,6 +120,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Let errors bubble to the caller (LoginPage) so it can inspect
     // any structured `error_code` attached by the API helper.
     await api.post("/auth/login", body);
+    recordAuth("login");
     const user = await api.get<User>("/auth/me");
     // Do NOT set state here. LoginPage performs a full-page navigation
     // (window.location.assign) after login, and the new page's
@@ -131,6 +133,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function logout() {
     try {
       await api.post("/auth/logout");
+      recordAuth("logout");
     } catch {
       // Ignore errors, proceed to clear local state
     }

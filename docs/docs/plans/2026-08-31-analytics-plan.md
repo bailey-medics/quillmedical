@@ -402,8 +402,16 @@ Client side, new work:
       to an environment variable — which is the path that actually runs, since
       the image is built from `COPY frontend/ .` with no `.git`. `deploy.yml`
       passes the commit it is deploying
-- [ ] Record route changes, API calls and auth events into the breadcrumb ring
-      buffer
+- [x] Record route changes, API calls and auth events into the breadcrumb ring
+      buffer. An API path is reduced to a pattern by **allowlist** — a segment
+      survives only if it is lowercase letters and hyphens, which is what every
+      static segment of this API looks like, and anything else becomes `:id`.
+      That way round because identifiers are the thing with no reliable shape:
+      a rule that tries to spot them has to anticipate every form they take,
+      while a rule that spots ordinary words fails safe when it meets something
+      new. `recordApi` sits in `api.ts` beside the response, and sees the
+      refresh and expiry transitions there; `AuthContext` supplies login and
+      logout, which `api.ts` cannot distinguish from any other call
 - [x] Extend `componentDidCatch` in
       `frontend/src/components/error-boundary/ErrorBoundary.tsx` to report the
       error as well as logging it. The `console.error` stays: it is what a

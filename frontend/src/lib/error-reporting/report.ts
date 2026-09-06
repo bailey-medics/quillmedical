@@ -16,6 +16,7 @@
  * answer worth having.
  */
 
+import { type Breadcrumb, getBreadcrumbs } from "./breadcrumbs";
 import { getCurrentRoute } from "./currentRoute";
 import {
   type ErrorSource,
@@ -106,6 +107,7 @@ type WireReport = {
   session_id: string;
   user_agent: string;
   viewport: string;
+  breadcrumbs: Breadcrumb[];
 };
 
 /** Extra context the caller can supply, none of it required. */
@@ -163,6 +165,7 @@ export function reportError(
       session_id: SESSION_ID,
       user_agent: readUserAgent(),
       viewport: readViewport(),
+      breadcrumbs: getBreadcrumbs(),
     };
     if (report.status !== undefined) wire.status = report.status;
 
