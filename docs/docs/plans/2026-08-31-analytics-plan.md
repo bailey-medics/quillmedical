@@ -1,4 +1,4 @@
-# Analytics plan
+# Analytics and error states plan
 
 Quill has no analytics of any kind. There is no web analytics on the public
 site, no page-view counts in the app, and no error reporting — the
@@ -18,6 +18,18 @@ experimentation. An earlier draft of this plan designed for all of that; it has
 been cut back to the three questions above, and the section on what is
 deliberately not being built records what was dropped and what would justify
 revisiting it.
+
+A fourth subject arrived while the first question was being built, and the
+title now names it: **what a user is shown when something fails.** It was not
+planned work. Auditing what an error report would carry turned up seventeen
+endpoints returning raw exception text to the browser, and following that
+string forwards showed it being rendered on screen by pages that display
+`err.message` directly. The same defect therefore has two ends — one writing
+into logs that must never hold patient data, one putting the text in front of
+whoever is standing at the screen — and fixing either alone would leave the
+other. Two sections cover it: **Stop the backend handing out raw exception
+text**, and **What a user sees when something fails**. They are sequenced
+together for the same reason.
 
 The scope is small but the constraints are not, which is why this is a plan
 rather than a ticket. Analytics touches the Content Security Policy, the cookie
@@ -372,8 +384,18 @@ Client side, new work:
       test that fails if it ever reaches a report. `fromError` reads properties
       by name and never enumerates them, so anything `api.ts` gains later is
       excluded until it is added deliberately
-- [ ] Add the context fields: `route` as a matched pattern, `user_agent`,
-      `viewport`, the in-memory `session_id`, and `user_id` when signed in
+- [x] Add the reporter that assembles a report and sends it, via
+      `navigator.sendBeacon` rather than the `api` client — a documented
+      exception to the "never raw fetch" rule, recorded under **Decisions**
+- [x] Add the context fields: `user_agent`, `viewport` and the in-memory
+      `session_id`, with `user_id` derived by the server. `route` is threaded
+      through as a caller-supplied parameter; what supplies it arrives with
+      the wiring below
+- [x] Bake a build identifier in, so a fault can be attributed to the deploy
+      that produced it. `vite.config.ts` reads the git revision, falling back
+      to an environment variable — which is the path that actually runs, since
+      the image is built from `COPY frontend/ .` with no `.git`. `deploy.yml`
+      passes the commit it is deploying
 - [ ] Record route changes, API calls and auth events into the breadcrumb ring
       buffer
 - [ ] Extend `componentDidCatch` in
@@ -405,6 +427,55 @@ is safe to ship the reporting first.
       exception server-side where detail is safe and useful
 - [ ] Add a test or lint rule that fails when an exception is interpolated into
       an `HTTPException` detail, so the pattern cannot creep back
+
+### What a user sees when something fails
+
+Uncovered while auditing the endpoint work, and kept here rather than in a
+document of its own because it cannot be sequenced apart from the section
+above: both are about what a person is shown when a call fails, and migrating
+pages before the messages change would mean revisiting them afterwards.
+
+Two paths, only one of which is designed. A React crash reaches
+`ErrorFallback` — a shared component with a story and a test, showing
+"Something went wrong" and a reload button, and disclosing nothing. A failed
+API call reaches whatever each page invented: **twenty-nine pages** carry an
+error-shaped `Alert` styled in place, and `frontend/src/pages/Home.tsx` renders
+its error as a bare `<div>` with an inline `style` attribute, which is also
+against the styling rules. Several of them put `err.message` on screen
+directly, which is the same string the seventeen endpoints above fill with raw
+exception text — so this is the visible half of that problem, not a separate
+one.
+
+The shape, settled by what the two situations actually need. `ErrorFallback` is
+full-page: centred, `60vh`, a reload action. That is right for a crash and
+wrong for most failed calls, because a form submit error must not blank the
+page and throw away what was typed, and a section that failed to load belongs
+inside the layout rather than replacing it. So the presentation moves down into
+an `ErrorState` component taking a message, an optional title, an optional
+action and a `variant` of `page` or `inline`; `ErrorFallback` becomes a thin
+wrapper around it. One design, two sizes, and no second look-and-feel to drift.
+
+**Settled: `ErrorState` never renders a raw `err.message`.** Pages pass a
+message somebody wrote, and the component does not accept the error object at
+all — the restriction is structural rather than a convention to remember,
+because a convention is what the twenty-nine existing sites already broke. It
+is more work, since it forces the question "what should the user actually be
+told?" at every one of them, but the alternative was designing a component
+around a string that is about to stop being sent. The error `code` remains
+useful on screen in small print, since it is a fixed vocabulary and it is what
+a support call can be matched against.
+
+- [ ] Delete `frontend/src/components/typography/ErrorText.tsx` — a near-exact
+      duplicate of `ErrorMessage`, used nowhere, absent from the typography
+      index, and shipping neither a story nor a test
+- [ ] Add an `ErrorState` component with a story and a test, and refactor
+      `ErrorFallback` to render it. No page changes in the same step, so the
+      component lands without moving anything visible
+- [ ] Convert `Home.tsx` first: it is the worst case, being both a raw `<div>`
+      with an inline style and a direct render of `err.message`
+- [ ] Convert the remaining pages in reviewable batches rather than one change,
+      starting with those that display `err.message`, and after the backend
+      section above has landed so each message is only written once
 
 ### Escalation
 
@@ -1169,6 +1240,20 @@ Findings from actually building and testing this, rather than from planning it.
 Each cost time to learn and would be cheap to relearn the hard way, so they are
 recorded here rather than left in commit messages.
 
+**A catch-all that cannot throw also cannot tell you it is broken.** The
+reporter swallows everything by design, because raising inside an already
+failing page is the loop the whole module exists to prevent. The first version
+of it sent nothing at all: `__APP_VERSION__` is defined in `vite.config.ts`,
+but tests run from a separate `vitest.config.ts` that did not define it, so
+every call raised a `ReferenceError` on the first line and the catch absorbed
+it in silence. Nothing was logged, nothing failed, and the module simply did
+not work. Only the tests asserting that a beacon *was* sent found it — a test
+that merely checked "does not throw" would have passed against a module that
+did nothing whatsoever. Two things came out of it: the catch now says what it
+dropped when running in development, and the useful test of a
+best-effort path is that the effort actually happened, not that it failed
+quietly.
+
 **Removing characters is not removing information, and a test can hide that.**
 `sanitiseErrorCode` filtered the field down to `[A-Za-z0-9_]`. On
 `CODE 943 476 5919` that produced `CODE9434765919`, which the whole-report
@@ -1343,6 +1428,26 @@ third-party comparisons and both contradicted by the vendors' own pages.
   the schema rejects a report that tries to supply the field rather than
   ignoring it. A caller who is not signed in is recorded against its session
   identifier alone.
+
+- **A user is shown a written message, never a raw error** — the string that
+  reaches `err.message` is whatever the backend put in an `HTTPException`
+  detail, which for seventeen endpoints is a raw exception from EHRbase, HAPI
+  FHIR or the database. The `ErrorState` component therefore does not accept an
+  error object, so a page physically cannot pass one through: the twenty-nine
+  sites that hand-rolled this already demonstrated that a convention does not
+  hold. Diagnostic detail belongs in the logs, where it can be read by someone
+  who can act on it, and the error code is the thread joining the two.
+
+- **Error reports leave by `sendBeacon`, not the `api` client** — the standing
+  rule is that everything talks to the backend through `lib/api.ts`, with
+  `checkHealth` the sole exception. This is the second. The `api` client
+  throws on failure, retries on 401 and dispatches connectivity events, all of
+  which are right for a call whose answer matters and wrong for one whose
+  answer nobody reads: a report that fails must not raise inside the code that
+  was already failing. `sendBeacon` cannot reject, has no retry behaviour to
+  inherit, and the browser keeps the request alive after the page goes away —
+  so an error thrown while the user navigates off a broken page still arrives,
+  which is exactly the report that would otherwise be lost.
 
 - **Identity is an identifier, never a name** — a random `session_id` always,
   so anonymous errors on public pages still group into one person's cascade,
