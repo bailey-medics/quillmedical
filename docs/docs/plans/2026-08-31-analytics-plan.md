@@ -427,11 +427,11 @@ Client side, new work:
       does about it. `error` events carrying no error object are ignored,
       since those are a broken image or a stylesheet that 404ed, and a stack
       trace for one says nothing a developer could act on
-- [ ] Add a log-based metric counting client error reports, alongside
+- [x] Add a log-based metric counting client error reports, alongside
       `public_site_visits` and `app_page_loads` in `infra/modules/analytics`.
       It is the same counter the alert thresholds on and the dashboard charts,
       so building it once serves both
-- [ ] Add a **Client errors (browser)** widget to the dashboard in
+- [x] Add a **Client errors (browser)** widget to the dashboard in
       `infra/modules/analytics`. The dashboard is the one bookmark this plan
       committed to, and browser errors are currently absent from it: reports
       reach Cloud Error Reporting and Cloud Logging, but nothing on the

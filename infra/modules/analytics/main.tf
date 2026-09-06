@@ -63,6 +63,63 @@ resource "google_logging_metric" "public_site_visits" {
   }
 }
 
+# ---------- Client errors ----------
+#
+# Browser error reports, as counted from the log entries the ingest endpoint
+# writes. Cloud Error Reporting is the right place to read an individual
+# fault — it groups them and shows the stack — but it is a separate console,
+# and the dashboard is meant to be the one bookmark. What the dashboard owes
+# is the count, so a rising line is visible beside the uptime check without
+# having to remember to look somewhere else.
+#
+# This is also the counter the alerting policy thresholds on, so it is defined
+# once and serves both.
+
+resource "google_logging_metric" "client_errors" {
+  project = var.project_id
+  name    = "quill/client_errors_${var.environment}"
+
+  description = "Browser error reports received from the application, by where they were caught and which screen they happened on"
+
+  # Matches on the Error Reporting type marker rather than on severity, so it
+  # counts reports specifically and not every ERROR line the backend writes.
+  # The service label keeps browser errors separate from backend ones, which
+  # share the same log stream.
+  filter = <<-EOT
+    resource.type="cloud_run_revision"
+    jsonPayload."@type"="type.googleapis.com/google.devtools.clouderrorreporting.v1beta1.ReportedErrorEvent"
+    jsonPayload.serviceContext.service="quill-frontend"
+  EOT
+
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+    unit        = "1"
+
+    labels {
+      key         = "source"
+      value_type  = "STRING"
+      description = "Where the error was caught: boundary, window or unhandledrejection"
+    }
+
+    labels {
+      key         = "route"
+      value_type  = "STRING"
+      description = "Matched route pattern the error happened on, never a resolved URL"
+    }
+  }
+
+  # Both labels are bounded and carry nothing personal. `source` is one of
+  # three fixed values. `route` is a matched pattern such as /patients/:id,
+  # which the browser builds from the router's own parameters, so an
+  # identifier is never in it — that is what makes this safe to retain for
+  # years, in the way the raw rows are not.
+  label_extractors = {
+    "source" = "EXTRACT(jsonPayload.error_source)"
+    "route"  = "EXTRACT(jsonPayload.context.httpRequest.url)"
+  }
+}
+
 # ---------- App page loads ----------
 #
 # The nearest thing to "how many people use the app" that is available
@@ -286,7 +343,31 @@ resource "google_monitoring_dashboard" "quill" {
         {
           # Diagnostically different from 5xx: a 401 spike means auth broke,
           # a 404 spike means something links wrongly.
-          title = "Client errors (4xx)"
+          title = "Client errors (browser)"
+          xyChart = {
+            dataSets = [{
+              timeSeriesQuery = {
+                timeSeriesFilter = {
+                  filter = "metric.type = \"logging.googleapis.com/user/${google_logging_metric.client_errors.name}\""
+                  aggregation = {
+                    alignmentPeriod    = "3600s"
+                    perSeriesAligner   = "ALIGN_SUM"
+                    crossSeriesReducer = "REDUCE_SUM"
+                    groupByFields      = ["metric.label.route"]
+                  }
+                }
+              }
+              plotType = "STACKED_BAR"
+            }]
+          }
+        },
+        {
+          # Renamed from "Client errors (4xx)". Two widgets called "client
+          # errors" meaning different things is a trap that springs months
+          # later: this one counts HTTP 4xx responses at the load balancer —
+          # someone requesting a bad URL — and has nothing to do with
+          # JavaScript failing in a browser.
+          title = "HTTP 4xx responses"
           xyChart = {
             dataSets = [{
               timeSeriesQuery = {
