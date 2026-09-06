@@ -389,7 +389,13 @@ terraform-github:
     {{initialise}} "terraform-github"
     set -euo pipefail
     cd infra/github
+    # The initialise variable sets -x, which would print the token to the
+    # terminal and into anything that output is pasted into. Trace off across
+    # the export; the command substitution needs to be inside the quiet
+    # section too, since bash traces it separately from the assignment.
+    set +x
     export GITHUB_TOKEN=$(gh auth token)
+    set -x
     terraform init -input=false
     terraform plan -var-file=terraform.tfvars
     read -rp "Apply these changes? (yes/no): " confirm
