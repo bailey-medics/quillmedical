@@ -465,7 +465,7 @@ than whether it runs.
       `build.rollupOptions.output.keepNames`; measured cost on this app is
       **37 KB gzipped, 4.3%**, paid on a fresh load and nothing on a repeat
       visit. Superseded by source maps below — remove it when they land
-- [ ] Stop redacting the release. A git revision routinely contains a run of
+- [x] Stop redacting the release. A git revision routinely contains a run of
       five or more digits, which the record-number rule replaces, so a version
       arrives as `ee[redacted]adff29e…` and sometimes mangled twice over. That
       defeats the whole point of baking a build identifier in: a version that
@@ -473,16 +473,23 @@ than whether it runs.
       release is a build constant, not user input, so it should be
       shape-checked the way `error_code` is rather than run through prose
       redaction
-- [ ] Stop doubling the message header. `build_error_message` prepends
+- [x] Stop doubling the message header. `build_error_message` prepends
       `Name: message` and then appends the browser's stack, which already
       begins with `Error: message`, so every report carries the header twice
-- [ ] Stop destroying positions in the component stack. `sanitiseComponentStack`
+- [x] Stop destroying positions in the component stack. `sanitiseComponentStack`
       runs plain redaction, so every `https://…/index.js:60:56616` collapses to
       `[url]`. `sanitiseStack` has careful handling for exactly this — strip
       the origin, keep `:line:column` — and the component stack never got it.
       This is the one to fix first: a position is the only thing a source map
       can resolve against, so every report stored before the fix is
       permanently unresolvable
+- [x] Record the route during render, not in an effect. A production report
+      arrived with no route at all: the route was set in a `useEffect`, and
+      passive effects run after paint while `componentDidCatch` runs in the
+      commit phase, so a report from a boundary went out before any effect had
+      run. The route was therefore absent on precisely the failure the boundary
+      exists for, and present on everything else — which is why nothing caught
+      it. The route breadcrumb was missing for the same reason
 - [ ] Source maps, as the real answer to unreadable stacks. Emit them at build
       time, upload to a **private** bucket keyed by release SHA from
       `deploy.yml`, decide retention, and write a small resolver. Resolve at
@@ -1320,6 +1327,19 @@ scoping, versioning and audit logging.
 Findings from actually building and testing this, rather than from planning it.
 Each cost time to learn and would be cheap to relearn the hard way, so they are
 recorded here rather than left in commit messages.
+
+**Only a full revision may skip redaction, because an NHS number is valid
+hex.** Fixing the corrupted release looked like a one-liner: stop running prose
+rules over it and shape-check instead. The whole-report sweep refused that
+immediately, because a shape of "letters, digits and separators" admits
+`9434765919` and `1974-03-02` as readily as it admits a revision. The next
+attempt — pass anything revision-shaped through untouched — was worse, since a
+ten-digit NHS number *is* a valid seven-to-forty character hex string. What
+makes the rule safe is the exact length: forty characters, which is what
+`git rev-parse HEAD` and `deploy.yml` both produce, and which no NHS number or
+date can be. The earlier decision to use the full revision rather than the
+short one turned out to be what made this possible, which was not the reason
+for making it.
 
 **A configuration option that does nothing looks exactly like one that costs
 nothing.** Preserving function names through minification was first tried as

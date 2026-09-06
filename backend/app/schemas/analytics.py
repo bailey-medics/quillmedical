@@ -31,6 +31,12 @@ MAX_CRUMB_AGE_MS = 86_400_000
 #: separator means such a value never becomes a code in the first place.
 ERROR_CODE_PATTERN = r"^[A-Za-z0-9_]*$"
 
+#: A release is a revision, a tag or a semantic version — letters, digits and
+#: separators. Matched against that shape rather than redacted: the prose rules
+#: corrupt it, because a git revision routinely contains a run of five or more
+#: digits and the record-number rule replaces them.
+RELEASE_PATTERN = r"^[A-Za-z0-9._-]*$"
+
 #: A session identifier is opaque by construction — the browser generates it
 #: at random and holds it in memory only. Constraining the characters means it
 #: cannot be used to smuggle text into the logs under a harmless-looking name.
@@ -109,7 +115,9 @@ class ClientErrorIn(BaseModel):
     )
     status: int | None = Field(default=None, ge=100, le=599)
     route: str = Field(default="", max_length=MAX_ROUTE)
-    release: str = Field(default="", max_length=MAX_RELEASE)
+    release: str = Field(
+        default="", max_length=MAX_RELEASE, pattern=RELEASE_PATTERN
+    )
     source: Literal["boundary", "window", "unhandledrejection"]
     session_id: str = Field(
         default="", max_length=MAX_SESSION_ID, pattern=SESSION_ID_PATTERN

@@ -74,6 +74,14 @@ _REDACTIONS: Final[tuple[tuple[re.Pattern[str], str], ...]] = (
 _CODE_DIGIT_RUN: Final[re.Pattern[str]] = re.compile(r"\d{3,}")
 
 
+#: Anything a version cannot contain. A revision, a tag or a semantic version
+#: is letters, digits and separators; the rest is dropped rather than redacted.
+_NON_VERSION: Final[re.Pattern[str]] = re.compile(r"[^A-Za-z0-9._-]")
+
+#: A full git revision, which is what the frontend build bakes in.
+_GIT_REVISION: Final[re.Pattern[str]] = re.compile(r"[0-9a-f]{40}", re.I)
+
+
 def redact(text: str) -> str:
     """Apply the backstop redactions to a single field."""
     for pattern, replacement in _REDACTIONS:
@@ -84,6 +92,26 @@ def redact(text: str) -> str:
 def redact_code(code: str) -> str:
     """Redact an error code, which is an identifier rather than prose."""
     return _CODE_DIGIT_RUN.sub("[redacted]", redact(code))
+
+
+def clean_release(release: str) -> str:
+    """Reduce a release to version characters, without redacting it.
+
+    Running the prose rules over a release corrupted the value it exists to
+    carry: a git revision routinely contains a run of five or more digits,
+    which the record-number rule replaces, so a version reached the logs as
+    ``8ff30ad0c83b15f306deab[redacted]e1be[redacted]b0a`` — mangled differently
+    each release, which defeats the point of recording which build a fault came
+    from.
+    """
+    value = _NON_VERSION.sub("", release)
+    # A full git revision passes untouched; anything else is still redacted.
+    # The exact length is what makes that safe: an NHS number is ten digits and
+    # so is valid hex, meaning a looser "looks like a revision" test would let
+    # one through. Forty is what the build actually produces.
+    if _GIT_REVISION.fullmatch(value):
+        return value
+    return redact(value)
 
 
 def build_breadcrumbs(
@@ -158,6 +186,14 @@ def build_error_message(report: ClientErrorIn) -> str:
     parts = [header]
 
     stack = redact(report.stack)
+    # A JavaScript stack opens with its own "Name: message" line, so appending
+    # it under a header built from the same two values printed them twice in
+    # every report. Drop the duplicate rather than the header, which also
+    # carries the error code.
+    plain_header = f"{redact(report.name)}: {message}".strip().rstrip(":")
+    lines = stack.split("\n")
+    if lines and lines[0].strip() == plain_header:
+        stack = "\n".join(lines[1:])
     if stack:
         parts.append(stack)
 
@@ -201,7 +237,7 @@ def report_client_error(
             "@type": ERROR_EVENT_TYPE,
             "serviceContext": {
                 "service": SERVICE_NAME,
-                "version": redact(report.release) or "unknown",
+                "version": clean_release(report.release) or "unknown",
             },
             "context": build_context(report, user),
             "error_source": report.source,

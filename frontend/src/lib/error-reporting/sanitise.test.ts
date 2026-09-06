@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   fromError,
+  sanitiseRelease,
   sanitiseComponentStack,
   sanitiseErrorCode,
   sanitiseErrorReport,
@@ -345,5 +346,56 @@ describe("truncation stays within the backend's limits", () => {
     expect(report.componentStack.length).toBeLessThanOrEqual(2000);
     expect(report.errorCode.length).toBeLessThanOrEqual(100);
     expect(report.release.length).toBeLessThanOrEqual(100);
+  });
+});
+
+describe("the component stack keeps its positions", () => {
+  it("strips the origin but keeps the file and position", () => {
+    // Found in production: plain redaction collapsed every frame to
+    // `at Boom ([url])`, losing the one thing a source map can resolve.
+    const out = sanitiseComponentStack(
+      "at Boom (https://teaching.quill-medical.com/assets/index-BV.js:60:65253)",
+    );
+
+    expect(out).toBe("at Boom (/assets/index-BV.js:60:65253)");
+    expect(out).not.toContain("[url]");
+    expect(out).not.toContain("quill-medical.com");
+  });
+
+  it("still redacts a patient-shaped value in a component stack", () => {
+    const out = sanitiseComponentStack("at Row (943 476 5919)");
+
+    expect(out).not.toContain("943 476 5919");
+  });
+});
+
+describe("the release identifier", () => {
+  it("keeps a git revision intact", () => {
+    // The bug this closes: the digit-run rule mangled real revisions, twice
+    // over in some cases, so a version could never be matched to a deploy.
+    const sha = "8ff30ad0c83b15f306deab12345e1be67890b0ad";
+
+    expect(sanitiseRelease(sha)).toBe(sha);
+  });
+
+  it("keeps a semantic version intact", () => {
+    expect(sanitiseRelease("v2.10.0")).toBe("v2.10.0");
+  });
+
+  it("drops characters a version cannot contain", () => {
+    expect(sanitiseRelease("jane.doe@example.nhs.uk")).not.toContain("@");
+    expect(sanitiseRelease("943 476 5919")).not.toContain(" ");
+  });
+
+  it("survives a whole report without being mangled", () => {
+    const sha = "8ff30ad0c83b15f306deab12345e1be67890b0ad";
+    const report = sanitiseErrorReport({
+      name: "TypeError",
+      message: "boom",
+      release: sha,
+      source: "window",
+    });
+
+    expect(report.release).toBe(sha);
   });
 });
