@@ -448,12 +448,24 @@ Client side, new work:
       warranting a 3am wake-up do not cause one. A fault bad enough to matter
       at that hour takes the backend or the uptime check with it, and both
       already escalate
+Two things to check on the dashboard once the metric has been collecting for
+a day. Both need real data, so neither could be settled when the code was
+written.
+
+- [ ] Confirm the **Client errors (browser)** widget breaks down by route. A
+      single undifferentiated block means the `route` label extractor did not
+      match — and that failure is silent, because a wrong field path still
+      creates the metric successfully and simply records empty labels. Nothing
+      errors, nothing is missing from the dashboard, and the breakdown is just
+      quietly absent. Check the extractor against a real log entry's
+      `jsonPayload.context.httpRequest.url` rather than against the code
 - [ ] Revisit `client_error_threshold`, which is currently a guess. It was set
       to ten reports in five minutes before the metric had collected anything,
       chosen loose enough that one person's bad session does not fire it.
-      A week of real counts is what should set it — and the first thing that
-      data will say is whether something in the app has been throwing quietly
-      all along
+      A week of real counts is what should set it. The widget is where that
+      answer appears, and the first thing it will say is whether something in
+      the application has been throwing steadily all along with nobody
+      knowing — which, until this phase, there was no way to find out
 - [ ] Tests: sanitiser unit tests proving patient-shaped strings never survive
       it (`just uf`), and backend endpoint tests including the rate limit
       (`just ub`)
