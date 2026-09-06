@@ -188,7 +188,6 @@ class TestServerSideRedaction:
             ("stack", "3f2504e0-4f89-11d3-9a0c-0305e82c3301"),
             ("component_stack", "1974-03-02"),
             ("stack", "https://teaching.quill-medical.com/patients/42"),
-            ("release", "SW1A 1AA"),
             ("route", "/patients/943 476 5919"),
             ("user_agent", "jane.doe@example.nhs.uk"),
         ],
@@ -518,3 +517,91 @@ class TestErrorCodesAreOpaque:
         assert getattr(record, "error_code", None) == (
             "PRESCRIBE_SCHEDULE_2_DENIED"
         )
+
+
+class TestReleaseSurvivesIntact:
+    """A version that is corrupted cannot be matched back to a deploy."""
+
+    SHA = "8ff30ad0c83b15f306deab12345e1be67890b0ad"
+
+    def test_a_git_revision_reaches_the_log_unchanged(
+        self, test_client: TestClient, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """The defect this closes: the record-number rule replaced runs of
+        digits inside a revision, so a version arrived mangled — and mangled
+        differently each release."""
+        with caplog.at_level(logging.ERROR, logger="app.analytics.router"):
+            test_client.post(
+                ENDPOINT, json={**VALID_REPORT, "release": self.SHA}
+            )
+
+        context = getattr(caplog.records[0], "serviceContext", {})
+        assert context["version"] == self.SHA
+
+    def test_a_patient_shaped_release_is_still_redacted(
+        self, test_client: TestClient, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Only a full revision bypasses redaction. An NHS number is ten
+        digits and so is valid hex, which is why the length is exact."""
+        with caplog.at_level(logging.ERROR, logger="app.analytics.router"):
+            test_client.post(
+                ENDPOINT, json={**VALID_REPORT, "release": "9434765919"}
+            )
+
+        assert "9434765919" not in logged_text(caplog.records[0])
+
+    @pytest.mark.parametrize(
+        "release", ["not a version!", "SW1A 1AA", "jane.doe@example.nhs.uk"]
+    )
+    def test_rejects_a_release_that_is_not_version_shaped(
+        self, test_client: TestClient, release: str
+    ) -> None:
+        """Rejected rather than redacted. A postcode or an address contains
+        characters no version has, so the report is refused outright — which
+        is a stronger answer than scrubbing it."""
+        resp = test_client.post(
+            ENDPOINT, json={**VALID_REPORT, "release": release}
+        )
+
+        assert resp.status_code == 422
+
+
+class TestMessageHeaderAppearsOnce:
+    """A JavaScript stack already opens with its own name and message."""
+
+    def test_does_not_repeat_the_header_the_stack_carries(
+        self, test_client: TestClient, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        stack = "Error: boom\n    at Boom (/assets/index.js:60:65253)"
+        with caplog.at_level(logging.ERROR, logger="app.analytics.router"):
+            test_client.post(
+                ENDPOINT,
+                json={
+                    **VALID_REPORT,
+                    "name": "Error",
+                    "message": "boom",
+                    "stack": stack,
+                },
+            )
+
+        message = caplog.records[0].getMessage()
+        assert message.count("Error: boom") == 1
+        assert "at Boom (/assets/index.js:60:65253)" in message
+
+    def test_keeps_a_stack_that_does_not_repeat_the_header(
+        self, test_client: TestClient, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        with caplog.at_level(logging.ERROR, logger="app.analytics.router"):
+            test_client.post(
+                ENDPOINT,
+                json={
+                    **VALID_REPORT,
+                    "name": "Error",
+                    "message": "boom",
+                    "stack": "    at Boom (/assets/index.js:60:65253)",
+                },
+            )
+
+        message = caplog.records[0].getMessage()
+        assert message.startswith("Error: boom")
+        assert "at Boom" in message

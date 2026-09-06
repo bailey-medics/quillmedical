@@ -131,13 +131,19 @@ export function sanitiseMessage(message: string): string {
  * are worth keeping — they are what makes a report actionable. Only the
  * origin is stripped, since that is the part that could carry a route.
  */
-export function sanitiseStack(stack: string): string {
-  const withoutOrigins = stack.replace(/\bhttps?:\/\/[^\s/]+(?=\/)/gi, "");
+/**
+ * Redact a list of code locations without destroying the locations.
+ *
+ * Shared by both stacks. Only the origin is stripped, since that is the part
+ * that could carry a route; the bundle path and the position are what make a
+ * frame worth having. `:line:column` is held aside behind a sentinel while the
+ * rest is redacted, because minified bundles carry five-figure line numbers
+ * and the long-digit-run rule would otherwise replace the one part of a frame
+ * that says where the error actually happened.
+ */
+function redactCodeLocations(text: string): string {
+  const withoutOrigins = text.replace(/\bhttps?:\/\/[^\s/]+(?=\/)/gi, "");
 
-  // Protect `:line:column` before redacting. Minified bundles carry
-  // five-figure line numbers, which the long-digit-run rule would otherwise
-  // replace — taking with it the one part of a frame that says where the
-  // error actually happened.
   const positions: string[] = [];
   const withPlaceholders = withoutOrigins.replace(
     /:(\d+):(\d+)\b/g,
@@ -147,17 +153,31 @@ export function sanitiseStack(stack: string): string {
     },
   );
 
-  const restored = redact(withPlaceholders).replace(
+  return redact(withPlaceholders).replace(
     new RegExp(`${SENTINEL}(\\d+)${SENTINEL}`, "g"),
     (_, index: string) => positions[Number(index)] ?? "",
   );
-
-  return truncate(restored.trim(), MAX_STACK);
 }
 
-/** Sanitises a React component stack, which is a list of component names. */
+export function sanitiseStack(stack: string): string {
+  return truncate(redactCodeLocations(stack).trim(), MAX_STACK);
+}
+
+/**
+ * Sanitises a React component stack.
+ *
+ * Given the same treatment as a JavaScript stack, because it is the same kind
+ * of thing: a list of code locations. Running plain redaction over it collapsed
+ * every `https://…/index.js:60:65253` to `[url]`, so a production report read
+ * `at Boom ([url])` — the name useful, the position gone. That also made the
+ * frames unresolvable against a source map, since a position is the only thing
+ * a map has to work from.
+ */
 export function sanitiseComponentStack(componentStack: string): string {
-  return truncate(redact(componentStack).trim(), MAX_COMPONENT_STACK);
+  return truncate(
+    redactCodeLocations(componentStack).trim(),
+    MAX_COMPONENT_STACK,
+  );
 }
 
 /**
@@ -185,6 +205,34 @@ export function sanitiseName(name: string): string {
  * character class rather than trusted, for the same reason as the name: a
  * value embedded in a larger token defeats the word-boundary patterns.
  */
+/**
+ * Sanitises a release identifier.
+ *
+ * Shape-checked rather than redacted. Running the prose rules over it corrupted
+ * the value it exists to carry: a git revision routinely contains a run of five
+ * or more digits, which the record-number rule replaces, so a version arrived
+ * as `8ff30ad0c83b15f306deab[redacted]e1be[redacted]b0a` — and differently
+ * mangled each release, which defeats the entire point of recording which build
+ * a fault came from.
+ *
+ * A version is letters, digits and separators: a revision, a tag, a semantic
+ * version. Anything outside that is dropped. This is a weaker guarantee than
+ * the other fields get, and deliberately so — the risk here is a caller putting
+ * their own noise in their own version field, not a disclosure, and certain
+ * corruption is worse than a hypothetical.
+ */
+export function sanitiseRelease(release: string): string {
+  const value = (release ?? "").replace(/[^A-Za-z0-9._-]/g, "");
+  // A full git revision passes untouched; everything else is still redacted.
+  // The exact length is what makes this safe: an NHS number is ten digits and
+  // therefore valid hex, so a looser "looks like a revision" rule would let
+  // one through here. Forty characters is what `git rev-parse HEAD` and
+  // `deploy.yml` both produce, which is why both were made to use the full
+  // form rather than the short one.
+  if (/^[0-9a-f]{40}$/i.test(value)) return value;
+  return truncate(redact(value), MAX_RELEASE);
+}
+
 export function sanitiseErrorCode(code: string): string {
   // Redact before filtering, not after. Filtering alone only removes the
   // separators, so `CODE 943 476 5919` collapsed to `CODE9434765919` and
@@ -295,7 +343,7 @@ export function sanitiseErrorReport(
     componentStack: sanitiseComponentStack(input.componentStack ?? ""),
     errorCode: sanitiseErrorCode(input.errorCode ?? ""),
     status: sanitiseStatus(input.status),
-    release: truncate(redact(input.release ?? "").trim(), MAX_RELEASE),
+    release: sanitiseRelease(input.release ?? ""),
     source: input.source,
   };
 }
