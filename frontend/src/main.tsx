@@ -51,6 +51,7 @@ import {
 } from "react-router-dom";
 import { theme, cssVariablesResolver } from "./theme";
 import { wireUpdateChecks } from "@lib/swUpdateGate";
+import { installGlobalErrorReporting } from "@lib/error-reporting/globalHandlers";
 
 import RootLayout from "./RootLayout";
 import AdminPage from "./pages/AdminPage";
@@ -471,6 +472,11 @@ const router = createBrowserRouter([
   // Fallback -> show 404 page instead of redirecting to home
   { path: "*", element: <NotFound /> },
 ]);
+
+// Before the tree mounts, so a failure during the first render is reported
+// rather than lost. The error boundary covers what React sees; this covers
+// rejected promises and anything thrown outside a render.
+installGlobalErrorReporting();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <MantineProvider

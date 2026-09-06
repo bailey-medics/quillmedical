@@ -15,6 +15,7 @@ import {
   markReloadPending,
 } from "@lib/compat-generation/compatGeneration";
 import { clearRetryRecord } from "@lib/compat-generation/retryState";
+import { recordApi, recordAuth } from "@lib/error-reporting/breadcrumbs";
 
 /**
  * Compat-Generation response interceptor
@@ -145,13 +146,23 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
 
   checkCompatHeader(res);
 
+  // Breadcrumb for an error report: method, path pattern and status only.
+  // The path is reduced to a pattern by allowlist inside recordApi, so no
+  // identifier from a URL is recorded, and no request or response body is
+  // touched at all.
+  recordApi(method, path, res.status);
+
   // Silent, single refresh try on 401
   if (res.status === 401 && !opts.retry) {
     const refreshed = await fetch(`/api/auth/refresh`, {
       method: "POST",
       credentials: "include",
     });
-    if (refreshed.ok) return request<T>(path, { ...opts, retry: true });
+    if (refreshed.ok) {
+      recordAuth("refresh");
+      return request<T>(path, { ...opts, retry: true });
+    }
+    recordAuth("expired");
   }
 
   if (res.status === 401) {

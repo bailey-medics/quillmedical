@@ -16,7 +16,14 @@
  * answer worth having.
  */
 
-import { type ErrorSource, fromError, sanitiseErrorReport } from "./sanitise";
+import { type Breadcrumb, getBreadcrumbs } from "./breadcrumbs";
+import { getCurrentRoute } from "./currentRoute";
+import {
+  type ErrorSource,
+  fromError,
+  sanitiseErrorReport,
+  sanitiseRoute,
+} from "./sanitise";
 
 /** Where reports are posted. Same origin, so cookies travel with them. */
 const ENDPOINT = "/api/analytics/client-errors";
@@ -100,13 +107,19 @@ type WireReport = {
   session_id: string;
   user_agent: string;
   viewport: string;
+  breadcrumbs: Breadcrumb[];
 };
 
 /** Extra context the caller can supply, none of it required. */
 export type ReportOptions = {
   /** React's component stack, which only an error boundary has. */
   componentStack?: string | undefined;
-  /** The matched route pattern — `/patients/:id` — never a resolved URL. */
+  /**
+   * The matched route pattern — `/patients/:id` — never a resolved URL.
+   *
+   * Defaults to whatever the router last recorded, which is what the error
+   * boundary and the window listeners rely on: neither can be handed one.
+   */
   route?: string | undefined;
 };
 
@@ -146,12 +159,13 @@ export function reportError(
       stack: report.stack,
       component_stack: report.componentStack,
       error_code: report.errorCode,
-      route: options.route ?? "",
+      route: sanitiseRoute(options.route ?? getCurrentRoute()),
       release: report.release,
       source: report.source,
       session_id: SESSION_ID,
       user_agent: readUserAgent(),
       viewport: readViewport(),
+      breadcrumbs: getBreadcrumbs(),
     };
     if (report.status !== undefined) wire.status = report.status;
 

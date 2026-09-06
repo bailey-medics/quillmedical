@@ -388,21 +388,45 @@ Client side, new work:
       `navigator.sendBeacon` rather than the `api` client — a documented
       exception to the "never raw fetch" rule, recorded under **Decisions**
 - [x] Add the context fields: `user_agent`, `viewport` and the in-memory
-      `session_id`, with `user_id` derived by the server. `route` is threaded
-      through as a caller-supplied parameter; what supplies it arrives with
-      the wiring below
+      `session_id`, with `user_id` derived by the server
+- [x] Supply `route` as the matched pattern. It is rebuilt from the router's
+      own params rather than pattern-matched out of the path, so the
+      identifier is removed because the router said it was one and not because
+      a filter recognised the shape. Tracked in a module variable, since
+      neither thing that reports an error can be handed it: an error boundary
+      is a class component, and the window listeners have no React context at
+      all. `sanitiseRoute` still runs over the result, because the field
+      crosses the wire like any other
 - [x] Bake a build identifier in, so a fault can be attributed to the deploy
       that produced it. `vite.config.ts` reads the git revision, falling back
       to an environment variable — which is the path that actually runs, since
       the image is built from `COPY frontend/ .` with no `.git`. `deploy.yml`
       passes the commit it is deploying
-- [ ] Record route changes, API calls and auth events into the breadcrumb ring
-      buffer
-- [ ] Extend `componentDidCatch` in
+- [x] Record route changes, API calls and auth events into the breadcrumb ring
+      buffer. An API path is reduced to a pattern by **allowlist** — a segment
+      survives only if it is lowercase letters and hyphens, which is what every
+      static segment of this API looks like, and anything else becomes `:id`.
+      That way round because identifiers are the thing with no reliable shape:
+      a rule that tries to spot them has to anticipate every form they take,
+      while a rule that spots ordinary words fails safe when it meets something
+      new. `recordApi` sits in `api.ts` beside the response, and sees the
+      refresh and expiry transitions there; `AuthContext` supplies login and
+      logout, which `api.ts` cannot distinguish from any other call
+- [x] Extend `componentDidCatch` in
       `frontend/src/components/error-boundary/ErrorBoundary.tsx` to report the
-      error as well as logging it
-- [ ] Add a global handler for unhandled promise rejections and errors thrown
-      outside React's tree, which the boundary cannot see
+      error as well as logging it. The `console.error` stays: it is what a
+      developer with the tools open actually reads, while the report is what
+      reaches somebody who is not watching. This is also the only place
+      React's component stack exists, which is what says *which part of the
+      interface* failed rather than which line of the bundle
+- [x] Add a global handler for unhandled promise rejections and errors thrown
+      outside React's tree, which the boundary cannot see. Installed in
+      `main.tsx` before the tree mounts, so a failure during the first render
+      is reported rather than lost. Neither listener calls `preventDefault`:
+      the aim is to hear about the failure, not to change what the browser
+      does about it. `error` events carrying no error object are ignored,
+      since those are a broken image or a stylesheet that 404ed, and a stack
+      trace for one says nothing a developer could act on
 - [ ] Alert on new and spiking error groups through the existing notification
       channels in `infra/modules/monitoring`
 - [ ] Tests: sanitiser unit tests proving patient-shaped strings never survive

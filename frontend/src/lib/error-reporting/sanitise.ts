@@ -37,6 +37,7 @@ const MAX_COMPONENT_STACK = 2000;
 const MAX_NAME = 100;
 const MAX_ERROR_CODE = 100;
 const MAX_RELEASE = 100;
+const MAX_ROUTE = 200;
 
 /**
  * Marker used to hold a stack position aside while the rest is redacted.
@@ -210,6 +211,18 @@ export function sanitiseErrorCode(code: string): string {
 export function sanitiseStatus(status: unknown): number | undefined {
   if (typeof status !== "number" || !Number.isInteger(status)) return undefined;
   return status >= 100 && status <= 599 ? status : undefined;
+}
+
+/**
+ * Sanitises a route pattern.
+ *
+ * The pattern is rebuilt from the router's own params, so an identifier should
+ * already have been replaced by the name that captured it. This is the
+ * backstop for the cases that escape it — a route reached before the router
+ * matched, or a splat whose value did not line up with the path.
+ */
+export function sanitiseRoute(route: string): string {
+  return truncate(redact(route ?? "").trim(), MAX_ROUTE);
 }
 
 /** Where an error was caught. */

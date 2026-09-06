@@ -1,0 +1,51 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+
+<Meta title="Error boundary/Error fallback/Guide" />
+
+# Error boundary
+
+`ErrorBoundary` catches unhandled React errors and shows `ErrorFallback` in
+place of the crashed tree, instead of leaving the user at a white screen. It
+also reports the error, so a crash reaches somebody who is not sitting with the
+console open.
+
+## What reaches the boundary, and what does not
+
+A boundary catches only what is thrown **while React renders**. That is a
+narrower set than it first appears, so errors are picked up in two places
+rather than one.
+
+- **React render errors** — caught here. Reported with React's component stack,
+  which names the failing part of the interface rather than a line of the
+  minified bundle. This is the only place that stack exists.
+- **Rejected promises** — never reach a boundary at all. Picked up by the
+  window listeners in `lib/error-reporting/globalHandlers.ts`. In an
+  application built on API calls, this is the most common failure of the lot.
+- **Errors from timers and event listeners** — thrown outside a render, so also
+  the window listeners.
+- **Errors before the tree mounts** — the listeners are installed in `main.tsx`
+  ahead of the first render, so a failure during it is reported rather than
+  lost.
+- **Resource load failures** — a broken image, or a stylesheet that 404s.
+  Deliberately ignored: they carry no error object, so a stack trace would say
+  nothing anybody could act on, and there would be a great many of them.
+
+## Reporting
+
+Reports go to `POST /api/analytics/client-errors` via `navigator.sendBeacon`,
+and reach Cloud Error Reporting grouped as `quill-frontend`.
+
+Two things are true of that path by design. Nothing it does can throw, because
+the user is already looking at a broken page and a failed report must not make
+that worse. And nothing sensitive leaves the browser: every field is sanitised
+first, and the server sanitises again, since the endpoint is public.
+
+The `console.error` call stays alongside the report. They serve different
+people — the console is what a developer with the tools open actually reads,
+and the report is what reaches somebody who is not watching.
+
+## Fallback copy
+
+The fallback says "Something went wrong" and offers a reload. It deliberately
+shows no technical detail: the user cannot act on a stack trace, and anything
+shown on screen is visible to whoever else is in the room.
