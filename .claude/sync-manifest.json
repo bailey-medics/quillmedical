@@ -1,7 +1,7 @@
 {
   "version": 1,
   "generatedBy": "/sync-copilot-config",
-  "lastRun": "2026-09-05T20:23:24Z",
+  "lastRun": "2026-09-06T08:36:51Z",
   "notes": [
     "Prompt targets live under .claude/skills/<name>/SKILL.md (a skill is a directory, not a single file). A skill's invocable /name comes from the directory name, never the SKILL.md filename and never a name: frontmatter field (that only sets a display label for personal/project skills).",
     "Targets marked targetRenamed:true deliberately do not use the default source-derived directory name. Copilot's 'name:' frontmatter values were used as the directory names to preserve /crp, /e, and /read-project-instructions.",
@@ -18,7 +18,10 @@
     "2026-09-02: a 'never mention AI authorship' rule was added to crp's Never list on BOTH sides in the same commit, and to CLAUDE.md's hand-written '## Claude-specific' section (which this skill never writes into - its hash is refreshed to mean 'last state reconciled'). Not outstanding drift.",
     "2026-09-03: a secrets-placement rule was added to copilot-instructions.md and merged into CLAUDE.md's Security list - a secret GitHub Actions consumes stays in GitHub, one it only relays belongs at the destination. explain-to-me and follow-the-plan-document also show changed source hashes, but their only differences from the Claude copies remain the ide_selection tags and $ARGUMENTS respectively, exactly as their divergenceReason describes. Hashes refreshed to record the reconciled state; no target content was written for those two.",
     "2026-09-04: .claude/rules/workflows.md is DIVERGED and was not written to. Three sections exist only on the Claude side - '### main() and the source guard', '### Readability: one idea per line' and '## Testing scripts with bats' - added by c5d42f61, fb965007 and 61d66bf1, plus two bullets added this run on branch feature/bats-ubuntu-parity covering the containerised local run. The .github source has not changed since 7968f0f2 and is 46 lines to the target's 125. This is ordinary one-way drift, NOT divergentByDesign: none of it is platform-specific, so the fix is to back-port those sections to .github/instructions/workflows.instructions.md (as was done for the skills on feature/backport-skill-improvements). Hashes deliberately NOT refreshed, so the drift keeps being reported until that happens. Syncing source over target would delete 79 lines of live guidance.",
-    "2026-09-04: fix-vs-code-problems and read-project-instructions showed changed target hashes. Both differences are exactly what their divergenceReason describes - the get_errors/mcp__ide__getDiagnostics fallback, and CLAUDE.md plus .claude/rules/ in place of copilot-instructions.md plus instructions/. No target content was written; hashes refreshed to record the reconciled state."
+    "2026-09-04: fix-vs-code-problems and read-project-instructions showed changed target hashes. Both differences are exactly what their divergenceReason describes - the get_errors/mcp__ide__getDiagnostics fallback, and CLAUDE.md plus .claude/rules/ in place of copilot-instructions.md plus instructions/. No target content was written; hashes refreshed to record the reconciled state.",
+    "2026-09-06: components.instructions.md gained three Storybook-documentation bullets and was synced; bodies match exactly. The rule they encode was learned the hard way this run: `parameters.docs.description` renders nowhere in this project, because no story sets tags: [\"autodocs\"] and there is no global equivalent, so Storybook generates no Docs page to render it into. It type-checks, passes every hook, passes both test suites and produces nothing. DirtyFormNavigation.stories.tsx still carries a dead one. Longer prose belongs in a sibling .mdx guide, and a docs change should be verified against docs/docs/code/storybook/index.json rather than assumed.",
+    "2026-09-06: .claude/rules/ci.md is DIVERGED and was NOT written to. The target describes the merge queue - queue with \"Merge when ready\", GitHub builds a merge-group ref, re-runs required checks, merges automatically, and every Renovate group sets automerge: false - while the source still describes rebase-before-merge. The target is AHEAD, not stale, so syncing source over it would delete the current process and reinstate a superseded one. Ordinary one-way drift, not divergentByDesign: nothing in it is platform-specific, so the fix is to back-port to .github/instructions/ci.instructions.md. Hashes deliberately NOT refreshed, so this keeps being reported until that happens.",
+    "2026-09-06: the workflows back-port recorded on 2026-09-04 has largely landed - the source now carries 'Readability: one idea per line' and 'Testing scripts with bats', and is 121 lines to the target's 125. Two bullets remain Claude-only, both covering the containerised local run: `just test-scripts` (alias `ts`) running bats inside ubuntu:24.04, and the warning not to judge a script by a bare bats run on macOS. Still DIVERGED and still not written to; hashes deliberately NOT refreshed so the remainder keeps being reported."
   ],
   "files": [
     {
@@ -45,9 +48,9 @@
     {
       "source": ".github/instructions/components.instructions.md",
       "target": ".claude/rules/components.md",
-      "sourceSha256": "d763da017035393d91cd3244166baec2476b08af554acf1f39fe3b696b0b5d84",
-      "targetSha256": "f27f3f0fb46003fc45560102c2902e19f5c67b8b1e50ce19398d39569a74fc04",
-      "syncedAt": "2026-08-22T20:32:02Z"
+      "sourceSha256": "0629eee7b947d005a5772db542cea2e514748d69674d1a95240947bf35d98b55",
+      "targetSha256": "f9c98639da3b71b56b306fee213950d823e27ddc289efd47bf792fa51da7af15",
+      "syncedAt": "2026-09-06T08:36:51Z"
     },
     {
       "source": ".github/instructions/just.instructions.md",
