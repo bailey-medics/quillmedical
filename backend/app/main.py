@@ -41,12 +41,12 @@ from fastapi import (
 )
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.analytics.router import router as analytics_router
 from app.api_compatibility import REQUIRED_CLIENT_GENERATION
 from app.config import settings
 from app.db import get_core_db
@@ -105,6 +105,7 @@ from app.organisations import (
 )
 from app.push import router as push_router
 from app.push_send import router as push_send_router
+from app.rate_limit import limiter
 from app.schemas.auth import (
     ChangePasswordIn,
     DetailResponse,
@@ -231,6 +232,7 @@ DEV_MODE = settings.BACKEND_ENV.lower().startswith("dev")
 
 router = APIRouter(prefix=settings.API_PREFIX)
 
+router.include_router(analytics_router)
 router.include_router(push_router)
 
 # Permanent API-compatibility test harness (item 19) — always false in real
@@ -283,10 +285,9 @@ async def add_compat_generation_header(
 
 
 # --- Rate limiting (slowapi) ---
-limiter = Limiter(
-    key_func=get_remote_address,
-    enabled=settings.BACKEND_ENV != "development",
-)
+# Created in app.rate_limit so routers in their own modules can decorate with
+# it without importing main. Re-exported here by the import above, so
+# `from app.main import limiter` keeps working.
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 

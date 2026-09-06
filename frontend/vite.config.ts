@@ -1,4 +1,5 @@
 import react from "@vitejs/plugin-react-swc";
+import { execSync } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
 import { defineConfig } from "vite";
@@ -16,11 +17,38 @@ const COMPAT_GENERATION = computeRequiredClientGeneration(
   path.resolve(__dirname, "..", "api-compatibility"),
 );
 
+// Baked in at build time so an error report says which build produced it.
+// Cloud Error Reporting groups on serviceContext.version, which is what
+// separates a fault in the current deploy from one in a tab left open across
+// two of them. The environment variable takes precedence so a build without
+// the git history — a Docker build from a copied tree — can still be
+// identified; "dev" is the honest answer when neither is available.
+//
+// The full revision rather than the short one, so a local build and a deployed
+// one are the same shape. deploy.yml passes the full form, which is also the
+// container image tag, so a version read off an error report pastes straight
+// into the tag that produced it.
+const APP_VERSION: string =
+  process.env["VITE_APP_VERSION"] ??
+  (() => {
+    try {
+      return execSync("git rev-parse HEAD", {
+        cwd: __dirname,
+        stdio: ["ignore", "pipe", "ignore"],
+      })
+        .toString()
+        .trim();
+    } catch {
+      return "dev";
+    }
+  })();
+
 // https://vite.dev/config/
 export default defineConfig({
   base: "/",
   define: {
     __COMPAT_GENERATION__: JSON.stringify(COMPAT_GENERATION),
+    __APP_VERSION__: JSON.stringify(APP_VERSION),
   },
   plugins: [
     react(),

@@ -1,4 +1,4 @@
-# Analytics plan
+# Analytics and error states plan
 
 Quill has no analytics of any kind. There is no web analytics on the public
 site, no page-view counts in the app, and no error reporting — the
@@ -18,6 +18,18 @@ experimentation. An earlier draft of this plan designed for all of that; it has
 been cut back to the three questions above, and the section on what is
 deliberately not being built records what was dropped and what would justify
 revisiting it.
+
+A fourth subject arrived while the first question was being built, and the
+title now names it: **what a user is shown when something fails.** It was not
+planned work. Auditing what an error report would carry turned up seventeen
+endpoints returning raw exception text to the browser, and following that
+string forwards showed it being rendered on screen by pages that display
+`err.message` directly. The same defect therefore has two ends — one writing
+into logs that must never hold patient data, one putting the text in front of
+whoever is standing at the screen — and fixing either alone would leave the
+other. Two sections cover it: **Stop the backend handing out raw exception
+text**, and **What a user sees when something fails**. They are sequenced
+together for the same reason.
 
 The scope is small but the constraints are not, which is why this is a plan
 rather than a ticket. Analytics touches the Content Security Policy, the cookie
@@ -166,10 +178,23 @@ These split by purpose, and the split is a rule rather than a preference.
   personal data being processed? Both need answering, but they are not the same
   question.
 
-- **This plan does not engage those regulations at all.** Load-balancer logs
-  and a server-side ping involve no storage on or access to the user's device.
-  That is a stronger position than qualifying for the new statistical purposes
-  exception, because there is no qualification argument to defend at audit.
+- **This plan does not engage the cookie regulations, provided the session
+  identifier stays in memory.** Load-balancer logs and a server-side ping
+  involve no storage on or access to the user's device. That is a stronger
+  position than qualifying for the new statistical purposes exception, because
+  there is no qualification argument to defend at audit. Error reporting keeps
+  that position only because its `session_id` is a JavaScript variable
+  regenerated on each page load: putting it in `sessionStorage` or a cookie
+  would be storage on the device, and error reporting is not plausibly
+  strictly necessary, so it would need consent. A refresh therefore starts a
+  new identifier, which is an accepted cost.
+
+- **Attaching `user_id` makes the error logs personal data under UK GDPR.**
+  That is a deliberate choice, justified by needing to match a support call to
+  an incident, but it has consequences the rest of this plan did not previously
+  carry: retention moves from a deferred question to a required one, subject
+  access requests have to cover the error logs, erasure requests have to reach
+  them, and the impact assessment must describe them.
 
 - **Quill still needs a cookie policy, but not a consent banner.** The session
   and cross-site request forgery cookies it already sets are strictly necessary
@@ -311,21 +336,73 @@ single import. Everything else these two phases touch —
 `ErrorBoundary.tsx`, `RootLayout.tsx`, `Settings.tsx` — was touched once in the
 last eighty commits, and nowhere near `frontend/src/pages/admin/teaching/`.
 
+### What a report carries
+
+Settled after auditing what the backend actually returns in error responses;
+the reasoning is under **Decisions**. The rule each field satisfies is that it
+is a fixed vocabulary, an internal identifier, or text the app authored itself.
+
+- **`name`** — the error class, such as `TypeError`
+- **`message`** — the error text, pattern-redacted rather than dropped. Safe
+  only once the raw-exception leak below is fixed
+- **`error_code`** — the backend's stable code, already attached by `api.ts`
+  and worth more for grouping than the prose ever was
+- **`status`** — the HTTP status, also already attached by `api.ts`
+- **`stack`** and **`component_stack`** — origins and paths stripped, line and
+  column numbers preserved
+- **`route`** — the matched React Router pattern, `/patients/:id`, never the
+  resolved URL
+- **`release`**, **`source`**, **`user_agent`** and **`viewport`**
+- **`session_id`** — random, held **in memory only** and never written to the
+  device, so that a cascade of errors can be recognised as one person's without
+  engaging the cookie regulations. Sent on public pages too, where there is no
+  user to attach
+- **`user_id`** — the internal database identifier, only when signed in, so a
+  support call can be matched to a logged incident and a registered user can be
+  contacted. Never a name, never an email: the identifier resolves to a person
+  through the database, while the log itself stays meaningless to a reader
+- **`breadcrumbs`** — a ring buffer of at most twenty structured events: route
+  changes as patterns, API calls as method plus pattern plus status, and auth
+  events as one of `login`, `logout`, `refresh` or `expired`. No DOM values, no
+  console output, no free text anywhere
+
 Client side, new work:
 
+- [x] Sanitise before sending, with unit tests proving patient-shaped strings
+      never survive it. Merged, and being widened to the shape above rather
+      than replaced
+- [x] Add a backend ingest endpoint accepting sanitised reports, rate-limited
+      via the existing `slowapi` `@limiter.limit` pattern, and available to
+      unauthenticated pages as well as signed-in ones
+- [x] Emit reports through the existing JSON logging pipeline in a shape Cloud
+      Error Reporting recognises, so grouping works — including its `context`
+      block, so the route, status, user agent and whoever hit the problem are
+      filterable in the console without a custom query
+- [x] Keep messages, pattern-redacted, and capture the structured fields
+      `api.ts` already attaches — `error_code` and `status`
+- [x] Never read the `email` property `api.ts` attaches to some errors, with a
+      test that fails if it ever reaches a report. `fromError` reads properties
+      by name and never enumerates them, so anything `api.ts` gains later is
+      excluded until it is added deliberately
+- [x] Add the reporter that assembles a report and sends it, via
+      `navigator.sendBeacon` rather than the `api` client — a documented
+      exception to the "never raw fetch" rule, recorded under **Decisions**
+- [x] Add the context fields: `user_agent`, `viewport` and the in-memory
+      `session_id`, with `user_id` derived by the server. `route` is threaded
+      through as a caller-supplied parameter; what supplies it arrives with
+      the wiring below
+- [x] Bake a build identifier in, so a fault can be attributed to the deploy
+      that produced it. `vite.config.ts` reads the git revision, falling back
+      to an environment variable — which is the path that actually runs, since
+      the image is built from `COPY frontend/ .` with no `.git`. `deploy.yml`
+      passes the commit it is deploying
+- [ ] Record route changes, API calls and auth events into the breadcrumb ring
+      buffer
 - [ ] Extend `componentDidCatch` in
       `frontend/src/components/error-boundary/ErrorBoundary.tsx` to report the
       error as well as logging it
 - [ ] Add a global handler for unhandled promise rejections and errors thrown
       outside React's tree, which the boundary cannot see
-- [ ] Sanitise before sending: strip URLs, query strings, form values and any
-      user-entered text, keeping the error type, the message, the component
-      stack and the release version
-- [ ] Add a backend ingest endpoint accepting sanitised reports, rate-limited
-      via the existing `slowapi` `@limiter.limit` pattern, and available to
-      unauthenticated pages as well as signed-in ones
-- [ ] Emit reports through the existing JSON logging pipeline in a shape Cloud
-      Error Reporting recognises, so grouping works
 - [ ] Alert on new and spiking error groups through the existing notification
       channels in `infra/modules/monitoring`
 - [ ] Tests: sanitiser unit tests proving patient-shaped strings never survive
@@ -333,6 +410,72 @@ Client side, new work:
       (`just ub`)
 - [ ] Storybook story and test for any fallback UI change, per the component
       rules
+
+### Stop the backend handing out raw exception text
+
+Not analytics work, and not a blocker for shipping this phase, but keeping
+error messages depends on it and it is a live problem in its own right.
+Seventeen endpoints return the raw exception to the browser, ten of them on
+patient-data paths — the finding is written up under **What building this
+taught us**.
+
+**This must land before real patient data does**, which is the only reason it
+is safe to ship the reporting first.
+
+- [ ] Replace `detail=str(e)` and `detail=f"...: {e}"` across the seventeen
+      sites with a generic message plus a stable `error_code`, logging the full
+      exception server-side where detail is safe and useful
+- [ ] Add a test or lint rule that fails when an exception is interpolated into
+      an `HTTPException` detail, so the pattern cannot creep back
+
+### What a user sees when something fails
+
+Uncovered while auditing the endpoint work, and kept here rather than in a
+document of its own because it cannot be sequenced apart from the section
+above: both are about what a person is shown when a call fails, and migrating
+pages before the messages change would mean revisiting them afterwards.
+
+Two paths, only one of which is designed. A React crash reaches
+`ErrorFallback` — a shared component with a story and a test, showing
+"Something went wrong" and a reload button, and disclosing nothing. A failed
+API call reaches whatever each page invented: **twenty-nine pages** carry an
+error-shaped `Alert` styled in place, and `frontend/src/pages/Home.tsx` renders
+its error as a bare `<div>` with an inline `style` attribute, which is also
+against the styling rules. Several of them put `err.message` on screen
+directly, which is the same string the seventeen endpoints above fill with raw
+exception text — so this is the visible half of that problem, not a separate
+one.
+
+The shape, settled by what the two situations actually need. `ErrorFallback` is
+full-page: centred, `60vh`, a reload action. That is right for a crash and
+wrong for most failed calls, because a form submit error must not blank the
+page and throw away what was typed, and a section that failed to load belongs
+inside the layout rather than replacing it. So the presentation moves down into
+an `ErrorState` component taking a message, an optional title, an optional
+action and a `variant` of `page` or `inline`; `ErrorFallback` becomes a thin
+wrapper around it. One design, two sizes, and no second look-and-feel to drift.
+
+**Settled: `ErrorState` never renders a raw `err.message`.** Pages pass a
+message somebody wrote, and the component does not accept the error object at
+all — the restriction is structural rather than a convention to remember,
+because a convention is what the twenty-nine existing sites already broke. It
+is more work, since it forces the question "what should the user actually be
+told?" at every one of them, but the alternative was designing a component
+around a string that is about to stop being sent. The error `code` remains
+useful on screen in small print, since it is a fixed vocabulary and it is what
+a support call can be matched against.
+
+- [ ] Delete `frontend/src/components/typography/ErrorText.tsx` — a near-exact
+      duplicate of `ErrorMessage`, used nowhere, absent from the typography
+      index, and shipping neither a story nor a test
+- [ ] Add an `ErrorState` component with a story and a test, and refactor
+      `ErrorFallback` to render it. No page changes in the same step, so the
+      component lands without moving anything visible
+- [ ] Convert `Home.tsx` first: it is the worst case, being both a raw `<div>`
+      with an inline style and a direct render of `err.message`
+- [ ] Convert the remaining pages in reviewable batches rather than one change,
+      starting with those that display `err.message`, and after the backend
+      section above has landed so each message is only written once
 
 ### Escalation
 
@@ -1097,6 +1240,85 @@ Findings from actually building and testing this, rather than from planning it.
 Each cost time to learn and would be cheap to relearn the hard way, so they are
 recorded here rather than left in commit messages.
 
+**A catch-all that cannot throw also cannot tell you it is broken.** The
+reporter swallows everything by design, because raising inside an already
+failing page is the loop the whole module exists to prevent. The first version
+of it sent nothing at all: `__APP_VERSION__` is defined in `vite.config.ts`,
+but tests run from a separate `vitest.config.ts` that did not define it, so
+every call raised a `ReferenceError` on the first line and the catch absorbed
+it in silence. Nothing was logged, nothing failed, and the module simply did
+not work. Only the tests asserting that a beacon *was* sent found it — a test
+that merely checked "does not throw" would have passed against a module that
+did nothing whatsoever. Two things came out of it: the catch now says what it
+dropped when running in development, and the useful test of a
+best-effort path is that the effort actually happened, not that it failed
+quietly.
+
+**Removing characters is not removing information, and a test can hide that.**
+`sanitiseErrorCode` filtered the field down to `[A-Za-z0-9_]`. On
+`CODE 943 476 5919` that produced `CODE9434765919`, which the whole-report
+sweep caught. The same filter on `CODE_1974-03-02` produced `CODE_19740302`,
+which it did not: the assertion looked for the original hyphenated string, and
+mangling the value changed it just enough to pass while leaving the date
+perfectly readable. Redacting first does not rescue it either, because the
+patterns are anchored on word boundaries and `_1974` has none. The fix was to
+stop scrubbing the field at all — an error code is a fixed vocabulary, so the
+schema now rejects any value carrying a separator, and a run of three or more
+digits is redacted on top, since real codes carry a digit or two at most
+(`PRESCRIBE_SCHEDULE_2_DENIED`). The lesson worth keeping is about the test
+rather than the filter: asserting that a sanitised field no longer contains the
+exact input string is a weak check, because any transformation passes it. The
+question to ask is whether the *information* survived, not whether the
+*characters* did.
+
+**A redaction pattern is a performance decision as well as a safety one.**
+The email rule was written as `[\w.+-]+@[\w-]+\.[\w.-]+`, which backtracks
+quadratically over a long run of word characters containing no `@` — which is
+precisely what a minified stack trace is. Measured: 31ms at 5 KB, 412ms at
+20 KB, 2828ms at 50 KB. That is the main thread blocked for nearly three
+seconds while the application is already broken, on a code path whose entire
+purpose is to report that fact. Bounding the repetitions to the real limits
+from RFC 5321 — 64 characters for the local part, 63 for a domain label — made
+the same input take 17ms, and the bound is more correct as well as faster. The
+general point is that anything applied to attacker- or accident-controlled text
+of unbounded length needs its worst case measured, not assumed; the test that
+caught this only did so because it used a realistically large stack rather than
+a tidy one.
+
+**Filtering characters is not the same as removing values.** `sanitiseErrorCode`
+stripped everything outside `[A-Za-z0-9_]`, which on `CODE 943 476 5919`
+removed the spaces and produced `CODE9434765919` — the NHS number preserved
+intact, merely reformatted. The name field had already taught this lesson once,
+where a postcode survived inside `TypeSW1A 1AAError`, and the fix there was to
+drop every non-letter. That fix could not be reused, because error codes
+legitimately contain digits: `PRESCRIBE_SCHEDULE_2_DENIED`. Redacting before
+filtering handles both. What actually caught it was the sweep that checks every
+patient-shaped string against every field of a whole report, which is the same
+test that caught the postcode — a per-field test would have passed, because
+each field looked fine in isolation.
+
+**The browser is already being told more than it should be.** Auditing what
+keeping error messages would actually log turned up seventeen endpoints that
+return raw exception text to the client as `detail`, which `api.ts` copies
+into `Error.message`. Ten sit on patient-data paths — `get_demographics`,
+`update_patient`, `write_letter`, `read_letter`, `list_letters` among them —
+where the exception originates in EHRbase, HAPI FHIR or the database and can
+carry a name, an NHS number, a request URL with an identifier in it, or a
+fragment of a clinical document. None of this was introduced by the analytics
+work; it has been reaching browsers all along, and logging it would only have
+made it permanent and searchable. Two lessons came out of it. The first is
+that **a sanitiser cannot solve this class of problem**: NHS numbers, dates,
+postcodes and emails have patterns, and names do not, so no regex catches
+"Patient John Smith not found" and the only real fix is at the source. The
+second is that auditing the actual data before designing the filter would have
+been the cheaper order — the filter was designed first, against an imagined
+threat model, and the audit then showed both that the risk was narrower than
+assumed and that it sat somewhere the filter could never have reached. The
+rest of the finding was reassuring: the remaining interpolations are
+competency names, feature keys, organisation and site identifiers, permission
+levels and valid-type lists, all fixed vocabularies with nothing personal in
+them.
+
 **A green `terraform plan` proves less than it appears to.** Plan checks
 syntax, provider schema and state. It does not check IAM for resources that do
 not yet exist, and it does not evaluate the API's semantic rules. The first
@@ -1184,6 +1406,65 @@ document about which alerting tiers include voice were wrong, both taken from
 third-party comparisons and both contradicted by the vendors' own pages.
 
 ## Decisions
+
+- **Capture as much as possible, then remove the sources of risk** — the first
+  cut inverted this. It dropped the error message unless the error came from
+  the JavaScript engine, on the grounds that messages can carry server text.
+  That threw away most of the diagnostic value to avoid a risk which turned out
+  to live in seventeen identifiable places, and while doing so it missed that
+  `api.ts` already attaches `error_code` and `status` — structured,
+  fixed-vocabulary fields worth more for grouping than the prose it was
+  protecting. Messages are kept and pattern-redacted; the raw-exception sources
+  get fixed where they are. The general form is that filtering is the weaker
+  move whenever the source can be fixed instead, because a filter has to
+  anticipate every shape the risk takes and a fix does not.
+
+- **The server decides who a report belongs to, not the caller** — the shape
+  above lists `user_id`, but the browser never sends it. The endpoint is open
+  to anyone, so a body-supplied identifier would let a caller attribute an
+  error to any user it chose, and a log that can be poisoned is worse than one
+  with a gap in it. The server reads the user from the session cookie when
+  there is one, via a non-raising `get_optional_user` added to `deps.py`, and
+  the schema rejects a report that tries to supply the field rather than
+  ignoring it. A caller who is not signed in is recorded against its session
+  identifier alone.
+
+- **A user is shown a written message, never a raw error** — the string that
+  reaches `err.message` is whatever the backend put in an `HTTPException`
+  detail, which for seventeen endpoints is a raw exception from EHRbase, HAPI
+  FHIR or the database. The `ErrorState` component therefore does not accept an
+  error object, so a page physically cannot pass one through: the twenty-nine
+  sites that hand-rolled this already demonstrated that a convention does not
+  hold. Diagnostic detail belongs in the logs, where it can be read by someone
+  who can act on it, and the error code is the thread joining the two.
+
+- **Error reports leave by `sendBeacon`, not the `api` client** — the standing
+  rule is that everything talks to the backend through `lib/api.ts`, with
+  `checkHealth` the sole exception. This is the second. The `api` client
+  throws on failure, retries on 401 and dispatches connectivity events, all of
+  which are right for a call whose answer matters and wrong for one whose
+  answer nobody reads: a report that fails must not raise inside the code that
+  was already failing. `sendBeacon` cannot reject, has no retry behaviour to
+  inherit, and the browser keeps the request alive after the page goes away —
+  so an error thrown while the user navigates off a broken page still arrives,
+  which is exactly the report that would otherwise be lost.
+
+- **Identity is an identifier, never a name** — a random `session_id` always,
+  so anonymous errors on public pages still group into one person's cascade,
+  and the internal `user_id` when signed in, so a phone call can be matched to
+  a logged incident and a registered user contacted. Neither is a name or an
+  email. The identifier resolves to a person through the database, which keeps
+  the capability while leaving the log itself meaningless to anyone reading it.
+  The `session_id` stays in memory rather than in storage, which is what keeps
+  the cookie regulations out of scope.
+
+- **Breadcrumbs are allowlisted, not captured** — the usual implementation
+  records DOM interactions, console output and network bodies, which is where
+  most of the reported leaks in error tooling come from. This one records route
+  changes as patterns, API calls as method plus pattern plus status, and four
+  named auth events. It keeps the sequence that explains a crash while carrying
+  no values at all, which is a different risk profile from the same feature
+  name elsewhere.
 
 - **Scope is three questions, not a product analytics capability** — errors,
   public visits, app page views. Everything outside that is explicitly not

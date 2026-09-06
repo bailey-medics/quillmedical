@@ -110,6 +110,7 @@ jobs:
           build-args: |
             VITE_VAPID_PUBLIC=${{ env.VITE_VAPID_PUBLIC }}
             VITE_CLINICAL_SERVICES_ENABLED=false
+            VITE_APP_VERSION=${{ needs.prepare.outputs.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

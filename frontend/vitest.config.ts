@@ -11,6 +11,9 @@ export default defineConfig({
   // src/lib/compat-generation/compatGeneration.ts for the runtime usage.
   define: {
     __COMPAT_GENERATION__: "1",
+    // Likewise fixed: the real value is the git revision, which would make
+    // any test asserting on it fail on the next commit.
+    __APP_VERSION__: '"test"',
   },
   test: {
     globals: true,
