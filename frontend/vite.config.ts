@@ -46,6 +46,34 @@ const APP_VERSION: string =
 // https://vite.dev/config/
 export default defineConfig({
   base: "/",
+  build: {
+    rollupOptions: {
+      output: {
+        // Keep function names through minification, so an error report names
+        // `ErrorFallback` rather than `bj`. Without it a production stack is
+        // entirely mangled identifiers and says nothing about this
+        // application — see the reports from the /boom verification.
+        //
+        // Measured on this app: 892,697 bytes gzipped without, 930,826 with.
+        // That is 37 KB, or 4.3%, paid on every fresh load and nothing on a
+        // repeat visit, since the service worker holds the bundle.
+        //
+        // TEMPORARY, in the sense that source maps supersede it entirely:
+        // they give the original file and line as well as the name, and cost
+        // nothing to download because the browser never receives them. Remove
+        // this when they land, and take the 37 KB back — the plan ties the
+        // two together so it does not quietly persist after it stops earning
+        // anything.
+        //
+        // Note the option is `build.rollupOptions.output.keepNames`, not
+        // `esbuild.keepNames`. Vite 8 minifies with Oxc, so the esbuild
+        // option is silently ignored: setting it produces a byte-identical
+        // bundle, which looks exactly like "no measurable cost" if you do not
+        // check whether the names actually survived.
+        keepNames: true,
+      },
+    },
+  },
   define: {
     __COMPAT_GENERATION__: JSON.stringify(COMPAT_GENERATION),
     __APP_VERSION__: JSON.stringify(APP_VERSION),

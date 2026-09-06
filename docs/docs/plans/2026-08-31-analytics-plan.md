@@ -450,6 +450,48 @@ Client side, new work:
 - [ ] Storybook story and test for any fallback UI change, per the component
       rules
 
+### What the live verification found
+
+A temporary `/boom` route was added to raise a real React render error on the
+deployed site, because a browser console can raise a rejected promise and an
+error outside React — both confirmed reaching Cloud Error Reporting — but
+cannot raise a render error, which is the only path carrying React's component
+stack. One visit produced one report and three defects, none of which any test
+had caught, because each is about what the pipeline does to a real error rather
+than whether it runs.
+
+- [x] Keep function names through minification, so a stack names
+      `ErrorFallback` rather than `bj`. The option is
+      `build.rollupOptions.output.keepNames`; measured cost on this app is
+      **37 KB gzipped, 4.3%**, paid on a fresh load and nothing on a repeat
+      visit. Superseded by source maps below — remove it when they land
+- [ ] Stop redacting the release. A git revision routinely contains a run of
+      five or more digits, which the record-number rule replaces, so a version
+      arrives as `ee[redacted]adff29e…` and sometimes mangled twice over. That
+      defeats the whole point of baking a build identifier in: a version that
+      is corrupted differently each time cannot be matched to a deploy. A
+      release is a build constant, not user input, so it should be
+      shape-checked the way `error_code` is rather than run through prose
+      redaction
+- [ ] Stop doubling the message header. `build_error_message` prepends
+      `Name: message` and then appends the browser's stack, which already
+      begins with `Error: message`, so every report carries the header twice
+- [ ] Stop destroying positions in the component stack. `sanitiseComponentStack`
+      runs plain redaction, so every `https://…/index.js:60:56616` collapses to
+      `[url]`. `sanitiseStack` has careful handling for exactly this — strip
+      the origin, keep `:line:column` — and the component stack never got it.
+      This is the one to fix first: a position is the only thing a source map
+      can resolve against, so every report stored before the fix is
+      permanently unresolvable
+- [ ] Source maps, as the real answer to unreadable stacks. Emit them at build
+      time, upload to a **private** bucket keyed by release SHA from
+      `deploy.yml`, decide retention, and write a small resolver. Resolve at
+      read time rather than at ingest: maps run to several megabytes each, and
+      the ingest endpoint is public, unauthenticated and rate-limited, so
+      loading them there would add cost, state and a denial-of-service lever
+      for a benefit needed perhaps weekly. They must never be served to
+      browsers, since a reachable source map hands out the source
+
 ### Stop the backend handing out raw exception text
 
 Not analytics work, and not a blocker for shipping this phase, but keeping
@@ -1278,6 +1320,30 @@ scoping, versioning and audit logging.
 Findings from actually building and testing this, rather than from planning it.
 Each cost time to learn and would be cheap to relearn the hard way, so they are
 recorded here rather than left in commit messages.
+
+**A configuration option that does nothing looks exactly like one that costs
+nothing.** Preserving function names through minification was first tried as
+`esbuild: { keepNames: true }`, on the reasonable assumption that Vite
+minifies with esbuild. Vite 8 minifies with Oxc, so the option is silently
+ignored — and the measurement said the bundle was byte-identical, 3,089,427
+either way. Read quickly, that is a green light: names preserved, no cost. The
+only reason it was not taken as one is that the check also counted whether the
+names had actually survived, and they had not. The right key turned out to be
+`build.rollupOptions.output.keepNames`, which does work and does cost
+something: 892,697 bytes gzipped to 930,826, or 37 KB. The lesson is that a
+before-and-after measurement needs a third column asking whether the change
+took effect at all, because "no difference" is the same reading for "free" and
+for "ignored".
+
+**A test that runs the code is not a test that runs the system.** Every one of
+the three defects the `/boom` route found — a corrupted release, a doubled
+message header, a component stack stripped of its positions — sits in code
+that was covered by passing unit tests. The tests assert what the functions do
+with values the tests supply; none of them could see what happens to a real
+error from a real minified bundle, because none of them had one. The cheapest
+verification in this whole phase was one deliberate crash on the deployed
+site, and it was worth more than any amount of additional unit testing would
+have been.
 
 **A catch-all that cannot throw also cannot tell you it is broken.** The
 reporter swallows everything by design, because raising inside an already
