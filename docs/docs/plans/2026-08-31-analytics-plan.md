@@ -427,8 +427,23 @@ Client side, new work:
       does about it. `error` events carrying no error object are ignored,
       since those are a broken image or a stylesheet that 404ed, and a stack
       trace for one says nothing a developer could act on
+- [ ] Add a log-based metric counting client error reports, alongside
+      `public_site_visits` and `app_page_loads` in `infra/modules/analytics`.
+      It is the same counter the alert thresholds on and the dashboard charts,
+      so building it once serves both
+- [ ] Add a **Client errors (browser)** widget to the dashboard in
+      `infra/modules/analytics`. The dashboard is the one bookmark this plan
+      committed to, and browser errors are currently absent from it: reports
+      reach Cloud Error Reporting and Cloud Logging, but nothing on the
+      dashboard shows them. **Do not confuse this with the existing "Client
+      errors (4xx)" widget**, which counts HTTP 4xx responses at the load
+      balancer — someone requesting a bad URL — and has nothing to do with
+      JavaScript failing in a browser. That name will mislead whoever looks in
+      six months, so the new widget says "browser" and the old one should be
+      renamed to "HTTP 4xx responses" in the same change
 - [ ] Alert on new and spiking error groups through the existing notification
-      channels in `infra/modules/monitoring`
+      channels in `infra/modules/monitoring`, on the tiers already established
+      — Slack and email first, SMS on duration, phone last
 - [ ] Tests: sanitiser unit tests proving patient-shaped strings never survive
       it (`just uf`), and backend endpoint tests including the rate limit
       (`just ub`)
@@ -1498,6 +1513,16 @@ third-party comparisons and both contradicted by the vendors' own pages.
   it earns its keep when there is a budget to reallocate, and there is not one
   yet. Nothing is foreclosed by waiting, since load-balancer logs retain
   referrer and user-agent regardless of whether a dashboard reads them.
+
+- **A dashboard is only one bookmark if everything is actually on it** — the
+  decision below is worth only as much as its coverage, and Phase 1 quietly
+  broke it: client error reports go to Cloud Error Reporting and Cloud
+  Logging, both of which are separate consoles, and nothing on the dashboard
+  shows them. Error Reporting is the better tool for reading an individual
+  fault and should stay the place to do that; what the dashboard owes you is
+  the count, so a rising line is visible next to the uptime check without
+  remembering to look somewhere else. Recorded as a checklist item under
+  Phase 1 rather than left as an intention.
 
 - **One dashboard, outside the app, for all four things** — the thing you
   consult while something is broken cannot live inside the thing that broke, so
