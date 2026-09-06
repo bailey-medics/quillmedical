@@ -388,9 +388,15 @@ Client side, new work:
       `navigator.sendBeacon` rather than the `api` client — a documented
       exception to the "never raw fetch" rule, recorded under **Decisions**
 - [x] Add the context fields: `user_agent`, `viewport` and the in-memory
-      `session_id`, with `user_id` derived by the server. `route` is threaded
-      through as a caller-supplied parameter; what supplies it arrives with
-      the wiring below
+      `session_id`, with `user_id` derived by the server
+- [x] Supply `route` as the matched pattern. It is rebuilt from the router's
+      own params rather than pattern-matched out of the path, so the
+      identifier is removed because the router said it was one and not because
+      a filter recognised the shape. Tracked in a module variable, since
+      neither thing that reports an error can be handed it: an error boundary
+      is a class component, and the window listeners have no React context at
+      all. `sanitiseRoute` still runs over the result, because the field
+      crosses the wire like any other
 - [x] Bake a build identifier in, so a fault can be attributed to the deploy
       that produced it. `vite.config.ts` reads the git revision, falling back
       to an environment variable — which is the path that actually runs, since

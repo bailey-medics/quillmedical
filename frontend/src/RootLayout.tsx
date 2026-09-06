@@ -15,6 +15,7 @@ import MainLayout from "./components/layouts/MainLayout";
 import ErrorBoundary from "./components/error-boundary/ErrorBoundary";
 import { SearchProvider } from "@lib/search";
 import { NavigationBlocker } from "@lib/connectivity";
+import { useRouteTracking } from "@lib/error-reporting/useRouteTracking";
 
 /**
  * Layout Context
@@ -65,6 +66,12 @@ export default function RootLayout() {
   const [examMode, setExamMode] = useState(false);
   const [fluid, setFluid] = useState(false);
   const location = useLocation();
+
+  // Records which screen is showing, so an error report says where it
+  // happened. Lives here because it must be inside the router, and the two
+  // things that report errors — a class error boundary and the window
+  // listeners — can neither of them use a hook.
+  useRouteTracking();
 
   // Clear patient context when navigating away from patient-specific routes
   useEffect(() => {

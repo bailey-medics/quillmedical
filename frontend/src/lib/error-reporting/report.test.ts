@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { resetCurrentRouteForTests, setCurrentRoute } from "./currentRoute";
 import { reportError, resetReportingStateForTests } from "./report";
 
 /** Reads back what was handed to sendBeacon, as the server would see it. */
@@ -17,6 +18,7 @@ let beacon: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   resetReportingStateForTests();
+  resetCurrentRouteForTests();
   beacon = vi.fn().mockReturnValue(true);
   vi.stubGlobal("navigator", {
     sendBeacon: beacon,
@@ -224,5 +226,46 @@ describe("sanitisation is not optional", () => {
 
     const [body] = await sentBodies(beacon);
     expect(JSON.stringify(body)).not.toContain("jane.doe");
+  });
+});
+
+describe("the route a report carries", () => {
+  it("falls back to whatever the router last recorded", async () => {
+    // What the error boundary and the window listeners rely on: neither can
+    // be handed a route, because neither can use a hook.
+    setCurrentRoute("/patients/:id");
+
+    reportError(new Error("boom"), "window");
+
+    const [body] = await sentBodies(beacon);
+    expect(body?.["route"]).toBe("/patients/:id");
+  });
+
+  it("prefers a route the caller supplies", async () => {
+    setCurrentRoute("/patients/:id");
+
+    reportError(new Error("boom"), "boundary", { route: "/admin/users" });
+
+    const [body] = await sentBodies(beacon);
+    expect(body?.["route"]).toBe("/admin/users");
+  });
+
+  it("sends an empty route before anything has rendered", async () => {
+    reportError(new Error("boom"), "window");
+
+    const [body] = await sentBodies(beacon);
+    expect(body?.["route"]).toBe("");
+  });
+
+  it("redacts a route that reached it with an identifier still in it", async () => {
+    // Should not happen — the pattern is rebuilt from the router's params —
+    // but the route crosses the wire, so it gets the same backstop as every
+    // other field rather than being trusted.
+    setCurrentRoute("/patients/943 476 5919");
+
+    reportError(new Error("boom"), "window");
+
+    const [body] = await sentBodies(beacon);
+    expect(String(body?.["route"])).not.toContain("943 476 5919");
   });
 });
