@@ -456,9 +456,13 @@ A temporary `/boom` route was added to raise a real React render error on the
 deployed site, because a browser console can raise a rejected promise and an
 error outside React — both confirmed reaching Cloud Error Reporting — but
 cannot raise a render error, which is the only path carrying React's component
-stack. One visit produced one report and three defects, none of which any test
+stack. One visit produced one report and four defects, none of which any test
 had caught, because each is about what the pipeline does to a real error rather
-than whether it runs.
+than whether it runs. All four are fixed and confirmed against a second live
+crash: the release arrives as a clean forty-character revision matching the
+merge commit, the header appears once, the component stack keeps its positions
+(`at Boom (/assets/index-C26njY4p.js:60:65241)`), and both the route and its
+breadcrumb are present.
 
 - [x] Keep function names through minification, so a stack names
       `ErrorFallback` rather than `bj`. The option is
@@ -498,6 +502,12 @@ than whether it runs.
       loading them there would add cost, state and a denial-of-service lever
       for a benefit needed perhaps weekly. They must never be served to
       browsers, since a reachable source map hands out the source
+
+- [x] Revert the temporary `/boom` route now that it has done its work. It
+      found four defects a full passing suite could not, and all four are
+      verified fixed, so what remains is a route that crashes on purpose
+      sitting in production. Deliberate-crash code should not outlive the
+      check; the git history is the durable record that it happened
 
 ### Stop the backend handing out raw exception text
 
@@ -1327,6 +1337,19 @@ scoping, versioning and audit logging.
 Findings from actually building and testing this, rather than from planning it.
 Each cost time to learn and would be cheap to relearn the hard way, so they are
 recorded here rather than left in commit messages.
+
+**A successful deploy run is not a deployed build.** The first check of the
+four fixes came back looking identical to the report that prompted them —
+release still corrupted, header still doubled, positions still gone — which
+read as four fixes that had not worked. They had; the test was fifty-seven
+seconds early. The workflow run showed `success` because that is the status of
+the run's *creation* and progress, and the deploy finished at 15:22:51 against
+a check at 15:21:54. What settled it in seconds rather than an afternoon of
+re-reading the diff was the report itself: the bundle hash was unchanged and
+`serviceContext.version` still named the previous merge. The field whose
+corruption was one of the four defects is the field that proved the other three
+were only untested — which is the argument for a build identifier stated more
+plainly than any reasoning about it could have.
 
 **Only a full revision may skip redaction, because an NHS number is valid
 hex.** Fixing the corrupted release looked like a one-liner: stop running prose
