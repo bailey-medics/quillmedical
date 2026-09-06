@@ -398,9 +398,13 @@ Client side, new work:
       passes the commit it is deploying
 - [ ] Record route changes, API calls and auth events into the breadcrumb ring
       buffer
-- [ ] Extend `componentDidCatch` in
+- [x] Extend `componentDidCatch` in
       `frontend/src/components/error-boundary/ErrorBoundary.tsx` to report the
-      error as well as logging it
+      error as well as logging it. The `console.error` stays: it is what a
+      developer with the tools open actually reads, while the report is what
+      reaches somebody who is not watching. This is also the only place
+      React's component stack exists, which is what says *which part of the
+      interface* failed rather than which line of the bundle
 - [ ] Add a global handler for unhandled promise rejections and errors thrown
       outside React's tree, which the boundary cannot see
 - [ ] Alert on new and spiking error groups through the existing notification

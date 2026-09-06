@@ -3,7 +3,12 @@
  *
  * Catches unhandled React errors and displays a friendly fallback UI
  * instead of crashing the entire application to a white screen.
- * Logs errors to console.error for monitoring.
+ *
+ * Reports the error as well as logging it. The console line stays because it
+ * is what a developer with the tools open actually reads; the report is what
+ * reaches somebody who is not watching. Only this boundary has React's
+ * component stack, which says which part of the interface failed in a way the
+ * JavaScript frames do not.
  */
 
 import { Component } from "react";
@@ -13,6 +18,7 @@ import { IconAlertTriangle } from "@/components/icons/appIcons";
 import Icon from "@/components/icons";
 import IconTextButton from "@/components/button/IconTextButton";
 import { BodyText, Heading } from "@/components/typography";
+import { reportError } from "@lib/error-reporting/report";
 
 type Props = {
   children: ReactNode;
@@ -34,6 +40,9 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     console.error("ErrorBoundary caught:", error, errorInfo);
+    reportError(error, "boundary", {
+      componentStack: errorInfo.componentStack ?? undefined,
+    });
   }
 
   private handleReload = (): void => {
