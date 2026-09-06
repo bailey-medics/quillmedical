@@ -405,8 +405,14 @@ Client side, new work:
       reaches somebody who is not watching. This is also the only place
       React's component stack exists, which is what says *which part of the
       interface* failed rather than which line of the bundle
-- [ ] Add a global handler for unhandled promise rejections and errors thrown
-      outside React's tree, which the boundary cannot see
+- [x] Add a global handler for unhandled promise rejections and errors thrown
+      outside React's tree, which the boundary cannot see. Installed in
+      `main.tsx` before the tree mounts, so a failure during the first render
+      is reported rather than lost. Neither listener calls `preventDefault`:
+      the aim is to hear about the failure, not to change what the browser
+      does about it. `error` events carrying no error object are ignored,
+      since those are a broken image or a stylesheet that 404ed, and a stack
+      trace for one says nothing a developer could act on
 - [ ] Alert on new and spiking error groups through the existing notification
       channels in `infra/modules/monitoring`
 - [ ] Tests: sanitiser unit tests proving patient-shaped strings never survive
