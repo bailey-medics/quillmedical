@@ -405,6 +405,98 @@ resource "google_monitoring_alert_policy" "server_errors" {
     auto_close = "1800s" # 30 minutes
   }
 }
+# ---------- Alert policy — browser errors ----------
+#
+# The half of "where are things going wrong" that no server-side signal sees.
+# A React crash returns no 5xx, answers the uptime check normally, and leaves
+# the backend entirely healthy: the only evidence is the report the browser
+# sends. Without this, those reports sit in Cloud Error Reporting until
+# somebody thinks to look, which is the position this whole phase set out to
+# fix.
+#
+# First tier only — Slack and email. Deliberately not SMS or a phone call: a
+# spike in browser errors is a bad morning, not an outage, and the tiers exist
+# precisely so that things which do not warrant waking someone do not. If a
+# fault is bad enough to matter at three in the morning it will take the
+# backend or the uptime check with it, and those already escalate.
+
+resource "google_monitoring_alert_policy" "client_errors" {
+  count = var.client_errors_metric != null ? 1 : 0
+
+  project      = var.project_id
+  display_name = "Browser errors (${var.environment})"
+  combiner     = "OR"
+
+  documentation {
+    mime_type = "text/markdown"
+    subject   = "Browser errors above threshold"
+    content   = <<-EOT
+      The application reported more browser errors in five minutes than the
+      configured threshold. These are errors in the user's browser — a React
+      crash, a rejected promise, something thrown outside React's tree — not
+      server errors, so nothing else here would have caught them.
+
+      Cloud Error Reporting is where to read one: it groups identical faults
+      and shows the stack, with the component stack naming the part of the
+      interface that failed.
+
+      Errors: https://console.cloud.google.com/errors?project=$${project}
+
+      For the circumstances rather than the fault — the breadcrumbs leading up
+      to it, the route, the browser, and which build it came from:
+
+      ```
+      jsonPayload."@type"="type.googleapis.com/google.devtools.clouderrorreporting.v1beta1.ReportedErrorEvent"
+      jsonPayload.serviceContext.service="quill-frontend"
+      ```
+
+      Logs: https://console.cloud.google.com/logs/query?project=$${project}
+
+      Check `serviceContext.version` first. If every report names one build,
+      the last deploy caused it and rolling back is the fastest fix.
+    EOT
+  }
+
+  conditions {
+    display_name = "Browser error reports"
+
+    condition_threshold {
+      filter = "metric.type = \"logging.googleapis.com/user/${var.client_errors_metric}\""
+
+      comparison      = "COMPARISON_GT"
+      threshold_value = var.client_error_threshold
+      duration        = "0s"
+
+      # A DELTA metric, so ALIGN_SUM over the period reads as "this many
+      # reports in five minutes" rather than a rate per second — far easier to
+      # choose a threshold against, and the same shape as the 5xx policy.
+      #
+      # Summed across routes rather than grouped by them: a fault that breaks
+      # one screen and a fault that breaks the whole application are both
+      # worth hearing about, and grouping would need each route to breach
+      # separately before anything fired.
+      aggregations {
+        alignment_period     = "300s"
+        per_series_aligner   = "ALIGN_SUM"
+        cross_series_reducer = "REDUCE_SUM"
+      }
+
+      trigger {
+        count = 1
+      }
+    }
+  }
+
+  notification_channels = local.notification_channels
+
+  # No notification_rate_limit: Google rejects it on anything but a log-based
+  # policy, and this is a metric threshold. The same rule caught the 5xx
+  # policy, and only at apply time rather than in the plan.
+  alert_strategy {
+    auto_close = "1800s" # 30 minutes
+  }
+}
+
 # ---------- Alert policy — Cloud SQL disk filling ----------
 #
 # The failure that gives days of warning and still takes the service down if

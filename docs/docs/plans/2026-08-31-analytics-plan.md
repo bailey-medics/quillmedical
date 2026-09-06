@@ -441,9 +441,19 @@ Client side, new work:
       JavaScript failing in a browser. That name will mislead whoever looks in
       six months, so the new widget says "browser" and the old one should be
       renamed to "HTTP 4xx responses" in the same change
-- [ ] Alert on new and spiking error groups through the existing notification
-      channels in `infra/modules/monitoring`, on the tiers already established
-      — Slack and email first, SMS on duration, phone last
+- [x] Alert on browser errors through the existing notification channels in
+      `infra/modules/monitoring`. **First tier only — Slack and email.**
+      Deliberately not SMS or a phone call: a spike in browser errors is a bad
+      morning, not an outage, and the tiers exist precisely so that things not
+      warranting a 3am wake-up do not cause one. A fault bad enough to matter
+      at that hour takes the backend or the uptime check with it, and both
+      already escalate
+- [ ] Revisit `client_error_threshold`, which is currently a guess. It was set
+      to ten reports in five minutes before the metric had collected anything,
+      chosen loose enough that one person's bad session does not fire it.
+      A week of real counts is what should set it — and the first thing that
+      data will say is whether something in the app has been throwing quietly
+      all along
 - [ ] Tests: sanitiser unit tests proving patient-shaped strings never survive
       it (`just uf`), and backend endpoint tests including the rate limit
       (`just ub`)
