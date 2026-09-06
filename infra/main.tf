@@ -385,6 +385,11 @@ module "monitoring" {
   pagerduty_service_key      = data.google_secret_manager_secret_version.pagerduty_service_key.secret_data
   slack_channel_display_name = var.slack_channel_display_name
   cloud_run_services         = var.cloud_run_services
+
+  # The analytics module is conditional on a landing domain, so the metric may
+  # not exist. Null here means the browser error policy is not created, rather
+  # than a policy pointing at a metric that was never made.
+  client_errors_metric = var.landing_domain != null ? module.analytics[0].client_errors_metric : null
 }
 
 # ---------- Analytics: usage metrics, archive, and the shared dashboard ----------

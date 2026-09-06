@@ -81,3 +81,15 @@ variable "critical_duration" {
   type        = string
   default     = "1800s"
 }
+
+variable "client_errors_metric" {
+  description = "Name of the log-based metric counting browser error reports. Null when the analytics module is not deployed, in which case no client error alert is created."
+  type        = string
+  default     = null
+}
+
+variable "client_error_threshold" {
+  description = "Browser error reports in five minutes above which the first tier fires. A starting figure rather than a measured one: the metric had collected no data when this was written, so it is deliberately loose enough that one person's bad session does not raise an alert, and should be revisited once there is a week of real counts."
+  type        = number
+  default     = 10
+}
