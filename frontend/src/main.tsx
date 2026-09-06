@@ -54,8 +54,6 @@ import { wireUpdateChecks } from "@lib/swUpdateGate";
 import { installGlobalErrorReporting } from "@lib/error-reporting/globalHandlers";
 
 import RootLayout from "./RootLayout";
-// TEMPORARY — remove with the /boom route once reporting has been verified.
-import Boom from "./pages/Boom";
 import AdminPage from "./pages/AdminPage";
 import AdminUsersPage from "./pages/admin/users/AdminUsersPage";
 import AdminPatientsPage from "./pages/admin/patients/AdminPatientsPage";
@@ -202,12 +200,6 @@ const router = createBrowserRouter([
     ),
     children: [
       { path: "/", element: <HomeRedirect /> },
-
-      // TEMPORARY — a deliberate crash, to prove a React render error reaches
-      // Error Reporting with its component stack. Must stay inside these
-      // children: a route outside them renders the router's own error element
-      // instead of the boundary, which would prove nothing. Revert once seen.
-      { path: "/boom", element: <Boom /> },
 
       // Clinical routes — require FHIR/EHRbase connectivity
       {
