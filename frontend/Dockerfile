@@ -49,6 +49,13 @@ ENV VITE_VAPID_PUBLIC=${VITE_VAPID_PUBLIC}
 ARG VITE_CLINICAL_SERVICES_ENABLED=true
 ENV VITE_CLINICAL_SERVICES_ENABLED=${VITE_CLINICAL_SERVICES_ENABLED}
 
+# Build identifier, reported with client errors so a fault can be tied to the
+# deploy that produced it. The build context is `COPY frontend/ .` with no
+# `.git`, so vite.config.ts cannot read the revision itself and falls back to
+# "dev" — deploy.yml passes the real commit in.
+ARG VITE_APP_VERSION
+ENV VITE_APP_VERSION=${VITE_APP_VERSION}
+
 # Generate TypeScript types from shared YAML (Yarn 4 skips pre* hooks)
 RUN yarn generate:types
 

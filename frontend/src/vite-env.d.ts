@@ -15,3 +15,4 @@ interface ImportMeta {
  * src/lib/compat-generation/compatGeneration.ts.
  */
 declare const __COMPAT_GENERATION__: number;
+declare const __APP_VERSION__: string;
