@@ -847,7 +847,7 @@ they are ready. That also gives a rollback, which does not exist today.
         `active_version` null, and nothing else writes it, so once the candidate queries
         follow the pointer every organisation would have served nothing.
       - Creating the row now pins the newest version **that organisation** has. Not the
-        `config_row` already in scope: that was looked up for the *caller's* organisation
+        `config_row` already in scope: that was looked up for the _caller's_ organisation
         to check the bank exists, and versions are per organisation
         (`UniqueConstraint(organisation_id, question_bank_id, version)`). Null when the
         target has nothing synced, which is honest — there is no version to serve.
@@ -879,11 +879,43 @@ they are ready. That also gives a rollback, which does not exist today.
         it there would be a trap.
       - Null is distinguishable from "promoted version 1": an admin seeing null knows the
         bank has never been opened, not that it is up to date.
-- [ ] **Promotion endpoint** for staff org admins, scoped to their own organisation.
-      Validates that the target version exists for that bank, and records who moved it and
-      when. Rolling back is the same operation pointing at an earlier version.
+- [ ] **Promotion endpoint**, scoped to the caller's own organisation. Validates that the
+      target version exists for that bank, and records who moved it and when. Rolling back
+      is the same operation pointing at an earlier version.
+      - **Gated on `manage_teaching_content`, the same competency every other teaching admin
+        endpoint uses, and scoped to the caller's own organisation** — not the target
+        organisation in the path. The plan originally said "staff org admins"; no such role
+        exists. Organisation membership carries no role at all, and system permissions are
+        explicitly not for data access, so the competency is the only honest gate available
+        today.
+      - This is knowingly provisional. Who may promote is exactly the question
+        `2026-09-06-org-scoped-access-findings.md` exists to answer, and that document lists
+        this endpoint as somewhere to revisit. Inventing a half-version of the new model here
+        would be worse than using the existing one and marking it.
+      - **Do this before pausing teaching.** Without it the pointer can be set once and never
+        moved: a bank goes live at version 1, version 2 imports, candidates correctly keep
+        version 1 — and nothing can ever advance them. Safe, but it blocks publishing a
+        revision entirely, which is worse than the bug it replaced.
 - [ ] **Admin UI** — surface the two version numbers and a promote control on the existing
       admin teaching page, which already carries the live/closed toggle.
+
+### Order of work, and where this pauses
+
+- [ ] **Promotion endpoint** — the last thing needed before teaching can be left alone. It
+      is what turns the active-version work from safe into usable.
+- [ ] **Finish and merge the active-version pull request** once it lands. Three commits —
+      pin the pointer, follow it, show it — plus this one. That is a genuine stopping point:
+      the feature works end to end through the API.
+- [ ] **Then move to `2026-09-06-org-scoped-access-findings.md`.** It is a plan rather than
+      code, so nothing rots while it waits, and it answers a question this phase had to work
+      around. Finish it there: settle where a request's context comes from, what becomes of
+      `system_permissions`, and how the staff and patient namespaces meet.
+- [ ] **Come back for the admin interface.** It is the only teaching item left, it depends on
+      no unanswered question, and by then the promotion endpoint it drives will have been in
+      use through the API.
+
+The admin interface deliberately waits rather than shipping with the endpoint: a screen
+without an endpoint blocks the workflow, an endpoint without a screen does not.
 
 ## Follow-up: a decision file for teaching tooling changes
 
