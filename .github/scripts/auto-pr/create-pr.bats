@@ -99,6 +99,23 @@ body_arg() {
   grep -qx -- "--draft" "$CALLS"
 }
 
+# The title is built with substring expansion rather than bash 4's `${var^}`,
+# so the cases that expansion has to get right are worth pinning: more than one
+# hyphen, and nothing at all after the slash.
+@test "capitalises only the first word of a multi-word branch name" {
+  run bash "$SCRIPT" feature/add-cover-image
+
+  [ "$status" -eq 0 ]
+  [ "$(arg_after --title)" = "Feature: Add cover image" ]
+}
+
+@test "does not fail when the branch has nothing after the prefix" {
+  run bash "$SCRIPT" feature/
+
+  [ "$status" -eq 0 ]
+  [ "$(arg_after --title)" = "Feature: " ]
+}
+
 @test "uses the placeholder body" {
   run bash "$SCRIPT" feature/add-login
 

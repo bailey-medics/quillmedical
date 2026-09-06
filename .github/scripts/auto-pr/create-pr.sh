@@ -33,7 +33,9 @@ case "$PREFIX" in
   hotfix)  TYPE="Hotfix" ;;
   *)       TYPE="$PREFIX" ;;
 esac
-TITLE="${TYPE}: ${REMAINDER^}"
+# `${REMAINDER^}` would be shorter, but it is bash 4 syntax and macOS ships
+# bash 3.2 — see docs/docs/plans/2026-09-02-bats-ubuntu-parity-plan.md.
+TITLE="${TYPE}: $(printf '%s' "${REMAINDER:0:1}" | tr '[:lower:]' '[:upper:]')${REMAINDER:1}"
 
 # Placeholder body. This repository has no pull request template; the real
 # description is written when the branch is finished (see /crp final).

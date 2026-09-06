@@ -24,6 +24,23 @@ on:
     # that job. `ready_for_review` covers the case instead.
     types: [reopened, ready_for_review, synchronize]
     branches: [main]
+  # A PR entering the merge queue needs these two required checks to report
+  # again against the merge-group ref, or the queue hangs waiting for a
+  # context that never posts (see ci.yml's merge_group trigger). They do NOT
+  # re-run detection or ask for a second approval here: detection needs PR
+  # context (github.event.pull_request.*) that doesn't exist on this event,
+  # and the approval is scoped to the PR's own head SHA and already gated
+  # entry to the queue in the first place. So api_schema_diff and
+  # db_destructive_migration_check are scoped to explicitly skip on
+  # merge_group below, which cascades to the gate jobs skipping too — and a
+  # skipped required check counts as passing (see api_breaking_change_gate's
+  # comment). This is a deliberate scope limit: it trusts the PR-level
+  # decision rather than re-detecting a breaking change that only appears
+  # from combining this PR with another one ahead of it in the queue. The
+  # other required checks (tests, E2E) do still re-verify the combined
+  # functional behaviour.
+  merge_group:
+    types: [checks_requested]
 
 permissions:
   contents: read
@@ -56,7 +73,7 @@ jobs:
   # and nothing more: there is one Slack message per gate, sent when a break
   # needs approval, matching the migration gate exactly.
   api_schema_diff:
-    if: github.event.pull_request.draft == false
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
     runs-on: ubuntu-24.04
     name: API breaking-change check
     timeout-minutes: 15
@@ -329,7 +346,7 @@ jobs:
 
   # ---------- Destructive DB migration check ----------
   db_destructive_migration_check:
-    if: github.event.pull_request.draft == false
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
     runs-on: ubuntu-24.04
     name: DB destructive migration check
     timeout-minutes: 10

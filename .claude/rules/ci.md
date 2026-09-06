@@ -5,15 +5,117 @@ paths:
 
 # CI + Merge Strategy
 
-## The rule: Rebase before merge, not after
+## The rule: use the merge queue, don't rebase-and-wait manually
 
-**When to rebase:**
+Once a PR is approved and its own checks are green, add it to the merge
+queue with the "Merge when ready" button. GitHub then builds a temporary
+merge-group ref combining the PR with the current tip of `main`, re-runs the
+required checks in `ci.yml` against that ref, and merges automatically once
+green.
 
-- Your PR is behind main (update button appears on GitHub)
-- You want your PR to test against the latest main
-- **Before** the PR is merged
+Nothing merges itself. Renovate PRs included: every group in `renovate.json`
+sets `automerge: false`, so a human reviews each one and queues it by hand.
 
-**How to rebase before merge:**
+No manual rebase, no manual force-push, no waiting around to click merge
+the moment CI goes green — the queue does the "test against latest main"
+step that used to require rebasing by hand, and it does it for every queued
+PR in turn without you babysitting each one.
+
+**Batching is disabled** (`infra/github/branch_rules.tf`,
+`merge_queue.max_entries_to_merge = 1`): PRs are tested and merged one at a
+time, not grouped together. A PR that fails its queue re-check is dequeued
+on its own — the next PR in the queue carries on unaffected.
+
+**What doesn't re-run in the queue:** the two human-approval gates (API
+breaking-change review, DB destructive migration review) are required on
+the PR itself — a PR can't enter the queue without them already passing —
+but they don't re-run against the merge-group ref. Their detection needs
+real PR context a merge-group ref doesn't have, and re-asking for approval
+on every queue entry would defeat the point of approving once. They report
+`skipped` there instead (which counts as passing, same as everywhere else
+in `gate-breaking.yml`). See that workflow's `merge_group` trigger comment
+for the full reasoning and its one known scope limit: a breaking
+interaction between two queued PRs, neither breaking alone, isn't caught by
+these two checks specifically — the other required checks (unit tests,
+E2E) still verify the combined functional behaviour of the merge-group ref.
+
+## Changing anything the queue depends on
+
+The queue is easy to break from a distance, and it fails quietly. Every
+failure below reported only as "removed from the merge queue due to failing
+Branch Protection rules", or a bare check count, with nothing in the Actions
+tab explaining it. All three were hit for real when the queue was first
+turned on.
+
+**Every required check needs a `merge_group` trigger.** A check listed in
+`required_status_checks` whose workflow doesn't fire on `merge_group` never
+reports against the merge-group ref, so the entry waits until
+`check_response_timeout_minutes` and is then dropped. There is no way to
+mark a check "required on the PR but not in the queue" — GitHub uses one
+list for both. So when you add a required check, add the trigger with it.
+
+**Don't let a workflow fire on both `push` and `merge_group`.** Creating the
+queue branch fires a `push` event too. If both runs share a concurrency
+group keyed on `github.ref`, `cancel-in-progress` makes one kill the other,
+and a cancelled required check reads as a failure. `ci.yml` excludes
+`gh-readonly-queue/**` from its push trigger and keys concurrency by
+`github.event_name` as well as `github.ref`.
+
+**The naming ruleset must permit the queue's own branches.** The queue builds
+each entry on `gh-readonly-queue/main/pr-<n>-<sha>`. `branch_rules.tf` allows
+that prefix in the `branch_name_pattern` regex — an fnmatch exclusion alone
+was tried first and did not match.
+
+### Breaking the deadlock
+
+An active queue removes the ordinary merge button, so a fix to the rulesets
+or workflows the queue depends on can't reach `main` — the queue is broken
+by the very bug being fixed. Use `var.merge_queue_enabled` rather than
+deleting configuration:
+
+```bash
+# add to infra/github/terraform.tfvars, DON'T commit it
+merge_queue_enabled = false
+
+just terraform-github        # queue off, ordinary merge button returns
+# merge the PR normally
+
+git checkout infra/github/terraform.tfvars
+just terraform-github        # queue back on, fix now live on main
+```
+
+Terraform reads that file from disk, not from git, so no pull request is
+needed to flip it and `main` never carries the queue switched off.
+
+## Every PR opens as a draft, and that is load-bearing
+
+`ci.yml`'s heavy tier and every job in `gate-breaking.yml` trigger on
+`ready_for_review` and `synchronize`, never on `opened` — see that workflow's
+trigger comment for why `opened` is excluded. The exclusion is only safe
+because `auto-pr.yml` creates every PR with `gh pr create --draft`, so marking
+one ready fires those checks a moment later.
+
+Renovate opens its own PRs, and opened them non-draft, which broke that
+invariant quietly. A Renovate PR with a single commit gets no `opened` run, no
+`ready_for_review` (it was never a draft) and no `synchronize` (no second
+commit), so four required contexts — `API breaking-change check`, `API
+breaking-change review gate`, `DB destructive migration check` and `DB
+destructive migration review gate` — were never reported at all. The PR sat on
+"Expected — Waiting for status to be reported" with nothing in the Actions tab,
+failing the same way as the queue faults above. Such PRs only ever came unstuck
+by accident: someone clicked "Update branch", and the `synchronize` that
+produced finally ran the gates.
+
+`renovate.json` now sets `draftPR: true`, so Renovate follows the same
+lifecycle as everything else. **Anything else that opens a PR must open it as a
+draft too**, or have its trigger added to both workflows.
+
+To unstick a PR already in this state, click "Update branch", or convert it to
+a draft and mark it ready again.
+
+## When you still need to rebase manually
+
+The queue can't resolve real content conflicts for you.
 
 ```bash
 git fetch origin
@@ -23,7 +125,8 @@ git rebase origin/main
 git push origin your-feature-branch --force-with-lease
 ```
 
-Then the PR tests re-run against the rebased code. Once the PR passes, merge it normally.
+Only needed when GitHub reports an actual merge conflict — not just "behind
+main," which the queue handles for you.
 
 **When NOT to rebase:**
 
@@ -52,7 +155,7 @@ A merged feature branch should never be rebased again. If you try to `git rebase
 
 ## Why this works
 
-1. **All tests run in the PR context** — fast tier on every push (catch regressions), heavy tier on non-draft PRs (integration testing)
-2. **No CI on `main`** — branch protection requires the PR to be rebased onto (up to date with) main and all checks green before the merge button unlocks, so the merge commit is already fully tested and no post-merge run is needed
-3. **Clean history** — rebases prevent merge-commit proliferation; history stays linear
-4. **No rebase-after-merge surprise** — developers delete old branches, never encounter the trap
+1. **All tests run in the PR context, and again in the queue** — fast tier on every push, heavy tier on non-draft PRs, and both tiers again against the merge-group ref before the actual merge — so a PR is always tested against current main without anyone force-pushing a rebase.
+2. **History** — the queue merges with a merge commit, the same way this repo already merges. Note the graph is less linear than the old flow produced: rebasing a PR up to date before merging put its merge commit in a straight line, whereas the queue tests on a temporary ref instead of rebasing the branch, leaving real branch-and-merge diamonds. Switch `merge_method` in `infra/github/branch_rules.tf` to `REBASE` or `SQUASH` if linear history matters more than matching the current merge button.
+3. **No rebase-after-merge surprise** — developers delete old branches, never encounter the trap.
+4. **Failures don't block the queue** — batching is off, so one PR's failure only dequeues that PR; everything behind it keeps moving.
