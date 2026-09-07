@@ -260,6 +260,70 @@ Chasing down who approved someone decades ago is not possible, so do not pretend
       they signed is a query followed by a human decision — never an automatic cascade, which
       would take out a hospital.
 
+## Settled: where a request's context comes from
+
+The question that had to be answered before any table, because it decides what the tables
+are asked. Counting the code rather than arguing it:
+
+- **21 routes already name the place** — 19 in `main.py`, 2 in the teaching router — taking
+  an `org_id` or `site_id` in the path.
+- **11 routes infer it**, all teaching admin routes, all through
+  `_get_user_org_id`, which is `_get_user_org_ids(user, db)[0]`: whichever organisation the
+  set happens to yield first. `list_items`, `validate_items`, `sync_items`, `list_results`,
+  `list_syncs`, `list_admin_banks`, `sync_all_banks`, `update_settings`, `get_settings`,
+  `get_admin_bank_detail`, `list_bank_organisations`. None of them takes a parameter that
+  could say which — there is nothing in the signature to name a place with.
+- **28 call sites resolve every organisation a person is in** and use it as a filter, which
+  is a different thing and stays.
+- **Nothing is session- or header-based.** There is no `X-Organisation`, no server-side
+  selection, and the frontend's `AuthContext` carries no organisation at all.
+
+### The rule
+
+**The server never guesses which place a request is about.** That, rather than
+path-versus-session, is the decision. A session selector and a path parameter are both fine
+if the client states them; picking the first row of a set is what has produced three bugs in
+two days.
+
+Context comes from exactly two places, in this order:
+
+1. **Named in the path.** The organisation or site is a path parameter, and the caller's
+   membership of it is checked. This is the default and covers most routes.
+2. **Determined by the object being acted on.** Where the URL names a thing rather than a
+   place — `/sites/{site_id}` — the place is the object's own organisations, and membership
+   is checked against those. `_require_site_in_own_org` is this shape.
+
+And never from the caller. If a route cannot say which place it means, that is a missing
+parameter, not a reason to infer one.
+
+### What that costs
+
+The 11 inferred routes each need a place in the path or the query, and their callers
+updated. That is the real bill for this decision, and it is worth paying: `update_settings`
+is on that list, and its neighbour `update_bank_org_settings` was one of the three bugs.
+
+It is also more than an afternoon, because moving a place into the path changes the URL, and
+`.claude/rules/backend.md` treats that as a breaking API change: expand first with the new
+route, deprecate the old one, contract a release later, with an `oasdiff` finding and a
+decision file for each. Putting the place in the **query** instead is additive while it
+stays optional, so the cheaper sequence is query parameter first, then require it, and only
+reshape URLs where the route reads better for it.
+
+Two of the three came from exactly this pattern — `_get_user_org_id` answering a question
+the caller never asked. The third, the site routes, came from asking no question at all.
+
+### Why not a session context
+
+It was the tempting answer, because choosing "I am at St Mary's today" matches how
+clinicians work. But it puts the most security-relevant part of a request in server state
+rather than in the request, so a stale tab acts on the wrong place with no way to tell from
+the log. Keep the choosing in the client — it holds the selection and puts it in the URL —
+and the audit trail then records where every request meant, because the request says so.
+
+This does mean the frontend needs a notion of "which organisation am I looking at",
+which it currently has nowhere: `AuthContext` has no organisation field. That work belongs
+with the interface, not here, but nothing on the backend should wait for it.
+
 ## The cases any schema must express
 
 Written as acceptance criteria rather than prose, because a candidate schema either handles
@@ -281,12 +345,6 @@ them or does not:
 
 ## Still open
 
-- **Where a request's context comes from.** The biggest unanswered question, and it shapes
-  every endpoint rather than the tables. Today it is inferred:
-  `_get_user_org_ids(user, db)[0]` silently picks the first, which is precisely the
-  multi-membership case this work exists for. A path parameter is explicit; a chosen session
-  context matches how clinicians work. Deciding storage before this risks a schema that
-  cannot answer the request.
 - **What becomes of `system_permissions`.** `superadmin` is genuinely global — Quill's own
   operators. `admin` and `staff` look like capabilities or positions at a place.
   `single-user` may be nothing more than the absence of any grant.
@@ -302,9 +360,12 @@ them or does not:
 
 ## What I would do first
 
-1. **Fix the unguarded cross-organisation write now, independently.** It is live, it
+1. [x] **Fix the unguarded cross-organisation write now, independently.** It is live, it
    predates this discussion, and closing it does not depend on any decision here.
-2. **Decide where context comes from before touching tables.**
+   Done, and it was three holes rather than one: `update_bank_org_settings`, then all eight
+   site routes, then a `get_site` bug found while testing them.
+2. [x] **Decide where context comes from before touching tables.** Settled above: named in
+   the path, or determined by the object acted on, and never inferred from the caller.
 3. **Write the acceptance criteria above as failing tests**, before the model changes. A red,
    named test is worth more than a paragraph.
 4. **Then choose the storage**, knowing what it has to answer.
