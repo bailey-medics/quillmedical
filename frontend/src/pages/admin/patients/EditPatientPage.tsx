@@ -9,9 +9,8 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { Stack, Table, Skeleton, Center, Alert } from "@mantine/core";
-import { IconAlertCircle, IconEdit } from "@components/icons/appIcons";
-import Icon from "@/components/icons";
+import { Stack, Table, Skeleton, Center } from "@mantine/core";
+import { IconEdit } from "@components/icons/appIcons";
 import IconButton from "@/components/button/IconButton";
 import BaseCard from "@/components/base-card/BaseCard";
 import {
@@ -22,6 +21,7 @@ import {
 } from "@/components/typography";
 import PageHeader from "@/components/page-header";
 import { api } from "@/lib/api";
+import ErrorState from "@/components/error-state/ErrorState";
 
 interface Patient {
   id: string;
@@ -109,13 +109,7 @@ export default function EditPatientPage() {
         {loading ? (
           <Skeleton height={400} />
         ) : error ? (
-          <Alert
-            icon={<Icon icon={<IconAlertCircle />} size="sm" />}
-            title="Error loading patient"
-            color="var(--alert-color)"
-          >
-            {error}
-          </Alert>
+          <ErrorState title="Error loading patient" message={error} />
         ) : (
           <BaseCard>
             <Heading>TODO: Patient edit form</Heading>
@@ -144,13 +138,7 @@ export default function EditPatientPage() {
           <Skeleton height={50} />
         </Stack>
       ) : error ? (
-        <Alert
-          icon={<Icon icon={<IconAlertCircle />} size="sm" />}
-          title="Error loading patients"
-          color="var(--alert-color)"
-        >
-          {error}
-        </Alert>
+        <ErrorState title="Error loading patients" message={error} />
       ) : patients.length === 0 ? (
         <Center p="xl">
           <EmptyState>No patients found</EmptyState>

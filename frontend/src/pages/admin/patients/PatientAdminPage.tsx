@@ -34,6 +34,7 @@ import { api } from "@/lib/api";
 import { extractAvatarGradientIndex } from "@/lib/fhir-patient";
 import type { Patient } from "@/domains/patient";
 import type { LayoutCtx } from "@/RootLayout";
+import ErrorState from "@/components/error-state/ErrorState";
 
 /**
  * FHIR Extension
@@ -249,13 +250,10 @@ export default function PatientAdminPage() {
 
   if (error || !patient) {
     return (
-      <Alert
-        icon={<Icon icon={<IconAlertCircle />} size="lg" />}
+      <ErrorState
         title="Error loading patient"
-        color="var(--alert-color)"
-      >
-        {error || "Patient not found"}
-      </Alert>
+        message={error || "Patient not found"}
+      />
     );
   }
 

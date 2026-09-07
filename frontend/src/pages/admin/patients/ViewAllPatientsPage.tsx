@@ -7,18 +7,14 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Stack, Skeleton, Center, Alert } from "@mantine/core";
-import {
-  IconAlertCircle,
-  IconClock,
-  IconUserOff,
-} from "@/components/icons/appIcons";
-import Icon from "@/components/icons";
+import { Stack, Skeleton, Center } from "@mantine/core";
+import { IconClock, IconUserOff } from "@/components/icons/appIcons";
 import DataTable, { type Column } from "@/components/tables/DataTable";
 import PageHeader from "@/components/page-header";
 import { StateMessage } from "@/components/message-cards";
 import { api } from "@/lib/api";
 import { FHIR_POLLING_TIME } from "@/lib/constants";
+import ErrorState from "@/components/error-state/ErrorState";
 
 interface Patient {
   id: string;
@@ -111,13 +107,7 @@ export default function ViewAllPatientsPage() {
       <PageHeader title="All patients" />
 
       {error ? (
-        <Alert
-          icon={<Icon icon={<IconAlertCircle />} size="sm" />}
-          title="Error loading patients"
-          color="var(--alert-color)"
-        >
-          {error}
-        </Alert>
+        <ErrorState title="Error loading patients" message={error} />
       ) : loading ? (
         <Stack gap="xs">
           <Skeleton height={50} />
