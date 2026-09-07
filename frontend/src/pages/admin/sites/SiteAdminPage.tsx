@@ -8,16 +8,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Stack, Group, Skeleton, Alert } from "@mantine/core";
+import { Stack, Group, Skeleton } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import { BodyTextInline, BodyTextBold, Heading } from "@/components/typography";
-import {
-  IconAlertCircle,
-  IconPencil,
-  IconUserMinus,
-} from "@components/icons/appIcons";
+import { IconPencil, IconUserMinus } from "@components/icons/appIcons";
 import PageHeader from "@/components/page-header";
-import Icon from "@/components/icons";
 import ActiveStatusBadge from "@/components/badge/ActiveStatusBadge";
 import AddButton from "@/components/button/AddButton";
 import IconButton from "@/components/button/IconButton";
@@ -27,6 +22,7 @@ import DataTableControlled from "@/components/tables/DataTableControlled";
 import { ConfirmModal } from "@/components/confirm-modal";
 import { usePageMessage } from "@/components/page-message";
 import { api } from "@/lib/api";
+import ErrorState from "@/components/error-state/ErrorState";
 
 interface SiteStaff {
   id: number;
@@ -59,16 +55,14 @@ export default function SiteAdminPage() {
   const navigate = useNavigate();
   const { showMessage } = usePageMessage();
   const [site, setSite] = useState<SiteDetails | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Without an id there is nothing to fetch, so the page does not begin in a
+  // loading state and the effect below has nothing to do.
+  const [loading, setLoading] = useState(Boolean(id));
   const [error, setError] = useState<string | null>(null);
   const [removingStaff, setRemovingStaff] = useState<SiteStaff | null>(null);
 
   const fetchSite = useCallback(async () => {
-    if (!id) {
-      setError("No site ID provided");
-      setLoading(false);
-      return;
-    }
+    if (!id) return;
 
     try {
       const data = await api.get<SiteDetails>(`/sites/${id}`);
@@ -81,7 +75,15 @@ export default function SiteAdminPage() {
   }, [id]);
 
   useEffect(() => {
-    fetchSite();
+    // Deferred rather than called straight, so no state is set while the
+    // effect body runs. The genuine synchronous path was the missing-id case
+    // above, which now returns early and is derived at render instead; the
+    // lint rule analyses one function at a time and cannot see that
+    // `fetchSite` awaits before touching state, so the wrapper makes the
+    // deferral explicit — and makes the floating promise explicit with it.
+    void (async () => {
+      await fetchSite();
+    })();
   }, [fetchSite]);
 
   async function confirmRemoveStaff() {
@@ -149,13 +151,10 @@ export default function SiteAdminPage() {
 
   if (error || !site) {
     return (
-      <Alert
-        icon={<Icon icon={<IconAlertCircle />} size="lg" />}
+      <ErrorState
         title="Error loading site"
-        color="var(--alert-color)"
-      >
-        {error || "Site not found"}
-      </Alert>
+        message={error ?? (id ? "Site not found" : "No site ID provided")}
+      />
     );
   }
 
