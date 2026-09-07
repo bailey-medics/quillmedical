@@ -2,6 +2,7 @@
 
 from unittest.mock import patch
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.models import Organisation, User, organisation_staff_member
@@ -1347,3 +1348,55 @@ class TestOrganisationEndpoints:
         )
         assert response.status_code == 409
         assert "already a member" in response.json()["detail"]
+
+
+class TestFailuresDoNotLeakExceptionText:
+    """A 500 must say what went wrong, not what the exception said.
+
+    These endpoints wrap EHRbase, HAPI FHIR and the database, and used to
+    return ``str(e)`` to the caller — text that can carry a name, an NHS
+    number, a request URL with an identifier in it, or a fragment of a
+    clinical document, and which pages render on screen via ``err.message``.
+
+    The guard in ``test_no_raw_exceptions_in_details.py`` stops the shape
+    coming back. This checks the behaviour: that a real failure produces the
+    authored message and the code, and that the exception's own text is
+    nowhere in the response.
+    """
+
+    LEAK = "connection refused: patient Jane Doe 943 476 5919 at db-host:5432"
+
+    def test_demographics_failure_returns_an_authored_message(
+        self,
+        authenticated_client: TestClient,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        def explode(*args: object, **kwargs: object) -> None:
+            raise RuntimeError(self.LEAK)
+
+        monkeypatch.setattr("app.main.read_fhir_patient", explode)
+
+        resp = authenticated_client.get("/api/patients/abc123/demographics")
+
+        assert resp.status_code == 500
+        detail = resp.json()["detail"]
+        assert detail["message"] == "Could not load the demographics"
+        assert detail["error_code"] == "demographics_fetch_failed"
+
+    def test_no_part_of_the_exception_reaches_the_caller(
+        self,
+        authenticated_client: TestClient,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """The whole point: none of it, not just the shape of it."""
+
+        def explode(*args: object, **kwargs: object) -> None:
+            raise RuntimeError(self.LEAK)
+
+        monkeypatch.setattr("app.main.read_fhir_patient", explode)
+
+        resp = authenticated_client.get("/api/patients/abc123/demographics")
+
+        body = resp.text
+        for fragment in ("943 476 5919", "Jane Doe", "db-host", "connection"):
+            assert fragment not in body
