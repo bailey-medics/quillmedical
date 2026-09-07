@@ -888,10 +888,10 @@ they are ready. That also gives a rollback, which does not exist today.
         exists. Organisation membership carries no role at all, and system permissions are
         explicitly not for data access, so the competency is the only honest gate available
         today.
-      - This is knowingly provisional. Who may promote is exactly the question
-        `2026-09-06-org-scoped-access-findings.md` exists to answer, and that document lists
-        this endpoint as somewhere to revisit. Inventing a half-version of the new model here
-        would be worse than using the existing one and marking it.
+      - This is knowingly provisional — see **Provisional: who may promote** below, which
+        tracks it as outstanding work rather than as a footnote on a finished item.
+        Inventing a half-version of the new model here would be worse than using the
+        existing one and marking it.
       - **Do this before pausing teaching.** Without it the pointer can be set once and never
         moved: a bank goes live at version 1, version 2 imports, candidates correctly keep
         version 1 — and nothing can ever advance them. Safe, but it blocks publishing a
@@ -926,6 +926,65 @@ they are ready. That also gives a rollback, which does not exist today.
 
 The admin interface deliberately waits rather than shipping with the endpoint: a screen
 without an endpoint blocks the workflow, an endpoint without a screen does not.
+
+### Provisional: who may promote
+
+One thing shipped in this phase is knowingly wrong, so it is recorded here as work rather
+than as a note on a completed item. The docstring on `promote_bank_version` in
+`backend/app/features/teaching/router.py` says so in as many words:
+
+> Restricted to the caller's own organisations because nothing models which organisations
+> one may promote on behalf of.
+
+- [ ] **Replace the gate on `promote_bank_version` once
+      `2026-09-06-org-scoped-access-findings.md` is settled.** Today it is
+      `manage_teaching_content` plus a membership check against `_get_user_org_ids`. The
+      competency is global — holding it anywhere grants it everywhere — which is problem 1
+      in that document.
+      - What is missing is any way to say _"may promote on behalf of organisation X"_.
+        Organisation membership carries no role, and `system_permissions` is explicitly not
+        for data access, so nothing available today can express it.
+      - What it costs while it stands: anyone holding `manage_teaching_content` can promote
+        for **any** organisation they belong to, including one where they only sit exams.
+        Promotion decides which version a cohort is examined on, so this is not cosmetic.
+Anything built on this gate inherits the fudge, so the admin interface above should not
+add a second caller of it until this is settled.
+
+### Live: `update_bank_org_settings` writes to any organisation
+
+Separate from the section above, and **not** waiting on it. That one needs a model that does
+not exist yet; this one needs a membership check that does. It is on `main` today.
+
+`update_bank_org_settings` in `backend/app/features/teaching/router.py` takes `org_id` from
+the path, confirms the organisation exists, and then writes to it. Nothing checks that the
+caller belongs to it:
+
+```python
+_get_user_org_id(user, db)           # result discarded
+org = db.get(Organisation, org_id)   # exists?
+if not org:
+    raise HTTPException(404, "Organisation not found")
+```
+
+- [ ] **Add the membership check.** A caller in organisation A can currently set a bank live
+      or closed for organisation B, and closing one mid-cohort locks its candidates out of an
+      assessment. `promote_bank_version` beside it already does this correctly
+      — `if org_id not in _get_user_org_ids(user, db): raise HTTPException(403, ...)` — so
+      this is copying four lines, not designing anything.
+      - Ship it with a test that fails without the check. The endpoint has existed unguarded
+        long enough that its current behaviour is what the tests describe.
+- [ ] **Remove the double `_get_user_org_id` call.** It is invoked twice, the first result
+      discarded, the second used only to locate the config row — so a person in two
+      organisations gets whichever came back first. That is the "silently picks the first"
+      pattern the findings document opens on, and it is the reason the promotion endpoint
+      takes `org_id` explicitly.
+- [ ] **Sweep the other teaching admin routes for the same shape.** These two were found by
+      happening to work on them; nothing has checked the rest. The findings document counts
+      twenty routes across `main.py` and the teaching router taking an organisation or site
+      in the path — that is the list to walk.
+
+Doing this does not pre-empt the redesign. A membership check is the floor under any model
+that comes out of it, so the work is not thrown away whatever gets decided.
 
 ## Follow-up: a decision file for teaching tooling changes
 
