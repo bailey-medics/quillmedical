@@ -13,11 +13,7 @@
 
 import { Component } from "react";
 import type { ErrorInfo, ReactNode } from "react";
-import { Center, Stack } from "@mantine/core";
-import { IconAlertTriangle } from "@/components/icons/appIcons";
-import Icon from "@/components/icons";
-import IconTextButton from "@/components/button/IconTextButton";
-import { BodyText, Heading } from "@/components/typography";
+import ErrorState from "@/components/error-state/ErrorState";
 import { reportError } from "@lib/error-reporting/report";
 
 type Props = {
@@ -61,22 +57,21 @@ type FallbackProps = {
   onReload: () => void;
 };
 
-/** Exported for Storybook rendering */
+/**
+ * Exported for Storybook rendering.
+ *
+ * A thin wrapper over `ErrorState` in its page variant. A crash is the one
+ * case where replacing the whole view is right — there is nothing left to
+ * sit inside.
+ */
 export function ErrorFallback({ onReload }: FallbackProps) {
   return (
-    <Center mih="60vh" data-testid="error-boundary-fallback">
-      <Stack align="center" gap="lg">
-        <Icon
-          icon={<IconAlertTriangle />}
-          size="xl"
-          colour="var(--alert-color)"
-        />
-        <Heading>Something went wrong</Heading>
-        <BodyText c="gray.5">
-          An unexpected error occurred. Please try reloading the page.
-        </BodyText>
-        <IconTextButton icon="refresh" label="Reload page" onClick={onReload} />
-      </Stack>
-    </Center>
+    <div data-testid="error-boundary-fallback">
+      <ErrorState
+        variant="page"
+        message="An unexpected error occurred. Please try reloading the page."
+        action={{ label: "Reload page", onClick: onReload }}
+      />
+    </div>
   );
 }

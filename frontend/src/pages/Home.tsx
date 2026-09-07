@@ -11,6 +11,7 @@ import type { Patient } from "@/domains/patient";
 import { api } from "@/lib/api";
 import { FHIR_POLLING_TIME, FHIR_REFRESH_TIME } from "@/lib/constants";
 import { extractAvatarGradientIndex } from "@/lib/fhir-patient";
+import ErrorState from "@/components/error-state/ErrorState";
 import { Stack } from "@mantine/core";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -106,7 +107,12 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [fhirAvailable, setFhirAvailable] = useState(false);
   const hasLoadedPatientsWithData = useRef(false);
-  const [error, setError] = useState<string | null>(null);
+  // The code travels with the message so it can be shown in small print:
+  // it is what a support call can be matched against in the logs.
+  const [error, setError] = useState<{
+    message: string;
+    code?: string;
+  } | null>(null);
   const [isFhirReady, setIsFhirReady] = useState(false);
 
   // Fetch patients function
@@ -230,7 +236,14 @@ export default function Home() {
       })
       .catch((err: Error & { error_code?: string }) => {
         if (cancelled) return;
-        setError(err.message || "Failed to load patients");
+        // The backend's detail is authored — every one of them is, since the
+        // endpoints stopped returning raw exception text — so it is worth
+        // showing. The fallback covers a dropped connection, which produces
+        // no detail at all.
+        setError({
+          message: err.message || "Could not load the patient list.",
+          ...(err.error_code ? { code: err.error_code } : {}),
+        });
         setFhirAvailable(false);
       })
       .finally(() => {
@@ -324,7 +337,10 @@ export default function Home() {
         onSelect={(patient) => navigate(`/patients/${patient.id}`)}
       />
       {error ? (
-        <div style={{ color: "var(--mantine-color-red-6)" }}>{error}</div>
+        <ErrorState
+          message={error.message}
+          {...(error.code ? { code: error.code } : {})}
+        />
       ) : null}
     </Stack>
   );

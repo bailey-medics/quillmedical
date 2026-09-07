@@ -586,23 +586,38 @@ an `ErrorState` component taking a message, an optional title, an optional
 action and a `variant` of `page` or `inline`; `ErrorFallback` becomes a thin
 wrapper around it. One design, two sizes, and no second look-and-feel to drift.
 
-**Settled: `ErrorState` never renders a raw `err.message`.** Pages pass a
-message somebody wrote, and the component does not accept the error object at
-all — the restriction is structural rather than a convention to remember,
-because a convention is what the twenty-nine existing sites already broke. It
-is more work, since it forces the question "what should the user actually be
-told?" at every one of them, but the alternative was designing a component
-around a string that is about to stop being sent. The error `code` remains
-useful on screen in small print, since it is a fixed vocabulary and it is what
-a support call can be matched against.
+**`ErrorState` takes a message and a code, never an error object.** That was
+settled when the backend was still returning raw exception text, and the
+component was going to be the last line of defence: pages would have had to
+write their own message because the one arriving was not fit to show.
 
-- [ ] Delete `frontend/src/components/typography/ErrorText.tsx` — a near-exact
+**That is no longer the situation, and the scope of the conversion changed with
+it.** Every `detail` the backend sends is now authored, and a test stops the
+old shape coming back, so `err.message` is safe to display. `api.ts` already
+unpacks the structured form, which makes the common case
+`message={err.message} code={err.error_code}` rather than a sentence somebody
+has to invent.
+
+Being straight about what that costs: the restriction is **not** structural.
+The component refuses an error object, but nothing stops a page passing
+`err.message` into the message prop, and now that is the right thing to do.
+The containment moved to the source, where it belongs, and what is left for
+this component is consistency of presentation — twenty-nine pages that look
+and behave alike instead of twenty-nine near-misses.
+
+So the conversion is mechanical rather than editorial. Writing is still needed
+for the **fallback** — a dropped connection produces no `detail` at all — and
+those cluster into a handful of shapes rather than twenty-nine originals. The
+error `code` stays on screen in small print: a fixed vocabulary, disclosing
+nothing, and the thread joining a support call to a log entry.
+
+- [x] Delete `frontend/src/components/typography/ErrorText.tsx` — a near-exact
       duplicate of `ErrorMessage`, used nowhere, absent from the typography
       index, and shipping neither a story nor a test
-- [ ] Add an `ErrorState` component with a story and a test, and refactor
+- [x] Add an `ErrorState` component with a story and a test, and refactor
       `ErrorFallback` to render it. No page changes in the same step, so the
       component lands without moving anything visible
-- [ ] Convert `Home.tsx` first: it is the worst case, being both a raw `<div>`
+- [x] Convert `Home.tsx` first: it is the worst case, being both a raw `<div>`
       with an inline style and a direct render of `err.message`
 - [ ] Convert the remaining pages in reviewable batches rather than one change,
       starting with those that display `err.message`, and after the backend
