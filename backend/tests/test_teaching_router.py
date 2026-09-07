@@ -937,6 +937,221 @@ class TestResolveBankPathOrGcs:
 # ------------------------------------------------------------------
 
 
+class TestPromotingAVersion:
+    """Moving the pointer is what makes the rest of this usable.
+
+    Without it a bank is pinned at whatever version it went live on, and a
+    revision can be imported but never reach anyone.
+    """
+
+    def _url(self, org_id: int) -> str:
+        return (
+            f"/api/teaching/admin/banks/test-bank"
+            f"/organisations/{org_id}/active-version"
+        )
+
+    def _with_two_versions(self, db_session, org, educator) -> None:
+        _seed_bank(db_session, org.id, educator.id)
+        db_session.add(
+            QuestionBankConfig(
+                organisation_id=org.id,
+                question_bank_id="test-bank",
+                version=2,
+                title="Test Bank",
+                description="A revision.",
+                type="uniform",
+                config_yaml=SAMPLE_CONFIG_YAML,
+                synced_by=educator.id,
+            )
+        )
+        db_session.commit()
+
+    def _status(self, db_session, org):
+        return (
+            db_session.query(QuestionBankOrgStatus)
+            .filter_by(organisation_id=org.id, question_bank_id="test-bank")
+            .one()
+        )
+
+    def test_it_moves_the_pointer_forward(self, test_client, db_session):
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        self._with_two_versions(db_session, org, educator)
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        resp = test_client.put(
+            self._url(org.id), headers=headers, json={"version": 2}
+        )
+
+        assert resp.status_code == 200
+        assert resp.json()["active_version"] == 2
+        assert resp.json()["previous_version"] == 1
+        assert self._status(db_session, org).active_version == 2
+
+    def test_rolling_back_is_the_same_operation(self, test_client, db_session):
+        """Naming an earlier version, not a separate endpoint."""
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        self._with_two_versions(db_session, org, educator)
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        test_client.put(
+            self._url(org.id), headers=headers, json={"version": 2}
+        )
+        resp = test_client.put(
+            self._url(org.id), headers=headers, json={"version": 1}
+        )
+
+        assert resp.status_code == 200
+        assert self._status(db_session, org).active_version == 1
+
+    def test_it_records_who_moved_it_and_when(self, test_client, db_session):
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        self._with_two_versions(db_session, org, educator)
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        test_client.put(
+            self._url(org.id), headers=headers, json={"version": 2}
+        )
+
+        row = self._status(db_session, org)
+        assert row.active_version_set_by == educator.id
+        assert row.active_version_set_at is not None
+
+    def test_a_version_that_does_not_exist_is_refused(
+        self, test_client, db_session
+    ):
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        self._with_two_versions(db_session, org, educator)
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        resp = test_client.put(
+            self._url(org.id), headers=headers, json={"version": 9}
+        )
+
+        assert resp.status_code == 404
+        assert self._status(db_session, org).active_version == 1
+
+    def test_another_organisations_version_is_not_promotable(
+        self, test_client, db_session
+    ):
+        """Content is shared; a version another organisation synced is not
+        one this organisation can serve."""
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        other = Organisation(name="Other Org")
+        db_session.add(other)
+        db_session.flush()
+        db_session.add(
+            QuestionBankConfig(
+                organisation_id=other.id,
+                question_bank_id="test-bank",
+                version=5,
+                title="Test Bank",
+                description="Theirs, not ours.",
+                type="uniform",
+                config_yaml=SAMPLE_CONFIG_YAML,
+                synced_by=educator.id,
+            )
+        )
+        db_session.commit()
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        resp = test_client.put(
+            self._url(org.id), headers=headers, json={"version": 5}
+        )
+
+        assert resp.status_code == 404
+
+    def test_a_bank_not_set_up_here_is_refused(self, test_client, db_session):
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        db_session.query(QuestionBankOrgStatus).delete()
+        db_session.commit()
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        resp = test_client.put(
+            self._url(org.id), headers=headers, json={"version": 1}
+        )
+
+        assert resp.status_code == 404
+
+    def test_version_zero_is_rejected_by_validation(
+        self, test_client, db_session
+    ):
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        self._with_two_versions(db_session, org, educator)
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        resp = test_client.put(
+            self._url(org.id), headers=headers, json={"version": 0}
+        )
+
+        assert resp.status_code == 422
+
+    def test_promoting_for_an_organisation_you_are_not_in_is_refused(
+        self, test_client, db_session
+    ):
+        """Why the organisation is named rather than inferred.
+
+        Inferring it took the caller's first organisation, so someone
+        teaching for two would silently promote for whichever came back
+        first — and never know which.
+        """
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        self._with_two_versions(db_session, org, educator)
+        other = Organisation(name="Not Mine")
+        db_session.add(other)
+        db_session.commit()
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        resp = test_client.put(
+            self._url(other.id), headers=headers, json={"version": 2}
+        )
+
+        assert resp.status_code == 403
+        assert self._status(db_session, org).active_version == 1
+
+    def test_a_learner_cannot_promote(self, test_client, db_session):
+        """Gated on manage_teaching_content like every other admin route."""
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        self._with_two_versions(db_session, org, educator)
+        _make_learner(db_session, org)
+        db_session.commit()
+
+        headers = _login(test_client, "testlearner", "Learner123!")
+        resp = test_client.put(
+            self._url(org.id), headers=headers, json={"version": 2}
+        )
+
+        assert resp.status_code == 403
+
+    def test_candidates_get_the_promoted_version_afterwards(
+        self, test_client, db_session
+    ):
+        """End to end: promotion is what actually changes what is served."""
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        self._with_two_versions(db_session, org, educator)
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        test_client.put(
+            self._url(org.id), headers=headers, json={"version": 2}
+        )
+        resp = test_client.get(
+            "/api/teaching/question-banks/test-bank", headers=headers
+        )
+
+        assert resp.json()["version"] == 2
+
+
 class TestAdminViewsShowBothVersions:
     """An admin needs to see that a revision is waiting.
 

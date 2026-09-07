@@ -879,7 +879,7 @@ they are ready. That also gives a rollback, which does not exist today.
         it there would be a trap.
       - Null is distinguishable from "promoted version 1": an admin seeing null knows the
         bank has never been opened, not that it is up to date.
-- [ ] **Promotion endpoint**, scoped to the caller's own organisation. Validates that the
+- [x] **Promotion endpoint**, scoped to the caller's own organisation. Validates that the
       target version exists for that bank, and records who moved it and when. Rolling back
       is the same operation pointing at an earlier version.
       - **Gated on `manage_teaching_content`, the same competency every other teaching admin
@@ -896,13 +896,23 @@ they are ready. That also gives a rollback, which does not exist today.
         moved: a bank goes live at version 1, version 2 imports, candidates correctly keep
         version 1 — and nothing can ever advance them. Safe, but it blocks publishing a
         revision entirely, which is worse than the bug it replaced.
+      - **The organisation is named in the path, and the caller must belong to it.** A first
+        attempt inferred it from the caller and was wrong: `_get_user_org_id` returns
+        whichever organisation comes back first, so someone teaching for two would silently
+        promote for the wrong one and never know. Naming it makes the caller say which.
+      - That is not the settings endpoint's hole repeated. Its problem is the **missing**
+        membership check, not the path parameter; this one checks.
+      - A version another organisation has synced is not promotable here. Content is shared
+        between organisations; the pointer is not.
+      - `active_version_set_by` and `active_version_set_at` record who moved it. `SET NULL`
+        rather than a cascade, so the fact a promotion happened survives the person leaving.
 - [ ] **Admin UI** — surface the two version numbers and a promote control on the existing
       admin teaching page, which already carries the live/closed toggle.
 
 ### Order of work, and where this pauses
 
-- [ ] **Promotion endpoint** — the last thing needed before teaching can be left alone. It
-      is what turns the active-version work from safe into usable.
+- [x] **Promotion endpoint** — the last thing needed before teaching can be left alone. It
+      is what turns the active-version work from _safe_ into _usable_.
 - [ ] **Finish and merge the active-version pull request** once it lands. Three commits —
       pin the pointer, follow it, show it — plus this one. That is a genuine stopping point:
       the feature works end to end through the API.

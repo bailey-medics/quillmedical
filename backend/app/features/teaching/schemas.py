@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 # ------------------------------------------------------------------
 # Question banks
@@ -423,6 +423,22 @@ class QuestionBankOrgStatusIn(BaseModel):
     """Toggle live/closed status for a bank."""
 
     is_live: bool
+
+
+class PromoteBankVersionIn(BaseModel):
+    """Which version this organisation's candidates should receive."""
+
+    version: int = Field(ge=1)
+
+
+class PromoteBankVersionOut(BaseModel):
+    """The pointer after promotion."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    question_bank_id: str
+    active_version: int
+    previous_version: int | None = None
 
 
 class QuestionBankOrgSettingsIn(BaseModel):

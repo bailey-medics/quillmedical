@@ -47,6 +47,8 @@ from app.features.teaching.schemas import (
     ItemImageOut,
     LearningContentOut,
     LearningModuleOut,
+    PromoteBankVersionIn,
+    PromoteBankVersionOut,
     QuestionBankDetailOut,
     QuestionBankItemOut,
     QuestionBankOrgSettingsIn,
@@ -2351,6 +2353,91 @@ def list_bank_organisations(
         )
 
     return rows
+
+
+@teaching_router.put(
+    "/admin/banks/{bank_id}/organisations/{org_id}/active-version",
+    response_model=PromoteBankVersionOut,
+    dependencies=[_DEP_MANAGE],
+)
+def promote_bank_version(
+    bank_id: str,
+    org_id: int,
+    body: PromoteBankVersionIn,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+) -> PromoteBankVersionOut:
+    """Move which version of a bank an organisation's candidates receive.
+
+    The organisation is named in the path and the caller must belong to it.
+    Not inferred from the caller: ``_get_user_org_id`` returns whichever
+    organisation happens to come back first, so a person teaching for two
+    would silently promote for the wrong one.
+
+    Restricted to the caller's own organisations because nothing models which
+    organisations one may promote on behalf of. That question belongs to
+    docs/docs/plans/2026-09-06-org-scoped-access-findings.md.
+
+    Rolling back is the same operation naming an earlier version.
+    """
+    if org_id not in _get_user_org_ids(user, db):
+        raise HTTPException(
+            403, "You cannot promote a version for that organisation"
+        )
+
+    # The version must exist for this organisation. Content is shared, but a
+    # version another organisation has synced is not one this one can serve.
+    target = (
+        db.execute(
+            select(QuestionBankConfig).where(
+                QuestionBankConfig.organisation_id == org_id,
+                QuestionBankConfig.question_bank_id == bank_id,
+                QuestionBankConfig.version == body.version,
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if not target:
+        raise HTTPException(
+            404, f"Version {body.version} not found for this question bank"
+        )
+
+    status_row = (
+        db.execute(
+            select(QuestionBankOrgStatus).where(
+                QuestionBankOrgStatus.organisation_id == org_id,
+                QuestionBankOrgStatus.question_bank_id == bank_id,
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if not status_row:
+        raise HTTPException(
+            404, "This question bank is not set up for your organisation"
+        )
+
+    previous = status_row.active_version
+    status_row.active_version = body.version
+    status_row.active_version_set_by = user.id
+    status_row.active_version_set_at = datetime.now(UTC)
+    db.flush()
+
+    logger.info(
+        "Bank '%s' promoted from v%s to v%d for org %d by user %d",
+        bank_id,
+        previous,
+        body.version,
+        org_id,
+        user.id,
+    )
+
+    return PromoteBankVersionOut(
+        question_bank_id=bank_id,
+        active_version=body.version,
+        previous_version=previous,
+    )
 
 
 @teaching_router.put(
