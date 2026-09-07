@@ -516,15 +516,6 @@ breadcrumb are present.
       run. The route was therefore absent on precisely the failure the boundary
       exists for, and present on everything else — which is why nothing caught
       it. The route breadcrumb was missing for the same reason
-- [ ] Source maps, as the real answer to unreadable stacks. Emit them at build
-      time, upload to a **private** bucket keyed by release SHA from
-      `deploy.yml`, decide retention, and write a small resolver. Resolve at
-      read time rather than at ingest: maps run to several megabytes each, and
-      the ingest endpoint is public, unauthenticated and rate-limited, so
-      loading them there would add cost, state and a denial-of-service lever
-      for a benefit needed perhaps weekly. They must never be served to
-      browsers, since a reachable source map hands out the source
-
 - [x] Revert the temporary `/boom` route now that it has done its work. It
       found four defects a full passing suite could not, and all four are
       verified fixed, so what remains is a route that crashes on purpose
@@ -542,11 +533,31 @@ taught us**.
 **This must land before real patient data does**, which is the only reason it
 is safe to ship the reporting first.
 
-- [ ] Replace `detail=str(e)` and `detail=f"...: {e}"` across the seventeen
-      sites with a generic message plus a stable `error_code`, logging the full
-      exception server-side where detail is safe and useful
-- [ ] Add a test or lint rule that fails when an exception is interpolated into
-      an `HTTPException` detail, so the pattern cannot creep back
+The seventeen turned out to be two groups, and the difference mattered.
+**Eleven** were `except Exception as e` handlers returning `str(e)` — the
+genuine leak, since the exception came from EHRbase, HAPI FHIR or the
+database. The other **six**, in the messaging endpoints, passed `str(exc)`
+from `ValueError` and `PermissionError` raised by our own code, and every
+message they could carry was an authored constant: "Conversation not found",
+"User is not a participant". Those leaked nothing. They were safe by
+convention rather than by construction, and would have stopped being safe the
+first time somebody interpolated an identifier into one.
+
+- [x] Replace `detail=str(e)` and `detail=f"...: {e}"` across the eleven
+      leaking sites with an authored message plus a stable `error_code`,
+      logging the full exception server-side with `logger.exception` where
+      detail is safe and useful. Follows the `{"message": ..., "error_code":
+      ...}` shape already used elsewhere in `main.py`, which `api.ts` already
+      understands
+- [x] Give the messaging module typed exceptions rather than leaving the six
+      safe-by-convention sites alone. `MessagingError` subclasses fix their
+      message, code and status as class attributes and take no constructor
+      arguments, so there is nothing to interpolate; the endpoints return
+      those attributes instead of formatting the exception. This makes the
+      property hold by construction rather than by everyone continuing to be
+      careful
+- [x] Add a test that fails when a caught exception reaches an `HTTPException`
+      detail, so the pattern cannot creep back
 
 ### What a user sees when something fails
 
@@ -1360,6 +1371,19 @@ Findings from actually building and testing this, rather than from planning it.
 Each cost time to learn and would be cheap to relearn the hard way, so they are
 recorded here rather than left in commit messages.
 
+**A guard that reads text cannot tell a rule from a mention of it.** The
+check against exception text reaching a caller was first written as a regular
+expression over source lines. It failed immediately — on its own docstring,
+which quotes `detail=str(exc)` while explaining why not to write it. Rewritten
+against the syntax tree it also had to learn a second distinction: `str(exc)`
+hands over whatever the exception carries, while `exc.message` reads a named
+attribute somebody wrote, and on the typed exceptions those are class
+constants with a no-argument constructor. Treating the two alike would have
+left no way to return a structured error at all, and would have pushed the
+next person towards assigning to a local variable first — which defeats the
+check rather than satisfying it. A guard has to be precise enough that the
+correct code passes, or it teaches people to route around it.
+
 **A successful deploy run is not a deployed build.** The first check of the
 four fixes came back looking identical to the report that prompted them —
 release still corrupted, header still doubled, positions still gone — which
@@ -1725,6 +1749,30 @@ third-party comparisons and both contradicted by the vendors' own pages.
 
 Recorded so that a later "shouldn't we have analytics?" conversation starts
 from the reasoning rather than from scratch:
+
+- **Source maps, for now and possibly for good.** They are the proper answer
+  to an unreadable production stack — the original file, line and name rather
+  than a bundle offset — and this plan spent a while establishing that. They
+  are nonetheless not being built. The cost is not the emitting but everything
+  around it: a private bucket keyed by release, a retention policy, an upload
+  step in the deploy, a resolver, and a standing rule that a map must never be
+  served to browsers, since a reachable one hands out the source. That is a
+  set of decisions to maintain, against a fault rate currently measured in
+  single figures.
+
+  What is in place instead is `keepNames`, which costs 37 KB gzipped and makes
+  a stack read `at ErrorFallback` rather than `at bj`. It was written into
+  `vite.config.ts` as a temporary measure pending source maps; **on this
+  decision it becomes the permanent answer**, and the comment there saying to
+  remove it should be corrected rather than left to mislead someone later.
+
+  What would change this: the application growing to where a name is no longer
+  enough — enough concurrent development that a line number distinguishes two
+  plausible causes, or enough traffic that faults arrive faster than they can
+  be reproduced by hand. Nothing is foreclosed by waiting. The positions the
+  reports now carry are exactly what a map resolves against, so every report
+  stored from today is resolvable whenever the decision changes, which is the
+  half of this that had to be got right in advance.
 
 - **Funnels, retention curves and cohort analysis.** Not asked for. When they
   are wanted, the data will already be in BigQuery and they become SQL

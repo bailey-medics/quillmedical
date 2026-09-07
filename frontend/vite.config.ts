@@ -58,12 +58,15 @@ export default defineConfig({
         // That is 37 KB, or 4.3%, paid on every fresh load and nothing on a
         // repeat visit, since the service worker holds the bundle.
         //
-        // TEMPORARY, in the sense that source maps supersede it entirely:
-        // they give the original file and line as well as the name, and cost
-        // nothing to download because the browser never receives them. Remove
-        // this when they land, and take the 37 KB back — the plan ties the
-        // two together so it does not quietly persist after it stops earning
-        // anything.
+        // This is the permanent answer, not a stopgap. Source maps would be
+        // better — the original file and line as well as the name, and no
+        // download cost, since the browser never receives them — but they
+        // have been deliberately deferred: the cost is the private bucket,
+        // the retention policy, the upload step, the resolver and the rule
+        // that a map is never served, all against a fault rate in single
+        // figures. See "Not building, and what would change that" in
+        // docs/docs/plans/2026-08-31-analytics-plan.md. If that decision is
+        // revisited, this can go and the 37 KB comes back.
         //
         // Note the option is `build.rollupOptions.output.keepNames`, not
         // `esbuild.keepNames`. Vite 8 minifies with Oxc, so the esbuild
