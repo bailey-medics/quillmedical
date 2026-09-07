@@ -8,10 +8,8 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Stack, Alert, Skeleton } from "@mantine/core";
+import { Stack, Skeleton } from "@mantine/core";
 import { Controller } from "react-hook-form";
-import { IconAlertCircle } from "@components/icons/appIcons";
-import Icon from "@/components/icons";
 import BaseCard from "@/components/base-card/BaseCard";
 import SolidSwitch from "@/components/form/SolidSwitch";
 import TextField from "@/components/form/TextField";
@@ -25,6 +23,7 @@ import {
 } from "@/components/form/Form";
 import type { FormSubmitResult } from "@/components/form/Form";
 import { api } from "@/lib/api";
+import ErrorState from "@/components/error-state/ErrorState";
 
 const SITE_TYPE_OPTIONS = [
   { value: "hospital", label: "Hospital" },
@@ -307,13 +306,10 @@ export default function EditSitePage() {
 
   if (loadError || !siteData) {
     return (
-      <Alert
-        icon={<Icon icon={<IconAlertCircle />} size="lg" />}
+      <ErrorState
         title="Error loading site"
-        color="var(--alert-color)"
-      >
-        {loadError || "Site not found"}
-      </Alert>
+        message={loadError || "Site not found"}
+      />
     );
   }
 
