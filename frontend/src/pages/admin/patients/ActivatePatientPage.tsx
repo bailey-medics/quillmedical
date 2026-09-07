@@ -32,6 +32,7 @@ import {
 import { notifications } from "@mantine/notifications";
 import PageHeader from "@/components/page-header";
 import { api } from "@/lib/api";
+import ErrorState from "@/components/error-state/ErrorState";
 
 interface Patient {
   id: string;
@@ -159,13 +160,7 @@ export default function ActivatePatientPage() {
         {loading ? (
           <Skeleton height={300} />
         ) : error ? (
-          <Alert
-            icon={<Icon icon={<IconAlertCircle />} size="sm" />}
-            title="Error loading patient"
-            color="var(--alert-color)"
-          >
-            {error}
-          </Alert>
+          <ErrorState title="Error loading patient" message={error} />
         ) : (
           <BaseCard>
             <Stack gap="md">
@@ -234,13 +229,7 @@ export default function ActivatePatientPage() {
           <Skeleton height={50} />
         </Stack>
       ) : error ? (
-        <Alert
-          icon={<Icon icon={<IconAlertCircle />} size="sm" />}
-          title="Error loading patients"
-          color="var(--alert-color)"
-        >
-          {error}
-        </Alert>
+        <ErrorState title="Error loading patients" message={error} />
       ) : patients.length === 0 ? (
         <Center h={300}>
           <Stack align="center" gap="xs">
