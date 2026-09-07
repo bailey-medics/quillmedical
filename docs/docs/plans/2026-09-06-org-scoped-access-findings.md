@@ -327,7 +327,24 @@ with the interface, not here, but nothing on the backend should wait for it.
 ## The cases any schema must express
 
 Written as acceptance criteria rather than prose, because a candidate schema either handles
-them or does not:
+them or does not. They now live as tests in
+`backend/tests/test_org_scoped_access_criteria.py`, so they run rather than being read.
+
+Seven are `xfail(strict=True)`: they can be set up with today's tables, they fail, and the
+build breaks the moment one starts passing — which is the signal wanted, because a test
+there going green is news. Five are `skip`, because they cannot be expressed at all yet,
+and each names what is missing. That shorter list is the queue:
+
+- **No position model.** A vacant clinical lead post and acting cover both need one;
+  `site_staff_member.role` can only record an absent row, not a vacancy.
+- **The patient and staff namespaces.** Two cases wait on this.
+- **No self-scoped capabilities.** `access_patient_records` carries the distinction in a
+  comment rather than in the model.
+- **Nothing records how a capability was acquired**, so nothing can lapse.
+
+Every capability the tests name exists in `shared/competencies.yaml`. Some are stand-ins —
+there is no rota or clinical-safety-officer capability yet — because what is asserted is
+that the answer differs by place, not which capability it is.
 
 - [ ] Doctor at A, patient at B — cannot act clinically at B.
 - [ ] Nurse treated at her own hospital — reads her own record, not a colleague's, without
@@ -366,8 +383,9 @@ them or does not:
    site routes, then a `get_site` bug found while testing them.
 2. [x] **Decide where context comes from before touching tables.** Settled above: named in
    the path, or determined by the object acted on, and never inferred from the caller.
-3. **Write the acceptance criteria above as failing tests**, before the model changes. A red,
-   named test is worth more than a paragraph.
+3. [x] **Write the acceptance criteria above as failing tests**, before the model changes. A
+   red, named test is worth more than a paragraph. Done: seven red, five that could not be
+   written, and the five are more informative than the seven.
 4. **Then choose the storage**, knowing what it has to answer.
 
 ## Not addressed here
