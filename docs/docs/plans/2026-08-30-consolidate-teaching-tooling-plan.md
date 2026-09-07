@@ -966,14 +966,17 @@ if not org:
     raise HTTPException(404, "Organisation not found")
 ```
 
-- [ ] **Add the membership check.** A caller in organisation A can currently set a bank live
+- [x] **Add the membership check.** A caller in organisation A can currently set a bank live
       or closed for organisation B, and closing one mid-cohort locks its candidates out of an
       assessment. `promote_bank_version` beside it already does this correctly
       — `if org_id not in _get_user_org_ids(user, db): raise HTTPException(403, ...)` — so
       this is copying four lines, not designing anything.
-      - Ship it with a test that fails without the check. The endpoint has existed unguarded
-        long enough that its current behaviour is what the tests describe.
-- [ ] **Remove the double `_get_user_org_id` call.** It is invoked twice, the first result
+      - Shipped with two tests, both checked against the unfixed router: 403 for writing to
+        an organisation you are not in, and 200 where it used to 404 for a bank held only by
+        your second organisation. The second test passed against the bug on its first
+        writing — it seeded the bank in the caller's first organisation, which is the one the
+        broken lookup happens to return. Seeding it in the second is what exposes it.
+- [x] **Remove the double `_get_user_org_id` call.** It is invoked twice, the first result
       discarded, the second used only to locate the config row — so a person in two
       organisations gets whichever came back first. That is the "silently picks the first"
       pattern the findings document opens on, and it is the reason the promotion endpoint
