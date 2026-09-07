@@ -110,6 +110,7 @@ import TeachingMainNav from "@/components/navigation/teaching/TeachingMainNav";
 import LoginPage from "./pages/LoginPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import Settings from "./pages/Settings";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 import VerifyEmailPendingPage from "./pages/VerifyEmailPendingPage";
 import HomeRedirect from "./pages/HomeRedirect";
@@ -405,7 +406,7 @@ const router = createBrowserRouter([
       // Settings
       {
         path: "/settings",
-        element: import("./pages/Settings").then((m) => <m.default />),
+        element: <Settings />,
         handle: { safeForReload: true },
       },
       // Multi-step forms - not safe to silently reload mid-entry.
