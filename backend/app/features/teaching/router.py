@@ -2452,19 +2452,35 @@ def update_bank_org_settings(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
 ) -> QuestionBankOrgSettingsOut:
-    """Update settings (status) for a bank-org pair."""
-    _get_user_org_id(user, db)
+    """Update settings (status) for a bank-org pair.
+
+    The caller must belong to the organisation named in the path. Without
+    that, anyone holding ``manage_teaching_content`` could set a bank live
+    or closed for any organisation at all — and closing one mid-cohort
+    locks its candidates out of an assessment they are part-way through.
+    """
+    org_ids = _get_user_org_ids(user, db)
+    if org_id not in org_ids:
+        raise HTTPException(
+            403, "You cannot change settings for that organisation"
+        )
 
     org = db.get(Organisation, org_id)
     if not org:
         raise HTTPException(404, "Organisation not found")
 
-    # Verify bank exists
-    caller_org_id = _get_user_org_id(user, db)
+    # The bank must be one the caller can see, which is not the same as one
+    # the target organisation has already synced: setting a bank live for an
+    # organisation that has never synced it is how a bank is first set up,
+    # and the branch below handles that by leaving the pointer null.
+    #
+    # Across every organisation the caller belongs to, rather than
+    # `_get_user_org_id`'s arbitrary first one — with two, that decided
+    # whether the bank was found at all.
     config_row = (
         db.execute(
             select(QuestionBankConfig).where(
-                QuestionBankConfig.organisation_id == caller_org_id,
+                QuestionBankConfig.organisation_id.in_(org_ids),
                 QuestionBankConfig.question_bank_id == bank_id,
             )
         )

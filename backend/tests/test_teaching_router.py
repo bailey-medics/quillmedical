@@ -1515,6 +1515,91 @@ class TestBankOrgSettingsSetTheActiveVersion:
         assert row.active_version == 3
 
 
+class TestBankOrgSettingsAreScopedToYourOrganisations:
+    """The endpoint took an organisation from the path and never checked it.
+
+    It confirmed the organisation existed, then wrote to it. So anyone
+    holding ``manage_teaching_content`` could set a bank live or closed for
+    an organisation they had nothing to do with, and closing one mid-cohort
+    locks its candidates out of an assessment.
+    """
+
+    def _settings_url(self, org_id: int) -> str:
+        return (
+            f"/api/teaching/admin/banks/test-bank"
+            f"/organisations/{org_id}/settings"
+        )
+
+    def test_settings_for_an_organisation_you_are_not_in_are_refused(
+        self, test_client, db_session
+    ):
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        other = Organisation(name="Not Mine")
+        db_session.add(other)
+        db_session.commit()
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        resp = test_client.put(
+            self._settings_url(other.id),
+            headers=headers,
+            json={"is_live": True, "site_registration": False},
+        )
+
+        assert resp.status_code == 403
+        # Nothing was written for the organisation the caller does not
+        # belong to — a 403 that still wrote would be no fix at all.
+        assert (
+            db_session.query(QuestionBankOrgStatus)
+            .filter_by(organisation_id=other.id)
+            .count()
+            == 0
+        )
+
+    def test_a_bank_held_only_by_your_second_organisation_is_found(
+        self, test_client, db_session
+    ):
+        """Why the bank lookup spans every organisation, not the first one.
+
+        The bank exists for the second organisation only. The old code
+        looked it up against ``_get_user_org_id``, which returns whichever
+        organisation comes back first, so the bank was invisible and the
+        caller got a 404 for a bank plainly in front of them.
+        """
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+
+        second = Organisation(name="Second Org")
+        db_session.add(second)
+        db_session.flush()
+        db_session.execute(
+            organisation_staff_member.insert().values(
+                organisation_id=second.id, user_id=educator.id
+            )
+        )
+        db_session.commit()
+        _seed_bank(db_session, second.id, educator.id)
+        db_session.query(QuestionBankOrgStatus).delete()
+        db_session.commit()
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        resp = test_client.put(
+            self._settings_url(second.id),
+            headers=headers,
+            json={"is_live": True, "site_registration": False},
+        )
+
+        assert resp.status_code == 200
+        row = (
+            db_session.query(QuestionBankOrgStatus)
+            .filter_by(organisation_id=second.id, question_bank_id="test-bank")
+            .one()
+        )
+        assert row.is_live is True
+        assert row.active_version == 1
+
+
 class TestAdminBanks:
     """Admin endpoints for teaching module management."""
 
