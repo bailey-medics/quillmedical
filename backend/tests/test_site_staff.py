@@ -12,7 +12,7 @@ class TestSiteStaffClinicalLeadConstraint:
     """Enforce max 1 clinical lead per site."""
 
     def test_add_clinical_lead_success(
-        self, authenticated_admin_client, db_session, test_admin: User
+        self, authenticated_superadmin_client, db_session, test_admin: User
     ):
         """Can add a clinical lead when none exists."""
         site = Site(name="Test Site", type="hospital")
@@ -30,7 +30,7 @@ class TestSiteStaffClinicalLeadConstraint:
         db_session.add(target)
         db_session.commit()
 
-        resp = authenticated_admin_client.post(
+        resp = authenticated_superadmin_client.post(
             f"/api/sites/{site.id}/staff",
             json={"user_id": target.id, "role": "clinical_lead"},
         )
@@ -38,7 +38,7 @@ class TestSiteStaffClinicalLeadConstraint:
         assert resp.json()["status"] == "added"
 
     def test_add_second_clinical_lead_rejected(
-        self, authenticated_admin_client, db_session, test_admin: User
+        self, authenticated_superadmin_client, db_session, test_admin: User
     ):
         """Adding a second clinical lead returns 409."""
         site = Site(name="Lead Site", type="hospital")
@@ -75,7 +75,7 @@ class TestSiteStaffClinicalLeadConstraint:
         db_session.add(new_user)
         db_session.commit()
 
-        resp = authenticated_admin_client.post(
+        resp = authenticated_superadmin_client.post(
             f"/api/sites/{site.id}/staff",
             json={"user_id": new_user.id, "role": "clinical_lead"},
         )
@@ -83,7 +83,7 @@ class TestSiteStaffClinicalLeadConstraint:
         assert "already has a clinical lead" in resp.json()["detail"]
 
     def test_update_existing_user_to_clinical_lead_rejected(
-        self, authenticated_admin_client, db_session, test_admin: User
+        self, authenticated_superadmin_client, db_session, test_admin: User
     ):
         """Updating a staff member to clinical_lead fails if one exists."""
         site = Site(name="Update Site", type="hospital")
@@ -125,7 +125,7 @@ class TestSiteStaffClinicalLeadConstraint:
         )
         db_session.commit()
 
-        resp = authenticated_admin_client.post(
+        resp = authenticated_superadmin_client.post(
             f"/api/sites/{site.id}/staff",
             json={"user_id": staff.id, "role": "clinical_lead"},
         )
@@ -133,7 +133,7 @@ class TestSiteStaffClinicalLeadConstraint:
         assert "already has a clinical lead" in resp.json()["detail"]
 
     def test_reassign_same_user_as_clinical_lead_allowed(
-        self, authenticated_admin_client, db_session, test_admin: User
+        self, authenticated_superadmin_client, db_session, test_admin: User
     ):
         """Re-posting the same user as clinical_lead is idempotent."""
         site = Site(name="Same Lead Site", type="hospital")
@@ -158,7 +158,7 @@ class TestSiteStaffClinicalLeadConstraint:
         )
         db_session.commit()
 
-        resp = authenticated_admin_client.post(
+        resp = authenticated_superadmin_client.post(
             f"/api/sites/{site.id}/staff",
             json={"user_id": lead.id, "role": "clinical_lead"},
         )
@@ -166,7 +166,7 @@ class TestSiteStaffClinicalLeadConstraint:
         assert resp.json()["status"] == "updated"
 
     def test_add_staff_role_allowed_with_existing_lead(
-        self, authenticated_admin_client, db_session, test_admin: User
+        self, authenticated_superadmin_client, db_session, test_admin: User
     ):
         """Adding a staff/trainee role succeeds even with a lead."""
         site = Site(name="Mixed Site", type="hospital")
@@ -201,7 +201,7 @@ class TestSiteStaffClinicalLeadConstraint:
         db_session.add(staff)
         db_session.commit()
 
-        resp = authenticated_admin_client.post(
+        resp = authenticated_superadmin_client.post(
             f"/api/sites/{site.id}/staff",
             json={"user_id": staff.id, "role": "staff"},
         )
@@ -213,53 +213,53 @@ class TestAddSiteStaffValidation:
     """Request body validation for POST /api/sites/{site_id}/staff."""
 
     def test_missing_user_id_rejected(
-        self, authenticated_admin_client, db_session
+        self, authenticated_superadmin_client, db_session
     ):
         site = Site(name="Validation Site", type="hospital")
         db_session.add(site)
         db_session.commit()
 
-        resp = authenticated_admin_client.post(
+        resp = authenticated_superadmin_client.post(
             f"/api/sites/{site.id}/staff",
             json={"role": "staff"},
         )
         assert resp.status_code == 422
 
     def test_missing_role_rejected(
-        self, authenticated_admin_client, db_session, test_admin: User
+        self, authenticated_superadmin_client, db_session, test_admin: User
     ):
         site = Site(name="Validation Site", type="hospital")
         db_session.add(site)
         db_session.commit()
 
-        resp = authenticated_admin_client.post(
+        resp = authenticated_superadmin_client.post(
             f"/api/sites/{site.id}/staff",
             json={"user_id": test_admin.id},
         )
         assert resp.status_code == 422
 
     def test_invalid_role_rejected(
-        self, authenticated_admin_client, db_session, test_admin: User
+        self, authenticated_superadmin_client, db_session, test_admin: User
     ):
         site = Site(name="Validation Site", type="hospital")
         db_session.add(site)
         db_session.commit()
 
-        resp = authenticated_admin_client.post(
+        resp = authenticated_superadmin_client.post(
             f"/api/sites/{site.id}/staff",
             json={"user_id": test_admin.id, "role": "not_a_role"},
         )
         assert resp.status_code == 422
 
     def test_unknown_field_rejected(
-        self, authenticated_admin_client, db_session, test_admin: User
+        self, authenticated_superadmin_client, db_session, test_admin: User
     ):
         """extra='forbid' on AddSiteStaffIn rejects unrecognised fields."""
         site = Site(name="Validation Site", type="hospital")
         db_session.add(site)
         db_session.commit()
 
-        resp = authenticated_admin_client.post(
+        resp = authenticated_superadmin_client.post(
             f"/api/sites/{site.id}/staff",
             json={
                 "user_id": test_admin.id,

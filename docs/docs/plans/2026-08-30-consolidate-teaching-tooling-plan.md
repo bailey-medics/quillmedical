@@ -981,10 +981,91 @@ if not org:
       organisations gets whichever came back first. That is the "silently picks the first"
       pattern the findings document opens on, and it is the reason the promotion endpoint
       takes `org_id` explicitly.
-- [ ] **Sweep the other teaching admin routes for the same shape.** These two were found by
-      happening to work on them; nothing has checked the rest. The findings document counts
-      twenty routes across `main.py` and the teaching router taking an organisation or site
-      in the path — that is the list to walk.
+- [x] **Sweep the other routes for the same shape.** Done, by mapping each route decorator
+      taking an `org_id` or `site_id` to the full extent of its function and looking for a
+      membership check inside it. Seventeen routes in `main.py`. The result is below.
+      - Doing this by eye first gave the wrong answer. A grep window of seventy lines
+        suggested `get_organisation`, `update_organisation` and `add_staff_to_organisation`
+        had no scoping, because their checks sit thirty to forty lines in, past the end of
+        their docstrings. All three are fine. Match the decorator to the whole function, not
+        to the lines that happen to follow it.
+
+### Live: every site route let an admin act on any site
+
+Found by the sweep above, and the same shape as `update_bank_org_settings`: a path parameter
+naming a thing, and a permission check that asks _"are you an admin?"_ without asking
+_"of what?"_. Each of these five is guarded by exactly this and nothing more:
+
+```python
+if current_user.system_permissions not in ("admin", "superadmin"):
+    raise HTTPException(status_code=403, detail="Admin only")
+```
+
+All eight of them, in `backend/app/main.py`: `get_site`, `update_site`,
+`toggle_site_active`, `delete_site`, `link_site_to_org`, `unlink_site_from_org`,
+`add_site_staff`, `remove_site_staff`.
+
+So an admin, confined to their own organisations everywhere else, could read, rename,
+deactivate or **delete any site in the system**, add and remove its staff, and link or
+unlink any site to any organisation.
+
+It was first written up here as five routes, with `get_site`, `add_site_staff` and
+`remove_site_staff` described as already correct and offered as the pattern to copy. They
+were not. The sweep script counted any mention of `site_staff_member` as a scoping check,
+and `get_site` matched on the line that filters superadmins out of a staff list. Only a
+gate of the form `... not in get_user_org_ids(...)` counts; the organisation routes were
+the real reference, and there was no correct site route to copy from.
+
+- [x] **Scope the six site-addressed routes** — `get_site`, `update_site`,
+      `toggle_site_active`, `delete_site`, `add_site_staff`, `remove_site_staff` — to sites
+      belonging to an organisation the caller is in, via `_require_site_in_own_org`.
+      - Refusals are 404, not 403, matching `get_organisation`: the response must not
+        confirm a site exists to someone who cannot see it.
+      - Superadmins skip the check, as they do everywhere else.
+- [x] **Scope `link_site_to_org` and `unlink_site_from_org` to `org_id`**, via
+      `_require_own_org`. Settled by
+      looking at how a site is actually made rather than at the schema. `AddSiteToOrgPage`
+      is the only place that creates one, you are already inside an organisation when you
+      do, and it posts `/sites` then `/organisations/{id}/sites/{siteId}` back to back. The
+      site is the organisation's because that is the only way it can come into being, so
+      there is no "whose site is it" question and no both-sides test to design.
+      - Reasoning from the many-to-many table first gave a more elaborate answer — require
+        membership of both sides, with a carve-out for sites that have no organisation yet.
+        The schema permits that shape; the product never produces it.
+
+### Follow-up: a site should be created inside an organisation
+
+Creating and linking are two HTTP calls from `AddSiteToOrgPage`, so a site really can end up
+with no organisation when the second one fails. That orphan is unreachable: every scoped
+route finds a site through its organisations, so nothing can list it, edit it or delete it.
+
+- [ ] **Make site creation take the organisation directly**, so the link cannot be missed and
+      a site cannot exist on its own. Sites are not standalone things in this product, and
+      the two-call sequence is the only reason the database can hold one that is.
+      - Do this after the membership checks below, not instead of them. The checks close a
+        live hole; this closes the gap that lets an unreachable row be written at all.
+- [x] **A test per route, each checked against the unguarded code.** All eight fail without
+      the guards, plus one that an admin can still reach their own organisation's site — a
+      guard that locked everybody out would pass the other eight.
+      - The existing site tests were switched to a superadmin client. They cover the
+        clinical-lead constraint and role validation, not authorisation, and their fixtures
+        build organisations the test admin was never in — so under the guards they were
+        asserting the old, unscoped behaviour.
+
+### Found while testing: `get_site` failed for any site with an organisation
+
+Writing the "your own site is still reachable" test turned up a second live bug, unrelated
+to authorisation. `get_site` selected `Organisation.id` and `Organisation.name` for the
+linked organisations, but `LinkedOrganisationItem` also requires `type`, so the endpoint
+raised a validation error for any site that had one — which is every site the product can
+create, since creating a site links it immediately.
+
+- [x] **Select `Organisation.type` as well.** Nothing caught this because no test called
+      `get_site` for a site that had an organisation; every fixture built a bare site.
+      `SiteAdminPage` is the caller, so the site admin screen was broken for real data.
+
+None of this waits on the redesign. Whatever `2026-09-06-org-scoped-access-findings.md`
+settles will sit on top of a membership check, not replace it.
 
 Doing this does not pre-empt the redesign. A membership check is the floor under any model
 that comes out of it, so the work is not thrown away whatever gets decided.
