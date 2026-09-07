@@ -8,10 +8,8 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Stack, Alert, Skeleton } from "@mantine/core";
+import { Stack, Skeleton } from "@mantine/core";
 import { Controller } from "react-hook-form";
-import { IconAlertCircle } from "@components/icons/appIcons";
-import Icon from "@/components/icons";
 import BaseCard from "@/components/base-card/BaseCard";
 import TextField from "@/components/form/TextField";
 import SelectField from "@/components/form/SelectField";
@@ -24,6 +22,7 @@ import {
 } from "@/components/form/Form";
 import type { FormSubmitResult } from "@/components/form/Form";
 import { api } from "@/lib/api";
+import ErrorState from "@/components/error-state/ErrorState";
 
 /** Organisation type options for the select input */
 const ORGANISATION_TYPE_OPTIONS = [
@@ -177,13 +176,7 @@ export default function EditOrganisationPage() {
 
   if (loadError) {
     return (
-      <Alert
-        icon={<Icon icon={<IconAlertCircle />} size="lg" />}
-        title="Error loading organisation"
-        color="var(--alert-color)"
-      >
-        {loadError}
-      </Alert>
+      <ErrorState title="Error loading organisation" message={loadError} />
     );
   }
 

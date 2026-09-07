@@ -8,10 +8,8 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Stack, Alert } from "@mantine/core";
+import { Stack } from "@mantine/core";
 import { Controller } from "react-hook-form";
-import { IconAlertCircle } from "@components/icons/appIcons";
-import Icon from "@/components/icons";
 import BaseCard from "@/components/base-card/BaseCard";
 import SelectField from "@/components/form/SelectField";
 import PageHeader from "@/components/page-header";
@@ -24,6 +22,7 @@ import {
 import type { FormSubmitResult } from "@/components/form/Form";
 import { api } from "@/lib/api";
 import { useAuth } from "@/auth/AuthContext";
+import ErrorState from "@/components/error-state/ErrorState";
 
 interface ApiUser {
   id: number;
@@ -151,13 +150,7 @@ export default function AddStaffToOrgPage() {
       <PageHeader title="Add staff member" />
 
       {loadError && (
-        <Alert
-          icon={<Icon icon={<IconAlertCircle />} size="lg" />}
-          title="Error loading users"
-          color="var(--alert-color)"
-        >
-          {loadError}
-        </Alert>
+        <ErrorState title="Error loading users" message={loadError} />
       )}
 
       <Form<AddStaffFormValues>

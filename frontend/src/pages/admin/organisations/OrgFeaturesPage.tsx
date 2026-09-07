@@ -8,11 +8,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Group, Stack, Skeleton, Alert } from "@mantine/core";
+import { Group, Stack, Skeleton } from "@mantine/core";
 import { Controller } from "react-hook-form";
-import { IconAlertCircle } from "@components/icons/appIcons";
 import PageHeader from "@/components/page-header";
-import Icon from "@/components/icons";
 import BaseCard from "@/components/base-card/BaseCard";
 import {
   BodyText,
@@ -31,6 +29,7 @@ import {
 import type { FormSubmitResult } from "@/components/form/Form";
 import { useAuth } from "@/auth/AuthContext";
 import { api } from "@/lib/api";
+import ErrorState from "@/components/error-state/ErrorState";
 
 /** Known features that can be toggled on an organisation. */
 const AVAILABLE_FEATURES: {
@@ -244,15 +243,7 @@ export default function OrgFeaturesPage() {
   }
 
   if (error) {
-    return (
-      <Alert
-        icon={<Icon icon={<IconAlertCircle />} size="lg" />}
-        title="Error loading features"
-        color="var(--alert-color)"
-      >
-        {error}
-      </Alert>
-    );
+    return <ErrorState title="Error loading features" message={error} />;
   }
 
   return (

@@ -8,15 +8,14 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Stack, Alert } from "@mantine/core";
-import { IconAlertCircle } from "@components/icons/appIcons";
-import Icon from "@/components/icons";
+import { Stack } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import ButtonPair from "@/components/button/ButtonPair";
 import { ResultMessage } from "@/components/message-cards";
 import SelectField from "@/components/form/SelectField";
 import PageHeader from "@/components/page-header";
 import { api } from "@/lib/api";
+import ErrorState from "@/components/error-state/ErrorState";
 
 interface FhirPatient {
   id: string;
@@ -111,15 +110,7 @@ export default function AddPatientToOrgPage() {
     <Stack gap="lg">
       <PageHeader title="Add patient" />
 
-      {error && (
-        <Alert
-          icon={<Icon icon={<IconAlertCircle />} size="lg" />}
-          title="Error"
-          color="var(--alert-color)"
-        >
-          {error}
-        </Alert>
-      )}
+      {error && <ErrorState title="Error" message={error} />}
 
       <BaseCard>
         <form onSubmit={handleSubmit}>
