@@ -39,6 +39,87 @@ from app.system_permissions.permissions import check_permission_level
 logger = logging.getLogger(__name__)
 
 
+class MessagingError(Exception):
+    """A messaging operation the caller may not, or cannot, perform.
+
+    Each subclass fixes its own user-facing message, stable code and HTTP
+    status as class attributes, and the constructor takes no arguments. That
+    is the whole point: an endpoint returns those attributes rather than
+    formatting the exception, so nothing can reach a caller that somebody did
+    not deliberately write for them to read.
+
+    What this replaces was ``raise ConversationNotFound()``,
+    surfaced as ``detail=str(exc)``. Every message was in fact a constant, so
+    nothing leaked — but it held by convention rather than by construction,
+    and would have stopped holding the first time one interpolated an
+    identifier. That is not hypothetical: it is precisely the defect found
+    across eleven other endpoints in this file's neighbour, where the
+    interpolated value came from EHRbase, HAPI FHIR or the database and
+    reached the browser.
+    """
+
+    status_code: int = 400
+    error_code: str = "messaging_error"
+    message: str = "The request could not be completed"
+
+    def __init__(self) -> None:
+        super().__init__(self.message)
+
+
+class ConversationNotFound(MessagingError):
+    status_code = 404
+    error_code = "conversation_not_found"
+    message = "Conversation not found"
+
+
+class UserNotFound(MessagingError):
+    status_code = 404
+    error_code = "user_not_found"
+    message = "User not found"
+
+
+class NotAParticipant(MessagingError):
+    status_code = 403
+    error_code = "not_a_participant"
+    message = "User is not a participant"
+
+
+class AmendedMessageNotFound(MessagingError):
+    status_code = 404
+    error_code = "amended_message_not_found"
+    message = "Amended message not found"
+
+
+class AmendedMessageInAnotherConversation(MessagingError):
+    status_code = 404
+    error_code = "amended_message_wrong_conversation"
+    message = "Amended message is not in this conversation"
+
+
+class CanOnlyAmendOwnMessages(MessagingError):
+    status_code = 403
+    error_code = "can_only_amend_own_messages"
+    message = "Can only amend your own messages"
+
+
+class NotInPatientOrganisation(MessagingError):
+    status_code = 403
+    error_code = "not_in_patient_organisation"
+    message = "You do not share an organisation with this patient"
+
+
+class SingleUserCannotSelfJoin(MessagingError):
+    status_code = 403
+    error_code = "single_user_cannot_self_join"
+    message = "Single-user accounts cannot self-join conversations"
+
+
+class NotInMessageOrganisation(MessagingError):
+    status_code = 403
+    error_code = "not_in_message_organisation"
+    message = "You must be in one of the message's organisations to join"
+
+
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
@@ -183,9 +264,7 @@ def create_conversation(
     """
     # Validate creator has access to this patient
     if not check_user_patient_access(db, creator, patient_id):
-        raise PermissionError(
-            "You do not share an organisation with this patient"
-        )
+        raise NotInPatientOrganisation()
 
     conv_uuid = str(uuid.uuid4())
 
@@ -399,23 +478,23 @@ def send_message(
     """
     conv = db.get(Conversation, conversation_id)
     if conv is None:
-        raise ValueError("Conversation not found")
+        raise ConversationNotFound()
 
     # Validate sender is a participant
     cp = next((p for p in conv.participants if p.user_id == sender.id), None)
     if cp is None:
-        raise PermissionError("User is not a participant")
+        raise NotAParticipant()
 
     # Validate amendment
     amends_fhir_id: str | None = None
     if amends_id is not None:
         amended = db.get(Message, amends_id)
         if amended is None:
-            raise ValueError("Amended message not found")
+            raise AmendedMessageNotFound()
         if amended.conversation_id != conversation_id:
-            raise ValueError("Amended message is not in this conversation")
+            raise AmendedMessageInAnotherConversation()
         if amended.sender_id != sender.id:
-            raise PermissionError("Can only amend your own messages")
+            raise CanOnlyAmendOwnMessages()
         amends_fhir_id = amended.fhir_communication_id
 
     # Find first message for partOf linking
@@ -469,7 +548,7 @@ def add_participant(
     """Add a user to a conversation. Snowballs their org(s) in."""
     user = db.get(User, user_id)
     if user is None:
-        raise ValueError("User not found")
+        raise UserNotFound()
 
     existing = (
         db.query(ConversationParticipant)
@@ -596,21 +675,17 @@ def join_conversation(
     The user must be in one of the conversation's orgs.
     """
     if not check_permission_level(user.system_permissions, "staff"):
-        raise PermissionError(
-            "Single-user accounts cannot self-join conversations"
-        )
+        raise SingleUserCannotSelfJoin()
 
     conv = db.get(Conversation, conversation_id)
     if conv is None:
-        raise ValueError("Conversation not found")
+        raise ConversationNotFound()
 
     # Verify org membership
     user_org_ids = set(get_user_org_ids(db, user.id))
     conv_org_ids = {o.id for o in conv.organisations}
     if not (user_org_ids & conv_org_ids):
-        raise PermissionError(
-            "You must be in one of the message's organisations to join"
-        )
+        raise NotInMessageOrganisation()
 
     existing = (
         db.query(ConversationParticipant)

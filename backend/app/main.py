@@ -74,6 +74,7 @@ from app.fhir_client import (
 from app.log_context import request_id_var, user_id_var
 from app.logging_config import setup_logging
 from app.messaging import (
+    MessagingError,
     add_participant,
     create_conversation,
     get_conversation_detail,
@@ -2441,7 +2442,14 @@ def list_users(
             ]
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.exception("Failed to list users")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "message": "Could not load the user list",
+                "error_code": "user_list_failed",
+            },
+        ) from e
 
 
 @router.get("/users/{user_id}", response_model=UserOut)
@@ -2639,7 +2647,14 @@ def create_patient_record(patient_id: str) -> PatientVerifyOut:
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.exception("Failed to create patient record")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "message": "Could not create the patient record",
+                "error_code": "patient_record_create_failed",
+            },
+        ) from e
 
 
 @router.get(
@@ -2763,7 +2778,14 @@ def upsert_demographics(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.exception("Failed to upsert demographics")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "message": "Could not save the demographics",
+                "error_code": "demographics_update_failed",
+            },
+        ) from e
 
 
 @router.get(
@@ -2804,7 +2826,14 @@ def get_demographics(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.exception("Failed to read demographics")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "message": "Could not load the demographics",
+                "error_code": "demographics_fetch_failed",
+            },
+        ) from e
 
 
 @router.post(
@@ -2856,7 +2885,14 @@ def write_letter(patient_id: str, letter: LetterIn) -> LetterCreateOut:
             title=letter.title,
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.exception("Failed to write letter")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "message": "Could not save the letter",
+                "error_code": "letter_write_failed",
+            },
+        ) from e
 
 
 @router.get(
@@ -2902,7 +2938,14 @@ def read_letter(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.exception("Failed to read letter")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "message": "Could not load the letter",
+                "error_code": "letter_read_failed",
+            },
+        ) from e
 
 
 @router.get(
@@ -2936,7 +2979,14 @@ def list_letters(
         letters = list_letters_for_patient(patient_id)
         return LettersListOut(patient_id=patient_id, letters=letters)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.exception("Failed to list letters")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "message": "Could not load the letters",
+                "error_code": "letter_list_failed",
+            },
+        ) from e
 
 
 # --- FHIR Endpoints ---
@@ -3006,8 +3056,13 @@ def create_patient_in_fhir(
         )
         return FhirPatientResource.model_validate(patient)
     except Exception as e:
+        logger.exception("Failed to create FHIR patient")
         raise HTTPException(
-            status_code=500, detail=f"Failed to create FHIR patient: {e}"
+            status_code=500,
+            detail={
+                "message": "Could not create the patient",
+                "error_code": "patient_create_failed",
+            },
         ) from e
 
 
@@ -3045,8 +3100,13 @@ def get_patient(
     except HTTPException:
         raise
     except Exception as e:
+        logger.exception("Failed to retrieve patient")
         raise HTTPException(
-            status_code=500, detail=f"Failed to retrieve patient: {e}"
+            status_code=500,
+            detail={
+                "message": "Could not load the patient",
+                "error_code": "patient_fetch_failed",
+            },
         ) from e
 
 
@@ -3106,8 +3166,13 @@ def update_patient(
     except HTTPException:
         raise
     except Exception as e:
+        logger.exception("Failed to update patient")
         raise HTTPException(
-            status_code=500, detail=f"Failed to update patient: {e}"
+            status_code=500,
+            detail={
+                "message": "Could not update the patient",
+                "error_code": "patient_update_failed",
+            },
         ) from e
 
 
@@ -3514,7 +3579,14 @@ def list_organisations(
             ]
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.exception("Failed to list organisations")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "message": "Could not load the organisations",
+                "error_code": "organisation_list_failed",
+            },
+        ) from e
 
 
 @router.get("/organisations/{org_id}", response_model=OrganisationDetailOut)
@@ -4983,8 +5055,11 @@ def create_conversation_endpoint(
                 body.include_patient_as_participant
             ),
         )
-    except PermissionError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except MessagingError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"message": exc.message, "error_code": exc.error_code},
+        ) from exc
     except FhirCommunicationError as exc:
         raise HTTPException(
             status_code=502,
@@ -5212,10 +5287,11 @@ def send_message_endpoint(
             body=body.body,
             amends_id=body.amends_id,
         )
-    except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except PermissionError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except MessagingError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"message": exc.message, "error_code": exc.error_code},
+        ) from exc
     except FhirCommunicationError as exc:
         raise HTTPException(
             status_code=502,
@@ -5269,8 +5345,11 @@ def add_participant_endpoint(
             user_id=body.user_id,
             role=body.role,
         )
-    except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except MessagingError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"message": exc.message, "error_code": exc.error_code},
+        ) from exc
 
 
 @router.get(
@@ -5350,10 +5429,11 @@ def join_conversation_endpoint(
             conversation_id=conversation_id,
             user=current_user,
         )
-    except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except PermissionError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except MessagingError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"message": exc.message, "error_code": exc.error_code},
+        ) from exc
 
 
 @router.post(
