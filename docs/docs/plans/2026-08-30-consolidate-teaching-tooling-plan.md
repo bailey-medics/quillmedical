@@ -832,26 +832,100 @@ from merging.
 Sync imports new versions but never moves the pointer; a staff org admin advances it when
 they are ready. That also gives a rollback, which does not exist today.
 
-- [ ] **Model and migration.** Add `active_version: int | None` to
+- [x] **Model and migration.** Add `active_version: int | None` to
       `QuestionBankOrgStatus`. Nullable, so no `server_default` is needed. Backfill every
       existing row to the highest synced version for that organisation and bank, so no
       live bank changes behaviour on deploy. Created with `just migrate`, with a real
       `downgrade()`.
-- [ ] **Sync sets it once and never again.** Creating a status row for a bank's first
-      version sets the pointer to that version — harmless, since `is_live` still gates it.
-      Syncing a later version must leave the pointer untouched: that is the whole point.
-- [ ] **Candidate-facing queries follow the pointer**, not the highest version:
-      `start_assessment` (`router.py:572`, the critical one), `get_question_bank`
-      (`router.py:344`) and `list_question_banks` (`router.py:249`). A null pointer means
-      the bank is not ready and serves nothing.
-- [ ] **Admin views show both** — `list_admin_banks` (`router.py:1934`) and
-      `get_admin_bank_detail` (`router.py:2181`) keep reporting the latest synced version,
-      alongside the active one, so "version 3 active, version 4 available" is visible.
-- [ ] **Promotion endpoint** for staff org admins, scoped to their own organisation.
-      Validates that the target version exists for that bank, and records who moved it and
-      when. Rolling back is the same operation pointing at an earlier version.
+- [x] **Setting a bank live for an organisation pins the version; nothing else moves it.**
+      - The plan said sync would do this. It cannot: `sync.py` never touches
+        `QuestionBankOrgStatus` — no reference to the model, the table or `active_version`
+        anywhere in it. So "syncing a later version leaves the pointer untouched" was
+        already true, trivially, and the first half had nowhere to happen.
+      - The only place a status row is created is `update_bank_org_settings`
+        (`router.py`), when an admin sets `is_live` or `site_registration`. It left
+        `active_version` null, and nothing else writes it, so once the candidate queries
+        follow the pointer every organisation would have served nothing.
+      - Creating the row now pins the newest version **that organisation** has. Not the
+        `config_row` already in scope: that was looked up for the _caller's_ organisation
+        to check the bank exists, and versions are per organisation
+        (`UniqueConstraint(organisation_id, question_bank_id, version)`). Null when the
+        target has nothing synced, which is honest — there is no version to serve.
+      - Updating an existing row leaves the pointer alone. That case is not in the original
+        wording and is the one that could promote silently: a bank switched off and on
+        again must not pick up a revision that arrived meanwhile.
+- [x] **Candidate-facing queries follow the pointer**, not the highest version:
+      `start_assessment` (the critical one), `get_question_bank` and
+      `list_question_banks`. A null pointer means the bank is not ready and serves nothing —
+      403 from `start_assessment`, 404 from the detail view, absent from the list.
+      - `list_question_banks` takes the **highest** pointer across the user's organisations,
+        matching the existing "live if any organisation has it live" union rather than
+        inventing a second rule for multi-organisation users.
+      - `_seed_bank` in the tests now pins `active_version`. A status row without one no
+        longer represents a live bank, so a fixture lacking it was testing a state the
+        settings endpoint cannot produce.
+      - The sabotage check earned its keep twice here. Removing the version filter from
+        `start_assessment` left the tests green, because the null-pointer guard answered
+        first; and a second attempt still passed because dropping the filter without
+        restoring the original `ORDER BY … desc()` happened to return the right row. Only
+        a faithful revert failed, which is what the test needed to prove.
+- [x] **Admin views show both** — `list_admin_banks` and `get_admin_bank_detail` keep
+      reporting the latest synced version, alongside the active one, so "version 3 active,
+      version 4 available" is visible.
+      - `active_version` is added to `AdminBankOut` and `AdminBankDetailOut`. Additive, so
+        the API compatibility gate has nothing to object to.
+      - The admin list deliberately still shows a bank with a null pointer, where the
+        candidate list hides it. The admin screen is where you go to promote it, so hiding
+        it there would be a trap.
+      - Null is distinguishable from "promoted version 1": an admin seeing null knows the
+        bank has never been opened, not that it is up to date.
+- [x] **Promotion endpoint**, scoped to the caller's own organisation. Validates that the
+      target version exists for that bank, and records who moved it and when. Rolling back
+      is the same operation pointing at an earlier version.
+      - **Gated on `manage_teaching_content`, the same competency every other teaching admin
+        endpoint uses, and scoped to the caller's own organisation** — not the target
+        organisation in the path. The plan originally said "staff org admins"; no such role
+        exists. Organisation membership carries no role at all, and system permissions are
+        explicitly not for data access, so the competency is the only honest gate available
+        today.
+      - This is knowingly provisional. Who may promote is exactly the question
+        `2026-09-06-org-scoped-access-findings.md` exists to answer, and that document lists
+        this endpoint as somewhere to revisit. Inventing a half-version of the new model here
+        would be worse than using the existing one and marking it.
+      - **Do this before pausing teaching.** Without it the pointer can be set once and never
+        moved: a bank goes live at version 1, version 2 imports, candidates correctly keep
+        version 1 — and nothing can ever advance them. Safe, but it blocks publishing a
+        revision entirely, which is worse than the bug it replaced.
+      - **The organisation is named in the path, and the caller must belong to it.** A first
+        attempt inferred it from the caller and was wrong: `_get_user_org_id` returns
+        whichever organisation comes back first, so someone teaching for two would silently
+        promote for the wrong one and never know. Naming it makes the caller say which.
+      - That is not the settings endpoint's hole repeated. Its problem is the **missing**
+        membership check, not the path parameter; this one checks.
+      - A version another organisation has synced is not promotable here. Content is shared
+        between organisations; the pointer is not.
+      - `active_version_set_by` and `active_version_set_at` record who moved it. `SET NULL`
+        rather than a cascade, so the fact a promotion happened survives the person leaving.
 - [ ] **Admin UI** — surface the two version numbers and a promote control on the existing
       admin teaching page, which already carries the live/closed toggle.
+
+### Order of work, and where this pauses
+
+- [x] **Promotion endpoint** — the last thing needed before teaching can be left alone. It
+      is what turns the active-version work from _safe_ into _usable_.
+- [ ] **Finish and merge the active-version pull request** once it lands. Three commits —
+      pin the pointer, follow it, show it — plus this one. That is a genuine stopping point:
+      the feature works end to end through the API.
+- [ ] **Then move to `2026-09-06-org-scoped-access-findings.md`.** It is a plan rather than
+      code, so nothing rots while it waits, and it answers a question this phase had to work
+      around. Finish it there: settle where a request's context comes from, what becomes of
+      `system_permissions`, and how the staff and patient namespaces meet.
+- [ ] **Come back for the admin interface.** It is the only teaching item left, it depends on
+      no unanswered question, and by then the promotion endpoint it drives will have been in
+      use through the API.
+
+The admin interface deliberately waits rather than shipping with the endpoint: a screen
+without an endpoint blocks the workflow, an endpoint without a screen does not.
 
 ## Follow-up: a decision file for teaching tooling changes
 

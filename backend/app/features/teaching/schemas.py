@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 # ------------------------------------------------------------------
 # Question banks
@@ -288,11 +288,17 @@ class SyncHistoryOut(BaseModel):
 
 
 class AdminBankOut(BaseModel):
-    """One question bank in the admin teaching overview."""
+    """One question bank in the admin teaching overview.
+
+    ``version`` is the newest imported; ``active_version`` is the one this
+    organisation serves. They differ whenever a revision has arrived and
+    nobody has promoted it, which is the state an admin needs to see.
+    """
 
     bank_id: str
     title: str | None = None
     version: int | None = None
+    active_version: int | None = None
     type: str | None = None
     synced_at: datetime | None = None
     in_gcs: bool = False
@@ -419,6 +425,22 @@ class QuestionBankOrgStatusIn(BaseModel):
     is_live: bool
 
 
+class PromoteBankVersionIn(BaseModel):
+    """Which version this organisation's candidates should receive."""
+
+    version: int = Field(ge=1)
+
+
+class PromoteBankVersionOut(BaseModel):
+    """The pointer after promotion."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    question_bank_id: str
+    active_version: int
+    previous_version: int | None = None
+
+
 class QuestionBankOrgSettingsIn(BaseModel):
     """Combined settings update for a bank-org pair."""
 
@@ -464,11 +486,16 @@ class EmailTemplateOut(BaseModel):
 
 
 class AdminBankDetailOut(BaseModel):
-    """Detailed admin view of a single question bank."""
+    """Detailed admin view of a single question bank.
+
+    ``version`` is the newest imported; ``active_version`` is the one this
+    organisation serves.
+    """
 
     bank_id: str
     title: str | None = None
     version: int | None = None
+    active_version: int | None = None
     type: str | None = None
     item_count: int = 0
     email_student_on_pass: bool = False

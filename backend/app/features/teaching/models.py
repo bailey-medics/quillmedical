@@ -317,6 +317,17 @@ class QuestionBankOrgStatus(Base):
     #: Version served to this organisation's candidates. Null means the
     #: bank has nothing promoted yet and serves nothing.
     active_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    #: Who last moved the pointer, and when. Promotion decides what a cohort
+    #: sits, so it needs an answer to "who did this" that survives the person
+    #: leaving — hence SET NULL rather than a cascade.
+    active_version_set_by: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    active_version_set_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
 
 # ------------------------------------------------------------------

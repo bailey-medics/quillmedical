@@ -15,7 +15,7 @@ from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.responses import Response
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db import get_core_db
@@ -47,6 +47,8 @@ from app.features.teaching.schemas import (
     ItemImageOut,
     LearningContentOut,
     LearningModuleOut,
+    PromoteBankVersionIn,
+    PromoteBankVersionOut,
     QuestionBankDetailOut,
     QuestionBankItemOut,
     QuestionBankOrgSettingsIn,
@@ -228,11 +230,20 @@ def list_question_banks(
         .scalars()
         .all()
     )
-    # A bank is live if ANY of the user's orgs has it live
+    # A bank is live if ANY of the user's orgs has it live, and it shows the
+    # highest version any of them has promoted — the same permissive union.
+    # A null pointer contributes nothing: that organisation has promoted no
+    # version, so it has nothing to show.
     live_map: dict[str, bool] = {}
+    active_map: dict[str, int] = {}
     visible_bank_ids: set[str] = set()
     for s in statuses:
+        if s.active_version is None:
+            continue
         visible_bank_ids.add(s.question_bank_id)
+        active_map[s.question_bank_id] = max(
+            active_map.get(s.question_bank_id, 0), s.active_version
+        )
         if s.is_live:
             live_map[s.question_bank_id] = True
 
@@ -262,6 +273,9 @@ def list_question_banks(
     results: list[dict[str, Any]] = []
     for c in configs:
         if c.question_bank_id in seen:
+            continue
+        # Only the promoted version, not whichever happens to be newest.
+        if c.version != active_map.get(c.question_bank_id):
             continue
         seen.add(c.question_bank_id)
 
@@ -334,14 +348,19 @@ def get_question_bank(
     if not status_row:
         raise HTTPException(404, "Question bank not found")
 
-    # Fetch config from whichever org owns it
+    # A bank with nothing promoted has nothing to show: describing a version
+    # this organisation does not serve would be worse than saying it is not
+    # there.
+    if status_row.active_version is None:
+        raise HTTPException(404, "Question bank not found")
+
+    # Fetch the promoted version from whichever org owns the content.
     config = (
         db.execute(
-            select(QuestionBankConfig)
-            .where(
+            select(QuestionBankConfig).where(
                 QuestionBankConfig.question_bank_id == bank_id,
+                QuestionBankConfig.version == status_row.active_version,
             )
-            .order_by(QuestionBankConfig.version.desc())
         )
         .scalars()
         .first()
@@ -562,14 +581,19 @@ def start_assessment(
     if not status_row:
         raise HTTPException(403, "This assessment is not currently open")
 
-    # Load latest config (may be owned by a different org)
+    # The version this organisation has promoted, not the newest imported.
+    # Syncing a revision must not change what a candidate sits mid-cohort;
+    # advancing the pointer is a deliberate act by a staff org admin.
+    if status_row.active_version is None:
+        raise HTTPException(403, "This assessment is not currently open")
+
+    # May be owned by a different org — content is shared, the pointer is not.
     config_row = (
         db.execute(
-            select(QuestionBankConfig)
-            .where(
+            select(QuestionBankConfig).where(
                 QuestionBankConfig.question_bank_id == body.question_bank_id,
+                QuestionBankConfig.version == status_row.active_version,
             )
-            .order_by(QuestionBankConfig.version.desc())
         )
         .scalars()
         .first()
@@ -1956,6 +1980,20 @@ def list_admin_banks(
         ).all()
         item_counts[bank_id] = len(count)
 
+    # What this organisation actually serves, which is not necessarily the
+    # newest imported. Showing both is the point: "version 3 active, version
+    # 4 available" is the state an admin needs to notice.
+    active_versions: dict[str, int | None] = {
+        row.question_bank_id: row.active_version
+        for row in db.execute(
+            select(QuestionBankOrgStatus).where(
+                QuestionBankOrgStatus.organisation_id == org_id,
+            )
+        )
+        .scalars()
+        .all()
+    }
+
     # GCS banks
     gcs_bank_ids: set[str] = set()
     bucket = settings.TEACHING_GCS_BUCKET
@@ -1976,6 +2014,7 @@ def list_admin_banks(
                 bank_id=bank_id,
                 title=bank_cfg.title if bank_cfg else None,
                 version=bank_cfg.version if bank_cfg else None,
+                active_version=active_versions.get(bank_id),
                 type=bank_cfg.type if bank_cfg else None,
                 synced_at=bank_cfg.synced_at if bank_cfg else None,
                 in_gcs=bank_id in gcs_bank_ids,
@@ -2229,10 +2268,23 @@ def get_admin_bank_detail(
                 attach_certificate=st.get("attach_certificate", True),
             )
 
+    # The pointer for this organisation, which may lag the newest import.
+    status_row = (
+        db.execute(
+            select(QuestionBankOrgStatus).where(
+                QuestionBankOrgStatus.organisation_id == org_id,
+                QuestionBankOrgStatus.question_bank_id == bank_id,
+            )
+        )
+        .scalars()
+        .first()
+    )
+
     return AdminBankDetailOut(
         bank_id=bank_id,
         title=config_row.title,
         version=config_row.version,
+        active_version=status_row.active_version if status_row else None,
         type=config_row.type,
         item_count=len(item_count),
         email_student_on_pass=email_student_on_pass,
@@ -2304,6 +2356,91 @@ def list_bank_organisations(
 
 
 @teaching_router.put(
+    "/admin/banks/{bank_id}/organisations/{org_id}/active-version",
+    response_model=PromoteBankVersionOut,
+    dependencies=[_DEP_MANAGE],
+)
+def promote_bank_version(
+    bank_id: str,
+    org_id: int,
+    body: PromoteBankVersionIn,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+) -> PromoteBankVersionOut:
+    """Move which version of a bank an organisation's candidates receive.
+
+    The organisation is named in the path and the caller must belong to it.
+    Not inferred from the caller: ``_get_user_org_id`` returns whichever
+    organisation happens to come back first, so a person teaching for two
+    would silently promote for the wrong one.
+
+    Restricted to the caller's own organisations because nothing models which
+    organisations one may promote on behalf of. That question belongs to
+    docs/docs/plans/2026-09-06-org-scoped-access-findings.md.
+
+    Rolling back is the same operation naming an earlier version.
+    """
+    if org_id not in _get_user_org_ids(user, db):
+        raise HTTPException(
+            403, "You cannot promote a version for that organisation"
+        )
+
+    # The version must exist for this organisation. Content is shared, but a
+    # version another organisation has synced is not one this one can serve.
+    target = (
+        db.execute(
+            select(QuestionBankConfig).where(
+                QuestionBankConfig.organisation_id == org_id,
+                QuestionBankConfig.question_bank_id == bank_id,
+                QuestionBankConfig.version == body.version,
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if not target:
+        raise HTTPException(
+            404, f"Version {body.version} not found for this question bank"
+        )
+
+    status_row = (
+        db.execute(
+            select(QuestionBankOrgStatus).where(
+                QuestionBankOrgStatus.organisation_id == org_id,
+                QuestionBankOrgStatus.question_bank_id == bank_id,
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if not status_row:
+        raise HTTPException(
+            404, "This question bank is not set up for your organisation"
+        )
+
+    previous = status_row.active_version
+    status_row.active_version = body.version
+    status_row.active_version_set_by = user.id
+    status_row.active_version_set_at = datetime.now(UTC)
+    db.flush()
+
+    logger.info(
+        "Bank '%s' promoted from v%s to v%d for org %d by user %d",
+        bank_id,
+        previous,
+        body.version,
+        org_id,
+        user.id,
+    )
+
+    return PromoteBankVersionOut(
+        question_bank_id=bank_id,
+        active_version=body.version,
+        previous_version=previous,
+    )
+
+
+@teaching_router.put(
     "/admin/banks/{bank_id}/organisations/{org_id}/settings",
     response_model=QuestionBankOrgSettingsOut,
     dependencies=[_DEP_MANAGE],
@@ -2346,14 +2483,35 @@ def update_bank_org_settings(
     ).scalar_one_or_none()
 
     if status_row:
+        # active_version is deliberately untouched. Switching a bank off and
+        # on again must not promote a revision that arrived meanwhile — the
+        # whole point of the pointer is that advancing it is a separate,
+        # deliberate act.
         status_row.is_live = body.is_live
         status_row.site_registration = body.site_registration
     else:
+        # A bank being set up for an organisation starts on the newest
+        # version that organisation has. Nothing else writes this, so
+        # leaving it null would mean candidates saw nothing once the
+        # queries follow it.
+        #
+        # Deliberately not config_row.version: that row was looked up for
+        # the caller's organisation to check the bank exists, and versions
+        # are per organisation. Null when this one has nothing synced yet,
+        # which is honest — there is no version to serve.
+        active_version = db.execute(
+            select(func.max(QuestionBankConfig.version)).where(
+                QuestionBankConfig.organisation_id == org_id,
+                QuestionBankConfig.question_bank_id == bank_id,
+            )
+        ).scalar_one_or_none()
+
         status_row = QuestionBankOrgStatus(
             organisation_id=org_id,
             question_bank_id=bank_id,
             is_live=body.is_live,
             site_registration=body.site_registration,
+            active_version=active_version,
         )
         db.add(status_row)
 
