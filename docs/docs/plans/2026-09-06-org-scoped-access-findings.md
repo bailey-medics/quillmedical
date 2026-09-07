@@ -87,6 +87,13 @@ own organisation". No such role exists. The nearest available gates are the
 `CLAUDE.md` explicitly says is not for data access. Writing that endpoint today means
 choosing between a gate that is too wide and one that is the wrong instrument.
 
+That endpoint has since shipped, on the too-wide gate, with the compromise written into
+its docstring. `promote_bank_version` and `update_bank_org_settings` in
+`backend/app/features/teaching/router.py` are the first two callers waiting on whatever
+this document settles, and the teaching plan tracks them under **Provisional: who may
+promote**. Whatever comes out of this has to be able to express "may promote on behalf of
+organisation X" — that is the smallest concrete thing the design must deliver.
+
 ## Where the design has got to
 
 Four rounds of arguing this out have collapsed the model rather than grown it. What

@@ -33,8 +33,19 @@ RUN pip install --no-cache-dir "poetry==$(cat .poetry-version)" \
 COPY backend/pyproject.toml backend/poetry.lock* ./
 # TODO: use `--only main` here — the dev group isn't marked optional, so this
 # currently installs dev deps (mypy, pytest, etc.) into the production image.
-RUN poetry config virtualenvs.create false \
- && poetry install --no-interaction --no-ansi
+# PyPI reads occasionally time out mid-download; Poetry's default 15s request
+# timeout makes that likely on a cold build. Raise it, keep Poetry's artifact
+# cache on a BuildKit cache mount so a retry resumes rather than restarting,
+# and retry the install a few times before failing the build.
+ENV POETRY_REQUESTS_TIMEOUT=60
+RUN --mount=type=cache,target=/root/.cache/pypoetry \
+    poetry config virtualenvs.create false \
+ && for attempt in 1 2 3; do \
+        poetry install --no-interaction --no-ansi && exit 0; \
+        echo "poetry install failed (attempt $attempt of 3); retrying..." >&2; \
+        sleep 5; \
+    done; \
+    exit 1
 
 # Copy sources (keeps your paths)
 COPY backend/app ./app
