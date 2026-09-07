@@ -4356,6 +4356,42 @@ def create_site(
     )
 
 
+def _require_site_in_own_org(
+    db: Session, current_user: User, site_id: int
+) -> None:
+    """Refuse a site outside the admin's own organisations.
+
+    Sites are not standalone: one is created from inside an organisation and
+    linked to it in the same action, so "an organisation the site belongs
+    to" is the site's owner. Superadmins are global and skip the check.
+
+    404 rather than 403, matching ``get_organisation``, so the response does
+    not confirm that a site exists to someone who may not see it.
+    """
+    if current_user.system_permissions == "superadmin":
+        return
+
+    site_org_ids = set(
+        db.execute(
+            select(organisation_site.c.organisation_id).where(
+                organisation_site.c.site_id == site_id
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if not site_org_ids & set(get_user_org_ids(db, current_user.id)):
+        raise HTTPException(status_code=404, detail="Site not found")
+
+
+def _require_own_org(db: Session, current_user: User, org_id: int) -> None:
+    """Refuse an organisation the admin does not belong to."""
+    if current_user.system_permissions == "superadmin":
+        return
+    if org_id not in get_user_org_ids(db, current_user.id):
+        raise HTTPException(status_code=404, detail="Organisation not found")
+
+
 @router.get("/sites/{site_id}", response_model=SiteDetailOut)
 def get_site(
     site_id: int,
@@ -4365,6 +4401,8 @@ def get_site(
     """Get site details including staff. Admin/superadmin only."""
     if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
+
+    _require_site_in_own_org(db, current_user, site_id)
 
     site = db.get(Site, site_id)
     if not site:
@@ -4443,6 +4481,8 @@ def update_site(
     if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
 
+    _require_site_in_own_org(db, current_user, site_id)
+
     site = db.get(Site, site_id)
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
@@ -4503,6 +4543,8 @@ def toggle_site_active(
     if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
 
+    _require_site_in_own_org(db, current_user, site_id)
+
     site = db.get(Site, site_id)
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
@@ -4537,6 +4579,8 @@ def delete_site(
     if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
 
+    _require_site_in_own_org(db, current_user, site_id)
+
     site = db.get(Site, site_id)
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
@@ -4559,6 +4603,8 @@ def link_site_to_org(
     """Link a site to an organisation. Admin/superadmin only."""
     if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
+
+    _require_own_org(db, current_user, org_id)
 
     org = db.get(Organisation, org_id)
     if not org:
@@ -4601,6 +4647,8 @@ def unlink_site_from_org(
     if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
 
+    _require_own_org(db, current_user, org_id)
+
     result = db.execute(
         organisation_site.delete().where(
             organisation_site.c.organisation_id == org_id,
@@ -4631,6 +4679,8 @@ def add_site_staff(
     """
     if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
+
+    _require_site_in_own_org(db, current_user, site_id)
 
     site = db.get(Site, site_id)
     if not site:
@@ -4707,6 +4757,8 @@ def remove_site_staff(
     """Remove a staff member from a site. Admin/superadmin only."""
     if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
+
+    _require_site_in_own_org(db, current_user, site_id)
 
     result = db.execute(
         site_staff_member.delete().where(
