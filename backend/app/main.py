@@ -4391,9 +4391,12 @@ def get_site(
 
     staff = db.execute(staff_query).all()
 
-    # Get linked organisations
+    # Get linked organisations. `type` is selected because
+    # LinkedOrganisationItem requires it: without it this endpoint raises a
+    # validation error for any site that has an organisation, which is every
+    # site the product can actually create.
     org_query = (
-        select(Organisation.id, Organisation.name)
+        select(Organisation.id, Organisation.name, Organisation.type)
         .join(
             organisation_site,
             organisation_site.c.organisation_id == Organisation.id,
@@ -4421,7 +4424,9 @@ def get_site(
             }
             for s in staff
         ],
-        organisations=[{"id": o.id, "name": o.name} for o in orgs],
+        organisations=[
+            {"id": o.id, "name": o.name, "type": o.type} for o in orgs
+        ],
     )
 
 
