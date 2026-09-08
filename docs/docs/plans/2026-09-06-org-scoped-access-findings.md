@@ -413,17 +413,27 @@ deliberately the source of truth — it is code-generated into the frontend's ty
 table would have to be kept in step with it. That is the same synchronisation hazard that
 ruled out a shared `places` table, and it is not worth taking on for spelling.
 
-- [ ] **Validate at every write boundary.** Reject an unknown competency id where it enters:
-      the Pydantic schemas that set `additional_competencies` and `removed_competencies`, and
-      wherever a per-place row is created. Fail at the point the typo is introduced, not
-      silently at read time.
-- [ ] **Add a test that walks every stored id against the catalogue** — the two JSON columns
+- [x] **Validate at every write boundary.** `validate_competency_ids` in
+      `app/cbac/competencies.py` is the one check; `AdminUserCreateIn` and
+      `AdminUserUpdateIn` call it through field validators, so an unknown id is a 422 that
+      names it rather than a row nobody notices.
+      - The per-place row is guarded on the attribute instead, with SQLAlchemy's
+        `@validates`. A schema only covers the endpoint that uses it; the attribute covers
+        every path that writes a row, and there is no endpoint for these yet.
+      - `base_profession` got the same treatment, found while writing this: it is a bare
+        string too, and `get_profession_base_competencies` returns an empty list for an
+        unknown one — so a typo gave a user no competencies at all and said nothing.
+- [x] **Audit what is already stored** — `app/cbac/audit.py`, walking the two JSON columns
       on every user, every per-place row, and every `base_competencies` entry in
-      `base-professions.yaml`. It catches a competency removed from the catalogue while rows
-      still reference it, which write-boundary validation cannot see.
-- [ ] **Decide what a removal from the catalogue means** before that test can pass on real
-      data. Retiring a competency leaves existing rows pointing at nothing, and the honest
-      options are to refuse the removal, or to require the rows be cleared first.
+      `base-professions.yaml`. Read-only: it reports, and changes nothing, because what to
+      do about a stale id is a decision rather than a cleanup.
+      - The base-profession check is static drift between two files that ship together, so
+        it runs as an ordinary test and fails in CI the moment one is edited without the
+        other.
+- [ ] **Decide what a removal from the catalogue means.** Still open, and the audit exists
+      partly to make the question concrete: retiring a competency leaves rows pointing at
+      nothing, and the honest options are to refuse the removal, or to require the rows be
+      cleared first. Until then the audit reports and a human decides.
 
 ### Settled: the per-place row is `PractisingCompetency`
 
@@ -479,16 +489,16 @@ Every capability the tests name exists in `shared/competencies.yaml`. Some are s
 there is no rota or clinical-safety-officer capability yet — because what is asserted is
 that the answer differs by place, not which capability it is.
 
-- [ ] Doctor at A, patient at B — cannot act clinically at B.
+- [x] Doctor at A, patient at B — cannot act clinically at B.
 - [ ] Nurse treated at her own hospital — reads her own record, not a colleague's, without
       changing mode.
 - [ ] Patient administers their own chemotherapy at home.
-- [ ] Locum at C with narrower privileges than their ceiling.
-- [ ] Site administrator who holds no organisation-level authority at all.
-- [ ] Student at one teaching site and nothing at another.
-- [ ] Trained educator delivering at a site where they hold no administrative job.
-- [ ] Rota manager with no clinical capability whatever.
-- [ ] Clinical safety officer for one project, not for the organisation.
+- [x] Locum at C with narrower privileges than their ceiling.
+- [x] Site administrator who holds no organisation-level authority at all.
+- [x] Student at one teaching site and nothing at another.
+- [x] Trained educator delivering at a site where they hold no administrative job.
+- [x] Rota manager with no clinical capability whatever.
+- [x] Clinical safety officer for one project, not for the organisation.
 - [ ] A site whose clinical lead post is vacant.
 - [ ] Acting clinical lead covering leave.
 - [ ] Registration lapses — everything clinical falls away, memberships do not.
