@@ -207,10 +207,148 @@ nowhere, and `staff` appears only in a validation set. Where `clinical_lead` is 
 lookup — _who is the lead here_ — not a gate. So the column is doing very little, and what
 it does becomes a position.
 
-- [ ] **Move its two consumers across.** `validate_clinical_lead` and the site listing in
-      `main.py` both read `site_staff_member.c.role == "clinical_lead"`; they become lookups
-      against `PositionHolding`. Deliberately separate work from building the model, and it
-      needs a data migration for existing rows before the column can go.
+- [x] **Expand: reads moved across, both written.** `validate_clinical_lead` and the site
+      listing now answer from `PositionHolding` via `clinical_leads_of`, and
+      `add_site_staff` and `remove_site_staff` keep the post in step with the column. A
+      backfill migration creates a post and holding for every existing `clinical_lead` row.
+      - `started_on` in the backfill is the migration date, not a guess at when the person
+        took the post. Inventing one would put a claim in the record that nothing supports.
+- [x] **Expand the API first.** `SiteDetailOut` gains `clinical_lead_id`, populated from
+      the post, and the interface reads that instead of scanning staff rows for a role.
+      Additive and optional, so nothing breaks and there is no `oasdiff` finding yet.
+      - The contract step could not come next without this: the interface had nothing else
+        to read, so removing `role` would have broken three pages. Expand-contract applies
+      to the response as much as to the column.
+      - Six usages across three pages, not the four this document counted — `SiteAdminPage`
+        looks the lead up three more times to display its name and email.
+      - Those pages had **no tests at all**. Three now cover the clinical lead field,
+        including one asserting that a staff row whose `role` says `clinical_lead` is
+        ignored — which is what proves the display reads the post.
+
+### Settled: `role` is three facts in one column
+
+The consumer count grew three times — two, then four, then six — and each time from a search
+that looked exhaustive. The reason is not carelessness: `role` holds three unrelated facts,
+so no single search for its meaning finds them all.
+
+- **`clinical_lead`** — who holds a post. Already a `Position`.
+- **`staff`** — that the person is attached to the site. The row says that by existing, so
+  the value restates its own table.
+- **`trainee`** — that the person is on placement there. Compared in
+  `list_delegates`, which uses it to answer _which site is this delegate at_ — so it is
+  load-bearing, and the earlier claim in this document that `trainee` is "compared nowhere"
+  was wrong.
+
+**What each becomes:**
+
+- **Membership** answers _where are they?_ — `site_staff_member` keeps one row per person per
+  site, with a column saying in what **capacity**: `staff` or `trainee`.
+- **Competencies** answer _what may they do there?_ — `PractisingCompetency`, as now.
+- **Positions** answer _who holds the post?_ — `Position`, as now, and clinical lead stays
+  one. A column cannot express a vacancy, acting cover, or who held it in March, and those
+  are the three reasons the post exists.
+
+**`capacity`, not `level` or `role`.** "Level" implies a ranking, and there is not one: a
+trainee on placement and a substantive staff member are different relationships to the site,
+not rungs of a ladder. A column that reads as a ladder is one the next person needing a
+site-level permission check will reach for — which is the trap this column is today.
+
+- [x] **Rename the table to `site_member` and the column to `capacity`.**
+      `site_staff_member` is a straightforward lie about a third of its rows: `register`,
+      the public self-registration route, inserts teaching delegates with `role="trainee"`,
+      and they are not employed by the site. One membership table per place, with the
+      capacity column saying what kind of member.
+      - The existing tables use `_member`, so `site_member` rather than `site_membership`.
+      - `.claude/rules/backend.md` records the trap: Postgres does not rename a table's
+        auto-named indexes, so `op.rename_table` needs explicit `ALTER INDEX` beside it or
+        autogenerate flags the leftovers for ever. One of them,
+        `ix_site_staff_one_clinical_lead`, goes anyway — `max_holders` on the post enforces
+        that now.
+      - It also sketches where organisations have to end up. They have two membership tables
+        keyed differently, on `user_id` and on a FHIR `patient_id`, which is the namespace
+        problem still open below.
+- [x] **Keep `capacity` open-ended.** `staff` and `trainee` are the two needed now, and
+      more are expected — volunteer, contractor, honorary, visiting. `SITE_CAPACITIES` and
+      `validate_site_capacity` in `models.py`.
+      - So a `String` column validated against a small list in code, the way
+        `POSITION_KINDS` is, rather than a database enum. Extending an enum needs a
+        migration; extending a list needs a line. A free string is not the alternative:
+        that repeats the competency-id mistake.
+      - This is a second reason not to call it `level`. Two values could be mistaken for a
+        ranking; six certainly would be, and none of them rank.
+      - **Capacity must never become a permission check.** As the list grows the pull will
+        be to write "contractors cannot do X". That belongs in what is enabled for them at
+        that place, not in what kind of member they are — otherwise the column becomes the
+        access-control-shaped field this whole exercise is removing.
+- [ ] **Move the remaining `clinical_lead` reads onto positions** — two in the teaching
+      router, one in `get_site`, and the one-lead check in `add_site_staff`, which
+      `max_holders` on the post now enforces.
+      - **`_maybe_enqueue_certificate_emails` has no test at all**, and it is one of the
+        two in the teaching router. A first attempt at moving it was written and then
+        reverted: it referenced `clinical_leads_of` without importing it, the module still
+        imported cleanly because the name is only resolved when the function runs, and the
+        whole suite passed either way. The bug would have shipped and surfaced as a failed
+        certificate email.
+      - So this one needs its test written first, not alongside. It decides who is emailed
+        when a candidate passes, and nothing currently checks that it emails anybody.
+      - [x] **Test written**, in `backend/tests/test_certificate_email_recipients.py`, and
+        checked against a deliberately broken lookup: dropping the organisation filter makes
+        it fail. Nine cases, the load-bearing one being that a site with no clinical lead
+        produces no coordinator email — the behaviour most at risk when the lookup moves to
+        the post, since a vacancy is exactly what the old query could not express.
+      - Writing it turned up dead defensive code: `User.email` is NOT NULL, so the
+        `if lead.email` guards only ever fire for the empty string, never for None.
+      - [x] **`_maybe_enqueue_certificate_emails` moved.** The net earned its keep at once:
+        two tests failed, because the fixture seeded only the role column and the lookup now
+        reads the post. The fixture writes both, as the API does, and a new test pins the
+        cut-over — a `clinical_lead` row with no post behind it emails nobody.
+      - [ ] **`list_delegates` is the other one, and it has no test either.** Same trap, so
+        the same order: test first.
+        - It should move **after** the capacity rename, not before. It reads the column
+          twice — once for `trainee` to find the delegate's site, once for `clinical_lead` to
+          name that site's lead — so doing it once afterwards avoids touching it twice.
+        - It also matches the lead by `Site.name` rather than by id, so two sites sharing a
+          name in different organisations cross-match. Moving to the post fixes that as a
+          side effect, which makes it a behaviour change and not only a refactor.
+- [x] **`list_delegates` moved**, both reads at once as planned — the capacity for the
+      delegate's site, and the post for that site's lead. Keyed on the site's id rather than
+      its name, which fixes the cross-match between same-named sites in different
+      organisations. Five tests written first, one of which pins that cross-match.
+- [x] **Autogenerate proposed destroying the table.** It read the rename as one table
+      appearing and another disappearing, and emitted `create_table` plus `drop_table` —
+      which would have discarded every row. The migration is hand-written as a real rename:
+      drop the partial index, rename the column, move `clinical_lead` rows to `staff`, rename
+      the table, then rename the primary key and both foreign keys, which Postgres leaves
+      under their old names. Checked by running it down and up and inspecting the result.
+- [ ] **Then remove `role` from `SiteStaffItem`.** Still a breaking API change needing an
+      `oasdiff` finding and a decision file, and the site page's staff filter goes with it —
+      settled as not worth keeping, since nothing compares `staff` and the useful half is
+      `trainee`, which the capacity column keeps.
+      - `role` being in the response makes removal a **breaking API change**, so it needs an
+        `oasdiff` finding and a decision file. The interface no longer depends on it for the
+        clinical lead, which is what makes the removal possible.
+      - The staff filter on `SiteAdminPage` goes with it. Settled: not worth keeping.
+      - Dropping the column is also destructive, so it trips the
+        `db-destructive-migration-review` required-reviewer gate.
+      - None of that is hard here, because there is no live data. It is worth doing properly
+        anyway: the sequence is cheap to practise now and expensive to learn later.
+
+### Now and "on a date" are different questions
+
+Found by a test, not by design. Vacating a post set `ended_on` to today, and the "who holds
+this" query treated a holding ending today as still in force — so removing someone from a
+site left them clinical lead until midnight.
+
+Both readings are right, for different questions, so both exist:
+
+- **Now** — holdings that have not ended. Removal takes effect at once.
+- **On a date** — holdings in force at any point that day, both ends inclusive. Someone
+  whose holding ended on the 30th held the post on the 30th, which is what a review of that
+  date needs to be told.
+
+A handover is therefore the outgoing holder ending one day and the incoming starting the
+next; appointing a successor to start on the predecessor's last day is two holders that day,
+and `max_holders` refuses it.
 
 It is also a trap in its current form: it looks like an access-control field, so the next
 person needing a site-level gate would reasonably reach for it.

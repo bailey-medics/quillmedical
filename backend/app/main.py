@@ -50,6 +50,10 @@ from app.analytics.router import router as analytics_router
 from app.api_compatibility import REQUIRED_CLIENT_GENERATION
 from app.cbac.base_professions import PROFESSION_IDS
 from app.cbac.competencies import validate_competency_ids
+from app.cbac.positions import (
+    clinical_leads_of,
+    set_clinical_lead,
+)
 from app.config import settings
 from app.db import get_core_db
 from app.deps import has_competency
@@ -97,7 +101,7 @@ from app.models import (
     organisation_patient_member,
     organisation_site,
     organisation_staff_member,
-    site_staff_member,
+    site_member,
 )
 from app.organisations import (
     get_accessible_patient_ids,
@@ -946,18 +950,16 @@ def validate_clinical_lead(
     if not site_ids:
         return ValidateClinicalLeadOut(valid=False)
 
-    # Check if this user is a clinical_lead at any of those sites
-    staff_row = db.execute(
-        select(site_staff_member.c.site_id).where(
-            site_staff_member.c.user_id == user.id,
-            site_staff_member.c.site_id.in_(site_ids),
-            site_staff_member.c.role == "clinical_lead",
-        )
-    ).first()
-    if not staff_row:
+    # Which of those sites this user holds the clinical lead post at.
+    # Read from positions rather than site_member.role: the post is
+    # the thing being asked about, and a post can be vacant, which a role
+    # column cannot express.
+    leads = clinical_leads_of(db, list(site_ids))
+    held_at = [site_id for site_id, lead in leads.items() if lead == user.id]
+    if not held_at:
         return ValidateClinicalLeadOut(valid=False)
 
-    matched_site_id: int = staff_row[0]
+    matched_site_id: int = held_at[0]
 
     # Look up the site name for display
     site = (
@@ -1116,10 +1118,10 @@ def register(
         if site is None:
             raise HTTPException(status_code=400, detail="Site not found")
         db.execute(
-            site_staff_member.insert().values(
+            site_member.insert().values(
                 site_id=payload.site_id,
                 user_id=user.id,
-                role="trainee",
+                capacity="trainee",
             )
         )
 
@@ -1544,10 +1546,10 @@ def create_user_with_cbac(
     # Assign to sites as trainee
     for s_id in payload.site_ids:
         db.execute(
-            site_staff_member.insert().values(
+            site_member.insert().values(
                 site_id=s_id,
                 user_id=user.id,
-                role="trainee",
+                capacity="trainee",
             )
         )
 
@@ -1721,9 +1723,7 @@ def update_user(
         if current_user.system_permissions == "superadmin":
             # Superadmin: replace all site memberships
             db.execute(
-                site_staff_member.delete().where(
-                    site_staff_member.c.user_id == user_id
-                )
+                site_member.delete().where(site_member.c.user_id == user_id)
             )
         else:
             # Admin: only remove memberships for sites within admin's orgs
@@ -1738,9 +1738,9 @@ def update_user(
             ]
             if admin_site_ids:
                 db.execute(
-                    site_staff_member.delete().where(
-                        site_staff_member.c.user_id == user_id,
-                        site_staff_member.c.site_id.in_(admin_site_ids),
+                    site_member.delete().where(
+                        site_member.c.user_id == user_id,
+                        site_member.c.site_id.in_(admin_site_ids),
                     )
                 )
         # Add new site memberships
@@ -1752,10 +1752,10 @@ def update_user(
                     detail=f"Site {s_id} not found",
                 )
             db.execute(
-                site_staff_member.insert().values(
+                site_member.insert().values(
                     user_id=user_id,
                     site_id=s_id,
-                    role="trainee",
+                    capacity="trainee",
                 )
             )
 
@@ -2236,10 +2236,10 @@ def me(
         db.execute(
             select(organisation_site.c.organisation_id)
             .join(
-                site_staff_member,
-                site_staff_member.c.site_id == organisation_site.c.site_id,
+                site_member,
+                site_member.c.site_id == organisation_site.c.site_id,
             )
-            .where(site_staff_member.c.user_id == current_user.id)
+            .where(site_member.c.user_id == current_user.id)
         )
         .scalars()
         .all()
@@ -2441,8 +2441,8 @@ def list_users(
             site_scoped_ids = {
                 row[0]
                 for row in db.execute(
-                    select(site_staff_member.c.user_id).where(
-                        site_staff_member.c.site_id.in_(site_ids_for_orgs)
+                    select(site_member.c.user_id).where(
+                        site_member.c.site_id.in_(site_ids_for_orgs)
                     )
                 ).all()
             }
@@ -2477,14 +2477,14 @@ def list_users(
 
         site_rows = db.execute(
             select(
-                site_staff_member.c.user_id,
+                site_member.c.user_id,
                 Site.name,
             )
             .join(
                 Site,
-                Site.id == site_staff_member.c.site_id,
+                Site.id == site_member.c.site_id,
             )
-            .where(site_staff_member.c.user_id.in_(user_ids))
+            .where(site_member.c.user_id.in_(user_ids))
         ).all()
         user_sites: dict[int, list[str]] = {}
         for row in site_rows:
@@ -2581,8 +2581,8 @@ def get_user(
     user_site_ids = [
         row[0]
         for row in db.execute(
-            select(site_staff_member.c.site_id).where(
-                site_staff_member.c.user_id == user_id
+            select(site_member.c.site_id).where(
+                site_member.c.user_id == user_id
             )
         ).all()
     ]
@@ -3742,20 +3742,21 @@ def get_organisation(
     site_ids = [s.id for s in sites]
     clinical_leads: dict[int, str] = {}
     if site_ids:
-        cl_query = (
-            select(
-                site_staff_member.c.site_id,
-                User.full_name,
-                User.username,
-            )
-            .join(User, User.id == site_staff_member.c.user_id)
-            .where(
-                site_staff_member.c.site_id.in_(site_ids),
-                site_staff_member.c.role == "clinical_lead",
-            )
-        )
-        for row in db.execute(cl_query).all():
-            clinical_leads[row.site_id] = row.full_name or row.username
+        lead_ids = clinical_leads_of(db, site_ids)
+        if lead_ids:
+            names = {
+                row.id: row.full_name or row.username
+                for row in db.execute(
+                    select(User.id, User.full_name, User.username).where(
+                        User.id.in_(set(lead_ids.values()))
+                    )
+                ).all()
+            }
+            clinical_leads = {
+                site_id: names[user_id]
+                for site_id, user_id in lead_ids.items()
+                if user_id in names
+            }
 
     return OrganisationDetailOut(
         id=org.id,
@@ -4479,10 +4480,10 @@ def get_site(
             User.username,
             User.email,
             User.full_name,
-            site_staff_member.c.role,
+            site_member.c.capacity,
         )
-        .join(site_staff_member, site_staff_member.c.user_id == User.id)
-        .where(site_staff_member.c.site_id == site_id)
+        .join(site_member, site_member.c.user_id == User.id)
+        .where(site_member.c.site_id == site_id)
     )
 
     # Admins must not see superadmin staff members
@@ -4522,13 +4523,18 @@ def get_site(
                 "username": s.username,
                 "email": s.email,
                 "full_name": s.full_name or "",
-                "role": s.role,
+                # The response still calls it "role" until the contract
+                # step removes the field. Its value is now the capacity, so
+                # a clinical lead reads as "staff" here — the post is what
+                # says they lead, and clinical_lead_id carries that.
+                "role": s.capacity,
             }
             for s in staff
         ],
         organisations=[
             {"id": o.id, "name": o.name, "type": o.type} for o in orgs
         ],
+        clinical_lead_id=clinical_leads_of(db, [site_id]).get(site_id),
     )
 
 
@@ -4726,6 +4732,42 @@ def unlink_site_from_org(
     return StatusResponse(status="unlinked")
 
 
+def _mirror_clinical_lead(
+    db: Session,
+    site_id: int,
+    user_id: int,
+    role: str,
+    actor: User,
+) -> None:
+    """Keep the clinical lead position in step with the role column.
+
+    Expand step of moving clinical lead onto positions: both are written,
+    and reads have already moved across. The column and its place in the
+    API response stay until the contract step, which is a breaking change
+    and needs its own deploy.
+
+    Args:
+        db: Database session.
+        site_id: The site being changed.
+        user_id: The staff member.
+        role: The role just written to ``site_member``.
+        actor: Who made the change.
+    """
+    site = db.get(Site, site_id)
+    if site is None:
+        return
+
+    if role == "clinical_lead":
+        person = db.get(User, user_id)
+        if person is not None:
+            set_clinical_lead(db, site, person, appointed_by=actor)
+        return
+
+    # Demoted out of the post, so the post falls vacant.
+    if clinical_leads_of(db, [site_id]).get(site_id) == user_id:
+        set_clinical_lead(db, site, None)
+
+
 @router.post(
     "/sites/{site_id}/staff",
     response_model=AddSiteStaffResponse,
@@ -4761,16 +4803,19 @@ def add_site_staff(
             f"{', '.join(sorted(valid_roles))}",
         )
 
-    # Enforce max 1 clinical lead per site
+    # The request still names a role, because "make this person the clinical
+    # lead" is what the interface is asking for. What gets stored is a
+    # capacity, and clinical lead is not one of those — it is a post, filled
+    # below by _mirror_clinical_lead. Someone appointed to it is a member of
+    # the site in the ordinary way.
+    capacity = "staff" if role == "clinical_lead" else role
+
+    # One lead per site is enforced by max_holders on the post, not by a
+    # uniqueness rule on this table, so the post can also be vacant and can
+    # record acting cover.
     if role == "clinical_lead":
-        existing_lead = db.execute(
-            select(site_staff_member).where(
-                site_staff_member.c.site_id == site_id,
-                site_staff_member.c.role == "clinical_lead",
-                site_staff_member.c.user_id != user_id,
-            )
-        ).first()
-        if existing_lead:
+        existing_lead_id = clinical_leads_of(db, [site_id]).get(site_id)
+        if existing_lead_id is not None and existing_lead_id != user_id:
             raise HTTPException(
                 status_code=409,
                 detail="Site already has a clinical lead",
@@ -4782,28 +4827,30 @@ def add_site_staff(
 
     # Check if already assigned
     existing = db.execute(
-        select(site_staff_member).where(
-            site_staff_member.c.site_id == site_id,
-            site_staff_member.c.user_id == user_id,
+        select(site_member).where(
+            site_member.c.site_id == site_id,
+            site_member.c.user_id == user_id,
         )
     ).first()
     if existing:
         # Update role
         db.execute(
-            site_staff_member.update()
+            site_member.update()
             .where(
-                site_staff_member.c.site_id == site_id,
-                site_staff_member.c.user_id == user_id,
+                site_member.c.site_id == site_id,
+                site_member.c.user_id == user_id,
             )
-            .values(role=role)
+            .values(capacity=capacity)
         )
+        _mirror_clinical_lead(db, site_id, user_id, role, current_user)
         return AddSiteStaffResponse(status="updated")
 
     db.execute(
-        site_staff_member.insert().values(
-            site_id=site_id, user_id=user_id, role=role
+        site_member.insert().values(
+            site_id=site_id, user_id=user_id, capacity=capacity
         )
     )
+    _mirror_clinical_lead(db, site_id, user_id, role, current_user)
     return AddSiteStaffResponse(status="added")
 
 
@@ -4824,10 +4871,19 @@ def remove_site_staff(
 
     _require_site_in_own_org(db, current_user, site_id)
 
+    # Vacate the post before the row goes, so the handover is recorded
+    # rather than the holder simply disappearing.
+    site = db.get(Site, site_id)
+    if (
+        site is not None
+        and clinical_leads_of(db, [site_id]).get(site_id) == user_id
+    ):
+        set_clinical_lead(db, site, None)
+
     result = db.execute(
-        site_staff_member.delete().where(
-            site_staff_member.c.site_id == site_id,
-            site_staff_member.c.user_id == user_id,
+        site_member.delete().where(
+            site_member.c.site_id == site_id,
+            site_member.c.user_id == user_id,
         )
     )
 

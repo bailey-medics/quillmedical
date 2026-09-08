@@ -115,37 +115,37 @@ createRoot(document.getElementById("root")!).render(
               icon={IconMessage}
               title="Clinical messaging"
               body="FHIR Communication resources underpin a secure, threaded messaging layer — with governance metadata kept cleanly separate from clinical content."
-              href="/clinical-messaging.html"
+              href="/clinical-messaging"
             />
             <PublicFeatureCard
               icon={IconDatabase}
               title="Structured clinical records"
               body="OpenEHR archetypes ensure clinical data is semantically rich, queryable, and portable — not free-text trapped in a notes field."
-              href="/structured-records.html"
+              href="/structured-records"
             />
             <PublicFeatureCard
               icon={IconStack2}
               title="Modular deployment"
               body="Deploy Quill as a full EPR or activate only the modules your organisation needs — runtime feature gating means you grow the system alongside your workflows."
-              href="/modular-deployment.html"
+              href="/modular-deployment"
             />
             <PublicFeatureCard
               icon={IconSlice}
               title="Competency-based access"
               body="CBAC models real NHS clinical hierarchies — locums, trainees, and consultants — with fine-grained, auditable permissions that reflect actual clinical practice."
-              href="/competency-access.html"
+              href="/competency-access"
             />
             <PublicFeatureCard
               icon={IconPhoneRinging}
               title="External referrals made easy"
               body="Refer a patient and the receiving clinician gets immediate, structured access to their record. No faxes, no lost letters, no repeating history."
-              href="/external-referrals.html"
+              href="/external-referrals"
             />
             <PublicFeatureCard
               icon={IconChalkboardTeacher}
               title="Clinical teaching platform"
               body="A structured MCQ-based learning platform for trainees across every specialty — built on the same clinical foundation as the EPR, not bolted on as an afterthought."
-              href="/clinical-teaching.html"
+              href="/clinical-teaching"
             />
           </PublicFeatureCardGrid>
         </Container>

@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from sqlalchemy import insert
 
-from app.models import Site, User, site_staff_member
+from app.cbac.positions import set_clinical_lead
+from app.models import Site, User, site_member
 from app.security import hash_password
 
 
@@ -57,12 +58,13 @@ class TestSiteStaffClinicalLeadConstraint:
         db_session.flush()
 
         db_session.execute(
-            insert(site_staff_member).values(
+            insert(site_member).values(
                 site_id=site.id,
                 user_id=existing_lead.id,
-                role="clinical_lead",
+                capacity="staff",
             )
         )
+        set_clinical_lead(db_session, site, existing_lead)
 
         new_user = User(
             username="newlead",
@@ -102,10 +104,14 @@ class TestSiteStaffClinicalLeadConstraint:
         db_session.flush()
 
         db_session.execute(
-            insert(site_staff_member).values(
-                site_id=site.id, user_id=lead.id, role="clinical_lead"
+            insert(site_member).values(
+                site_id=site.id, user_id=lead.id, capacity="staff"
             )
         )
+        # Leading is the post. A member row alone no longer makes anyone
+        # the clinical lead, so the seed has to fill the post as the API
+        # does.
+        set_clinical_lead(db_session, site, lead)
 
         staff = User(
             username="updatestaff",
@@ -119,8 +125,8 @@ class TestSiteStaffClinicalLeadConstraint:
         db_session.flush()
 
         db_session.execute(
-            insert(site_staff_member).values(
-                site_id=site.id, user_id=staff.id, role="staff"
+            insert(site_member).values(
+                site_id=site.id, user_id=staff.id, capacity="staff"
             )
         )
         db_session.commit()
@@ -152,10 +158,14 @@ class TestSiteStaffClinicalLeadConstraint:
         db_session.flush()
 
         db_session.execute(
-            insert(site_staff_member).values(
-                site_id=site.id, user_id=lead.id, role="clinical_lead"
+            insert(site_member).values(
+                site_id=site.id, user_id=lead.id, capacity="staff"
             )
         )
+        # Leading is the post. A member row alone no longer makes anyone
+        # the clinical lead, so the seed has to fill the post as the API
+        # does.
+        set_clinical_lead(db_session, site, lead)
         db_session.commit()
 
         resp = authenticated_superadmin_client.post(
@@ -185,10 +195,14 @@ class TestSiteStaffClinicalLeadConstraint:
         db_session.flush()
 
         db_session.execute(
-            insert(site_staff_member).values(
-                site_id=site.id, user_id=lead.id, role="clinical_lead"
+            insert(site_member).values(
+                site_id=site.id, user_id=lead.id, capacity="staff"
             )
         )
+        # Leading is the post. A member row alone no longer makes anyone
+        # the clinical lead, so the seed has to fill the post as the API
+        # does.
+        set_clinical_lead(db_session, site, lead)
 
         staff = User(
             username="mixedstaff",

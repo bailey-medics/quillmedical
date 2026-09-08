@@ -41,6 +41,7 @@ interface SiteStaff {
 
 interface SiteData {
   staff: SiteStaff[];
+  clinical_lead_id: number | null;
 }
 
 interface AddStaffFormValues {
@@ -147,9 +148,9 @@ export default function AddStaffToSitePage() {
         setUsers(
           usersResponse.users.filter((u) => !existingStaffIds.has(u.id)),
         );
-        setHasClinicalLead(
-          siteResponse.staff.some((s) => s.role === "clinical_lead"),
-        );
+        // The post, not a role on a staff row: a site can have the post
+        // and nobody in it, which is exactly when a lead may be added.
+        setHasClinicalLead(siteResponse.clinical_lead_id !== null);
       } catch (err) {
         setLoadError(
           err instanceof Error ? err.message : "Failed to load data",
