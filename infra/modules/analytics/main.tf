@@ -284,7 +284,20 @@ resource "google_monitoring_dashboard" "quill" {
   dashboard_json = jsonencode({
     displayName = "Quill — health and usage (${var.environment})"
     gridLayout = {
-      columns = 2
+      # A string, not the number it looks like. `columns` is an int64 in the
+      # Monitoring API, and the proto3 JSON mapping encodes 64-bit integers as
+      # strings — so the API stores and returns "2" however it is sent.
+      #
+      # That mismatch was the sole cause of this dashboard appearing in every
+      # plan as changed when nothing had changed. The provider's diff
+      # suppression strips fields the API adds — `etag` and the `targetAxis`
+      # it fills in — and then compares what remains with reflect.DeepEqual,
+      # which is strict about types: 2 and "2" are not equal, and one
+      # inequality anywhere renders the whole resource as drifting.
+      #
+      # Worth keeping because a plan is only worth reading if a clean one
+      # means something.
+      columns = "2"
       widgets = [
         {
           title = "Uptime check passing"

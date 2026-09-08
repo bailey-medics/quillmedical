@@ -1389,14 +1389,34 @@ Applying it:
       dashboard JSON it stores, adding an `etag`, quoting `columns` as the string
       `"2"` and filling in `targetAxis`, and Terraform rewrites it back to the
       literal in the code every time.
-- [ ] Settle the dashboard's permanent drift. `google_monitoring_dashboard.quill`
-      appears in every plan without anything having changed: Google normalises
-      the JSON it stores — adding an `etag`, quoting `columns` as the string
-      `"2"`, filling in `targetAxis` — and Terraform rewrites it back to the
-      literal in the code. Harmless in itself, but it erodes the one signal
-      that makes a plan worth reading, which is whether it looks clean. Either
-      write the JSON in the shape the API returns, or `ignore_changes` the
-      fields it rewrites.
+- [x] Settle the dashboard's permanent drift. `google_monitoring_dashboard.quill`
+      appeared in every plan without anything having changed.
+
+      **Only one of the three normalisations was actually to blame, and it was
+      not the obvious one.** Reading `monitoringDashboardDiffSuppress` in the
+      pinned provider (hashicorp/google 5.45.2) settles it: the function calls
+      `removeComputedKeys` to strip every key the API added but the
+      configuration never set — so `etag` and the filled-in `targetAxis` were
+      already being ignored, and neither ever contributed. What remained was
+      compared with `reflect.DeepEqual`, which is strict about types. The
+      configuration wrote `columns = 2`, a JSON number; the API returns the
+      string `"2"`, because `columns` is an int64 and the proto3 JSON mapping
+      encodes 64-bit integers as strings. One inequality renders the whole
+      resource as drifting.
+
+      Fixed by writing `columns = "2"`. `ignore_changes` was the wrong tool
+      here: it can only be applied to `dashboard_json` as a whole, which would
+      have suppressed real dashboard edits along with the noise — trading a
+      cosmetic problem for a silent one.
+
+      Worth generalising: any int64 field in a Google API's JSON will come
+      back quoted. It is the only numeric literal in this dashboard, so
+      nothing else here can repeat it.
+
+      **Not verified against a live plan.** The reasoning is from the provider
+      source at the version in `.terraform.lock.hcl`, not from an apply.
+      Confirm on the next `terraform plan` that the dashboard no longer
+      appears.
 
       The three Cloud Run `client = "gcloud" -> null` drifts that used to
       accompany it did **not** appear in the 4 September plan, so that half
