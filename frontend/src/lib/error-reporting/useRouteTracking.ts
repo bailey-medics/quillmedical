@@ -1,9 +1,20 @@
 /**
  * Keeps the reported route in step with the router.
  *
- * Mounted once, inside the router, so every navigation updates the pattern the
- * reporter reads. It renders nothing and returns nothing; the only thing it
- * does is write to the module in `currentRoute.ts`.
+ * Mounted once, above every route tree, so every navigation updates the
+ * pattern the reporter reads. It renders nothing and returns nothing; the only
+ * thing it does is write to the module in `currentRoute.ts`.
+ *
+ * `useParams` reads the params of the deepest match, not of the route the
+ * caller sits on, so it returns the full set even from the wrapper above every
+ * tree. That is what lets this be declared in one place.
+ *
+ * It used to be called in `RootLayout`, which turned out to cover only part of
+ * the application: `RootLayout` sits inside `RequireAuth`, so the sign-in and
+ * registration pages, the 404, and the whole `/teaching` tree — a separate
+ * top-level route with its own layout — recorded no route at all. Errors from
+ * those screens reached Cloud Logging with no `httpRequest.url`, found by
+ * reading real reports rather than by any test.
  *
  * The write happens **during render, not in an effect**. That is deliberate
  * and was learned from a real report: when a component throws while rendering,

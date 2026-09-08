@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
+import RouteTracking from "./RouteTracking";
 import { getBreadcrumbs, resetBreadcrumbsForTests } from "./breadcrumbs";
 import { getCurrentRoute, resetCurrentRouteForTests } from "./currentRoute";
 import { useRouteTracking } from "./useRouteTracking";
@@ -100,5 +101,53 @@ describe("a route that crashes while rendering", () => {
 
     const routeCrumbs = getBreadcrumbs().filter((c) => c.type === "route");
     expect(routeCrumbs).toHaveLength(1);
+  });
+});
+
+describe("mounted above the route trees rather than inside one", () => {
+  /** The production shape: one pathless wrapper, several sibling trees. */
+  function renderWrapped(path: string, routePath: string): void {
+    const router = createMemoryRouter(
+      [
+        {
+          element: <RouteTracking />,
+          children: [{ path: routePath, element: null }],
+        },
+      ],
+      { initialEntries: [path] },
+    );
+    render(<RouterProvider router={router} />);
+  }
+
+  it("still rebuilds the pattern from a param matched further down", () => {
+    // Worth asserting rather than assuming: the wrapper is above the route
+    // that captures the identifier, and `useParams` reads the deepest match
+    // rather than the caller's own, so the pattern still comes back with the
+    // value replaced. Measured before relying on it — reasoning about which
+    // match a hook reads got this wrong once already.
+    renderWrapped("/patients/943-476-5919", "/patients/:id");
+
+    expect(getCurrentRoute()).toBe("/patients/:id");
+  });
+
+  it("records a tree that has no layout of its own", () => {
+    // The shape of the defect this closes. `/teaching` is a separate
+    // top-level route that never renders RootLayout, so while tracking was
+    // called from RootLayout the whole teaching application reported errors
+    // with no route on them.
+    renderWrapped(
+      "/teaching/learn/m4/slide/2",
+      "/teaching/learn/:moduleId/slide/:slideIndex",
+    );
+
+    expect(getCurrentRoute()).toBe(
+      "/teaching/learn/:moduleId/slide/:slideIndex",
+    );
+  });
+
+  it("records a sign-in page, which sits outside the authenticated tree", () => {
+    renderWrapped("/login", "/login");
+
+    expect(getCurrentRoute()).toBe("/login");
   });
 });

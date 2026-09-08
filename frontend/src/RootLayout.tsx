@@ -15,7 +15,6 @@ import MainLayout from "./components/layouts/MainLayout";
 import ErrorBoundary from "./components/error-boundary/ErrorBoundary";
 import { SearchProvider } from "@lib/search";
 import { NavigationBlocker } from "@lib/connectivity";
-import { useRouteTracking } from "@lib/error-reporting/useRouteTracking";
 import { usePageViewTracking } from "@lib/page-views/usePageViewTracking";
 
 /**
@@ -67,12 +66,6 @@ export default function RootLayout() {
   const [examMode, setExamMode] = useState(false);
   const [fluid, setFluid] = useState(false);
   const location = useLocation();
-
-  // Records which screen is showing, so an error report says where it
-  // happened. Lives here because it must be inside the router, and the two
-  // things that report errors — a class error boundary and the window
-  // listeners — can neither of them use a hook.
-  useRouteTracking();
 
   // Counts which pages get used. Skips anything under a route declaring
   // handle.clinical, and honours the opt-out before sending rather than
