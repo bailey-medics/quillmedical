@@ -260,10 +260,224 @@ Chasing down who approved someone decades ago is not possible, so do not pretend
       they signed is a query followed by a human decision — never an automatic cascade, which
       would take out a hospital.
 
+## Settled: where a request's context comes from
+
+The question that had to be answered before any table, because it decides what the tables
+are asked. Counting the code rather than arguing it:
+
+- **21 routes already name the place** — 19 in `main.py`, 2 in the teaching router — taking
+  an `org_id` or `site_id` in the path.
+- **11 routes infer it**, all teaching admin routes, all through
+  `_get_user_org_id`, which is `_get_user_org_ids(user, db)[0]`: whichever organisation the
+  set happens to yield first. `list_items`, `validate_items`, `sync_items`, `list_results`,
+  `list_syncs`, `list_admin_banks`, `sync_all_banks`, `update_settings`, `get_settings`,
+  `get_admin_bank_detail`, `list_bank_organisations`. None of them takes a parameter that
+  could say which — there is nothing in the signature to name a place with.
+- **28 call sites resolve every organisation a person is in** and use it as a filter, which
+  is a different thing and stays.
+- **Nothing is session- or header-based.** There is no `X-Organisation`, no server-side
+  selection, and the frontend's `AuthContext` carries no organisation at all.
+
+### The rule
+
+**The server never guesses which place a request is about.** That, rather than
+path-versus-session, is the decision. A session selector and a path parameter are both fine
+if the client states them; picking the first row of a set is what has produced three bugs in
+two days.
+
+Context comes from exactly two places, in this order:
+
+1. **Named in the path.** The organisation or site is a path parameter, and the caller's
+   membership of it is checked. This is the default and covers most routes.
+2. **Determined by the object being acted on.** Where the URL names a thing rather than a
+   place — `/sites/{site_id}` — the place is the object's own organisations, and membership
+   is checked against those. `_require_site_in_own_org` is this shape.
+
+And never from the caller. If a route cannot say which place it means, that is a missing
+parameter, not a reason to infer one.
+
+### What that costs
+
+The 11 inferred routes each need a place in the path or the query, and their callers
+updated. That is the real bill for this decision, and it is worth paying: `update_settings`
+is on that list, and its neighbour `update_bank_org_settings` was one of the three bugs.
+
+It is also more than an afternoon, because moving a place into the path changes the URL, and
+`.claude/rules/backend.md` treats that as a breaking API change: expand first with the new
+route, deprecate the old one, contract a release later, with an `oasdiff` finding and a
+decision file for each. Putting the place in the **query** instead is additive while it
+stays optional, so the cheaper sequence is query parameter first, then require it, and only
+reshape URLs where the route reads better for it.
+
+Two of the three came from exactly this pattern — `_get_user_org_id` answering a question
+the caller never asked. The third, the site routes, came from asking no question at all.
+
+### Why not a session context
+
+It was the tempting answer, because choosing "I am at St Mary's today" matches how
+clinicians work. But it puts the most security-relevant part of a request in server state
+rather than in the request, so a stale tab acts on the wrong place with no way to tell from
+the log. Keep the choosing in the client — it holds the selection and puts it in the URL —
+and the audit trail then records where every request meant, because the request says so.
+
+This does mean the frontend needs a notion of "which organisation am I looking at",
+which it currently has nowhere: `AuthContext` has no organisation field. That work belongs
+with the interface, not here, but nothing on the backend should wait for it.
+
+## Settled: what a "place" is
+
+A grant has to point at a place, and organisations and sites are separate tables. Three
+candidates, and the choice is **two nullable foreign keys with a database constraint**:
+
+```sql
+CHECK ((organisation_id IS NOT NULL) <> (site_id IS NOT NULL))
+```
+
+- **Two columns, exactly one filled.** Real foreign keys to real tables. The obvious
+  objection — nothing stops a row filling in both — is answered by the constraint above,
+  which Postgres and SQLite both enforce, so the unit tests get it too.
+- **A shared `places` table** was rejected on synchronisation, not on migration size. It
+  would need a row every time an organisation or a site is created, forever, and a missed
+  one makes that place invisible to the whole permission system. This project already
+  produces orphan rows of exactly that kind: `create_site` and the link to an organisation
+  are two separate calls, so a site can already exist attached to nothing. A supertype
+  turns that from annoying into catastrophic.
+- **One column plus a type label** was rejected outright. It gives up foreign keys, so the
+  database can no longer say whether the thing a permission points at exists. Not a trade
+  worth making in a clinical system, and against `CLAUDE.md`'s rule to enforce at the
+  database level.
+
+**Places are organisations and sites, and nothing else.** Projects, courses and research
+were considered and ruled out. The "clinical safety officer for one project" criterion is
+served by a site.
+
+### The duplication this accepts, and when to revisit
+
+Three tables will want a place — grants, positions and memberships — so the two-column
+pattern gets written three times, with three pairs of indexes. That is tolerable, not free.
+
+- [x] Put every read behind one resolver function, so the branching lives in one place
+      rather than in every query and the storage can change without touching call sites.
+      `app/cbac/scoped.py` is that boundary: `competencies_at`, `can_practise_at` and
+      `who_can_practise_at`,
+      each taking exactly one of `organisation_id` or `site_id` and raising `ValueError`
+      when given both or neither. Refusing to guess is the whole point, so it is an error
+      rather than a default.
+- [ ] **If a fourth table needs a place, build the supertype.** Three is duplication; four
+      is a pattern, and by then the resolver boundary makes the change cheap.
+
+### Uniqueness needs partial indexes, not a constraint
+
+Written first as one `UniqueConstraint` over user, organisation, site and competency. It
+never fires: one place column is always NULL and SQL treats NULLs as distinct, so the same
+row could be written twice. Caught by a test that expected the second insert to be
+rejected and watched it succeed.
+
+Replaced with two partial unique indexes, one per kind of place, declared for both
+dialects — `postgresql_where` **and** `sqlite_where`, since the unit-test database is
+SQLite and silently ignores the first. That is the trap `.claude/rules/backend.md` already
+records for `ix_site_staff_one_clinical_lead`, met again for the same reason.
+
+### The ceiling and the place are separate, and both are needed
+
+`practising_competency` says what is authorised here. `get_final_competencies` stays as the
+ceiling — what the person is qualified for at all. What they may actually do is the
+intersection:
+
+- A row beyond the ceiling does nothing, so a lapsed qualification narrows every place at
+  once without touching a single row.
+- A ceiling with no row does nothing, so being qualified is not being let loose.
+
+Both halves earn their place in the tests: a receptionist authorised for `access_patient_records`
+is still refused, and a consultant with no row is refused too.
+
+`who_can_practise_at` deliberately does not apply ceilings — filtering by every user's ceiling would
+mean loading every user. It returns a candidate list, and callers check `can_practise_at` before
+acting on a name from it. That is documented on the function and tested.
+
+### A competency id is a bare string in three places
+
+Nothing joins them and nothing validates them:
+
+- as a `- id:` in `shared/competencies.yaml`, the catalogue
+- inside the `additional_competencies` and `removed_competencies` JSON arrays on `users`
+- as a `String(100)` column on the per-place row
+
+So a misspelt id in `additional_competencies` is silently a competency nobody holds, and a
+per-place row naming one that does not exist is equally silent. Neither is reported.
+This predates the scoping work; the new table adds a third place to get it wrong.
+
+**Settled: the YAML stays authoritative, and ids are validated rather than joined.** Making
+competencies a database table would let a foreign key do the work, but the YAML is
+deliberately the source of truth — it is code-generated into the frontend's types — so a
+table would have to be kept in step with it. That is the same synchronisation hazard that
+ruled out a shared `places` table, and it is not worth taking on for spelling.
+
+- [ ] **Validate at every write boundary.** Reject an unknown competency id where it enters:
+      the Pydantic schemas that set `additional_competencies` and `removed_competencies`, and
+      wherever a per-place row is created. Fail at the point the typo is introduced, not
+      silently at read time.
+- [ ] **Add a test that walks every stored id against the catalogue** — the two JSON columns
+      on every user, every per-place row, and every `base_competencies` entry in
+      `base-professions.yaml`. It catches a competency removed from the catalogue while rows
+      still reference it, which write-boundary validation cannot see.
+- [ ] **Decide what a removal from the catalogue means** before that test can pass on real
+      data. Retiring a competency leaves existing rows pointing at nothing, and the honest
+      options are to refuse the removal, or to require the rows be cleared first.
+
+### Settled: the per-place row is `PractisingCompetency`
+
+It was first written as `CapabilityGrant`, which was wrong twice over.
+
+- **"Capability" is not this codebase's word.** Around 40 files say _competency_ —
+  `competencies.yaml`, `has_competency`, `get_final_competencies`, `useHasCompetency`, and
+  CBAC itself, which stands for competency-based access control. "Capability" entered
+  through this document, where it was distinguishing a person's skills from a _position_,
+  not from a competency. If the wider word is genuinely wanted, that is a rename of the
+  whole subsystem and deserves its own decision.
+- **"Grant" claims too much.** It reads as though the system confers the competency. It does
+  not: the competency is held by the person, and the row only records that they may exercise
+  it here.
+
+Healthcare already names this exact two-layer split — **credentialing** verifies
+qualifications, **privileging** authorises specific procedures at a specific facility. This
+document reaches for the word twice on its own: "a locum with narrower privileges at a
+second", and "Locum at C with narrower privileges than their ceiling".
+
+- [x] **Renamed to `PractisingCompetency`**, table `practising_competency`, column
+      `competency`, with `authorised_by` and `authorised_at` in place of `granted_*`.
+      - The name reads as the question the class answers: _can this person practise this
+        competency here?_ That is better than naming the row after a thing, because the row
+        is only ever consulted as a question.
+      - `CompetencyPrivilege` was the alternative, and privileging is the exact clinical
+        term. Rejected as less direct, and because "privilege" already means something else
+        in `CLAUDE.md`'s security guidance.
+      - **`Practising` takes an `s`.** British English uses the `s` spelling for the verb
+        and reserves the `c` for the noun, which `gp_practice` already uses.
+      - Done before anything read the table and before the migration merged, so it was a
+        rename rather than an expand-contract across two deploys.
+
 ## The cases any schema must express
 
 Written as acceptance criteria rather than prose, because a candidate schema either handles
-them or does not:
+them or does not. They now live as tests in
+`backend/tests/test_org_scoped_access_criteria.py`, so they run rather than being read.
+
+Seven are `xfail(strict=True)`: they can be set up with today's tables, they fail, and the
+build breaks the moment one starts passing — which is the signal wanted, because a test
+there going green is news. Five are `skip`, because they cannot be expressed at all yet,
+and each names what is missing. That shorter list is the queue:
+
+- **No position model.** A vacant clinical lead post and acting cover both need one;
+  `site_staff_member.role` can only record an absent row, not a vacancy.
+- **The patient and staff namespaces.** Two cases wait on this.
+- **No self-scoped capabilities.** `access_patient_records` carries the distinction in a
+  comment rather than in the model.
+- **Nothing records how a capability was acquired**, so nothing can lapse.
+
+Every capability the tests name exists in `shared/competencies.yaml`. Some are stand-ins —
+there is no rota or clinical-safety-officer capability yet — because what is asserted is
+that the answer differs by place, not which capability it is.
 
 - [ ] Doctor at A, patient at B — cannot act clinically at B.
 - [ ] Nurse treated at her own hospital — reads her own record, not a colleague's, without
@@ -281,12 +495,6 @@ them or does not:
 
 ## Still open
 
-- **Where a request's context comes from.** The biggest unanswered question, and it shapes
-  every endpoint rather than the tables. Today it is inferred:
-  `_get_user_org_ids(user, db)[0]` silently picks the first, which is precisely the
-  multi-membership case this work exists for. A path parameter is explicit; a chosen session
-  context matches how clinicians work. Deciding storage before this risks a schema that
-  cannot answer the request.
 - **What becomes of `system_permissions`.** `superadmin` is genuinely global — Quill's own
   operators. `admin` and `staff` look like capabilities or positions at a place.
   `single-user` may be nothing more than the absence of any grant.
@@ -302,12 +510,17 @@ them or does not:
 
 ## What I would do first
 
-1. **Fix the unguarded cross-organisation write now, independently.** It is live, it
+1. [x] **Fix the unguarded cross-organisation write now, independently.** It is live, it
    predates this discussion, and closing it does not depend on any decision here.
-2. **Decide where context comes from before touching tables.**
-3. **Write the acceptance criteria above as failing tests**, before the model changes. A red,
-   named test is worth more than a paragraph.
-4. **Then choose the storage**, knowing what it has to answer.
+   Done, and it was three holes rather than one: `update_bank_org_settings`, then all eight
+   site routes, then a `get_site` bug found while testing them.
+2. [x] **Decide where context comes from before touching tables.** Settled above: named in
+   the path, or determined by the object acted on, and never inferred from the caller.
+3. [x] **Write the acceptance criteria above as failing tests**, before the model changes. A
+   red, named test is worth more than a paragraph. Done: seven red, five that could not be
+   written, and the five are more informative than the seven.
+4. [x] **Then choose the storage**, knowing what it has to answer. Settled above: two
+   nullable foreign keys and a constraint, places being organisations and sites only.
 
 ## Not addressed here
 

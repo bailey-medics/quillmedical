@@ -617,6 +617,7 @@
     "worktree",
     "writable",
     "wronguser",
+    "xfail",
     "yarnrc",
     "zamerick",
     "zaproxy",
