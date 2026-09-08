@@ -22,6 +22,7 @@ from typing import Any
 from sqlalchemy import (
     JSON,
     Boolean,
+    CheckConstraint,
     Column,
     DateTime,
     ForeignKey,
@@ -704,4 +705,113 @@ class Site(Base):
     staff: Mapped[list[User]] = relationship(
         secondary=site_staff_member,
         backref="sites",
+    )
+
+
+class PractisingCompetency(Base):
+    """Whether a person may practise a competency at certain place.
+
+    Named as the question it answers: can this person practise this
+    competency here? Deliberately not a "grant" — the organisation does not
+    confer the competency. That is held by the person, earned through
+    training and sign-off. A row here only records that they are authorised
+    to exercise it at this place.
+
+    Healthcare draws the same line as credentialing versus privileging:
+    verifying what someone is qualified for, then authorising specific work
+    at a specific site. A person's *ceiling* stays on the user, resolved by
+    ``get_final_competencies`` from base profession plus additions minus
+    removals. This table is the second half.
+
+    A row means authorised. There is no boolean: absence is the unauthorised
+    state, so practice cannot be silently withdrawn without removing the row
+    that says who authorised it.
+
+    **Exactly one of organisation_id and site_id is set**, enforced by
+    ``ck_practising_competency_one_place``. A shared "places" table was
+    considered and rejected: it would need a row for every organisation and
+    site forever, and a missed one makes that place invisible to the whole
+    permission system.
+
+    Nothing is inherited. A row at an organisation says nothing about its
+    sites, and one at a site says nothing about its organisation — so a ward
+    manager can administer their ward without trust-wide authority, and "why
+    could this person do that?" is answered by one row rather than by
+    replaying a hierarchy.
+
+    Attributes:
+        id: Primary key.
+        user_id: The person.
+        organisation_id: The organisation, when the place is an organisation.
+        site_id: The site, when the place is a site.
+        competency: A competency id from ``shared/competencies.yaml``.
+        authorised_by: Who authorised practice here. Null once that user is
+            deleted, so the fact it was authorised outlives the person who
+            did it.
+        authorised_at: When practice here was authorised.
+    """
+
+    __tablename__ = "practising_competency"
+    __table_args__ = (
+        CheckConstraint(
+            "(organisation_id IS NOT NULL) <> (site_id IS NOT NULL)",
+            name="ck_practising_competency_one_place",
+        ),
+        # Two partial unique indexes rather than one UniqueConstraint over
+        # all four columns. One of the place columns is always NULL, and SQL
+        # treats NULLs as distinct, so a four-column constraint never fires
+        # and the same row could be written twice. Declared for both
+        # dialects: the unit-test database is SQLite, where
+        # postgresql_where is silently ignored.
+        Index(
+            "uq_practising_competency_org",
+            "user_id",
+            "organisation_id",
+            "competency",
+            unique=True,
+            postgresql_where=text("organisation_id IS NOT NULL"),
+            sqlite_where=text("organisation_id IS NOT NULL"),
+        ),
+        Index(
+            "uq_practising_competency_site",
+            "user_id",
+            "site_id",
+            "competency",
+            unique=True,
+            postgresql_where=text("site_id IS NOT NULL"),
+            sqlite_where=text("site_id IS NOT NULL"),
+        ),
+        # Both directions the resolver asks: what may this person practise
+        # here, and who here may practise this.
+        Index(
+            "ix_practising_competency_org",
+            "organisation_id",
+            "competency",
+        ),
+        Index(
+            "ix_practising_competency_site",
+            "site_id",
+            "competency",
+        ),
+        Index("ix_practising_competency_user", "user_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    organisation_id: Mapped[int | None] = mapped_column(
+        ForeignKey("organisations.id", ondelete="CASCADE"), nullable=True
+    )
+    site_id: Mapped[int | None] = mapped_column(
+        ForeignKey("sites.id", ondelete="CASCADE"), nullable=True
+    )
+    competency: Mapped[str] = mapped_column(String(100), nullable=False)
+    authorised_by: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    authorised_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False,
     )

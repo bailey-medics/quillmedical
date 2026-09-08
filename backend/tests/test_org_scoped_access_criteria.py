@@ -19,11 +19,10 @@ settling next.
 To adopt: point ``_can_at`` at the real per-place resolver when one exists.
 Every xfail here should start passing in the same commit.
 
-Every capability named below exists in ``shared/competencies.yaml``. Some are
-stand-ins — there is no ``manage_rota`` or clinical-safety-officer capability
-yet, so a real one of roughly the right shape stands in its place. What is
-being asserted is that the answer differs by place, not which capability it
-is.
+Every competency named below exists in ``shared/competencies.yaml``. Some are
+stand-ins — there is no rota or clinical-safety-officer competency yet, so a
+real one of roughly the right shape stands in its place. What is asserted is
+that the answer differs by place, not which competency it is.
 """
 
 from __future__ import annotations
@@ -32,8 +31,10 @@ import pytest
 from sqlalchemy import insert
 from sqlalchemy.orm import Session
 
+from app.cbac.scoped import can_practise_at
 from app.models import (
     Organisation,
+    PractisingCompetency,
     Site,
     User,
     organisation_site,
@@ -43,19 +44,36 @@ from app.models import (
 from app.security import hash_password
 
 
-def _can_at(user: User, place_id: int, capability: str) -> bool:
-    """Whether ``user`` may exercise ``capability`` at ``place_id``.
+def _can_at_org(db: Session, user: User, org_id: int, competency: str) -> bool:
+    """Whether ``user`` may exercise ``competency`` at an organisation."""
+    return can_practise_at(db, user, competency, organisation_id=org_id)
 
-    The question the whole design exists to answer, and the one thing today's
-    code cannot express: ``get_final_competencies`` takes no arguments beyond
-    the user, so the place is discarded and the same answer comes back
-    everywhere. That is why every test below fails.
 
-    When a per-place resolver exists, this body is the only thing that
-    changes.
-    """
-    del place_id  # the point: nothing today can use it
-    return capability in user.get_final_competencies()
+def _can_at_site(
+    db: Session, user: User, site_id: int, competency: str
+) -> bool:
+    """Whether ``user`` may exercise ``competency`` at a site."""
+    return can_practise_at(db, user, competency, site_id=site_id)
+
+
+def _authorise(
+    db: Session,
+    user: User,
+    competency: str,
+    *,
+    org: Organisation | None = None,
+    site: Site | None = None,
+) -> None:
+    """Enable one competency for one person at one place."""
+    db.add(
+        PractisingCompetency(
+            user_id=user.id,
+            organisation_id=org.id if org else None,
+            site_id=site.id if site else None,
+            competency=competency,
+        )
+    )
+    db.commit()
 
 
 def _user(
@@ -112,41 +130,41 @@ def _staff(db: Session, user: User, org: Organisation) -> None:
 class TestTwoPlacesOnePerson:
     """A person is not one thing everywhere."""
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="competencies are global; the place is discarded",
-    )
     def test_doctor_at_a_cannot_act_clinically_at_b(self, db_session):
         """The headline case, and the reason this work exists."""
         trust_a = _org(db_session, "Trust A")
         trust_b = _org(db_session, "Trust B")
         doctor = _user(db_session, "dr_two_trusts")
         _staff(db_session, doctor, trust_a)
+        _authorise(db_session, doctor, "access_patient_records", org=trust_a)
 
-        assert _can_at(doctor, trust_a.id, "access_patient_records")
-        assert not _can_at(doctor, trust_b.id, "access_patient_records")
+        assert _can_at_org(
+            db_session, doctor, trust_a.id, "access_patient_records"
+        )
+        assert not _can_at_org(
+            db_session, doctor, trust_b.id, "access_patient_records"
+        )
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="competencies are global; the place is discarded",
-    )
     def test_a_locum_is_narrower_than_their_ceiling(self, db_session):
-        """Holding a capability is not the same as being allowed to use it."""
+        """Holding a competency is not the same as being allowed to use it."""
         home = _org(db_session, "Home Trust")
         locum_at = _org(db_session, "Locum Trust")
         locum = _user(db_session, "dr_locum")
         _staff(db_session, locum, home)
         _staff(db_session, locum, locum_at)
-
-        assert _can_at(locum, home.id, "prescribe_controlled_schedule_2")
-        assert not _can_at(
-            locum, locum_at.id, "prescribe_controlled_schedule_2"
+        # Enabled at home, deliberately not at the locum trust, though the
+        # ceiling is identical in both places.
+        _authorise(
+            db_session, locum, "prescribe_controlled_schedule_2", org=home
         )
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="competencies are global; the place is discarded",
-    )
+        assert _can_at_org(
+            db_session, locum, home.id, "prescribe_controlled_schedule_2"
+        )
+        assert not _can_at_org(
+            db_session, locum, locum_at.id, "prescribe_controlled_schedule_2"
+        )
+
     def test_a_student_at_one_teaching_site_and_nothing_at_another(
         self, db_session
     ):
@@ -154,25 +172,32 @@ class TestTwoPlacesOnePerson:
         elsewhere = _org(db_session, "Other Trust")
         student = _user(db_session, "student", profession="teaching_delegate")
         _staff(db_session, student, teaching)
+        _authorise(db_session, student, "view_teaching_cases", org=teaching)
 
-        assert _can_at(student, teaching.id, "view_teaching_cases")
-        assert not _can_at(student, elsewhere.id, "view_teaching_cases")
+        assert _can_at_org(
+            db_session, student, teaching.id, "view_teaching_cases"
+        )
+        assert not _can_at_org(
+            db_session, student, elsewhere.id, "view_teaching_cases"
+        )
 
 
 class TestOneSiteWithinAnOrganisation:
     """A place is a site as often as it is an organisation."""
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="no site-level administration; system_permissions is global",
-    )
     def test_a_site_administrator_holds_no_organisation_authority(
         self, db_session
     ):
-        """Administering a ward must not require administering the trust."""
+        """Administering a ward must not require administering the trust.
+
+        The case that rules out inheritance: if a site's grants were derived
+        from its organisation's, this could not be expressed at all.
+        """
         trust = _org(db_session, "Trust")
         ward = _site(db_session, "Ward 9", trust)
-        manager = _user(db_session, "ward_manager")
+        manager = _user(
+            db_session, "ward_manager", profession="clinic_manager"
+        )
         _staff(db_session, manager, trust)
         db_session.execute(
             insert(site_staff_member).values(
@@ -180,58 +205,74 @@ class TestOneSiteWithinAnOrganisation:
             )
         )
         db_session.commit()
+        _authorise(db_session, manager, "manage_users", site=ward)
 
-        assert _can_at(manager, ward.id, "manage_users")
-        assert not _can_at(manager, trust.id, "manage_users")
+        assert _can_at_site(db_session, manager, ward.id, "manage_users")
+        assert not _can_at_org(db_session, manager, trust.id, "manage_users")
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="competencies are global; the place is discarded",
-    )
     def test_an_educator_delivers_where_they_hold_no_admin_job(
         self, db_session
     ):
-        """Delivering teaching is a capability, not an administrative post."""
+        """Delivering teaching is a competency, not an administrative post."""
         trust = _org(db_session, "Trust")
         site = _site(db_session, "Education Centre", trust)
         educator = _user(db_session, "educator", profession="teaching_admin")
         _staff(db_session, educator, trust)
 
-        assert _can_at(educator, site.id, "view_teaching_cases")
-        assert not _can_at(educator, site.id, "manage_teaching_content")
+        # Enabled to teach here. Reading the analytics is inside this
+        # person's ceiling but not switched on at this site, which is the
+        # distinction the whole model turns on.
+        _authorise(db_session, educator, "view_teaching_cases", site=site)
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="competencies are global; the place is discarded",
-    )
-    def test_a_rota_manager_holds_no_clinical_capability(self, db_session):
+        assert _can_at_site(
+            db_session, educator, site.id, "view_teaching_cases"
+        )
+        assert not _can_at_site(
+            db_session, educator, site.id, "view_teaching_analytics"
+        )
+
+    def test_a_rota_manager_holds_no_clinical_competency(self, db_session):
         """An administrative job carries nothing clinical with it."""
         trust = _org(db_session, "Trust")
-        manager = _user(
-            db_session, "rota_manager", profession="clinic_manager"
-        )
+        manager = _user(db_session, "rota_manager", profession="receptionist")
         _staff(db_session, manager, trust)
 
-        assert _can_at(manager, trust.id, "access_clinic_admin")
-        assert not _can_at(manager, trust.id, "access_patient_records")
+        _authorise(db_session, manager, "access_clinic_admin", org=trust)
+        # Granted, but outside the ceiling: a clinic manager is not qualified
+        # for it, so the grant has no effect. The intersection does the work,
+        # not the grant alone.
+        _authorise(db_session, manager, "access_patient_records", org=trust)
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="competencies are global; the place is discarded",
-    )
+        assert _can_at_org(
+            db_session, manager, trust.id, "access_clinic_admin"
+        )
+        assert not _can_at_org(
+            db_session, manager, trust.id, "access_patient_records"
+        )
+
     def test_a_clinical_safety_officer_for_one_project_only(self, db_session):
         """Statutory posts are held at a place, not held outright."""
         trust = _org(db_session, "Trust")
         project = _site(db_session, "Project Alpha", trust)
-        officer = _user(db_session, "safety_officer")
+        officer = _user(
+            db_session, "safety_officer", profession="teaching_admin"
+        )
         _staff(db_session, officer, trust)
 
-        assert _can_at(officer, project.id, "view_teaching_analytics")
-        assert not _can_at(officer, trust.id, "view_teaching_analytics")
+        _authorise(
+            db_session, officer, "view_teaching_analytics", site=project
+        )
+
+        assert _can_at_site(
+            db_session, officer, project.id, "view_teaching_analytics"
+        )
+        assert not _can_at_org(
+            db_session, officer, trust.id, "view_teaching_analytics"
+        )
 
 
 class TestPositionsAsOpposedToCapabilities:
-    """A position can be vacant. A capability cannot."""
+    """A position can be vacant. A competency cannot."""
 
     @pytest.mark.skip(
         reason=(
@@ -262,18 +303,18 @@ class TestPatientAndStaffAreTheSamePerson:
     def test_a_nurse_treated_at_her_own_hospital_reads_only_her_own_record(
         self, db_session
     ):
-        """No mode switch: the capability differs, not the identity."""
+        """No mode switch: the competency differs, not the identity."""
 
     @pytest.mark.skip(
         reason=(
-            "self-scoped capabilities are not modelled; "
+            "self-scoped competencies are not modelled; "
             "access_patient_records carries the distinction in a comment"
         )
     )
     def test_a_patient_administers_their_own_chemotherapy_at_home(
         self, db_session
     ):
-        """A capability can sit with a patient, so 'clinical' is not staff-only."""
+        """A competency can sit with a patient, so 'clinical' is not staff-only."""
 
 
 class TestCeilingsThatLapse:
@@ -281,7 +322,7 @@ class TestCeilingsThatLapse:
 
     @pytest.mark.skip(
         reason=(
-            "nothing records how a capability was acquired; "
+            "nothing records how a competency was acquired; "
             "User.professional_registrations is JSON that nothing reads"
         )
     )
