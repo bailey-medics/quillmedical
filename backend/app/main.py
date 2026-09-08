@@ -40,7 +40,7 @@ from fastapi import (
     Response,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy import select
@@ -48,6 +48,8 @@ from sqlalchemy.orm import Session
 
 from app.analytics.router import router as analytics_router
 from app.api_compatibility import REQUIRED_CLIENT_GENERATION
+from app.cbac.base_professions import PROFESSION_IDS
+from app.cbac.competencies import validate_competency_ids
 from app.config import settings
 from app.db import get_core_db
 from app.deps import has_competency
@@ -1336,6 +1338,37 @@ class AdminUserCreateIn(BaseModel):
     organisation_ids: list[int] = []
     site_ids: list[int] = []
 
+    @field_validator("additional_competencies", "removed_competencies")
+    @classmethod
+    def _competencies_exist(cls, value: list[str] | None) -> list[str] | None:
+        """Reject a competency id that is not in the catalogue.
+
+        Nothing joins these strings to `shared/competencies.yaml`, so an
+        unrecognised one is otherwise stored happily and shows up much
+        later as a permission that never applies.
+        """
+        if value is None:
+            return None
+        return validate_competency_ids(value)
+
+    @field_validator("base_profession")
+    @classmethod
+    def _profession_exists(cls, value: str | None) -> str | None:
+        """Reject a base profession that is not in the catalogue.
+
+        The same silent failure: `get_profession_base_competencies`
+        returns an empty list for an unknown profession, so a typo gives
+        the user no competencies at all and says nothing.
+        """
+        if value is None:
+            return None
+        if value not in PROFESSION_IDS:
+            raise ValueError(
+                f"Unknown base profession: {value}. Professions are "
+                "defined in shared/base-professions.yaml."
+            )
+        return value
+
 
 class AdminUserUpdateIn(BaseModel):
     """Admin User Update Input Schema.
@@ -1366,6 +1399,37 @@ class AdminUserUpdateIn(BaseModel):
     system_permissions: str | None = None
     organisation_ids: list[int] | None = None
     site_ids: list[int] | None = None
+
+    @field_validator("additional_competencies", "removed_competencies")
+    @classmethod
+    def _competencies_exist(cls, value: list[str] | None) -> list[str] | None:
+        """Reject a competency id that is not in the catalogue.
+
+        Nothing joins these strings to `shared/competencies.yaml`, so an
+        unrecognised one is otherwise stored happily and shows up much
+        later as a permission that never applies.
+        """
+        if value is None:
+            return None
+        return validate_competency_ids(value)
+
+    @field_validator("base_profession")
+    @classmethod
+    def _profession_exists(cls, value: str | None) -> str | None:
+        """Reject a base profession that is not in the catalogue.
+
+        The same silent failure: `get_profession_base_competencies`
+        returns an empty list for an unknown profession, so a typo gives
+        the user no competencies at all and says nothing.
+        """
+        if value is None:
+            return None
+        if value not in PROFESSION_IDS:
+            raise ValueError(
+                f"Unknown base profession: {value}. Professions are "
+                "defined in shared/base-professions.yaml."
+            )
+        return value
 
 
 @router.post("/users", response_model=UserActionOut)
