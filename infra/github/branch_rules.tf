@@ -180,6 +180,14 @@ resource "github_repository_ruleset" "protected_branches" {
       required_check {
         context = "DB migration immutability check"
       }
+      # A competency is retired, never deleted. Deleting one from the shared
+      # catalogue revokes nothing — everyone holding it keeps the access, it
+      # merely stops being describable — and it destroys the vocabulary the
+      # audit trail needs. Like the check above, no approval path: there is
+      # no legitimate case to approve.
+      required_check {
+        context = "Competency catalogue check"
+      }
     }
 
     # Block force pushes (rewriting history on protected branches)
@@ -295,9 +303,9 @@ resource "github_repository_ruleset" "branch_naming" {
       # gh-readonly-queue is the merge queue's own prefix, not a branch anyone
       # creates by hand. It is matched here as well as excluded above so the
       # queue does not depend on fnmatch semantics to function.
-      pattern  = "^(feature|hotfix|copilot|renovate|gh-readonly-queue)/.+"
-      name     = "Branch names must follow feature/*, hotfix/*, copilot/*, or renovate/* convention (gh-readonly-queue/* is reserved for the merge queue)"
-      negate   = false
+      pattern = "^(feature|hotfix|copilot|renovate|gh-readonly-queue)/.+"
+      name    = "Branch names must follow feature/*, hotfix/*, copilot/*, or renovate/* convention (gh-readonly-queue/* is reserved for the merge queue)"
+      negate  = false
     }
   }
 }
