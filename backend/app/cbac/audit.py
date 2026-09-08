@@ -16,7 +16,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.cbac.base_professions import BASE_PROFESSIONS
-from app.cbac.competencies import unknown_competency_ids
+from app.cbac.competencies import (
+    retired_competency_ids,
+    unknown_competency_ids,
+)
 from app.models import PractisingCompetency, User
 
 
@@ -85,3 +88,59 @@ def unknown_ids_in_practising_competencies(db: Session) -> dict[int, str]:
         for row_id, competency in rows
         if unknown_competency_ids([competency])
     }
+
+
+def retired_ids_in_practising_competencies(db: Session) -> dict[int, str]:
+    """Return practising rows holding a competency that has been retired.
+
+    Not an error, and deliberately separate from the unknown-id checks
+    above. These rows were valid when written and stay readable; retiring a
+    competency stops new ones being granted, it does not revoke the access
+    anyone already has. Revoking is deleting these rows, which is a
+    deliberate act rather than a consequence of editing a YAML file.
+
+    So this is a cleanup queue: what someone would work through if they
+    intended the retirement to end the practice as well.
+
+    Args:
+        db: Database session.
+
+    Returns:
+        Row id to the retired competency id it names.
+    """
+    rows = db.execute(
+        select(PractisingCompetency.id, PractisingCompetency.competency)
+    ).all()
+    return {
+        int(row_id): competency
+        for row_id, competency in rows
+        if retired_competency_ids([competency])
+    }
+
+
+def retired_ids_on_users(db: Session) -> dict[int, list[str]]:
+    """Return users whose stored competency lists hold retired ids.
+
+    The same cleanup queue, for the two JSON columns on ``users``.
+
+    Args:
+        db: Database session.
+
+    Returns:
+        User id to the retired ids stored against them.
+    """
+    found: dict[int, list[str]] = {}
+    rows = db.execute(
+        select(
+            User.id,
+            User.additional_competencies,
+            User.removed_competencies,
+        )
+    ).all()
+    for user_id, additional, removed in rows:
+        retired = retired_competency_ids(
+            list(additional or []) + list(removed or [])
+        )
+        if retired:
+            found[int(user_id)] = retired
+    return found
