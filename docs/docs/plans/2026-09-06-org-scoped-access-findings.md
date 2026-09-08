@@ -253,7 +253,7 @@ trainee on placement and a substantive staff member are different relationships 
 not rungs of a ladder. A column that reads as a ladder is one the next person needing a
 site-level permission check will reach for — which is the trap this column is today.
 
-- [ ] **Rename the table to `site_member` and the column to `capacity`.**
+- [x] **Rename the table to `site_member` and the column to `capacity`.**
       `site_staff_member` is a straightforward lie about a third of its rows: `register`,
       the public self-registration route, inserts teaching delegates with `role="trainee"`,
       and they are not employed by the site. One membership table per place, with the
@@ -267,8 +267,9 @@ site-level permission check will reach for — which is the trap this column is 
       - It also sketches where organisations have to end up. They have two membership tables
         keyed differently, on `user_id` and on a FHIR `patient_id`, which is the namespace
         problem still open below.
-- [ ] **Keep `capacity` open-ended.** `staff` and `trainee` are the two needed now, and
-      more are expected — volunteer, contractor, honorary, visiting.
+- [x] **Keep `capacity` open-ended.** `staff` and `trainee` are the two needed now, and
+      more are expected — volunteer, contractor, honorary, visiting. `SITE_CAPACITIES` and
+      `validate_site_capacity` in `models.py`.
       - So a `String` column validated against a small list in code, the way
         `POSITION_KINDS` is, rather than a database enum. Extending an enum needs a
         migration; extending a list needs a line. A free string is not the alternative:
@@ -309,8 +310,16 @@ site-level permission check will reach for — which is the trap this column is 
         - It also matches the lead by `Site.name` rather than by id, so two sites sharing a
           name in different organisations cross-match. Moving to the post fixes that as a
           side effect, which makes it a behaviour change and not only a refactor.
-- [ ] **Give `list_delegates` the capacity column** rather than the role, so delegate-to-site
-      resolution keeps working.
+- [x] **`list_delegates` moved**, both reads at once as planned — the capacity for the
+      delegate's site, and the post for that site's lead. Keyed on the site's id rather than
+      its name, which fixes the cross-match between same-named sites in different
+      organisations. Five tests written first, one of which pins that cross-match.
+- [x] **Autogenerate proposed destroying the table.** It read the rename as one table
+      appearing and another disappearing, and emitted `create_table` plus `drop_table` —
+      which would have discarded every row. The migration is hand-written as a real rename:
+      drop the partial index, rename the column, move `clinical_lead` rows to `staff`, rename
+      the table, then rename the primary key and both foreign keys, which Postgres leaves
+      under their old names. Checked by running it down and up and inspecting the result.
 - [ ] **Then remove `role` from `SiteStaffItem`.** Still a breaking API change needing an
       `oasdiff` finding and a decision file, and the site page's staff filter goes with it —
       settled as not worth keeping, since nothing compares `staff` and the useful half is
