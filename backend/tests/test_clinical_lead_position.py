@@ -262,3 +262,69 @@ class TestThePostIsCreatedOnDemand:
         second = clinical_lead_post(db_session, site)
 
         assert first.id == second.id
+
+
+class TestTheSiteResponseNamesTheLead:
+    """Added so the interface can stop scanning staff rows for a role.
+
+    Additive: `role` is still in `SiteStaffItem`, so nothing breaks and
+    there is no API change to declare. Removing it is the contract step.
+    """
+
+    def test_a_vacant_post_reports_none(
+        self, authenticated_superadmin_client, db_session, test_superadmin
+    ):
+        """A vacancy is a real state, not a missing row."""
+        _org, site = _org_with_site(db_session, test_superadmin)
+
+        resp = authenticated_superadmin_client.get(f"/api/sites/{site.id}")
+
+        assert resp.status_code == 200
+        assert resp.json()["clinical_lead_id"] is None
+
+    def test_a_filled_post_names_the_holder(
+        self, authenticated_superadmin_client, db_session, test_superadmin
+    ):
+        _org, site = _org_with_site(db_session, test_superadmin)
+        lead = _user(db_session, "dr_lead")
+
+        authenticated_superadmin_client.post(
+            f"/api/sites/{site.id}/staff",
+            json={"user_id": lead.id, "role": "clinical_lead"},
+        )
+
+        resp = authenticated_superadmin_client.get(f"/api/sites/{site.id}")
+        assert resp.json()["clinical_lead_id"] == lead.id
+
+    def test_the_role_column_alone_does_not_name_a_lead(
+        self, authenticated_superadmin_client, db_session, test_superadmin
+    ):
+        """Proves the field comes from the post, not from the staff rows."""
+        _org, site = _org_with_site(db_session, test_superadmin)
+        impostor = _user(db_session, "dr_column_only")
+        db_session.execute(
+            insert(site_staff_member).values(
+                site_id=site.id,
+                user_id=impostor.id,
+                role="clinical_lead",
+            )
+        )
+        db_session.commit()
+
+        resp = authenticated_superadmin_client.get(f"/api/sites/{site.id}")
+        assert resp.json()["clinical_lead_id"] is None
+
+    def test_role_is_still_returned(
+        self, authenticated_superadmin_client, db_session, test_superadmin
+    ):
+        """The contract step has not happened, so nothing is removed yet."""
+        _org, site = _org_with_site(db_session, test_superadmin)
+        nurse = _user(db_session, "nurse")
+
+        authenticated_superadmin_client.post(
+            f"/api/sites/{site.id}/staff",
+            json={"user_id": nurse.id, "role": "staff"},
+        )
+
+        resp = authenticated_superadmin_client.get(f"/api/sites/{site.id}")
+        assert resp.json()["staff"][0]["role"] == "staff"

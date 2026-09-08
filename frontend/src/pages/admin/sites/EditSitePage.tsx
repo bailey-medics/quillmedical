@@ -57,6 +57,10 @@ interface SiteData {
   location: string;
   is_active: boolean;
   staff: SiteStaff[];
+  // The clinical lead post, which is the source of truth. Read this
+  // rather than scanning staff for a role: a vacant post is a real state
+  // that a missing role cannot express.
+  clinical_lead_id: number | null;
 }
 
 interface EditSiteFormValues {
@@ -229,7 +233,7 @@ export default function EditSitePage() {
 
       // Handle clinical lead assignment
       const currentLead = siteData?.staff.find(
-        (s) => s.role === "clinical_lead",
+        (s) => s.id === siteData?.clinical_lead_id,
       );
       const newLeadId = data.clinicalLeadId
         ? Number(data.clinicalLeadId)
@@ -313,7 +317,9 @@ export default function EditSitePage() {
     );
   }
 
-  const currentLead = siteData.staff.find((s) => s.role === "clinical_lead");
+  const currentLead = siteData.staff.find(
+    (s) => s.id === siteData.clinical_lead_id,
+  );
 
   const statusChanged = siteData ? isActive !== siteData.is_active : false;
 

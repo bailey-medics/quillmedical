@@ -48,6 +48,9 @@ interface SiteDetails {
   updated_at: string;
   staff: SiteStaff[];
   organisations: SiteOrganisation[];
+  // The clinical lead post, which is the source of truth. A vacant post
+  // is a real state that a missing role on a staff row cannot express.
+  clinical_lead_id: number | null;
 }
 
 export default function SiteAdminPage() {
@@ -112,6 +115,9 @@ export default function SiteAdminPage() {
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(" ");
   };
+
+  // Resolved from the post rather than from a role on a staff row.
+  const clinicalLead = site?.staff.find((s) => s.id === site?.clinical_lead_id);
 
   const staffFilterOptions = useMemo(() => {
     const roles = [...new Set((site?.staff ?? []).map((s) => s.role))].sort();
@@ -256,20 +262,15 @@ export default function SiteAdminPage() {
             <Group gap="xs">
               <BodyTextBold>Clinical lead:</BodyTextBold>
               <BodyTextInline>
-                {site.staff.find((s) => s.role === "clinical_lead")
-                  ?.full_name ||
-                  site.staff.find((s) => s.role === "clinical_lead")
-                    ?.username ||
+                {clinicalLead?.full_name ||
+                  clinicalLead?.username ||
                   "Not assigned"}
               </BodyTextInline>
             </Group>
 
             <Group gap="xs">
               <BodyTextBold>Clinical lead email:</BodyTextBold>
-              <BodyTextInline>
-                {site.staff.find((s) => s.role === "clinical_lead")?.email ||
-                  "N/A"}
-              </BodyTextInline>
+              <BodyTextInline>{clinicalLead?.email || "N/A"}</BodyTextInline>
             </Group>
           </Stack>
         </Stack>

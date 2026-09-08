@@ -4532,6 +4532,7 @@ def get_site(
         organisations=[
             {"id": o.id, "name": o.name, "type": o.type} for o in orgs
         ],
+        clinical_lead_id=clinical_leads_of(db, [site_id]).get(site_id),
     )
 
 
