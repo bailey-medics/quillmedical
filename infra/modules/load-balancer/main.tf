@@ -184,6 +184,57 @@ resource "google_compute_backend_bucket" "landing" {
   name        = "quill-landing-${var.environment}"
   bucket_name = google_storage_bucket.landing[0].name
   enable_cdn  = true
+
+  # Security headers for the marketing site.
+  #
+  # They have to be set here rather than in `caddy/prod/Caddyfile`, which
+  # carries the equivalent set for the application: this site is served
+  # straight from the bucket through the load balancer and never passes
+  # through Caddy, so until now it went out with no security headers at all.
+  # Cloud Storage cannot set them either — it serves a fixed set of its own —
+  # so the load balancer is the only place left.
+  #
+  # The policy is stricter than the application's, because the site earns it.
+  # Checked against the built output rather than the source: it emits no
+  # inline script, no iframe, no form, no `data:` URI and no request to any
+  # other host. `script-src 'self'` therefore needs no `'unsafe-inline'`,
+  # which is the half of a policy that actually stops cross-site scripting.
+  #
+  # `style-src` does need it, for two reasons that are not going away:
+  # Mantine writes its CSS variables into a `<style>` element at runtime, and
+  # the page template sets the dark background as an inline attribute on
+  # `<html>` and `<body>` so the site does not flash white before the
+  # stylesheet arrives. Inline styles are a far smaller risk than inline
+  # script.
+  #
+  # `data:` is deliberately absent from `img-src`. Nothing in the build uses
+  # one, so adding it later should be a decision rather than an inheritance.
+  #
+  # Strict-Transport-Security is deliberately at five minutes — step one of a
+  # three-step ramp, not a finished value.
+  #
+  # The header is stored by the visitor's browser rather than by us, so its
+  # duration is a promise that cannot be withdrawn: sending a shorter one
+  # later reaches only the people who come back. `includeSubDomains` compounds
+  # that by covering subdomains that do not exist yet, and one which is not
+  # ready for HTTPS on its first day would be unreachable — with no warning to
+  # click past — for everyone who had ever visited this site.
+  #
+  # Five minutes proves the mechanism against a promise short enough to wait
+  # out. One day comes next, then two years with `includeSubDomains` once
+  # every subdomain that is wanted is known to serve HTTPS.
+  #
+  # No `preload` token, and not by oversight. It means nothing unless the
+  # domain is submitted at hstspreload.org, and removal from a list shipped
+  # inside browsers takes months.
+  custom_response_headers = [
+    "Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+    "Strict-Transport-Security: max-age=300",
+    "X-Content-Type-Options: nosniff",
+    "Referrer-Policy: strict-origin-when-cross-origin",
+    "Permissions-Policy: camera=(), microphone=(), geolocation=()",
+    "X-Frame-Options: DENY",
+  ]
 }
 
 # ---------- Google-managed SSL certificate ----------
