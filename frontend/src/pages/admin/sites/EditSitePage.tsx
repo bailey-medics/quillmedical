@@ -46,7 +46,6 @@ interface SiteStaff {
   username: string;
   email: string;
   full_name: string;
-  role: string;
 }
 
 interface SiteData {

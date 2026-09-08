@@ -406,20 +406,23 @@ class SitesListOut(BaseModel):
 
 
 class SiteStaffItem(BaseModel):
-    """Staff member assigned to a site.
+    """Someone attached to a site.
+
+    ``role`` is gone. It named three unrelated things: who led the site,
+    who was on placement there, and who was simply a member. Leading is a
+    ``Position`` and is carried by ``SiteDetailOut.clinical_lead_id``;
+    the rest is membership, which the row itself records.
 
     Attributes:
-        id: Staff member (user) ID.
-        username: Staff member's username.
-        email: Staff member's email.
-        role: Role at this site (staff, trainee, clinical_lead).
-        full_name: Staff member's full name (may be empty).
+        id: Member (user) ID.
+        username: Their username.
+        email: Their email.
+        full_name: Their full name (may be empty).
     """
 
     id: int
     username: str
     email: str
-    role: str
     full_name: str
 
 

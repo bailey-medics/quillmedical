@@ -6,7 +6,7 @@
  * Only accessible to admin/superadmin.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Stack, Group, Skeleton } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
@@ -29,7 +29,6 @@ interface SiteStaff {
   username: string;
   email: string;
   full_name: string;
-  role: string;
 }
 
 interface SiteOrganisation {
@@ -109,41 +108,8 @@ export default function SiteAdminPage() {
     }
   }
 
-  const formatRole = (role: string): string => {
-    return role
-      .split("_")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ");
-  };
-
   // Resolved from the post rather than from a role on a staff row.
   const clinicalLead = site?.staff.find((s) => s.id === site?.clinical_lead_id);
-
-  const staffFilterOptions = useMemo(() => {
-    const roles = [...new Set((site?.staff ?? []).map((s) => s.role))].sort();
-    return [
-      {
-        group: "Role",
-        items: roles.map((r) => ({
-          value: `role:${r}`,
-          label: formatRole(r),
-        })),
-      },
-    ];
-  }, [site?.staff]);
-
-  const staffFilterPredicate = useCallback((filters: string[]) => {
-    const roleFilters = filters
-      .filter((f) => f.startsWith("role:"))
-      .map((f) => f.slice(5));
-
-    return (member: SiteStaff) => {
-      if (roleFilters.length > 0 && !roleFilters.includes(member.role)) {
-        return false;
-      }
-      return true;
-    };
-  }, []);
 
   if (loading) {
     return (
@@ -186,11 +152,6 @@ export default function SiteAdminPage() {
       header: "Email",
       render: (member) => member.email,
       accessor: (member) => member.email,
-    },
-    {
-      header: "Role",
-      render: (member) => formatRole(member.role),
-      accessor: (member) => member.role,
     },
     {
       header: "",
@@ -293,11 +254,7 @@ export default function SiteAdminPage() {
             getRowKey={(member) => member.id}
             pageSize={10}
             emptyMessage="No staff assigned"
-            searchFields={(m) => [m.full_name, m.username, m.email, m.role]}
-            filterData={staffFilterOptions}
-            filterLabel="Filter staff"
-            filterAriaLabel="Filter staff"
-            filterPredicate={staffFilterPredicate}
+            searchFields={(m) => [m.full_name, m.username, m.email]}
           />
         </Stack>
       </BaseCard>

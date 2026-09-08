@@ -4510,7 +4510,6 @@ def get_site(
             User.username,
             User.email,
             User.full_name,
-            site_member.c.capacity,
         )
         .join(site_member, site_member.c.user_id == User.id)
         .where(site_member.c.site_id == site_id)
@@ -4553,11 +4552,6 @@ def get_site(
                 "username": s.username,
                 "email": s.email,
                 "full_name": s.full_name or "",
-                # The response still calls it "role" until the contract
-                # step removes the field. Its value is now the capacity, so
-                # a clinical lead reads as "staff" here — the post is what
-                # says they lead, and clinical_lead_id carries that.
-                "role": s.capacity,
             }
             for s in staff
         ],

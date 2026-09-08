@@ -319,10 +319,16 @@ class TestTheSiteResponseNamesTheLead:
         resp = authenticated_superadmin_client.get(f"/api/sites/{site.id}")
         assert resp.json()["clinical_lead_id"] is None
 
-    def test_role_is_still_returned(
+    def test_role_is_no_longer_returned(
         self, authenticated_superadmin_client, db_session, test_superadmin
     ):
-        """The contract step has not happened, so nothing is removed yet."""
+        """The contract step: the field is gone.
+
+        It named three unrelated things — who led the site, who was on
+        placement, and who was simply a member. Leading is now
+        `clinical_lead_id`, and the rest is what the membership row says by
+        existing.
+        """
         _org, site = _org_with_site(db_session, test_superadmin)
         nurse = _user(db_session, "nurse")
 
@@ -332,4 +338,6 @@ class TestTheSiteResponseNamesTheLead:
         )
 
         resp = authenticated_superadmin_client.get(f"/api/sites/{site.id}")
-        assert resp.json()["staff"][0]["role"] == "staff"
+        member = resp.json()["staff"][0]
+        assert "role" not in member
+        assert member["username"] == "nurse"
