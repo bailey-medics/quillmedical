@@ -619,9 +619,17 @@ nothing, and the thread joining a support call to a log entry.
       component lands without moving anything visible
 - [x] Convert `Home.tsx` first: it is the worst case, being both a raw `<div>`
       with an inline style and a direct render of `err.message`
-- [ ] Convert the remaining pages in reviewable batches rather than one change,
-      starting with those that display `err.message`, and after the backend
-      section above has landed so each message is only written once
+- [x] Convert the remaining pages in reviewable batches rather than one change.
+      Done in five batches — sites, organisations, patients, users, and the
+      four top-level pages. **The count was wrong throughout, and kept being
+      wrong because it came from a grep rather than from reading the files.**
+      Twenty-nine was five test files, three pages already using
+      `StateMessage`, two matching only on the colour of a destructive *button*
+      — "Remove organisation" in red — and one reporting through the
+      `PageMessage` flash system. The real figure was nineteen, and seventeen
+      pages now use `ErrorState`. No error-shaped `Alert` remains anywhere in
+      `src/pages`. The lesson is the same one the earlier audit taught: a grep
+      finds a string, and a string is not a fact about what the code does
 
 ### Escalation
 

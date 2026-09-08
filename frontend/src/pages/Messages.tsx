@@ -23,11 +23,12 @@ import { api } from "@lib/api";
 import { FHIR_POLLING_TIME } from "@lib/constants";
 import { extractAvatarGradientIndex } from "@lib/fhir-patient";
 import { Group, Stack } from "@mantine/core";
-import { ErrorMessage, EmptyState } from "@/components/typography";
+import { EmptyState } from "@/components/typography";
 import BaseCard from "@/components/base-card/BaseCard";
 import { notifications } from "@mantine/notifications";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import ErrorState from "@/components/error-state/ErrorState";
 
 type FhirName = {
   given?: string[];
@@ -277,11 +278,7 @@ export default function Messages() {
         onSubmit={handleNewConversation}
       />
 
-      {error && (
-        <BaseCard>
-          <ErrorMessage>{error}</ErrorMessage>
-        </BaseCard>
-      )}
+      {error && <ErrorState message={error} />}
 
       {isLoading ? (
         <MessagesList threads={[]} isLoading onThreadClick={() => {}} />
