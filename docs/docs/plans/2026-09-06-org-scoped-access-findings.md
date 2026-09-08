@@ -324,6 +324,139 @@ This does mean the frontend needs a notion of "which organisation am I looking a
 which it currently has nowhere: `AuthContext` has no organisation field. That work belongs
 with the interface, not here, but nothing on the backend should wait for it.
 
+## Settled: what a "place" is
+
+A grant has to point at a place, and organisations and sites are separate tables. Three
+candidates, and the choice is **two nullable foreign keys with a database constraint**:
+
+```sql
+CHECK ((organisation_id IS NOT NULL) <> (site_id IS NOT NULL))
+```
+
+- **Two columns, exactly one filled.** Real foreign keys to real tables. The obvious
+  objection — nothing stops a row filling in both — is answered by the constraint above,
+  which Postgres and SQLite both enforce, so the unit tests get it too.
+- **A shared `places` table** was rejected on synchronisation, not on migration size. It
+  would need a row every time an organisation or a site is created, forever, and a missed
+  one makes that place invisible to the whole permission system. This project already
+  produces orphan rows of exactly that kind: `create_site` and the link to an organisation
+  are two separate calls, so a site can already exist attached to nothing. A supertype
+  turns that from annoying into catastrophic.
+- **One column plus a type label** was rejected outright. It gives up foreign keys, so the
+  database can no longer say whether the thing a permission points at exists. Not a trade
+  worth making in a clinical system, and against `CLAUDE.md`'s rule to enforce at the
+  database level.
+
+**Places are organisations and sites, and nothing else.** Projects, courses and research
+were considered and ruled out. The "clinical safety officer for one project" criterion is
+served by a site.
+
+### The duplication this accepts, and when to revisit
+
+Three tables will want a place — grants, positions and memberships — so the two-column
+pattern gets written three times, with three pairs of indexes. That is tolerable, not free.
+
+- [x] Put every read behind one resolver function, so the branching lives in one place
+      rather than in every query and the storage can change without touching call sites.
+      `app/cbac/scoped.py` is that boundary: `competencies_at`, `can_practise_at` and
+      `who_can_practise_at`,
+      each taking exactly one of `organisation_id` or `site_id` and raising `ValueError`
+      when given both or neither. Refusing to guess is the whole point, so it is an error
+      rather than a default.
+- [ ] **If a fourth table needs a place, build the supertype.** Three is duplication; four
+      is a pattern, and by then the resolver boundary makes the change cheap.
+
+### Uniqueness needs partial indexes, not a constraint
+
+Written first as one `UniqueConstraint` over user, organisation, site and competency. It
+never fires: one place column is always NULL and SQL treats NULLs as distinct, so the same
+row could be written twice. Caught by a test that expected the second insert to be
+rejected and watched it succeed.
+
+Replaced with two partial unique indexes, one per kind of place, declared for both
+dialects — `postgresql_where` **and** `sqlite_where`, since the unit-test database is
+SQLite and silently ignores the first. That is the trap `.claude/rules/backend.md` already
+records for `ix_site_staff_one_clinical_lead`, met again for the same reason.
+
+### The ceiling and the place are separate, and both are needed
+
+`practising_competency` says what is authorised here. `get_final_competencies` stays as the
+ceiling — what the person is qualified for at all. What they may actually do is the
+intersection:
+
+- A row beyond the ceiling does nothing, so a lapsed qualification narrows every place at
+  once without touching a single row.
+- A ceiling with no row does nothing, so being qualified is not being let loose.
+
+Both halves earn their place in the tests: a receptionist authorised for `access_patient_records`
+is still refused, and a consultant with no row is refused too.
+
+`who_can_practise_at` deliberately does not apply ceilings — filtering by every user's ceiling would
+mean loading every user. It returns a candidate list, and callers check `can_practise_at` before
+acting on a name from it. That is documented on the function and tested.
+
+### A competency id is a bare string in three places
+
+Nothing joins them and nothing validates them:
+
+- as a `- id:` in `shared/competencies.yaml`, the catalogue
+- inside the `additional_competencies` and `removed_competencies` JSON arrays on `users`
+- as a `String(100)` column on the per-place row
+
+So a misspelt id in `additional_competencies` is silently a competency nobody holds, and a
+per-place row naming one that does not exist is equally silent. Neither is reported.
+This predates the scoping work; the new table adds a third place to get it wrong.
+
+**Settled: the YAML stays authoritative, and ids are validated rather than joined.** Making
+competencies a database table would let a foreign key do the work, but the YAML is
+deliberately the source of truth — it is code-generated into the frontend's types — so a
+table would have to be kept in step with it. That is the same synchronisation hazard that
+ruled out a shared `places` table, and it is not worth taking on for spelling.
+
+- [ ] **Validate at every write boundary.** Reject an unknown competency id where it enters:
+      the Pydantic schemas that set `additional_competencies` and `removed_competencies`, and
+      wherever a per-place row is created. Fail at the point the typo is introduced, not
+      silently at read time.
+- [ ] **Add a test that walks every stored id against the catalogue** — the two JSON columns
+      on every user, every per-place row, and every `base_competencies` entry in
+      `base-professions.yaml`. It catches a competency removed from the catalogue while rows
+      still reference it, which write-boundary validation cannot see.
+- [ ] **Decide what a removal from the catalogue means** before that test can pass on real
+      data. Retiring a competency leaves existing rows pointing at nothing, and the honest
+      options are to refuse the removal, or to require the rows be cleared first.
+
+### Settled: the per-place row is `PractisingCompetency`
+
+It was first written as `CapabilityGrant`, which was wrong twice over.
+
+- **"Capability" is not this codebase's word.** Around 40 files say _competency_ —
+  `competencies.yaml`, `has_competency`, `get_final_competencies`, `useHasCompetency`, and
+  CBAC itself, which stands for competency-based access control. "Capability" entered
+  through this document, where it was distinguishing a person's skills from a _position_,
+  not from a competency. If the wider word is genuinely wanted, that is a rename of the
+  whole subsystem and deserves its own decision.
+- **"Grant" claims too much.** It reads as though the system confers the competency. It does
+  not: the competency is held by the person, and the row only records that they may exercise
+  it here.
+
+Healthcare already names this exact two-layer split — **credentialing** verifies
+qualifications, **privileging** authorises specific procedures at a specific facility. This
+document reaches for the word twice on its own: "a locum with narrower privileges at a
+second", and "Locum at C with narrower privileges than their ceiling".
+
+- [x] **Renamed to `PractisingCompetency`**, table `practising_competency`, column
+      `competency`, with `authorised_by` and `authorised_at` in place of `granted_*`.
+      - The name reads as the question the class answers: _can this person practise this
+        competency here?_ That is better than naming the row after a thing, because the row
+        is only ever consulted as a question.
+      - `CompetencyPrivilege` was the alternative, and privileging is the exact clinical
+        term. Rejected as less direct, and because "privilege" already means something else
+        in `CLAUDE.md`'s security guidance.
+      - **`Practising` takes an `s`.** British English uses the `s` spelling for the verb
+        and reserves the `c` for the noun, which `gp_practice` already uses.
+      - Done before anything read the table and before the migration merged, so it was a
+        rename rather than an expand-contract across two deploys.
+
 ## The cases any schema must express
 
 Written as acceptance criteria rather than prose, because a candidate schema either handles
@@ -386,7 +519,8 @@ that the answer differs by place, not which capability it is.
 3. [x] **Write the acceptance criteria above as failing tests**, before the model changes. A
    red, named test is worth more than a paragraph. Done: seven red, five that could not be
    written, and the five are more informative than the seven.
-4. **Then choose the storage**, knowing what it has to answer.
+4. [x] **Then choose the storage**, knowing what it has to answer. Settled above: two
+   nullable foreign keys and a constraint, places being organisations and sites only.
 
 ## Not addressed here
 
