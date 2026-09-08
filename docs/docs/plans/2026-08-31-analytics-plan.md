@@ -1108,7 +1108,6 @@ not before.
 - [ ] Fold the result into the incident response plan and runbook items already
       open in `todo.md`, and replace the `webhook_token_auth` Slack channel
       with the native integration while in there
-
 ## Phase 2: how many people visit the public site
 
 No application code. This is infrastructure and a dashboard.
@@ -1292,8 +1291,60 @@ applying one, which is worth a follow-up of its own.
       Verified green with `yarn typecheck:all`, `yarn workspace public-pages
       build`, `yarn unit-test:run` (184 files, 1723 tests) and
       `yarn storybook:build`.
-- [ ] Follow-up, separately: consider serving the marketing site with a Content
-      Security Policy now that nothing third-party is loaded
+- [x] Follow-up, separately: consider serving the marketing site with a Content
+      Security Policy now that nothing third-party is loaded. **Done, and the
+      gap was wider than a missing policy.** Asking the live site what it
+      returned showed no security headers of any kind — no content policy, no
+      `nosniff`, no referrer policy, no frame protection — only Cloud
+      Storage's own `x-goog-*` metadata and a `server: UploadServer` banner.
+      The application has had the full set in `caddy/prod/Caddyfile`
+      throughout, which is exactly what made the absence easy to miss.
+
+      Set on `google_compute_backend_bucket.landing` as
+      `custom_response_headers`, because that is the only place left: the site
+      never passes through Caddy, and Cloud Storage serves a fixed set of
+      headers of its own that cannot be added to.
+
+      The policy is stricter than the application's, and the build is what
+      earned it rather than an assumption — it emits no inline script, no
+      iframe, no form, no `data:` URI and no request to any other host, so
+      `script-src 'self'` carries no `'unsafe-inline'`. Styles still need it,
+      for two reasons that will not go away: Mantine writes its CSS variables
+      into a `<style>` element at runtime, and the page template paints the
+      dark background as an inline attribute so the site does not flash white
+      before the stylesheet lands.
+
+`Strict-Transport-Security` is being ramped rather than switched on, because
+the header is stored by the visitor's browser and not by us. Its duration is
+therefore a promise that cannot be withdrawn: sending a shorter one later
+reaches only the people who come back, and someone who visits once and returns
+in eighteen months is still held to the original. `includeSubDomains`
+compounds it by covering subdomains that do not exist yet — one not ready for
+HTTPS on its first day would be unreachable, with no warning to click past,
+for everyone who had ever visited the site.
+
+Checked before deciding rather than assumed: `quill-medical.com`,
+`www.quill-medical.com` and `teaching.quill-medical.com` are the only names
+that exist, all three resolve to the same load balancer, and all three already
+serve valid HTTPS from one Google-managed certificate. So there is nothing
+here for it to break — the risk is entirely about subdomains not yet created,
+which is what the ramp buys time against.
+
+- [x] Step one: `max-age=300`, no `includeSubDomains`. Five minutes proves the
+      mechanism against a promise short enough to wait out. Confirm both sites
+      still serve after it applies
+- [ ] Step two: raise to `max-age=86400` — one day — and leave it a week
+- [ ] Step three: `max-age=63072000; includeSubDomains`, the full two years,
+      once every subdomain that is wanted is known to serve HTTPS
+- [x] Drop the `preload` token from `caddy/prod/Caddyfile`. It had been there
+      throughout and meant nothing: preloading only takes effect if the domain
+      is submitted at hstspreload.org, and the status comes back `unknown`, so
+      nothing ever was. Claiming it read as a commitment that did not exist.
+      Add it back only alongside an actual submission, and only knowing that
+      removal from a list shipped inside browsers takes months
+- [ ] Do **not** submit to hstspreload.org as part of the ramp. It is a
+      separate decision with a much slower reverse gear, and worth taking only
+      once step three has been live and uneventful for a while
 
 ## Prerequisites
 

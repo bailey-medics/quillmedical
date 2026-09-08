@@ -104,6 +104,7 @@ clinical/NHS go-live.
 
 ## Public site
 
+- [ ] Submit `quill-medical.com` to <https://hstspreload.org/> _(deferred — not until the HSTS ramp finishes)_ — preloading bakes the domain into a list shipped inside browsers, so every visitor is held to HTTPS before they have ever been to the site. It is the last and least reversible step of the ramp recorded in `2026-08-31-analytics-plan.md`: five minutes, then a day, then two years with `includeSubDomains`, and only then this. Do not submit before step three has been live and uneventful — submission requires `max-age` of at least a year plus `includeSubDomains` and `preload` in the header, and removal takes months because it moves at the speed of browser releases. Checked 8 September: the domain's preload status is `unknown`, so nothing has ever been submitted, and the inert `preload` token that had been sitting in `caddy/prod/Caddyfile` was removed the same day — add it back only as part of an actual submission
 - [ ] Reenable EPR nav link to production URL once production is active _(deferred)_ — disabled in `frontend/src/components/ribbon/publicNavLinks.ts` line 19 (`href: "#", disabled: true`)
 
 ## Dependency management

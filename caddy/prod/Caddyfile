@@ -19,8 +19,13 @@
 	# Security headers (applied to all responses)
 	# ──────────────────────────────────────────────
 	header {
-		# HSTS — tell browsers to always use HTTPS (2 years)
-		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+		# HSTS — tell browsers to always use HTTPS (2 years).
+		# No `preload` token: it does nothing unless the domain is submitted
+		# at hstspreload.org, which it never has been — checked, and the
+		# status comes back "unknown". Claiming it read as a commitment that
+		# did not exist, and removal from a list shipped inside browsers
+		# takes months, so it should be added only alongside a submission.
+		Strict-Transport-Security "max-age=63072000; includeSubDomains"
 		# CSP — only allow resources from our own domain
 		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://storage.googleapis.com; font-src 'self'; connect-src 'self'; frame-src 'self' https://www.youtube.com; frame-ancestors 'none'"
 		# Prevent clickjacking
