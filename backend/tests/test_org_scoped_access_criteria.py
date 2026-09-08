@@ -31,9 +31,11 @@ import pytest
 from sqlalchemy import insert
 from sqlalchemy.orm import Session
 
+from app.cbac.positions import appoint, holders_of, is_vacant
 from app.cbac.scoped import can_practise_at
 from app.models import (
     Organisation,
+    Position,
     PractisingCompetency,
     Site,
     User,
@@ -271,23 +273,85 @@ class TestOneSiteWithinAnOrganisation:
         )
 
 
-class TestPositionsAsOpposedToCapabilities:
+class TestPositionsAsOpposedToCompetencies:
     """A position can be vacant. A competency cannot."""
 
-    @pytest.mark.skip(
-        reason=(
-            "no position model: site_staff_member.role is the nearest thing "
-            "and cannot express a vacancy, only an absent row"
+    def _lead_post(self, db_session, site: Site) -> Position:
+        post = Position(
+            site_id=site.id,
+            kind="clinical_lead",
+            title="Clinical lead",
+            requires_competency="access_patient_records",
+            max_holders=1,
         )
-    )
+        db_session.add(post)
+        db_session.commit()
+        return post
+
     def test_a_site_can_have_a_vacant_clinical_lead_post(self, db_session):
         """'This site has no clinical lead' must be a state, not an absence."""
+        trust = _org(db_session, "Trust")
+        ward = _site(db_session, "Ward 4", trust)
+        post = self._lead_post(db_session, ward)
 
-    @pytest.mark.skip(
-        reason="no position model, so no acting cover and no holder history"
-    )
+        # The post exists and nobody holds it. That is the point: an absent
+        # row could not be told apart from a site that never needed a lead.
+        assert is_vacant(db_session, post)
+        assert holders_of(db_session, post) == []
+
+        doctor = _user(db_session, "dr_lead")
+        _staff(db_session, doctor, trust)
+        _authorise(db_session, doctor, "access_patient_records", site=ward)
+        appoint(db_session, post, doctor)
+        db_session.commit()
+
+        assert not is_vacant(db_session, post)
+        assert holders_of(db_session, post) == [doctor.id]
+
     def test_an_acting_clinical_lead_covers_leave(self, db_session):
         """Filling a slot temporarily is a property of the slot."""
+        trust = _org(db_session, "Trust")
+        ward = _site(db_session, "Ward 4", trust)
+        post = self._lead_post(db_session, ward)
+
+        substantive = _user(db_session, "dr_substantive")
+        cover = _user(db_session, "dr_cover")
+        for person in (substantive, cover):
+            _staff(db_session, person, trust)
+            _authorise(db_session, person, "access_patient_records", site=ward)
+
+        appoint(db_session, post, substantive)
+        db_session.commit()
+
+        # Cover sits alongside the substantive holder rather than replacing
+        # them, so the record still shows whose post it is — and it is not
+        # blocked by max_holders, or nobody could ever cover.
+        appoint(db_session, post, cover, is_acting=True)
+        db_session.commit()
+
+        assert sorted(holders_of(db_session, post)) == sorted(
+            [substantive.id, cover.id]
+        )
+        assert not is_vacant(db_session, post)
+
+    def test_a_post_held_only_by_cover_is_still_vacant(self, db_session):
+        """Covering leave is not holding the post.
+
+        A site whose lead has left and is being covered is exactly the state
+        worth chasing, so acting cover must not hide it.
+        """
+        trust = _org(db_session, "Trust")
+        ward = _site(db_session, "Ward 4", trust)
+        post = self._lead_post(db_session, ward)
+
+        cover = _user(db_session, "dr_cover")
+        _staff(db_session, cover, trust)
+        _authorise(db_session, cover, "access_patient_records", site=ward)
+        appoint(db_session, post, cover, is_acting=True)
+        db_session.commit()
+
+        assert is_vacant(db_session, post)
+        assert holders_of(db_session, post) == [cover.id]
 
 
 class TestPatientAndStaffAreTheSamePerson:
