@@ -23,29 +23,29 @@ const data: FooterGroup[] = [
   {
     title: "Features",
     links: [
-      { label: "Messaging", link: "/clinical-messaging.html" },
-      { label: "Records", link: "/structured-records.html" },
-      { label: "Modules", link: "/modular-deployment.html" },
-      { label: "Access", link: "/competency-access.html" },
-      { label: "Referrals", link: "/external-referrals.html" },
-      { label: "Teaching", link: "/clinical-teaching.html" },
+      { label: "Messaging", link: "/clinical-messaging" },
+      { label: "Records", link: "/structured-records" },
+      { label: "Modules", link: "/modular-deployment" },
+      { label: "Access", link: "/competency-access" },
+      { label: "Referrals", link: "/external-referrals" },
+      { label: "Teaching", link: "/clinical-teaching" },
     ],
   },
   {
     title: "Company",
     links: [
-      { label: "About", link: "/about.html" },
-      { label: "Contact", link: "/contact.html" },
-      { label: "Careers", link: "/careers.html" },
-      { label: "Information", link: "/company-information.html" },
+      { label: "About", link: "/about" },
+      { label: "Contact", link: "/contact" },
+      { label: "Careers", link: "/careers" },
+      { label: "Information", link: "/company-information" },
     ],
   },
   {
     title: "Legal",
     links: [
-      { label: "Privacy policy", link: "/privacy-policy.html" },
-      { label: "Terms of service", link: "/terms-of-service.html" },
-      { label: "Cookie policy", link: "/cookie-policy.html" },
+      { label: "Privacy policy", link: "/privacy-policy" },
+      { label: "Terms of service", link: "/terms-of-service" },
+      { label: "Cookie policy", link: "/cookie-policy" },
     ],
   },
 ];

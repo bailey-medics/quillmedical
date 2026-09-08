@@ -15,10 +15,107 @@
 # sub-folders and the assets/ tree are never wiped by the wrong pass. An
 # empty-build guard aborts before any sync if index.html is missing, so a broken
 # build can never mirror-delete the live site.
+#
+# Clean URLs: pages are uploaded without their .html extension, so the site
+# serves /about and not /about.html. Cloud Storage serves exactly the object
+# name asked for and has no rewriting of its own, and the load balancer in
+# front of it is a classic Application Load Balancer, on which URL rewriting is
+# not available — so the object name is the URL, and renaming is the only place
+# this can be solved.
+#
+# index.html and not-found.html keep their names: the bucket's website
+# configuration names them in main_page_suffix and not_found_page, so renaming
+# them would break the front page and the 404.
+#
+# The rename happens in the source directory *before* the passes, so
+# mirror-delete does the rest: the old .html objects are absent from the source
+# and the HTML pass deletes them on the first deploy, while a page dropped from
+# the build takes its URL with it. The cost is that renamed pages go up in the
+# non-HTML pass and so arrive with the wrong content type and a 30-day cache,
+# which the final setmeta pass corrects.
 set -euo pipefail
 
 # shellcheck source=../shared/logging.sh
 source "$(dirname "${BASH_SOURCE[0]}")/../shared/logging.sh" "deploy-to-gcs"
+
+# Names of the pages that get a clean URL: every top-level page except the two
+# the bucket's website configuration names by filename. Emitted one per line.
+clean_url_pages() {
+  local src="$1"
+  local page
+  local base
+
+  for page in "$src"/*.html; do
+    [ -e "$page" ] || continue
+    base="$(basename "$page" .html)"
+    case "$base" in
+      index | not-found) continue ;;
+    esac
+    printf '%s\n' "$base"
+  done
+}
+
+# Rename each page to its extensionless form, so the ordinary passes upload
+# that and mirror-delete removes the .html object it replaces.
+make_clean_urls() {
+  local src="$1"
+  local base
+  local count=0
+
+  while IFS= read -r base; do
+    mv "${src}/${base}.html" "${src}/${base}"
+    count=$((count + 1))
+  done < <(clean_url_pages "$src")
+  log "Renamed ${count} pages to clean URLs"
+}
+
+# The renamed pages, read back from the directory after the rename rather than
+# recomputed from *.html — by this point there are no .html pages left to find.
+clean_url_objects() {
+  local src="$1"
+  local file
+  local base
+
+  for file in "$src"/*; do
+    [ -f "$file" ] || continue
+
+    base="$(basename "$file")"
+
+    # Anything with an extension is an asset, not a page.
+    case "$base" in
+      *.*) continue ;;
+    esac
+
+    printf '%s\n' "$base"
+  done
+}
+
+# Correct what the non-HTML pass got wrong for the renamed pages. Without an
+# extension gsutil types them application/octet-stream, which a browser offers
+# to download rather than render, and it caches them for 30 days when HTML is
+# meant never to be cached.
+set_clean_url_metadata() {
+  local src="$1"
+  local bucket="$2"
+  local base
+  local -a objects=()
+
+  while IFS= read -r base; do
+    objects+=("gs://${bucket}/${base}")
+  done < <(clean_url_objects "$src")
+
+  if [ ${#objects[@]} -eq 0 ]; then
+    log "No clean URLs to retype"
+    return 0
+  fi
+
+  log "Setting HTML content type and no-cache on ${#objects[@]} clean URLs"
+
+  gsutil -m setmeta \
+    -h "Content-Type:text/html; charset=utf-8" \
+    -h "Cache-Control:no-cache" \
+    "${objects[@]}"
+}
 
 main() {
   local project_id="${1:-}"
@@ -36,6 +133,8 @@ main() {
     exit 1
   fi
 
+  make_clean_urls "public-site"
+
   log "Uploading hashed assets with immutable caching"
   gsutil -m -h "Cache-Control:public, max-age=31536000, immutable" \
     rsync -r -d -x '.*\.html$' public-site/assets/ "gs://${bucket}/assets/"
@@ -47,6 +146,8 @@ main() {
   log "Uploading HTML files with no-cache"
   gsutil -m -h "Cache-Control:no-cache" \
     rsync -d -x '.*(?<!\.html)$' public-site/ "gs://${bucket}/"
+
+  set_clean_url_metadata "public-site" "$bucket"
 
   log "Deployment to gs://${bucket}/ complete"
 }

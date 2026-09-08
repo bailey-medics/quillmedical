@@ -14,10 +14,10 @@ const publicNavLinks: PublicNavLink[] = [
     href: "https://teaching.quill-medical.com",
     icon: "teaching",
   },
-  { label: "About", href: "/about.html", icon: "book" },
-  { label: "Pricing", href: "/pricing.html", icon: "pricing" },
+  { label: "About", href: "/about", icon: "book" },
+  { label: "Pricing", href: "/pricing", icon: "pricing" },
   { label: "EPR", href: "#", icon: "database", disabled: true },
-  { label: "Contact", href: "/contact.html", icon: "mail" },
+  { label: "Contact", href: "/contact", icon: "mail" },
 ];
 
 export default publicNavLinks;
