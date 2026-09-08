@@ -16,7 +16,7 @@ from app.models import (
     User,
     organisation_site,
     organisation_staff_member,
-    site_staff_member,
+    site_member,
 )
 from app.security import hash_password
 
@@ -128,8 +128,8 @@ class TestRemoveSiteStaff:
         db_session.flush()
 
         db_session.execute(
-            insert(site_staff_member).values(
-                site_id=site.id, user_id=member.id, role="staff"
+            insert(site_member).values(
+                site_id=site.id, user_id=member.id, capacity="staff"
             )
         )
         db_session.commit()
@@ -278,8 +278,8 @@ class TestSiteRoutesAreScopedToYourOrganisations:
         db_session.add(member)
         db_session.commit()
         db_session.execute(
-            insert(site_staff_member).values(
-                site_id=site.id, user_id=member.id, role="staff"
+            insert(site_member).values(
+                site_id=site.id, user_id=member.id, capacity="staff"
             )
         )
         db_session.commit()

@@ -7,7 +7,7 @@ when the function runs, and the whole suite passed either way. The bug
 would have shipped and surfaced as a certificate email that never arrived.
 
 These tests describe the behaviour as it stands today, so the coordinator
-lookup can be moved off ``site_staff_member.role`` and onto the clinical
+lookup can be moved off ``site_member.role`` and onto the clinical
 lead post without changing who receives anything.
 """
 
@@ -32,7 +32,7 @@ from app.models import (
     Site,
     User,
     organisation_site,
-    site_staff_member,
+    site_member,
 )
 from app.security import hash_password
 
@@ -106,8 +106,8 @@ def _make_lead(db: Session, site: Site, user: User) -> None:
     the contract step removes it.
     """
     db.execute(
-        insert(site_staff_member).values(
-            site_id=site.id, user_id=user.id, role="clinical_lead"
+        insert(site_member).values(
+            site_id=site.id, user_id=user.id, capacity="staff"
         )
     )
     set_clinical_lead(db, site, user)
@@ -277,10 +277,10 @@ class TestTheClinicalLead:
         site = _site_of(db_session, org, "Ward 1")
         impostor = _user(db_session, "dr_column_only", "column@example.test")
         db_session.execute(
-            insert(site_staff_member).values(
+            insert(site_member).values(
                 site_id=site.id,
                 user_id=impostor.id,
-                role="clinical_lead",
+                capacity="staff",
             )
         )
         db_session.commit()

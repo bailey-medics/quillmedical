@@ -85,7 +85,7 @@ from app.models import (
     User,
     organisation_site,
     organisation_staff_member,
-    site_staff_member,
+    site_member,
 )
 
 logger = logging.getLogger(__name__)
@@ -129,10 +129,10 @@ def _get_user_org_ids(user: User, db: Session) -> list[int]:
         db.execute(
             select(organisation_site.c.organisation_id)
             .join(
-                site_staff_member,
-                site_staff_member.c.site_id == organisation_site.c.site_id,
+                site_member,
+                site_member.c.site_id == organisation_site.c.site_id,
             )
-            .where(site_staff_member.c.user_id == user.id)
+            .where(site_member.c.user_id == user.id)
         )
         .scalars()
         .all()
@@ -1748,7 +1748,7 @@ def list_delegates(
         Site,
         organisation_site,
         organisation_staff_member,
-        site_staff_member,
+        site_member,
     )
 
     # Get all orgs the caller belongs to
@@ -1778,10 +1778,10 @@ def list_delegates(
     site_member_ids = set(
         row[0]
         for row in db.execute(
-            select(site_staff_member.c.user_id)
+            select(site_member.c.user_id)
             .join(
                 organisation_site,
-                organisation_site.c.site_id == site_staff_member.c.site_id,
+                organisation_site.c.site_id == site_member.c.site_id,
             )
             .where(
                 organisation_site.c.organisation_id.in_(caller_org_ids),
@@ -1841,44 +1841,39 @@ def list_delegates(
     site_info: dict[int, tuple[str | None, str | None]] = {}
     for uid in user_ids:
         site_row = db.execute(
-            select(Site.name)
+            select(Site.id, Site.name)
             .join(
-                site_staff_member,
-                site_staff_member.c.site_id == Site.id,
+                site_member,
+                site_member.c.site_id == Site.id,
             )
             .join(
                 organisation_site,
                 organisation_site.c.site_id == Site.id,
             )
             .where(
-                site_staff_member.c.user_id == uid,
-                site_staff_member.c.role == "trainee",
+                site_member.c.user_id == uid,
+                site_member.c.capacity == "trainee",
                 organisation_site.c.organisation_id.in_(caller_org_ids),
             )
         ).first()
 
-        site_name = site_row[0] if site_row else None
+        site_id = site_row[0] if site_row else None
+        site_name = site_row[1] if site_row else None
 
-        # Find clinical lead at the same site
+        # Whoever holds that site's clinical lead post. Keyed on the site's
+        # id rather than its name: two organisations may each have a
+        # "Ward 1", and matching on name named the wrong trust's lead.
         lead_name: str | None = None
-        if site_row:
-            lead_row = db.execute(
-                select(User.full_name, User.username)
-                .join(
-                    site_staff_member,
-                    site_staff_member.c.user_id == User.id,
-                )
-                .join(
-                    Site,
-                    Site.id == site_staff_member.c.site_id,
-                )
-                .where(
-                    Site.name == site_name,
-                    site_staff_member.c.role == "clinical_lead",
-                )
-            ).first()
-            if lead_row:
-                lead_name = lead_row[0] or lead_row[1]
+        if site_id is not None:
+            lead_id = clinical_leads_of(db, [int(site_id)]).get(int(site_id))
+            if lead_id is not None:
+                lead_row = db.execute(
+                    select(User.full_name, User.username).where(
+                        User.id == lead_id
+                    )
+                ).first()
+                if lead_row:
+                    lead_name = lead_row[0] or lead_row[1]
 
         site_info[uid] = (site_name, lead_name)
 

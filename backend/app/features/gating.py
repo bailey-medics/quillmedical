@@ -24,7 +24,7 @@ from app.models import (
     User,
     organisation_site,
     organisation_staff_member,
-    site_staff_member,
+    site_member,
 )
 
 
@@ -65,11 +65,10 @@ def requires_feature(feature_key: str) -> Callable[..., User]:
                 db.execute(
                     select(organisation_site.c.organisation_id)
                     .join(
-                        site_staff_member,
-                        site_staff_member.c.site_id
-                        == organisation_site.c.site_id,
+                        site_member,
+                        site_member.c.site_id == organisation_site.c.site_id,
                     )
-                    .where(site_staff_member.c.user_id == user.id)
+                    .where(site_member.c.user_id == user.id)
                 )
                 .scalars()
                 .all()
