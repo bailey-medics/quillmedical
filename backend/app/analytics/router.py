@@ -26,6 +26,7 @@ from app.schemas.analytics import (
     ApiCrumb,
     AuthCrumb,
     ClientErrorIn,
+    PageViewIn,
     RouteCrumb,
 )
 
@@ -43,6 +44,11 @@ ERROR_EVENT_TYPE: Final = (
     "type.googleapis.com/google.devtools.clouderrorreporting.v1beta1"
     ".ReportedErrorEvent"
 )
+
+#: Marks a page view in the logs, so a metric can count them without
+#: matching on message text.
+PAGE_VIEW_TYPE: Final = "quill.analytics.PageView"
+
 
 #: A second pass over what the browser already sanitised.
 #:
@@ -244,6 +250,43 @@ def report_client_error(
             "error_code": redact_code(report.error_code),
             "viewport": report.viewport,
             "breadcrumbs": build_breadcrumbs(report.breadcrumbs),
+        },
+    )
+    return Response(status_code=204)
+
+
+# 204 with no body, so there is no JSON schema to diff. `Response` is one of
+# the response classes the check accepts for this marker.
+# api-schema-check: allow-opaque-permanent
+@router.post("/page-views", status_code=204)
+@limiter.limit("120/minute")
+def record_page_view(
+    request: Request,
+    view: PageViewIn,
+    user: User | None = DEP_OPTIONAL_USER,
+) -> Response:
+    """Record that a page was opened.
+
+    Counts sessions, not people. The identifier is the browser's in-memory
+    one, and the user is read from the cookie only to separate signed-in
+    traffic from anonymous — never to attribute a view to a named person, so
+    it is recorded as presence rather than identity.
+
+    The limit is higher than the error endpoint's because navigating is normal
+    and erroring is not: a busy clinician moving through a patient's record
+    will legitimately produce more page views in a minute than a broken page
+    produces errors.
+
+    Returns 204: the browser has nothing to do with the answer, and a failed
+    ping must never interrupt somebody using the application.
+    """
+    logger.info(
+        "page view",
+        extra={
+            "@type": PAGE_VIEW_TYPE,
+            "page": view.page,
+            "session_id": view.session_id,
+            "signed_in": user is not None,
         },
     )
     return Response(status_code=204)
