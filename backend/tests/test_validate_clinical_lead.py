@@ -5,6 +5,7 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.cbac.positions import set_clinical_lead
 from app.features.teaching.models import QuestionBankOrgStatus
 from app.models import (
     Organisation,
@@ -49,12 +50,15 @@ def _setup_org_with_site_and_lead(
     db.add(lead)
     db.flush()
 
-    # Assign as clinical_lead at the site
+    # Assign as clinical_lead at the site. Both the role column and the
+    # position are written, as the API does: the endpoint reads the post,
+    # and the column stays until the contract step removes it.
     db.execute(
         site_staff_member.insert().values(
             site_id=site.id, user_id=lead.id, role="clinical_lead"
         )
     )
+    set_clinical_lead(db, site, lead)
     db.flush()
 
     # Enable bank for this org with site_registration
@@ -199,6 +203,7 @@ class TestValidateClinicalLead:
                 role="clinical_lead",
             )
         )
+        set_clinical_lead(db_session, other_site, other_lead)
         db_session.flush()
 
         resp = test_client.post(
