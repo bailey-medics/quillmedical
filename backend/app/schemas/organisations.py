@@ -453,6 +453,10 @@ class SiteDetailOut(BaseModel):
         updated_at: ISO timestamp when last updated.
         staff: List of staff members assigned to this site.
         organisations: List of organisations linked to this site.
+        clinical_lead_id: User ID of the site's current clinical lead, or
+            None when the post is vacant. Read this rather than scanning
+            ``staff`` for a role: the post is the source of truth, and a
+            vacancy is a real state that a missing role cannot express.
     """
 
     id: int
@@ -465,6 +469,7 @@ class SiteDetailOut(BaseModel):
     updated_at: str
     staff: list[SiteStaffItem]
     organisations: list[LinkedOrganisationItem]
+    clinical_lead_id: int | None = None
 
 
 class AddSiteStaffResponse(BaseModel):
