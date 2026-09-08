@@ -9,9 +9,8 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, act } from "@testing-library/react";
 import { MantineProvider } from "@mantine/core";
 import {
-  MemoryRouter,
-  Routes,
-  Route,
+  createMemoryRouter,
+  RouterProvider,
   useOutletContext,
   useNavigate,
 } from "react-router-dom";
@@ -100,24 +99,37 @@ function HomePage() {
 }
 
 function renderWithRoutes(initialRoute: string) {
+  // A data router rather than MemoryRouter, matching production, which uses
+  // createBrowserRouter. RootLayout reads useMatches to skip counting page
+  // views on clinical routes, and that hook needs one.
+  const router = createMemoryRouter(
+    [
+      {
+        element: <RootLayout />,
+        children: [
+          { path: "/", element: <HomePage /> },
+          {
+            path: "/patients/:id/messages",
+            element: <PatientPage />,
+            handle: { clinical: true },
+          },
+          {
+            path: "/messages",
+            element: <div data-testid="messages-page">Messages</div>,
+          },
+        ],
+      },
+    ],
+    { initialEntries: [initialRoute] },
+  );
+
   return render(
     <MantineProvider
       theme={theme}
       cssVariablesResolver={cssVariablesResolver}
       env="test"
     >
-      <MemoryRouter initialEntries={[initialRoute]}>
-        <Routes>
-          <Route element={<RootLayout />}>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/patients/:id/messages" element={<PatientPage />} />
-            <Route
-              path="/messages"
-              element={<div data-testid="messages-page">Messages</div>}
-            />
-          </Route>
-        </Routes>
-      </MemoryRouter>
+      <RouterProvider router={router} />
     </MantineProvider>,
   );
 }
