@@ -36,6 +36,7 @@ import MultiStepForm, {
 import DirtyFormNavigation from "@/components/warnings";
 import PageHeader from "@/components/page-header";
 import { api } from "@/lib/api";
+import ErrorState from "@/components/error-state/ErrorState";
 
 /**
  * Patient form data state
@@ -632,17 +633,15 @@ export default function NewPatientPage() {
             </Stack>
           </Center>
         ) : loadError ? (
-          <Alert
-            icon={<Icon icon={<IconAlertCircle />} size="sm" />}
+          <ErrorState
             title="Error loading patient"
-            color="var(--alert-color)"
-            mt="md"
-          >
-            {loadError}
-            <Button onClick={() => navigate("/admin")} variant="light" mt="md">
-              Return to Admin
-            </Button>
-          </Alert>
+            message={loadError}
+            action={{
+              label: "Return to Admin",
+              icon: "arrowLeft",
+              onClick: () => navigate("/admin"),
+            }}
+          />
         ) : (
           <MultiStepForm
             steps={steps}

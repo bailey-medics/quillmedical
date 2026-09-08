@@ -13,19 +13,10 @@
 
 // Multi-step form uses Box with maw instead of Container for custom max-width
 
-import {
-  Box,
-  Button,
-  Group,
-  Stack,
-  Alert,
-  Loader,
-  Center,
-} from "@mantine/core";
+import { Box, Group, Stack, Alert, Loader, Center } from "@mantine/core";
 import { useState, useEffect } from "react";
 import { useNavigate, useBlocker, useParams } from "react-router-dom";
 import { IconCheck, IconAlertCircle } from "@components/icons/appIcons";
-import Icon from "@/components/icons";
 import BaseCard from "@/components/base-card/BaseCard";
 import TextField from "@/components/form/TextField";
 import PasswordField from "@/components/form/PasswordField";
@@ -57,6 +48,7 @@ import competenciesData from "@/generated/competencies.json";
 import baseProfessionsData from "@/generated/base-professions.json";
 import { api } from "@/lib/api";
 import { useAuth } from "@/auth/AuthContext";
+import ErrorState from "@/components/error-state/ErrorState";
 
 /**
  * Organisation option from the API
@@ -898,21 +890,15 @@ export default function UserInfoUpdatePage() {
             </Stack>
           </Center>
         ) : loadError ? (
-          <Alert
-            icon={<Icon icon={<IconAlertCircle />} size="sm" />}
+          <ErrorState
             title="Error loading user"
-            color="var(--alert-color)"
-            mt="md"
-          >
-            {loadError}
-            <Button
-              onClick={() => navigate("/admin/users")}
-              variant="light"
-              mt="md"
-            >
-              Return to Admin
-            </Button>
-          </Alert>
+            message={loadError}
+            action={{
+              label: "Return to Admin",
+              icon: "arrowLeft",
+              onClick: () => navigate("/admin/users"),
+            }}
+          />
         ) : (
           <MultiStepForm
             steps={steps}
