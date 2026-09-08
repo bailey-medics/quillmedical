@@ -60,7 +60,7 @@ createRoot(document.getElementById("root")!).render(
               to our contact page and let us know.
             </PublicBodyText>
             <Group mt="lg">
-              <PublicButton href="/contact.html">Contact us</PublicButton>
+              <PublicButton href="/contact">Contact us</PublicButton>
             </Group>
           </Stack>
         </Container>

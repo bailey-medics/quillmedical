@@ -13,6 +13,11 @@ on:
       - "frontend/src/components/**"
       - "frontend/src/theme.ts"
       - "frontend/src/styles/**"
+      # How the site is deployed, not just what is in it. Without these a
+      # change to the upload script sat unused until some unrelated content
+      # change happened to trigger a run.
+      - ".github/scripts/public-site/**"
+      - ".github/workflows/public-site.yml"
 
 permissions:
   contents: read
