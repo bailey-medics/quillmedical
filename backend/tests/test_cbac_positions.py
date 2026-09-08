@@ -423,3 +423,41 @@ class TestOrganisationLevelPosts:
 
         with pytest.raises(ValueError, match="not authorised"):
             appoint(db_session, post, person)
+
+
+class TestNowVersusOnADate:
+    """Two different questions, with deliberately different answers."""
+
+    def test_someone_removed_today_does_not_hold_it_now(self, db_session):
+        """Removal takes effect at once, not tomorrow."""
+        site = _site(db_session)
+        post = _post(db_session, site=site)
+        doctor = _user(db_session, "dr_removed")
+        _authorise(db_session, doctor, site=site)
+
+        held = appoint(db_session, post, doctor)
+        db_session.commit()
+        vacate(db_session, held)
+        db_session.commit()
+
+        assert holders_of(db_session, post) == []
+        assert is_vacant(db_session, post)
+
+    def test_but_they_did_hold_it_today(self, db_session):
+        """A review of today must still find them.
+
+        This is why the two questions are separate: 'is anyone the lead
+        now' and 'who was the lead on this date' have different answers on
+        the day someone leaves.
+        """
+        site = _site(db_session)
+        post = _post(db_session, site=site)
+        doctor = _user(db_session, "dr_removed")
+        _authorise(db_session, doctor, site=site)
+
+        held = appoint(db_session, post, doctor)
+        db_session.commit()
+        vacate(db_session, held)
+        db_session.commit()
+
+        assert holders_of(db_session, post, date.today()) == [doctor.id]

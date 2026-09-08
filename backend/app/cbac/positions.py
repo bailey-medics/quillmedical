@@ -22,7 +22,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.cbac.scoped import can_practise_at
-from app.models import Position, PositionHolding, User
+from app.models import Position, PositionHolding, Site, User
 
 
 def _today() -> date:
@@ -35,35 +35,46 @@ def holdings_on(
 ) -> list[PositionHolding]:
     """Return the holdings in force on one date.
 
-    **Both dates are inclusive.** Someone whose holding ends on the 30th
-    still held the post on the 30th, which is what an incident review on
-    that date needs to be told. A handover is therefore the outgoing holder
-    ending one day and the incoming starting the next, not both on the same
-    day — appointing a successor before the predecessor's last day has
-    passed counts as two holders and is refused by ``max_holders``.
+    Two different questions, and the answer differs:
+
+    - **Now** (``on_date`` omitted) means holdings that have not ended. If
+      someone was removed from the post this morning, they do not hold it
+      this afternoon.
+    - **On a date** means holdings in force at any point that day, with
+      both dates inclusive. Someone whose holding ended on the 30th held
+      the post on the 30th, which is what a review of that date needs to be
+      told.
+
+    So a handover is the outgoing holder ending one day and the incoming
+    starting the next: appointing a successor to start on the predecessor's
+    last day counts as two holders on that day, and ``max_holders`` refuses
+    it.
 
     Args:
         db: Database session.
         position: The post.
-        on_date: The date to ask about, defaulting to today.
+        on_date: The date to ask about, or None for "now".
 
     Returns:
-        Holdings that had started and had not ended on that date,
-        substantive and acting alike.
+        The holdings in force, substantive and acting alike.
     """
-    when = on_date or _today()
-    return list(
-        db.execute(
-            select(PositionHolding).where(
-                PositionHolding.position_id == position.id,
-                PositionHolding.started_on <= when,
-                (PositionHolding.ended_on.is_(None))
-                | (PositionHolding.ended_on >= when),
-            )
-        )
-        .scalars()
-        .all()
+    query = select(PositionHolding).where(
+        PositionHolding.position_id == position.id
     )
+
+    if on_date is None:
+        query = query.where(
+            PositionHolding.started_on <= _today(),
+            PositionHolding.ended_on.is_(None),
+        )
+    else:
+        query = query.where(
+            PositionHolding.started_on <= on_date,
+            (PositionHolding.ended_on.is_(None))
+            | (PositionHolding.ended_on >= on_date),
+        )
+
+    return list(db.execute(query).scalars().all())
 
 
 def is_vacant(
@@ -204,3 +215,110 @@ def holders_of(
         User ids, acting and substantive alike, in no particular order.
     """
     return [h.user_id for h in holdings_on(db, position, on_date)]
+
+
+CLINICAL_LEAD = "clinical_lead"
+
+
+def clinical_lead_post(db: Session, site: Site) -> Position:
+    """Return a site's clinical lead post, creating it if absent.
+
+    Created on demand rather than with every site, because a post nobody
+    has ever tried to fill is not a vacancy anyone is chasing — and
+    creating one for every site would fill the table with posts no
+    organisation asked for.
+
+    ``requires_competency`` is left unset: what a clinical lead must be
+    competent in is not something this code can decide for an organisation,
+    and guessing would refuse appointments that are perfectly proper today.
+
+    Args:
+        db: Database session.
+        site: The site.
+
+    Returns:
+        The site's clinical lead post.
+    """
+    post = db.execute(
+        select(Position).where(
+            Position.site_id == site.id,
+            Position.kind == CLINICAL_LEAD,
+        )
+    ).scalar_one_or_none()
+
+    if post is None:
+        post = Position(
+            site_id=site.id,
+            kind=CLINICAL_LEAD,
+            title="Clinical lead",
+            max_holders=1,
+        )
+        db.add(post)
+        db.flush()
+    return post
+
+
+def set_clinical_lead(
+    db: Session,
+    site: Site,
+    user: User | None,
+    *,
+    appointed_by: User | None = None,
+) -> None:
+    """Make someone the clinical lead of a site, or leave the post vacant.
+
+    Ends whoever currently holds it substantively before appointing, so the
+    handover is recorded rather than the previous holder simply vanishing.
+
+    Args:
+        db: Database session.
+        site: The site.
+        user: The new lead, or None to vacate the post.
+        appointed_by: Who made the appointment.
+    """
+    post = clinical_lead_post(db, site)
+
+    for holding in holdings_on(db, post):
+        if not holding.is_acting and (
+            user is None or holding.user_id != user.id
+        ):
+            vacate(db, holding)
+
+    if user is None:
+        return
+
+    already = [
+        h
+        for h in holdings_on(db, post)
+        if not h.is_acting and h.user_id == user.id
+    ]
+    if not already:
+        appoint(db, post, user, appointed_by=appointed_by)
+
+
+def clinical_leads_of(db: Session, site_ids: list[int]) -> dict[int, int]:
+    """Return the current clinical lead of each site that has one.
+
+    Args:
+        db: Database session.
+        site_ids: The sites to look up.
+
+    Returns:
+        Site id to the user id of its substantive clinical lead. Sites with
+        a vacant post are absent, which is what "no clinical lead" means.
+    """
+    if not site_ids:
+        return {}
+
+    rows = db.execute(
+        select(Position.site_id, PositionHolding.user_id)
+        .join(PositionHolding, PositionHolding.position_id == Position.id)
+        .where(
+            Position.site_id.in_(site_ids),
+            Position.kind == CLINICAL_LEAD,
+            PositionHolding.is_acting.is_(False),
+            PositionHolding.started_on <= _today(),
+            PositionHolding.ended_on.is_(None),
+        )
+    ).all()
+    return {int(site_id): int(user_id) for site_id, user_id in rows}
