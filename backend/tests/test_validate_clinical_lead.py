@@ -13,7 +13,7 @@ from app.models import (
     User,
     organisation_site,
     organisation_staff_member,
-    site_staff_member,
+    site_member,
 )
 from app.security import hash_password
 
@@ -54,8 +54,8 @@ def _setup_org_with_site_and_lead(
     # position are written, as the API does: the endpoint reads the post,
     # and the column stays until the contract step removes it.
     db.execute(
-        site_staff_member.insert().values(
-            site_id=site.id, user_id=lead.id, role="clinical_lead"
+        site_member.insert().values(
+            site_id=site.id, user_id=lead.id, capacity="staff"
         )
     )
     set_clinical_lead(db, site, lead)
@@ -128,8 +128,8 @@ class TestValidateClinicalLead:
         db_session.add(staff_user)
         db_session.flush()
         db_session.execute(
-            site_staff_member.insert().values(
-                site_id=site.id, user_id=staff_user.id, role="staff"
+            site_member.insert().values(
+                site_id=site.id, user_id=staff_user.id, capacity="staff"
             )
         )
         db_session.flush()
@@ -197,10 +197,10 @@ class TestValidateClinicalLead:
         db_session.add(other_lead)
         db_session.flush()
         db_session.execute(
-            site_staff_member.insert().values(
+            site_member.insert().values(
                 site_id=other_site.id,
                 user_id=other_lead.id,
-                role="clinical_lead",
+                capacity="staff",
             )
         )
         set_clinical_lead(db_session, other_site, other_lead)
@@ -260,13 +260,13 @@ class TestRegisterWithSiteMembership:
 
         # Verify site membership as trainee
         site_row = db_session.execute(
-            select(site_staff_member).where(
-                site_staff_member.c.user_id == new_user.id,
-                site_staff_member.c.site_id == site.id,
+            select(site_member).where(
+                site_member.c.user_id == new_user.id,
+                site_member.c.site_id == site.id,
             )
         ).first()
         assert site_row is not None
-        assert site_row.role == "trainee"
+        assert site_row.capacity == "trainee"
 
     def test_register_site_without_org_fails(self, test_client, db_session):
         """Providing site_id without organisation_id returns 400."""

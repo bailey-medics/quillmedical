@@ -41,7 +41,7 @@ from app.models import (
     User,
     organisation_site,
     organisation_staff_member,
-    site_staff_member,
+    site_member,
 )
 from app.security import hash_password
 
@@ -202,8 +202,8 @@ class TestOneSiteWithinAnOrganisation:
         )
         _staff(db_session, manager, trust)
         db_session.execute(
-            insert(site_staff_member).values(
-                site_id=ward.id, user_id=manager.id, role="staff"
+            insert(site_member).values(
+                site_id=ward.id, user_id=manager.id, capacity="staff"
             )
         )
         db_session.commit()

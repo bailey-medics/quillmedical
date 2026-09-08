@@ -1,6 +1,6 @@
 """Tests for clinical lead moving onto positions.
 
-The expand step: both `site_staff_member.role` and the position are
+The expand step: both `site_member.role` and the position are
 written, and the two read paths — `validate_clinical_lead` and the
 organisation detail listing — have moved across. The column stays, and stays
 in the site response, until the contract step, which is a breaking API
@@ -24,7 +24,7 @@ from app.models import (
     User,
     organisation_site,
     organisation_staff_member,
-    site_staff_member,
+    site_member,
 )
 from app.security import hash_password
 
@@ -80,10 +80,15 @@ class TestAppointingThroughTheApi:
         assert resp.status_code == 200
         assert clinical_leads_of(db_session, [site.id]) == {site.id: lead.id}
 
-    def test_the_role_column_is_still_written(
+    def test_the_lead_is_an_ordinary_member_of_the_site(
         self, authenticated_superadmin_client, db_session, test_superadmin
     ):
-        """Both are written until the contract step removes the column."""
+        """Leading is the post, not a kind of membership.
+
+        Appointing someone still makes them a member of the site, in the
+        ordinary "staff" capacity. `clinical_lead` is no longer a capacity,
+        because a capacity cannot be vacant and a post can.
+        """
         _org, site = _org_with_site(db_session, test_superadmin)
         lead = _user(db_session, "dr_lead")
 
@@ -93,12 +98,12 @@ class TestAppointingThroughTheApi:
         )
 
         row = db_session.execute(
-            select(site_staff_member.c.role).where(
-                site_staff_member.c.site_id == site.id,
-                site_staff_member.c.user_id == lead.id,
+            select(site_member.c.capacity).where(
+                site_member.c.site_id == site.id,
+                site_member.c.user_id == lead.id,
             )
         ).first()
-        assert row is not None and row[0] == "clinical_lead"
+        assert row is not None and row[0] == "staff"
 
     def test_ordinary_staff_do_not_fill_the_post(
         self, authenticated_superadmin_client, db_session, test_superadmin
@@ -210,10 +215,10 @@ class TestTheReadsAnswerFromThePost:
         org, site = _org_with_site(db_session, test_superadmin)
         impostor = _user(db_session, "dr_column_only")
         db_session.execute(
-            insert(site_staff_member).values(
+            insert(site_member).values(
                 site_id=site.id,
                 user_id=impostor.id,
-                role="clinical_lead",
+                capacity="staff",
             )
         )
         db_session.commit()
@@ -303,10 +308,10 @@ class TestTheSiteResponseNamesTheLead:
         _org, site = _org_with_site(db_session, test_superadmin)
         impostor = _user(db_session, "dr_column_only")
         db_session.execute(
-            insert(site_staff_member).values(
+            insert(site_member).values(
                 site_id=site.id,
                 user_id=impostor.id,
-                role="clinical_lead",
+                capacity="staff",
             )
         )
         db_session.commit()

@@ -635,8 +635,43 @@ organisation_site = Table(
 """Association table: many-to-many between organisations and sites."""
 
 
-site_staff_member = Table(
-    "site_staff_member",
+# In what capacity someone is at a site. Deliberately open-ended: more are
+# expected — volunteer, contractor, honorary, visiting — so this is a string
+# validated against a list in code rather than a database enum, which would
+# need a migration to extend. A free string is not the alternative; that
+# repeats the mistake competency ids made.
+#
+# **Not a ranking, and never a permission check.** A trainee on placement and
+# a substantive staff member are different relationships to a site, not rungs
+# of a ladder. What someone may *do* at a site is a practising competency; if
+# a rule ever needs "contractors cannot do X", that belongs there, not here,
+# or this column becomes the access-control-shaped field its predecessor was.
+SITE_CAPACITIES: tuple[str, ...] = ("staff", "trainee")
+
+
+def validate_site_capacity(value: str) -> str:
+    """Return the capacity unchanged, or raise naming the known ones.
+
+    Args:
+        value: The capacity to check.
+
+    Returns:
+        The same value.
+
+    Raises:
+        ValueError: If it is not a known capacity.
+    """
+    if value not in SITE_CAPACITIES:
+        raise ValueError(
+            f"Unknown site capacity: {value}. Known capacities are "
+            + ", ".join(SITE_CAPACITIES)
+            + "."
+        )
+    return value
+
+
+site_member = Table(
+    "site_member",
     Base.metadata,
     Column(
         "site_id",
@@ -648,16 +683,18 @@ site_staff_member = Table(
         ForeignKey("users.id", ondelete="CASCADE"),
         primary_key=True,
     ),
-    Column("role", String(50), nullable=False),
-    Index(
-        "ix_site_staff_one_clinical_lead",
-        "site_id",
-        unique=True,
-        postgresql_where=text("role = 'clinical_lead'"),
-        sqlite_where=text("role = 'clinical_lead'"),
-    ),
+    Column("capacity", String(50), nullable=False),
 )
-"""Association table: staff at a site with a role (clinical_lead, staff, trainee)."""
+"""Association table: who is at a site, and in what capacity.
+
+Named ``site_member`` rather than ``site_staff_member`` because a third of
+its rows were never staff: ``register``, the public self-registration route,
+inserts teaching delegates, who are not employed by the site.
+
+Membership answers *where is this person*. What they may do there is a
+practising competency, and who holds a post is a ``Position`` — clinical
+lead among them, which is why ``clinical_lead`` is no longer a capacity.
+"""
 
 
 class Site(Base):
@@ -711,7 +748,7 @@ class Site(Base):
         backref="sites",
     )
     staff: Mapped[list[User]] = relationship(
-        secondary=site_staff_member,
+        secondary=site_member,
         backref="sites",
     )
 

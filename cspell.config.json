@@ -440,6 +440,7 @@
     "pipenv",
     "pipx",
     "pixi",
+    "pkey",
     "polyfactory",
     "poolclass",
     "popstate",
