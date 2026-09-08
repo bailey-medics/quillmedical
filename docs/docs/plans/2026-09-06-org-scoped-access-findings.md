@@ -297,6 +297,18 @@ site-level permission check will reach for — which is the trap this column is 
         the post, since a vacancy is exactly what the old query could not express.
       - Writing it turned up dead defensive code: `User.email` is NOT NULL, so the
         `if lead.email` guards only ever fire for the empty string, never for None.
+      - [x] **`_maybe_enqueue_certificate_emails` moved.** The net earned its keep at once:
+        two tests failed, because the fixture seeded only the role column and the lookup now
+        reads the post. The fixture writes both, as the API does, and a new test pins the
+        cut-over — a `clinical_lead` row with no post behind it emails nobody.
+      - [ ] **`list_delegates` is the other one, and it has no test either.** Same trap, so
+        the same order: test first.
+        - It should move **after** the capacity rename, not before. It reads the column
+          twice — once for `trainee` to find the delegate's site, once for `clinical_lead` to
+          name that site's lead — so doing it once afterwards avoids touching it twice.
+        - It also matches the lead by `Site.name` rather than by id, so two sites sharing a
+          name in different organisations cross-match. Moving to the post fixes that as a
+          side effect, which makes it a behaviour change and not only a refactor.
 - [ ] **Give `list_delegates` the capacity column** rather than the role, so delegate-to-site
       resolution keeps working.
 - [ ] **Then remove `role` from `SiteStaffItem`.** Still a breaking API change needing an
