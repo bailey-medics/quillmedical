@@ -33,9 +33,16 @@ from sqlalchemy import (
     UniqueConstraint,
     text,
 )
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    mapped_column,
+    relationship,
+    validates,
+)
 
 from app.cbac.base_professions import resolve_user_competencies
+from app.cbac.competencies import validate_competency_ids
 
 
 class Base(DeclarativeBase):
@@ -815,3 +822,16 @@ class PractisingCompetency(Base):
         default=lambda: datetime.now(UTC),
         nullable=False,
     )
+
+    @validates("competency")
+    def _competency_exists(self, _key: str, value: str) -> str:
+        """Reject a competency id that is not in the catalogue.
+
+        No foreign key can do this: the catalogue is
+        ``shared/competencies.yaml``, deliberately kept out of the database
+        because it is code-generated into the frontend's types. So the check
+        lives on the attribute instead, covering every path that writes a
+        row rather than one endpoint's schema.
+        """
+        validate_competency_ids([value])
+        return value

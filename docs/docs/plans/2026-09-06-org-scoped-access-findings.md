@@ -413,17 +413,85 @@ deliberately the source of truth — it is code-generated into the frontend's ty
 table would have to be kept in step with it. That is the same synchronisation hazard that
 ruled out a shared `places` table, and it is not worth taking on for spelling.
 
-- [ ] **Validate at every write boundary.** Reject an unknown competency id where it enters:
-      the Pydantic schemas that set `additional_competencies` and `removed_competencies`, and
-      wherever a per-place row is created. Fail at the point the typo is introduced, not
-      silently at read time.
-- [ ] **Add a test that walks every stored id against the catalogue** — the two JSON columns
+- [x] **Validate at every write boundary.** `validate_competency_ids` in
+      `app/cbac/competencies.py` is the one check; `AdminUserCreateIn` and
+      `AdminUserUpdateIn` call it through field validators, so an unknown id is a 422 that
+      names it rather than a row nobody notices.
+      - The per-place row is guarded on the attribute instead, with SQLAlchemy's
+        `@validates`. A schema only covers the endpoint that uses it; the attribute covers
+        every path that writes a row, and there is no endpoint for these yet.
+      - `base_profession` got the same treatment, found while writing this: it is a bare
+        string too, and `get_profession_base_competencies` returns an empty list for an
+        unknown one — so a typo gave a user no competencies at all and said nothing.
+- [x] **Audit what is already stored** — `app/cbac/audit.py`, walking the two JSON columns
       on every user, every per-place row, and every `base_competencies` entry in
-      `base-professions.yaml`. It catches a competency removed from the catalogue while rows
-      still reference it, which write-boundary validation cannot see.
-- [ ] **Decide what a removal from the catalogue means** before that test can pass on real
-      data. Retiring a competency leaves existing rows pointing at nothing, and the honest
-      options are to refuse the removal, or to require the rows be cleared first.
+      `base-professions.yaml`. Read-only: it reports, and changes nothing, because what to
+      do about a stale id is a decision rather than a cleanup.
+      - The base-profession check is static drift between two files that ship together, so
+        it runs as an ordinary test and fails in CI the moment one is edited without the
+        other.
+- [x] **Settled: competencies are retired, never removed.** See below.
+
+### Removing a competency does not revoke it
+
+The question turned out to rest on a mistaken premise. Deleting an id from
+`shared/competencies.yaml` revokes nothing: `resolve_user_competencies` does set operations
+on plain strings and `has_competency` compares a string from the route against that set.
+Neither consults the catalogue. So a deleted competency keeps working for everyone who has
+it — the access is unchanged, it has merely stopped being describable.
+
+That is the worst available shape. The edit looks like a revocation, is not one, and quietly
+leaves the data impossible to audit instead.
+
+**The principle: editing a configuration file must never silently change who may do what.**
+Revoking access is deleting rows, deliberately. Retiring a competency is saying "no new ones
+of these". They are different acts, and deletion today conflates them.
+
+The clinical argument decides it. A competency someone was signed off for is part of the
+record; if the id disappears, "authorised for Y at Z on this date" can no longer be
+rendered, exactly when an incident is being reviewed. This is the same instinct that makes
+merged migrations and `api-compatibility/` decision files immutable — supersede, never
+amend.
+
+- [x] **Add `retired_on` to a competency entry rather than deleting it.**
+      - `COMPETENCY_IDS` keeps everything, so history and existing rows still resolve.
+      - `ACTIVE_COMPETENCY_IDS` excludes retired ones.
+      - **Write boundaries validate against active**: a retired competency cannot be newly
+        granted.
+      - **Reads and the audit validate against all**: nothing already stored becomes an
+        error.
+      - Base professions must not name a retired id, enforced by the existing drift test.
+      - The audit reports rows holding retired competencies as a cleanup queue rather than a
+        failure — `retired_ids_on_users` and `retired_ids_in_practising_competencies`.
+- [x] **A CI check that no competency is ever deleted.** The rule is worth nothing if the
+      next person can delete a line and get a green build, and this is the same class of
+      guard as the migration immutability check: compare the catalogue against its state on
+      `main`, and fail if an id has disappeared. Retiring one is a modification and passes;
+      removing one does not. `.github/scripts/ci/check-competencies-not-deleted.sh`, run by
+      the `Competency catalogue check` job and required by `infra/github/branch_rules.tf`.
+      - It also refuses **un-retirement**. Removing a `retired_on:` line makes a competency
+        available for granting again, which is the same thing the check exists to stop: a
+        change to who may do what, made by editing a configuration file. A competency that
+        should be available again is a new entry with a new id, so what the old one meant
+        stays intact.
+      - Covered by bats, which caught what a hand-check had missed: the script compares
+        committed refs, so editing the catalogue in the working tree and running it
+        reports success and proves nothing. One test now documents that trap.
+      - The Python side has a round-trip test as well. Every other retirement test builds
+        `CompetencyEntry` objects directly, so all of them would pass even if the YAML
+        could not be read back — and since `CompetencyEntry` forbids extra keys and the
+        module loads at start-up, a mismatch there would take the backend down the first
+        time anyone retired anything.
+
+Two alternatives were rejected:
+
+- **Refuse removal while rows reference it.** Cannot work — the check runs in CI against a
+  test database and cannot see production data, so it would give a false all-clear.
+- **Require the rows be cleared first.** The same two-phase idea, but it destroys the
+  vocabulary at the end, and there is no reason to.
+
+The cost is one YAML field, one extra constant, and knowing which list each boundary uses.
+The catalogue grows for ever, which at 32 entries and a rare retirement is not a problem.
 
 ### Settled: the per-place row is `PractisingCompetency`
 
@@ -479,16 +547,16 @@ Every capability the tests name exists in `shared/competencies.yaml`. Some are s
 there is no rota or clinical-safety-officer capability yet — because what is asserted is
 that the answer differs by place, not which capability it is.
 
-- [ ] Doctor at A, patient at B — cannot act clinically at B.
+- [x] Doctor at A, patient at B — cannot act clinically at B.
 - [ ] Nurse treated at her own hospital — reads her own record, not a colleague's, without
       changing mode.
 - [ ] Patient administers their own chemotherapy at home.
-- [ ] Locum at C with narrower privileges than their ceiling.
-- [ ] Site administrator who holds no organisation-level authority at all.
-- [ ] Student at one teaching site and nothing at another.
-- [ ] Trained educator delivering at a site where they hold no administrative job.
-- [ ] Rota manager with no clinical capability whatever.
-- [ ] Clinical safety officer for one project, not for the organisation.
+- [x] Locum at C with narrower privileges than their ceiling.
+- [x] Site administrator who holds no organisation-level authority at all.
+- [x] Student at one teaching site and nothing at another.
+- [x] Trained educator delivering at a site where they hold no administrative job.
+- [x] Rota manager with no clinical capability whatever.
+- [x] Clinical safety officer for one project, not for the organisation.
 - [ ] A site whose clinical lead post is vacant.
 - [ ] Acting clinical lead covering leave.
 - [ ] Registration lapses — everything clinical falls away, memberships do not.

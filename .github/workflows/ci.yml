@@ -565,6 +565,33 @@ jobs:
         if: failure()
         run: docker compose -f compose.ci.yml logs --tail=100
 
+  # ---------- Competency catalogue ----------
+  # A competency is retired, never deleted. Deleting one from
+  # shared/competencies.yaml revokes nothing - resolve_user_competencies does
+  # set operations on plain strings and has_competency compares a string from
+  # the route against that set, so everyone who holds it keeps the access and
+  # it merely stops being describable. It also destroys the vocabulary the
+  # audit trail needs to say what someone was authorised to do.
+  #
+  # Same shape as the migration immutability check below: it records nothing,
+  # it just fails, so it stays out of gate-breaking.yml.
+  fast_competency_catalogue_check:
+    if: (github.event_name == 'pull_request' && github.event.pull_request.draft == false) || github.event_name == 'merge_group'
+    runs-on: ubuntu-24.04
+    name: Competency catalogue check
+    timeout-minutes: 5
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Fetch main branch ref (for the catalogue diff)
+        run: git fetch origin main:refs/remotes/origin/main
+
+      - name: Check no competency was deleted rather than retired
+        run: bash .github/scripts/ci/check-competencies-not-deleted.sh origin/main
+
   # ---------- Migration immutability ----------
   # A merged migration does not change, at all. The destructive-migration gate
   # only inspects migrations ADDED on a PR, so a drop_column edited into a file

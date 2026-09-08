@@ -1,0 +1,146 @@
+"""Finding stored competency ids that are no longer in the catalogue.
+
+Write-boundary validation stops a bad id being stored. It cannot stop an id
+going stale: a competency removed from ``shared/competencies.yaml`` leaves
+every row that referenced it pointing at nothing, and no foreign key exists
+to refuse the removal.
+
+So this walks the other way — over what is stored — and reports anything the
+catalogue no longer recognises. Read-only, and it changes nothing itself:
+what to do about a stale id is a decision, not a cleanup.
+"""
+
+from __future__ import annotations
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.cbac.base_professions import BASE_PROFESSIONS
+from app.cbac.competencies import (
+    retired_competency_ids,
+    unknown_competency_ids,
+)
+from app.models import PractisingCompetency, User
+
+
+def unknown_ids_in_base_professions() -> dict[str, list[str]]:
+    """Return base professions naming competencies the catalogue lacks.
+
+    Static: both files ship in the repository, so this is drift between two
+    checked-in YAMLs rather than bad data.
+
+    Returns:
+        Profession id to the unrecognised competency ids it names. Empty
+        when the two files agree.
+    """
+    found: dict[str, list[str]] = {}
+    for profession in BASE_PROFESSIONS:
+        unknown = unknown_competency_ids(profession.base_competencies)
+        if unknown:
+            found[profession.id] = unknown
+    return found
+
+
+def unknown_ids_on_users(db: Session) -> dict[int, list[str]]:
+    """Return users whose stored competency lists name unknown ids.
+
+    Covers both JSON columns, since a stale id in ``removed_competencies``
+    is as misleading as one in ``additional_competencies`` — it silently
+    removes nothing.
+
+    Args:
+        db: Database session.
+
+    Returns:
+        User id to the unrecognised ids stored against them.
+    """
+    found: dict[int, list[str]] = {}
+    rows = db.execute(
+        select(
+            User.id,
+            User.additional_competencies,
+            User.removed_competencies,
+        )
+    ).all()
+    for user_id, additional, removed in rows:
+        unknown = unknown_competency_ids(
+            list(additional or []) + list(removed or [])
+        )
+        if unknown:
+            found[int(user_id)] = unknown
+    return found
+
+
+def unknown_ids_in_practising_competencies(db: Session) -> dict[int, str]:
+    """Return practising rows naming a competency the catalogue lacks.
+
+    Args:
+        db: Database session.
+
+    Returns:
+        Row id to the unrecognised competency id it names.
+    """
+    rows = db.execute(
+        select(PractisingCompetency.id, PractisingCompetency.competency)
+    ).all()
+    return {
+        int(row_id): competency
+        for row_id, competency in rows
+        if unknown_competency_ids([competency])
+    }
+
+
+def retired_ids_in_practising_competencies(db: Session) -> dict[int, str]:
+    """Return practising rows holding a competency that has been retired.
+
+    Not an error, and deliberately separate from the unknown-id checks
+    above. These rows were valid when written and stay readable; retiring a
+    competency stops new ones being granted, it does not revoke the access
+    anyone already has. Revoking is deleting these rows, which is a
+    deliberate act rather than a consequence of editing a YAML file.
+
+    So this is a cleanup queue: what someone would work through if they
+    intended the retirement to end the practice as well.
+
+    Args:
+        db: Database session.
+
+    Returns:
+        Row id to the retired competency id it names.
+    """
+    rows = db.execute(
+        select(PractisingCompetency.id, PractisingCompetency.competency)
+    ).all()
+    return {
+        int(row_id): competency
+        for row_id, competency in rows
+        if retired_competency_ids([competency])
+    }
+
+
+def retired_ids_on_users(db: Session) -> dict[int, list[str]]:
+    """Return users whose stored competency lists hold retired ids.
+
+    The same cleanup queue, for the two JSON columns on ``users``.
+
+    Args:
+        db: Database session.
+
+    Returns:
+        User id to the retired ids stored against them.
+    """
+    found: dict[int, list[str]] = {}
+    rows = db.execute(
+        select(
+            User.id,
+            User.additional_competencies,
+            User.removed_competencies,
+        )
+    ).all()
+    for user_id, additional, removed in rows:
+        retired = retired_competency_ids(
+            list(additional or []) + list(removed or [])
+        )
+        if retired:
+            found[int(user_id)] = retired
+    return found
