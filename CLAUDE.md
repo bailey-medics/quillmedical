@@ -367,3 +367,27 @@ In a web session (`CLAUDE_CODE_REMOTE=true`):
 Everywhere else — a local terminal session above all — the "NEVER
 auto-commit/push" rule under **Critical Rules** stands unchanged: commit only
 when asked to.
+
+### A new branch off `origin/main` tracks `main`, not itself
+
+`git checkout -b feature/x origin/main` sets the new branch's upstream to
+`refs/heads/main`. So does creating a branch in a worktree freshly checked out
+from `main`. The branch then looks ordinary — `git status` says nothing — but
+its upstream is the protected branch.
+
+**Always make the first push explicit**:
+
+```bash
+git push -u origin feature/x
+```
+
+That pushes to a remote branch of the same name and repoints the upstream at
+it. Every later `git push` on that branch is then safe.
+
+Without it, a bare `git push` aims at `main`. With `push.default` at its
+default of `simple` it is refused, because the names differ — but that refusal
+is the only thing standing in the way, and it is not a guarantee worth relying
+on. `git rev-parse --abbrev-ref @{u}` says where a branch actually points if
+there is any doubt.
+
+Rediscovered three times in one session before it was written down.

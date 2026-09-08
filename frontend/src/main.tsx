@@ -49,9 +49,11 @@ import {
   Outlet,
   RouterProvider,
 } from "react-router-dom";
+import type { RouteObject } from "react-router-dom";
 import { theme, cssVariablesResolver } from "./theme";
 import { wireUpdateChecks } from "@lib/swUpdateGate";
 import { installGlobalErrorReporting } from "@lib/error-reporting/globalHandlers";
+import RouteTracking from "@lib/error-reporting/RouteTracking";
 
 import RootLayout from "./RootLayout";
 import AdminPage from "./pages/AdminPage";
@@ -131,7 +133,7 @@ import TeachingModuleMain from "./features/teaching/pages/TeachingModuleMain";
 import LearningDashboard from "./features/teaching/pages/LearningDashboard";
 import SlideReader from "./features/teaching/pages/SlideReader";
 
-const router = createBrowserRouter([
+const routes: RouteObject[] = [
   // Public routes (login, register) — placed before protected routes so
   // they are matched directly and not captured by the authenticated
   // parent route.
@@ -477,6 +479,15 @@ const router = createBrowserRouter([
 
   // Fallback -> show 404 page instead of redirecting to home
   { path: "*", element: <NotFound /> },
+];
+
+// Every tree hangs off one pathless route, so recording which screen is
+// showing happens once rather than once per layout. It was previously done in
+// RootLayout, which sits inside RequireAuth and therefore missed the sign-in
+// pages, the 404 and the whole /teaching tree — those reported errors with no
+// route at all. Declared here, a tree added later inherits it.
+const router = createBrowserRouter([
+  { element: <RouteTracking />, children: routes },
 ]);
 
 // Before the tree mounts, so a failure during the first render is reported

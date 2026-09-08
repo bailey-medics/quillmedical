@@ -1308,9 +1308,11 @@ Blocking, before any of this ships:
       need updating again when client error reporting and page-view counting
       actually ship, since both add processing the current text cannot
       describe.
-- [ ] Self-host the Cormorant Garamond typeface — see the phase below. Fixing
+- [x] Self-host the Cormorant Garamond typeface — see the phase below. Fixing
       it is better than disclosing it, and it removes a question the lawyer
-      would otherwise have to answer.
+      would otherwise have to answer. **Done**, and the last third-party
+      request on the public site went with it, so the lawyer can be told
+      plainly that the marketing site contacts nobody.
 
 ### Facts the policies need to state
 
