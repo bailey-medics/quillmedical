@@ -6,19 +6,28 @@ they have been assessed as holding, who signed each one off, when, and
 on what evidence. Today this lives in paper booklets and PDFs that are
 retyped at every rotation. Quill Medical already has the vocabulary for
 competencies (CBAC, `shared/competencies.yaml`) but nothing that records
-the *attestation* of a competency: the two-party act of a trainee
-presenting evidence and a named assessor accepting accountability for
-the sign-off. This plan adds a **Clinical Passport** framework that
-holds those attestations as portable, versioned, human-readable files
-(Markdown and YAML, one git repository per passport holder), rendered on
-demand to Markdown and PDF printouts. It deliberately follows the
-file-first model of VPR and Turva, and just as deliberately defers the
-projection and cache layer until user numbers or latency demand it.
+the **sign-off** itself: the two-party act of a trainee presenting
+evidence and a named assessor accepting accountability for it. This
+plan adds a Clinical Passport that holds those sign-offs as portable,
+versioned, human-readable files — one git repository per holder, a
+YAML index of where every competency stands, and one immutable signed
+YAML record per sign-off — rendered on demand to Markdown and PDF
+printouts. It follows the file-first model of VPR and Turva, and just
+as deliberately defers the projection and cache layer until user
+numbers or latency demand it.
 
 The first half of this document is the research: what the four
-reference repositories do, what they got right, and what they wish
-they had done. The second half is the design and phased work that
-falls out of it.
+reference repositories do, what the wider standards landscape already
+solves, and what both teach us. The second half is the design and
+phased work that falls out of it.
+
+Two findings shape everything below. Nobody has published a
+competency record with a named assessor stored in git, so there is no
+implementation to copy, only adjacent designs. And portability between
+NHS trusts has repeatedly turned out to be a governance problem rather
+than a technical one, so the format matters less than who owns the
+competency framework — which makes the open question about ownership
+the most important one in this document.
 
 ## What a passport is, in the domain
 
@@ -81,7 +90,7 @@ canonical, projections for performance, patient as the atomic unit.**
   `attachments/attachment_N.yaml` (metadata pointing at blobs). The
   YAML references the prose by path rather than embedding it
   (`docs/src/technical/clinical/communications/letters.md`). This is the
-  exact shape a competency attestation wants.
+  exact shape a competency sign-off wants.
 
 - **Identifiers** — artefacts use a `TimestampId`,
   `YYYYMMDDTHHMMSS.sssZ-<uuid4>`, globally unique and chronologically
@@ -182,14 +191,14 @@ authentication only. The specifications are strong on governance.
   commit hash of the template, bind the two together and we can build
   the template with the given values." Structured answers plus a
   pinned template version render deterministically to Markdown. The
-  plan adopts this: every attestation pins the framework version it was
+  plan adopts this: every sign-off pins the framework version it was
   made against.
 
 - **Typed artefact contract** — `specifications/archive/spec-archive.md`
   lines 56 to 79 define every safety artefact as having versioning,
   named ownership, an audit trail, visibility control, a lifecycle
   status and evidence linkage, and requires new artefact types to
-  support all six. A competency attestation fits this contract exactly.
+  support all six. A competency sign-off fits this contract exactly.
 
 - **Contribution is not approval** — the central governance principle
   (`specifications/core-specification.md`): contributors provide input,
@@ -200,7 +209,7 @@ authentication only. The specifications are strong on governance.
 - **Decisions are time-bound to system state** — a decision is valid
   only in the context in which it was made. For a passport this means
   a sign-off is valid for the framework version and evidence at the
-  time of signing, and a framework change may require re-attestation.
+  time of signing, and a framework change may require re-assessment.
 
 - **Approval record minimum** — name and role of approver, date, any
   conditions or caveats. Reviewers must genuinely review: "review is
@@ -208,7 +217,7 @@ authentication only. The specifications are strong on governance.
 
 - **Derived, not entered** — risk level is computed from severity and
   likelihood and users cannot override it. A passport's overall status
-  per domain must likewise be derived from the attestations, never
+  per domain must likewise be derived from the sign-offs, never
   typed.
 
 - **Corrections are new versions** — "corrected transparently with a
@@ -286,7 +295,7 @@ points are the most instructive.
 - **Two identity namespaces** — Django users for access, officer files
   for people-in-the-record, never joined. The passport must have one
   identity: an assessor is a Quill user with a professional
-  registration, and the attestation carries a snapshot of that identity
+  registration, and the sign-off carries a snapshot of that identity
   at signing time.
 
 - **Worth keeping** — placeholder values in `placeholders.yml` fed to
@@ -308,7 +317,7 @@ invert.
 - **Records are not files** — the governing documents are Markdown, but
   each hazard is a GitHub Issue. `hazard-log.md` is a pointer page. So
   the record set is not portable and does not belong to the author.
-  The passport takes the opposite path: a competency attestation is a
+  The passport takes the opposite path: a competency sign-off is a
   file the holder can carry.
 
 - **Label taxonomy with the decision in the name** —
@@ -321,7 +330,7 @@ invert.
 
 - **Initial versus residual via milestones** — the same record carries
   two assessment points distinguished by milestone rather than by
-  duplication. The passport equivalent is initial attestation and
+  duplication. The passport equivalent is initial sign-off and
   reassessment on one competency.
 
 - **Never delete, only close or deprecate** — hazards are never deleted;
@@ -332,8 +341,8 @@ invert.
   `git-revision-date-localized`; GPG-signed commits are "a further
   attestation to the correct identity of the committer." Elegant for a
   repository owner's approval, but a passport needs the *assessor's*
-  attestation, which is why the plan records the assessor identity in
-  the attestation file and the commit trailers rather than relying on
+  own signature, which is why the plan records the assessor identity in
+  the sign-off file and the commit trailers rather than relying on
   who merged.
 
 - **No frontmatter, no validation** — none of the ten documents have
@@ -351,6 +360,85 @@ invert.
   needs: `python3-cffi python3-brotli libpango-1.0-0 libpangoft2-1.0-0`.
   This is the working reference for printouts among the four repos.
 
+### Prior art beyond the four repositories
+
+Two rounds of web research were run over the standards landscape, the
+git-as-record-store literature, the PRSB, and identifier design. The
+full reports are working notes rather than repository content. Most
+standards bodies' own sites were blocked by the network proxy, so
+claims below marked *unverified* rest on search summaries and should be
+confirmed before being acted on.
+
+- **Nobody has done this.** Competency *frameworks* published as YAML
+  and Markdown in git are common. Competency *records* carrying a named
+  assessor, in git, could not be found anywhere public. Every project
+  that started that way pushed records out of git and into a tracker,
+  a spreadsheet or a database.
+
+- **The one UK success for regulated documents in git** is
+  `GSTT-CSC/QMS-Template` from Guy's and St Thomas', whose README
+  states it has survived 18 internal and 3 external ISO 13485 audits by
+  two notified bodies. It uses no cryptography at all: the signature is
+  a pull request approval plus a controlled merge. Useful calibration
+  on how much cryptography auditors actually require.
+
+- **The one loud abandonment** is OpenRegulatory, who wrote the
+  canonical Markdown QMS templates and now publish "GitHub QMS: We No
+  Longer Recommend It", on the grounds that the pattern breaks as soon
+  as non-technical people are involved. *Unverified* — their site was
+  blocked. DCSP reached the same conclusion independently and answered
+  it by building an application so nobody had to touch git, which is
+  the answer this plan also takes.
+
+- **Portability is a governance problem, not a technical one.** The NHS
+  Digital Staff Passport used W3C verifiable credentials, had national
+  backing and an ESR integration, reached four trusts, and was retired
+  on 5 December 2025. Over the same period the statutory and mandatory
+  training arrangement — a policy agreement with no new software —
+  reached 262 organisations accepting each other's prior training.
+  Same problem, opposite outcomes, and the difference was not the
+  format. *Unverified.*
+
+- **The niche is partly occupied.** Compassly, an NHS Innovation
+  Accelerator company, hosts the UKONS SACT passport along with BOPA
+  and ACCEND frameworks, reportedly across 100+ NHS organisations. Its
+  format is closed, so portability is vendor-mediated. Nursing,
+  pharmacy and AHP oncology competency is therefore covered. The
+  uncovered cell is **medical registrars and their local clinical
+  competencies** — a Leeds standard operating procedure reportedly
+  still requires specialist registrars to repeat level 1 SACT
+  assessment on every trust move. That is the wedge, and it is
+  narrower and more defensible than "a competency passport".
+  *Unverified.*
+
+- **The PRSB has no competency framework.** Its roughly 25 standards
+  are all patient record content standards. Its Provenance Data
+  Standard is worth borrowing conceptually, since who made an entry,
+  where and when is structurally what a sign-off records. PRSB is also
+  in flux: NHS England reportedly did not renew its contract past
+  December 2025. It is not a realistic route to originating a
+  standard. *Unverified.*
+
+- **Standards say do not put hierarchy in identifiers.** 1EdTech CASE,
+  read directly from its schema, makes `CFItem.identifier` a UUID
+  described as "synthetic", keeps the readable code in a separate
+  `humanCodingScheme` field, and expresses hierarchy in separate
+  association objects. SNOMED CT, the largest clinical hierarchy in
+  existence, puts no meaning in its identifiers at all and permits
+  multiple parents. ESCO reportedly derived skill URIs from
+  hierarchical allocation and then re-issued them as random values
+  specifically to stop that dependency. OPCS-4's 4.10 to 4.11 revision
+  removed 73 codes and needed a published equivalences table. The
+  conclusion is in the design below.
+
+- **Doorstop is the best structural model found.** It stores one YAML
+  item per file in git for requirements management, and its `reviewed`
+  fingerprint hashes only the semantically significant fields, with a
+  documented list of what does and does not contribute. Cosmetic edits
+  do not invalidate a review; substantive ones do. That mechanic is
+  adopted here for sign-off content hashing and reassessment
+  triggering.
+
 ### Patterns adopted and lessons learned
 
 - **Adopt: files canonical, one git repository per holder, sharded
@@ -362,7 +450,7 @@ invert.
   messages with reserved author trailers; single branch; nothing
   deleted** — from VPR.
 
-- **Adopt: attestation pins the framework version; contribution is not
+- **Adopt: sign-off pins the framework version; contribution is not
   approval; named owner at all times; approval record carries name,
   role, date and caveats; derived status is computed server-side;
   corrections are new records** — from Turva and the DCB0129 template.
@@ -407,7 +495,7 @@ nothing else in phase 1.
   `shared/passport-frameworks/` holds one YAML file per framework and
   version, for example `sact-oncology-registrar/v1.yaml`. A framework
   lists domains, the competency ids in each domain, the level scheme,
-  the evidence each competency needs, who may attest it, and its
+  the evidence each competency needs, who may sign it off, and its
   reassessment interval. A framework file is immutable once published;
   changes are a new version file.
 
@@ -419,16 +507,94 @@ nothing else in phase 1.
 
 - **Passport competencies are gated by CBAC** — two feature-admin
   competencies: `hold_clinical_passport` (may own a passport and
-  request sign-off) and `attest_clinical_passport` (may sign off).
-  Self-attestation is refused at the API regardless of competencies.
-  Frameworks may narrow who can attest a given competency by base
+  request sign-off) and `sign_off_clinical_passport` (may sign off).
+  Self-sign-off is refused at the API regardless of competencies.
+  Frameworks may narrow who can sign off a given competency by base
   profession.
 
 - **Assessors may be external to Quill** — most consultants who sign a
   registrar's passport will never otherwise use Quill. The holder
   invites them, they register through the existing invite-token flow,
-  and they hold `attest_clinical_passport` and nothing else. See
+  and they hold `sign_off_clinical_passport` and nothing else. See
   "External assessors" below.
+
+### Competency identifiers
+
+- **Flat, stable, human-readable slugs.** `prescribe_sact_cycle_1`,
+  not `/prescribing/chemotherapy`. A path-shaped identifier bakes a
+  taxonomy into every stored record, and taxonomies get reorganised.
+  ESCO tried hierarchical identifiers and reversed the decision; CASE
+  and SNOMED CT never did it. The rule that keeps a slug safe: **it may
+  describe the act, never the act's classification.**
+
+- **Hierarchy lives in the framework file**, as a multi-valued
+  `parents:` list, and paths, directories and menus are generated from
+  it. Nothing is lost: the repository can still be laid out
+  hierarchically, because what a sign-off references is the id inside
+  the file, so reorganising the taxonomy becomes a cosmetic commit
+  rather than a migration that invalidates history. Multiple parents
+  are supported because they are real — prescribing chemotherapy
+  belongs under prescribing and under oncology at once, which a single
+  path cannot express.
+
+- **Ids are permanent and never reused.** A competency that is
+  withdrawn is deprecated, not deleted, with a graded successor —
+  `same_as`, `replaced_by`, `possibly_equivalent_to` or `split_into` —
+  and a recorded reason, after SNOMED's historical association model.
+  Re-parenting must be a non-breaking change; if it breaks something,
+  hierarchy has leaked into identity.
+
+- **CI enforces it**: ids unique including the deprecated graveyard,
+  no `/` in an id, and no path-shaped reference in any sign-off.
+
+- **Mappings, not identity, carry the standards.** Each competency in
+  a framework file may carry `mappings.snomed` (plural — a competency
+  can map to several concepts), `mappings.opcs4`, and RCR
+  capability-in-practice numbers, each version-stamped. SNOMED CT is
+  free in the UK under the national licence, though it needs a TRUD
+  registration and an annual declaration.
+
+- **One flag on the existing set.** `prescribe_controlled_schedule_2`
+  embeds a statutory classification. Far more stable than a clinical
+  taxonomy and defensible, but drugs do get rescheduled; it is the one
+  current id worth revisiting.
+
+### Standards this maps onto
+
+The aim is to sit on existing standards rather than add another one.
+Git, YAML and Markdown are storage, not a standard we are inventing;
+the vocabulary and the interchange format come from elsewhere.
+
+- **Content**: the UK SACT Board's *Prescriber competencies for
+  reviewing and prescribing SACT* (November 2023) reportedly covers
+  medical prescribers at ST level and above and is the natural source
+  for the first framework, rather than authoring a parallel list.
+  Obtaining it is the first task in Phase 0.
+
+- **Framework file shape**: the 1EdTech CASE model — items with a
+  synthetic identifier, a separate human coding scheme, and hierarchy
+  expressed as associations rather than nesting.
+
+- **Sign-off export**: Open Badges 3.0, which is itself a W3C
+  verifiable credential and already provides
+  `achievementType: "Competency"`, `Result.achievedLevel` against a
+  named scale, `validUntil`, `Alignment` into a framework, and
+  `Evidence.narrative` typed as Markdown. Field names in
+  `sign-off.yaml` are chosen so this mapping stays mechanical.
+  Storage stays YAML, because the person whose record it is must be
+  able to read it; the badge is what leaves the building.
+
+- **Practitioner export**: FHIR UK Core `Practitioner.qualification`,
+  which already carries a coded qualification, a validity period and
+  an issuing organisation.
+
+- **Provenance**: the PRSB Provenance Data Standard as the conceptual
+  shape for who recorded what, where and when.
+
+Two gaps no standard closes, which remain ours to build: two-party
+sign-off, since a verifiable credential has one issuer and one
+signature; and binding a signing key to a GMC number, for which no UK
+trust registry exists.
 
 ### On-disk layout of a passport
 
@@ -438,40 +604,76 @@ addressed evidence outside git.
 ```text
 passports/<s1>/<s2>/<32-hex-uuid>/
   .git/
-  .gitignore                      # contains "files/"
-  passport.yaml                   # holder snapshot, framework pins, schema version
-  competencies/
-    <competency_id>/
-      <timestamp-id>/             # one attestation
-        attestation.yaml          # structured record (see below)
-        reflection.md             # holder narrative, optional
-        assessment.md             # assessor narrative, optional
-        attachments/
-          attachment_1.yaml       # sidecar: sha256, size, media type, filename
-  files/                          # gitignored, content-addressed evidence blobs
+  .gitignore                        # contains "files/"
+  README.md                         # plain English: what this is, how to read it
+  passport.yaml                     # holder, frameworks enrolled and pinned
+  competencies.yaml                 # derived index: every competency and its state
+  sign-offs/
+    2026-03-14-prescribe-sact-cycle-1/
+      sign-off.yaml                 # the signed record
+      sign-off.sig                  # assessor's detached signature over it
+      reflection.md                 # holder narrative, optional
+      assessment.md                 # assessor narrative, optional
+      attachments/
+        attachment_1.yaml           # sidecar: sha256, size, media type, filename
+  signers/
+    <fingerprint>.pem               # assessor certificates used in this passport
+    ca.pem                          # the issuing deployment's CA certificate
+  files/                            # gitignored, content-addressed evidence blobs
     sha256/ab/cd/<64-hex>
 ```
+
+Two levels, deliberately. `competencies.yaml` answers the question
+asked ninety-nine times out of a hundred — is this person signed off —
+and `sign-offs/` holds the detail that only matters at an ARCP panel,
+an audit, or a concern. Sign-offs are flat rather than nested under a
+competency so that one sign-off can cover several competencies at
+once, which is what happens when a consultant watches a registrar work
+through a clinic.
 
 - **`passport.yaml`** — holder's user id, a snapshot of name and
   registrations at creation, the list of frameworks enrolled with their
   version and the SHA-256 of the framework file at enrolment, and a
   `schema_version` for the passport layout itself.
 
-- **`attestation.yaml`** — the structured record. Fields: `id` (the
-  timestamp id), `competency_id`, `framework` and `framework_version`
-  and `framework_sha256`, `kind` (`initial` or `reassessment`),
-  `status` (`requested`, `signed_off`, `declined`, `superseded`),
-  `level` (from the framework's scheme), `observed_on` (clinical event
-  date, entered), `signed_at` (set by the server when the assessor
-  signs), `holder` and `assessor` blocks each with user id, name, role,
-  registrations and care location as they were at signing, `caveats`
-  free text, `corrects` optional id of a superseded attestation, and
-  `content_hash` (SHA-256 over the canonical YAML minus the hash
-  itself, printed on the PDF for verification).
+- **`competencies.yaml`** — the derived index, regenerated on every
+  write and never hand-edited. One entry per competency in the
+  enrolled frameworks, carrying `id`, human `name`, `status`, `level`
+  and `level_name`, `signed_on`, `signed_off_by`, `expires_on`, a
+  `sign_off` naming the folder that holds the record, and
+  `previous_sign_offs` listing earlier ones newest first. If it ever
+  disagrees with `sign-offs/`, the sign-offs win and it is rebuilt.
+
+- **Sign-off folder names are for humans** —
+  `<observed-date>-<competency-slug>`, so the directory listing reads
+  as a chronology of clinical work. A second sign-off for the same
+  competency observed on the same day gets `-2`. Names are fixed at
+  creation and never reused, because the name is the only handle
+  `competencies.yaml` uses. References there are bare folder names
+  rather than paths, so the layout can change later without rewriting
+  every entry.
+
+- **`sign-off.yaml`** — the record itself, and the thing that is
+  signed. Fields: `id` (a timestamp id), the `competency` block with
+  both `id` and human `name`, `framework` with `version` and
+  `sha256`, `kind` (`initial` or `reassessment`), `status`
+  (`requested`, `signed_off`, `declined`, `superseded`), `level` with
+  `value` and `name`, `observed_on`, `signed_at`, `expires_on`,
+  `holder` and `signed_off_by` blocks each with user id, name, role,
+  registrations, `registration_verified` and care location as they
+  were at signing, `meaning` (see the commit model), `comments`,
+  `corrects` naming a superseded sign-off, and `content_hash`.
+
+- **Every file must make sense alone.** The human label travels beside
+  every identifier even though it is derivable, because a sign-off
+  read on its own, years later, with no other file to hand, has to be
+  intelligible. The id stays authoritative; the label is a convenience
+  copy, and where they disagree the id wins. Files carry a one-line
+  YAML comment saying what they are.
 
 - **Timestamp ids** — `YYYYMMDDTHHMMSS.sssZ-<uuid4>`, generated
-  server-side with VPR's monotonic rule, so attestation folders sort
-  chronologically within a competency.
+  server-side with VPR's monotonic rule. These identify a sign-off
+  permanently; they no longer appear in folder names or in the index.
 
 - **Evidence** — uploaded files are hashed, stored under
   `files/sha256/` and referenced by sidecar. Phase 1 stores blobs in
@@ -490,24 +692,60 @@ passports/<s1>/<s2>/<32-hex-uuid>/
   `create`, `request`, `sign-off`, `decline`, `supersede`, `withdraw`.
   Trailers: `Actor-Name`, `Actor-Role`, `Actor-Registration` (one per
   registration), `Care-Location` (site or organisation name),
-  `Competency: <id>`, `Attestation: <timestamp-id>`. Trailer keys are
+  `Competency: <id>`, `Sign-Off: <folder-name>`. Trailer keys are
   reserved and values are validated single-line text. No narrative and
   no patient data in messages.
 
+- **Three clocks, kept apart** — `observed_on` is when the work was
+  watched, `signed_at` is when the assessor signed, and the commit
+  timestamp is when the file was written. In practice these are not
+  the same day: a consultant may take days or weeks to sign off
+  something they observed, so the gap is normal rather than
+  exceptional. Record all three faithfully, show the first two on the
+  PDF, and never present one as another. The gap is itself a quality
+  signal a panel can weigh; the system records it and draws no
+  conclusion from it.
+
 - **Git author and committer** — the actor's display name and Quill
-  email as git author; a fixed system identity as committer. Commit
-  time is commit time; `observed_on` and `signed_at` in the YAML are
-  the clinical and attestation times. Never present one as the other.
+  email as git author; a fixed system identity as committer.
 
 - **Single branch** — `refs/heads/main` only. No branches, no merges,
   no rewrites. Backfills and repairs are new commits.
 
-- **Signing** — every sign-off is signed with the assessor's key at
-  the attestation level, and the commit that records it carries the
-  same signature in its `gpgsig` header after VPR's scheme. Other
-  commits (requests, withdrawals, declines) are unsigned, because only
-  an attestation carries accountability. See "Signing and
-  verification" below.
+- **Git alone is not an audit trail, and the plan must not claim it
+  is.** A force push rewrites history and git cannot tell you who did
+  it. Two things close that hole: the store rejects any non-fast-forward
+  update, and every sign-off's `content_hash` is appended to a
+  `passport_signoff_log` table outside the repository, with its
+  timestamp and the commit it arrived in. That log, not the repository,
+  is what makes tampering detectable, and it is append-only with no
+  update or delete path in the application.
+
+- **Content hashing follows Doorstop's discipline** — the hash covers
+  a canonical serialisation of the semantically significant fields
+  only, with the contributing and non-contributing fields written down
+  in the schema. Correcting a typo in a comment must not invalidate a
+  signature; changing the level must. The same fingerprint drives
+  reassessment: if a framework version changes a competency's
+  definition, sign-offs made against the old definition are flagged as
+  needing review rather than silently carried forward.
+
+- **Signing, at two levels with different meanings** — the assessor's
+  detached signature over `sign-off.yaml` alone is the professional
+  act: narrow, covering exactly what they saw on screen and pressed
+  sign on, and checkable with `openssl` decades later. The commit
+  signature, made with the same key, seals the tree state and proves
+  who changed the repository and when. The distinction matters because
+  `competencies.yaml` is regenerated on every write, so a commit's tree
+  contains sign-offs given by other consultants; a commit signature
+  alone would have each assessor sealing colleagues' judgements they
+  never saw. Requests, withdrawals and declines are unsigned. See
+  "Signing and verification" below.
+
+- **`meaning` is recorded on every signature** — one of
+  `directly observed`, `reviewed evidence`, or `countersigned`. These
+  are clinically different acts, and a record that does not say which
+  one happened is weaker than it looks.
 
 - **Git library** — pygit2 (libgit2, the same engine VPR uses),
   in-process, with `create_commit_with_signature` for signed commits.
@@ -537,7 +775,7 @@ storage abstraction with two backends.
   the generation read at open time. Cloud Storage's generation check
   gives compare-and-swap for free, which is VPR's "assert HEAD on
   push" without any extra machinery. Repositories are a few kilobytes
-  per attestation, so the round trip is cheap at passport volumes.
+  per sign-off, so the round trip is cheap at passport volumes.
 
 - **Alternative considered** — a Cloud Storage FUSE volume mounted on
   Cloud Run, letting the backend use plain filesystem git. Rejected for
@@ -579,7 +817,7 @@ the only new infrastructure is two secrets.
   identity the deployment asserted, not merely possession of a key.
 
 - **Per-assessor keys, server-custodied** — when a user gains
-  `attest_clinical_passport`, the server generates an ECDSA P-256 key
+  `sign_off_clinical_passport`, the server generates an ECDSA P-256 key
   pair and issues a certificate in VPR's layout: `CN` is the name, `O`
   the registration authority, X.520 `serialNumber` the registration
   number, a SAN URI of the form `quill://GMC/1234567`, key usage
@@ -596,7 +834,7 @@ the only new infrastructure is two secrets.
   code proves they are present and intend this sign-off now. This is
   the passport's equivalent of a wet signature.
 
-- **What is signed** — the canonical form of `attestation.yaml`
+- **What is signed** — the canonical form of `sign-off.yaml`
   (sorted keys, minus the `signature` block) is hashed with SHA-256 to
   give `content_hash`, and that hash is signed. The `signature` block
   holds `algorithm: ecdsa-p256-sha256`, `value` (base64 DER),
@@ -608,17 +846,17 @@ the only new infrastructure is two secrets.
 - **Signed commits** — the commit recording a sign-off carries a
   signature over the commit buffer in its `gpgsig` header, in VPR's
   JSON container (signature, public key, certificate), made with the
-  same key through pygit2. The file and the commit therefore attest to
+  same key through pygit2. The file and the commit therefore vouch for
   each other: the file proves what was signed, the commit proves when
   it entered the history.
 
 - **Verification** —
-  `GET /api/passport/{id}/attestations/{attestation_id}/verify`
+  `GET /api/passport/{id}/sign-offs/{signoff_id}/verify`
   recomputes the hash, checks the signature against the certificate in
   `signers/`, checks the chain to the CA, and checks the certificate
   was valid at `signed_at`. The exported bundle includes a `VERIFY.md`
   with the `openssl` commands that do the same offline. The PDF prints
-  the content hash and certificate fingerprint on every attestation
+  the content hash and certificate fingerprint on every sign-off
   and a QR code that opens the verify endpoint.
 
 - **Expiry and revocation** — an expired or revoked certificate
@@ -659,15 +897,15 @@ the only new infrastructure is two secrets.
   is a user with `system_permissions` of `single-user`, no
   organisation membership, a base profession chosen from a short list,
   the declared registrations in `professional_registrations`, and
-  `attest_clinical_passport` in `additional_competencies`. The signing
+  `sign_off_clinical_passport` in `additional_competencies`. The signing
   key and certificate are issued at that moment.
 
 - **Scope of access** — an external assessor sees and acts on exactly
-  the attestations they are named on through `passport_signoff_request`
+  the sign-offs they are named on through `passport_signoff_request`
   rows, and nothing else: not the holder's full passport, not other
   holders, no patient data, no organisation pages. `GET
   /api/passport/{id}` returns 403 to them; the inbox returns only their
-  requests; the sign-off page renders one attestation and its evidence.
+  requests; the sign-off page renders one sign-off and its evidence.
 
 - **Feature gating** — `requires_feature("passport")` checks the
   caller's organisations, and an external assessor has none. The
@@ -678,15 +916,15 @@ the only new infrastructure is two secrets.
 
 - **Registration verification** — the registration is self-declared at
   invite and confirmed by the assessor on acceptance.
-  `attestation.yaml` records `assessor.registration_verified: false`
+  `sign-off.yaml` records `assessor.registration_verified: false`
   until an admin of the holder's organisation marks the assessor
   verified (by hand against the GMC register in phase 1), and the flag
-  applies to attestations signed after that point. The PDF renders it.
+  applies to sign-offs signed after that point. The PDF renders it.
   The record stays honest about what Quill checked.
 
 - **Revocation** — an admin of the inviting organisation can revoke an
   external assessor, which revokes their certificate and removes
-  `attest_clinical_passport`. Signed attestations stand.
+  `sign_off_clinical_passport`. Signed sign-offs stand.
 
 ### What lives in Postgres
 
@@ -697,11 +935,11 @@ not a copy of the record.
   `storage_generation`. One row per holder; the pointer to the
   repository.
 
-- **`passport_signoff_request`** — `id`, `passport_id`, `attestation_id`,
+- **`passport_signoff_request`** — `id`, `passport_id`, `signoff_id`,
   `competency_id`, `assessor_user_id`, `status`, `created_at`,
   `resolved_at`. This is workflow (an assessor's inbox is a query
   across many passports, which files cannot answer), not a projection
-  of the record. The attestation file is the record; this row is the
+  of the record. The sign-off file is the record; this row is the
   request that led to it and is closed when the file is written.
 
 - **`passport_signer`** — `user_id`, `public_key_pem`,
@@ -717,7 +955,12 @@ not a copy of the record.
   `accepted_user_id`. Workflow for bringing an external assessor in;
   consumed once.
 
-- **Nothing else** — no attestation table, no per-competency status
+- **`passport_signoff_log`** — `id`, `passport_id`, `signoff_id`,
+  `content_hash`, `commit_sha`, `logged_at`. Append-only, written on
+  every sign-off, never updated or deleted. This is the tamper-evidence
+  backstop for force-push, not a projection of the record.
+
+- **Nothing else** — no sign-off table, no per-competency status
   table, no cached progress. A holder's passport page reads their
   repository. A programme director's cross-trainee view is a future
   item that will need a projection, and is listed under future work.
@@ -725,17 +968,17 @@ not a copy of the record.
 ### Rendering and export
 
 - **Markdown** — the passport is rendered on demand from
-  `passport.yaml` and the attestation files into a single
+  `passport.yaml` and the sign-off files into a single
   `passport.md` (front page with holder identity and framework
   versions, one section per domain, one table row per competency with
   its current level, assessor and date, and an appendix of every
-  attestation in full including caveats and superseded records). The
+  sign-off in full including caveats and superseded records). The
   files are canonical; the rendered Markdown is a view and is not
   stored in the repository.
 
 - **PDF** — the Markdown is converted to HTML with the `markdown`
   library already in `backend/pyproject.toml`, styled with a print
-  stylesheet, and rendered by WeasyPrint. Each attestation carries its
+  stylesheet, and rendered by WeasyPrint. Each sign-off carries its
   `content_hash` and the document footer carries the head commit hash,
   so a printed passport can be checked against the repository. The
   backend Dockerfile gains the Pango and cffi packages the DCB0129
@@ -743,11 +986,15 @@ not a copy of the record.
   was considered and set aside because a multi-page tabular document
   is far easier to control from HTML and CSS.
 
-- **Bundle download** — a zip of the passport directory (YAML,
-  Markdown, sidecars, evidence blobs), the rendered `passport.md` and
-  `passport.pdf`, and a `git bundle` of the full history. This is the
-  portable artefact a registrar carries between trusts. Import of such
-  a bundle into another Quill deployment is a future item.
+- **Bundle download** — a zip holding a plain-English `README.md`
+  explaining what the bundle is and how to read it, the passport
+  directory (YAML, Markdown, sidecars, evidence blobs), the rendered
+  `passport.md` and `passport.pdf`, `VERIFY.md` with the `openssl`
+  commands to check a signature offline, and a `git bundle` of the full
+  history. The README is the highest-value file in the bundle and costs
+  nothing. This is the portable artefact a registrar carries between
+  trusts. CSV export and import of a bundle into another deployment are
+  both future items.
 
 ### API surface
 
@@ -765,18 +1012,18 @@ above. Additive only, per `.claude/rules/backend.md`.
 - `POST /api/passport/{id}/competencies/{competency_id}/requests` —
   holder requests sign-off, naming an assessor, with `observed_on`,
   optional reflection and evidence uploads. Writes a `requested`
-  attestation and a request row.
+  sign-off and a request row.
 - `GET /api/passport/requests/inbox` — the caller's open requests as an
-  assessor. `attest_clinical_passport`.
-- `POST /api/passport/{id}/attestations/{attestation_id}/sign-off` —
+  assessor. `sign_off_clinical_passport`.
+- `POST /api/passport/{id}/sign-offs/{signoff_id}/sign-off` —
   assessor signs, with level, caveats, optional assessment narrative
   and a fresh `totp_code`. Refused if the assessor is the holder, is
   not named on the request, has no valid certificate, or the code is
-  missing or wrong. Signs the attestation, writes the file, makes the
+  missing or wrong. Signs the sign-off, writes the file, makes the
   signed commit and closes the request.
-- `GET /api/passport/{id}/attestations/{attestation_id}/verify` —
+- `GET /api/passport/{id}/sign-offs/{signoff_id}/verify` —
   recomputes and checks the signature, chain and validity window;
-  readable by anyone who may read the attestation.
+  readable by anyone who may read the sign-off.
 - `GET /api/passport/ca.pem` — the deployment CA certificate. Public.
 - `POST /api/passport/{id}/assessors/invite` — holder or organisation
   admin invites an external assessor. `hold_clinical_passport`, rate
@@ -785,9 +1032,9 @@ above. Additive only, per `.claude/rules/backend.md`.
   token, registers or links the user, issues the signing certificate.
 - `POST /api/passport/assessors/{user_id}/verify-registration` and
   `POST /api/passport/assessors/{user_id}/revoke` — organisation admin.
-- `POST /api/passport/{id}/attestations/{attestation_id}/decline` —
+- `POST /api/passport/{id}/sign-offs/{signoff_id}/decline` —
   assessor declines with a reason.
-- `POST /api/passport/{id}/attestations/{attestation_id}/withdraw` —
+- `POST /api/passport/{id}/sign-offs/{signoff_id}/withdraw` —
   holder withdraws an open request.
 - `GET /api/passport/{id}/export.md`, `export.pdf`, `export.zip`.
 - `GET /api/passport/frameworks` — the published frameworks and
@@ -797,16 +1044,16 @@ above. Additive only, per `.claude/rules/backend.md`.
 
 - **Routes** — `/passport` (my passport), `/passport/competency/:id`
   (history and request form), `/passport/inbox` (assessor),
-  `/passport/sign-off/:attestationId`, `/passport/assessors/accept`
+  `/passport/sign-off/:signOffId`, `/passport/assessors/accept`
   (invite landing, `GuestOnly` or signed in) and
-  `/passport/verify/:attestationId` (the page the PDF's QR code opens).
+  `/passport/verify/:signOffId` (the page the PDF's QR code opens).
   Guarded with `RequireAuth`, `RequireFeature feature="passport"` and
   the CBAC hooks; the assessor routes use a holder-organisation gate
   because external assessors have no organisation.
 
 - **Components in `frontend/src/components/passport/`** —
   `PassportDomainProgress` (per-domain summary from derived status),
-  `CompetencyRow`, `AttestationCard` (one attestation in full with
+  `CompetencyRow`, `SignOffCard` (one sign-off in full with
   status, assessor snapshot, caveats, evidence links),
   `SignOffRequestForm`, `SignOffForm` (level, caveats, narrative, the
   declaration checkbox and the TOTP code field), `AssessorDeclaration`
@@ -823,19 +1070,19 @@ above. Additive only, per `.claude/rules/backend.md`.
 ### Validation and safety
 
 - **Schemas** — Pydantic models with `extra="forbid"` for
-  `passport.yaml`, `attestation.yaml`, sidecars and framework files;
+  `passport.yaml`, `sign-off.yaml`, sidecars and framework files;
   the same models validate on read, so a hand-edited or imported file
   that fails validation is rejected rather than half-parsed.
 
 - **Framework CI gate** — a validator under `backend/app/features/`
   in the style of `features/teaching/tooling/validate.py` that checks
   every framework file: every competency id exists in CBAC, every
-  attestor base profession exists, level schemes are well-formed,
+  assessor base profession exists, level schemes are well-formed,
   versions are immutable once published (a changed file with the same
   version fails).
 
 - **Guard clauses** — every route validates the passport exists, the
-  caller's relationship to it, the attestation's current status allows
+  caller's relationship to it, the sign-off's current status allows
   the transition, and the assessor is not the holder, before touching
   storage.
 
@@ -862,22 +1109,37 @@ above. Additive only, per `.claude/rules/backend.md`.
 
 ## Phase 0: framework content and clinical safety
 
+- [ ] Obtain the UK SACT Board's *Prescriber competencies for
+      reviewing and prescribing SACT* (November 2023) and confirm
+      whether it covers registrars at the granularity we need. Derive
+      the first framework from it rather than authoring a parallel
+      list.
 - [ ] Obtain the South West SACT passport and the radiotherapy passport
-      documents and list every competency, domain, level scheme,
-      assessor role and reassessment interval.
+      documents and the RCR entrustment scales, and list every
+      competency, domain, level scheme, assessor role and reassessment
+      interval.
+- [ ] Rename `shared/competencies.yaml` to
+      `shared/competency-definitions.yaml` so it cannot be confused
+      with a passport's own `competencies.yaml`. Touches the loader
+      constant in `backend/app/cbac/competencies.py`, the list in
+      `frontend/scripts/generate-json-from-yaml.ts`, the four frontend
+      files importing the generated JSON, `backend/tests/test_competencies.py`
+      and three live docs pages. Edit `.github/copilot-instructions.md`
+      rather than `CLAUDE.md` and re-run `/sync-copilot-config`; leave
+      historical plan documents untouched.
 - [ ] Add the `sact` and `radiotherapy` categories and their
-      competencies to `shared/competencies.yaml`, with
+      competencies to `shared/competency-definitions.yaml`, with
       `display_name`, `category` and `risk_level`.
-- [ ] Add `hold_clinical_passport` and `attest_clinical_passport` to
-      `shared/competencies.yaml` under the feature-admin category, and
-      to the appropriate base professions in
+- [ ] Add `hold_clinical_passport` and `sign_off_clinical_passport` to
+      `shared/competency-definitions.yaml` under the feature-admin
+      category, and to the appropriate base professions in
       `shared/base-professions.yaml`.
 - [ ] Write `shared/passport-frameworks/sact-oncology-registrar/v1.yaml`
       and `shared/passport-frameworks/radiotherapy-oncology-registrar/v1.yaml`.
 - [ ] Run `yarn generate:types` in `frontend/` and commit the generated
       JSON.
 - [ ] Add hazard log entries for the passport: wrong assessor signs,
-      holder self-attests, evidence contains patient data, exported PDF
+      holder signs off their own, evidence contains patient data, exported PDF
       diverges from repository, stale framework version, external
       assessor declares a registration they do not hold, signing key or
       CA key compromise, sign-off made from a stolen session without
@@ -889,7 +1151,7 @@ above. Additive only, per `.claude/rules/backend.md`.
       relative paths, no I/O, after VPR's `crates/core/src/paths/`),
       `ids.py` (timestamp id generator with monotonic rule),
       `schemas.py` (Pydantic models for `passport.yaml`,
-      `attestation.yaml`, sidecars, frameworks), and `frameworks.py`
+      `sign-off.yaml`, sidecars, frameworks), and `frameworks.py`
       (loader for `shared/passport-frameworks/`).
 - [ ] Implement `store.py` with the `PassportStore` interface and the
       local filesystem backend, including `init_and_commit` with
@@ -898,6 +1160,14 @@ above. Additive only, per `.claude/rules/backend.md`.
 - [ ] Implement `commits.py`: the commit message renderer with the
       closed action vocabulary, reserved trailer keys and single-line
       value validation.
+- [ ] Implement `index.py`: regenerate `competencies.yaml` from the
+      sign-off folders on every write, with the folder-naming and
+      collision rules, and a self-heal that rebuilds stale references.
+- [ ] Implement content hashing with an explicit contributing-field
+      list, and tests proving a comment edit does not change the hash
+      while a level change does.
+- [ ] Add the `passport_signoff_log` model and migration, and reject
+      non-fast-forward updates in the store.
 - [ ] Implement `blobs.py`: content-addressed evidence store with
       sidecar metadata and refusal to overwrite an existing hash.
 - [ ] Implement `service.py`: create passport, request sign-off, sign
@@ -941,7 +1211,7 @@ above. Additive only, per `.claude/rules/backend.md`.
       VPR's subject layout, KEK encryption and decryption of private
       keys, canonical YAML serialisation, content hashing, sign,
       verify, chain check and validity-at-time check.
-- [ ] Issue a certificate wherever `attest_clinical_passport` is
+- [ ] Issue a certificate wherever `sign_off_clinical_passport` is
       granted: user provisioning, admin competency edits and invite
       acceptance; revoke it wherever the competency is removed.
 - [ ] Add signed commits to the store through pygit2's
@@ -976,13 +1246,13 @@ above. Additive only, per `.claude/rules/backend.md`.
 ## Phase 5: rendering and export
 
 - [ ] Implement `render.py`: passport files to `passport.md`, with the
-      front page, per-domain tables, and the full attestation appendix
+      front page, per-domain tables, and the full sign-off appendix
       including superseded records.
 - [ ] Add WeasyPrint to `backend/pyproject.toml` and the Pango and cffi
       packages to the backend Dockerfile; confirm the image still
       builds in CI.
 - [ ] Implement `pdf.py`: Markdown to HTML with the existing `markdown`
-      dependency, a print stylesheet, `content_hash` per attestation and
+      dependency, a print stylesheet, `content_hash` per sign-off and
       the head commit in the footer.
 - [ ] Implement the zip bundle export including a `git bundle` of the
       repository.
@@ -1000,7 +1270,7 @@ above. Additive only, per `.claude/rules/backend.md`.
       `features/teaching/email_templates.py`; rate limit invites per
       holder per day.
 - [ ] Add the accept endpoint: register or link the user, store
-      registrations, add `attest_clinical_passport`, issue the signing
+      registrations, add `sign_off_clinical_passport`, issue the signing
       certificate, consume the invite.
 - [ ] Add the holder-organisation feature gate for assessor routes next
       to `requires_feature` in `backend/app/features/gating.py`.
@@ -1023,7 +1293,7 @@ above. Additive only, per `.claude/rules/backend.md`.
       with `RequireAuth`, `RequireFeature feature="passport"` and CBAC
       hooks.
 - [ ] Add the passport entry to navigation for users holding
-      `hold_clinical_passport` or `attest_clinical_passport`.
+      `hold_clinical_passport` or `sign_off_clinical_passport`.
 - [ ] Frontend tests with `just uf src/components/passport` and
       `just uf src/pages/passport`; Storybook tests with `just sbt`.
 
@@ -1076,7 +1346,7 @@ close them off, and so nobody builds them before there is a need.
 
 - **Verifier role** — a third party who confirms an assessor was
   entitled to sign, as in the UKONS model. Model as a second
-  attestation kind referencing the first.
+  sign-off kind referencing the first.
 
 - **Automatic CBAC grant** — a signed-off passport competency raising a
   request to add the matching id to `additional_competencies`, with
@@ -1094,12 +1364,16 @@ close them off, and so nobody builds them before there is a need.
   and by email. Computed on read from the files, never stored as a
   flag, after VPR's refusal to record what it cannot verify.
 
+- **CSV export** — one row per sign-off, for the common case of
+  someone importing into a spreadsheet or another system by hand.
+  Deliberately not part of the bundle, which stays YAML and Markdown.
+
 - **ESR and portfolio export** — a structured export (CSV or FHIR
   `Practitioner` and related resources) for trusts that record the SACT
   passport on the Electronic Staff Record.
 
 - **Redaction retention** — VPR's relocation-with-tombstone model for
-  the rare case an attestation must be removed from routine view.
+  the rare case a sign-off must be removed from routine view.
   Phase 1 has no delete at all, which is the safe default.
 
 - **Cloud Storage FUSE** — if bundle round trips become a measurable
@@ -1119,7 +1393,7 @@ close them off, and so nobody builds them before there is a need.
   the patient is in VPR. A holder enrolled in two frameworks has one
   repository with both.
 
-- **Competency vocabulary stays in CBAC; frameworks and attestations
+- **Competency vocabulary stays in CBAC; frameworks and sign-offs
   are new** — one identifier for "prescribe SACT cycle 1" everywhere,
   and no duplicate registry to drift. The passport does not write to
   CBAC in phase 1 because granting access from an educational record
@@ -1151,10 +1425,10 @@ close them off, and so nobody builds them before there is a need.
   chain validation VPR lacked at the cost of two secrets. Assessor-held
   keys are a future item that changes nothing in the file format.
 
-- **Sign the attestation file and the commit, not just the commit** —
+- **Sign the sign-off file and the commit, not just the commit** —
   the file-level signature travels with the YAML, is checkable with
   `openssl` and survives any future change of git tooling; the commit
-  signature ties the attestation to its place in history. Either alone
+  signature ties the sign-off to its place in history. Either alone
   leaves a gap.
 
 - **External assessors through the existing invite-token flow, scoped
@@ -1175,13 +1449,58 @@ close them off, and so nobody builds them before there is a need.
   commits, typed errors and no dependency on a `git` binary or a
   terminal, and it is the engine VPR already validated.
 
+- **A two-level record: a derived index plus immutable sign-offs** —
+  because the question people actually ask is "is this person signed
+  off", and only an auditor or a panel needs to know by whom and on
+  what evidence. The index serves the common case and is regenerated,
+  never authored; the sign-off files are the record and never change
+  once signed. That also keeps each signature over a whole small file
+  with a stable hash, rather than over a fragment of a growing one.
+
+- **Flat slugs, hierarchy as metadata** — every standard that has faced
+  this question answered it the same way, and ESCO reversed the
+  opposite decision at EU scale. It costs nothing: hierarchical
+  directories still work, because references are to ids inside files.
+
+- **Human folder names, bare references** — `competencies.yaml` names a
+  sign-off by its folder alone, with no path and no repeated id, both
+  because the noise is real across fifty competencies and because a
+  bare name survives a change of layout that a hardcoded path would
+  not. The index is regenerated anyway, so a stale reference heals
+  itself.
+
+- **Folder names carry the observed date, not the signed date** —
+  a consultant may take days or weeks to sign off work they watched,
+  so the two genuinely differ. A registrar looking for something thinks
+  of when they did it, not when the paperwork caught up, and the
+  consultant signs a file containing the observed date, so it is not an
+  unverified claim.
+
+- **Git is storage, not the audit trail** — force push rewrites history
+  and git cannot say who did it. Claiming git as the audit trail is
+  where projects of this shape lose credibility, so the plan states the
+  limit and adds the append-only digest log that actually closes it.
+
+- **Sit on existing standards for vocabulary and interchange, not for
+  storage** — CASE for the framework shape, Open Badges 3.0 for export,
+  SNOMED and OPCS-4 as mappings, UK SACT Board for content. That makes
+  git, YAML and Markdown a storage substrate with well-chosen mappings
+  out, rather than a rival standard, which is a far easier thing to
+  defend to a deanery.
+
+- **The application is the only writer** — no clinician ever meets git.
+  This is the failure that ended OpenRegulatory's pattern and that DCSP
+  answered by building an application. Git here is invisible
+  infrastructure, and the storage choice only pays off if the interface
+  is genuinely good.
+
 - **WeasyPrint over ReportLab for the PDF** — the passport is a
   multi-page document of tables and prose that changes with every
   framework; HTML and CSS are the right tool. ReportLab stays for the
   fixed-layout teaching certificate. The native dependency cost is
   known from the DCB0129 template's Dockerfile.
 
-- **Self-attestation refused at the API** — regardless of competencies
+- **Self-sign-off refused at the API** — regardless of competencies
   held, because the whole value of the record is a second named person
   accepting accountability, after Turva's "contribution is not
   approval."
@@ -1201,11 +1520,11 @@ close them off, and so nobody builds them before there is a need.
 
 - **Assessor eligibility** — whether "consultant or above" is right for
   every competency or whether some allow senior registrars or specialist
-  nurses to attest. The framework file supports either; the content is
+  nurses to sign off. The framework file supports either; the content is
   a clinical decision.
 
 - **Evidence retention** — how long evidence blobs are kept after an
-  attestation is superseded, and whether a holder may remove evidence
+  sign-off is superseded, and whether a holder may remove evidence
   they uploaded in error. Phase 1 keeps everything.
 
 - **Who holds the CA** — one CA per deployment is the design; whether
@@ -1215,8 +1534,36 @@ close them off, and so nobody builds them before there is a need.
 
 - **Verifying external assessors** — whether by-hand register checks by
   an organisation admin are acceptable to the deanery for phase 1, or
-  whether attestations from unverified assessors should not count
+  whether sign-offs from unverified assessors should not count
   towards completion until verified.
+
+- **What the product is called** — "Clinical passport" is the working
+  title, but `clinical` already means "depends on FHIR and EHRbase,
+  i.e. patient data" in this codebase (`RequireClinical`), and a
+  passport holds no patient data at all. *Practice passport* avoids
+  the clash, alliterates and matches "scope of practice";
+  *competency passport* matches UKONS naming; *capability passport*
+  matches the RCR's "capabilities in practice". The module, API and
+  feature key stay plain `passport` whichever is chosen, and the CBAC
+  ids above should follow the final name.
+
+- **Whether reassessment runs from the observed or the signed date** —
+  competence decays from when it was demonstrated, which argues for
+  `observed_on`, but the administrative reading is `signed_at`. With
+  gaps of weeks these differ materially. A clinical judgement rather
+  than a technical one.
+
+- **Whether to store Open Badges JSON directly** instead of YAML with
+  an export step. It would remove any drift between our format and the
+  standard, at the cost of a record the holder can no longer read
+  unaided and much worse diffs. Current answer is no, but it should be
+  a recorded decision rather than an omission.
+
+- **Who should own the framework** — the research is emphatic that
+  adoption, not format, decides whether this travels. The RCR, the UK
+  SACT Board, or a deanery owning the competency list would matter more
+  than anything in this plan. Worth establishing before building
+  Phase 5 onwards.
 
 - **Organisation scoping** — the organisation-scoped access findings
   plan (`2026-09-06-org-scoped-access-findings.md`) may change how
