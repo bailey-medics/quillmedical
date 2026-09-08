@@ -49,3 +49,4 @@
 - [GCP Video Auth Gate](2026-08-31-gcp-video-auth-gate-plan.md)
 - [Analytics and Error States](2026-08-31-analytics-plan.md)
 - [Organisation-Scoped Access Control](2026-09-06-org-scoped-access-findings.md)
+- [Clinical Passport](2026-09-08-clinical-passport-plan.md)
