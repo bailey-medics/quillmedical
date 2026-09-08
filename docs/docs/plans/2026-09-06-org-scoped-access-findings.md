@@ -224,18 +224,82 @@ it does becomes a position.
       - Those pages had **no tests at all**. Three now cover the clinical lead field,
         including one asserting that a staff row whose `role` says `clinical_lead` is
         ignored — which is what proves the display reads the post.
-- [ ] **Contract: remove the column and the response field.** Read in **four** places, not
-      two: the two lookups, plus `get_site`'s staff listing, which returns `role` in
-      `SiteStaffItem`, and `add_site_staff`, which validates it and enforces one lead per
-      site.
+
+### Settled: `role` is three facts in one column
+
+The consumer count grew three times — two, then four, then six — and each time from a search
+that looked exhaustive. The reason is not carelessness: `role` holds three unrelated facts,
+so no single search for its meaning finds them all.
+
+- **`clinical_lead`** — who holds a post. Already a `Position`.
+- **`staff`** — that the person is attached to the site. The row says that by existing, so
+  the value restates its own table.
+- **`trainee`** — that the person is on placement there. Compared in
+  `list_delegates`, which uses it to answer _which site is this delegate at_ — so it is
+  load-bearing, and the earlier claim in this document that `trainee` is "compared nowhere"
+  was wrong.
+
+**What each becomes:**
+
+- **Membership** answers _where are they?_ — `site_staff_member` keeps one row per person per
+  site, with a column saying in what **capacity**: `staff` or `trainee`.
+- **Competencies** answer _what may they do there?_ — `PractisingCompetency`, as now.
+- **Positions** answer _who holds the post?_ — `Position`, as now, and clinical lead stays
+  one. A column cannot express a vacancy, acting cover, or who held it in March, and those
+  are the three reasons the post exists.
+
+**`capacity`, not `level` or `role`.** "Level" implies a ranking, and there is not one: a
+trainee on placement and a substantive staff member are different relationships to the site,
+not rungs of a ladder. A column that reads as a ladder is one the next person needing a
+site-level permission check will reach for — which is the trap this column is today.
+
+- [ ] **Rename the table to `site_member` and the column to `capacity`.**
+      `site_staff_member` is a straightforward lie about a third of its rows: `register`,
+      the public self-registration route, inserts teaching delegates with `role="trainee"`,
+      and they are not employed by the site. One membership table per place, with the
+      capacity column saying what kind of member.
+      - The existing tables use `_member`, so `site_member` rather than `site_membership`.
+      - `.claude/rules/backend.md` records the trap: Postgres does not rename a table's
+        auto-named indexes, so `op.rename_table` needs explicit `ALTER INDEX` beside it or
+        autogenerate flags the leftovers for ever. One of them,
+        `ix_site_staff_one_clinical_lead`, goes anyway — `max_holders` on the post enforces
+        that now.
+      - It also sketches where organisations have to end up. They have two membership tables
+        keyed differently, on `user_id` and on a FHIR `patient_id`, which is the namespace
+        problem still open below.
+- [ ] **Keep `capacity` open-ended.** `staff` and `trainee` are the two needed now, and
+      more are expected — volunteer, contractor, honorary, visiting.
+      - So a `String` column validated against a small list in code, the way
+        `POSITION_KINDS` is, rather than a database enum. Extending an enum needs a
+        migration; extending a list needs a line. A free string is not the alternative:
+        that repeats the competency-id mistake.
+      - This is a second reason not to call it `level`. Two values could be mistaken for a
+        ranking; six certainly would be, and none of them rank.
+      - **Capacity must never become a permission check.** As the list grows the pull will
+        be to write "contractors cannot do X". That belongs in what is enabled for them at
+        that place, not in what kind of member they are — otherwise the column becomes the
+        access-control-shaped field this whole exercise is removing.
+- [ ] **Move the remaining `clinical_lead` reads onto positions** — two in the teaching
+      router, one in `get_site`, and the one-lead check in `add_site_staff`, which
+      `max_holders` on the post now enforces.
+      - **`_maybe_enqueue_certificate_emails` has no test at all**, and it is one of the
+        two in the teaching router. A first attempt at moving it was written and then
+        reverted: it referenced `clinical_leads_of` without importing it, the module still
+        imported cleanly because the name is only resolved when the function runs, and the
+        whole suite passed either way. The bug would have shipped and surfaced as a failed
+        certificate email.
+      - So this one needs its test written first, not alongside. It decides who is emailed
+        when a candidate passes, and nothing currently checks that it emails anybody.
+- [ ] **Give `list_delegates` the capacity column** rather than the role, so delegate-to-site
+      resolution keeps working.
+- [ ] **Then remove `role` from `SiteStaffItem`.** Still a breaking API change needing an
+      `oasdiff` finding and a decision file, and the site page's staff filter goes with it —
+      settled as not worth keeping, since nothing compares `staff` and the useful half is
+      `trainee`, which the capacity column keeps.
       - `role` being in the response makes removal a **breaking API change**, so it needs an
         `oasdiff` finding and a decision file. The interface no longer depends on it for the
         clinical lead, which is what makes the removal possible.
-      - **One product question first.** `SiteAdminPage` also builds its staff filter from
-        `role`, so removing the field drops the staff and trainee labels from that page.
-        Those values are written but compared nowhere in the backend, so the question is
-        whether they are worth anything on screen. If they are, they need somewhere to live
-        that is not an access-control-shaped column.
+      - The staff filter on `SiteAdminPage` goes with it. Settled: not worth keeping.
       - Dropping the column is also destructive, so it trips the
         `db-destructive-migration-review` required-reviewer gate.
       - None of that is hard here, because there is no live data. It is worth doing properly
