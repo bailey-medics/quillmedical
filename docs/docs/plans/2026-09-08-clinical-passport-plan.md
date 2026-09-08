@@ -254,15 +254,18 @@ points are the most instructive.
   field's primary key; bracket tokens such as `[select]`, `[date]`,
   `[calculate] [L] [S]` and `[readonly]` set the widget. Renaming a
   heading silently orphans every existing record. Elegant for a demo,
-  brittle as a system. Do not repeat.
+  brittle as a system. The lesson is that field keys belong in a
+  schema, not in prose.
 
 - **Filename-as-identity** — new entries are numbered by
   `max(numbers) + 1` over filenames, with no lock and an
-  acknowledged `hazard-1` versus `hazard-01` problem. Do not repeat.
+  acknowledged `hazard-1` versus `hazard-01` problem. Hence
+  server-generated timestamp identifiers here.
 
 - **Derived values computed in the browser** — the risk matrix is
   evaluated in JavaScript from strings in a Markdown file, and the
-  JavaScript is untested. Do not repeat; derive server-side.
+  JavaScript is untested. Turva's specification later made
+  server-side derivation a principle, and this plan follows it.
 
 - **Sign-off was free text** — the compliance sign-off template has
   "Name approver with date (perhaps could link to officers page)" and
@@ -348,7 +351,7 @@ invert.
   needs: `python3-cffi python3-brotli libpango-1.0-0 libpangoft2-1.0-0`.
   This is the working reference for printouts among the four repos.
 
-### Patterns adopted and anti-patterns avoided
+### Patterns adopted and lessons learned
 
 - **Adopt: files canonical, one git repository per holder, sharded
   directories, YAML for structure and Markdown for narrative, binaries
@@ -372,11 +375,19 @@ invert.
   one competency; a validated schema with a CI gate; WeasyPrint for
   PDF** — from the DCB0129 template.
 
-- **Avoid: Markdown headings as schema; filename-derived identifiers;
-  derived values in the browser; free-text sign-off; two identity
-  namespaces; versioning deferred to an unbuilt integration; a
-  projection layer before there is a query to serve** — from DCSP and
-  from VPR's own restraint.
+- **Learned: Markdown headings make poor field identifiers;
+  filename-derived numbering races; derived values belong on the
+  server; free-text sign-off cannot be verified; one identity
+  namespace, not two; the versioning primitive must be on the write
+  path from the start** — from DCSP, which is the only one of the four
+  that shipped a working markdown-as-record system and therefore the
+  only one whose choices have been tested. Most of these are recorded
+  in its own TODO comments, and Turva's later specification moves away
+  from several of them.
+
+- **Learned: do not build a projection layer before there is a query to
+  serve** — from VPR's own restraint, which specified projections
+  carefully and shipped none.
 
 ## Proposed design
 
