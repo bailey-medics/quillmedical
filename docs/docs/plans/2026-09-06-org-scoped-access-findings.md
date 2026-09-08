@@ -207,10 +207,40 @@ nowhere, and `staff` appears only in a validation set. Where `clinical_lead` is 
 lookup — _who is the lead here_ — not a gate. So the column is doing very little, and what
 it does becomes a position.
 
-- [ ] **Move its two consumers across.** `validate_clinical_lead` and the site listing in
-      `main.py` both read `site_staff_member.c.role == "clinical_lead"`; they become lookups
-      against `PositionHolding`. Deliberately separate work from building the model, and it
-      needs a data migration for existing rows before the column can go.
+- [x] **Expand: reads moved across, both written.** `validate_clinical_lead` and the site
+      listing now answer from `PositionHolding` via `clinical_leads_of`, and
+      `add_site_staff` and `remove_site_staff` keep the post in step with the column. A
+      backfill migration creates a post and holding for every existing `clinical_lead` row.
+      - `started_on` in the backfill is the migration date, not a guess at when the person
+        took the post. Inventing one would put a claim in the record that nothing supports.
+- [ ] **Contract: remove the column.** Bigger than this document first said. It is read in
+      **four** places, not two: the two above, plus `get_site`'s staff listing, which returns
+      `role` in `SiteStaffItem`, and `add_site_staff`, which validates it and enforces one
+      lead per site.
+      - `role` being in the response makes removal a **breaking API change** — four frontend
+        files read `s.role === "clinical_lead"` — so it needs the expand-contract two-deploy
+        pattern, an `oasdiff` finding and a decision file.
+      - Dropping the column is also destructive, so it trips the
+        `db-destructive-migration-review` required-reviewer gate.
+      - None of that is hard here, because there is no live data. It is worth doing properly
+        anyway: the sequence is cheap to practise now and expensive to learn later.
+
+### Now and "on a date" are different questions
+
+Found by a test, not by design. Vacating a post set `ended_on` to today, and the "who holds
+this" query treated a holding ending today as still in force — so removing someone from a
+site left them clinical lead until midnight.
+
+Both readings are right, for different questions, so both exist:
+
+- **Now** — holdings that have not ended. Removal takes effect at once.
+- **On a date** — holdings in force at any point that day, both ends inclusive. Someone
+  whose holding ended on the 30th held the post on the 30th, which is what a review of that
+  date needs to be told.
+
+A handover is therefore the outgoing holder ending one day and the incoming starting the
+next; appointing a successor to start on the predecessor's last day is two holders that day,
+and `max_holders` refuses it.
 
 It is also a trap in its current form: it looks like an access-control field, so the next
 person needing a site-level gate would reasonably reach for it.
