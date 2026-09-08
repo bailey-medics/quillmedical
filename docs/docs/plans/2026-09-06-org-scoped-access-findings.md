@@ -172,12 +172,45 @@ Each of these was proposed and then discarded for a reason worth keeping:
 - **No boolean for "only one per site".** How many clinical leads a site has is a fact about
   that site, not about the capability. One site may job-share.
 
+### Built: positions and who holds them
+
+`Position` is a slot at an organisation or a site, `PositionHolding` is a dated row saying
+who fills it. Two tables rather than a holder column, because the post has to outlive its
+holders: "who was Caldicott Guardian in March?" is a question about the slot over time.
+
+- **A vacancy is a real state.** `is_vacant` asks whether anyone substantively holds the
+  post, so a site with a lead post and nobody in it is distinguishable from a site that
+  never needed one. An absent row could not tell those apart.
+- **Acting cover sits alongside the substantive holder** rather than replacing them, so the
+  record still shows whose post it is, and it does not count against `max_holders` — or
+  nobody could ever cover a singular post. A post held _only_ by cover still reports as
+  vacant, which is the state worth chasing.
+- **Appointment is checked at the place.** `appoint` refuses anyone whose required
+  competency is not authorised there, using `can_practise_at`. Holding it somewhere else
+  does not qualify you here, in either direction between an organisation and its sites.
+- **`max_holders` lives on the post**, not on the kind, as the argument settled: one site may
+  job-share what another treats as singular.
+- **Position kinds are a small list in code** — `POSITION_KINDS` — rather than a free string.
+  A free string would repeat the competency-id mistake. A YAML catalogue is not earned at
+  four entries, and the display name is on the row so an organisation can call it what it
+  likes.
+
+**Dates are inclusive at both ends.** Someone whose holding ends on the 30th still held the
+post on the 30th, which is what a review of that date needs to be told. So a handover is the
+outgoing holder ending one day and the incoming starting the next; appointing a successor to
+start on the predecessor's last day is two holders, and is refused.
+
 ### `site_staff_member.role` goes
 
 Only `clinical_lead` is ever read; `trainee` is written in three places and compared
 nowhere, and `staff` appears only in a validation set. Where `clinical_lead` is read it is a
 lookup — _who is the lead here_ — not a gate. So the column is doing very little, and what
 it does becomes a position.
+
+- [ ] **Move its two consumers across.** `validate_clinical_lead` and the site listing in
+      `main.py` both read `site_staff_member.c.role == "clinical_lead"`; they become lookups
+      against `PositionHolding`. Deliberately separate work from building the model, and it
+      needs a data migration for existing rows before the column can go.
 
 It is also a trap in its current form: it looks like an access-control field, so the next
 person needing a site-level gate would reasonably reach for it.
@@ -557,8 +590,8 @@ that the answer differs by place, not which capability it is.
 - [x] Trained educator delivering at a site where they hold no administrative job.
 - [x] Rota manager with no clinical capability whatever.
 - [x] Clinical safety officer for one project, not for the organisation.
-- [ ] A site whose clinical lead post is vacant.
-- [ ] Acting clinical lead covering leave.
+- [x] A site whose clinical lead post is vacant.
+- [x] Acting clinical lead covering leave.
 - [ ] Registration lapses — everything clinical falls away, memberships do not.
 
 ## Still open
