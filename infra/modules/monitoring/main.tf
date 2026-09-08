@@ -461,7 +461,16 @@ resource "google_monitoring_alert_policy" "client_errors" {
     display_name = "Browser error reports"
 
     condition_threshold {
-      filter = "metric.type = \"logging.googleapis.com/user/${var.client_errors_metric}\""
+      # The resource.type restriction is required, not decorative: Monitoring
+      # rejects an alert filter without one outright, and it did — this policy
+      # failed to create on every apply from the day it was written until the
+      # restriction was added, so the browser-error alert did not exist while
+      # the code said it did. A log-based metric inherits the resource type of
+      # the entries it counts, and the ingest endpoint writes from Cloud Run.
+      filter = join(" AND ", [
+        "resource.type = \"cloud_run_revision\"",
+        "metric.type = \"logging.googleapis.com/user/${var.client_errors_metric}\"",
+      ])
 
       comparison      = "COMPARISON_GT"
       threshold_value = var.client_error_threshold
