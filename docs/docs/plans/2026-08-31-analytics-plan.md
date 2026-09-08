@@ -448,6 +448,22 @@ Client side, new work:
       warranting a 3am wake-up do not cause one. A fault bad enough to matter
       at that hour takes the backend or the uptime check with it, and both
       already escalate
+
+      **It did not exist for two days.** Terraform wrote the policy and Google
+      refused it every time, with `must specify a restriction on
+      "resource.type" in the filter` — a threshold condition on a log-based
+      metric needs the resource type as well as the metric type, and the code
+      gave only the metric. `terraform validate` cannot see this: the filter is
+      a string, and only the Monitoring API knows it is malformed.
+
+      Two lessons, and the second is the expensive one. A green
+      `validate` says nothing about whether an apply will succeed. And a
+      **failed apply is not a no-op**: Terraform had already created the
+      page-views metric and updated the dashboard before it hit this, so the
+      infrastructure sat half-applied and the pipeline stayed red for two days
+      with a monitoring alert that the code said existed and the project did
+      not have. Read the apply log, not just the badge
+
 Two things to check on the dashboard once the metric has been collecting for
 a day. Both need real data, so neither could be settled when the code was
 written.
