@@ -290,6 +290,13 @@ site-level permission check will reach for — which is the trap this column is 
         certificate email.
       - So this one needs its test written first, not alongside. It decides who is emailed
         when a candidate passes, and nothing currently checks that it emails anybody.
+      - [x] **Test written**, in `backend/tests/test_certificate_email_recipients.py`, and
+        checked against a deliberately broken lookup: dropping the organisation filter makes
+        it fail. Nine cases, the load-bearing one being that a site with no clinical lead
+        produces no coordinator email — the behaviour most at risk when the lookup moves to
+        the post, since a vacancy is exactly what the old query could not express.
+      - Writing it turned up dead defensive code: `User.email` is NOT NULL, so the
+        `if lead.email` guards only ever fire for the empty string, never for None.
 - [ ] **Give `list_delegates` the capacity column** rather than the role, so delegate-to-site
       resolution keeps working.
 - [ ] **Then remove `role` from `SiteStaffItem`.** Still a breaking API change needing an
