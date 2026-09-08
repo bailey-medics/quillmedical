@@ -16,7 +16,7 @@ The schema includes:
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 
 from sqlalchemy import (
@@ -24,6 +24,7 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     Column,
+    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -835,3 +836,167 @@ class PractisingCompetency(Base):
         """
         validate_competency_ids([value])
         return value
+
+
+# The positions the application itself reasons about. A free string would
+# repeat the competency-id mistake — a bare value nothing validates — and a
+# YAML catalogue is not earned yet at this size. Display names live on the
+# row, so an organisation can call its clinical lead something else without
+# the code losing track of what the post is.
+POSITION_KINDS: tuple[str, ...] = (
+    "clinical_lead",
+    "caldicott_guardian",
+    "clinical_safety_officer",
+    "data_protection_officer",
+)
+
+
+class Position(Base):
+    """A slot an organisation or site has, which may be vacant.
+
+    The test that separates this from a competency is **can it be vacant?**
+    "This site has no clinical lead" is a real and actionable state; a
+    competency nobody holds is simply absent, which is fine. One needs
+    chasing, the other does not.
+
+    A competency says what a person can do. A position says what the
+    organisation is required to have, filled by name:
+
+    - **Accountability.** After an incident, "who was the clinical lead?"
+      needs one name, even if five people were eligible.
+    - **Routing.** Escalations go to the post, not to everyone qualified.
+    - **Statutory duty.** A Caldicott Guardian is something the organisation
+      must have, not a fact about a person.
+
+    Holding is recorded separately, in ``PositionHolding``, so the slot
+    outlives whoever fills it and the post's history is queryable.
+
+    **Exactly one of organisation_id and site_id is set**, matching
+    ``PractisingCompetency`` and enforced the same way.
+
+    Attributes:
+        id: Primary key.
+        organisation_id: The organisation, when the place is an organisation.
+        site_id: The site, when the place is a site.
+        kind: One of ``POSITION_KINDS``.
+        title: What this organisation calls it, for display.
+        requires_competency: A competency the holder must have authorised at
+            this place, or None where the post needs no particular one.
+        max_holders: How many people may hold it substantively, or None for
+            no limit. A fact about this place — one site may job-share a post
+            another treats as singular — so it lives here rather than on the
+            kind.
+    """
+
+    __tablename__ = "position"
+    __table_args__ = (
+        CheckConstraint(
+            "(organisation_id IS NOT NULL) <> (site_id IS NOT NULL)",
+            name="ck_position_one_place",
+        ),
+        CheckConstraint(
+            "max_holders IS NULL OR max_holders > 0",
+            name="ck_position_max_holders_positive",
+        ),
+        Index(
+            "uq_position_org_kind",
+            "organisation_id",
+            "kind",
+            unique=True,
+            postgresql_where=text("organisation_id IS NOT NULL"),
+            sqlite_where=text("organisation_id IS NOT NULL"),
+        ),
+        Index(
+            "uq_position_site_kind",
+            "site_id",
+            "kind",
+            unique=True,
+            postgresql_where=text("site_id IS NOT NULL"),
+            sqlite_where=text("site_id IS NOT NULL"),
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    organisation_id: Mapped[int | None] = mapped_column(
+        ForeignKey("organisations.id", ondelete="CASCADE"), nullable=True
+    )
+    site_id: Mapped[int | None] = mapped_column(
+        ForeignKey("sites.id", ondelete="CASCADE"), nullable=True
+    )
+    kind: Mapped[str] = mapped_column(String(50), nullable=False)
+    title: Mapped[str] = mapped_column(String(100), nullable=False)
+    requires_competency: Mapped[str | None] = mapped_column(
+        String(100), nullable=True
+    )
+    max_holders: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    @validates("kind")
+    def _kind_is_known(self, _key: str, value: str) -> str:
+        """Reject a position kind the application does not reason about."""
+        if value not in POSITION_KINDS:
+            raise ValueError(
+                f"Unknown position kind: {value}. Known kinds are "
+                + ", ".join(POSITION_KINDS)
+                + "."
+            )
+        return value
+
+    @validates("requires_competency")
+    def _competency_exists(self, _key: str, value: str | None) -> str | None:
+        """Reject a competency id that is not in the catalogue."""
+        if value is not None:
+            validate_competency_ids([value])
+        return value
+
+
+class PositionHolding(Base):
+    """Who holds a position, and for how long.
+
+    Separate from ``Position`` so that a vacancy is a real state — a post
+    with no current holding — rather than a missing row nobody can ask
+    about. It also makes the post's history queryable: "who was Caldicott
+    Guardian in March?" is a question about the slot over time, which a
+    single holder column on the position could not answer.
+
+    ``is_acting`` covers leave. An acting holding sits alongside the
+    substantive one rather than replacing it, so the record still shows who
+    the post belonged to, and acting holdings do not count against
+    ``max_holders``.
+
+    Attributes:
+        id: Primary key.
+        position_id: The post being held.
+        user_id: The holder.
+        started_on: When they took it up.
+        ended_on: When they gave it up, or None while current.
+        is_acting: Whether this is temporary cover rather than the
+            substantive appointment.
+        appointed_by: Who appointed them. Null once that user is deleted, so
+            the fact an appointment was made outlives the person who made it.
+    """
+
+    __tablename__ = "position_holding"
+    __table_args__ = (
+        CheckConstraint(
+            "ended_on IS NULL OR ended_on >= started_on",
+            name="ck_position_holding_dates_ordered",
+        ),
+        Index("ix_position_holding_position", "position_id"),
+        Index("ix_position_holding_user", "user_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    position_id: Mapped[int] = mapped_column(
+        ForeignKey("position.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    started_on: Mapped[date] = mapped_column(Date, nullable=False)
+    ended_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    is_acting: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
+    appointed_by: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
