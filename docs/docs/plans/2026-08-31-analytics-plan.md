@@ -1105,9 +1105,22 @@ not before.
       minutes, and a temporary resource left in state is how orphans are made.
       Delete them in the same sitting, and confirm afterwards that the uptime
       check list is back to the two managed ones.
-- [ ] Fold the result into the incident response plan and runbook items already
-      open in `todo.md`, and replace the `webhook_token_auth` Slack channel
-      with the native integration while in there
+- [x] Replace the `webhook_token_auth` Slack channel with the native
+      integration. **Done on 4 September**, and recorded in `todo.md` rather
+      than here, which is why this line went on claiming otherwise until
+      8 September. Verified against the live API rather than the note: the
+      project's four notification channels are `email`, `sms`, `pagerduty`
+      and a `slack` one named `quill-medical-cicd`, and no
+      `webhook_token_auth` channel remains. Terraform reads the Slack channel
+      through a data source because the native type needs an `auth_token`
+      from Slack's OAuth consent screen that no resource or API call can
+      produce, so the channel itself is created by hand. The old webhook
+      channel could never have worked in any case: Slack incoming webhooks
+      expect `{"text": ...}` and Cloud Monitoring sends its own alert JSON
+- [ ] Fold the result into the incident response plan and runbook items still
+      open in `todo.md` — "Create basic runbooks for common incidents" and
+      "Write a one-page incident response plan". Both remain unticked there
+
 ## Phase 2: how many people visit the public site
 
 No application code. This is infrastructure and a dashboard.
