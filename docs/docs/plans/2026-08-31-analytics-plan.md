@@ -1183,22 +1183,36 @@ counted. Names can be added later if the dashboard reads badly.
       Built in Phase 1: `report.ts` holds one in a module variable, never
       written to the device, which is what keeps the cookie regulations out of
       scope. Reused rather than duplicated
-- [ ] Send the matched route pattern from a hook in `RootLayout.tsx`, reusing
+- [x] Send the matched route pattern from a hook in `RootLayout.tsx`, reusing
       `toRoutePattern` rather than adding a second way to describe a page
-- [ ] Add a backend endpoint that validates the pattern's shape — lowercase
+- [x] Add a backend endpoint that validates the pattern's shape — lowercase
       words, slashes and colons, nothing else — and logs accepted ones through
       the analytics logger, rate-limited as the error endpoint is. Shape rather
       than an enumerated list, because the backend cannot know the router's
       sixty-three routes without duplicating them, and a duplicate that drifts
       is worse than a bound that holds
-- [ ] Add a hard guard that no-ops the ping on routes behind `RequireClinical`,
-      with tests proving it
-- [ ] Add an opt-out toggle in `Settings.tsx`, honoured before any ping is
-      sent, with `.stories.tsx` and `.test.tsx` per the component rules
-- [ ] Add a log-based counter metric over the accepted pings, labelled by page
-      name, and chart page views per page on the same Cloud Monitoring
-      dashboard as everything else
-- [ ] Tests: allow-list rejection, clinical-route guard, opt-out honoured
+- [x] Add a hard guard that no-ops the ping on routes behind `RequireClinical`,
+      with tests proving it. Implemented as a route `handle`, following the
+      `handle.safeForReload` pattern already here, and declared once on the
+      subtree root so a clinical route added later inherits the exclusion
+      rather than needing somebody to remember. The test was checked against
+      its own regression: removing the guard fails it
+- [x] Add an opt-out toggle in `Settings.tsx`, honoured before any ping is
+      sent. No new component and so no new story: it is an `ActionCard` with a
+      `SolidSwitch`, both of which already have their own. Stored on the
+      device, unlike the session identifier — a preference that forgets itself
+      on every refresh is not a preference, and unlike the counting itself it
+      can honestly claim the strictly-necessary exemption
+- [x] Add a log-based counter metric over the accepted pings, labelled by
+      route pattern, and chart it on the same dashboard as everything else.
+      A "signed in" label was built and then removed: page tracking runs only
+      inside `RequireAuth`, so it would have read true every time, and a label
+      that cannot vary is not a measurement. Clinical routes never reach the
+      metric at all, because the browser declines to send them — so it cannot
+      show how often a patient record was opened, by design rather than by
+      omission
+- [x] Tests: pattern-shape rejection rather than allow-list rejection, the
+      clinical-route guard, and the opt-out honoured before anything is sent
 
 ## Phase 4: self-host the Cormorant Garamond typeface
 
