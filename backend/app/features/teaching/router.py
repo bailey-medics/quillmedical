@@ -18,6 +18,7 @@ from fastapi.responses import Response
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.cbac.positions import clinical_leads_of
 from app.db import get_core_db
 from app.deps import has_competency
 from app.features.gating import requires_feature
@@ -1179,30 +1180,33 @@ def _maybe_enqueue_certificate_emails(
     if email_coordinator:
         coord_template = extract_email_template(config, "coordinator_email")
         if coord_template:
-            from app.models import organisation_site, site_staff_member
+            from app.models import organisation_site
 
-            # Find clinical leads at sites linked to this org
-            clinical_leads = (
-                db.execute(
-                    select(User)
-                    .join(
-                        site_staff_member,
-                        site_staff_member.c.user_id == User.id,
-                    )
-                    .join(
-                        organisation_site,
-                        organisation_site.c.site_id
-                        == site_staff_member.c.site_id,
-                    )
-                    .where(
+            # Whoever holds the clinical lead post at a site linked to this
+            # organisation. Read from the post rather than a role on a
+            # staff row: a post can be vacant, and a vacancy must mean
+            # nobody is emailed rather than the wrong person.
+            org_site_ids = [
+                int(site_id)
+                for site_id in db.execute(
+                    select(organisation_site.c.site_id).where(
                         organisation_site.c.organisation_id
-                        == assessment.organisation_id,
-                        site_staff_member.c.role == "clinical_lead",
+                        == assessment.organisation_id
                     )
                 )
-                .unique()
                 .scalars()
                 .all()
+            ]
+            lead_ids = set(clinical_leads_of(db, org_site_ids).values())
+            clinical_leads = (
+                list(
+                    db.execute(select(User).where(User.id.in_(lead_ids)))
+                    .unique()
+                    .scalars()
+                    .all()
+                )
+                if lead_ids
+                else []
             )
             for lead in clinical_leads:
                 if lead.email:

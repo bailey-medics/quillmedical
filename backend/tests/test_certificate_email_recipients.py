@@ -20,6 +20,7 @@ from fastapi import BackgroundTasks
 from sqlalchemy import insert
 from sqlalchemy.orm import Session
 
+from app.cbac.positions import set_clinical_lead
 from app.features.teaching.models import (
     Assessment,
     QuestionBankConfig,
@@ -98,11 +99,18 @@ def _site_of(db: Session, org: Organisation, name: str) -> Site:
 
 
 def _make_lead(db: Session, site: Site, user: User) -> None:
+    """Make someone the clinical lead, the way the API does.
+
+    Both the post and the role column are written while the column still
+    exists. The post is what the lookup reads; the column is written until
+    the contract step removes it.
+    """
     db.execute(
         insert(site_staff_member).values(
             site_id=site.id, user_id=user.id, role="clinical_lead"
         )
     )
+    set_clinical_lead(db, site, user)
     db.commit()
 
 
@@ -253,6 +261,29 @@ class TestTheClinicalLead:
         their_site = _site_of(db_session, elsewhere, "Their Ward")
         their_lead = _user(db_session, "dr_other", "other@example.test")
         _make_lead(db_session, their_site, their_lead)
+
+        assert _run(db_session, assessment, config_row, candidate) == []
+
+    def test_the_role_column_alone_no_longer_names_a_lead(self, db_session):
+        """The cut-over, pinned.
+
+        Before the lookup moved, a `clinical_lead` row here was enough to
+        get someone emailed. It is not any more: the post is the source of
+        truth, and a site whose post is empty emails nobody.
+        """
+        org, candidate, assessment, config_row = _setup(
+            db_session, coordinator=True
+        )
+        site = _site_of(db_session, org, "Ward 1")
+        impostor = _user(db_session, "dr_column_only", "column@example.test")
+        db_session.execute(
+            insert(site_staff_member).values(
+                site_id=site.id,
+                user_id=impostor.id,
+                role="clinical_lead",
+            )
+        )
+        db_session.commit()
 
         assert _run(db_session, assessment, config_row, candidate) == []
 
