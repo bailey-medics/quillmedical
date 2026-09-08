@@ -2833,7 +2833,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@floating-ui/react@npm:^0.27.19":
+"@floating-ui/react@npm:^0.27.20":
   version: 0.27.20
   resolution: "@floating-ui/react@npm:0.27.20"
   dependencies:
@@ -3396,52 +3396,52 @@ __metadata:
   linkType: hard
 
 "@mantine/core@npm:^9.0.0":
-  version: 9.5.2
-  resolution: "@mantine/core@npm:9.5.2"
+  version: 9.6.0
+  resolution: "@mantine/core@npm:9.6.0"
   dependencies:
-    "@floating-ui/react": "npm:^0.27.19"
+    "@floating-ui/react": "npm:^0.27.20"
     clsx: "npm:^2.1.1"
     react-number-format: "npm:^5.4.5"
     react-remove-scroll: "npm:^2.7.2"
     type-fest: "npm:^5.8.0"
   peerDependencies:
-    "@mantine/hooks": 9.5.2
+    "@mantine/hooks": 9.6.0
     react: ^19.2.0
     react-dom: ^19.2.0
-  checksum: 10c0/b8ca2a2bc289007b814d2dfa743f98fa4ac99c8ad9b9ae61f6670b82d1d41504d313143b096793fbbe737e6a922a7239b74795ad5d386f5175e1730d57620637
+  checksum: 10c0/6110bcef59481ec544a025e37744dc7fbba6fa69e32ce1d3714186cf31b301ff00113a44925e86f9183ac880fb723a787632de5a4ed357d93850306a3ec630a9
   languageName: node
   linkType: hard
 
 "@mantine/hooks@npm:^9.0.0":
-  version: 9.5.2
-  resolution: "@mantine/hooks@npm:9.5.2"
+  version: 9.6.0
+  resolution: "@mantine/hooks@npm:9.6.0"
   peerDependencies:
     react: ^19.2.0
-  checksum: 10c0/04dc331dda9c10f951ce0bb8cd9f222c18c5542d20182bf6ca3f7477b1dd7c445ef2234c004309f3984c4cf824b0e7b47ae5d6550e4a000071fa6a4df0cc4077
+  checksum: 10c0/ac63a53b09da2012716a2c24d98727e39e8ae932b0c1fcbf6d5161c721d6f314519d1a1e600868c481fea11b4171b68541bc8dda12a96dfe8f6e57ac074b38e9
   languageName: node
   linkType: hard
 
 "@mantine/notifications@npm:^9.0.0":
-  version: 9.5.2
-  resolution: "@mantine/notifications@npm:9.5.2"
+  version: 9.6.0
+  resolution: "@mantine/notifications@npm:9.6.0"
   dependencies:
-    "@mantine/store": "npm:9.5.2"
+    "@mantine/store": "npm:9.6.0"
     react-transition-group: "npm:4.4.5"
   peerDependencies:
-    "@mantine/core": 9.5.2
-    "@mantine/hooks": 9.5.2
+    "@mantine/core": 9.6.0
+    "@mantine/hooks": 9.6.0
     react: ^19.2.0
     react-dom: ^19.2.0
-  checksum: 10c0/caa124177e01f3d91947613e7a4f9c9f1ac17f306e0dc435994d7f8d63fc4a6540d7ceb54861955a42bf0472f751e839fb0e79c52e87a90a94166efbc2ae928e
+  checksum: 10c0/fb797ebff3a3845462373f3f53a911bbdc57869b25628c2d248f43b654848e393e79d899cfd0830e36cac081d1a181f5ffe2098b28764e20ef79550e40f33722
   languageName: node
   linkType: hard
 
-"@mantine/store@npm:9.5.2":
-  version: 9.5.2
-  resolution: "@mantine/store@npm:9.5.2"
+"@mantine/store@npm:9.6.0":
+  version: 9.6.0
+  resolution: "@mantine/store@npm:9.6.0"
   peerDependencies:
     react: ^19.2.0
-  checksum: 10c0/17c9e14436fb3432cff4ed34a7f88c1c61899879b5e31a29441dc3a3234dfb88b296e0101ab46f33631c544d708637fe2d8e650764711c2429354d0faacd0cdd
+  checksum: 10c0/904728ba0b0f64518d162f072d433badd0f62c3ac92677973722ad83b839e6dedef73c178a0ff5d8c183bbdc7d94995850c484100e4a0822f6f5af82275149f6
   languageName: node
   linkType: hard
 
