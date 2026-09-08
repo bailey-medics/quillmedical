@@ -8,12 +8,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
-import { Stack, Table, Skeleton, Center, Alert } from "@mantine/core";
-import { IconAlertCircle, IconEdit } from "@components/icons/appIcons";
-import Icon from "@/components/icons";
+import { Stack, Table, Skeleton, Center } from "@mantine/core";
+import { IconEdit } from "@components/icons/appIcons";
 import IconButton from "@/components/button/IconButton";
 import { BodyTextBold, EmptyState } from "@/components/typography";
 import PageHeader from "@/components/page-header";
+import ErrorState from "@/components/error-state/ErrorState";
 
 interface User {
   id: string;
@@ -68,13 +68,7 @@ export default function EditUserPage() {
           <Skeleton height={50} />
         </Stack>
       ) : error ? (
-        <Alert
-          icon={<Icon icon={<IconAlertCircle />} size="sm" />}
-          title="Error loading users"
-          color="var(--alert-color)"
-        >
-          {error}
-        </Alert>
+        <ErrorState title="Error loading users" message={error} />
       ) : users.length === 0 ? (
         <Center p="xl">
           <EmptyState>No users found</EmptyState>

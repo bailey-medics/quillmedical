@@ -9,7 +9,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Stack, Group, SimpleGrid, Skeleton, Alert } from "@mantine/core";
+import { Stack, Group, SimpleGrid, Skeleton } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import {
   BodyText,
@@ -21,18 +21,17 @@ import PermissionBadge from "@/components/badge/PermissionBadge";
 import CompetencyBadge from "@/components/badge/CompetencyBadge";
 import {
   IconPencil,
-  IconAlertCircle,
   IconUserMinus,
   IconUserPlus,
   IconMail,
 } from "@components/icons/appIcons";
 import PageHeader from "@/components/page-header";
-import Icon from "@/components/icons";
 import ActionCard from "@/components/action-card";
 import { ConfirmModal } from "@/components/confirm-modal";
 import { api } from "@/lib/api";
 import competenciesData from "@/generated/competencies.json";
 import baseProfessionsData from "@/generated/base-professions.json";
+import ErrorState from "@/components/error-state/ErrorState";
 
 /**
  * User details from API
@@ -103,13 +102,10 @@ export default function UserAdminPage() {
 
   if (error || !user) {
     return (
-      <Alert
-        icon={<Icon icon={<IconAlertCircle />} size="lg" />}
+      <ErrorState
         title="Error loading user"
-        color="var(--alert-color)"
-      >
-        {error || "User not found"}
-      </Alert>
+        message={error || "User not found"}
+      />
     );
   }
 

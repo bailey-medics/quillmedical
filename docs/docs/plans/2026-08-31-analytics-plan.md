@@ -605,6 +605,27 @@ The containment moved to the source, where it belongs, and what is left for
 this component is consistency of presentation — twenty-nine pages that look
 and behave alike instead of twenty-nine near-misses.
 
+**`ErrorState` and `StateMessage` stay separate.** `StateMessage` was already
+there and was missed when this section was written, because the audit grepped
+for `<Alert>` and `StateMessage` does not contain one. Five pages already use
+it for errors via `colour="alert"`, and the teaching pages need no conversion
+at all as a result.
+
+They are not the same thing, and the split is deliberate rather than
+accidental:
+
+- **`StateMessage`** — a solid coloured card for what a region shows *instead
+  of* its content: empty states, waiting states, and errors alike. "No
+  patients to show", "Database is initialising", "Error loading data".
+- **`ErrorState`** — errors only, and it knows what errors need: a retry
+  action, the backend's error code in small print for a support call, a
+  full-page variant for when there is no page left to sit inside, and an
+  alert role so a failure inside a page is announced.
+
+A page using both is right, not a mistake. `ViewAllPatientsPage` shows a
+`StateMessage` when there are no patients and an `ErrorState` when the fetch
+failed, which are different things to say.
+
 So the conversion is mechanical rather than editorial. Writing is still needed
 for the **fallback** — a dropped connection produces no `detail` at all — and
 those cluster into a handful of shapes rather than twenty-nine originals. The
