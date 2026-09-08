@@ -213,13 +213,29 @@ it does becomes a position.
       backfill migration creates a post and holding for every existing `clinical_lead` row.
       - `started_on` in the backfill is the migration date, not a guess at when the person
         took the post. Inventing one would put a claim in the record that nothing supports.
-- [ ] **Contract: remove the column.** Bigger than this document first said. It is read in
-      **four** places, not two: the two above, plus `get_site`'s staff listing, which returns
-      `role` in `SiteStaffItem`, and `add_site_staff`, which validates it and enforces one
-      lead per site.
-      - `role` being in the response makes removal a **breaking API change** — four frontend
-        files read `s.role === "clinical_lead"` — so it needs the expand-contract two-deploy
-        pattern, an `oasdiff` finding and a decision file.
+- [x] **Expand the API first.** `SiteDetailOut` gains `clinical_lead_id`, populated from
+      the post, and the interface reads that instead of scanning staff rows for a role.
+      Additive and optional, so nothing breaks and there is no `oasdiff` finding yet.
+      - The contract step could not come next without this: the interface had nothing else
+        to read, so removing `role` would have broken three pages. Expand-contract applies
+      to the response as much as to the column.
+      - Six usages across three pages, not the four this document counted — `SiteAdminPage`
+        looks the lead up three more times to display its name and email.
+      - Those pages had **no tests at all**. Three now cover the clinical lead field,
+        including one asserting that a staff row whose `role` says `clinical_lead` is
+        ignored — which is what proves the display reads the post.
+- [ ] **Contract: remove the column and the response field.** Read in **four** places, not
+      two: the two lookups, plus `get_site`'s staff listing, which returns `role` in
+      `SiteStaffItem`, and `add_site_staff`, which validates it and enforces one lead per
+      site.
+      - `role` being in the response makes removal a **breaking API change**, so it needs an
+        `oasdiff` finding and a decision file. The interface no longer depends on it for the
+        clinical lead, which is what makes the removal possible.
+      - **One product question first.** `SiteAdminPage` also builds its staff filter from
+        `role`, so removing the field drops the staff and trainee labels from that page.
+        Those values are written but compared nowhere in the backend, so the question is
+        whether they are worth anything on screen. If they are, they need somewhere to live
+        that is not an access-control-shaped column.
       - Dropping the column is also destructive, so it trips the
         `db-destructive-migration-review` required-reviewer gate.
       - None of that is hard here, because there is no live data. It is worth doing properly
