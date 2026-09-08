@@ -36,7 +36,6 @@ interface ApiUser {
 
 interface SiteStaff {
   id: number;
-  role: string;
 }
 
 interface SiteData {
