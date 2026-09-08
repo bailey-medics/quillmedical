@@ -16,6 +16,7 @@ import ErrorBoundary from "./components/error-boundary/ErrorBoundary";
 import { SearchProvider } from "@lib/search";
 import { NavigationBlocker } from "@lib/connectivity";
 import { useRouteTracking } from "@lib/error-reporting/useRouteTracking";
+import { usePageViewTracking } from "@lib/page-views/usePageViewTracking";
 
 /**
  * Layout Context
@@ -72,6 +73,11 @@ export default function RootLayout() {
   // things that report errors — a class error boundary and the window
   // listeners — can neither of them use a hook.
   useRouteTracking();
+
+  // Counts which pages get used. Skips anything under a route declaring
+  // handle.clinical, and honours the opt-out before sending rather than
+  // after.
+  usePageViewTracking();
 
   // Clear patient context when navigating away from patient-specific routes
   useEffect(() => {

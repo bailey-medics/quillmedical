@@ -42,8 +42,52 @@ RELEASE_PATTERN = r"^[A-Za-z0-9._-]*$"
 #: cannot be used to smuggle text into the logs under a harmless-looking name.
 SESSION_ID_PATTERN = r"^[A-Za-z0-9_-]*$"
 
+#: A matched route pattern: ``/patients/:id``. Every segment is either a
+#: literal word in lowercase letters and hyphens, or ``:name`` for a parameter.
+#:
+#: Matched by shape rather than against an enumerated list of routes. The
+#: backend cannot know the router's sixty-three routes without duplicating
+#: them, and a duplicate that drifts is worse than a bound that holds: it fails
+#: silently, counting nothing for a page somebody forgot to add.
+#:
+#: **Literal segments may not contain digits, and that is what does the work.**
+#: Without it the shape admits ``/patients/abc123`` — an identifier is
+#: lowercase alphanumeric and so is a route word, leaving nothing to tell them
+#: apart. The rule is empirical rather than assumed: none of the sixty-three
+#: routes contains a digit in a literal segment. Should one ever be added, the
+#: page is refused with a 422 rather than counted silently, which is the
+#: failure worth having.
+PAGE_PATTERN = (
+    r"^/(?:[a-z-]+|:[A-Za-z][A-Za-z0-9]*)?"
+    r"(?:/(?:[a-z-]+|:[A-Za-z][A-Za-z0-9]*))*$"
+)
+
 #: Width by height, as the browser reports it: ``390x844``.
 VIEWPORT_PATTERN = r"^(\d{1,5}x\d{1,5})?$"
+
+
+class PageViewIn(BaseModel):
+    """A page view, identified by session rather than by person.
+
+    Carries the matched route pattern, never the resolved URL and never the
+    document title. The browser builds the pattern from the router's own
+    params, so an identifier is removed because the router said it was one
+    rather than because anything recognised its shape — see
+    ``frontend/src/lib/error-reporting/currentRoute.ts``.
+
+    The session identifier is the same in-memory value the error reporter
+    uses: random per page load, never written to the device, which is what
+    keeps the cookie regulations out of scope. It makes these counts of
+    sessions rather than of identified people, which is enough for the
+    question being asked and considerably cheaper to justify.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    page: str = Field(max_length=MAX_ROUTE, pattern=PAGE_PATTERN)
+    session_id: str = Field(
+        default="", max_length=MAX_SESSION_ID, pattern=SESSION_ID_PATTERN
+    )
 
 
 class RouteCrumb(BaseModel):
