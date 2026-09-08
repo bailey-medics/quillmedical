@@ -194,6 +194,17 @@ function readUserAgent(): string {
   }
 }
 
+/**
+ * The identifier for this page load.
+ *
+ * Shared with page-view counting so both describe the same visit, rather than
+ * each minting its own and making the two impossible to line up. Still in
+ * memory only: exposing it does not make it stored.
+ */
+export function getSessionId(): string {
+  return SESSION_ID;
+}
+
 /** Resets the per-page state. Exported for tests, not for application code. */
 export function resetReportingStateForTests(): void {
   seen.clear();

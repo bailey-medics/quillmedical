@@ -466,11 +466,14 @@ written.
       answer appears, and the first thing it will say is whether something in
       the application has been throwing steadily all along with nobody
       knowing — which, until this phase, there was no way to find out
-- [ ] Tests: sanitiser unit tests proving patient-shaped strings never survive
+- [x] Tests: sanitiser unit tests proving patient-shaped strings never survive
       it (`just uf`), and backend endpoint tests including the rate limit
-      (`just ub`)
-- [ ] Storybook story and test for any fallback UI change, per the component
-      rules
+      (`just ub`) Both done: the sanitiser
+      suite includes a sweep checking every patient-shaped string against every
+      field of a whole report, which is what caught the postcode surviving
+      inside an error name and an NHS number surviving inside an error code
+- [x] Storybook story and test for any fallback UI change, per the component
+      rules. `ErrorFallback` and `ErrorState` each ship both
 
 ### What the live verification found
 
@@ -1161,15 +1164,33 @@ The only phase needing new client code, and the one carrying the real risk.
 **Next, alongside Phase 1's client half** — see the note there on keeping new
 routes out of `main.py`.
 
-- [ ] Add a route-to-name allow-list mapping each of the 63 routes to a stable
-      page name, so no URL or document title ever leaves the browser
-- [ ] Add a route-change hook in `RootLayout.tsx` that posts the page name
-      through `lib/api.ts`
-- [ ] Add a backend endpoint that rejects any name not in the allow-list and
-      logs accepted ones through the analytics logger, rate-limited as above
-- [ ] Identify page views by a per-session random identifier rather than the
-      user ID, so the counts are of sessions rather than of identified people —
-      cheaper to justify, and sufficient for the question being asked
+**Route patterns rather than a name allow-list.** The allow-list was specified
+before Phase 1 existed, and Phase 1 built something better on the way past:
+`currentRoute.ts` rebuilds the matched pattern — `/patients/:id` — from the
+router's own params, so the identifier is removed because the router said it
+was one, not because a filter recognised its shape. That satisfies the
+allow-list's actual purpose, which was that no URL or document title leaves the
+browser, and it is already proven in production on the error reports.
+
+What the allow-list would have added beyond that is a readable dashboard label,
+"Patient record" instead of `/patients/:id`. Sixty-three hand-written mappings
+is a permanent maintenance cost for a cosmetic and reversible gain, and its
+failure mode is silent: forget an entry and the page simply stops being
+counted. Names can be added later if the dashboard reads badly.
+
+- [x] Identify page views by a per-session random identifier rather than the
+      user ID, so the counts are of sessions rather than of identified people.
+      Built in Phase 1: `report.ts` holds one in a module variable, never
+      written to the device, which is what keeps the cookie regulations out of
+      scope. Reused rather than duplicated
+- [ ] Send the matched route pattern from a hook in `RootLayout.tsx`, reusing
+      `toRoutePattern` rather than adding a second way to describe a page
+- [ ] Add a backend endpoint that validates the pattern's shape — lowercase
+      words, slashes and colons, nothing else — and logs accepted ones through
+      the analytics logger, rate-limited as the error endpoint is. Shape rather
+      than an enumerated list, because the backend cannot know the router's
+      sixty-three routes without duplicating them, and a duplicate that drifts
+      is worse than a bound that holds
 - [ ] Add a hard guard that no-ops the ping on routes behind `RequireClinical`,
       with tests proving it
 - [ ] Add an opt-out toggle in `Settings.tsx`, honoured before any ping is

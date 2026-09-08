@@ -204,6 +204,11 @@ const router = createBrowserRouter([
 
       // Clinical routes — require FHIR/EHRbase connectivity
       {
+        // Everything under here is patient data, and is deliberately not
+        // counted. Declared on the subtree root rather than each leaf so a
+        // clinical route added later inherits the exclusion rather than
+        // needing somebody to remember it.
+        handle: { clinical: true },
         element: (
           <RequireClinical>
             <Outlet />
