@@ -8,7 +8,12 @@
 
 import { Group, SimpleGrid, Stack, useMantineColorScheme } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
-import { IconBell, IconMoon, IconUser } from "@/components/icons/appIcons";
+import {
+  IconBell,
+  IconChartBar,
+  IconMoon,
+  IconUser,
+} from "@/components/icons/appIcons";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/auth/AuthContext";
@@ -20,6 +25,7 @@ import SolidSwitch from "@/components/form/SolidSwitch";
 import { BodyText, Heading } from "@/components/typography";
 import { api } from "@/lib/api";
 import { appFeatureFlags } from "@/lib/featureFlags";
+import { hasOptedOut, setOptedOut } from "@/lib/page-views/optOut";
 import { layoutTokens } from "@/theme";
 import classes from "./Settings.module.css";
 
@@ -44,6 +50,10 @@ function b64ToUint8Array(base64: string) {
  */
 export default function Settings() {
   const [useTotp, setUseTotp] = useState(false);
+  // Switched on unless the user has said otherwise: this is an opt-out, and
+  // the switch reads positively ("help improve") rather than as a negative to
+  // be un-ticked. Read once on mount — the preference only changes here.
+  const [countPageViews, setCountPageViews] = useState(!hasOptedOut());
   const navigate = useNavigate();
   const { state } = useAuth();
   const { colorScheme, setColorScheme } = useMantineColorScheme();
@@ -135,6 +145,25 @@ export default function Settings() {
               }
             />
           )}
+
+        <ActionCard
+          icon={<IconChartBar />}
+          title="Help improve Quill"
+          subtitle="Count which pages get used, so the parts people rely on can be improved. Patient pages are never counted, and nothing recorded identifies you."
+          action={
+            <SolidSwitch
+              // The card's title is not associated with the switch, so
+              // without this a screen reader announces an unlabelled control.
+              aria-label="Help improve Quill"
+              checked={countPageViews}
+              onChange={(event) => {
+                const on = event.currentTarget.checked;
+                setCountPageViews(on);
+                setOptedOut(!on);
+              }}
+            />
+          }
+        />
 
         <BaseCard className={classes.totpCard}>
           <Stack gap="md">

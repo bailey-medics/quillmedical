@@ -263,14 +263,17 @@ def report_client_error(
 def record_page_view(
     request: Request,
     view: PageViewIn,
-    user: User | None = DEP_OPTIONAL_USER,
 ) -> Response:
     """Record that a page was opened.
 
     Counts sessions, not people. The identifier is the browser's in-memory
-    one, and the user is read from the cookie only to separate signed-in
-    traffic from anonymous — never to attribute a view to a named person, so
-    it is recorded as presence rather than identity.
+    one, and the authentication cookie is not read at all — so a view cannot
+    be attributed to a named person even in principle.
+
+    Nothing here records whether the caller was signed in. It once did, until
+    it turned out the tracking only runs inside `RequireAuth` and so the
+    answer was always yes; a field that cannot vary is not a measurement, and
+    keeping it would have implied a distinction the dashboard could not make.
 
     The limit is higher than the error endpoint's because navigating is normal
     and erroring is not: a busy clinician moving through a patient's record
@@ -286,7 +289,6 @@ def record_page_view(
             "@type": PAGE_VIEW_TYPE,
             "page": view.page,
             "session_id": view.session_id,
-            "signed_in": user is not None,
         },
     )
     return Response(status_code=204)

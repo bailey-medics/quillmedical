@@ -11,6 +11,7 @@ import logging
 import pytest
 from fastapi.testclient import TestClient
 
+from app.analytics.router import PAGE_VIEW_TYPE
 from app.main import limiter
 from app.models import User
 
@@ -100,33 +101,60 @@ class TestLogShape:
         assert getattr(record, "page", None) == "/patients/:id"
         assert getattr(record, "session_id", None) == "s7f3a9b2c1d4e5f6"
 
-    def test_records_presence_rather_than_identity(
+    def test_no_identity_is_recorded(
         self,
         authenticated_client: TestClient,
         test_user: User,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
-        """Signed-in traffic is separable from anonymous, but no view is
-        attributed to a named person."""
+        """A signed-in caller leaves nothing behind that names them."""
         with caplog.at_level(logging.INFO, logger="app.analytics.router"):
             authenticated_client.post(ENDPOINT, json=VALID_VIEW)
 
         record = caplog.records[0]
-        assert getattr(record, "signed_in", None) is True
-        # The logging context's user field stays empty even for a signed-in
-        # caller, because `get_optional_user` is deliberately free of side
-        # effects. Substring-matching the id would prove nothing here: it is
-        # "1", which occurs in timestamps and line numbers.
+        # Substring-matching the id would prove nothing here: it is "1",
+        # which occurs in timestamps and line numbers.
         assert getattr(record, "user_id", None) is None
         assert not hasattr(record, "user")
+        assert not hasattr(record, "signed_in")
 
-    def test_signed_out_views_say_so(
-        self, test_client: TestClient, caplog: pytest.LogCaptureFixture
+    def test_signed_in_and_signed_out_views_are_indistinguishable(
+        self,
+        test_client: TestClient,
+        authenticated_client: TestClient,
+        test_user: User,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
+        """The endpoint does not read the cookie, so the same page opened by
+        a signed-in and a signed-out caller logs identically.
+
+        This is the property the dropped `signed_in` field used to claim to
+        measure. It could not: tracking runs only inside `RequireAuth`, so
+        the field was always true and the distinction never existed.
+        """
+        interesting = ("@type", "page", "session_id", "signed_in", "user_id")
+
+        def attributes(record: logging.LogRecord) -> dict[str, object]:
+            return {
+                key: getattr(record, key)
+                for key in interesting
+                if hasattr(record, key)
+            }
+
         with caplog.at_level(logging.INFO, logger="app.analytics.router"):
             test_client.post(ENDPOINT, json=VALID_VIEW)
+            authenticated_client.post(ENDPOINT, json=VALID_VIEW)
 
-        assert getattr(caplog.records[0], "signed_in", None) is False
+        # Selected by marker rather than by position: `caplog` captures every
+        # logger, and the authenticated request emits records of its own.
+        views = [
+            record
+            for record in caplog.records
+            if getattr(record, "@type", None) == PAGE_VIEW_TYPE
+        ]
+        assert len(views) == 2
+        anonymous, signed_in = views
+        assert attributes(anonymous) == attributes(signed_in)
 
 
 class TestRateLimit:

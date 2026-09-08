@@ -63,6 +63,58 @@ resource "google_logging_metric" "public_site_visits" {
   }
 }
 
+# ---------- Page views ----------
+#
+# Which pages of the application get used. The third of the three questions,
+# and the only one needing the application's own cooperation: nothing at the
+# load balancer can tell one screen of a single-page application from another,
+# because navigating between them makes no request.
+#
+# Counts sessions rather than people. The browser sends a random per-page-load
+# identifier held in memory, so a metric can say "this many visits" without
+# anything here knowing who made them.
+
+resource "google_logging_metric" "page_views" {
+  project = var.project_id
+  name    = "quill/page_views_${var.environment}"
+
+  description = "Pages opened in the application, by route pattern, counted per session rather than per person"
+
+  filter = <<-EOT
+    resource.type="cloud_run_revision"
+    jsonPayload."@type"="quill.analytics.PageView"
+  EOT
+
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+    unit        = "1"
+
+    labels {
+      key         = "page"
+      value_type  = "STRING"
+      description = "Matched route pattern, such as /patients/:id — never a resolved URL"
+    }
+  }
+
+  # One label, bounded and holding nothing personal: `page` is one of the
+  # router's sixty-three patterns, with every captured value already replaced
+  # by the name that captured it. That is what makes this safe to keep for
+  # years, in the way the raw request rows are not.
+  #
+  # There is deliberately no "signed in" label. Page tracking runs only inside
+  # `RequireAuth`, so such a label would read true every time — and a label
+  # that cannot vary is not a measurement, it is a claim the dashboard would
+  # be unable to honour.
+  #
+  # Clinical routes never reach here at all — the browser declines to send
+  # them — so this metric cannot show how often a patient record was opened,
+  # by design and not by omission.
+  label_extractors = {
+    "page" = "EXTRACT(jsonPayload.page)"
+  }
+}
+
 # ---------- Client errors ----------
 #
 # Browser error reports, as counted from the log entries the ingest endpoint
@@ -232,7 +284,20 @@ resource "google_monitoring_dashboard" "quill" {
   dashboard_json = jsonencode({
     displayName = "Quill — health and usage (${var.environment})"
     gridLayout = {
-      columns = 2
+      # A string, not the number it looks like. `columns` is an int64 in the
+      # Monitoring API, and the proto3 JSON mapping encodes 64-bit integers as
+      # strings — so the API stores and returns "2" however it is sent.
+      #
+      # That mismatch was the sole cause of this dashboard appearing in every
+      # plan as changed when nothing had changed. The provider's diff
+      # suppression strips fields the API adds — `etag` and the `targetAxis`
+      # it fills in — and then compares what remains with reflect.DeepEqual,
+      # which is strict about types: 2 and "2" are not equal, and one
+      # inequality anywhere renders the whole resource as drifting.
+      #
+      # Worth keeping because a plan is only worth reading if a clean one
+      # means something.
+      columns = "2"
       widgets = [
         {
           title = "Uptime check passing"
@@ -341,8 +406,29 @@ resource "google_monitoring_dashboard" "quill" {
           }
         },
         {
-          # Diagnostically different from 5xx: a 401 spike means auth broke,
-          # a 404 spike means something links wrongly.
+          # Hourly rather than five-minutely: page views are a usage
+          # question, not an incident one, and a five-minute bar of a quiet
+          # teaching app is mostly zeroes. Stacked, so the bar height is
+          # total traffic and each band is one route.
+          title = "Page views by page"
+          xyChart = {
+            dataSets = [{
+              timeSeriesQuery = {
+                timeSeriesFilter = {
+                  filter = "metric.type = \"logging.googleapis.com/user/${google_logging_metric.page_views.name}\""
+                  aggregation = {
+                    alignmentPeriod    = "3600s"
+                    perSeriesAligner   = "ALIGN_SUM"
+                    crossSeriesReducer = "REDUCE_SUM"
+                    groupByFields      = ["metric.label.page"]
+                  }
+                }
+              }
+              plotType = "STACKED_BAR"
+            }]
+          }
+        },
+        {
           title = "Client errors (browser)"
           xyChart = {
             dataSets = [{
@@ -366,7 +452,9 @@ resource "google_monitoring_dashboard" "quill" {
           # errors" meaning different things is a trap that springs months
           # later: this one counts HTTP 4xx responses at the load balancer —
           # someone requesting a bad URL — and has nothing to do with
-          # JavaScript failing in a browser.
+          # JavaScript failing in a browser. Diagnostically it is also
+          # different from 5xx: a 401 spike means auth broke, a 404 spike
+          # means something links wrongly.
           title = "HTTP 4xx responses"
           xyChart = {
             dataSets = [{
