@@ -5583,10 +5583,11 @@ def join_conversation_endpoint(
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> ParticipantOut:
-    """Join a conversation as a staff member.
+    """Join a conversation as staff of one of its organisations.
 
-    Staff can self-join any conversation they can see.
-    Patients cannot self-join; they must be added by a participant.
+    Staff can self-join any conversation at an organisation they are
+    staff of. Everyone else — patients, and trainees who reach the
+    organisation through a site — must be added by a participant.
 
     Args:
         conversation_id: ID of the conversation.
@@ -5598,7 +5599,8 @@ def join_conversation_endpoint(
 
     Raises:
         HTTPException: 404 if conversation not found.
-        HTTPException: 403 if user is a patient.
+        HTTPException: 403 if the user is not staff of one of its
+            organisations.
     """
     try:
         return join_conversation(

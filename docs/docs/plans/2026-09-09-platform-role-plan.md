@@ -61,21 +61,28 @@ does not, and removing the ladder removes the suggestion.
       - Also corrected a stale line in `docs/docs/code/fastapi/system_permissions.md`, which
         named all three of `require_staff`, `require_admin` and `require_superadmin` as
         living in `app.deps`. The other two still do; this one no longer exists.
-- [ ] **Replace the `messaging.py` staff check with membership.** **Blocked on
-      `2026-09-09-membership-and-reach-plan.md`.** The premise recorded here was wrong: the
-      membership check below is not asking the same question. `get_user_org_ids` reads the
-      organisation staff table, and `register` writes students into it, so that check says
-      yes to a student. The level check is currently the only thing keeping them out of
-      staff conversations, and deleting it would let a teaching delegate self-join any
-      conversation at their organisation.
-      - It becomes safe once the organisation table carries a capacity, because the
-        membership check can then ask what kind of member rather than merely whether one.
-      - **Now unblocked.** The capacity column landed, and the unified resolver
-        (`2026-09-09-membership-and-reach-plan.md`) takes an optional `capacity=`. So the
-        check becomes `get_member_org_ids(db, user.id, capacity="staff")` — one call
-        answering both halves, where the level check answered neither well. Note it is
-        *membership*, not reach: a site trainee reaching the organisation's teaching content
-        must not thereby self-join its staff conversations.
+- [x] **Replace the `messaging.py` staff check with membership.** The two checks are one:
+      `get_member_org_ids(db, user.id, capacity="staff")` intersected with the
+      conversation's organisations. Membership, not reach — a site trainee reaching the
+      organisation's teaching content must not thereby self-join its staff conversations.
+      - **This was blocked, and the recorded premise was wrong.** The original step said the
+        membership check beside it asked the same question. It did not: `get_user_org_ids`
+        read the organisation table without regard to capacity, and `register` writes
+        delegates into it, so that check said yes to a trainee. The level check was the only
+        thing keeping them out. What unblocked it was the capacity column plus the unified
+        resolver, which together let the membership check ask *what kind* of member.
+      - **The order changed, and for the better.** The level check ran *before* the
+        conversation lookup, so a stranger naming a conversation that does not exist got 403
+        where `test_join_nonexistent` says the contract is 404. The lookup now comes first.
+      - **`SingleUserCannotSelfJoin` is no longer raised but is not yet deleted.** Its error
+        code is API surface, so it is retired in a later deploy — the contract half of
+        expand-contract. `NotInMessageOrganisation` now covers both rejections and its
+        message says "staff at", which is the actual reason.
+      - **Five fixtures in `test_messaging.py` were inserting membership without a
+        capacity**, so all five silently meant `trainee` while describing staff and admins.
+        They now say `capacity="staff"`. Worth noting the default did its job: it did not
+        break anything quietly, it made an unstated assumption visible the moment something
+        started reading the column.
 - [ ] **Give the admin gates a competency.** `manage_users` already exists in
       `competencies.yaml`, and `_require_own_org` is already the place check. Each admin
       route becomes that pair. Do it in batches by area — organisations, sites, users,

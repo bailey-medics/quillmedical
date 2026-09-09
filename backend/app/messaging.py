@@ -25,6 +25,7 @@ from app.models import (
 )
 from app.organisations import (
     check_user_patient_access,
+    get_member_org_ids,
     get_shared_org_ids,
     get_user_org_ids,
 )
@@ -34,7 +35,6 @@ from app.schemas.messaging import (
     MessageOut,
     ParticipantOut,
 )
-from app.system_permissions.permissions import check_permission_level
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +109,16 @@ class NotInPatientOrganisation(MessagingError):
 
 
 class SingleUserCannotSelfJoin(MessagingError):
+    """No longer raised; kept so the error code survives a deploy.
+
+    `join_conversation` used to refuse on platform level before it looked
+    at membership, and this was that refusal. Both rejections are now the
+    one below, which describes the actual reason. Removing the class in
+    the same deploy would take the code out of the API for any client
+    still matching on it, so it is retired in a later one — the contract
+    half of expand-contract.
+    """
+
     status_code = 403
     error_code = "single_user_cannot_self_join"
     message = "Single-user accounts cannot self-join conversations"
@@ -117,7 +127,7 @@ class SingleUserCannotSelfJoin(MessagingError):
 class NotInMessageOrganisation(MessagingError):
     status_code = 403
     error_code = "not_in_message_organisation"
-    message = "You must be in one of the message's organisations to join"
+    message = "You must be staff at one of the message's organisations to join"
 
 
 # ---------------------------------------------------------------------------
@@ -669,22 +679,28 @@ def join_conversation(
     conversation_id: int,
     user: User,
 ) -> ParticipantOut:
-    """Allow a staff member to join a conversation.
+    """Allow a staff member of one of the conversation's organisations to join.
 
-    Only users with staff-level permissions or above can self-join.
-    The user must be in one of the conversation's orgs.
+    One question, asked once: is this person staff at an organisation this
+    conversation belongs to? It used to be two — a platform-level check
+    that the user was `staff` or above, and a membership check that they
+    were at one of the conversation's organisations — and neither answered
+    it. The level said what someone is on the platform, not where; the
+    membership check said where, but not in what capacity, because before
+    the capacity column the table could not tell a delegate from a
+    consultant.
+
+    Deliberately membership, not reach. A trainee at a site receives the
+    organisation's teaching content, and that must not also admit them to
+    its staff conversations.
     """
-    if not check_permission_level(user.system_permissions, "staff"):
-        raise SingleUserCannotSelfJoin()
-
     conv = db.get(Conversation, conversation_id)
     if conv is None:
         raise ConversationNotFound()
 
-    # Verify org membership
-    user_org_ids = set(get_user_org_ids(db, user.id))
+    staff_org_ids = set(get_member_org_ids(db, user.id, capacity="staff"))
     conv_org_ids = {o.id for o in conv.organisations}
-    if not (user_org_ids & conv_org_ids):
+    if not (staff_org_ids & conv_org_ids):
         raise NotInMessageOrganisation()
 
     existing = (
