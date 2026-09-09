@@ -135,6 +135,17 @@ resource "google_compute_url_map" "https" {
       paths   = ["/api", "/api/*"]
       service = google_compute_backend_service.backend.id
     }
+
+    # Phase 0 video spike. Null in every environment that has no spike module,
+    # so `prod` and `staging` render an unchanged URL map rather than gaining
+    # an empty rule. Temporary: removed with the spike.
+    dynamic "path_rule" {
+      for_each = var.video_spike_backend_bucket_id != null ? [1] : []
+      content {
+        paths   = ["/videospike/*"]
+        service = var.video_spike_backend_bucket_id
+      }
+    }
   }
 
   # Landing page host rule (when landing_domain is set)
