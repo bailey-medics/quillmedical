@@ -11,6 +11,10 @@ output "bucket_name" {
 output "backend_bucket_id" {
   description = "Backend bucket ID, for the URL map path rule"
   value       = google_compute_backend_bucket.spike.id
+
+  # The URL map cannot reference the backend bucket until it is ready, so the
+  # consumer waits by consuming this output rather than the resource directly.
+  depends_on = [time_sleep.wait_for_backend_bucket]
 }
 
 output "signing_key_name" {
