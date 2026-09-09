@@ -154,8 +154,8 @@ this list first; the detail is marked **[revised 2026-09-09]** where it sits.
 - **Liveness is per organisation** via `QuestionBankOrgStatus`, not a module-level
   status column. Revision 1.
 - **The learning content endpoints are ungated** and this plan now fixes them.
-  New **Phase 2a** — which may already be done elsewhere; check before building.
-  Revision 2.
+  New **Phase 2a**. Verified still open against `origin/main` on 2026-09-09 —
+  both endpoints unchanged, both still without a database session. Revision 2.
 - **Media is uploaded through the admin UI**, not committed to the content
   repository, because Git LFS is the wrong carrier for a 900 MB lecture. New
   **Media uploads** section.
@@ -172,6 +172,9 @@ this list first; the detail is marked **[revised 2026-09-09]** where it sits.
   placeholder and should be finished.
 - **The EoEETA licence does not mention DRM**, so the no-DRM decision stands on
   its own merits.
+- **The other teaching plans barely collide with this one** — the single real
+  conflict is Phase 5 sharing `AdminBankDetailPage.tsx` with the tooling plan's
+  admin UI item. New **Working alongside the other teaching plans** section.
 
 **This plan lags the codebase, and expects to.** It was written on 2026-08-31 and
 revised on 2026-09-09, with roughly 288 commits in between; teaching work
@@ -180,6 +183,67 @@ follows has been overtaken by the time it is picked up — Phase 2a most likely 
 all, since that gap is in scope elsewhere. Treat every line number as a hint
 rather than a fact, and read the code before writing against it. Where a phase is
 especially likely to be affected, it says so in its own header.
+
+### Working alongside the other teaching plans
+
+**[added 2026-09-09]** Two other plans touch the same feature and were audited
+against `origin/main` at the same time as this one, to find where they actually
+collide rather than where they look like they might.
+
+- **[Platform role](2026-09-09-platform-role-plan.md) — almost no overlap.**
+  Its blast radius is `system_permissions`, and the teaching router mentions
+  that once, in a query filter at `router.py:1806`, nowhere near anything this
+  plan writes. Teaching's admin routes already gate on
+  `manage_teaching_content` via `_DEP_MANAGE` (`router.py:1474`) — the
+  competency-plus-place shape that plan is driving everything else towards.
+  Teaching arrived there first, so it is the destination rather than the work.
+  The one live coupling is the frontend guard, handled on the Phase 5 item
+  itself.
+
+- **[Consolidate teaching
+  tooling](2026-08-30-consolidate-teaching-tooling-plan.md) — one genuine
+  collision, in Phase 5.** Its last open teaching item is an admin UI
+  surfacing version numbers and a promote control on
+  `AdminBankDetailPage.tsx`, and Phase 5 of this plan adds a media card to the
+  foot of that same file. Same file, same region, both adding a card. See the
+  ordering below. That plan also records hosted `<Video>` as an explicit
+  follow-up scoped out of the consolidation, and names the four pieces that
+  must land together — which is Phase 3 here, so the two agree on shape and
+  nothing needs reconciling.
+
+- **Both those branches are merged.** `feature/membership-and-reach-plan` and
+  `feature/platform-role-plan-revisions` are empty against `origin/main`.
+  Nothing is in flight but plan text, so "the other worktree" is not currently
+  holding code this plan has to wait for.
+
+#### Ordering that keeps the collisions apart
+
+- **Phase 0 first, whatever else is happening.** It touches no application
+  code and conflicts with nothing, and it is the item that can invalidate the
+  design — everything after it is wasted effort until the private-bucket
+  origin is proven.
+
+- **Phase 2a next, as its own pull request.** Its value does not depend on
+  video: it closes a live cross-organisation read on shipped endpoints. It is
+  backend-only, touches neither `AdminBankDetailPage.tsx` nor
+  `system_permissions`, and it creates the shared membership helper the
+  platform role plan's admin batch will want. Landing it early means that work
+  builds on it rather than beside it.
+
+- **Phases 1–4 are mostly new files** — the Terraform module,
+  `video_access.py`, `use-video-access.ts` — so they conflict with little. The
+  edits to existing files are small and surgical: one URL map path rule, one
+  config block, one route, and moving `Video` between two lists in
+  `mdx_parser.py`.
+
+- **Phase 5 waits for the tooling plan's admin UI item, or ships with it.**
+  Take the second: one developer, one file, and the coordination cost of
+  splitting the two cards exceeds the merge cost of writing them together. If
+  they are split, the promote control goes first — it is a single item
+  depending on no unanswered question, and its endpoint has been in use through
+  the API for a while.
+
+- **Phases 6 and 7 are unaffected** by any of the above.
 
 ### Revision 1: liveness is per organisation, and versions are promoted
 
@@ -520,13 +584,18 @@ behaviour change to two shipped endpoints: a user who today reads a module their
 organisation does not have will get a 404 afterwards. That is the intended
 correction, not a regression.
 
-> **Check this phase is still needed before starting it.** The cross-organisation
-> slide-reading gap is also in scope for the teaching work running in a separate
-> worktree, and may well be fixed there first — this plan is on a slower clock
-> than that branch. Before writing any of it, read `get_learning_content` and
-> `list_learning_modules` on current `main` and see what is already there.
+> **Checked on 2026-09-09 against `origin/main`: still needed, and unchanged.**
+> The hedge below anticipated this being fixed first in the parallel teaching
+> worktree. It was not. Both endpoints are exactly as described — the line
+> numbers are still exact, and both still take only `user: User = _DEP_USER`
+> with no database session, so neither can check membership as written. Build
+> this phase.
 >
-> Three outcomes, and only the last needs thought:
+> **Re-check anyway if time has passed since 2026-09-09**, because the reason
+> the hedge existed has not gone away — the same gap remains in scope for
+> teaching work on a faster clock than this plan. Read `get_learning_content`
+> and `list_learning_modules` on current `main` first. Three outcomes, and only
+> the last needs thought:
 >
 > - **Already fixed, same shape** — tick these items off and move on. Phase 2's
 >   only requirement is that `video-access` calls whatever helper exists rather
@@ -707,8 +776,17 @@ content calls for it.
       delete confirmation, naming them: "this will make the module unavailable to
       learners in `<organisation>` until a replacement is uploaded." A warning, not
       a block. The admin cannot otherwise see that consequence from this page.
-- [ ] Behind `<RequirePermission level="admin">`, consistent with the rest of the
-      admin teaching pages.
+- [ ] No route guard of its own. **[revised 2026-09-09]** The card needs one,
+      but it already has one: the whole `/admin` subtree sits under a single
+      `<RequirePermission level="admin">` wrapper at
+      `frontend/src/main.tsx:280`, and `AdminBankDetailPage` is inside it.
+      Adding a second guard on the card would be redundant now and actively
+      wrong later — the platform role plan (`2026-09-09-platform-role-plan.md`)
+      deletes `RequirePermission` entirely, and a card that inherits the subtree
+      guard needs no edit when it goes, while one declaring its own does. If
+      that plan has landed by the time this is built, confirm what replaced the
+      subtree wrapper and inherit that instead; do not reintroduce a per-card
+      guard.
 - [ ] Storybook stories and tests per the components rule: all linked, some
       missing, unattached assets present, upload in progress, delete
       confirmation with and without live organisations.
