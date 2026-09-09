@@ -131,30 +131,9 @@ resource "google_compute_url_map" "https" {
     name            = "quill-paths"
     default_service = google_compute_backend_service.frontend.id
 
-    # One dynamic block over one list, rather than a static `/api/*` rule plus
-    # a dynamic one beside it. Those two cannot coexist: the dynamic block
-    # replaces the whole set of `path_rule` blocks rather than appending to the
-    # static one, so adding the spike planned `/api/*` -> null and would have
-    # taken the teaching API down. Caught by `terraform plan`; see the video
-    # auth gate plan's Phase 0 findings.
-    #
-    # The spike entry is absent unless its variable is set, so `prod` and
-    # `staging` render exactly the rule set they render today.
-    dynamic "path_rule" {
-      for_each = concat(
-        [{
-          paths   = ["/api", "/api/*"]
-          service = google_compute_backend_service.backend.id
-        }],
-        var.video_spike_backend_bucket_id != null ? [{
-          paths   = ["/videospike/*"]
-          service = var.video_spike_backend_bucket_id
-        }] : []
-      )
-      content {
-        paths   = path_rule.value.paths
-        service = path_rule.value.service
-      }
+    path_rule {
+      paths   = ["/api", "/api/*"]
+      service = google_compute_backend_service.backend.id
     }
   }
 

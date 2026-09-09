@@ -109,9 +109,3 @@ variable "cloud_run_services" {
   type        = list(string)
   default     = []
 }
-
-variable "enable_video_spike" {
-  description = "Create the Phase 0 video spike (teaching only). Off by default so the spike is inert until deliberately switched on, and cannot be left running by inattention. Temporary: removed once Phase 0 is closed out."
-  type        = bool
-  default     = false
-}
