@@ -320,18 +320,20 @@ site-level permission check will reach for — which is the trap this column is 
       drop the partial index, rename the column, move `clinical_lead` rows to `staff`, rename
       the table, then rename the primary key and both foreign keys, which Postgres leaves
       under their old names. Checked by running it down and up and inspecting the result.
-- [ ] **Then remove `role` from `SiteStaffItem`.** Still a breaking API change needing an
-      `oasdiff` finding and a decision file, and the site page's staff filter goes with it —
-      settled as not worth keeping, since nothing compares `staff` and the useful half is
-      `trainee`, which the capacity column keeps.
-      - `role` being in the response makes removal a **breaking API change**, so it needs an
-        `oasdiff` finding and a decision file. The interface no longer depends on it for the
-        clinical lead, which is what makes the removal possible.
-      - The staff filter on `SiteAdminPage` goes with it. Settled: not worth keeping.
-      - Dropping the column is also destructive, so it trips the
-        `db-destructive-migration-review` required-reviewer gate.
-      - None of that is hard here, because there is no live data. It is worth doing properly
-        anyway: the sequence is cheap to practise now and expensive to learn later.
+- [x] **Removed `role` from `SiteStaffItem`.** The contract step, and the only genuinely
+      breaking change of the sequence.
+      - **No migration, and no destructive gate.** An earlier version of this item said the
+        column would be dropped and would trip `db-destructive-migration-review`. That was
+        written before the rename settled: `capacity` stays, because `list_delegates` reads
+        `trainee` to resolve a delegate's site. Only the response field goes.
+      - `oasdiff` reports exactly one breaking change —
+        `response-required-property-removed` on `GET /api/sites/{site_id}` — with a decision
+        file recording `forces_reload: false`. A stale tab loses a column from the staff
+        table; nothing it can do produces a wrong answer.
+      - The wording was taken from `oasdiff` itself rather than guessed, by generating both
+        specs and diffing them locally with the pinned image. Guessing it would have failed
+        the coverage check in CI on an exact-string comparison.
+      - The staff filter on `SiteAdminPage` went with it, as settled.
 
 ### Now and "on a date" are different questions
 

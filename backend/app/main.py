@@ -588,36 +588,6 @@ def health_check() -> HealthCheckOut:
     )
 
 
-# ---------------------------------------------------------------------------
-# TEMPORARY. Delete this endpoint, its test, and this comment once the
-# verification below is recorded in the analytics plan.
-#
-# The 5xx alert policy has never fired. Its filter is known to match real
-# errors — querying it over thirty days returned ten genuine 5xx responses on
-# this service — but none of them was dense enough to cross the threshold of
-# more than five in a five-minute window, so the threshold and the duration
-# have never been exercised. Everything downstream of them is proven: email,
-# SMS, Slack and the PagerDuty phone call have each delivered a real alert.
-#
-# It is worth the trouble because of what today established twice over: an
-# alert that exists in the code is not evidence of an alert that exists in
-# Google. The browser-error policy was rejected on every apply for two days
-# while the repository said it was live.
-#
-# Returns the status directly rather than raising, so Cloud Error Reporting is
-# not given a fabricated fault to group and keep. The alert counts Cloud Run's
-# own request_count metric by response class, which does not care whether an
-# exception was involved.
-#
-# Unauthenticated on purpose, so it can be driven with curl from anywhere,
-# and harmless: it reads nothing, writes nothing, and returns an empty body.
-# ---------------------------------------------------------------------------
-@router.get("/kaboom", include_in_schema=False)
-def kaboom() -> Response:
-    """Return 500, to prove the server-error alert fires. Temporary."""
-    return Response(status_code=500)
-
-
 def get_current_user(request: Request, db: Session = DEP_GET_SESSION) -> User:
     """Get Currently Authenticated User.
 
@@ -4510,7 +4480,6 @@ def get_site(
             User.username,
             User.email,
             User.full_name,
-            site_member.c.capacity,
         )
         .join(site_member, site_member.c.user_id == User.id)
         .where(site_member.c.site_id == site_id)
@@ -4553,11 +4522,6 @@ def get_site(
                 "username": s.username,
                 "email": s.email,
                 "full_name": s.full_name or "",
-                # The response still calls it "role" until the contract
-                # step removes the field. Its value is now the capacity, so
-                # a clinical lead reads as "staff" here — the post is what
-                # says they lead, and clinical_lead_id carries that.
-                "role": s.capacity,
             }
             for s in staff
         ],
