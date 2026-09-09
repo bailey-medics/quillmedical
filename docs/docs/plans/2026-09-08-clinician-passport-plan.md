@@ -1,4 +1,4 @@
-# Clinical passport plan
+# Clinician passport plan
 
 Oncology registrars in the South West utilise a "SACT passport" and a
 "radiotherapy passport": a portable record of the clinical competencies
@@ -8,7 +8,7 @@ into digital portfolios. Quill Medical already has the vocabulary for
 competencies (CBAC, `shared/competencies.yaml`) but nothing that records
 the **sign-off** itself: the two-party act of a trainee presenting
 evidence and a named assessor accepting accountability for it. This
-plan adds a Clinical Passport that holds those sign-offs as portable,
+plan adds a Clinician Passport that holds those sign-offs as portable,
 versioned, human-readable files — one git repository per holder, a
 YAML index of where every competency stands, and one immutable signed
 YAML record per sign-off — rendered on demand to Markdown and PDF
@@ -494,7 +494,7 @@ whom, on what evidence." They share one competency vocabulary and
 nothing else.
 
 - **There is no separate framework registry** — competencies live
-  where they already live, in `shared/competency-definitions.yaml`,
+  where they already live, in `shared/competency-definitions/`,
   extended with a few optional fields. No second directory, no second
   schema, no second validator, and no second place to look when
   something is wrong.
@@ -529,8 +529,20 @@ nothing else.
   "the SACT passport". Membership of a passport is local policy: the
   South West's list will not match another region's, and encoding one
   view centrally would impose it on everyone. A passport simply holds
-  the sign-offs its holder has accumulated. If a checklist is wanted
-  later it belongs to an organisation, not to a competency definition.
+  the sign-offs its holder has accumulated.
+
+- **A site or organisation may curate a shortlist, as a convenience
+  only** — an oncology centre will want its common competencies to
+  hand rather than making people search a few thousand definitions.
+  That shortlist is Quill configuration held in Postgres, never part
+  of a passport, so an exported record never carries one trust's
+  opinion of what matters into another. It suggests and never gates:
+  the picker shows "commonly used here" first with a full search
+  beneath it reaching every competency, and nothing is hidden or
+  refused. The wording matters as much as the behaviour — "commonly
+  used here" rather than "required", or a convenience list quietly
+  becomes a syllabus, which is the sufficiency judgement the passport
+  deliberately refuses to make.
 
 - **The passport does not grant CBAC competencies** — a signed-off
   passport competency is evidence an administrator may act on, not an
@@ -539,8 +551,8 @@ nothing else.
   into an access-control input and needs clinical safety review.
 
 - **Passport competencies are gated by CBAC** — two feature-admin
-  competencies: `hold_clinical_passport` (may own a passport and
-  request sign-off) and `sign_off_clinical_passport` (may sign off).
+  competencies: `hold_clinician_passport` (may own a passport and
+  request sign-off) and `sign_off_clinician_passport` (may sign off).
   Self-sign-off is refused at the API regardless of competencies. A
   competency definition may narrow who can sign it off by base
   profession.
@@ -548,7 +560,7 @@ nothing else.
 - **Assessors may be external to Quill** — most consultants who sign a
   registrar's passport will never otherwise use Quill. The holder
   invites them, they register through the existing invite-token flow,
-  and they hold `sign_off_clinical_passport` and nothing else. See
+  and they hold `sign_off_clinician_passport` and nothing else. See
   "External assessors" below.
 
 ### Competency identifiers
@@ -958,7 +970,7 @@ the only new infrastructure is two secrets.
   identity the deployment asserted, not merely possession of a key.
 
 - **Per-assessor keys, server-custodied** — when a user gains
-  `sign_off_clinical_passport`, the server generates an ECDSA P-256 key
+  `sign_off_clinician_passport`, the server generates an ECDSA P-256 key
   pair and issues a certificate in VPR's layout: `CN` is the name, `O`
   the registration authority, X.520 `serialNumber` the registration
   number, a SAN URI of the form `quill://GMC/1234567`, key usage
@@ -1038,7 +1050,7 @@ the only new infrastructure is two secrets.
   is a user with `system_permissions` of `single-user`, no
   organisation membership, a base profession chosen from a short list,
   the declared registrations in `professional_registrations`, and
-  `sign_off_clinical_passport` in `additional_competencies`. The signing
+  `sign_off_clinician_passport` in `additional_competencies`. The signing
   key and certificate are issued at that moment.
 
 - **Scope of access** — an external assessor sees and acts on exactly
@@ -1065,7 +1077,7 @@ the only new infrastructure is two secrets.
 
 - **Revocation** — an admin of the inviting organisation can revoke an
   external assessor, which revokes their certificate and removes
-  `sign_off_clinical_passport`. Signed sign-offs stand.
+  `sign_off_clinician_passport`. Signed sign-offs stand.
 
 ### What lives in Postgres
 
@@ -1095,6 +1107,12 @@ not a copy of the record.
   `registration_number`, `token_hash`, `expires_at`, `accepted_at`,
   `accepted_user_id`. Workflow for bringing an external assessor in;
   consumed once.
+
+- **`site_common_competency`** — `site_id` or `organisation_id`,
+  `competency_id`, `position`. An admin-curated shortlist for the
+  picker, at site level with the organisation as fallback. Pure
+  interface convenience: nothing reads it when deciding what a person
+  may do or be signed off for.
 
 - **`passport_signoff_log`** — `id`, `passport_id`, `signoff_id`,
   `content_hash`, `commit_sha`, `logged_at`. Append-only, written on
@@ -1143,7 +1161,7 @@ mutations, `requires_feature("passport")`, and the CBAC competencies
 above. Additive only, per `.claude/rules/backend.md`.
 
 - `POST /api/passport` — create the caller's passport.
-  `hold_clinical_passport`.
+  `hold_clinician_passport`.
 - `GET /api/passport/me` — the caller's passport with derived status
   per competency.
 - `GET /api/passport/{id}` — a passport the caller may view: the holder,
@@ -1154,7 +1172,7 @@ above. Additive only, per `.claude/rules/backend.md`.
   optional reflection and evidence uploads. Writes a `requested`
   sign-off and a request row.
 - `GET /api/passport/requests/inbox` — the caller's open requests as an
-  assessor. `sign_off_clinical_passport`.
+  assessor. `sign_off_clinician_passport`.
 - `POST /api/passport/{id}/sign-offs/{signoff_id}/sign-off` —
   assessor signs, with level, caveats, optional assessment narrative
   and a fresh `totp_code`. Refused if the assessor is the holder, is
@@ -1166,7 +1184,7 @@ above. Additive only, per `.claude/rules/backend.md`.
   readable by anyone who may read the sign-off.
 - `GET /api/passport/ca.pem` — the deployment CA certificate. Public.
 - `POST /api/passport/{id}/assessors/invite` — holder or organisation
-  admin invites an external assessor. `hold_clinical_passport`, rate
+  admin invites an external assessor. `hold_clinician_passport`, rate
   limited.
 - `POST /api/passport/assessors/accept` — public; consumes the invite
   token, registers or links the user, issues the signing certificate.
@@ -1187,7 +1205,11 @@ above. Additive only, per `.claude/rules/backend.md`.
   entries with a count, and no target.
 - `GET /api/passport/{id}/export.md`, `export.pdf`, `export.zip`.
 - `GET /api/passport/competencies` — the competency definitions with
-  their levels, for populating the request form.
+  their levels, for populating the request form. Returns the caller's
+  site shortlist first and everything else after it, both in one
+  response, so the interface can suggest without restricting.
+- `PUT /api/sites/{site_id}/common-competencies` — an admin curates
+  the shortlist. Admin of that site's organisation only.
 
 ### Frontend
 
@@ -1209,7 +1231,8 @@ above. Additive only, per `.claude/rules/backend.md`.
   (the fixed declaration text), `EvidenceUploader`,
   `PassportExportButtons`, `CertificateUploader`, `CertificateCard`,
   `LogbookEntryForm`, `LogbookTable` (entries and a count, never a
-  target), `InviteAssessorForm`, `SignatureBadge`
+  target), `CompetencyPicker` (shortlist first, full search beneath,
+  nothing hidden), `InviteAssessorForm`, `SignatureBadge`
   (signed, unverified registration, expired, revoked) and
   `VerificationPanel` (the verify endpoint's result). Each with
   `.stories.tsx` and `.test.tsx`, built from `BaseCard`, `ButtonPair`,
@@ -1228,10 +1251,11 @@ above. Additive only, per `.claude/rules/backend.md`.
 
 - **Definition CI gate** — a validator under `backend/app/features/`
   in the style of `features/teaching/tooling/validate.py` that checks
-  the passport fields added to the competency definitions: every
-  assessor base profession exists, level lists are well-formed,
-  versions are immutable once published (a changed file with the same
-  version fails).
+  the competency definitions: ids are unique across every file in the
+  directory including any deprecated ones, no id contains a `/`, every
+  assessor base profession exists, and level lists are well-formed.
+  The uniqueness check is what makes splitting the directory safe, so
+  it goes in before the split rather than after.
 
 - **Guard clauses** — every route validates the passport exists, the
   caller's relationship to it, the sign-off's current status allows
@@ -1269,20 +1293,32 @@ above. Additive only, per `.claude/rules/backend.md`.
       Board's _Prescriber competencies for reviewing and prescribing
       SACT_ (November 2023), the South West passports and the RCR
       entrustment scales.
-- [ ] Rename `shared/competencies.yaml` to
-      `shared/competency-definitions.yaml` so it cannot be confused
-      with a passport's own `competencies.yaml`. Touches the loader
-      constant in `backend/app/cbac/competencies.py`, the list in
-      `frontend/scripts/generate-json-from-yaml.ts`, the four frontend
-      files importing the generated JSON, `backend/tests/test_competencies.py`
-      and three live docs pages. Edit `.github/copilot-instructions.md`
-      rather than `CLAUDE.md` and re-run `/sync-copilot-config`; leave
+- [ ] Move `shared/competencies.yaml` into
+      `shared/competency-definitions/`, split by kind into
+      `clinical.yaml` and `feature-admin.yaml`. Clinical holds the
+      patient-facing competencies — prescribing, procedures,
+      certification, consent, imaging, specialty, patient records.
+      Feature admin holds the ones that govern Quill itself: the
+      teaching set, `manage_users`, `access_clinic_admin`, and the two
+      passport competencies. They are different kinds of thing sharing
+      one mechanism, and reading them side by side today makes that
+      hard to see. The directory name removes the confusion with a
+      passport's own `competencies.yaml`, and reading a directory now
+      means splitting it later is a file move with no code change.
+      Touches the loader in `backend/app/cbac/competencies.py`, which
+      globs `*.yaml` and merges rather than opening one path; the
+      list
+      in `frontend/scripts/generate-json-from-yaml.ts`, which merges
+      before emitting one JSON; the four frontend files importing the
+      generated JSON; `backend/tests/test_competencies.py`; and three
+      live docs pages. Edit `.github/copilot-instructions.md` rather
+      than `CLAUDE.md` and re-run `/sync-copilot-config`; leave
       historical plan documents untouched.
 - [ ] Add the `sact` and `radiotherapy` categories and their
-      competencies to `shared/competency-definitions.yaml`, with
+      competencies to `shared/competency-definitions/`, with
       `display_name`, `category` and `risk_level`.
-- [ ] Add `hold_clinical_passport` and `sign_off_clinical_passport` to
-      `shared/competency-definitions.yaml` under the feature-admin
+- [ ] Add `hold_clinician_passport` and `sign_off_clinician_passport` to
+      `shared/competency-definitions/` under the feature-admin
       category, and to the appropriate base professions in
       `shared/base-professions.yaml`.
 - [ ] Add the optional passport fields — `levels`,
@@ -1307,7 +1343,7 @@ above. Additive only, per `.claude/rules/backend.md`.
       `schemas.py` (Pydantic models for `passport.yaml`,
       `sign-off.yaml`, certificates, logbook files and sidecars), and
       `definitions.py` (reads the passport fields from
-      `shared/competency-definitions.yaml`).
+      `shared/competency-definitions/`).
 - [ ] Implement `store.py` with the `PassportStore` interface and the
       local filesystem backend, including `init_and_commit` with
       whole-directory cleanup on failure and `write_and_commit_files`
@@ -1332,9 +1368,12 @@ above. Additive only, per `.claude/rules/backend.md`.
 - [ ] Implement `service.py`: create passport, request sign-off, sign
       off, decline, withdraw, supersede, each as one validated write
       and one commit, with the derived per-competency status function.
+- [ ] Add the `site_common_competency` model and an admin endpoint to
+      curate it, with tests proving the shortlist never restricts what
+      can be requested.
 - [ ] Add the `passport` and `passport_signoff_request` models to
       `backend/app/models.py` and create the migration with
-      `just migrate "add clinical passport tables"`.
+      `just migrate "add clinician passport tables"`.
 - [ ] Implement the per-passport Postgres advisory lock and HEAD
       assertion in the service layer.
 - [ ] Unit tests with real temporary directories: every validation
@@ -1370,7 +1409,7 @@ above. Additive only, per `.claude/rules/backend.md`.
       VPR's subject layout, KEK encryption and decryption of private
       keys, canonical YAML serialisation, content hashing, sign,
       verify, chain check and validity-at-time check.
-- [ ] Issue a certificate wherever `sign_off_clinical_passport` is
+- [ ] Issue a certificate wherever `sign_off_clinician_passport` is
       granted: user provisioning, admin competency edits and invite
       acceptance; revoke it wherever the competency is removed.
 - [ ] Add signed commits to the store through pygit2's
@@ -1429,7 +1468,7 @@ above. Additive only, per `.claude/rules/backend.md`.
       `features/teaching/email_templates.py`; rate limit invites per
       holder per day.
 - [ ] Add the accept endpoint: register or link the user, store
-      registrations, add `sign_off_clinical_passport`, issue the signing
+      registrations, add `sign_off_clinician_passport`, issue the signing
       certificate, consume the invite.
 - [ ] Add the holder-organisation feature gate for assessor routes next
       to `requires_feature` in `backend/app/features/gating.py`.
@@ -1452,7 +1491,7 @@ above. Additive only, per `.claude/rules/backend.md`.
       with `RequireAuth`, `RequireFeature feature="passport"` and CBAC
       hooks.
 - [ ] Add the passport entry to navigation for users holding
-      `hold_clinical_passport` or `sign_off_clinical_passport`.
+      `hold_clinician_passport` or `sign_off_clinician_passport`.
 - [ ] Frontend tests with `just uf src/components/passport` and
       `just uf src/pages/passport`; Storybook tests with `just sbt`.
 
@@ -1473,7 +1512,7 @@ above. Additive only, per `.claude/rules/backend.md`.
 - [ ] Enable the `passport` feature for the first South West
       organisation and onboard a small assessor group.
 - [ ] Document the module under `docs/docs/backend/passport/index.md`
-      and add a concepts page `docs/docs/concepts/clinical-passport.md`
+      and add a concepts page `docs/docs/concepts/clinician-passport.md`
       explaining the CBAC relationship.
 
 ## Future items, deliberately deferred
@@ -1530,6 +1569,31 @@ close them off, and so nobody builds them before there is a need.
   level or to nothing at all is a clinical decision rather than a
   technical one.
 
+- **Registration lapse cascading to grants** —
+  `2026-09-06-org-scoped-access-findings.md` defers this here, along
+  with ceiling expiry, on the grounds that only a record of how a
+  competency was obtained can know it has lapsed. This plan records
+  how but never writes to CBAC, so the cascade has no route yet. It
+  arrives with automatic CBAC granting above, not before, and neither
+  plan should assume the other has already done it.
+
+- **Deriving the shortlist from use** — rather than an admin curating
+  it, compute what is commonly signed off at a site and offer that.
+  Self-maintaining and a truer reflection of local practice, but it
+  needs data before it works, so an explicit list comes first.
+
+- **Serving competencies from the API rather than the bundle** — the
+  generated `competencies.json` is imported directly into React, so
+  every competency ever defined ships to every browser. That will bite
+  well before the YAML file becomes unwieldy, and splitting the file
+  does not fix it. The fix is an endpoint and a dropped build-time
+  import.
+
+- **One file per competency** — Doorstop's model, if the directory ever
+  grows past what category files can hold comfortably. Zero merge
+  conflicts by construction and trivially greppable, at the cost of
+  hundreds of files.
+
 - **CSV export** — one row per sign-off, for the common case of
   someone importing into a spreadsheet or another system by hand.
   Deliberately not part of the bundle, which stays YAML and Markdown.
@@ -1559,8 +1623,21 @@ close them off, and so nobody builds them before there is a need.
   in VPR. Someone working across SACT and radiotherapy has one
   repository holding both.
 
+- **Split by kind now, by size later** — clinical competencies and
+  feature-admin competencies are different things sharing one
+  mechanism: one describes what a person may do to a patient, the
+  other what they may do to Quill. Separating those two is worth doing
+  immediately, because reading them interleaved makes the distinction
+  hard to see and invites the wrong risk level on the wrong entry.
+  Splitting _further_ — by prescribing, procedures and so on — is a
+  size problem and remains speculative, so it waits. The loader globs
+  a directory either way, so later splits are file moves with no code
+  change, and the nine category headers already in the file are the
+  seam when the time comes. Recategorising then is cosmetic: the id
+  inside is what everything references.
+
 - **One competency registry, not two** — the passport adds optional
-  fields to `shared/competency-definitions.yaml` rather than
+  fields to `shared/competency-definitions/` rather than
   introducing a parallel framework registry. One identifier for
   "prescribe SACT cycle 1" everywhere, nothing to drift, and no second
   schema or validator to maintain. What a passport contains is
@@ -1685,6 +1762,13 @@ close them off, and so nobody builds them before there is a need.
   judgement. The interface should make which is which obvious without
   anyone having to think about it.
 
+- **A curated shortlist suggests; it never restricts** — an oncology
+  centre needs its competencies to hand, but the moment a list is
+  presented as the set that matters it becomes a syllabus the software
+  is asserting. So the shortlist is interface furniture in Postgres,
+  outside the passport, and every competency stays reachable through
+  search. This is the same line as counting without comparing.
+
 - **The passport counts evidence but never judges sufficiency** — it
   reports thirty-eight logged procedures and stops there. No target,
   no progress bar, no "requirements met". How many is enough is a
@@ -1762,7 +1846,7 @@ close them off, and so nobody builds them before there is a need.
   whether sign-offs from unverified assessors should not count
   towards completion until verified.
 
-- **What the product is called** — "Clinical passport" is the working
+- **What the product is called** — "Clinician passport" is the working
   title, but `clinical` already means "depends on FHIR and EHRbase,
   i.e. patient data" in this codebase (`RequireClinical`), and a
   passport holds no patient data at all. _Practice passport_ avoids
@@ -1771,6 +1855,15 @@ close them off, and so nobody builds them before there is a need.
   matches the RCR's "capabilities in practice". The module, API and
   feature key stay plain `passport` whichever is chosen, and the CBAC
   ids above should follow the final name.
+
+- **What happens when a genuinely required list arrives** — a deanery
+  or college list of required competencies is coming, and it is not
+  the same thing as a site's convenience shortlist. Showing "your
+  programme requires these twenty, fourteen are signed off" is
+  arguably reporting an external body's stated requirement rather than
+  the software judging sufficiency, which would make it legitimate
+  where a logbook target is not. That distinction needs deciding
+  deliberately rather than drifting into a progress bar.
 
 - **Whether logbook entries may carry patient identifiers** — surgical
   logbooks record anonymised patient references so entries can be
