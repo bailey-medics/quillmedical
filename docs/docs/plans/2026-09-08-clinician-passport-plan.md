@@ -550,17 +550,40 @@ nothing else.
   a future item (see below) because it turns an educational record
   into an access-control input and needs clinical safety review.
 
-- **Passport competencies are gated by CBAC** — two feature-admin
-  competencies: `hold_clinician_passport` (may own a passport and
-  request sign-off) and `sign_off_clinician_passport` (may sign off).
-  Self-sign-off is refused at the API regardless of competencies. A
-  competency definition may narrow who can sign it off by base
-  profession.
+- **One competency gates the whole feature** —
+  `access_clinician_passport`, a feature-admin competency meaning this
+  person uses the passport. Holding one and signing one are not
+  separate privileges, because they are not separate people: a
+  consultant of thirty years still needs new competencies signed off,
+  and a registrar signed off for thoracic ultrasound last year is
+  often exactly the right person to sign off a junior this year.
+  Splitting them would encode a seniority model that does not match
+  how clinical training actually works.
+
+- **What actually constrains a sign-off** is not a CBAC flag:
+  - Self-sign-off is refused at the API, always. This is the only
+    hard rule, and it is the one that matters, because the whole value
+    of the record is a second named person.
+  - The holder chooses their assessor, so the judgement about who is
+    appropriate sits with the person being assessed and their
+    supervisor, where it belongs.
+
+  Nothing else. There is no eligibility rule, no list of who may sign
+  what, and no requirement that a signer holds the competency
+  themselves. Who is fit to assess someone is a clinical judgement made
+  by clinicians, and it varies by procedure, by department and by the
+  people involved in ways no rule table would survive.
+
+  The system records rather than polices. A sign-off names its
+  assessor, their role and their registration, so anyone reading the
+  record can judge whether it was appropriate. Enforcing professional
+  judgement the software cannot verify would be the same mistake as
+  judging sufficiency from a logbook count.
 
 - **Assessors may be external to Quill** — most consultants who sign a
   registrar's passport will never otherwise use Quill. The holder
   invites them, they register through the existing invite-token flow,
-  and they hold `sign_off_clinician_passport` and nothing else. See
+  and they hold `access_clinician_passport` and nothing else. See
   "External assessors" below.
 
 ### Competency identifiers
@@ -604,45 +627,36 @@ nothing else.
   taxonomy and defensible, but drugs do get rescheduled; it is the one
   current id worth revisiting.
 
-### Standards this maps onto
+### Standards we checked, and what we took
 
-The aim is to sit on existing standards rather than add another one.
-Git, YAML and Markdown are storage, not a standard we are inventing;
-the vocabulary and the interchange format come from elsewhere.
+Git, YAML and Markdown are storage rather than a standard we are
+inventing. Beyond that we take lessons from existing standards, and
+implement none of them, because nothing consumes an export today. When
+something does, the future items say where to look.
 
 - **Content**: the first set of competencies is drafted from working
-  clinical
-  knowledge, then checked against the UK SACT Board's _Prescriber
-  competencies for reviewing and prescribing SACT_ (November 2023),
-  which reportedly covers medical prescribers at ST level and above.
-  Aligning to it matters for adoption rather than for building, so it
-  is a later task in Phase 0, not a prerequisite.
+  clinical knowledge, then checked against the UK SACT Board's
+  _Prescriber competencies for reviewing and prescribing SACT_
+  (November 2023), which reportedly covers medical prescribers at ST
+  level and above. Aligning to it matters for adoption rather than for
+  building, so it is a later task in Phase 0 and not a prerequisite.
 
-- **Competency definition shape**: the 1EdTech CASE model — items with
-  a
-  synthetic identifier, a separate human coding scheme, and hierarchy
-  expressed as associations rather than nesting.
+- **Identifiers**: 1EdTech CASE and SNOMED CT both keep classification
+  out of identifiers entirely. That lesson is applied in full — see
+  the identifier section above — and is the only thing taken from
+  either.
 
-- **Sign-off export**: Open Badges 3.0, which is itself a W3C
-  verifiable credential and already provides
-  `achievementType: "Competency"`, `Result.achievedLevel` against a
-  named scale, `validUntil`, `Alignment` into a framework, and
-  `Evidence.narrative` typed as Markdown. Field names in
-  `sign-off.yaml` are chosen so this mapping stays mechanical.
-  Storage stays YAML, because the person whose record it is must be
-  able to read it; the badge is what leaves the building.
+- **Provenance**: the PRSB Provenance Data Standard is a useful way to
+  think about a sign-off, since who recorded what, where and when is
+  structurally what one is.
 
-- **Practitioner export**: FHIR UK Core `Practitioner.qualification`,
-  which already carries a coded qualification, a validity period and
-  an issuing organisation.
-
-- **Provenance**: the PRSB Provenance Data Standard as the conceptual
-  shape for who recorded what, where and when.
-
-Two gaps no standard closes, which remain ours to build: two-party
-sign-off, since a verifiable credential has one issuer and one
-signature; and binding a signing key to a GMC number, for which no UK
-trust registry exists.
+Two gaps the research flagged, both now settled rather than open.
+**Two-party sign-off** turned out not to be a gap: there is only one
+signature, the assessor's, and it covers a file already containing the
+holder's contributions, so a second adds nothing. **Binding a key to a
+GMC number** is closed by not making the claim — registrations are
+recorded as data with a verified flag, never sealed into a
+certificate.
 
 ### Three ways in, and two levels of trust
 
@@ -776,7 +790,6 @@ several.
 
 - **Three reasons for a later sign-off, and only one supersedes** —
   `kind` records which:
-
   - `initial` — the first sign-off for this competency.
   - `progression` — a higher level than before, for example supervised
     in March and unsupervised in September. The earlier record stays
@@ -970,11 +983,13 @@ the only new infrastructure is two secrets.
   identity the deployment asserted, not merely possession of a key.
 
 - **Per-assessor keys, server-custodied** — when a user gains
-  `sign_off_clinician_passport`, the server generates an ECDSA P-256 key
-  pair and issues a certificate in VPR's layout: `CN` is the name, `O`
-  the registration authority, X.520 `serialNumber` the registration
-  number, a SAN URI of the form `quill://GMC/1234567`, key usage
-  `digitalSignature` and `contentCommitment`, validity twelve months.
+  `access_clinician_passport`, the server generates an ECDSA P-256 key
+  pair and issues a certificate. `CN` is the person's name, `O` is the
+  issuing deployment, the SAN URI identifies the Quill account, key
+  usage is `digitalSignature` and `contentCommitment`, validity twelve
+  months. Deliberately **not** VPR's layout: no registration authority
+  in `O`, no registration number in X.520 `serialNumber`. See the
+  decision below.
   The private key is encrypted with a key-encryption key from settings
   (`PASSPORT_SIGNING_KEK`, in Secret Manager) and stored in the
   `passport_signer` table. Assessors never see or handle a key.
@@ -1022,11 +1037,27 @@ the only new infrastructure is two secrets.
   is the revocation source of truth, and the future items say what an
   offline list would add.
 
-- **Limits stated honestly** — the deployment asserts the registration
-  number the assessor declared; it does not check the GMC register.
-  The certificate's `O` and `serialNumber` mean "as declared to
-  Quill", and the verify endpoint says so alongside the
-  `registration_verified` flag described under external assessors.
+- **Professional registrations live in the record, not the
+  certificate** — both the holder and the assessor carry a list of
+  registrations as plain key and value pairs, using the bodies already
+  listed in `shared/jurisdiction-config.yaml`:
+
+  ```yaml
+  registrations:
+    - body: GMC
+      number: "1234567"
+      verified: false        # nobody has checked the register
+  ```
+
+  Every registration carries `verified`, plus who verified it and when
+  once an admin has. Quill does not check the GMC, NMC, GPhC or HCPC
+  registers, and the record says so rather than implying otherwise.
+
+- **What the signature actually proves** — that this key belongs to
+  this Quill account, and that this file has not changed since it was
+  signed. It does not prove a professional registration, and the
+  verify endpoint says exactly that rather than leaving a reader to
+  assume more.
 
 ### External assessors
 
@@ -1050,7 +1081,7 @@ the only new infrastructure is two secrets.
   is a user with `system_permissions` of `single-user`, no
   organisation membership, a base profession chosen from a short list,
   the declared registrations in `professional_registrations`, and
-  `sign_off_clinician_passport` in `additional_competencies`. The signing
+  `access_clinician_passport` in `additional_competencies`. The signing
   key and certificate are issued at that moment.
 
 - **Scope of access** — an external assessor sees and acts on exactly
@@ -1077,7 +1108,7 @@ the only new infrastructure is two secrets.
 
 - **Revocation** — an admin of the inviting organisation can revoke an
   external assessor, which revokes their certificate and removes
-  `sign_off_clinician_passport`. Signed sign-offs stand.
+  `access_clinician_passport`. Signed sign-offs stand.
 
 ### What lives in Postgres
 
@@ -1161,7 +1192,7 @@ mutations, `requires_feature("passport")`, and the CBAC competencies
 above. Additive only, per `.claude/rules/backend.md`.
 
 - `POST /api/passport` — create the caller's passport.
-  `hold_clinician_passport`.
+  `access_clinician_passport`.
 - `GET /api/passport/me` — the caller's passport with derived status
   per competency.
 - `GET /api/passport/{id}` — a passport the caller may view: the holder,
@@ -1172,7 +1203,7 @@ above. Additive only, per `.claude/rules/backend.md`.
   optional reflection and evidence uploads. Writes a `requested`
   sign-off and a request row.
 - `GET /api/passport/requests/inbox` — the caller's open requests as an
-  assessor. `sign_off_clinician_passport`.
+  assessor. `access_clinician_passport`.
 - `POST /api/passport/{id}/sign-offs/{signoff_id}/sign-off` —
   assessor signs, with level, caveats, optional assessment narrative
   and a fresh `totp_code`. Refused if the assessor is the holder, is
@@ -1184,7 +1215,7 @@ above. Additive only, per `.claude/rules/backend.md`.
   readable by anyone who may read the sign-off.
 - `GET /api/passport/ca.pem` — the deployment CA certificate. Public.
 - `POST /api/passport/{id}/assessors/invite` — holder or organisation
-  admin invites an external assessor. `hold_clinician_passport`, rate
+  admin invites an external assessor. `access_clinician_passport`, rate
   limited.
 - `POST /api/passport/assessors/accept` — public; consumes the invite
   token, registers or links the user, issues the signing certificate.
@@ -1253,7 +1284,7 @@ above. Additive only, per `.claude/rules/backend.md`.
   in the style of `features/teaching/tooling/validate.py` that checks
   the competency definitions: ids are unique across every file in the
   directory including any deprecated ones, no id contains a `/`, every
-  assessor base profession exists, and level lists are well-formed.
+  and level lists are well-formed.
   The uniqueness check is what makes splitting the directory safe, so
   it goes in before the split rather than after.
 
@@ -1286,9 +1317,8 @@ above. Additive only, per `.claude/rules/backend.md`.
 ## Phase 0: competency content and clinical safety
 
 - [ ] Draft the first competencies from working clinical knowledge:
-      the procedures, their levels where levels are meaningful, who may
-      sign each one off, and any expiry interval. Do not wait on
-      official documents.
+      the procedures, their levels where levels are meaningful, and any
+      expiry interval. Do not wait on official documents.
 - [ ] Later, and not as a blocker: check the draft against the UK SACT
       Board's _Prescriber competencies for reviewing and prescribing
       SACT_ (November 2023), the South West passports and the RCR
@@ -1317,14 +1347,13 @@ above. Additive only, per `.claude/rules/backend.md`.
 - [ ] Add the `sact` and `radiotherapy` categories and their
       competencies to `shared/competency-definitions/`, with
       `display_name`, `category` and `risk_level`.
-- [ ] Add `hold_clinician_passport` and `sign_off_clinician_passport` to
+- [ ] Add `access_clinician_passport` to
       `shared/competency-definitions/` under the feature-admin
       category, and to the appropriate base professions in
       `shared/base-professions.yaml`.
-- [ ] Add the optional passport fields — `levels`,
-      `expires_after_months`, and the base professions that may sign
-      off — to the competencies that need them. Every field is
-      optional, so existing entries are untouched.
+- [ ] Add the optional passport fields — `levels` and
+      `expires_after_months` — to the competencies that need them.
+      Both are optional, so existing entries are untouched.
 - [ ] Run `yarn generate:types` in `frontend/` and commit the generated
       JSON.
 - [ ] Add hazard log entries for the passport: wrong assessor signs,
@@ -1409,7 +1438,7 @@ above. Additive only, per `.claude/rules/backend.md`.
       VPR's subject layout, KEK encryption and decryption of private
       keys, canonical YAML serialisation, content hashing, sign,
       verify, chain check and validity-at-time check.
-- [ ] Issue a certificate wherever `sign_off_clinician_passport` is
+- [ ] Issue a certificate wherever `access_clinician_passport` is
       granted: user provisioning, admin competency edits and invite
       acceptance; revoke it wherever the competency is removed.
 - [ ] Add signed commits to the store through pygit2's
@@ -1468,7 +1497,7 @@ above. Additive only, per `.claude/rules/backend.md`.
       `features/teaching/email_templates.py`; rate limit invites per
       holder per day.
 - [ ] Add the accept endpoint: register or link the user, store
-      registrations, add `sign_off_clinician_passport`, issue the signing
+      registrations, add `access_clinician_passport`, issue the signing
       certificate, consume the invite.
 - [ ] Add the holder-organisation feature gate for assessor routes next
       to `requires_feature` in `backend/app/features/gating.py`.
@@ -1491,7 +1520,7 @@ above. Additive only, per `.claude/rules/backend.md`.
       with `RequireAuth`, `RequireFeature feature="passport"` and CBAC
       hooks.
 - [ ] Add the passport entry to navigation for users holding
-      `hold_clinician_passport` or `sign_off_clinician_passport`.
+      `access_clinician_passport`.
 - [ ] Frontend tests with `just uf src/components/passport` and
       `just uf src/pages/passport`; Storybook tests with `just sbt`.
 
@@ -1594,13 +1623,18 @@ close them off, and so nobody builds them before there is a need.
   conflicts by construction and trivially greppable, at the cost of
   hundreds of files.
 
-- **CSV export** — one row per sign-off, for the common case of
-  someone importing into a spreadsheet or another system by hand.
-  Deliberately not part of the bundle, which stays YAML and Markdown.
-
-- **ESR and portfolio export** — a structured export (CSV or FHIR
-  `Practitioner` and related resources) for trusts that record the SACT
-  passport on the Electronic Staff Record.
+- **Machine-readable export, when something wants to read it** — no
+  external system asks for one today, so building it now would shape
+  the record around a consumer that does not exist. When one appears,
+  the research points three ways: Open Badges 3.0 for a sign-off, which
+  is itself a W3C verifiable credential and already carries a
+  competency type, an achieved level against a named scale, an expiry
+  and Markdown evidence; FHIR UK Core `Practitioner.qualification` for
+  the practitioner view, carrying a coded qualification, validity
+  period and issuing organisation; and plain CSV for the Electronic
+  Staff Record and for anyone opening it in a spreadsheet. Storage
+  stays YAML regardless, because the person whose record it is has to
+  be able to read it.
 
 - **Redaction retention** — VPR's relocation-with-tombstone model for
   the rare case a sign-off must be removed from routine view.
@@ -1809,10 +1843,44 @@ close them off, and so nobody builds them before there is a need.
   later needs elaborate layout, WeasyPrint remains available and
   nothing in the design depends on the choice.
 
-- **Self-sign-off refused at the API** — regardless of competencies
-  held, because the whole value of the record is a second named person
-  accepting accountability, after Turva's "contribution is not
-  approval."
+- **One competency for the feature, not one for holding and one for
+  signing** — everyone is both, at different times. A consultant still
+  acquires new competencies and a registrar competent at a procedure
+  is often the right person to supervise a junior at it. Two
+  competencies would encode a seniority model that does not match
+  clinical training, and would need constant admin correction as
+  people move.
+
+- **One signature, the assessor's, covering everything** — the
+  assessor signs a file that already holds the holder's observed date,
+  reflection and evidence references, so signing it attests to all of
+  that. A second signature from the holder would add nothing, because
+  the holder attests to nothing the assessor is not already vouching
+  for. Their participation is attributed in the git history, unsigned,
+  exactly like their logbook and certificates.
+
+- **Registrations are recorded, never certified** — both holder and
+  assessor declare their GMC, NMC, GPhC or HCPC number as a plain key
+  and value pair on the record, with a `verified` flag an admin can
+  set after checking by hand. They stay out of the X.509 certificate,
+  which is where VPR puts them, because Quill does not check any
+  register and a signature would make an unverified claim look
+  verified. Someone running `openssl` on a certificate carrying
+  "GMC 1234567" would reasonably assume it had been checked. So the
+  cryptography proves only that this key belongs to this Quill account
+  and this file is unchanged; the registration is a claim on the
+  record, labelled as such.
+
+- **Self-sign-off is the only rule** — refused at the API regardless
+  of competencies held, because the whole value of the record is a
+  second named person accepting accountability, after Turva's
+  "contribution is not approval." Nothing else is enforced. Who is fit
+  to assess whom is a clinical judgement, varying by procedure,
+  department and the people involved, and any rule table encoding it
+  would be wrong somewhere on the day it shipped. The record names the
+  assessor, their role and their registration, so a reader can judge
+  for themselves. That is the same reasoning as counting a logbook
+  without comparing it to a target.
 
 - **Three clocks kept apart** — `observed_on` is entered by the holder,
   `signed_at` is set by the server when the assessor signs, and the
@@ -1826,11 +1894,6 @@ close them off, and so nobody builds them before there is a need.
   and radiotherapy passports need to be obtained from the user's wife
   or the deanery before Phase 0 can be completed; the domain notes
   above are from public summaries only.
-
-- **Assessor eligibility** — whether "consultant or above" is right for
-  every competency or whether some allow senior registrars or specialist
-  nurses to sign off. The definition supports either; the content is
-  a clinical decision.
 
 - **Evidence retention** — how long evidence blobs are kept after an
   sign-off is superseded, and whether a holder may remove evidence
@@ -1883,12 +1946,6 @@ close them off, and so nobody builds them before there is a need.
   `observed_on`, but the administrative reading is `signed_at`. With
   gaps of weeks these differ materially. A clinical judgement rather
   than a technical one.
-
-- **Whether to store Open Badges JSON directly** instead of YAML with
-  an export step. It would remove any drift between our format and the
-  standard, at the cost of a record the holder can no longer read
-  unaided and much worse diffs. Current answer is no, but it should be
-  a recorded decision rather than an omission.
 
 - **Who should own the framework** — the research is emphatic that
   adoption, not format, decides whether this travels. The RCR, the UK
