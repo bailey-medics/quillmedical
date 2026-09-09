@@ -124,7 +124,7 @@ services:
 
   fhir:
     profiles: ["clinical"]
-    image: hapiproject/hapi:v8.10.0-1
+    image: hapiproject/hapi:v8.12.0-1
     container_name: quill_fhir
     env_file: backend/.env
     environment:
