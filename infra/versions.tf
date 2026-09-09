@@ -1,16 +1,16 @@
 # versions.tf — Provider version constraints
 
 terraform {
-  required_version = ">= 1.14.9"
+  required_version = ">= 1.15.0"
 
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = "~> 5.2"
+      version = "~> 5.3"
     }
     google-beta = {
       source  = "hashicorp/google-beta"
-      version = "~> 5.2"
+      version = "~> 5.3"
     }
     random = {
       source  = "hashicorp/random"
