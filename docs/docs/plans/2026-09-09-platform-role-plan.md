@@ -119,6 +119,9 @@ separate policy.
       may not see it.
 - [ ] **Check the same endpoint's siblings.** Learning content was found by chance while
       planning video; nothing has swept the other teaching read routes for the same shape.
+      - **Authentication is not the missing half.** Every route on the teaching router was
+        checked and each already requires a signed-in user, so the sweep is looking for
+        missing _scoping_, not missing sign-in.
 
 **Not odd that the video plan is stricter.** Video is the expensive, signed-URL case where a
 leak is obvious, so it got the attention. Slides being laxer is the anomaly, not video being

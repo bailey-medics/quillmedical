@@ -43,6 +43,29 @@ what makes downward reach worth having.
 That upward roll-up is the opposite of the rule above, and it is why the same question has
 two answers depending on which function you call.
 
+## Where this work currently lives
+
+Written down because the plan files themselves are spread across unmerged branches, so
+reading them on `main` shows an older state than reading them here.
+
+Three pull requests, which must merge in this order:
+
+- **#572** — deletes `require_staff` and `DEP_REQUIRE_STAFF`, and ticks the first step of
+  `2026-09-09-platform-role-plan.md`. Independent of the other two.
+- **#576** — this plan, and the correction to that plan's messaging step.
+- **#577** — the organisation capacity work, stacked on #576, so it carries #576's commits
+  until that one lands.
+
+**The hazard to know about.** All three touch the same plan documents. A tick applied on one
+branch is invisible on the others and on `main`, so a step can look undone when it is done,
+or be done twice. If any of them is reworked rather than merged, check the checkboxes against
+the code rather than trusting them — that is exactly how the teaching plan came to show
+thirty-four outstanding items when the work had shipped.
+
+**What is actually built and unmerged**, as distinct from planned: the capacity column and
+its migration, the rename of the table and its 49 references, eight tests, and the deletion
+of the unused staff guard. Everything else on the lists below is still a plan.
+
 ## The change
 
 - [x] **Give the organisation table a capacity and rename it** — `organisation_member`,
@@ -67,6 +90,18 @@ two answers depending on which function you call.
 - [ ] **Stop registration writing an organisation row for a student.** A student registers
       into a site. Remove the requirement that a site needs an organisation alongside it, in
       `register` and in the two admin user routes.
+      - **The reason for this step has changed since it was written**, and it is worth
+        re-examining rather than doing on the original grounds. It was written because the
+        organisation row was a lie — it called a delegate staff. It no longer is: the row now
+        says `trainee`.
+      - What remains is a duplication argument rather than a correctness one. Reach into an
+        organisation should come from the site-to-organisation link, not from a second row
+        that says the same thing; two sources of truth for one fact will eventually
+        disagree. That is a good reason, but a weaker one, and it should be weighed against
+        the cost of the resolver having to walk the link on every request.
+      - It also depends on the step below. Until one resolver answers *which places can this
+        person reach*, removing the organisation row would make delegates invisible to
+        everything outside teaching.
 - [x] **Backfill by capacity, not by guesswork.** Done in the same migration, since a
       NOT NULL column cannot be added without deciding what existing rows say. A row becomes
       `trainee` when that person is a trainee at a site belonging to **that same
