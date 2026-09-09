@@ -61,10 +61,15 @@ does not, and removing the ladder removes the suggestion.
       - Also corrected a stale line in `docs/docs/code/fastapi/system_permissions.md`, which
         named all three of `require_staff`, `require_admin` and `require_superadmin` as
         living in `app.deps`. The other two still do; this one no longer exists.
-- [ ] **Replace the `messaging.py` staff check with membership.** It already looks up
-      `get_user_org_ids` on the next line; the question it is really asking is whether the
-      person is attached to one of the conversation's organisations, not what rung they are
-      on.
+- [ ] **Replace the `messaging.py` staff check with membership.** **Blocked on
+      `2026-09-09-membership-and-reach-plan.md`.** The premise recorded here was wrong: the
+      membership check below is not asking the same question. `get_user_org_ids` reads the
+      organisation staff table, and `register` writes students into it, so that check says
+      yes to a student. The level check is currently the only thing keeping them out of
+      staff conversations, and deleting it would let a teaching delegate self-join any
+      conversation at their organisation.
+      - It becomes safe once the organisation table carries a capacity, because the
+        membership check can then ask what kind of member rather than merely whether one.
 - [ ] **Give the admin gates a competency.** `manage_users` already exists in
       `competencies.yaml`, and `_require_own_org` is already the place check. Each admin
       route becomes that pair. Do it in batches by area — organisations, sites, users,
