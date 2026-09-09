@@ -83,8 +83,8 @@ from app.models import (
     Organisation,
     OrganisationFeature,
     User,
+    organisation_member,
     organisation_site,
-    organisation_staff_member,
     site_member,
 )
 
@@ -117,8 +117,8 @@ def _get_user_org_ids(user: User, db: Session) -> list[int]:
     # Direct org membership
     direct = set(
         db.execute(
-            select(organisation_staff_member.c.organisation_id).where(
-                organisation_staff_member.c.user_id == user.id
+            select(organisation_member.c.organisation_id).where(
+                organisation_member.c.user_id == user.id
             )
         )
         .scalars()
@@ -1746,8 +1746,8 @@ def list_delegates(
     """
     from app.models import (
         Site,
+        organisation_member,
         organisation_site,
-        organisation_staff_member,
         site_member,
     )
 
@@ -1755,8 +1755,8 @@ def list_delegates(
     caller_org_ids = [
         row[0]
         for row in db.execute(
-            select(organisation_staff_member.c.organisation_id).where(
-                organisation_staff_member.c.user_id == user.id
+            select(organisation_member.c.organisation_id).where(
+                organisation_member.c.user_id == user.id
             )
         ).all()
     ]
@@ -1767,10 +1767,8 @@ def list_delegates(
     org_member_ids = set(
         row[0]
         for row in db.execute(
-            select(organisation_staff_member.c.user_id).where(
-                organisation_staff_member.c.organisation_id.in_(
-                    caller_org_ids
-                ),
+            select(organisation_member.c.user_id).where(
+                organisation_member.c.organisation_id.in_(caller_org_ids),
             )
         ).all()
     )

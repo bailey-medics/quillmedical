@@ -10,8 +10,8 @@ from app.models import (
     Message,
     Organisation,
     User,
+    organisation_member,
     organisation_patient_member,
-    organisation_staff_member,
 )
 from app.security import hash_password
 
@@ -43,7 +43,7 @@ def _setup_org_context(
     db_session.flush()
 
     db_session.execute(
-        organisation_staff_member.insert().values(
+        organisation_member.insert().values(
             organisation_id=test_org.id,
             user_id=test_user.id,
         )
@@ -72,7 +72,7 @@ def second_user(db_session: Session, test_org: Organisation) -> User:
     db_session.flush()
 
     db_session.execute(
-        organisation_staff_member.insert().values(
+        organisation_member.insert().values(
             organisation_id=test_org.id,
             user_id=user.id,
         )
@@ -1064,7 +1064,7 @@ class TestOrgScopedAccess:
         db_session.add(other_org)
         db_session.flush()
         db_session.execute(
-            organisation_staff_member.insert().values(
+            organisation_member.insert().values(
                 organisation_id=other_org.id,
                 user_id=outsider.id,
             )
@@ -1288,7 +1288,7 @@ class TestRemoveStaffFromOrg:
         """Admin can remove a staff member from an org."""
         # Add admin to org so they pass the membership check
         db_session.execute(
-            organisation_staff_member.insert().values(
+            organisation_member.insert().values(
                 organisation_id=test_org.id,
                 user_id=test_admin.id,
             )
@@ -1336,7 +1336,7 @@ class TestRemovePatientFromOrg:
         """Admin can remove a patient from an org."""
         # Add admin to org so they pass the membership check
         db_session.execute(
-            organisation_staff_member.insert().values(
+            organisation_member.insert().values(
                 organisation_id=test_org.id,
                 user_id=test_admin.id,
             )

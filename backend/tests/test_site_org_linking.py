@@ -14,8 +14,8 @@ from app.models import (
     Organisation,
     Site,
     User,
+    organisation_member,
     organisation_site,
-    organisation_staff_member,
     site_member,
 )
 from app.security import hash_password
@@ -195,7 +195,7 @@ class TestSiteRoutesAreScopedToYourOrganisations:
         db_session.add_all([org, site])
         db_session.commit()
         db_session.execute(
-            insert(organisation_staff_member).values(
+            insert(organisation_member).values(
                 organisation_id=org.id, user_id=admin.id
             )
         )

@@ -22,8 +22,8 @@ from app.models import (
     PositionHolding,
     Site,
     User,
+    organisation_member,
     organisation_site,
-    organisation_staff_member,
     site_member,
 )
 from app.security import hash_password
@@ -55,7 +55,7 @@ def _org_with_site(db: Session, admin: User) -> tuple[Organisation, Site]:
         )
     )
     db.execute(
-        insert(organisation_staff_member).values(
+        insert(organisation_member).values(
             organisation_id=org.id, user_id=admin.id
         )
     )
