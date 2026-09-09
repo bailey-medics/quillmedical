@@ -3543,19 +3543,28 @@ async def update_my_competencies(
     user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> UserCompetenciesResponse:
-    """Update user's additional/removed competencies.
+    """Update the **caller's own** additional/removed competencies.
 
-    Allows system administrators to add or remove competencies from a user's
-    base profession template. Requires admin or superadmin permissions and
-    CSRF token.
+    Self-scoped by construction: ``UpdateCompetenciesRequest`` carries no
+    target user, so this edits ``current_user`` and can edit nobody else.
+    To change someone else's competencies use ``PATCH /users/{user_id}``,
+    which takes the same three CBAC fields, refuses an admin editing a
+    superadmin, and is scoped to the admin's own organisations.
+
+    An earlier docstring described this as the route by which administrators
+    edit "a user's" competencies. It never was, and reading it that way
+    hides what the admin gate below actually permits: an admin granting
+    themselves any competency, clinical ones included. That is deliberate
+    for now and is to be revisited with end-to-end tests — see
+    ``docs/docs/plans/2026-09-09-platform-role-plan.md``.
 
     Args:
-        data: Additional and removed competencies to update
-        user: Authenticated user (admin/superadmin only)
+        data: Additional and removed competencies to write to the caller.
+        user: Authenticated user, who is also the subject of the edit.
         db: Database session
 
     Returns:
-        UserCompetenciesResponse: Updated user competency information
+        UserCompetenciesResponse: The caller's updated competency information
 
     Raises:
         HTTPException: 403 if user lacks admin/superadmin permissions.

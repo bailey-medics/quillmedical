@@ -87,6 +87,72 @@ does not, and removing the ladder removes the suggestion.
       `competencies.yaml`, and `_require_own_org` is already the place check. Each admin
       route becomes that pair. Do it in batches by area — organisations, sites, users,
       teaching — not in one commit.
+      - **Counted before starting: 31 gates, and the premise is wrong for eleven of them.**
+        This step assumed the place check was already present and only the level check
+        needed replacing. That holds for twenty — twelve paired with `get_user_org_ids`,
+        eight with `_require_site_in_own_org` or `_require_own_org` — and not for eleven,
+        which have **no place check at all**.
+      - **So swapping the level check for a competency would open a hole rather than close
+        one.** Today `system_permissions` is the only thing standing between an admin at one
+        trust and a user at another; `manage_users` is held by admins everywhere, so on its
+        own it is strictly weaker. The place check has to be *added* to those eleven, not
+        merely kept.
+      - **Reuse `_require_own_org` and `_require_site_in_own_org`**; do not invent a third
+        spelling. Both already return 404 rather than 403, so a response does not confirm a
+        record exists to someone who may not see it, and the tests should assert 404 to
+        match.
+      - **The twenty ready routes wait for the eleven.** They could go sooner, but
+        splitting the batch by whether each route happened to be safe would leave a worse
+        record than doing it in one pass once they are level.
+
+      **The eleven, by shape.** Each needs a place check added before its competency swap,
+      and each wants a test that fails without it, as the September org-scoped fixes did.
+
+      - [x] **`update_my_competencies` — not a scoping bug.** `PATCH
+            /api/cbac/my-competencies` is gated on admin, then writes
+            `additional_competencies` on **`current_user`**, so an admin can grant
+            themselves any competency, clinical ones included. A place check would not
+            touch it: the route is self-scoped by construction, and
+            `UpdateCompetenciesRequest` carries no target user, so it *cannot* edit anyone
+            else. The docstring saying it lets "system administrators" edit "a user's"
+            competencies describes a route this is not.
+            - **Decided: admins keep this for now**, to be revisited with end-to-end tests
+              — whether it should be disabled, and how, is a question about real
+              provisioning flows rather than about this line of code.
+            - **`PATCH /api/users/{user_id}` already does the real job.** `update_user`
+              writes the same three CBAC fields for an arbitrary target, refuses admins
+              editing superadmins, and is one of the twenty already carrying a place check.
+              So the admin path on the self-route is redundant as well as escalating, which
+              makes removing it later cheaper than it looks — nothing is lost that
+              `update_user` does not already do.
+            - **Done: the docstring now describes the route that exists**, and
+              `test_admin_can_currently_grant_themselves_a_competency` pins the accepted
+              behaviour in `test_security_pentest.py`, beside the test asserting non-admins
+              are refused. The test asserts the escalation rather than pretending
+              otherwise, so closing it later is a visible change to a red test instead of a
+              silent one. The escalation itself stays until the end-to-end work says
+              otherwise.
+      - [ ] **Three patient routes** — `deactivate_patient`, `activate_patient`,
+            `revoke_external_access`. `check_user_patient_access` already exists and
+            already encodes the rule; these simply do not call it.
+      - [ ] **Five fetch-by-id user routes** — `deactivate_user`, `reactivate_user`,
+            `send_invite_email`, `get_user`, `link_patient_to_user`. One helper applied
+            five times: does the target share an organisation with the caller?
+            `deactivate_user` is the clearest case — it refuses self-deactivation and
+            superadmin targets, and never asks which organisation the target belongs to, so
+            an admin at Trust A can deactivate a user at Trust B by naming their id.
+            `get_user` is a near miss: it already loads the target's organisation
+            memberships, but to return them rather than to gate on them.
+      - [ ] **`list_sites`** — returns every site in the deployment to any admin. Not a
+            by-id leak; no id is needed at all. Filter to the caller's organisations via
+            `organisation_site`, as `list_organisations` already filters, with superadmins
+            keeping the unfiltered view. **This will look like a regression** to anyone
+            relying on seeing the whole estate.
+      - [ ] **`create_site` — decide, do not patch.** It creates a site belonging to no
+            organisation, so the record cannot be scoped afterwards. The fix is probably to
+            require an organisation at creation and link it in the same transaction, which
+            is what `_require_site_in_own_org` already assumes when it calls a site's
+            organisation "the site's owner".
 - [ ] **Then rename the column** to `platform_role`, narrowing its values to `superadmin` and
       one value meaning "not an operator", validated in code the way `SITE_CAPACITIES` is.
       - Autogenerate proposes drop-and-create for a rename. Write it by hand, as
