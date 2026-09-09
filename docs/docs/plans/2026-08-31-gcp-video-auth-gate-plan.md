@@ -486,14 +486,66 @@ Read-only, run by hand against what was applied. Record each result.
 
 ### Phase 0 findings
 
+**Run 2026-09-09. The apply failed, and that failure is the finding.** Four of
+the five resources were created; the IAM grant and the URL map update both
+errored, so the probes never ran. Nothing about the design is disproven — the
+spike stopped one step earlier than expected, on something the plan did not
+anticipate needing.
+
 - **Public access prevention is available and works.** A bucket in
-  `quill-medical-teaching` created with uniform bucket-level access and public
-  access prevention `enforced` returns **403** to an unauthenticated
-  `storage.googleapis.com` request. Verified 2026-09-09 on a throwaway bucket,
-  since deleted. This is the easy half of the question.
-- **The load balancer half is unproven.** Whether the Cloud CDN fill service
-  account can read that bucket through the LB — the actual unknown — has not
-  been tested, and is what the Terraform spike above is for.
+  `quill-medical-teaching` with uniform bucket-level access and public access
+  prevention `enforced` returns **403** to an unauthenticated
+  `storage.googleapis.com` request.
+
+- **The Cloud CDN fill service account does not exist in this project.** The
+  grant failed with `Service account
+  service-113172935409@cloud-cdn-fill.iam.gserviceaccount.com does not exist`.
+  It is a Google-managed service agent, created when the service that owns it is
+  first enabled, and `networkservices.googleapis.com` is **not** among this
+  project's enabled services — only `compute.googleapis.com` is. So this is
+  very likely a missing API rather than a capability we lack, and the next
+  attempt should enable that service (and add it to Terraform) before granting.
+  **Not yet confirmed** — this is the reading of the error, not a tested fix.
+
+- **A backend bucket cannot be attached to a URL map before it is ready.** The
+  URL map update failed with `The resource '...backendBuckets/
+  quill-video-spike-teaching' is not ready, resourceNotReady`, even though
+  Terraform reported the backend bucket created 30 seconds earlier. Backend
+  buckets take time to become referenceable, and Terraform's dependency graph
+  does not model that wait. A re-run is the simplest fix; an explicit
+  `time_sleep` between creation and reference is the deterministic one.
+
+- **The failure was safe, by luck as much as design.** The URL map update
+  errored before applying, so `/api/*` kept routing and
+  `teaching.quill-medical.com` stayed up throughout — verified by request during
+  the failed apply. Had it succeeded it would have **taken the API down**: the
+  static `path_rule` and the `dynamic "path_rule"` block cannot coexist in one
+  `path_matcher`, and the plan showed the `/api/*` rule going to `null`. That
+  bug is real and must be fixed before the next attempt, whatever else changes.
+
+- **Left behind by the partial apply**, and still present: the bucket, the
+  backend bucket, its signed-URL key and the `random_bytes`. They are in state,
+  so the revert removes them; nothing needs hand-deleting.
+
+- **The load balancer half remains unproven.** Whether Cloud CDN can serve a
+  private bucket through the LB — the question the whole phase exists to answer
+  — is still open.
+
+**Fixes applied for the second attempt**, all three in one change:
+
+- **The `path_rule` bug** — both rules now render from one `dynamic` block over
+  a concatenated list, so `/api/*` is always present and the spike entry is
+  appended only when its variable is set.
+- **`networkservices.googleapis.com` is enabled** by the spike module, with a
+  60-second wait before the grant so the service agent has time to appear. This
+  is the repository's only `google_project_service`; APIs are otherwise enabled
+  by hand, and that inconsistency wants settling if the spike graduates into
+  Phase 1.
+- **A 60-second wait between the backend bucket and the URL map**, consumed
+  through the output the URL map reads, so `resourceNotReady` cannot recur.
+
+Both waits are guesses at how long a Google-managed resource takes to settle. If
+either error returns, the wait is too short rather than the approach wrong.
 
 ## Phase 1: Terraform — buckets, backend bucket, CDN, signing key
 
