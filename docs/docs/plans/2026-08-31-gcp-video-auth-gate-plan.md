@@ -175,6 +175,10 @@ this list first; the detail is marked **[revised 2026-09-09]** where it sits.
 - **The other teaching plans barely collide with this one** — the single real
   conflict is Phase 5 sharing `AdminBankDetailPage.tsx` with the tooling plan's
   admin UI item. New **Working alongside the other teaching plans** section.
+- **Phase 0 is a Terraform spike behind a pull request**, not a `gcloud`
+  exercise. Its old wording invited hand-made resources on a Terraform-managed
+  load balancer. Rewritten, with the one finding already proven recorded under
+  **Phase 0 findings**.
 
 **This plan lags the codebase, and expects to.** It was written on 2026-08-31 and
 revised on 2026-09-09, with roughly 288 commits in between; teaching work
@@ -403,25 +407,93 @@ a public bucket, which would defeat the entire purpose here. Google now supports
 private-bucket origins for backend buckets via a Cloud CDN fill service account,
 but this must be proven in our project before Terraform is written around it.
 
-- [ ] Create a throwaway private bucket in `quill-medical-teaching` with uniform
-      bucket-level access and public access prevention enforced. Upload one small
-      MP4.
-- [ ] Attach it as a `google_compute_backend_bucket` with `enable_cdn = true`,
-      wired to a spare path on the existing URL map.
-- [ ] Grant `roles/storage.objectViewer` to
-      `service-<project-number>@cloud-cdn-fill.iam.gserviceaccount.com` on that
-      bucket, and confirm an unauthenticated request through the LB returns the
-      object while a direct `storage.googleapis.com` request returns 403.
-- [ ] Add a signed-URL key to the backend bucket and confirm that an unsigned
-      request through the LB now returns 403, and a correctly signed cookie
-      returns 200.
-- [ ] Confirm a `Range:` request through the LB returns 206 with the right bytes
-      — seeking depends on it.
-- [ ] Record the outcome in this file under a `### Phase 0 findings` heading. If
-      the fill service account grant does not work in our project, stop and
-      re-plan: the fallback is a Cloud Run range-proxy in front of the bucket,
-      which is a materially different and more expensive design.
-- [ ] Tear down every throwaway resource created above.
+**[rewritten 2026-09-09] The spike is Terraform behind a pull request, not
+`gcloud` by hand.** The earlier wording ("create a throwaway bucket", "attach
+it", "tear down every throwaway resource") read as a console-and-CLI exercise,
+and following it literally is a mistake this plan should not invite:
+
+- **It bypasses the review gate.** `.github/workflows/terraform.yml` runs
+  `terraform plan` on every pull request touching `infra/**` and posts the
+  output as a comment, then applies on merge to `main`. A hand-made resource
+  reaches GCP without that plan ever being seen.
+- **It creates drift by construction.** `quill-url-map-teaching` is
+  Terraform-managed with remote state in `gs://quill-medical-terraform-state`.
+  Hand-editing a resource Terraform owns leaves the next `apply` to fight it.
+- **Tear-down stops being enforceable.** "Remove what you made" is a promise
+  when the resources are hand-made and a `terraform apply` when they are not.
+
+So the spike is written as a real module, gated off by default, and both its
+creation and its removal go through a pull request. The probes are the only part
+run by hand, and they are read-only `curl` calls against what was applied.
+
+### Building it
+
+- [ ] New module at `infra/modules/teaching-video-spike/`, instantiated from
+      `infra/main.tf` gated on **both** `var.environment == "teaching"` and a new
+      `var.enable_video_spike` defaulting to `false`, so the spike is inert until
+      deliberately switched on and cannot be left running by inattention.
+- [ ] Private bucket: `europe-west2`, uniform bucket-level access, public access
+      prevention **enforced**, `force_destroy = true` so the revert can actually
+      remove it.
+- [ ] `google_compute_backend_bucket` over it with `enable_cdn = true` and
+      `cache_mode = "CACHE_ALL_STATIC"`.
+- [ ] `google_storage_bucket_iam_member` granting `roles/storage.objectViewer`
+      to `service-<project-number>@cloud-cdn-fill.iam.gserviceaccount.com`. This
+      is the line the whole spike exists to test.
+- [ ] `google_compute_backend_bucket_signed_url_key` on the backend bucket, key
+      material from `random_bytes`, so the unsigned-versus-signed probe has
+      something to check.
+- [ ] A `/videospike/*` path rule on the existing `quill-paths` matcher, plumbed
+      through `infra/modules/load-balancer/` as an optional variable so `prod` and
+      `staging` render an unchanged URL map. An obscure path no real traffic hits.
+- [ ] Output the bucket name, the signing key name and the key material (marked
+      `sensitive`) so the probes can be run without reading state by hand.
+
+### Getting it applied
+
+- [ ] Open the pull request and **read the posted plan before approving it**.
+      Confirm it creates only the resources above and modifies only the URL map,
+      and that the URL map diff is an addition rather than a replacement.
+- [ ] A human merges it. Merging is what applies it — see the repository rule.
+- [ ] Upload one small object to the bucket. A real MP4 is not needed: a file
+      whose every 16-byte block encodes its own offset lets a `Range` response be
+      checked for returning the **right bytes** rather than merely a 206. Set
+      `Content-Type: video/mp4` and `Cache-Control: public, max-age=86400`, the
+      latter because Phase 6 depends on the CDN actually caching.
+
+### The probes
+
+Read-only, run by hand against what was applied. Record each result.
+
+- [ ] Unauthenticated `https://storage.googleapis.com/<bucket>/<object>` returns
+      **403**. **[confirmed 2026-09-09]** Already proven — see findings below.
+- [ ] Unauthenticated request through the LB returns the object, proving the fill
+      service account grant works. **This is the item the phase exists for.**
+- [ ] With the signing key attached, an unsigned request through the LB returns
+      **403** and a correctly signed cookie returns **200**.
+- [ ] A `Range:` request through the LB returns **206**, and the returned bytes
+      carry the offset markers expected for that range — seeking depends on it.
+
+### Closing it out
+
+- [ ] Record the outcome under `### Phase 0 findings` below. If the fill service
+      account grant does not work, stop and re-plan: the fallback is a Cloud Run
+      range-proxy in front of the bucket, a materially different and more
+      expensive design.
+- [ ] Tear down by **reverting the module in a second pull request**, so removal
+      passes the same gate as creation and leaves no drift. Confirm the follow-up
+      plan is empty.
+
+### Phase 0 findings
+
+- **Public access prevention is available and works.** A bucket in
+  `quill-medical-teaching` created with uniform bucket-level access and public
+  access prevention `enforced` returns **403** to an unauthenticated
+  `storage.googleapis.com` request. Verified 2026-09-09 on a throwaway bucket,
+  since deleted. This is the easy half of the question.
+- **The load balancer half is unproven.** Whether the Cloud CDN fill service
+  account can read that bucket through the LB — the actual unknown — has not
+  been tested, and is what the Terraform spike above is for.
 
 ## Phase 1: Terraform — buckets, backend bucket, CDN, signing key
 
