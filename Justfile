@@ -316,20 +316,31 @@ prune-branches:
     #!/usr/bin/env bash
     {{initialise}} "prune-branches"
     git fetch --prune
-    GONE=$(git branch -vv | grep ': gone]' | awk '{print $1}' || true)
+
+    # Branch names come from for-each-ref, not `git branch -vv`: that marks the
+    # current branch with "*" and a branch checked out in another worktree with
+    # "+", and the marker is what `awk '{print $1}'` picks up. Fields are
+    # name / upstream / track / worktree path, tab separated.
+    REFS=$(git for-each-ref --format='%(refname:short)%09%(upstream)%09%(upstream:track)%09%(worktreepath)' refs/heads/)
+
+    # A branch checked out in another worktree cannot be deleted, so name it
+    # rather than failing the whole recipe on it.
+    HELD=$(echo "$REFS" | awk -F'\t' '$3 == "[gone]" && $4 != "" { print $1 " (" $4 ")" }')
+    if [ -n "$HELD" ]; then
+        echo "Stale but checked out in another worktree, skipping:"
+        echo "$HELD" | sed 's/^/  /'
+    fi
+
+    GONE=$(echo "$REFS" | awk -F'\t' '$3 == "[gone]" && $4 == "" { print $1 }')
     if [ -z "$GONE" ]; then
         echo "No stale tracked branches to remove."
     else
         echo "$GONE" | xargs git branch -D
     fi
 
-    CURRENT=$(git branch --show-current)
     MERGED_UNTRACKED=""
-    for branch in $(git for-each-ref --format='%(refname:short)' refs/heads/); do
-        if [ "$branch" = "main" ] || [ "$branch" = "$CURRENT" ]; then
-            continue
-        fi
-        if git config --get "branch.$branch.remote" > /dev/null 2>&1; then
+    for branch in $(echo "$REFS" | awk -F'\t' '$2 == "" && $4 == "" { print $1 }'); do
+        if [ "$branch" = "main" ]; then
             continue
         fi
         if git merge-base --is-ancestor "$branch" origin/main 2>/dev/null; then
