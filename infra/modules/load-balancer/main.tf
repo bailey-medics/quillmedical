@@ -131,19 +131,29 @@ resource "google_compute_url_map" "https" {
     name            = "quill-paths"
     default_service = google_compute_backend_service.frontend.id
 
-    path_rule {
-      paths   = ["/api", "/api/*"]
-      service = google_compute_backend_service.backend.id
-    }
-
-    # Phase 0 video spike. Null in every environment that has no spike module,
-    # so `prod` and `staging` render an unchanged URL map rather than gaining
-    # an empty rule. Temporary: removed with the spike.
+    # One dynamic block over one list, rather than a static `/api/*` rule plus
+    # a dynamic one beside it. Those two cannot coexist: the dynamic block
+    # replaces the whole set of `path_rule` blocks rather than appending to the
+    # static one, so adding the spike planned `/api/*` -> null and would have
+    # taken the teaching API down. Caught by `terraform plan`; see the video
+    # auth gate plan's Phase 0 findings.
+    #
+    # The spike entry is absent unless its variable is set, so `prod` and
+    # `staging` render exactly the rule set they render today.
     dynamic "path_rule" {
-      for_each = var.video_spike_backend_bucket_id != null ? [1] : []
+      for_each = concat(
+        [{
+          paths   = ["/api", "/api/*"]
+          service = google_compute_backend_service.backend.id
+        }],
+        var.video_spike_backend_bucket_id != null ? [{
+          paths   = ["/videospike/*"]
+          service = var.video_spike_backend_bucket_id
+        }] : []
+      )
       content {
-        paths   = ["/videospike/*"]
-        service = var.video_spike_backend_bucket_id
+        paths   = path_rule.value.paths
+        service = path_rule.value.service
       }
     }
   }
