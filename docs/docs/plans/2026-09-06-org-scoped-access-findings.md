@@ -1,5 +1,12 @@
 # An individual has capabilities, a location enables them to be carried out
 
+> **Finished.** Everything this document set out to settle is decided, built and merged.
+> What outlived it has moved on: sign-off and ceiling expiry to
+> `feature/clinical-passport-plan`, `system_permissions` to
+> `2026-09-09-platform-role-plan.md`, and break-glass access and joining the staff and
+> patient namespaces to `todo.md`. See **Open questions, and where they went** at the foot
+> for the detail. Kept as the record of how the model was arrived at.
+
 ## The realisation
 
 A person is not one thing everywhere. Someone can be a consultant at one trust, a locum
@@ -694,30 +701,40 @@ that the answer differs by place, not which capability it is.
   removed this morning does not hold the post this afternoon, but a review of today still
   finds them.
 
-## Still open
+## Open questions, and where they went
 
-- **What becomes of `system_permissions`.** **Answered, in
-  `2026-09-09-platform-role-plan.md`:** it becomes `platform_role`, with `superadmin` and
+This document is finished. Every question it raised has been answered here or handed to
+somewhere it will actually be picked up. Nothing below is waiting on this file.
+
+- **What becomes of `system_permissions`** — answered in
+  `2026-09-09-platform-role-plan.md`. It becomes `platform_role`, holding `superadmin` and
   nothing else, because that is the only one of the four that is not about a place. The
-  original note below is kept for its reasoning.
-- **The original note.** `superadmin` is genuinely global — Quill's own
-  operators. `admin` and `staff` look like capabilities or positions at a place.
-  `single-user` may be nothing more than the absence of any grant.
-- **The patient and staff namespaces.** **Shape chosen, timing deferred:** a
-  `user_patient_link` table recording who asserted the match and on what evidence, tracked in
-  `todo.md` and to be built when Quill is first asked to hold real patient data, so it is
-  shaped by a real requirement rather than a guess. Staff membership keys on `user_id`; patient
-  membership keys on a FHIR `patient_id`, bridged only by the nullable `User.fhir_patient_id`.
-  Until they meet, "doctor at A, patient at B" cannot be written as two similar rows, and the
-  first two acceptance criteria cannot be satisfied.
-- **Ceiling expiry.** A lapsed registration should drop the grants that depended on it. A
-  ceiling that does not lapse quietly stops meaning anything. **Moved to
-  `feature/clinical-passport-plan`**: expiry is a property of how a competency was obtained,
-  and nothing here records that.
-- **Break-glass access.** Tracked in `todo.md` under Security and compliance, to be
+  reasoning that got there: `superadmin` is genuinely global, Quill's own operators; `admin`
+  and `staff` are capabilities or positions somewhere; and `single-user` turned out to be
+  nothing more than the absence of any grant, gating nothing anywhere in the codebase.
+- **The staff and patient namespaces** — shape chosen, timing deferred, tracked in
+  `todo.md`. A `user_patient_link` table recording who asserted the match and on what
+  evidence, because an identity match is a clinical safety event. Built when Quill is first
+  asked to hold real patient data, so a real requirement shapes it rather than a guess.
+  Staff membership keys on `user_id`; patient membership keys on a FHIR `patient_id`,
+  bridged only by the nullable `User.fhir_patient_id`. Until they meet, "doctor at A,
+  patient at B" cannot be written as two similar rows.
+- **Ceiling expiry** — moved to `feature/clinical-passport-plan`. A lapsed registration
+  should drop the grants that depended on it, but expiry is a property of how a competency
+  was obtained, and nothing here records that.
+- **Break-glass access** — tracked in `todo.md` under Security and compliance, to be
   answered before organisation-scoped access is finished for clinical use. Reaching records
-  outside your normal context. A policy question
-  before a technical one, and it needs an audit trail more than a schema.
+  outside your normal context is a policy question before a technical one, and it needs an
+  audit trail and someone reviewing it more than it needs a schema.
+
+### What stays unticked on purpose
+
+- **Build the supertype if a fourth table needs a place** is a trigger, not a task. It
+  should never be ticked; it is a note for whoever adds that fourth table.
+- **Three of the acceptance criteria** — the nurse treated at her own hospital, the patient
+  administering their own chemotherapy, and a registration lapsing — remain skipped tests.
+  They are meant to stay red until the work tracked elsewhere happens. Ticking them would
+  be a lie, and the skip reasons name exactly what is missing.
 
 ## What I would do first
 
