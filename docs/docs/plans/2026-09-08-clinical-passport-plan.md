@@ -55,7 +55,8 @@ the most important one in this document.
   NHS England pages were not readable from this session (network egress
   is blocked to those domains), so the domain description above comes
   from search summaries and general knowledge. That is enough to build
-  on. The first framework is drafted from working clinical knowledge of
+  on. The first competencies are drafted from working clinical
+  knowledge of
   what these passports contain.
 
 ## Findings from the reference repositories
@@ -191,8 +192,12 @@ authentication only. The specifications are strong on governance.
   commit hash of the template, bind the two together and we can build
   the template with the given values." Structured answers plus a
   pinned template version render deterministically to Markdown. The
-  plan adopts this: every sign-off pins the framework version it was
-  made against.
+  plan does not adopt the pinning wholesale, but takes the lesson: a
+  record must carry enough of its own context to be read later. Every
+  sign-off stores the human label beside every id, so it stays
+  intelligible if a definition later changes. What VPR would have
+  called pinning the version it was
+  made against is deliberately not carried.
 
 - **Typed artefact contract** — `specifications/archive/spec-archive.md`
   lines 56 to 79 define every safety artefact as having versioning,
@@ -211,8 +216,9 @@ authentication only. The specifications are strong on governance.
 
 - **Decisions are time-bound to system state** — a decision is valid
   only in the context in which it was made. For a passport this means
-  a sign-off is valid for the framework version and evidence at the
-  time of signing, and a framework change may require re-assessment.
+  a sign-off is valid for the definitions and evidence in place at the
+  time of signing. The passport handles this by storing the words
+  alongside the ids rather than by versioning a registry.
 
 - **Approval record minimum** — name and role of approver, date, any
   conditions or caveats. Reviewers must genuinely review: "review is
@@ -324,10 +330,11 @@ invert.
 - **Label taxonomy with the decision in the name** —
   `.github/labels.yml` defines `severity-*`, `likelihood-*` and
   `risk-level-1-acceptable` through `risk-level-5-unacceptable`, with
-  the required action baked into the identifier. A prefix namespace,
-  an ordinal and a human-readable state word sorts, filters and
-  self-documents. The passport's level scheme should have this shape,
-  for example `level-3-independent`.
+  the required action baked into the identifier. The transferable part
+  is the word, not the number: a label that states its own meaning
+  needs no lookup table. The passport takes the word and leaves the
+  ordinal, naming levels `supervised` and `unsupervised` and taking
+  their order from the definition instead.
 
 - **Initial versus residual via milestones** — the same record carries
   two assessment points distinguished by milestone rather than by
@@ -350,7 +357,7 @@ invert.
   YAML frontmatter; metadata is prose under a "Document Management"
   heading; `download.md` references an undefined `project_slug`
   variable and nothing in CI would catch it. The passport must have a
-  validated schema and a CI check over every framework file.
+  validated schema and a CI check over the competency definitions.
 
 - **Single-person variables file** — `variables.yml` names one Clinical
   Safety Officer. A passport has many assessors, so people are
@@ -449,7 +456,7 @@ confirmed before being acted on.
   messages with reserved author trailers; single branch; nothing
   deleted** — from VPR.
 
-- **Adopt: sign-off pins the framework version; contribution is not
+- **Adopt: records carry their own context; contribution is not
   approval; the holder owns the record permanently; approval record
   carries name, role, date and caveats; derived status is computed
   server-side; corrections are new records** — from Turva and the
@@ -459,9 +466,9 @@ confirmed before being acted on.
   where the rule lives with no side effects on rejection; fault
   injection on cleanup paths** — from VPR.
 
-- **Adopt: the label shape `level-3-independent`; initial and reassessment on
-  one competency; a validated schema with a CI gate** — from the
-  DCB0129 template.
+- **Adopt: self-describing labels rather than numbered ones; initial
+  and later sign-offs on one competency; a validated schema with a CI
+  gate** — from the DCB0129 template.
 
 - **Learned: Markdown headings make poor field identifiers;
   filename-derived numbering races; derived values belong on the
@@ -479,25 +486,51 @@ confirmed before being acted on.
 
 ## Proposed design
 
-### Two frameworks, one vocabulary
+### One vocabulary, no second registry
 
 CBAC answers "what may this user do in Quill right now." The passport
 answers "what has this person been assessed as competent to do, by
-whom, on what evidence." They share the competency vocabulary and
-nothing else in phase 1.
+whom, on what evidence." They share one competency vocabulary and
+nothing else.
 
-- **Competency types stay in CBAC** — every passport competency is an
-  entry in `shared/competencies.yaml`. New categories `sact` and
-  `radiotherapy` are added, with the individual competencies taken
-  from the South West passport documents.
+- **There is no separate framework registry** — competencies live
+  where they already live, in `shared/competency-definitions.yaml`,
+  extended with a few optional fields. No second directory, no second
+  schema, no second validator, and no second place to look when
+  something is wrong.
 
-- **A passport framework groups competencies** — a new directory
-  `shared/passport-frameworks/` holds one YAML file per framework and
-  version, for example `sact-oncology-registrar/v1.yaml`. A framework
-  lists domains, the competency ids in each domain, the level scheme,
-  the evidence each competency needs, who may sign it off, and its
-  reassessment interval. A framework file is immutable once published;
-  changes are a new version file.
+- **Levels are named, ordered and optional, declared per competency** —
+  never numbered. A number means nothing without a lookup, and every
+  stored record is wrong the moment a scale gains a step. Order comes
+  from the order they are listed in:
+
+  ```yaml
+  - id: perform_bronchoscopy
+    display_name: "Perform bronchoscopy"
+    levels:
+      - id: supervised
+        name: "Can perform with supervision available"
+      - id: unsupervised
+        name: "Can perform independently"
+    expires_after_months: 12
+  ```
+
+  Every added field is optional, so a competency without them behaves
+  exactly as it does today and CBAC is untouched. A competency may
+  declare one level, or none at all where the honest answer is simply
+  signed off or not. Cannulation needs no scale; prescribing systemic
+  anti-cancer therapy does. The slug names the procedure and the level
+  says how far along the holder is, so a permission-shaped string can
+  be composed at the point of use — `perform_bronchoscopy:unsupervised`
+  — without ever storing it that way.
+
+- **A passport is not a defined set of competencies** — there is no
+  grouping in the shared definitions saying which competencies make up
+  "the SACT passport". Membership of a passport is local policy: the
+  South West's list will not match another region's, and encoding one
+  view centrally would impose it on everyone. A passport simply holds
+  the sign-offs its holder has accumulated. If a checklist is wanted
+  later it belongs to an organisation, not to a competency definition.
 
 - **The passport does not grant CBAC competencies** — a signed-off
   passport competency is evidence an administrator may act on, not an
@@ -508,8 +541,8 @@ nothing else in phase 1.
 - **Passport competencies are gated by CBAC** — two feature-admin
   competencies: `hold_clinical_passport` (may own a passport and
   request sign-off) and `sign_off_clinical_passport` (may sign off).
-  Self-sign-off is refused at the API regardless of competencies.
-  Frameworks may narrow who can sign off a given competency by base
+  Self-sign-off is refused at the API regardless of competencies. A
+  competency definition may narrow who can sign it off by base
   profession.
 
 - **Assessors may be external to Quill** — most consultants who sign a
@@ -527,7 +560,7 @@ nothing else in phase 1.
   and SNOMED CT never did it. The rule that keeps a slug safe: **it may
   describe the act, never the act's classification.**
 
-- **Hierarchy lives in the framework file**, as a multi-valued
+- **Hierarchy lives in the competency definition**, as a multi-valued
   `parents:` list, and paths, directories and menus are generated from
   it. Nothing is lost: the repository can still be laid out
   hierarchically, because what a sign-off references is the id inside
@@ -548,7 +581,7 @@ nothing else in phase 1.
   no `/` in an id, and no path-shaped reference in any sign-off.
 
 - **Mappings, not identity, carry the standards.** Each competency in
-  a framework file may carry `mappings.snomed` (plural — a competency
+  a competency definition may carry `mappings.snomed` (plural — a
   can map to several concepts), `mappings.opcs4`, and RCR
   capability-in-practice numbers, each version-stamped. SNOMED CT is
   free in the UK under the national licence, though it needs a TRUD
@@ -565,14 +598,16 @@ The aim is to sit on existing standards rather than add another one.
 Git, YAML and Markdown are storage, not a standard we are inventing;
 the vocabulary and the interchange format come from elsewhere.
 
-- **Content**: the first framework is drafted from working clinical
+- **Content**: the first set of competencies is drafted from working
+  clinical
   knowledge, then checked against the UK SACT Board's _Prescriber
   competencies for reviewing and prescribing SACT_ (November 2023),
   which reportedly covers medical prescribers at ST level and above.
   Aligning to it matters for adoption rather than for building, so it
   is a later task in Phase 0, not a prerequisite.
 
-- **Framework file shape**: the 1EdTech CASE model — items with a
+- **Competency definition shape**: the 1EdTech CASE model — items with
+  a
   synthetic identifier, a separate human coding scheme, and hierarchy
   expressed as associations rather than nesting.
 
@@ -632,7 +667,7 @@ passports/<s1>/<s2>/<32-hex-uuid>/
   .git/
   .gitignore                        # contains "files/"
   README.md                         # plain English: what this is, how to read it
-  passport.yaml                     # holder, frameworks enrolled and pinned
+  passport.yaml                     # holder identity and schema version
   competencies.yaml                 # derived index: every competency and its state
   certificates/
     2025-11-04-bronchoscopy-course/
@@ -677,19 +712,28 @@ three of them, and one clinic produces a single sign-off covering
 several.
 
 - **`passport.yaml`** — holder's user id, a snapshot of name and
-  registrations at creation, the list of frameworks enrolled with their
-  version and the SHA-256 of the framework file at enrolment, and a
-  `schema_version` for the passport layout itself.
+  registrations at creation, and a `schema_version` for the passport
+  layout itself. Nothing else: there is no enrolment step and no list
+  of frameworks to join.
 
 - **`competencies.yaml`** — the derived index, regenerated on every
-  write and never hand-edited. One entry per competency in the
-  enrolled frameworks, carrying `id`, human `name`, `status`, `level`
-  and `level_name`, `signed_on`, `signed_off_by`, `expires_on`, a
+  write and never hand-edited. One entry per competency the holder has
+  evidence for, carrying `id`, human `name`, `status`, the
+  current `level` where the competency has levels, `signed_on`,
+  `signed_off_by`, `expires_on`, a
   `sign_off` naming the folder that holds the record,
   `previous_sign_offs` listing earlier ones newest first, a
   `logbook_entries` count, and `certificates` naming the folders that
   relate to this competency. If it ever disagrees with the directories
   beneath, they win and it is rebuilt.
+
+- **Expiry is recorded and nothing more** — where a competency
+  declares an interval, the sign-off carries `expires_on` and the
+  index shows it. Nothing acts on it: no expired status, no reminders,
+  no dropping back to a lower level, no bar on anything. The date is
+  there to be read by a person who can judge what it means. Acting on
+  it is a future item, deliberately, and the rule for what a lapsed
+  sign-off implies is a clinical decision that has not been made.
 
 - **Counts, never comparisons** — the index reports
   `logbook_entries: 38`. It never carries a target, a percentage, a
@@ -708,14 +752,30 @@ several.
 
 - **`sign-off.yaml`** — the record itself, and the thing that is
   signed. Fields: `id` (a timestamp id), the `competency` block with
-  both `id` and human `name`, `framework` with `version` and
-  `sha256`, `kind` (`initial` or `reassessment`), `status`
-  (`requested`, `signed_off`, `declined`, `superseded`), `level` with
-  `value` and `name`, `observed_on`, `signed_at`, `expires_on`,
+  both `id` and human `name`, `kind` (see below), `status`
+  (`requested`, `signed_off`,
+  `declined`, `superseded`), `level` with `id` and `name` where the
+  competency declares levels, `observed_on`, `signed_at`,
+  `expires_on`,
   `holder` and `signed_off_by` blocks each with user id, name, role,
   registrations, `registration_verified` and care location as they
   were at signing, `meaning` (see the commit model), `comments`,
   `corrects` naming a superseded sign-off, and `content_hash`.
+
+- **Three reasons for a later sign-off, and only one supersedes** —
+  `kind` records which:
+
+  - `initial` — the first sign-off for this competency.
+  - `progression` — a higher level than before, for example supervised
+    in March and unsupervised in September. The earlier record stays
+    correct and valid; the holder simply moved on.
+  - `reassessment` — the same level confirmed again.
+  - `correction` — the earlier record was wrong. This is the only kind
+    that sets `corrects` and marks the earlier sign-off `superseded`.
+
+  Progression and reassessment supersede nothing. Conflating them with
+  correction would quietly imply that an assessor had got something
+  wrong when they had not.
 
 - **`certificate.yaml`** — what the certificate is, the issuing body,
   the date awarded and any expiry, the competencies it relates to, and
@@ -801,9 +861,8 @@ several.
   only, with the contributing and non-contributing fields written down
   in the schema. Correcting a typo in a comment must not invalidate a
   signature; changing the level must. The same fingerprint drives
-  reassessment: if a framework version changes a competency's
-  definition, sign-offs made against the old definition are flagged as
-  needing review rather than silently carried forward.
+  reassessment, if we later choose to detect a competency definition
+  changing under sign-offs already made.
 
 - **Signing, at two levels with different meanings** — the assessor's
   detached signature over `sign-off.yaml` alone is the professional
@@ -1051,8 +1110,8 @@ not a copy of the record.
 
 - **Markdown** — the passport is rendered on demand from
   `passport.yaml` and the sign-off files into a single
-  `passport.md` (front page with holder identity and framework
-  versions, one section per domain, one table row per competency with
+  `passport.md` (front page with holder identity, one table row per
+  competency with
   its current level, assessor and date, and an appendix of every
   sign-off in full including caveats and superseded records). The
   files are canonical; the rendered Markdown is a view and is not
@@ -1083,8 +1142,8 @@ All routes under `/api/passport`, all requiring authentication, CSRF on
 mutations, `requires_feature("passport")`, and the CBAC competencies
 above. Additive only, per `.claude/rules/backend.md`.
 
-- `POST /api/passport` — create the caller's passport and enrol in a
-  framework. `hold_clinical_passport`.
+- `POST /api/passport` — create the caller's passport.
+  `hold_clinical_passport`.
 - `GET /api/passport/me` — the caller's passport with derived status
   per competency.
 - `GET /api/passport/{id}` — a passport the caller may view: the holder,
@@ -1127,8 +1186,8 @@ above. Additive only, per `.claude/rules/backend.md`.
 - `GET /api/passport/{id}/logbook?competency=<id>` — a competency's
   entries with a count, and no target.
 - `GET /api/passport/{id}/export.md`, `export.pdf`, `export.zip`.
-- `GET /api/passport/frameworks` — the published frameworks and
-  versions.
+- `GET /api/passport/competencies` — the competency definitions with
+  their levels, for populating the request form.
 
 ### Frontend
 
@@ -1162,14 +1221,15 @@ above. Additive only, per `.claude/rules/backend.md`.
 ### Validation and safety
 
 - **Schemas** — Pydantic models with `extra="forbid"` for
-  `passport.yaml`, `sign-off.yaml`, sidecars and framework files;
+  `passport.yaml`, `sign-off.yaml`, certificates, logbook files and
+  sidecars;
   the same models validate on read, so a hand-edited or imported file
   that fails validation is rejected rather than half-parsed.
 
-- **Framework CI gate** — a validator under `backend/app/features/`
+- **Definition CI gate** — a validator under `backend/app/features/`
   in the style of `features/teaching/tooling/validate.py` that checks
-  every framework file: every competency id exists in CBAC, every
-  assessor base profession exists, level schemes are well-formed,
+  the passport fields added to the competency definitions: every
+  assessor base profession exists, level lists are well-formed,
   versions are immutable once published (a changed file with the same
   version fails).
 
@@ -1199,17 +1259,16 @@ above. Additive only, per `.claude/rules/backend.md`.
   route lists passports, users or organisations to them. The
   authorisation tests include an external assessor row in the matrix.
 
-## Phase 0: framework content and clinical safety
+## Phase 0: competency content and clinical safety
 
-- [ ] Draft the first framework from working clinical knowledge: the
-      domains, the competencies in each, the level scheme, who may sign
-      each one off, and the reassessment interval. Do not wait on
-      official documents; `v1` is a working draft by design.
+- [ ] Draft the first competencies from working clinical knowledge:
+      the procedures, their levels where levels are meaningful, who may
+      sign each one off, and any expiry interval. Do not wait on
+      official documents.
 - [ ] Later, and not as a blocker: check the draft against the UK SACT
       Board's _Prescriber competencies for reviewing and prescribing
       SACT_ (November 2023), the South West passports and the RCR
-      entrustment scales. Publish any realignment as `v2` rather than
-      editing `v1`, so sign-offs already made stay valid.
+      entrustment scales.
 - [ ] Rename `shared/competencies.yaml` to
       `shared/competency-definitions.yaml` so it cannot be confused
       with a passport's own `competencies.yaml`. Touches the loader
@@ -1226,13 +1285,16 @@ above. Additive only, per `.claude/rules/backend.md`.
       `shared/competency-definitions.yaml` under the feature-admin
       category, and to the appropriate base professions in
       `shared/base-professions.yaml`.
-- [ ] Write `shared/passport-frameworks/sact-oncology-registrar/v1.yaml`
-      and `shared/passport-frameworks/radiotherapy-oncology-registrar/v1.yaml`.
+- [ ] Add the optional passport fields — `levels`,
+      `expires_after_months`, and the base professions that may sign
+      off — to the competencies that need them. Every field is
+      optional, so existing entries are untouched.
 - [ ] Run `yarn generate:types` in `frontend/` and commit the generated
       JSON.
 - [ ] Add hazard log entries for the passport: wrong assessor signs,
       holder signs off their own, evidence contains patient data, exported PDF
-      diverges from repository, stale framework version, external
+      diverges from repository, a competency definition changed under
+      sign-offs already made, external
       assessor declares a registration they do not hold, signing key or
       CA key compromise, sign-off made from a stolen session without
       the step-up code.
@@ -1243,8 +1305,9 @@ above. Additive only, per `.claude/rules/backend.md`.
       relative paths, no I/O, after VPR's `crates/core/src/paths/`),
       `ids.py` (timestamp id generator with monotonic rule),
       `schemas.py` (Pydantic models for `passport.yaml`,
-      `sign-off.yaml`, sidecars, frameworks), and `frameworks.py`
-      (loader for `shared/passport-frameworks/`).
+      `sign-off.yaml`, certificates, logbook files and sidecars), and
+      `definitions.py` (reads the passport fields from
+      `shared/competency-definitions.yaml`).
 - [ ] Implement `store.py` with the `PassportStore` interface and the
       local filesystem backend, including `init_and_commit` with
       whole-directory cleanup on failure and `write_and_commit_files`
@@ -1404,8 +1467,9 @@ above. Additive only, per `.claude/rules/backend.md`.
 - [ ] Rehearse CA key loss and recovery: create a second CA, publish
       it, confirm old signatures still verify against the retained CA
       certificate.
-- [ ] Clinical safety review of the framework files and the declaration
-      text with the Clinical Safety Officer; record in the hazard log.
+- [ ] Clinical safety review of the competency definitions and the
+      declaration text with the Clinical Safety Officer; record in the
+      hazard log.
 - [ ] Enable the `passport` feature for the first South West
       organisation and onboard a small assessor group.
 - [ ] Document the module under `docs/docs/backend/passport/index.md`
@@ -1455,10 +1519,16 @@ close them off, and so nobody builds them before there is a need.
   recording the import as a commit with provenance. VPR's Epic 13 lists
   the pieces.
 
-- **Reassessment reminders** — computing due dates from the framework's
-  reassessment interval and the latest `signed_at`, surfaced in the UI
+- **Reassessment reminders** — computing due dates from
+  `expires_after_months` and the latest sign-off, surfaced in the UI
   and by email. Computed on read from the files, never stored as a
   flag, after VPR's refusal to record what it cannot verify.
+
+- **Acting on expiry** — reminders, a lapsed status, and a rule for
+  what a lapsed sign-off implies. Phase 1 records `expires_on` and
+  does nothing with it, because whether someone drops back to a lower
+  level or to nothing at all is a clinical decision rather than a
+  technical one.
 
 - **CSV export** — one row per sign-off, for the common case of
   someone importing into a spreadsheet or another system by hand.
@@ -1484,16 +1554,21 @@ close them off, and so nobody builds them before there is a need.
   cost of files without a versioning primitive on the write path, so
   every write is a commit from the first line of code.
 
-- **One repository per holder, not per organisation or per framework**
-  — the holder is the atomic unit that moves between trusts, exactly as
-  the patient is in VPR. A holder enrolled in two frameworks has one
-  repository with both.
+- **One repository per holder, not per organisation** — the holder is
+  the atomic unit that moves between trusts, exactly as the patient is
+  in VPR. Someone working across SACT and radiotherapy has one
+  repository holding both.
 
-- **Competency vocabulary stays in CBAC; frameworks and sign-offs
-  are new** — one identifier for "prescribe SACT cycle 1" everywhere,
-  and no duplicate registry to drift. The passport does not write to
-  CBAC in phase 1 because granting access from an educational record
-  is a clinical safety decision that has not been made.
+- **One competency registry, not two** — the passport adds optional
+  fields to `shared/competency-definitions.yaml` rather than
+  introducing a parallel framework registry. One identifier for
+  "prescribe SACT cycle 1" everywhere, nothing to drift, and no second
+  schema or validator to maintain. What a passport contains is
+  whatever its holder has evidence for; which competencies constitute
+  a given regional passport is local policy and is deliberately not
+  encoded centrally. The passport still does not write to CBAC,
+  because granting access from an educational record is a clinical
+  safety decision that has not been made.
 
 - **Coordination in Postgres, record in files** — an assessor's inbox
   is a cross-passport query and files cannot serve it, so the request
@@ -1578,11 +1653,30 @@ close them off, and so nobody builds them before there is a need.
   limit and adds the append-only digest log that actually closes it.
 
 - **Sit on existing standards for vocabulary and interchange, not for
-  storage** — CASE for the framework shape, Open Badges 3.0 for export,
+  storage** — CASE for the shape of a competency definition, Open
+  Badges 3.0 for export,
   SNOMED and OPCS-4 as mappings, UK SACT Board for content. That makes
   git, YAML and Markdown a storage substrate with well-chosen mappings
   out, rather than a rival standard, which is a far easier thing to
   defend to a deanery.
+
+- **Levels are words, declared per competency, and never numbered** —
+  `level-3` needs a lookup table to mean anything, and every stored
+  record becomes wrong the moment a scale gains or loses a step.
+  `unsupervised` explains itself and survives the scale changing
+  around it. Ordering comes from the order they are listed in, which
+  is where a scale belongs. Declaring them per competency rather than
+  globally matters because the honest number of
+  levels genuinely differs: cannulation is signed off or it is not,
+  while prescribing systemic anti-cancer therapy has a real middle
+  state.
+
+- **Progression is a new sign-off, not an edit** — moving from
+  supervised to unsupervised writes a second record in its own folder.
+  The earlier one is a named consultant's attestation that something
+  was true at the time, and it was; overwriting it would destroy that
+  statement and break the signature covering it. It also makes
+  progression visible, which is worth having.
 
 - **Two levels of trust, kept visibly apart** — certificates and
   logbook entries are the holder's own claims and carry no signature;
@@ -1644,14 +1738,14 @@ close them off, and so nobody builds them before there is a need.
 
 ## Open questions
 
-- **Which documents are the source frameworks** — the South West SACT
+- **Which documents are the source of the competencies** — the South West SACT
   and radiotherapy passports need to be obtained from the user's wife
   or the deanery before Phase 0 can be completed; the domain notes
   above are from public summaries only.
 
 - **Assessor eligibility** — whether "consultant or above" is right for
   every competency or whether some allow senior registrars or specialist
-  nurses to sign off. The framework file supports either; the content is
+  nurses to sign off. The definition supports either; the content is
   a clinical decision.
 
 - **Evidence retention** — how long evidence blobs are kept after an
