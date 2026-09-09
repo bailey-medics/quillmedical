@@ -87,7 +87,7 @@ services:
       - external
 
   ehrbase:
-    image: ehrbase/ehrbase:2.32.0@sha256:631ae3f6d8e394c0c17b82b6b3433fea8b32e4022c5d734d13847fbb84598553
+    image: ehrbase/ehrbase:2.33.0@sha256:41ab9c9c6f73e0637c6e8671de94bb86775ba36db28e837c3e17729f898e9622
     container_name: quill_ehrbase
     environment:
       - DB_URL=jdbc:postgresql://postgres-ehrbase:5432/ehrbase
