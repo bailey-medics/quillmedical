@@ -80,7 +80,7 @@ resource "google_compute_backend_bucket" "spike" {
   }
 }
 
-# ---------- Signed-URL key ----------
+# ---------- Backend bucket readiness ----------
 # Attaching a key is what makes the edge reject unsigned requests, which is the
 # second half of the probe: unsigned 403, correctly signed 200.
 # The URL map update failed with "backendBuckets/... is not ready,
@@ -92,6 +92,7 @@ resource "time_sleep" "wait_for_backend_bucket" {
   create_duration = "60s"
 }
 
+# ---------- Signed-URL key ----------
 resource "random_bytes" "signing_key" {
   length = 16
 }
