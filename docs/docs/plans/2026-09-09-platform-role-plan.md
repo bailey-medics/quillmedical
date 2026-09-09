@@ -56,8 +56,11 @@ does not, and removing the ladder removes the suggestion.
 
 ## Steps
 
-- [ ] **Delete `require_staff` and `DEP_REQUIRE_STAFF`.** Dead code, no consumers. Doing this
+- [x] **Delete `require_staff` and `DEP_REQUIRE_STAFF`.** Dead code, no consumers. Doing this
       first shrinks the problem before anything harder starts.
+      - Also corrected a stale line in `docs/docs/code/fastapi/system_permissions.md`, which
+        named all three of `require_staff`, `require_admin` and `require_superadmin` as
+        living in `app.deps`. The other two still do; this one no longer exists.
 - [ ] **Replace the `messaging.py` staff check with membership.** It already looks up
       `get_user_org_ids` on the next line; the question it is really asking is whether the
       person is attached to one of the conversation's organisations, not what rung they are
