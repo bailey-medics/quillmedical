@@ -362,9 +362,6 @@ module "load_balancer" {
   backend_service_name  = module.cloud_run_backend.service_name
   frontend_service_name = module.cloud_run_frontend.service_name
 
-  # Null unless the Phase 0 spike is switched on, so every other environment
-  # renders an unchanged URL map.
-  video_spike_backend_bucket_id = var.environment == "teaching" && var.enable_video_spike ? module.teaching_video_spike[0].backend_bucket_id : null
 }
 
 # ---------- Cloud Storage: teaching images (teaching only) ----------
@@ -374,18 +371,6 @@ module "cloud_storage" {
   project_id  = var.project_id
   region      = var.region
   environment = var.environment
-}
-
-# ---------- Teaching video spike (Phase 0, temporary) ----------
-# Gated on the flag as well as the environment, so it stays inert until
-# switched on deliberately. See the video auth gate plan, Phase 0.
-module "teaching_video_spike" {
-  count          = var.environment == "teaching" && var.enable_video_spike ? 1 : 0
-  source         = "./modules/teaching-video-spike"
-  project_id     = var.project_id
-  project_number = data.google_project.project.number
-  region         = var.region
-  environment    = var.environment
 }
 
 # ---------- Monitoring: uptime checks + alerting ----------

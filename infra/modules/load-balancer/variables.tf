@@ -41,9 +41,3 @@ variable "landing_domain" {
   type        = string
   default     = null
 }
-
-variable "video_spike_backend_bucket_id" {
-  description = "Backend bucket ID for the Phase 0 video spike, routed at /videospike/*. Null in environments without the spike, which then render an unchanged URL map. Temporary."
-  type        = string
-  default     = null
-}
