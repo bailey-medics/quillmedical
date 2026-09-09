@@ -70,6 +70,12 @@ does not, and removing the ladder removes the suggestion.
       conversation at their organisation.
       - It becomes safe once the organisation table carries a capacity, because the
         membership check can then ask what kind of member rather than merely whether one.
+      - **Now unblocked.** The capacity column landed, and the unified resolver
+        (`2026-09-09-membership-and-reach-plan.md`) takes an optional `capacity=`. So the
+        check becomes `get_member_org_ids(db, user.id, capacity="staff")` — one call
+        answering both halves, where the level check answered neither well. Note it is
+        *membership*, not reach: a site trainee reaching the organisation's teaching content
+        must not thereby self-join its staff conversations.
 - [ ] **Give the admin gates a competency.** `manage_users` already exists in
       `competencies.yaml`, and `_require_own_org` is already the place check. Each admin
       route becomes that pair. Do it in batches by area — organisations, sites, users,

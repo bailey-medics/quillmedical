@@ -83,10 +83,8 @@ from app.models import (
     Organisation,
     OrganisationFeature,
     User,
-    organisation_member,
-    organisation_site,
-    site_member,
 )
+from app.organisations import get_member_org_ids, get_reachable_org_ids
 
 logger = logging.getLogger(__name__)
 
@@ -110,37 +108,18 @@ _DEP_USER = Depends(_get_current_user)
 
 
 def _get_user_org_ids(user: User, db: Session) -> list[int]:
-    """Return all organisation IDs the user belongs to, or raise 403.
+    """Return the organisations the user can reach, or raise 403.
 
-    Resolves membership via direct org staff OR site staff linked to an org.
+    Teaching used to carry its own copy of this, walking site membership
+    up into organisation membership because that was the available fudge
+    for letting a site trainee reach their organisation's content. The
+    shared resolver now expresses the same thing as downward reach, so
+    this is a thin wrapper that adds only teaching's 403.
     """
-    # Direct org membership
-    direct = set(
-        db.execute(
-            select(organisation_member.c.organisation_id).where(
-                organisation_member.c.user_id == user.id
-            )
-        )
-        .scalars()
-        .all()
-    )
-    # Indirect via site → org linkage
-    via_site = set(
-        db.execute(
-            select(organisation_site.c.organisation_id)
-            .join(
-                site_member,
-                site_member.c.site_id == organisation_site.c.site_id,
-            )
-            .where(site_member.c.user_id == user.id)
-        )
-        .scalars()
-        .all()
-    )
-    org_ids = direct | via_site
+    org_ids = get_reachable_org_ids(db, user.id)
     if not org_ids:
         raise HTTPException(403, "User has no organisation")
-    return [int(r) for r in org_ids]
+    return org_ids
 
 
 def _get_user_org_id(user: User, db: Session) -> int:
@@ -1751,15 +1730,10 @@ def list_delegates(
         site_member,
     )
 
-    # Get all orgs the caller belongs to
-    caller_org_ids = [
-        row[0]
-        for row in db.execute(
-            select(organisation_member.c.organisation_id).where(
-                organisation_member.c.user_id == user.id
-            )
-        ).all()
-    ]
+    # Which organisations the caller is a member of. Direct membership,
+    # not reach: this route lists the people *below* the caller, so a
+    # trainee reaching up via a site link must not thereby list its staff.
+    caller_org_ids = get_member_org_ids(db, user.id)
     if not caller_org_ids:
         return []
 
