@@ -283,7 +283,7 @@ class TestOrganisationModel:
 
     def test_organisation_staff_relationship(self, db_session: Session):
         """Test organisation staff member relationship."""
-        from app.models import Organisation, organisation_staff_member
+        from app.models import Organisation, organisation_member
 
         org = Organisation(name="Test Clinic", type="clinic")
         user = User(
@@ -298,7 +298,7 @@ class TestOrganisationModel:
         # Add user as staff member
         from sqlalchemy import insert
 
-        stmt = insert(organisation_staff_member).values(
+        stmt = insert(organisation_member).values(
             organisation_id=org.id, user_id=user.id
         )
         db_session.execute(stmt)

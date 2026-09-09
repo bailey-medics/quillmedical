@@ -85,6 +85,58 @@ does not, and removing the ladder removes the suggestion.
       hierarchy. This is the step that makes the change irreversible in a good way: nothing
       can silently reintroduce a rung.
 
+## Live: learning content is readable across organisations
+
+Found while planning self-hosted video. `get_learning_content`
+(`GET /api/teaching/modules/{module_id}/learning`) is guarded by two things and
+neither is enough:
+
+- `requires_feature("teaching")` on the router — the **caller's** organisation must have
+  teaching enabled.
+- `_DEP_USER` — the caller must be signed in.
+
+There is no competency check, not even `view_teaching_cases`, where the admin routes beside
+it require `manage_teaching_content`. And there is no organisation scoping at all: anyone at
+any organisation with teaching enabled can fetch any module's slides by naming its id.
+`_SAFE_BANK_ID` restricts the characters allowed in that id, not who owns the module.
+
+**It cannot be fixed by adding a check alone.** The content path is
+`modules/{module_id}/learning/content.mdx` — the bucket layout carries no organisation, so
+there is nothing in the path to compare against. Ownership lives in `QuestionBankConfig`,
+which is per organisation, so the check is a database lookup before the GCS fetch.
+
+**The rule to enforce:** a person may read learning materials only for the organisation they
+belong to, reached through their site. That is the downward delivery described in
+`2026-09-09-membership-and-reach-plan.md` — a trainee at a site receives what their
+organisation has made available there — so this is an instance of that rule rather than a
+separate policy.
+
+- [ ] **Scope `get_learning_content` to the caller's organisation**, resolved through site
+      membership, and require a competency to read it.
+- [ ] **Add a test that fails without the scoping**, as the site-route fixes did. A module
+      belonging to another organisation must return 404 rather than 403, matching
+      `get_organisation`: the response should not confirm that a module exists to someone who
+      may not see it.
+- [ ] **Check the same endpoint's siblings.** Learning content was found by chance while
+      planning video; nothing has swept the other teaching read routes for the same shape.
+      - **Authentication is not the missing half.** Every route on the teaching router was
+        checked and each already requires a signed-in user, so the sweep is looking for
+        missing _scoping_, not missing sign-in.
+
+**Not odd that the video plan is stricter.** Video is the expensive, signed-URL case where a
+leak is obvious, so it got the attention. Slides being laxer is the anomaly, not video being
+tighter.
+
+**Settled: all teaching material is private.** It is reachable only by an authenticated
+user, and only for their own organisation. There may one day be content offered freely, and
+that will still be behind authentication — free means no charge, not no sign-in.
+
+So this is not a question of how guessable a module id is. How hard an id is to guess is the
+argument for content that is merely obscure; it is not the argument for content that is
+private, because a private thing readable by the wrong signed-in person is a leak whether
+they guessed the id or were handed it. Treating the material as private is what makes the fix straightforward: there
+is no case to carve out, and no "public modules" branch to maintain.
+
 ## What this costs
 
 - **34 files outside `backend/app/` mention it**, including `AuthContext`, `RequirePermission`,

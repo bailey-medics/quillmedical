@@ -98,9 +98,9 @@ from app.models import (
     PatientMetadata,
     Site,
     User,
+    organisation_member,
     organisation_patient_member,
     organisation_site,
-    organisation_staff_member,
     site_member,
 )
 from app.organisations import (
@@ -1090,9 +1090,14 @@ def register(
                 status_code=400, detail="Organisation not found"
             )
         db.execute(
-            organisation_staff_member.insert().values(
+            organisation_member.insert().values(
                 organisation_id=org.id,
                 user_id=user.id,
+                # Public registration is how teaching delegates arrive, and
+                # they are not staff. Recording that here is what lets the
+                # admin page and the messaging self-join check tell them
+                # apart; previously nothing could.
+                capacity="trainee",
             )
         )
 
@@ -1537,9 +1542,10 @@ def create_user_with_cbac(
     # Assign to organisations
     for org_id in payload.organisation_ids:
         db.execute(
-            organisation_staff_member.insert().values(
+            organisation_member.insert().values(
                 organisation_id=org_id,
                 user_id=user.id,
+                capacity="staff",
             )
         )
 
@@ -1686,19 +1692,17 @@ def update_user(
         if current_user.system_permissions == "superadmin":
             # Superadmin: replace all memberships
             db.execute(
-                organisation_staff_member.delete().where(
-                    organisation_staff_member.c.user_id == user_id
+                organisation_member.delete().where(
+                    organisation_member.c.user_id == user_id
                 )
             )
         else:
             # Admin: only remove memberships within admin's own orgs
             admin_org_ids = get_user_org_ids(db, current_user.id)
             db.execute(
-                organisation_staff_member.delete().where(
-                    organisation_staff_member.c.user_id == user_id,
-                    organisation_staff_member.c.organisation_id.in_(
-                        admin_org_ids
-                    ),
+                organisation_member.delete().where(
+                    organisation_member.c.user_id == user_id,
+                    organisation_member.c.organisation_id.in_(admin_org_ids),
                 )
             )
         # Add new org memberships
@@ -1712,9 +1716,10 @@ def update_user(
                     detail=f"Organisation {org_id} not found",
                 )
             db.execute(
-                organisation_staff_member.insert().values(
+                organisation_member.insert().values(
                     user_id=user_id,
                     organisation_id=org_id,
+                    capacity="staff",
                 )
             )
 
@@ -2224,8 +2229,8 @@ def me(
     # Direct org membership
     direct_org_ids = set(
         db.execute(
-            select(organisation_staff_member.c.organisation_id).where(
-                organisation_staff_member.c.user_id == current_user.id,
+            select(organisation_member.c.organisation_id).where(
+                organisation_member.c.user_id == current_user.id,
             )
         )
         .scalars()
@@ -2416,8 +2421,8 @@ def list_users(
 
     # Exclude users who are already staff of the given organisation
     if exclude_org is not None:
-        existing_staff_ids = select(organisation_staff_member.c.user_id).where(
-            organisation_staff_member.c.organisation_id == exclude_org
+        existing_staff_ids = select(organisation_member.c.user_id).where(
+            organisation_member.c.organisation_id == exclude_org
         )
         stmt = stmt.where(User.id.notin_(existing_staff_ids))
 
@@ -2462,14 +2467,14 @@ def list_users(
         user_ids = [user.id for user in users]
         org_rows = db.execute(
             select(
-                organisation_staff_member.c.user_id,
+                organisation_member.c.user_id,
                 Organisation.name,
             )
             .join(
                 Organisation,
-                Organisation.id == organisation_staff_member.c.organisation_id,
+                Organisation.id == organisation_member.c.organisation_id,
             )
-            .where(organisation_staff_member.c.user_id.in_(user_ids))
+            .where(organisation_member.c.user_id.in_(user_ids))
         ).all()
         user_orgs: dict[int, list[str]] = {}
         for row in org_rows:
@@ -2573,8 +2578,8 @@ def get_user(
     user_org_ids = [
         row[0]
         for row in db.execute(
-            select(organisation_staff_member.c.organisation_id).where(
-                organisation_staff_member.c.user_id == user_id
+            select(organisation_member.c.organisation_id).where(
+                organisation_member.c.user_id == user_id
             )
         ).all()
     ]
@@ -3708,10 +3713,10 @@ def get_organisation(
             User.full_name,
         )
         .join(
-            organisation_staff_member,
-            organisation_staff_member.c.user_id == User.id,
+            organisation_member,
+            organisation_member.c.user_id == User.id,
         )
-        .where(organisation_staff_member.c.organisation_id == org_id)
+        .where(organisation_member.c.organisation_id == org_id)
     )
 
     # Admins must not see superadmin staff members
@@ -4030,9 +4035,9 @@ def add_staff_to_organisation(
 
     # Check if already a member
     existing = db.scalar(
-        select(organisation_staff_member).where(
-            organisation_staff_member.c.organisation_id == org_id,
-            organisation_staff_member.c.user_id == body.user_id,
+        select(organisation_member).where(
+            organisation_member.c.organisation_id == org_id,
+            organisation_member.c.user_id == body.user_id,
         )
     )
     if existing:
@@ -4042,9 +4047,10 @@ def add_staff_to_organisation(
         )
 
     db.execute(
-        organisation_staff_member.insert().values(
+        organisation_member.insert().values(
             organisation_id=org_id,
             user_id=body.user_id,
+            capacity="staff",
         )
     )
 
@@ -4164,18 +4170,18 @@ def remove_staff_from_organisation(
             )
 
     existing = db.scalar(
-        select(organisation_staff_member).where(
-            organisation_staff_member.c.organisation_id == org_id,
-            organisation_staff_member.c.user_id == user_id,
+        select(organisation_member).where(
+            organisation_member.c.organisation_id == org_id,
+            organisation_member.c.user_id == user_id,
         )
     )
     if not existing:
         raise HTTPException(status_code=404, detail="Membership not found")
 
     db.execute(
-        organisation_staff_member.delete().where(
-            organisation_staff_member.c.organisation_id == org_id,
-            organisation_staff_member.c.user_id == user_id,
+        organisation_member.delete().where(
+            organisation_member.c.organisation_id == org_id,
+            organisation_member.c.user_id == user_id,
         )
     )
     return StatusResponse(status="removed")
