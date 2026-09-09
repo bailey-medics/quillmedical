@@ -21,7 +21,7 @@ from app.models import (
     Organisation,
     OrganisationFeature,
     User,
-    organisation_staff_member,
+    organisation_member,
 )
 from app.security import hash_password
 
@@ -60,7 +60,7 @@ def _make_educator(db: Session, org: Organisation) -> User:
     db.add(user)
     db.flush()
     db.execute(
-        organisation_staff_member.insert().values(
+        organisation_member.insert().values(
             organisation_id=org.id, user_id=user.id
         )
     )
@@ -82,7 +82,7 @@ def _make_learner(db: Session, org: Organisation) -> User:
     db.add(user)
     db.flush()
     db.execute(
-        organisation_staff_member.insert().values(
+        organisation_member.insert().values(
             organisation_id=org.id, user_id=user.id
         )
     )
@@ -242,7 +242,7 @@ class TestFeatureGating:
         db_session.add(user)
         db_session.flush()
         db_session.execute(
-            organisation_staff_member.insert().values(
+            organisation_member.insert().values(
                 organisation_id=org.id,
                 user_id=user.id,
             )
@@ -1574,7 +1574,7 @@ class TestBankOrgSettingsAreScopedToYourOrganisations:
         db_session.add(second)
         db_session.flush()
         db_session.execute(
-            organisation_staff_member.insert().values(
+            organisation_member.insert().values(
                 organisation_id=second.id, user_id=educator.id
             )
         )

@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
-from app.models import Organisation, User, organisation_staff_member
+from app.models import Organisation, User, organisation_member
 from app.security import hash_password
 
 
@@ -309,7 +309,7 @@ class TestOrganisationEndpoints:
         """Test getting list of organisations (admin sees only own)."""
         from sqlalchemy import insert
 
-        from app.models import Organisation, organisation_staff_member
+        from app.models import Organisation, organisation_member
 
         # Create test organisations
         org1 = Organisation(
@@ -323,7 +323,7 @@ class TestOrganisationEndpoints:
 
         # Add admin as staff to both orgs
         db_session.execute(
-            insert(organisation_staff_member).values(
+            insert(organisation_member).values(
                 [
                     {"organisation_id": org1.id, "user_id": test_admin.id},
                     {"organisation_id": org2.id, "user_id": test_admin.id},
@@ -350,7 +350,7 @@ class TestOrganisationEndpoints:
         """Test admin only sees organisations they are a member of."""
         from sqlalchemy import insert
 
-        from app.models import Organisation, organisation_staff_member
+        from app.models import Organisation, organisation_member
 
         org1 = Organisation(name="My Org", type="hospital", location="London")
         org2 = Organisation(
@@ -361,7 +361,7 @@ class TestOrganisationEndpoints:
 
         # Admin is only a member of org1
         db_session.execute(
-            insert(organisation_staff_member).values(
+            insert(organisation_member).values(
                 organisation_id=org1.id, user_id=test_admin.id
             )
         )
@@ -408,7 +408,7 @@ class TestOrganisationEndpoints:
         """Test getting organisation by ID with details."""
         from sqlalchemy import insert
 
-        from app.models import Organisation, organisation_staff_member
+        from app.models import Organisation, organisation_member
 
         # Create organisation
         org = Organisation(name="Test Practice", type="general_practice")
@@ -416,7 +416,7 @@ class TestOrganisationEndpoints:
         db_session.commit()
 
         # Add staff member
-        stmt = insert(organisation_staff_member).values(
+        stmt = insert(organisation_member).values(
             organisation_id=org.id, user_id=test_admin.id
         )
         db_session.execute(stmt)
@@ -571,7 +571,7 @@ class TestOrganisationEndpoints:
         """Test successfully updating an organisation."""
         from sqlalchemy import insert
 
-        from app.models import Organisation, organisation_staff_member
+        from app.models import Organisation, organisation_member
 
         org = Organisation(
             name="Original Hospital",
@@ -582,7 +582,7 @@ class TestOrganisationEndpoints:
         db_session.commit()
 
         db_session.execute(
-            insert(organisation_staff_member).values(
+            insert(organisation_member).values(
                 organisation_id=org.id, user_id=test_admin.id
             )
         )
@@ -608,14 +608,14 @@ class TestOrganisationEndpoints:
         """Test updating organisation with invalid type."""
         from sqlalchemy import insert
 
-        from app.models import Organisation, organisation_staff_member
+        from app.models import Organisation, organisation_member
 
         org = Organisation(name="Test Org", type="hospital_team")
         db_session.add(org)
         db_session.commit()
 
         db_session.execute(
-            insert(organisation_staff_member).values(
+            insert(organisation_member).values(
                 organisation_id=org.id, user_id=test_admin.id
             )
         )
@@ -635,7 +635,7 @@ class TestOrganisationEndpoints:
         """Test partial update only changes specified fields."""
         from sqlalchemy import insert
 
-        from app.models import Organisation, organisation_staff_member
+        from app.models import Organisation, organisation_member
 
         org = Organisation(
             name="Test Hospital",
@@ -646,7 +646,7 @@ class TestOrganisationEndpoints:
         db_session.commit()
 
         db_session.execute(
-            insert(organisation_staff_member).values(
+            insert(organisation_member).values(
                 organisation_id=org.id, user_id=test_admin.id
             )
         )
@@ -693,14 +693,14 @@ class TestOrganisationEndpoints:
         """Test adding non-existent user as staff."""
         from sqlalchemy import insert
 
-        from app.models import Organisation, organisation_staff_member
+        from app.models import Organisation, organisation_member
 
         org = Organisation(name="Test Org", type="hospital_team")
         db_session.add(org)
         db_session.commit()
 
         db_session.execute(
-            insert(organisation_staff_member).values(
+            insert(organisation_member).values(
                 organisation_id=org.id, user_id=test_admin.id
             )
         )
@@ -721,7 +721,7 @@ class TestOrganisationEndpoints:
         """Test successfully adding a staff member."""
         from sqlalchemy import insert
 
-        from app.models import Organisation, organisation_staff_member
+        from app.models import Organisation, organisation_member
 
         org = Organisation(name="Staff Org", type="hospital_team")
         db_session.add(org)
@@ -729,7 +729,7 @@ class TestOrganisationEndpoints:
 
         # Pre-add admin as member so they can manage this org
         db_session.execute(
-            insert(organisation_staff_member).values(
+            insert(organisation_member).values(
                 organisation_id=org.id, user_id=test_admin.id
             )
         )
@@ -765,13 +765,13 @@ class TestOrganisationEndpoints:
         """Test adding user who is already a staff member."""
         from sqlalchemy import insert
 
-        from app.models import Organisation, organisation_staff_member
+        from app.models import Organisation, organisation_member
 
         org = Organisation(name="Dup Org", type="hospital_team")
         db_session.add(org)
         db_session.commit()
 
-        stmt = insert(organisation_staff_member).values(
+        stmt = insert(organisation_member).values(
             organisation_id=org.id,
             user_id=test_admin.id,
         )
@@ -794,14 +794,14 @@ class TestOrganisationEndpoints:
         """Test adding a patient-level user as staff is rejected."""
         from sqlalchemy import insert
 
-        from app.models import Organisation, organisation_staff_member
+        from app.models import Organisation, organisation_member
 
         org = Organisation(name="Staff Only Org", type="hospital_team")
         db_session.add(org)
         db_session.commit()
 
         db_session.execute(
-            insert(organisation_staff_member).values(
+            insert(organisation_member).values(
                 organisation_id=org.id, user_id=test_admin.id
             )
         )
@@ -837,7 +837,7 @@ class TestOrganisationEndpoints:
         db_session.flush()
 
         db_session.execute(
-            organisation_staff_member.insert().values(
+            organisation_member.insert().values(
                 organisation_id=org.id,
                 user_id=test_admin.id,
             )
@@ -864,7 +864,7 @@ class TestOrganisationEndpoints:
 
         # Add both to the org so the admin can see them
         db_session.execute(
-            organisation_staff_member.insert().values(
+            organisation_member.insert().values(
                 [
                     {
                         "organisation_id": org.id,
@@ -901,7 +901,7 @@ class TestOrganisationEndpoints:
         db_session.add(org_a)
         db_session.flush()
         db_session.execute(
-            organisation_staff_member.insert().values(
+            organisation_member.insert().values(
                 organisation_id=org_a.id,
                 user_id=test_admin.id,
             )
@@ -922,7 +922,7 @@ class TestOrganisationEndpoints:
         db_session.add(other_user)
         db_session.flush()
         db_session.execute(
-            organisation_staff_member.insert().values(
+            organisation_member.insert().values(
                 organisation_id=org_b.id,
                 user_id=other_user.id,
             )
@@ -958,7 +958,7 @@ class TestOrganisationEndpoints:
 
         # Add admin to org so they can see users
         db_session.execute(
-            organisation_staff_member.insert().values(
+            organisation_member.insert().values(
                 organisation_id=org.id,
                 user_id=test_admin.id,
             )
@@ -986,7 +986,7 @@ class TestOrganisationEndpoints:
 
         # Add both to admin's org so admin can see them
         db_session.execute(
-            organisation_staff_member.insert().values(
+            organisation_member.insert().values(
                 [
                     {
                         "organisation_id": org.id,
@@ -1112,7 +1112,7 @@ class TestOrganisationEndpoints:
         db_session.add(org)
         db_session.flush()
         db_session.execute(
-            organisation_staff_member.insert().values(
+            organisation_member.insert().values(
                 organisation_id=org.id,
                 user_id=test_admin.id,
             )
@@ -1129,7 +1129,7 @@ class TestOrganisationEndpoints:
         db_session.add(superadmin)
         db_session.flush()
         db_session.execute(
-            organisation_staff_member.insert().values(
+            organisation_member.insert().values(
                 organisation_id=org.id,
                 user_id=superadmin.id,
             )
@@ -1222,7 +1222,7 @@ class TestOrganisationEndpoints:
         db_session.add(org)
         db_session.flush()
         db_session.execute(
-            organisation_staff_member.insert().values(
+            organisation_member.insert().values(
                 organisation_id=org.id,
                 user_id=test_admin.id,
             )
@@ -1239,7 +1239,7 @@ class TestOrganisationEndpoints:
         db_session.add(staff_user)
         db_session.flush()
         db_session.execute(
-            organisation_staff_member.insert().values(
+            organisation_member.insert().values(
                 organisation_id=org.id,
                 user_id=staff_user.id,
             )
@@ -1288,14 +1288,14 @@ class TestOrganisationEndpoints:
         """Test successfully adding a patient."""
         from sqlalchemy import insert
 
-        from app.models import Organisation, organisation_staff_member
+        from app.models import Organisation, organisation_member
 
         org = Organisation(name="Patient Org", type="hospital_team")
         db_session.add(org)
         db_session.commit()
 
         db_session.execute(
-            insert(organisation_staff_member).values(
+            insert(organisation_member).values(
                 organisation_id=org.id, user_id=test_admin.id
             )
         )
@@ -1321,8 +1321,8 @@ class TestOrganisationEndpoints:
 
         from app.models import (
             Organisation,
+            organisation_member,
             organisation_patient_member,
-            organisation_staff_member,
         )
 
         org = Organisation(name="Dup Patient Org", type="hospital_team")
@@ -1330,7 +1330,7 @@ class TestOrganisationEndpoints:
         db_session.commit()
 
         db_session.execute(
-            insert(organisation_staff_member).values(
+            insert(organisation_member).values(
                 organisation_id=org.id, user_id=test_admin.id
             )
         )

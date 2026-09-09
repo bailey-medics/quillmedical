@@ -39,8 +39,8 @@ from app.models import (
     PractisingCompetency,
     Site,
     User,
+    organisation_member,
     organisation_site,
-    organisation_staff_member,
     site_member,
 )
 from app.security import hash_password
@@ -122,7 +122,7 @@ def _site(db: Session, name: str, org: Organisation) -> Site:
 
 def _staff(db: Session, user: User, org: Organisation) -> None:
     db.execute(
-        insert(organisation_staff_member).values(
+        insert(organisation_member).values(
             organisation_id=org.id, user_id=user.id
         )
     )

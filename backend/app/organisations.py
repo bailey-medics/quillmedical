@@ -11,16 +11,16 @@ from sqlalchemy.orm import Session
 from app.models import (
     ExternalPatientAccess,
     User,
+    organisation_member,
     organisation_patient_member,
-    organisation_staff_member,
 )
 
 
 def get_user_org_ids(db: Session, user_id: int) -> list[int]:
     """Return organisation IDs the user belongs to as staff."""
     rows = db.execute(
-        select(organisation_staff_member.c.organisation_id).where(
-            organisation_staff_member.c.user_id == user_id
+        select(organisation_member.c.organisation_id).where(
+            organisation_member.c.user_id == user_id
         )
     ).all()
     return [r[0] for r in rows]
@@ -95,8 +95,8 @@ def get_org_staff_ids(db: Session, org_ids: list[int]) -> set[int]:
     if not org_ids:
         return set()
     rows = db.execute(
-        select(organisation_staff_member.c.user_id).where(
-            organisation_staff_member.c.organisation_id.in_(org_ids)
+        select(organisation_member.c.user_id).where(
+            organisation_member.c.organisation_id.in_(org_ids)
         )
     ).all()
     return {r[0] for r in rows}

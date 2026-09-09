@@ -195,15 +195,31 @@ class PatientMetadata(Base):
     )
 
 
-organisation_staff_member = Table(
-    "organisation_staff_member",
+organisation_member = Table(
+    "organisation_member",
     Base.metadata,
     Column(
         "organisation_id", ForeignKey("organisations.id"), primary_key=True
     ),
     Column("user_id", ForeignKey("users.id"), primary_key=True),
+    # Least privilege: an insert that forgets to say gets the narrower
+    # capacity, not the wider one. A row wrongly marked trainee loses access
+    # and someone complains; a row wrongly marked staff keeps access nobody
+    # notices, which is the failure that does not announce itself.
+    Column("capacity", String(50), nullable=False, server_default="trainee"),
 )
-"""Association table for many-to-many relationship between organisations and staff."""
+"""Association table: who is at an organisation, and in what capacity.
+
+Named ``organisation_member`` rather than ``organisation_member``
+because not everyone in it is staff. Registration put teaching delegates
+here so that anything outside teaching could find them, and with only two
+columns nothing could tell a student from a consultant — so the admin page
+listed them together and the messaging self-join check had to fall back on
+asking what platform level someone held.
+
+Membership answers *where is this person*. What they may do there is a
+practising competency, and who holds a post is a ``Position``.
+"""
 
 
 organisation_patient_member = Table(
@@ -256,7 +272,7 @@ class Organisation(Base):
 
     # Many-to-many relationship to users (staff members)
     staff_members: Mapped[list[User]] = relationship(
-        secondary=organisation_staff_member,
+        secondary=organisation_member,
         backref="organisations",
     )
 
@@ -635,21 +651,30 @@ organisation_site = Table(
 """Association table: many-to-many between organisations and sites."""
 
 
-# In what capacity someone is at a site. Deliberately open-ended: more are
-# expected — volunteer, contractor, honorary, visiting — so this is a string
-# validated against a list in code rather than a database enum, which would
-# need a migration to extend. A free string is not the alternative; that
-# repeats the mistake competency ids made.
+# In what capacity someone is at a place, whether that place is an
+# organisation or a site. Deliberately open-ended: more are expected —
+# volunteer, contractor, honorary, visiting — so this is a string validated
+# against a list in code rather than a database enum, which would need a
+# migration to extend. A free string is not the alternative; that repeats the
+# mistake competency ids made.
+#
+# **One list, not one per table.** An organisation and a site are different
+# places, but a trainee is the same kind of member at either. Two lists would
+# be two meanings of one word waiting to drift apart, which is exactly what
+# `site_staff_member.role` did.
 #
 # **Not a ranking, and never a permission check.** A trainee on placement and
-# a substantive staff member are different relationships to a site, not rungs
-# of a ladder. What someone may *do* at a site is a practising competency; if
-# a rule ever needs "contractors cannot do X", that belongs there, not here,
-# or this column becomes the access-control-shaped field its predecessor was.
-SITE_CAPACITIES: tuple[str, ...] = ("staff", "trainee")
+# a substantive staff member are different relationships to a place, not rungs
+# of a ladder. What someone may *do* there is a practising competency; if a
+# rule ever needs "contractors cannot do X", that belongs there, not here, or
+# this column becomes the access-control-shaped field its predecessor was.
+MEMBER_CAPACITIES: tuple[str, ...] = ("staff", "trainee")
+
+# Kept as the name the site code already uses.
+SITE_CAPACITIES: tuple[str, ...] = MEMBER_CAPACITIES
 
 
-def validate_site_capacity(value: str) -> str:
+def validate_member_capacity(value: str) -> str:
     """Return the capacity unchanged, or raise naming the known ones.
 
     Args:
@@ -661,13 +686,18 @@ def validate_site_capacity(value: str) -> str:
     Raises:
         ValueError: If it is not a known capacity.
     """
-    if value not in SITE_CAPACITIES:
+    if value not in MEMBER_CAPACITIES:
         raise ValueError(
-            f"Unknown site capacity: {value}. Known capacities are "
-            + ", ".join(SITE_CAPACITIES)
+            f"Unknown member capacity: {value}. Known capacities are "
+            + ", ".join(MEMBER_CAPACITIES)
             + "."
         )
     return value
+
+
+def validate_site_capacity(value: str) -> str:
+    """Return the capacity unchanged, or raise. Kept for the site call sites."""
+    return validate_member_capacity(value)
 
 
 site_member = Table(
