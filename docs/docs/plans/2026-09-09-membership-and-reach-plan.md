@@ -4,8 +4,8 @@
 
 - **A person is granted membership of a place** — an organisation, or a site. The two are
   independent. Being on a site does not put you in the organisation.
-- **Each membership carries a capacity** — `staff` or `student` now, `patient` later. What
-  kind of member this person is here.
+- **Each membership carries a capacity** — `staff` or `trainee` now, `patient` later.
+  What kind of member this person is here.
 - **Reach flows downward only.** Organisation membership reaches the organisation and every
   site linked to it. Site membership reaches that site, and stops.
 
@@ -45,18 +45,34 @@ two answers depending on which function you call.
 
 ## The change
 
-- [ ] **Give the organisation table a capacity and rename it** — `organisation_member`, with
-      `capacity` validated in code the way `SITE_CAPACITIES` is. Same shape as the site work,
-      and the same trap: autogenerate proposes drop-and-create for a rename, so write the
-      migration by hand and rename the auto-named constraints explicitly.
+- [x] **Give the organisation table a capacity and rename it** — `organisation_member`,
+      with `capacity` validated in code. Autogenerate did propose drop-and-create, exactly as
+      predicted, so the migration is hand-written and renames the primary key and both
+      foreign keys explicitly.
+      - **One vocabulary, not one per table.** Sites already said `trainee` where this plan
+        said `student`. Two membership tables using different words for the same person is
+        the mistake this work exists to undo, so both now share `MEMBER_CAPACITIES` and
+        `validate_member_capacity`. `trainee` is the name, confirmed — this plan said
+        `student` in an earlier draft, which was a slip.
+      - Registration records a delegate as `trainee` at the organisation as well as the
+        site. The other three write sites say `staff` explicitly.
+      - **The column defaults to `trainee`, not `staff`.** An insert that forgets to say gets
+        the narrower capacity. A first attempt defaulted to `staff` on the reasoning that a
+        wrongly-marked trainee complains where a wrongly-marked staff member does not — which
+        optimises for discovering mistakes over surviving them, the wrong trade here and
+        against `CLAUDE.md`'s own rule of least privilege and fail-safe defaults.
+      - Existing rows are a separate question and do say `staff`, because they were added
+        when the table meant staff and those people are staff. The migration sets them, then
+        flips the default, so history and future inserts get the answers they each need.
 - [ ] **Stop registration writing an organisation row for a student.** A student registers
       into a site. Remove the requirement that a site needs an organisation alongside it, in
       `register` and in the two admin user routes.
-- [ ] **Backfill by capacity, not by guesswork.** Existing organisation rows that correspond
-      to a `trainee` site membership become students; the rest become staff. Anything
-      ambiguous stays staff, which is the conservative direction — a wrongly-marked student
-      loses access they had, a wrongly-marked staff member keeps access they should not have,
-      and the first is safer to discover.
+- [x] **Backfill by capacity, not by guesswork.** Done in the same migration, since a
+      NOT NULL column cannot be added without deciding what existing rows say. A row becomes
+      `trainee` when that person is a trainee at a site belonging to **that same
+      organisation** — scoped deliberately, because someone may be a trainee at one trust and
+      staff at another, and marking both from a single site membership would remove access
+      they should keep.
 - [ ] **Replace the two resolvers with one.** A single function answering *which places can
       this person reach*, applying the rule: organisation memberships, plus the sites of
       those organisations, plus direct site memberships. Delete teaching's upward roll-up.
@@ -97,7 +113,7 @@ not blocked and can proceed in parallel if wanted.
 **`patient` as a capacity waits on something else.** Staff are identified by their login
 account and patients by a FHIR record number, bridged only by a nullable column. Adding
 `patient` here assumes those have met, which is the `user_patient_link` item in `todo.md`.
-Build the model now with `staff` and `student`; the third value arrives with that work.
+Build the model now with `staff` and `trainee`; the third value arrives with that work.
 
 ## Communication reach is a different question
 
