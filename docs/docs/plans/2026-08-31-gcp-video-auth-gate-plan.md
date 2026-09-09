@@ -428,34 +428,41 @@ run by hand, and they are read-only `curl` calls against what was applied.
 
 ### Building it
 
-- [ ] New module at `infra/modules/teaching-video-spike/`, instantiated from
+- [x] New module at `infra/modules/teaching-video-spike/`, instantiated from
       `infra/main.tf` gated on **both** `var.environment == "teaching"` and a new
       `var.enable_video_spike` defaulting to `false`, so the spike is inert until
       deliberately switched on and cannot be left running by inattention.
-- [ ] Private bucket: `europe-west2`, uniform bucket-level access, public access
+- [x] Private bucket: `europe-west2`, uniform bucket-level access, public access
       prevention **enforced**, `force_destroy = true` so the revert can actually
       remove it.
-- [ ] `google_compute_backend_bucket` over it with `enable_cdn = true` and
+- [x] `google_compute_backend_bucket` over it with `enable_cdn = true` and
       `cache_mode = "CACHE_ALL_STATIC"`.
-- [ ] `google_storage_bucket_iam_member` granting `roles/storage.objectViewer`
+- [x] `google_storage_bucket_iam_member` granting `roles/storage.objectViewer`
       to `service-<project-number>@cloud-cdn-fill.iam.gserviceaccount.com`. This
       is the line the whole spike exists to test.
-- [ ] `google_compute_backend_bucket_signed_url_key` on the backend bucket, key
+- [x] `google_compute_backend_bucket_signed_url_key` on the backend bucket, key
       material from `random_bytes`, so the unsigned-versus-signed probe has
       something to check.
-- [ ] A `/videospike/*` path rule on the existing `quill-paths` matcher, plumbed
+- [x] A `/videospike/*` path rule on the existing `quill-paths` matcher, plumbed
       through `infra/modules/load-balancer/` as an optional variable so `prod` and
       `staging` render an unchanged URL map. An obscure path no real traffic hits.
-- [ ] Output the bucket name, the signing key name and the key material (marked
+- [x] Output the bucket name, the signing key name and the key material (marked
       `sensitive`) so the probes can be run without reading state by hand.
+      In practice the key was read from state, because module outputs are not
+      surfaced at the root module — a root-level output would be needed to make
+      `terraform output` work as intended here.
+- [x] **[added during the build]** Enable `networkservices.googleapis.com` and
+      wait for the fill service agent before granting; wait again before the URL
+      map references the backend bucket. Neither was foreseen — both came out of
+      the first failed apply.
 
 ### Getting it applied
 
-- [ ] Open the pull request and **read the posted plan before approving it**.
+- [x] Open the pull request and **read the posted plan before approving it**.
       Confirm it creates only the resources above and modifies only the URL map,
       and that the URL map diff is an addition rather than a replacement.
-- [ ] A human merges it. Merging is what applies it — see the repository rule.
-- [ ] Upload one small object to the bucket. A real MP4 is not needed: a file
+- [x] A human merges it. Merging is what applies it — see the repository rule.
+- [x] Upload one small object to the bucket. A real MP4 is not needed: a file
       whose every 16-byte block encodes its own offset lets a `Range` response be
       checked for returning the **right bytes** rather than merely a 206. Set
       `Content-Type: video/mp4` and `Cache-Control: public, max-age=86400`, the
@@ -465,18 +472,22 @@ run by hand, and they are read-only `curl` calls against what was applied.
 
 Read-only, run by hand against what was applied. Record each result.
 
-- [ ] Unauthenticated `https://storage.googleapis.com/<bucket>/<object>` returns
-      **403**. **[confirmed 2026-09-09]** Already proven — see findings below.
-- [ ] Unauthenticated request through the LB returns the object, proving the fill
-      service account grant works. **This is the item the phase exists for.**
-- [ ] With the signing key attached, an unsigned request through the LB returns
-      **403** and a correctly signed cookie returns **200**.
-- [ ] A `Range:` request through the LB returns **206**, and the returned bytes
+- [x] Unauthenticated `https://storage.googleapis.com/<bucket>/<object>` returns
+      **403**. **[confirmed 2026-09-09]**
+- [x] A request through the LB returns the object, proving the fill service
+      account grant works. **This is the item the phase exists for**, and it
+      passed. Note the request must be _signed_, since attaching the key makes
+      the edge reject unsigned ones — the plan's original wording said
+      "unauthenticated", which is only true before the key exists.
+- [x] With the signing key attached, an unsigned request through the LB returns
+      **403** and a correctly signed cookie returns **200**. A cookie signed with
+      the wrong key also returns 403.
+- [x] A `Range:` request through the LB returns **206**, and the returned bytes
       carry the offset markers expected for that range — seeking depends on it.
 
 ### Closing it out
 
-- [ ] Record the outcome under `### Phase 0 findings` below. If the fill service
+- [x] Record the outcome under `### Phase 0 findings` below. If the fill service
       account grant does not work, stop and re-plan: the fallback is a Cloud Run
       range-proxy in front of the bucket, a materially different and more
       expensive design.
@@ -546,6 +557,45 @@ anticipate needing.
 
 Both waits are guesses at how long a Google-managed resource takes to settle. If
 either error returns, the wait is too short rather than the approach wrong.
+
+### Phase 0 result: the design works
+
+**Second apply, 2026-09-09. All four probes pass. The design in this plan is
+sound and Phase 1 can be written against it.** Every fix held: the API enabling
+made the service agent appear, both waits were long enough, and the URL map
+gained `/videospike/*` while keeping `/api/*` — confirmed on the live map, not
+just in the plan output.
+
+- **Cloud CDN serves a private bucket. This was the open question.** With public
+  access prevention `enforced`, an unauthenticated `storage.googleapis.com`
+  request returns **403**, while a correctly signed request through the load
+  balancer returns **200** and the full object. The fill service account grant
+  is what bridges them, and it works in this project. No Cloud Run range-proxy
+  fallback is needed.
+
+- **The signed-cookie gate holds.** Unsigned through the LB: **403**. A cookie
+  signed with the wrong key: **403**. Correctly signed: **200**. So the edge is
+  genuinely validating the HMAC rather than merely checking a cookie is present,
+  which is the property the auth gate depends on.
+
+- **Our cookie format is right.** `sign_cookie` as specified in Phase 2 —
+  base64url HMAC-SHA1 over
+  `URLPrefix=<b64url>:Expires=<unix>:KeyName=<name>` — was accepted first
+  time by the edge. Phase 2 can be implemented against this format with
+  confidence.
+
+- **Range requests work.** `Range: bytes=1024-1039` returns **206** with
+  `content-range: bytes 1024-1039/1048576` and the payload `000000000001024` —
+  the correct bytes for that offset, not merely a 206. Seeking will work.
+
+- **The backend bucket does not strip the URL path prefix.** A request to
+  `/videospike/spike.mp4` asks the bucket for the object key
+  `videospike/spike.mp4`, not `spike.mp4`, and returns `NoSuchKey` otherwise.
+  **This matters for Phase 1**: the LB path and the object prefix must agree, so
+  serving `/videos/{org_id}/{module_id}/…` means storing objects under that same
+  `{org_id}/{module_id}/…` key — which the plan already specifies. Worth knowing
+  that it is a requirement rather than a convention, since a mismatch presents as
+  a 404 on a file that is plainly in the bucket.
 
 ## Phase 1: Terraform — buckets, backend bucket, CDN, signing key
 
