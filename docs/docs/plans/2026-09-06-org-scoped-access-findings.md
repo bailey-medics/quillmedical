@@ -280,7 +280,7 @@ site-level permission check will reach for — which is the trap this column is 
         be to write "contractors cannot do X". That belongs in what is enabled for them at
         that place, not in what kind of member they are — otherwise the column becomes the
         access-control-shaped field this whole exercise is removing.
-- [ ] **Move the remaining `clinical_lead` reads onto positions** — two in the teaching
+- [x] **Move the remaining `clinical_lead` reads onto positions** — two in the teaching
       router, one in `get_site`, and the one-lead check in `add_site_staff`, which
       `max_holders` on the post now enforces.
       - **`_maybe_enqueue_certificate_emails` has no test at all**, and it is one of the
@@ -302,8 +302,8 @@ site-level permission check will reach for — which is the trap this column is 
         two tests failed, because the fixture seeded only the role column and the lookup now
         reads the post. The fixture writes both, as the API does, and a new test pins the
         cut-over — a `clinical_lead` row with no post behind it emails nobody.
-      - [ ] **`list_delegates` is the other one, and it has no test either.** Same trap, so
-        the same order: test first.
+      - [x] **`list_delegates` moved**, with its test written first. It came with the rename
+        rather than after it, because `clinical_lead` stopped being storable.
         - It should move **after** the capacity rename, not before. It reads the column
           twice — once for `trainee` to find the delegate's site, once for `clinical_lead` to
           name that site's lead — so doing it once afterwards avoids touching it twice.
@@ -355,83 +355,33 @@ and `max_holders` refuses it.
 It is also a trap in its current form: it looks like an access-control field, so the next
 person needing a site-level gate would reasonably reach for it.
 
-## How a capability is acquired
+## How a capability is acquired — moved to the clinical passport plan
 
-Separable from the scoping work — sign-off is about how a capability is _acquired_, scoping
-about where it _applies_ — but the two share the same grant row, so the shape matters now.
+**Settled: not this document's problem.** Sign-off lives in
+`feature/clinical-passport-plan`. Here, a competency is a state that is turned on or off at
+a place, and nothing more.
 
-Nothing exists yet. `User.professional_registrations` is a JSON column documented as holding
-GMC and NMC details, and nothing reads it. Nothing records who signed off what.
+That is a real simplification rather than a deferral. Scoping asks _where does this apply_;
+sign-off asks _how was it obtained_. Only the second needs origins, signers, review dates and
+an unchangeable record, and none of it has to exist for a competency to be enabled or
+disabled somewhere. `PractisingCompetency` carries `authorised_by` and `authorised_at`, which
+is enough to say who switched it on here — not a claim about how the person came to be
+competent.
 
-### Every capability records its origin
+The reasoning worked through here is kept because the passport plan will want it:
 
-Every capability a person holds records an **origin** — how it was obtained:
-
-- **Registration** — a GMC, NMC or HCPC number, verifiable against an external register.
-- **Qualification** — an exam, course or certificate.
-- **Signed off** — a named person approved it, on a date.
-- **Pre-existing** — brought in at go-live, with nobody named behind it.
-
-Then _"how do we know Anna can prescribe?"_ always has an answer, and sometimes that answer
-is "we do not — it came across in the migration", which is useful rather than a gap.
-
-### Who can sign it off differs by capability
-
-A single rule does not hold. Peer sign-off suits hands-on skills and is wrong elsewhere:
-an educational supervisor signs off breadth they do not personally hold, an administrator
-grants `manage_teaching_content` without holding it, and nobody peer-approves someone into
-being a doctor.
-
-So each entry in `competencies.yaml` declares which applies:
-
-- **Anyone who holds it can sign it off** — the peer model. `perform_venepuncture`: if Anna
-  can take blood, Anna can sign off Ben.
-- **Only one named position can sign it off** — for higher-risk capabilities where one
-  accountable person is wanted. `prescribe_controlled_schedule_2`: the clinical lead signs,
-  not any prescriber.
-- **A certificate instead of a person** — nobody in Quill signs it off.
-  `access_patient_records`: the General Medical Council decided, and a registration number
-  is the evidence.
-
-One extra line per capability, reusing the position concept rather than inventing a parallel
-approvals system.
-
-The words matter enough to fix now, since two of them become field names:
-
-- **Origin**, not provenance or evidence. Accurate, short, and it reads correctly for the
-  weak case — _"origin: pre-existing"_ is fine where _"evidence: pre-existing"_ claims too
-  much, there being no evidence to produce. It does overlap with CORS origins in `config.py` and
-  `main.py`, which is survivable: nobody will confuse a capability's origin with an allowed
-  request origin. **Evidence** remains the better word on screen and in conversation.
-- **Sign off**, not attestation. It is the phrase already used when talking about this.
-- **Go-live**, not epoch or cut-off date. Standard in health IT, and it points at a real
-  moment in the project. Cut-off was rejected for sounding like an ending when this is a
-  beginning.
-- **Position**, not post, appointment or role. _Appointment_ means a clinic slot in a
-  clinical application and always will; _post_ collides with the HTTP verb throughout a
-  FastAPI codebase; _role_ is taken by the existing `Role` model and `user_role` table.
-
-### Existing skills at go-live, and being honest about them
-
-Chasing down who approved someone decades ago is not possible, so do not pretend:
-
-- [ ] Treat go-live as the line: from that day, Quill records who signed off what.
-- [ ] Everything from before it gets origin **pre-existing**, recorded by the organisation
-      that imported it, on that date.
-- [ ] Never backfill a plausible signer. A manufactured chain cannot afterwards be told from
-      a real one, and the audit trail becomes worthless precisely when it is needed.
-- [ ] Give these a review-by date, so each is properly signed off over time.
-      The proportion still marked pre-existing is then a real measure of data quality.
-
-### A sign-off records what happened, and never changes
-
-- [ ] Record who signed it, when, and **what they held at that moment**. Never work it out
-      again later.
-- [ ] A signer whose own competency lapses next year must not silently invalidate everyone
-      they ever signed.
-- [ ] But keep the chain queryable: if a signer is later found fraudulent, finding everyone
-      they signed is a query followed by a human decision — never an automatic cascade, which
-      would take out a hospital.
+- Every capability records an **origin** — a registration, a qualification, a named sign-off,
+  or **pre-existing** for anything brought in at go-live. "We do not know, it came across in
+  the migration" is a useful answer rather than a gap.
+- Who may sign a capability off **differs by capability**. Peer sign-off suits hands-on
+  skills; higher-risk ones want one named position; some are decided by an external register
+  and no one in Quill signs them at all.
+- A sign-off records **what the signer held at that moment**, and never changes. A signer
+  whose own competency lapses next year must not silently invalidate everyone they ever
+  signed — but the chain stays queryable, so a signer later found fraudulent can be traced,
+  by a human decision rather than an automatic cascade.
+- **Never backfill a plausible signer.** A manufactured chain cannot afterwards be told from
+  a real one, and the audit trail becomes worthless exactly when it is needed.
 
 ## Settled: where a request's context comes from
 
@@ -733,20 +683,40 @@ that the answer differs by place, not which capability it is.
 - [x] A site whose clinical lead post is vacant.
 - [x] Acting clinical lead covering leave.
 - [ ] Registration lapses — everything clinical falls away, memberships do not.
+      Waits on `feature/clinical-passport-plan`: nothing here records how a competency was
+      obtained, so nothing here can know it has lapsed.
+
+## Answered since this was written
+
+- **Position history.** `PositionHolding` is dated rows rather than a column on the post, so
+  "who was Caldicott Guardian in March?" is `holdings_on(db, post, that_date)`. Both ends of
+  a holding are inclusive, and "now" is a separate question from "on a date" — someone
+  removed this morning does not hold the post this afternoon, but a review of today still
+  finds them.
 
 ## Still open
 
-- **What becomes of `system_permissions`.** `superadmin` is genuinely global — Quill's own
+- **What becomes of `system_permissions`.** **Answered, in
+  `2026-09-09-platform-role-plan.md`:** it becomes `platform_role`, with `superadmin` and
+  nothing else, because that is the only one of the four that is not about a place. The
+  original note below is kept for its reasoning.
+- **The original note.** `superadmin` is genuinely global — Quill's own
   operators. `admin` and `staff` look like capabilities or positions at a place.
   `single-user` may be nothing more than the absence of any grant.
-- **The patient and staff namespaces.** Staff membership keys on `user_id`; patient
+- **The patient and staff namespaces.** **Shape chosen, timing deferred:** a
+  `user_patient_link` table recording who asserted the match and on what evidence, tracked in
+  `todo.md` and to be built when Quill is first asked to hold real patient data, so it is
+  shaped by a real requirement rather than a guess. Staff membership keys on `user_id`; patient
   membership keys on a FHIR `patient_id`, bridged only by the nullable `User.fhir_patient_id`.
   Until they meet, "doctor at A, patient at B" cannot be written as two similar rows, and the
   first two acceptance criteria cannot be satisfied.
 - **Ceiling expiry.** A lapsed registration should drop the grants that depended on it. A
-  ceiling that does not lapse quietly stops meaning anything.
-- **Position history.** Who held the post, and when — needed for any case reviewed later.
-- **Break-glass access.** Reaching records outside your normal context. A policy question
+  ceiling that does not lapse quietly stops meaning anything. **Moved to
+  `feature/clinical-passport-plan`**: expiry is a property of how a competency was obtained,
+  and nothing here records that.
+- **Break-glass access.** Tracked in `todo.md` under Security and compliance, to be
+  answered before organisation-scoped access is finished for clinical use. Reaching records
+  outside your normal context. A policy question
   before a technical one, and it needs an audit trail more than a schema.
 
 ## What I would do first
