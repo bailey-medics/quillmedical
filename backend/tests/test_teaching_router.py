@@ -1851,3 +1851,118 @@ class TestLearningContentGate:
         # An empty list, not an error: nothing visible is a valid answer.
         assert resp.status_code == 200
         assert resp.json() == []
+
+
+class TestVideoAccess:
+    """The video access gate.
+
+    The same organisation rule as learning content, plus a signed
+    cookie. Refusals are 404 throughout, so the endpoint cannot be used
+    to enumerate which modules exist elsewhere.
+    """
+
+    def _login(self, test_client) -> dict[str, str]:
+        """Log in and return the CSRF header the endpoint requires.
+
+        This is the first CSRF-protected route in the teaching router,
+        so a POST without the header is a 403 — which looks exactly
+        like a competency refusal or a signing fault.
+        """
+        return _login(test_client, "testlearner", "Learner123!")
+
+    def test_grants_access_to_a_live_module(self, test_client, db_session):
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        _make_learner(db_session, org)
+        db_session.commit()
+
+        headers = self._login(test_client)
+        resp = test_client.post(
+            "/api/teaching/modules/test-bank/video-access",
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "base_url" in body
+        assert "expires_at" in body
+
+    def test_another_orgs_module_is_404(self, test_client, db_session):
+        owner = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, owner)
+        _seed_bank(db_session, owner.id, educator.id)
+
+        other = _make_teaching_org(db_session)
+        _make_learner(db_session, other)
+        db_session.commit()
+
+        headers = self._login(test_client)
+        resp = test_client.post(
+            "/api/teaching/modules/test-bank/video-access",
+            headers=headers,
+        )
+        # 404 rather than 403: a 403 would confirm the module exists.
+        assert resp.status_code == 404
+
+    def test_a_module_not_live_is_404(self, test_client, db_session):
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id, is_live=False)
+        _make_learner(db_session, org)
+        db_session.commit()
+
+        headers = self._login(test_client)
+        resp = test_client.post(
+            "/api/teaching/modules/test-bank/video-access",
+            headers=headers,
+        )
+        assert resp.status_code == 404
+
+    def test_without_csrf_is_refused(self, test_client, db_session):
+        """The first CSRF-protected route in this router.
+
+        Worth pinning: a missing header produces a 403 that looks
+        identical to a competency refusal or a signing fault, and the
+        plan flagged it as the thing to check before assuming either.
+        """
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        _make_learner(db_session, org)
+        db_session.commit()
+
+        self._login(test_client)
+        resp = test_client.post("/api/teaching/modules/test-bank/video-access")
+        assert resp.status_code == 403
+
+    def test_unauthenticated_is_refused(self, test_client, db_session):
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        db_session.commit()
+
+        resp = test_client.post("/api/teaching/modules/test-bank/video-access")
+        assert resp.status_code in (401, 403)
+
+    def test_no_cookie_is_set_without_cdn_config(
+        self, test_client, db_session
+    ):
+        """Development returns a base URL and sets no cookie.
+
+        Not an error: the frontend consumes ``base_url`` and never
+        branches on environment, so the same code path runs everywhere.
+        """
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        _make_learner(db_session, org)
+        db_session.commit()
+
+        headers = self._login(test_client)
+        resp = test_client.post(
+            "/api/teaching/modules/test-bank/video-access",
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        assert "Cloud-CDN-Cookie" not in resp.cookies
+        assert resp.json()["base_url"].endswith("/test-bank")
