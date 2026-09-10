@@ -19,6 +19,31 @@ from pydantic import BaseModel, ConfigDict
 from app.paths import SHARED_DIR
 
 
+class CompetencyLevel(BaseModel):
+    """One step on a competency's scale.
+
+    Levels are words rather than numbers, and their order is the order
+    they are listed in. ``level-3`` needs a lookup table to mean
+    anything, and every stored record becomes wrong the moment a scale
+    gains or loses a step; "Entrusted to act unsupervised" explains
+    itself and survives the scale changing around it.
+
+    The names come from whichever national framework defines the
+    competency — the RCR entrustment scale, the UK SACT Board's four
+    levels — and are quoted rather than harmonised, so a sign-off means
+    what the framework says it means.
+
+    Attributes:
+        id: Stable identifier for this level, referenced by a sign-off.
+        name: The framework's own wording, shown to a reader.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    name: str
+
+
 class CompetencyEntry(BaseModel):
     """A single competency definition, validated from YAML.
 
@@ -29,6 +54,17 @@ class CompetencyEntry(BaseModel):
             use, or None while it is current. Entries are retired rather
             than deleted — see ``retired_on`` handling below and
             ``docs/docs/plans/2026-09-06-org-scoped-access-findings.md``.
+        levels: The scale this competency is signed off against, in
+            order, or None where the honest answer is simply signed off
+            or not. Declared per competency because the number of levels
+            genuinely differs: cannulation is signed off or it is not,
+            while prescribing SACT has real intermediate states. Used by
+            the clinician passport; CBAC ignores it entirely, since
+            holding a competency is a yes or no question.
+        expires_after_months: How long a sign-off stands before it wants
+            revisiting, or None where nothing expires. Recorded and
+            shown; nothing acts on it, because what a lapsed sign-off
+            implies is a clinical decision rather than a technical one.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -36,6 +72,8 @@ class CompetencyEntry(BaseModel):
     id: str
     display_name: str
     retired_on: date | None = None
+    levels: list[CompetencyLevel] | None = None
+    expires_after_months: int | None = None
 
 
 # Load competencies from every YAML file in the definitions directory.
@@ -83,6 +121,26 @@ def _load_competencies(directory: Path) -> list[CompetencyEntry]:
 
         for raw in data["competencies"]:
             entry = CompetencyEntry(**raw)
+
+            # A sign-off stores the level id, so two levels sharing one
+            # would make a stored record ambiguous about which step of
+            # the scale was reached.
+            if entry.levels is not None:
+                level_ids = [lvl.id for lvl in entry.levels]
+                if len(set(level_ids)) != len(level_ids):
+                    raise ValueError(
+                        f"Competency {entry.id!r} in {path.name} has "
+                        "duplicate level ids: "
+                        + ", ".join(sorted(level_ids))
+                        + "."
+                    )
+                if not level_ids:
+                    raise ValueError(
+                        f"Competency {entry.id!r} in {path.name} declares "
+                        "an empty level list. Omit levels entirely where a "
+                        "competency is simply signed off or not."
+                    )
+
             if entry.id in seen:
                 raise ValueError(
                     f"Duplicate competency id {entry.id!r}: defined in "

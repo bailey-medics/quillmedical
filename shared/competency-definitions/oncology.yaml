@@ -1,0 +1,188 @@
+# shared/competency-definitions/oncology.yaml
+#
+# ONCOLOGY COMPETENCY DEFINITIONS FOR QUILL MEDICAL
+#
+# Clinical in kind, like clinical.yaml: these describe what may be done
+# in the care of a patient. Kept in their own file because they are the
+# first set drafted for the clinician passport and will be revised
+# against the South West SACT and radiotherapy passports once those are
+# to hand.
+#
+# **This is a proof-of-concept list, not a settled one.** It is drawn
+# from two published national frameworks so that the shape is credible
+# and the passport has something real to carry:
+#
+#   - The Royal College of Radiologists, Clinical Oncology Specialty
+#     Training Curriculum, August 2026 (implemented 5 August 2026).
+#     Its nineteen capabilities in practice are broad professional
+#     capabilities; the six clinical-oncology-specific ones are
+#     represented here, along with the oncology ones that describe
+#     distinct clinical work.
+#   - The UK SACT Board, Prescriber competencies for reviewing and
+#     prescribing SACT, November 2023. Its four levels are reproduced
+#     as the levels on the SACT prescribing competencies below.
+#
+# Two things follow from those sources and are worth stating, because
+# they are easy to undo by accident.
+#
+# **Levels are the framework's own words.** The RCR entrustment scale
+# and the SACT Board levels are quoted rather than renumbered or
+# harmonised, so a sign-off means what the framework says it means and
+# a reader who knows the framework needs no lookup table. The two
+# scales differ because the frameworks differ; that is the reason
+# levels are declared per competency rather than once globally.
+#
+# **A competency may be a whole capability, not an atomic act.**
+# "Manage the acutely unwell patient" stands on cannulation, airway
+# assessment, escalation and much else, and is still one thing an
+# assessor watches and signs. Both shapes belong here: the granular act
+# where that is what is assessed, and the composite capability where
+# that is. What decides it is what a person is actually signed off for,
+# never how neatly it decomposes.
+#
+# Every file in this directory is merged into one catalogue at load
+# time, so ids must be unique across the whole directory, not just
+# within a file. Which file an entry lives in carries no meaning to the
+# code — it is for the reader.
+
+competencies:
+  # ==========================================================================
+  # SYSTEMIC ANTI-CANCER THERAPY (SACT)
+  # ==========================================================================
+  #
+  # Levels are the UK SACT Board's four, verbatim. Note that the Board
+  # recommends who may assess each level — Level 2 by a practitioner at
+  # Level 3 or above, Levels 3 and 4 by one at Level 4 or above. Quill
+  # records that judgement rather than enforcing it, exactly as the
+  # paper passport does: the record names the assessor, their role and
+  # their registration, so a reader can weigh it. See the passport plan
+  # for why.
+
+  - id: prescribe_sact
+    display_name: "Review and prescribe systemic anti-cancer therapy"
+    levels:
+      - id: observation_only
+        name: "Observation only"
+      - id: review_and_authorise
+        name: "Review and authorise administration"
+      - id: prescribe_subsequent_cycles
+        name: "Prescribe second cycle onwards"
+      - id: prescribe_first_cycle
+        name: "Prescribe first cycle"
+
+  - id: assess_sact_toxicity
+    display_name: "Assess and grade SACT toxicity"
+
+  - id: manage_sact_complications
+    display_name: "Manage complications of systemic anti-cancer therapy"
+
+  # ==========================================================================
+  # RADIOTHERAPY
+  # ==========================================================================
+  #
+  # After the RCR's clinical oncology-specific capabilities in practice.
+  # Levels are the RCR entrustment scale, verbatim.
+
+  - id: define_radiotherapy_target_volume
+    display_name: "Interpret imaging for target volume and organ-at-risk definition"
+    levels:
+      - id: observe_only
+        name: "Entrusted to observe only"
+      - id: direct_supervision
+        name: "Entrusted to act with direct supervision"
+      - id: indirect_supervision
+        name: "Entrusted to act with indirect or minimal supervision"
+      - id: unsupervised
+        name: "Entrusted to act unsupervised"
+
+  - id: deliver_radical_radiotherapy
+    display_name: "Deliver and manage radical and combined modality radiotherapy"
+    levels:
+      - id: observe_only
+        name: "Entrusted to observe only"
+      - id: direct_supervision
+        name: "Entrusted to act with direct supervision"
+      - id: indirect_supervision
+        name: "Entrusted to act with indirect or minimal supervision"
+      - id: unsupervised
+        name: "Entrusted to act unsupervised"
+
+  - id: deliver_palliative_radiotherapy
+    display_name: "Deliver and manage palliative radiotherapy"
+    levels:
+      - id: observe_only
+        name: "Entrusted to observe only"
+      - id: direct_supervision
+        name: "Entrusted to act with direct supervision"
+      - id: indirect_supervision
+        name: "Entrusted to act with indirect or minimal supervision"
+      - id: unsupervised
+        name: "Entrusted to act unsupervised"
+
+  - id: deliver_radioisotope_therapy
+    display_name: "Deliver unsealed source radioisotope therapy"
+    levels:
+      - id: observe_only
+        name: "Entrusted to observe only"
+      - id: direct_supervision
+        name: "Entrusted to act with direct supervision"
+      - id: indirect_supervision
+        name: "Entrusted to act with indirect or minimal supervision"
+      - id: unsupervised
+        name: "Entrusted to act unsupervised"
+
+  - id: manage_brachytherapy_patients
+    display_name: "Manage patients treated with brachytherapy"
+    levels:
+      - id: observe_only
+        name: "Entrusted to observe only"
+      - id: direct_supervision
+        name: "Entrusted to act with direct supervision"
+      - id: indirect_supervision
+        name: "Entrusted to act with indirect or minimal supervision"
+      - id: unsupervised
+        name: "Entrusted to act unsupervised"
+
+  # ==========================================================================
+  # ACUTE ONCOLOGY
+  # ==========================================================================
+  #
+  # Composite capabilities: each rests on many smaller acts and is still
+  # one thing an assessor watches and signs.
+
+  - id: manage_oncological_emergency
+    display_name: "Manage an oncological emergency"
+    levels:
+      - id: observe_only
+        name: "Entrusted to observe only"
+      - id: direct_supervision
+        name: "Entrusted to act with direct supervision"
+      - id: indirect_supervision
+        name: "Entrusted to act with indirect or minimal supervision"
+      - id: unsupervised
+        name: "Entrusted to act unsupervised"
+
+  - id: deliver_acute_oncology_take
+    display_name: "Deliver the acute oncology take"
+
+  - id: manage_neutropenic_sepsis
+    display_name: "Recognise and manage neutropenic sepsis"
+
+  - id: manage_metastatic_cord_compression
+    display_name: "Recognise and manage metastatic spinal cord compression"
+
+  # ==========================================================================
+  # ONCOLOGY PRACTICE
+  # ==========================================================================
+
+  - id: contribute_to_tumour_mdt
+    display_name: "Contribute expert opinion to a tumour site-specific MDT"
+
+  - id: consent_for_sact
+    display_name: "Take consent for systemic anti-cancer therapy"
+
+  - id: consent_for_radiotherapy
+    display_name: "Take consent for radiotherapy"
+
+  - id: manage_end_of_life_care
+    display_name: "Manage palliative and end-of-life care needs"

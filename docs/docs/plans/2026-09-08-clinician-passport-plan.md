@@ -524,6 +524,19 @@ nothing else.
   be composed at the point of use — `perform_bronchoscopy:unsupervised`
   — without ever storing it that way.
 
+- **A competency may be a whole capability, not an atomic act** —
+  "manage the acutely unwell patient" rests on cannulation, airway
+  assessment, escalation and a dozen other things, and is still one
+  thing a consultant watches and signs. So is "deliver the acute
+  oncology take". Both shapes belong in the catalogue: the granular act
+  where that is what gets assessed, and the composite capability where
+  that is. What decides it is what a person is actually signed off for
+  on the day, never how neatly the capability decomposes. This is why
+  the RCR's capabilities in practice sit alongside
+  `perform_lumbar_puncture` without conflict — they are the same kind
+  of thing at different grain, and the passport records whichever the
+  assessor used.
+
 - **A passport is not a defined set of competencies** — there is no
   grouping in the shared definitions saying which competencies make up
   "the SACT passport". Membership of a passport is local policy: the
@@ -1568,13 +1581,43 @@ above. Additive only, per `.claude/rules/backend.md`.
 
 ## Phase 0: competency content and clinical safety
 
-- [ ] Draft the first competencies from working clinical knowledge:
-      the procedures, their levels where levels are meaningful, and any
-      expiry interval. Do not wait on official documents.
-- [ ] Later, and not as a blocker: check the draft against the UK SACT
-      Board's _Prescriber competencies for reviewing and prescribing
-      SACT_ (November 2023), the South West passports and the RCR
-      entrustment scales.
+- [x] Draft the first competencies, with their levels where levels are
+      meaningful, into `shared/competency-definitions/oncology.yaml`.
+      Sixteen entries, explicitly a proof of concept to be revised
+      against the South West passports rather than a settled list.
+- [x] Check the draft against the published frameworks. This happened
+      **first** rather than later, because both documents turned out to
+      be readable after all — the network notes earlier in this plan
+      were about the UKONS and NHS England pages, not these. Drafting
+      from them beat drafting from memory and correcting afterwards.
+      - **RCR, _Clinical Oncology Specialty Training Curriculum_,
+        August 2026** (implemented 5 August 2026), nineteen
+        capabilities in practice. Its entrustment scale is words, not
+        numbers — observe only, direct supervision, indirect or minimal
+        supervision, unsupervised — which is the design this plan had
+        already chosen, arrived at independently. It also uses a
+        _different_ four-point scale for its generic capabilities
+        (novice, developing, capable, expert), which is the clearest
+        possible argument for declaring levels per competency rather
+        than once globally.
+      - **UK SACT Board, _Prescriber competencies for reviewing and
+        prescribing SACT_, November 2023**, four levels: observation
+        only, review and authorise administration, prescribe second
+        cycle onwards, prescribe first cycle. Its paper record is a
+        table of competency statements against "Supporting Statement /
+        List of Evidence", "Date Achieved" and "Supervisor Signature",
+        closed by a declaration — "I confirm that [name] has completed
+        Level 2 competency" — which is `sign-off.yaml` and the
+        assessor declaration, on paper. Its logbook is eight
+        prescriptions recorded as regimen, date and supervisor
+        signature: counted, never compared to a judgement of
+        sufficiency.
+      - Both scales are quoted verbatim rather than harmonised into one
+        house scale. A sign-off should mean what the framework says it
+        means, and a reader who knows the framework should need no
+        lookup table.
+      - Still outstanding, and the reason this list is provisional: the
+        South West SACT and radiotherapy passports themselves.
 - [x] Move `shared/competencies.yaml` into
       `shared/competency-definitions/`, split by kind. Landed as four
       files rather than the two first written here, one per kind of
@@ -1630,9 +1673,16 @@ above. Additive only, per `.claude/rules/backend.md`.
       - The competency itself is defined, in its own
         `passport.yaml` rather than alongside the teaching set. Which
         base professions hold it by default is still outstanding.
-- [ ] Add the optional passport fields — `levels` and
+- [x] Add the optional passport fields — `levels` and
       `expires_after_months` — to the competencies that need them.
-      Both are optional, so existing entries are untouched.
+      Both are optional, so existing entries are untouched. Note this
+      needed `CompetencyEntry` in `backend/app/cbac/competencies.py`
+      widening as well as the YAML: it sets `extra="forbid"`, so a new
+      field is refused at load until the model knows about it. Levels
+      are validated there too — ids unique within a competency, and no
+      empty list, since omitting levels and declaring none of them must
+      not be two different things. CBAC ignores both fields: holding a
+      competency stays a yes or no question.
 - [ ] Run `yarn generate:types` in `frontend/` and commit the generated
       JSON.
 - [ ] Add hazard log entries for the passport: the wrong assessor
@@ -2202,6 +2252,22 @@ close them off, and so nobody builds them before there is a need.
   assessor, their role and their registration, so a reader can judge
   for themselves. That is the same reasoning as counting a logbook
   without comparing it to a target.
+
+  **This holds even where a framework states a rule.** The UK SACT
+  Board recommends that Level 2 is assessed by a practitioner at Level
+  3 or above, and Levels 3 and 4 by one at Level 4 or above, and that
+  is precisely the kind of rule a system is tempted to encode. Quill
+  records it and does not enforce it, because **paper does not enforce
+  it either**. Nothing about a paper passport stops the wrong person
+  signing; what makes the record trustworthy is that it says who did,
+  in their own hand, for anyone to weigh afterwards. Enforcing it in
+  software would not add a safeguard that the paper form has and we
+  lack — it would invent one the profession has never had, and would
+  fail on the day a locum consultant's level is not recorded in Quill
+  because they have never used it. The competency definitions carry the
+  framework's own wording, including its guidance on who should assess,
+  so the rule reaches the person making the judgement rather than a
+  validator.
 
 - **Three clocks kept apart** — `observed_on` is entered by the holder,
   `signed_at` is set by the server when the assessor signs, and the
