@@ -1436,6 +1436,87 @@ above. Additive only, per `.claude/rules/backend.md`.
 - **Pages in `frontend/src/pages/passport/`** — thin compositions of
   the above with the `Stack gap="lg"` pattern and no Container.
 
+- **The passport subtree is loaded on demand, and is the pilot for
+  it** — every one of the fifty-one pages in `main.tsx` is a static
+  import today, so the whole application ships as one entry chunk,
+  measured at 309 kB gzipped on 10 September. The passport is the
+  right place to change that first, and not because it is large.
+  It is **double-gated** — `requires_feature("passport")` and
+  `access_clinician_passport` — so most people who download it can
+  never open it, and an external assessor reaches exactly one page of
+  it. It is also unbuilt, so nothing that works today can break.
+
+  `todo.md` already carries this as "code-split the router by area if
+  the entry bundle needs to shrink", deferred on the grounds that
+  roughly 70 per cent of the entry chunk is Mantine, React and React
+  Router, which every route needs whatever we do. That reasoning is
+  sound and unchanged: **this is not a plan to split the other fifty
+  pages.** It is one feature carrying its own weight, proving the
+  pattern on code with no users, and leaving admin, teaching,
+  `/settings/totp` and the Markdown views exactly where they are until
+  someone measures a reason to move them.
+
+  Three things decide whether it is done correctly.
+
+  - **Use React Router's `lazy`, and check the chunk actually
+    moved.** `lazy: () => import("./pages/passport/...")` with the page
+    exporting `Component`. Writing `element: import(...).then(...)`
+    looks equivalent and defers nothing, because the import is fired
+    during module evaluation; a stray fragment of exactly that shape
+    once sat in this repository doing nothing at all. It is invisible
+    in review and invisible at runtime, so the check is the build
+    output — a passport chunk appears and the entry chunk shrinks — not
+    the diff.
+
+  - **`handle` stays on the route object, never inside the lazy
+    module.** `isRouteSafeForReload` in `lib/swUpdateGate.ts` reads
+    `handle.safeForReload` synchronously, before the destination has
+    rendered and therefore before a lazy module has loaded. Move it and
+    every passport route silently becomes unsafe-by-default and stops
+    receiving updates — silently being the problem, since nothing
+    fails, the tab simply stops updating.
+
+  - **`vite:preloadError` must be handled first.** See below. This is a
+    precondition, not a tidy-up.
+
+- **Handling `vite:preloadError` is the precondition, and it is the
+  whole app's problem rather than the passport's** — a tab holds the
+  bundle it downloaded until it is reloaded, and the API-compatibility
+  work established that an actively used tab can run for thirty days or
+  more, because rotating refresh tokens mean it never re-logs-in. Every
+  route's code is in memory today, so that tab navigates anywhere
+  quite happily. Split the passport out and the same tab asks for a
+  chunk hash the container stopped serving weeks ago, and the
+  navigation throws.
+
+  Two facts make this sharper than it first looks. **JavaScript never enters the
+  precache manifest**: `globPatterns` in `vite.config.ts` covers logos
+  and favicons only, so a lazy chunk is a live network fetch. And there is
+  no service-worker offline fallback page, recorded in the offline
+  plan. So the failure is not a slow page, it is a dead one, and it
+  lands on the navigation rather than on the load — the user has
+  already committed to going somewhere.
+
+  The fix is small and belongs to the whole application: listen for
+  `vite:preloadError` and route it through the existing update gate in
+  `frontend/src/lib/swUpdateGate.ts`, which already knows how to decide
+  whether reloading this route is safe and how to preserve in-progress
+  work when it is not. Doing it here is not scope creep — nothing may be
+  loaded on demand until it exists, so it is the first task of Phase 6
+  rather than a follow-up.
+
+- **Measure it in bytes, and write the number down** — the way
+  `keepNames` was settled in `vite.config.ts`, which records 892,697
+  against 930,826 bytes and concludes the 37 kB is worth paying. Record
+  the entry chunk before and after, and the size of the passport chunk.
+  Two cautions. Quote the **entry chunk gzipped**, since the figures
+  already in the plans differ by roughly three times because some count
+  the whole build; re-measure rather than citing either. And a
+  configuration option that does nothing looks exactly like one that
+  costs nothing, which is how the `esbuild.keepNames` mistake survived —
+  so the measurement is the evidence that the split happened, not a
+  footnote to it.
+
 ### Validation and safety
 
 - **Schemas** — Pydantic models with `extra="forbid"` for
@@ -1711,6 +1792,16 @@ above. Additive only, per `.claude/rules/backend.md`.
 
 ## Phase 6: frontend
 
+- [ ] **First, and before anything is loaded on demand: handle
+      `vite:preloadError`.** Listen for it and route it through the
+      update gate in `frontend/src/lib/swUpdateGate.ts`, so a tab
+      running an old bundle that asks for a chunk the container no
+      longer serves reloads where that is safe, and preserves
+      in-progress work where it is not. Whole-app work rather than
+      passport work, and the reason it sits here is that nothing may be
+      split until it exists. Test it by requesting a chunk name that
+      was never built and asserting the gate is consulted, rather than
+      by deploying twice.
 - [ ] Add `frontend/src/lib/passport/` API client functions using
       `api.ts` and types generated from the backend schemas.
 - [ ] Build the components listed above in
@@ -1719,7 +1810,20 @@ above. Additive only, per `.claude/rules/backend.md`.
       the component reuse hierarchy.
 - [ ] Build the pages and register routes in `frontend/src/main.tsx`
       with `RequireAuth`, `RequireFeature feature="passport"` and CBAC
-      hooks.
+      hooks. Load the subtree on demand with React Router's
+      `lazy: () => import(...)`, each page exporting `Component`, and
+      keep `handle: { safeForReload: ... }` on the route object rather
+      than in the lazy module — the gate reads it before the module
+      loads. Never `element: import(...).then(...)`, which defers
+      nothing.
+- [ ] Prove the split in the build output rather than in the diff: a
+      passport chunk exists, `index.html` does not reference it, and the
+      entry chunk is smaller. Record the entry chunk gzipped before and
+      after, and the passport chunk's size, in this plan and in the
+      `vite.config.ts` comment beside `keepNames` if the shape matches.
+      Baseline on 10 September, before any passport code: entry chunk
+      1,106 kB raw, 309 kB gzipped, across 51 statically imported
+      pages.
 - [ ] Add the passport entry to navigation for users holding
       `access_clinician_passport`.
 - [ ] Frontend tests with `just uf src/components/passport` and
@@ -2034,6 +2138,22 @@ close them off, and so nobody builds them before there is a need.
   answered by building an application. Git here is invisible
   infrastructure, and the storage choice only pays off if the interface
   is genuinely good.
+
+- **The passport frontend loads on demand, and nothing else changes** —
+  the entry chunk is 309 kB gzipped with every page statically
+  imported, and roughly seventy per cent of that is Mantine, React and
+  React Router, which every route needs regardless. So splitting the
+  application generally is poor value and stays deferred in `todo.md`.
+  The passport is the exception on grounds other than size: it is
+  gated twice over, by feature and by competency, so most people who
+  download it can never open it, and an external assessor sees one page
+  of it. Being unbuilt, it can adopt the pattern without risking
+  anything that works today, which makes it the pilot rather than the
+  beginning of a sweep. The cost is one precondition the application
+  needs anyway — `vite:preloadError` routed through the update gate,
+  without which a long-lived tab dies on navigation rather than on
+  load, since JavaScript is not in the precache manifest and there is
+  no offline fallback.
 
 - **ReportLab for the PDF, not a second library** — it is already a
   dependency and already in the image, and its `platypus` module
