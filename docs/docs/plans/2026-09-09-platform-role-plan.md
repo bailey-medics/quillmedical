@@ -299,12 +299,25 @@ belong to, reached through their site. That is the downward delivery described i
 organisation has made available there — so this is an instance of that rule rather than a
 separate policy.
 
-- [ ] **Scope `get_learning_content` to the caller's organisation**, resolved through site
+- [x] **Scope `get_learning_content` to the caller's organisation**, resolved through site
       membership, and require a competency to read it.
-- [ ] **Add a test that fails without the scoping**, as the site-route fixes did. A module
-      belonging to another organisation must return 404 rather than 403, matching
-      `get_organisation`: the response should not confirm that a module exists to someone who
-      may not see it.
+      - **The scoping half landed from another worktree**, in `6885365f` under a different
+        plan file, and is stricter than this one described: `resolve_visible_module` gates
+        on `is_live` rather than merely a promoted version, and `list_learning_modules` is
+        filtered the same way. This plan's checkbox read as open the whole time, because a
+        tick applied on an unmerged branch is invisible here — verify items against the
+        code, not the box.
+      - **The competency half was still missing**, and is what this branch adds.
+        `_DEP_VIEW_CASES` existed but was wired only to `grant_video_access`, so the slides
+        were cheaper to reach than the video of them — the same asymmetry the section below
+        already notes about video being stricter. Both learning routes now carry it.
+- [x] **Add a test that fails without the scoping**, as the site-route fixes did. Covered by
+      `TestLearningContentGate` from the other worktree, and by
+      `TestLearningRoutesRequireTheViewCompetency` here for the competency half — verified
+      by removing the dependency and watching both refusals fail.
+      - **The listing refuses with 403 rather than an empty list.** It answers `[]` for
+        someone who may read nothing, so a missing competency has to refuse outright or it
+        would be indistinguishable from having nothing delivered.
 - [ ] **Check the same endpoint's siblings.** Learning content was found by chance while
       planning video; nothing has swept the other teaching read routes for the same shape.
       - **Authentication is not the missing half.** Every route on the teaching router was

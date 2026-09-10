@@ -444,10 +444,18 @@ def get_learning_content(
     module_id: str,
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
+    _: None = _DEP_VIEW_CASES,
 ) -> dict[str, Any]:
     """Get parsed learning slides for a module.
 
-    Gated on organisation membership: a user reads a module only if one
+    Gated on organisation membership *and* `view_teaching_cases`, the
+    two questions this codebase keeps separate: membership says where a
+    person is, the competency says what they may do there. The video
+    route beside this one already required both; slides required only
+    the first, which made the material cheaper to reach than the video
+    of it.
+
+    A user reads a module only if one
     of their organisations has it live. Until this gate existed, any
     authenticated user in a teaching-enabled organisation could read any
     module's slides by guessing its ID, including modules their
@@ -534,11 +542,17 @@ def get_learning_content(
 def list_learning_modules(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
+    _: None = _DEP_VIEW_CASES,
 ) -> list[dict[str, Any]]:
     """List the modules with learning content that the user may see.
 
-    Filtered rather than gated: an empty list is the correct answer for
-    a user whose organisations have nothing live, not an error. Without
+    Requires `view_teaching_cases`, like the content it points at. A
+    listing looser than the material it links to is how the pair came to
+    be half-closed before, so the two are gated alike.
+
+    Filtered rather than gated on *membership*: an empty list is the
+    correct answer for a user whose organisations have nothing live, not
+    an error. Without
     this filter the route enumerated every module in the bucket,
     handing every user the full catalogue including modules their
     organisation never licensed.

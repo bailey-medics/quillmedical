@@ -1853,6 +1853,112 @@ class TestLearningContentGate:
         assert resp.json() == []
 
 
+class TestLearningRoutesRequireTheViewCompetency:
+    """Membership says where; the competency says what may be done there.
+
+    The organisation gate landed first and answered only the first
+    question, so a person at an organisation with a module live could
+    read it whatever their competencies said. The video route beside it
+    already required `view_teaching_cases`, which made the slides
+    cheaper to reach than the video of them — the same asymmetry that
+    left the pair half-closed before.
+    """
+
+    def _consultant_in(self, db: Session, org: Organisation) -> User:
+        """A clinician whose profession does not grant the competency."""
+        user = User(
+            username="testconsultant",
+            email="consultant@test.local",
+            password_hash=hash_password("Consultant123!"),
+            is_active=True,
+            email_verified=True,
+            base_profession="consultant",
+            system_permissions="staff",
+        )
+        db.add(user)
+        db.flush()
+        db.execute(
+            organisation_member.insert().values(
+                organisation_id=org.id, user_id=user.id
+            )
+        )
+        db.flush()
+        return user
+
+    def test_reading_a_module_needs_the_competency(
+        self, test_client, db_session
+    ):
+        """Membership alone is not enough, even for a live module."""
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        self._consultant_in(db_session, org)
+        db_session.commit()
+
+        test_client.post(
+            "/api/auth/login",
+            json={
+                "username": "testconsultant",
+                "password": "Consultant123!",
+            },
+        )
+        resp = test_client.get("/api/teaching/modules/test-bank/learning")
+
+        assert resp.status_code == 403
+
+    def test_listing_modules_needs_the_competency(
+        self, test_client, db_session
+    ):
+        """403, not an empty list.
+
+        The listing answers `[]` for someone who may read nothing, so a
+        missing competency has to refuse outright — otherwise it would
+        be indistinguishable from having nothing delivered.
+        """
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        self._consultant_in(db_session, org)
+        db_session.commit()
+
+        test_client.post(
+            "/api/auth/login",
+            json={
+                "username": "testconsultant",
+                "password": "Consultant123!",
+            },
+        )
+        resp = test_client.get("/api/teaching/modules")
+
+        assert resp.status_code == 403
+
+    def test_the_competency_can_be_granted_to_a_clinician(
+        self, test_client, db_session
+    ):
+        """Only 3 of 22 professions grant it, so this is the escape hatch.
+
+        Without it the narrowing would lock out every ordinary clinician
+        permanently rather than pending an admin's decision.
+        """
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        consultant = self._consultant_in(db_session, org)
+        consultant.additional_competencies = ["view_teaching_cases"]
+        db_session.commit()
+
+        test_client.post(
+            "/api/auth/login",
+            json={
+                "username": "testconsultant",
+                "password": "Consultant123!",
+            },
+        )
+        resp = test_client.get("/api/teaching/modules")
+
+        assert resp.status_code == 200
+
+
 class TestVideoAccess:
     """The video access gate.
 
