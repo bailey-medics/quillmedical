@@ -299,12 +299,32 @@ belong to, reached through their site. That is the downward delivery described i
 organisation has made available there — so this is an instance of that rule rather than a
 separate policy.
 
-- [ ] **Scope `get_learning_content` to the caller's organisation**, resolved through site
+- [x] **Scope `get_learning_content` to the caller's organisation**, resolved through site
       membership, and require a competency to read it.
-- [ ] **Add a test that fails without the scoping**, as the site-route fixes did. A module
-      belonging to another organisation must return 404 rather than 403, matching
-      `get_organisation`: the response should not confirm that a module exists to someone who
-      may not see it.
+      - **Visibility is delivery, not ownership — the plan's prose above points the wrong
+        way.** It says ownership lives in `QuestionBankConfig`, which is true but is not
+        what governs reading. A bank may be authored by an educator organisation and read
+        by several others; `list_modules` already decides visibility from
+        `QuestionBankOrgStatus` with a promoted `active_version`, and
+        `_require_bank_visible_to_user` now matches it rather than inventing a second rule.
+        Scoping on config ownership would have refused the ordinary case.
+      - **`module_id` is a question bank id here.** `list_modules` returns
+        `question_bank_id` as the identifier the reader then asks for, so the two names
+        describe one string. There is no module table to map between them.
+      - **A bank that has not been promoted is not delivered.** Imported but never put in front of anyone,
+        so it is refused, which is what `list_modules` does with the same rows.
+      - **The two 404s are told apart by message**, not status: the scoping says "Module
+        not available" and the content loader says "Module not found". Both stay 404 so a
+        reader cannot learn from the status code whether a module exists.
+- [x] **Add a test that fails without the scoping**, as the site-route fixes did. Done in
+      `test_learning_content_scoping.py`, verified by reverting both halves: the leak, the
+      bank with no promoted version, and the competency each fail without them.
+      - **`view_teaching_cases` was enforced nowhere before this**, and only 3 of 22 base
+        professions grant it — `teaching_delegate`, `teaching_clinical_lead`,
+        `teaching_admin`. So an ordinary clinician now gets 403 until it is granted to them
+        individually. That narrowing was a deliberate decision rather than a side effect,
+        and both the refusal and the per-user escape hatch are pinned by tests so the
+        effect is visible rather than silent.
 - [ ] **Check the same endpoint's siblings.** Learning content was found by chance while
       planning video; nothing has swept the other teaching read routes for the same shape.
       - **Authentication is not the missing half.** Every route on the teaching router was

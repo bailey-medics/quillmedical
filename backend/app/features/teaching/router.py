@@ -370,15 +370,73 @@ def get_question_bank(
 # ------------------------------------------------------------------
 
 
+def _require_bank_visible_to_user(
+    db: Session, user: User, bank_id: str
+) -> None:
+    """Refuse a question bank the caller's organisations cannot see.
+
+    Teaching material is delivered downward: an organisation is given a
+    bank and promotes a version, and its people then receive what has
+    been made available to them. ``QuestionBankOrgStatus`` records that,
+    so it — not who authored the bank — is what visibility rests on. A
+    bank may be owned by an educator organisation and read by several
+    others, which is why this asks about delivery rather than ownership.
+
+    A bank with no promoted version is not visible: it has been imported
+    but not put in front of anyone, and ``list_modules`` already skips it
+    for the same reason.
+
+    404 rather than 403, matching the site and organisation checks, so
+    the response does not confirm that a bank exists to someone who may
+    not read it.
+
+    Args:
+        db: Core database session.
+        user: The caller.
+        bank_id: The question bank being read.
+
+    Raises:
+        HTTPException: 404 if no organisation the caller can reach has
+            promoted a version of it.
+    """
+    org_ids = _get_user_org_ids(user, db)
+    promoted = (
+        db.execute(
+            select(QuestionBankOrgStatus).where(
+                QuestionBankOrgStatus.organisation_id.in_(org_ids),
+                QuestionBankOrgStatus.question_bank_id == bank_id,
+                QuestionBankOrgStatus.active_version.is_not(None),
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if promoted is None:
+        raise HTTPException(404, "Module not available")
+
+
 @teaching_router.get(
     "/modules/{module_id}/learning",
     response_model=LearningContentOut,
 )
 def get_learning_content(
     module_id: str,
-    user: User = _DEP_USER,
+    user: User = Depends(has_competency("view_teaching_cases")),
+    db: Session = _DEP_SESSION,
 ) -> dict[str, Any]:
-    """Get parsed learning slides for a module."""
+    """Get parsed learning slides for a module.
+
+    Scoped to what the caller's organisations have been given. It used to
+    require only a signed-in user at an organisation with teaching
+    enabled, so anyone could fetch any module's slides by naming its id —
+    `_SAFE_BANK_ID` restricted the characters in that id, not who owned
+    the material.
+
+    ``module_id`` is a question bank id here: `list_modules` returns
+    `question_bank_id` as the identifier the reader then asks for.
+    """
+    _require_bank_visible_to_user(db, user, module_id)
+
     from app.config import settings
     from app.features.teaching.mdx_parser import (
         load_learning_content,
