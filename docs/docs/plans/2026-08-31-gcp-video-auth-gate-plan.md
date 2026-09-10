@@ -793,7 +793,7 @@ tested on its own.
       currently rate-limited, so this is the first — check the decorator ordering
       against the `main.py` examples, which put `@limiter.limit` below the route
       decorator.
-- [ ] Add a `LocalVideoBackend` fallback for development: when
+- [x] Add a `LocalVideoBackend` fallback for development: when
       `TEACHING_VIDEOS_BUCKET` is unset, return a `/api/teaching/videos` base URL
       and set no cookie. Note the base URL is **not** `/static/videos` — there is
       no static mount in this app. The `LocalStorageBackend("/static")` fallback
@@ -802,7 +802,7 @@ tested on its own.
       conditional FastAPI route (`main.py:5820`), not by a static mount. Video
       follows that route convention, which also inherits the dev Caddy `/api/*`
       proxy rule for free.
-- [ ] Mount the matching conditional dev route. **[revised 2026-09-09]** Copy
+- [x] Mount the matching conditional dev route. **[revised 2026-09-09]** Copy
       `_serve_learning_image` (`main.py:5901`) exactly — it is the closest
       template and already does everything needed: same `if` guard, same
       `".." in part or "/" in part` component check, same extension allow-list,
@@ -811,7 +811,7 @@ tested on its own.
       that route's shape, and widen the allow-list to `.mp4`, `.jpg`, `.webp` and
       `.vtt`. Starlette's `FileResponse` honours `Range`, so seeking works
       locally without extra work.
-- [ ] Serve from the module's `learning/` directory, so a test video lives at
+- [x] Serve from the module's `learning/` directory, so a test video lives at
       `teaching-repos/<repo>/modules/<module_id>/learning/lecture-01.mp4`,
       alongside the `content.mdx` whose `<Video ref="lecture-01" />`
       references it. Note `_serve_learning_image` resolves to
@@ -820,7 +820,7 @@ tested on its own.
       `teaching-repos/` is a gitignored bind mount (`compose.dev.yml:28`), so test
       media never enters the repository — which also means a developer with no
       content repo cloned sees the module simply not resolve, not a crash.
-- [ ] Keep the frontend blind to the difference: it consumes `base_url` from the
+- [x] Keep the frontend blind to the difference: it consumes `base_url` from the
       endpoint response and never branches on environment. "No cookie was set" is
       the normal dev response, not an error, so the same code path runs
       everywhere.

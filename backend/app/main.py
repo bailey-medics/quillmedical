@@ -6157,3 +6157,59 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
             mimetypes.guess_type(filename)[0] or "application/octet-stream"
         )
         return FileResponse(file_path, media_type=content_type)
+
+    # api-schema-check: allow-opaque-permanent
+    @app.get("/api/teaching/videos/{module_id}/{filename}")
+    async def _serve_learning_video(
+        module_id: str,
+        filename: str,
+    ) -> FileResponse:
+        """Serve learning video from local teaching-repos.
+
+        The development counterpart to Cloud CDN. There is no bucket,
+        no signature and no cookie here — the video access endpoint
+        returns a base URL pointing at this route and sets no cookie,
+        so the frontend runs the same code path in both environments.
+
+        This proves the parser, the content model and the player. It
+        proves nothing whatever about the authorisation gate, which
+        only exists in front of the real CDN.
+
+        Video sits directly in ``learning/``, one level above the
+        ``images/`` subdirectory the route above reads, because that is
+        where an author writes it alongside ``content.mdx``.
+
+        Starlette's ``FileResponse`` honours ``Range``, so seeking works
+        locally without anything further.
+        """
+        from app.features.teaching.storage import resolve_module_dir
+
+        # Deliberately separate from the image allow-list rather than a
+        # widened copy of it: an image route that will serve .mp4 is a
+        # route that will serve whatever the next edit forgets about.
+        _ALLOWED_VIDEO_EXTENSIONS = {".mp4", ".jpg", ".webp", ".vtt"}
+
+        # Validate path components
+        for part in (module_id, filename):
+            if ".." in part or "/" in part:
+                raise HTTPException(400, "Invalid path")
+
+        ext = Path(filename).suffix.lower()
+        if ext not in _ALLOWED_VIDEO_EXTENSIONS:
+            raise HTTPException(400, "Invalid file type")
+
+        module_dir = resolve_module_dir(_qb_base, module_id)
+        if not module_dir:
+            # A developer with no content repo cloned has no
+            # teaching-repos directory at all, which is the normal
+            # starting state — so this is a 404, not a crash.
+            raise HTTPException(404, "Module not found")
+
+        file_path = module_dir / "learning" / filename
+        if not file_path.is_file():
+            raise HTTPException(404, "Video not found")
+
+        content_type = (
+            mimetypes.guess_type(filename)[0] or "application/octet-stream"
+        )
+        return FileResponse(file_path, media_type=content_type)
