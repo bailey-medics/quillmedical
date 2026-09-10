@@ -41,3 +41,9 @@ variable "landing_domain" {
   type        = string
   default     = null
 }
+
+variable "videos_backend_bucket_id" {
+  description = "Backend bucket ID for teaching video, routed at /videos/*. Null in environments without the video pipeline, which then render an unchanged URL map."
+  type        = string
+  default     = null
+}
