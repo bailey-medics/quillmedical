@@ -1148,7 +1148,6 @@ assumption runs the other way.
   until they do the record says so rather than implying otherwise.
 
   **Where they are stored**, and the distinction matters:
-
   - `User.professional_registrations` in Postgres is the live source,
     and the only one that is edited.
   - `profile.yaml` holds the **holder's** current set, regenerated
@@ -1174,9 +1173,14 @@ assumption runs the other way.
 ### External assessors
 
 - **The problem** — the consultant who observes a registrar deliver a
-  SACT cycle is often not a Quill user and cannot be asked to become a
-  staff user of a system their trust does not run. The holder must be
-  able to bring their own assessor.
+  SACT cycle is external to the registrar's place, and often to Quill
+  entirely. They cannot be asked to become staff of a trust they do
+  not work for. The holder must be able to bring their own assessor.
+
+  Two cases, and they converge. Someone with no Quill account at all,
+  and someone who already uses Quill as staff at their own site.
+  `external` names the relationship to _this_ place, not to Quill, so
+  it fits both.
 
 - **Invite by the holder** — the holder, or an admin of their
   organisation, invites an assessor by email with their name,
@@ -1190,11 +1194,54 @@ assumption runs the other way.
 - **Acceptance** — the link opens `/passport/assessors/accept`. A new
   user registers with name, email and password under Quill's ordinary
   account policy; an existing user signs in. Either way the result is
-  a user with `system_permissions` of `single-user`, no organisation
-  membership, a base profession chosen from a short list, the declared
-  registrations in `professional_registrations`, and
-  `access_clinician_passport` in `additional_competencies`. Nothing
-  about the passport imposes extra account requirements.
+  a user with no platform role — the only one is `superadmin`, and
+  they do not operate Quill — plus a base profession chosen from a
+  short list, still to be designed, and the declared registrations in
+  `professional_registrations`. Their standing comes entirely from the
+  place membership below. Nothing about the passport imposes extra
+  account requirements.
+
+- **Membership at the holder's place, with an `external` capacity** —
+  the assessor becomes a member of a place the holder is already a
+  member of, holding `access_clinician_passport` there and nothing
+  else. The system derives the place rather than asking: the
+  narrowest one the holder holds, so a site where they have one and
+  the organisation where they do not. A holder who sits only at
+  organisation level is the ordinary case for a rotating trainee, not
+  an exception to handle.
+
+  The wider reach an organisation membership brings matters less than
+  it first appears. Reach says only _where_ someone may act; what they
+  may do there comes from competencies, and this assessor holds one.
+  Whether the level matters at all depends on an open question below:
+  whether bare membership with no competencies exposes anything at a
+  place.
+
+  The membership is honest rather than a device. A consultant who
+  watched the procedure genuinely was there, which is why this is
+  preferable to inventing an assessors organisation to hang a
+  competency on.
+
+  `external` is a new capacity alongside `staff` and `trainee`. It has
+  to be new: `staff` is the one capacity with a live behavioural
+  check, letting a member self-join a conversation in `messaging.py`,
+  and a visiting assessor should not gain that. This fits what
+  capacity already means in `models.py` — a different relationship to
+  a place, never a ranking and never a permission check.
+
+  **An assessor who already uses Quill gains this membership
+  alongside their existing ones, not instead of them.** Memberships
+  are per place and independent, so a consultant who is `staff` at
+  their own site becomes `external` at the registrar's, holding
+  `access_clinician_passport` there and nothing more. What they may do
+  at their own site is untouched, and nothing they hold there reaches
+  across. That independence is what makes one capacity per place the
+  right shape rather than one role per person.
+
+- **Membership persists after the request resolves.** Consultants
+  supervise the same trainees repeatedly, so tearing it down and
+  rebuilding it each time is churn for no gain. An admin of the
+  organisation that place belongs to can see and remove it.
 
 - **Scope of access** — an external assessor sees and acts on exactly
   the sign-offs they are named on through `passport_signoff_request`
@@ -1203,12 +1250,9 @@ assumption runs the other way.
 /api/passport/{id}` returns 403 to them; the inbox returns only their
   requests; the sign-off page renders one sign-off and its evidence.
 
-- **Feature gating** — `requires_feature("passport")` checks the
-  caller's organisations, and an external assessor has none. The
-  inbox, sign-off and decline routes therefore gate on the passport
-  holder's organisation having the feature, resolved from the request
-  row. This is a sibling dependency next to `requires_feature` in
-  `backend/app/features/gating.py`, not a change to it.
+- **Feature gating** — once the assessor is a member of the holder's
+  place, `requires_feature("passport")` resolves through it like
+  anyone else's, so no sibling dependency is needed.
 
 - **Registration verification** — the registration is self-declared at
   invite and confirmed by the assessor on acceptance.
@@ -1218,9 +1262,19 @@ assumption runs the other way.
   applies to sign-offs signed after that point. The PDF renders it.
   The record stays honest about what Quill checked.
 
-- **Revocation** — an admin of the inviting organisation can revoke an
-  external assessor, removing `access_clinician_passport`. Sign-offs
-  they already made stand.
+- **Revocation** — an admin of the organisation that place belongs to
+  can remove the membership, which takes `access_clinician_passport`
+  with it since competencies are granted per place. Sign-offs they
+  already made stand.
+
+- **This depends on work in flight.** The platform-role plan removes
+  every system permission but `superadmin`, and the membership plan
+  makes competencies place-scoped. Both are the reason an assessor
+  needs a place at all. Two questions belong to those plans rather
+  than this one, and should be answered there: whether bare membership
+  with no competencies exposes anything at a place, such as a staff
+  list; and whether a holder inviting an assessor may create a
+  membership without an administrator confirming it.
 
 ### What lives in Postgres
 
@@ -1257,14 +1311,15 @@ not a copy of the record.
 
 ### Rendering and export
 
-- **Markdown** — the passport is rendered on demand from
-  `profile.yaml` and the sign-off files into a single
-  `passport.md` (front page with holder identity, one table row per
-  competency with
-  its current level, assessor and date, and an appendix of every
-  sign-off in full including caveats and superseded records). The
-  files are canonical; the rendered Markdown is a view and is not
-  stored in the repository.
+- **Markdown** — the passport is rendered on demand into a single
+  `passport.md`: a front page with holder identity and registrations,
+  one table row per competency giving its current level, assessor and
+  date, then sections for the logbook, certificates, CPD and
+  reflections, and an appendix of every sign-off in full including
+  caveats and superseded records. Logbook and CPD entries sort by the
+  clinical date they record, not by the filename, since the filename
+  is the moment they were written. The files are canonical; the
+  rendered Markdown is a view and is not stored in the repository.
 
 - **PDF** — built with ReportLab, already a dependency in
   `backend/pyproject.toml` and already used for teaching certificates.
@@ -1349,16 +1404,19 @@ above. Additive only, per `.claude/rules/backend.md`.
 ### Frontend
 
 - **Routes** — `/passport` (my passport), `/passport/competency/:id`
-  (history and request form), `/passport/inbox` (assessor),
-  `/passport/sign-off/:signOffId`, `/passport/assessors/accept`
-  (invite landing, `GuestOnly` or signed in) and
-  `/passport/verify/:signOffId` (the page the PDF's QR code opens).
-  Guarded with `RequireAuth`, `RequireFeature feature="passport"` and
-  the CBAC hooks; the assessor routes use a holder-organisation gate
-  because external assessors have no organisation.
+  (history and request form), `/passport/logbook`,
+  `/passport/reflections`, `/passport/cpd`, `/passport/inbox`
+  (assessor), `/passport/sign-off/:signOffId`,
+  `/passport/assessors/accept` (invite landing, `GuestOnly` or signed
+  in) and `/passport/verify/:signOffId` (the page the PDF's QR code
+  opens). Guarded with `RequireAuth`,
+  `RequireFeature feature="passport"` and the CBAC hooks. External
+  assessors reach the inbox and sign-off routes through the membership
+  they gain on accepting an invitation, so no separate gate is needed.
 
 - **Components in `frontend/src/components/passport/`** —
-  `PassportDomainProgress` (per-domain summary from derived status),
+  `CompetencySummary` (current level per competency, from derived
+  status),
   `CompetencyRow`, `SignOffCard` (one sign-off in full with
   status, assessor snapshot, caveats, evidence links),
   `SignOffRequestForm`, `SignOffForm` (level, caveats, narrative, the
@@ -1366,7 +1424,9 @@ above. Additive only, per `.claude/rules/backend.md`.
   (the fixed declaration text), `EvidenceUploader`,
   `PassportExportButtons`, `CertificateUploader`, `CertificateCard`,
   `LogbookEntryForm`, `LogbookTable` (entries and a count, never a
-  target), `CompetencyPicker` (shortlist first, full search beneath,
+  target), `ReflectionEditor` (frontmatter fields plus the writing,
+  with the anonymisation reminder), `CpdEntryForm`, `CpdTable`,
+  `CompetencyPicker` (shortlist first, full search beneath,
   nothing hidden), `InviteAssessorForm`, `RegistrationBadge`
   (declared or verified) and `VerificationPanel` (the verify
   endpoint's result). Each with
@@ -1387,20 +1447,22 @@ above. Additive only, per `.claude/rules/backend.md`.
 - **Definition CI gate** — a validator under `backend/app/features/`
   in the style of `features/teaching/tooling/validate.py` that checks
   the competency definitions: ids are unique across every file in the
-  directory including any deprecated ones, no id contains a `/`, every
-  and level lists are well-formed.
-  The uniqueness check is what makes splitting the directory safe, so
-  it goes in before the split rather than after.
+  directory including any deprecated ones, no id contains a `/`, and
+  level lists are well-formed. The uniqueness check is what makes
+  splitting the directory safe, so it goes in before the split rather
+  than after.
 
 - **Guard clauses** — every route validates the passport exists, the
   caller's relationship to it, the sign-off's current status allows
   the transition, and the assessor is not the holder, before touching
   storage.
 
-- **No PHI** — passports contain no patient data by design. Evidence
-  uploads are the one risk (a scanned DOPS form might name a patient);
-  the upload form carries a declaration that evidence is anonymised,
-  and this is recorded in the hazard log.
+- **No PHI** — passports contain no patient data by design, and two
+  places are where it would creep in. Evidence uploads, since a
+  scanned procedure note or DOPS form names a patient; and
+  reflections, which are written about real cases. Both carry a
+  declaration that the content is anonymised, worded more firmly for
+  reflections, and both are in the hazard log.
 
 - **Audit** — the git history is the audit trail. Exports are logged
   (who, which passport, when) in the existing application log with no
@@ -1412,8 +1474,16 @@ above. Additive only, per `.claude/rules/backend.md`.
 
 - **External assessor boundary** — every route an external assessor can
   reach resolves the passport from a request row naming them, and no
-  route lists passports, users or organisations to them. The
-  authorisation tests include an external assessor row in the matrix.
+  route lists passports, users or organisations to them. Membership at
+  the holder's place lets them reach the feature; it does not widen
+  what they may see. The authorisation tests include an external
+  assessor row in the matrix.
+
+- **Reflections are holder-only** — not readable by an assessor, an
+  organisation admin or anyone else, and excluded from any view but
+  the holder's own. Written reflection can be disclosed in legal
+  proceedings, and UK doctors are wary of it for good reason, so the
+  narrower default is the safer one.
 
 ## Phase 0: competency content and clinical safety
 
@@ -1445,9 +1515,11 @@ above. Additive only, per `.claude/rules/backend.md`.
       live docs pages. Edit `.github/copilot-instructions.md` rather
       than `CLAUDE.md` and re-run `/sync-copilot-config`; leave
       historical plan documents untouched.
-- [ ] Add the `sact` and `radiotherapy` categories and their
-      competencies to `shared/competency-definitions/`, with
-      `display_name`, `category` and `risk_level`.
+- [ ] Add the SACT and radiotherapy competencies to
+      `shared/competency-definitions/clinical.yaml`. The live entries
+      carry only `id` and `display_name` today, whatever the CBAC
+      documentation implies, so match what is there rather than
+      inventing fields for these alone.
 - [ ] Add `access_clinician_passport` to
       `shared/competency-definitions/` under the feature-admin
       category, and to the appropriate base professions in
@@ -1469,8 +1541,9 @@ above. Additive only, per `.claude/rules/backend.md`.
 - [ ] Create `backend/app/features/passport/` with `paths.py` (typed
       relative paths, no I/O, after VPR's `crates/core/src/paths/`),
       `ids.py` (timestamp id generator with monotonic rule),
-      `schemas.py` (Pydantic models for `profile.yaml`,
-      `sign-off.yaml`, certificates, logbook, reflections and CPD), and
+      `schemas.py` (Pydantic models for `manifest.yaml`,
+      `profile.yaml`, `sign-off.yaml`, certificates, logbook,
+      reflections and CPD), and
       `definitions.py` (reads the passport fields from
       `shared/competency-definitions/`).
 - [ ] Implement `store.py` with the `PassportStore` interface and the
@@ -1480,12 +1553,19 @@ above. Additive only, per `.claude/rules/backend.md`.
 - [ ] Implement `commits.py`: the commit message renderer with the
       closed action vocabulary, reserved trailer keys and single-line
       value validation.
-- [ ] Implement `certificates.py` and `logbook.py`: create, amend and
-      remove self-declared evidence, each as one validated write and
-      one commit.
-- [ ] Implement `index.py`: regenerate `competencies.yaml` from the
-      sign-off folders on every write, with the folder-naming and
-      collision rules, and a self-heal that rebuilds stale references.
+- [ ] Implement `certificates.py`, `logbook.py`, `reflections.py` and
+      `cpd.py`: create, amend and remove self-declared evidence, each
+      as one validated write and one commit. All four are editable by
+      the holder, unlike a sign-off. Reflections are holder-only, not
+      readable by organisation admins.
+- [ ] Implement `index.py`: regenerate `competencies.yaml` on every
+      write from the sign-off folders, the logbook and the
+      certificates, since the index carries a `logbook_entries` count
+      and the certificates relating to each competency. Includes the
+      naming rules — date and competency slug for sign-off folders
+      with `-2` on a same-day clash, write-time filenames for logbook
+      and CPD entries with a bump to the next second — and a self-heal
+      that rebuilds stale references.
 - [ ] Implement content hashing against the contributing-field list,
       with the canonical form defined in the schema rather than in the
       hashing function. Tests: editing a comment or a display label
@@ -1554,10 +1634,12 @@ above. Additive only, per `.claude/rules/backend.md`.
 ## Phase 4: rendering and export
 
 - [ ] Implement `render.py`: passport files to `passport.md`, with the
-      front page, per-domain tables, and the full sign-off appendix
-      including superseded records.
+      front page, a competency table, sections for logbook,
+      certificates, CPD and reflections, and the full sign-off
+      appendix including superseded records. Logbook and CPD sort by
+      the clinical date inside the entry, not by filename.
 - [ ] Implement `pdf.py` with ReportLab `platypus`: a document
-      template, per-domain tables, the sign-off appendix,
+      template, the competency table, the sign-off appendix,
       `content_hash` per sign-off and the head commit in the footer.
       Follow `features/teaching/certificate.py` in parsing style
       config defensively, so a malformed value degrades to a default
@@ -1570,6 +1652,13 @@ above. Additive only, per `.claude/rules/backend.md`.
 
 ## Phase 5: external assessors
 
+- [ ] Add `external` and `patient` to `MEMBER_CAPACITIES` in
+      `backend/app/models.py:671`, updating the assertion in
+      `backend/tests/test_organisation_member_capacity.py` that pins
+      the tuple. No migration: capacity is validated in Python, not by
+      a database constraint. `patient` is added at the same time
+      because the membership plan already anticipates it; what it
+      means in business logic is settled there, not here.
 - [ ] Extend `create_invite_token` and `decode_invite_token` in
       `backend/app/security.py` to accept the `passport_assessor` user
       type, with tests for expiry and single use.
@@ -1578,10 +1667,16 @@ above. Additive only, per `.claude/rules/backend.md`.
       `features/teaching/email_templates.py`; rate limit invites per
       holder per day.
 - [ ] Add the accept endpoint: register or link the user, store
-      registrations, add `access_clinician_passport`, issue the signing
-      certificate, consume the invite.
-- [ ] Add the holder-organisation feature gate for assessor routes next
-      to `requires_feature` in `backend/app/features/gating.py`.
+      registrations, derive the place from the holder's memberships
+      taking the narrowest they hold, create the membership there with
+      capacity `external`, grant `access_clinician_passport` at that
+      place, and consume the invite. Tests: a holder sited under an
+      organisation yields a site membership; a holder at organisation
+      level only yields an organisation membership; and an assessor
+      who already holds `staff` elsewhere keeps it, gaining the
+      `external` membership alongside rather than in place of it.
+- [ ] Confirm `requires_feature("passport")` resolves through the
+      assessor's new membership, so no sibling gate is needed.
 - [ ] Add the verify-registration and revoke endpoints for organisation
       admins.
 - [ ] Tests: an external assessor cannot read a passport, another
@@ -1610,9 +1705,9 @@ above. Additive only, per `.claude/rules/backend.md`.
 - [ ] End-to-end test: holder requests, assessor signs, holder exports
       PDF, hash on PDF matches repository.
 - [ ] Security review of upload handling (type sniffing, size limits,
-      path containment, symlink refusal), of the authorisation matrix
-      including external assessors, and of key handling (no key in
-      logs, responses or exports).
+      path containment, symlink refusal) and of the authorisation
+      matrix, including external assessors and the reflections
+      holder-only rule.
 - [ ] Clinical safety review of the competency definitions and the
       declaration text with the Clinical Safety Officer; record in the
       hazard log.
@@ -1628,7 +1723,8 @@ These are recorded now so the phase 1 design does not accidentally
 close them off, and so nobody builds them before there is a need.
 
 - **Projections and caches** — when a programme director needs "all
-  registrars in the region by domain completion", or a holder's page is
+  registrars in the region signed off for a competency", or a holder's
+  page is
   slow because reading and parsing a repository per request is
   measurable, add a projection layer with VPR's invariants: rows are
   non-authoritative, rebuildable from the repositories on demand, carry
@@ -1792,13 +1888,17 @@ close them off, and so nobody builds them before there is a need.
   revocation and a phase of work in exchange for reassurance rather
   than assurance.
 
-- **External assessors through the existing invite-token flow, scoped
-  to their requests** — the organisations and external access plan
-  already established invite-only registration with a signed link, so
-  the passport reuses it rather than adding a second mechanism. Their
-  access is resolved from the request rows that name them, and
-  nothing else, which is the least-privilege shape and the easiest to
-  test.
+- **External assessors get a real membership at a real place, with a
+  new capacity** — not an invented assessors organisation, and not a
+  self-selected one. The consultant was genuinely there, so the
+  membership states something true. The place is derived from the
+  holder's own memberships rather than chosen, taking the narrowest
+  one they hold, so nobody has to pick and nothing is asserted that
+  the holder's record does not already say.
+  `external` has to be a new capacity rather than reusing `staff`,
+  because `staff` carries a live behavioural check that would let a
+  visiting assessor self-join conversations. Their sign-off access is
+  still resolved from the request rows that name them.
 
 - **Registration is declared, and the record says so** — Quill cannot
   check the GMC register in phase 1, so it records
