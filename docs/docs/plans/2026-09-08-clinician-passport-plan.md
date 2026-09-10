@@ -349,9 +349,9 @@ invert.
   `git-revision-date-localized`; GPG-signed commits are "a further
   attestation to the correct identity of the committer." Elegant for a
   repository owner's approval, but a passport needs the _assessor's_
-  own signature, which is why the plan records the assessor identity in
-  the sign-off file and the commit trailers rather than relying on
-  who merged.
+  own act, which is why the plan records the assessor identity in the
+  sign-off file and the commit trailers rather than relying on who
+  merged.
 
 - **No frontmatter, no validation** — none of the ten documents have
   YAML frontmatter; metadata is prose under a "Document Management"
@@ -452,7 +452,7 @@ confirmed before being acted on.
   content-addressed outside git** — from VPR.
 
 - **Adopt: artefact-as-folder with a YAML envelope, a Markdown body and
-  attachment sidecars; timestamp identifiers; structured commit
+  attachments listed by hash; timestamp identifiers; structured commit
   messages with reserved author trailers; single branch; nothing
   deleted** — from VPR.
 
@@ -651,16 +651,16 @@ something does, the future items say where to look.
   structurally what one is.
 
 Two gaps the research flagged, both now settled rather than open.
-**Two-party sign-off** turned out not to be a gap: there is only one
-signature, the assessor's, and it covers a file already containing the
-holder's contributions, so a second adds nothing. **Binding a key to a
-GMC number** is closed by not making the claim — registrations are
-recorded as data with a verified flag, never sealed into a
-certificate.
+**Two-party sign-off** turned out not to be a gap: only the assessor
+attests, and they attest to a record already containing the holder's
+contributions, so nothing separate from the holder is needed.
+**Binding a key to a GMC number** is closed by not making the claim —
+registrations are recorded as data with a verified flag, and there is
+no certificate to seal them into.
 
-### Three ways in, and two levels of trust
+### Ways in, and two levels of trust
 
-A holder does three things with a passport, and the design falls out of
+A holder does five things with a passport, and the design falls out of
 the difference between them.
 
 - **Upload a certificate** — a course attendance, a qualification, an
@@ -673,14 +673,21 @@ the difference between them.
 - **Keep a logbook** — start a logbook against any competency and
   record each procedure as it happens.
 
-The first and third are **self-declared evidence**: the holder enters
-them, nobody countersigns, and they are claims about activity. The
-second is a **two-party assessment**: a named person accepts
-accountability for a judgement. Only that one is signed.
+- **Write a reflection** — on a case, a complaint, a significant
+  event. Often tied to no competency at all.
+
+- **Record continuing professional development** — teaching days,
+  grand rounds, conferences, whether or not a certificate came with
+  them.
+
+All but one are **self-declared evidence**: the holder enters them,
+nobody countersigns, and they are claims about what happened. The
+exception is the sign-off, a **two-party assessment** where a named
+person accepts accountability for a judgement.
 
 Keeping those apart is the whole point. A logbook of two hundred
 bronchoscopies proves activity, not competence. The consultant's
-signature is what turns evidence into a conclusion, and the system must
+sign-off is what turns evidence into a conclusion, and the system must
 never blur the two by appearing to draw the conclusion itself.
 
 ### On-disk layout of a passport
@@ -693,29 +700,29 @@ passports/<s1>/<s2>/<32-hex-uuid>/
   .git/
   .gitignore                        # contains "files/"
   README.md                         # plain English: what this is, how to read it
-  passport.yaml                     # holder identity and schema version
+  manifest.yaml                     # what this passport is: id, format, dates
+  profile.yaml                      # who this passport belongs to
   competencies.yaml                 # derived index: every competency and its state
   certificates/
     2025-11-04-bronchoscopy-course/
-      certificate.yaml              # issuer, dates, competencies it relates to
-      attachment_1.yaml             # sidecar: sha256, size, media type, filename
+      certificate.yaml              # issuer, dates, competencies, attachments details
   logbook/
     perform_bronchoscopy/
-      2025.yaml                     # a year of entries, one list
-      2026.yaml
+      2026-03-14-143207.yaml        # one entry, named when it was written, attachment details
+      2026-03-14-143512.yaml
     perform_thoracic_ultrasound/
-      2026.yaml
+      2026-03-21-091044.yaml
+  reflections/
+    2026-03-14-difficult-airway/
+      reflection.md                 # YAML frontmatter, then the writing, attachment details
+  cpd/
+    2026/
+      2026-02-11-171930.yaml        # one activity: conference, grand round, course
   sign-offs/
     2026-03-14-perform-bronchoscopy/
-      sign-off.yaml                 # the signed record
-      sign-off.sig                  # assessor's detached signature over it
+      sign-off.yaml                 # the record, and its content hash
       reflection.md                 # holder narrative, optional
       assessment.md                 # assessor narrative, optional
-      attachments/
-        attachment_1.yaml           # sidecar: sha256, size, media type, filename
-  signers/
-    <fingerprint>.pem               # assessor certificates used in this passport
-    ca.pem                          # the issuing deployment's CA certificate
   files/                            # gitignored, content-addressed evidence blobs
     sha256/ab/cd/<64-hex>
 ```
@@ -724,6 +731,27 @@ Two levels, deliberately. `competencies.yaml` answers the question
 asked ninety-nine times out of a hundred — is this person signed off —
 and the directories beneath hold the detail that only matters at an
 ARCP panel, an audit, or a concern.
+
+Evidence is listed inside the record that refers to it, so a record
+naming one attachment and a record naming five look the same:
+
+```yaml
+attachments:
+  - hash: sha256:ab12cd34…
+    filename: bronchoscopy-course-certificate.pdf
+    size_bytes: 104857
+    media_type: application/pdf
+  - hash: sha256:7f4e9a21…
+    filename: course-transcript.pdf
+    size_bytes: 38214
+    media_type: application/pdf
+```
+
+The hash is the pointer. `sha256:ab12cd34…` resolves to
+`files/sha256/ab/12/ab12cd34…`, so no path is stored and nothing can
+drift out of step. Every record file carries the list at its top level,
+except a reflection, which carries it in frontmatter like everything
+else it holds.
 
 The grouping differs by record type, and the rule is worth stating
 because it looks inconsistent until you see it. **Where a directory is
@@ -737,10 +765,36 @@ legitimately span several competencies at once — one course supports
 three of them, and one clinic produces a single sign-off covering
 several.
 
-- **`passport.yaml`** — holder's user id, a snapshot of name and
-  registrations at creation, and a `schema_version` for the passport
-  layout itself. Nothing else: there is no enrolment step and no list
-  of frameworks to join.
+- **`manifest.yaml`** — what this passport _is_, as distinct from what
+  it contains:
+
+  ```yaml
+  # What this passport is. Read alongside README.md.
+  passport_id: 3f2a8c1e4b7d49f0a6c2e8b1d5a7f309
+  schema_version: 1
+  created_by: Quill Medical
+  created_at: 2026-09-10
+  ```
+
+  Everything else in the repository is the holder's record; this one
+  file describes the shape of it, and anyone opening a passport years
+  from now reads it first to know what they are holding. `passport_id`
+  matters more than it looks: without it the identifier exists only in
+  the directory path, so a copied or renamed folder loses it.
+
+  There is no jurisdiction here. A passport belongs to a person, and a
+  person may practise in more than one country, so pinning the record
+  to a single one would split a career that is not split. Each
+  registration names its own body, and each sign-off records where it
+  happened and under whose registration it was given. Where an act
+  genuinely differs between countries — certifying death, say — that is
+  a different competency with its own id, which the identifier rules
+  already handle.
+
+- **`profile.yaml`** — the holder's user id, name and current
+  registrations, regenerated whenever any of them changes rather than
+  frozen at creation. It is the one place the passport says whose it
+  is, which is why no other record repeats it.
 
 - **`competencies.yaml`** — the derived index, regenerated on every
   write and never hand-edited. One entry per competency the holder has
@@ -767,10 +821,26 @@ several.
   a judgement belonging to the assessor and not to the software. See
   the decision below.
 
+- **Entry filenames are the moment they were written** —
+  `2026-03-14-143207.yaml`, date then hours, minutes and seconds. No
+  colons, which Windows rejects. This is deliberately the time Quill
+  wrote the file rather than the clinical date, for two reasons: the
+  server always knows it, so nobody types anything; and it is unique
+  without a hash suffix, which reads as noise to anyone who is not a
+  developer. Seconds make collisions vanishingly unlikely, and the
+  server bumps to the next second if two ever land together.
+
+  The clinical date lives inside the file as `performed_on`, without a
+  time, because nobody recalls whether a procedure was at 09:30 or
+  11:00 when they log five of them on a Friday evening. One
+  consequence: a folder listing is ordered by when things were logged,
+  not when they happened. That only affects someone browsing raw
+  files — the rendered passport and the PDF sort by `performed_on`.
+
 - **Sign-off folder names are for humans** —
   `<observed-date>-<competency-slug>`, so the directory listing reads
   as a chronology of clinical work. A second sign-off for the same
-  competency observed on the same day gets `-2`. Names are fixed at
+  competency observed on the same day gets `-2` (or higher number). Names are fixed at
   creation and never reused, because the name is the only handle
   `competencies.yaml` uses. References there are bare folder names
   rather than paths, so the layout can change later without rewriting
@@ -783,7 +853,7 @@ several.
   `declined`, `superseded`), `level` with `id` and `name` where the
   competency declares levels, `observed_on`, `signed_at`,
   `expires_on`,
-  `holder` and `signed_off_by` blocks each with user id, name, role,
+  a `signed_off_by` block with the assessor's user id, name, role,
   registrations, `registration_verified` and care location as they
   were at signing, `meaning` (see the commit model), `comments`,
   `corrects` naming a superseded sign-off, and `content_hash`.
@@ -804,39 +874,69 @@ several.
 
 - **`certificate.yaml`** — what the certificate is, the issuing body,
   the date awarded and any expiry, the competencies it relates to, and
-  a free-text description. The binary itself never enters git: it is
-  hashed into `files/sha256/` and referenced by an attachment sidecar,
-  exactly as evidence attached to a sign-off is. A certificate is the
-  holder's own claim and carries no signature.
+  a free-text description, plus the `attachments` list. The binary
+  itself never enters git: it is hashed into `files/sha256/` and named
+  by that hash in the list, exactly as evidence attached to a sign-off
+  is. A certificate is the holder's own claim, with nobody
+  countersigning it.
 
-- **Logbook files** — one file per competency per year, holding a list
-  of entries. A year is a natural bound: files stay small enough to
-  read, the count of files stays sane across a career, and appending is
-  a small diff. Each entry records the date, setting, whether the
-  procedure was supervised or independent, the supervisor where there
-  was one, the indication, the outcome and free-text notes. An entry
-  may name further competencies it also counts towards, so an unusual
-  case need not be duplicated. Entries are the holder's own record and
-  carry no signature.
+- **Logbook entries** — one file per procedure, grouped into a folder
+  per competency, so every record in the passport is its own file and
+  the logbook stops being the one exception. Each records
+  `performed_on`, the setting, whether it was supervised or
+  independent, the supervisor where there was one, the indication, the
+  outcome and free-text notes. An entry may name further competencies
+  it also counts towards, so an unusual case need not be duplicated.
+  Entries are the holder's own record, with nobody countersigning.
+
+  ```yaml
+  # logbook/perform_bronchoscopy/2026-03-14-143207.yaml
+  performed_on: 2026-03-12
+  setting: Bristol Royal Infirmary
+  supervision: supervised
+  supervisor: Dr Amara Okonkwo
+  indication: Suspected endobronchial lesion
+  outcome: Successful
+  notes: Straightforward. Biopsies taken from right upper lobe.
+  ```
+
+- **`reflection.md`** — YAML frontmatter carrying the date, a title,
+  any competencies it relates to and the `attachments` list, then the
+  writing itself. The prose is the substance here, which is why the
+  structure sits in frontmatter rather than in a separate file the way
+  a sign-off's does.
+
+- **CPD entries** — one file per activity, grouped into a folder per
+  year. Each records the date, what it was, its type — conference,
+  grand round, teaching day, course — hours where they are claimed,
+  and optionally the competencies it relates to or a certificate
+  folder that evidences it. Grouping by year is not file management:
+  UK appraisal runs annually and asks what you did this year, so the
+  grouping matches how the record is used.
+
+- [ ] We need to figure out how to show a tally each year of CPD points (hours)
 
 - **Failures are recorded like anything else.** An unsuccessful
   procedure, an abandoned attempt or a declined sign-off is part of the
   record. The alternative — a record that only shows successes — is
   worth less to everyone reading it.
 
-- **Every file must make sense alone.** The human label travels beside
-  every identifier even though it is derivable, because a sign-off
-  read on its own, years later, with no other file to hand, has to be
-  intelligible. The id stays authoritative; the label is a convenience
+- **Every file must make sense alone, within its passport.** The human
+  label travels beside every identifier even though it is derivable,
+  because a sign-off read years later has to be intelligible. The one
+  thing not repeated is who the passport belongs to: that is in
+  `profile.yaml`, and copying it into every record would leave dozens
+  of stale names behind the first time somebody marries. The id stays authoritative; the label is a convenience
   copy, and where they disagree the id wins. Files carry a one-line
   YAML comment saying what they are.
 
-- **Timestamp ids** — `YYYYMMDDTHHMMSS.sssZ-<uuid4>`, generated
+- **Timestamp ids in files** — `YYYYMMDDTHHMMSS.sssZ-<uuid4>`, generated
   server-side with VPR's monotonic rule. These identify a sign-off
   permanently; they no longer appear in folder names or in the index.
 
 - **Evidence** — uploaded files are hashed, stored under
-  `files/sha256/` and referenced by sidecar. Phase 1 stores blobs in
+  `files/sha256/` and listed by hash in the record that refers to
+  them. Phase 1 stores blobs in
   the same bucket prefix as the repository; the existing planned file
   storage architecture (MinIO and FHIR `DocumentReference`) is for
   patient documents and is not reused here.
@@ -874,32 +974,20 @@ several.
 
 - **Git alone is not an audit trail, and the plan must not claim it
   is.** A force push rewrites history and git cannot tell you who did
-  it. Two things close that hole: the store rejects any non-fast-forward
-  update, and every sign-off's `content_hash` is appended to a
-  `passport_signoff_log` table outside the repository, with its
-  timestamp and the commit it arrived in. That log, not the repository,
-  is what makes tampering detectable, and it is append-only with no
-  update or delete path in the application.
+  it. Two things close that hole, neither needing a new table. The
+  store rejects any non-fast-forward update, so a rewrite cannot arrive
+  through the application at all. And the bucket keeps object versions,
+  so a replaced bundle leaves its predecessors behind — the same
+  generation numbers already used for compare-and-swap, with versioning
+  switched on.
 
 - **Content hashing follows Doorstop's discipline** — the hash covers
   a canonical serialisation of the semantically significant fields
   only, with the contributing and non-contributing fields written down
-  in the schema. Correcting a typo in a comment must not invalidate a
-  signature; changing the level must. The same fingerprint drives
+  in the schema. Correcting a typo in a comment must not change the
+  hash; changing the level must. The same fingerprint drives
   reassessment, if we later choose to detect a competency definition
   changing under sign-offs already made.
-
-- **Signing, at two levels with different meanings** — the assessor's
-  detached signature over `sign-off.yaml` alone is the professional
-  act: narrow, covering exactly what they saw on screen and pressed
-  sign on, and checkable with `openssl` decades later. The commit
-  signature, made with the same key, seals the tree state and proves
-  who changed the repository and when. The distinction matters because
-  `competencies.yaml` is regenerated on every write, so a commit's tree
-  contains sign-offs given by other consultants; a commit signature
-  alone would have each assessor sealing colleagues' judgements they
-  never saw. Requests, withdrawals and declines are unsigned. See
-  "Signing and verification" below.
 
 - **A sign-off pins the evidence it was given** — the record stores
   the logbook count for that competency at the moment of signing, a
@@ -908,15 +996,14 @@ several.
   front of the assessor when they decided. That is the part that
   matters if a sign-off is ever questioned.
 
-- **`meaning` is recorded on every signature** — one of
+- **`meaning` is recorded on every sign-off** — one of
   `directly observed`, `reviewed evidence`, or `countersigned`. These
   are clinically different acts, and a record that does not say which
   one happened is weaker than it looks.
 
 - **Git library** — pygit2 (libgit2, the same engine VPR uses),
-  in-process, with `create_commit_with_signature` for signed commits.
-  No shelling out to `git` and nothing driven by `pexpect`, which is
-  where DCSP's push code stalled.
+  in-process. No shelling out to `git` and nothing driven by
+  `pexpect`, which is where DCSP's push code stalled.
 
 ### Where the repository lives
 
@@ -965,97 +1052,122 @@ bundle` object at `passports/<s1>/<s2>/<uuid>.bundle`, with evidence
 - **No queues, no distributed locks, no conflict resolution** — after
   VPR's non-goals.
 
-### Signing and verification
+### Tamper-evidence and assurance
 
-The passport's value is that a third party can trust it without asking
-Quill. Every sign-off is therefore signed from the first release, but
-key handling is kept proportionate: assessors never manage keys, and
-the only new infrastructure is two secrets.
+Nothing is cryptographically signed. That is a deliberate decision
+rather than a gap, and it is worth stating plainly because the obvious
+assumption runs the other way.
 
-- **Deployment certificate authority** — each Quill deployment holds
-  one ECDSA P-256 key pair and a self-signed CA certificate, generated
-  once by a `just passport-ca` recipe, with the private key in Secret
-  Manager in production and a `SecretStr` setting in development. It
-  signs assessor certificates and nothing else. The CA certificate is
-  published at `GET /api/passport/ca.pem` and written into every
-  exported bundle. This closes the gap VPR left open: an assessor's
-  certificate chains to a known issuer, so verification proves the
-  identity the deployment asserted, not merely possession of a key.
+- **Why no keys** — any signing key would be held by Quill and used by
+  Quill's server, so a signature would assert exactly what the
+  database already asserts. It defends against nobody who matters:
+  anyone with application access can make the server sign anything,
+  and anyone with only storage access is already caught by the hashes
+  below. Keys become worth having when somebody other than Quill holds
+  them, which is a future item. The research supports the proportion:
+  Guy's and St Thomas' passed three external ISO 13485 audits on a
+  system whose signature was a pull request approval and a controlled
+  merge.
 
-- **Per-assessor keys, server-custodied** — when a user gains
-  `access_clinician_passport`, the server generates an ECDSA P-256 key
-  pair and issues a certificate. `CN` is the person's name, `O` is the
-  issuing deployment, the SAN URI identifies the Quill account, key
-  usage is `digitalSignature` and `contentCommitment`, validity twelve
-  months. Deliberately **not** VPR's layout: no registration authority
-  in `O`, no registration number in X.520 `serialNumber`. See the
-  decision below.
-  The private key is encrypted with a key-encryption key from settings
-  (`PASSPORT_SIGNING_KEK`, in Secret Manager) and stored in the
-  `passport_signer` table. Assessors never see or handle a key.
+- **`content_hash` on every sign-off** — SHA-256 over a canonical
+  serialisation of the semantically significant fields, after
+  Doorstop's discipline. Reformatting the YAML, reordering keys or
+  fixing a typo in a comment must not change it; changing the level,
+  the dates or the assessor must. The hash is printed on the PDF and
+  in the export, so a printed passport can be checked against the
+  record.
 
-- **Step-up authentication makes key use a deliberate act** — because
-  the server holds the key, signing must require more than a live
-  session. The sign-off endpoint requires a fresh TOTP code, checked
-  with the existing `verify_totp_code` in `backend/app/security.py`,
-  and refuses without one. The session proves who is logged in; the
-  code proves they are present and intend this sign-off now. This is
-  the passport's equivalent of a wet signature.
+  **Contributing fields** — `id`, `competency.id`, `kind`, `status`,
+  `level.id`, `observed_on`, `signed_at`, `expires_on`, `meaning`,
+  `corrects`, the assessor's user id and registrations, the care
+  location, and every attachment hash.
 
-- **What is signed** — the canonical form of `sign-off.yaml`
-  (sorted keys, minus the `signature` block) is hashed with SHA-256 to
-  give `content_hash`, and that hash is signed. The `signature` block
-  holds `algorithm: ecdsa-p256-sha256`, `value` (base64 DER),
-  `certificate_fingerprint` (SHA-256 of the DER certificate) and
-  `signed_at`. The signer's certificate is written once to
-  `signers/<fingerprint>.pem` in the passport repository and the CA
-  certificate to `signers/ca.pem`, so the repository verifies itself.
+  **Non-contributing** — `content_hash` itself, since a file cannot
+  contain its own fingerprint; every human `name` label, which is a
+  convenience copy of an id that does contribute; `comments`; and the
+  narrative files beside the record. Changing a label or tidying a
+  comment leaves the fingerprint alone, which is the point.
 
-- **Signed commits** — the commit recording a sign-off carries a
-  signature over the commit buffer in its `gpgsig` header, in VPR's
-  JSON container (signature, public key, certificate), made with the
-  same key through pygit2. The file and the commit therefore vouch for
-  each other: the file proves what was signed, the commit proves when
-  it entered the history.
+  **Canonical form** means keys sorted, no comments, no trailing
+  whitespace, dates as ISO strings, and the whole thing serialised the
+  same way every time. Two implementations that disagree about
+  canonical form will disagree about whether a record has changed, so
+  it belongs in the schema rather than in whichever function got
+  written first.
+
+- **Git's object hashes** carry the same guarantee across the whole
+  repository, and the commit history records who changed what and
+  when.
+
+- **Ordinary session authentication, and a declaration** — signing off
+  is authenticated exactly as everything else in Quill is, with no
+  step-up and no passport-specific rule. Access tokens last fifteen
+  minutes and refresh tokens seven days; TOTP is available and, as
+  elsewhere in Quill including teaching, optional. No clinical system
+  asks a consultant to re-authenticate to sign a discharge summary,
+  and asking for a code per sign-off would mean fishing out a phone
+  five times after a clinic — friction landing exactly where adoption
+  is most fragile.
+
+  What makes it a deliberate act is the declaration: fixed text the
+  assessor confirms before signing, which is what a wet signature
+  actually is. Someone reads a statement and puts their name to it.
 
 - **Verification** —
-  `GET /api/passport/{id}/sign-offs/{signoff_id}/verify`
-  recomputes the hash, checks the signature against the certificate in
-  `signers/`, checks the chain to the CA, and checks the certificate
-  was valid at `signed_at`. The exported bundle includes a `VERIFY.md`
-  with the `openssl` commands that do the same offline. The PDF prints
-  the content hash and certificate fingerprint on every sign-off
-  and a QR code that opens the verify endpoint.
+  `GET /api/passport/{id}/sign-offs/{signoff_id}/verify` recomputes the
+  hash and reports whether the record is unchanged. The exported bundle
+  includes a `VERIFY.md` with the `sha256sum` commands to do the same
+  offline, with no software and no keys. The PDF prints the content
+  hash on every sign-off and a QR code that opens the verify endpoint.
 
-- **Expiry and revocation** — an expired or revoked certificate
-  (assessor leaves, competency removed, suspected compromise) blocks
-  new signatures and does not disturb signatures made while it was
-  valid. `not_before`, `not_after`, `revoked_at` and `revoked_reason`
-  live on `passport_signer` and are reported by the verify endpoint.
-  Renewal issues a new certificate and a new `signers/` file. There is
-  no revocation list inside the bundle in phase 1; the verify endpoint
-  is the revocation source of truth, and the future items say what an
-  offline list would add.
+- **What this proves, and what it does not** — that a record has not
+  changed since it was written, and that a named account signed it off
+  after re-authenticating. It does not prove a professional
+  registration, and it does not prove anything to a party who
+  distrusts Quill itself. Both limits are stated rather than papered
+  over.
 
-- **Professional registrations live in the record, not the
-  certificate** — both the holder and the assessor carry a list of
-  registrations as plain key and value pairs, using the bodies already
-  listed in `shared/jurisdiction-config.yaml`:
+- **Professional registrations are data on the record** — a list of
+  plain key and value pairs, using the bodies already listed in
+  `shared/jurisdiction-config.yaml`:
 
   ```yaml
   registrations:
     - body: GMC
       number: "1234567"
-      verified: false        # nobody has checked the register
+      verified: false # nobody has checked the register
+    - body: CNOM
+      number: "98765"
+      verified: true
+      verified_by: dr.patel@example.nhs.uk
+      verified_on: 2026-04-02
   ```
 
-  Every registration carries `verified`, plus who verified it and when
-  once an admin has. Quill does not check the GMC, NMC, GPhC or HCPC
-  registers, and the record says so rather than implying otherwise.
+  Quill does not check the GMC, NMC, GPhC or HCPC registers. An
+  organisation admin can mark one verified after checking by hand, and
+  until they do the record says so rather than implying otherwise.
 
-- **What the signature actually proves** — that this key belongs to
-  this Quill account, and that this file has not changed since it was
-  signed. It does not prove a professional registration, and the
+  **Where they are stored**, and the distinction matters:
+
+  - `User.professional_registrations` in Postgres is the live source,
+    and the only one that is edited.
+  - `profile.yaml` holds the **holder's** current set, regenerated
+    whenever it changes, so the passport reads on its own without
+    Quill.
+  - Each `sign-off.yaml` holds the **assessor's** set inside
+    `signed_off_by`, frozen as it was at signing. The holder's are not
+    repeated there — they are in `profile.yaml`, and copying them into
+    every record would leave stale names behind.
+
+  **What they are used for**: showing a reader who signed and under
+  what standing, and contributing to the sign-off's `content_hash` so
+  an assessor's professional standing cannot be quietly rewritten
+  afterwards. They gate nothing — no route, no level, no eligibility
+  check consults them.
+
+- **What the hash actually proves** — that this record has not changed
+  since it was written. It does not prove a professional registration,
+  and it proves nothing to anyone who distrusts Quill itself. The
   verify endpoint says exactly that rather than leaving a reader to
   assume more.
 
@@ -1076,13 +1188,13 @@ the only new infrastructure is two secrets.
   days; the row records who invited whom and for which passport.
 
 - **Acceptance** — the link opens `/passport/assessors/accept`. A new
-  user registers with name, email, password and mandatory TOTP setup
-  (signing needs it); an existing user signs in. Either way the result
-  is a user with `system_permissions` of `single-user`, no
-  organisation membership, a base profession chosen from a short list,
-  the declared registrations in `professional_registrations`, and
-  `access_clinician_passport` in `additional_competencies`. The signing
-  key and certificate are issued at that moment.
+  user registers with name, email and password under Quill's ordinary
+  account policy; an existing user signs in. Either way the result is
+  a user with `system_permissions` of `single-user`, no organisation
+  membership, a base profession chosen from a short list, the declared
+  registrations in `professional_registrations`, and
+  `access_clinician_passport` in `additional_competencies`. Nothing
+  about the passport imposes extra account requirements.
 
 - **Scope of access** — an external assessor sees and acts on exactly
   the sign-offs they are named on through `passport_signoff_request`
@@ -1107,8 +1219,8 @@ the only new infrastructure is two secrets.
   The record stays honest about what Quill checked.
 
 - **Revocation** — an admin of the inviting organisation can revoke an
-  external assessor, which revokes their certificate and removes
-  `access_clinician_passport`. Signed sign-offs stand.
+  external assessor, removing `access_clinician_passport`. Sign-offs
+  they already made stand.
 
 ### What lives in Postgres
 
@@ -1126,13 +1238,6 @@ not a copy of the record.
   of the record. The sign-off file is the record; this row is the
   request that led to it and is closed when the file is written.
 
-- **`passport_signer`** — `user_id`, `public_key_pem`,
-  `private_key_encrypted`, `certificate_pem`, `certificate_fingerprint`,
-  `not_before`, `not_after`, `created_at`, `revoked_at`,
-  `revoked_reason`. One row per issued certificate; the current one is
-  the newest unrevoked row. The private key never leaves this table
-  unencrypted and is decrypted only inside the sign-off request.
-
 - **`passport_assessor_invite`** — `id`, `passport_id`,
   `invited_by_user_id`, `email`, `name`, `registration_authority`,
   `registration_number`, `token_hash`, `expires_at`, `accepted_at`,
@@ -1145,11 +1250,6 @@ not a copy of the record.
   interface convenience: nothing reads it when deciding what a person
   may do or be signed off for.
 
-- **`passport_signoff_log`** — `id`, `passport_id`, `signoff_id`,
-  `content_hash`, `commit_sha`, `logged_at`. Append-only, written on
-  every sign-off, never updated or deleted. This is the tamper-evidence
-  backstop for force-push, not a projection of the record.
-
 - **Nothing else** — no sign-off table, no per-competency status
   table, no cached progress. A holder's passport page reads their
   repository. A programme director's cross-trainee view is a future
@@ -1158,7 +1258,7 @@ not a copy of the record.
 ### Rendering and export
 
 - **Markdown** — the passport is rendered on demand from
-  `passport.yaml` and the sign-off files into a single
+  `profile.yaml` and the sign-off files into a single
   `passport.md` (front page with holder identity, one table row per
   competency with
   its current level, assessor and date, and an appendix of every
@@ -1177,9 +1277,9 @@ not a copy of the record.
 
 - **Bundle download** — a zip holding a plain-English `README.md`
   explaining what the bundle is and how to read it, the passport
-  directory (YAML, Markdown, sidecars, evidence blobs), the rendered
-  `passport.md` and `passport.pdf`, `VERIFY.md` with the `openssl`
-  commands to check a signature offline, and a `git bundle` of the full
+  directory (YAML, Markdown, evidence blobs), the rendered
+  `passport.md` and `passport.pdf`, `VERIFY.md` with the `sha256sum`
+  commands to check the hashes offline, and a `git bundle` of the full
   history. The README is the highest-value file in the bundle and costs
   nothing. This is the portable artefact a registrar carries between
   trusts. CSV export and import of a bundle into another deployment are
@@ -1206,19 +1306,18 @@ above. Additive only, per `.claude/rules/backend.md`.
   assessor. `access_clinician_passport`.
 - `POST /api/passport/{id}/sign-offs/{signoff_id}/sign-off` —
   assessor signs, with level, caveats, optional assessment narrative
-  and a fresh `totp_code`. Refused if the assessor is the holder, is
-  not named on the request, has no valid certificate, or the code is
+  and confirmation of the declaration. Refused if the assessor is the
+  holder, is not named on the request, or the confirmation is
   missing or wrong. Signs the sign-off, writes the file, makes the
-  signed commit and closes the request.
+  commit and closes the request.
 - `GET /api/passport/{id}/sign-offs/{signoff_id}/verify` —
-  recomputes and checks the signature, chain and validity window;
+  recomputes the hash and reports whether the record is unchanged;
   readable by anyone who may read the sign-off.
-- `GET /api/passport/ca.pem` — the deployment CA certificate. Public.
 - `POST /api/passport/{id}/assessors/invite` — holder or organisation
   admin invites an external assessor. `access_clinician_passport`, rate
   limited.
 - `POST /api/passport/assessors/accept` — public; consumes the invite
-  token, registers or links the user, issues the signing certificate.
+  token and registers or links the user.
 - `POST /api/passport/assessors/{user_id}/verify-registration` and
   `POST /api/passport/assessors/{user_id}/revoke` — organisation admin.
 - `POST /api/passport/{id}/sign-offs/{signoff_id}/decline` —
@@ -1234,6 +1333,11 @@ above. Additive only, per `.claude/rules/backend.md`.
   on the same reasoning.
 - `GET /api/passport/{id}/logbook?competency=<id>` — a competency's
   entries with a count, and no target.
+- `POST /api/passport/{id}/reflections` — add a reflection, with
+  `PATCH` and `DELETE` on `{reflection_id}`. Holder only: nobody else
+  reads or writes these, including organisation admins.
+- `POST /api/passport/{id}/cpd` — add an activity, with `PATCH` and
+  `DELETE` on `{entry_id}` on the same reasoning as the logbook.
 - `GET /api/passport/{id}/export.md`, `export.pdf`, `export.zip`.
 - `GET /api/passport/competencies` — the competency definitions with
   their levels, for populating the request form. Returns the caller's
@@ -1258,14 +1362,14 @@ above. Additive only, per `.claude/rules/backend.md`.
   `CompetencyRow`, `SignOffCard` (one sign-off in full with
   status, assessor snapshot, caveats, evidence links),
   `SignOffRequestForm`, `SignOffForm` (level, caveats, narrative, the
-  declaration checkbox and the TOTP code field), `AssessorDeclaration`
+  declaration checkbox), `AssessorDeclaration`
   (the fixed declaration text), `EvidenceUploader`,
   `PassportExportButtons`, `CertificateUploader`, `CertificateCard`,
   `LogbookEntryForm`, `LogbookTable` (entries and a count, never a
   target), `CompetencyPicker` (shortlist first, full search beneath,
-  nothing hidden), `InviteAssessorForm`, `SignatureBadge`
-  (signed, unverified registration, expired, revoked) and
-  `VerificationPanel` (the verify endpoint's result). Each with
+  nothing hidden), `InviteAssessorForm`, `RegistrationBadge`
+  (declared or verified) and `VerificationPanel` (the verify
+  endpoint's result). Each with
   `.stories.tsx` and `.test.tsx`, built from `BaseCard`, `ButtonPair`,
   `Icon` and the design system.
 
@@ -1275,8 +1379,8 @@ above. Additive only, per `.claude/rules/backend.md`.
 ### Validation and safety
 
 - **Schemas** — Pydantic models with `extra="forbid"` for
-  `passport.yaml`, `sign-off.yaml`, certificates, logbook files and
-  sidecars;
+  `manifest.yaml`, `profile.yaml`, `sign-off.yaml`, certificates,
+  logbook, reflections and CPD files;
   the same models validate on read, so a hand-edited or imported file
   that fails validation is rejected rather than half-parsed.
 
@@ -1302,12 +1406,9 @@ above. Additive only, per `.claude/rules/backend.md`.
   (who, which passport, when) in the existing application log with no
   content.
 
-- **Key handling** — private keys exist in plaintext only inside the
-  sign-off request handler, never in logs, responses or exports. The
-  KEK and CA key are `SecretStr` settings sourced from Secret Manager.
-  Losing the CA key means new assessors cannot be issued certificates
-  until a new CA is created and published; existing signatures remain
-  verifiable against the old CA certificate kept in `signers/`.
+- **No key material anywhere** — there are no signing keys to store,
+  rotate, leak or lose, which is one of the reasons for not having
+  any.
 
 - **External assessor boundary** — every route an external assessor can
   reach resolves the passport from a request row naming them, and no
@@ -1356,21 +1457,20 @@ above. Additive only, per `.claude/rules/backend.md`.
       Both are optional, so existing entries are untouched.
 - [ ] Run `yarn generate:types` in `frontend/` and commit the generated
       JSON.
-- [ ] Add hazard log entries for the passport: wrong assessor signs,
-      holder signs off their own, evidence contains patient data, exported PDF
-      diverges from repository, a competency definition changed under
-      sign-offs already made, external
-      assessor declares a registration they do not hold, signing key or
-      CA key compromise, sign-off made from a stolen session without
-      the step-up code.
+- [ ] Add hazard log entries for the passport: the wrong assessor
+      signs; a holder signs off their own competency; evidence or a
+      reflection contains patient data; an exported PDF diverges from
+      the repository; a competency definition changes under sign-offs
+      already made; an assessor declares a registration they do not
+      hold; a sign-off is made from an unattended logged-in session.
 
 ## Phase 1: core store and record model
 
 - [ ] Create `backend/app/features/passport/` with `paths.py` (typed
       relative paths, no I/O, after VPR's `crates/core/src/paths/`),
       `ids.py` (timestamp id generator with monotonic rule),
-      `schemas.py` (Pydantic models for `passport.yaml`,
-      `sign-off.yaml`, certificates, logbook files and sidecars), and
+      `schemas.py` (Pydantic models for `profile.yaml`,
+      `sign-off.yaml`, certificates, logbook, reflections and CPD), and
       `definitions.py` (reads the passport fields from
       `shared/competency-definitions/`).
 - [ ] Implement `store.py` with the `PassportStore` interface and the
@@ -1382,18 +1482,25 @@ above. Additive only, per `.claude/rules/backend.md`.
       value validation.
 - [ ] Implement `certificates.py` and `logbook.py`: create, amend and
       remove self-declared evidence, each as one validated write and
-      one unsigned commit, with the year-file append for logbook
-      entries.
+      one commit.
 - [ ] Implement `index.py`: regenerate `competencies.yaml` from the
       sign-off folders on every write, with the folder-naming and
       collision rules, and a self-heal that rebuilds stale references.
-- [ ] Implement content hashing with an explicit contributing-field
-      list, and tests proving a comment edit does not change the hash
-      while a level change does.
-- [ ] Add the `passport_signoff_log` model and migration, and reject
-      non-fast-forward updates in the store.
+- [ ] Implement content hashing against the contributing-field list,
+      with the canonical form defined in the schema rather than in the
+      hashing function. Tests: editing a comment or a display label
+      leaves the hash alone, changing the level or the assessor
+      changes it, and re-serialising an unchanged record reproduces
+      the same value.
+- [ ] Require confirmation of the declaration on the sign-off service
+      call, with tests proving an unconfirmed request is refused and
+      writes nothing.
+- [ ] Implement the verify function and the `VERIFY.md` template for
+      bundles, using `sha256sum` and no keys.
+- [ ] Reject non-fast-forward updates in the store, with a test
+      proving a rewrite is refused.
 - [ ] Implement `blobs.py`: content-addressed evidence store with
-      sidecar metadata and refusal to overwrite an existing hash.
+      refusal to overwrite an existing hash.
 - [ ] Implement `service.py`: create passport, request sign-off, sign
       off, decline, withdraw, supersede, each as one validated write
       and one commit, with the derived per-competency status function.
@@ -1421,40 +1528,14 @@ above. Additive only, per `.claude/rules/backend.md`.
       `backend/app/config.py` following the teaching storage settings.
 - [ ] Add the bucket and the Cloud Run service account IAM binding to
       Terraform, following the teaching bucket and the IAM note in
-      `docs/docs/infrastructure/gcp.md`.
+      `docs/docs/infrastructure/gcp.md`. Enable object versioning on
+      the bucket: it is a one-line setting and it is what preserves a
+      replaced bundle's predecessors, which is the backstop for a
+      history rewrite.
 - [ ] Tests against a fake GCS client covering generation mismatch,
       partial upload failure and re-open after failure.
 
-## Phase 3: signing and verification
-
-- [ ] Add a `just passport-ca` recipe that generates the deployment CA
-      key pair and self-signed certificate with `cryptography`, and
-      document storing the key in Secret Manager in
-      `docs/docs/infrastructure/gcp.md`.
-- [ ] Add `PASSPORT_CA_KEY`, `PASSPORT_CA_CERT` and
-      `PASSPORT_SIGNING_KEK` to `backend/app/config.py` as `SecretStr`.
-- [ ] Add the `passport_signer` model and migration.
-- [ ] Implement `signing.py`: key generation, certificate issuance in
-      VPR's subject layout, KEK encryption and decryption of private
-      keys, canonical YAML serialisation, content hashing, sign,
-      verify, chain check and validity-at-time check.
-- [ ] Issue a certificate wherever `access_clinician_passport` is
-      granted: user provisioning, admin competency edits and invite
-      acceptance; revoke it wherever the competency is removed.
-- [ ] Add signed commits to the store through pygit2's
-      `create_commit_with_signature`, and write `signers/<fingerprint>.pem`
-      and `signers/ca.pem` into the repository on first use.
-- [ ] Require and check a fresh TOTP code on the sign-off service call.
-- [ ] Implement the verify function and the `VERIFY.md` template for
-      bundles.
-- [ ] Tests: sign and verify round trip; a single changed byte in the
-      YAML fails; a certificate from another CA fails; a certificate
-      expired at `signed_at` fails while one expired afterwards passes;
-      a revoked signer cannot sign; a missing or wrong TOTP code is
-      refused with no file written; `openssl` verifies a fixture bundle
-      (skipped when `openssl` is absent).
-
-## Phase 4: API
+## Phase 3: API
 
 - [ ] Add the `/api/passport` router under
       `backend/app/features/passport/router.py` with the routes listed
@@ -1470,7 +1551,7 @@ above. Additive only, per `.claude/rules/backend.md`.
 - [ ] Update `docs/docs/code/fastapi/` and the Swagger index for the new
       module.
 
-## Phase 5: rendering and export
+## Phase 4: rendering and export
 
 - [ ] Implement `render.py`: passport files to `passport.md`, with the
       front page, per-domain tables, and the full sign-off appendix
@@ -1487,7 +1568,7 @@ above. Additive only, per `.claude/rules/backend.md`.
       generation succeeds and contains the hashes, export logging
       records no content.
 
-## Phase 6: external assessors
+## Phase 5: external assessors
 
 - [ ] Extend `create_invite_token` and `decode_invite_token` in
       `backend/app/security.py` to accept the `passport_assessor` user
@@ -1505,10 +1586,10 @@ above. Additive only, per `.claude/rules/backend.md`.
       admins.
 - [ ] Tests: an external assessor cannot read a passport, another
       assessor's requests, users or organisations; a consumed or
-      expired token is refused; revocation blocks signing and leaves
-      earlier signatures verifiable.
+      expired token is refused; and revoking an assessor's access
+      leaves the sign-offs they already made intact.
 
-## Phase 7: frontend
+## Phase 6: frontend
 
 - [ ] Add `frontend/src/lib/passport/` API client functions using
       `api.ts` and types generated from the backend schemas.
@@ -1524,7 +1605,7 @@ above. Additive only, per `.claude/rules/backend.md`.
 - [ ] Frontend tests with `just uf src/components/passport` and
       `just uf src/pages/passport`; Storybook tests with `just sbt`.
 
-## Phase 8: hardening and launch
+## Phase 7: hardening and launch
 
 - [ ] End-to-end test: holder requests, assessor signs, holder exports
       PDF, hash on PDF matches repository.
@@ -1532,9 +1613,6 @@ above. Additive only, per `.claude/rules/backend.md`.
       path containment, symlink refusal), of the authorisation matrix
       including external assessors, and of key handling (no key in
       logs, responses or exports).
-- [ ] Rehearse CA key loss and recovery: create a second CA, publish
-      it, confirm old signatures still verify against the retained CA
-      certificate.
 - [ ] Clinical safety review of the competency definitions and the
       declaration text with the Clinical Safety Officer; record in the
       hazard log.
@@ -1557,15 +1635,14 @@ close them off, and so nobody builds them before there is a need.
   the commit hash they were built from, and have a documented lag. Do
   not build it before a query needs it.
 
-- **Assessor-held keys** — moving from server-custodied keys to keys
-  the assessor holds (a hardware token or NHS smartcard), so a
-  signature no longer depends on trusting the deployment. The
-  certificate layout and verify path are unchanged; only where the
-  private key lives moves.
-
-- **Offline revocation** — a signed revocation list inside every
-  exported bundle, so a reader with no network can tell a revoked
-  certificate from a valid one. Phase 1 relies on the verify endpoint.
+- **Cryptographic signing, if a key ever sits outside Quill** — keys
+  held by the assessor on a hardware token or an NHS smartcard, or an
+  external trust anchor such as a college or deanery certificate
+  authority. Either makes a signature mean something Quill cannot
+  fake, which is the only thing that would make it worth the key
+  management, the revocation and the offline verification list. The
+  record format does not change: a signature would cover the same
+  canonical fields the `content_hash` already covers.
 
 - **Register lookup** — checking a declared registration against the
   GMC, NMC or HCPC register through their APIs, replacing the by-hand
@@ -1699,19 +1776,21 @@ close them off, and so nobody builds them before there is a need.
   measured latency appears. The future-items section holds the
   invariants so it is built correctly when it is built.
 
-- **Sign from the first release, with server-custodied keys and a
-  deployment CA** — a passport that only Quill can vouch for is not
-  portable, so signatures are in scope now. Asking consultants to hold
-  keys would stall adoption, so the server holds them, encrypted, and
-  a fresh TOTP code is required to use one. A deployment CA gives the
-  chain validation VPR lacked at the cost of two secrets. Assessor-held
-  keys are a future item that changes nothing in the file format.
-
-- **Sign the sign-off file and the commit, not just the commit** —
-  the file-level signature travels with the YAML, is checkable with
-  `openssl` and survives any future change of git tooling; the commit
-  signature ties the sign-off to its place in history. Either alone
-  leaves a gap.
+- **Hashes and a declaration, not cryptographic signatures** —
+  any key would be held and used by Quill's own server, so a signature
+  would assert exactly what the database already asserts, and would
+  defend against nobody: application access defeats it, and storage
+  access is already caught by the hashes. What earns its place is a
+  `content_hash` over the canonical significant fields, git's own
+  object hashes, and a declaration the assessor confirms at the moment
+  of signing — which is what a wet signature has always been, someone
+  reading a statement and putting their name to it. Guy's and St Thomas' passed three external ISO
+  13485 audits on a pull request approval, which is a useful measure of
+  how much cryptography an auditor actually wants. Keys become
+  worthwhile when somebody other than Quill holds one; until then they
+  are a certificate authority, a key-encryption key, rotation,
+  revocation and a phase of work in exchange for reassurance rather
+  than assurance.
 
 - **External assessors through the existing invite-token flow, scoped
   to their requests** — the organisations and external access plan
@@ -1736,8 +1815,8 @@ close them off, and so nobody builds them before there is a need.
   off", and only an auditor or a panel needs to know by whom and on
   what evidence. The index serves the common case and is regenerated,
   never authored; the sign-off files are the record and never change
-  once signed. That also keeps each signature over a whole small file
-  with a stable hash, rather than over a fragment of a growing one.
+  once signed. That also keeps each hash over a whole small file with
+  a stable value, rather than over a fragment of a growing one.
 
 - **Flat slugs, hierarchy as metadata** — every standard that has faced
   this question answered it the same way, and ESCO reversed the
@@ -1786,13 +1865,13 @@ close them off, and so nobody builds them before there is a need.
   supervised to unsupervised writes a second record in its own folder.
   The earlier one is a named consultant's attestation that something
   was true at the time, and it was; overwriting it would destroy that
-  statement and break the signature covering it. It also makes
-  progression visible, which is worth having.
+  statement and change the hash covering it. It also makes progression
+  visible, which is worth having.
 
-- **Two levels of trust, kept visibly apart** — certificates and
-  logbook entries are the holder's own claims and carry no signature;
-  a sign-off is a second person accepting accountability and is
-  signed. Blurring them would let a thick logbook masquerade as a
+- **Two levels of trust, kept visibly apart** — certificates, logbook
+  entries, reflections and CPD are the holder's own claims, entered by
+  them alone; a sign-off is a second person accepting accountability.
+  Blurring them would let a thick logbook masquerade as a
   judgement. The interface should make which is which obvious without
   anyone having to think about it.
 
@@ -1851,25 +1930,22 @@ close them off, and so nobody builds them before there is a need.
   clinical training, and would need constant admin correction as
   people move.
 
-- **One signature, the assessor's, covering everything** — the
-  assessor signs a file that already holds the holder's observed date,
-  reflection and evidence references, so signing it attests to all of
-  that. A second signature from the holder would add nothing, because
-  the holder attests to nothing the assessor is not already vouching
-  for. Their participation is attributed in the git history, unsigned,
-  exactly like their logbook and certificates.
+- **One attestation, the assessor's, covering everything** — the
+  assessor signs off a record that already holds the holder's observed
+  date, reflection and evidence references, so accepting it attests to
+  all of that. Nothing separate is needed from the holder, who attests
+  to nothing the assessor is not already vouching for. Their
+  participation is attributed in the git history, exactly like their
+  logbook and certificates.
 
 - **Registrations are recorded, never certified** — both holder and
   assessor declare their GMC, NMC, GPhC or HCPC number as a plain key
   and value pair on the record, with a `verified` flag an admin can
-  set after checking by hand. They stay out of the X.509 certificate,
-  which is where VPR puts them, because Quill does not check any
-  register and a signature would make an unverified claim look
-  verified. Someone running `openssl` on a certificate carrying
-  "GMC 1234567" would reasonably assume it had been checked. So the
-  cryptography proves only that this key belongs to this Quill account
-  and this file is unchanged; the registration is a claim on the
-  record, labelled as such.
+  set after checking by hand. Quill checks no register, and the record
+  says so rather than implying otherwise. This is also why VPR's
+  approach of sealing a registration number into an X.509 certificate
+  is not followed: it would make an unverified claim look verified to
+  anyone who checked the certificate.
 
 - **Self-sign-off is the only rule** — refused at the API regardless
   of competencies held, because the whole value of the record is a
