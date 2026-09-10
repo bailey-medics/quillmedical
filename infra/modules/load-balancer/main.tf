@@ -131,9 +131,28 @@ resource "google_compute_url_map" "https" {
     name            = "quill-paths"
     default_service = google_compute_backend_service.frontend.id
 
-    path_rule {
-      paths   = ["/api", "/api/*"]
-      service = google_compute_backend_service.backend.id
+    # One dynamic block over one list, never a static rule plus a dynamic one
+    # beside it: the dynamic block replaces the whole set rather than appending,
+    # so the pair would plan `/api/*` -> null and take the API down. Learned the
+    # hard way in the Phase 0 spike; see that plan's findings.
+    dynamic "path_rule" {
+      for_each = concat(
+        [{
+          paths   = ["/api", "/api/*"]
+          service = google_compute_backend_service.backend.id
+        }],
+        # The `/videos/*` entry is added in a follow-up, deliberately. Adding
+        # it here at the same time as converting `/api/*` from a static block
+        # made the plan show `/api/*` -> null: Terraform compares a known
+        # static block against a dynamic one whose contents are `known after
+        # apply`, and cannot see that the result is the same. Converting on its
+        # own must plan as no change before the second entry is safe to add.
+        []
+      )
+      content {
+        paths   = path_rule.value.paths
+        service = path_rule.value.service
+      }
     }
   }
 
