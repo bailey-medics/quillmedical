@@ -135,14 +135,66 @@ does not, and removing the ladder removes the suggestion.
       - [ ] **Three patient routes** — `deactivate_patient`, `activate_patient`,
             `revoke_external_access`. `check_user_patient_access` already exists and
             already encodes the rule; these simply do not call it.
-      - [ ] **Five fetch-by-id user routes** — `deactivate_user`, `reactivate_user`,
-            `send_invite_email`, `get_user`, `link_patient_to_user`. One helper applied
-            five times: does the target share an organisation with the caller?
-            `deactivate_user` is the clearest case — it refuses self-deactivation and
-            superadmin targets, and never asks which organisation the target belongs to, so
-            an admin at Trust A can deactivate a user at Trust B by naming their id.
+      - [x] **Six fetch-by-id user routes** — `deactivate_user`, `reactivate_user`,
+            `send_invite_email`, `get_user`, `link_patient_to_user`, and `update_user`.
+            One helper applied six times: does the target share an organisation with the
+            caller? `deactivate_user` is the clearest case — it refuses self-deactivation
+            and superadmin targets, and never asks which organisation the target belongs
+            to, so an admin at Trust A can deactivate a user at Trust B by naming their id.
             `get_user` is a near miss: it already loads the target's organisation
             memberships, but to return them rather than to gate on them.
+            - **`update_user` was counted as already scoped and is not.** The earlier count
+              looked for `get_user_org_ids` in the body and found it, but it scopes the
+              *organisations named in the payload* — which memberships it may remove — not
+              the target. So the route fetches a user by id, refuses only a superadmin
+              target, and then writes username, email, **password** and competencies.
+              An admin at Trust A can reset the password of a user at Trust B.
+              **This is the worst of the six** and should be fixed first among them.
+            - **The lesson for the remaining counts:** presence of a scoping helper in a
+              function body does not mean the *target* is scoped. `list_users` filters its
+              result set and `create_user_with_cbac` validates payload organisations, both
+              correct; `update_user` looked the same to a grep and was not. The twenty
+              "ready" routes deserve the same read before their competency swap.
+            - **A user in no organisation is the case the check exposed.** The place check
+              asks whether admin and target share an organisation, so a user in none is
+              shared with nobody and is refused. That broke
+              `test_deactivate_user_success`, which creates a user with no membership and
+              expects an admin to deactivate them — and orphans are legitimately
+              creatable today, since `organisation_ids` may be empty on
+              `POST /users` and both `organisation_id` and `site_id` are optional on
+              `register`.
+            - **Decided: a holding organisation, and make orphans hard to create.** Rather
+              than choosing between refusing orphans and letting every admin reach them,
+              a user who is not placed lands in a default organisation of last resort, so
+              "belongs nowhere" stops being a reachable state. The membership check then
+              needs no special case, because there is no orphan to special-case.
+              Separately, the business logic should make creating a user without an
+              organisation or site difficult to impossible.
+              - **This is its own unit of work**, not part of the place-check change: it
+                needs a name and a seeding decision for the holding organisation, a
+                migration to create it, a backfill for any existing orphans, and validation
+                on both `POST /users` and `register`. Doing it inside this step would mix a
+                data-model change into a security fix.
+              - **Until it lands, the place check refuses orphans** — failing closed, which
+                is the right way round to be wrong while the holding organisation is
+                built. Five existing tests placed their users nowhere and were updated to
+                say where they are, which is what they meant all along.
+            - **Done:** `_require_shared_org_with_user` in `main.py`, applied to all six,
+              with `test_admin_user_route_scoping.py` covering each. Verified by deleting
+              the helper's six call sites and watching every hole test fail.
+            - **The check runs *after* the superadmin guard, not before.** Placed first,
+              an admin poking at a superadmin got a 404 about membership instead of the
+              clearer "Cannot modify superadmin users", because a superadmin need not
+              share an organisation with the admin looking at them. Ordering them the
+              other way keeps both refusals saying what they mean. Self is allowed
+              explicitly, so an admin in no organisation can still read their own record.
+            - **A superadmin's reach comes from the rank, not from membership.** They may
+              well belong to organisations and sites like anyone else — the rank does not
+              take that away — and they are equally free to act at any place they do not
+              belong to. So the check returns early on `system_permissions` and never
+              consults the membership tables for them. Reading it as "superadmins are in
+              no organisation" would be wrong twice over: they may be in several, and
+              being in none is not what grants them their reach.
       - [ ] **`list_sites`** — returns every site in the deployment to any admin. Not a
             by-id leak; no id is needed at all. Filter to the caller's organisations via
             `organisation_site`, as `list_organisations` already filters, with superadmins

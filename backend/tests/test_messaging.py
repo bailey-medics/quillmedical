@@ -84,9 +84,28 @@ def second_user(db_session: Session, test_org: Organisation) -> User:
     return user
 
 
+def _place_admin_in(db: Session, org: Organisation, admin: User) -> None:
+    """Put an admin in an organisation so admin routes can reach its users.
+
+    An admin may act on a user only where they share an organisation, so a
+    test that acts on someone must say where both of them are.
+    """
+    db.execute(
+        organisation_member.insert().values(
+            organisation_id=org.id, user_id=admin.id, capacity="staff"
+        )
+    )
+    db.commit()
+
+
 @pytest.fixture
-def patient_user(db_session: Session) -> User:
-    """Create a test user with patient permissions."""
+def patient_user(db_session: Session, test_org: Organisation) -> User:
+    """Create a test user with patient permissions.
+
+    Placed in ``test_org`` so admin routes can reach them. An admin may
+    act on a user only where they share an organisation, and a user in
+    none is shared with nobody.
+    """
     user = User(
         username="patientuser",
         email="patient@example.com",
@@ -96,6 +115,14 @@ def patient_user(db_session: Session) -> User:
         system_permissions="single-user",
     )
     db_session.add(user)
+    db_session.flush()
+    db_session.execute(
+        organisation_member.insert().values(
+            organisation_id=test_org.id,
+            user_id=user.id,
+            capacity="trainee",
+        )
+    )
     db_session.commit()
     db_session.refresh(user)
     return user
@@ -1440,8 +1467,11 @@ class TestLinkPatient:
         authenticated_client: TestClient,
         test_admin: User,
         patient_user: User,
+        test_org: Organisation,
+        db_session: Session,
     ):
         """Admin can link a user to a FHIR patient record."""
+        _place_admin_in(db_session, test_org, test_admin)
         authenticated_client.post(
             "/api/auth/login",
             json={"username": "testadmin", "password": "AdminPassword123!"},
@@ -1462,9 +1492,12 @@ class TestLinkPatient:
         authenticated_client: TestClient,
         test_admin: User,
         patient_user: User,
+        test_org: Organisation,
         db_session: Session,
     ):
         """Cannot link two users to the same FHIR patient."""
+        _place_admin_in(db_session, test_org, test_admin)
+
         # Link patient_user first
         patient_user.fhir_patient_id = "fhir-dupe-123"
         db_session.commit()
@@ -1479,6 +1512,14 @@ class TestLinkPatient:
             system_permissions="single-user",
         )
         db_session.add(other)
+        db_session.flush()
+        db_session.execute(
+            organisation_member.insert().values(
+                organisation_id=test_org.id,
+                user_id=other.id,
+                capacity="trainee",
+            )
+        )
         db_session.commit()
 
         authenticated_client.post(

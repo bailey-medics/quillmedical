@@ -1626,6 +1626,8 @@ def update_user(
             status_code=403, detail="Cannot modify superadmin users"
         )
 
+    _require_shared_org_with_user(db, current_user, user)
+
     # Validate and update username
     if payload.username is not None:
         username = payload.username.strip()
@@ -1819,6 +1821,8 @@ def deactivate_user(
             status_code=403, detail="Cannot modify superadmin users"
         )
 
+    _require_shared_org_with_user(db, current_user, user)
+
     if user.id == current_user.id:
         raise HTTPException(
             status_code=400, detail="Cannot deactivate your own account"
@@ -1881,6 +1885,8 @@ def reactivate_user(
             status_code=403, detail="Cannot modify superadmin users"
         )
 
+    _require_shared_org_with_user(db, current_user, user)
+
     if user.is_active:
         raise HTTPException(status_code=400, detail="User is already active")
 
@@ -1926,6 +1932,8 @@ def send_invite_email(
     user = db.scalar(select(User).where(User.id == user_id))
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    _require_shared_org_with_user(db, current_user, user)
 
     token = create_password_reset_token(user.email)
     reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}"
@@ -2573,6 +2581,8 @@ def get_user(
         and user.system_permissions == "superadmin"
     ):
         raise HTTPException(status_code=404, detail="User not found")
+
+    _require_shared_org_with_user(db, current_user, user)
 
     # Get user's org and site memberships
     user_org_ids = [
@@ -4472,6 +4482,42 @@ def _require_own_org(db: Session, current_user: User, org_id: int) -> None:
         raise HTTPException(status_code=404, detail="Organisation not found")
 
 
+def _require_shared_org_with_user(
+    db: Session, current_user: User, target: User
+) -> None:
+    """Refuse a user the admin shares no organisation with.
+
+    The place check for the admin routes that act on one user by id. Being
+    an admin says what someone may do, never where: the column is global
+    and the authority is not, so without this an admin at one trust can
+    act on a user at another by naming their id.
+
+    A user in no organisation at all is refused rather than treated as
+    everyone's, so a record that has slipped out of the membership tables
+    fails closed.
+
+    404 rather than 403, matching ``_require_own_org`` and
+    ``_require_site_in_own_org``, so the response does not confirm that a
+    user exists to someone who may not see them.
+
+    Args:
+        db: Core database session.
+        current_user: The admin making the request.
+        target: The user being acted on.
+
+    Raises:
+        HTTPException: 404 if they share no organisation.
+    """
+    if current_user.system_permissions == "superadmin":
+        return
+    if target.id == current_user.id:
+        return
+    admin_org_ids = set(get_user_org_ids(db, current_user.id))
+    target_org_ids = set(get_user_org_ids(db, target.id))
+    if not (admin_org_ids & target_org_ids):
+        raise HTTPException(status_code=404, detail="User not found")
+
+
 @router.get("/sites/{site_id}", response_model=SiteDetailOut)
 def get_site(
     site_id: int,
@@ -4938,6 +4984,8 @@ def link_patient_to_user(
     target = db.get(User, user_id)
     if target is None:
         raise HTTPException(status_code=404, detail="User not found")
+
+    _require_shared_org_with_user(db, current_user, target)
 
     # Check not already linked to another user
     clash = db.scalar(
