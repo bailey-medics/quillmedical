@@ -1,12 +1,23 @@
-# shared/competencies.yaml
+# shared/competency-definitions/clinical.yaml
 #
-# COMPETENCY DEFINITIONS FOR QUILL MEDICAL
+# CLINICAL COMPETENCY DEFINITIONS FOR QUILL MEDICAL
 #
-# Each competency represents a specific clinical or administrative capability.
-# Competencies are granted to users based on their training, qualifications,
-# and organisational approval. See resolve_user_competencies() in
-# backend/app/cbac/base_professions.py for how base_profession + additional
-# + removed combine into a user's final competency list.
+# Competencies describing what a person may do in the care of a patient:
+# prescribing, procedures, certification, patient management, consent,
+# imaging, patient records and specialty practice. The competencies that
+# govern Quill itself live beside this file in clinical-admin.yaml,
+# teaching.yaml and passport.yaml.
+#
+# Every file in this directory is merged into one catalogue at load
+# time, so ids must be unique across the whole directory, not just
+# within a file. Which file an entry lives in carries no meaning to the
+# code — it is for the reader.
+#
+# Competencies are granted to users based on their training,
+# qualifications and organisational approval. See
+# resolve_user_competencies() in backend/app/cbac/base_professions.py
+# for how base_profession + additional + removed combine into a user's
+# final competency list.
 
 competencies:
   # ==========================================================================
@@ -97,7 +108,7 @@ competencies:
     display_name: "Request MRI Scans"
 
   # ==========================================================================
-  # ADMINISTRATIVE & SYSTEM ACCESS
+  # PATIENT RECORDS
   # ==========================================================================
 
   - id: access_patient_records
@@ -106,14 +117,8 @@ competencies:
   - id: modify_patient_records
     display_name: "Modify Patient Records"
 
-  - id: access_clinic_admin
-    display_name: "Access Clinic Administration Functions"
-
   - id: approve_clinical_letters
     display_name: "Approve Clinical Letters"
-
-  - id: manage_users
-    display_name: "Manage User Accounts"
 
   # ==========================================================================
   # SPECIALTY-SPECIFIC COMPETENCIES
@@ -127,16 +132,3 @@ competencies:
 
   - id: interpret_ecg
     display_name: "Interpret ECGs Independently"
-
-  # ==========================================================================
-  # TEACHING COMPETENCIES
-  # ==========================================================================
-
-  - id: view_teaching_cases
-    display_name: "Take Teaching Assessments"
-
-  - id: manage_teaching_content
-    display_name: "Manage Teaching Content"
-
-  - id: view_teaching_analytics
-    display_name: "View Teaching Analytics"

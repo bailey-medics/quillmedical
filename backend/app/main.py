@@ -1350,7 +1350,7 @@ class AdminUserCreateIn(BaseModel):
     def _competencies_exist(cls, value: list[str] | None) -> list[str] | None:
         """Reject a competency id that is not in the catalogue.
 
-        Nothing joins these strings to `shared/competencies.yaml`, so an
+        Nothing joins these strings to `shared/competency-definitions/`, so an
         unrecognised one is otherwise stored happily and shows up much
         later as a permission that never applies.
         """
@@ -1412,7 +1412,7 @@ class AdminUserUpdateIn(BaseModel):
     def _competencies_exist(cls, value: list[str] | None) -> list[str] | None:
         """Reject a competency id that is not in the catalogue.
 
-        Nothing joins these strings to `shared/competencies.yaml`, so an
+        Nothing joins these strings to `shared/competency-definitions/`, so an
         unrecognised one is otherwise stored happily and shows up much
         later as a permission that never applies.
         """

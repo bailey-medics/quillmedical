@@ -103,7 +103,7 @@ def can_practise_at(
     Args:
         db: Database session.
         user: The person asked about.
-        competency: A competency id from ``shared/competencies.yaml``.
+        competency: A competency id from ``shared/competency-definitions/``.
         organisation_id: The organisation, when the place is an organisation.
         site_id: The site, when the place is a site.
 
@@ -146,7 +146,7 @@ def who_can_practise_at(
 
     Args:
         db: Database session.
-        competency: A competency id from ``shared/competencies.yaml``.
+        competency: A competency id from ``shared/competency-definitions/``.
         organisation_id: The organisation, when the place is an organisation.
         site_id: The site, when the place is a site.
 

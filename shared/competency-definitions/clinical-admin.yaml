@@ -1,0 +1,33 @@
+# shared/competency-definitions/clinical-admin.yaml
+#
+# CLINICAL ADMINISTRATION COMPETENCY DEFINITIONS FOR QUILL MEDICAL
+#
+# Competencies for running the service rather than caring for a
+# patient: administering a clinic and managing user accounts. Held
+# through the same mechanism as the clinical set in clinical.yaml, and
+# deliberately kept in a separate file because they are a different
+# kind of thing. Reading them interleaved makes the distinction hard to
+# see and invites the wrong judgement about risk.
+#
+# The other features that gate parts of Quill have their own files:
+# teaching.yaml and passport.yaml.
+#
+# Every file in this directory is merged into one catalogue at load
+# time, so ids must be unique across the whole directory, not just
+# within a file. Which file an entry lives in carries no meaning to the
+# code — it is for the reader.
+#
+# See resolve_user_competencies() in
+# backend/app/cbac/base_professions.py for how base_profession +
+# additional + removed combine into a user's final competency list.
+
+competencies:
+  # ==========================================================================
+  # CLINIC AND USER ADMINISTRATION
+  # ==========================================================================
+
+  - id: access_clinic_admin
+    display_name: "Access Clinic Administration Functions"
+
+  - id: manage_users
+    display_name: "Manage User Accounts"

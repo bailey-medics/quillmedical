@@ -11,7 +11,19 @@ set -euo pipefail
 # shellcheck source=../shared/logging.sh
 source "$(dirname "${BASH_SOURCE[0]}")/../shared/logging.sh" "check-competencies-not-deleted"
 
-CATALOGUE="shared/competencies.yaml"
+CATALOGUE="shared/competency-definitions"
+
+# The catalogue is a directory, and an id is unique across the whole of it, so
+# a competency moved between files is not a deletion. Concatenating every file
+# before comparing is what makes that true: the check is about ids leaving the
+# catalogue, never about which file holds them.
+files_at_ref() {
+  local ref="$1"
+
+  git ls-tree -r --name-only "${ref}" -- "${CATALOGUE}" 2>/dev/null \
+    | grep -E '\.ya?ml$' \
+    | sort
+}
 
 # Every competency in one revision of the catalogue, as "<id><TAB>active" or
 # "<id><TAB>retired", sorted.
@@ -22,8 +34,14 @@ CATALOGUE="shared/competencies.yaml"
 # before the next one begins.
 entries_at_ref() {
   local ref="$1"
+  local file
 
-  git show "${ref}:${CATALOGUE}" 2>/dev/null \
+  while IFS= read -r file; do
+    [ -n "${file}" ] && git show "${ref}:${file}" 2>/dev/null
+    # A newline between files, so the last entry of one cannot run into
+    # the first `- id:` of the next.
+    echo
+  done < <(files_at_ref "${ref}") \
     | awk '
         /^[[:space:]]*-[[:space:]]+id:/ {
           if (id != "") print id "\t" state
@@ -74,9 +92,24 @@ revived_ids() {
 main() {
   local main_ref="${1:-origin/main}"
 
-  if ! git show "${main_ref}:${CATALOGUE}" >/dev/null 2>&1; then
-    log "No ${CATALOGUE} on ${main_ref}; nothing to compare against."
+  if [ -z "$(files_at_ref "${main_ref}")" ]; then
+    log "No ${CATALOGUE}/ on ${main_ref}; nothing to compare against."
     return 0
+  fi
+
+  # The base ref has a catalogue and this branch does not, so every id has
+  # gone. Almost certainly a move this check has not been taught about
+  # rather than a real deletion, but silence here would mean the check
+  # quietly stopped running — which is the failure it exists to prevent.
+  if [ -z "$(files_at_ref HEAD)" ]; then
+    error "No competency definitions found in ${CATALOGUE}/ on this branch,"
+    error "but ${main_ref} has them."
+    error ""
+    error "If the catalogue has moved, update CATALOGUE in"
+    error "$(basename "${BASH_SOURCE[0]}") to match. Failing rather than"
+    error "passing, because a catalogue this script cannot find is a check"
+    error "that is no longer running."
+    exit 1
   fi
 
   local revived_list

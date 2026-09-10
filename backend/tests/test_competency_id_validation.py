@@ -1,7 +1,7 @@
 """Tests for catching a competency id that is not in the catalogue.
 
 A competency id is a bare string in three unconnected places — the catalogue
-in ``shared/competencies.yaml``, the two JSON columns on ``users``, and
+in ``shared/competency-definitions/``, the two JSON columns on ``users``, and
 ``practising_competency`` — with no foreign key between any of them. Nothing
 used to report a misspelt one: it was stored happily and surfaced much later
 as a permission that never applied.
@@ -60,7 +60,7 @@ class TestTheCatalogueCheck:
 
     def test_the_error_points_at_the_catalogue(self):
         """A caller seeing this should know where to look."""
-        with pytest.raises(ValueError, match="shared/competencies.yaml"):
+        with pytest.raises(ValueError, match="shared/competency-definitions/"):
             validate_competency_ids([MADE_UP])
 
     def test_unknown_ids_are_deduplicated_and_sorted(self):

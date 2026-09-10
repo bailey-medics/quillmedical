@@ -1494,14 +1494,19 @@ above. Additive only, per `.claude/rules/backend.md`.
       Board's _Prescriber competencies for reviewing and prescribing
       SACT_ (November 2023), the South West passports and the RCR
       entrustment scales.
-- [ ] Move `shared/competencies.yaml` into
-      `shared/competency-definitions/`, split by kind into
-      `clinical.yaml` and `feature-admin.yaml`. Clinical holds the
-      patient-facing competencies — prescribing, procedures,
-      certification, consent, imaging, specialty, patient records.
-      Feature admin holds the ones that govern Quill itself: the
-      teaching set, `manage_users`, `access_clinic_admin`, and the two
-      passport competencies. They are different kinds of thing sharing
+- [x] Move `shared/competencies.yaml` into
+      `shared/competency-definitions/`, split by kind. Landed as four
+      files rather than the two first written here, one per kind of
+      thing: `clinical.yaml` holds the patient-facing competencies —
+      prescribing, procedures, certification, consent, imaging,
+      specialty, patient records, and approving clinical letters, which
+      is a judgement about a patient's record rather than about Quill.
+      `clinical-admin.yaml` holds running the service —
+      `access_clinic_admin` and `manage_users`. `teaching.yaml` and
+      `passport.yaml` hold the gates on their own features. The loader
+      globs the directory, so a file per feature costs nothing and each
+      one arrives with its feature. They are different kinds of thing
+      sharing
       one mechanism, and reading them side by side today makes that
       hard to see. The directory name removes the confusion with a
       passport's own `competencies.yaml`, and reading a directory now
@@ -1515,6 +1520,23 @@ above. Additive only, per `.claude/rules/backend.md`.
       live docs pages. Edit `.github/copilot-instructions.md` rather
       than `CLAUDE.md` and re-run `/sync-copilot-config`; leave
       historical plan documents untouched.
+      - **Found during the move: a CI check reads the catalogue too.**
+        `.github/scripts/ci/check-competencies-not-deleted.sh` compared
+        one hardcoded file across refs, and its "no catalogue on the
+        base ref" guard returned success. Left alone it would have found
+        no file on the branch and passed, silently retiring the check
+        that no competency was deleted. It now concatenates every file
+        in the directory before comparing — so moving an id between
+        files is correctly not a deletion — and fails loudly when the
+        base ref has a catalogue and the branch has none.
+      - **The generated JSON is gitignored** (`frontend/.gitignore`
+        line 15), so there is nothing to commit for the
+        `yarn generate:types` step; the generator merges the directory
+        into one `competencies.json` and the four importers are
+        untouched. `frontend/src/generated/index.d.ts` had drifted,
+        declaring `risk_level`, `category` and six other fields the YAML
+        has never carried; corrected to `id`, `display_name` and
+        `retired_on`.
 - [ ] Add the SACT and radiotherapy competencies to
       `shared/competency-definitions/clinical.yaml`. The live entries
       carry only `id` and `display_name` today, whatever the CBAC
@@ -1524,6 +1546,9 @@ above. Additive only, per `.claude/rules/backend.md`.
       `shared/competency-definitions/` under the feature-admin
       category, and to the appropriate base professions in
       `shared/base-professions.yaml`.
+      - The competency itself is defined, in its own
+        `passport.yaml` rather than alongside the teaching set. Which
+        base professions hold it by default is still outstanding.
 - [ ] Add the optional passport fields — `levels` and
       `expires_after_months` — to the competencies that need them.
       Both are optional, so existing entries are untouched.

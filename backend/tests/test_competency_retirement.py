@@ -1,6 +1,6 @@
 """Tests for retiring a competency rather than deleting it.
 
-Deleting an id from ``shared/competencies.yaml`` revokes nothing:
+Deleting an id from ``shared/competency-definitions/`` revokes nothing:
 ``resolve_user_competencies`` does set operations on plain strings and
 ``has_competency`` compares a string from the route against that set. Neither
 consults the catalogue. So the access carries on unchanged and only stops
