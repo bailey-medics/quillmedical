@@ -231,7 +231,9 @@ resource "google_monitoring_alert_policy" "uptime" {
 # deferred until there are clinical users to justify the subscription. See
 # docs/docs/plans/2026-08-31-analytics-plan.md.
 resource "google_monitoring_alert_policy" "uptime_escalation" {
-  count = var.alert_sms_number != "" ? 1 : 0
+  # Same static flag as the channel it notifies: the policy exists only if the
+  # SMS channel does. See the note on the channel resource above.
+  count = var.enable_sms_channel ? 1 : 0
 
   project      = var.project_id
   display_name = "Uptime failure — sustained (${var.environment})"
@@ -589,7 +591,8 @@ resource "google_monitoring_alert_policy" "sql_disk" {
 # Only uptime feeds this. A 5xx spike or a filling disk is a problem, not a
 # system that is down, and neither warrants a call at 3am.
 resource "google_monitoring_alert_policy" "uptime_critical" {
-  count = var.pagerduty_service_key != "" ? 1 : 0
+  # Same static flag as the channel it notifies.
+  count = var.enable_pagerduty_channel ? 1 : 0
 
   project      = var.project_id
   display_name = "Major outage — call the on-call (${var.environment})"
