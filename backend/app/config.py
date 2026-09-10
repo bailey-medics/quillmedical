@@ -193,6 +193,49 @@ class Settings(BaseSettings):
         None,
         description="Service token for CI/CD teaching content sync",
     )
+    TEACHING_VIDEOS_BUCKET: str | None = Field(
+        None,
+        description=(
+            "GCS bucket holding transcoded video, served through Cloud CDN. "
+            "Unset in development, which serves video off disk instead."
+        ),
+    )
+    TEACHING_VIDEOS_SOURCE_BUCKET: str | None = Field(
+        None,
+        description="GCS bucket for raw video uploads from the admin UI",
+    )
+    TEACHING_VIDEO_BASE_URL: str | None = Field(
+        None,
+        description=(
+            "Base URL video is served from, e.g. "
+            "https://teaching.quill-medical.com/videos. Same origin as the "
+            "app, so the signed cookie is sent on media requests without "
+            "any cross-site handling."
+        ),
+    )
+    TEACHING_VIDEO_SIGNING_KEY_NAME: str | None = Field(
+        None,
+        description=(
+            "Name of the Cloud CDN signed-URL key, carried in the KeyName "
+            "field of each cookie so the edge knows which key to verify with"
+        ),
+    )
+    TEACHING_VIDEO_SIGNING_KEY: SecretStr | None = Field(
+        None,
+        description=(
+            "Cloud CDN signing key, base64url. The same bytes the load "
+            "balancer validates with: the backend mints cookies, the edge "
+            "checks them, and neither works if they differ."
+        ),
+    )
+    TEACHING_VIDEO_COOKIE_TTL_MINUTES: int = Field(
+        30,
+        description=(
+            "How long a video access cookie lives. Short by design: a grant "
+            "outlives logout and outlives an admin revoking access, so the "
+            "window is bounded and the frontend refreshes silently."
+        ),
+    )
 
     # --- Email ---
     RESEND_API_KEY: SecretStr | None = Field(

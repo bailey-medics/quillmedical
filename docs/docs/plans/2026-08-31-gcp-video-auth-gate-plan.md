@@ -717,18 +717,18 @@ New module `backend/app/features/teaching/video_access.py`, deliberately separat
 from `storage.py` so the security-critical signing code can be reviewed and
 tested on its own.
 
-- [ ] Add to `backend/app/config.py`, in the existing `--- Teaching / GCS ---`
+- [x] Add to `backend/app/config.py`, in the existing `--- Teaching / GCS ---`
       block: `TEACHING_VIDEOS_BUCKET`, `TEACHING_VIDEOS_SOURCE_BUCKET`,
       `TEACHING_VIDEO_BASE_URL` (e.g. `https://teaching.quill-medical.com/videos`),
       `TEACHING_VIDEO_SIGNING_KEY_NAME`, `TEACHING_VIDEO_SIGNING_KEY`
       (`SecretStr`), and `TEACHING_VIDEO_COOKIE_TTL_MINUTES` defaulting to 30.
-- [ ] Implement `sign_cookie(url_prefix: str, expires_at: datetime) -> str`
+- [x] Implement `sign_cookie(url_prefix: str, expires_at: datetime) -> str`
       producing Cloud CDN's exact format: the string
       `URLPrefix=<base64url(prefix)>:Expires=<unix>:KeyName=<name>`, then the same
       string with `:Signature=<base64url(HMAC-SHA1(key, string))>` appended. Use
       `hmac`/`hashlib` from the standard library and `base64.urlsafe_b64encode`.
       No third-party dependency.
-- [ ] Implement `build_url_prefix(org_id, module_id) -> str` returning
+- [x] Implement `build_url_prefix(org_id, module_id) -> str` returning
       `{TEACHING_VIDEO_BASE_URL}/{org_id}/{module_id}/`. **[revised 2026-09-09]**
       Validate `module_id` against the existing `_SAFE_BANK_ID` pattern in
       `storage.py` (`^[a-zA-Z0-9_-]+$`) and raise on anything else. `org_id` is an
