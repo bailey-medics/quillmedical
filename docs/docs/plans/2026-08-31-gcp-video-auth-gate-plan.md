@@ -700,7 +700,7 @@ how `module "cloud_storage"` is gated at `infra/main.tf:367`.
 - [ ] `terraform plan` against `teaching` and confirm the diff touches nothing
       outside the new module, the URL map and the Cloud Run env block. Confirm
       `plan` for `prod` and `staging` is empty.
-- [ ] **[found during the build, fixed separately]** `teaching-sync-token` is
+- [x] **[found during the build, fixed separately]** `teaching-sync-token` is
       referenced in the Cloud Run env mapping but is created nowhere in
       Terraform — it was made by hand on 2026-05-24 and has never been managed,
       so one live secret has no declared owner. Bringing it in needs an
