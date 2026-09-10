@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.18
+# syntax=docker/dockerfile:1.19
 
 # Build context: repository root (required so prod stage can access caddy/prod/)
 # CI: context: .        dockerfile: ./frontend/Dockerfile
@@ -9,7 +9,7 @@
 # ============================================================
 # Pin by digest for reproducible builds. To update, run:
 #   docker pull node:24.13.0-bookworm-slim && docker inspect --format='{{index .RepoDigests 0}}' node:24.13.0-bookworm-slim
-FROM node:24.16.0-bookworm-slim@sha256:2c87ef9bd3c6a3bd4b472b4bec2ce9d16354b0c574f736c476489d09f560a203 AS deps
+FROM node:24.17.0-bookworm-slim@sha256:862263c612aa437e3037674b85419622a9d93bff80aa1eee5398dfe686375532 AS deps
 
 RUN corepack enable
 
