@@ -4381,11 +4381,33 @@ def list_sites(
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> SitesListOut:
-    """List all sites. Admin/superadmin only."""
+    """List the sites of the caller's organisations. Admin only.
+
+    Filtered the way ``list_organisations`` is filtered: a superadmin sees
+    the estate, an admin sees the sites of organisations they belong to.
+    It previously returned every site in the deployment to any admin —
+    not a by-id leak, since no id was needed to read it.
+
+    A site linked to no organisation is not listed. Sites are created from
+    inside an organisation and linked in the same action, so an unlinked
+    site is an anomaly rather than a shared resource, and failing closed
+    is the right way round to be wrong about one.
+    """
     if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
 
-    rows = db.execute(select(Site).order_by(Site.name)).scalars().all()
+    stmt = select(Site).order_by(Site.name)
+    if current_user.system_permissions != "superadmin":
+        own_org_ids = get_user_org_ids(db, current_user.id)
+        stmt = stmt.where(
+            Site.id.in_(
+                select(organisation_site.c.site_id).where(
+                    organisation_site.c.organisation_id.in_(own_org_ids)
+                )
+            )
+        )
+
+    rows = db.execute(stmt).scalars().all()
 
     return SitesListOut(
         sites=[
@@ -4410,7 +4432,15 @@ def create_site(
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> SiteOut:
-    """Create a new site. Admin/superadmin only."""
+    """Create a site inside an organisation. Admin/superadmin only.
+
+    The organisation is required and the link is written in the same
+    transaction, so a site is never ownerless. It used to be created bare
+    and linked by a second request, which left a window where the record
+    belonged nowhere — permanently, if that second call never came.
+    ``_require_site_in_own_org`` already assumed this was impossible when
+    it called a site's organisation "the site's owner"; now it is.
+    """
     if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
 
@@ -4421,12 +4451,18 @@ def create_site(
             f"{', '.join(sorted(VALID_SITE_TYPES))}",
         )
 
+    org = db.get(Organisation, body.organisation_id)
+    if org is None:
+        raise HTTPException(status_code=404, detail="Organisation not found")
+    _require_own_org(db, current_user, body.organisation_id)
+
     if body.parent_id is not None:
         parent = db.get(Site, body.parent_id)
         if not parent:
             raise HTTPException(
                 status_code=404, detail="Parent site not found"
             )
+        _require_parent_in_org(db, body.parent_id, body.organisation_id)
 
     site = Site(
         name=body.name,
@@ -4436,6 +4472,12 @@ def create_site(
     )
     db.add(site)
     db.flush()
+
+    db.execute(
+        organisation_site.insert().values(
+            organisation_id=body.organisation_id, site_id=site.id
+        )
+    )
     db.refresh(site)
 
     return SiteOut(
@@ -4448,6 +4490,83 @@ def create_site(
         created_at=site.created_at.isoformat(),
         updated_at=site.updated_at.isoformat(),
     )
+
+
+def _require_parent_in_org(db: Session, parent_id: int, org_id: int) -> None:
+    """Refuse a parent site that belongs to a different organisation.
+
+    Sites nest — hospital, building, ward, room — so creating one means
+    naming the site it sits inside. The route checked that the parent
+    existed and not that it was the caller's, which let an admin at one
+    trust hang a ward inside another trust's building: a write into a
+    structure they do not own.
+
+    The rule is same-organisation rather than merely "one of the caller's",
+    which differ when an admin belongs to several. A ward in Trust A's
+    building is Trust A's ward, whoever created it.
+
+    404 rather than 403, matching the other site checks, so the response
+    does not confirm that a site exists to someone who may not see it.
+
+    Args:
+        db: Core database session.
+        parent_id: The site being nested under.
+        org_id: The organisation the new or updated site belongs to.
+
+    Raises:
+        HTTPException: 404 if the parent is not in that organisation.
+    """
+    parent_org_ids = set(
+        db.execute(
+            select(organisation_site.c.organisation_id).where(
+                organisation_site.c.site_id == parent_id
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if org_id not in parent_org_ids:
+        raise HTTPException(status_code=404, detail="Parent site not found")
+
+
+def _require_parent_shares_org_with(
+    db: Session, parent_id: int, site_id: int
+) -> None:
+    """Refuse a parent that shares no organisation with the site.
+
+    The re-parenting form of :func:`_require_parent_in_org`, for when the
+    site already exists and its organisations are what the parent must
+    match. One shared organisation is enough: requiring every one of them
+    would refuse a legitimate parent whenever a site is linked to two.
+
+    Args:
+        db: Core database session.
+        parent_id: The site being nested under.
+        site_id: The site being moved.
+
+    Raises:
+        HTTPException: 404 if they share no organisation.
+    """
+    own_org_ids = set(
+        db.execute(
+            select(organisation_site.c.organisation_id).where(
+                organisation_site.c.site_id == site_id
+            )
+        )
+        .scalars()
+        .all()
+    )
+    parent_org_ids = set(
+        db.execute(
+            select(organisation_site.c.organisation_id).where(
+                organisation_site.c.site_id == parent_id
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if not (own_org_ids & parent_org_ids):
+        raise HTTPException(status_code=404, detail="Parent site not found")
 
 
 def _require_site_in_own_org(
@@ -4668,6 +4787,13 @@ def update_site(
             raise HTTPException(
                 status_code=404, detail="Parent site not found"
             )
+        # Same fault as create_site had: existence was checked, ownership
+        # was not, so a site could be re-parented under another trust's.
+        # Compared against this site's own organisations rather than the
+        # caller's, which differ when an admin belongs to several. One
+        # shared organisation is enough — requiring all of them would
+        # refuse a legitimate parent whenever a site is linked to two.
+        _require_parent_shares_org_with(db, body.parent_id, site_id)
         site.parent_id = body.parent_id
     if body.location is not None:
         site.location = body.location

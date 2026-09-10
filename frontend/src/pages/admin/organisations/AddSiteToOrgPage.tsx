@@ -169,15 +169,15 @@ export default function AddSiteToOrgPage() {
     data: AddSiteFormValues,
   ): Promise<FormSubmitResult> {
     try {
-      // Create the site
+      // Create the site inside this organisation. The link is written
+      // in the same transaction, so there is no window where the site
+      // belongs nowhere — which is what the second call used to leave.
       const site = await api.post<{ id: number }>("/sites", {
         name: data.name,
         type: data.type,
+        organisation_id: Number(id),
         location: data.location || null,
       });
-
-      // Link it to this organisation
-      await api.post(`/organisations/${id}/sites/${site.id}`, {});
 
       // Assign clinical lead if selected
       if (data.clinicalLeadId) {
