@@ -52,6 +52,15 @@ module "secrets" {
       "ehrbase-db-password",
       "ehrbase-api-password",
       "ehrbase-admin-password",
+    ] : [],
+    # The video signing key is the one secret Terraform both creates and fills:
+    # the load balancer validates cookies with it and the backend mints them
+    # with it, so the two must be the same bytes and no human types it in.
+    # Note `teaching-sync-token`, referenced in the Cloud Run env mapping
+    # below, is *not* created here — it was made by hand and Terraform has
+    # never managed it. Worth closing separately.
+    var.environment == "teaching" ? [
+      "teaching-video-signing-key",
     ] : []
   )
 }
@@ -289,7 +298,8 @@ module "cloud_run_backend" {
       EHRBASE_API_ADMIN_PASSWORD = "ehrbase-admin-password"
     } : {},
     var.environment == "teaching" ? {
-      TEACHING_SYNC_TOKEN = "teaching-sync-token"
+      TEACHING_SYNC_TOKEN        = "teaching-sync-token"
+      TEACHING_VIDEO_SIGNING_KEY = "teaching-video-signing-key"
     } : {}
   )
 
@@ -362,6 +372,8 @@ module "load_balancer" {
   backend_service_name  = module.cloud_run_backend.service_name
   frontend_service_name = module.cloud_run_frontend.service_name
 
+  # Null outside teaching, so prod and staging render an unchanged URL map.
+  videos_backend_bucket_id = var.environment == "teaching" ? module.teaching_video_pipeline[0].backend_bucket_id : null
 }
 
 # ---------- Cloud Storage: teaching images (teaching only) ----------
@@ -371,6 +383,19 @@ module "cloud_storage" {
   project_id  = var.project_id
   region      = var.region
   environment = var.environment
+}
+
+# ---------- Teaching video pipeline (teaching only) ----------
+module "teaching_video_pipeline" {
+  count          = var.environment == "teaching" ? 1 : 0
+  source         = "./modules/teaching-video-pipeline"
+  project_id     = var.project_id
+  project_number = data.google_project.project.number
+  region         = var.region
+  environment    = var.environment
+
+  # The signing key is written as a secret version, so the container must exist.
+  depends_on = [module.secrets]
 }
 
 # ---------- Monitoring: uptime checks + alerting ----------

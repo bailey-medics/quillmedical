@@ -131,9 +131,25 @@ resource "google_compute_url_map" "https" {
     name            = "quill-paths"
     default_service = google_compute_backend_service.frontend.id
 
-    path_rule {
-      paths   = ["/api", "/api/*"]
-      service = google_compute_backend_service.backend.id
+    # One dynamic block over one list, never a static rule plus a dynamic one
+    # beside it: the dynamic block replaces the whole set rather than appending,
+    # so the pair would plan `/api/*` -> null and take the API down. Learned the
+    # hard way in the Phase 0 spike; see that plan's findings.
+    dynamic "path_rule" {
+      for_each = concat(
+        [{
+          paths   = ["/api", "/api/*"]
+          service = google_compute_backend_service.backend.id
+        }],
+        var.videos_backend_bucket_id != null ? [{
+          paths   = ["/videos/*"]
+          service = var.videos_backend_bucket_id
+        }] : []
+      )
+      content {
+        paths   = path_rule.value.paths
+        service = path_rule.value.service
+      }
     }
   }
 
