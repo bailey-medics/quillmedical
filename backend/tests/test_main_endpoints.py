@@ -1024,9 +1024,20 @@ class TestOrganisationEndpoints:
     def test_deactivate_user_success(
         self,
         authenticated_admin_client: TestClient,
+        test_admin: User,
         db_session,
     ):
-        """Test admin can deactivate another user."""
+        """Test admin can deactivate another user.
+
+        The target shares an organisation with the admin, which is what
+        this test always meant: an admin acts on *their own* people. It
+        previously created the user with no membership at all and passed
+        because nothing asked where either of them was.
+        """
+        org = Organisation(name="Deactivation Trust", type="hospital")
+        db_session.add(org)
+        db_session.commit()
+
         user = User(
             username="deactivate-me",
             email="deactivate@example.com",
@@ -1035,6 +1046,23 @@ class TestOrganisationEndpoints:
             system_permissions="staff",
         )
         db_session.add(user)
+        db_session.flush()
+        db_session.execute(
+            organisation_member.insert().values(
+                [
+                    {
+                        "organisation_id": org.id,
+                        "user_id": test_admin.id,
+                        "capacity": "staff",
+                    },
+                    {
+                        "organisation_id": org.id,
+                        "user_id": user.id,
+                        "capacity": "staff",
+                    },
+                ]
+            )
+        )
         db_session.commit()
         db_session.refresh(user)
 
@@ -1062,9 +1090,19 @@ class TestOrganisationEndpoints:
     def test_deactivate_user_already_inactive(
         self,
         authenticated_admin_client: TestClient,
+        test_admin: User,
         db_session,
     ):
-        """Test deactivating an already-inactive user returns 400."""
+        """Test deactivating an already-inactive user returns 400.
+
+        Both are placed in one organisation: an admin reaches a user only
+        where they share one, so the 400 is about the user's state rather
+        than about whether the admin can see them at all.
+        """
+        org = Organisation(name="Inactive Trust", type="hospital")
+        db_session.add(org)
+        db_session.commit()
+
         user = User(
             username="already-inactive",
             email="inactive@example.com",
@@ -1073,6 +1111,23 @@ class TestOrganisationEndpoints:
             system_permissions="staff",
         )
         db_session.add(user)
+        db_session.flush()
+        db_session.execute(
+            organisation_member.insert().values(
+                [
+                    {
+                        "organisation_id": org.id,
+                        "user_id": test_admin.id,
+                        "capacity": "staff",
+                    },
+                    {
+                        "organisation_id": org.id,
+                        "user_id": user.id,
+                        "capacity": "staff",
+                    },
+                ]
+            )
+        )
         db_session.commit()
         db_session.refresh(user)
 
@@ -1166,9 +1221,19 @@ class TestOrganisationEndpoints:
     def test_admin_cannot_edit_superadmin(
         self,
         authenticated_admin_client: TestClient,
+        test_admin: User,
         db_session,
     ):
-        """Admin should get 403 when trying to edit a superadmin user."""
+        """Admin should get 403 when trying to edit a superadmin user.
+
+        They share an organisation, so the place check passes and the
+        superadmin guard is what refuses. That is the ordering under test:
+        an admin who *can* see someone still cannot edit a superadmin.
+        """
+        org = Organisation(name="Superadmin Trust", type="hospital")
+        db_session.add(org)
+        db_session.commit()
+
         superadmin = User(
             username="edit_superadmin",
             email="edit_sa@example.com",
@@ -1178,6 +1243,23 @@ class TestOrganisationEndpoints:
             system_permissions="superadmin",
         )
         db_session.add(superadmin)
+        db_session.flush()
+        db_session.execute(
+            organisation_member.insert().values(
+                [
+                    {
+                        "organisation_id": org.id,
+                        "user_id": test_admin.id,
+                        "capacity": "staff",
+                    },
+                    {
+                        "organisation_id": org.id,
+                        "user_id": superadmin.id,
+                        "capacity": "staff",
+                    },
+                ]
+            )
+        )
         db_session.commit()
 
         response = authenticated_admin_client.patch(
@@ -1190,9 +1272,18 @@ class TestOrganisationEndpoints:
     def test_admin_cannot_deactivate_superadmin(
         self,
         authenticated_admin_client: TestClient,
+        test_admin: User,
         db_session,
     ):
-        """Admin should get 403 when trying to deactivate a superadmin."""
+        """Admin should get 403 when trying to deactivate a superadmin.
+
+        They share an organisation, so the superadmin guard is what
+        refuses rather than the place check.
+        """
+        org = Organisation(name="Deactivate SA Trust", type="hospital")
+        db_session.add(org)
+        db_session.commit()
+
         superadmin = User(
             username="deactivate_superadmin",
             email="deactivate_sa@example.com",
@@ -1202,6 +1293,23 @@ class TestOrganisationEndpoints:
             system_permissions="superadmin",
         )
         db_session.add(superadmin)
+        db_session.flush()
+        db_session.execute(
+            organisation_member.insert().values(
+                [
+                    {
+                        "organisation_id": org.id,
+                        "user_id": test_admin.id,
+                        "capacity": "staff",
+                    },
+                    {
+                        "organisation_id": org.id,
+                        "user_id": superadmin.id,
+                        "capacity": "staff",
+                    },
+                ]
+            )
+        )
         db_session.commit()
 
         response = authenticated_admin_client.post(

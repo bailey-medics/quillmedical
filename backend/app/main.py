@@ -1626,6 +1626,8 @@ def update_user(
             status_code=403, detail="Cannot modify superadmin users"
         )
 
+    _require_shared_org_with_user(db, current_user, user)
+
     # Validate and update username
     if payload.username is not None:
         username = payload.username.strip()
@@ -1819,6 +1821,8 @@ def deactivate_user(
             status_code=403, detail="Cannot modify superadmin users"
         )
 
+    _require_shared_org_with_user(db, current_user, user)
+
     if user.id == current_user.id:
         raise HTTPException(
             status_code=400, detail="Cannot deactivate your own account"
@@ -1881,6 +1885,8 @@ def reactivate_user(
             status_code=403, detail="Cannot modify superadmin users"
         )
 
+    _require_shared_org_with_user(db, current_user, user)
+
     if user.is_active:
         raise HTTPException(status_code=400, detail="User is already active")
 
@@ -1926,6 +1932,8 @@ def send_invite_email(
     user = db.scalar(select(User).where(User.id == user_id))
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    _require_shared_org_with_user(db, current_user, user)
 
     token = create_password_reset_token(user.email)
     reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}"
@@ -2573,6 +2581,8 @@ def get_user(
         and user.system_permissions == "superadmin"
     ):
         raise HTTPException(status_code=404, detail="User not found")
+
+    _require_shared_org_with_user(db, current_user, user)
 
     # Get user's org and site memberships
     user_org_ids = [
@@ -3328,6 +3338,8 @@ def deactivate_patient(
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
 
+    _require_shared_org_with_patient(db, current_user, patient_id)
+
     # Get or create metadata record
     stmt = select(PatientMetadata).where(
         PatientMetadata.patient_id == patient_id
@@ -3393,6 +3405,8 @@ def activate_patient(
     patient = read_fhir_patient(patient_id)
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
+
+    _require_shared_org_with_patient(db, current_user, patient_id)
 
     # Get or create metadata record
     stmt = select(PatientMetadata).where(
@@ -3543,19 +3557,28 @@ async def update_my_competencies(
     user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> UserCompetenciesResponse:
-    """Update user's additional/removed competencies.
+    """Update the **caller's own** additional/removed competencies.
 
-    Allows system administrators to add or remove competencies from a user's
-    base profession template. Requires admin or superadmin permissions and
-    CSRF token.
+    Self-scoped by construction: ``UpdateCompetenciesRequest`` carries no
+    target user, so this edits ``current_user`` and can edit nobody else.
+    To change someone else's competencies use ``PATCH /users/{user_id}``,
+    which takes the same three CBAC fields, refuses an admin editing a
+    superadmin, and is scoped to the admin's own organisations.
+
+    An earlier docstring described this as the route by which administrators
+    edit "a user's" competencies. It never was, and reading it that way
+    hides what the admin gate below actually permits: an admin granting
+    themselves any competency, clinical ones included. That is deliberate
+    for now and is to be revisited with end-to-end tests — see
+    ``docs/docs/plans/2026-09-09-platform-role-plan.md``.
 
     Args:
-        data: Additional and removed competencies to update
-        user: Authenticated user (admin/superadmin only)
+        data: Additional and removed competencies to write to the caller.
+        user: Authenticated user, who is also the subject of the edit.
         db: Database session
 
     Returns:
-        UserCompetenciesResponse: Updated user competency information
+        UserCompetenciesResponse: The caller's updated competency information
 
     Raises:
         HTTPException: 403 if user lacks admin/superadmin permissions.
@@ -4463,6 +4486,72 @@ def _require_own_org(db: Session, current_user: User, org_id: int) -> None:
         raise HTTPException(status_code=404, detail="Organisation not found")
 
 
+def _require_shared_org_with_patient(
+    db: Session, current_user: User, patient_id: str
+) -> None:
+    """Refuse a patient the admin shares no organisation with.
+
+    The place check for the admin routes that act on one patient by id.
+    Deliberately *not* ``check_user_patient_access``, whose first line
+    returns ``True`` for any admin: called from an admin-gated route it
+    would read as a place check and permit exactly what it appears to
+    forbid.
+
+    404 rather than 403, matching the other place checks, so the response
+    does not confirm that a patient exists to an admin who may not see
+    them. Patient existence is worth more care than most: the id is a
+    clinical identifier.
+
+    Args:
+        db: Core database session.
+        current_user: The admin making the request.
+        patient_id: FHIR Patient resource ID being acted on.
+
+    Raises:
+        HTTPException: 404 if they share no organisation.
+    """
+    if current_user.system_permissions == "superadmin":
+        return
+    if not get_shared_org_ids(db, current_user.id, patient_id):
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+
+def _require_shared_org_with_user(
+    db: Session, current_user: User, target: User
+) -> None:
+    """Refuse a user the admin shares no organisation with.
+
+    The place check for the admin routes that act on one user by id. Being
+    an admin says what someone may do, never where: the column is global
+    and the authority is not, so without this an admin at one trust can
+    act on a user at another by naming their id.
+
+    A user in no organisation at all is refused rather than treated as
+    everyone's, so a record that has slipped out of the membership tables
+    fails closed.
+
+    404 rather than 403, matching ``_require_own_org`` and
+    ``_require_site_in_own_org``, so the response does not confirm that a
+    user exists to someone who may not see them.
+
+    Args:
+        db: Core database session.
+        current_user: The admin making the request.
+        target: The user being acted on.
+
+    Raises:
+        HTTPException: 404 if they share no organisation.
+    """
+    if current_user.system_permissions == "superadmin":
+        return
+    if target.id == current_user.id:
+        return
+    admin_org_ids = set(get_user_org_ids(db, current_user.id))
+    target_org_ids = set(get_user_org_ids(db, target.id))
+    if not (admin_org_ids & target_org_ids):
+        raise HTTPException(status_code=404, detail="User not found")
+
+
 @router.get("/sites/{site_id}", response_model=SiteDetailOut)
 def get_site(
     site_id: int,
@@ -4930,6 +5019,8 @@ def link_patient_to_user(
     if target is None:
         raise HTTPException(status_code=404, detail="User not found")
 
+    _require_shared_org_with_user(db, current_user, target)
+
     # Check not already linked to another user
     clash = db.scalar(
         select(User).where(
@@ -5117,6 +5208,8 @@ def revoke_external_access(
     """
     if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
+
+    _require_shared_org_with_patient(db, current_user, patient_id)
 
     grant = db.scalar(
         select(ExternalPatientAccess).where(
@@ -5583,10 +5676,11 @@ def join_conversation_endpoint(
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> ParticipantOut:
-    """Join a conversation as a staff member.
+    """Join a conversation as staff of one of its organisations.
 
-    Staff can self-join any conversation they can see.
-    Patients cannot self-join; they must be added by a participant.
+    Staff can self-join any conversation at an organisation they are
+    staff of. Everyone else — patients, and trainees who reach the
+    organisation through a site — must be added by a participant.
 
     Args:
         conversation_id: ID of the conversation.
@@ -5598,7 +5692,8 @@ def join_conversation_endpoint(
 
     Raises:
         HTTPException: 404 if conversation not found.
-        HTTPException: 403 if user is a patient.
+        HTTPException: 403 if the user is not staff of one of its
+            organisations.
     """
     try:
         return join_conversation(
