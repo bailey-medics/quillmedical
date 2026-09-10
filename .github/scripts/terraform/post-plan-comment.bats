@@ -66,6 +66,16 @@ PLAN
   [ "$output" = "No changes. Your infrastructure matches the configuration." ]
 }
 
+@test "a plan containing an import is an outcome, not a failed plan" {
+  run plan_summary <<'PLAN'
+module.secrets.google_secret_manager_secret.secrets["teaching-sync-token"]: Preparing import... [id=projects/p/secrets/teaching-sync-token]
+
+Plan: 1 to import, 0 to add, 2 to change, 0 to destroy.
+PLAN
+  [ "$status" -eq 0 ]
+  [ "$output" = "Plan: 1 to import, 0 to add, 2 to change, 0 to destroy." ]
+}
+
 @test "plan_summary takes the last outcome line when several are present" {
   run plan_summary <<'PLAN'
 Plan: 5 to add, 0 to change, 0 to destroy.
