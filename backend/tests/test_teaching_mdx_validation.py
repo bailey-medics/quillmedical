@@ -90,23 +90,60 @@ class TestSilentlyDroppedContent:
 
         assert parse_mdx_to_slides(content)[0].callout_type is None
 
-    def test_video_component_is_rejected_with_a_forward_pointing_message(
-        self,
-    ) -> None:
-        """``<Video>`` was valid to the Node validator but never renders.
+    def test_video_is_now_a_known_component(self) -> None:
+        """``<Video>`` used to be refused with a forward-pointing error.
 
-        Nothing in the stack reads it — no extractor, no ParsedSlide field,
-        no frontend mapping — so content following the old validator passed
-        CI and showed a blank slide. Hosted video is planned, so the error
-        says so rather than calling the name unknown.
+        It was listed in ``NOT_YET_SUPPORTED`` because nothing read it —
+        no extractor, no ``ParsedSlide`` field, no frontend mapping — so
+        content using it passed the old Node validator and rendered a
+        blank slide. This is the landing that message pointed at.
         """
-        content = '## Slide\n<Video src="clip.mp4" />'
+        assert "Video" in KNOWN_COMPONENTS
+        assert "Video" not in NOT_YET_SUPPORTED
+        assert validate_mdx('## Slide\n<Video ref="lecture-01" />') == []
 
+    def test_video_with_src_is_rejected(self) -> None:
+        """``src`` was the old shape and is now wrong.
+
+        The prop is ``ref``, a stable key rather than a filename, which
+        is what lets a file be uploaded before the MDX exists and
+        renamed afterwards without orphaning the slide.
+        """
+        errors = validate_mdx('## Slide\n<Video src="clip.mp4" />')
+        assert any("needs a ref prop" in e for e in errors)
+
+
+class TestBothMediaTags:
+    """One slide cannot carry both media forms.
+
+    They share a layout and a duration field, so the renderer would show
+    one and drop the other without a word — the same class of silent
+    loss the rest of this module exists to catch.
+    """
+
+    def test_both_tags_on_one_slide_is_rejected(self) -> None:
+        content = (
+            "## Slide\n"
+            '<YouTube id="abc123" />\n'
+            '<Video ref="lecture-01" />'
+        )
         errors = validate_mdx(content)
-        assert any("not implemented yet" in e for e in errors)
-        assert any("YouTube" in e for e in errors)
-        assert "Video" not in KNOWN_COMPONENTS
-        assert "Video" in NOT_YET_SUPPORTED
+        assert any("both <YouTube> and <Video>" in e for e in errors)
+
+    def test_the_two_forms_on_separate_slides_are_fine(self) -> None:
+        """A module may legitimately hold one of each.
+
+        Checked per slide rather than per document precisely so that
+        migrating content one slide at a time stays possible.
+        """
+        content = (
+            "## Recorded lecture\n"
+            '<YouTube id="abc123" />\n'
+            "\n"
+            "## Hosted lecture\n"
+            '<Video ref="lecture-01" />'
+        )
+        assert validate_mdx(content) == []
 
 
 class TestComponentProps:
@@ -125,6 +162,32 @@ class TestComponentProps:
     @pytest.mark.parametrize("good_type", VALID_CALLOUT_TYPES)
     def test_every_supported_callout_type_passes(self, good_type: str) -> None:
         content = f'## Slide\n<Callout type="{good_type}">Body</Callout>'
+        assert validate_mdx(content) == []
+
+    def test_video_without_a_ref(self) -> None:
+        errors = validate_mdx("## Slide\n<Video />")
+        assert any("needs a ref prop" in e for e in errors)
+
+    @pytest.mark.parametrize(
+        "tag",
+        [
+            '<Video ref="a" poster="p.jpg" />',
+            '<Video ref="a" autoplay />',
+            '<Video ref="a" duration={90} caption="x" />',
+        ],
+    )
+    def test_video_with_props_the_renderer_cannot_read(self, tag: str) -> None:
+        """A tag that looks right but misses its pattern is dropped.
+
+        There is deliberately no ``poster`` prop: the poster is another
+        asset of the same reference, so the author names one thing and
+        gets the whole set.
+        """
+        errors = validate_mdx(f"## Slide\n{tag}")
+        assert any("cannot read" in e for e in errors)
+
+    def test_video_with_duration_is_valid(self) -> None:
+        content = '## Slide\n<Video ref="lecture-01" duration={1080} />'
         assert validate_mdx(content) == []
 
     def test_youtube_without_an_id(self) -> None:
