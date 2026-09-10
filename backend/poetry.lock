@@ -798,14 +798,14 @@ idna = ">=2.0.0"
 
 [[package]]
 name = "fastapi"
-version = "0.123.3"
+version = "0.123.4"
 description = "FastAPI framework, high performance, easy to learn, fast to code, ready for production"
 optional = false
 python-versions = ">=3.8"
 groups = ["main"]
 files = [
-    {file = "fastapi-0.123.3-py3-none-any.whl", hash = "sha256:fe463e5865baf5550c4e73fe421250e4709bf845505dd14a64f83af25abe2789"},
-    {file = "fastapi-0.123.3.tar.gz", hash = "sha256:4c2bd282575f4be7986e637a3339fb193460806eb6b15a1ea8c48e2b4e641d77"},
+    {file = "fastapi-0.123.4-py3-none-any.whl", hash = "sha256:fc2b5cbc10fa05f4f22d87ef7ebc8993b5110ffd9850c08e1fc35a0da37f492e"},
+    {file = "fastapi-0.123.4.tar.gz", hash = "sha256:c2d0ac82f3534c8e35692fda67e2412ac60bad846bb903a65cd8145a65741474"},
 ]
 
 [package.dependencies]
@@ -1041,14 +1041,14 @@ grpc = ["grpcio (>=1.38.0,<2.0.0) ; python_version < \"3.14\"", "grpcio (>=1.75.
 
 [[package]]
 name = "google-cloud-storage"
-version = "3.7.0"
+version = "3.8.0"
 description = "Google Cloud Storage API client library"
 optional = false
 python-versions = ">=3.7"
 groups = ["main"]
 files = [
-    {file = "google_cloud_storage-3.7.0-py3-none-any.whl", hash = "sha256:469bc9540936e02f8a4bfd1619e9dca1e42dec48f95e4204d783b36476a15093"},
-    {file = "google_cloud_storage-3.7.0.tar.gz", hash = "sha256:9ce59c65f4d6e372effcecc0456680a8d73cef4f2dc9212a0704799cb3d69237"},
+    {file = "google_cloud_storage-3.8.0-py3-none-any.whl", hash = "sha256:78cfeae7cac2ca9441d0d0271c2eb4ebfa21aa4c6944dd0ccac0389e81d955a7"},
+    {file = "google_cloud_storage-3.8.0.tar.gz", hash = "sha256:cc67952dce84ebc9d44970e24647a58260630b7b64d72360cedaf422d6727f28"},
 ]
 
 [package.dependencies]
@@ -4527,4 +4527,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.13.8"
-content-hash = "e2b9c0cefd4e8bd6f7cd47da0814d2f1246e978b06150bec12596cdc8f5a30b3"
+content-hash = "dc56c8f0bb568ad25c2c159ecba514ca18adf87c3cf09bbc27a5fb9d6e8ef9ee"
