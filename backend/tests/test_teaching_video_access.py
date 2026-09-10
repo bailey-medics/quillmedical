@@ -189,3 +189,90 @@ class TestSignCookie:
             mine.rpartition(":Signature=")[2]
             != theirs.rpartition(":Signature=")[2]
         )
+
+
+class TestLocalVideoRoute:
+    """The development route that serves video off disk.
+
+    Mounted only when a local content path is configured and no GCS
+    bucket is — the same condition as the sibling image routes. There
+    is no CDN, no signature and no cookie here, so this proves the
+    content model and the player and nothing about the access gate.
+    """
+
+    @pytest.fixture
+    def client(self):
+        from fastapi.testclient import TestClient
+
+        from app.main import app
+
+        return TestClient(app)
+
+    def _mounted(self) -> bool:
+        from app.main import app
+
+        return any(
+            "teaching/videos" in getattr(r, "path", "") for r in app.routes
+        )
+
+    @pytest.mark.parametrize(
+        "filename",
+        ["evil.sh", "script.py", "notes.txt", "archive.zip", "a.mp4.exe"],
+    )
+    def test_rejects_disallowed_extensions(self, client, filename):
+        """The allow-list is deliberately separate from the image one.
+
+        A route that will serve ``.mp4`` alongside images is a route
+        that will serve whatever the next allow-list edit forgets.
+        """
+        if not self._mounted():
+            pytest.skip("local video route not mounted in this environment")
+        resp = client.get(f"/api/teaching/videos/module-1/{filename}")
+        assert resp.status_code == 400
+
+    @pytest.mark.parametrize(
+        "module_id,filename",
+        [
+            ("module-1", "../../etc/passwd"),
+            ("../secret", "lecture.mp4"),
+            ("module-1", "../lecture.mp4"),
+        ],
+    )
+    def test_refuses_traversal(self, client, module_id, filename):
+        """Built from parts and quoted here, rather than written as a
+        pre-encoded literal: an escaped path in source reads as
+        nonsense words to the spell checker, and hides what is actually
+        being attempted from anyone reading the test.
+        """
+        if not self._mounted():
+            pytest.skip("local video route not mounted in this environment")
+        from urllib.parse import quote
+
+        path = (
+            f"/api/teaching/videos/{quote(module_id, safe='')}"
+            f"/{quote(filename, safe='')}"
+        )
+        resp = client.get(path)
+        assert resp.status_code in (400, 404)
+
+    def test_unknown_module_is_404(self, client):
+        """A developer with no content repo cloned gets a 404.
+
+        That is the normal starting state, so it must not be a crash.
+        """
+        if not self._mounted():
+            pytest.skip("local video route not mounted in this environment")
+        resp = client.get("/api/teaching/videos/no-such-module/lecture.mp4")
+        assert resp.status_code == 404
+
+    @pytest.mark.parametrize("ext", [".mp4", ".jpg", ".webp", ".vtt"])
+    def test_allowed_extensions_reach_the_filesystem(self, client, ext):
+        """Reaching a 404 proves the extension passed the allow-list.
+
+        A 400 would mean the allow-list rejected it before ever looking
+        for the file — the distinction the previous test relies on.
+        """
+        if not self._mounted():
+            pytest.skip("local video route not mounted in this environment")
+        resp = client.get(f"/api/teaching/videos/no-such-module/lecture{ext}")
+        assert resp.status_code == 404
