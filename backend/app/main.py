@@ -3338,6 +3338,8 @@ def deactivate_patient(
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
 
+    _require_shared_org_with_patient(db, current_user, patient_id)
+
     # Get or create metadata record
     stmt = select(PatientMetadata).where(
         PatientMetadata.patient_id == patient_id
@@ -3403,6 +3405,8 @@ def activate_patient(
     patient = read_fhir_patient(patient_id)
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
+
+    _require_shared_org_with_patient(db, current_user, patient_id)
 
     # Get or create metadata record
     stmt = select(PatientMetadata).where(
@@ -4482,6 +4486,36 @@ def _require_own_org(db: Session, current_user: User, org_id: int) -> None:
         raise HTTPException(status_code=404, detail="Organisation not found")
 
 
+def _require_shared_org_with_patient(
+    db: Session, current_user: User, patient_id: str
+) -> None:
+    """Refuse a patient the admin shares no organisation with.
+
+    The place check for the admin routes that act on one patient by id.
+    Deliberately *not* ``check_user_patient_access``, whose first line
+    returns ``True`` for any admin: called from an admin-gated route it
+    would read as a place check and permit exactly what it appears to
+    forbid.
+
+    404 rather than 403, matching the other place checks, so the response
+    does not confirm that a patient exists to an admin who may not see
+    them. Patient existence is worth more care than most: the id is a
+    clinical identifier.
+
+    Args:
+        db: Core database session.
+        current_user: The admin making the request.
+        patient_id: FHIR Patient resource ID being acted on.
+
+    Raises:
+        HTTPException: 404 if they share no organisation.
+    """
+    if current_user.system_permissions == "superadmin":
+        return
+    if not get_shared_org_ids(db, current_user.id, patient_id):
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+
 def _require_shared_org_with_user(
     db: Session, current_user: User, target: User
 ) -> None:
@@ -5174,6 +5208,8 @@ def revoke_external_access(
     """
     if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
+
+    _require_shared_org_with_patient(db, current_user, patient_id)
 
     grant = db.scalar(
         select(ExternalPatientAccess).where(

@@ -132,9 +132,32 @@ does not, and removing the ladder removes the suggestion.
               otherwise, so closing it later is a visible change to a red test instead of a
               silent one. The escalation itself stays until the end-to-end work says
               otherwise.
-      - [ ] **Three patient routes** — `deactivate_patient`, `activate_patient`,
-            `revoke_external_access`. `check_user_patient_access` already exists and
-            already encodes the rule; these simply do not call it.
+      - [x] **Three patient routes** — `deactivate_patient`, `activate_patient`,
+            `revoke_external_access`. Each takes a `patient_id` and never asks whether the
+            caller shares an organisation with that patient.
+            - **`check_user_patient_access` cannot be the fix, though this step said it
+              was.** Its first line returns `True` for any admin or superadmin — "always
+              True for admin pages", as its own docstring puts it. Calling it from an
+              admin-gated route is therefore a no-op: it would compile, read as a place
+              check, and permit exactly what it appears to forbid. That is worse than no
+              check at all, because the next reader stops looking.
+            - The escape hatch dates from when `admin` was taken to mean global authority.
+              It is the same assumption this plan exists to remove, met one layer down.
+            - **So these need `get_shared_org_ids` directly**, which is the part of
+              `check_user_patient_access` that actually asks about place. Its two current
+              callers in `messaging.py` are both non-admin paths, so the hatch is doing no
+              work for them either — but changing the shared helper would alter those two
+              routes as a side effect, and that is its own unit of work.
+            - **Done:** `_require_shared_org_with_patient` in `main.py`, applied to all
+              three, with `test_admin_patient_route_scoping.py` covering each.
+            - **The no-op claim was tested, not assumed.** Rewiring the helper to call
+              `check_user_patient_access` and re-running leaves exactly the same four
+              tests failing as deleting the check entirely. That is the evidence for
+              preferring a second helper over the one that already existed.
+            - **`check_user_patient_access` still carries its admin hatch**, now used only
+              by the two `messaging.py` callers. Worth removing when those are looked at,
+              since an admin reading a patient record they share no organisation with is
+              the same hole in a different room.
       - [x] **Six fetch-by-id user routes** — `deactivate_user`, `reactivate_user`,
             `send_invite_email`, `get_user`, `link_patient_to_user`, and `update_user`.
             One helper applied six times: does the target share an organisation with the

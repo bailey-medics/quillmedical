@@ -1316,10 +1316,19 @@ class TestRevokeExternalAccess:
         self,
         authenticated_client: TestClient,
         test_admin: User,
+        test_org: Organisation,
         db_session: Session,
     ):
-        """Admin can revoke external access."""
+        """Admin can revoke external access.
+
+        The admin is placed in the organisation holding the patient, which
+        is what this test always meant: an admin acts on *their own*
+        patients. It previously passed because nothing asked where either
+        of them was.
+        """
         from app.models import ExternalPatientAccess
+
+        _place_admin_in(db_session, test_org, test_admin)
 
         # Create an external user with access
         ext_user = User(
