@@ -410,6 +410,8 @@ module "monitoring" {
   alert_email                = var.alert_email
   alert_sms_number           = data.google_secret_manager_secret_version.alert_sms_number.secret_data
   pagerduty_service_key      = data.google_secret_manager_secret_version.pagerduty_service_key.secret_data
+  enable_sms_channel         = var.enable_sms_channel
+  enable_pagerduty_channel   = var.enable_pagerduty_channel
   slack_channel_display_name = var.slack_channel_display_name
   cloud_run_services         = var.cloud_run_services
 

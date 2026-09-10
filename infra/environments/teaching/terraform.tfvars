@@ -23,3 +23,11 @@ app_domain                 = "teaching.quill-medical.com"
 alert_email                = "info@quill-medical.com"
 slack_channel_display_name = "quill-medical-cicd"
 cloud_run_services         = ["quill-backend-teaching", "quill-frontend-teaching"]
+
+# Whether this environment should have these alert channels at all. Static
+# config rather than a test on whether the secret holds a value: a `count`
+# must be known at plan time, and those values are read from Secret Manager.
+# Both channels are deployed, so both are true — setting either false would
+# destroy the channel.
+enable_sms_channel       = true
+enable_pagerduty_channel = true

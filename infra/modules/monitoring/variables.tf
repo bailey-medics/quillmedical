@@ -48,6 +48,12 @@ variable "alert_sms_number" {
   sensitive = true
 }
 
+variable "enable_sms_channel" {
+  description = "Whether to create the SMS notification channel. Static config rather than a test on `alert_sms_number`, because a `count` must be known at plan time and that value is read from Secret Manager — see the note in main.tf."
+  type        = bool
+  default     = false
+}
+
 variable "escalation_duration" {
   description = "How long an outage must persist before escalating past Slack and email"
   type        = string
@@ -74,6 +80,12 @@ variable "pagerduty_service_key" {
   # A credential, and this repository is public: plan output is posted as a
   # pull request comment. See infra/variables.tf.
   sensitive = true
+}
+
+variable "enable_pagerduty_channel" {
+  description = "Whether to create the PagerDuty notification channel. Static config rather than a test on `pagerduty_service_key`, for the same reason as `enable_sms_channel`."
+  type        = bool
+  default     = false
 }
 
 variable "critical_duration" {

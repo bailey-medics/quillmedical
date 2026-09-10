@@ -109,3 +109,15 @@ variable "cloud_run_services" {
   type        = list(string)
   default     = []
 }
+
+variable "enable_sms_channel" {
+  description = "Create the SMS alert notification channel. Set per environment rather than inferred from whether the secret holds a value, which a count cannot test at plan time."
+  type        = bool
+  default     = false
+}
+
+variable "enable_pagerduty_channel" {
+  description = "Create the PagerDuty alert notification channel. Set per environment, for the same reason as enable_sms_channel."
+  type        = bool
+  default     = false
+}
