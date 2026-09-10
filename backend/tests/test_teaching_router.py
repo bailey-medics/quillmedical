@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
+import pytest
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.features.teaching.models import (
@@ -17,6 +19,7 @@ from app.features.teaching.models import (
     QuestionBankItem,
     QuestionBankOrgStatus,
 )
+from app.features.teaching.router import resolve_visible_module
 from app.models import (
     Organisation,
     OrganisationFeature,
@@ -1717,3 +1720,134 @@ class TestAdminBanks:
         data = resp.json()
         assert data["student_email_template"] is None
         assert data["coordinator_email_template"] is None
+
+
+class TestLearningContentGate:
+    """A user reads learning content only for their own organisations.
+
+    The rule the assessment routes always enforced and the learning
+    routes never did: until this gate existed, any authenticated user in
+    a teaching-enabled organisation could read any module's slides by
+    guessing its ID.
+
+    Every refusal is a 404 rather than a 403, so "not yours", "not live"
+    and "no such module" are indistinguishable from outside.
+    """
+
+    def test_helper_returns_the_org_that_makes_it_visible(self, db_session):
+        """The gate itself, tested directly.
+
+        Through the route, a permitted request still 404s because no
+        MDX exists in the test environment — and the content layer's
+        refusal is indistinguishable from the gate's. So the allow path
+        is asserted on the helper, and the deny paths through the route
+        where the status code is the whole point.
+        """
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        learner = _make_learner(db_session, org)
+        db_session.commit()
+
+        assert (
+            resolve_visible_module(learner, db_session, "test-bank") == org.id
+        )
+
+    def test_helper_refuses_a_module_no_org_has_live(self, db_session):
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id, is_live=False)
+        learner = _make_learner(db_session, org)
+        db_session.commit()
+
+        with pytest.raises(HTTPException) as exc_info:
+            resolve_visible_module(learner, db_session, "test-bank")
+        assert exc_info.value.status_code == 404
+
+    def test_helper_takes_any_live_org_when_the_user_has_two(self, db_session):
+        """The permissive union: one live organisation is enough.
+
+        This is why the plural resolver is mandatory. The singular one
+        returns an arbitrary first organisation, so a learner in two
+        would see the module or not depending on set ordering.
+        """
+        without = _make_teaching_org(db_session)
+        with_live = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, with_live)
+        _seed_bank(db_session, with_live.id, educator.id)
+
+        learner = _make_learner(db_session, without)
+        db_session.execute(
+            organisation_member.insert().values(
+                organisation_id=with_live.id, user_id=learner.id
+            )
+        )
+        db_session.commit()
+
+        assert (
+            resolve_visible_module(learner, db_session, "test-bank")
+            == with_live.id
+        )
+
+    def test_other_orgs_module_is_404(self, test_client, db_session):
+        owner = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, owner)
+        _seed_bank(db_session, owner.id, educator.id)
+
+        # The learner belongs to a different organisation entirely.
+        other = _make_teaching_org(db_session)
+        _make_learner(db_session, other)
+        db_session.commit()
+
+        test_client.post(
+            "/api/auth/login",
+            json={"username": "testlearner", "password": "Learner123!"},
+        )
+        resp = test_client.get("/api/teaching/modules/test-bank/learning")
+        assert resp.status_code == 404
+
+    def test_own_module_not_live_is_404(self, test_client, db_session):
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id, is_live=False)
+        _make_learner(db_session, org)
+        db_session.commit()
+
+        test_client.post(
+            "/api/auth/login",
+            json={"username": "testlearner", "password": "Learner123!"},
+        )
+        resp = test_client.get("/api/teaching/modules/test-bank/learning")
+        # Same 404 as another organisation's module: the caller cannot
+        # tell the two apart, which is the point.
+        assert resp.status_code == 404
+
+    def test_unknown_module_is_404(self, test_client, db_session):
+        org = _make_teaching_org(db_session)
+        _make_learner(db_session, org)
+        db_session.commit()
+
+        test_client.post(
+            "/api/auth/login",
+            json={"username": "testlearner", "password": "Learner123!"},
+        )
+        resp = test_client.get("/api/teaching/modules/no-such-bank/learning")
+        assert resp.status_code == 404
+
+    def test_module_list_excludes_other_orgs(self, test_client, db_session):
+        owner = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, owner)
+        _seed_bank(db_session, owner.id, educator.id)
+
+        other = _make_teaching_org(db_session)
+        _make_learner(db_session, other)
+        db_session.commit()
+
+        test_client.post(
+            "/api/auth/login",
+            json={"username": "testlearner", "password": "Learner123!"},
+        )
+        resp = test_client.get("/api/teaching/modules")
+        # An empty list, not an error: nothing visible is a valid answer.
+        assert resp.status_code == 200
+        assert resp.json() == []

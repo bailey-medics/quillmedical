@@ -858,7 +858,7 @@ correction, not a regression.
 >   below. If the other branch resolved organisations differently, that is the
 >   version to follow; do not reintroduce this one alongside it.
 
-- [ ] Write `resolve_visible_module(user, db, module_id) -> int` in
+- [x] Write `resolve_visible_module(user, db, module_id) -> int` in
       `video_access.py`, or beside `_get_user_org_ids` if it reads better there.
       It calls `_get_user_org_ids(user, db)`, looks up `QuestionBankOrgStatus`
       rows for those organisations and this `module_id`, and returns the
@@ -866,14 +866,14 @@ correction, not a regression.
       matches or none is `is_live`, so "not yours" and "not live" and "does not
       exist" are indistinguishable from outside. Follow the permissive union at
       `router.py:336`: visible if **any** of the user's organisations has it live.
-- [ ] Add `view_teaching_cases` and a database session to `get_learning_content`
+- [x] Add `view_teaching_cases` and a database session to `get_learning_content`
       (`router.py:397`), and call the helper before any bucket or filesystem
       read. Today it takes no `db` at all, so this changes its signature.
-- [ ] Gate `list_learning_modules` (`router.py:477`) the same way, but filter
+- [x] Gate `list_learning_modules` (`router.py:477`) the same way, but filter
       rather than raise: return only modules visible to the user's organisations.
       An empty list is the correct answer for a user with no live modules, not an
       error.
-- [ ] Audit the sibling learning routes in the same pass — anything reading
+- [x] Audit the sibling learning routes in the same pass — anything reading
       `has_learning_content`, module cover images or learning images by
       `module_id` has the same exposure and the same fix. `router.py:268` and
       `router.py:382` are the starting points.

@@ -127,6 +127,52 @@ def _get_user_org_id(user: User, db: Session) -> int:
     return _get_user_org_ids(user, db)[0]
 
 
+def resolve_visible_module(user: User, db: Session, module_id: str) -> int:
+    """Return an organisation ID that makes ``module_id`` visible to ``user``.
+
+    A module is visible when any of the user's organisations — reached
+    directly or through a site — has a ``QuestionBankOrgStatus`` row for
+    it that is live. The same permissive union the bank list uses: one
+    live organisation is enough, and which one is returned does not
+    matter to the caller, only that the user may see the module.
+
+    Every refusal is a 404, never a 403. A 403 would confirm that a
+    module exists while telling the caller they may not have it, which
+    hands them the existence of another organisation's content. "Not
+    yours", "not live" and "no such module" are deliberately
+    indistinguishable from outside.
+
+    This is the single gate for learning content *and* for video access.
+    Both must consult it rather than growing their own copy of the
+    query, because two copies drift and the looser one is the one nobody
+    notices.
+    """
+    try:
+        org_ids = _get_user_org_ids(user, db)
+    except HTTPException:
+        # A user in no organisation sees nothing, and learns nothing
+        # about what exists. The 403 that helper raises is right for
+        # admin routes; here it would leak.
+        raise HTTPException(404, "Module not found") from None
+
+    statuses = (
+        db.execute(
+            select(QuestionBankOrgStatus).where(
+                QuestionBankOrgStatus.organisation_id.in_(org_ids),
+                QuestionBankOrgStatus.question_bank_id == module_id,
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    for status in statuses:
+        if status.is_live:
+            return int(status.organisation_id)
+
+    raise HTTPException(404, "Module not found")
+
+
 def _build_candidate_item(
     answer: AssessmentAnswer,
     config: dict[str, Any],
@@ -377,8 +423,16 @@ def get_question_bank(
 def get_learning_content(
     module_id: str,
     user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
 ) -> dict[str, Any]:
-    """Get parsed learning slides for a module."""
+    """Get parsed learning slides for a module.
+
+    Gated on organisation membership: a user reads a module only if one
+    of their organisations has it live. Until this gate existed, any
+    authenticated user in a teaching-enabled organisation could read any
+    module's slides by guessing its ID, including modules their
+    organisation never licensed.
+    """
     from app.config import settings
     from app.features.teaching.mdx_parser import (
         load_learning_content,
@@ -389,6 +443,10 @@ def get_learning_content(
         download_learning_mdx_from_gcs,
         download_module_yaml_from_gcs,
     )
+
+    # Before any bucket or filesystem read, so an unauthorised caller
+    # cannot infer a module's existence from an error or from timing.
+    resolve_visible_module(user, db, module_id)
 
     bucket = settings.TEACHING_GCS_BUCKET
     base_path = settings.TEACHING_QUESTION_BANK_PATH
@@ -455,8 +513,16 @@ def get_learning_content(
 )
 def list_learning_modules(
     user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
 ) -> list[dict[str, Any]]:
-    """List all modules that have learning content."""
+    """List the modules with learning content that the user may see.
+
+    Filtered rather than gated: an empty list is the correct answer for
+    a user whose organisations have nothing live, not an error. Without
+    this filter the route enumerated every module in the bucket,
+    handing every user the full catalogue including modules their
+    organisation never licensed.
+    """
     from app.config import settings
     from app.features.teaching.mdx_parser import (
         load_learning_content,
@@ -474,6 +540,29 @@ def list_learning_modules(
     bucket = settings.TEACHING_GCS_BUCKET
     base_path = settings.TEACHING_QUESTION_BANK_PATH
 
+    # The permissive union: every bank any of the user's organisations
+    # has live. Resolved once here rather than per module, so the list
+    # costs one query regardless of how many modules the bucket holds.
+    try:
+        org_ids = _get_user_org_ids(user, db)
+    except HTTPException:
+        # No organisation, nothing visible. Not an error for a list.
+        return []
+
+    visible_bank_ids = {
+        status.question_bank_id
+        for status in db.execute(
+            select(QuestionBankOrgStatus).where(
+                QuestionBankOrgStatus.organisation_id.in_(org_ids),
+            )
+        )
+        .scalars()
+        .all()
+        if status.is_live
+    }
+    if not visible_bank_ids:
+        return []
+
     if bucket:
         # Production: discover from GCS
         try:
@@ -488,6 +577,8 @@ def list_learning_modules(
     modules: list[dict[str, Any]] = []
 
     for bank_id in bank_ids:
+        if bank_id not in visible_bank_ids:
+            continue
         if bucket:
             meta = download_module_yaml_from_gcs(bucket, bank_id) or {}
             if not meta:
