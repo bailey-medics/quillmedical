@@ -6,7 +6,7 @@ from app.models import (
     Organisation,
     OrganisationFeature,
     User,
-    organisation_staff_member,
+    organisation_member,
 )
 from app.security import hash_password
 
@@ -167,7 +167,7 @@ def _make_admin(db_session, org: Organisation | None = None) -> User:
     db_session.flush()
     if org:
         db_session.execute(
-            organisation_staff_member.insert().values(
+            organisation_member.insert().values(
                 organisation_id=org.id,
                 user_id=user.id,
             )
@@ -387,7 +387,7 @@ class TestMeEnabledFeatures:
 
     def test_me_includes_enabled_features(self, test_client, db_session):
         """enabled_features reflects the user's primary org."""
-        from app.models import organisation_staff_member
+        from app.models import organisation_member
 
         org = _make_org(db_session)
         user = User(
@@ -402,7 +402,7 @@ class TestMeEnabledFeatures:
 
         # Link user to org
         db_session.execute(
-            organisation_staff_member.insert().values(
+            organisation_member.insert().values(
                 organisation_id=org.id,
                 user_id=user.id,
             )

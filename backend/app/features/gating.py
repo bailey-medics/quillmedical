@@ -22,8 +22,8 @@ from app.db import get_core_db
 from app.models import (
     OrganisationFeature,
     User,
+    organisation_member,
     organisation_site,
-    organisation_staff_member,
     site_member,
 )
 
@@ -54,8 +54,8 @@ def requires_feature(feature_key: str) -> Callable[..., User]:
         user_org_ids = list(
             set(
                 db.execute(
-                    select(organisation_staff_member.c.organisation_id).where(
-                        organisation_staff_member.c.user_id == user.id,
+                    select(organisation_member.c.organisation_id).where(
+                        organisation_member.c.user_id == user.id,
                     )
                 )
                 .scalars()
