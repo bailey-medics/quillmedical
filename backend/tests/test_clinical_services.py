@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app, require_clinical_services
-from app.models import Organisation, User, organisation_staff_member
+from app.models import Organisation, User, organisation_member
 from app.security import hash_password
 
 
@@ -126,7 +126,7 @@ class TestRequireFeatureDependency:
         db_session.flush()
 
         db_session.execute(
-            organisation_staff_member.insert().values(
+            organisation_member.insert().values(
                 organisation_id=org.id,
                 user_id=user.id,
             )

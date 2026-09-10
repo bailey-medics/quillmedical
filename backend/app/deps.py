@@ -85,20 +85,6 @@ def get_optional_user(
 DEP_OPTIONAL_USER = Depends(get_optional_user)
 
 
-def require_staff(current_user: User = DEP_CURRENT_USER) -> User:
-    """Require staff, admin, or superadmin system permissions.
-
-    Raises:
-        HTTPException: 403 if user lacks staff permissions.
-    """
-    if current_user.system_permissions not in ("staff", "admin", "superadmin"):
-        raise HTTPException(403, "Staff access required")
-    return current_user
-
-
-DEP_REQUIRE_STAFF = Depends(require_staff)
-
-
 def require_admin(current_user: User = DEP_CURRENT_USER) -> User:
     """Require admin or superadmin system permissions.
 

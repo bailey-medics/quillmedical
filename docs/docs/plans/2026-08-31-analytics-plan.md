@@ -305,13 +305,33 @@ Server side, already collected:
       rate, which is easier to reason about at low traffic
 - [x] Add a dashboard for error rate by service, so a spike can be attributed
       rather than just noticed
-- [ ] Confirm the 5xx alert fires on a deliberately broken endpoint, rather
-      than assuming the filter is right. Half-proven without breaking
-      anything: querying the alert's own filter over thirty days returned ten
-      real 5xx responses on `quill-backend-teaching` across two revisions, so
-      the filter demonstrably matches real errors. What remains unproven is
-      the threshold and the delivery — none of those ten was dense enough to
-      cross "more than five in five minutes"
+- [x] Confirm the 5xx alert fires on a deliberately broken endpoint, rather
+      than assuming the filter is right. **Done on 8 September, end to end.**
+      It had been half-proven: querying the alert's own filter over thirty
+      days returned ten real 5xx responses on `quill-backend-teaching`, so the
+      filter matched genuine errors, but none had been dense enough to cross
+      "more than five in five minutes", leaving the threshold and the delivery
+      untested.
+
+      A temporary `GET /api/kaboom` returning 500 was deployed, driven ten
+      times in nineteen seconds, and removed the same evening. The incident
+      opened at 21:13:32 against **Server errors — 5xx (teaching)**, on the
+      right service and the right metric, and closed itself at 21:18:52 once
+      the errors stopped rather than waiting out the thirty-minute
+      `auto_close`. Slack and email each delivered twice: once on opening and
+      once on recovery.
+
+      **The number worth remembering is roughly four minutes.** That is the
+      gap between the burst at 21:09:35 and the incident at 21:13:32 — the
+      five-minute alignment period plus Google's evaluation lag. This alert
+      does not tell anyone within seconds, and any runbook that assumes it
+      does is wrong.
+
+      Every tier is now proven end to end: email and SMS by a real uptime
+      failure on 1 September, Slack by a staged check on 4 September, the
+      PagerDuty phone call on 2 September, and the 5xx threshold here. There
+      is nothing left in the alerting chain that has only ever been read
+      rather than seen to work
 - [x] Grant the CI service account `roles/logging.configWriter` on
       `quill-medical-teaching`. The first apply failed with
       `logging.sinks.create denied`: creating a log sink is not covered by the

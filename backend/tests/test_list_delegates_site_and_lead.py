@@ -22,8 +22,8 @@ from app.models import (
     OrganisationFeature,
     Site,
     User,
+    organisation_member,
     organisation_site,
-    organisation_staff_member,
     site_member,
 )
 from app.security import hash_password
@@ -84,7 +84,7 @@ def _member(db: Session, site: Site, user: User, capacity: str) -> None:
 def _in_org(db: Session, org: Organisation, user: User) -> None:
     """Put the caller in the organisation, with the gate the route needs."""
     db.execute(
-        insert(organisation_staff_member).values(
+        insert(organisation_member).values(
             organisation_id=org.id, user_id=user.id
         )
     )

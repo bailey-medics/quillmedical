@@ -1,5 +1,23 @@
 # Consolidate teaching-tooling plan
 
+> **The consolidation itself is done and merged.** The tooling lives in
+> `backend/app/features/teaching/tooling/` with its ported tests, both content repos call
+> Quill's reusable `teaching-pipeline.yml`, and `teaching-tooling` is decommissioned. Some
+> boxes stayed unticked longer than they should have, because the code landed under
+> `features/teaching/tooling/` rather than the `app/teaching_content/` path this plan
+> originally named.
+>
+> What is genuinely left, in four groups:
+>
+> - **Product work** — the teaching admin interface, the last item of the original plan.
+> - **Two fixes found along the way** — the provisional gate on `promote_bank_version`, now
+>   unblocked since the org-scoped findings are settled, and making site creation take the
+>   organisation directly so a site cannot exist attached to nothing.
+> - **Two follow-up designs, not started** — decision files for teaching tooling changes,
+>   and moving `api-compatibility/` under `decision_files/`.
+> - **Deliberately deferred** — splitting the pipeline into feature and main workflows, and
+>   hosted `<Video>`. Both were scoped out at the time and are recorded, not forgotten.
+
 While hardening certificate config parsing (`backend/app/features/teaching/certificate.py`
 was converted from hand-rolled `dataclass` definitions to validated Pydantic models), a
 question came up that the refactor could not answer on its own: are the `*-teaching`
@@ -270,7 +288,7 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
       `backend/tests/test_clinical_services.py`). This is what makes the target location
       importable without the FastAPI/SQLAlchemy stack, and it removes an executable
       FastAPI dependency from a package `__init__.py`, which is worth doing regardless.
-- [ ] Port `teaching-tooling/scripts/validate.py` and `check_version_lock.py` into
+- [x] Port `teaching-tooling/scripts/validate.py` and `check_version_lock.py` into
       `backend/app/features/teaching/tooling/`, splitting the Pydantic models into
       `module_schema.py`. Both already import only the standard library, `yaml` and
       `pydantic`, so nothing needs restructuring to move.
@@ -283,7 +301,7 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
             fixture tree, old and new flag **the same 7 errors on the same 7 paths**; only
             the invalid-status message wording differs, which is the `Literal` conversion
             doing its job.
-- [ ] Bring across the 937 lines of tests from `teaching-tooling/tests/` (including
+- [x] Bring across the 937 lines of tests from `teaching-tooling/tests/` (including
       `fixtures/`) as `backend/tests/test_teaching_tooling*.py`.
       - [x] The 616 version-lock lines, as `test_teaching_tooling_version_lock.py` and
             `..._integration.py`. The integration ones build real repositories and shell
@@ -746,7 +764,7 @@ modules/<bank_id>/learning/       # was learning/<bank_id>/
       - **Still open:** a green deploy reporting `"synced": []` says nothing about the
         metadata-only updates it performed. Worth reporting what changed, not only what
         failed.
-- [ ] **Re-validate live banks when the tooling changes, not only when content changes.**
+- [x] **Re-validate live banks when the tooling changes, not only when content changes.**
       Today nothing does this: validation runs on a content pull request and on a content
       push to main, and a Quill-side tooling change triggers neither. Quill's `deploy.yml`
       does not call `/api/ci/teaching/sync`, no teaching workflow is scheduled, and startup
@@ -913,10 +931,10 @@ they are ready. That also gives a rollback, which does not exist today.
 
 - [x] **Promotion endpoint** — the last thing needed before teaching can be left alone. It
       is what turns the active-version work from _safe_ into _usable_.
-- [ ] **Finish and merge the active-version pull request** once it lands. Three commits —
+- [x] **Finish and merge the active-version pull request** once it lands. Three commits —
       pin the pointer, follow it, show it — plus this one. That is a genuine stopping point:
       the feature works end to end through the API.
-- [ ] **Then move to `2026-09-06-org-scoped-access-findings.md`.** It is a plan rather than
+- [x] **Then move to `2026-09-06-org-scoped-access-findings.md`.** It is a plan rather than
       code, so nothing rots while it waits, and it answers a question this phase had to work
       around. Finish it there: settle where a request's context comes from, what becomes of
       `system_permissions`, and how the staff and patient namespaces meet.
@@ -1234,7 +1252,7 @@ can reach.
       against a 2.4.2 pin on the very next dependency PR. That value is a second copy of
       the version, so `check-version-consistency.sh` asserts it matches. Note this one is
       only provable on the next scheduled run: nothing local can exercise the hosted bot.
-- [ ] Confirm CI is green before merging, since every Python job changes how it installs
+- [x] Confirm CI is green before merging, since every Python job changes how it installs
       Poetry.
 
 Either piece alone is half a fix: `.poetry-version` selects a version, `requires-poetry`
@@ -1246,33 +1264,33 @@ the image is rebuilt. Running tests is unaffected, since pytest does not go thro
 
 ## Verification
 
-- [ ] `just ub` stays green, including the ported tooling tests, the new import-boundary
+- [x] `just ub` stays green, including the ported tooling tests, the new import-boundary
       test, and `test_clinical_services.py` after the `requires_feature` move.
-- [ ] `pre-commit run --all-files` passes. Confirm the new package clears `mypy --strict`
+- [x] `pre-commit run --all-files` passes. Confirm the new package clears `mypy --strict`
       through the hook, whose `additional_dependencies` are only
       `[alembic, types-requests, types-pyyaml, types-Markdown]`; add `pydantic` if
       resolution fails.
-- [ ] Update the `validate-teaching` recipe (`Justfile:242-266`) to call the new CLI, then
+- [x] Update the `validate-teaching` recipe (`Justfile:242-266`) to call the new CLI, then
       run it over both checked-out content repos. It must pass on current content —
       that is what proves the port is behaviour-preserving.
-- [ ] Add a deliberately malformed `certificate:` block to a scratch copy of a module — an
+- [x] Add a deliberately malformed `certificate:` block to a scratch copy of a module — an
       unsupported font, `y: 1.5`, `margin: yes`, and an unrecognised key from a misspelled
       colour — and confirm the CLI rejects each with a clear message. `margin: yes` is the
       subtle one: `bool` subclasses `int` in Python, so without the boolean guard it
       validates as `1`.
-- [ ] Run the MDX validating mode over both content repos' `learning/content.mdx` and
+- [x] Run the MDX validating mode over both content repos' `learning/content.mdx` and
       confirm it passes, then confirm it _fails_ on a deliberately malformed `<Figure>` tag
       — the case the current parser drops in silence.
-- [ ] Open a draft pull request on `respiratory-teaching` pointed at the new workflow.
+- [x] Open a draft pull request on `respiratory-teaching` pointed at the new workflow.
       Confirm the checks report as `pipeline / validate` and `pipeline / check-protection`,
       satisfying the existing ruleset unchanged, then confirm a merge deploys to GCS and
       syncs the backend.
-- [ ] Prove both gates independently. Push a malformed `certificate:` block and confirm the
+- [x] Prove both gates independently. Push a malformed `certificate:` block and confirm the
       pull-request check fails. Then upload the same malformed content straight to GCS,
       bypassing CI, call `/api/ci/teaching/sync`, and confirm sync rejects it and the bank
       does not go live — this is the layer that would otherwise be lost with
       `tooling_validate.py`.
-- [ ] `scripts/run-github-actions-locally.sh` before pushing.
+- [x] `scripts/run-github-actions-locally.sh` before pushing.
 
 ## Risks
 
