@@ -986,6 +986,17 @@ introduce an unknown component.
       message ("This video is not available — your access may have expired. Try
       reloading the page.") rather than an empty box. Use the centralised page
       messages pattern.
+- [ ] **[found 2026-09-10, pre-existing]** Give `LearningDashboard` an error
+      state. It calls `getModules()` with `.then().finally()` and no `.catch()`
+      (`LearningDashboard.tsx:58`), and `api.get` throws — so any rejection
+      leaves the page on skeletons forever with an unhandled rejection in the
+      console. The sibling `TeachingDashboard` already handles this and has a
+      test for it; copy that shape rather than inventing one. Nothing to do
+      with video, and it predates Phase 2a — found while checking how the
+      frontend copes with that phase's new 404. Recorded here because this is
+      where the frontend error handling lives, and because Phase 4 adds a
+      second failure path to the same page. A stuck skeleton is
+      indistinguishable from a slow network to the learner looking at it.
 - [ ] Storybook stories for the new states — YouTube, GCS with captions, loading,
       access denied — and tests alongside them, per the components rule.
 
