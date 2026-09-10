@@ -717,18 +717,18 @@ New module `backend/app/features/teaching/video_access.py`, deliberately separat
 from `storage.py` so the security-critical signing code can be reviewed and
 tested on its own.
 
-- [ ] Add to `backend/app/config.py`, in the existing `--- Teaching / GCS ---`
+- [x] Add to `backend/app/config.py`, in the existing `--- Teaching / GCS ---`
       block: `TEACHING_VIDEOS_BUCKET`, `TEACHING_VIDEOS_SOURCE_BUCKET`,
       `TEACHING_VIDEO_BASE_URL` (e.g. `https://teaching.quill-medical.com/videos`),
       `TEACHING_VIDEO_SIGNING_KEY_NAME`, `TEACHING_VIDEO_SIGNING_KEY`
       (`SecretStr`), and `TEACHING_VIDEO_COOKIE_TTL_MINUTES` defaulting to 30.
-- [ ] Implement `sign_cookie(url_prefix: str, expires_at: datetime) -> str`
+- [x] Implement `sign_cookie(url_prefix: str, expires_at: datetime) -> str`
       producing Cloud CDN's exact format: the string
       `URLPrefix=<base64url(prefix)>:Expires=<unix>:KeyName=<name>`, then the same
       string with `:Signature=<base64url(HMAC-SHA1(key, string))>` appended. Use
       `hmac`/`hashlib` from the standard library and `base64.urlsafe_b64encode`.
       No third-party dependency.
-- [ ] Implement `build_url_prefix(org_id, module_id) -> str` returning
+- [x] Implement `build_url_prefix(org_id, module_id) -> str` returning
       `{TEACHING_VIDEO_BASE_URL}/{org_id}/{module_id}/`. **[revised 2026-09-09]**
       Validate `module_id` against the existing `_SAFE_BANK_ID` pattern in
       `storage.py` (`^[a-zA-Z0-9_-]+$`) and raise on anything else. `org_id` is an
@@ -736,7 +736,7 @@ tested on its own.
       reject anything non-positive, rather than reusing `_SAFE_BANK_ID`, which
       would accept `-1` and `0`. The prefix is the entire authorisation boundary,
       so a traversal here grants a learner every module in the bucket.
-- [ ] Add `POST /api/teaching/modules/{module_id}/video-access` to
+- [x] Add `POST /api/teaching/modules/{module_id}/video-access` to
       `backend/app/features/teaching/router.py`. It inherits the router's
       `requires_feature("teaching")` gate, and additionally requires the
       `view_teaching_cases` competency via `has_competency` and the authenticated
@@ -747,7 +747,7 @@ tested on its own.
       it, but it makes this the first CSRF-protected route in the router, so the
       frontend `api` client must be sending `X-CSRF-Token` on the call. Confirm
       that before assuming the 403s are a signing bug.
-- [ ] In the handler **[revised 2026-09-09 — see Revisions 1 and 2]**: call
+- [x] In the handler **[revised 2026-09-09 — see Revisions 1 and 2]**: call
       `resolve_visible_module(user, db, module_id)` from Phase 2a. It resolves the
       user's organisations via direct **and** site membership, checks
       `QuestionBankOrgStatus` for those organisations, and returns the
@@ -756,18 +756,18 @@ tested on its own.
       **every refusal is a 404**, so the endpoint never confirms the existence of
       another organisation's modules. Mint the cookie for that module's prefix
       only, using the organisation id the helper returned.
-- [ ] Do not re-implement the membership query here. One helper serves both this
+- [x] Do not re-implement the membership query here. One helper serves both this
       endpoint and the content endpoints, which is the whole point of Phase 2a —
       the video gate and the content gate must not be able to drift apart.
-- [ ] Ignore `active_version` when minting. Learning content is unversioned in
+- [x] Ignore `active_version` when minting. Learning content is unversioned in
       the bucket, so there is one video per module and the pointer is not part of
       this decision. If that ever changes, Revision 1 says what breaks.
-- [ ] Set the response cookie `Cloud-CDN-Cookie` with `Secure`, `HttpOnly`,
+- [x] Set the response cookie `Cloud-CDN-Cookie` with `Secure`, `HttpOnly`,
       `SameSite=Lax`, `Path=/videos/`, host-only (no `Domain` attribute), and
       `max_age` matching the signature expiry. Return
       `{"base_url": ..., "expires_at": ...}` as JSON so the frontend can build
       asset URLs and schedule its refresh.
-- [ ] Log the grant at INFO — `user_id`, `org_id`, `module_id`, expiry — and
+- [x] Log the grant at INFO — `user_id`, `org_id`, `module_id`, expiry — and
       nothing else. No filenames, no PHI, and never the cookie value or key.
 - [ ] **[added 2026-09-09] No cookie consent banner, but the cookie policy needs
       finishing.** Under UK PECR, consent is not required for a cookie strictly
@@ -785,7 +785,7 @@ tested on its own.
       deferrable. Note the current analytics is log-derived from load balancer
       `httpRequest` records and sets nothing on a device, which is why no banner
       has been needed so far; a client-side analytics tag would change that.
-- [ ] Rate-limit the endpoint so it cannot be driven as a cookie-minting oracle.
+- [x] Rate-limit the endpoint so it cannot be driven as a cookie-minting oracle.
       **[revised 2026-09-09]** The existing pattern is SlowAPI: `from
       app.rate_limit import limiter`, then `@limiter.limit("10/minute")` on the
       route, as at `main.py:708` and `main.py:898`. It keys on the client address
@@ -858,7 +858,7 @@ correction, not a regression.
 >   below. If the other branch resolved organisations differently, that is the
 >   version to follow; do not reintroduce this one alongside it.
 
-- [ ] Write `resolve_visible_module(user, db, module_id) -> int` in
+- [x] Write `resolve_visible_module(user, db, module_id) -> int` in
       `video_access.py`, or beside `_get_user_org_ids` if it reads better there.
       It calls `_get_user_org_ids(user, db)`, looks up `QuestionBankOrgStatus`
       rows for those organisations and this `module_id`, and returns the
@@ -866,14 +866,14 @@ correction, not a regression.
       matches or none is `is_live`, so "not yours" and "not live" and "does not
       exist" are indistinguishable from outside. Follow the permissive union at
       `router.py:336`: visible if **any** of the user's organisations has it live.
-- [ ] Add `view_teaching_cases` and a database session to `get_learning_content`
+- [x] Add `view_teaching_cases` and a database session to `get_learning_content`
       (`router.py:397`), and call the helper before any bucket or filesystem
       read. Today it takes no `db` at all, so this changes its signature.
-- [ ] Gate `list_learning_modules` (`router.py:477`) the same way, but filter
+- [x] Gate `list_learning_modules` (`router.py:477`) the same way, but filter
       rather than raise: return only modules visible to the user's organisations.
       An empty list is the correct answer for a user with no live modules, not an
       error.
-- [ ] Audit the sibling learning routes in the same pass — anything reading
+- [x] Audit the sibling learning routes in the same pass — anything reading
       `has_learning_content`, module cover images or learning images by
       `module_id` has the same exposure and the same fix. `router.py:268` and
       `router.py:382` are the starting points.
@@ -986,6 +986,17 @@ introduce an unknown component.
       message ("This video is not available — your access may have expired. Try
       reloading the page.") rather than an empty box. Use the centralised page
       messages pattern.
+- [ ] **[found 2026-09-10, pre-existing]** Give `LearningDashboard` an error
+      state. It calls `getModules()` with `.then().finally()` and no `.catch()`
+      (`LearningDashboard.tsx:58`), and `api.get` throws — so any rejection
+      leaves the page on skeletons forever with an unhandled rejection in the
+      console. The sibling `TeachingDashboard` already handles this and has a
+      test for it; copy that shape rather than inventing one. Nothing to do
+      with video, and it predates Phase 2a — found while checking how the
+      frontend copes with that phase's new 404. Recorded here because this is
+      where the frontend error handling lives, and because Phase 4 adds a
+      second failure path to the same page. A stuck skeleton is
+      indistinguishable from a slow network to the learner looking at it.
 - [ ] Storybook stories for the new states — YouTube, GCS with captions, loading,
       access denied — and tests alongside them, per the components rule.
 

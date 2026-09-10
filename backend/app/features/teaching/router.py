@@ -64,6 +64,7 @@ from app.features.teaching.schemas import (
     TeachingOrgSettingsOut,
     ValidationMessageOut,
     ValidationResultOut,
+    VideoAccessOut,
 )
 from app.features.teaching.scoring import (
     evaluate_pass_criteria,
@@ -79,12 +80,17 @@ from app.features.teaching.storage import (
     list_banks_in_gcs,
     resolve_module_dir,
 )
+from app.features.teaching.video_access import (
+    build_url_prefix,
+    sign_cookie,
+)
 from app.models import (
     Organisation,
     OrganisationFeature,
     User,
 )
 from app.organisations import get_member_org_ids, get_reachable_org_ids
+from app.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +110,21 @@ def _get_current_user(request: Request, db: Session = _DEP_SESSION) -> User:
     return get_current_user(request, db)
 
 
+def _require_csrf(request: Request, db: Session = _DEP_SESSION) -> None:
+    """Validate the CSRF token, lazily as above.
+
+    ``main`` imports this router, so importing ``require_csrf`` at module
+    scope would be circular — the same reason ``_get_current_user``
+    exists in this shape.
+    """
+    from app.main import require_csrf
+
+    require_csrf(request, _get_current_user(request, db))
+
+
 _DEP_USER = Depends(_get_current_user)
+_DEP_REQUIRE_CSRF = Depends(_require_csrf)
+_DEP_VIEW_CASES = Depends(has_competency("view_teaching_cases"))
 
 
 def _get_user_org_ids(user: User, db: Session) -> list[int]:
@@ -125,6 +145,52 @@ def _get_user_org_ids(user: User, db: Session) -> list[int]:
 def _get_user_org_id(user: User, db: Session) -> int:
     """Return the user's first organisation ID or raise 403."""
     return _get_user_org_ids(user, db)[0]
+
+
+def resolve_visible_module(user: User, db: Session, module_id: str) -> int:
+    """Return an organisation ID that makes ``module_id`` visible to ``user``.
+
+    A module is visible when any of the user's organisations — reached
+    directly or through a site — has a ``QuestionBankOrgStatus`` row for
+    it that is live. The same permissive union the bank list uses: one
+    live organisation is enough, and which one is returned does not
+    matter to the caller, only that the user may see the module.
+
+    Every refusal is a 404, never a 403. A 403 would confirm that a
+    module exists while telling the caller they may not have it, which
+    hands them the existence of another organisation's content. "Not
+    yours", "not live" and "no such module" are deliberately
+    indistinguishable from outside.
+
+    This is the single gate for learning content *and* for video access.
+    Both must consult it rather than growing their own copy of the
+    query, because two copies drift and the looser one is the one nobody
+    notices.
+    """
+    try:
+        org_ids = _get_user_org_ids(user, db)
+    except HTTPException:
+        # A user in no organisation sees nothing, and learns nothing
+        # about what exists. The 403 that helper raises is right for
+        # admin routes; here it would leak.
+        raise HTTPException(404, "Module not found") from None
+
+    statuses = (
+        db.execute(
+            select(QuestionBankOrgStatus).where(
+                QuestionBankOrgStatus.organisation_id.in_(org_ids),
+                QuestionBankOrgStatus.question_bank_id == module_id,
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    for status in statuses:
+        if status.is_live:
+            return int(status.organisation_id)
+
+    raise HTTPException(404, "Module not found")
 
 
 def _build_candidate_item(
@@ -377,8 +443,16 @@ def get_question_bank(
 def get_learning_content(
     module_id: str,
     user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
 ) -> dict[str, Any]:
-    """Get parsed learning slides for a module."""
+    """Get parsed learning slides for a module.
+
+    Gated on organisation membership: a user reads a module only if one
+    of their organisations has it live. Until this gate existed, any
+    authenticated user in a teaching-enabled organisation could read any
+    module's slides by guessing its ID, including modules their
+    organisation never licensed.
+    """
     from app.config import settings
     from app.features.teaching.mdx_parser import (
         load_learning_content,
@@ -389,6 +463,10 @@ def get_learning_content(
         download_learning_mdx_from_gcs,
         download_module_yaml_from_gcs,
     )
+
+    # Before any bucket or filesystem read, so an unauthorised caller
+    # cannot infer a module's existence from an error or from timing.
+    resolve_visible_module(user, db, module_id)
 
     bucket = settings.TEACHING_GCS_BUCKET
     base_path = settings.TEACHING_QUESTION_BANK_PATH
@@ -455,8 +533,16 @@ def get_learning_content(
 )
 def list_learning_modules(
     user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
 ) -> list[dict[str, Any]]:
-    """List all modules that have learning content."""
+    """List the modules with learning content that the user may see.
+
+    Filtered rather than gated: an empty list is the correct answer for
+    a user whose organisations have nothing live, not an error. Without
+    this filter the route enumerated every module in the bucket,
+    handing every user the full catalogue including modules their
+    organisation never licensed.
+    """
     from app.config import settings
     from app.features.teaching.mdx_parser import (
         load_learning_content,
@@ -474,6 +560,29 @@ def list_learning_modules(
     bucket = settings.TEACHING_GCS_BUCKET
     base_path = settings.TEACHING_QUESTION_BANK_PATH
 
+    # The permissive union: every bank any of the user's organisations
+    # has live. Resolved once here rather than per module, so the list
+    # costs one query regardless of how many modules the bucket holds.
+    try:
+        org_ids = _get_user_org_ids(user, db)
+    except HTTPException:
+        # No organisation, nothing visible. Not an error for a list.
+        return []
+
+    visible_bank_ids = {
+        status.question_bank_id
+        for status in db.execute(
+            select(QuestionBankOrgStatus).where(
+                QuestionBankOrgStatus.organisation_id.in_(org_ids),
+            )
+        )
+        .scalars()
+        .all()
+        if status.is_live
+    }
+    if not visible_bank_ids:
+        return []
+
     if bucket:
         # Production: discover from GCS
         try:
@@ -488,6 +597,8 @@ def list_learning_modules(
     modules: list[dict[str, Any]] = []
 
     for bank_id in bank_ids:
+        if bank_id not in visible_bank_ids:
+            continue
         if bucket:
             meta = download_module_yaml_from_gcs(bucket, bank_id) or {}
             if not meta:
@@ -526,6 +637,109 @@ def list_learning_modules(
 
     modules.sort(key=lambda m: m["order"])
     return modules
+
+
+@teaching_router.post(
+    "/modules/{module_id}/video-access",
+    response_model=VideoAccessOut,
+)
+@limiter.limit("10/minute")
+def grant_video_access(
+    request: Request,
+    module_id: str,
+    response: Response,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+    _: None = _DEP_VIEW_CASES,
+    __: None = _DEP_REQUIRE_CSRF,
+) -> VideoAccessOut:
+    """Mint a Cloud CDN cookie for one module's video.
+
+    The access decision stays here, next to the feature gate and the
+    competency check; the bytes are then served from the edge without
+    the request reaching this application again. That is the whole
+    shape of the design — see the video auth gate plan.
+
+    The cookie is scoped to this module's prefix and nothing else, so a
+    learner granted one module cannot reach another's video with it.
+
+    Rate-limited because an unlimited endpoint that returns credentials
+    is an oracle: it would let a caller enumerate which modules their
+    organisation has live, one 404 at a time.
+    """
+    from app.config import settings
+
+    # One helper, shared with the learning content routes, so the video
+    # gate and the content gate cannot drift apart. Raises 404 for "not
+    # yours", "not live" and "no such module" alike.
+    org_id = resolve_visible_module(user, db, module_id)
+
+    base_url = settings.TEACHING_VIDEO_BASE_URL
+    key_name = settings.TEACHING_VIDEO_SIGNING_KEY_NAME
+    key = settings.TEACHING_VIDEO_SIGNING_KEY
+
+    expires_at = datetime.now(UTC) + timedelta(
+        minutes=settings.TEACHING_VIDEO_COOKIE_TTL_MINUTES
+    )
+
+    if not (base_url and key_name and key):
+        # Development: video is served off disk by a local route, with
+        # no CDN, no signature and no cookie. "No cookie was set" is the
+        # normal answer here rather than an error, so the frontend runs
+        # the same code path in both environments.
+        logger.info(
+            "video access granted (local) user=%s org=%s module=%s",
+            user.id,
+            org_id,
+            module_id,
+        )
+        return VideoAccessOut(
+            base_url=f"/api/teaching/videos/{module_id}",
+            expires_at=expires_at,
+        )
+
+    try:
+        url_prefix = build_url_prefix(base_url, org_id, module_id)
+    except ValueError:
+        # An unsafe module_id reached the prefix builder. Refuse rather
+        # than sign anything: the prefix is the entire authorisation
+        # boundary, so a traversal here would grant every module in the
+        # bucket. Same 404 as any other refusal.
+        raise HTTPException(404, "Module not found") from None
+
+    cookie = sign_cookie(
+        url_prefix,
+        expires_at,
+        key_name,
+        key.get_secret_value(),
+    )
+
+    response.set_cookie(
+        "Cloud-CDN-Cookie",
+        cookie,
+        max_age=settings.TEACHING_VIDEO_COOKIE_TTL_MINUTES * 60,
+        # Scoped to the media path, so it is not sent on ordinary API
+        # or page requests. Host-only — no Domain attribute — so it
+        # cannot leak to a sibling subdomain.
+        path="/videos/",
+        secure=True,
+        httponly=True,
+        samesite="lax",
+    )
+
+    # The grant, not the credential. Never the cookie value or the key,
+    # and no filenames: this line goes to a log that is not PHI-safe.
+    logger.info(
+        "video access granted user=%s org=%s module=%s expires=%s",
+        user.id,
+        org_id,
+        module_id,
+        expires_at.isoformat(),
+    )
+
+    return VideoAccessOut(
+        base_url=url_prefix.rstrip("/"), expires_at=expires_at
+    )
 
 
 # ------------------------------------------------------------------

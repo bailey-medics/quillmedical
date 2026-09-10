@@ -511,3 +511,17 @@ class BankOrgRow(BaseModel):
     organisation_name: str
     is_live: bool = False
     site_registration: bool = False
+
+
+class VideoAccessOut(BaseModel):
+    """A granted video session.
+
+    The cookie itself is set as a header, not returned here: it is
+    ``HttpOnly`` so that page script cannot read it, and so it never
+    appears in the DOM, a copied link, a ``Referer`` header, or browser
+    history. What comes back is only what the player needs to build
+    asset URLs and to know when to ask again.
+    """
+
+    base_url: str
+    expires_at: datetime
