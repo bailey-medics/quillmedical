@@ -200,8 +200,15 @@ services:
     image: caddy:2-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
     container_name: quill_caddy
     ports:
+      # HTTP only. The dev Caddyfile has a single `:80` site block and no
+      # TLS directive, so nothing has ever listened on 443 in development.
+      # Publishing it anyway meant Docker accepted the connection and then
+      # reset it mid-handshake, which reads as a broken certificate rather
+      # than as a service that was never there.
+      #
+      # Production is unaffected: its Caddy listens on :8080 and the GCP
+      # Global HTTPS Load Balancer terminates TLS in front of it.
       - "80:80"
-      - "443:443"
     volumes:
       - ./caddy/dev/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
