@@ -491,9 +491,10 @@ Read-only, run by hand against what was applied. Record each result.
       account grant does not work, stop and re-plan: the fallback is a Cloud Run
       range-proxy in front of the bucket, a materially different and more
       expensive design.
-- [ ] Tear down by **reverting the module in a second pull request**, so removal
-      passes the same gate as creation and leaves no drift. Confirm the follow-up
-      plan is empty.
+- [x] Tear down by **reverting the module in a second pull request**, so removal
+      passes the same gate as creation and leaves no drift. **[done
+      2026-09-10]** It took three applies — see **Tearing it down** below.
+      `networkservices.googleapis.com` is deliberately left enabled.
 
 ### Phase 0 findings
 
@@ -596,6 +597,46 @@ just in the plan output.
   `{org_id}/{module_id}/…` key — which the plan already specifies. Worth knowing
   that it is a requirement rather than a convention, since a mismatch presents as
   a 404 on a file that is plainly in the bucket.
+
+### Tearing it down
+
+**The teardown needed three applies.** Everything landed in the end, and the
+teaching API stayed up throughout, but the ordering problem is worth recording
+because **Phase 1 will hit it whenever a backend bucket is retired or
+repointed**.
+
+- **A wait is needed on the way out as well as the way in.** The creation-side
+  fix — wait before the URL map references a new backend bucket — is only half
+  the lesson. Coming out, the URL map rule must be removed _and the dereference
+  allowed to propagate_ before the backend bucket can be deleted. Terraform's
+  graph models neither wait.
+
+- **The two failures were different, and both were ordering.** First
+  `resourceNotReady` on the URL map update, with the signed-URL key deletion
+  still settling. Then `resourceInUseByAnotherResource`, deleting a backend
+  bucket the URL map had only just stopped referencing. Each apply made real
+  progress, so re-running converged rather than looping.
+
+- **The lesson for Phase 1**: put an explicit wait between removing a URL map
+  reference and deleting what it pointed at, the mirror of the one on creation.
+  A retirement that is left to Terraform's own ordering will fail the first time
+  and succeed on a re-run, which is the kind of flakiness that gets attributed to
+  GCP rather than fixed.
+
+- **`/videospike/*` now returns 200, and that is correct.** With the path rule
+  gone the prefix falls through to the URL map's default service — the frontend
+  — which serves its index page for any unrecognised route. Not a leftover.
+
+- **Deliberately left behind**: `networkservices.googleapis.com` stays enabled.
+  `disable_on_destroy = false` was set so a revert could not switch off an API
+  something else had come to depend on, and Phase 1 needs it anyway.
+
+- **The `time` provider declaration is now removed**, in the same change as
+  these findings. It had to stay while state still referenced the two
+  `time_sleep` resources — removing it in the revert itself failed with
+  `Missing required provider` — so a provider that only a doomed resource uses
+  takes two changes to retire, not one. `infra/versions.tf` is back to its
+  pre-spike shape.
 
 ## Phase 1: Terraform — buckets, backend bucket, CDN, signing key
 
