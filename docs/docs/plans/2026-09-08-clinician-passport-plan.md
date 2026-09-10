@@ -1661,18 +1661,34 @@ above. Additive only, per `.claude/rules/backend.md`.
         declaring `risk_level`, `category` and six other fields the YAML
         has never carried; corrected to `id`, `display_name` and
         `retired_on`.
-- [ ] Add the SACT and radiotherapy competencies to
-      `shared/competency-definitions/clinical.yaml`. The live entries
-      carry only `id` and `display_name` today, whatever the CBAC
-      documentation implies, so match what is there rather than
-      inventing fields for these alone.
-- [ ] Add `access_clinician_passport` to
+- [x] Add the SACT and radiotherapy competencies. Landed in their own
+      `shared/competency-definitions/oncology.yaml` rather than in
+      `clinical.yaml`: they are clinical in kind, but they are the first
+      set drafted for the passport and will be revised wholesale against
+      the South West passports, which is easier when they are not
+      interleaved with the general clinical set. The note about matching
+      the live shape held for the entries without scales; those with one
+      carry `levels`, which is what the passport needs and what the
+      frameworks actually publish.
+- [x] Add `access_clinician_passport` to
       `shared/competency-definitions/` under the feature-admin
       category, and to the appropriate base professions in
       `shared/base-professions.yaml`.
-      - The competency itself is defined, in its own
-        `passport.yaml` rather than alongside the teaching set. Which
-        base professions hold it by default is still outstanding.
+      - The competency lives in its own `passport.yaml` rather than
+        alongside the teaching set.
+      - Held by default by the fourteen professions that practise and
+        accumulate assessed competencies — the four training grades,
+        consultant, GP, both nursing grades, healthcare assistant, both
+        pharmacy grades, physiotherapist, occupational therapist and
+        paramedic. Not by patients, back-office staff or the teaching
+        roles.
+      - `requires_clinical_services` could not decide this: it is true
+        for receptionists and patients as well, so the split is a
+        judgement and is pinned by a test naming both halves. The
+        healthcare assistant entry is the clearest case for including
+        the unregistered grades — its `perform_venepuncture` already
+        carries the comment "After competency training", which is
+        exactly what a passport records.
 - [x] Add the optional passport fields — `levels` and
       `expires_after_months` — to the competencies that need them.
       Both are optional, so existing entries are untouched. Note this
@@ -1683,8 +1699,11 @@ above. Additive only, per `.claude/rules/backend.md`.
       empty list, since omitting levels and declaring none of them must
       not be two different things. CBAC ignores both fields: holding a
       competency stays a yes or no question.
-- [ ] Run `yarn generate:types` in `frontend/` and commit the generated
-      JSON.
+- [x] Run `yarn generate:types` in `frontend/`. Nothing to commit:
+      `frontend/.gitignore` ignores `src/generated/*.json`, so the JSON
+      is a build artefact rebuilt by the prebuild hook. Only the
+      hand-written `index.d.ts` beside it is tracked, and it now
+      declares `levels` and `expires_after_months`.
 - [ ] Add hazard log entries for the passport: the wrong assessor
       signs; a holder signs off their own competency; evidence or a
       reflection contains patient data; an exported PDF diverges from

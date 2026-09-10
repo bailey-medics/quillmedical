@@ -44,6 +44,7 @@ base_professions:
       - refer_specialty
       - prescribe_non_controlled
       - certify_fitness_to_work
+      - access_clinician_passport
 
   - id: foundation_year_2
     display_name: "Foundation Year 2 Doctor (FY2)"
@@ -65,6 +66,7 @@ base_professions:
       - prescribe_controlled_schedule_3_4_5
       - certify_fitness_to_work
       - certify_death  # After training
+      - access_clinician_passport
 
   - id: specialty_trainee_1_2
     display_name: "Specialty Trainee Year 1-2 (ST1-2)"
@@ -89,6 +91,7 @@ base_professions:
       - certify_death
       - certify_fitness_to_drive
       - interpret_ecg
+      - access_clinician_passport
 
   - id: specialty_trainee_3_plus
     display_name: "Specialty Trainee Year 3+ (ST3+)"
@@ -119,6 +122,7 @@ base_professions:
       - interpret_ecg
       - manage_diabetes
       - manage_anticoagulation
+      - access_clinician_passport
 
   - id: consultant
     display_name: "Consultant"
@@ -153,6 +157,7 @@ base_professions:
       - interpret_ecg
       - manage_diabetes
       - manage_anticoagulation
+      - access_clinician_passport
 
   - id: general_practitioner
     display_name: "General Practitioner (GP)"
@@ -178,6 +183,7 @@ base_professions:
       - certify_fitness_to_drive
       - approve_clinical_letters
       - interpret_ecg
+      - access_clinician_passport
 
   # ==========================================================================
   # NURSING STAFF
@@ -196,6 +202,7 @@ base_professions:
       - take_informed_consent
       - refer_specialty
       - certify_fitness_to_work  # If independent prescriber
+      - access_clinician_passport
 
   - id: advanced_nurse_practitioner
     display_name: "Advanced Nurse Practitioner (ANP)"
@@ -215,6 +222,7 @@ base_professions:
       - prescribe_controlled_schedule_3_4_5  # If independent prescriber
       - certify_fitness_to_work
       - approve_clinical_letters
+      - access_clinician_passport
 
   - id: healthcare_assistant
     display_name: "Healthcare Assistant (HCA)"
@@ -224,6 +232,7 @@ base_professions:
     base_competencies:
       - access_patient_records
       - perform_venepuncture  # After competency training
+      - access_clinician_passport
 
   # ==========================================================================
   # PHARMACY STAFF
@@ -240,6 +249,7 @@ base_professions:
       - prescribe_non_controlled  # If independent prescriber
       - prescribe_controlled_schedule_3_4_5  # If independent prescriber
       - certify_fitness_to_work  # If independent prescriber
+      - access_clinician_passport
 
   - id: pharmacy_technician
     display_name: "Pharmacy Technician"
@@ -248,6 +258,7 @@ base_professions:
     requires_clinical_services: true
     base_competencies:
       - access_patient_records
+      - access_clinician_passport
 
   # ==========================================================================
   # ALLIED HEALTH PROFESSIONALS
@@ -265,6 +276,7 @@ base_professions:
       - take_informed_consent
       - refer_specialty
       - certify_fitness_to_work  # If independent prescriber
+      - access_clinician_passport
 
   - id: occupational_therapist
     display_name: "Occupational Therapist"
@@ -276,6 +288,7 @@ base_professions:
       - modify_patient_records
       - take_informed_consent
       - refer_specialty
+      - access_clinician_passport
 
   - id: paramedic
     display_name: "Paramedic"
@@ -291,6 +304,7 @@ base_professions:
       - refer_specialty
       - prescribe_non_controlled  # If independent prescriber
       - certify_fitness_to_work  # If independent prescriber
+      - access_clinician_passport
 
   # ==========================================================================
   # ADMINISTRATIVE STAFF
