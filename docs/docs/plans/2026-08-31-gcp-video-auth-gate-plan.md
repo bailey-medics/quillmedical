@@ -667,7 +667,8 @@ how `module "cloud_storage"` is gated at `infra/main.tf:367`.
       API call. This is a genuine reduction in blast radius versus the v4
       signed-URL approach, which requires `objectViewer` plus
       `serviceAccountTokenCreator`.
-- [x] Add a `/videos/*` path rule to the `quill-paths` path matcher in
+- [ ] **[split in two, 2026-09-10]** Add a `/videos/*` path rule to the
+      `quill-paths` path matcher in
       `infra/modules/load-balancer/main.tf`, pointing at the new backend bucket.
       Plumb it through as an optional variable so `prod` and `staging`, which
       have no video buckets, render an unchanged URL map.
@@ -684,6 +685,18 @@ how `module "cloud_storage"` is gated at `infra/main.tf:367`.
 - [x] **[added during the build]** Wait 60s after creating the backend bucket
       before the URL map references it, per Phase 0's `resourceNotReady`.
       Re-adds the `time` provider that the Phase 0 revert removed.
+- [ ] **[found during the build]** Converting `/api/*` from a static
+      `path_rule` to a `dynamic` block is itself a change Terraform cannot see
+      through, separately from the Phase 0 lesson about the two forms
+      coexisting. With the `/videos/*` entry added in the same change, the plan
+      showed `paths = ["/api", "/api/*"] -> null` and the replacement only as
+      `known after apply`, because the video rule's service is not known until
+      the backend bucket exists. Whether that resolves harmlessly at apply time
+      is untested and not worth testing on the live API. So the work is split:
+      **this phase converts `/api/*` alone and must plan as no change**, and a
+      follow-up adds `/videos/*` once that is proven. The
+      `videos_backend_bucket_id` variable stays declared but is not passed, so the
+      follow-up is a small diff.
 - [ ] `terraform plan` against `teaching` and confirm the diff touches nothing
       outside the new module, the URL map and the Cloud Run env block. Confirm
       `plan` for `prod` and `staging` is empty.

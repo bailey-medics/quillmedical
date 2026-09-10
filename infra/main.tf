@@ -372,8 +372,9 @@ module "load_balancer" {
   backend_service_name  = module.cloud_run_backend.service_name
   frontend_service_name = module.cloud_run_frontend.service_name
 
-  # Null outside teaching, so prod and staging render an unchanged URL map.
-  videos_backend_bucket_id = var.environment == "teaching" ? module.teaching_video_pipeline[0].backend_bucket_id : null
+  # `videos_backend_bucket_id` is deliberately not passed yet — see the comment
+  # on the path_rule block in the load-balancer module. The follow-up that adds
+  # `/videos/*` passes it.
 }
 
 # ---------- Cloud Storage: teaching images (teaching only) ----------
