@@ -17,7 +17,7 @@ import yaml
 
 #: Components the parser can actually turn into slide metadata.
 #: Anything else is dropped, so the validator must reject it.
-KNOWN_COMPONENTS = ("Callout", "YouTube", "Figure")
+KNOWN_COMPONENTS = ("Callout", "YouTube", "Figure", "Video")
 
 #: Callout styles the frontend renders.
 VALID_CALLOUT_TYPES = ("info", "warning", "success")
@@ -26,13 +26,7 @@ VALID_CALLOUT_TYPES = ("info", "warning", "success")
 #: error than "unknown component", and anything listed here is a reminder
 #: that the extractor, ``ParsedSlide`` and the frontend must all land
 #: together before the name moves into ``KNOWN_COMPONENTS``.
-NOT_YET_SUPPORTED = {
-    "Video": (
-        "hosted video is not implemented yet — nothing in the parser, "
-        'ParsedSlide or the frontend reads it. Use <YouTube id="..." /> '
-        "until it lands"
-    ),
-}
+NOT_YET_SUPPORTED: dict[str, str] = {}
 
 #: The exact patterns the extractors below match. A component-shaped tag
 #: that fails its pattern is silently discarded at render time, which is
@@ -40,6 +34,9 @@ NOT_YET_SUPPORTED = {
 CALLOUT_PATTERN = r'<Callout\s+type="(\w+)">\s*(.*?)\s*</Callout>'
 YOUTUBE_PATTERN = (
     r'<YouTube\s+id="([^"]+)"' r"(?:\s+duration=\{(\d+)\})?" r"\s*/>"
+)
+VIDEO_PATTERN = (
+    r'<Video\s+ref="([^"]+)"' r"(?:\s+duration=\{(\d+)\})?" r"\s*/>"
 )
 FIGURE_PATTERN = r"<Figure\s+([^>]*)/>"
 
@@ -63,6 +60,10 @@ class ParsedSlide:
     callout_type: str | None = None
     callout_body: str | None = None
     youtube_id: str | None = None
+    #: The MDX reference key, not a filename. What it resolves to is a
+    #: request-time concern — see the plan's media-link model — so the
+    #: parser carries the key and nothing else.
+    video_ref: str | None = None
     duration_seconds: int | None = None
     figure_src: str | None = None
     figure_alt: str | None = None
@@ -117,6 +118,36 @@ def _extract_youtube(
     remaining = body[: match.start()] + body[match.end() :]
     remaining = remaining.strip()
     return remaining, youtube_id, duration
+
+
+def _extract_video(
+    body: str,
+) -> tuple[str, str | None, int | None]:
+    """Extract <Video> component from body text.
+
+    Supports both forms:
+      <Video ref="lecture-01" />
+      <Video ref="lecture-01" duration={1080} />
+
+    The prop is ``ref``, a stable key, not ``src``, a filename. That
+    separation is what lets a file be uploaded before the MDX exists,
+    lets the uploaded file be renamed without orphaning the slide, and
+    makes re-pointing a slide a dropdown rather than a re-upload.
+
+    There is no ``poster`` prop: the poster is another asset of the same
+    reference, so the author names one thing and gets the whole set.
+
+    Returns (remaining_body, video_ref, duration_seconds).
+    """
+    match = re.search(VIDEO_PATTERN, body)
+    if not match:
+        return body, None, None
+
+    video_ref = match.group(1)
+    duration = int(match.group(2)) if match.group(2) else None
+    remaining = body[: match.start()] + body[match.end() :]
+    remaining = remaining.strip()
+    return remaining, video_ref, duration
 
 
 def _extract_figure(
@@ -193,6 +224,15 @@ def _check_component(name: str, tag: str) -> str | None:
                 "be dropped — only id and duration are supported"
             )
 
+    if name == "Video":
+        if not re.search(r'ref="[^"]+"', tag):
+            return "<Video> needs a ref prop"
+        if not re.fullmatch(VIDEO_PATTERN, tag):
+            return (
+                "<Video> has props the renderer cannot read, so it would "
+                "be dropped — only ref and duration are supported"
+            )
+
     if name == "Figure":
         if not re.search(r'src="[^"]+"', tag):
             return "<Figure> needs a src prop"
@@ -235,6 +275,23 @@ def validate_mdx(content: str) -> list[str]:
             if problem:
                 errors.append(f"line {line_number}: {problem}")
 
+    # Both media tags on one slide is ambiguous rather than malformed:
+    # they share a layout and a duration field, so the renderer would
+    # show one and silently drop the other. Checked per slide, not per
+    # document — a module may legitimately hold a YouTube slide and a
+    # hosted-video slide side by side, and this module has exactly that.
+    for slide_number, section in enumerate(
+        _HEADING_RE.split(stripped), start=1
+    ):
+        has_youtube = re.search(r"<YouTube\b", section) is not None
+        has_video = re.search(r"<Video\b", section) is not None
+        if has_youtube and has_video:
+            errors.append(
+                f"slide {slide_number}: carries both <YouTube> and <Video>. "
+                "They share one layout, so one would be dropped without a "
+                "word — split them across two slides"
+            )
+
     # A Callout spans lines, so its close tag needs a whole-document check.
     opens_callout = re.search(r"<Callout\b[^>]*>", stripped) is not None
     completes_callout = (
@@ -276,6 +333,7 @@ def parse_mdx_to_slides(content: str) -> list[ParsedSlide]:
         callout_type = None
         callout_body = None
         youtube_id = None
+        video_ref = None
         duration_seconds = None
         figure_src = None
         figure_alt = None
@@ -291,6 +349,17 @@ def parse_mdx_to_slides(content: str) -> list[ParsedSlide]:
             if youtube_id:
                 layout = "video-slide"
                 body_text = body_text_check or None
+
+            # Both media forms share one layout and one duration field.
+            # A slide carrying both tags is rejected by validate_mdx, so
+            # reusing duration_seconds here cannot silently clobber a
+            # value the other extractor set.
+            vid_text = body_text or ""
+            vid_text, video_ref, video_duration = _extract_video(vid_text)
+            if video_ref:
+                layout = "video-slide"
+                duration_seconds = video_duration
+                body_text = vid_text or None
 
             fig_text = body_text or ""
             (
@@ -316,6 +385,7 @@ def parse_mdx_to_slides(content: str) -> list[ParsedSlide]:
                 callout_type=callout_type,
                 callout_body=callout_body,
                 youtube_id=youtube_id,
+                video_ref=video_ref,
                 duration_seconds=duration_seconds,
                 figure_src=figure_src,
                 figure_alt=figure_alt,

@@ -901,7 +901,7 @@ must all land together before the name moves. This phase is that landing. The
 work is to move `Video` from `NOT_YET_SUPPORTED` into `KNOWN_COMPONENTS`, not to
 introduce an unknown component.
 
-- [ ] Add `VIDEO_PATTERN` beside `YOUTUBE_PATTERN` and `FIGURE_PATTERN`
+- [x] Add `VIDEO_PATTERN` beside `YOUTUBE_PATTERN` and `FIGURE_PATTERN`
       (`mdx_parser.py:40`), matching `<Video ref="lecture-01" />` with optional
       `duration`. **[revised 2026-09-09]** The prop is `ref`, a stable key, not
       `src`, a filename — see **Media uploads**. There is no `poster` prop
@@ -911,16 +911,16 @@ introduce an unknown component.
       tag carrying props the extractor cannot read fails validation rather than
       being silently dropped — the new pattern must be written to the same
       standard.
-- [ ] Add `_extract_video()`, modelled directly on `_extract_youtube()` at
+- [x] Add `_extract_video()`, modelled directly on `_extract_youtube()` at
       `mdx_parser.py:99`, returning the remaining body plus the parsed fields.
-- [ ] Extend `ParsedSlide` (`mdx_parser.py:54`) with `video_ref`, reusing the
+- [x] Extend `ParsedSlide` (`mdx_parser.py:54`) with `video_ref`, reusing the
       existing `duration_seconds`. Set `layout = "video-slide"` when either
       `youtube_id` or `video_ref` is present. The poster and captions are not
       parser concerns — they are resolved from the link at request time.
-- [ ] Move `Video` out of `NOT_YET_SUPPORTED` and into `KNOWN_COMPONENTS`, and
+- [x] Move `Video` out of `NOT_YET_SUPPORTED` and into `KNOWN_COMPONENTS`, and
       add its prop checks to `_check_component` (`mdx_parser.py:161`) alongside
       the `YouTube` and `Figure` cases — `ref` required, `duration` optional.
-- [ ] Reject slides carrying both `<YouTube>` and `<Video>`. **[revised
+- [x] Reject slides carrying both `<YouTube>` and `<Video>`. **[revised
       2026-09-09]** The plan previously worried this would be "the first `raise`
       in a module that discards malformed content silently". That is no longer
       the situation: `validate_mdx()` (`mdx_parser.py:210`) now returns a list of

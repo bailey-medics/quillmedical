@@ -122,6 +122,53 @@ class TestParseMdxToSlides:
         assert slides[0].youtube_id == "vid1"
         assert "Watch this lecture." in (slides[0].body or "")
 
+    def test_video_creates_video_slide(self) -> None:
+        content = (
+            "## Hosted lecture\n\n"
+            '<Video ref="lecture-01" duration={600} />\n'
+        )
+        slides = parse_mdx_to_slides(content)
+        assert len(slides) == 1
+        assert slides[0].layout == "video-slide"
+        assert slides[0].video_ref == "lecture-01"
+        assert slides[0].duration_seconds == 600
+        assert slides[0].title == "Hosted lecture"
+
+    def test_video_without_duration(self) -> None:
+        content = '## Watch this\n\n<Video ref="clip-02" />\n'
+        slides = parse_mdx_to_slides(content)
+        assert slides[0].layout == "video-slide"
+        assert slides[0].video_ref == "clip-02"
+        assert slides[0].duration_seconds is None
+
+    def test_video_with_surrounding_body(self) -> None:
+        content = (
+            "## Video section\n\n"
+            "Watch this lecture.\n\n"
+            '<Video ref="vid1" duration={120} />\n'
+        )
+        slides = parse_mdx_to_slides(content)
+        assert slides[0].layout == "video-slide"
+        assert slides[0].video_ref == "vid1"
+        assert "Watch this lecture." in (slides[0].body or "")
+
+    def test_video_ref_is_a_key_not_a_filename(self) -> None:
+        """The ref is carried through untouched.
+
+        What it resolves to is decided at request time from the stored
+        link, so the parser must not assume an extension or a path.
+        """
+        content = '## Slide\n\n<Video ref="a-key_with-punctuation" />\n'
+        slides = parse_mdx_to_slides(content)
+        assert slides[0].video_ref == "a-key_with-punctuation"
+
+    def test_a_slide_without_media_keeps_its_layout(self) -> None:
+        content = "## Plain slide\n\nJust prose here.\n"
+        slides = parse_mdx_to_slides(content)
+        assert slides[0].layout != "video-slide"
+        assert slides[0].video_ref is None
+        assert slides[0].youtube_id is None
+
     def test_figure_creates_text_with_figure_slide(self) -> None:
         content = (
             "## Diagram\n\n"
