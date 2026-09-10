@@ -61,19 +61,173 @@ does not, and removing the ladder removes the suggestion.
       - Also corrected a stale line in `docs/docs/code/fastapi/system_permissions.md`, which
         named all three of `require_staff`, `require_admin` and `require_superadmin` as
         living in `app.deps`. The other two still do; this one no longer exists.
-- [ ] **Replace the `messaging.py` staff check with membership.** **Blocked on
-      `2026-09-09-membership-and-reach-plan.md`.** The premise recorded here was wrong: the
-      membership check below is not asking the same question. `get_user_org_ids` reads the
-      organisation staff table, and `register` writes students into it, so that check says
-      yes to a student. The level check is currently the only thing keeping them out of
-      staff conversations, and deleting it would let a teaching delegate self-join any
-      conversation at their organisation.
-      - It becomes safe once the organisation table carries a capacity, because the
-        membership check can then ask what kind of member rather than merely whether one.
+- [x] **Replace the `messaging.py` staff check with membership.** The two checks are one:
+      `get_member_org_ids(db, user.id, capacity="staff")` intersected with the
+      conversation's organisations. Membership, not reach — a site trainee reaching the
+      organisation's teaching content must not thereby self-join its staff conversations.
+      - **This was blocked, and the recorded premise was wrong.** The original step said the
+        membership check beside it asked the same question. It did not: `get_user_org_ids`
+        read the organisation table without regard to capacity, and `register` writes
+        delegates into it, so that check said yes to a trainee. The level check was the only
+        thing keeping them out. What unblocked it was the capacity column plus the unified
+        resolver, which together let the membership check ask *what kind* of member.
+      - **The order changed, and for the better.** The level check ran *before* the
+        conversation lookup, so a stranger naming a conversation that does not exist got 403
+        where `test_join_nonexistent` says the contract is 404. The lookup now comes first.
+      - **`SingleUserCannotSelfJoin` is no longer raised but is not yet deleted.** Its error
+        code is API surface, so it is retired in a later deploy — the contract half of
+        expand-contract. `NotInMessageOrganisation` now covers both rejections and its
+        message says "staff at", which is the actual reason.
+      - **Five fixtures in `test_messaging.py` were inserting membership without a
+        capacity**, so all five silently meant `trainee` while describing staff and admins.
+        They now say `capacity="staff"`. Worth noting the default did its job: it did not
+        break anything quietly, it made an unstated assumption visible the moment something
+        started reading the column.
 - [ ] **Give the admin gates a competency.** `manage_users` already exists in
       `competencies.yaml`, and `_require_own_org` is already the place check. Each admin
       route becomes that pair. Do it in batches by area — organisations, sites, users,
       teaching — not in one commit.
+      - **Counted before starting: 31 gates, and the premise is wrong for eleven of them.**
+        This step assumed the place check was already present and only the level check
+        needed replacing. That holds for twenty — twelve paired with `get_user_org_ids`,
+        eight with `_require_site_in_own_org` or `_require_own_org` — and not for eleven,
+        which have **no place check at all**.
+      - **So swapping the level check for a competency would open a hole rather than close
+        one.** Today `system_permissions` is the only thing standing between an admin at one
+        trust and a user at another; `manage_users` is held by admins everywhere, so on its
+        own it is strictly weaker. The place check has to be *added* to those eleven, not
+        merely kept.
+      - **Reuse `_require_own_org` and `_require_site_in_own_org`**; do not invent a third
+        spelling. Both already return 404 rather than 403, so a response does not confirm a
+        record exists to someone who may not see it, and the tests should assert 404 to
+        match.
+      - **The twenty ready routes wait for the eleven.** They could go sooner, but
+        splitting the batch by whether each route happened to be safe would leave a worse
+        record than doing it in one pass once they are level.
+
+      **The eleven, by shape.** Each needs a place check added before its competency swap,
+      and each wants a test that fails without it, as the September org-scoped fixes did.
+
+      - [x] **`update_my_competencies` — not a scoping bug.** `PATCH
+            /api/cbac/my-competencies` is gated on admin, then writes
+            `additional_competencies` on **`current_user`**, so an admin can grant
+            themselves any competency, clinical ones included. A place check would not
+            touch it: the route is self-scoped by construction, and
+            `UpdateCompetenciesRequest` carries no target user, so it *cannot* edit anyone
+            else. The docstring saying it lets "system administrators" edit "a user's"
+            competencies describes a route this is not.
+            - **Decided: admins keep this for now**, to be revisited with end-to-end tests
+              — whether it should be disabled, and how, is a question about real
+              provisioning flows rather than about this line of code.
+            - **`PATCH /api/users/{user_id}` already does the real job.** `update_user`
+              writes the same three CBAC fields for an arbitrary target, refuses admins
+              editing superadmins, and is one of the twenty already carrying a place check.
+              So the admin path on the self-route is redundant as well as escalating, which
+              makes removing it later cheaper than it looks — nothing is lost that
+              `update_user` does not already do.
+            - **Done: the docstring now describes the route that exists**, and
+              `test_admin_can_currently_grant_themselves_a_competency` pins the accepted
+              behaviour in `test_security_pentest.py`, beside the test asserting non-admins
+              are refused. The test asserts the escalation rather than pretending
+              otherwise, so closing it later is a visible change to a red test instead of a
+              silent one. The escalation itself stays until the end-to-end work says
+              otherwise.
+      - [x] **Three patient routes** — `deactivate_patient`, `activate_patient`,
+            `revoke_external_access`. Each takes a `patient_id` and never asks whether the
+            caller shares an organisation with that patient.
+            - **`check_user_patient_access` cannot be the fix, though this step said it
+              was.** Its first line returns `True` for any admin or superadmin — "always
+              True for admin pages", as its own docstring puts it. Calling it from an
+              admin-gated route is therefore a no-op: it would compile, read as a place
+              check, and permit exactly what it appears to forbid. That is worse than no
+              check at all, because the next reader stops looking.
+            - The escape hatch dates from when `admin` was taken to mean global authority.
+              It is the same assumption this plan exists to remove, met one layer down.
+            - **So these need `get_shared_org_ids` directly**, which is the part of
+              `check_user_patient_access` that actually asks about place. Its two current
+              callers in `messaging.py` are both non-admin paths, so the hatch is doing no
+              work for them either — but changing the shared helper would alter those two
+              routes as a side effect, and that is its own unit of work.
+            - **Done:** `_require_shared_org_with_patient` in `main.py`, applied to all
+              three, with `test_admin_patient_route_scoping.py` covering each.
+            - **The no-op claim was tested, not assumed.** Rewiring the helper to call
+              `check_user_patient_access` and re-running leaves exactly the same four
+              tests failing as deleting the check entirely. That is the evidence for
+              preferring a second helper over the one that already existed.
+            - **`check_user_patient_access` still carries its admin hatch**, now used only
+              by the two `messaging.py` callers. Worth removing when those are looked at,
+              since an admin reading a patient record they share no organisation with is
+              the same hole in a different room.
+      - [x] **Six fetch-by-id user routes** — `deactivate_user`, `reactivate_user`,
+            `send_invite_email`, `get_user`, `link_patient_to_user`, and `update_user`.
+            One helper applied six times: does the target share an organisation with the
+            caller? `deactivate_user` is the clearest case — it refuses self-deactivation
+            and superadmin targets, and never asks which organisation the target belongs
+            to, so an admin at Trust A can deactivate a user at Trust B by naming their id.
+            `get_user` is a near miss: it already loads the target's organisation
+            memberships, but to return them rather than to gate on them.
+            - **`update_user` was counted as already scoped and is not.** The earlier count
+              looked for `get_user_org_ids` in the body and found it, but it scopes the
+              *organisations named in the payload* — which memberships it may remove — not
+              the target. So the route fetches a user by id, refuses only a superadmin
+              target, and then writes username, email, **password** and competencies.
+              An admin at Trust A can reset the password of a user at Trust B.
+              **This is the worst of the six** and should be fixed first among them.
+            - **The lesson for the remaining counts:** presence of a scoping helper in a
+              function body does not mean the *target* is scoped. `list_users` filters its
+              result set and `create_user_with_cbac` validates payload organisations, both
+              correct; `update_user` looked the same to a grep and was not. The twenty
+              "ready" routes deserve the same read before their competency swap.
+            - **A user in no organisation is the case the check exposed.** The place check
+              asks whether admin and target share an organisation, so a user in none is
+              shared with nobody and is refused. That broke
+              `test_deactivate_user_success`, which creates a user with no membership and
+              expects an admin to deactivate them — and orphans are legitimately
+              creatable today, since `organisation_ids` may be empty on
+              `POST /users` and both `organisation_id` and `site_id` are optional on
+              `register`.
+            - **Decided: a holding organisation, and make orphans hard to create.** Rather
+              than choosing between refusing orphans and letting every admin reach them,
+              a user who is not placed lands in a default organisation of last resort, so
+              "belongs nowhere" stops being a reachable state. The membership check then
+              needs no special case, because there is no orphan to special-case.
+              Separately, the business logic should make creating a user without an
+              organisation or site difficult to impossible.
+              - **This is its own unit of work**, not part of the place-check change: it
+                needs a name and a seeding decision for the holding organisation, a
+                migration to create it, a backfill for any existing orphans, and validation
+                on both `POST /users` and `register`. Doing it inside this step would mix a
+                data-model change into a security fix.
+              - **Until it lands, the place check refuses orphans** — failing closed, which
+                is the right way round to be wrong while the holding organisation is
+                built. Five existing tests placed their users nowhere and were updated to
+                say where they are, which is what they meant all along.
+            - **Done:** `_require_shared_org_with_user` in `main.py`, applied to all six,
+              with `test_admin_user_route_scoping.py` covering each. Verified by deleting
+              the helper's six call sites and watching every hole test fail.
+            - **The check runs *after* the superadmin guard, not before.** Placed first,
+              an admin poking at a superadmin got a 404 about membership instead of the
+              clearer "Cannot modify superadmin users", because a superadmin need not
+              share an organisation with the admin looking at them. Ordering them the
+              other way keeps both refusals saying what they mean. Self is allowed
+              explicitly, so an admin in no organisation can still read their own record.
+            - **A superadmin's reach comes from the rank, not from membership.** They may
+              well belong to organisations and sites like anyone else — the rank does not
+              take that away — and they are equally free to act at any place they do not
+              belong to. So the check returns early on `system_permissions` and never
+              consults the membership tables for them. Reading it as "superadmins are in
+              no organisation" would be wrong twice over: they may be in several, and
+              being in none is not what grants them their reach.
+      - [ ] **`list_sites`** — returns every site in the deployment to any admin. Not a
+            by-id leak; no id is needed at all. Filter to the caller's organisations via
+            `organisation_site`, as `list_organisations` already filters, with superadmins
+            keeping the unfiltered view. **This will look like a regression** to anyone
+            relying on seeing the whole estate.
+      - [ ] **`create_site` — decide, do not patch.** It creates a site belonging to no
+            organisation, so the record cannot be scoped afterwards. The fix is probably to
+            require an organisation at creation and link it in the same transaction, which
+            is what `_require_site_in_own_org` already assumes when it calls a site's
+            organisation "the site's owner".
 - [ ] **Then rename the column** to `platform_role`, narrowing its values to `superadmin` and
       one value meaning "not an operator", validated in code the way `SITE_CAPACITIES` is.
       - Autogenerate proposes drop-and-create for a rename. Write it by hand, as

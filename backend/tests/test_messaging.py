@@ -46,6 +46,7 @@ def _setup_org_context(
         organisation_member.insert().values(
             organisation_id=test_org.id,
             user_id=test_user.id,
+            capacity="staff",
         )
     )
     db_session.execute(
@@ -75,6 +76,7 @@ def second_user(db_session: Session, test_org: Organisation) -> User:
         organisation_member.insert().values(
             organisation_id=test_org.id,
             user_id=user.id,
+            capacity="staff",
         )
     )
     db_session.commit()
@@ -82,9 +84,28 @@ def second_user(db_session: Session, test_org: Organisation) -> User:
     return user
 
 
+def _place_admin_in(db: Session, org: Organisation, admin: User) -> None:
+    """Put an admin in an organisation so admin routes can reach its users.
+
+    An admin may act on a user only where they share an organisation, so a
+    test that acts on someone must say where both of them are.
+    """
+    db.execute(
+        organisation_member.insert().values(
+            organisation_id=org.id, user_id=admin.id, capacity="staff"
+        )
+    )
+    db.commit()
+
+
 @pytest.fixture
-def patient_user(db_session: Session) -> User:
-    """Create a test user with patient permissions."""
+def patient_user(db_session: Session, test_org: Organisation) -> User:
+    """Create a test user with patient permissions.
+
+    Placed in ``test_org`` so admin routes can reach them. An admin may
+    act on a user only where they share an organisation, and a user in
+    none is shared with nobody.
+    """
     user = User(
         username="patientuser",
         email="patient@example.com",
@@ -94,6 +115,14 @@ def patient_user(db_session: Session) -> User:
         system_permissions="single-user",
     )
     db_session.add(user)
+    db_session.flush()
+    db_session.execute(
+        organisation_member.insert().values(
+            organisation_id=test_org.id,
+            user_id=user.id,
+            capacity="trainee",
+        )
+    )
     db_session.commit()
     db_session.refresh(user)
     return user
@@ -984,6 +1013,76 @@ class TestJoinConversation:
         resp = test_client.post("/api/conversations/1/join")
         assert resp.status_code == 401
 
+    @patch(FHIR_PATCH_TARGET, return_value=_fhir_response())
+    def test_trainee_at_the_organisation_cannot_join(
+        self,
+        _mock_fhir,
+        authenticated_client: TestClient,
+        csrf_token: str,
+        test_org: Organisation,
+        db_session: Session,
+    ):
+        """A trainee is at the organisation but is not its staff.
+
+        The case the platform-level check used to catch by accident. It
+        asked whether someone was `staff` or above on the platform, which
+        is not a question about this organisation at all; the membership
+        check beside it asked about the organisation but could not tell a
+        delegate from a consultant. Both are now one question, and this
+        pins the answer: being *at* an organisation does not admit you to
+        its staff conversations.
+
+        Delete the capacity filter in `join_conversation` and this fails.
+        """
+        create_resp = authenticated_client.post(
+            "/api/conversations",
+            json={
+                "patient_id": PATIENT_ID,
+                "initial_message": "Hello",
+            },
+            headers={"X-CSRF-Token": csrf_token},
+        )
+        conv_id = create_resp.json()["id"]
+
+        delegate = User(
+            username="delegate",
+            email="delegate@example.com",
+            password_hash=hash_password("DelegatePass123!"),
+            is_active=True,
+            email_verified=True,
+            system_permissions="staff",
+        )
+        db_session.add(delegate)
+        db_session.flush()
+        db_session.execute(
+            organisation_member.insert().values(
+                organisation_id=test_org.id,
+                user_id=delegate.id,
+                capacity="trainee",
+            )
+        )
+        db_session.commit()
+
+        authenticated_client.post(
+            "/api/auth/login",
+            json={
+                "username": "delegate",
+                "password": "DelegatePass123!",
+            },
+        )
+        authenticated_client.get("/api/auth/me")
+        token = authenticated_client.cookies.get("XSRF-TOKEN")
+
+        resp = authenticated_client.post(
+            f"/api/conversations/{conv_id}/join",
+            headers={"X-CSRF-Token": token},
+        )
+        assert resp.status_code == 403
+        assert (
+            resp.json()["detail"]["error_code"]
+            == "not_in_message_organisation"
+        )
+
 
 # ---------------------------------------------------------------------------
 # Org-scoped access
@@ -1067,6 +1166,7 @@ class TestOrgScopedAccess:
             organisation_member.insert().values(
                 organisation_id=other_org.id,
                 user_id=outsider.id,
+                capacity="staff",
             )
         )
         db_session.commit()
@@ -1216,10 +1316,19 @@ class TestRevokeExternalAccess:
         self,
         authenticated_client: TestClient,
         test_admin: User,
+        test_org: Organisation,
         db_session: Session,
     ):
-        """Admin can revoke external access."""
+        """Admin can revoke external access.
+
+        The admin is placed in the organisation holding the patient, which
+        is what this test always meant: an admin acts on *their own*
+        patients. It previously passed because nothing asked where either
+        of them was.
+        """
         from app.models import ExternalPatientAccess
+
+        _place_admin_in(db_session, test_org, test_admin)
 
         # Create an external user with access
         ext_user = User(
@@ -1291,6 +1400,7 @@ class TestRemoveStaffFromOrg:
             organisation_member.insert().values(
                 organisation_id=test_org.id,
                 user_id=test_admin.id,
+                capacity="staff",
             )
         )
         db_session.commit()
@@ -1339,6 +1449,7 @@ class TestRemovePatientFromOrg:
             organisation_member.insert().values(
                 organisation_id=test_org.id,
                 user_id=test_admin.id,
+                capacity="staff",
             )
         )
         db_session.commit()
@@ -1365,8 +1476,11 @@ class TestLinkPatient:
         authenticated_client: TestClient,
         test_admin: User,
         patient_user: User,
+        test_org: Organisation,
+        db_session: Session,
     ):
         """Admin can link a user to a FHIR patient record."""
+        _place_admin_in(db_session, test_org, test_admin)
         authenticated_client.post(
             "/api/auth/login",
             json={"username": "testadmin", "password": "AdminPassword123!"},
@@ -1387,9 +1501,12 @@ class TestLinkPatient:
         authenticated_client: TestClient,
         test_admin: User,
         patient_user: User,
+        test_org: Organisation,
         db_session: Session,
     ):
         """Cannot link two users to the same FHIR patient."""
+        _place_admin_in(db_session, test_org, test_admin)
+
         # Link patient_user first
         patient_user.fhir_patient_id = "fhir-dupe-123"
         db_session.commit()
@@ -1404,6 +1521,14 @@ class TestLinkPatient:
             system_permissions="single-user",
         )
         db_session.add(other)
+        db_session.flush()
+        db_session.execute(
+            organisation_member.insert().values(
+                organisation_id=test_org.id,
+                user_id=other.id,
+                capacity="trainee",
+            )
+        )
         db_session.commit()
 
         authenticated_client.post(

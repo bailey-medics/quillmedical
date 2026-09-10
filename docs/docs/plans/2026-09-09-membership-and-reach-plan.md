@@ -108,9 +108,26 @@ of the unused staff guard. Everything else on the lists below is still a plan.
       organisation** — scoped deliberately, because someone may be a trainee at one trust and
       staff at another, and marking both from a single site membership would remove access
       they should keep.
-- [ ] **Replace the two resolvers with one.** A single function answering *which places can
-      this person reach*, applying the rule: organisation memberships, plus the sites of
-      those organisations, plus direct site memberships. Delete teaching's upward roll-up.
+- [x] **Replace the two resolvers with one.** `get_reachable_org_ids` in
+      `app/organisations.py` answers *which places can this person reach*; teaching's
+      `_get_user_org_ids` is now a four-line wrapper adding only its own 403, and the
+      duplicated roll-up query is gone.
+      - **It is two functions, not one, and deliberately so.** `get_member_org_ids` answers
+        *is this person a member here*, `get_reachable_org_ids` answers *can they get here*.
+        Collapsing them is the mistake, not the goal: reach is why a site trainee sees the
+        trust's teaching content, and membership is why they are not thereby its staff. Both
+        take an optional `capacity=`, which is what the messaging self-join check needs.
+      - **A third copy was found**, in the delegates route, resolving the caller's
+        organisations inline. It now calls `get_member_org_ids` — membership, not reach,
+        since that route lists the people *below* the caller and a trainee reaching up via a
+        site link must not thereby list its staff.
+      - **`get_org_staff_ids` says staff and returns everyone**, and was left that way. A
+        first attempt narrowed it to `capacity="staff"` and broke admin user listing, which
+        genuinely wants everybody at the organisation — a trainee an admin cannot see is a
+        trainee they cannot administer. The name is wrong; the fix is call sites moving to
+        the explicit `get_org_member_ids(..., capacity=...)`, not a silent change under
+        them. **Worth remembering: the capacity column makes it possible to narrow a query,
+        which is not the same as it being right to.**
 - [ ] **Walk the call sites in batches.** 29 calls to the app-wide resolver — 15 in `main.py`,
       7 in the teaching router, 5 in `messaging.py`, 2 internal — and 17 in teaching's own.
       Fifty references to the organisation table in total.
