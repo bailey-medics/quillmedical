@@ -229,11 +229,30 @@ does not, and removing the ladder removes the suggestion.
             - **An unlinked site is not listed.** Sites are created from inside an
               organisation and linked in the same action, so a site belonging to nothing is
               an anomaly rather than a shared resource.
-      - [ ] **`create_site` — decide, do not patch.** It creates a site belonging to no
-            organisation, so the record cannot be scoped afterwards. The fix is probably to
-            require an organisation at creation and link it in the same transaction, which
-            is what `_require_site_in_own_org` already assumes when it calls a site's
-            organisation "the site's owner".
+      - [x] **`create_site` — decided, not patched.** `organisation_id` is now required
+            and the link is written in the same transaction, so a site is never ownerless.
+            `_require_site_in_own_org` already assumed this was impossible when it called a
+            site's organisation "the site's owner"; now it is true.
+            - **Required immediately rather than optional-then-contract.** A deliberate
+              choice: the field is a breaking change either way, and an optional field
+              would have left the ownerless path open for however long the deprecation ran.
+              `api-compatibility/` carries the decision file, `forces_reload: false`, and
+              the change needs the `api-breaking-change-review` environment approval before
+              merge.
+            - **A stale client gets 422 and creates nothing**, which is the safe direction:
+              the old behaviour on a half-failed two-call sequence was to leave an orphan.
+            - **`parent_id` was unscoped too, and is fixed here.** The route checked that a
+              parent site existed and not that it was the caller's, so an admin at one
+              trust could hang a ward inside another trust's building — a write into a
+              structure they do not own. The rule is same-organisation rather than "one of
+              the caller's", which differ when an admin belongs to several: a ward in
+              Trust A's building is Trust A's ward, whoever created it.
+            - **`update_site` carried the identical fault** and is fixed with it. One
+              shared organisation is enough there, since requiring all of them would refuse
+              a legitimate parent whenever a site is linked to two.
+            - **Nothing walks the parent chain for authorisation**, checked before deciding
+              severity — `parent_id` is only ever read or written directly. So this was a
+              structural write rather than an access path into another organisation.
             - **The frontend already does this in two calls**, not one:
               `AddSiteToOrgPage.tsx` posts `/sites`, then posts
               `/organisations/{id}/sites/{site_id}` with the returned id. So a site exists
