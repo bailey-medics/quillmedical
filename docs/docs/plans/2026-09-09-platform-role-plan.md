@@ -218,16 +218,50 @@ does not, and removing the ladder removes the suggestion.
               consults the membership tables for them. Reading it as "superadmins are in
               no organisation" would be wrong twice over: they may be in several, and
               being in none is not what grants them their reach.
-      - [ ] **`list_sites`** — returns every site in the deployment to any admin. Not a
-            by-id leak; no id is needed at all. Filter to the caller's organisations via
-            `organisation_site`, as `list_organisations` already filters, with superadmins
-            keeping the unfiltered view. **This will look like a regression** to anyone
-            relying on seeing the whole estate.
-      - [ ] **`create_site` — decide, do not patch.** It creates a site belonging to no
-            organisation, so the record cannot be scoped afterwards. The fix is probably to
-            require an organisation at creation and link it in the same transaction, which
-            is what `_require_site_in_own_org` already assumes when it calls a site's
-            organisation "the site's owner".
+      - [x] **`list_sites`** — returned every site in the deployment to any admin. Not a
+            by-id leak; no id was needed at all. Now filtered to the caller's organisations
+            via `organisation_site`, as `list_organisations` already filters, with
+            superadmins keeping the unfiltered view. **This will look like a regression**
+            to anyone relying on seeing the whole estate.
+            - **An empty organisation list must not invert the filter.** An admin who
+              belongs nowhere gets `IN ()`, the classic way a restriction becomes its
+              opposite. Tested explicitly: the answer is no sites, not all of them.
+            - **An unlinked site is not listed.** Sites are created from inside an
+              organisation and linked in the same action, so a site belonging to nothing is
+              an anomaly rather than a shared resource.
+      - [x] **`create_site` — decided, not patched.** `organisation_id` is now required
+            and the link is written in the same transaction, so a site is never ownerless.
+            `_require_site_in_own_org` already assumed this was impossible when it called a
+            site's organisation "the site's owner"; now it is true.
+            - **Required immediately rather than optional-then-contract.** A deliberate
+              choice: the field is a breaking change either way, and an optional field
+              would have left the ownerless path open for however long the deprecation ran.
+              `api-compatibility/` carries the decision file, `forces_reload: false`, and
+              the change needs the `api-breaking-change-review` environment approval before
+              merge.
+            - **A stale client gets 422 and creates nothing**, which is the safe direction:
+              the old behaviour on a half-failed two-call sequence was to leave an orphan.
+            - **`parent_id` was unscoped too, and is fixed here.** The route checked that a
+              parent site existed and not that it was the caller's, so an admin at one
+              trust could hang a ward inside another trust's building — a write into a
+              structure they do not own. The rule is same-organisation rather than "one of
+              the caller's", which differ when an admin belongs to several: a ward in
+              Trust A's building is Trust A's ward, whoever created it.
+            - **`update_site` carried the identical fault** and is fixed with it. One
+              shared organisation is enough there, since requiring all of them would refuse
+              a legitimate parent whenever a site is linked to two.
+            - **Nothing walks the parent chain for authorisation**, checked before deciding
+              severity — `parent_id` is only ever read or written directly. So this was a
+              structural write rather than an access path into another organisation.
+            - **The frontend already does this in two calls**, not one:
+              `AddSiteToOrgPage.tsx` posts `/sites`, then posts
+              `/organisations/{id}/sites/{site_id}` with the returned id. So a site exists
+              unlinked between the two requests, and is invisible to `list_sites` in that
+              window — and permanently so if the second call fails. That is the argument
+              for taking the organisation at creation rather than adding a check: the gap
+              is in the shape of the API, not in a missing guard.
+            - Changing this touches the frontend as well as the route, so it is a wider
+              unit than the scoping fixes and wants its own branch.
 - [ ] **Then rename the column** to `platform_role`, narrowing its values to `superadmin` and
       one value meaning "not an operator", validated in code the way `SITE_CAPACITIES` is.
       - Autogenerate proposes drop-and-create for a rename. Write it by hand, as

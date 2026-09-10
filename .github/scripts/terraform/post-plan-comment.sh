@@ -32,7 +32,12 @@ PLAN_FILE="infra/plan-output.txt"
 # omitting it here would see a healthy plan reported as a failed one. Anchored
 # to the start of the line, so the same words quoted inside a resource diff
 # cannot match.
-SUMMARY_PATTERN='^(Plan: [0-9]+ to add, [0-9]+ to change, [0-9]+ to destroy\.|No changes\.|Changes to Outputs:)'
+#
+# A plan containing an `import` block prefixes the line with "N to import,"
+# which the original pattern did not allow for, so a perfectly good import
+# plan was reported as "Failed plan". The prefix is optional because it only
+# appears when something is being imported.
+SUMMARY_PATTERN='^(Plan: ([0-9]+ to import, )?[0-9]+ to add, [0-9]+ to change, [0-9]+ to destroy\.|No changes\.|Changes to Outputs:)'
 
 # Stands in for the summary when Terraform printed none. Short by design: the
 # job log holds the reason, and a wall of error text in the comment trains

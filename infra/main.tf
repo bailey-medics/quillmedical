@@ -56,13 +56,29 @@ module "secrets" {
     # The video signing key is the one secret Terraform both creates and fills:
     # the load balancer validates cookies with it and the backend mints them
     # with it, so the two must be the same bytes and no human types it in.
-    # Note `teaching-sync-token`, referenced in the Cloud Run env mapping
-    # below, is *not* created here — it was made by hand and Terraform has
-    # never managed it. Worth closing separately.
     var.environment == "teaching" ? [
       "teaching-video-signing-key",
+      "teaching-sync-token",
     ] : []
   )
+}
+
+# `teaching-sync-token` predates this declaration. It was created by hand on
+# 2026-05-24 and referenced in the Cloud Run env mapping ever since, without
+# Terraform ever managing it — so a live secret had no declared owner and
+# nothing recorded that it should exist.
+#
+# A plain create would fail the apply with "already exists", so the existing
+# secret is imported. Only the container comes under management; the value
+# stays exactly where it is and is never read here, which is what
+# modules/secrets' convention asks for.
+# Gated on the environment, unlike the admin-job import below: that resource
+# exists everywhere, this secret only in teaching. An unconditional import
+# would have prod and staging try to adopt a secret that is not there.
+import {
+  for_each = var.environment == "teaching" ? toset(["teaching-sync-token"]) : toset([])
+  to       = module.secrets.google_secret_manager_secret.secrets[each.key]
+  id       = "projects/${var.project_id}/secrets/${each.key}"
 }
 
 # ---------- Alerting secrets ----------
@@ -372,9 +388,8 @@ module "load_balancer" {
   backend_service_name  = module.cloud_run_backend.service_name
   frontend_service_name = module.cloud_run_frontend.service_name
 
-  # `videos_backend_bucket_id` is deliberately not passed yet — see the comment
-  # on the path_rule block in the load-balancer module. The follow-up that adds
-  # `/videos/*` passes it.
+  # Null outside teaching, so prod and staging render an unchanged URL map.
+  videos_backend_bucket_id = var.environment == "teaching" ? module.teaching_video_pipeline[0].backend_bucket_id : null
 }
 
 # ---------- Cloud Storage: teaching images (teaching only) ----------

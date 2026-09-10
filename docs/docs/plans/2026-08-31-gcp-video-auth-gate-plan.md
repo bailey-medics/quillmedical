@@ -667,7 +667,7 @@ how `module "cloud_storage"` is gated at `infra/main.tf:367`.
       API call. This is a genuine reduction in blast radius versus the v4
       signed-URL approach, which requires `objectViewer` plus
       `serviceAccountTokenCreator`.
-- [ ] **[split in two, 2026-09-10]** Add a `/videos/*` path rule to the
+- [x] **[split in two, 2026-09-10]** Add a `/videos/*` path rule to the
       `quill-paths` path matcher in
       `infra/modules/load-balancer/main.tf`, pointing at the new backend bucket.
       Plumb it through as an optional variable so `prod` and `staging`, which
@@ -696,11 +696,13 @@ how `module "cloud_storage"` is gated at `infra/main.tf:367`.
       **this phase converts `/api/*` alone and must plan as no change**, and a
       follow-up adds `/videos/*` once that is proven. The
       `videos_backend_bucket_id` variable stays declared but is not passed, so the
-      follow-up is a small diff.
+      follow-up is a small diff. **Resolved**: the conversion alone planned as
+      no URL map change at all, confirming the second entry was the cause and
+      not the conversion. The rule was then added on its own.
 - [ ] `terraform plan` against `teaching` and confirm the diff touches nothing
       outside the new module, the URL map and the Cloud Run env block. Confirm
       `plan` for `prod` and `staging` is empty.
-- [ ] **[found during the build, fixed separately]** `teaching-sync-token` is
+- [x] **[found during the build, fixed separately]** `teaching-sync-token` is
       referenced in the Cloud Run env mapping but is created nowhere in
       Terraform — it was made by hand on 2026-05-24 and has never been managed,
       so one live secret has no declared owner. Bringing it in needs an

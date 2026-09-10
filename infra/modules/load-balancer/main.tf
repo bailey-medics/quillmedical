@@ -141,13 +141,12 @@ resource "google_compute_url_map" "https" {
           paths   = ["/api", "/api/*"]
           service = google_compute_backend_service.backend.id
         }],
-        # The `/videos/*` entry is added in a follow-up, deliberately. Adding
-        # it here at the same time as converting `/api/*` from a static block
-        # made the plan show `/api/*` -> null: Terraform compares a known
-        # static block against a dynamic one whose contents are `known after
-        # apply`, and cannot see that the result is the same. Converting on its
-        # own must plan as no change before the second entry is safe to add.
-        []
+        # Absent outside teaching, so prod and staging render the same single
+        # rule they always have.
+        var.videos_backend_bucket_id != null ? [{
+          paths   = ["/videos/*"]
+          service = var.videos_backend_bucket_id
+        }] : []
       )
       content {
         paths   = path_rule.value.paths

@@ -281,10 +281,18 @@ class FeatureToggleResponse(BaseModel):
 class CreateSiteIn(BaseModel):
     """Request to create a new site.
 
+    ``organisation_id`` is required. A site created without one belongs
+    nowhere, and nothing can scope it afterwards: it is invisible to
+    ``list_sites``, and every site place check asks which organisation a
+    site belongs to. The route links it in the same transaction, so a site
+    is never briefly ownerless.
+
     Attributes:
         name: Site name (required).
         type: Site type (hospital, building, ward, room, clinic, department, virtual).
+        organisation_id: Organisation the site belongs to (required).
         parent_id: ID of parent site if this is a child site (optional).
+            Must belong to the same organisation.
         location: Physical location (optional).
     """
 
@@ -292,6 +300,7 @@ class CreateSiteIn(BaseModel):
 
     name: str
     type: str
+    organisation_id: int
     parent_id: int | None = None
     location: str | None = None
 
