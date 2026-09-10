@@ -361,6 +361,7 @@ module "load_balancer" {
   landing_domain        = var.landing_domain
   backend_service_name  = module.cloud_run_backend.service_name
   frontend_service_name = module.cloud_run_frontend.service_name
+
 }
 
 # ---------- Cloud Storage: teaching images (teaching only) ----------
