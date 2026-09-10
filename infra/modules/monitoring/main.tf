@@ -56,8 +56,14 @@ data "google_monitoring_notification_channel" "slack" {
 # service_key is the Events API v1 integration key. Google's own
 # documentation calls for v1 specifically — the channel speaks the v1 event
 # format, so a v2 routing key is the wrong shape.
+# `count` is driven by static config, not by testing whether the key is
+# non-empty. The key is read from Secret Manager by a data source, so its value
+# is not knowable until apply — and any change to `module.secrets` makes
+# Terraform reject the whole plan with "Invalid count argument". Adding one
+# unrelated secret was enough to trigger that. The flag says whether this
+# environment *should* page; the key says how.
 resource "google_monitoring_notification_channel" "pagerduty" {
-  count = var.pagerduty_service_key != "" ? 1 : 0
+  count = var.enable_pagerduty_channel ? 1 : 0
 
   project      = var.project_id
   display_name = "Quill on-call (${var.environment})"
@@ -77,7 +83,7 @@ resource "google_monitoring_notification_channel" "pagerduty" {
 # The number must be verified by code in the Cloud console before it will
 # deliver anything: Terraform can create the channel but cannot verify it.
 resource "google_monitoring_notification_channel" "sms" {
-  count = var.alert_sms_number != "" ? 1 : 0
+  count = var.enable_sms_channel ? 1 : 0
 
   project      = var.project_id
   display_name = "Quill SMS alerts (${var.environment})"
@@ -225,7 +231,9 @@ resource "google_monitoring_alert_policy" "uptime" {
 # deferred until there are clinical users to justify the subscription. See
 # docs/docs/plans/2026-08-31-analytics-plan.md.
 resource "google_monitoring_alert_policy" "uptime_escalation" {
-  count = var.alert_sms_number != "" ? 1 : 0
+  # Same static flag as the channel it notifies: the policy exists only if the
+  # SMS channel does. See the note on the channel resource above.
+  count = var.enable_sms_channel ? 1 : 0
 
   project      = var.project_id
   display_name = "Uptime failure — sustained (${var.environment})"
@@ -583,7 +591,8 @@ resource "google_monitoring_alert_policy" "sql_disk" {
 # Only uptime feeds this. A 5xx spike or a filling disk is a problem, not a
 # system that is down, and neither warrants a call at 3am.
 resource "google_monitoring_alert_policy" "uptime_critical" {
-  count = var.pagerduty_service_key != "" ? 1 : 0
+  # Same static flag as the channel it notifies.
+  count = var.enable_pagerduty_channel ? 1 : 0
 
   project      = var.project_id
   display_name = "Major outage — call the on-call (${var.environment})"
