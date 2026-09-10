@@ -4381,11 +4381,33 @@ def list_sites(
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> SitesListOut:
-    """List all sites. Admin/superadmin only."""
+    """List the sites of the caller's organisations. Admin only.
+
+    Filtered the way ``list_organisations`` is filtered: a superadmin sees
+    the estate, an admin sees the sites of organisations they belong to.
+    It previously returned every site in the deployment to any admin —
+    not a by-id leak, since no id was needed to read it.
+
+    A site linked to no organisation is not listed. Sites are created from
+    inside an organisation and linked in the same action, so an unlinked
+    site is an anomaly rather than a shared resource, and failing closed
+    is the right way round to be wrong about one.
+    """
     if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
 
-    rows = db.execute(select(Site).order_by(Site.name)).scalars().all()
+    stmt = select(Site).order_by(Site.name)
+    if current_user.system_permissions != "superadmin":
+        own_org_ids = get_user_org_ids(db, current_user.id)
+        stmt = stmt.where(
+            Site.id.in_(
+                select(organisation_site.c.site_id).where(
+                    organisation_site.c.organisation_id.in_(own_org_ids)
+                )
+            )
+        )
+
+    rows = db.execute(stmt).scalars().all()
 
     return SitesListOut(
         sites=[
