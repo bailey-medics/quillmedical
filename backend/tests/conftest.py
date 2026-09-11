@@ -195,13 +195,20 @@ def authenticated_admin_client(
 
 @pytest.fixture
 def test_superadmin(db_session: Session) -> User:
-    """Create a test user with superadmin permissions."""
+    """Create a test user with superadmin permissions.
+
+    Carries ``superadmin_profession``, as a provisioned superadmin does. The
+    fixture previously had no profession at all and so held no
+    competencies, which would have made every competency-gated admin
+    route refuse the one role meant to reach everything.
+    """
     user = User(
         username="testsuperadmin",
         email="superadmin@example.com",
         password_hash=hash_password("SuperAdminPassword123!"),
         is_active=True,
         email_verified=True,
+        base_profession="superadmin_profession",
         system_permissions="superadmin",
     )
     db_session.add(user)

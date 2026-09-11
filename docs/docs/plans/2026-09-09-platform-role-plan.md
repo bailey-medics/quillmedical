@@ -141,6 +141,26 @@ does not, and removing the ladder removes the suggestion.
           `check-competencies-not-deleted.sh` concatenates every file before comparing —
           it treats a move between files as a move, not a deletion. Nothing to change in
           either.
+        - **Superadmins have to hold the competency, and now do.**
+          `has_competency` has no rank bypass — it reads the competency list and nothing
+          else — so swapping the gates would have refused the one role meant to reach
+          everything. Fixed at the source rather than with a rank check inside each gate,
+          which would have left a rung in the ladder this plan removes.
+          - **`superadmin_profession`** is the profession a superadmin is provisioned with. It
+            grants `manage_users` and nothing else — no clinical competency, per "A
+            superadmin is not a clinician" above.
+          - **A promoted user keeps their own profession** and gains the operator
+            competencies alongside it. Overwriting would strip a consultant of their
+            clinical competencies the moment someone made them an operator.
+          - **`base_profession` is NOT NULL defaulting to `patient`**, which is worse than
+            the empty case assumed at first: a superadmin provisioned without one is a
+            *patient*, holding `access_patient_records` and not `manage_users` — both too
+            much and too little. Invisible today because the routes check rank; the swap is
+            what would have made it bite.
+          - **Found on the way: `update_user` called `db.refresh(user)` with no flush**, so
+            any assignment made after the last query in that function was silently
+            discarded. The payload writes survived only because SQLAlchemy flushes automatically on
+            the queries between them. Now flushed explicitly.
         - **Decided: `teaching_manager` is the third holder.** A new profession, teaching
           admin plus the people — it provisions delegates at its own organisation or site.
           `teaching_admin` deliberately does *not* get `manage_users`: it curates content

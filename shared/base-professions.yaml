@@ -348,6 +348,36 @@ base_professions:
       - manage_users
 
   # ==========================================================================
+  # SUPERADMIN
+  # ==========================================================================
+
+  # The profession a superadmin is provisioned with, so that operating
+  # Quill grants its competencies through the same mechanism as every
+  # other role rather than by a rank check inside each gate.
+  #
+  # Without it the column default applies and a superadmin is created as
+  # a *patient* — holding access_patient_records and not manage_users,
+  # which is both too much and too little. A gate asking for manage_users
+  # would then refuse the one role meant to reach everything.
+  #
+  # Someone promoted to superadmin who already has a profession keeps it,
+  # and gains these competencies alongside. Overwriting would strip a
+  # consultant of their clinical competencies the moment someone made
+  # them an operator.
+  #
+  # Deliberately narrow. It carries no clinical competency: a superadmin
+  # who needs to read a patient record is granted that like anyone else.
+  # See "A superadmin is not a clinician" in
+  # docs/docs/plans/2026-09-09-platform-role-plan.md.
+  - id: superadmin_profession
+    display_name: "Superadmin"
+    description: "Operates Quill itself; no clinical access by default"
+    default_system_permission: superadmin
+    requires_clinical_services: false
+    base_competencies:
+      - manage_users
+
+  # ==========================================================================
   # TEACHING PROFESSIONS
   # ==========================================================================
 

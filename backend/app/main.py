@@ -48,7 +48,11 @@ from sqlalchemy.orm import Session
 
 from app.analytics.router import router as analytics_router
 from app.api_compatibility import REQUIRED_CLIENT_GENERATION
-from app.cbac.base_professions import PROFESSION_IDS
+from app.cbac.base_professions import (
+    PROFESSION_IDS,
+    SUPERADMIN_PROFESSION,
+    get_profession_base_competencies,
+)
 from app.cbac.competencies import validate_competency_ids
 from app.cbac.positions import (
     clinical_leads_of,
@@ -1688,6 +1692,19 @@ def update_user(
                 detail="Cannot grant superadmin permissions",
             )
         user.system_permissions = payload.system_permissions
+        # Operating Quill grants its competencies through a profession,
+        # so a superadmin holding none would be refused by every
+        # competency gate. A promoted user keeps the profession they
+        # already practise under — overwriting a consultant's would strip
+        # their clinical competencies the moment someone made them an
+        # operator — so the operator competencies are added alongside it
+        # instead.
+        if payload.system_permissions == "superadmin":
+            granted = set(user.additional_competencies or [])
+            granted.update(
+                get_profession_base_competencies(SUPERADMIN_PROFESSION)
+            )
+            user.additional_competencies = sorted(granted)
 
     # Update organisation memberships if provided
     if payload.organisation_ids is not None:
@@ -1766,6 +1783,12 @@ def update_user(
                 )
             )
 
+    # Flush before refreshing: refresh reloads the row from the database,
+    # so pending in-memory changes are discarded unless they have been
+    # written first. The payload assignments above happen to survive
+    # because the session flushes automatically on the queries between
+    # them; an assignment after the last query would not.
+    db.flush()
     db.refresh(user)
 
     return UserActionOut(
