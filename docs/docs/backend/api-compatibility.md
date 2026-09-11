@@ -66,9 +66,20 @@ of whoever is accountable, not diffusing accountability across more people
 who could each be equally lazy.
 
 - **Schema diff**: `oasdiff breaking` compares the OpenAPI spec generated
-  from `main` (`backend/scripts/dump_openapi.py`) against the spec
-  generated from the PR branch, in the `api_schema_diff` job of
-  `.github/workflows/gate-breaking.yml`.
+  from the commit the PR branched from (`backend/scripts/dump_openapi.py`)
+  against the spec generated from the PR branch, in the `api_schema_diff`
+  job of `.github/workflows/gate-breaking.yml`. That base comes from the
+  first parent of the pull request's merge ref
+  (`.github/scripts/ci/resolve-pr-base-sha.sh`), not from `main`'s current
+  tip: GitHub rebuilds the merge ref lazily, so a live `main` can sit ahead
+  of the tree actually being diffed, and every field main gained in the
+  meantime then reads as a removal by the PR. Taking both sides from one
+  point of history leaves only what the PR itself changed. The cost is that
+  a break which appears only when this PR is combined with a newer `main`
+  is not caught here — the up-to-date branch requirement re-runs this check
+  against the newer base before the PR can merge, though a PR that enters
+  the merge queue behind `main` is merged on the queue's own ref without
+  that re-run.
   Chosen over hand-written contract tests because it needs no test
   authoring per endpoint — it diffs the full spec on every PR
   automatically. `oasdiff`'s source-location tracking only maps a change
