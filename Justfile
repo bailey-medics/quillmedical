@@ -18,6 +18,48 @@ _terminal-description message=" ":
     echo -ne "\033]0;{{message}}\007"
 
 
+# Refuse to run when this worktree is not the one the container serves.
+#
+# The dev stack is owned by whichever worktree ran `just sd`: the containers
+# bind-mount that checkout, and their names are fixed in compose.dev.yml, so
+# `docker exec` from a second worktree silently acts on the first one's code.
+# Tests pass or fail against code you are not editing, and `just migrate`
+# autogenerates a revision from the wrong models.
+#
+# The owning path is read from Docker rather than hard-coded, so renaming or
+# moving the root worktree needs no change here.
+_worktree-guard container:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    # Parsed with jq rather than `docker inspect --format`: a Go template
+    # needs its braces doubled to survive just's own interpolation, which is
+    # easy to get subtly wrong and leaks stray braces into the path.
+    # `.Mounts? // empty` keeps a missing container quiet: docker inspect
+    # yields no object, and the empty result is reported below as "not
+    # running" rather than as a jq iteration error.
+    mount=$(docker inspect {{container}} 2>/dev/null \
+        | jq -r '.[0].Mounts? // empty | .[] | select(.Destination == "/app") | .Source')
+    if [ -z "${mount}" ]; then
+        echo "{{container}} is not running. Start it with: just sd" >&2
+        exit 1
+    fi
+    owner=$(dirname "${mount}")
+    here="{{justfile_directory()}}"
+    if [ "${owner}" != "${here}" ]; then
+        echo "" >&2
+        echo "✗ Refusing to run: {{container}} serves a different worktree." >&2
+        echo "" >&2
+        echo "    this worktree: ${here}" >&2
+        echo "    container serves: ${owner}" >&2
+        echo "" >&2
+        echo "  Running here would act on the other worktree's code." >&2
+        echo "  Either run this from ${owner}, or restart the stack" >&2
+        echo "  from this worktree: just sc && just sd" >&2
+        echo "" >&2
+        exit 1
+    fi
+
+
 alias aj := abbreviate-just
 # Set up the description for terminal windows
 abbreviate-just:
@@ -76,6 +118,7 @@ alias cu := create-user
 create-user:
     #!/usr/bin/env bash
     {{initialise}} "create-user"
+    just _worktree-guard quill_backend
     docker exec -it quill_backend sh -lc "cd scripts && python create_user.py"
 
 
@@ -84,6 +127,7 @@ alias csu := create-super-user
 create-super-user:
     #!/usr/bin/env bash
     {{initialise}} "create-super-user"
+    just _worktree-guard quill_backend
     docker exec -it quill_backend sh -lc "cd scripts && python create_superuser.py"
 
 
@@ -92,6 +136,7 @@ alias cur := create-user-with-role
 create-user-with-role:
     #!/usr/bin/env bash
     {{initialise}} "create-user-with-role"
+    just _worktree-guard quill_backend
     docker exec -it quill_backend sh -lc "cd scripts && python create_user_with_role.py"
 
 
@@ -131,6 +176,7 @@ alias eb := enter-backend
 enter-backend:
     #!/usr/bin/env bash
     {{initialise}} "enter-backend"
+    just _worktree-guard quill_backend
     docker exec -it quill_backend /bin/sh
 
 
@@ -139,6 +185,7 @@ alias ef := enter-frontend
 enter-frontend:
     #!/usr/bin/env bash
     {{initialise}} "enter-frontend"
+    just _worktree-guard quill_frontend
     docker exec -it quill_frontend /bin/sh
 
 
@@ -250,6 +297,7 @@ validate-teaching:
     #!/usr/bin/env bash
     {{initialise}} "validate-teaching"
     set -uo pipefail
+    just _worktree-guard quill_backend
     if [ -z "$(docker ps -q -f name=^quill_backend$)" ]; then
         echo "quill_backend is not running. Start it with: just sd"
         exit 1
@@ -284,6 +332,7 @@ alias pcert := preview-certificate
 preview-certificate bank="colonoscopy-optical-diagnosis-test":
     #!/usr/bin/env bash
     {{initialise}} "preview-certificate"
+    just _worktree-guard quill_backend
     docker exec quill_backend python -m scripts.preview_certificate --bank "{{bank}}"
     docker cp quill_backend:/tmp/certificate-preview.pdf .
     open certificate-preview.pdf
@@ -294,6 +343,11 @@ alias m := migrate
 migrate message:
     #!/usr/bin/env bash
     {{initialise}} "migrate - {{message}}"
+    # Autogenerate diffs the container's models against the database and
+    # writes the revision into the container's checkout, so running this
+    # from the wrong worktree produces a revision for code you are not
+    # editing — in the worktree you are not editing it from.
+    just _worktree-guard quill_backend
     docker exec -e AL_MSG='{{message}}' quill_backend sh -lc '
         set -e
         alembic upgrade head &&
@@ -308,6 +362,95 @@ pre-commit:
     #!/usr/bin/env bash
     {{initialise}} "pre-commit"
     pre-commit run --all-files
+
+
+alias wc := worktree-create
+# Create a sibling worktree on a new branch, and set up its Python venv
+worktree-create branch="":
+    #!/usr/bin/env bash
+    {{initialise}} "worktree-create"
+
+    if [ -z "{{branch}}" ]; then
+        echo "Usage: just wc feature/my-branch"
+        echo "Creates the branch, or resumes it if it already exists."
+        exit 1
+    fi
+
+    # Branch protection rejects anything outside this set, and finding
+    # that out after the worktree exists means unpicking it by hand.
+    case "{{branch}}" in
+        feature/*|hotfix/*|copilot/*|renovate/*) ;;
+        *)
+            echo "Branch must start with feature/, hotfix/, copilot/ or renovate/"
+            exit 1
+            ;;
+    esac
+
+    ROOT=$(git rev-parse --show-toplevel)
+    NAME=$(basename "$ROOT")
+    PARENT=$(dirname "$ROOT")
+
+    # Walk up from 2 until a free name appears, rather than counting the
+    # existing worktrees: one removed by hand would otherwise make the
+    # next number collide with a directory still on disk.
+    N=2
+    while [ -e "$PARENT/$NAME-$N" ]; do
+        N=$((N + 1))
+    done
+    DEST="$PARENT/$NAME-$N"
+
+    git -C "$ROOT" fetch origin --quiet
+
+    if git -C "$ROOT" show-ref --verify --quiet "refs/heads/{{branch}}"; then
+        echo "Branch {{branch}} already exists locally — checking it out."
+        git -C "$ROOT" worktree add "$DEST" "{{branch}}"
+    elif git -C "$ROOT" show-ref --verify --quiet "refs/remotes/origin/{{branch}}"; then
+        # Resuming work that already exists on the remote. Branching from
+        # main here would silently discard every commit on it.
+        echo "Branch {{branch}} exists on origin — resuming it."
+        git -C "$ROOT" worktree add -b "{{branch}}" "$DEST" "origin/{{branch}}"
+        git -C "$DEST" branch --set-upstream-to="origin/{{branch}}" "{{branch}}"
+    else
+        # Branch from origin/main rather than the current HEAD, so a new
+        # worktree never inherits half-finished work from wherever you
+        # happened to be standing.
+        git -C "$ROOT" worktree add -b "{{branch}}" "$DEST" origin/main
+
+        # A new branch made this way tracks main, not itself, so the first
+        # bare `git push` would aim at the protected branch. Leave it unset
+        # rather than relying on push.default to refuse.
+        git -C "$DEST" branch --unset-upstream "{{branch}}" 2>/dev/null || true
+    fi
+
+    # .env files are gitignored, so a new worktree starts without any and
+    # the stack will not come up. Copied rather than symlinked: a branch
+    # may legitimately need a different value, and a symlink would edit
+    # the original from inside the worktree without warning.
+    for f in .env backend/.env frontend/.env; do
+        if [ -f "$ROOT/$f" ]; then
+            cp "$ROOT/$f" "$DEST/$f"
+            echo "Copied $f"
+        fi
+    done
+
+    # Each worktree gets its own venv. The env var is what forces it:
+    # Poetry keys cached environments on the project name, which is
+    # "backend" in every worktree, so without this they all silently
+    # share one — and installing a dependency on one branch changes the
+    # others, which is exactly what a worktree is meant to prevent.
+    echo "Creating the backend virtual environment..."
+    # `env -u VIRTUAL_ENV` matters as much as the in-project flag. If a
+    # venv is already active in the calling shell — which it is whenever
+    # you run this from a worktree you have been working in — Poetry
+    # honours that over everything else and installs into it, so the new
+    # worktree silently shares its parent's environment.
+    (cd "$DEST/backend" \
+        && env -u VIRTUAL_ENV POETRY_VIRTUALENVS_IN_PROJECT=1 poetry install)
+
+    echo ""
+    echo "Worktree ready at $DEST on {{branch}}"
+    echo "  cd $DEST"
+    echo "  just initialise-repo   # pre-commit hooks and yarn packages"
 
 
 alias pb := prune-branches
@@ -614,6 +757,7 @@ alias ub := unit-tests-backend
 unit-tests-backend *ARGS:
     #!/usr/bin/env bash
     {{initialise}} "unit-tests-backend"
+    just _worktree-guard quill_backend
     docker exec quill_backend sh -lc "pytest -q -m 'not integration' {{ARGS}}"
 
 
@@ -622,6 +766,7 @@ alias uf := unit-tests-frontend
 unit-tests-frontend *ARGS:
     #!/usr/bin/env bash
     {{initialise}} "unit-tests-frontend"
+    just _worktree-guard quill_frontend
     docker exec quill_frontend sh -lc "yarn unit-test:run {{ARGS}}"
 
 
@@ -659,6 +804,9 @@ alias ee := e2e
 e2e:
     #!/usr/bin/env bash
     {{initialise}} "e2e"
+    # Playwright runs on the host but drives http://localhost — the shared
+    # Caddy — so it exercises whichever worktree the stack serves.
+    just _worktree-guard quill_frontend
     cd frontend && npx playwright test
 
 
@@ -667,6 +815,7 @@ alias eer := e2e-report
 e2e-report:
     #!/usr/bin/env bash
     {{initialise}} "e2e-report"
+    just _worktree-guard quill_frontend
     cd frontend && npx playwright test && npx playwright show-report
 
 alias eeu := e2e-ui
@@ -674,6 +823,7 @@ alias eeu := e2e-ui
 e2e-ui:
     #!/usr/bin/env bash
     {{initialise}} "e2e-ui"
+    just _worktree-guard quill_frontend
     cd frontend && npx playwright test --ui
 
 

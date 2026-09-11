@@ -41,6 +41,7 @@ vi.mock("@lib/compat-generation", () => ({
 
 import { api } from "@/lib/api";
 import TeachingDashboard from "./TeachingDashboard";
+import LearningDashboard from "./LearningDashboard";
 import SyncStatus from "./SyncStatus";
 
 beforeEach(() => {
@@ -131,5 +132,40 @@ describe("SyncStatus", () => {
     (api.get as Mock).mockReturnValue(new Promise(() => {}));
     renderWithRouter(<SyncStatus />);
     expect(document.querySelector(".mantine-Skeleton-root")).toBeTruthy();
+  });
+});
+
+describe("LearningDashboard", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("shows loading state initially", () => {
+    (api.get as Mock).mockReturnValue(new Promise(() => {}));
+    renderWithRouter(<LearningDashboard />);
+    expect(document.querySelector(".mantine-Skeleton-root")).toBeTruthy();
+  });
+
+  it("shows an empty state when nothing is visible", async () => {
+    // The right answer for a learner whose organisations have no live
+    // modules — not an error, and it says nothing about what exists
+    // elsewhere.
+    (api.get as Mock).mockResolvedValue([]);
+    renderWithRouter(<LearningDashboard />);
+    await waitFor(() => {
+      expect(screen.getByText("No learning modules available")).toBeTruthy();
+    });
+  });
+
+  it("shows an error rather than loading for ever", async () => {
+    // Without a catch the page sat on skeletons indefinitely with an
+    // unhandled rejection in the console, which to a learner looks
+    // exactly like a slow network.
+    (api.get as Mock).mockRejectedValue(new Error("Network down"));
+    renderWithRouter(<LearningDashboard />);
+    await waitFor(() => {
+      expect(screen.getByText("Error loading modules")).toBeTruthy();
+    });
+    expect(document.querySelector(".mantine-Skeleton-root")).toBeFalsy();
   });
 });

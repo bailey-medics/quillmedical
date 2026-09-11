@@ -1736,6 +1736,40 @@ above. Additive only, per `.claude/rules/backend.md`.
 
 ## Phase 1: core store and record model
 
+Fifteen tasks, delivered as **one pull request of five reviewed
+commits** rather than five pull requests: the record model, the store
+and the service only make sense together, and a half-built passport
+merged into `main` would be a feature nobody can use and nobody can
+delete. The commits are the review unit; the pull request is the
+feature.
+
+The order is deliberate. Each unit is useful to review on its own, and
+each depends only on the ones above it, so a change of mind at unit
+three does not invalidate unit one.
+
+- **Unit 1 — the pure core.** `paths.py`, `ids.py`, `schemas.py`,
+  `definitions.py`. No I/O, no git, no database, so it is exhaustively
+  testable and fast. This is where the record model is settled, which
+  makes it the unit worth reading most carefully: everything below
+  encodes whatever it decides.
+- **Unit 2 — the store.** The `pygit2` dependency, `PassportStore` and
+  its local backend, `commits.py`, and the refusal of non-fast-forward
+  updates. The first unit that touches a disk.
+- **Unit 3 — hashing and verification.** `content_hash` against the
+  contributing-field list, the canonical form, the verify function and
+  `VERIFY.md`. Separate from the store because a fingerprint that
+  disagrees with itself across two implementations is the one bug that
+  would quietly devalue every record.
+- **Unit 4 — the self-declared records.** `certificates.py`,
+  `logbook.py`, `reflections.py`, `cpd.py` and `index.py`. All four are
+  editable by their holder, unlike a sign-off, and the index is derived
+  from them.
+- **Unit 5 — service and database.** `service.py` with the sign-off
+  lifecycle, the `passport` and `passport_signoff_request` models, the
+  migration, `site_common_competency`, and the per-passport advisory
+  lock. Last because it is the only unit that needs Postgres, and
+  because it composes everything above.
+
 - [ ] Create `backend/app/features/passport/` with `paths.py` (typed
       relative paths, no I/O, after VPR's `crates/core/src/paths/`),
       `ids.py` (timestamp id generator with monotonic rule),
@@ -1744,19 +1778,44 @@ above. Additive only, per `.claude/rules/backend.md`.
       reflections and CPD), and
       `definitions.py` (reads the passport fields from
       `shared/competency-definitions/`).
-- [ ] Implement `store.py` with the `PassportStore` interface and the
+- [x] Implement `store.py` with the `PassportStore` interface and the
       local filesystem backend, including `init_and_commit` with
       whole-directory cleanup on failure and `write_and_commit_files`
       with rollback.
-- [ ] Implement `commits.py`: the commit message renderer with the
+      - **Found during the build: libgit2 points HEAD at
+        `refs/heads/master`** whatever the host's `init.defaultBranch`
+        says, while this store commits to `refs/heads/main`. Without
+        `set_head` on init the commits land on a branch HEAD does not
+        follow, so a passport holding every record reads as empty —
+        a fault that looks exactly like data loss and is not. Pinned by
+        a test.
+      - The cleanup on a failed *creation* only removes a directory this
+        store created. One that already existed is left alone: it may
+        hold something else, and removing it would destroy data the
+        store never owned.
+- [x] Implement `commits.py`: the commit message renderer with the
       closed action vocabulary, reserved trailer keys and single-line
-      value validation.
-- [ ] Implement `certificates.py`, `logbook.py`, `reflections.py` and
-      `cpd.py`: create, amend and remove self-declared evidence, each
-      as one validated write and one commit. All four are editable by
-      the holder, unlike a sign-off. Reflections are holder-only, not
+      value validation. Values carrying a newline are **refused rather
+      than stripped**: sanitising would change what the record says
+      about a named person, silently, and a caller passing one has a bug
+      worth surfacing. Without it a value could forge a second trailer.
+- [x] Implement create, amend and remove for self-declared evidence,
+      each as one validated write and one commit. All four are editable
+      by the holder, unlike a sign-off. Reflections are holder-only, not
       readable by organisation admins.
-- [ ] Implement `index.py`: regenerate `competencies.yaml` on every
+      - Landed as **one `records.py`** rather than four modules. The
+        four kinds differ only in where they are filed and what they
+        validate against; splitting them would have meant four copies of
+        the same write-and-rebuild path, which is exactly where two of
+        them would eventually drift apart.
+      - Added `serialise.py`, which nothing in the plan called for
+        because nothing in the repository wrote YAML before. It is
+        deliberately the opposite of the hashing module's canonical
+        form: keys keep the order the model declares, lists indent,
+        multi-line text becomes a readable block, and unset optionals
+        are dropped. One form is for people, the other for
+        fingerprinting.
+- [x] Implement `index.py`: regenerate `competencies.yaml` on every
       write from the sign-off folders, the logbook and the
       certificates, since the index carries a `logbook_entries` count
       and the certificates relating to each competency. Includes the
@@ -1764,38 +1823,128 @@ above. Additive only, per `.claude/rules/backend.md`.
       with `-2` on a same-day clash, write-time filenames for logbook
       and CPD entries with a bump to the next second — and a self-heal
       that rebuilds stale references.
-- [ ] Implement content hashing against the contributing-field list,
+      - **The index is written in the same commit as the record it
+        summarises**, which needed a read-only overlay over the store so
+        the rebuild sees the passport as it will be rather than as it
+        is. Committing the records first and the index second would
+        leave a commit in history whose summary disagrees with its own
+        records — the precise state the "directories win" rule exists to
+        prevent. Pinned by a test that counts commits.
+      - The self-heal is not a repair step but a consequence: nothing
+        writes an index entry by hand, so there is no code path that
+        could produce a disagreement and leave it. A test tampers with
+        the index directly and confirms the next ordinary write
+        overwrites it.
+- [x] Implement content hashing against the contributing-field list,
       with the canonical form defined in the schema rather than in the
       hashing function. Tests: editing a comment or a display label
       leaves the hash alone, changing the level or the assessor
       changes it, and re-serialising an unchanged record reproduces
       the same value.
-- [ ] Require confirmation of the declaration on the sign-off service
+      - `CONTRIBUTING` and `NON_CONTRIBUTING` sit together in
+        `hashing.py`, the second carrying a reason per field. A reader's
+        first question is always "what about X", and answering it
+        explicitly is cheaper than inferring it from an absence. A test
+        asserts the two lists never overlap.
+      - **JSON rather than YAML for the canonical form.** YAML has
+        several ways to write one value — quoted or bare, flow or block
+        — and a canonical form must have exactly one. JSON with sorted
+        keys and no inserted whitespace has one rendering per value,
+        which is the whole property being bought.
+      - A datetime normalises to UTC before formatting, so the same
+        instant written in two timezones fingerprints identically.
+        Attachment and registration lists sort, because the order two
+        files were uploaded in says nothing about the decision.
+- [x] Require confirmation of the declaration on the sign-off service
       call, with tests proving an unconfirmed request is refused and
-      writes nothing.
-- [ ] Implement the verify function and the `VERIFY.md` template for
+      writes nothing. Both this and the self-sign-off refusal are guard
+      clauses at the very top of `sign_off`, before a single byte is
+      written, and both are tested for the thing that would be worst if
+      they failed: not that they refuse, but that HEAD does not move and
+      the record stays `requested`.
+- [x] Implement the verify function and the `VERIFY.md` template for
       bundles, using `sha256sum` and no keys.
-- [ ] Reject non-fast-forward updates in the store, with a test
-      proving a rewrite is refused.
-- [ ] Implement `blobs.py`: content-addressed evidence store with
-      refusal to overwrite an existing hash.
-- [ ] Implement `service.py`: create passport, request sign-off, sign
+      - **A gap worth naming: `sha256sum` cannot check a
+        `content_hash`.** It hashes whole files, while a `content_hash`
+        covers selected fields — which is exactly what makes tidying a
+        comment safe. So `VERIFY.md` offers what genuinely works offline
+        with no software: every evidence blob is named by the hash of
+        its own bytes and so is checkable with `sha256sum`, and `git
+        fsck` and `git log` check the history. For a sign-off's own
+        fingerprint it points the reader at the verify endpoint rather
+        than printing a command that would not reproduce it.
+      - The template says plainly what a match does **not** prove: not a
+        professional registration, and nothing at all to a reader who
+        distrusts Quill, since the same system computed the hash and
+        stored it.
+- [x] Reject non-fast-forward updates in the store, with a test
+      proving a rewrite is refused. Two shapes are refused: a commit with
+      no parent onto a repository that has history, which would discard
+      every earlier commit, and one whose parents do not include the
+      current HEAD.
+- [x] Implement `blobs.py`: content-addressed evidence store with
+      refusal to overwrite an existing hash. Writes land on a staging
+      name and are moved into place, so a failure part-way through
+      cannot leave a truncated file under a name that asserts its own
+      hash — a reader finding a short file at a valid hash would have no
+      way to tell it was incomplete. A test proves a filename carrying
+      what looks like a patient identifier never reaches a path.
+- [x] Implement `service.py`: create passport, request sign-off, sign
       off, decline, withdraw, supersede, each as one validated write
       and one commit, with the derived per-competency status function.
-- [ ] Add the `site_common_competency` model and an admin endpoint to
-      curate it, with tests proving the shortlist never restricts what
-      can be requested.
-- [ ] Add the `passport` and `passport_signoff_request` models to
-      `backend/app/models.py` and create the migration with
-      `just migrate "add clinician passport tables"`.
-- [ ] Implement the per-passport Postgres advisory lock and HEAD
-      assertion in the service layer.
-- [ ] Unit tests with real temporary directories: every validation
+      - **`kind` is derived, not asked for.** A caller choosing it could
+        imply an earlier assessor was mistaken, or hide a progression,
+        so it is computed from the level's position on the scale
+        relative to the last signed record. The one kind never derived
+        is `correction`: saying an earlier record was wrong is a
+        deliberate claim, made through `supersede_sign_off`.
+      - `status_for` reports what the latest record says and draws no
+        conclusion. An expired sign-off still reports `signed_off`,
+        because what a lapsed sign-off implies has not been decided.
+- [x] Add the `site_common_competency` model, with a constraint that
+      exactly one of site and organisation is set. The **admin endpoint
+      waits for Phase 3**, where the rest of the API lands; the model is
+      here because the migration is. A test asserts the table carries no
+      column that could be mistaken for permission — no `required`, no
+      `mandatory`, no `enabled` — which is the structural half of
+      "it suggests and never gates".
+- [x] Add the `passport` and `passport_signoff_request` models and
+      create the migration.
+      - **In `features/passport/models.py`, not `app/models.py`**,
+        following `features/teaching/models.py`: feature tables live in
+        the feature package and import only `Base`. Registered for
+        autogenerate in `alembic/env.py` beside teaching's.
+      - **`just migrate` could not be used**, and this is worth knowing
+        for anyone working in a second worktree: the recipe runs
+        `alembic` inside the `quill_backend` container, which is
+        bind-mounted to whichever worktree started the dev stack. From
+        another worktree it autogenerates against code that does not
+        include the change. The migration was instead generated by
+        running the same three `alembic` commands against a throwaway
+        Postgres mounted on this worktree, then checked with
+        `check_migrations.py --all` and `alembic check`.
+      - Purely additive: three new tables, a real `downgrade()`, no
+        destructive operation and so no approval gate.
+- [x] Implement the per-passport Postgres advisory lock in
+      `locking.py`; the HEAD assertion was already in the store from
+      unit 2. An advisory lock rather than a row lock because there is
+      no row to lock — the thing being protected is a directory. Keyed
+      on a hash of the passport id, so two holders writing at once never
+      block each other, and namespaced so a passport lock cannot collide
+      with an advisory lock taken elsewhere. Postgres releases it when
+      the connection goes, so a crashed worker leaves nothing stuck.
+      The lock itself needs Postgres and the unit suite runs on SQLite,
+      so the key derivation is tested and the lock is exercised where a
+      real database is available.
+- [x] Unit tests with real temporary directories: every validation
       rule exhaustively where it lives, wiring tests proving no file or
       commit is written when validation fails, fault injection for the
       cleanup-failure path, monotonic id behaviour under a backwards
-      clock, and concurrent-writer conflict returning 409. Run with
+      clock, and concurrent-writer conflict. Run with
       `just ub -k passport`.
+      - The concurrency test asserts `ConcurrentWriteError` from the
+        store rather than a 409, since there is no router until Phase 3.
+        Mapping the one to the other belongs with the routes.
 
 ## Phase 2: storage on Cloud Storage
 

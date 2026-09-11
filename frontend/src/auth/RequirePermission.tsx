@@ -5,7 +5,11 @@
  * Provides tiered security approach:
  * - Patients accessing admin routes: 404 (hide feature existence)
  * - Staff accessing admin-only routes: Redirect to home (inform but redirect)
- * - Admin/superadmin: Allow access
+ * - Admin: Allow access to staff and admin routes
+ *
+ * `level="superadmin"` is not part of that hierarchy: it asks the
+ * separate `platform_role` field, because operating Quill itself is
+ * true everywhere or nowhere rather than at a place.
  *
  * Works in conjunction with RequireAuth - assumes user is already authenticated.
  */
@@ -87,6 +91,19 @@ export default function RequirePermission({
   }
 
   const userPermission = state.user.system_permissions as SystemPermission;
+
+  // "Operates Quill itself" now lives in its own column, so the
+  // superadmin guard asks `platform_role` rather than the top rung of
+  // the hierarchy. The other levels describe a person at a *place* and
+  // still read `system_permissions` until they become competency
+  // checks — see docs/docs/plans/2026-09-09-platform-role-plan.md.
+  if (level === "superadmin") {
+    if (state.user.platform_role === "superadmin") {
+      return children;
+    }
+    return unauthorised(userPermission, fallback);
+  }
+
   const userLevel = PERMISSION_HIERARCHY[userPermission];
   const requiredLevel = PERMISSION_HIERARCHY[level];
 
@@ -95,7 +112,18 @@ export default function RequirePermission({
     return children;
   }
 
-  // Unauthorized access handling with tiered approach
+  return unauthorised(userPermission, fallback);
+}
+
+/**
+ * Unauthorised access handling with the tiered approach: single-user
+ * accounts always get a 404 so admin features stay hidden, everyone
+ * else gets the caller's chosen fallback.
+ */
+function unauthorised(
+  userPermission: SystemPermission,
+  fallback: "redirect" | "404",
+) {
   // Single-user accounts always get 404 to hide admin features
   if (userPermission === "single-user") {
     return <NotFoundLayout />;

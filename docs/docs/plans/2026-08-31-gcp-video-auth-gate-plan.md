@@ -685,7 +685,7 @@ how `module "cloud_storage"` is gated at `infra/main.tf:367`.
 - [x] **[added during the build]** Wait 60s after creating the backend bucket
       before the URL map references it, per Phase 0's `resourceNotReady`.
       Re-adds the `time` provider that the Phase 0 revert removed.
-- [ ] **[found during the build]** Converting `/api/*` from a static
+- [x] **[found during the build]** Converting `/api/*` from a static
       `path_rule` to a `dynamic` block is itself a change Terraform cannot see
       through, separately from the Phase 0 lesson about the two forms
       coexisting. With the `/videos/*` entry added in the same change, the plan
@@ -699,9 +699,14 @@ how `module "cloud_storage"` is gated at `infra/main.tf:367`.
       follow-up is a small diff. **Resolved**: the conversion alone planned as
       no URL map change at all, confirming the second entry was the cause and
       not the conversion. The rule was then added on its own.
-- [ ] `terraform plan` against `teaching` and confirm the diff touches nothing
+- [x] `terraform plan` against `teaching` and confirm the diff touches nothing
       outside the new module, the URL map and the Cloud Run env block. Confirm
-      `plan` for `prod` and `staging` is empty.
+      `plan` for `prod` and `staging` is empty. **[done 2026-09-10]** Read on
+      PR #589 (10 to add, 1 to change) and PR #594 (the URL map gaining
+      `/videos/*` and nothing else). The conversion above was proven by
+      splitting it out: on its own it planned as no URL map change at all,
+      which is what confirmed the second entry rather than the conversion was
+      the cause.
 - [x] **[found during the build, fixed separately]** `teaching-sync-token` is
       referenced in the Cloud Run env mapping but is created nowhere in
       Terraform — it was made by hand on 2026-05-24 and has never been managed,
@@ -769,7 +774,7 @@ tested on its own.
       asset URLs and schedule its refresh.
 - [x] Log the grant at INFO — `user_id`, `org_id`, `module_id`, expiry — and
       nothing else. No filenames, no PHI, and never the cookie value or key.
-- [ ] **[added 2026-09-09] No cookie consent banner, but the cookie policy needs
+- [x] **[added 2026-09-09] No cookie consent banner, but the cookie policy needs
       finishing.** Under UK PECR, consent is not required for a cookie strictly
       necessary to deliver a service the user explicitly requested. A cookie that
       exists solely to release a lecture to a learner who clicked play is squarely
@@ -785,6 +790,14 @@ tested on its own.
       deferrable. Note the current analytics is log-derived from load balancer
       `httpRequest` records and sets nothing on a device, which is why no banner
       has been needed so far; a client-side analytics tag would change that.
+      **[done 2026-09-11]** The placeholder is replaced with all four cookies,
+      grouped by purpose rather than listed as an inventory, with lifetimes
+      read from the code rather than assumed. Kept as its own page rather than
+      folded into the privacy policy a lawyer is drafting: the cookie list
+      changes whenever a cookie ships, and a lawyer-owned document should not
+      need editing for that. The page is worth showing them anyway, so the two
+      documents can link and they can confirm the strictly-necessary
+      characterisation.
 - [x] Rate-limit the endpoint so it cannot be driven as a cookie-minting oracle.
       **[revised 2026-09-09]** The existing pattern is SlowAPI: `from
       app.rate_limit import limiter`, then `@limiter.limit("10/minute")` on the
@@ -877,16 +890,16 @@ correction, not a regression.
       `has_learning_content`, module cover images or learning images by
       `module_id` has the same exposure and the same fix. `router.py:268` and
       `router.py:382` are the starting points.
-- [ ] Have Phase 2's `video-access` endpoint call this same helper, so the video
+- [x] Have Phase 2's `video-access` endpoint call this same helper, so the video
       gate and the content gate cannot drift apart. This is the reason the helper
       is written here rather than inline.
-- [ ] Tests: a user whose organisation has the module live gets slides; a user in
+- [x] Tests: a user whose organisation has the module live gets slides; a user in
       a different organisation gets 404; a user whose organisation has the module
       but not live gets 404; a user reaching the organisation only through a site
       gets slides, which is the case `_get_user_org_ids` exists to serve; a user
       in two organisations where only one has it live gets slides. That last one
       is why the plural helper is mandatory.
-- [ ] Check the frontend handles a 404 from these endpoints as "not available to
+- [x] Check the frontend handles a 404 from these endpoints as "not available to
       you" rather than a crash or an empty page, and that the learning module
       list copes with an empty array.
 
@@ -1002,7 +1015,7 @@ introduce an unknown component.
       message ("This video is not available — your access may have expired. Try
       reloading the page.") rather than an empty box. Use the centralised page
       messages pattern.
-- [ ] **[found 2026-09-10, pre-existing]** Give `LearningDashboard` an error
+- [x] **[found 2026-09-10, pre-existing]** Give `LearningDashboard` an error
       state. It calls `getModules()` with `.then().finally()` and no `.catch()`
       (`LearningDashboard.tsx:58`), and `api.get` throws — so any rejection
       leaves the page on skeletons forever with an unhandled rejection in the
@@ -1069,7 +1082,7 @@ content calls for it.
 
 ### The endpoints
 
-- [ ] `POST /api/admin/teaching/modules/{module_id}/media/upload-url` —
+- [x] `POST /api/admin/teaching/modules/{module_id}/media/upload-url` —
       admin/superadmin. Returns a GCS resumable upload URL for
       `source-bucket/{org_id}/{module_id}/{asset_id}`, the asset id generated
       server-side. The uploaded filename never reaches the object path, so it
@@ -1077,30 +1090,51 @@ content calls for it.
       content-type allow-list, and record the original name as data. This is the
       one place the backend needs real GCS write credentials, and it writes only
       to the source bucket.
-- [ ] `GET /api/admin/teaching/modules/{module_id}/media` — the card's data.
+- [x] `GET /api/admin/teaching/modules/{module_id}/media` — the card's data.
       Returns every MDX reference with its link if any, plus unattached assets.
       Built on the shared "which media, and which present" function from
       **Media uploads**, not a second query.
-- [ ] `POST .../media/{key}/link` and `DELETE .../media/{key}/link` — attach an
+      **[done 2026-09-11]** Which keys the MDX carries is now
+      `get_referenced_media_keys` in `media.py`, beside the inventory it
+      feeds. Content loads from GCS in the teaching environment and from
+      disk in development, and both branches live in that one helper —
+      the learner gate and the merge gate need the same answer, and a
+      second copy of the branch would be the one that drifts. Keys are
+      de-duplicated and kept in content order, so a key used on two
+      slides is still one upload and the card's rows follow the content.
+- [x] `POST .../media/{key}/link` and `DELETE .../media/{key}/link` — attach an
       uploaded asset to a reference, and detach it. Detaching keeps the asset.
+      **[done 2026-09-11]** The file details travel in the link request
+      rather than being read from the bucket, because the backend never
+      sees the bytes: the upload goes straight to GCS on a resumable
+      URL, and this call is what records what landed. That body is
+      caller-controlled, so the content type is re-checked against the
+      same allow-list the upload URL was minted against.
+      Re-linking a key that already has an asset **replaces** the link
+      rather than refusing it — one video per reference is what the
+      unique constraint enforces, and re-pointing a slide is a dropdown
+      in the card, not a reason to make the admin detach first. The
+      displaced asset stays in the bucket and reappears as unattached.
+      Detaching another organisation's link is a 404, not a 403, so a
+      caller cannot learn whether they have one.
 - [ ] `DELETE .../media/{asset_id}` — remove an uploaded asset and its link.
       This is the destructive one: confirm in the UI, log it with actor and
       module, and refuse when the caller's organisation does not own the asset.
 
 ### Availability gate
 
-- [ ] **A module with any unlinked media reference is not served to learners**,
+- [x] **A module with any unlinked media reference is not served to learners**,
       continuously — not only at the moment it goes live. The earlier version
       blocked the `draft` → `live` transition, which misses the case where a
       module goes live complete and a video is deleted afterwards.
-- [ ] Compute it beside `has_learning_content`, which is already resolved per
+- [x] Compute it beside `has_learning_content`, which is already resolved per
       module at `router.py:310` and `router.py:382`.
-- [ ] **Hide** incomplete modules from the learner's module list rather than
+- [x] **Hide** incomplete modules from the learner's module list rather than
       showing them disabled. A learner who can see a module they cannot open
       raises a support question the admin cannot answer from the learner's side.
-- [ ] Direct access to `/modules/{id}/learning` for an incomplete module returns
+- [x] Direct access to `/modules/{id}/learning` for an incomplete module returns
       404, matching every other refusal in Phase 2a so the shape stays uniform.
-- [ ] The gate is **per organisation**, because the links are. The same module
+- [x] The gate is **per organisation**, because the links are. The same module
       can be complete for one organisation and not another, and therefore visible
       to one organisation's learners and hidden from another's.
 - [ ] Surface incompleteness where an admin will actually see it — the admin
@@ -1231,6 +1265,30 @@ WEBVTT
 00:00:04.000 --> 00:00:08.500
 Test caption, first cue.
 ```
+
+### Caddy's aborted-range warnings, deferred
+
+**[added 2026-09-11, deliberately not done]** Playing video in development
+fills the Caddy log with `aborting with incomplete response` warnings, each a
+full structured JSON dump of the request. They are not errors: a video element
+asks for a large byte range, buffers what it needs and closes the connection,
+so `broken pipe` is the ordinary sound of streaming working.
+
+Options, if the noise becomes worth acting on:
+
+- **`log { level ERROR }` in `caddy/dev/Caddyfile`** — drops warnings while
+  keeping real errors. The narrowest fix.
+- **Add `format console`** — a compact one-line format for everything Caddy
+  logs, not just this.
+- **Leave it.** Phase 6's transcoding produces 720p renditions, so the files
+  shrink and the browser aborts less; the noise may solve itself.
+
+Two things to weigh first. The level change hides **all** warnings, upstream
+timeouts and TLS problems included, so it trades noise now for possible silence
+later. And in production an aborted response is a legitimate signal rather than
+buffering, so any change belongs in the dev Caddyfile alone — neither
+Caddyfile configures logging at all today, so both currently run at Caddy's
+defaults.
 
 ### What local development does not prove
 

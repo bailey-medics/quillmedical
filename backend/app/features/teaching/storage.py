@@ -655,3 +655,82 @@ def download_module_from_gcs(
             local_path.write_bytes(b"")
 
     return module_dir
+
+
+#: What the admin upload accepts. Deliberately narrow: this is the one
+#: place the backend holds real GCS write credentials, so the allow-list
+#: is the boundary rather than a convenience.
+ALLOWED_MEDIA_TYPES: dict[str, str] = {
+    ".mp4": "video/mp4",
+    ".webm": "video/webm",
+    ".mov": "video/quicktime",
+}
+
+
+def media_object_path(org_id: int, module_id: str, asset_id: str) -> str:
+    """Where an uploaded asset lives in the source bucket.
+
+    Keyed by generated id, never the uploaded filename: collisions
+    become impossible, upload naming becomes irrelevant, and a filename
+    carrying a patient identifier never reaches a URL.
+    """
+    if org_id <= 0:
+        msg = f"Invalid org_id: {org_id!r}"
+        raise ValueError(msg)
+    if not module_id or not _SAFE_BANK_ID.match(module_id):
+        msg = f"Invalid module_id: {module_id!r}"
+        raise ValueError(msg)
+    if not asset_id or not _SAFE_BANK_ID.match(asset_id):
+        msg = f"Invalid asset_id: {asset_id!r}"
+        raise ValueError(msg)
+    return f"{org_id}/{module_id}/{asset_id}"
+
+
+def create_resumable_upload_url(
+    bucket_name: str,
+    org_id: int,
+    module_id: str,
+    asset_id: str,
+    content_type: str,
+) -> str:
+    """Mint a resumable upload URL for one asset in the source bucket.
+
+    Resumable because a lecture is large enough that a dropped
+    connection mid-upload is a real event, and starting again from zero
+    is what pushed media out of the content repository in the first
+    place.
+
+    Writes only to the source bucket. The processed bucket needs no
+    credential here at all: releasing a video is an HMAC over a shared
+    secret, not a GCS call.
+    """
+    import datetime as dt
+
+    from google.auth import default
+    from google.auth.transport import (
+        requests as auth_requests,
+    )
+    from google.cloud import storage
+
+    path = media_object_path(org_id, module_id, asset_id)
+
+    credentials, _project = default()
+    client = storage.Client(credentials=credentials)
+    bucket = client.bucket(bucket_name)
+    blob = bucket.blob(path)
+
+    auth_req = auth_requests.Request()
+    credentials.refresh(auth_req)  # type: ignore[no-untyped-call]
+    sa_email: str = credentials.service_account_email  # type: ignore[attr-defined]
+
+    return str(
+        blob.generate_signed_url(
+            version="v4",
+            expiration=dt.timedelta(hours=6),
+            method="POST",
+            content_type=content_type,
+            headers={"x-goog-resumable": "start"},
+            service_account_email=sa_email,
+            access_token=credentials.token,
+        )
+    )

@@ -285,10 +285,14 @@ class TestOrganisationEndpoints:
     def test_get_organisations_forbidden(
         self, authenticated_client: TestClient
     ):
-        """Test getting organisations without admin permissions."""
+        """Refused without the ``manage_users`` competency.
+
+        The refusal now names the competency rather than a rank, which is
+        the point of the change: what someone may do, not what they are.
+        """
         response = authenticated_client.get("/api/organisations")
         assert response.status_code == 403
-        assert "admin" in response.json()["detail"].lower()
+        assert "manage_users" in response.json()["detail"]
 
     def test_get_organisations_empty(
         self, authenticated_admin_client: TestClient, db_session

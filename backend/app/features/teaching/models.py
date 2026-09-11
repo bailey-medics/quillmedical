@@ -16,6 +16,7 @@ from typing import Any
 
 from sqlalchemy import (
     JSON,
+    BigInteger,
     Boolean,
     DateTime,
     ForeignKey,
@@ -376,4 +377,81 @@ class QuestionBankSync(Base):
         Integer,
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
+    )
+
+
+# ------------------------------------------------------------------
+# ModuleMediaLink
+# ------------------------------------------------------------------
+
+
+class ModuleMediaLink(Base):
+    """Links an MDX media reference to an uploaded file.
+
+    ``<Video ref="lecture-01" />`` names *which* video belongs on a
+    slide. It is a stable key, not a path and not the uploaded file's
+    name — and this table is what turns one into the other.
+
+    Keeping the two apart is what makes the rest work. A file can be
+    uploaded before the MDX exists, or the MDX merged before the file
+    arrives. Renaming the uploaded file, or changing the key in the
+    repository, does not orphan a working video, because the link is
+    stored rather than inferred from a string match. And aiming a slide
+    at a different video already in the module is a dropdown, not
+    another 900 MB over the wire.
+
+    A filename match would have made the admin's job "produce a file
+    with exactly this name", so a typo in the MDX could only be fixed by
+    a pull request even with the correct file sitting in the bucket.
+
+    **Per organisation**, which follows from media belonging to the
+    module. Two organisations running near-identical modules each upload
+    their own copy: storage is cheap, a shared authorisation boundary is
+    not. It also keeps the cookie prefix ``{org_id}/{module_id}/``
+    literally true, so the "one grant covers one module" property the
+    video design rests on survives. The consequence is that "is this
+    module complete" has no global answer, only a per-organisation one —
+    the same shape ``QuestionBankOrgStatus`` established for liveness.
+    """
+
+    __tablename__ = "module_media_link"
+    __table_args__ = (
+        UniqueConstraint(
+            "organisation_id",
+            "question_bank_id",
+            "media_key",
+            name="uq_module_media_link_org_bank_key",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    organisation_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("organisations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    question_bank_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    #: The ``ref`` from the MDX tag. Unique per organisation and module:
+    #: one video per reference.
+    media_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    #: Generated server-side, and what the object is actually keyed by in
+    #: the bucket. Never the uploaded filename: that makes collisions
+    #: impossible, makes upload naming irrelevant, and stops a filename
+    #: carrying a patient identifier from ever reaching a URL.
+    asset_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    #: Kept so the uploader recognises their own file in the admin UI,
+    #: and shown there rather than used to address anything.
+    original_filename: Mapped[str] = mapped_column(String(500), nullable=False)
+    content_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    #: Who uploaded it, and when. SET NULL rather than a cascade, so the
+    #: fact an upload happened survives the person leaving.
+    uploaded_by: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    uploaded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
     )

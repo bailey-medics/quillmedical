@@ -338,3 +338,93 @@ class TestOrganisationModel:
             .where(organisation_patient_member.c.organisation_id == org.id)
         )
         assert patient_count == 2
+
+
+class TestModuleMediaLink:
+    """The link between an MDX media reference and an uploaded file.
+
+    The reference is a stable key, not a filename, so the mapping has to
+    be stored rather than derived — media arrives through the admin
+    upload UI, not the content repository.
+    """
+
+    def _org(self, db: Session, name: str):
+        from app.models import Organisation
+
+        org = Organisation(name=name)
+        db.add(org)
+        db.flush()
+        return org
+
+    def _link(self, db: Session, org_id: int, key: str, asset: str):
+        from datetime import UTC, datetime
+
+        from app.features.teaching.models import ModuleMediaLink
+
+        link = ModuleMediaLink(
+            organisation_id=org_id,
+            question_bank_id="test-bank",
+            media_key=key,
+            asset_id=asset,
+            original_filename="EoEETA_Colonoscopy_FINAL_v3.mp4",
+            content_type="video/mp4",
+            size_bytes=943718400,
+            uploaded_at=datetime.now(UTC),
+        )
+        db.add(link)
+        return link
+
+    def test_a_link_records_the_uploaded_file(self, db_session: Session):
+        org = self._org(db_session, "Trust A")
+        link = self._link(db_session, org.id, "lecture-01", "abc123")
+        db_session.commit()
+
+        assert link.id is not None
+        # The original name is kept so the uploader recognises their own
+        # file, but the asset id is what addresses the object.
+        assert link.original_filename.endswith(".mp4")
+        assert link.asset_id == "abc123"
+
+    def test_one_video_per_reference(self, db_session: Session):
+        """Two files cannot claim the same key in one module."""
+        org = self._org(db_session, "Trust B")
+        self._link(db_session, org.id, "lecture-01", "abc123")
+        db_session.commit()
+
+        self._link(db_session, org.id, "lecture-01", "def456")
+        with pytest.raises(IntegrityError):
+            db_session.commit()
+        db_session.rollback()
+
+    def test_two_organisations_hold_their_own_copy(self, db_session: Session):
+        """The same key in two organisations is two separate uploads.
+
+        This is the property the per-organisation model exists for: the
+        same MDX resolves to A's upload for A's learners and B's for
+        B's, which is what keeps the video cookie's prefix honest.
+        """
+        a = self._org(db_session, "Trust C")
+        b = self._org(db_session, "Trust D")
+        self._link(db_session, a.id, "lecture-01", "asset-a")
+        self._link(db_session, b.id, "lecture-01", "asset-b")
+        db_session.commit()
+
+        from app.features.teaching.models import ModuleMediaLink
+
+        rows = (
+            db_session.query(ModuleMediaLink)
+            .filter(ModuleMediaLink.media_key == "lecture-01")
+            .all()
+        )
+        assert {r.asset_id for r in rows} == {"asset-a", "asset-b"}
+
+    def test_a_size_beyond_a_32_bit_integer_is_stored(
+        self, db_session: Session
+    ):
+        """Lectures are large; size_bytes is a BigInteger for that reason."""
+        org = self._org(db_session, "Trust E")
+        link = self._link(db_session, org.id, "lecture-01", "big")
+        link.size_bytes = 5_000_000_000
+        db_session.commit()
+
+        assert link.size_bytes == 5_000_000_000

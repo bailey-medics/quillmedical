@@ -104,7 +104,7 @@ import { VariantRow, VariantStack } from "@/stories/variants";
   <VariantRow label="lg (default)">
     <MyComponent size="lg" />
   </VariantRow>
-</VariantStack>
+</VariantStack>;
 ```
 
 - `VariantStack` wraps rows with consistent vertical spacing
@@ -130,21 +130,21 @@ All icons come from `@tabler/icons-react` and MUST be wrapped in the `<Icon>` co
 
 Two orthogonal layers control access:
 
-| Layer | Controls | Mechanism |
-|-------|----------|-----------|
-| **System permissions** | Platform management (users, orgs, dashboards) | 4-level hierarchy |
-| **CBAC** | All data access — clinical actions and feature admin | Competency set per user |
+| Layer                  | Controls                                             | Mechanism               |
+| ---------------------- | ---------------------------------------------------- | ----------------------- |
+| **System permissions** | Platform management (users, orgs, dashboards)        | 4-level hierarchy       |
+| **CBAC**               | All data access — clinical actions and feature admin | Competency set per user |
 
 #### System permissions
 
 4-level hierarchy for platform management authority: `single-user < staff < admin < superadmin`
 
-| Level | Meaning |
-|-------|---------|
+| Level         | Meaning                                                |
+| ------------- | ------------------------------------------------------ |
 | `single-user` | Can manage own profile/settings. No system management. |
-| `staff` | Staff dashboards, team visibility |
-| `admin` | User/org management (scoped to own orgs) |
-| `superadmin` | Global platform management |
+| `staff`       | Staff dashboards, team visibility                      |
+| `admin`       | User/org management (scoped to own orgs)               |
+| `superadmin`  | Global platform management                             |
 
 System permissions have **nothing to do with clinical data access** — that is solely CBAC's responsibility. A patient, teaching delegate, and external HCP, are all `single-user`; their clinical access differs only via CBAC competencies and base profession.
 
@@ -158,10 +158,10 @@ System permissions have **nothing to do with clinical data access** — that is 
 
 Controls **all data access and actions** — clinical and feature admin. Competencies are categorised by purpose:
 
-| Category | Examples | Risk |
-|----------|----------|------|
-| **Clinical** | `prescribe_controlled_schedule_2`, `request_ct_scan`, `access_patient_records` | medium–high |
-| **Feature admin** | `manage_teaching_content`, `view_teaching_analytics`, `approve_clinical_letters` | low–medium |
+| Category          | Examples                                                                         | Risk        |
+| ----------------- | -------------------------------------------------------------------------------- | ----------- |
+| **Clinical**      | `prescribe_controlled_schedule_2`, `request_ct_scan`, `access_patient_records`   | medium–high |
+| **Feature admin** | `manage_teaching_content`, `view_teaching_analytics`, `approve_clinical_letters` | low–medium  |
 
 Resolution formula per user: `(base_profession_competencies + additional) − removed`
 
@@ -173,13 +173,13 @@ Resolution formula per user: `(base_profession_competencies + additional) − re
 
 #### Role composition examples
 
-| Scenario | System permission | CBAC profile |
-|----------|------------------|--------------|
-| Teaching delegate | `single-user` | `view_teaching_cases` only |
-| Teaching coordinator | `staff` | `manage_teaching_content` + `view_teaching_analytics` |
-| Junior doctor | `staff` | Standard clinical set |
-| IT admin | `admin` | No clinical CBACs at least |
-| Clinical lead | `admin` | Full clinical set |
+| Scenario             | System permission | CBAC profile                                          |
+| -------------------- | ----------------- | ----------------------------------------------------- |
+| Teaching delegate    | `single-user`     | `view_teaching_cases` only                            |
+| Teaching coordinator | `staff`           | `manage_teaching_content` + `view_teaching_analytics` |
+| Junior doctor        | `staff`           | Standard clinical set                                 |
+| IT admin             | `admin`           | No clinical CBACs at least                            |
+| Clinical lead        | `admin`           | Full clinical set                                     |
 
 #### Organisations
 
@@ -333,25 +333,42 @@ Resolution formula per user: `(base_profession_competencies + additional) − re
 
 ## Claude-specific
 
-### End-of-run summaries
+### End every response with a tldr
 
-Every final message at the end of a run (the closing recap after the work is
-done) must be written so it can be read in seconds. The reader will ask for
-clarification or more detail when they want it, so leave that out.
+**Close each response with a short bulleted summary.** User does not have time
+to read long prose. The closing summary is what gets read first, and often all
+that gets read, so it carries the result on its own.
 
-- **Explain in simple terms.** Use plain language at around a 16-year-old's
-  reading age. No jargon, no long chains of concerns or caveats.
-- **A few short bullet points only.** Summarise the whole run in a handful of
-  bullets, not paragraphs.
-- **Start each bullet with a bold short statement** that captures the main
-  idea, so the reader can skim the bold text alone and decide whether to read
-  further.
-- **Follow the bold statement with one or two plain sentences** of supporting
-  detail. Nothing more.
-- **Presume the reader will ask** for anything you left out. Do not
-  pre-empt questions with extra detail.
+This is a rule about **how a response ends**, not about every line inside it.
 
-Example:
+The closing summary:
+
+- **Bullets, never paragraphs.** A handful of them. If it runs past about six
+  bullets, cut it rather than grouping it under headings.
+- **Start each bullet with a bold short statement** carrying the main idea, so
+  the bold text alone can be skimmed and the rest skipped.
+- **Then one or two plain sentences.** Not three. Not a sentence with two
+  subordinate clauses standing in for three.
+- **Plain language**, around a 16-year-old's reading age. No jargon, no chains
+  of caveats, no throat-clearing before the point.
+- **Presume a follow-up question.** Leave detail out and let it be asked for.
+  Pre-empting every question is what produces the wall of text.
+
+Everything before the summary is ordinary writing. A sentence saying what is
+about to happen, a short paragraph answering a question, a code block, a table
+where a table genuinely helps — all fine, and preferable to forcing them into
+bullets. Keep it brief, but do not make it a list because a list is the format.
+
+Things that look like exceptions and are not:
+
+- **A complicated diagnosis.** Give the finding and the fix in the summary. The
+  investigation is what the tool calls were for; it does not need narrating.
+- **A review packet.** What changed, any risk, what was tested. Three or four
+  bullets. The diff carries the rest.
+- **Something genuinely important.** Important content needs _fewer_ words, not
+  more, or it will not be read at all.
+
+Example of a closing summary:
 
 - **Added the summary rule to CLAUDE.md.** It sits under the Claude-specific
   section so the Copilot sync will not overwrite it.
@@ -415,3 +432,70 @@ on. `git rev-parse --abbrev-ref @{u}` says where a branch actually points if
 there is any doubt.
 
 Rediscovered three times in one session before it was written down.
+
+### The dev stack belongs to one worktree, and it is probably not this one
+
+There are several worktrees of this repository, but only one dev stack. Its
+containers are bind-mounted to whichever worktree started it, and the
+container names are fixed — `quill_backend`, `quill_postgres_core` — so
+`docker exec quill_backend …` from any worktree reaches **the worktree that
+started the stack**, not the one you are working in.
+
+Every recipe built on `docker exec quill_backend` inherits this: `just ub`,
+`just uf`, `just migrate`. Each of them will run happily and tell you nothing
+is wrong.
+
+**Check before trusting any of them:**
+
+```bash
+docker inspect quill_backend --format '{{range .Mounts}}{{if eq .Destination "/app"}}{{.Source}}{{end}}{{end}}'
+```
+
+If that is not the worktree you are in, the result of anything you just ran
+describes somebody else's code.
+
+**Why it matters more than it sounds.** Both failures are silent and both
+look like success:
+
+- **Tests pass against code you did not write.** `just ub` runs the other
+  worktree's suite. New tests are not collected, because the files are not
+  there. A green run means nothing, and says nothing about what it actually
+  ran. This produced a "full suite green" claim that had to be retracted.
+- **A migration autogenerates as empty.** `just migrate` upgrades, compares
+  the other worktree's models against the database, finds no difference, and
+  writes a migration with an empty `upgrade()`. It exits zero. Committing it
+  would put a permanent no-op in the chain and leave the real tables
+  uncreated.
+
+**What to do instead.** Run against the worktree you are in, by mounting it
+explicitly. Both examples below assume a throwaway secret in the
+environment — these databases exist for the length of one command:
+
+```bash
+export TEST_DB_PASSWORD=whatever JWT_SECRET=0123456789012345678901234567890123456789
+
+# Tests
+docker run --rm \
+  -v "$PWD/backend:/app" -v "$PWD/shared:/shared" \
+  -v "$PWD/api-compatibility:/api-compatibility" \
+  -w /app \
+  -e JWT_SECRET -e CORE_DB_PASSWORD="$TEST_DB_PASSWORD" \
+  <backend-image> sh -lc "pytest -m 'not integration' -q"
+
+# Migrations: a throwaway Postgres, then the three commands just migrate runs
+docker run -d --name tmp-pg -e POSTGRES_PASSWORD="$TEST_DB_PASSWORD" \
+  -e POSTGRES_DB=quill_core -p 55433:5432 postgres:17-alpine
+docker run --rm --network host -v "$PWD/backend:/app" -v "$PWD/shared:/shared" \
+  -w /app -e JWT_SECRET -e CORE_DB_PASSWORD="$TEST_DB_PASSWORD" \
+  -e CORE_DB_USER=postgres -e CORE_DB_HOST=localhost -e CORE_DB_PORT=55433 \
+  <backend-image> sh -lc 'alembic upgrade head && alembic revision --autogenerate -m "…" && alembic upgrade head'
+docker rm -f tmp-pg
+```
+
+Then check the generated migration by hand — `upgrade()` must not be empty —
+and confirm with `python backend/scripts/check_migrations.py --all` and
+`alembic check` (which should report no new operations, and one head).
+
+A stray `.hypothesis/` directory at the repository root is a smaller symptom of
+the same thing: it appears when pytest is run from the host rather than in a
+container, and is not gitignored.
