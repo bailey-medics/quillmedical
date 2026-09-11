@@ -83,7 +83,7 @@ does not, and removing the ladder removes the suggestion.
         They now say `capacity="staff"`. Worth noting the default did its job: it did not
         break anything quietly, it made an unstated assumption visible the moment something
         started reading the column.
-- [ ] **Give the admin gates a competency.** `manage_users` already exists in
+- [x] **Give the admin gates a competency.** `manage_users` already exists in
       `competencies.yaml`, and `_require_own_org` is already the place check. Each admin
       route becomes that pair. Do it in batches by area — organisations, sites, users,
       teaching — not in one commit.
@@ -210,6 +210,20 @@ does not, and removing the ladder removes the suggestion.
           themselves. Today the rank check is the only thing standing between an admin and
           an unbounded grant. Leaving it on the rank keeps that visible until the
           end-to-end work settles whether the route should exist at all.
+      - **Batch 4 of 4 done: the nine organisation routes.** `list_organisations`,
+        `get_organisation`, `update_organisation`, the four staff and patient membership
+        routes, `list_org_features` and `toggle_org_feature`. All nine already had
+        `get_user_org_ids` beside them.
+      - **Step complete: 30 of the 31 gates are competencies.** The one left is
+        `update_my_competencies`, on the rank deliberately — see the batch 3 note.
+        - **Two test helpers had no profession** and so took the column default of
+          `patient`: the `test_admin` fixture in `conftest.py` and `_make_admin` in
+          `test_organisation_features.py`. Both now carry `system_administrator`. Worth
+          expecting wherever a test builds an admin by hand.
+        - **One assertion tested the refusal's wording**, not its effect —
+          `test_get_organisations_forbidden` checked for "admin" in the detail. It now
+          checks for `manage_users`, which is the point of the change: the refusal names
+          what is missing rather than what someone is not.
       - **The twenty ready routes wait for the eleven.** They could go sooner, but
         splitting the batch by whether each route happened to be safe would leave a worse
         record than doing it in one pass once they are level.

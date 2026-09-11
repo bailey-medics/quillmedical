@@ -161,6 +161,10 @@ def _make_admin(db_session, org: Organisation | None = None) -> User:
         password_hash=hash_password("AdminPassword123!"),
         is_active=True,
         email_verified=True,
+        # Administering is a competency, not a rank. Without a profession
+        # this takes the column default of ``patient`` and holds nothing
+        # an administrator needs.
+        base_profession="system_administrator",
         system_permissions="admin",
     )
     db_session.add(user)
