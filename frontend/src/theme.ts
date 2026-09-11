@@ -25,6 +25,8 @@
 
 import {
   createTheme,
+  deepMerge,
+  v8CssVariablesResolver,
   type CSSVariablesResolver,
   type MantineColorsTuple,
 } from "@mantine/core";
@@ -156,7 +158,20 @@ export const layoutTokens = {
   actionCardTwoColumnMinWidth: "60rem",
 } as const;
 
-export const cssVariablesResolver: CSSVariablesResolver = () => ({
+/**
+ * App-specific CSS variables, layered on top of Mantine's own.
+ *
+ * Mantine 9 changed how the `-light`, `-light-hover` and `-light-color`
+ * variants of every colour are derived. Mantine 8 used a translucent
+ * wash of the primary shade (10% / 12% in light mode, 15% / 20% of a
+ * lighter shade in dark mode). Mantine 9 uses solid palette shades
+ * instead, which with our navy scale made the selected and hovered
+ * side-navigation links (and every other `variant="light"` surface)
+ * far heavier than intended. `v8CssVariablesResolver` is Mantine's own
+ * opt-in that restores the Mantine 8 derivation, so we build on it
+ * rather than the default.
+ */
+const appCssVariables = {
   variables: {
     // App brand
     "--brand-primary": brandColours.primary,
@@ -228,7 +243,10 @@ export const cssVariablesResolver: CSSVariablesResolver = () => ({
     "--bubble-shadow": "0 1px 0 rgba(0,0,0,0.06)",
     "--bubble-border-top": "1px solid rgba(0,0,0,0.06)",
   },
-});
+};
+
+export const cssVariablesResolver: CSSVariablesResolver = (mantineTheme) =>
+  deepMerge(v8CssVariablesResolver(mantineTheme), appCssVariables);
 
 export const theme = createTheme({
   /** App font — Atkinson Hyperlegible Next (Braille Institute) */
