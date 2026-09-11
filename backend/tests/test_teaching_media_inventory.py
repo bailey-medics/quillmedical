@@ -129,3 +129,100 @@ class TestMediaInventory:
 
         assert inv.is_complete
         assert inv.references == []
+
+
+class TestModuleMediaIsComplete:
+    """The learner gate: is every ``<Video ref>`` backed by a file?
+
+    Separated from ``MediaInventory`` because the gate adds two things
+    the inventory has no opinion about — that a module referencing no
+    media is complete, and that the answer is asked per organisation.
+    """
+
+    def test_a_module_referencing_no_media_is_complete(
+        self, db_session: Session, monkeypatch
+    ):
+        """Most modules. The gate must be invisible to them."""
+        from app.features.teaching import media
+
+        org = _org(db_session, "Trust No-Media")
+        monkeypatch.setattr(
+            media, "get_referenced_media_keys", lambda _module_id: []
+        )
+
+        assert media.module_media_is_complete(db_session, org.id, "test-bank")
+
+    def test_a_reference_without_an_upload_makes_it_incomplete(
+        self, db_session: Session, monkeypatch
+    ):
+        from app.features.teaching import media
+
+        org = _org(db_session, "Trust Missing")
+        monkeypatch.setattr(
+            media,
+            "get_referenced_media_keys",
+            lambda _module_id: ["lecture-01"],
+        )
+
+        assert not media.module_media_is_complete(
+            db_session, org.id, "test-bank"
+        )
+
+    def test_every_reference_uploaded_makes_it_complete(
+        self, db_session: Session, monkeypatch
+    ):
+        from app.features.teaching import media
+
+        org = _org(db_session, "Trust Complete")
+        _upload(db_session, org.id, "lecture-01", "asset-1")
+        _upload(db_session, org.id, "lecture-02", "asset-2")
+        monkeypatch.setattr(
+            media,
+            "get_referenced_media_keys",
+            lambda _module_id: ["lecture-01", "lecture-02"],
+        )
+
+        assert media.module_media_is_complete(db_session, org.id, "test-bank")
+
+    def test_one_missing_of_two_is_incomplete(
+        self, db_session: Session, monkeypatch
+    ):
+        """All references, not any: a half-filled module is not served."""
+        from app.features.teaching import media
+
+        org = _org(db_session, "Trust Half")
+        _upload(db_session, org.id, "lecture-01", "asset-1")
+        monkeypatch.setattr(
+            media,
+            "get_referenced_media_keys",
+            lambda _module_id: ["lecture-01", "lecture-02"],
+        )
+
+        assert not media.module_media_is_complete(
+            db_session, org.id, "test-bank"
+        )
+
+    def test_completeness_is_per_organisation(
+        self, db_session: Session, monkeypatch
+    ):
+        """One trust's upload must not complete another's module.
+
+        The same module runs in both, and the links are separate. This
+        is what makes the same module visible to one organisation's
+        learners and hidden from another's.
+        """
+        from app.features.teaching import media
+
+        has = _org(db_session, "Trust With Upload")
+        lacks = _org(db_session, "Trust Without")
+        _upload(db_session, has.id, "lecture-01", "asset-1")
+        monkeypatch.setattr(
+            media,
+            "get_referenced_media_keys",
+            lambda _module_id: ["lecture-01"],
+        )
+
+        assert media.module_media_is_complete(db_session, has.id, "test-bank")
+        assert not media.module_media_is_complete(
+            db_session, lacks.id, "test-bank"
+        )

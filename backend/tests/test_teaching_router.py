@@ -2667,3 +2667,203 @@ class TestMediaLinking:
         resp = test_client.delete(self._url(), headers=headers)
 
         assert resp.status_code == 403
+
+
+class TestIncompleteModulesAreNotServed:
+    """A module missing any of its media is not served to learners.
+
+    Continuously, not at the ``draft`` -> ``live`` transition: a module
+    can go live complete and lose a file afterwards, and a gate that
+    only checked the transition would keep serving it.
+
+    The allow paths here are asserted with real MDX on disk. Without it
+    every request 404s for want of content, and a passing test would
+    prove nothing about the gate.
+    """
+
+    def _content(self, tmp_path, *refs: str) -> str:
+        """Write a module on disk whose MDX carries *refs*.
+
+        The content repository sits between the base path and
+        ``modules/``, which is where ``resolve_module_dir`` looks.
+        """
+        module = tmp_path / "content-repo" / "modules" / "test-bank"
+        learning = module / "learning"
+        learning.mkdir(parents=True)
+        (module / "module.yaml").write_text(
+            "moduleId: test-bank\ntitle: Test\n", encoding="utf-8"
+        )
+        # discover_local_banks only sees a module that has an
+        # assessment/ directory carrying assessment.yaml or config.yaml.
+        # Without it the module list is empty whatever the media says,
+        # and a passing hidden-from-the-list test would prove nothing.
+        assessment = module / "assessment"
+        assessment.mkdir()
+        (assessment / "config.yaml").write_text(
+            "id: test-bank\ntitle: Test\n", encoding="utf-8"
+        )
+        slides = "\n\n".join(
+            f'## Slide {i}\n\n<Video ref="{ref}" />'
+            for i, ref in enumerate(refs, start=1)
+        )
+        (learning / "content.mdx").write_text(
+            slides or "## Text only\n\nNo media here.", encoding="utf-8"
+        )
+        return str(tmp_path)
+
+    def _use(self, monkeypatch, base_path: str) -> None:
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_QUESTION_BANK_PATH", base_path
+        )
+        monkeypatch.setattr("app.config.settings.TEACHING_GCS_BUCKET", None)
+
+    def _upload(self, db, org_id: int, key: str, asset: str) -> None:
+        db.add(
+            ModuleMediaLink(
+                organisation_id=org_id,
+                question_bank_id="test-bank",
+                media_key=key,
+                asset_id=asset,
+                original_filename=f"{asset}.mp4",
+                content_type="video/mp4",
+                size_bytes=1024,
+                uploaded_at=datetime.now(UTC),
+            )
+        )
+        db.flush()
+
+    def _learner_in(self, db, org):
+        educator = _make_educator(db, org)
+        _seed_bank(db, org.id, educator.id)
+        _make_learner(db, org)
+        db.commit()
+
+    def _login(self, test_client) -> None:
+        test_client.post(
+            "/api/auth/login",
+            json={"username": "testlearner", "password": "Learner123!"},
+        )
+
+    def test_content_with_a_missing_upload_is_404(
+        self, test_client, db_session, monkeypatch, tmp_path
+    ):
+        """Same 404 as "not yours" — incompleteness is not disclosed."""
+        org = _make_teaching_org(db_session)
+        self._learner_in(db_session, org)
+        self._use(monkeypatch, self._content(tmp_path, "lecture-01"))
+        self._login(test_client)
+
+        resp = test_client.get("/api/teaching/modules/test-bank/learning")
+
+        assert resp.status_code == 404
+
+    def test_content_is_served_once_every_reference_is_linked(
+        self, test_client, db_session, monkeypatch, tmp_path
+    ):
+        """The allow path, with content actually on disk."""
+        org = _make_teaching_org(db_session)
+        self._learner_in(db_session, org)
+        self._upload(db_session, org.id, "lecture-01", "asset-1")
+        db_session.commit()
+        self._use(monkeypatch, self._content(tmp_path, "lecture-01"))
+        self._login(test_client)
+
+        resp = test_client.get("/api/teaching/modules/test-bank/learning")
+
+        assert resp.status_code == 200
+        assert resp.json()["module_id"] == "test-bank"
+
+    def test_a_module_referencing_no_media_is_unaffected(
+        self, test_client, db_session, monkeypatch, tmp_path
+    ):
+        """Most modules. The gate must stay invisible to them."""
+        org = _make_teaching_org(db_session)
+        self._learner_in(db_session, org)
+        self._use(monkeypatch, self._content(tmp_path))
+        self._login(test_client)
+
+        resp = test_client.get("/api/teaching/modules/test-bank/learning")
+
+        assert resp.status_code == 200
+
+    def test_an_incomplete_module_is_hidden_from_the_list(
+        self, test_client, db_session, monkeypatch, tmp_path
+    ):
+        """Hidden, not shown disabled.
+
+        A learner who can see a module they cannot open raises a support
+        question the admin cannot answer from the learner's side.
+        """
+        org = _make_teaching_org(db_session)
+        self._learner_in(db_session, org)
+        self._use(monkeypatch, self._content(tmp_path, "lecture-01"))
+        self._login(test_client)
+
+        resp = test_client.get("/api/teaching/modules")
+
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    def test_a_complete_module_appears_in_the_list(
+        self, test_client, db_session, monkeypatch, tmp_path
+    ):
+        org = _make_teaching_org(db_session)
+        self._learner_in(db_session, org)
+        self._upload(db_session, org.id, "lecture-01", "asset-1")
+        db_session.commit()
+        self._use(monkeypatch, self._content(tmp_path, "lecture-01"))
+        self._login(test_client)
+
+        resp = test_client.get("/api/teaching/modules")
+
+        assert resp.status_code == 200
+        assert [m["module_id"] for m in resp.json()] == ["test-bank"]
+
+    def test_video_access_is_refused_for_an_incomplete_module(
+        self, test_client, db_session, monkeypatch, tmp_path
+    ):
+        """Minting a cookie for a module the learner cannot open would
+        grant access to material the content gate hides."""
+        org = _make_teaching_org(db_session)
+        self._learner_in(db_session, org)
+        self._use(monkeypatch, self._content(tmp_path, "lecture-01"))
+        self._login(test_client)
+        headers = _login(test_client, "testlearner", "Learner123!")
+
+        resp = test_client.post(
+            "/api/teaching/modules/test-bank/video-access", headers=headers
+        )
+
+        assert resp.status_code == 404
+
+    def test_the_gate_is_per_organisation(
+        self, test_client, db_session, monkeypatch, tmp_path
+    ):
+        """One trust's upload must not complete another's module.
+
+        The same module runs in both. The organisation that uploaded
+        sees it; the one that did not is shown nothing.
+        """
+        has = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, has)
+        _seed_bank(db_session, has.id, educator.id)
+        self._upload(db_session, has.id, "lecture-01", "asset-1")
+
+        lacks = _make_teaching_org(db_session)
+        db_session.add(
+            QuestionBankOrgStatus(
+                organisation_id=lacks.id,
+                question_bank_id="test-bank",
+                is_live=True,
+                active_version=1,
+            )
+        )
+        _make_learner(db_session, lacks)
+        db_session.commit()
+
+        self._use(monkeypatch, self._content(tmp_path, "lecture-01"))
+        self._login(test_client)
+
+        resp = test_client.get("/api/teaching/modules/test-bank/learning")
+
+        assert resp.status_code == 404
