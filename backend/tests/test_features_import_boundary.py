@@ -66,6 +66,13 @@ def _import_in_clean_subprocess(
         "app.features.teaching.tooling.module_schema",
         "app.features.teaching.tooling.validate",
         "app.features.teaching.tooling.cli",
+        # The passport's pure core: a record on disk must be readable
+        # without settings, a database, or a running application.
+        "app.features.passport",
+        "app.features.passport.paths",
+        "app.features.passport.ids",
+        "app.features.passport.schemas",
+        "app.features.passport.definitions",
     ],
 )
 def test_import_needs_no_secrets(module: str) -> None:
@@ -89,6 +96,13 @@ def test_import_needs_no_secrets(module: str) -> None:
         "app.features.teaching.tooling.module_schema",
         "app.features.teaching.tooling.validate",
         "app.features.teaching.tooling.cli",
+        # The passport's pure core: a record on disk must be readable
+        # without settings, a database, or a running application.
+        "app.features.passport",
+        "app.features.passport.paths",
+        "app.features.passport.ids",
+        "app.features.passport.schemas",
+        "app.features.passport.definitions",
     ],
 )
 def test_import_pulls_in_nothing_heavy(module: str) -> None:

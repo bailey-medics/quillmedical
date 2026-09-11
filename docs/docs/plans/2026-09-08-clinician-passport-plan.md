@@ -1736,6 +1736,40 @@ above. Additive only, per `.claude/rules/backend.md`.
 
 ## Phase 1: core store and record model
 
+Fifteen tasks, delivered as **one pull request of five reviewed
+commits** rather than five pull requests: the record model, the store
+and the service only make sense together, and a half-built passport
+merged into `main` would be a feature nobody can use and nobody can
+delete. The commits are the review unit; the pull request is the
+feature.
+
+The order is deliberate. Each unit is useful to review on its own, and
+each depends only on the ones above it, so a change of mind at unit
+three does not invalidate unit one.
+
+- **Unit 1 — the pure core.** `paths.py`, `ids.py`, `schemas.py`,
+  `definitions.py`. No I/O, no git, no database, so it is exhaustively
+  testable and fast. This is where the record model is settled, which
+  makes it the unit worth reading most carefully: everything below
+  encodes whatever it decides.
+- **Unit 2 — the store.** The `pygit2` dependency, `PassportStore` and
+  its local backend, `commits.py`, and the refusal of non-fast-forward
+  updates. The first unit that touches a disk.
+- **Unit 3 — hashing and verification.** `content_hash` against the
+  contributing-field list, the canonical form, the verify function and
+  `VERIFY.md`. Separate from the store because a fingerprint that
+  disagrees with itself across two implementations is the one bug that
+  would quietly devalue every record.
+- **Unit 4 — the self-declared records.** `certificates.py`,
+  `logbook.py`, `reflections.py`, `cpd.py` and `index.py`. All four are
+  editable by their holder, unlike a sign-off, and the index is derived
+  from them.
+- **Unit 5 — service and database.** `service.py` with the sign-off
+  lifecycle, the `passport` and `passport_signoff_request` models, the
+  migration, `site_common_competency`, and the per-passport advisory
+  lock. Last because it is the only unit that needs Postgres, and
+  because it composes everything above.
+
 - [ ] Create `backend/app/features/passport/` with `paths.py` (typed
       relative paths, no I/O, after VPR's `crates/core/src/paths/`),
       `ids.py` (timestamp id generator with monotonic rule),
