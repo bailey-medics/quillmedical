@@ -9,6 +9,15 @@
 
 ## Key Commands
 
+- **Use the `just` recipes first and foremost.** Each one is the tested,
+  worktree-safe way to do its job: it knows which container to run in, what to
+  mount, which ports and env to use, and it cleans up after itself. A raw
+  `docker exec`, `pytest`, `yarn` or `alembic` command improvised in its place
+  loses all of that and is how tests came to run against the wrong worktree.
+- `just --list` shows every recipe with its alias and a one-line description.
+- If no recipe does what you need, say so rather than improvising; the fix is
+  usually to add one, following the conventions in `.claude/rules/just.md`.
+
 See the `Justfile` if you want to know more.
 
 ## Testing Requirements
@@ -21,6 +30,7 @@ See the `Justfile` if you want to know more.
   - Prefer targeted tests during development; run the full suite only if CI is failing
 - Storybook: runs on the host — `just sb` (dev server), `just sbt` (tests), `just sbtci` (CI mode)
 - E2E: `just e2e` brings up a fresh per-worktree `compose.ci.yml` stack (the CI one) on a free port, runs Playwright against it and tears it down — never the dev stack
+- **Never run Storybook tests and `just e2e` at the same time** — both saturate the machine, and the Storybook runner then times out loading its own pages and reports mass failures that pass on their own
 - Backend: pytest with fixtures from `conftest.py`
 - Frontend: vitest + @testing-library/react with `renderWithMantine`/`renderWithRouter`
 - Cover: props variations, edge cases, null/undefined, interactions, loading/error states

@@ -85,6 +85,10 @@ preference.
   host: `just ub` (backend) and `just uf` (frontend), with targeted runs preferred during
   development.
 - Storybook runs on the host: `just sb` (dev), `just sbt` / `just sbtci` (tests).
+- End-to-end tests: `just e2e` brings up a fresh per-worktree `compose.ci.yml` stack on
+  a free port, runs Playwright against it and tears it down. It never uses the dev stack.
+- Never run the Storybook tests and `just e2e` at the same time. Both saturate the
+  machine and the Storybook runner then times out loading its own pages.
 - Every reusable frontend component must have associated `.stories.tsx` and `.test.tsx`
   files.
 

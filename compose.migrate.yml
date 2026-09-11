@@ -1,0 +1,66 @@
+# Throwaway database for `just migrate`, usable from any worktree.
+#
+# Autogenerating a migration means comparing the models in a checkout against
+# a database at the current head. The dev stack's database belongs to whichever
+# worktree started the stack, so running `alembic revision --autogenerate`
+# through it from another worktree compares the WRONG models and writes an
+# empty migration that exits zero. This file gives each worktree its own
+# database for the length of one command instead: Postgres on tmpfs, upgraded
+# to head from this worktree's migrations, compared against this worktree's
+# models, then thrown away.
+#
+# `just migrate` names the compose project after the worktree
+# (see `_migrate-project` in the Justfile) so several can run at once.
+#
+# Usage (normally via the Justfile):
+#   docker compose -p quill-migrate-<worktree> -f compose.migrate.yml run --rm migrate \
+#       sh -lc 'alembic upgrade head && alembic revision --autogenerate -m "…" && alembic upgrade head'
+#   docker compose -p quill-migrate-<worktree> -f compose.migrate.yml down --volumes
+
+services:
+  migrate:
+    # The dev image, as compose.dev.yml and compose.unit-tests.yml build it.
+    image: quill-backend-dev
+    build:
+      context: .
+      dockerfile: ./backend/Dockerfile
+      target: dev
+    # No env_file: everything the app needs to import is set here, and a
+    # value here beats anything in the mounted backend/.env, so that file
+    # cannot point this at a real database.
+    environment:
+      BACKEND_ENV: testing
+      JWT_SECRET: test_secret_key_long_enough_for_validation_32_chars_min
+      CORE_DB_HOST: postgres-core
+      CORE_DB_PORT: "5432"
+      CORE_DB_NAME: quill_core
+      CORE_DB_USER: core_user
+      CORE_DB_PASSWORD: migrate_password
+      CLINICAL_SERVICES_ENABLED: "false"
+      EMAIL_DRY_RUN: "true"
+      # Required by push_send.py, imported unconditionally at start-up.
+      VAPID_PRIVATE: migrate-placeholder-vapid-key-not-real
+    working_dir: /app
+    volumes:
+      # The revision is written into alembic/versions of THIS worktree.
+      - ./backend:/app
+      - ./shared:/shared
+      - ./api-compatibility:/api-compatibility
+    depends_on:
+      postgres-core:
+        condition: service_healthy
+
+  postgres-core:
+    image: postgres:18-alpine@sha256:d3e1620b530c944afa6e887d22eb899824da68e19c52024bf98f5220c88a65b2
+    environment:
+      POSTGRES_DB: quill_core
+      POSTGRES_USER: core_user
+      POSTGRES_PASSWORD: migrate_password
+    # In memory: nothing survives `down`, and nothing should.
+    tmpfs:
+      - /var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U core_user -d quill_core"]
+      interval: 2s
+      timeout: 2s
+      retries: 15

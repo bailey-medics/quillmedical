@@ -28,6 +28,12 @@ _test-project:
     @basename "{{justfile_directory()}}" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9\n' '-' | sed 's/^/quill-test-/'
 
 
+# Compose project name for this worktree's throwaway migration database
+# (compose.migrate.yml). Per worktree for the same reason as `_test-project`.
+_migrate-project:
+    @basename "{{justfile_directory()}}" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9\n' '-' | sed 's/^/quill-migrate-/'
+
+
 # Compose project name for this worktree's end-to-end stack (compose.ci.yml).
 # Per worktree for the same reason as `_test-project`: several can run at once.
 _e2e-project:
@@ -79,12 +85,13 @@ _e2e-run *ARGS:
 # The dev stack is owned by whichever worktree ran `just sd`: the containers
 # bind-mount that checkout, and their names are fixed in compose.dev.yml, so
 # `docker exec` from a second worktree silently acts on the first one's code.
-# `just migrate` would autogenerate a revision from the wrong models.
+# A user-creation script would write to the wrong database.
 #
-# Only recipes that genuinely need the live stack call this. The tests do
-# not: `just ub` and `just uf` run in throwaway containers that mount the
-# current worktree (see compose.unit-tests.yml), and `just e2e` brings up its
-# own per-worktree stack from compose.ci.yml, so all work from any worktree.
+# Only recipes that genuinely need the live stack call this. The tests and
+# migrations do not: `just ub` and `just uf` run in throwaway containers
+# that mount the current worktree (compose.unit-tests.yml), `just migrate`
+# uses a throwaway database (compose.migrate.yml), and `just e2e` brings up
+# its own per-worktree stack (compose.ci.yml), so all work from any worktree.
 #
 # The owning path is read from Docker rather than hard-coded, so renaming or
 # moving the root worktree needs no change here.
@@ -285,8 +292,16 @@ alias i := initialise-repo
 initialise-repo:
     #!/usr/bin/env bash
     {{initialise}} "initialise"
-    pre-commit install
-    yarn install
+    # Git runs the tracked .husky/pre-commit directly, which itself runs
+    # `pre-commit run`. The path is deliberately relative: git resolves it
+    # against the root of whichever worktree is committing, so every
+    # worktree runs its own branch's hook. An absolute path here would
+    # point every worktree at one checkout's copy, and vanish silently if
+    # that checkout moved. Not `pre-commit install`: it refuses to run while
+    # core.hooksPath is set, and would be redundant anyway.
+    git config core.hooksPath .husky
+    # The only package.json is the frontend's; the repository root has none.
+    (cd frontend && yarn install)
     just aj
 
 
@@ -399,21 +414,37 @@ preview-certificate bank="colonoscopy-optical-diagnosis-test":
 
 
 alias m := migrate
-# Run the database migrations
+# Autogenerate a migration for this worktree's model changes (throwaway database)
 migrate message:
     #!/usr/bin/env bash
     {{initialise}} "migrate - {{message}}"
-    # Autogenerate diffs the container's models against the database and
-    # writes the revision into the container's checkout, so running this
-    # from the wrong worktree produces a revision for code you are not
-    # editing — in the worktree you are not editing it from.
-    just _worktree-guard quill_backend
-    docker exec -e AL_MSG='{{message}}' quill_backend sh -lc '
+    # Autogenerate compares models against a database at head. This uses a
+    # throwaway Postgres from compose.migrate.yml rather than the dev
+    # stack's, so it always compares THIS worktree's models with THIS
+    # worktree's migrations, and needs neither the stack nor ownership of
+    # it. The revision lands in this worktree's alembic/versions.
+    compose="docker compose -p $(just _migrate-project) -f compose.migrate.yml"
+    trap '${compose} down --volumes --remove-orphans >/dev/null 2>&1' EXIT
+    before=$(ls backend/alembic/versions/*.py)
+    ${compose} run --rm -e AL_MSG='{{message}}' migrate sh -lc '
         set -e
         alembic upgrade head &&
         alembic revision --autogenerate -m "$AL_MSG" &&
         alembic upgrade head
     '
+    # Autogenerate happily writes an empty revision when it finds no
+    # difference, and that exits zero. Name the file and say so, rather
+    # than leaving a permanent no-op to be discovered in review.
+    new=$(comm -13 <(echo "${before}") <(ls backend/alembic/versions/*.py))
+    echo ""
+    echo "Created: ${new}"
+    if sed -n '/^def upgrade/,/^def downgrade/p' "${new}" | grep -vE '^\s*(#|$)' | grep -qE '^\s+pass\s*$'; then
+        rm "${new}"
+        echo "✗ upgrade() was empty, so the file has been removed." >&2
+        echo "  The models already match the migrations: check the model change is saved." >&2
+        exit 1
+    fi
+    echo "Review upgrade() and downgrade() before committing."
 
 
 alias pc := pre-commit
@@ -507,10 +538,21 @@ worktree-create branch="":
     (cd "$DEST/backend" \
         && env -u VIRTUAL_ENV POETRY_VIRTUALENVS_IN_PROJECT=1 poetry install)
 
+    # The JavaScript half of the same job. node_modules is gitignored, so
+    # Storybook, Playwright and the host-side linters have nothing to run
+    # with until it exists. `--immutable` because a fresh worktree has no
+    # business rewriting the lockfile: if the install would change it, the
+    # branch is what needs fixing.
+    echo "Installing the frontend packages..."
+    (cd "$DEST/frontend" && yarn install --immutable)
+
+    # No hook setup is needed. core.hooksPath lives in the shared git config
+    # and is the relative `.husky`, which git resolves against the root of
+    # the worktree that is committing — so this worktree runs its own
+    # branch's tracked hook from the moment it exists.
     echo ""
     echo "Worktree ready at $DEST on {{branch}}"
     echo "  cd $DEST"
-    echo "  just initialise-repo   # pre-commit hooks and yarn packages"
 
 
 alias pb := prune-branches
