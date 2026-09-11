@@ -26,6 +26,53 @@ from sqlalchemy.orm import Session
 from app.features.teaching.models import ModuleMediaLink
 
 
+def get_referenced_media_keys(module_id: str) -> list[str]:
+    """The ``<Video ref>`` keys a module's MDX carries, in order.
+
+    Content lives in GCS in the teaching environment and on disk in
+    development, and the two are read by different helpers. Both are
+    resolved here so that "which media does this module reference" has
+    one answer: the admin card, the learner gate and the merge gate all
+    ask it, and a second copy of this branch would be the one that
+    drifts.
+
+    A module with no content, or none this deployment can reach, has no
+    references — not an error. Whether content *should* exist is the
+    caller's question, and ``get_learning_content`` already answers it
+    with a 404; here an empty list simply means nothing to upload.
+    """
+    from app.config import settings
+    from app.features.teaching.mdx_parser import (
+        load_learning_content,
+        parse_mdx_to_slides,
+    )
+    from app.features.teaching.storage import (
+        download_learning_mdx_from_gcs,
+        resolve_module_dir,
+    )
+
+    bucket = settings.TEACHING_GCS_BUCKET
+    base_path = settings.TEACHING_QUESTION_BANK_PATH
+
+    if bucket:
+        mdx = download_learning_mdx_from_gcs(bucket, module_id)
+        slides = parse_mdx_to_slides(mdx) if mdx else []
+    elif base_path:
+        module_dir = resolve_module_dir(base_path, module_id)
+        slides = load_learning_content(module_dir) if module_dir else []
+    else:
+        return []
+
+    # Ordered, de-duplicated: the card's rows follow the content, and a
+    # key used on two slides is still one upload.
+    keys: list[str] = []
+    for slide in slides:
+        ref = slide.video_ref
+        if ref and ref not in keys:
+            keys.append(ref)
+    return keys
+
+
 @dataclass(frozen=True)
 class MediaReference:
     """One ``<Video ref>`` in a module's MDX, and what backs it."""

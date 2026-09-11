@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from app.features.teaching.models import (
     Assessment,
     AssessmentAnswer,
+    ModuleMediaLink,
     QuestionBankConfig,
     QuestionBankItem,
     QuestionBankOrgStatus,
@@ -2255,4 +2256,182 @@ class TestMediaUploadUrl:
             json=self._body(),
             headers=headers,
         )
+        assert resp.status_code == 403
+
+
+class TestModuleMedia:
+    """The admin card's data.
+
+    Every assertion here is per organisation, because the links are.
+    Two organisations running the same module hold separate uploads.
+    """
+
+    def _login(self, test_client) -> dict[str, str]:
+        return _login(test_client, "testeducator", "Educator123!")
+
+    def _content(self, tmp_path, *refs: str) -> str:
+        """Write a module on disk whose MDX carries *refs*.
+
+        The content repository sits between the base path and
+        ``modules/`` — ``resolve_module_dir`` looks one level down for
+        it, so a fixture without it resolves to nothing and every
+        reference silently disappears.
+        """
+        learning = tmp_path / "content-repo" / "modules" / "test-bank"
+        learning = learning / "learning"
+        learning.mkdir(parents=True)
+        (learning.parent / "module.yaml").write_text(
+            "moduleId: test-bank\ntitle: Test\n", encoding="utf-8"
+        )
+        slides = "\n\n".join(
+            f'## Slide {i}\n\n<Video ref="{ref}" />'
+            for i, ref in enumerate(refs, start=1)
+        )
+        (learning / "content.mdx").write_text(
+            slides or "## Text only\n\nNo media here.", encoding="utf-8"
+        )
+        return str(tmp_path)
+
+    def _use(self, monkeypatch, base_path: str) -> None:
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_QUESTION_BANK_PATH", base_path
+        )
+        monkeypatch.setattr("app.config.settings.TEACHING_GCS_BUCKET", None)
+
+    def _upload(self, db, org_id: int, key: str, asset: str) -> None:
+        db.add(
+            ModuleMediaLink(
+                organisation_id=org_id,
+                question_bank_id="test-bank",
+                media_key=key,
+                asset_id=asset,
+                original_filename=f"{asset}.mp4",
+                content_type="video/mp4",
+                size_bytes=1024,
+                uploaded_at=datetime.now(UTC),
+            )
+        )
+        db.flush()
+
+    def _get(self, test_client, headers):
+        return test_client.get(
+            "/api/teaching/admin/modules/test-bank/media", headers=headers
+        )
+
+    def test_a_reference_without_an_upload_reads_as_missing(
+        self, test_client, db_session, monkeypatch, tmp_path
+    ):
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        db_session.commit()
+        self._use(monkeypatch, self._content(tmp_path, "lecture-01"))
+
+        resp = self._get(test_client, self._login(test_client))
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["is_complete"] is False
+        assert body["references"] == [{"key": "lecture-01", "asset": None}]
+
+    def test_a_linked_reference_reports_its_file(
+        self, test_client, db_session, monkeypatch, tmp_path
+    ):
+        """The original filename is shown so the uploader recognises it."""
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        self._upload(db_session, org.id, "lecture-01", "asset-1")
+        db_session.commit()
+        self._use(monkeypatch, self._content(tmp_path, "lecture-01"))
+
+        resp = self._get(test_client, self._login(test_client))
+
+        body = resp.json()
+        assert body["is_complete"] is True
+        assert body["references"][0]["asset"]["asset_id"] == "asset-1"
+        assert (
+            body["references"][0]["asset"]["original_filename"]
+            == "asset-1.mp4"
+        )
+
+    def test_an_upload_with_no_reference_is_unattached(
+        self, test_client, db_session, monkeypatch, tmp_path
+    ):
+        """What a renamed or removed reference leaves behind.
+
+        Without a row for it the file is invisible bytes nobody can
+        reach or remove.
+        """
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        self._upload(db_session, org.id, "old-name", "asset-1")
+        db_session.commit()
+        self._use(monkeypatch, self._content(tmp_path, "new-name"))
+
+        body = self._get(test_client, self._login(test_client)).json()
+
+        assert [a["asset_id"] for a in body["unattached"]] == ["asset-1"]
+        assert body["is_complete"] is False
+
+    def test_another_organisations_upload_does_not_count(
+        self, test_client, db_session, monkeypatch, tmp_path
+    ):
+        """The property the whole per-organisation model rests on.
+
+        B's file must not make A's module look complete — that would
+        serve A's learners a video their organisation never uploaded.
+        """
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        other = Organisation(name="Other Trust")
+        db_session.add(other)
+        db_session.flush()
+        self._upload(db_session, other.id, "lecture-01", "asset-b")
+        db_session.commit()
+        self._use(monkeypatch, self._content(tmp_path, "lecture-01"))
+
+        body = self._get(test_client, self._login(test_client)).json()
+
+        assert body["is_complete"] is False
+        assert body["references"][0]["asset"] is None
+        assert body["unattached"] == []
+
+    def test_a_module_of_pure_text_references_nothing(
+        self, test_client, db_session, monkeypatch, tmp_path
+    ):
+        """The card is not shown for one, so it must not look broken."""
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        db_session.commit()
+        self._use(monkeypatch, self._content(tmp_path))
+
+        body = self._get(test_client, self._login(test_client)).json()
+
+        assert body["references"] == []
+        assert body["is_complete"] is True
+
+    def test_references_keep_their_order_and_deduplicate(
+        self, test_client, db_session, monkeypatch, tmp_path
+    ):
+        """Rows follow the content, and one key is one upload."""
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        db_session.commit()
+        self._use(monkeypatch, self._content(tmp_path, "b", "a", "b"))
+
+        body = self._get(test_client, self._login(test_client)).json()
+
+        assert [r["key"] for r in body["references"]] == ["b", "a"]
+
+    def test_a_learner_cannot_read_the_card(
+        self, test_client, db_session, monkeypatch, tmp_path
+    ):
+        """Gated on manage_teaching_content, which a learner lacks."""
+        org = _make_teaching_org(db_session)
+        _make_learner(db_session, org)
+        db_session.commit()
+        self._use(monkeypatch, self._content(tmp_path, "lecture-01"))
+
+        headers = _login(test_client, "testlearner", "Learner123!")
+        resp = self._get(test_client, headers)
+
         assert resp.status_code == 403

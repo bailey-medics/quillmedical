@@ -551,3 +551,44 @@ class MediaUploadUrlOut(BaseModel):
     #: Generated server-side. The client sends it back on completion so
     #: the link can be written against the object that now exists.
     asset_id: str
+
+
+class MediaAssetOut(BaseModel):
+    """One uploaded file, as the admin card shows it."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    #: What the object is keyed by in the bucket.
+    asset_id: str
+    #: Shown so the uploader recognises their own file. Never used to
+    #: address the object.
+    original_filename: str
+    content_type: str
+    size_bytes: int
+    uploaded_at: datetime
+
+
+class MediaReferenceOut(BaseModel):
+    """One ``<Video ref>`` in the MDX, and what backs it."""
+
+    #: The key as written in the content, e.g. ``lecture-01``.
+    key: str
+    #: The linked upload, or None when nothing has been uploaded yet.
+    asset: MediaAssetOut | None = None
+
+
+class ModuleMediaOut(BaseModel):
+    """Everything the admin card renders for one module.
+
+    Both halves matter. ``references`` drives the rows and the missing
+    count; ``unattached`` is what a renamed or removed reference leaves
+    behind, and without listing it those files are invisible bytes
+    nobody can reach or remove.
+    """
+
+    module_id: str
+    references: list[MediaReferenceOut]
+    unattached: list[MediaAssetOut]
+    #: Whether every reference has a file. An incomplete module is not
+    #: served to learners at all.
+    is_complete: bool

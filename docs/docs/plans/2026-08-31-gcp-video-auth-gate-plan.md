@@ -1090,10 +1090,18 @@ content calls for it.
       content-type allow-list, and record the original name as data. This is the
       one place the backend needs real GCS write credentials, and it writes only
       to the source bucket.
-- [ ] `GET /api/admin/teaching/modules/{module_id}/media` — the card's data.
+- [x] `GET /api/admin/teaching/modules/{module_id}/media` — the card's data.
       Returns every MDX reference with its link if any, plus unattached assets.
       Built on the shared "which media, and which present" function from
       **Media uploads**, not a second query.
+      **[done 2026-09-11]** Which keys the MDX carries is now
+      `get_referenced_media_keys` in `media.py`, beside the inventory it
+      feeds. Content loads from GCS in the teaching environment and from
+      disk in development, and both branches live in that one helper —
+      the learner gate and the merge gate need the same answer, and a
+      second copy of the branch would be the one that drifts. Keys are
+      de-duplicated and kept in content order, so a key used on two
+      slides is still one upload and the card's rows follow the content.
 - [ ] `POST .../media/{key}/link` and `DELETE .../media/{key}/link` — attach an
       uploaded asset to a reference, and detach it. Detaching keeps the asset.
 - [ ] `DELETE .../media/{asset_id}` — remove an uploaded asset and its link.

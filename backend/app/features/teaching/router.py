@@ -25,6 +25,7 @@ from app.features.gating import requires_feature
 from app.features.teaching.models import (
     Assessment,
     AssessmentAnswer,
+    ModuleMediaLink,
     QuestionBankConfig,
     QuestionBankItem,
     QuestionBankOrgStatus,
@@ -48,8 +49,11 @@ from app.features.teaching.schemas import (
     ItemImageOut,
     LearningContentOut,
     LearningModuleOut,
+    MediaAssetOut,
+    MediaReferenceOut,
     MediaUploadUrlIn,
     MediaUploadUrlOut,
+    ModuleMediaOut,
     PromoteBankVersionIn,
     PromoteBankVersionOut,
     QuestionBankDetailOut,
@@ -2006,6 +2010,53 @@ def create_media_upload_url(
         asset_id,
     )
     return MediaUploadUrlOut(upload_url=url, asset_id=asset_id)
+
+
+@teaching_router.get(
+    "/admin/modules/{module_id}/media",
+    response_model=ModuleMediaOut,
+    dependencies=[_DEP_MANAGE],
+)
+def get_module_media(
+    module_id: str,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+) -> ModuleMediaOut:
+    """What media this module references, and which of it is present.
+
+    The admin card's data. Built on the shared inventory rather than a
+    second query: the learner gate and the merge gate ask the same
+    question, and three implementations would drift — with the most
+    permissive one being the one nobody noticed.
+
+    Scoped to the caller's organisation, because the links are. Two
+    organisations running the same module hold separate uploads, so one
+    trust's file must never make another's module look complete.
+    """
+    from app.features.teaching.media import (
+        get_media_inventory,
+        get_referenced_media_keys,
+    )
+
+    org_id = _get_user_org_id(user, db)
+    keys = get_referenced_media_keys(module_id)
+    inventory = get_media_inventory(db, org_id, module_id, keys)
+
+    def _asset(link: ModuleMediaLink) -> MediaAssetOut:
+        return MediaAssetOut.model_validate(link)
+
+    return ModuleMediaOut(
+        module_id=module_id,
+        references=[
+            MediaReferenceOut(
+                key=ref.key,
+                asset=_asset(ref.link) if ref.link else None,
+            )
+            for ref in inventory.references
+        ],
+        unattached=[_asset(link) for link in inventory.unattached],
+        is_complete=inventory.is_complete,
+    )
 
 
 @teaching_router.get(
