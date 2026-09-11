@@ -389,9 +389,46 @@ does not, and removing the ladder removes the suggestion.
       one value meaning "not an operator", validated in code the way `SITE_CAPACITIES` is.
       - Autogenerate proposes drop-and-create for a rename. Write it by hand, as
         `site_member` had to be, and rename the auto-named constraints explicitly.
-- [ ] **Remove `default_system_permission` from `shared/base-professions.yaml`.** All 22
-      professions declare one — 17 `staff`, 3 `single-user`, 2 `admin` — and none of them
-      should default to being a Quill operator. Regenerate the frontend types.
+      - **235 references across five areas**, counted before starting: 74 in `backend/app`,
+        76 in tests, 63 in the frontend, 21 in scripts, 1 in a migration. Too large for one
+        reviewable change, so it runs as expand, migrate the callers, contract — the
+        sequence this plan already names.
+      - [x] **Expand: `platform_role` added alongside.** Column, `PLATFORM_ROLES`,
+            `validate_platform_role`, and a hand-written migration that backfills it.
+            Nothing reads it for authorisation yet and `system_permissions` is untouched,
+            so the two can disagree while callers move — pinned by a test, because a column
+            silently derived at read time would make the migration look finished when it
+            was not.
+            - **The backfill is not a copy.** Every row becomes `member` except those that
+              said `superadmin`. The other three levels described a relationship to a
+              place, and a place is not what this column records.
+            - **`member`, not an empty string or null**, so "not an operator" is a value
+              someone chose rather than the absence of one. Whether it should be nullable
+              instead was already an open question at the foot of this plan; this answers
+              it for now and can be revisited before the contract step.
+      - [ ] **Migrate the callers** — the 21 frontend `RequirePermission` guards, then the
+            backend reads. The gates are already competencies, so what remains is genuinely
+            about *operating Quill*, which should be a much smaller set than the raw count
+            suggests.
+      - [ ] **Contract: drop `system_permissions`.** Breaking API change, three response
+            schemas, so it needs a decision file and the `api-breaking-change-review`
+            approval.
+- [ ] **Remove `default_system_permission` from `shared/base-professions.yaml`.** Now 24
+      professions declare one — the count has moved since this was written, with
+      `teaching_manager` and `superadmin_profession` added.
+      - **It has exactly one real consumer, and it is a feature.**
+        `UserInfoUpdatePage.tsx` reads it when creating a user: picking a profession
+        pre-fills the system permission field. The backend only *declares* the field in
+        `BaseProfessionEntry` and never reads it. So removing it is not tidying an unused
+        field — it removes a convenience from the create form, and something has to replace
+        it or the form loses a step.
+      - **What replaces it depends on the rename.** If `platform_role` ends up holding only
+        `superadmin` and its absence, then pre-filling it from a profession is close to
+        meaningless: the answer is "not an operator" for every profession but one. The
+        field stops being useful at the same moment the column narrows.
+      - **So this step should follow the rename, not precede it.** Doing it first would
+        mean designing a replacement for a form field that is about to change shape
+        anyway. The plan lists it before the rename; that ordering looks wrong.
 - [ ] **Delete `check_permission_level` and the ordered list.** A hierarchy of one is not a
       hierarchy. This is the step that makes the change irreversible in a good way: nothing
       can silently reintroduce a rung.
