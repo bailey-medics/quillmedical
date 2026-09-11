@@ -685,7 +685,7 @@ how `module "cloud_storage"` is gated at `infra/main.tf:367`.
 - [x] **[added during the build]** Wait 60s after creating the backend bucket
       before the URL map references it, per Phase 0's `resourceNotReady`.
       Re-adds the `time` provider that the Phase 0 revert removed.
-- [ ] **[found during the build]** Converting `/api/*` from a static
+- [x] **[found during the build]** Converting `/api/*` from a static
       `path_rule` to a `dynamic` block is itself a change Terraform cannot see
       through, separately from the Phase 0 lesson about the two forms
       coexisting. With the `/videos/*` entry added in the same change, the plan
@@ -699,9 +699,14 @@ how `module "cloud_storage"` is gated at `infra/main.tf:367`.
       follow-up is a small diff. **Resolved**: the conversion alone planned as
       no URL map change at all, confirming the second entry was the cause and
       not the conversion. The rule was then added on its own.
-- [ ] `terraform plan` against `teaching` and confirm the diff touches nothing
+- [x] `terraform plan` against `teaching` and confirm the diff touches nothing
       outside the new module, the URL map and the Cloud Run env block. Confirm
-      `plan` for `prod` and `staging` is empty.
+      `plan` for `prod` and `staging` is empty. **[done 2026-09-10]** Read on
+      PR #589 (10 to add, 1 to change) and PR #594 (the URL map gaining
+      `/videos/*` and nothing else). The conversion above was proven by
+      splitting it out: on its own it planned as no URL map change at all,
+      which is what confirmed the second entry rather than the conversion was
+      the cause.
 - [x] **[found during the build, fixed separately]** `teaching-sync-token` is
       referenced in the Cloud Run env mapping but is created nowhere in
       Terraform — it was made by hand on 2026-05-24 and has never been managed,
@@ -1002,7 +1007,7 @@ introduce an unknown component.
       message ("This video is not available — your access may have expired. Try
       reloading the page.") rather than an empty box. Use the centralised page
       messages pattern.
-- [ ] **[found 2026-09-10, pre-existing]** Give `LearningDashboard` an error
+- [x] **[found 2026-09-10, pre-existing]** Give `LearningDashboard` an error
       state. It calls `getModules()` with `.then().finally()` and no `.catch()`
       (`LearningDashboard.tsx:58`), and `api.get` throws — so any rejection
       leaves the page on skeletons forever with an unhandled rejection in the
