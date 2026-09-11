@@ -428,3 +428,70 @@ on. `git rev-parse --abbrev-ref @{u}` says where a branch actually points if
 there is any doubt.
 
 Rediscovered three times in one session before it was written down.
+
+### The dev stack belongs to one worktree, and it is probably not this one
+
+There are several worktrees of this repository, but only one dev stack. Its
+containers are bind-mounted to whichever worktree started it, and the
+container names are fixed — `quill_backend`, `quill_postgres_core` — so
+`docker exec quill_backend …` from any worktree reaches **the worktree that
+started the stack**, not the one you are working in.
+
+Every recipe built on `docker exec quill_backend` inherits this: `just ub`,
+`just uf`, `just migrate`. Each of them will run happily and tell you nothing
+is wrong.
+
+**Check before trusting any of them:**
+
+```bash
+docker inspect quill_backend --format '{{range .Mounts}}{{if eq .Destination "/app"}}{{.Source}}{{end}}{{end}}'
+```
+
+If that is not the worktree you are in, the result of anything you just ran
+describes somebody else's code.
+
+**Why it matters more than it sounds.** Both failures are silent and both
+look like success:
+
+- **Tests pass against code you did not write.** `just ub` runs the other
+  worktree's suite. New tests are not collected, because the files are not
+  there. A green run means nothing, and says nothing about what it actually
+  ran. This produced a "full suite green" claim that had to be retracted.
+- **A migration autogenerates as empty.** `just migrate` upgrades, compares
+  the other worktree's models against the database, finds no difference, and
+  writes a migration with an empty `upgrade()`. It exits zero. Committing it
+  would put a permanent no-op in the chain and leave the real tables
+  uncreated.
+
+**What to do instead.** Run against the worktree you are in, by mounting it
+explicitly. Both examples below assume a throwaway secret in the
+environment — these databases exist for the length of one command:
+
+```bash
+export TEST_DB_PASSWORD=whatever JWT_SECRET=0123456789012345678901234567890123456789
+
+# Tests
+docker run --rm \
+  -v "$PWD/backend:/app" -v "$PWD/shared:/shared" \
+  -v "$PWD/api-compatibility:/api-compatibility" \
+  -w /app \
+  -e JWT_SECRET -e CORE_DB_PASSWORD="$TEST_DB_PASSWORD" \
+  <backend-image> sh -lc "pytest -m 'not integration' -q"
+
+# Migrations: a throwaway Postgres, then the three commands just migrate runs
+docker run -d --name tmp-pg -e POSTGRES_PASSWORD="$TEST_DB_PASSWORD" \
+  -e POSTGRES_DB=quill_core -p 55433:5432 postgres:17-alpine
+docker run --rm --network host -v "$PWD/backend:/app" -v "$PWD/shared:/shared" \
+  -w /app -e JWT_SECRET -e CORE_DB_PASSWORD="$TEST_DB_PASSWORD" \
+  -e CORE_DB_USER=postgres -e CORE_DB_HOST=localhost -e CORE_DB_PORT=55433 \
+  <backend-image> sh -lc 'alembic upgrade head && alembic revision --autogenerate -m "…" && alembic upgrade head'
+docker rm -f tmp-pg
+```
+
+Then check the generated migration by hand — `upgrade()` must not be empty —
+and confirm with `python backend/scripts/check_migrations.py --all` and
+`alembic check` (which should report no new operations, and one head).
+
+A stray `.hypothesis/` directory at the repository root is a smaller symptom of
+the same thing: it appears when pytest is run from the host rather than in a
+container, and is not gitignored.
