@@ -64,9 +64,12 @@ permissions:
 jobs:
   # ---------- API breaking-change check (oasdiff) ----------
   # Detects an undeclared breaking change to the API contract by diffing the
-  # OpenAPI spec generated from `main` against the spec generated from this
-  # PR branch. See docs/docs/backend/api-compatibility.md for the full
-  # reasoning. Detecting a breaking change itself never fails this job (the
+  # OpenAPI spec generated from the commit this PR branched from against the
+  # spec generated from this PR branch. Both come from the same point of
+  # main's history on purpose - see the "Resolve the base commit" step below
+  # for what diffing against a live `main` reported instead. See
+  # docs/docs/backend/api-compatibility.md for the full reasoning.
+  # Detecting a breaking change itself never fails this job (the
   # downstream notify/gate jobs act on its `breaking` output) - but the
   # api-compatibility decision-file validation step below does fail the job
   # when coverage/schema rules are violated. That failure shows as a red check
@@ -92,10 +95,21 @@ jobs:
         working-directory: pr
         run: git fetch origin main:refs/remotes/origin/main
 
-      - name: Checkout main branch
+      # Both sides of the diff must come from the same point of main's
+      # history. Checking out `main` here instead took it live, while the
+      # `pr` checkout above is GitHub's cached merge ref - rebuilt lazily, so
+      # it can lag a base branch that has moved. See the script header.
+      - name: Resolve the base commit the PR ref was merged onto
+        id: base
+        run: bash pr/.github/scripts/ci/resolve-pr-base-sha.sh pr
+
+      # Kept at `path: main` - the spec paths below and the job's own naming
+      # read as "the base side", and this is still main, just pinned to the
+      # commit the PR was built on rather than whatever its tip is now.
+      - name: Checkout the base commit the PR branched from
         uses: actions/checkout@v7.0.1
         with:
-          ref: main
+          ref: ${{ steps.base.outputs.base_sha }}
           path: main
 
       - uses: actions/setup-python@v7.0.0
