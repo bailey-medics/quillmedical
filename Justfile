@@ -311,46 +311,76 @@ pre-commit:
 
 
 alias pb := prune-branches
-# Remove local branches whose remote tracking branch is gone, and untracked local branches already merged into main
-prune-branches:
+# Remove local branches whose remote tracking branch is gone, and untracked local branches already merged into main. Pass 'a' to prune the teaching content repos too.
+prune-branches scope="":
     #!/usr/bin/env bash
     {{initialise}} "prune-branches"
-    git fetch --prune
 
-    # Branch names come from for-each-ref, not `git branch -vv`: that marks the
-    # current branch with "*" and a branch checked out in another worktree with
-    # "+", and the marker is what `awk '{print $1}'` picks up. Fields are
-    # name / upstream / track / worktree path, tab separated.
-    REFS=$(git for-each-ref --format='%(refname:short)%09%(upstream)%09%(upstream:track)%09%(worktreepath)' refs/heads/)
+    # One function, called once per repository, so the teaching repos get
+    # exactly the same care as Quill rather than a hastily written second
+    # copy that skips the worktree check.
+    prune_one() {
+        cd "$1" || return 0
+        git fetch --prune
 
-    # A branch checked out in another worktree cannot be deleted, so name it
-    # rather than failing the whole recipe on it.
-    HELD=$(echo "$REFS" | awk -F'\t' '$3 == "[gone]" && $4 != "" { print $1 " (" $4 ")" }')
-    if [ -n "$HELD" ]; then
-        echo "Stale but checked out in another worktree, skipping:"
-        echo "$HELD" | sed 's/^/  /'
-    fi
+        # Branch names come from for-each-ref, not `git branch -vv`: that marks
+        # the current branch with "*" and a branch checked out in another
+        # worktree with "+", and the marker is what `awk '{print $1}'` picks
+        # up. Fields are name / upstream / track / worktree path, tab
+        # separated.
+        REFS=$(git for-each-ref --format='%(refname:short)%09%(upstream)%09%(upstream:track)%09%(worktreepath)' refs/heads/)
 
-    GONE=$(echo "$REFS" | awk -F'\t' '$3 == "[gone]" && $4 == "" { print $1 }')
-    if [ -z "$GONE" ]; then
-        echo "No stale tracked branches to remove."
-    else
-        echo "$GONE" | xargs git branch -D
-    fi
-
-    MERGED_UNTRACKED=""
-    for branch in $(echo "$REFS" | awk -F'\t' '$2 == "" && $4 == "" { print $1 }'); do
-        if [ "$branch" = "main" ]; then
-            continue
+        # A branch checked out in another worktree cannot be deleted, so name
+        # it rather than failing the whole recipe on it.
+        HELD=$(echo "$REFS" | awk -F'\t' '$3 == "[gone]" && $4 != "" { print $1 " (" $4 ")" }')
+        if [ -n "$HELD" ]; then
+            echo "Stale but checked out in another worktree, skipping:"
+            echo "$HELD" | sed 's/^/  /'
         fi
-        if git merge-base --is-ancestor "$branch" origin/main 2>/dev/null; then
-            MERGED_UNTRACKED="$MERGED_UNTRACKED $branch"
+
+        GONE=$(echo "$REFS" | awk -F'\t' '$3 == "[gone]" && $4 == "" { print $1 }')
+        if [ -z "$GONE" ]; then
+            echo "No stale tracked branches to remove."
+        else
+            echo "$GONE" | xargs git branch -D
         fi
-    done
-    if [ -z "$MERGED_UNTRACKED" ]; then
-        echo "No merged untracked branches to remove."
-    else
-        echo $MERGED_UNTRACKED | xargs git branch -d
+
+        MERGED_UNTRACKED=""
+        for branch in $(echo "$REFS" | awk -F'\t' '$2 == "" && $4 == "" { print $1 }'); do
+            if [ "$branch" = "main" ]; then
+                continue
+            fi
+            if git merge-base --is-ancestor "$branch" origin/main 2>/dev/null; then
+                MERGED_UNTRACKED="$MERGED_UNTRACKED $branch"
+            fi
+        done
+        if [ -z "$MERGED_UNTRACKED" ]; then
+            echo "No merged untracked branches to remove."
+        else
+            echo $MERGED_UNTRACKED | xargs git branch -d
+        fi
+    }
+
+    ROOT=$(pwd)
+    echo "▸ quillmedical"
+    prune_one "$ROOT"
+
+    if [ "{{scope}}" = "a" ]; then
+        if ! compgen -G "$ROOT/teaching-repos/*/.git" > /dev/null; then
+            echo ""
+            echo "No teaching content repos cloned — run 'just clone-teaching' first."
+        else
+            for REPO in "$ROOT"/teaching-repos/*/; do
+                # A directory without .git is content someone dropped in by
+                # hand, not a clone, and git commands there would act on
+                # Quill's repository instead.
+                if [ -d "${REPO}.git" ]; then
+                    echo ""
+                    echo "▸ $(basename "${REPO}")"
+                    prune_one "${REPO}"
+                fi
+            done
+        fi
     fi
 
 
