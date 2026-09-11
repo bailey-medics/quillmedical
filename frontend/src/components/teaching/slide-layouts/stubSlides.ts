@@ -70,3 +70,18 @@ export const imageSlide: CompiledSlide = stubSlides[3];
 export const textWithFigureSlide: CompiledSlide = stubSlides[4];
 export const calloutSlide: CompiledSlide = stubSlides[5];
 export const keyTakeawaysSlide: CompiledSlide = stubSlides[6];
+
+/**
+ * A hosted-video slide, as the API returns one.
+ *
+ * `videoSrc` is a filename rather than a URL: the address is composed
+ * from the base the access grant returns, so this stub deliberately
+ * cannot be played without one.
+ */
+export const hostedVideoSlide: CompiledSlide = {
+  slideIndex: 7,
+  layout: "video-slide",
+  title: "What the patient experiences",
+  videoSrc: "patient-experience.mp4",
+  durationSeconds: 180,
+};

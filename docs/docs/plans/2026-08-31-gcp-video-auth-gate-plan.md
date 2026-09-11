@@ -950,7 +950,7 @@ introduce an unknown component.
 
 ## Phase 4: Frontend — GCS playback
 
-- [ ] Add the resolved media fields to the `ApiSlide` interface and
+- [x] Add the resolved media fields to the `ApiSlide` interface and
       `CompiledSlide` type, and map them in `toCompiledSlide`. **[revised
       2026-09-09]** These carry resolved filenames from the link, not the MDX
       `ref` — the frontend composes URLs from `base_url` plus what the API gave
@@ -961,16 +961,16 @@ introduce an unknown component.
       `frontend/src/features/teaching/learning-data.ts:38`, with the mapping at
       `toCompiledSlide` (`learning-data.ts:54`). The plan previously placed both
       in `types.ts`.
-- [ ] New hook `frontend/src/features/teaching/use-video-access.ts`: calls
+- [x] New hook `frontend/src/features/teaching/use-video-access.ts`: calls
       `POST /teaching/modules/{id}/video-access` through the `api` client (never
       raw `fetch`), holds `base_url` and `expires_at` in state, and schedules a
       silent re-fetch at expiry minus five minutes while the learner is still on
       a video slide. Clears its timer on unmount.
-- [ ] Extend `VideoPlayer.tsx` — the `signedUrl` prop is already stubbed and
+- [x] Extend `VideoPlayer.tsx` — the `signedUrl` prop is already stubbed and
       documented as "V2 — not yet implemented". Rename it to `src` for accuracy
       (it is now a plain CDN URL, authorised by cookie, not a signed URL), keep
       `youtubeId` working, and add `posterUrl` and `captionsUrl`.
-- [ ] Spike whether `react-player` can carry a `<track>` element for WebVTT
+- [x] Spike whether `react-player` can carry a `<track>` element for WebVTT
       captions. **[revised 2026-09-09]** Still genuinely open — `package.json`
       pins `react-player: ^3.4.0`, so this is unchanged since the plan was
       written and no newer major has settled it. If it cannot, render a native
@@ -979,10 +979,18 @@ introduce an unknown component.
       requirement for the learning centre and are not negotiable. Record the
       outcome here; this is the point at which the parent plan says to evaluate
       Plyr.
-- [ ] Wire `SlideLayoutVideo.tsx` to pass either `youtubeId` or the composed
+      **[answered 2026-09-11] It can.** `ReactPlayerProps` extends
+      `VideoElementProps`, which extends React's
+      `DetailedHTMLProps<VideoHTMLAttributes<HTMLVideoElement>>` — so
+      children are typed, and v3 forwards them to the underlying video
+      element. Verified by compiling a `<track>` child, not by reading
+      the inheritance chain alone. No native `<video>` fallback is
+      needed and Plyr does not need evaluating. A track is added only
+      for hosted video, since YouTube carries its own captions.
+- [x] Wire `SlideLayoutVideo.tsx` to pass either `youtubeId` or the composed
       `src`, and show a loading state while the access call is in flight rather
       than a blank player.
-- [ ] Handle the denial path visibly: if the access call fails, show an inline
+- [x] Handle the denial path visibly: if the access call fails, show an inline
       message ("This video is not available — your access may have expired. Try
       reloading the page.") rather than an empty box. Use the centralised page
       messages pattern.
@@ -997,7 +1005,7 @@ introduce an unknown component.
       where the frontend error handling lives, and because Phase 4 adds a
       second failure path to the same page. A stuck skeleton is
       indistinguishable from a slow network to the learner looking at it.
-- [ ] Storybook stories for the new states — YouTube, GCS with captions, loading,
+- [x] Storybook stories for the new states — YouTube, GCS with captions, loading,
       access denied — and tests alongside them, per the components rule.
 
 ## Phase 5: Admin upload
