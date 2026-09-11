@@ -119,6 +119,7 @@ nav:
           - Image on GCP Check: plans/2026-06-14-image-on-gcp-check-plan.md
           - Teaching Env Scoping: plans/2026-08-05-teaching-env-scoping-plan.md
           - Alembic Review & Migration Safety: plans/2026-08-09-alembic-review-plan.md
+          - Site Tree Unification: plans/2026-09-11-site-tree-unification-plan.md
   - Teaching:
       - Overview: teaching/index.md
   - Learnings:
