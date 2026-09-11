@@ -295,6 +295,13 @@ module "cloud_run_backend" {
       TEACHING_IMAGES_BASE_URL  = "https://storage.googleapis.com/${module.cloud_storage[0].bucket_name}"
     } : {},
     {
+      # Set in every environment: this one setting decides where passports
+      # live, and unset would silently fall back to a local directory that
+      # Cloud Run does not durably have. There is deliberately no companion
+      # PASSPORT_STORAGE_BACKEND — see the comment in backend/app/config.py.
+      PASSPORT_GCS_BUCKET = module.passport_storage.bucket_name
+    },
+    {
       EMAIL_FROM    = "info@quill-medical.com"
       EMAIL_DRY_RUN = "false"
     }
@@ -399,6 +406,25 @@ module "cloud_storage" {
   project_id  = var.project_id
   region      = var.region
   environment = var.environment
+}
+
+# ---------- Cloud Storage: clinician passports (all environments) ----------
+# Not gated on an environment, unlike the teaching buckets above. A passport
+# is a personal record rather than a feature of one deployment, and an empty
+# bucket costs nothing until something is written to it — so every environment
+# has somewhere to put one rather than needing infrastructure work the day the
+# feature is switched on. Whether the passport feature is enabled at all stays
+# an organisation-level decision in the application.
+module "passport_storage" {
+  source      = "./modules/passport-storage"
+  project_id  = var.project_id
+  region      = var.region
+  environment = var.environment
+
+  # The Cloud Run default compute service account, as the bindings at the top
+  # of this file name it. It does not inherit object-level access from project
+  # editor, so the module grants it explicitly.
+  service_account_email = "${data.google_project.project.number}-compute@developer.gserviceaccount.com"
 }
 
 # ---------- Teaching video pipeline (teaching only) ----------

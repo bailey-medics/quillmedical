@@ -1999,12 +1999,48 @@ three does not invalidate unit one.
         passport store, because a record names evidence by hash — a
         passport in a bucket whose blobs are on a disk is a set of
         broken references.
-- [ ] Add the bucket and the Cloud Run service account IAM binding to
+- [x] Add the bucket and the Cloud Run service account IAM binding to
       Terraform, following the teaching bucket and the IAM note in
       `docs/docs/infrastructure/gcp.md`. Enable object versioning on
       the bucket: it is a one-line setting and it is what preserves a
       replaced bundle's predecessors, which is the backstop for a
       history rewrite.
+      - **Its own `infra/modules/passport-storage/` rather than a second
+        instance of `cloud-storage`**, which this task first pointed at.
+        That module carries a lifecycle rule deleting at 365 days with
+        no `with_state`, so it matches live objects as well as noncurrent
+        ones. On a versioned bucket a Delete against a live object
+        archives it rather than erasing it — the bytes survive as a
+        noncurrent version — but the live object is gone, so the
+        application reads the passport as absent. Recoverable by hand,
+        and still an outage on a professional record. Teaching images
+        tolerate it because CI re-uploads them; a passport has no such
+        source. The new module has no lifecycle rule at all, which is
+        the point of a separate module rather than a flag: nothing
+        expires, and no setting could make it.
+      - `force_destroy = false` in every environment, unlike the shared
+        module which allows it outside prod. A staging passport is still
+        somebody's record, so `terraform destroy` should refuse.
+      - `public_access_prevention = "enforced"`, so an `allUsers` binding
+        cannot be added later by hand.
+      - **Not gated on an environment.** An empty bucket costs nothing
+        until written to, so every environment has somewhere to put a
+        passport rather than needing infrastructure work the day the
+        feature is enabled. Whether the feature is on stays an
+        organisation-level decision in the application.
+      - `terraform validate` passes on the module standalone. The root
+        configuration could not be validated locally — `versions.tf`
+        requires Terraform >= 1.15.2 and this machine has 1.15.0 — but
+        `.github/workflows/terraform.yml` runs `terraform plan` on pull
+        requests, which is where the root check actually happens.
+      - **Found alongside: the teaching bucket has the same rule live
+        today.** Its oldest objects are from May 2026, so nothing has
+        reached 365 days yet; the first would be around May 2027, and
+        only for files CI has not re-uploaded since, because an upload
+        resets the age. Adding `with_state = "ARCHIVED"` would make the
+        rule do what its comment already claims. Left alone here: it
+        changes teaching's production bucket and deserves its own review
+        rather than riding along with passport work.
 - [x] Tests against a fake GCS client covering generation mismatch,
       partial upload failure and re-open after failure.
       - **The fake implements the generation rule for real** rather than
