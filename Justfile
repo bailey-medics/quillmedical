@@ -18,6 +18,48 @@ _terminal-description message=" ":
     echo -ne "\033]0;{{message}}\007"
 
 
+# Refuse to run when this worktree is not the one the container serves.
+#
+# The dev stack is owned by whichever worktree ran `just sd`: the containers
+# bind-mount that checkout, and their names are fixed in compose.dev.yml, so
+# `docker exec` from a second worktree silently acts on the first one's code.
+# Tests pass or fail against code you are not editing, and `just migrate`
+# autogenerates a revision from the wrong models.
+#
+# The owning path is read from Docker rather than hard-coded, so renaming or
+# moving the root worktree needs no change here.
+_worktree-guard container:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    # Parsed with jq rather than `docker inspect --format`: a Go template
+    # needs its braces doubled to survive just's own interpolation, which is
+    # easy to get subtly wrong and leaks stray braces into the path.
+    # `.Mounts? // empty` keeps a missing container quiet: docker inspect
+    # yields no object, and the empty result is reported below as "not
+    # running" rather than as a jq iteration error.
+    mount=$(docker inspect {{container}} 2>/dev/null \
+        | jq -r '.[0].Mounts? // empty | .[] | select(.Destination == "/app") | .Source')
+    if [ -z "${mount}" ]; then
+        echo "{{container}} is not running. Start it with: just sd" >&2
+        exit 1
+    fi
+    owner=$(dirname "${mount}")
+    here="{{justfile_directory()}}"
+    if [ "${owner}" != "${here}" ]; then
+        echo "" >&2
+        echo "✗ Refusing to run: {{container}} serves a different worktree." >&2
+        echo "" >&2
+        echo "    this worktree: ${here}" >&2
+        echo "    container serves: ${owner}" >&2
+        echo "" >&2
+        echo "  Running here would act on the other worktree's code." >&2
+        echo "  Either run this from ${owner}, or restart the stack" >&2
+        echo "  from this worktree: just sc && just sd" >&2
+        echo "" >&2
+        exit 1
+    fi
+
+
 alias aj := abbreviate-just
 # Set up the description for terminal windows
 abbreviate-just:
@@ -76,6 +118,7 @@ alias cu := create-user
 create-user:
     #!/usr/bin/env bash
     {{initialise}} "create-user"
+    just _worktree-guard quill_backend
     docker exec -it quill_backend sh -lc "cd scripts && python create_user.py"
 
 
@@ -84,6 +127,7 @@ alias csu := create-super-user
 create-super-user:
     #!/usr/bin/env bash
     {{initialise}} "create-super-user"
+    just _worktree-guard quill_backend
     docker exec -it quill_backend sh -lc "cd scripts && python create_superuser.py"
 
 
@@ -92,6 +136,7 @@ alias cur := create-user-with-role
 create-user-with-role:
     #!/usr/bin/env bash
     {{initialise}} "create-user-with-role"
+    just _worktree-guard quill_backend
     docker exec -it quill_backend sh -lc "cd scripts && python create_user_with_role.py"
 
 
@@ -131,6 +176,7 @@ alias eb := enter-backend
 enter-backend:
     #!/usr/bin/env bash
     {{initialise}} "enter-backend"
+    just _worktree-guard quill_backend
     docker exec -it quill_backend /bin/sh
 
 
@@ -139,6 +185,7 @@ alias ef := enter-frontend
 enter-frontend:
     #!/usr/bin/env bash
     {{initialise}} "enter-frontend"
+    just _worktree-guard quill_frontend
     docker exec -it quill_frontend /bin/sh
 
 
@@ -250,6 +297,7 @@ validate-teaching:
     #!/usr/bin/env bash
     {{initialise}} "validate-teaching"
     set -uo pipefail
+    just _worktree-guard quill_backend
     if [ -z "$(docker ps -q -f name=^quill_backend$)" ]; then
         echo "quill_backend is not running. Start it with: just sd"
         exit 1
@@ -284,6 +332,7 @@ alias pcert := preview-certificate
 preview-certificate bank="colonoscopy-optical-diagnosis-test":
     #!/usr/bin/env bash
     {{initialise}} "preview-certificate"
+    just _worktree-guard quill_backend
     docker exec quill_backend python -m scripts.preview_certificate --bank "{{bank}}"
     docker cp quill_backend:/tmp/certificate-preview.pdf .
     open certificate-preview.pdf
@@ -294,6 +343,11 @@ alias m := migrate
 migrate message:
     #!/usr/bin/env bash
     {{initialise}} "migrate - {{message}}"
+    # Autogenerate diffs the container's models against the database and
+    # writes the revision into the container's checkout, so running this
+    # from the wrong worktree produces a revision for code you are not
+    # editing — in the worktree you are not editing it from.
+    just _worktree-guard quill_backend
     docker exec -e AL_MSG='{{message}}' quill_backend sh -lc '
         set -e
         alembic upgrade head &&
@@ -703,6 +757,7 @@ alias ub := unit-tests-backend
 unit-tests-backend *ARGS:
     #!/usr/bin/env bash
     {{initialise}} "unit-tests-backend"
+    just _worktree-guard quill_backend
     docker exec quill_backend sh -lc "pytest -q -m 'not integration' {{ARGS}}"
 
 
@@ -711,6 +766,7 @@ alias uf := unit-tests-frontend
 unit-tests-frontend *ARGS:
     #!/usr/bin/env bash
     {{initialise}} "unit-tests-frontend"
+    just _worktree-guard quill_frontend
     docker exec quill_frontend sh -lc "yarn unit-test:run {{ARGS}}"
 
 
@@ -748,6 +804,9 @@ alias ee := e2e
 e2e:
     #!/usr/bin/env bash
     {{initialise}} "e2e"
+    # Playwright runs on the host but drives http://localhost — the shared
+    # Caddy — so it exercises whichever worktree the stack serves.
+    just _worktree-guard quill_frontend
     cd frontend && npx playwright test
 
 
@@ -756,6 +815,7 @@ alias eer := e2e-report
 e2e-report:
     #!/usr/bin/env bash
     {{initialise}} "e2e-report"
+    just _worktree-guard quill_frontend
     cd frontend && npx playwright test && npx playwright show-report
 
 alias eeu := e2e-ui
@@ -763,6 +823,7 @@ alias eeu := e2e-ui
 e2e-ui:
     #!/usr/bin/env bash
     {{initialise}} "e2e-ui"
+    just _worktree-guard quill_frontend
     cd frontend && npx playwright test --ui
 
 
