@@ -665,6 +665,7 @@
     "virtualenvs",
     "visibilitychange",
     "vite",
+    "vitest",
     "vspct",
     "vtpm",
     "weasyprint",

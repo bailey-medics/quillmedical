@@ -18,13 +18,27 @@ _terminal-description message=" ":
     echo -ne "\033]0;{{message}}\007"
 
 
+# Compose project name for this worktree's throwaway test containers.
+#
+# Derived from the worktree directory, so every worktree gets its own
+# node_modules volumes under compose.test.yml and none of them collides with
+# the dev stack. Lower-cased and stripped to [a-z0-9-], which is all compose
+# accepts in a project name.
+_test-project:
+    @basename "{{justfile_directory()}}" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9\n' '-' | sed 's/^/quill-test-/'
+
+
 # Refuse to run when this worktree is not the one the container serves.
 #
 # The dev stack is owned by whichever worktree ran `just sd`: the containers
 # bind-mount that checkout, and their names are fixed in compose.dev.yml, so
 # `docker exec` from a second worktree silently acts on the first one's code.
-# Tests pass or fail against code you are not editing, and `just migrate`
-# autogenerates a revision from the wrong models.
+# `just migrate` would autogenerate a revision from the wrong models, and
+# `just e2e` would drive the wrong frontend.
+#
+# Only recipes that genuinely need the live stack call this. The unit tests
+# do not: `just ub` and `just uf` run in throwaway containers that mount the
+# current worktree (see compose.test.yml), so they work from any worktree.
 #
 # The owning path is read from Docker rather than hard-coded, so renaming or
 # moving the root worktree needs no change here.
@@ -753,21 +767,39 @@ stop:
 
 
 alias ub := unit-tests-backend
-# Run the backend unit tests
+# Run the backend unit tests (in a throwaway container mounting this worktree)
 unit-tests-backend *ARGS:
     #!/usr/bin/env bash
     {{initialise}} "unit-tests-backend"
-    just _worktree-guard quill_backend
-    docker exec quill_backend sh -lc "pytest -q -m 'not integration' {{ARGS}}"
+    # Runs from the shared dev image against THIS worktree's checkout, so it
+    # needs neither the dev stack nor ownership of it. `run` builds the image
+    # if it is missing. In-memory SQLite: no database service involved.
+    docker compose -p "$(just _test-project)" -f compose.test.yml \
+        run --rm backend sh -lc "pytest -q -m 'not integration' {{ARGS}}"
 
 
 alias uf := unit-tests-frontend
-# Run the frontend unit tests
+# Run the frontend unit tests (in a throwaway container mounting this worktree)
 unit-tests-frontend *ARGS:
     #!/usr/bin/env bash
     {{initialise}} "unit-tests-frontend"
-    just _worktree-guard quill_frontend
-    docker exec quill_frontend sh -lc "yarn unit-test:run {{ARGS}}"
+    # As for `ub`: shared image, this worktree mounted, per-worktree
+    # node_modules volumes seeded from the image on first use. If a branch
+    # changes package.json, `just utr` resets those volumes.
+    docker compose -p "$(just _test-project)" -f compose.test.yml \
+        run --rm frontend sh -lc "yarn unit-test:run {{ARGS}}"
+
+
+alias utr := unit-tests-reset
+# Rebuild the test images and drop this worktree's node_modules test volumes
+unit-tests-reset:
+    #!/usr/bin/env bash
+    {{initialise}} "unit-tests-reset"
+    # For when a branch changes dependencies: the per-worktree volumes were
+    # seeded from an older image and would otherwise keep the old packages.
+    docker compose -p "$(just _test-project)" -f compose.test.yml \
+        down --volumes --remove-orphans
+    docker compose -f compose.test.yml build --pull
 
 
 alias ts := test-scripts

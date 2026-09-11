@@ -22,6 +22,7 @@ See the `Justfile` if you want to know more.
 - **ALWAYS run backend and frontend unit tests inside Docker containers** — never run them directly on the host
   - Backend: `just ub` (all unit tests) or `just ub -k "test_name"` (targeted)
   - Frontend: `just uf` (all unit tests) or `just uf src/path/to/file.test.tsx` (targeted)
+  - Both run in a throwaway container from `compose.test.yml` that mounts the current worktree, so they work from any worktree and do not need the dev stack running
   - Prefer targeted tests during development; run the full suite only if CI is failing
 - Storybook: runs on the host — `just sb` (dev server), `just sbt` (tests), `just sbtci` (CI mode)
 - Backend: pytest with fixtures from `conftest.py`
@@ -433,7 +434,7 @@ there is any doubt.
 
 Rediscovered three times in one session before it was written down.
 
-### The dev stack belongs to one worktree, and it is probably not this one
+### Unit tests run from any worktree; the dev stack belongs to one
 
 There are several worktrees of this repository, but only one dev stack. Its
 containers are bind-mounted to whichever worktree started it, and the
@@ -441,54 +442,61 @@ container names are fixed — `quill_backend`, `quill_postgres_core` — so
 `docker exec quill_backend …` from any worktree reaches **the worktree that
 started the stack**, not the one you are working in.
 
-Every recipe built on `docker exec quill_backend` inherits this: `just ub`,
-`just uf`, `just migrate`. Each of them will run happily and tell you nothing
-is wrong.
+**The unit tests no longer go through the stack.** `just ub` and `just uf`
+run `docker compose run --rm` against `compose.test.yml`: a throwaway
+container from the shared dev image, with the current worktree mounted at
+`/app`. They work from any worktree, with the stack running elsewhere or not
+at all, and the image is built on first use. The backend suite uses in-memory
+SQLite and the frontend suite is vitest under jsdom, so no service is needed.
 
-**Check before trusting any of them:**
+- **The compose project is named after the worktree directory**
+  (`quill-test-<dir>`), which gives each worktree its own `node_modules`
+  volumes and keeps it clear of the dev stack's containers.
+- **Those volumes are seeded from the image on first use** and then kept. If
+  a branch changes `package.json`, run `just utr` to drop them and rebuild
+  the image; otherwise the old packages linger and the failure is confusing.
+- **Dependencies are baked into the image.** A backend dependency change
+  needs the image rebuilt too (`just utr`, or `just sd b`). Both compose
+  files tag the same `quill-backend-dev` / `quill-frontend-dev` images, so
+  one build serves every worktree.
+- **On a Linux host, pytest warns it cannot write `.pytest_cache`.** The
+  container runs as its own unprivileged user and the bind mount is owned by
+  you. Harmless; Docker Desktop on macOS maps ownership and does not show it.
+
+**Recipes that still need the live stack** keep the `_worktree-guard`
+check and refuse to run from a worktree the stack does not serve:
+`just migrate`, `just e2e`, `just eb` / `just ef`, the create-user recipes
+and `just validate-teaching`. The guard reads the owning path from Docker:
 
 ```bash
 docker inspect quill_backend --format '{{range .Mounts}}{{if eq .Destination "/app"}}{{.Source}}{{end}}{{end}}'
 ```
 
-If that is not the worktree you are in, the result of anything you just ran
-describes somebody else's code.
+**Why the guard exists.** Before the test recipes were separated from the
+stack, both failures were silent and both looked like success:
 
-**Why it matters more than it sounds.** Both failures are silent and both
-look like success:
+- **Tests passed against code you did not write.** New tests were not
+  collected, because the files were not there. This produced a "full suite
+  green" claim that had to be retracted.
+- **A migration autogenerates as empty.** `just migrate` compares the other
+  worktree's models against the database, finds no difference, and writes a
+  revision with an empty `upgrade()`. It exits zero. Committing it would put
+  a permanent no-op in the chain and leave the real tables uncreated. This
+  one is still possible, which is why `migrate` keeps the guard.
 
-- **Tests pass against code you did not write.** `just ub` runs the other
-  worktree's suite. New tests are not collected, because the files are not
-  there. A green run means nothing, and says nothing about what it actually
-  ran. This produced a "full suite green" claim that had to be retracted.
-- **A migration autogenerates as empty.** `just migrate` upgrades, compares
-  the other worktree's models against the database, finds no difference, and
-  writes a migration with an empty `upgrade()`. It exits zero. Committing it
-  would put a permanent no-op in the chain and leave the real tables
-  uncreated.
-
-**What to do instead.** Run against the worktree you are in, by mounting it
-explicitly. Both examples below assume a throwaway secret in the
-environment — these databases exist for the length of one command:
+**Migrating from a worktree that does not own the stack.** Use a throwaway
+Postgres and mount this worktree explicitly. The example assumes a throwaway
+secret in the environment — the database exists for the length of one command:
 
 ```bash
 export TEST_DB_PASSWORD=whatever JWT_SECRET=0123456789012345678901234567890123456789
 
-# Tests
-docker run --rm \
-  -v "$PWD/backend:/app" -v "$PWD/shared:/shared" \
-  -v "$PWD/api-compatibility:/api-compatibility" \
-  -w /app \
-  -e JWT_SECRET -e CORE_DB_PASSWORD="$TEST_DB_PASSWORD" \
-  <backend-image> sh -lc "pytest -m 'not integration' -q"
-
-# Migrations: a throwaway Postgres, then the three commands just migrate runs
 docker run -d --name tmp-pg -e POSTGRES_PASSWORD="$TEST_DB_PASSWORD" \
-  -e POSTGRES_DB=quill_core -p 55433:5432 postgres:17-alpine
+  -e POSTGRES_DB=quill_core -p 55433:5432 postgres:18-alpine
 docker run --rm --network host -v "$PWD/backend:/app" -v "$PWD/shared:/shared" \
   -w /app -e JWT_SECRET -e CORE_DB_PASSWORD="$TEST_DB_PASSWORD" \
   -e CORE_DB_USER=postgres -e CORE_DB_HOST=localhost -e CORE_DB_PORT=55433 \
-  <backend-image> sh -lc 'alembic upgrade head && alembic revision --autogenerate -m "…" && alembic upgrade head'
+  quill-backend-dev sh -lc 'alembic upgrade head && alembic revision --autogenerate -m "…" && alembic upgrade head'
 docker rm -f tmp-pg
 ```
 

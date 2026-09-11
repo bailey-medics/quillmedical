@@ -1,0 +1,71 @@
+# Throwaway unit-test containers for any worktree.
+#
+# The dev stack (compose.dev.yml) belongs to whichever worktree ran `just sd`:
+# its containers bind-mount that checkout and carry fixed names, so testing
+# through `docker exec quill_backend` from another worktree silently runs the
+# other worktree's code. This file sidesteps the stack entirely. `just ub` and
+# `just uf` run `docker compose run --rm` against it, so each run is a fresh
+# container built from the shared dev image with THIS worktree mounted at /app.
+#
+# The unit tests need no services: the backend suite uses in-memory SQLite,
+# and the frontend suite is vitest under jsdom. Neither talks to Postgres,
+# FHIR or EHRbase, so nothing here has a network.
+#
+# The compose project name is derived from the worktree directory (see
+# `_test-project` in the Justfile), which gives every worktree its own
+# node_modules volumes and keeps it clear of the dev stack's containers.
+#
+# Usage (normally via the Justfile):
+#   docker compose -p quill-test-<worktree> -f compose.test.yml run --rm backend pytest -q
+#   docker compose -p quill-test-<worktree> -f compose.test.yml run --rm frontend yarn unit-test:run
+
+services:
+  backend:
+    # Same image name as compose.dev.yml, so one build serves every worktree
+    # and `just sd b` refreshes it for all of them.
+    image: quill-backend-dev
+    build:
+      context: .
+      dockerfile: ./backend/Dockerfile
+      target: dev
+    # No env_file: CI runs the suite with no .env, and conftest.py supplies
+    # every value the app needs. Anything set here beats a mounted
+    # backend/.env, so a placeholder or a real secret there cannot leak into
+    # or break a test run.
+    environment:
+      BACKEND_ENV: testing
+      JWT_SECRET: test_secret_key_long_enough_for_validation_32_chars_min
+      CORE_DB_PASSWORD: test_auth_password
+      CLINICAL_SERVICES_ENABLED: "false"
+      EMAIL_DRY_RUN: "true"
+      TEACHING_STORAGE_BACKEND: local
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+      - ./shared:/shared
+      - ./api-compatibility:/api-compatibility
+    network_mode: none
+
+  frontend:
+    image: quill-frontend-dev
+    build:
+      context: .
+      dockerfile: ./frontend/Dockerfile
+      target: dev
+    environment:
+      NODE_ENV: test
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      # Named volumes are seeded from the image's own node_modules the first
+      # time they are created, so a new worktree needs no install step. They
+      # are per compose project, hence per worktree. When package.json
+      # changes on a branch, `just utr` throws them away and rebuilds.
+      - node_modules:/app/node_modules
+      - public_pages_node_modules:/app/public_pages/node_modules
+      - ./shared:/shared
+    network_mode: none
+
+volumes:
+  node_modules:
+  public_pages_node_modules:

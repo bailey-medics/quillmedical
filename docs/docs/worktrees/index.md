@@ -89,13 +89,32 @@ git worktree remove ../quillmedical-2
 Add `--force` if it has uncommitted changes. The branch survives the
 removal; delete it separately, or let `just pb` clear it once merged.
 
-## Docker, and the one thing to watch
+## Docker: tests run anywhere, the stack runs in one place
 
-The dev stack uses fixed container names, so **only one worktree can run
-it at a time**. Starting `just st` in a second worktree will either fail
-on the name or, worse, attach to the containers already serving the
-first — and the tests you then run will exercise the other worktree's
-code while appearing to pass.
+The unit tests do not need the dev stack. `just ub` and `just uf` start a
+throwaway container from the shared dev image with **the current worktree**
+mounted, run the suite, and remove it. They work from every worktree at
+once, whether the stack is up elsewhere or not at all, and build the image
+on first use. See `compose.test.yml`.
 
-If you are running the stack in one worktree, treat the others as
-edit-and-review space, or bring the stack down first.
+Two things follow from how that works:
+
+- **Each worktree gets its own `node_modules` test volumes**, named after
+  the worktree directory and seeded from the image the first time. If your
+  branch changes `package.json`, run `just utr` to drop them and rebuild;
+  otherwise the old packages linger.
+- **Dependencies live in the image**, so a backend dependency change also
+  needs a rebuild: `just utr`, or `just sd b` from the worktree that owns
+  the stack. One image serves every worktree.
+
+The dev stack itself is different. It uses fixed container names, so
+**only one worktree can run it at a time**. Starting `just sd` in a second
+worktree will either fail on the name or, worse, attach to the containers
+already serving the first. Recipes that need the live stack — `just migrate`,
+`just e2e`, `just eb`, the create-user recipes — check which worktree the
+stack serves and refuse to run from any other, rather than quietly acting
+on the wrong code.
+
+If you are running the stack in one worktree, the others are still fine for
+editing, reviewing and unit testing. Bring the stack down first only for the
+recipes that need it.
