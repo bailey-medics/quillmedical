@@ -207,6 +207,39 @@ class TestTheCheckDoesNotBreakLegitimateAdministration:
         assert resp.status_code == 200
 
 
+class TestTheGateIsACompetencyNotARank:
+    """`manage_users`, not `system_permissions in ("admin", ...)`."""
+
+    def test_the_rank_alone_is_not_enough(
+        self,
+        authenticated_client: TestClient,
+        test_user: User,
+        admin_org: Organisation,
+        insider: User,
+        db_session: Session,
+    ):
+        """Promoted by rank, sharing the organisation, no competency.
+
+        Under the old string comparison this succeeded. `consultant`
+        grants clinical competencies and not `manage_users`, which is the
+        distinction the swap exists to make.
+        """
+        test_user.system_permissions = "admin"
+        test_user.base_profession = "consultant"
+        db_session.execute(
+            insert(organisation_member).values(
+                organisation_id=admin_org.id,
+                user_id=test_user.id,
+                capacity="staff",
+            )
+        )
+        db_session.commit()
+
+        resp = authenticated_client.get(f"/api/users/{insider.id}")
+
+        assert resp.status_code == 403
+
+
 class TestSuperadminsAreGlobal:
     """The one rank that genuinely is everywhere, and stays that way.
 

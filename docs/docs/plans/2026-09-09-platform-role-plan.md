@@ -198,6 +198,18 @@ does not, and removing the ladder removes the suggestion.
         - **Two superadmin comparisons inside route bodies are deliberately left.**
           `list_sites` skips its filter for a superadmin and `get_site` hides superadmin
           staff from an admin's view. Neither is a gate; both go when the column does.
+      - **Batch 3 of 4 done: eight of the nine user routes.**
+        `create_user_with_cbac`, `update_user`, `deactivate_user`, `reactivate_user`,
+        `send_invite_email`, `list_users`, `get_user` and `link_patient_to_user`. 18 string
+        gates down to 10.
+        - **`update_my_competencies` is deliberately not swapped**, and wants a decision
+          before it is. It is self-scoped by construction — `UpdateCompetenciesRequest`
+          carries no target user — so there is no place check to pair a competency with,
+          and gating it on `manage_users` would make the escalation self-referential:
+          holding the competency would be what lets a holder keep granting it to
+          themselves. Today the rank check is the only thing standing between an admin and
+          an unbounded grant. Leaving it on the rank keeps that visible until the
+          end-to-end work settles whether the route should exist at all.
       - **The twenty ready routes wait for the eleven.** They could go sooner, but
         splitting the batch by whether each route happened to be safe would leave a worse
         record than doing it in one pass once they are level.
