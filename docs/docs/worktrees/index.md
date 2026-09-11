@@ -7,8 +7,8 @@ directory, on its own branch. One clone, several working directories.
 just wc feature/my-next-thing
 ```
 
-That creates a sibling directory, branches from `origin/main`, copies the
-`.env` files across and builds the backend virtual environment.
+That creates a sibling directory, puts it on the branch you named, copies
+the `.env` files across and builds the backend virtual environment.
 
 ## Why they matter for LLM work
 
@@ -42,11 +42,15 @@ per day. A worktree is cheap to make and cheap to remove.
 - **Names the directory for you.** `quillmedical-2`, `quillmedical-3` and
   so on, walking up until a free name appears — so a directory removed by
   hand does not make the next number collide.
-- **Branches from `origin/main`**, not from wherever you happen to be
-  standing, so a new worktree never inherits half-finished work.
-- **Leaves the upstream unset.** A branch created against `origin/main`
-  otherwise tracks `main` itself, and a bare `git push` would aim at the
-  protected branch. Your first push needs `git push -u origin <branch>`.
+- **Creates the branch, or resumes it.** A name that already exists — here
+  or on `origin` — is checked out with its history intact. Only a genuinely
+  new name branches from `origin/main`, so a fresh worktree never inherits
+  half-finished work from wherever you happened to be standing.
+- **Leaves the upstream unset on a new branch.** A branch created against
+  `origin/main` otherwise tracks `main` itself, and a bare `git push` would
+  aim at the protected branch. Your first push needs
+  `git push -u origin <branch>`. A resumed branch already tracks its own
+  remote, so it pushes normally.
 - **Copies the `.env` files.** They are gitignored, so a new worktree
   starts without any and the stack will not come up. Copied rather than
   symlinked, because a branch may legitimately need a different value and

@@ -318,7 +318,7 @@ worktree-create branch="":
 
     if [ -z "{{branch}}" ]; then
         echo "Usage: just wc feature/my-branch"
-        echo "The branch must not exist yet — this creates it."
+        echo "Creates the branch, or resumes it if it already exists."
         exit 1
     fi
 
@@ -345,17 +345,28 @@ worktree-create branch="":
     done
     DEST="$PARENT/$NAME-$N"
 
-    git -C "$ROOT" fetch origin main --quiet
-    # Branch from origin/main rather than the current HEAD, so a new
-    # worktree never inherits half-finished work from wherever you
-    # happened to be standing.
-    git -C "$ROOT" worktree add -b "{{branch}}" "$DEST" origin/main
+    git -C "$ROOT" fetch origin --quiet
 
-    # A new branch made this way tracks main, not itself, so the first
-    # bare `git push` would aim at the protected branch. Point it at its
-    # own name now rather than relying on push.default to refuse.
-    git -C "$DEST" branch --set-upstream-to=origin/main "{{branch}}" 2>/dev/null || true
-    git -C "$DEST" branch --unset-upstream "{{branch}}" 2>/dev/null || true
+    if git -C "$ROOT" show-ref --verify --quiet "refs/heads/{{branch}}"; then
+        echo "Branch {{branch}} already exists locally — checking it out."
+        git -C "$ROOT" worktree add "$DEST" "{{branch}}"
+    elif git -C "$ROOT" show-ref --verify --quiet "refs/remotes/origin/{{branch}}"; then
+        # Resuming work that already exists on the remote. Branching from
+        # main here would silently discard every commit on it.
+        echo "Branch {{branch}} exists on origin — resuming it."
+        git -C "$ROOT" worktree add -b "{{branch}}" "$DEST" "origin/{{branch}}"
+        git -C "$DEST" branch --set-upstream-to="origin/{{branch}}" "{{branch}}"
+    else
+        # Branch from origin/main rather than the current HEAD, so a new
+        # worktree never inherits half-finished work from wherever you
+        # happened to be standing.
+        git -C "$ROOT" worktree add -b "{{branch}}" "$DEST" origin/main
+
+        # A new branch made this way tracks main, not itself, so the first
+        # bare `git push` would aim at the protected branch. Leave it unset
+        # rather than relying on push.default to refuse.
+        git -C "$DEST" branch --unset-upstream "{{branch}}" 2>/dev/null || true
+    fi
 
     # .env files are gitignored, so a new worktree starts without any and
     # the stack will not come up. Copied rather than symlinked: a branch
