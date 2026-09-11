@@ -144,7 +144,7 @@ class TestTheRoutesReadTheNewColumn:
 
         resp = test_client.post(
             "/api/organisations",
-            json={"name": "Nowhere Trust", "type": "hospital"},
+            json={"name": "Nowhere Trust", "type": "hospital_team"},
         )
 
         assert resp.status_code == 403
@@ -167,7 +167,7 @@ class TestTheRoutesReadTheNewColumn:
 
         resp = test_client.post(
             "/api/organisations",
-            json={"name": "Somewhere Trust", "type": "hospital"},
+            json={"name": "Somewhere Trust", "type": "hospital_team"},
         )
 
         assert resp.status_code == 200
