@@ -95,7 +95,7 @@ The unit tests do not need the dev stack. `just ub` and `just uf` start a
 throwaway container from the shared dev image with **the current worktree**
 mounted, run the suite, and remove it. They work from every worktree at
 once, whether the stack is up elsewhere or not at all, and build the image
-on first use. See `compose.test.yml`.
+on first use. See `compose.unit-tests.yml`.
 
 Two things follow from how that works:
 

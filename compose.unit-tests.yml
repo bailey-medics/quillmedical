@@ -16,8 +16,8 @@
 # node_modules volumes and keeps it clear of the dev stack's containers.
 #
 # Usage (normally via the Justfile):
-#   docker compose -p quill-test-<worktree> -f compose.test.yml run --rm backend pytest -q
-#   docker compose -p quill-test-<worktree> -f compose.test.yml run --rm frontend yarn unit-test:run
+#   docker compose -p quill-test-<worktree> -f compose.unit-tests.yml run --rm backend pytest -q
+#   docker compose -p quill-test-<worktree> -f compose.unit-tests.yml run --rm frontend yarn unit-test:run
 
 services:
   backend:

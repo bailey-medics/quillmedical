@@ -17,7 +17,7 @@ See the `Justfile` if you want to know more.
 - **ALWAYS run backend and frontend unit tests inside Docker containers** — never run them directly on the host
   - Backend: `just ub` (all unit tests) or `just ub -k "test_name"` (targeted)
   - Frontend: `just uf` (all unit tests) or `just uf src/path/to/file.test.tsx` (targeted)
-  - Both run in a throwaway container from `compose.test.yml` that mounts the current worktree, so they work from any worktree and do not need the dev stack running
+  - Both run in a throwaway container from `compose.unit-tests.yml` that mounts the current worktree, so they work from any worktree and do not need the dev stack running
   - Prefer targeted tests during development; run the full suite only if CI is failing
 - Storybook: runs on the host — `just sb` (dev server), `just sbt` (tests), `just sbtci` (CI mode)
 - Backend: pytest with fixtures from `conftest.py`

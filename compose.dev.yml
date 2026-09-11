@@ -2,7 +2,7 @@ services:
   backend:
     # Named explicitly so every worktree builds and reuses the same image
     # (compose would otherwise tag it after the directory it was built from).
-    # compose.test.yml runs the unit tests from this image.
+    # compose.unit-tests.yml runs the unit tests from this image.
     image: quill-backend-dev
     build:
       context: .

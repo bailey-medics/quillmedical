@@ -21,7 +21,7 @@ _terminal-description message=" ":
 # Compose project name for this worktree's throwaway test containers.
 #
 # Derived from the worktree directory, so every worktree gets its own
-# node_modules volumes under compose.test.yml and none of them collides with
+# node_modules volumes under compose.unit-tests.yml and none of them collides with
 # the dev stack. Lower-cased and stripped to [a-z0-9-], which is all compose
 # accepts in a project name.
 _test-project:
@@ -38,7 +38,7 @@ _test-project:
 #
 # Only recipes that genuinely need the live stack call this. The unit tests
 # do not: `just ub` and `just uf` run in throwaway containers that mount the
-# current worktree (see compose.test.yml), so they work from any worktree.
+# current worktree (see compose.unit-tests.yml), so they work from any worktree.
 #
 # The owning path is read from Docker rather than hard-coded, so renaming or
 # moving the root worktree needs no change here.
@@ -774,7 +774,7 @@ unit-tests-backend *ARGS:
     # Runs from the shared dev image against THIS worktree's checkout, so it
     # needs neither the dev stack nor ownership of it. `run` builds the image
     # if it is missing. In-memory SQLite: no database service involved.
-    docker compose -p "$(just _test-project)" -f compose.test.yml \
+    docker compose -p "$(just _test-project)" -f compose.unit-tests.yml \
         run --rm backend sh -lc "pytest -q -m 'not integration' {{ARGS}}"
 
 
@@ -786,7 +786,7 @@ unit-tests-frontend *ARGS:
     # As for `ub`: shared image, this worktree mounted, per-worktree
     # node_modules volumes seeded from the image on first use. If a branch
     # changes package.json, `just utr` resets those volumes.
-    docker compose -p "$(just _test-project)" -f compose.test.yml \
+    docker compose -p "$(just _test-project)" -f compose.unit-tests.yml \
         run --rm frontend sh -lc "yarn unit-test:run {{ARGS}}"
 
 
@@ -797,9 +797,9 @@ unit-tests-reset:
     {{initialise}} "unit-tests-reset"
     # For when a branch changes dependencies: the per-worktree volumes were
     # seeded from an older image and would otherwise keep the old packages.
-    docker compose -p "$(just _test-project)" -f compose.test.yml \
+    docker compose -p "$(just _test-project)" -f compose.unit-tests.yml \
         down --volumes --remove-orphans
-    docker compose -f compose.test.yml build --pull
+    docker compose -f compose.unit-tests.yml build --pull
 
 
 alias ts := test-scripts
