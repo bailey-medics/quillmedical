@@ -310,6 +310,95 @@ pre-commit:
     pre-commit run --all-files
 
 
+alias wc := worktree-create
+# Create a sibling worktree on a new branch, and set up its Python venv
+worktree-create branch="":
+    #!/usr/bin/env bash
+    {{initialise}} "worktree-create"
+
+    if [ -z "{{branch}}" ]; then
+        echo "Usage: just wc feature/my-branch"
+        echo "Creates the branch, or resumes it if it already exists."
+        exit 1
+    fi
+
+    # Branch protection rejects anything outside this set, and finding
+    # that out after the worktree exists means unpicking it by hand.
+    case "{{branch}}" in
+        feature/*|hotfix/*|copilot/*|renovate/*) ;;
+        *)
+            echo "Branch must start with feature/, hotfix/, copilot/ or renovate/"
+            exit 1
+            ;;
+    esac
+
+    ROOT=$(git rev-parse --show-toplevel)
+    NAME=$(basename "$ROOT")
+    PARENT=$(dirname "$ROOT")
+
+    # Walk up from 2 until a free name appears, rather than counting the
+    # existing worktrees: one removed by hand would otherwise make the
+    # next number collide with a directory still on disk.
+    N=2
+    while [ -e "$PARENT/$NAME-$N" ]; do
+        N=$((N + 1))
+    done
+    DEST="$PARENT/$NAME-$N"
+
+    git -C "$ROOT" fetch origin --quiet
+
+    if git -C "$ROOT" show-ref --verify --quiet "refs/heads/{{branch}}"; then
+        echo "Branch {{branch}} already exists locally — checking it out."
+        git -C "$ROOT" worktree add "$DEST" "{{branch}}"
+    elif git -C "$ROOT" show-ref --verify --quiet "refs/remotes/origin/{{branch}}"; then
+        # Resuming work that already exists on the remote. Branching from
+        # main here would silently discard every commit on it.
+        echo "Branch {{branch}} exists on origin — resuming it."
+        git -C "$ROOT" worktree add -b "{{branch}}" "$DEST" "origin/{{branch}}"
+        git -C "$DEST" branch --set-upstream-to="origin/{{branch}}" "{{branch}}"
+    else
+        # Branch from origin/main rather than the current HEAD, so a new
+        # worktree never inherits half-finished work from wherever you
+        # happened to be standing.
+        git -C "$ROOT" worktree add -b "{{branch}}" "$DEST" origin/main
+
+        # A new branch made this way tracks main, not itself, so the first
+        # bare `git push` would aim at the protected branch. Leave it unset
+        # rather than relying on push.default to refuse.
+        git -C "$DEST" branch --unset-upstream "{{branch}}" 2>/dev/null || true
+    fi
+
+    # .env files are gitignored, so a new worktree starts without any and
+    # the stack will not come up. Copied rather than symlinked: a branch
+    # may legitimately need a different value, and a symlink would edit
+    # the original from inside the worktree without warning.
+    for f in .env backend/.env frontend/.env; do
+        if [ -f "$ROOT/$f" ]; then
+            cp "$ROOT/$f" "$DEST/$f"
+            echo "Copied $f"
+        fi
+    done
+
+    # Each worktree gets its own venv. The env var is what forces it:
+    # Poetry keys cached environments on the project name, which is
+    # "backend" in every worktree, so without this they all silently
+    # share one — and installing a dependency on one branch changes the
+    # others, which is exactly what a worktree is meant to prevent.
+    echo "Creating the backend virtual environment..."
+    # `env -u VIRTUAL_ENV` matters as much as the in-project flag. If a
+    # venv is already active in the calling shell — which it is whenever
+    # you run this from a worktree you have been working in — Poetry
+    # honours that over everything else and installs into it, so the new
+    # worktree silently shares its parent's environment.
+    (cd "$DEST/backend" \
+        && env -u VIRTUAL_ENV POETRY_VIRTUALENVS_IN_PROJECT=1 poetry install)
+
+    echo ""
+    echo "Worktree ready at $DEST on {{branch}}"
+    echo "  cd $DEST"
+    echo "  just initialise-repo   # pre-commit hooks and yarn packages"
+
+
 alias pb := prune-branches
 # Remove local branches whose remote tracking branch is gone, and untracked local branches already merged into main. Pass 'a' to prune the teaching content repos too.
 prune-branches scope="":
