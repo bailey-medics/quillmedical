@@ -131,9 +131,26 @@ class User(Base):
         String(255), unique=True, nullable=True
     )
 
-    # System Permissions: Administrative and system-level access control
+    # System Permissions: Administrative and system-level access control.
+    #
+    # Being replaced by ``platform_role`` below. This column holds one
+    # field's worth of two unrelated ideas: ``admin`` and ``staff`` are
+    # things a person is *somewhere*, now expressed as membership plus
+    # competencies, while ``superadmin`` says they operate Quill itself,
+    # which is true everywhere or nowhere. Kept until every caller has
+    # moved — see docs/docs/plans/2026-09-09-platform-role-plan.md.
     system_permissions: Mapped[str] = mapped_column(
         String(20), nullable=False, default="single-user"
+    )
+
+    #: Whether this person operates Quill itself. One value and its
+    #: absence, because that is the only question the old four-level
+    #: column asked that was not about a place.
+    #:
+    #: Written alongside ``system_permissions`` while callers migrate;
+    #: nothing reads it for authorisation yet.
+    platform_role: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="member", server_default="member"
     )
 
     # CBAC: Competency-Based Access Control fields
@@ -668,6 +685,41 @@ organisation_site = Table(
 # of a ladder. What someone may *do* there is a practising competency; if a
 # rule ever needs "contractors cannot do X", that belongs there, not here, or
 # this column becomes the access-control-shaped field its predecessor was.
+#: What a person is to Quill itself, as opposed to at a place.
+#:
+#: Two values, not a ladder. ``superadmin`` operates the platform;
+#: ``member`` is everyone else, and says nothing about what they may do —
+#: that is competencies, and where they may do it is membership. The
+#: previous column ranked four values, which invited the reading that
+#: ``superadmin`` subsumes clinical access. It does not.
+PLATFORM_ROLES: tuple[str, ...] = ("member", "superadmin")
+
+
+def validate_platform_role(value: str) -> str:
+    """Return the platform role unchanged, or raise naming the known ones.
+
+    Validated in code rather than as a database enum, so adding a value
+    needs no migration — the same choice ``MEMBER_CAPACITIES`` made, and
+    for the same reason.
+
+    Args:
+        value: The platform role to check.
+
+    Returns:
+        The same value.
+
+    Raises:
+        ValueError: If it is not a known platform role.
+    """
+    if value not in PLATFORM_ROLES:
+        raise ValueError(
+            f"Unknown platform role: {value}. Known roles are "
+            + ", ".join(PLATFORM_ROLES)
+            + "."
+        )
+    return value
+
+
 MEMBER_CAPACITIES: tuple[str, ...] = ("staff", "trainee")
 
 # Kept as the name the site code already uses.
