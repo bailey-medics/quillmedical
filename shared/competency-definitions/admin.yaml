@@ -1,0 +1,47 @@
+# shared/competency-definitions/admin.yaml
+#
+# PLACE ADMINISTRATION COMPETENCY DEFINITIONS FOR QUILL MEDICAL
+#
+# Competencies for administering a *place* — the organisation or site a
+# person is at. Distinct from clinical-admin.yaml, which is for
+# administration that is patient centric, and from the feature files
+# teaching.yaml and passport.yaml.
+#
+# These say nothing about where the holder may administer. That is
+# membership, answered by _require_own_org and _require_site_in_own_org
+# in backend/app/main.py: the competency says *what* may be done, the
+# place check says *where*. Holding one of these confers no authority
+# over an organisation the holder does not belong to.
+#
+# Operating Quill itself is not in here. That is the platform role, one
+# value and its absence — see
+# docs/docs/plans/2026-09-09-platform-role-plan.md.
+#
+# Every file in this directory is merged into one catalogue at load
+# time, so ids must be unique across the whole directory, not just
+# within a file. Which file an entry lives in carries no meaning to the
+# code — it is for the reader.
+#
+# See resolve_user_competencies() in
+# backend/app/cbac/base_professions.py for how base_profession +
+# additional + removed combine into a user's final competency list.
+
+competencies:
+  # THE ROOT COMPETENCY. Grant it rarely and deliberately.
+  #
+  # It permits adding, editing and deleting users *and their
+  # competencies* at the holder's organisation or site. Because
+  # update_user writes additional_competencies wholesale, with no check
+  # on which ids are being granted, a holder can mint any competency in
+  # this catalogue — every clinical one, and manage_users itself.
+  #
+  # That is accepted rather than overlooked. Capping a holder to
+  # competencies they already hold was considered and rejected: it
+  # encodes a seniority model in the wrong place, and the people who
+  # provision users are not always the people who practise. What
+  # constrains this competency is that it is given to few.
+  #
+  # Anyone reviewing a grant of manage_users is therefore reviewing a
+  # grant of everything, one step removed.
+  - id: manage_users
+    display_name: "Manage User Accounts"

@@ -101,6 +101,93 @@ does not, and removing the ladder removes the suggestion.
         spelling. Both already return 404 rather than 403, so a response does not confirm a
         record exists to someone who may not see it, and the tests should assert 404 to
         match.
+      - **Unblocked for the routes; the open question is who holds the competency.** The
+        eleven place checks are in, so the swap itself is straightforward. What is not
+        settled is that `manage_users` and today's admins are different sets:
+        - `teaching_admin` defaults to `system_permissions: admin` and does **not** hold
+          `manage_users`.
+        - `clinic_manager` holds `manage_users` but defaults to `staff`.
+        - Only 2 of 22 professions grant it, and it is a bare entry in `competencies.yaml`
+          — an id and a display name, with no risk level or description, unlike the
+          clinical competencies around it.
+        - **Nobody is locked out by any of this**, because no real people use production
+          yet. The mismatch matters as a design question — who *should* administer what —
+          not as a migration hazard, and it should be decided on what is right rather than
+          on preserving current access.
+      - **Decided: `manage_users` moves to its own `admin.yaml`.** Settled while the
+        competency catalogue was being split into `shared/competency-definitions/` on
+        `feature/clinician-passport-phase-0` (#600).
+        - **`clinical-admin.yaml` stays as it is**, for administration that is patient
+          centric rather than teaching or passport. `admin.yaml` is for administering a
+          *place* — the org or site someone is at.
+        - **What it permits:** adding, editing and deleting users and their competencies,
+          at the organisation or site the holder is at. The competency answers *what*; the
+          existing `_require_own_org` and `_require_site_in_own_org` answer *where*, so no
+          new place mechanism is needed.
+        - **It is the root competency, deliberately.** `update_user` writes
+          `additional_competencies` wholesale with no check on which ids are granted, so a
+          holder can mint any competency in the catalogue — including `manage_users`
+          itself, and every clinical one. Capping it to competencies the granter holds was
+          considered and rejected for now; the rule is that it is granted rarely, and
+          `admin.yaml` should say so in its header rather than leave the next reader to
+          discover it.
+        - **`access_clinic_admin` is enforced nowhere** — checked across the backend and
+          frontend. Worth knowing before adding more admin vocabulary: the catalogue
+          already contains an admin competency that no route asks for. Left in place with
+          a comment saying so, rather than retired: retirement is one way, and this is a
+          competency awaiting a gate rather than one withdrawn.
+        - **Done: `admin.yaml` exists and holds `manage_users`.** The loader globs the
+          directory, so a new file needs no registration, and
+          `check-competencies-not-deleted.sh` concatenates every file before comparing —
+          it treats a move between files as a move, not a deletion. Nothing to change in
+          either.
+        - **Superadmins have to hold the competency, and now do.**
+          `has_competency` has no rank bypass — it reads the competency list and nothing
+          else — so swapping the gates would have refused the one role meant to reach
+          everything. Fixed at the source rather than with a rank check inside each gate,
+          which would have left a rung in the ladder this plan removes.
+          - **`superadmin_profession`** is the profession a superadmin is provisioned with. It
+            grants `manage_users` and nothing else — no clinical competency, per "A
+            superadmin is not a clinician" above.
+          - **A promoted user keeps their own profession** and gains the operator
+            competencies alongside it. Overwriting would strip a consultant of their
+            clinical competencies the moment someone made them an operator.
+          - **`base_profession` is NOT NULL defaulting to `patient`**, which is worse than
+            the empty case assumed at first: a superadmin provisioned without one is a
+            *patient*, holding `access_patient_records` and not `manage_users` — both too
+            much and too little. Invisible today because the routes check rank; the swap is
+            what would have made it bite.
+          - **Found on the way: `update_user` called `db.refresh(user)` with no flush**, so
+            any assignment made after the last query in that function was silently
+            discarded. The payload writes survived only because SQLAlchemy flushes automatically on
+            the queries between them. Now flushed explicitly.
+        - **Decided: `teaching_manager` is the third holder.** A new profession, teaching
+          admin plus the people — it provisions delegates at its own organisation or site.
+          `teaching_admin` deliberately does *not* get `manage_users`: it curates content
+          rather than accounts, and `manage_users` can mint any competency including
+          itself, so it is given to few. Three professions hold it now:
+          `clinic_manager`, `system_administrator`, `teaching_manager`. That is enough to
+          proceed with the route swap.
+        - **`admin` has not been removed from `system_permissions`.**
+          `PERMISSION_ADMIN` is still in `permissions.py` and still in `PERMISSION_LEVELS`,
+          and two professions still default to it — `system_administrator` and
+          `teaching_admin`. Removing it is the *last* step of this plan, not a
+          precondition, and the 31 route gates still compare against the string today.
+      - **Batch 1 of 4 done: the three patient routes.** `deactivate_patient`,
+        `activate_patient` and `revoke_external_access` now carry
+        `DEP_REQUIRE_MANAGE_USERS` in their `dependencies=[...]`, with
+        `_require_shared_org_with_patient` still beside them. 31 string gates down to 28.
+        - **`DEP_REQUIRE_MANAGE_USERS` is the shared constant**, matching
+          `DEP_REQUIRE_CSRF` and the rest. Its comment says the thing worth repeating: it
+          answers *what*, never *where*, and a route carrying it without a place check
+          beside it is strictly weaker than the rank it replaced.
+        - **The `test_admin` fixture had no profession**, so it took the column default of
+          `patient` and held `access_patient_records` and nothing an administrator needs.
+          Invisible while the routes compared ranks; a refusal the moment they ask for a
+          competency. It now carries `system_administrator`.
+        - **Two tests pin the pair**, and each fails for a different deletion: rank without
+          the competency is refused 403, and the competency without a shared organisation
+          is refused 404. Neither half alone is the gate.
       - **The twenty ready routes wait for the eleven.** They could go sooner, but
         splitting the batch by whether each route happened to be safe would leave a worse
         record than doing it in one pass once they are level.
@@ -318,11 +405,25 @@ separate policy.
       - **The listing refuses with 403 rather than an empty list.** It answers `[]` for
         someone who may read nothing, so a missing competency has to refuse outright or it
         would be indistinguishable from having nothing delivered.
-- [ ] **Check the same endpoint's siblings.** Learning content was found by chance while
-      planning video; nothing has swept the other teaching read routes for the same shape.
+- [x] **Check the same endpoint's siblings.** Swept all 28 routes on the teaching router.
+      **No further holes.** Every one is either scoped or gated, and most are both.
       - **Authentication is not the missing half.** Every route on the teaching router was
         checked and each already requires a signed-in user, so the sweep is looking for
         missing _scoping_, not missing sign-in.
+      - **Three shapes of scoping, all sound.** Eight assessment routes are self-scoped by
+        `assessment.user_id != user.id`; the admin and bank routes resolve the caller's
+        organisations; the learning and video routes go through
+        `resolve_visible_module`. Every refusal is 404, so none of them can be used to
+        enumerate what exists elsewhere.
+      - **The certificate route deserved the closest look** and is fine:
+        `download_certificate` checks `assessment.user_id != user.id` before generating a
+        PDF that names a person.
+      - **Nothing to commit but the sweep itself.** The value of this step was the audit;
+        the code was already right. Worth recording so the next reader does not repeat it.
+      - **A scan of route signatures alone gives false positives.** `list_delegates` looked
+        unguarded until the decorator was read: its `_DEP_MANAGE` sits in
+        `dependencies=[...]` rather than in the parameters. Any future sweep must read the
+        decorator block as well as the signature.
 
 **Not odd that the video plan is stricter.** Video is the expensive, signed-URL case where a
 leak is obvious, so it got the attention. Slides being laxer is the anomaly, not video being
@@ -362,6 +463,47 @@ is no case to carve out, and no "public modules" branch to maintain.
   a question the org-scoped findings deliberately left to the interface.
 - **Do not start this while the staff and patient namespaces are unsettled.** If patients end
   up needing a platform-side representation, the shape of this field could change again.
+
+## Finding: `base_profession` should initialise a user, not be stored against them
+
+Surfaced while deciding how a superadmin comes to hold `manage_users`. Recorded here
+because it is a separate question from this plan and should not be smuggled into it.
+
+**A profession describes a person at one moment, and people do not stay still.** They
+progress through training grades. They lose competencies by not practising. They have
+accidents and stop practising medicine altogether — at which point the person who was a
+consultant is a patient, and no edit to a stored profession expresses that honestly.
+
+**The field is already a template pretending to be state.** `base-professions.yaml` says
+so itself: *final user competencies = base_profession competencies + additional −
+removed*. The `additional`/`removed` machinery exists precisely so reality can diverge
+from the template. So the profession answers *what should this person start with*, which
+is a question asked once.
+
+**Storing it makes changing it destructive and silent.** `PATCH /users/{id}` will set
+`base_profession` to anything. When it does, every competency from the old profession
+vanishes unless separately listed in `additional`, every competency from the new one
+appears, and `additional`/`removed` are left untouched — so a `removed_competencies` entry
+that existed to strip something from *consultant* now applies to a different base and
+quietly does nothing, or something else. Nobody sees this happen and nothing records why.
+
+**So the shape is: use a profession to initialise, then let it go.** Creating a user
+expands the profession's competencies into that user's own list; after that the user has
+competencies and the profession is not consulted again. The audit trail then records what
+someone actually holds, not a label that stopped being true.
+
+- **This is a breaking API change.** `base_profession` is in two response schemas —
+  `UserCompetenciesResponse` in `schemas/cbac.py` and the user response in
+  `schemas/auth.py` — so removing it needs an `oasdiff` finding and a decision file, and
+  the column needs a migration that expands each user's profession into their competencies
+  before it is dropped.
+- **It interacts with per-place competencies.** `2026-09-06-org-scoped-access-findings.md`
+  argues a competency is held *somewhere*; a single global profession is the wrong shape
+  for that regardless, so these two questions may be answered together rather than
+  separately.
+- **The superadmin decision does not wait on this.** Adding to `additional_competencies`
+  on promotion is right either way: being a superadmin is an addition to whoever someone
+  already is, not a replacement for it.
 
 ## Not addressed here
 

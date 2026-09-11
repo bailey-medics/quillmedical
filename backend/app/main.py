@@ -48,7 +48,11 @@ from sqlalchemy.orm import Session
 
 from app.analytics.router import router as analytics_router
 from app.api_compatibility import REQUIRED_CLIENT_GENERATION
-from app.cbac.base_professions import PROFESSION_IDS
+from app.cbac.base_professions import (
+    PROFESSION_IDS,
+    SUPERADMIN_PROFESSION,
+    get_profession_base_competencies,
+)
 from app.cbac.competencies import validate_competency_ids
 from app.cbac.positions import (
     clinical_leads_of,
@@ -703,6 +707,19 @@ def require_csrf(
 DEP_REQUIRE_ROLES_CLINICIAN = Depends(require_roles("Clinician"))
 DEP_REQUIRE_CSRF = Depends(require_csrf)
 
+#: Administering the users of a place. Replaces the
+#: ``system_permissions in ("admin", "superadmin")`` string comparisons,
+#: which said what someone is on the platform rather than what they may
+#: do — a rank that was global in the column and scoped in practice.
+#:
+#: It answers *what*, never *where*. Every route carrying it keeps the
+#: place check beside it: ``_require_own_org``,
+#: ``_require_site_in_own_org``, ``_require_shared_org_with_user`` or
+#: ``_require_shared_org_with_patient``. Without one of those this
+#: competency is global, which is strictly weaker than the rank it
+#: replaces.
+DEP_REQUIRE_MANAGE_USERS = Depends(has_competency("manage_users"))
+
 
 @router.post("/auth/login", response_model=LoginOut)
 @limiter.limit("5/minute")
@@ -1317,7 +1334,8 @@ class AdminUserCreateIn(BaseModel):
     """Admin User Creation Request.
 
     Request model for administrators to create new users with full CBAC settings.
-    Requires admin or superadmin system permissions.
+    Requires the ``manage_users`` competency and a shared organisation
+    with the patient.
 
     Attributes:
         name: User's full name (stored as username if username not provided).
@@ -1582,7 +1600,8 @@ def update_user(
     Only provided fields will be updated - omitted fields remain unchanged.
     Password is only updated if provided (optional for security).
 
-    Requires admin or superadmin system permissions.
+    Requires the ``manage_users`` competency and a shared organisation
+    with the patient.
 
     Validation Rules:
     - Only updates fields that are provided (not None)
@@ -1688,6 +1707,19 @@ def update_user(
                 detail="Cannot grant superadmin permissions",
             )
         user.system_permissions = payload.system_permissions
+        # Operating Quill grants its competencies through a profession,
+        # so a superadmin holding none would be refused by every
+        # competency gate. A promoted user keeps the profession they
+        # already practise under — overwriting a consultant's would strip
+        # their clinical competencies the moment someone made them an
+        # operator — so the operator competencies are added alongside it
+        # instead.
+        if payload.system_permissions == "superadmin":
+            granted = set(user.additional_competencies or [])
+            granted.update(
+                get_profession_base_competencies(SUPERADMIN_PROFESSION)
+            )
+            user.additional_competencies = sorted(granted)
 
     # Update organisation memberships if provided
     if payload.organisation_ids is not None:
@@ -1766,6 +1798,12 @@ def update_user(
                 )
             )
 
+    # Flush before refreshing: refresh reloads the row from the database,
+    # so pending in-memory changes are discarded unless they have been
+    # written first. The payload assignments above happen to survive
+    # because the session flushes automatically on the queries between
+    # them; an assignment after the last query would not.
+    db.flush()
     db.refresh(user)
 
     return UserActionOut(
@@ -1786,7 +1824,8 @@ def deactivate_user(
 
     Marks a user account as inactive. Deactivated users cannot log in
     but their data is preserved for audit purposes.
-    Requires admin or superadmin system permissions.
+    Requires the ``manage_users`` competency and a shared organisation
+    with the patient.
 
     Args:
         user_id: ID of the user to deactivate.
@@ -1851,7 +1890,8 @@ def reactivate_user(
     """Reactivate User Account.
 
     Marks a previously deactivated user account as active again.
-    Requires admin or superadmin system permissions.
+    Requires the ``manage_users`` competency and a shared organisation
+    with the patient.
 
     Args:
         user_id: ID of the user to reactivate.
@@ -1909,7 +1949,8 @@ def send_invite_email(
 
     Sends an email to the user inviting them to set up or update their
     credentials via a password reset link.
-    Requires admin or superadmin system permissions.
+    Requires the ``manage_users`` competency and a shared organisation
+    with the patient.
 
     Args:
         user_id: ID of the user to invite.
@@ -2541,7 +2582,8 @@ def get_user(
     CBAC settings (base profession, competencies) and system permissions.
     Used by the admin interface when editing user accounts.
 
-    Requires admin or superadmin system permissions.
+    Requires the ``manage_users`` competency and a shared organisation
+    with the patient.
 
     Args:
         user_id: ID of the user to retrieve.
@@ -3297,7 +3339,11 @@ def get_patient_metadata(
 
 @router.post(
     "/patients/{patient_id}/deactivate",
-    dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
+    dependencies=[
+        DEP_REQUIRE_CLINICAL,
+        DEP_REQUIRE_CSRF,
+        DEP_REQUIRE_MANAGE_USERS,
+    ],
     response_model=PatientActivationOut,
 )
 def deactivate_patient(
@@ -3309,7 +3355,8 @@ def deactivate_patient(
 
     Marks a patient as inactive in the system. Deactivated patients are hidden
     from clinical views but remain visible in admin pages with a deactivated flag.
-    Requires admin or superadmin system permissions.
+    Requires the ``manage_users`` competency and a shared organisation
+    with the patient.
 
     Args:
         patient_id: FHIR Patient resource ID to deactivate.
@@ -3323,15 +3370,10 @@ def deactivate_patient(
             - message: Success message
 
     Raises:
-        HTTPException: 403 if user lacks admin permissions.
+        HTTPException: 403 if the user lacks ``manage_users``.
         HTTPException: 404 if patient not found in FHIR.
     """
     # Check permissions
-    if current_user.system_permissions not in ["admin", "superadmin"]:
-        raise HTTPException(
-            status_code=403,
-            detail="Admin or superadmin permission required to deactivate patients",
-        )
 
     # Verify patient exists in FHIR
     patient = read_fhir_patient(patient_id)
@@ -3366,7 +3408,11 @@ def deactivate_patient(
 
 @router.post(
     "/patients/{patient_id}/activate",
-    dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
+    dependencies=[
+        DEP_REQUIRE_CLINICAL,
+        DEP_REQUIRE_CSRF,
+        DEP_REQUIRE_MANAGE_USERS,
+    ],
     response_model=PatientActivationOut,
 )
 def activate_patient(
@@ -3377,7 +3423,8 @@ def activate_patient(
     """Activate Patient Record.
 
     Reactivates a previously deactivated patient, making them visible in all
-    views again. Requires admin or superadmin system permissions.
+    views again. Requires the ``manage_users`` competency and a shared
+    organisation with the patient.
 
     Args:
         patient_id: FHIR Patient resource ID to activate.
@@ -3391,15 +3438,10 @@ def activate_patient(
             - message: Success message
 
     Raises:
-        HTTPException: 403 if user lacks admin permissions.
+        HTTPException: 403 if the user lacks ``manage_users``.
         HTTPException: 404 if patient not found in FHIR.
     """
     # Check permissions
-    if current_user.system_permissions not in ["admin", "superadmin"]:
-        raise HTTPException(
-            status_code=403,
-            detail="Admin or superadmin permission required to activate patients",
-        )
 
     # Verify patient exists in FHIR
     patient = read_fhir_patient(patient_id)
@@ -3622,7 +3664,8 @@ def list_organisations(
     Retrieves all organisations from the database. Returns basic information
     for each organisation. Used by the admin interface to display organisation
     list and management options.
-    Requires admin or superadmin system permissions.
+    Requires the ``manage_users`` competency and a shared organisation
+    with the patient.
 
     Args:
         current_user: Currently authenticated user (admin/superadmin only).
@@ -3692,7 +3735,8 @@ def get_organisation(
     Retrieves detailed information about a specific organisation including
     staff members and patient count.
 
-    Requires admin or superadmin system permissions.
+    Requires the ``manage_users`` competency and a shared organisation
+    with the patient.
 
     Args:
         org_id: ID of the organisation to retrieve.
@@ -3835,7 +3879,8 @@ def update_organisation(
 
     Updates an existing organisation's details.
 
-    Requires admin or superadmin system permissions.
+    Requires the ``manage_users`` competency and a shared organisation
+    with the patient.
 
     Args:
         org_id: ID of the organisation to update.
@@ -4013,7 +4058,8 @@ def add_staff_to_organisation(
 
     Adds an existing user as a staff member of an organisation.
 
-    Requires admin or superadmin system permissions.
+    Requires the ``manage_users`` competency and a shared organisation
+    with the patient.
 
     Args:
         org_id: ID of the organisation.
@@ -4099,7 +4145,8 @@ def add_patient_to_organisation(
 
     Adds a patient to an organisation by their FHIR patient ID.
 
-    Requires admin or superadmin system permissions.
+    Requires the ``manage_users`` competency and a shared organisation
+    with the patient.
 
     Args:
         org_id: ID of the organisation.
@@ -4176,7 +4223,7 @@ def remove_staff_from_organisation(
     Args:
         org_id: Organisation ID.
         user_id: User ID to remove.
-        current_user: Authenticated admin user.
+        current_user: Authenticated user holding ``manage_users``.
         db: Database session.
 
     Returns:
@@ -4228,7 +4275,7 @@ def remove_patient_from_organisation(
     Args:
         org_id: Organisation ID.
         patient_id: FHIR Patient resource ID.
-        current_user: Authenticated admin user.
+        current_user: Authenticated user holding ``manage_users``.
         db: Database session.
 
     Returns:
@@ -5126,7 +5173,7 @@ def link_patient_to_user(
     Args:
         user_id: User ID.
         body: Must contain ``fhir_patient_id``.
-        current_user: Authenticated admin user.
+        current_user: Authenticated user holding ``manage_users``.
         db: Database session.
 
     Returns:
@@ -5310,7 +5357,11 @@ def accept_invite(
 
 @router.delete(
     "/patients/{patient_id}/external-access/{user_id}",
-    dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
+    dependencies=[
+        DEP_REQUIRE_CLINICAL,
+        DEP_REQUIRE_CSRF,
+        DEP_REQUIRE_MANAGE_USERS,
+    ],
     response_model=RevokeAccessOut,
 )
 def revoke_external_access(
@@ -5321,20 +5372,18 @@ def revoke_external_access(
 ) -> RevokeAccessOut:
     """Revoke an external user's access to a patient.
 
-    Admin/superadmin only. Soft-deletes by setting ``revoked_at``.
+    Requires ``manage_users`` and a shared organisation with the
+    patient. Soft-deletes by setting ``revoked_at``.
 
     Args:
         patient_id: FHIR Patient resource ID.
         user_id: ID of the external user.
-        current_user: Authenticated admin user.
+        current_user: Authenticated user holding ``manage_users``.
         db: Database session.
 
     Returns:
         dict: Confirmation message.
     """
-    if current_user.system_permissions not in ("admin", "superadmin"):
-        raise HTTPException(status_code=403, detail="Admin only")
-
     _require_shared_org_with_patient(db, current_user, patient_id)
 
     grant = db.scalar(

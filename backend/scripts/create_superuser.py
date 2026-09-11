@@ -52,6 +52,10 @@ def main() -> int:
     try:
         from sqlalchemy import inspect
 
+        from app.cbac.base_professions import (
+            SUPERADMIN_PROFESSION,
+            get_profession_base_competencies,
+        )
         from app.db import CoreSessionLocal
         from app.models import User
         from app.security import hash_password
@@ -87,6 +91,13 @@ def main() -> int:
                 email=email,
                 password_hash=hash_password(password),
                 system_permissions="superadmin",
+                # Operating Quill grants its competencies through a
+                # profession like every other role, rather than by a rank
+                # check inside each gate. Without this the column default
+                # applies and a fresh superadmin is created as a
+                # *patient* — holding access_patient_records and not
+                # manage_users, which is both too much and too little.
+                base_profession=SUPERADMIN_PROFESSION,
                 email_verified=True,
             )
             db.add(u)
@@ -95,6 +106,13 @@ def main() -> int:
             u.email = email
             u.password_hash = hash_password(password)
             u.system_permissions = "superadmin"
+            # An existing user keeps the profession they practise under;
+            # the operator competencies are added alongside it.
+            granted = set(u.additional_competencies or [])
+            granted.update(
+                get_profession_base_competencies(SUPERADMIN_PROFESSION)
+            )
+            u.additional_competencies = sorted(granted)
             u.is_active = True
             u.is_totp_enabled = False
             u.email_verified = True

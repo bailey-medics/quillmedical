@@ -159,13 +159,21 @@ def authenticated_clinician_client(
 
 @pytest.fixture
 def test_admin(db_session: Session) -> User:
-    """Create a test user with admin permissions."""
+    """Create a test user who administers users at their organisations.
+
+    Carries ``system_administrator``, which grants ``manage_users``. The
+    fixture previously had no profession and so took the column default
+    of ``patient``, holding ``access_patient_records`` and nothing an
+    administrator needs — invisible while the routes compared ranks, and
+    a refusal the moment they ask for a competency instead.
+    """
     user = User(
         username="testadmin",
         email="admin@example.com",
         password_hash=hash_password("AdminPassword123!"),
         is_active=True,
         email_verified=True,
+        base_profession="system_administrator",
         system_permissions="admin",
     )
     db_session.add(user)
@@ -195,13 +203,20 @@ def authenticated_admin_client(
 
 @pytest.fixture
 def test_superadmin(db_session: Session) -> User:
-    """Create a test user with superadmin permissions."""
+    """Create a test user with superadmin permissions.
+
+    Carries ``superadmin_profession``, as a provisioned superadmin does. The
+    fixture previously had no profession at all and so held no
+    competencies, which would have made every competency-gated admin
+    route refuse the one role meant to reach everything.
+    """
     user = User(
         username="testsuperadmin",
         email="superadmin@example.com",
         password_hash=hash_password("SuperAdminPassword123!"),
         is_active=True,
         email_verified=True,
+        base_profession="superadmin_profession",
         system_permissions="superadmin",
     )
     db_session.add(user)
