@@ -449,6 +449,47 @@ is no case to carve out, and no "public modules" branch to maintain.
 - **Do not start this while the staff and patient namespaces are unsettled.** If patients end
   up needing a platform-side representation, the shape of this field could change again.
 
+## Finding: `base_profession` should initialise a user, not be stored against them
+
+Surfaced while deciding how a superadmin comes to hold `manage_users`. Recorded here
+because it is a separate question from this plan and should not be smuggled into it.
+
+**A profession describes a person at one moment, and people do not stay still.** They
+progress through training grades. They lose competencies by not practising. They have
+accidents and stop practising medicine altogether — at which point the person who was a
+consultant is a patient, and no edit to a stored profession expresses that honestly.
+
+**The field is already a template pretending to be state.** `base-professions.yaml` says
+so itself: *final user competencies = base_profession competencies + additional −
+removed*. The `additional`/`removed` machinery exists precisely so reality can diverge
+from the template. So the profession answers *what should this person start with*, which
+is a question asked once.
+
+**Storing it makes changing it destructive and silent.** `PATCH /users/{id}` will set
+`base_profession` to anything. When it does, every competency from the old profession
+vanishes unless separately listed in `additional`, every competency from the new one
+appears, and `additional`/`removed` are left untouched — so a `removed_competencies` entry
+that existed to strip something from *consultant* now applies to a different base and
+quietly does nothing, or something else. Nobody sees this happen and nothing records why.
+
+**So the shape is: use a profession to initialise, then let it go.** Creating a user
+expands the profession's competencies into that user's own list; after that the user has
+competencies and the profession is not consulted again. The audit trail then records what
+someone actually holds, not a label that stopped being true.
+
+- **This is a breaking API change.** `base_profession` is in two response schemas —
+  `UserCompetenciesResponse` in `schemas/cbac.py` and the user response in
+  `schemas/auth.py` — so removing it needs an `oasdiff` finding and a decision file, and
+  the column needs a migration that expands each user's profession into their competencies
+  before it is dropped.
+- **It interacts with per-place competencies.** `2026-09-06-org-scoped-access-findings.md`
+  argues a competency is held *somewhere*; a single global profession is the wrong shape
+  for that regardless, so these two questions may be answered together rather than
+  separately.
+- **The superadmin decision does not wait on this.** Adding to `additional_competencies`
+  on promotion is right either way: being a superadmin is an addition to whoever someone
+  already is, not a replacement for it.
+
 ## Not addressed here
 
 - What replaces `staff` for "may reach clinical workflows at all", if anything still needs
