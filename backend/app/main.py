@@ -1457,7 +1457,11 @@ class AdminUserUpdateIn(BaseModel):
         return value
 
 
-@router.post("/users", response_model=UserActionOut)
+@router.post(
+    "/users",
+    response_model=UserActionOut,
+    dependencies=[DEP_REQUIRE_MANAGE_USERS],
+)
 def create_user_with_cbac(
     payload: AdminUserCreateIn,
     current_user: User = DEP_REQUIRE_CSRF,
@@ -1467,14 +1471,14 @@ def create_user_with_cbac(
 
     Creates a new user account with full CBAC (Competency-Based Access Control)
     settings including base profession, competencies, and system permissions.
-    Only accessible to users with admin or superadmin system permissions.
+    Requires the ``manage_users`` competency.
 
     Validation Rules:
     - Email and password must not be empty
     - Password must be at least 8 characters long
     - Username must be unique across all users
     - Email must be unique across all users
-    - Requesting user must have admin or superadmin permissions
+    - Requesting user must hold ``manage_users``
 
     Args:
         payload: User creation data with CBAC settings.
@@ -1485,16 +1489,10 @@ def create_user_with_cbac(
         dict: Success response with new user ID and username.
 
     Raises:
-        HTTPException: 403 if requesting user lacks admin permissions.
+        HTTPException: 403 if the requesting user lacks ``manage_users``.
         HTTPException: 400 if validation fails or constraints violated.
     """
     # Check authorization
-    if current_user.system_permissions not in ["admin", "superadmin"]:
-        raise HTTPException(
-            status_code=403,
-            detail="Admin or superadmin permissions required to create users",
-        )
-
     # Validation
     email = payload.email.strip()
     password = payload.password
@@ -1587,7 +1585,11 @@ def create_user_with_cbac(
     )
 
 
-@router.patch("/users/{user_id}", response_model=UserActionOut)
+@router.patch(
+    "/users/{user_id}",
+    response_model=UserActionOut,
+    dependencies=[DEP_REQUIRE_MANAGE_USERS],
+)
 def update_user(
     user_id: int,
     payload: AdminUserUpdateIn,
@@ -1608,29 +1610,23 @@ def update_user(
     - Email must be unique if being changed
     - Username must be unique if being changed
     - Password must be at least 8 characters if being changed
-    - Requesting user must have admin or superadmin permissions
+    - Requesting user must hold ``manage_users``
 
     Args:
         user_id: ID of the user to update.
         payload: User update data (all fields optional).
-        current_user: Currently authenticated user (admin/superadmin only).
+        current_user: Authenticated user holding ``manage_users``.
         db: Database session.
 
     Returns:
         dict: Success response with updated user details.
 
     Raises:
-        HTTPException: 403 if requesting user lacks admin permissions.
+        HTTPException: 403 if the requesting user lacks ``manage_users``.
         HTTPException: 404 if user not found.
         HTTPException: 400 if validation fails or constraints violated.
     """
     # Check authorization
-    if current_user.system_permissions not in ["admin", "superadmin"]:
-        raise HTTPException(
-            status_code=403,
-            detail="Admin or superadmin permissions required to update users",
-        )
-
     # Fetch user
     user = db.scalar(select(User).where(User.id == user_id))
     if not user:
@@ -1814,7 +1810,11 @@ def update_user(
     )
 
 
-@router.post("/users/{user_id}/deactivate", response_model=UserIdActionOut)
+@router.post(
+    "/users/{user_id}/deactivate",
+    response_model=UserIdActionOut,
+    dependencies=[DEP_REQUIRE_MANAGE_USERS],
+)
 def deactivate_user(
     user_id: int,
     current_user: User = DEP_REQUIRE_CSRF,
@@ -1829,24 +1829,18 @@ def deactivate_user(
 
     Args:
         user_id: ID of the user to deactivate.
-        current_user: Currently authenticated user (admin/superadmin only).
+        current_user: Authenticated user holding ``manage_users``.
         db: Database session.
 
     Returns:
         dict: Confirmation with deactivated user details.
 
     Raises:
-        HTTPException: 403 if requesting user lacks admin permissions.
+        HTTPException: 403 if the requesting user lacks ``manage_users``.
         HTTPException: 404 if user not found.
         HTTPException: 400 if user is already inactive or trying to
             deactivate self.
     """
-    if current_user.system_permissions not in ["admin", "superadmin"]:
-        raise HTTPException(
-            status_code=403,
-            detail="Admin or superadmin permissions required",
-        )
-
     user = db.scalar(select(User).where(User.id == user_id))
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -1881,7 +1875,11 @@ def deactivate_user(
     )
 
 
-@router.post("/users/{user_id}/reactivate", response_model=UserIdActionOut)
+@router.post(
+    "/users/{user_id}/reactivate",
+    response_model=UserIdActionOut,
+    dependencies=[DEP_REQUIRE_MANAGE_USERS],
+)
 def reactivate_user(
     user_id: int,
     current_user: User = DEP_REQUIRE_CSRF,
@@ -1895,23 +1893,17 @@ def reactivate_user(
 
     Args:
         user_id: ID of the user to reactivate.
-        current_user: Currently authenticated user (admin/superadmin only).
+        current_user: Authenticated user holding ``manage_users``.
         db: Database session.
 
     Returns:
         dict: Confirmation with reactivated user details.
 
     Raises:
-        HTTPException: 403 if requesting user lacks admin permissions.
+        HTTPException: 403 if the requesting user lacks ``manage_users``.
         HTTPException: 404 if user not found.
         HTTPException: 400 if user is already active.
     """
-    if current_user.system_permissions not in ["admin", "superadmin"]:
-        raise HTTPException(
-            status_code=403,
-            detail="Admin or superadmin permissions required",
-        )
-
     user = db.scalar(select(User).where(User.id == user_id))
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -1939,7 +1931,11 @@ def reactivate_user(
     )
 
 
-@router.post("/users/{user_id}/send-invite", response_model=DetailResponse)
+@router.post(
+    "/users/{user_id}/send-invite",
+    response_model=DetailResponse,
+    dependencies=[DEP_REQUIRE_MANAGE_USERS],
+)
 def send_invite_email(
     user_id: int,
     current_user: User = DEP_REQUIRE_CSRF,
@@ -1954,22 +1950,16 @@ def send_invite_email(
 
     Args:
         user_id: ID of the user to invite.
-        current_user: Currently authenticated user (admin/superadmin only).
+        current_user: Authenticated user holding ``manage_users``.
         db: Database session.
 
     Returns:
         dict: Confirmation that the invite was sent.
 
     Raises:
-        HTTPException: 403 if requesting user lacks admin permissions.
+        HTTPException: 403 if the requesting user lacks ``manage_users``.
         HTTPException: 404 if user not found.
     """
-    if current_user.system_permissions not in ["admin", "superadmin"]:
-        raise HTTPException(
-            status_code=403,
-            detail="Admin or superadmin permissions required",
-        )
-
     user = db.scalar(select(User).where(User.id == user_id))
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -2376,7 +2366,11 @@ def update_profile(
     return DetailResponse(detail="Profile updated")
 
 
-@router.get("/users", response_model=UsersListOut)
+@router.get(
+    "/users",
+    response_model=UsersListOut,
+    dependencies=[DEP_REQUIRE_MANAGE_USERS],
+)
 def list_users(
     patient_id: str | None = None,
     permission_level: str | None = None,
@@ -2390,7 +2384,7 @@ def list_users(
     that patient plus external users with active access grants. This is
     used by the message participant picker.
 
-    Without ``patient_id``, returns all users (admin/superadmin only).
+    Without ``patient_id``, returns all users the caller may administer.
     Use ``permission_level`` to filter by minimum permission level
     (e.g. ``staff`` returns staff, admin, and superadmin users).
     Use ``exclude_org`` to exclude users who are already staff members
@@ -2450,12 +2444,6 @@ def list_users(
         )
 
     # Unfiltered mode: admin/superadmin only
-    if current_user.system_permissions not in ["admin", "superadmin"]:
-        raise HTTPException(
-            status_code=403,
-            detail="Requires admin or superadmin permissions",
-        )
-
     if permission_level is not None:
         if permission_level not in PERMISSION_LEVELS:
             raise HTTPException(
@@ -2570,7 +2558,11 @@ def list_users(
         ) from e
 
 
-@router.get("/users/{user_id}", response_model=UserOut)
+@router.get(
+    "/users/{user_id}",
+    response_model=UserOut,
+    dependencies=[DEP_REQUIRE_MANAGE_USERS],
+)
 def get_user(
     user_id: int,
     current_user: User = DEP_CURRENT_USER,
@@ -2587,7 +2579,7 @@ def get_user(
 
     Args:
         user_id: ID of the user to retrieve.
-        current_user: Currently authenticated user (admin/superadmin only).
+        current_user: Authenticated user holding ``manage_users``.
         db: Database session.
 
     Returns:
@@ -2602,16 +2594,10 @@ def get_user(
             - system_permissions: System permission level
 
     Raises:
-        HTTPException: 403 if user lacks admin/superadmin permissions.
+        HTTPException: 403 if the user lacks ``manage_users``.
         HTTPException: 404 if user not found.
     """
     # Check permissions
-    if current_user.system_permissions not in ["admin", "superadmin"]:
-        raise HTTPException(
-            status_code=403,
-            detail="Requires admin or superadmin permissions",
-        )
-
     # Fetch user
     user = db.scalar(select(User).where(User.id == user_id))
     if not user:
@@ -3623,7 +3609,7 @@ async def update_my_competencies(
         UserCompetenciesResponse: The caller's updated competency information
 
     Raises:
-        HTTPException: 403 if user lacks admin/superadmin permissions.
+        HTTPException: 403 if the user lacks ``manage_users``.
     """
     if user.system_permissions not in ["admin", "superadmin"]:
         raise HTTPException(
@@ -3668,7 +3654,7 @@ def list_organisations(
     with the patient.
 
     Args:
-        current_user: Currently authenticated user (admin/superadmin only).
+        current_user: Authenticated user holding ``manage_users``.
         db: Database session.
 
     Returns:
@@ -3676,7 +3662,7 @@ def list_organisations(
             - organisations: Array of organisation objects
 
     Raises:
-        HTTPException: 403 if user lacks admin/superadmin permissions.
+        HTTPException: 403 if the user lacks ``manage_users``.
         HTTPException: 500 if database query fails.
     """
     # Check permissions
@@ -3740,14 +3726,14 @@ def get_organisation(
 
     Args:
         org_id: ID of the organisation to retrieve.
-        current_user: Currently authenticated user (admin/superadmin only).
+        current_user: Authenticated user holding ``manage_users``.
         db: Database session.
 
     Returns:
         dict: Organisation details with staff and patient information.
 
     Raises:
-        HTTPException: 403 if user lacks admin/superadmin permissions.
+        HTTPException: 403 if the user lacks ``manage_users``.
         HTTPException: 404 if organisation not found.
     """
     # Check permissions
@@ -3885,7 +3871,7 @@ def update_organisation(
     Args:
         org_id: ID of the organisation to update.
         body: Fields to update (name, type, location). Only provided fields are updated.
-        current_user: Currently authenticated user (admin/superadmin only).
+        current_user: Authenticated user holding ``manage_users``.
         db: Database session.
 
     Returns:
@@ -3893,7 +3879,7 @@ def update_organisation(
 
     Raises:
         HTTPException: 400 if type is invalid.
-        HTTPException: 403 if user lacks admin/superadmin permissions.
+        HTTPException: 403 if the user lacks ``manage_users``.
         HTTPException: 404 if organisation not found.
     """
     if current_user.system_permissions not in ["admin", "superadmin"]:
@@ -4064,14 +4050,14 @@ def add_staff_to_organisation(
     Args:
         org_id: ID of the organisation.
         body: Staff member details (user_id).
-        current_user: Currently authenticated user (admin/superadmin only).
+        current_user: Authenticated user holding ``manage_users``.
         db: Database session.
 
     Returns:
         dict: Confirmation with organisation and user IDs.
 
     Raises:
-        HTTPException: 403 if user lacks admin/superadmin permissions.
+        HTTPException: 403 if the user lacks ``manage_users``.
         HTTPException: 404 if organisation or user not found.
         HTTPException: 409 if user is already a staff member.
     """
@@ -4151,14 +4137,14 @@ def add_patient_to_organisation(
     Args:
         org_id: ID of the organisation.
         body: Patient details (patient_id).
-        current_user: Currently authenticated user (admin/superadmin only).
+        current_user: Authenticated user holding ``manage_users``.
         db: Database session.
 
     Returns:
         dict: Confirmation with organisation and patient IDs.
 
     Raises:
-        HTTPException: 403 if user lacks admin/superadmin permissions.
+        HTTPException: 403 if the user lacks ``manage_users``.
         HTTPException: 404 if organisation not found.
         HTTPException: 409 if patient is already a member.
     """
@@ -5168,7 +5154,10 @@ def remove_site_staff(
 @router.patch(
     "/users/{user_id}/link-patient",
     response_model=LinkPatientOut,
-    dependencies=[DEP_REQUIRE_CSRF],
+    dependencies=[
+        DEP_REQUIRE_CSRF,
+        DEP_REQUIRE_MANAGE_USERS,
+    ],
 )
 def link_patient_to_user(
     user_id: int,
@@ -5178,7 +5167,7 @@ def link_patient_to_user(
 ) -> LinkPatientOut:
     """Link a user account to a FHIR patient record.
 
-    Admin/superadmin only. Sets ``fhir_patient_id`` on the user.
+    Requires ``manage_users``. Sets ``fhir_patient_id`` on the user.
 
     Args:
         user_id: User ID.
@@ -5189,9 +5178,6 @@ def link_patient_to_user(
     Returns:
         dict: Confirmation with user and patient IDs.
     """
-    if current_user.system_permissions not in ("admin", "superadmin"):
-        raise HTTPException(status_code=403, detail="Admin only")
-
     fhir_patient_id = body.fhir_patient_id
     if not fhir_patient_id:
         raise HTTPException(
