@@ -51,7 +51,9 @@ vi.mock("react-router-dom", async () => {
 vi.mock("@/auth/AuthContext", () => ({
   useAuth: () => ({
     state: {
-      user: { system_permissions: "admin" },
+      // A plain admin: `member` on the platform, so the superadmin
+      // option is absent from the permissions list.
+      user: { system_permissions: "admin", platform_role: "member" },
     },
   }),
 }));

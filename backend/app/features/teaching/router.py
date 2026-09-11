@@ -25,6 +25,7 @@ from app.features.gating import requires_feature
 from app.features.teaching.models import (
     Assessment,
     AssessmentAnswer,
+    ModuleMediaLink,
     QuestionBankConfig,
     QuestionBankItem,
     QuestionBankOrgStatus,
@@ -48,6 +49,12 @@ from app.features.teaching.schemas import (
     ItemImageOut,
     LearningContentOut,
     LearningModuleOut,
+    MediaAssetOut,
+    MediaLinkIn,
+    MediaReferenceOut,
+    MediaUploadUrlIn,
+    MediaUploadUrlOut,
+    ModuleMediaOut,
     PromoteBankVersionIn,
     PromoteBankVersionOut,
     QuestionBankDetailOut,
@@ -467,6 +474,7 @@ def get_learning_content(
         load_module_yaml,
         parse_mdx_to_slides,
     )
+    from app.features.teaching.media import module_media_is_complete
     from app.features.teaching.storage import (
         download_learning_mdx_from_gcs,
         download_module_yaml_from_gcs,
@@ -474,7 +482,13 @@ def get_learning_content(
 
     # Before any bucket or filesystem read, so an unauthorised caller
     # cannot infer a module's existence from an error or from timing.
-    resolve_visible_module(user, db, module_id)
+    org_id = resolve_visible_module(user, db, module_id)
+
+    # A module missing any of its media is not served at all. Same 404
+    # as every other refusal here, so "incomplete" is indistinguishable
+    # from "not yours" and "no such module" from outside.
+    if not module_media_is_complete(db, org_id, module_id):
+        raise HTTPException(404, "Module not found")
 
     bucket = settings.TEACHING_GCS_BUCKET
     base_path = settings.TEACHING_QUESTION_BANK_PATH
@@ -585,6 +599,7 @@ def list_learning_modules(
         load_module_yaml,
         parse_mdx_to_slides,
     )
+    from app.features.teaching.media import module_media_is_complete
     from app.features.teaching.storage import (
         discover_local_banks,
         download_learning_mdx_from_gcs,
@@ -605,17 +620,25 @@ def list_learning_modules(
         # No organisation, nothing visible. Not an error for a list.
         return []
 
-    visible_bank_ids = {
-        status.question_bank_id
-        for status in db.execute(
+    # Which organisation makes each bank visible, not merely whether one
+    # does. Completeness is per organisation, so the media check below
+    # has to be asked of the same organisation that grants the view.
+    visible_org_by_bank: dict[str, int] = {}
+    for status in (
+        db.execute(
             select(QuestionBankOrgStatus).where(
                 QuestionBankOrgStatus.organisation_id.in_(org_ids),
             )
         )
         .scalars()
         .all()
-        if status.is_live
-    }
+    ):
+        if status.is_live:
+            visible_org_by_bank.setdefault(
+                status.question_bank_id, int(status.organisation_id)
+            )
+
+    visible_bank_ids = set(visible_org_by_bank)
     if not visible_bank_ids:
         return []
 
@@ -634,6 +657,13 @@ def list_learning_modules(
 
     for bank_id in bank_ids:
         if bank_id not in visible_bank_ids:
+            continue
+        # Hidden, not shown disabled. A learner who can see a module
+        # they cannot open raises a support question the admin cannot
+        # answer from the learner's side.
+        if not module_media_is_complete(
+            db, visible_org_by_bank[bank_id], bank_id
+        ):
             continue
         if bucket:
             meta = download_module_yaml_from_gcs(bucket, bank_id) or {}
@@ -704,11 +734,18 @@ def grant_video_access(
     organisation has live, one 404 at a time.
     """
     from app.config import settings
+    from app.features.teaching.media import module_media_is_complete
 
     # One helper, shared with the learning content routes, so the video
     # gate and the content gate cannot drift apart. Raises 404 for "not
     # yours", "not live" and "no such module" alike.
     org_id = resolve_visible_module(user, db, module_id)
+
+    # The content gate hides an incomplete module, so minting a cookie
+    # for one would grant access to material the learner cannot reach.
+    # Refused the same way, for the same reason.
+    if not module_media_is_complete(db, org_id, module_id):
+        raise HTTPException(404, "Module not found")
 
     base_url = settings.TEACHING_VIDEO_BASE_URL
     key_name = settings.TEACHING_VIDEO_SIGNING_KEY_NAME
@@ -1929,6 +1966,256 @@ def list_results(
         stmt = stmt.where(Assessment.question_bank_id == question_bank_id)
     stmt = stmt.order_by(Assessment.completed_at.desc())
     return list(db.execute(stmt).scalars().all())
+
+
+@teaching_router.post(
+    "/admin/modules/{module_id}/media/upload-url",
+    response_model=MediaUploadUrlOut,
+    dependencies=[_DEP_MANAGE],
+)
+def create_media_upload_url(
+    module_id: str,
+    body: MediaUploadUrlIn,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+) -> MediaUploadUrlOut:
+    """Mint a resumable upload URL for one media file.
+
+    The only place the backend holds real GCS write credentials, and it
+    writes to the source bucket alone. Releasing a video to a learner is
+    an HMAC over a shared secret, so the processed bucket needs no
+    credential here at all.
+
+    The uploaded filename never reaches the object path — the asset id
+    is generated here — so the filename needs no path validation. It is
+    recorded as data and shown back to the admin so they recognise their
+    own file.
+    """
+    import uuid
+
+    from app.config import settings
+    from app.features.teaching.storage import (
+        ALLOWED_MEDIA_TYPES,
+        create_resumable_upload_url,
+    )
+
+    # Validate the request before consulting configuration. A caller
+    # sending an unsupported type should hear that, not "the bucket is
+    # missing" — the second tells them about our deployment and hides
+    # the fault that is actually theirs.
+    ext = Path(body.original_filename).suffix.lower()
+    expected = ALLOWED_MEDIA_TYPES.get(ext)
+    if expected is None:
+        allowed = ", ".join(sorted(ALLOWED_MEDIA_TYPES))
+        raise HTTPException(400, f"Unsupported file type (allowed: {allowed})")
+    # Both are checked rather than either: a caller controls both, and
+    # trusting one to vouch for the other is how an allow-list is walked
+    # around.
+    if body.content_type != expected:
+        raise HTTPException(
+            400, f"Content type does not match {ext} (expected {expected})"
+        )
+
+    bucket = settings.TEACHING_VIDEOS_SOURCE_BUCKET
+    if not bucket:
+        raise HTTPException(503, "Media upload is not configured")
+
+    org_id = _get_user_org_id(user, db)
+    asset_id = uuid.uuid4().hex
+
+    try:
+        url = create_resumable_upload_url(
+            bucket, org_id, module_id, asset_id, body.content_type
+        )
+    except ValueError:
+        # An unsafe module_id reached the path builder. The path is what
+        # the video cookie's prefix is scoped to, so refuse rather than
+        # mint anything.
+        raise HTTPException(404, "Module not found") from None
+
+    logger.info(
+        "media upload url issued user=%s org=%s module=%s asset=%s",
+        user.id,
+        org_id,
+        module_id,
+        asset_id,
+    )
+    return MediaUploadUrlOut(upload_url=url, asset_id=asset_id)
+
+
+@teaching_router.get(
+    "/admin/modules/{module_id}/media",
+    response_model=ModuleMediaOut,
+    dependencies=[_DEP_MANAGE],
+)
+def get_module_media(
+    module_id: str,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+) -> ModuleMediaOut:
+    """What media this module references, and which of it is present.
+
+    The admin card's data. Built on the shared inventory rather than a
+    second query: the learner gate and the merge gate ask the same
+    question, and three implementations would drift — with the most
+    permissive one being the one nobody noticed.
+
+    Scoped to the caller's organisation, because the links are. Two
+    organisations running the same module hold separate uploads, so one
+    trust's file must never make another's module look complete.
+    """
+    from app.features.teaching.media import (
+        get_media_inventory,
+        get_referenced_media_keys,
+    )
+
+    org_id = _get_user_org_id(user, db)
+    keys = get_referenced_media_keys(module_id)
+    inventory = get_media_inventory(db, org_id, module_id, keys)
+
+    def _asset(link: ModuleMediaLink) -> MediaAssetOut:
+        return MediaAssetOut.model_validate(link)
+
+    return ModuleMediaOut(
+        module_id=module_id,
+        references=[
+            MediaReferenceOut(
+                key=ref.key,
+                asset=_asset(ref.link) if ref.link else None,
+            )
+            for ref in inventory.references
+        ],
+        unattached=[_asset(link) for link in inventory.unattached],
+        is_complete=inventory.is_complete,
+    )
+
+
+@teaching_router.post(
+    "/admin/modules/{module_id}/media/{media_key}/link",
+    response_model=MediaAssetOut,
+    dependencies=[_DEP_MANAGE],
+)
+def link_module_media(
+    module_id: str,
+    media_key: str,
+    body: MediaLinkIn,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+) -> MediaAssetOut:
+    """Attach an uploaded asset to an MDX reference.
+
+    Called once the resumable upload has finished, because the backend
+    never sees the bytes — this is what records that they arrived.
+
+    Re-linking a key that already has an asset replaces the link rather
+    than refusing it. One video per reference is the rule the unique
+    constraint enforces, and pointing a slide at a different upload is a
+    dropdown in the admin card, not a reason to make the admin detach
+    first. The previous asset stays in the bucket and reappears as
+    unattached, so nothing is lost by re-pointing.
+    """
+    from app.features.teaching.storage import ALLOWED_MEDIA_TYPES
+
+    # The same allow-list the upload URL was minted against. A caller
+    # controls this body, so trusting it to describe what it uploaded
+    # would let an unlisted type be recorded as a linked asset.
+    if body.content_type not in ALLOWED_MEDIA_TYPES.values():
+        allowed = ", ".join(sorted(set(ALLOWED_MEDIA_TYPES.values())))
+        raise HTTPException(400, f"Unsupported type (allowed: {allowed})")
+
+    org_id = _get_user_org_id(user, db)
+
+    existing = db.execute(
+        select(ModuleMediaLink).where(
+            ModuleMediaLink.organisation_id == org_id,
+            ModuleMediaLink.question_bank_id == module_id,
+            ModuleMediaLink.media_key == media_key,
+        )
+    ).scalar_one_or_none()
+
+    if existing:
+        existing.asset_id = body.asset_id
+        existing.original_filename = body.original_filename
+        existing.content_type = body.content_type
+        existing.size_bytes = body.size_bytes
+        existing.uploaded_by = user.id
+        existing.uploaded_at = datetime.now(UTC)
+        link = existing
+    else:
+        link = ModuleMediaLink(
+            organisation_id=org_id,
+            question_bank_id=module_id,
+            media_key=media_key,
+            asset_id=body.asset_id,
+            original_filename=body.original_filename,
+            content_type=body.content_type,
+            size_bytes=body.size_bytes,
+            uploaded_by=user.id,
+            uploaded_at=datetime.now(UTC),
+        )
+        db.add(link)
+
+    db.flush()
+    db.refresh(link)
+    logger.info(
+        "media linked user=%s org=%s module=%s key=%s asset=%s",
+        user.id,
+        org_id,
+        module_id,
+        media_key,
+        body.asset_id,
+    )
+    return MediaAssetOut.model_validate(link)
+
+
+# A 204 carries no body at all, so there is no schema for oasdiff to
+# diff. Same shape as the analytics 204s, which carry this marker too.
+# api-schema-check: allow-opaque-permanent
+@teaching_router.delete(
+    "/admin/modules/{module_id}/media/{media_key}/link",
+    status_code=204,
+    dependencies=[_DEP_MANAGE],
+)
+def unlink_module_media(
+    module_id: str,
+    media_key: str,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+) -> Response:
+    """Detach a reference from its asset, keeping the file.
+
+    Detaching is not deleting. The upload stays in the bucket and
+    reappears in the card as unattached, because a reference removed
+    today may well return — and that is someone's 900 MB either way.
+    Removing the file is a separate, destructive call.
+    """
+    org_id = _get_user_org_id(user, db)
+
+    link = db.execute(
+        select(ModuleMediaLink).where(
+            ModuleMediaLink.organisation_id == org_id,
+            ModuleMediaLink.question_bank_id == module_id,
+            ModuleMediaLink.media_key == media_key,
+        )
+    ).scalar_one_or_none()
+
+    # Scoped to the caller's organisation, so another trust's link is
+    # not found rather than refused: whether they have one is not this
+    # caller's to learn.
+    if link is None:
+        raise HTTPException(404, "No linked media for this reference")
+
+    db.delete(link)
+    db.flush()
+    logger.info(
+        "media unlinked user=%s org=%s module=%s key=%s asset=%s",
+        user.id,
+        org_id,
+        module_id,
+        media_key,
+        link.asset_id,
+    )
+    return Response(status_code=204)
 
 
 @teaching_router.get(

@@ -1082,7 +1082,7 @@ content calls for it.
 
 ### The endpoints
 
-- [ ] `POST /api/admin/teaching/modules/{module_id}/media/upload-url` —
+- [x] `POST /api/admin/teaching/modules/{module_id}/media/upload-url` —
       admin/superadmin. Returns a GCS resumable upload URL for
       `source-bucket/{org_id}/{module_id}/{asset_id}`, the asset id generated
       server-side. The uploaded filename never reaches the object path, so it
@@ -1090,30 +1090,51 @@ content calls for it.
       content-type allow-list, and record the original name as data. This is the
       one place the backend needs real GCS write credentials, and it writes only
       to the source bucket.
-- [ ] `GET /api/admin/teaching/modules/{module_id}/media` — the card's data.
+- [x] `GET /api/admin/teaching/modules/{module_id}/media` — the card's data.
       Returns every MDX reference with its link if any, plus unattached assets.
       Built on the shared "which media, and which present" function from
       **Media uploads**, not a second query.
-- [ ] `POST .../media/{key}/link` and `DELETE .../media/{key}/link` — attach an
+      **[done 2026-09-11]** Which keys the MDX carries is now
+      `get_referenced_media_keys` in `media.py`, beside the inventory it
+      feeds. Content loads from GCS in the teaching environment and from
+      disk in development, and both branches live in that one helper —
+      the learner gate and the merge gate need the same answer, and a
+      second copy of the branch would be the one that drifts. Keys are
+      de-duplicated and kept in content order, so a key used on two
+      slides is still one upload and the card's rows follow the content.
+- [x] `POST .../media/{key}/link` and `DELETE .../media/{key}/link` — attach an
       uploaded asset to a reference, and detach it. Detaching keeps the asset.
+      **[done 2026-09-11]** The file details travel in the link request
+      rather than being read from the bucket, because the backend never
+      sees the bytes: the upload goes straight to GCS on a resumable
+      URL, and this call is what records what landed. That body is
+      caller-controlled, so the content type is re-checked against the
+      same allow-list the upload URL was minted against.
+      Re-linking a key that already has an asset **replaces** the link
+      rather than refusing it — one video per reference is what the
+      unique constraint enforces, and re-pointing a slide is a dropdown
+      in the card, not a reason to make the admin detach first. The
+      displaced asset stays in the bucket and reappears as unattached.
+      Detaching another organisation's link is a 404, not a 403, so a
+      caller cannot learn whether they have one.
 - [ ] `DELETE .../media/{asset_id}` — remove an uploaded asset and its link.
       This is the destructive one: confirm in the UI, log it with actor and
       module, and refuse when the caller's organisation does not own the asset.
 
 ### Availability gate
 
-- [ ] **A module with any unlinked media reference is not served to learners**,
+- [x] **A module with any unlinked media reference is not served to learners**,
       continuously — not only at the moment it goes live. The earlier version
       blocked the `draft` → `live` transition, which misses the case where a
       module goes live complete and a video is deleted afterwards.
-- [ ] Compute it beside `has_learning_content`, which is already resolved per
+- [x] Compute it beside `has_learning_content`, which is already resolved per
       module at `router.py:310` and `router.py:382`.
-- [ ] **Hide** incomplete modules from the learner's module list rather than
+- [x] **Hide** incomplete modules from the learner's module list rather than
       showing them disabled. A learner who can see a module they cannot open
       raises a support question the admin cannot answer from the learner's side.
-- [ ] Direct access to `/modules/{id}/learning` for an incomplete module returns
+- [x] Direct access to `/modules/{id}/learning` for an incomplete module returns
       404, matching every other refusal in Phase 2a so the shape stays uniform.
-- [ ] The gate is **per organisation**, because the links are. The same module
+- [x] The gate is **per organisation**, because the links are. The same module
       can be complete for one organisation and not another, and therefore visible
       to one organisation's learners and hidden from another's.
 - [ ] Surface incompleteness where an admin will actually see it — the admin
