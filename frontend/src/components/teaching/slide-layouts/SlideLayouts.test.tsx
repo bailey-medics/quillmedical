@@ -11,13 +11,23 @@ import {
   textWithFigureSlide,
   defaultSlide,
   calloutSlide,
+  hostedVideoSlide,
 } from "./stubSlides";
 
 // Mock react-player to avoid actual YouTube embedding in tests
 vi.mock("react-player", () => ({
-  default: vi.fn(({ url }: { url: string }) => (
-    <div data-testid="react-player" data-url={url} />
+  default: vi.fn(({ url, src }: { url: string; src?: string }) => (
+    <div data-testid="react-player" data-url={url} data-src={src} />
   )),
+}));
+
+// The hosted-video path asks the backend for an access grant before it
+// can build a URL, so that call is mocked per test below.
+const mockPost = vi.fn();
+vi.mock("@/lib/api", () => ({
+  api: {
+    post: (...args: unknown[]) => mockPost(...args),
+  },
 }));
 
 describe("SlideLayoutSectionTitle", () => {
@@ -50,6 +60,46 @@ describe("SlideLayoutVideo", () => {
   it("renders the video player", () => {
     renderWithMantine(<SlideLayoutVideo slide={videoSlide} />);
     expect(screen.getByTestId("react-player")).toBeInTheDocument();
+  });
+
+  it("asks for no grant on a YouTube slide", () => {
+    mockPost.mockClear();
+    renderWithMantine(<SlideLayoutVideo slide={videoSlide} moduleId="mod-1" />);
+    // Public content needs no cookie, so requesting one would be waste
+    // and would put a pointless 404 in the log for modules with no video.
+    expect(mockPost).not.toHaveBeenCalled();
+  });
+
+  it("plays hosted video once a grant arrives", async () => {
+    mockPost.mockClear();
+    mockPost.mockResolvedValue({
+      base_url: "/api/teaching/videos/mod-1",
+      expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+    });
+
+    renderWithMantine(
+      <SlideLayoutVideo slide={hostedVideoSlide} moduleId="mod-1" />,
+    );
+
+    const player = await screen.findByTestId("react-player");
+    // The base comes from the grant, the filename from the slide.
+    expect(player).toHaveAttribute(
+      "data-src",
+      "/api/teaching/videos/mod-1/patient-experience.mp4",
+    );
+  });
+
+  it("shows a readable message when access is refused", async () => {
+    mockPost.mockClear();
+    mockPost.mockRejectedValue(new Error("403"));
+
+    renderWithMantine(
+      <SlideLayoutVideo slide={hostedVideoSlide} moduleId="mod-1" />,
+    );
+
+    // An empty frame would leave the learner with nothing to act on.
+    expect(await screen.findByText("Video unavailable")).toBeInTheDocument();
+    expect(screen.queryByTestId("react-player")).not.toBeInTheDocument();
   });
 });
 

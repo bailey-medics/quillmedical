@@ -43,6 +43,7 @@ interface ApiSlide {
   callout_type?: string;
   callout_body?: string;
   youtube_id?: string;
+  video_src?: string;
   duration_seconds?: number;
   image_src?: string;
   image_alt?: string;
@@ -60,6 +61,7 @@ function toCompiledSlide(s: ApiSlide): CompiledSlide {
     calloutType: s.callout_type as CompiledSlide["calloutType"],
     calloutBody: s.callout_body,
     youtubeId: s.youtube_id,
+    videoSrc: s.video_src,
     durationSeconds: s.duration_seconds,
     imageSrc: s.image_src,
     imageAlt: s.image_alt,

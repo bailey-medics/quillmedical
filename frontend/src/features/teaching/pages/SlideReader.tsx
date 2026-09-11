@@ -164,6 +164,7 @@ export default function SlideReader() {
 
         <SlideViewer
           slide={currentSlide}
+          moduleId={moduleId}
           onVideoProgress={handleVideoProgress}
         />
 

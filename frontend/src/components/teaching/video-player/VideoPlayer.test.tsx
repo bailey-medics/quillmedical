@@ -3,9 +3,31 @@ import { renderWithMantine } from "@test/test-utils";
 
 // Mock react-player to avoid actual YouTube embedding in tests
 vi.mock("react-player", () => ({
-  default: vi.fn(({ src, controls }: { src: string; controls: boolean }) => (
-    <div data-testid="react-player" data-src={src} data-controls={controls} />
-  )),
+  default: vi.fn(
+    ({
+      src,
+      controls,
+      poster,
+      children,
+    }: {
+      src: string;
+      controls: boolean;
+      poster?: string;
+      children?: React.ReactNode;
+    }) => (
+      // Children are rendered because the real component forwards them
+      // to the underlying video element — which is how the caption
+      // track reaches the DOM, and therefore what these tests assert.
+      <div
+        data-testid="react-player"
+        data-src={src}
+        data-controls={controls}
+        data-poster={poster}
+      >
+        {children}
+      </div>
+    ),
+  ),
 }));
 
 import VideoPlayer from "./VideoPlayer";
@@ -45,5 +67,66 @@ describe("VideoPlayer", () => {
     );
 
     expect(await findByTestId("react-player")).toBeInTheDocument();
+  });
+
+  it("plays a hosted video from src", async () => {
+    const { findByTestId } = renderWithMantine(
+      <VideoPlayer src="https://x.test/videos/1/mod/lecture.mp4" />,
+    );
+
+    const player = await findByTestId("react-player");
+    expect(player).toHaveAttribute(
+      "data-src",
+      "https://x.test/videos/1/mod/lecture.mp4",
+    );
+  });
+
+  it("prefers youtubeId when both sources are given", async () => {
+    const { findByTestId } = renderWithMantine(
+      <VideoPlayer youtubeId="abc123" src="https://x.test/a.mp4" />,
+    );
+
+    const player = await findByTestId("react-player");
+    expect(player).toHaveAttribute(
+      "data-src",
+      "https://www.youtube.com/watch?v=abc123",
+    );
+  });
+
+  it("renders a caption track for hosted video", async () => {
+    // Captions are a WCAG 2.1 AA requirement, and whether react-player
+    // could carry a <track> at all decided this component's shape.
+    const { container, findByTestId } = renderWithMantine(
+      <VideoPlayer
+        src="https://x.test/a.mp4"
+        captionsUrl="https://x.test/a.vtt"
+      />,
+    );
+
+    await findByTestId("react-player");
+    const track = container.querySelector("track");
+    expect(track).toHaveAttribute("src", "https://x.test/a.vtt");
+    expect(track).toHaveAttribute("kind", "captions");
+  });
+
+  it("adds no caption track for YouTube, which carries its own", async () => {
+    const { container, findByTestId } = renderWithMantine(
+      <VideoPlayer youtubeId="abc123" captionsUrl="https://x.test/a.vtt" />,
+    );
+
+    await findByTestId("react-player");
+    expect(container.querySelector("track")).toBeNull();
+  });
+
+  it("passes the poster through", async () => {
+    const { findByTestId } = renderWithMantine(
+      <VideoPlayer
+        src="https://x.test/a.mp4"
+        posterUrl="https://x.test/p.jpg"
+      />,
+    );
+
+    const player = await findByTestId("react-player");
+    expect(player).toHaveAttribute("data-poster", "https://x.test/p.jpg");
   });
 });
