@@ -91,6 +91,7 @@ def main() -> int:
                 email=email,
                 password_hash=hash_password(password),
                 system_permissions="superadmin",
+                platform_role="superadmin",
                 # Operating Quill grants its competencies through a
                 # profession like every other role, rather than by a rank
                 # check inside each gate. Without this the column default
@@ -106,6 +107,7 @@ def main() -> int:
             u.email = email
             u.password_hash = hash_password(password)
             u.system_permissions = "superadmin"
+            u.platform_role = "superadmin"
             # An existing user keeps the profession they practise under;
             # the operator competencies are added alongside it.
             granted = set(u.additional_competencies or [])

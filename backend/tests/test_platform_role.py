@@ -11,8 +11,11 @@ which is true everywhere or nowhere.
 not a ladder — a ranking is what invited the reading that `superadmin`
 subsumes clinical access, which it does not.
 
-This is the expand half. The column is written and validated; nothing
-reads it for authorisation yet, and `system_permissions` is untouched.
+The expand half wrote and validated the column. The routes now *read* it:
+every caller-side superadmin check in `main.py` asks `platform_role`, so
+the tests at the foot of this file pin a user whose two columns disagree.
+`system_permissions` is still written and still holds the other three
+levels, which move with the `admin` work.
 """
 
 from __future__ import annotations
@@ -101,3 +104,70 @@ class TestTheColumnDefaults:
         )
 
         assert person.platform_role == "superadmin"
+
+
+class TestTheRoutesReadTheNewColumn:
+    """The superadmin checks ask `platform_role`, not the old column.
+
+    Both columns agree for every real user, so a swap like this passes
+    trivially unless something makes them disagree. These tests do: each
+    user below says one thing in `system_permissions` and another in
+    `platform_role`, so they fail the moment a check reads the old one.
+
+    `POST /api/organisations` is the subject because it is the plainest
+    superadmin gate in `main.py` — no place check beside it, no
+    competency, just the platform question.
+    """
+
+    def _login(self, client, username: str) -> None:
+        resp = client.post(
+            "/api/auth/login",
+            json={"username": username, "password": "Password123!"},
+        )
+        assert resp.status_code == 200
+        # Mutating routes need the CSRF header, as the authenticated
+        # fixtures in conftest do after their own login.
+        csrf = client.cookies.get("XSRF-TOKEN")
+        if csrf:
+            client.headers["X-CSRF-Token"] = csrf
+
+    def test_a_stale_superadmin_is_refused(self, test_client, db_session):
+        """Says superadmin in the old column, `member` in the new one."""
+        _user(
+            db_session,
+            "stale",
+            system_permissions="superadmin",
+            platform_role="member",
+            base_profession="superadmin_profession",
+        )
+        self._login(test_client, "stale")
+
+        resp = test_client.post(
+            "/api/organisations",
+            json={"name": "Nowhere Trust", "type": "hospital"},
+        )
+
+        assert resp.status_code == 403
+
+    def test_a_true_operator_is_allowed(self, test_client, db_session):
+        """Says `single-user` in the old column, superadmin in the new one.
+
+        The mirror of the test above, so neither passes by accident: one
+        proves the old column no longer grants, this proves the new one
+        does.
+        """
+        _user(
+            db_session,
+            "operator2",
+            system_permissions="single-user",
+            platform_role="superadmin",
+            base_profession="superadmin_profession",
+        )
+        self._login(test_client, "operator2")
+
+        resp = test_client.post(
+            "/api/organisations",
+            json={"name": "Somewhere Trust", "type": "hospital"},
+        )
+
+        assert resp.status_code == 200

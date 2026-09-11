@@ -218,6 +218,7 @@ def test_superadmin(db_session: Session) -> User:
         email_verified=True,
         base_profession="superadmin_profession",
         system_permissions="superadmin",
+        platform_role="superadmin",
     )
     db_session.add(user)
     db_session.commit()

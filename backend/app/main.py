@@ -1719,7 +1719,7 @@ def update_user(
 
     # Update organisation memberships if provided
     if payload.organisation_ids is not None:
-        if current_user.system_permissions == "superadmin":
+        if current_user.platform_role == "superadmin":
             # Superadmin: replace all memberships
             db.execute(
                 organisation_member.delete().where(
@@ -1755,7 +1755,7 @@ def update_user(
 
     # Update site memberships if provided
     if payload.site_ids is not None:
-        if current_user.system_permissions == "superadmin":
+        if current_user.platform_role == "superadmin":
             # Superadmin: replace all site memberships
             db.execute(
                 site_member.delete().where(site_member.c.user_id == user_id)
@@ -3672,7 +3672,7 @@ def list_organisations(
     """
     # Check permissions
     try:
-        if current_user.system_permissions == "superadmin":
+        if current_user.platform_role == "superadmin":
             organisations = db.execute(select(Organisation)).scalars().all()
         else:
             user_org_ids = get_user_org_ids(db, current_user.id)
@@ -3951,7 +3951,7 @@ def create_organisation(
         HTTPException: 400 if type is invalid.
         HTTPException: 403 if user lacks superadmin permissions.
     """
-    if current_user.system_permissions != "superadmin":
+    if current_user.platform_role != "superadmin":
         raise HTTPException(
             status_code=403,
             detail="Requires superadmin permissions",
@@ -4013,7 +4013,7 @@ def delete_organisation(
         HTTPException: 403 if user lacks superadmin permissions.
         HTTPException: 404 if organisation not found.
     """
-    if current_user.system_permissions != "superadmin":
+    if current_user.platform_role != "superadmin":
         raise HTTPException(
             status_code=403,
             detail="Requires superadmin permissions",
@@ -4423,7 +4423,7 @@ def list_sites(
     is the right way round to be wrong about one.
     """
     stmt = select(Site).order_by(Site.name)
-    if current_user.system_permissions != "superadmin":
+    if current_user.platform_role != "superadmin":
         own_org_ids = get_user_org_ids(db, current_user.id)
         stmt = stmt.where(
             Site.id.in_(
@@ -4611,7 +4611,7 @@ def _require_site_in_own_org(
     404 rather than 403, matching ``get_organisation``, so the response does
     not confirm that a site exists to someone who may not see it.
     """
-    if current_user.system_permissions == "superadmin":
+    if current_user.platform_role == "superadmin":
         return
 
     site_org_ids = set(
@@ -4629,7 +4629,7 @@ def _require_site_in_own_org(
 
 def _require_own_org(db: Session, current_user: User, org_id: int) -> None:
     """Refuse an organisation the admin does not belong to."""
-    if current_user.system_permissions == "superadmin":
+    if current_user.platform_role == "superadmin":
         return
     if org_id not in get_user_org_ids(db, current_user.id):
         raise HTTPException(status_code=404, detail="Organisation not found")
@@ -4659,7 +4659,7 @@ def _require_shared_org_with_patient(
     Raises:
         HTTPException: 404 if they share no organisation.
     """
-    if current_user.system_permissions == "superadmin":
+    if current_user.platform_role == "superadmin":
         return
     if not get_shared_org_ids(db, current_user.id, patient_id):
         raise HTTPException(status_code=404, detail="Patient not found")
@@ -4691,7 +4691,7 @@ def _require_shared_org_with_user(
     Raises:
         HTTPException: 404 if they share no organisation.
     """
-    if current_user.system_permissions == "superadmin":
+    if current_user.platform_role == "superadmin":
         return
     if target.id == current_user.id:
         return

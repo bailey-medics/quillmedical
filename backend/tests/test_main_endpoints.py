@@ -1184,6 +1184,7 @@ class TestOrganisationEndpoints:
             is_active=True,
             email_verified=True,
             system_permissions="superadmin",
+            platform_role="superadmin",
         )
         db_session.add(superadmin)
         db_session.flush()
@@ -1213,6 +1214,7 @@ class TestOrganisationEndpoints:
             is_active=True,
             email_verified=True,
             system_permissions="superadmin",
+            platform_role="superadmin",
         )
         db_session.add(superadmin)
         db_session.commit()
@@ -1245,6 +1247,7 @@ class TestOrganisationEndpoints:
             is_active=True,
             email_verified=True,
             system_permissions="superadmin",
+            platform_role="superadmin",
         )
         db_session.add(superadmin)
         db_session.flush()
@@ -1295,6 +1298,7 @@ class TestOrganisationEndpoints:
             is_active=True,
             email_verified=True,
             system_permissions="superadmin",
+            platform_role="superadmin",
         )
         db_session.add(superadmin)
         db_session.flush()

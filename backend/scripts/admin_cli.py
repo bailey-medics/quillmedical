@@ -100,6 +100,7 @@ def create_superadmin() -> int:
 
         # Set superadmin permissions and consultant base profession
         user.system_permissions = "superadmin"
+        user.platform_role = "superadmin"
         user.base_profession = "consultant"
         user.email_verified = True
 
