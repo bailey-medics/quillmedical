@@ -561,7 +561,8 @@ nothing else.
   passport competency is evidence an administrator may act on, not an
   automatic change to `additional_competencies`. Automatic granting is
   a future item (see below) because it turns an educational record
-  into an access-control input and needs clinical safety review.
+  into an access-control input, which is a decision to take
+  deliberately rather than a side effect of shipping the passport.
 
 - **One competency gates the whole feature** —
   `access_clinician_passport`, a feature-admin competency meaning this
@@ -1556,7 +1557,8 @@ above. Additive only, per `.claude/rules/backend.md`.
   scanned procedure note or DOPS form names a patient; and
   reflections, which are written about real cases. Both carry a
   declaration that the content is anonymised, worded more firmly for
-  reflections, and both are in the hazard log.
+  reflections. These two are the whole surface: everything else the
+  passport stores is about the holder, not a patient.
 
 - **Audit** — the git history is the audit trail. Exports are logged
   (who, which passport, when) in the existing application log with no
@@ -1704,12 +1706,33 @@ above. Additive only, per `.claude/rules/backend.md`.
       is a build artefact rebuilt by the prebuild hook. Only the
       hand-written `index.d.ts` beside it is tracked, and it now
       declares `levels` and `expires_after_months`.
-- [ ] Add hazard log entries for the passport: the wrong assessor
-      signs; a holder signs off their own competency; evidence or a
-      reflection contains patient data; an exported PDF diverges from
-      the repository; a competency definition changes under sign-offs
-      already made; an assessor declares a registration they do not
-      hold; a sign-off is made from an unattended logged-in session.
+- [x] Know what can go wrong, and where each is answered. Recorded
+      here rather than as separate entries elsewhere, so the answer sits
+      beside the design it constrains:
+      - **The wrong assessor signs.** Not prevented, deliberately —
+        see the sign-off decision. The record names who signed, their
+        role and their registration, so a reader can judge it, exactly
+        as on paper.
+      - **A holder signs off their own competency.** Refused at the
+        API, the one hard rule, tested in Phase 3.
+      - **Evidence or a reflection carries patient data.** Declarations
+        on both upload paths; nothing else the passport stores is about
+        a patient.
+      - **An exported PDF diverges from the repository.** The PDF
+        prints each sign-off's `content_hash` and the head commit, and
+        `VERIFY.md` lets anyone check it offline with `sha256sum`.
+      - **A competency definition changes under sign-offs already
+        made.** Every sign-off stores the human label beside the id and
+        the level's wording at signing, so it stays readable whatever
+        the definition later says.
+      - **An assessor declares a registration they do not hold.**
+        Recorded as declared, never as verified, with
+        `registration_verified` false until an admin checks the
+        register by hand. The record says what Quill checked.
+      - **A sign-off is made from an unattended logged-in session.**
+        Not prevented by re-authentication, deliberately — the
+        declaration is what makes it an act, and a code per sign-off
+        would land friction where adoption is most fragile.
 
 ## Phase 1: core store and record model
 
@@ -1906,9 +1929,6 @@ above. Additive only, per `.claude/rules/backend.md`.
       path containment, symlink refusal) and of the authorisation
       matrix, including external assessors and the reflections
       holder-only rule.
-- [ ] Clinical safety review of the competency definitions and the
-      declaration text with the Clinical Safety Officer; record in the
-      hazard log.
 - [ ] Enable the `passport` feature for the first South West
       organisation and onboard a small assessor group.
 - [ ] Document the module under `docs/docs/backend/passport/index.md`
@@ -1949,8 +1969,11 @@ close them off, and so nobody builds them before there is a need.
 
 - **Automatic CBAC grant** — a signed-off passport competency raising a
   request to add the matching id to `additional_competencies`, with
-  administrator approval. Requires clinical safety review because it
-  couples an educational record to access control.
+  administrator approval. Deferred because it couples an educational
+  record to access control: a sign-off would stop being a record of
+  what someone was assessed as able to do and start deciding what they
+  may do in the software. That is worth doing eventually and is not a
+  thing to arrive by accident.
 
 - **Import of a passport bundle** — accepting a zip or git bundle from
   another deployment, validating every file against the schemas,
@@ -2304,11 +2327,6 @@ close them off, and so nobody builds them before there is a need.
 - **Evidence retention** — how long evidence blobs are kept after an
   sign-off is superseded, and whether a holder may remove evidence
   they uploaded in error. Phase 1 keeps everything.
-
-- **Who holds the CA** — one CA per deployment is the design; whether
-  the South West deanery or a trust should instead be the issuer, so a
-  certificate says who trained the assessor rather than which software
-  ran, is a governance question for the clinical safety review.
 
 - **Verifying external assessors** — whether by-hand register checks by
   an organisation admin are acceptable to the deanery for phase 1, or
