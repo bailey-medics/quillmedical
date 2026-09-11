@@ -1,8 +1,10 @@
 # backend/app/cbac/competencies.py
 """Competency definitions loaded from YAML.
 
-This module loads and validates competency definitions from the shared/competencies.yaml
-file, providing type-safe access to competency IDs and metadata.
+This module loads and validates competency definitions from the
+shared/competency-definitions/ directory, merging every file in it into
+one catalogue and providing type-safe access to competency IDs and
+metadata.
 """
 
 from collections.abc import Iterable
@@ -17,6 +19,31 @@ from pydantic import BaseModel, ConfigDict
 from app.paths import SHARED_DIR
 
 
+class CompetencyLevel(BaseModel):
+    """One step on a competency's scale.
+
+    Levels are words rather than numbers, and their order is the order
+    they are listed in. ``level-3`` needs a lookup table to mean
+    anything, and every stored record becomes wrong the moment a scale
+    gains or loses a step; "Entrusted to act unsupervised" explains
+    itself and survives the scale changing around it.
+
+    The names come from whichever national framework defines the
+    competency — the RCR entrustment scale, the UK SACT Board's four
+    levels — and are quoted rather than harmonised, so a sign-off means
+    what the framework says it means.
+
+    Attributes:
+        id: Stable identifier for this level, referenced by a sign-off.
+        name: The framework's own wording, shown to a reader.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    name: str
+
+
 class CompetencyEntry(BaseModel):
     """A single competency definition, validated from YAML.
 
@@ -27,6 +54,17 @@ class CompetencyEntry(BaseModel):
             use, or None while it is current. Entries are retired rather
             than deleted — see ``retired_on`` handling below and
             ``docs/docs/plans/2026-09-06-org-scoped-access-findings.md``.
+        levels: The scale this competency is signed off against, in
+            order, or None where the honest answer is simply signed off
+            or not. Declared per competency because the number of levels
+            genuinely differs: cannulation is signed off or it is not,
+            while prescribing SACT has real intermediate states. Used by
+            the clinician passport; CBAC ignores it entirely, since
+            holding a competency is a yes or no question.
+        expires_after_months: How long a sign-off stands before it wants
+            revisiting, or None where nothing expires. Recorded and
+            shown; nothing acts on it, because what a lapsed sign-off
+            implies is a clinical decision rather than a technical one.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -34,17 +72,90 @@ class CompetencyEntry(BaseModel):
     id: str
     display_name: str
     retired_on: date | None = None
+    levels: list[CompetencyLevel] | None = None
+    expires_after_months: int | None = None
 
 
-# Load competencies from YAML
-COMPETENCIES_YAML_PATH: Path = SHARED_DIR / "competencies.yaml"
+# Load competencies from every YAML file in the definitions directory.
+#
+# A directory rather than one file, so the catalogue can be split by kind
+# — clinical.yaml describes what may be done to a patient, and
+# feature-admin.yaml what may be done to Quill — and split further later
+# without touching this loader. Which file an entry lives in carries no
+# meaning here: the files are merged into one flat catalogue and the id
+# is what everything references.
+COMPETENCY_DEFINITIONS_DIR: Path = SHARED_DIR / "competency-definitions"
 
-with open(COMPETENCIES_YAML_PATH) as f:
-    COMPETENCIES_DATA: Any = yaml.safe_load(f)
 
-COMPETENCIES: list[CompetencyEntry] = [
-    CompetencyEntry(**c) for c in COMPETENCIES_DATA["competencies"]
-]
+def _load_competencies(directory: Path) -> list[CompetencyEntry]:
+    """Read and merge every competency definition file in *directory*.
+
+    Args:
+        directory: The directory holding the definition files.
+
+    Returns:
+        Every competency defined across the directory, in filename order.
+
+    Raises:
+        FileNotFoundError: If the directory holds no definition files at
+            all, which means a missing mount or a bad path rather than an
+            empty catalogue.
+        ValueError: If an id is defined in more than one place. Ids are
+            referenced from stored records, so a duplicate makes which
+            definition applies depend on filename order.
+    """
+    # Sorted so the merged order is the same on every machine, whatever
+    # order the filesystem hands the entries back in.
+    paths = sorted(directory.glob("*.yaml"))
+    if not paths:
+        raise FileNotFoundError(
+            f"No competency definitions found in {directory}. Expected at "
+            "least one *.yaml file."
+        )
+
+    entries: list[CompetencyEntry] = []
+    seen: dict[str, Path] = {}
+    for path in paths:
+        with open(path) as f:
+            data: Any = yaml.safe_load(f)
+
+        for raw in data["competencies"]:
+            entry = CompetencyEntry(**raw)
+
+            # A sign-off stores the level id, so two levels sharing one
+            # would make a stored record ambiguous about which step of
+            # the scale was reached.
+            if entry.levels is not None:
+                level_ids = [lvl.id for lvl in entry.levels]
+                if len(set(level_ids)) != len(level_ids):
+                    raise ValueError(
+                        f"Competency {entry.id!r} in {path.name} has "
+                        "duplicate level ids: "
+                        + ", ".join(sorted(level_ids))
+                        + "."
+                    )
+                if not level_ids:
+                    raise ValueError(
+                        f"Competency {entry.id!r} in {path.name} declares "
+                        "an empty level list. Omit levels entirely where a "
+                        "competency is simply signed off or not."
+                    )
+
+            if entry.id in seen:
+                raise ValueError(
+                    f"Duplicate competency id {entry.id!r}: defined in "
+                    f"{seen[entry.id].name} and {path.name}. Ids must be "
+                    "unique across the whole directory."
+                )
+            seen[entry.id] = path
+            entries.append(entry)
+
+    return entries
+
+
+COMPETENCIES: list[CompetencyEntry] = _load_competencies(
+    COMPETENCY_DEFINITIONS_DIR
+)
 
 # Every competency id the catalogue has ever defined, retired ones
 # included. Reads and audits use this, so nothing already stored becomes
@@ -142,7 +253,7 @@ def validate_competency_ids(ids: Iterable[str]) -> list[str]:
             + ("ids" if len(unknown) > 1 else "id")
             + ": "
             + ", ".join(unknown)
-            + ". Competencies are defined in shared/competencies.yaml."
+            + ". Competencies are defined in shared/competency-definitions/."
         )
 
     retired = retired_competency_ids(checked)

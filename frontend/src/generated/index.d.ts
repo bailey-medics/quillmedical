@@ -6,17 +6,23 @@
  */
 
 declare module "@/generated/competencies.json" {
+  // Merged from every file in shared/competency-definitions/ by
+  // scripts/generate-json-from-yaml.ts. The split by kind is invisible
+  // here: one flat catalogue, keyed by id.
+  interface CompetencyLevel {
+    id: string;
+    name: string;
+  }
+
   interface Competency {
     id: string;
     display_name: string;
-    description: string;
-    category: string;
-    risk_level: string;
-    requires_registration: boolean;
-    registration_type: string[];
-    requires_supervision: boolean;
-    audit_retention_days: number;
-    clinical_safety_notes: string;
+    retired_on?: string;
+    // Present only where a competency is signed off against a scale.
+    // Order is the scale. Used by the clinician passport; CBAC ignores
+    // both of these, since holding a competency is a yes or no.
+    levels?: CompetencyLevel[];
+    expires_after_months?: number;
   }
 
   const data: {

@@ -165,7 +165,7 @@ Controls **all data access and actions** — clinical and feature admin. Compete
 
 Resolution formula per user: `(base_profession_competencies + additional) − removed`
 
-- **Shared config** (consumed by both backend via PyYAML and frontend via `yarn generate:types`): `shared/competencies.yaml` (capability definitions with risk levels) and `shared/base-professions.yaml` (profession templates with base competencies and `default_system_permission`)
+- **Shared config** (consumed by both backend via PyYAML and frontend via `yarn generate:types`): `shared/competency-definitions/` (capability definitions, split by kind into `clinical.yaml` and `feature-admin.yaml` and merged into one catalogue at load — ids must be unique across the directory) and `shared/base-professions.yaml` (profession templates with base competencies and `default_system_permission`)
 - **Backend**: `backend/app/cbac/` — `has_competency("competency_id")` FastAPI dependency, resolves competencies per user
 - **Frontend**: Types at `src/types/cbac.ts`, hooks at `src/lib/cbac/hooks.ts` (`useHasCompetency`, `useHasAnyCompetency`, `useHasAllCompetencies` — check `state.user.competencies` from AuthContext)
 - **Generated JSON**: `src/generated/competencies.json` and `src/generated/base-professions.json` auto-generated from shared YAML (`yarn generate:types`)

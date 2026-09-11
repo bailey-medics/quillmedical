@@ -567,7 +567,7 @@ jobs:
 
   # ---------- Competency catalogue ----------
   # A competency is retired, never deleted. Deleting one from
-  # shared/competencies.yaml revokes nothing - resolve_user_competencies does
+  # shared/competency-definitions/ revokes nothing - resolve_user_competencies does
   # set operations on plain strings and has_competency compares a string from
   # the route against that set, so everyone who holds it keeps the access and
   # it merely stops being describable. It also destroys the vocabulary the

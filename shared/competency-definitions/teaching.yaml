@@ -1,0 +1,25 @@
+# shared/competency-definitions/teaching.yaml
+#
+# TEACHING COMPETENCY DEFINITIONS FOR QUILL MEDICAL
+#
+# Competencies governing the teaching feature — who may take an
+# assessment, curate the content behind it, and read the analytics it
+# produces.
+#
+# These say who may use a part of Quill, never what may be done in the
+# care of a patient. The clinical set lives in clinical.yaml.
+#
+# Every file in this directory is merged into one catalogue at load
+# time, so ids must be unique across the whole directory, not just
+# within a file. Which file an entry lives in carries no meaning to the
+# code — it is for the reader.
+
+competencies:
+  - id: view_teaching_cases
+    display_name: "Take Teaching Assessments"
+
+  - id: manage_teaching_content
+    display_name: "Manage Teaching Content"
+
+  - id: view_teaching_analytics
+    display_name: "View Teaching Analytics"

@@ -1,0 +1,32 @@
+# shared/competency-definitions/passport.yaml
+#
+# CLINICIAN PASSPORT COMPETENCY DEFINITIONS FOR QUILL MEDICAL
+#
+# Competencies governing the clinician passport — the portable record of
+# what a person has been assessed as competent to do, who signed each
+# sign-off, when, and on what evidence.
+#
+# Feature-admin in kind, like the teaching set in teaching.yaml:
+# these say who may use a part of Quill, never what may be done in the
+# care of a patient. The competencies a passport *records* are clinical
+# and live in clinical.yaml; this file holds only the gate on the
+# feature itself.
+#
+# Every file in this directory is merged into one catalogue at load
+# time, so ids must be unique across the whole directory, not just
+# within a file. Which file an entry lives in carries no meaning to the
+# code — it is for the reader.
+
+competencies:
+  # One competency gates the whole feature, deliberately. Holding a
+  # passport and signing someone else's are not separate privileges,
+  # because they are not separate people: a consultant of thirty years
+  # still needs new competencies signed off, and a registrar signed off
+  # for a procedure last year is often the right person to sign off a
+  # junior this year. Splitting them would encode a seniority model that
+  # does not match how clinical training works.
+  #
+  # What actually constrains a sign-off is not this flag: self-sign-off
+  # is refused at the API, and that is the only hard rule.
+  - id: access_clinician_passport
+    display_name: "Use the Clinician Passport"

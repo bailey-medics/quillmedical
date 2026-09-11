@@ -1,7 +1,7 @@
 """Finding stored competency ids that are no longer in the catalogue.
 
 Write-boundary validation stops a bad id being stored. It cannot stop an id
-going stale: a competency removed from ``shared/competencies.yaml`` leaves
+going stale: a competency removed from ``shared/competency-definitions/`` leaves
 every row that referenced it pointing at nothing, and no foreign key exists
 to refuse the removal.
 

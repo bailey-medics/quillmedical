@@ -13,7 +13,8 @@ setup() {
   SCRIPT="${BATS_TEST_DIRNAME}/check-competencies-not-deleted.sh"
   REPO="${BATS_TEST_TMPDIR}/repo"
 
-  mkdir -p "${REPO}/shared" "${REPO}/.github/scripts/shared"
+  mkdir -p "${REPO}/shared/competency-definitions" \
+    "${REPO}/.github/scripts/shared"
   cp "${BATS_TEST_DIRNAME}/../shared/logging.sh" \
     "${REPO}/.github/scripts/shared/logging.sh"
   mkdir -p "${REPO}/.github/scripts/ci"
@@ -26,7 +27,7 @@ setup() {
   git config user.email t@t
   git config user.name t
 
-  cat > shared/competencies.yaml <<'YAML'
+  cat > shared/competency-definitions/clinical.yaml <<'YAML'
 competencies:
   - id: prescribe_non_controlled
     display_name: "Prescribe Non-Controlled Medications"
@@ -60,7 +61,7 @@ commit_all() {
 }
 
 @test "adding a competency passes" {
-  cat >> shared/competencies.yaml <<'YAML'
+  cat >> shared/competency-definitions/clinical.yaml <<'YAML'
 
   - id: request_ct_scan
     display_name: "Request CT Scan"
@@ -74,8 +75,8 @@ YAML
 
 @test "retiring a competency passes" {
   sed -i.bak 's/    display_name: "Certify Death"/    display_name: "Certify Death"\n    retired_on: 2026-09-08/' \
-    shared/competencies.yaml
-  rm -f shared/competencies.yaml.bak
+    shared/competency-definitions/clinical.yaml
+  rm -f shared/competency-definitions/clinical.yaml.bak
   commit_all "retire a competency"
 
   run bash "$SCRIPT" base-ref
@@ -84,9 +85,9 @@ YAML
 }
 
 @test "deleting a competency fails and names it" {
-  grep -v "certify_death" shared/competencies.yaml \
+  grep -v "certify_death" shared/competency-definitions/clinical.yaml \
     | grep -v 'display_name: "Certify Death"' > tmp.yaml
-  mv tmp.yaml shared/competencies.yaml
+  mv tmp.yaml shared/competency-definitions/clinical.yaml
   commit_all "delete a competency"
 
   run bash "$SCRIPT" base-ref
@@ -96,9 +97,9 @@ YAML
 }
 
 @test "the failure explains how to retire instead" {
-  grep -v "certify_death" shared/competencies.yaml \
+  grep -v "certify_death" shared/competency-definitions/clinical.yaml \
     | grep -v 'display_name: "Certify Death"' > tmp.yaml
-  mv tmp.yaml shared/competencies.yaml
+  mv tmp.yaml shared/competency-definitions/clinical.yaml
   commit_all "delete a competency"
 
   run bash "$SCRIPT" base-ref
@@ -107,7 +108,7 @@ YAML
 }
 
 @test "deleting several competencies names all of them" {
-  cat > shared/competencies.yaml <<'YAML'
+  cat > shared/competency-definitions/clinical.yaml <<'YAML'
 competencies:
   - id: perform_venepuncture
     display_name: "Perform Venepuncture"
@@ -123,8 +124,8 @@ YAML
 
 @test "renaming a competency counts as a deletion" {
   sed -i.bak 's/  - id: certify_death/  - id: certify_a_death/' \
-    shared/competencies.yaml
-  rm -f shared/competencies.yaml.bak
+    shared/competency-definitions/clinical.yaml
+  rm -f shared/competency-definitions/clinical.yaml.bak
   commit_all "rename a competency"
 
   run bash "$SCRIPT" base-ref
@@ -136,8 +137,8 @@ YAML
 @test "an uncommitted deletion is not seen, because refs are compared" {
   # Documents the trap rather than a feature. A hand-check that edits the
   # working tree and runs the script gets a pass and proves nothing.
-  grep -v "certify_death" shared/competencies.yaml > tmp.yaml
-  mv tmp.yaml shared/competencies.yaml
+  grep -v "certify_death" shared/competency-definitions/clinical.yaml > tmp.yaml
+  mv tmp.yaml shared/competency-definitions/clinical.yaml
 
   run bash "$SCRIPT" base-ref
 
@@ -150,7 +151,7 @@ YAML
   # under test with it, so bash exited 127 and the assertion was measuring
   # nothing.
   git checkout -q -b no-catalogue-ref
-  git rm -q shared/competencies.yaml
+  git rm -q shared/competency-definitions/clinical.yaml
   git commit -q -m "before the catalogue existed"
   git checkout -q main
 
@@ -161,7 +162,7 @@ YAML
 }
 
 @test "quoted ids are compared without their quotes" {
-  cat > shared/competencies.yaml <<'YAML'
+  cat > shared/competency-definitions/clinical.yaml <<'YAML'
 competencies:
   - id: "prescribe_non_controlled"
     display_name: "Prescribe Non-Controlled Medications"
@@ -183,13 +184,13 @@ YAML
   # Retire it on the base ref, then bring it back on the branch — the only
   # way to reach this state.
   sed -i.bak 's/    display_name: "Certify Death"/    display_name: "Certify Death"\n    retired_on: 2026-09-08/' \
-    shared/competencies.yaml
-  rm -f shared/competencies.yaml.bak
+    shared/competency-definitions/clinical.yaml
+  rm -f shared/competency-definitions/clinical.yaml.bak
   commit_all "retire a competency"
   git branch -q -f retired-ref
 
-  grep -v "retired_on: 2026-09-08" shared/competencies.yaml > tmp.yaml
-  mv tmp.yaml shared/competencies.yaml
+  grep -v "retired_on: 2026-09-08" shared/competency-definitions/clinical.yaml > tmp.yaml
+  mv tmp.yaml shared/competency-definitions/clinical.yaml
   commit_all "bring it back"
 
   run bash "$SCRIPT" retired-ref
@@ -201,13 +202,13 @@ YAML
 
 @test "the un-retirement failure says to add a new entry instead" {
   sed -i.bak 's/    display_name: "Certify Death"/    display_name: "Certify Death"\n    retired_on: 2026-09-08/' \
-    shared/competencies.yaml
-  rm -f shared/competencies.yaml.bak
+    shared/competency-definitions/clinical.yaml
+  rm -f shared/competency-definitions/clinical.yaml.bak
   commit_all "retire a competency"
   git branch -q -f retired-ref
 
-  grep -v "retired_on: 2026-09-08" shared/competencies.yaml > tmp.yaml
-  mv tmp.yaml shared/competencies.yaml
+  grep -v "retired_on: 2026-09-08" shared/competency-definitions/clinical.yaml > tmp.yaml
+  mv tmp.yaml shared/competency-definitions/clinical.yaml
   commit_all "bring it back"
 
   run bash "$SCRIPT" retired-ref
@@ -217,12 +218,12 @@ YAML
 
 @test "a competency that stays retired passes" {
   sed -i.bak 's/    display_name: "Certify Death"/    display_name: "Certify Death"\n    retired_on: 2026-09-08/' \
-    shared/competencies.yaml
-  rm -f shared/competencies.yaml.bak
+    shared/competency-definitions/clinical.yaml
+  rm -f shared/competency-definitions/clinical.yaml.bak
   commit_all "retire a competency"
   git branch -q -f retired-ref
 
-  echo "# unrelated" >> shared/competencies.yaml
+  echo "# unrelated" >> shared/competency-definitions/clinical.yaml
   commit_all "unrelated edit"
 
   run bash "$SCRIPT" retired-ref
@@ -232,19 +233,75 @@ YAML
 
 @test "deleting a retired competency is still a deletion" {
   sed -i.bak 's/    display_name: "Certify Death"/    display_name: "Certify Death"\n    retired_on: 2026-09-08/' \
-    shared/competencies.yaml
-  rm -f shared/competencies.yaml.bak
+    shared/competency-definitions/clinical.yaml
+  rm -f shared/competency-definitions/clinical.yaml.bak
   commit_all "retire a competency"
   git branch -q -f retired-ref
 
-  grep -v "certify_death" shared/competencies.yaml \
+  grep -v "certify_death" shared/competency-definitions/clinical.yaml \
     | grep -v 'display_name: "Certify Death"' \
     | grep -v "retired_on: 2026-09-08" > tmp.yaml
-  mv tmp.yaml shared/competencies.yaml
+  mv tmp.yaml shared/competency-definitions/clinical.yaml
   commit_all "delete the retired competency"
 
   run bash "$SCRIPT" retired-ref
 
   [ "$status" -eq 1 ]
   [[ "$output" == *"removes competencies"* ]]
+}
+
+# --- The catalogue as a directory ---------------------------------------
+#
+# An id is unique across the whole directory, so which file holds it is a
+# presentation choice. These pin that: splitting the catalogue must not
+# read as deleting from it, and a catalogue the script cannot find must
+# fail rather than quietly pass.
+
+@test "moving a competency to another file in the directory is not a deletion" {
+  grep -v "certify_death" shared/competency-definitions/clinical.yaml \
+    | grep -v 'display_name: "Certify Death"' > tmp.yaml
+  mv tmp.yaml shared/competency-definitions/clinical.yaml
+
+  cat > shared/competency-definitions/feature-admin.yaml <<'YAML'
+competencies:
+  - id: certify_death
+    display_name: "Certify Death"
+YAML
+
+  commit_all "split the catalogue by kind"
+
+  run bash "$SCRIPT" base-ref
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"No competency was removed"* ]]
+}
+
+@test "a competency deleted from one file while others remain is caught" {
+  cat > shared/competency-definitions/feature-admin.yaml <<'YAML'
+competencies:
+  - id: manage_users
+    display_name: "Manage User Accounts"
+YAML
+  commit_all "add a second file"
+  git branch -q -f split-ref
+
+  grep -v "manage_users" shared/competency-definitions/feature-admin.yaml \
+    | grep -v 'display_name: "Manage User Accounts"' > tmp.yaml
+  mv tmp.yaml shared/competency-definitions/feature-admin.yaml
+  commit_all "delete from the second file"
+
+  run bash "$SCRIPT" split-ref
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"manage_users"* ]]
+}
+
+@test "a catalogue that has vanished fails rather than passing quietly" {
+  git rm -q -r shared/competency-definitions
+  commit_all "move the catalogue somewhere this script does not know about"
+
+  run bash "$SCRIPT" base-ref
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"no longer running"* ]]
 }

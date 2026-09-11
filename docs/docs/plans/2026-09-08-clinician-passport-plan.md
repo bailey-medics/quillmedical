@@ -524,6 +524,19 @@ nothing else.
   be composed at the point of use — `perform_bronchoscopy:unsupervised`
   — without ever storing it that way.
 
+- **A competency may be a whole capability, not an atomic act** —
+  "manage the acutely unwell patient" rests on cannulation, airway
+  assessment, escalation and a dozen other things, and is still one
+  thing a consultant watches and signs. So is "deliver the acute
+  oncology take". Both shapes belong in the catalogue: the granular act
+  where that is what gets assessed, and the composite capability where
+  that is. What decides it is what a person is actually signed off for
+  on the day, never how neatly the capability decomposes. This is why
+  the RCR's capabilities in practice sit alongside
+  `perform_lumbar_puncture` without conflict — they are the same kind
+  of thing at different grain, and the passport records whichever the
+  assessor used.
+
 - **A passport is not a defined set of competencies** — there is no
   grouping in the shared definitions saying which competencies make up
   "the SACT passport". Membership of a passport is local policy: the
@@ -548,7 +561,8 @@ nothing else.
   passport competency is evidence an administrator may act on, not an
   automatic change to `additional_competencies`. Automatic granting is
   a future item (see below) because it turns an educational record
-  into an access-control input and needs clinical safety review.
+  into an access-control input, which is a decision to take
+  deliberately rather than a side effect of shipping the passport.
 
 - **One competency gates the whole feature** —
   `access_clinician_passport`, a feature-admin competency meaning this
@@ -1436,6 +1450,87 @@ above. Additive only, per `.claude/rules/backend.md`.
 - **Pages in `frontend/src/pages/passport/`** — thin compositions of
   the above with the `Stack gap="lg"` pattern and no Container.
 
+- **The passport subtree is loaded on demand, and is the pilot for
+  it** — every one of the fifty-one pages in `main.tsx` is a static
+  import today, so the whole application ships as one entry chunk,
+  measured at 309 kB gzipped on 10 September. The passport is the
+  right place to change that first, and not because it is large.
+  It is **double-gated** — `requires_feature("passport")` and
+  `access_clinician_passport` — so most people who download it can
+  never open it, and an external assessor reaches exactly one page of
+  it. It is also unbuilt, so nothing that works today can break.
+
+  `todo.md` already carries this as "code-split the router by area if
+  the entry bundle needs to shrink", deferred on the grounds that
+  roughly 70 per cent of the entry chunk is Mantine, React and React
+  Router, which every route needs whatever we do. That reasoning is
+  sound and unchanged: **this is not a plan to split the other fifty
+  pages.** It is one feature carrying its own weight, proving the
+  pattern on code with no users, and leaving admin, teaching,
+  `/settings/totp` and the Markdown views exactly where they are until
+  someone measures a reason to move them.
+
+  Three things decide whether it is done correctly.
+
+  - **Use React Router's `lazy`, and check the chunk actually
+    moved.** `lazy: () => import("./pages/passport/...")` with the page
+    exporting `Component`. Writing `element: import(...).then(...)`
+    looks equivalent and defers nothing, because the import is fired
+    during module evaluation; a stray fragment of exactly that shape
+    once sat in this repository doing nothing at all. It is invisible
+    in review and invisible at runtime, so the check is the build
+    output — a passport chunk appears and the entry chunk shrinks — not
+    the diff.
+
+  - **`handle` stays on the route object, never inside the lazy
+    module.** `isRouteSafeForReload` in `lib/swUpdateGate.ts` reads
+    `handle.safeForReload` synchronously, before the destination has
+    rendered and therefore before a lazy module has loaded. Move it and
+    every passport route silently becomes unsafe-by-default and stops
+    receiving updates — silently being the problem, since nothing
+    fails, the tab simply stops updating.
+
+  - **`vite:preloadError` must be handled first.** See below. This is a
+    precondition, not a tidy-up.
+
+- **Handling `vite:preloadError` is the precondition, and it is the
+  whole app's problem rather than the passport's** — a tab holds the
+  bundle it downloaded until it is reloaded, and the API-compatibility
+  work established that an actively used tab can run for thirty days or
+  more, because rotating refresh tokens mean it never re-logs-in. Every
+  route's code is in memory today, so that tab navigates anywhere
+  quite happily. Split the passport out and the same tab asks for a
+  chunk hash the container stopped serving weeks ago, and the
+  navigation throws.
+
+  Two facts make this sharper than it first looks. **JavaScript never enters the
+  precache manifest**: `globPatterns` in `vite.config.ts` covers logos
+  and favicons only, so a lazy chunk is a live network fetch. And there is
+  no service-worker offline fallback page, recorded in the offline
+  plan. So the failure is not a slow page, it is a dead one, and it
+  lands on the navigation rather than on the load — the user has
+  already committed to going somewhere.
+
+  The fix is small and belongs to the whole application: listen for
+  `vite:preloadError` and route it through the existing update gate in
+  `frontend/src/lib/swUpdateGate.ts`, which already knows how to decide
+  whether reloading this route is safe and how to preserve in-progress
+  work when it is not. Doing it here is not scope creep — nothing may be
+  loaded on demand until it exists, so it is the first task of Phase 6
+  rather than a follow-up.
+
+- **Measure it in bytes, and write the number down** — the way
+  `keepNames` was settled in `vite.config.ts`, which records 892,697
+  against 930,826 bytes and concludes the 37 kB is worth paying. Record
+  the entry chunk before and after, and the size of the passport chunk.
+  Two cautions. Quote the **entry chunk gzipped**, since the figures
+  already in the plans differ by roughly three times because some count
+  the whole build; re-measure rather than citing either. And a
+  configuration option that does nothing looks exactly like one that
+  costs nothing, which is how the `esbuild.keepNames` mistake survived —
+  so the measurement is the evidence that the split happened, not a
+  footnote to it.
+
 ### Validation and safety
 
 - **Schemas** — Pydantic models with `extra="forbid"` for
@@ -1462,7 +1557,8 @@ above. Additive only, per `.claude/rules/backend.md`.
   scanned procedure note or DOPS form names a patient; and
   reflections, which are written about real cases. Both carry a
   declaration that the content is anonymised, worded more firmly for
-  reflections, and both are in the hazard log.
+  reflections. These two are the whole surface: everything else the
+  passport stores is about the holder, not a patient.
 
 - **Audit** — the git history is the audit trail. Exports are logged
   (who, which passport, when) in the existing application log with no
@@ -1487,21 +1583,56 @@ above. Additive only, per `.claude/rules/backend.md`.
 
 ## Phase 0: competency content and clinical safety
 
-- [ ] Draft the first competencies from working clinical knowledge:
-      the procedures, their levels where levels are meaningful, and any
-      expiry interval. Do not wait on official documents.
-- [ ] Later, and not as a blocker: check the draft against the UK SACT
-      Board's _Prescriber competencies for reviewing and prescribing
-      SACT_ (November 2023), the South West passports and the RCR
-      entrustment scales.
-- [ ] Move `shared/competencies.yaml` into
-      `shared/competency-definitions/`, split by kind into
-      `clinical.yaml` and `feature-admin.yaml`. Clinical holds the
-      patient-facing competencies — prescribing, procedures,
-      certification, consent, imaging, specialty, patient records.
-      Feature admin holds the ones that govern Quill itself: the
-      teaching set, `manage_users`, `access_clinic_admin`, and the two
-      passport competencies. They are different kinds of thing sharing
+- [x] Draft the first competencies, with their levels where levels are
+      meaningful, into `shared/competency-definitions/oncology.yaml`.
+      Sixteen entries, explicitly a proof of concept to be revised
+      against the South West passports rather than a settled list.
+- [x] Check the draft against the published frameworks. This happened
+      **first** rather than later, because both documents turned out to
+      be readable after all — the network notes earlier in this plan
+      were about the UKONS and NHS England pages, not these. Drafting
+      from them beat drafting from memory and correcting afterwards.
+      - **RCR, _Clinical Oncology Specialty Training Curriculum_,
+        August 2026** (implemented 5 August 2026), nineteen
+        capabilities in practice. Its entrustment scale is words, not
+        numbers — observe only, direct supervision, indirect or minimal
+        supervision, unsupervised — which is the design this plan had
+        already chosen, arrived at independently. It also uses a
+        _different_ four-point scale for its generic capabilities
+        (novice, developing, capable, expert), which is the clearest
+        possible argument for declaring levels per competency rather
+        than once globally.
+      - **UK SACT Board, _Prescriber competencies for reviewing and
+        prescribing SACT_, November 2023**, four levels: observation
+        only, review and authorise administration, prescribe second
+        cycle onwards, prescribe first cycle. Its paper record is a
+        table of competency statements against "Supporting Statement /
+        List of Evidence", "Date Achieved" and "Supervisor Signature",
+        closed by a declaration — "I confirm that [name] has completed
+        Level 2 competency" — which is `sign-off.yaml` and the
+        assessor declaration, on paper. Its logbook is eight
+        prescriptions recorded as regimen, date and supervisor
+        signature: counted, never compared to a judgement of
+        sufficiency.
+      - Both scales are quoted verbatim rather than harmonised into one
+        house scale. A sign-off should mean what the framework says it
+        means, and a reader who knows the framework should need no
+        lookup table.
+      - Still outstanding, and the reason this list is provisional: the
+        South West SACT and radiotherapy passports themselves.
+- [x] Move `shared/competencies.yaml` into
+      `shared/competency-definitions/`, split by kind. Landed as four
+      files rather than the two first written here, one per kind of
+      thing: `clinical.yaml` holds the patient-facing competencies —
+      prescribing, procedures, certification, consent, imaging,
+      specialty, patient records, and approving clinical letters, which
+      is a judgement about a patient's record rather than about Quill.
+      `clinical-admin.yaml` holds running the service —
+      `access_clinic_admin` and `manage_users`. `teaching.yaml` and
+      `passport.yaml` hold the gates on their own features. The loader
+      globs the directory, so a file per feature costs nothing and each
+      one arrives with its feature. They are different kinds of thing
+      sharing
       one mechanism, and reading them side by side today makes that
       hard to see. The directory name removes the confusion with a
       passport's own `competencies.yaml`, and reading a directory now
@@ -1515,26 +1646,93 @@ above. Additive only, per `.claude/rules/backend.md`.
       live docs pages. Edit `.github/copilot-instructions.md` rather
       than `CLAUDE.md` and re-run `/sync-copilot-config`; leave
       historical plan documents untouched.
-- [ ] Add the SACT and radiotherapy competencies to
-      `shared/competency-definitions/clinical.yaml`. The live entries
-      carry only `id` and `display_name` today, whatever the CBAC
-      documentation implies, so match what is there rather than
-      inventing fields for these alone.
-- [ ] Add `access_clinician_passport` to
+      - **Found during the move: a CI check reads the catalogue too.**
+        `.github/scripts/ci/check-competencies-not-deleted.sh` compared
+        one hardcoded file across refs, and its "no catalogue on the
+        base ref" guard returned success. Left alone it would have found
+        no file on the branch and passed, silently retiring the check
+        that no competency was deleted. It now concatenates every file
+        in the directory before comparing — so moving an id between
+        files is correctly not a deletion — and fails loudly when the
+        base ref has a catalogue and the branch has none.
+      - **The generated JSON is gitignored** (`frontend/.gitignore`
+        line 15), so there is nothing to commit for the
+        `yarn generate:types` step; the generator merges the directory
+        into one `competencies.json` and the four importers are
+        untouched. `frontend/src/generated/index.d.ts` had drifted,
+        declaring `risk_level`, `category` and six other fields the YAML
+        has never carried; corrected to `id`, `display_name` and
+        `retired_on`.
+- [x] Add the SACT and radiotherapy competencies. Landed in their own
+      `shared/competency-definitions/oncology.yaml` rather than in
+      `clinical.yaml`: they are clinical in kind, but they are the first
+      set drafted for the passport and will be revised wholesale against
+      the South West passports, which is easier when they are not
+      interleaved with the general clinical set. The note about matching
+      the live shape held for the entries without scales; those with one
+      carry `levels`, which is what the passport needs and what the
+      frameworks actually publish.
+- [x] Add `access_clinician_passport` to
       `shared/competency-definitions/` under the feature-admin
       category, and to the appropriate base professions in
       `shared/base-professions.yaml`.
-- [ ] Add the optional passport fields — `levels` and
+      - The competency lives in its own `passport.yaml` rather than
+        alongside the teaching set.
+      - Held by default by the fourteen professions that practise and
+        accumulate assessed competencies — the four training grades,
+        consultant, GP, both nursing grades, healthcare assistant, both
+        pharmacy grades, physiotherapist, occupational therapist and
+        paramedic. Not by patients, back-office staff or the teaching
+        roles.
+      - `requires_clinical_services` could not decide this: it is true
+        for receptionists and patients as well, so the split is a
+        judgement and is pinned by a test naming both halves. The
+        healthcare assistant entry is the clearest case for including
+        the unregistered grades — its `perform_venepuncture` already
+        carries the comment "After competency training", which is
+        exactly what a passport records.
+- [x] Add the optional passport fields — `levels` and
       `expires_after_months` — to the competencies that need them.
-      Both are optional, so existing entries are untouched.
-- [ ] Run `yarn generate:types` in `frontend/` and commit the generated
-      JSON.
-- [ ] Add hazard log entries for the passport: the wrong assessor
-      signs; a holder signs off their own competency; evidence or a
-      reflection contains patient data; an exported PDF diverges from
-      the repository; a competency definition changes under sign-offs
-      already made; an assessor declares a registration they do not
-      hold; a sign-off is made from an unattended logged-in session.
+      Both are optional, so existing entries are untouched. Note this
+      needed `CompetencyEntry` in `backend/app/cbac/competencies.py`
+      widening as well as the YAML: it sets `extra="forbid"`, so a new
+      field is refused at load until the model knows about it. Levels
+      are validated there too — ids unique within a competency, and no
+      empty list, since omitting levels and declaring none of them must
+      not be two different things. CBAC ignores both fields: holding a
+      competency stays a yes or no question.
+- [x] Run `yarn generate:types` in `frontend/`. Nothing to commit:
+      `frontend/.gitignore` ignores `src/generated/*.json`, so the JSON
+      is a build artefact rebuilt by the prebuild hook. Only the
+      hand-written `index.d.ts` beside it is tracked, and it now
+      declares `levels` and `expires_after_months`.
+- [x] Know what can go wrong, and where each is answered. Recorded
+      here rather than as separate entries elsewhere, so the answer sits
+      beside the design it constrains:
+      - **The wrong assessor signs.** Not prevented, deliberately —
+        see the sign-off decision. The record names who signed, their
+        role and their registration, so a reader can judge it, exactly
+        as on paper.
+      - **A holder signs off their own competency.** Refused at the
+        API, the one hard rule, tested in Phase 3.
+      - **Evidence or a reflection carries patient data.** Declarations
+        on both upload paths; nothing else the passport stores is about
+        a patient.
+      - **An exported PDF diverges from the repository.** The PDF
+        prints each sign-off's `content_hash` and the head commit, and
+        `VERIFY.md` lets anyone check it offline with `sha256sum`.
+      - **A competency definition changes under sign-offs already
+        made.** Every sign-off stores the human label beside the id and
+        the level's wording at signing, so it stays readable whatever
+        the definition later says.
+      - **An assessor declares a registration they do not hold.**
+        Recorded as declared, never as verified, with
+        `registration_verified` false until an admin checks the
+        register by hand. The record says what Quill checked.
+      - **A sign-off is made from an unattended logged-in session.**
+        Not prevented by re-authentication, deliberately — the
+        declaration is what makes it an act, and a code per sign-off
+        would land friction where adoption is most fragile.
 
 ## Phase 1: core store and record model
 
@@ -1686,6 +1884,16 @@ above. Additive only, per `.claude/rules/backend.md`.
 
 ## Phase 6: frontend
 
+- [ ] **First, and before anything is loaded on demand: handle
+      `vite:preloadError`.** Listen for it and route it through the
+      update gate in `frontend/src/lib/swUpdateGate.ts`, so a tab
+      running an old bundle that asks for a chunk the container no
+      longer serves reloads where that is safe, and preserves
+      in-progress work where it is not. Whole-app work rather than
+      passport work, and the reason it sits here is that nothing may be
+      split until it exists. Test it by requesting a chunk name that
+      was never built and asserting the gate is consulted, rather than
+      by deploying twice.
 - [ ] Add `frontend/src/lib/passport/` API client functions using
       `api.ts` and types generated from the backend schemas.
 - [ ] Build the components listed above in
@@ -1694,7 +1902,20 @@ above. Additive only, per `.claude/rules/backend.md`.
       the component reuse hierarchy.
 - [ ] Build the pages and register routes in `frontend/src/main.tsx`
       with `RequireAuth`, `RequireFeature feature="passport"` and CBAC
-      hooks.
+      hooks. Load the subtree on demand with React Router's
+      `lazy: () => import(...)`, each page exporting `Component`, and
+      keep `handle: { safeForReload: ... }` on the route object rather
+      than in the lazy module — the gate reads it before the module
+      loads. Never `element: import(...).then(...)`, which defers
+      nothing.
+- [ ] Prove the split in the build output rather than in the diff: a
+      passport chunk exists, `index.html` does not reference it, and the
+      entry chunk is smaller. Record the entry chunk gzipped before and
+      after, and the passport chunk's size, in this plan and in the
+      `vite.config.ts` comment beside `keepNames` if the shape matches.
+      Baseline on 10 September, before any passport code: entry chunk
+      1,106 kB raw, 309 kB gzipped, across 51 statically imported
+      pages.
 - [ ] Add the passport entry to navigation for users holding
       `access_clinician_passport`.
 - [ ] Frontend tests with `just uf src/components/passport` and
@@ -1708,9 +1929,6 @@ above. Additive only, per `.claude/rules/backend.md`.
       path containment, symlink refusal) and of the authorisation
       matrix, including external assessors and the reflections
       holder-only rule.
-- [ ] Clinical safety review of the competency definitions and the
-      declaration text with the Clinical Safety Officer; record in the
-      hazard log.
 - [ ] Enable the `passport` feature for the first South West
       organisation and onboard a small assessor group.
 - [ ] Document the module under `docs/docs/backend/passport/index.md`
@@ -1751,8 +1969,11 @@ close them off, and so nobody builds them before there is a need.
 
 - **Automatic CBAC grant** — a signed-off passport competency raising a
   request to add the matching id to `additional_competencies`, with
-  administrator approval. Requires clinical safety review because it
-  couples an educational record to access control.
+  administrator approval. Deferred because it couples an educational
+  record to access control: a sign-off would stop being a record of
+  what someone was assessed as able to do and start deciding what they
+  may do in the software. That is worth doing eventually and is not a
+  thing to arrive by accident.
 
 - **Import of a passport bundle** — accepting a zip or git bundle from
   another deployment, validating every file against the schemas,
@@ -2010,6 +2231,22 @@ close them off, and so nobody builds them before there is a need.
   infrastructure, and the storage choice only pays off if the interface
   is genuinely good.
 
+- **The passport frontend loads on demand, and nothing else changes** —
+  the entry chunk is 309 kB gzipped with every page statically
+  imported, and roughly seventy per cent of that is Mantine, React and
+  React Router, which every route needs regardless. So splitting the
+  application generally is poor value and stays deferred in `todo.md`.
+  The passport is the exception on grounds other than size: it is
+  gated twice over, by feature and by competency, so most people who
+  download it can never open it, and an external assessor sees one page
+  of it. Being unbuilt, it can adopt the pattern without risking
+  anything that works today, which makes it the pilot rather than the
+  beginning of a sweep. The cost is one precondition the application
+  needs anyway — `vite:preloadError` routed through the update gate,
+  without which a long-lived tab dies on navigation rather than on
+  load, since JavaScript is not in the precache manifest and there is
+  no offline fallback.
+
 - **ReportLab for the PDF, not a second library** — it is already a
   dependency and already in the image, and its `platypus` module
   handles the flowing tabular document the passport needs, even though
@@ -2058,6 +2295,22 @@ close them off, and so nobody builds them before there is a need.
   for themselves. That is the same reasoning as counting a logbook
   without comparing it to a target.
 
+  **This holds even where a framework states a rule.** The UK SACT
+  Board recommends that Level 2 is assessed by a practitioner at Level
+  3 or above, and Levels 3 and 4 by one at Level 4 or above, and that
+  is precisely the kind of rule a system is tempted to encode. Quill
+  records it and does not enforce it, because **paper does not enforce
+  it either**. Nothing about a paper passport stops the wrong person
+  signing; what makes the record trustworthy is that it says who did,
+  in their own hand, for anyone to weigh afterwards. Enforcing it in
+  software would not add a safeguard that the paper form has and we
+  lack — it would invent one the profession has never had, and would
+  fail on the day a locum consultant's level is not recorded in Quill
+  because they have never used it. The competency definitions carry the
+  framework's own wording, including its guidance on who should assess,
+  so the rule reaches the person making the judgement rather than a
+  validator.
+
 - **Three clocks kept apart** — `observed_on` is entered by the holder,
   `signed_at` is set by the server when the assessor signs, and the
   commit timestamp is the commit timestamp. The PDF prints the first
@@ -2074,11 +2327,6 @@ close them off, and so nobody builds them before there is a need.
 - **Evidence retention** — how long evidence blobs are kept after an
   sign-off is superseded, and whether a holder may remove evidence
   they uploaded in error. Phase 1 keeps everything.
-
-- **Who holds the CA** — one CA per deployment is the design; whether
-  the South West deanery or a trust should instead be the issuer, so a
-  certificate says who trained the assessor rather than which software
-  ran, is a governance question for the clinical safety review.
 
 - **Verifying external assessors** — whether by-hand register checks by
   an organisation admin are acceptable to the deanery for phase 1, or

@@ -19,7 +19,7 @@ settling next.
 To adopt: point ``_can_at`` at the real per-place resolver when one exists.
 Every xfail here should start passing in the same commit.
 
-Every competency named below exists in ``shared/competencies.yaml``. Some are
+Every competency named below exists in ``shared/competency-definitions/``. Some are
 stand-ins — there is no rota or clinical-safety-officer competency yet, so a
 real one of roughly the right shape stands in its place. What is asserted is
 that the answer differs by place, not which competency it is.

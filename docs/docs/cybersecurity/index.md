@@ -114,7 +114,7 @@ patient < staff < admin < superadmin
 Healthcare-specific authorisation layer for clinical operations. Rather than simple role-based permissions, CBAC checks whether a user has a specific clinical competency (e.g. "can prescribe controlled drugs") before allowing an action.
 
 - **Competency resolution**: `final_competencies = base_profession_competencies + additional_competencies - removed_competencies`
-- **Configuration**: Defined in `shared/competencies.yaml` (capabilities with risk levels) and `shared/base-professions.yaml` (profession templates).
+- **Configuration**: Defined in `shared/competency-definitions/` (a directory split by kind — `clinical.yaml` for what may be done to a patient, `feature-admin.yaml` for what may be done to Quill — merged into one catalogue at load time) and `shared/base-professions.yaml` (profession templates).
 - **Enforcement**: `has_competency("competency_id")` FastAPI dependency — raises 403 if the user lacks the required competency.
 - **Self-modification blocked**: Only admin/superadmin users can modify competencies via `PATCH /cbac/my-competencies`.
 

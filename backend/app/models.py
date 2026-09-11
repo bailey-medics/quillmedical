@@ -819,7 +819,7 @@ class PractisingCompetency(Base):
         user_id: The person.
         organisation_id: The organisation, when the place is an organisation.
         site_id: The site, when the place is a site.
-        competency: A competency id from ``shared/competencies.yaml``.
+        competency: A competency id from ``shared/competency-definitions/``.
         authorised_by: Who authorised practice here. Null once that user is
             deleted, so the fact it was authorised outlives the person who
             did it.
@@ -896,7 +896,7 @@ class PractisingCompetency(Base):
         """Reject a competency id that is not in the catalogue.
 
         No foreign key can do this: the catalogue is
-        ``shared/competencies.yaml``, deliberately kept out of the database
+        ``shared/competency-definitions/``, deliberately kept out of the database
         because it is code-generated into the frontend's types. So the check
         lives on the attribute instead, covering every path that writes a
         row rather than one endpoint's schema.

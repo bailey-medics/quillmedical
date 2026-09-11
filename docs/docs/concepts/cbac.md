@@ -63,12 +63,14 @@ Traditional RBAC assigns users to rigid job roles (e.g., "doctor", "nurse") with
 ```
 backend/app/cbac/
 ├── __init__.py          - Public API exports
-├── competencies.py      - Loads competencies.yaml, provides validation
+├── competencies.py      - Merges competency-definitions/, provides validation
 ├── base_professions.py  - Loads base-professions.yaml
 └── decorators.py        - has_competency(), FastAPI dependencies
 
 shared/
-├── competencies.yaml        - All competency definitions
+├── competency-definitions/  - All competency definitions, merged at load
+│   ├── clinical.yaml        - What may be done in the care of a patient
+│   └── feature-admin.yaml   - What may be done to Quill itself
 └── base-professions.yaml    - Default competency sets per profession
 ```
 
@@ -116,9 +118,18 @@ user = User(
 
 ## Configuration Files
 
-### competencies.yaml
+### competency-definitions/
 
-Defines all available competencies in the system. Located at `shared/competencies.yaml`.
+Defines all available competencies in the system. Located at
+`shared/competency-definitions/`, a directory whose files are merged into
+one flat catalogue at load time.
+
+The split is by kind, for the reader: `clinical.yaml` holds what may be
+done in the care of a patient, `feature-admin.yaml` what may be done to
+Quill itself. The code sees one catalogue and the id is what everything
+references, so moving an entry between files changes nothing. **Ids must
+be unique across the whole directory**, not merely within a file — a
+duplicate is refused at load, and in CI.
 
 **Structure**:
 
@@ -428,7 +439,7 @@ Each competency specifies required audit retention period:
 
 ### Clinical Safety Review Required
 
-**IMPORTANT**: All changes to`competencies.yaml` and `base-professions.yaml` must be reviewed by the Clinical Safety Officer and documented in the clinical safety log (DCB 0129 requirement).
+**IMPORTANT**: All changes to `shared/competency-definitions/` and `base-professions.yaml` must be reviewed by the Clinical Safety Officer and documented in the clinical safety log (DCB 0129 requirement).
 
 ### Professional Registration Validation
 
@@ -455,7 +466,7 @@ Some competencies require supervision even when granted:
 
 ### Process
 
-1. **Define competency** in `shared/competencies.yaml`:
+1. **Define competency** in the right file under `shared/competency-definitions/`:
 
    ```yaml
    - id: prescribe_unlicensed_medication
@@ -565,5 +576,5 @@ Get risk level: "low", "medium", or "high".
 
 - [User Model](../backend/app/models.py) - User database schema
 - [FastAPI Main](../backend/app/main.py) - Example usage in `/prescriptions/controlled` endpoint
-- [Competencies YAML](../../shared/competencies.yaml) - All competency definitions
+- [Competency definitions](../../shared/competency-definitions/) - All competency definitions
 - [Base Professions YAML](../../shared/base-professions.yaml) - Default profession competency sets
