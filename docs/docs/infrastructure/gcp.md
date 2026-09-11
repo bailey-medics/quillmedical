@@ -567,6 +567,8 @@ Database migrations (`alembic upgrade head`) run as a separate **pre-deploy step
 
 The backend deploy step (`.github/scripts/deploy/deploy-tagged.sh`) deploys the new revision under a unique traffic tag with `--no-traffic`, smoke-tests that revision's own tagged URL, and only then promotes it (`--to-latest`) to receive live traffic. Live traffic stays on the previous, healthy revision until the new one — including its migration — has proven itself, rather than cutting over immediately and finding out via the public-edge smoke test. See [Alembic migration safety](../backend/alembic-migration-safety.md#revision-specific-smoke-test).
 
+The promotion is issued with `--async` and verified by polling the service's own status until it is Ready with the new revision carrying all traffic, rather than relying on gcloud's built-in wait. That wait has no ceiling: on 2026-09-10 Cloud Run stalled on "Provisioning revision instances to receive traffic" and gcloud sat for 56 minutes before crashing, holding the serialised deploy queue the whole time. The poll is bounded (`PROMOTE_TIMEOUT_SECONDS`, default 300s), a stalled promotion gets one fresh attempt (`PROMOTE_ATTEMPTS`, default 2), and a failure prints the service's conditions and traffic split into the job log. The deploy jobs also carry a 30-minute `timeout-minutes` ceiling as a backstop.
+
 ### Admin Cloud Run Job (done)
 
 Each active environment has a `quill-admin-{env}` Cloud Run Job for one-off admin tasks (creating superadmin users, updating permissions, assigning roles, running migrations). See the [admin tasks documentation](admin.md) for usage.

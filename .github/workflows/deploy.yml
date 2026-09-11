@@ -132,6 +132,10 @@ jobs:
   deploy-teaching:
     name: Deploy to teaching
     runs-on: ubuntu-24.04
+    # A healthy run finishes in a few minutes. The ceiling stops a stalled
+    # Cloud Run operation from holding the serialised deploy queue for an
+    # hour, as one did on 2026-09-10 (run 34497127303).
+    timeout-minutes: 30
     needs: [prepare, build]
     if: always() && !failure() && !cancelled()
     environment: teaching
@@ -204,6 +208,7 @@ jobs:
     if: ${{ vars.ENABLE_PRODUCTION_DEPLOY == 'true' }}
     name: Promote to production
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     needs: [prepare, deploy-teaching]
     # Only runs after teaching succeeds; requires manual approval via environment
     environment: production
