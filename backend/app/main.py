@@ -3640,7 +3640,11 @@ async def update_my_competencies(
 # ==========================================================================
 
 
-@router.get("/organisations", response_model=OrganisationsListOut)
+@router.get(
+    "/organisations",
+    response_model=OrganisationsListOut,
+    dependencies=[DEP_REQUIRE_MANAGE_USERS],
+)
 def list_organisations(
     current_user: User = DEP_CURRENT_USER, db: Session = DEP_GET_SESSION
 ) -> OrganisationsListOut:
@@ -3666,12 +3670,6 @@ def list_organisations(
         HTTPException: 500 if database query fails.
     """
     # Check permissions
-    if current_user.system_permissions not in ["admin", "superadmin"]:
-        raise HTTPException(
-            status_code=403,
-            detail="Requires admin or superadmin permissions",
-        )
-
     try:
         if current_user.system_permissions == "superadmin":
             organisations = db.execute(select(Organisation)).scalars().all()
@@ -3710,7 +3708,11 @@ def list_organisations(
         ) from e
 
 
-@router.get("/organisations/{org_id}", response_model=OrganisationDetailOut)
+@router.get(
+    "/organisations/{org_id}",
+    response_model=OrganisationDetailOut,
+    dependencies=[DEP_REQUIRE_MANAGE_USERS],
+)
 def get_organisation(
     org_id: int,
     current_user: User = DEP_CURRENT_USER,
@@ -3737,12 +3739,6 @@ def get_organisation(
         HTTPException: 404 if organisation not found.
     """
     # Check permissions
-    if current_user.system_permissions not in ["admin", "superadmin"]:
-        raise HTTPException(
-            status_code=403,
-            detail="Requires admin or superadmin permissions",
-        )
-
     # Fetch organisation
     org = db.scalar(select(Organisation).where(Organisation.id == org_id))
     if not org:
@@ -3854,7 +3850,11 @@ def get_organisation(
     )
 
 
-@router.put("/organisations/{org_id}", response_model=OrganisationOut)
+@router.put(
+    "/organisations/{org_id}",
+    response_model=OrganisationOut,
+    dependencies=[DEP_REQUIRE_MANAGE_USERS],
+)
 def update_organisation(
     org_id: int,
     body: UpdateOrganisationIn,
@@ -3882,11 +3882,6 @@ def update_organisation(
         HTTPException: 403 if the user lacks ``manage_users``.
         HTTPException: 404 if organisation not found.
     """
-    if current_user.system_permissions not in ["admin", "superadmin"]:
-        raise HTTPException(
-            status_code=403,
-            detail="Requires admin or superadmin permissions",
-        )
     org = db.get(Organisation, org_id)
     if not org:
         raise HTTPException(status_code=404, detail="Organisation not found")
@@ -4032,7 +4027,9 @@ def delete_organisation(
 
 
 @router.post(
-    "/organisations/{org_id}/staff", response_model=OrgStaffAddResponse
+    "/organisations/{org_id}/staff",
+    response_model=OrgStaffAddResponse,
+    dependencies=[DEP_REQUIRE_MANAGE_USERS],
 )
 def add_staff_to_organisation(
     org_id: int,
@@ -4061,12 +4058,6 @@ def add_staff_to_organisation(
         HTTPException: 404 if organisation or user not found.
         HTTPException: 409 if user is already a staff member.
     """
-    if current_user.system_permissions not in ["admin", "superadmin"]:
-        raise HTTPException(
-            status_code=403,
-            detail="Requires admin or superadmin permissions",
-        )
-
     org = db.scalar(select(Organisation).where(Organisation.id == org_id))
     if not org:
         raise HTTPException(status_code=404, detail="Organisation not found")
@@ -4118,7 +4109,10 @@ def add_staff_to_organisation(
 
 @router.post(
     "/organisations/{org_id}/patients",
-    dependencies=[DEP_REQUIRE_CLINICAL],
+    dependencies=[
+        DEP_REQUIRE_CLINICAL,
+        DEP_REQUIRE_MANAGE_USERS,
+    ],
     response_model=OrgPatientAddResponse,
 )
 def add_patient_to_organisation(
@@ -4148,12 +4142,6 @@ def add_patient_to_organisation(
         HTTPException: 404 if organisation not found.
         HTTPException: 409 if patient is already a member.
     """
-    if current_user.system_permissions not in ["admin", "superadmin"]:
-        raise HTTPException(
-            status_code=403,
-            detail="Requires admin or superadmin permissions",
-        )
-
     org = db.scalar(select(Organisation).where(Organisation.id == org_id))
     if not org:
         raise HTTPException(status_code=404, detail="Organisation not found")
@@ -4193,7 +4181,10 @@ def add_patient_to_organisation(
 
 @router.delete(
     "/organisations/{org_id}/staff/{user_id}",
-    dependencies=[DEP_REQUIRE_CSRF],
+    dependencies=[
+        DEP_REQUIRE_CSRF,
+        DEP_REQUIRE_MANAGE_USERS,
+    ],
     response_model=StatusResponse,
 )
 def remove_staff_from_organisation(
@@ -4204,7 +4195,7 @@ def remove_staff_from_organisation(
 ) -> StatusResponse:
     """Remove a staff member from an organisation.
 
-    Admin/superadmin only.
+    Requires ``manage_users``.
 
     Args:
         org_id: Organisation ID.
@@ -4215,9 +4206,6 @@ def remove_staff_from_organisation(
     Returns:
         dict: Confirmation.
     """
-    if current_user.system_permissions not in ("admin", "superadmin"):
-        raise HTTPException(status_code=403, detail="Admin only")
-
     # Admin users can only modify orgs they belong to
     if current_user.system_permissions == "admin":
         if org_id not in get_user_org_ids(db, current_user.id):
@@ -4245,7 +4233,10 @@ def remove_staff_from_organisation(
 
 @router.delete(
     "/organisations/{org_id}/patients/{patient_id}",
-    dependencies=[DEP_REQUIRE_CSRF],
+    dependencies=[
+        DEP_REQUIRE_CSRF,
+        DEP_REQUIRE_MANAGE_USERS,
+    ],
     response_model=StatusResponse,
 )
 def remove_patient_from_organisation(
@@ -4256,7 +4247,7 @@ def remove_patient_from_organisation(
 ) -> StatusResponse:
     """Remove a patient from an organisation.
 
-    Admin/superadmin only.
+    Requires ``manage_users``.
 
     Args:
         org_id: Organisation ID.
@@ -4267,9 +4258,6 @@ def remove_patient_from_organisation(
     Returns:
         dict: Confirmation.
     """
-    if current_user.system_permissions not in ("admin", "superadmin"):
-        raise HTTPException(status_code=403, detail="Admin only")
-
     # Admin users can only modify orgs they belong to
     if current_user.system_permissions == "admin":
         if org_id not in get_user_org_ids(db, current_user.id):
@@ -4300,7 +4288,11 @@ def remove_patient_from_organisation(
 # ==========================================================================
 
 
-@router.get("/organisations/{org_id}/features", response_model=FeaturesListOut)
+@router.get(
+    "/organisations/{org_id}/features",
+    response_model=FeaturesListOut,
+    dependencies=[DEP_REQUIRE_MANAGE_USERS],
+)
 def list_org_features(
     org_id: int,
     current_user: User = DEP_CURRENT_USER,
@@ -4308,11 +4300,8 @@ def list_org_features(
 ) -> FeaturesListOut:
     """List enabled features for an organisation.
 
-    Admin/superadmin only.
+    Requires ``manage_users``.
     """
-    if current_user.system_permissions not in ("admin", "superadmin"):
-        raise HTTPException(status_code=403, detail="Admin only")
-
     org = db.get(Organisation, org_id)
     if not org:
         raise HTTPException(status_code=404, detail="Organisation not found")
@@ -4341,7 +4330,10 @@ def list_org_features(
 @router.put(
     "/organisations/{org_id}/features/{feature_key}",
     response_model=FeatureToggleResponse,
-    dependencies=[DEP_REQUIRE_CSRF],
+    dependencies=[
+        DEP_REQUIRE_CSRF,
+        DEP_REQUIRE_MANAGE_USERS,
+    ],
 )
 def toggle_org_feature(
     org_id: int,
@@ -4352,12 +4344,9 @@ def toggle_org_feature(
 ) -> FeatureToggleResponse:
     """Enable or disable a feature on an organisation.
 
-    Admin/superadmin only.  When ``enabled=true`` a row is created;
+    Requires ``manage_users``.  When ``enabled=true`` a row is created;
     when ``enabled=false`` the row is deleted.
     """
-    if current_user.system_permissions not in ("admin", "superadmin"):
-        raise HTTPException(status_code=403, detail="Admin only")
-
     org = db.get(Organisation, org_id)
     if not org:
         raise HTTPException(status_code=404, detail="Organisation not found")
