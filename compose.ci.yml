@@ -2,8 +2,16 @@
 # Excludes clinical services (FHIR, EHRbase) and dev tooling.
 # Usage: docker compose -f compose.ci.yml up --build --wait
 #
-# After services are healthy, seed the educator user via the API,
-# then run Playwright against http://localhost.
+# After services are healthy, run the migrations and scripts/seed_ci.py in
+# the backend container, then run Playwright against Caddy.
+#
+# Also the local end-to-end stack: `just e2e` runs exactly this file, so a
+# local run rehearses the CI job rather than the dev stack. To let several
+# worktrees run it side by side there are no fixed container names (compose
+# scopes them by project, and `just e2e` names the project after the
+# worktree) and the published port is E2E_PORT, default 80 for CI. `just e2e`
+# passes 0 so Docker picks a free port, then reads it back with
+# `docker compose port caddy 80`.
 
 services:
   backend:
@@ -12,7 +20,6 @@ services:
       context: .
       dockerfile: ./backend/Dockerfile
       target: prod
-    container_name: ci_backend
     environment:
       # Core DB — individual components (Settings computes the URL)
       CORE_DB_PASSWORD: ci_password
@@ -51,7 +58,6 @@ services:
       target: prod
       args:
         VITE_CLINICAL_SERVICES_ENABLED: "false"
-    container_name: ci_frontend
     expose:
       - "8080"
     healthcheck:
@@ -65,7 +71,6 @@ services:
 
   postgres-core:
     image: postgres:18-alpine
-    container_name: ci_postgres_core
     environment:
       POSTGRES_DB: quill_core
       POSTGRES_USER: core_user
@@ -82,9 +87,8 @@ services:
 
   caddy:
     image: caddy:2-alpine
-    container_name: ci_caddy
     ports:
-      - "80:80"
+      - "${E2E_PORT:-80}:80"
     volumes:
       - ./caddy/ci/Caddyfile:/etc/caddy/Caddyfile:ro
     depends_on:

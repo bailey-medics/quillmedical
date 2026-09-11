@@ -20,6 +20,7 @@ See the `Justfile` if you want to know more.
   - Both run in a throwaway container from `compose.unit-tests.yml` that mounts the current worktree, so they work from any worktree and do not need the dev stack running
   - Prefer targeted tests during development; run the full suite only if CI is failing
 - Storybook: runs on the host — `just sb` (dev server), `just sbt` (tests), `just sbtci` (CI mode)
+- E2E: `just e2e` brings up a fresh per-worktree `compose.ci.yml` stack (the CI one) on a free port, runs Playwright against it and tears it down — never the dev stack
 - Backend: pytest with fixtures from `conftest.py`
 - Frontend: vitest + @testing-library/react with `renderWithMantine`/`renderWithRouter`
 - Cover: props variations, edge cases, null/undefined, interactions, loading/error states

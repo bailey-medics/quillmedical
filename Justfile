@@ -28,17 +28,63 @@ _test-project:
     @basename "{{justfile_directory()}}" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9\n' '-' | sed 's/^/quill-test-/'
 
 
+# Compose project name for this worktree's end-to-end stack (compose.ci.yml).
+# Per worktree for the same reason as `_test-project`: several can run at once.
+_e2e-project:
+    @basename "{{justfile_directory()}}" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9\n' '-' | sed 's/^/quill-e2e-/'
+
+
+# Bring up this worktree's end-to-end stack the way CI does, and print its URL.
+#
+# Same file, same images and same seed as the CI job, so a local run rehearses
+# what CI will do rather than driving the dev stack and whatever state its
+# database is in. E2E_PORT=0 has Docker pick a free host port, which is what
+# lets worktrees run side by side; the URL is read back and printed on stdout
+# (everything else goes to stderr) so `_e2e-run` can capture it.
+_e2e-up:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    project=$(just _e2e-project)
+    compose="docker compose -p ${project} -f compose.ci.yml"
+    E2E_PORT=0 ${compose} up --build --wait --wait-timeout 120 >&2
+    # The prod image does not migrate on start-up, so the fresh database
+    # needs the schema applied before it is seeded — as in ci.yml.
+    ${compose} exec -T backend alembic upgrade head >&2
+    ${compose} exec -T backend python scripts/seed_ci.py >&2
+    port=$(${compose} port caddy 80 | sed 's/.*://')
+    echo "http://localhost:${port}"
+
+
+# Tear down this worktree's end-to-end stack, database included.
+_e2e-down:
+    #!/usr/bin/env bash
+    docker compose -p "$(just _e2e-project)" -f compose.ci.yml \
+        down --volumes --remove-orphans
+
+
+# Run Playwright against a fresh end-to-end stack, tearing it down afterwards.
+_e2e-run *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # Runs on failure too, so a red run never leaves a stack behind. The exit
+    # status Playwright produced survives the trap.
+    trap 'just _e2e-down' EXIT
+    base_url=$(just _e2e-up)
+    echo "End-to-end stack is up at ${base_url}" >&2
+    cd frontend && E2E_BASE_URL="${base_url}" npx playwright test {{ARGS}}
+
+
 # Refuse to run when this worktree is not the one the container serves.
 #
 # The dev stack is owned by whichever worktree ran `just sd`: the containers
 # bind-mount that checkout, and their names are fixed in compose.dev.yml, so
 # `docker exec` from a second worktree silently acts on the first one's code.
-# `just migrate` would autogenerate a revision from the wrong models, and
-# `just e2e` would drive the wrong frontend.
+# `just migrate` would autogenerate a revision from the wrong models.
 #
-# Only recipes that genuinely need the live stack call this. The unit tests
-# do not: `just ub` and `just uf` run in throwaway containers that mount the
-# current worktree (see compose.unit-tests.yml), so they work from any worktree.
+# Only recipes that genuinely need the live stack call this. The tests do
+# not: `just ub` and `just uf` run in throwaway containers that mount the
+# current worktree (see compose.unit-tests.yml), and `just e2e` brings up its
+# own per-worktree stack from compose.ci.yml, so all work from any worktree.
 #
 # The owning path is read from Docker rather than hard-coded, so renaming or
 # moving the root worktree needs no change here.
@@ -832,14 +878,14 @@ test-scripts *ARGS:
 
 
 alias ee := e2e
-# Run the end-to-end tests
-e2e:
+# Run the end-to-end tests against a fresh CI-identical stack for this worktree
+e2e *ARGS:
     #!/usr/bin/env bash
     {{initialise}} "e2e"
-    # Playwright runs on the host but drives http://localhost — the shared
-    # Caddy — so it exercises whichever worktree the stack serves.
-    just _worktree-guard quill_frontend
-    cd frontend && npx playwright test
+    # Playwright runs on the host, but the app it drives is this worktree's
+    # own compose.ci.yml stack on a free port — not the dev stack — so this
+    # works from any worktree and matches what CI runs. See `_e2e-up`.
+    just _e2e-run {{ARGS}}
 
 
 alias eer := e2e-report
@@ -847,16 +893,15 @@ alias eer := e2e-report
 e2e-report:
     #!/usr/bin/env bash
     {{initialise}} "e2e-report"
-    just _worktree-guard quill_frontend
-    cd frontend && npx playwright test && npx playwright show-report
+    just _e2e-run && cd frontend && npx playwright show-report
+
 
 alias eeu := e2e-ui
 # Run the end-to-end tests in interactive UI mode
 e2e-ui:
     #!/usr/bin/env bash
     {{initialise}} "e2e-ui"
-    just _worktree-guard quill_frontend
-    cd frontend && npx playwright test --ui
+    just _e2e-run --ui
 
 
 alias vk := vapid-key

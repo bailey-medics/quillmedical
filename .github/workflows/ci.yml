@@ -521,11 +521,11 @@ jobs:
       # docs/docs/plans/2026-08-09-alembic-review-and-revisions-plan.md), so
       # this ephemeral CI database needs them applied explicitly before seeding.
       - name: Run database migrations
-        run: docker exec ci_backend alembic upgrade head
+        run: docker compose -f compose.ci.yml exec -T backend alembic upgrade head
 
       - name: Seed test data
         # TODO: will need to change this if/when we use factories to seed data instead of a script.
-        run: docker exec ci_backend python scripts/seed_ci.py
+        run: docker compose -f compose.ci.yml exec -T backend python scripts/seed_ci.py
 
       - name: Set up frontend
         uses: ./.github/actions/setup-frontend

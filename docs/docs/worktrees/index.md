@@ -107,14 +107,21 @@ Two things follow from how that works:
   needs a rebuild: `just utr`, or `just sd b` from the worktree that owns
   the stack. One image serves every worktree.
 
+The end-to-end tests need a whole application, so `just e2e` builds one:
+the `compose.ci.yml` stack that CI uses, as a project named after the
+worktree, on a free port Docker picks. It migrates and seeds a fresh
+database, runs Playwright against it, and tears everything down afterwards.
+Several worktrees can run it at the same time, and none of them touches the
+dev stack. The first run pays for a production build of both images.
+
 The dev stack itself is different. It uses fixed container names, so
 **only one worktree can run it at a time**. Starting `just sd` in a second
 worktree will either fail on the name or, worse, attach to the containers
 already serving the first. Recipes that need the live stack — `just migrate`,
-`just e2e`, `just eb`, the create-user recipes — check which worktree the
-stack serves and refuse to run from any other, rather than quietly acting
-on the wrong code.
+`just eb`, the create-user recipes — check which worktree the stack serves
+and refuse to run from any other, rather than quietly acting on the wrong
+code.
 
 If you are running the stack in one worktree, the others are still fine for
-editing, reviewing and unit testing. Bring the stack down first only for the
+editing, reviewing and testing. Bring the stack down first only for the
 recipes that need it.

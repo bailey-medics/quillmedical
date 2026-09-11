@@ -25,6 +25,7 @@ See the `Justfile` if you want to know more.
   - Both run in a throwaway container from `compose.unit-tests.yml` that mounts the current worktree, so they work from any worktree and do not need the dev stack running
   - Prefer targeted tests during development; run the full suite only if CI is failing
 - Storybook: runs on the host — `just sb` (dev server), `just sbt` (tests), `just sbtci` (CI mode)
+- E2E: `just e2e` brings up a fresh per-worktree `compose.ci.yml` stack (the CI one) on a free port, runs Playwright against it and tears it down — never the dev stack
 - Backend: pytest with fixtures from `conftest.py`
 - Frontend: vitest + @testing-library/react with `renderWithMantine`/`renderWithRouter`
 - Cover: props variations, edge cases, null/undefined, interactions, loading/error states
@@ -434,7 +435,7 @@ there is any doubt.
 
 Rediscovered three times in one session before it was written down.
 
-### Unit tests run from any worktree; the dev stack belongs to one
+### Tests run from any worktree; the dev stack belongs to one
 
 There are several worktrees of this repository, but only one dev stack. Its
 containers are bind-mounted to whichever worktree started it, and the
@@ -463,10 +464,20 @@ SQLite and the frontend suite is vitest under jsdom, so no service is needed.
   container runs as its own unprivileged user and the bind mount is owned by
   you. Harmless; Docker Desktop on macOS maps ownership and does not show it.
 
+**End-to-end tests have their own per-worktree stack.** `just e2e` (and
+`e2e-ui`, `e2e-report`) brings up `compose.ci.yml`, the same file, images and
+seed script the CI job uses, as a compose project named `quill-e2e-<dir>` on
+a free port Docker picks, runs the migrations and `seed_ci.py`, runs
+Playwright with `E2E_BASE_URL` pointing at it, and tears the stack down
+afterwards, pass or fail. It does not touch the dev stack or its database, so
+a local run rehearses CI and several worktrees can run it at once. The cost
+is a production build of both images on first run; later runs hit the cache
+unless the sources changed.
+
 **Recipes that still need the live stack** keep the `_worktree-guard`
 check and refuse to run from a worktree the stack does not serve:
-`just migrate`, `just e2e`, `just eb` / `just ef`, the create-user recipes
-and `just validate-teaching`. The guard reads the owning path from Docker:
+`just migrate`, `just eb` / `just ef`, the create-user recipes and
+`just validate-teaching`. The guard reads the owning path from Docker:
 
 ```bash
 docker inspect quill_backend --format '{{range .Mounts}}{{if eq .Destination "/app"}}{{.Source}}{{end}}{{end}}'
