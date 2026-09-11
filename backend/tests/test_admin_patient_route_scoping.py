@@ -170,6 +170,82 @@ class TestAnAdminCannotReachAnotherOrganisationsPatient:
         assert grant.revoked_at is None
 
 
+class TestTheGateIsACompetencyNotARank:
+    """`manage_users`, not `system_permissions in ("admin", ...)`.
+
+    A rank said what someone is on the platform; the competency says what
+    they may do. The place check beside it still says where — without
+    one, this competency is global and so strictly weaker than the rank
+    it replaced.
+    """
+
+    @patch(FHIR_TARGET, return_value=_fhir(OWN_PATIENT))
+    def test_the_rank_alone_is_not_enough(
+        self,
+        _mock_fhir,
+        authenticated_client: TestClient,
+        admin_org: Organisation,
+        test_user: User,
+        db_session: Session,
+    ):
+        """A user at the right organisation, without the competency.
+
+        Promoted to `admin` by rank and placed in the organisation
+        holding the patient, so only the competency is missing. Under the
+        old string comparison this would have succeeded.
+        """
+        test_user.system_permissions = "admin"
+        test_user.base_profession = "consultant"
+        db_session.execute(
+            insert(organisation_member).values(
+                organisation_id=admin_org.id,
+                user_id=test_user.id,
+                capacity="staff",
+            )
+        )
+        db_session.commit()
+
+        resp = authenticated_client.post(
+            f"/api/patients/{OWN_PATIENT}/deactivate",
+            headers={"X-CSRF-Token": _csrf(authenticated_client)},
+        )
+
+        assert resp.status_code == 403
+
+    @patch(FHIR_TARGET, return_value=_fhir(OWN_PATIENT))
+    def test_the_competency_alone_is_not_enough(
+        self,
+        _mock_fhir,
+        authenticated_client: TestClient,
+        admin_org: Organisation,
+        other_org: Organisation,
+        test_user: User,
+        db_session: Session,
+    ):
+        """Holding it somewhere is not holding it everywhere.
+
+        The competency is global on the user; the place check is what
+        keeps it from reaching another organisation's patient. Delete
+        that check and this test fails while the one above still passes.
+        """
+        test_user.base_profession = "system_administrator"
+        db_session.execute(
+            insert(organisation_member).values(
+                organisation_id=admin_org.id,
+                user_id=test_user.id,
+                capacity="staff",
+            )
+        )
+        db_session.commit()
+
+        resp = authenticated_client.post(
+            f"/api/patients/{OUTSIDE_PATIENT}/deactivate",
+            headers={"X-CSRF-Token": _csrf(authenticated_client)},
+        )
+
+        assert resp.status_code == 404
+
+
 class TestTheCheckDoesNotBreakLegitimateAdministration:
     """A check that refused everything would pass the tests above."""
 

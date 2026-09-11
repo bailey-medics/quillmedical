@@ -173,6 +173,21 @@ does not, and removing the ladder removes the suggestion.
           and two professions still default to it — `system_administrator` and
           `teaching_admin`. Removing it is the *last* step of this plan, not a
           precondition, and the 31 route gates still compare against the string today.
+      - **Batch 1 of 4 done: the three patient routes.** `deactivate_patient`,
+        `activate_patient` and `revoke_external_access` now carry
+        `DEP_REQUIRE_MANAGE_USERS` in their `dependencies=[...]`, with
+        `_require_shared_org_with_patient` still beside them. 31 string gates down to 28.
+        - **`DEP_REQUIRE_MANAGE_USERS` is the shared constant**, matching
+          `DEP_REQUIRE_CSRF` and the rest. Its comment says the thing worth repeating: it
+          answers *what*, never *where*, and a route carrying it without a place check
+          beside it is strictly weaker than the rank it replaced.
+        - **The `test_admin` fixture had no profession**, so it took the column default of
+          `patient` and held `access_patient_records` and nothing an administrator needs.
+          Invisible while the routes compared ranks; a refusal the moment they ask for a
+          competency. It now carries `system_administrator`.
+        - **Two tests pin the pair**, and each fails for a different deletion: rank without
+          the competency is refused 403, and the competency without a shared organisation
+          is refused 404. Neither half alone is the gate.
       - **The twenty ready routes wait for the eleven.** They could go sooner, but
         splitting the batch by whether each route happened to be safe would leave a worse
         record than doing it in one pass once they are level.
