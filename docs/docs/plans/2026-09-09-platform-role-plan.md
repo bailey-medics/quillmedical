@@ -188,6 +188,16 @@ does not, and removing the ladder removes the suggestion.
         - **Two tests pin the pair**, and each fails for a different deletion: rank without
           the competency is refused 403, and the competency without a shared organisation
           is refused 404. Neither half alone is the gate.
+      - **Batch 2 of 4 done: the ten site routes.** `list_sites`, `create_site`,
+        `get_site`, `update_site`, `toggle_site_active`, `delete_site`, `link_site_to_org`,
+        `unlink_site_from_org`, `add_site_staff` and `remove_site_staff`. 28 string gates
+        down to 18.
+        - All ten already had a place check — `_require_site_in_own_org` or
+          `_require_own_org`, and `list_sites` filters rather than gates, which is right
+          for a listing — so this batch was the swap the step originally described.
+        - **Two superadmin comparisons inside route bodies are deliberately left.**
+          `list_sites` skips its filter for a superadmin and `get_site` hides superadmin
+          staff from an admin's view. Neither is a gate; both go when the column does.
       - **The twenty ready routes wait for the eleven.** They could go sooner, but
         splitting the batch by whether each route happened to be safe would leave a worse
         record than doing it in one pass once they are level.

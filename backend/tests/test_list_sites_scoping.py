@@ -157,6 +157,33 @@ class TestAnUnlinkedSiteIsNotShared:
         assert "Orphan Ward" not in _names(resp)
 
 
+class TestTheGateIsACompetencyNotARank:
+    """`manage_users`, not `system_permissions in ("admin", ...)`."""
+
+    def test_the_rank_alone_is_not_enough(
+        self,
+        authenticated_client: TestClient,
+        test_user: User,
+        two_trusts: dict[str, object],
+        db_session: Session,
+    ):
+        """Promoted by rank, in the right organisation, no competency.
+
+        Under the old string comparison this succeeded. The consultant
+        profession grants clinical competencies and not `manage_users`,
+        which is the distinction the swap exists to make.
+        """
+        own = two_trusts["own"]
+        assert isinstance(own, Organisation)
+        test_user.system_permissions = "admin"
+        test_user.base_profession = "consultant"
+        _join(db_session, own, test_user)
+
+        resp = authenticated_client.get("/api/sites")
+
+        assert resp.status_code == 403
+
+
 class TestTheRouteStillRefusesNonAdmins:
     """The existing gate is unchanged; the filter sits behind it."""
 

@@ -4423,12 +4423,18 @@ VALID_SITE_TYPES = {
 }
 
 
-@router.get("/sites", response_model=SitesListOut)
+@router.get(
+    "/sites",
+    response_model=SitesListOut,
+    dependencies=[DEP_REQUIRE_MANAGE_USERS],
+)
 def list_sites(
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> SitesListOut:
-    """List the sites of the caller's organisations. Admin only.
+    """List the sites of the caller's organisations.
+
+    Requires ``manage_users``.
 
     Filtered the way ``list_organisations`` is filtered: a superadmin sees
     the estate, an admin sees the sites of organisations they belong to.
@@ -4440,9 +4446,6 @@ def list_sites(
     site is an anomaly rather than a shared resource, and failing closed
     is the right way round to be wrong about one.
     """
-    if current_user.system_permissions not in ("admin", "superadmin"):
-        raise HTTPException(status_code=403, detail="Admin only")
-
     stmt = select(Site).order_by(Site.name)
     if current_user.system_permissions != "superadmin":
         own_org_ids = get_user_org_ids(db, current_user.id)
@@ -4473,13 +4476,20 @@ def list_sites(
     )
 
 
-@router.post("/sites", response_model=SiteOut, dependencies=[DEP_REQUIRE_CSRF])
+@router.post(
+    "/sites",
+    response_model=SiteOut,
+    dependencies=[
+        DEP_REQUIRE_CSRF,
+        DEP_REQUIRE_MANAGE_USERS,
+    ],
+)
 def create_site(
     body: CreateSiteIn,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> SiteOut:
-    """Create a site inside an organisation. Admin/superadmin only.
+    """Create a site inside an organisation. Requires ``manage_users``.
 
     The organisation is required and the link is written in the same
     transaction, so a site is never ownerless. It used to be created bare
@@ -4488,9 +4498,6 @@ def create_site(
     ``_require_site_in_own_org`` already assumed this was impossible when
     it called a site's organisation "the site's owner"; now it is.
     """
-    if current_user.system_permissions not in ("admin", "superadmin"):
-        raise HTTPException(status_code=403, detail="Admin only")
-
     if body.type not in VALID_SITE_TYPES:
         raise HTTPException(
             status_code=422,
@@ -4718,16 +4725,17 @@ def _require_shared_org_with_user(
         raise HTTPException(status_code=404, detail="User not found")
 
 
-@router.get("/sites/{site_id}", response_model=SiteDetailOut)
+@router.get(
+    "/sites/{site_id}",
+    response_model=SiteDetailOut,
+    dependencies=[DEP_REQUIRE_MANAGE_USERS],
+)
 def get_site(
     site_id: int,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> SiteDetailOut:
-    """Get site details including staff. Admin/superadmin only."""
-    if current_user.system_permissions not in ("admin", "superadmin"):
-        raise HTTPException(status_code=403, detail="Admin only")
-
+    """Get site details including staff. Requires ``manage_users``."""
     _require_site_in_own_org(db, current_user, site_id)
 
     site = db.get(Site, site_id)
@@ -4794,7 +4802,12 @@ def get_site(
 
 
 @router.put(
-    "/sites/{site_id}", response_model=SiteOut, dependencies=[DEP_REQUIRE_CSRF]
+    "/sites/{site_id}",
+    response_model=SiteOut,
+    dependencies=[
+        DEP_REQUIRE_CSRF,
+        DEP_REQUIRE_MANAGE_USERS,
+    ],
 )
 def update_site(
     site_id: int,
@@ -4802,10 +4815,7 @@ def update_site(
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> SiteOut:
-    """Update a site. Admin/superadmin only."""
-    if current_user.system_permissions not in ("admin", "superadmin"):
-        raise HTTPException(status_code=403, detail="Admin only")
-
+    """Update a site. Requires ``manage_users``."""
     _require_site_in_own_org(db, current_user, site_id)
 
     site = db.get(Site, site_id)
@@ -4863,7 +4873,10 @@ def update_site(
 @router.patch(
     "/sites/{site_id}/active",
     response_model=SiteOut,
-    dependencies=[DEP_REQUIRE_CSRF],
+    dependencies=[
+        DEP_REQUIRE_CSRF,
+        DEP_REQUIRE_MANAGE_USERS,
+    ],
 )
 def toggle_site_active(
     site_id: int,
@@ -4871,10 +4884,7 @@ def toggle_site_active(
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> SiteOut:
-    """Toggle a site's active status. Admin/superadmin only."""
-    if current_user.system_permissions not in ("admin", "superadmin"):
-        raise HTTPException(status_code=403, detail="Admin only")
-
+    """Toggle a site's active status. Requires ``manage_users``."""
     _require_site_in_own_org(db, current_user, site_id)
 
     site = db.get(Site, site_id)
@@ -4900,17 +4910,17 @@ def toggle_site_active(
 @router.delete(
     "/sites/{site_id}",
     response_model=StatusResponse,
-    dependencies=[DEP_REQUIRE_CSRF],
+    dependencies=[
+        DEP_REQUIRE_CSRF,
+        DEP_REQUIRE_MANAGE_USERS,
+    ],
 )
 def delete_site(
     site_id: int,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> StatusResponse:
-    """Delete a site. Admin/superadmin only."""
-    if current_user.system_permissions not in ("admin", "superadmin"):
-        raise HTTPException(status_code=403, detail="Admin only")
-
+    """Delete a site. Requires ``manage_users``."""
     _require_site_in_own_org(db, current_user, site_id)
 
     site = db.get(Site, site_id)
@@ -4924,7 +4934,10 @@ def delete_site(
 @router.post(
     "/organisations/{org_id}/sites/{site_id}",
     response_model=StatusResponse,
-    dependencies=[DEP_REQUIRE_CSRF],
+    dependencies=[
+        DEP_REQUIRE_CSRF,
+        DEP_REQUIRE_MANAGE_USERS,
+    ],
 )
 def link_site_to_org(
     org_id: int,
@@ -4932,10 +4945,7 @@ def link_site_to_org(
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> StatusResponse:
-    """Link a site to an organisation. Admin/superadmin only."""
-    if current_user.system_permissions not in ("admin", "superadmin"):
-        raise HTTPException(status_code=403, detail="Admin only")
-
+    """Link a site to an organisation. Requires ``manage_users``."""
     _require_own_org(db, current_user, org_id)
 
     org = db.get(Organisation, org_id)
@@ -4967,7 +4977,10 @@ def link_site_to_org(
 @router.delete(
     "/organisations/{org_id}/sites/{site_id}",
     response_model=StatusResponse,
-    dependencies=[DEP_REQUIRE_CSRF],
+    dependencies=[
+        DEP_REQUIRE_CSRF,
+        DEP_REQUIRE_MANAGE_USERS,
+    ],
 )
 def unlink_site_from_org(
     org_id: int,
@@ -4975,10 +4988,7 @@ def unlink_site_from_org(
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> StatusResponse:
-    """Unlink a site from an organisation. Admin/superadmin only."""
-    if current_user.system_permissions not in ("admin", "superadmin"):
-        raise HTTPException(status_code=403, detail="Admin only")
-
+    """Unlink a site from an organisation. Requires ``manage_users``."""
     _require_own_org(db, current_user, org_id)
 
     result = db.execute(
@@ -5033,7 +5043,10 @@ def _mirror_clinical_lead(
 @router.post(
     "/sites/{site_id}/staff",
     response_model=AddSiteStaffResponse,
-    dependencies=[DEP_REQUIRE_CSRF],
+    dependencies=[
+        DEP_REQUIRE_CSRF,
+        DEP_REQUIRE_MANAGE_USERS,
+    ],
 )
 def add_site_staff(
     site_id: int,
@@ -5041,13 +5054,10 @@ def add_site_staff(
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> AddSiteStaffResponse:
-    """Add a staff member to a site. Admin/superadmin only.
+    """Add a staff member to a site. Requires ``manage_users``.
 
     Role must be one of: clinical_lead, staff, trainee.
     """
-    if current_user.system_permissions not in ("admin", "superadmin"):
-        raise HTTPException(status_code=403, detail="Admin only")
-
     _require_site_in_own_org(db, current_user, site_id)
 
     site = db.get(Site, site_id)
@@ -5119,7 +5129,10 @@ def add_site_staff(
 @router.delete(
     "/sites/{site_id}/staff/{user_id}",
     response_model=StatusResponse,
-    dependencies=[DEP_REQUIRE_CSRF],
+    dependencies=[
+        DEP_REQUIRE_CSRF,
+        DEP_REQUIRE_MANAGE_USERS,
+    ],
 )
 def remove_site_staff(
     site_id: int,
@@ -5127,10 +5140,7 @@ def remove_site_staff(
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> StatusResponse:
-    """Remove a staff member from a site. Admin/superadmin only."""
-    if current_user.system_permissions not in ("admin", "superadmin"):
-        raise HTTPException(status_code=403, detail="Admin only")
-
+    """Remove a staff member from a site. Requires ``manage_users``."""
     _require_site_in_own_org(db, current_user, site_id)
 
     # Vacate the post before the row goes, so the handover is recorded
