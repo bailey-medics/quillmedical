@@ -1048,20 +1048,20 @@ content calls for it.
       the MDX references, never from a flag: a boolean an author sets is a second
       source of truth that can disagree with the content, and needs maintaining
       by hand in a file nobody reopens.
-- [ ] One row per MDX reference, showing the key, and either the linked file —
+- [x] One row per MDX reference, showing the key, and either the linked file —
       original filename, size, when it was uploaded — or that nothing is linked
       yet.
-- [ ] Also list uploaded assets with no matching key, as unattached. This is what
+- [x] Also list uploaded assets with no matching key, as unattached. This is what
       a renamed or removed reference leaves behind, and without a row they are
       invisible bytes nobody can reach or remove.
-- [ ] Upload per row via Mantine `<Dropzone>` with per-file progress, straight to
+- [x] Upload per row via Mantine `<Dropzone>` with per-file progress, straight to
       the resumable URL. A lecture is large enough that a progress bar is not
       decoration.
-- [ ] Delete, then upload again, is the flow for replacing a file. No separate
+- [x] Delete, then upload again, is the flow for replacing a file. No separate
       replace action. Deleting cannot leave a learner with a broken slide,
       because an incomplete module is not served at all — the availability gate
       below is what makes plain delete safe here.
-- [ ] Where the module is live for one or more organisations, say so in the
+- [x] Where the module is live for one or more organisations, say so in the
       delete confirmation, naming them: "this will make the module unavailable to
       learners in `<organisation>` until a replacement is uploaded." A warning, not
       a block. The admin cannot otherwise see that consequence from this page.
@@ -1076,7 +1076,7 @@ content calls for it.
       that plan has landed by the time this is built, confirm what replaced the
       subtree wrapper and inherit that instead; do not reintroduce a per-card
       guard.
-- [ ] Storybook stories and tests per the components rule: all linked, some
+- [x] Storybook stories and tests per the components rule: all linked, some
       missing, unattached assets present, upload in progress, delete
       confirmation with and without live organisations.
 
@@ -1137,7 +1137,7 @@ content calls for it.
 - [x] The gate is **per organisation**, because the links are. The same module
       can be complete for one organisation and not another, and therefore visible
       to one organisation's learners and hidden from another's.
-- [ ] Surface incompleteness where an admin will actually see it — the admin
+- [x] Surface incompleteness where an admin will actually see it — the admin
       module list marking "unavailable — 1 media file missing", and ideally the
       deploy notification. A typo in an MDX reference otherwise makes a module
       silently unavailable to everyone, permanently, with the only trace on a
