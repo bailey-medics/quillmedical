@@ -8,7 +8,9 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: "html",
   use: {
-    baseURL: "http://localhost",
+    // CI drives the compose.ci.yml stack on port 80. `just e2e` runs the same
+    // stack on whatever free port Docker picked and passes it in here.
+    baseURL: process.env.E2E_BASE_URL ?? "http://localhost",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },

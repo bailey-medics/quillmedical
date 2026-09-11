@@ -18,13 +18,80 @@ _terminal-description message=" ":
     echo -ne "\033]0;{{message}}\007"
 
 
+# Compose project name for this worktree's throwaway test containers.
+#
+# Derived from the worktree directory, so every worktree gets its own
+# node_modules volumes under compose.unit-tests.yml and none of them collides with
+# the dev stack. Lower-cased and stripped to [a-z0-9-], which is all compose
+# accepts in a project name.
+_test-project:
+    @basename "{{justfile_directory()}}" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9\n' '-' | sed 's/^/quill-test-/'
+
+
+# Compose project name for this worktree's throwaway migration database
+# (compose.migrate.yml). Per worktree for the same reason as `_test-project`.
+_migrate-project:
+    @basename "{{justfile_directory()}}" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9\n' '-' | sed 's/^/quill-migrate-/'
+
+
+# Compose project name for this worktree's end-to-end stack (compose.ci.yml).
+# Per worktree for the same reason as `_test-project`: several can run at once.
+_e2e-project:
+    @basename "{{justfile_directory()}}" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9\n' '-' | sed 's/^/quill-e2e-/'
+
+
+# Bring up this worktree's end-to-end stack the way CI does, and print its URL.
+#
+# Same file, same images and same seed as the CI job, so a local run rehearses
+# what CI will do rather than driving the dev stack and whatever state its
+# database is in. E2E_PORT=0 has Docker pick a free host port, which is what
+# lets worktrees run side by side; the URL is read back and printed on stdout
+# (everything else goes to stderr) so `_e2e-run` can capture it.
+_e2e-up:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    project=$(just _e2e-project)
+    compose="docker compose -p ${project} -f compose.ci.yml"
+    E2E_PORT=0 ${compose} up --build --wait --wait-timeout 120 >&2
+    # The prod image does not migrate on start-up, so the fresh database
+    # needs the schema applied before it is seeded — as in ci.yml.
+    ${compose} exec -T backend alembic upgrade head >&2
+    ${compose} exec -T backend python scripts/seed_ci.py >&2
+    port=$(${compose} port caddy 80 | sed 's/.*://')
+    echo "http://localhost:${port}"
+
+
+# Tear down this worktree's end-to-end stack, database included.
+_e2e-down:
+    #!/usr/bin/env bash
+    docker compose -p "$(just _e2e-project)" -f compose.ci.yml \
+        down --volumes --remove-orphans
+
+
+# Run Playwright against a fresh end-to-end stack, tearing it down afterwards.
+_e2e-run *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # Runs on failure too, so a red run never leaves a stack behind. The exit
+    # status Playwright produced survives the trap.
+    trap 'just _e2e-down' EXIT
+    base_url=$(just _e2e-up)
+    echo "End-to-end stack is up at ${base_url}" >&2
+    cd frontend && E2E_BASE_URL="${base_url}" npx playwright test {{ARGS}}
+
+
 # Refuse to run when this worktree is not the one the container serves.
 #
 # The dev stack is owned by whichever worktree ran `just sd`: the containers
 # bind-mount that checkout, and their names are fixed in compose.dev.yml, so
 # `docker exec` from a second worktree silently acts on the first one's code.
-# Tests pass or fail against code you are not editing, and `just migrate`
-# autogenerates a revision from the wrong models.
+# A user-creation script would write to the wrong database.
+#
+# Only recipes that genuinely need the live stack call this. The tests and
+# migrations do not: `just ub` and `just uf` run in throwaway containers
+# that mount the current worktree (compose.unit-tests.yml), `just migrate`
+# uses a throwaway database (compose.migrate.yml), and `just e2e` brings up
+# its own per-worktree stack (compose.ci.yml), so all work from any worktree.
 #
 # The owning path is read from Docker rather than hard-coded, so renaming or
 # moving the root worktree needs no change here.
@@ -225,8 +292,16 @@ alias i := initialise-repo
 initialise-repo:
     #!/usr/bin/env bash
     {{initialise}} "initialise"
-    pre-commit install
-    yarn install
+    # Git runs the tracked .husky/pre-commit directly, which itself runs
+    # `pre-commit run`. The path is deliberately relative: git resolves it
+    # against the root of whichever worktree is committing, so every
+    # worktree runs its own branch's hook. An absolute path here would
+    # point every worktree at one checkout's copy, and vanish silently if
+    # that checkout moved. Not `pre-commit install`: it refuses to run while
+    # core.hooksPath is set, and would be redundant anyway.
+    git config core.hooksPath .husky
+    # The only package.json is the frontend's; the repository root has none.
+    (cd frontend && yarn install)
     just aj
 
 
@@ -339,21 +414,37 @@ preview-certificate bank="colonoscopy-optical-diagnosis-test":
 
 
 alias m := migrate
-# Run the database migrations
+# Autogenerate a migration for this worktree's model changes (throwaway database)
 migrate message:
     #!/usr/bin/env bash
     {{initialise}} "migrate - {{message}}"
-    # Autogenerate diffs the container's models against the database and
-    # writes the revision into the container's checkout, so running this
-    # from the wrong worktree produces a revision for code you are not
-    # editing — in the worktree you are not editing it from.
-    just _worktree-guard quill_backend
-    docker exec -e AL_MSG='{{message}}' quill_backend sh -lc '
+    # Autogenerate compares models against a database at head. This uses a
+    # throwaway Postgres from compose.migrate.yml rather than the dev
+    # stack's, so it always compares THIS worktree's models with THIS
+    # worktree's migrations, and needs neither the stack nor ownership of
+    # it. The revision lands in this worktree's alembic/versions.
+    compose="docker compose -p $(just _migrate-project) -f compose.migrate.yml"
+    trap '${compose} down --volumes --remove-orphans >/dev/null 2>&1' EXIT
+    before=$(ls backend/alembic/versions/*.py)
+    ${compose} run --rm -e AL_MSG='{{message}}' migrate sh -lc '
         set -e
         alembic upgrade head &&
         alembic revision --autogenerate -m "$AL_MSG" &&
         alembic upgrade head
     '
+    # Autogenerate happily writes an empty revision when it finds no
+    # difference, and that exits zero. Name the file and say so, rather
+    # than leaving a permanent no-op to be discovered in review.
+    new=$(comm -13 <(echo "${before}") <(ls backend/alembic/versions/*.py))
+    echo ""
+    echo "Created: ${new}"
+    if sed -n '/^def upgrade/,/^def downgrade/p' "${new}" | grep -vE '^\s*(#|$)' | grep -qE '^\s+pass\s*$'; then
+        rm "${new}"
+        echo "✗ upgrade() was empty, so the file has been removed." >&2
+        echo "  The models already match the migrations: check the model change is saved." >&2
+        exit 1
+    fi
+    echo "Review upgrade() and downgrade() before committing."
 
 
 alias pc := pre-commit
@@ -447,10 +538,21 @@ worktree-create branch="":
     (cd "$DEST/backend" \
         && env -u VIRTUAL_ENV POETRY_VIRTUALENVS_IN_PROJECT=1 poetry install)
 
+    # The JavaScript half of the same job. node_modules is gitignored, so
+    # Storybook, Playwright and the host-side linters have nothing to run
+    # with until it exists. `--immutable` because a fresh worktree has no
+    # business rewriting the lockfile: if the install would change it, the
+    # branch is what needs fixing.
+    echo "Installing the frontend packages..."
+    (cd "$DEST/frontend" && yarn install --immutable)
+
+    # No hook setup is needed. core.hooksPath lives in the shared git config
+    # and is the relative `.husky`, which git resolves against the root of
+    # the worktree that is committing — so this worktree runs its own
+    # branch's tracked hook from the moment it exists.
     echo ""
     echo "Worktree ready at $DEST on {{branch}}"
     echo "  cd $DEST"
-    echo "  just initialise-repo   # pre-commit hooks and yarn packages"
 
 
 alias pb := prune-branches
@@ -753,21 +855,39 @@ stop:
 
 
 alias ub := unit-tests-backend
-# Run the backend unit tests
+# Run the backend unit tests (in a throwaway container mounting this worktree)
 unit-tests-backend *ARGS:
     #!/usr/bin/env bash
     {{initialise}} "unit-tests-backend"
-    just _worktree-guard quill_backend
-    docker exec quill_backend sh -lc "pytest -q -m 'not integration' {{ARGS}}"
+    # Runs from the shared dev image against THIS worktree's checkout, so it
+    # needs neither the dev stack nor ownership of it. `run` builds the image
+    # if it is missing. In-memory SQLite: no database service involved.
+    docker compose -p "$(just _test-project)" -f compose.unit-tests.yml \
+        run --rm backend sh -lc "pytest -q -m 'not integration' {{ARGS}}"
 
 
 alias uf := unit-tests-frontend
-# Run the frontend unit tests
+# Run the frontend unit tests (in a throwaway container mounting this worktree)
 unit-tests-frontend *ARGS:
     #!/usr/bin/env bash
     {{initialise}} "unit-tests-frontend"
-    just _worktree-guard quill_frontend
-    docker exec quill_frontend sh -lc "yarn unit-test:run {{ARGS}}"
+    # As for `ub`: shared image, this worktree mounted, per-worktree
+    # node_modules volumes seeded from the image on first use. If a branch
+    # changes package.json, `just utr` resets those volumes.
+    docker compose -p "$(just _test-project)" -f compose.unit-tests.yml \
+        run --rm frontend sh -lc "yarn unit-test:run {{ARGS}}"
+
+
+alias utr := unit-tests-reset
+# Rebuild the test images and drop this worktree's node_modules test volumes
+unit-tests-reset:
+    #!/usr/bin/env bash
+    {{initialise}} "unit-tests-reset"
+    # For when a branch changes dependencies: the per-worktree volumes were
+    # seeded from an older image and would otherwise keep the old packages.
+    docker compose -p "$(just _test-project)" -f compose.unit-tests.yml \
+        down --volumes --remove-orphans
+    docker compose -f compose.unit-tests.yml build --pull
 
 
 alias ts := test-scripts
@@ -800,14 +920,14 @@ test-scripts *ARGS:
 
 
 alias ee := e2e
-# Run the end-to-end tests
-e2e:
+# Run the end-to-end tests against a fresh CI-identical stack for this worktree
+e2e *ARGS:
     #!/usr/bin/env bash
     {{initialise}} "e2e"
-    # Playwright runs on the host but drives http://localhost — the shared
-    # Caddy — so it exercises whichever worktree the stack serves.
-    just _worktree-guard quill_frontend
-    cd frontend && npx playwright test
+    # Playwright runs on the host, but the app it drives is this worktree's
+    # own compose.ci.yml stack on a free port — not the dev stack — so this
+    # works from any worktree and matches what CI runs. See `_e2e-up`.
+    just _e2e-run {{ARGS}}
 
 
 alias eer := e2e-report
@@ -815,16 +935,15 @@ alias eer := e2e-report
 e2e-report:
     #!/usr/bin/env bash
     {{initialise}} "e2e-report"
-    just _worktree-guard quill_frontend
-    cd frontend && npx playwright test && npx playwright show-report
+    just _e2e-run && cd frontend && npx playwright show-report
+
 
 alias eeu := e2e-ui
 # Run the end-to-end tests in interactive UI mode
 e2e-ui:
     #!/usr/bin/env bash
     {{initialise}} "e2e-ui"
-    just _worktree-guard quill_frontend
-    cd frontend && npx playwright test --ui
+    just _e2e-run --ui
 
 
 alias vk := vapid-key

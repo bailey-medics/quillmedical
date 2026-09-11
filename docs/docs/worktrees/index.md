@@ -57,9 +57,28 @@ per day. A worktree is cheap to make and cheap to remove.
   a symlink would edit the original from inside the worktree.
 - **Builds a separate backend virtual environment**, which is the part
   that used to be manual. See below for why it is fiddlier than it looks.
+- **Installs the frontend packages** with `yarn install --immutable`, so
+  Storybook, Playwright and the host-side linters work straight away. It
+  is immutable because a new worktree should never rewrite the lockfile.
 
-Afterwards, run `just initialise-repo` in the new directory for the
-pre-commit hooks and the yarn packages.
+Nothing else is needed. The pre-commit hook works in a new worktree from
+the start, so `just initialise-repo` is for a fresh clone, not a new
+worktree.
+
+## Why the hook path is relative
+
+Git finds the hook through `core.hooksPath`, which lives in the repository's
+shared config and so applies to every worktree. Its value is the relative
+`.husky`, and that is deliberate: git resolves a relative hooks path
+against the root of the worktree that is committing, so each worktree runs
+the `.husky/pre-commit` tracked on its own branch.
+
+It used to be an absolute path into the main checkout. That made every
+worktree run one checkout's copy of the hook, whatever its own branch said,
+and would have silently disabled hooks everywhere had that checkout been
+moved or removed. `just initialise-repo` sets the relative path, and
+`pre-commit install` is not used at all: pre-commit refuses to install
+while a hooks path is set, and the tracked hook already runs it.
 
 ## Why the virtual environment needs forcing
 
@@ -89,13 +108,51 @@ git worktree remove ../quillmedical-2
 Add `--force` if it has uncommitted changes. The branch survives the
 removal; delete it separately, or let `just pb` clear it once merged.
 
-## Docker, and the one thing to watch
+## Docker: tests run anywhere, the stack runs in one place
 
-The dev stack uses fixed container names, so **only one worktree can run
-it at a time**. Starting `just st` in a second worktree will either fail
-on the name or, worse, attach to the containers already serving the
-first — and the tests you then run will exercise the other worktree's
-code while appearing to pass.
+The unit tests do not need the dev stack. `just ub` and `just uf` start a
+throwaway container from the shared dev image with **the current worktree**
+mounted, run the suite, and remove it. They work from every worktree at
+once, whether the stack is up elsewhere or not at all, and build the image
+on first use. See `compose.unit-tests.yml`.
 
-If you are running the stack in one worktree, treat the others as
-edit-and-review space, or bring the stack down first.
+Two things follow from how that works:
+
+- **Each worktree gets its own `node_modules` test volumes**, named after
+  the worktree directory and seeded from the image the first time. If your
+  branch changes `package.json`, run `just utr` to drop them and rebuild;
+  otherwise the old packages linger.
+- **Dependencies live in the image**, so a backend dependency change also
+  needs a rebuild: `just utr`, or `just sd b` from the worktree that owns
+  the stack. One image serves every worktree.
+
+The end-to-end tests need a whole application, so `just e2e` builds one:
+the `compose.ci.yml` stack that CI uses, as a project named after the
+worktree, on a free port Docker picks. It migrates and seeds a fresh
+database, runs Playwright against it, and tears everything down afterwards.
+Several worktrees can run it at the same time, and none of them touches the
+dev stack. The first run pays for a production build of both images.
+
+**Do not run the Storybook tests and `just e2e` at the same time.** Both
+saturate the machine: the E2E run does a production build of the frontend
+inside Docker and then drives a browser, and the Storybook test runner
+needs its dev server to answer within thirty seconds. Run together, the
+Storybook suite times out loading its own pages and reports over a hundred
+failed suites that pass cleanly on their own. Run one, then the other.
+
+Migrations follow the same idea. `just migrate "message"` starts a
+throwaway Postgres from `compose.migrate.yml`, upgrades it from this
+worktree's migrations, autogenerates against this worktree's models, and
+drops it again. It fails on an empty result rather than leaving a no-op
+revision to be found in review.
+
+The dev stack itself is different. It uses fixed container names, so
+**only one worktree can run it at a time**. Starting `just sd` in a second
+worktree will either fail on the name or, worse, attach to the containers
+already serving the first. Recipes that need the live stack — `just eb`,
+the create-user recipes — check which worktree the stack serves and refuse
+to run from any other, rather than quietly acting on the wrong code.
+
+If you are running the stack in one worktree, the others are still fine for
+editing, reviewing and testing. Bring the stack down first only for the
+recipes that need it.

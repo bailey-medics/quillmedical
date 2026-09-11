@@ -14,6 +14,15 @@
 
 ## Key Commands
 
+- **Use the `just` recipes first and foremost.** Each one is the tested,
+  worktree-safe way to do its job: it knows which container to run in, what to
+  mount, which ports and env to use, and it cleans up after itself. A raw
+  `docker exec`, `pytest`, `yarn` or `alembic` command improvised in its place
+  loses all of that and is how tests came to run against the wrong worktree.
+- `just --list` shows every recipe with its alias and a one-line description.
+- If no recipe does what you need, say so rather than improvising; the fix is
+  usually to add one, following the conventions in `.claude/rules/just.md`.
+
 See the `Justfile` if you want to know more.
 
 ## Testing Requirements
@@ -22,8 +31,11 @@ See the `Justfile` if you want to know more.
 - **ALWAYS run backend and frontend unit tests inside Docker containers** — never run them directly on the host
   - Backend: `just ub` (all unit tests) or `just ub -k "test_name"` (targeted)
   - Frontend: `just uf` (all unit tests) or `just uf src/path/to/file.test.tsx` (targeted)
+  - Both run in a throwaway container from `compose.unit-tests.yml` that mounts the current worktree, so they work from any worktree and do not need the dev stack running
   - Prefer targeted tests during development; run the full suite only if CI is failing
 - Storybook: runs on the host — `just sb` (dev server), `just sbt` (tests), `just sbtci` (CI mode)
+- E2E: `just e2e` brings up a fresh per-worktree `compose.ci.yml` stack (the CI one) on a free port, runs Playwright against it and tears it down — never the dev stack
+- **Never run Storybook tests and `just e2e` at the same time** — both saturate the machine, and the Storybook runner then times out loading its own pages and reports mass failures that pass on their own
 - Backend: pytest with fixtures from `conftest.py`
 - Frontend: vitest + @testing-library/react with `renderWithMantine`/`renderWithRouter`
 - Cover: props variations, edge cases, null/undefined, interactions, loading/error states
@@ -433,7 +445,7 @@ there is any doubt.
 
 Rediscovered three times in one session before it was written down.
 
-### The dev stack belongs to one worktree, and it is probably not this one
+### Tests run from any worktree; the dev stack belongs to one
 
 There are several worktrees of this repository, but only one dev stack. Its
 containers are bind-mounted to whichever worktree started it, and the
@@ -441,60 +453,72 @@ container names are fixed — `quill_backend`, `quill_postgres_core` — so
 `docker exec quill_backend …` from any worktree reaches **the worktree that
 started the stack**, not the one you are working in.
 
-Every recipe built on `docker exec quill_backend` inherits this: `just ub`,
-`just uf`, `just migrate`. Each of them will run happily and tell you nothing
-is wrong.
+**The unit tests no longer go through the stack.** `just ub` and `just uf`
+run `docker compose run --rm` against `compose.unit-tests.yml`: a throwaway
+container from the shared dev image, with the current worktree mounted at
+`/app`. They work from any worktree, with the stack running elsewhere or not
+at all, and the image is built on first use. The backend suite uses in-memory
+SQLite and the frontend suite is vitest under jsdom, so no service is needed.
 
-**Check before trusting any of them:**
+- **The compose project is named after the worktree directory**
+  (`quill-test-<dir>`), which gives each worktree its own `node_modules`
+  volumes and keeps it clear of the dev stack's containers.
+- **Those volumes are seeded from the image on first use** and then kept. If
+  a branch changes `package.json`, run `just utr` to drop them and rebuild
+  the image; otherwise the old packages linger and the failure is confusing.
+- **Dependencies are baked into the image.** A backend dependency change
+  needs the image rebuilt too (`just utr`, or `just sd b`). Both compose
+  files tag the same `quill-backend-dev` / `quill-frontend-dev` images, so
+  one build serves every worktree.
+- **On a Linux host, pytest warns it cannot write `.pytest_cache`.** The
+  container runs as its own unprivileged user and the bind mount is owned by
+  you. Harmless; Docker Desktop on macOS maps ownership and does not show it.
+- **Never run `pre-commit install`.** Git runs the tracked `.husky/pre-commit`
+  through the relative `core.hooksPath` set by `just initialise-repo`, which
+  resolves per worktree. pre-commit refuses to install alongside it anyway.
+
+**End-to-end tests have their own per-worktree stack.** `just e2e` (and
+`e2e-ui`, `e2e-report`) brings up `compose.ci.yml`, the same file, images and
+seed script the CI job uses, as a compose project named `quill-e2e-<dir>` on
+a free port Docker picks, runs the migrations and `seed_ci.py`, runs
+Playwright with `E2E_BASE_URL` pointing at it, and tears the stack down
+afterwards, pass or fail. It does not touch the dev stack or its database, so
+a local run rehearses CI and several worktrees can run it at once. The cost
+is a production build of both images on first run; later runs hit the cache
+unless the sources changed.
+
+**Migrations use a throwaway database.** `just migrate "message"` brings up
+a Postgres on tmpfs from `compose.migrate.yml` as project `quill-migrate-<dir>`,
+upgrades it to head from this worktree's migrations, autogenerates against
+this worktree's models, applies the result, and drops the database. It never
+touches the dev stack's database, so it is correct from any worktree. If the
+generated `upgrade()` is empty it fails and says so, because an empty
+revision means the models already match the migrations, not that the
+recipe worked.
+
+**Recipes that still need the live stack** keep the `_worktree-guard`
+check and refuse to run from a worktree the stack does not serve:
+`just eb` / `just ef`, the create-user recipes and `just validate-teaching`.
+The guard reads the owning path from Docker:
 
 ```bash
 docker inspect quill_backend --format '{{range .Mounts}}{{if eq .Destination "/app"}}{{.Source}}{{end}}{{end}}'
 ```
 
-If that is not the worktree you are in, the result of anything you just ran
-describes somebody else's code.
+**Why the guard exists.** Before the test recipes were separated from the
+stack, both failures were silent and both looked like success:
 
-**Why it matters more than it sounds.** Both failures are silent and both
-look like success:
+- **Tests passed against code you did not write.** New tests were not
+  collected, because the files were not there. This produced a "full suite
+  green" claim that had to be retracted.
+- **A migration autogenerated as empty.** `just migrate` compared the other
+  worktree's models against the database, found no difference, and wrote a
+  revision with an empty `upgrade()`. It exited zero. Committing it would put
+  a permanent no-op in the chain and leave the real tables uncreated. The
+  recipe now uses its own database and refuses an empty result.
 
-- **Tests pass against code you did not write.** `just ub` runs the other
-  worktree's suite. New tests are not collected, because the files are not
-  there. A green run means nothing, and says nothing about what it actually
-  ran. This produced a "full suite green" claim that had to be retracted.
-- **A migration autogenerates as empty.** `just migrate` upgrades, compares
-  the other worktree's models against the database, finds no difference, and
-  writes a migration with an empty `upgrade()`. It exits zero. Committing it
-  would put a permanent no-op in the chain and leave the real tables
-  uncreated.
-
-**What to do instead.** Run against the worktree you are in, by mounting it
-explicitly. Both examples below assume a throwaway secret in the
-environment — these databases exist for the length of one command:
-
-```bash
-export TEST_DB_PASSWORD=whatever JWT_SECRET=0123456789012345678901234567890123456789
-
-# Tests
-docker run --rm \
-  -v "$PWD/backend:/app" -v "$PWD/shared:/shared" \
-  -v "$PWD/api-compatibility:/api-compatibility" \
-  -w /app \
-  -e JWT_SECRET -e CORE_DB_PASSWORD="$TEST_DB_PASSWORD" \
-  <backend-image> sh -lc "pytest -m 'not integration' -q"
-
-# Migrations: a throwaway Postgres, then the three commands just migrate runs
-docker run -d --name tmp-pg -e POSTGRES_PASSWORD="$TEST_DB_PASSWORD" \
-  -e POSTGRES_DB=quill_core -p 55433:5432 postgres:17-alpine
-docker run --rm --network host -v "$PWD/backend:/app" -v "$PWD/shared:/shared" \
-  -w /app -e JWT_SECRET -e CORE_DB_PASSWORD="$TEST_DB_PASSWORD" \
-  -e CORE_DB_USER=postgres -e CORE_DB_HOST=localhost -e CORE_DB_PORT=55433 \
-  <backend-image> sh -lc 'alembic upgrade head && alembic revision --autogenerate -m "…" && alembic upgrade head'
-docker rm -f tmp-pg
-```
-
-Then check the generated migration by hand — `upgrade()` must not be empty —
-and confirm with `python backend/scripts/check_migrations.py --all` and
-`alembic check` (which should report no new operations, and one head).
+After `just migrate`, read the generated `upgrade()` and `downgrade()` before
+committing; the pre-commit hook runs `check_migrations.py` over it as well.
 
 A stray `.hypothesis/` directory at the repository root is a smaller symptom of
 the same thing: it appears when pytest is run from the host rather than in a
