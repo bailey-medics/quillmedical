@@ -133,7 +133,26 @@ does not, and removing the ladder removes the suggestion.
           discover it.
         - **`access_clinic_admin` is enforced nowhere** — checked across the backend and
           frontend. Worth knowing before adding more admin vocabulary: the catalogue
-          already contains an admin competency that no route asks for.
+          already contains an admin competency that no route asks for. Left in place with
+          a comment saying so, rather than retired: retirement is one way, and this is a
+          competency awaiting a gate rather than one withdrawn.
+        - **Done: `admin.yaml` exists and holds `manage_users`.** The loader globs the
+          directory, so a new file needs no registration, and
+          `check-competencies-not-deleted.sh` concatenates every file before comparing —
+          it treats a move between files as a move, not a deletion. Nothing to change in
+          either.
+        - **Decided: `teaching_manager` is the third holder.** A new profession, teaching
+          admin plus the people — it provisions delegates at its own organisation or site.
+          `teaching_admin` deliberately does *not* get `manage_users`: it curates content
+          rather than accounts, and `manage_users` can mint any competency including
+          itself, so it is given to few. Three professions hold it now:
+          `clinic_manager`, `system_administrator`, `teaching_manager`. That is enough to
+          proceed with the route swap.
+        - **`admin` has not been removed from `system_permissions`.**
+          `PERMISSION_ADMIN` is still in `permissions.py` and still in `PERMISSION_LEVELS`,
+          and two professions still default to it — `system_administrator` and
+          `teaching_admin`. Removing it is the *last* step of this plan, not a
+          precondition, and the 31 route gates still compare against the string today.
       - **The twenty ready routes wait for the eleven.** They could go sooner, but
         splitting the batch by whether each route happened to be safe would leave a worse
         record than doing it in one pass once they are level.

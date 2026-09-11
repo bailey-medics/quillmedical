@@ -376,3 +376,19 @@ base_professions:
       - view_teaching_cases
       - manage_teaching_content
       - view_teaching_analytics
+
+  # Teaching admin plus the people: this is the profession that
+  # provisions delegates at its own organisation or site. manage_users is
+  # the root competency — it can mint any other, including itself — so it
+  # is deliberately not on teaching_admin, who curates content rather
+  # than accounts. See shared/competency-definitions/admin.yaml.
+  - id: teaching_manager
+    display_name: "Teaching manager"
+    description: "Teaching coordinator who also provisions delegates at their own organisation or site"
+    default_system_permission: admin
+    requires_clinical_services: false
+    base_competencies:
+      - view_teaching_cases
+      - manage_teaching_content
+      - view_teaching_analytics
+      - manage_users

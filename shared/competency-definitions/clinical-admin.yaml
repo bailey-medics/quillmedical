@@ -2,15 +2,17 @@
 #
 # CLINICAL ADMINISTRATION COMPETENCY DEFINITIONS FOR QUILL MEDICAL
 #
-# Competencies for running the service rather than caring for a
-# patient: administering a clinic and managing user accounts. Held
-# through the same mechanism as the clinical set in clinical.yaml, and
-# deliberately kept in a separate file because they are a different
-# kind of thing. Reading them interleaved makes the distinction hard to
-# see and invites the wrong judgement about risk.
+# Competencies for running the clinical service rather than caring for a
+# patient — administration that is patient centric, which is what
+# distinguishes this file from admin.yaml. Held through the same
+# mechanism as the clinical set in clinical.yaml, and deliberately kept
+# in a separate file because they are a different kind of thing.
+# Reading them interleaved makes the distinction hard to see and invites
+# the wrong judgement about risk.
 #
-# The other features that gate parts of Quill have their own files:
-# teaching.yaml and passport.yaml.
+# Administering a *place* — the users at an organisation or site — is in
+# admin.yaml. The other features that gate parts of Quill have their own
+# files: teaching.yaml and passport.yaml.
 #
 # Every file in this directory is merged into one catalogue at load
 # time, so ids must be unique across the whole directory, not just
@@ -23,11 +25,11 @@
 
 competencies:
   # ==========================================================================
-  # CLINIC AND USER ADMINISTRATION
+  # CLINIC ADMINISTRATION
   # ==========================================================================
 
+  # Not currently enforced anywhere in the backend or frontend. Left in
+  # place rather than retired, because retirement is one way and this is
+  # a competency awaiting a gate rather than one withdrawn.
   - id: access_clinic_admin
     display_name: "Access Clinic Administration Functions"
-
-  - id: manage_users
-    display_name: "Manage User Accounts"
