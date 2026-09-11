@@ -2496,7 +2496,7 @@ def list_users(
         stmt = stmt.where(User.id.in_(all_scoped_ids))
 
         # Admins must not see superadmin users
-        stmt = stmt.where(User.system_permissions != "superadmin")
+        stmt = stmt.where(User.platform_role != "superadmin")
 
     try:
         users = db.execute(stmt).scalars().unique().all()
@@ -3771,9 +3771,7 @@ def get_organisation(
 
     # Admins must not see superadmin staff members
     if current_user.system_permissions == "admin":
-        staff_query = staff_query.where(
-            User.system_permissions != "superadmin"
-        )
+        staff_query = staff_query.where(User.platform_role != "superadmin")
 
     staff_members = db.execute(staff_query).all()
 
@@ -4732,9 +4730,7 @@ def get_site(
 
     # Admins must not see superadmin staff members
     if current_user.system_permissions == "admin":
-        staff_query = staff_query.where(
-            User.system_permissions != "superadmin"
-        )
+        staff_query = staff_query.where(User.platform_role != "superadmin")
 
     staff = db.execute(staff_query).all()
 

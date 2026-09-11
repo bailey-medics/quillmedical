@@ -476,12 +476,24 @@ does not, and removing the ladder removes the suggestion.
               them rather than grepping. 3775 and 4736 test `current_user.
               system_permissions == "admin"`, which is the admin question, so they
               belong with the sixteen org-scoping branches below.
-            - [ ] **The target-user filters are their own unit.** At 2499, 3775 and 4736
-                  the comparison is on the _listed_ user rather than the caller —
-                  `User.system_permissions != "superadmin"`, which hides superadmins
-                  from an admin's view. Same column, opposite side of the comparison,
-                  so it is a different change: these must move or admins start seeing
-                  superadmins once the old column stops being written.
+            - [x] **The target-user filters migrated.** At 2499, 3775 and 4736 the
+                  comparison is on the _listed_ user rather than the caller —
+                  `User.platform_role != "superadmin"` now — which hides operators
+                  from an admin's view of the user list, an organisation's staff and
+                  a site's staff. Same column as the caller checks, opposite side of
+                  the comparison, which is why it was its own unit.
+                  - **The `== "admin"` caller half of each branch stays.** Each filter
+                    sits inside `if current_user.system_permissions == "admin"`; that
+                    half is the admin question and moves with the admin work.
+                  - **`User.system_permissions.in_(allowed)` at 2456 is not one of
+                    these.** It implements the `permission_level` query parameter, a
+                    public filter over the four-level hierarchy rather than a
+                    superadmin check, so it moves with the contract step. The plan
+                    listed three sites; reading found a fourth that does not belong.
+                  - **Verified by reverting.** Putting the old column back turns
+                    `test_an_operator_is_hidden_from_the_user_listing` red, and
+                    restoring it turns it green — so the test pins the change rather
+                    than passing because both columns happen to agree.
             - **About sixteen are `== "admin"` org-scoping branches** — 3749, 3891,
               4067, 4151, 4211, 4263, 4311, 4356, 4734 and neighbours. These ask _is
               this person an admin here_, which is the competency question, not the

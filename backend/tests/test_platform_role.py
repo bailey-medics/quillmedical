@@ -21,11 +21,14 @@ levels, which move with the `admin` work.
 from __future__ import annotations
 
 import pytest
+from sqlalchemy import insert
 from sqlalchemy.orm import Session
 
 from app.models import (
     PLATFORM_ROLES,
+    Organisation,
     User,
+    organisation_member,
     validate_platform_role,
 )
 from app.security import hash_password
@@ -171,3 +174,85 @@ class TestTheRoutesReadTheNewColumn:
         )
 
         assert resp.status_code == 200
+
+
+class TestTheListingsHideOperatorsByTheNewColumn:
+    """An admin's listings hide operators, read from `platform_role`.
+
+    Three queries filter the *listed* user rather than the caller —
+    `GET /api/users`, and the staff lists on an organisation and a site.
+    Same column as the checks above, opposite side of the comparison, so
+    it is a separate change: miss it and an operator appears in an
+    admin's list the moment the old column stops being written.
+
+    The operator below says `single-user` in the old column, so the test
+    fails if the filter still reads it.
+    """
+
+    def test_an_operator_is_hidden_from_the_user_listing(
+        self,
+        authenticated_admin_client,
+        test_admin: User,
+        db_session: Session,
+    ):
+        org = Organisation(name="Shared Trust", type="hospital")
+        db_session.add(org)
+        db_session.commit()
+        db_session.refresh(org)
+
+        operator = _user(
+            db_session,
+            "hidden_operator",
+            system_permissions="single-user",
+            platform_role="superadmin",
+            base_profession="superadmin_profession",
+        )
+        for person in (test_admin, operator):
+            db_session.execute(
+                insert(organisation_member).values(
+                    organisation_id=org.id,
+                    user_id=person.id,
+                    capacity="staff",
+                )
+            )
+        db_session.commit()
+
+        resp = authenticated_admin_client.get("/api/users")
+
+        assert resp.status_code == 200
+        listed = {u["username"] for u in resp.json()["users"]}
+        assert "hidden_operator" not in listed
+
+    def test_an_ordinary_colleague_is_still_listed(
+        self,
+        authenticated_admin_client,
+        test_admin: User,
+        db_session: Session,
+    ):
+        """The mirror, so the test above cannot pass by listing nobody."""
+        org = Organisation(name="Shared Trust", type="hospital")
+        db_session.add(org)
+        db_session.commit()
+        db_session.refresh(org)
+
+        colleague = _user(
+            db_session,
+            "ordinary_colleague",
+            system_permissions="staff",
+            platform_role="member",
+        )
+        for person in (test_admin, colleague):
+            db_session.execute(
+                insert(organisation_member).values(
+                    organisation_id=org.id,
+                    user_id=person.id,
+                    capacity="staff",
+                )
+            )
+        db_session.commit()
+
+        resp = authenticated_admin_client.get("/api/users")
+
+        assert resp.status_code == 200
+        listed = {u["username"] for u in resp.json()["users"]}
+        assert "ordinary_colleague" in listed
