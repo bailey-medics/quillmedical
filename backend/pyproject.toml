@@ -41,6 +41,12 @@ resend = ">=2.0.0,<3.0.0"
 markdown = ">=3.7,<4.0"
 nh3 = "^0.3.4"
 email-validator = "^2.3.0"
+# libgit2 in-process, for the clinician passport's git-backed record
+# store. Not the `git` binary: shelling out needs a binary in the image
+# and a subprocess per write, which is where the predecessor project's
+# push code stalled. Ships manylinux and macOS wheels, so it adds no
+# build dependency to the image.
+pygit2 = ">=1.20.0,<1.21.0"
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.18.2"

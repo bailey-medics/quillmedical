@@ -73,6 +73,8 @@ def _import_in_clean_subprocess(
         "app.features.passport.ids",
         "app.features.passport.schemas",
         "app.features.passport.definitions",
+        "app.features.passport.commits",
+        "app.features.passport.store",
     ],
 )
 def test_import_needs_no_secrets(module: str) -> None:
@@ -103,6 +105,8 @@ def test_import_needs_no_secrets(module: str) -> None:
         "app.features.passport.ids",
         "app.features.passport.schemas",
         "app.features.passport.definitions",
+        "app.features.passport.commits",
+        "app.features.passport.store",
     ],
 )
 def test_import_pulls_in_nothing_heavy(module: str) -> None:

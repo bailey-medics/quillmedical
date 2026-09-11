@@ -1778,13 +1778,27 @@ three does not invalidate unit one.
       reflections and CPD), and
       `definitions.py` (reads the passport fields from
       `shared/competency-definitions/`).
-- [ ] Implement `store.py` with the `PassportStore` interface and the
+- [x] Implement `store.py` with the `PassportStore` interface and the
       local filesystem backend, including `init_and_commit` with
       whole-directory cleanup on failure and `write_and_commit_files`
       with rollback.
-- [ ] Implement `commits.py`: the commit message renderer with the
+      - **Found during the build: libgit2 points HEAD at
+        `refs/heads/master`** whatever the host's `init.defaultBranch`
+        says, while this store commits to `refs/heads/main`. Without
+        `set_head` on init the commits land on a branch HEAD does not
+        follow, so a passport holding every record reads as empty —
+        a fault that looks exactly like data loss and is not. Pinned by
+        a test.
+      - The cleanup on a failed *creation* only removes a directory this
+        store created. One that already existed is left alone: it may
+        hold something else, and removing it would destroy data the
+        store never owned.
+- [x] Implement `commits.py`: the commit message renderer with the
       closed action vocabulary, reserved trailer keys and single-line
-      value validation.
+      value validation. Values carrying a newline are **refused rather
+      than stripped**: sanitising would change what the record says
+      about a named person, silently, and a caller passing one has a bug
+      worth surfacing. Without it a value could forge a second trailer.
 - [ ] Implement `certificates.py`, `logbook.py`, `reflections.py` and
       `cpd.py`: create, amend and remove self-declared evidence, each
       as one validated write and one commit. All four are editable by
@@ -1809,8 +1823,11 @@ three does not invalidate unit one.
       writes nothing.
 - [ ] Implement the verify function and the `VERIFY.md` template for
       bundles, using `sha256sum` and no keys.
-- [ ] Reject non-fast-forward updates in the store, with a test
-      proving a rewrite is refused.
+- [x] Reject non-fast-forward updates in the store, with a test
+      proving a rewrite is refused. Two shapes are refused: a commit with
+      no parent onto a repository that has history, which would discard
+      every earlier commit, and one whose parents do not include the
+      current HEAD.
 - [ ] Implement `blobs.py`: content-addressed evidence store with
       refusal to overwrite an existing hash.
 - [ ] Implement `service.py`: create passport, request sign-off, sign
