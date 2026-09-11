@@ -101,6 +101,39 @@ does not, and removing the ladder removes the suggestion.
         spelling. Both already return 404 rather than 403, so a response does not confirm a
         record exists to someone who may not see it, and the tests should assert 404 to
         match.
+      - **Unblocked for the routes; the open question is who holds the competency.** The
+        eleven place checks are in, so the swap itself is straightforward. What is not
+        settled is that `manage_users` and today's admins are different sets:
+        - `teaching_admin` defaults to `system_permissions: admin` and does **not** hold
+          `manage_users`.
+        - `clinic_manager` holds `manage_users` but defaults to `staff`.
+        - Only 2 of 22 professions grant it, and it is a bare entry in `competencies.yaml`
+          — an id and a display name, with no risk level or description, unlike the
+          clinical competencies around it.
+        - **Nobody is locked out by any of this**, because no real people use production
+          yet. The mismatch matters as a design question — who *should* administer what —
+          not as a migration hazard, and it should be decided on what is right rather than
+          on preserving current access.
+      - **Decided: `manage_users` moves to its own `admin.yaml`.** Settled while the
+        competency catalogue was being split into `shared/competency-definitions/` on
+        `feature/clinician-passport-phase-0` (#600).
+        - **`clinical-admin.yaml` stays as it is**, for administration that is patient
+          centric rather than teaching or passport. `admin.yaml` is for administering a
+          *place* — the org or site someone is at.
+        - **What it permits:** adding, editing and deleting users and their competencies,
+          at the organisation or site the holder is at. The competency answers *what*; the
+          existing `_require_own_org` and `_require_site_in_own_org` answer *where*, so no
+          new place mechanism is needed.
+        - **It is the root competency, deliberately.** `update_user` writes
+          `additional_competencies` wholesale with no check on which ids are granted, so a
+          holder can mint any competency in the catalogue — including `manage_users`
+          itself, and every clinical one. Capping it to competencies the granter holds was
+          considered and rejected for now; the rule is that it is granted rarely, and
+          `admin.yaml` should say so in its header rather than leave the next reader to
+          discover it.
+        - **`access_clinic_admin` is enforced nowhere** — checked across the backend and
+          frontend. Worth knowing before adding more admin vocabulary: the catalogue
+          already contains an admin competency that no route asks for.
       - **The twenty ready routes wait for the eleven.** They could go sooner, but
         splitting the batch by whether each route happened to be safe would leave a worse
         record than doing it in one pass once they are level.
@@ -318,11 +351,25 @@ separate policy.
       - **The listing refuses with 403 rather than an empty list.** It answers `[]` for
         someone who may read nothing, so a missing competency has to refuse outright or it
         would be indistinguishable from having nothing delivered.
-- [ ] **Check the same endpoint's siblings.** Learning content was found by chance while
-      planning video; nothing has swept the other teaching read routes for the same shape.
+- [x] **Check the same endpoint's siblings.** Swept all 28 routes on the teaching router.
+      **No further holes.** Every one is either scoped or gated, and most are both.
       - **Authentication is not the missing half.** Every route on the teaching router was
         checked and each already requires a signed-in user, so the sweep is looking for
         missing _scoping_, not missing sign-in.
+      - **Three shapes of scoping, all sound.** Eight assessment routes are self-scoped by
+        `assessment.user_id != user.id`; the admin and bank routes resolve the caller's
+        organisations; the learning and video routes go through
+        `resolve_visible_module`. Every refusal is 404, so none of them can be used to
+        enumerate what exists elsewhere.
+      - **The certificate route deserved the closest look** and is fine:
+        `download_certificate` checks `assessment.user_id != user.id` before generating a
+        PDF that names a person.
+      - **Nothing to commit but the sweep itself.** The value of this step was the audit;
+        the code was already right. Worth recording so the next reader does not repeat it.
+      - **A scan of route signatures alone gives false positives.** `list_delegates` looked
+        unguarded until the decorator was read: its `_DEP_MANAGE` sits in
+        `dependencies=[...]` rather than in the parameters. Any future sweep must read the
+        decorator block as well as the signature.
 
 **Not odd that the video plan is stricter.** Video is the expensive, signed-URL case where a
 leak is obvious, so it got the attention. Slides being laxer is the anomaly, not video being
