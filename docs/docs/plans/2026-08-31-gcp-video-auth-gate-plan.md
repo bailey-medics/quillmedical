@@ -774,7 +774,7 @@ tested on its own.
       asset URLs and schedule its refresh.
 - [x] Log the grant at INFO — `user_id`, `org_id`, `module_id`, expiry — and
       nothing else. No filenames, no PHI, and never the cookie value or key.
-- [ ] **[added 2026-09-09] No cookie consent banner, but the cookie policy needs
+- [x] **[added 2026-09-09] No cookie consent banner, but the cookie policy needs
       finishing.** Under UK PECR, consent is not required for a cookie strictly
       necessary to deliver a service the user explicitly requested. A cookie that
       exists solely to release a lecture to a learner who clicked play is squarely
@@ -790,6 +790,14 @@ tested on its own.
       deferrable. Note the current analytics is log-derived from load balancer
       `httpRequest` records and sets nothing on a device, which is why no banner
       has been needed so far; a client-side analytics tag would change that.
+      **[done 2026-09-11]** The placeholder is replaced with all four cookies,
+      grouped by purpose rather than listed as an inventory, with lifetimes
+      read from the code rather than assumed. Kept as its own page rather than
+      folded into the privacy policy a lawyer is drafting: the cookie list
+      changes whenever a cookie ships, and a lawyer-owned document should not
+      need editing for that. The page is worth showing them anyway, so the two
+      documents can link and they can confirm the strictly-necessary
+      characterisation.
 - [x] Rate-limit the endpoint so it cannot be driven as a cookie-minting oracle.
       **[revised 2026-09-09]** The existing pattern is SlowAPI: `from
       app.rate_limit import limiter`, then `@limiter.limit("10/minute")` on the
