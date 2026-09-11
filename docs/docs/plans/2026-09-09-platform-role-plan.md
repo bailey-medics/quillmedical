@@ -410,6 +410,31 @@ does not, and removing the ladder removes the suggestion.
             backend reads. The gates are already competencies, so what remains is genuinely
             about *operating Quill*, which should be a much smaller set than the raw count
             suggests.
+            - **The guard counts include the component's own tests.** The tally of 21 —
+              13 `admin`, 4 `staff`, 4 `superadmin` — comes from grepping `level="..."`
+              across `.tsx`, and `RequirePermission.test.tsx` renders the guard to test
+              it. Real route call sites: **2** superadmin, both in `main.tsx`
+              (`organisations/new`, and the `teaching/modules` subtree). Re-count the
+              admin and staff figures the same way before sizing those batches.
+            - **`platform_role` reached the frontend nowhere**, so no guard could read it.
+              The expand step added the column but no response schema exposed it —
+              `MeOut`, `UserOut` and `UserSummaryItem` all carried only
+              `system_permissions`. Migrating any guard therefore starts with a backend
+              change, which is additive and needs no decision file.
+            - **The guard consults two fields while this runs.** `level="superadmin"`
+              reads `platform_role`; `staff` and `admin` still read `system_permissions`
+              until they become competency checks. Ugly but honest, and it is what
+              expand-migrate-contract looks like from inside.
+            - [x] **Superadmin guards migrated.** `platform_role` added to `MeOut` and to
+                  the frontend `User` type, and both route guards now ask it. A test pins
+                  a user who says `superadmin` in the old column and `member` in the new
+                  one: the guard must refuse them.
+            - [ ] **Five other places still test `system_permissions === "superadmin"`**
+                  and were deliberately left, since during expand the two columns agree:
+                  `SideNavContent.tsx`, `teaching/TeachingMainNav.tsx`, `LoginPage.tsx`,
+                  `UserInfoUpdatePage.tsx` and `AdminOrganisationsPage.tsx`. They decide
+                  what to _show_, not what to permit, so they are a tidy-up rather than a
+                  hole — but they must move before `system_permissions` is dropped.
       - [ ] **Contract: drop `system_permissions`.** Breaking API change, three response
             schemas, so it needs a decision file and the `api-breaking-change-review`
             approval.
@@ -519,6 +544,9 @@ is no case to carve out, and no "public modules" branch to maintain.
 - **The frontend guard is used 21 times** — 13 `level="admin"`, 4 `level="staff"`,
   4 `level="superadmin"`. The admin and staff ones become competency checks, which the
   frontend already has hooks for (`useHasCompetency`).
+  - **This count is inflated by the guard's own test file**, found when migrating the
+    superadmin ones: only 2 of the 4 are real routes. Treat the 13 and the 4 as upper
+    bounds until each is checked against `main.tsx`.
 - **`system_permissions` is in three response schemas**, so removing or renaming it is a
   **breaking API change** needing an `oasdiff` finding and a decision file per change.
 - It is a rename plus a semantic change, so the sequence is expand, migrate the callers,

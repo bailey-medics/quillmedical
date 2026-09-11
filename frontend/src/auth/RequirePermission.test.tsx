@@ -34,12 +34,23 @@ const mockUsers: Record<string, User> = {
     username: "admin.user",
     email: "admin@example.com",
     system_permissions: "admin",
+    platform_role: "member",
   },
   superadmin: {
     id: "4",
     username: "superadmin.user",
     email: "superadmin@example.com",
     system_permissions: "superadmin",
+    platform_role: "superadmin",
+  },
+  // Says superadmin in the old column and not in the new one. The
+  // superadmin guard must believe the new one.
+  staleSuperadmin: {
+    id: "5",
+    username: "stale.superadmin",
+    email: "stale@example.com",
+    system_permissions: "superadmin",
+    platform_role: "member",
   },
 };
 
@@ -276,6 +287,29 @@ describe("RequirePermission", () => {
       );
 
       expect(screen.getByText("Superadmin Content")).toBeInTheDocument();
+    });
+
+    it("refuses a user whose platform_role is not superadmin", () => {
+      // The guard reads platform_role, not the old top rung, so a user
+      // still marked superadmin in system_permissions is refused.
+      vi.spyOn(authContext, "useAuth").mockReturnValue({
+        state: {
+          status: "authenticated",
+          user: mockUsers.staleSuperadmin,
+        },
+        login: vi.fn(),
+        logout: vi.fn(),
+        reload: vi.fn(),
+      });
+
+      renderWithRouter(
+        <RequirePermission level="superadmin">
+          <div>Superadmin Content</div>
+        </RequirePermission>,
+      );
+
+      expect(screen.getByText("404 — Page not found")).toBeInTheDocument();
+      expect(screen.queryByText("Superadmin Content")).not.toBeInTheDocument();
     });
 
     it("shows 404 to admin users trying to access superadmin routes", () => {

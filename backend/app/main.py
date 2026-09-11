@@ -2311,6 +2311,7 @@ def me(
         email=current_user.email,
         roles=[r.name for r in current_user.roles],
         system_permissions=current_user.system_permissions,
+        platform_role=current_user.platform_role,
         totp_enabled=current_user.is_totp_enabled,
         enabled_features=enabled_features,
         clinical_services_enabled=settings.CLINICAL_SERVICES_ENABLED,
