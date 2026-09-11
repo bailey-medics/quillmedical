@@ -2157,3 +2157,102 @@ class TestVideoAccess:
         assert resp.status_code == 200
         assert "Cloud-CDN-Cookie" not in resp.cookies
         assert resp.json()["base_url"].endswith("/test-bank")
+
+
+class TestMediaUploadUrl:
+    """Minting a resumable upload URL.
+
+    The one place the backend holds real GCS write credentials, so the
+    allow-list and the path validation are the boundary rather than
+    conveniences.
+    """
+
+    def _login(self, test_client) -> dict[str, str]:
+        return _login(test_client, "testeducator", "Educator123!")
+
+    def _body(self, **over) -> dict:
+        body = {
+            "media_key": "lecture-01",
+            "original_filename": "EoEETA_Colonoscopy_FINAL_v3.mp4",
+            "content_type": "video/mp4",
+            "size_bytes": 943718400,
+        }
+        body.update(over)
+        return body
+
+    def test_upload_is_refused_without_a_source_bucket(
+        self, test_client, db_session
+    ):
+        """No source bucket means no upload, rather than a 500.
+
+        This is the development answer: the bucket exists only in the
+        teaching environment.
+        """
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        db_session.commit()
+
+        headers = self._login(test_client)
+        resp = test_client.post(
+            "/api/teaching/admin/modules/test-bank/media/upload-url",
+            json=self._body(),
+            headers=headers,
+        )
+        assert resp.status_code == 503
+
+    @pytest.mark.parametrize(
+        "filename",
+        ["notes.pdf", "slide.png", "script.sh", "archive.zip", "lecture"],
+    )
+    def test_rejects_files_outside_the_allow_list(
+        self, test_client, db_session, filename
+    ):
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        db_session.commit()
+
+        headers = self._login(test_client)
+        resp = test_client.post(
+            "/api/teaching/admin/modules/test-bank/media/upload-url",
+            json=self._body(original_filename=filename),
+            headers=headers,
+        )
+        # 400 before the 503: the type is refused without ever reaching
+        # the bucket check.
+        assert resp.status_code == 400
+
+    def test_a_content_type_that_contradicts_the_extension_is_refused(
+        self, test_client, db_session
+    ):
+        """Both are checked, because a caller controls both.
+
+        Trusting one to vouch for the other is how an allow-list gets
+        walked around.
+        """
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        db_session.commit()
+
+        headers = self._login(test_client)
+        resp = test_client.post(
+            "/api/teaching/admin/modules/test-bank/media/upload-url",
+            json=self._body(content_type="application/x-sh"),
+            headers=headers,
+        )
+        assert resp.status_code == 400
+
+    def test_a_learner_cannot_mint_an_upload_url(
+        self, test_client, db_session
+    ):
+        """Gated on manage_teaching_content, which a learner lacks."""
+        org = _make_teaching_org(db_session)
+        _make_learner(db_session, org)
+        db_session.commit()
+
+        headers = _login(test_client, "testlearner", "Learner123!")
+        resp = test_client.post(
+            "/api/teaching/admin/modules/test-bank/media/upload-url",
+            json=self._body(),
+            headers=headers,
+        )
+        assert resp.status_code == 403

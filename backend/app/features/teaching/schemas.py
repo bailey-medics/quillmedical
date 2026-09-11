@@ -530,3 +530,24 @@ class VideoAccessOut(BaseModel):
 
     base_url: str
     expires_at: datetime
+
+
+class MediaUploadUrlIn(BaseModel):
+    """Ask for somewhere to upload one media file."""
+
+    #: The MDX reference this upload is destined for.
+    media_key: str
+    #: What the admin called the file. Recorded as data and shown back to
+    #: them, never used to address the object.
+    original_filename: str
+    content_type: str
+    size_bytes: int
+
+
+class MediaUploadUrlOut(BaseModel):
+    """Where to upload, and what the file will be called once there."""
+
+    upload_url: str
+    #: Generated server-side. The client sends it back on completion so
+    #: the link can be written against the object that now exists.
+    asset_id: str

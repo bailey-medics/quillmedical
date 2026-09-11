@@ -48,6 +48,8 @@ from app.features.teaching.schemas import (
     ItemImageOut,
     LearningContentOut,
     LearningModuleOut,
+    MediaUploadUrlIn,
+    MediaUploadUrlOut,
     PromoteBankVersionIn,
     PromoteBankVersionOut,
     QuestionBankDetailOut,
@@ -1929,6 +1931,81 @@ def list_results(
         stmt = stmt.where(Assessment.question_bank_id == question_bank_id)
     stmt = stmt.order_by(Assessment.completed_at.desc())
     return list(db.execute(stmt).scalars().all())
+
+
+@teaching_router.post(
+    "/admin/modules/{module_id}/media/upload-url",
+    response_model=MediaUploadUrlOut,
+    dependencies=[_DEP_MANAGE],
+)
+def create_media_upload_url(
+    module_id: str,
+    body: MediaUploadUrlIn,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+) -> MediaUploadUrlOut:
+    """Mint a resumable upload URL for one media file.
+
+    The only place the backend holds real GCS write credentials, and it
+    writes to the source bucket alone. Releasing a video to a learner is
+    an HMAC over a shared secret, so the processed bucket needs no
+    credential here at all.
+
+    The uploaded filename never reaches the object path — the asset id
+    is generated here — so the filename needs no path validation. It is
+    recorded as data and shown back to the admin so they recognise their
+    own file.
+    """
+    import uuid
+
+    from app.config import settings
+    from app.features.teaching.storage import (
+        ALLOWED_MEDIA_TYPES,
+        create_resumable_upload_url,
+    )
+
+    # Validate the request before consulting configuration. A caller
+    # sending an unsupported type should hear that, not "the bucket is
+    # missing" — the second tells them about our deployment and hides
+    # the fault that is actually theirs.
+    ext = Path(body.original_filename).suffix.lower()
+    expected = ALLOWED_MEDIA_TYPES.get(ext)
+    if expected is None:
+        allowed = ", ".join(sorted(ALLOWED_MEDIA_TYPES))
+        raise HTTPException(400, f"Unsupported file type (allowed: {allowed})")
+    # Both are checked rather than either: a caller controls both, and
+    # trusting one to vouch for the other is how an allow-list is walked
+    # around.
+    if body.content_type != expected:
+        raise HTTPException(
+            400, f"Content type does not match {ext} (expected {expected})"
+        )
+
+    bucket = settings.TEACHING_VIDEOS_SOURCE_BUCKET
+    if not bucket:
+        raise HTTPException(503, "Media upload is not configured")
+
+    org_id = _get_user_org_id(user, db)
+    asset_id = uuid.uuid4().hex
+
+    try:
+        url = create_resumable_upload_url(
+            bucket, org_id, module_id, asset_id, body.content_type
+        )
+    except ValueError:
+        # An unsafe module_id reached the path builder. The path is what
+        # the video cookie's prefix is scoped to, so refuse rather than
+        # mint anything.
+        raise HTTPException(404, "Module not found") from None
+
+    logger.info(
+        "media upload url issued user=%s org=%s module=%s asset=%s",
+        user.id,
+        org_id,
+        module_id,
+        asset_id,
+    )
+    return MediaUploadUrlOut(upload_url=url, asset_id=asset_id)
 
 
 @teaching_router.get(
