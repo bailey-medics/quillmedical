@@ -333,19 +333,18 @@ Resolution formula per user: `(base_profession_competencies + additional) − re
 
 ## Claude-specific
 
-### Every response to the user
+### End every response with a tldr
 
-**This is the single most-ignored rule in this file. Re-read it before
-writing any message.** User does not have time to read long
-prose. A wall of text is not thoroughness, it is a failure to do the job — the
-work is only useful if it can be read.
+**Close each response with a short bulleted summary.** User does not have time
+to read long prose. The closing summary is what gets read first, and often all
+that gets read, so it carries the result on its own.
 
-This applies to **every** message, not only the closing recap: review packets,
-diagnoses, progress notes, answers to questions, and anything else. There is no
-category of message exempt from it.
+This is a rule about **how a response ends**, not about every line inside it.
 
-- **Bullets, never paragraphs.** A handful of them. If a response has more than
-  about six bullets, cut it rather than grouping it under headings.
+The closing summary:
+
+- **Bullets, never paragraphs.** A handful of them. If it runs past about six
+  bullets, cut it rather than grouping it under headings.
 - **Start each bullet with a bold short statement** carrying the main idea, so
   the bold text alone can be skimmed and the rest skipped.
 - **Then one or two plain sentences.** Not three. Not a sentence with two
@@ -355,16 +354,21 @@ category of message exempt from it.
 - **Presume a follow-up question.** Leave detail out and let it be asked for.
   Pre-empting every question is what produces the wall of text.
 
+Everything before the summary is ordinary writing. A sentence saying what is
+about to happen, a short paragraph answering a question, a code block, a table
+where a table genuinely helps — all fine, and preferable to forcing them into
+bullets. Keep it brief, but do not make it a list because a list is the format.
+
 Things that look like exceptions and are not:
 
-- **A complicated diagnosis.** Give the finding and the fix in bullets. The
+- **A complicated diagnosis.** Give the finding and the fix in the summary. The
   investigation is what the tool calls were for; it does not need narrating.
 - **A review packet.** What changed, any risk, what was tested. Three or four
   bullets. The diff carries the rest.
 - **Something genuinely important.** Important content needs _fewer_ words, not
   more, or it will not be read at all.
 
-Example:
+Example of a closing summary:
 
 - **Added the summary rule to CLAUDE.md.** It sits under the Claude-specific
   section so the Copilot sync will not overwrite it.
