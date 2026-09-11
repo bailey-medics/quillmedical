@@ -877,16 +877,16 @@ correction, not a regression.
       `has_learning_content`, module cover images or learning images by
       `module_id` has the same exposure and the same fix. `router.py:268` and
       `router.py:382` are the starting points.
-- [ ] Have Phase 2's `video-access` endpoint call this same helper, so the video
+- [x] Have Phase 2's `video-access` endpoint call this same helper, so the video
       gate and the content gate cannot drift apart. This is the reason the helper
       is written here rather than inline.
-- [ ] Tests: a user whose organisation has the module live gets slides; a user in
+- [x] Tests: a user whose organisation has the module live gets slides; a user in
       a different organisation gets 404; a user whose organisation has the module
       but not live gets 404; a user reaching the organisation only through a site
       gets slides, which is the case `_get_user_org_ids` exists to serve; a user
       in two organisations where only one has it live gets slides. That last one
       is why the plural helper is mandatory.
-- [ ] Check the frontend handles a 404 from these endpoints as "not available to
+- [x] Check the frontend handles a 404 from these endpoints as "not available to
       you" rather than a crash or an empty page, and that the learning module
       list copes with an empty array.
 
@@ -1231,6 +1231,30 @@ WEBVTT
 00:00:04.000 --> 00:00:08.500
 Test caption, first cue.
 ```
+
+### Caddy's aborted-range warnings, deferred
+
+**[added 2026-09-11, deliberately not done]** Playing video in development
+fills the Caddy log with `aborting with incomplete response` warnings, each a
+full structured JSON dump of the request. They are not errors: a video element
+asks for a large byte range, buffers what it needs and closes the connection,
+so `broken pipe` is the ordinary sound of streaming working.
+
+Options, if the noise becomes worth acting on:
+
+- **`log { level ERROR }` in `caddy/dev/Caddyfile`** — drops warnings while
+  keeping real errors. The narrowest fix.
+- **Add `format console`** — a compact one-line format for everything Caddy
+  logs, not just this.
+- **Leave it.** Phase 6's transcoding produces 720p renditions, so the files
+  shrink and the browser aborts less; the noise may solve itself.
+
+Two things to weigh first. The level change hides **all** warnings, upstream
+timeouts and TLS problems included, so it trades noise now for possible silence
+later. And in production an aborted response is a legitimate signal rather than
+buffering, so any change belongs in the dev Caddyfile alone — neither
+Caddyfile configures logging at all today, so both currently run at Caddy's
+defaults.
 
 ### What local development does not prove
 
