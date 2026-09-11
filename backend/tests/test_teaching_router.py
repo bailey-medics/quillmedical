@@ -2435,3 +2435,235 @@ class TestModuleMedia:
         resp = self._get(test_client, headers)
 
         assert resp.status_code == 403
+
+
+class TestMediaLinking:
+    """Attaching an upload to a reference, and detaching it.
+
+    The backend never sees the uploaded bytes — they go straight to GCS
+    on a resumable URL — so linking is what records that they arrived.
+    """
+
+    def _login(self, test_client) -> dict[str, str]:
+        return _login(test_client, "testeducator", "Educator123!")
+
+    def _body(self, **over) -> dict:
+        body = {
+            "asset_id": "asset-1",
+            "original_filename": "EoEETA_Colonoscopy_FINAL_v3.mp4",
+            "content_type": "video/mp4",
+            "size_bytes": 943718400,
+        }
+        body.update(over)
+        return body
+
+    def _url(self, key: str = "lecture-01") -> str:
+        return f"/api/teaching/admin/modules/test-bank/media/{key}/link"
+
+    def _existing(self, db, org_id: int, key: str, asset: str) -> None:
+        db.add(
+            ModuleMediaLink(
+                organisation_id=org_id,
+                question_bank_id="test-bank",
+                media_key=key,
+                asset_id=asset,
+                original_filename=f"{asset}.mp4",
+                content_type="video/mp4",
+                size_bytes=1024,
+                uploaded_at=datetime.now(UTC),
+            )
+        )
+        db.flush()
+
+    def test_linking_records_the_upload(self, test_client, db_session):
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        db_session.commit()
+
+        resp = test_client.post(
+            self._url(), json=self._body(), headers=self._login(test_client)
+        )
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["asset_id"] == "asset-1"
+        assert body["original_filename"] == "EoEETA_Colonoscopy_FINAL_v3.mp4"
+
+    def test_linking_records_who_uploaded_it(self, test_client, db_session):
+        """Audit: an upload is attributable to the person who made it."""
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        db_session.commit()
+        educator_id = educator.id
+
+        test_client.post(
+            self._url(), json=self._body(), headers=self._login(test_client)
+        )
+
+        link = (
+            db_session.query(ModuleMediaLink)
+            .filter_by(media_key="lecture-01")
+            .one()
+        )
+        assert link.uploaded_by == educator_id
+
+    def test_relinking_replaces_rather_than_refusing(
+        self, test_client, db_session
+    ):
+        """One video per reference, but re-pointing is a dropdown.
+
+        The constraint is on (org, module, key), so a second link to the
+        same key must replace the first rather than violate it.
+        """
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        self._existing(db_session, org.id, "lecture-01", "asset-old")
+        db_session.commit()
+
+        resp = test_client.post(
+            self._url(),
+            json=self._body(asset_id="asset-new"),
+            headers=self._login(test_client),
+        )
+
+        assert resp.status_code == 200
+        assert resp.json()["asset_id"] == "asset-new"
+        links = (
+            db_session.query(ModuleMediaLink)
+            .filter_by(media_key="lecture-01")
+            .all()
+        )
+        assert [link.asset_id for link in links] == ["asset-new"]
+
+    def test_a_type_outside_the_allow_list_is_refused(
+        self, test_client, db_session
+    ):
+        """The caller controls this body, so it is not trusted.
+
+        Otherwise an unlisted type could be recorded as a linked asset
+        regardless of what the upload URL was minted for.
+        """
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        db_session.commit()
+
+        resp = test_client.post(
+            self._url(),
+            json=self._body(content_type="application/x-sh"),
+            headers=self._login(test_client),
+        )
+
+        assert resp.status_code == 400
+
+    def test_unlinking_keeps_the_asset_recorded_nowhere_else(
+        self, test_client, db_session
+    ):
+        """Detaching removes the link only.
+
+        The file stays in the bucket; the card shows it as unattached.
+        """
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        self._existing(db_session, org.id, "lecture-01", "asset-1")
+        db_session.commit()
+
+        resp = test_client.delete(
+            self._url(), headers=self._login(test_client)
+        )
+
+        assert resp.status_code == 204
+        assert (
+            db_session.query(ModuleMediaLink)
+            .filter_by(media_key="lecture-01")
+            .one_or_none()
+            is None
+        )
+
+    def test_unlinking_a_reference_with_no_link_is_404(
+        self, test_client, db_session
+    ):
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        db_session.commit()
+
+        resp = test_client.delete(
+            self._url("never-linked"), headers=self._login(test_client)
+        )
+
+        assert resp.status_code == 404
+
+    def test_another_organisations_link_cannot_be_detached(
+        self, test_client, db_session
+    ):
+        """Scoped to the caller's organisation, like everything here.
+
+        Not found rather than refused: whether another trust has a link
+        is not this caller's to learn.
+        """
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        other = Organisation(name="Other Trust")
+        db_session.add(other)
+        db_session.flush()
+        self._existing(db_session, other.id, "lecture-01", "asset-theirs")
+        db_session.commit()
+
+        resp = test_client.delete(
+            self._url(), headers=self._login(test_client)
+        )
+
+        assert resp.status_code == 404
+        # Theirs is untouched.
+        assert (
+            db_session.query(ModuleMediaLink)
+            .filter_by(asset_id="asset-theirs")
+            .one_or_none()
+            is not None
+        )
+
+    def test_linking_does_not_collide_across_organisations(
+        self, test_client, db_session
+    ):
+        """The same key in two trusts is two rows, not a conflict."""
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        other = Organisation(name="Other Trust")
+        db_session.add(other)
+        db_session.flush()
+        self._existing(db_session, other.id, "lecture-01", "asset-theirs")
+        db_session.commit()
+
+        resp = test_client.post(
+            self._url(), json=self._body(), headers=self._login(test_client)
+        )
+
+        assert resp.status_code == 200
+        assert (
+            db_session.query(ModuleMediaLink)
+            .filter_by(media_key="lecture-01")
+            .count()
+            == 2
+        )
+
+    def test_a_learner_cannot_link(self, test_client, db_session):
+        """Gated on manage_teaching_content, which a learner lacks."""
+        org = _make_teaching_org(db_session)
+        _make_learner(db_session, org)
+        db_session.commit()
+
+        headers = _login(test_client, "testlearner", "Learner123!")
+        resp = test_client.post(
+            self._url(), json=self._body(), headers=headers
+        )
+
+        assert resp.status_code == 403
+
+    def test_a_learner_cannot_unlink(self, test_client, db_session):
+        org = _make_teaching_org(db_session)
+        _make_learner(db_session, org)
+        db_session.commit()
+
+        headers = _login(test_client, "testlearner", "Learner123!")
+        resp = test_client.delete(self._url(), headers=headers)
+
+        assert resp.status_code == 403

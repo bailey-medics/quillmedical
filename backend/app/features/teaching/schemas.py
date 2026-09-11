@@ -577,6 +577,24 @@ class MediaReferenceOut(BaseModel):
     asset: MediaAssetOut | None = None
 
 
+class MediaLinkIn(BaseModel):
+    """Attach an uploaded asset to an MDX reference.
+
+    The file details come from the client because the backend never sees
+    the bytes: the upload goes straight to GCS on a resumable URL, and
+    this is the call that records what landed there. The asset id is the
+    one minted by ``upload-url``, so it addresses an object this
+    organisation was given somewhere to write.
+    """
+
+    asset_id: str
+    #: Recorded as data and shown back to the uploader. Never used to
+    #: address the object.
+    original_filename: str
+    content_type: str
+    size_bytes: int
+
+
 class ModuleMediaOut(BaseModel):
     """Everything the admin card renders for one module.
 

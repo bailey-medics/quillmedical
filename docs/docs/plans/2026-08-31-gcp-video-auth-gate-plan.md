@@ -1102,8 +1102,21 @@ content calls for it.
       second copy of the branch would be the one that drifts. Keys are
       de-duplicated and kept in content order, so a key used on two
       slides is still one upload and the card's rows follow the content.
-- [ ] `POST .../media/{key}/link` and `DELETE .../media/{key}/link` — attach an
+- [x] `POST .../media/{key}/link` and `DELETE .../media/{key}/link` — attach an
       uploaded asset to a reference, and detach it. Detaching keeps the asset.
+      **[done 2026-09-11]** The file details travel in the link request
+      rather than being read from the bucket, because the backend never
+      sees the bytes: the upload goes straight to GCS on a resumable
+      URL, and this call is what records what landed. That body is
+      caller-controlled, so the content type is re-checked against the
+      same allow-list the upload URL was minted against.
+      Re-linking a key that already has an asset **replaces** the link
+      rather than refusing it — one video per reference is what the
+      unique constraint enforces, and re-pointing a slide is a dropdown
+      in the card, not a reason to make the admin detach first. The
+      displaced asset stays in the bucket and reappears as unattached.
+      Detaching another organisation's link is a 404, not a 403, so a
+      caller cannot learn whether they have one.
 - [ ] `DELETE .../media/{asset_id}` — remove an uploaded asset and its link.
       This is the destructive one: confirm in the UI, log it with actor and
       module, and refuse when the caller's organisation does not own the asset.

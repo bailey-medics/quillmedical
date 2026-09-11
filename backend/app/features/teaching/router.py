@@ -50,6 +50,7 @@ from app.features.teaching.schemas import (
     LearningContentOut,
     LearningModuleOut,
     MediaAssetOut,
+    MediaLinkIn,
     MediaReferenceOut,
     MediaUploadUrlIn,
     MediaUploadUrlOut,
@@ -2057,6 +2058,134 @@ def get_module_media(
         unattached=[_asset(link) for link in inventory.unattached],
         is_complete=inventory.is_complete,
     )
+
+
+@teaching_router.post(
+    "/admin/modules/{module_id}/media/{media_key}/link",
+    response_model=MediaAssetOut,
+    dependencies=[_DEP_MANAGE],
+)
+def link_module_media(
+    module_id: str,
+    media_key: str,
+    body: MediaLinkIn,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+) -> MediaAssetOut:
+    """Attach an uploaded asset to an MDX reference.
+
+    Called once the resumable upload has finished, because the backend
+    never sees the bytes — this is what records that they arrived.
+
+    Re-linking a key that already has an asset replaces the link rather
+    than refusing it. One video per reference is the rule the unique
+    constraint enforces, and pointing a slide at a different upload is a
+    dropdown in the admin card, not a reason to make the admin detach
+    first. The previous asset stays in the bucket and reappears as
+    unattached, so nothing is lost by re-pointing.
+    """
+    from app.features.teaching.storage import ALLOWED_MEDIA_TYPES
+
+    # The same allow-list the upload URL was minted against. A caller
+    # controls this body, so trusting it to describe what it uploaded
+    # would let an unlisted type be recorded as a linked asset.
+    if body.content_type not in ALLOWED_MEDIA_TYPES.values():
+        allowed = ", ".join(sorted(set(ALLOWED_MEDIA_TYPES.values())))
+        raise HTTPException(400, f"Unsupported type (allowed: {allowed})")
+
+    org_id = _get_user_org_id(user, db)
+
+    existing = db.execute(
+        select(ModuleMediaLink).where(
+            ModuleMediaLink.organisation_id == org_id,
+            ModuleMediaLink.question_bank_id == module_id,
+            ModuleMediaLink.media_key == media_key,
+        )
+    ).scalar_one_or_none()
+
+    if existing:
+        existing.asset_id = body.asset_id
+        existing.original_filename = body.original_filename
+        existing.content_type = body.content_type
+        existing.size_bytes = body.size_bytes
+        existing.uploaded_by = user.id
+        existing.uploaded_at = datetime.now(UTC)
+        link = existing
+    else:
+        link = ModuleMediaLink(
+            organisation_id=org_id,
+            question_bank_id=module_id,
+            media_key=media_key,
+            asset_id=body.asset_id,
+            original_filename=body.original_filename,
+            content_type=body.content_type,
+            size_bytes=body.size_bytes,
+            uploaded_by=user.id,
+            uploaded_at=datetime.now(UTC),
+        )
+        db.add(link)
+
+    db.flush()
+    db.refresh(link)
+    logger.info(
+        "media linked user=%s org=%s module=%s key=%s asset=%s",
+        user.id,
+        org_id,
+        module_id,
+        media_key,
+        body.asset_id,
+    )
+    return MediaAssetOut.model_validate(link)
+
+
+# A 204 carries no body at all, so there is no schema for oasdiff to
+# diff. Same shape as the analytics 204s, which carry this marker too.
+# api-schema-check: allow-opaque-permanent
+@teaching_router.delete(
+    "/admin/modules/{module_id}/media/{media_key}/link",
+    status_code=204,
+    dependencies=[_DEP_MANAGE],
+)
+def unlink_module_media(
+    module_id: str,
+    media_key: str,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+) -> Response:
+    """Detach a reference from its asset, keeping the file.
+
+    Detaching is not deleting. The upload stays in the bucket and
+    reappears in the card as unattached, because a reference removed
+    today may well return — and that is someone's 900 MB either way.
+    Removing the file is a separate, destructive call.
+    """
+    org_id = _get_user_org_id(user, db)
+
+    link = db.execute(
+        select(ModuleMediaLink).where(
+            ModuleMediaLink.organisation_id == org_id,
+            ModuleMediaLink.question_bank_id == module_id,
+            ModuleMediaLink.media_key == media_key,
+        )
+    ).scalar_one_or_none()
+
+    # Scoped to the caller's organisation, so another trust's link is
+    # not found rather than refused: whether they have one is not this
+    # caller's to learn.
+    if link is None:
+        raise HTTPException(404, "No linked media for this reference")
+
+    db.delete(link)
+    db.flush()
+    logger.info(
+        "media unlinked user=%s org=%s module=%s key=%s asset=%s",
+        user.id,
+        org_id,
+        module_id,
+        media_key,
+        link.asset_id,
+    )
+    return Response(status_code=204)
 
 
 @teaching_router.get(
