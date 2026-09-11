@@ -14,6 +14,15 @@ import SlideLayoutDefault from "@/components/teaching/slide-layouts/SlideLayoutD
 export interface SlideViewerProps {
   /** The compiled slide data to render */
   slide: CompiledSlide;
+  /**
+   * Module the slide belongs to.
+   *
+   * Only hosted video needs it, to request an access grant — but it is
+   * threaded from the page rather than derived here, because a
+   * component that guessed its own module would be wrong the moment
+   * slides were ever shown outside a module route.
+   */
+  moduleId?: string;
   /** Called with playback position for video slides */
   onVideoProgress?: (seconds: number) => void;
   /** Resume position for video slides (seconds) */
@@ -22,6 +31,7 @@ export interface SlideViewerProps {
 
 export default function SlideViewer({
   slide,
+  moduleId,
   onVideoProgress,
   videoResumeAt,
 }: SlideViewerProps) {
@@ -32,6 +42,7 @@ export default function SlideViewer({
       return (
         <SlideLayoutVideo
           slide={slide}
+          moduleId={moduleId}
           onVideoProgress={onVideoProgress}
           resumeAt={videoResumeAt}
         />

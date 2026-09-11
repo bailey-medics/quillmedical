@@ -293,6 +293,15 @@ export interface CompiledSlide {
   body?: string;
   /** YouTube video ID for video slides */
   youtubeId?: string;
+  /**
+   * Filename of a hosted video, resolved by the API from the MDX `ref`.
+   *
+   * A filename rather than a URL: the full address is composed from the
+   * `base_url` that `/video-access` returns, which differs between the
+   * CDN and the local development route. That split is what keeps this
+   * code identical in both environments.
+   */
+  videoSrc?: string;
   /** Video duration in seconds */
   durationSeconds?: number;
   /** Image source filename for image/figure slides */

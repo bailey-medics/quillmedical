@@ -508,6 +508,23 @@ def get_learning_content(
             return get_learning_image_url_gcs(bucket, module_id, filename)
         return f"/api/teaching/images/learning/{module_id}/{filename}"
 
+    def _resolve_video_filename(video_ref: str) -> str:
+        """Resolve an MDX ``ref`` to the filename under the module prefix.
+
+        A filename, not a URL: the player composes the full address from
+        the ``base_url`` that ``/video-access`` returns, which differs
+        between the CDN and the local development route. Splitting it
+        this way is what lets the frontend stay blind to the difference.
+
+        **Development convention, not the production model.** The plan's
+        media-link table does not exist yet, so the key maps to
+        ``<ref>.mp4`` by the filename convention the plan sanctions for
+        local work. When that table lands this becomes a lookup, and the
+        MDX, the API shape and the player all stay as they are — which
+        is the point of the ``ref`` indirection.
+        """
+        return f"{video_ref}.mp4"
+
     return {
         "module_id": module_id,
         "title": meta.get("title", module_id),
@@ -529,6 +546,11 @@ def get_learning_content(
                 "image_alt": s.figure_alt,
                 "image_caption": s.figure_caption,
                 "image_position": s.figure_position,
+                "video_src": (
+                    _resolve_video_filename(s.video_ref)
+                    if s.video_ref
+                    else None
+                ),
             }
             for s in slides
         ],
