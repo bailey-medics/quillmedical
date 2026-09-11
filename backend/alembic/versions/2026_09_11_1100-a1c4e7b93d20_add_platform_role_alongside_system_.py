@@ -21,7 +21,7 @@ The contract half, dropping `system_permissions`, is a separate migration
 once every caller has moved.
 
 Revision ID: a1c4e7b93d20
-Revises: 4937cb81e5ae
+Revises: 9892b8ab6290
 Create Date: 2026-09-11 11:00:00.000000
 
 """
@@ -34,7 +34,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "a1c4e7b93d20"
-down_revision: str | None = "4937cb81e5ae"
+down_revision: str | None = "9892b8ab6290"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
