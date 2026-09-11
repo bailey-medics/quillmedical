@@ -63,6 +63,10 @@ export default function AdminPage() {
       ? state.user.clinical_services_enabled !== false
       : true;
 
+  // Whether this deployment has FHIR and EHRbase at all. Same test as
+  // LoginPage and UserInfoUpdatePage rather than a new one.
+  const isClinical = import.meta.env.VITE_CLINICAL_SERVICES_ENABLED !== "false";
+
   // Extract system permissions from auth state
   const userPermissions: SystemPermission =
     state.status === "authenticated"
@@ -117,6 +121,19 @@ export default function AdminPage() {
     let cancelled = false;
 
     async function fetchPatients() {
+      // Nothing to wait for where there is no FHIR. The retry below
+      // exists because FHIR takes time to come up, so a failure is
+      // normally "not ready yet" — but in a teaching deployment
+      // /patients answers 503 permanently, and the catch cannot tell
+      // the two apart. One admin tab left open then polls every five
+      // seconds for as long as it is open, which is exactly what
+      // happened: 127 deliberate 503s logged at ERROR in thirteen
+      // minutes.
+      if (!isClinical) {
+        setPatientsLoading(false);
+        return;
+      }
+
       // Only fetch if user is authenticated and has admin permissions
       if (
         state.status !== "authenticated" ||
@@ -171,7 +188,7 @@ export default function AdminPage() {
     return () => {
       cancelled = true;
     };
-  }, [state.status, userPermissions]);
+  }, [state.status, userPermissions, isClinical]);
 
   // Fetch organisations
   useEffect(() => {
