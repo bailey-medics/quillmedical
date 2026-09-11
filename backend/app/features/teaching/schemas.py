@@ -56,6 +56,11 @@ class LearningSlideOut(BaseModel):
     image_alt: str | None = None
     image_caption: str | None = None
     image_position: str | None = None
+    #: Resolved from the MDX ``ref`` at request time, never the raw key:
+    #: the player composes a URL from the video-access ``base_url`` plus
+    #: this filename, and should not have to resolve anything itself.
+    #: Optional, so the API change is additive.
+    video_src: str | None = None
 
 
 class LearningModuleOut(BaseModel):

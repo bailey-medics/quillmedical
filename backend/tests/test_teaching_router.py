@@ -1722,6 +1722,46 @@ class TestAdminBanks:
         assert data["coordinator_email_template"] is None
 
 
+class TestVideoSrcResolution:
+    """The API exposes a resolved filename, never the raw MDX key.
+
+    The player composes its URL from the ``base_url`` that
+    ``/video-access`` returns plus this filename, so the frontend never
+    has to know how a ``ref`` maps to a file.
+    """
+
+    def test_schema_exposes_video_src_optionally(self) -> None:
+        """Optional, so the API change is additive.
+
+        A stale client that has never heard of the field keeps working,
+        per the expand-contract rule in the backend conventions.
+        """
+        from app.features.teaching.schemas import LearningSlideOut
+
+        field = LearningSlideOut.model_fields["video_src"]
+        assert field.default is None
+        assert not field.is_required()
+
+    def test_a_slide_without_video_resolves_to_none(self) -> None:
+        from app.features.teaching.mdx_parser import parse_mdx_to_slides
+
+        slides = parse_mdx_to_slides("## Plain\n\nJust prose.\n")
+        assert slides[0].video_ref is None
+
+    def test_the_ref_reaches_the_parser_unchanged(self) -> None:
+        """The key is carried verbatim; resolution happens later.
+
+        This is what lets the media-link table replace the development
+        filename convention without the MDX or the API shape changing.
+        """
+        from app.features.teaching.mdx_parser import parse_mdx_to_slides
+
+        content = '## Lecture\n\n<Video ref="patient-experience" />\n'
+        slides = parse_mdx_to_slides(content)
+        assert slides[0].video_ref == "patient-experience"
+        assert slides[0].layout == "video-slide"
+
+
 class TestLearningContentGate:
     """A user reads learning content only for their own organisations.
 

@@ -927,7 +927,7 @@ introduce an unknown component.
       human-readable error strings and is wired into the content validator
       (`tooling/validate.py:998`) and the merge gate. Add the both-tags check
       there, as another error string. No new error convention, and no `raise`.
-- [ ] Add the resolved media fields to `LearningSlideOut` in
+- [x] Add the resolved media fields to `LearningSlideOut` in
       `backend/app/features/teaching/schemas.py:44`, as optional, so the API
       change is additive per the backend rules. **[revised 2026-09-09]** The
       endpoint returns what the player needs — the asset's filename under the
@@ -939,6 +939,14 @@ introduce an unknown component.
       rather than breaking it — `video_*` on both sides, since there is no
       pre-existing alias to preserve, but do not let the inconsistency surprise
       you when mapping between the two.
+      **[done 2026-09-10, with one deferral]** `video_src` is exposed and
+      optional, so the change is additive. Only `video_src` landed —
+      poster and captions wait for Phase 6, which is what produces them.
+      Resolution is currently the development filename convention
+      (`<ref>.mp4`) rather than a link lookup, because the media-link
+      table does not exist yet. The indirection is what makes that
+      swappable: when the table lands, only `_resolve_video_filename`
+      changes, and the MDX, the API shape and the player all stay put.
 - [ ] Extend validation so a module referencing a `video_src` that does not exist
       in the processed bucket cannot be promoted. **[revised 2026-09-09]** The
       helper this was waiting on has landed: `tooling/validate.py` now validates
