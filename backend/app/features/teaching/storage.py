@@ -734,3 +734,33 @@ def create_resumable_upload_url(
             access_token=credentials.token,
         )
     )
+
+
+def delete_media_object(
+    bucket_name: str,
+    org_id: int,
+    module_id: str,
+    asset_id: str,
+) -> None:
+    """Remove one uploaded asset from the source bucket.
+
+    Built on ``media_object_path`` so the same validation guards the
+    delete path as guards the write path: a traversal here would let a
+    caller reach another organisation's object.
+
+    A missing object is not an error. The link row is the record the
+    admin acts on, and an object already gone — a half-finished upload,
+    or a second delete — should still let the row be cleared rather
+    than leaving it permanently undeletable.
+    """
+    from google.api_core import exceptions as gcs_exceptions
+    from google.cloud import storage
+
+    path = media_object_path(org_id, module_id, asset_id)
+
+    client = storage.Client()
+    bucket = client.bucket(bucket_name)
+    try:
+        bucket.blob(path).delete()
+    except gcs_exceptions.NotFound:
+        return

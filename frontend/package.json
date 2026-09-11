@@ -39,6 +39,7 @@
     "@fontsource-variable/atkinson-hyperlegible-next": "^5.2.6",
     "@fontsource-variable/cormorant-garamond": "^5.3.0",
     "@mantine/core": "^9.0.0",
+    "@mantine/dropzone": "9.6.0",
     "@mantine/hooks": "^9.0.0",
     "@mantine/notifications": "^9.0.0",
     "@tabler/icons-react": "^3.34.1",

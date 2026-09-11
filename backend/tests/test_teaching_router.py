@@ -2867,3 +2867,152 @@ class TestIncompleteModulesAreNotServed:
         resp = test_client.get("/api/teaching/modules/test-bank/learning")
 
         assert resp.status_code == 404
+
+
+class TestMediaAssetDeletion:
+    """Removing an upload and its link. The destructive one.
+
+    Safe to do plainly, with no separate replace action, because an
+    incomplete module is not served at all: deleting reverts the
+    reference to missing and the module goes quiet, rather than leaving
+    a learner at a broken player.
+    """
+
+    def _login(self, test_client) -> dict[str, str]:
+        return _login(test_client, "testeducator", "Educator123!")
+
+    def _url(self, asset: str = "asset-1") -> str:
+        return f"/api/teaching/admin/modules/test-bank/media/{asset}"
+
+    def _existing(self, db, org_id: int, key: str, asset: str) -> None:
+        db.add(
+            ModuleMediaLink(
+                organisation_id=org_id,
+                question_bank_id="test-bank",
+                media_key=key,
+                asset_id=asset,
+                original_filename=f"{asset}.mp4",
+                content_type="video/mp4",
+                size_bytes=1024,
+                uploaded_at=datetime.now(UTC),
+            )
+        )
+        db.flush()
+
+    def _bucket(self, monkeypatch, name: str | None = "src-bucket") -> None:
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_VIDEOS_SOURCE_BUCKET", name
+        )
+
+    def test_deleting_removes_the_link_and_the_object(
+        self, test_client, db_session, monkeypatch
+    ):
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        self._existing(db_session, org.id, "lecture-01", "asset-1")
+        db_session.commit()
+        self._bucket(monkeypatch)
+
+        deleted: list[tuple] = []
+        monkeypatch.setattr(
+            "app.features.teaching.storage.delete_media_object",
+            lambda *a: deleted.append(a),
+        )
+
+        resp = test_client.delete(
+            self._url(), headers=self._login(test_client)
+        )
+
+        assert resp.status_code == 204
+        assert deleted == [("src-bucket", org.id, "test-bank", "asset-1")]
+        assert (
+            db_session.query(ModuleMediaLink)
+            .filter_by(asset_id="asset-1")
+            .count()
+            == 0
+        )
+
+    def test_another_organisations_asset_is_404(
+        self, test_client, db_session, monkeypatch
+    ):
+        """Not found, not forbidden.
+
+        Whether another trust holds an asset is not this caller's to
+        learn, so the refusal matches every other one here.
+        """
+        owner = _make_teaching_org(db_session)
+        self._existing(db_session, owner.id, "lecture-01", "asset-1")
+
+        caller = _make_teaching_org(db_session)
+        _make_educator(db_session, caller)
+        db_session.commit()
+        self._bucket(monkeypatch)
+
+        resp = test_client.delete(
+            self._url(), headers=self._login(test_client)
+        )
+
+        assert resp.status_code == 404
+
+    def test_an_unknown_asset_is_404(
+        self, test_client, db_session, monkeypatch
+    ):
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        db_session.commit()
+        self._bucket(monkeypatch)
+
+        resp = test_client.delete(
+            self._url("no-such-asset"), headers=self._login(test_client)
+        )
+
+        assert resp.status_code == 404
+
+    def test_deletion_is_refused_without_a_source_bucket(
+        self, test_client, db_session, monkeypatch
+    ):
+        """The development answer, rather than a 500.
+
+        Checked before the row is touched, so a misconfigured
+        deployment cannot drop a link it has no way to unpick.
+        """
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        self._existing(db_session, org.id, "lecture-01", "asset-1")
+        db_session.commit()
+        self._bucket(monkeypatch, None)
+
+        resp = test_client.delete(
+            self._url(), headers=self._login(test_client)
+        )
+
+        assert resp.status_code == 503
+        assert (
+            db_session.query(ModuleMediaLink)
+            .filter_by(asset_id="asset-1")
+            .count()
+            == 1
+        )
+
+    def test_unlinking_still_reaches_the_link_route(
+        self, test_client, db_session
+    ):
+        """The sibling routes must not swallow one another.
+
+        ``/media/{asset_id}`` and ``/media/{media_key}/link`` differ
+        only by a trailing segment, so a DELETE to the latter must
+        still detach rather than delete the file.
+        """
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        self._existing(db_session, org.id, "lecture-01", "asset-1")
+        db_session.commit()
+
+        resp = test_client.delete(
+            "/api/teaching/admin/modules/test-bank/media/lecture-01/link",
+            headers=self._login(test_client),
+        )
+
+        # Detached, not deleted: no source bucket is configured here, so
+        # a delete would have failed with 503 rather than succeeded.
+        assert resp.status_code == 204

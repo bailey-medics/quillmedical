@@ -1117,7 +1117,7 @@ content calls for it.
       displaced asset stays in the bucket and reappears as unattached.
       Detaching another organisation's link is a 404, not a 403, so a
       caller cannot learn whether they have one.
-- [ ] `DELETE .../media/{asset_id}` — remove an uploaded asset and its link.
+- [x] `DELETE .../media/{asset_id}` — remove an uploaded asset and its link.
       This is the destructive one: confirm in the UI, log it with actor and
       module, and refuse when the caller's organisation does not own the asset.
 
