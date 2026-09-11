@@ -1799,12 +1799,23 @@ three does not invalidate unit one.
       than stripped**: sanitising would change what the record says
       about a named person, silently, and a caller passing one has a bug
       worth surfacing. Without it a value could forge a second trailer.
-- [ ] Implement `certificates.py`, `logbook.py`, `reflections.py` and
-      `cpd.py`: create, amend and remove self-declared evidence, each
-      as one validated write and one commit. All four are editable by
-      the holder, unlike a sign-off. Reflections are holder-only, not
+- [x] Implement create, amend and remove for self-declared evidence,
+      each as one validated write and one commit. All four are editable
+      by the holder, unlike a sign-off. Reflections are holder-only, not
       readable by organisation admins.
-- [ ] Implement `index.py`: regenerate `competencies.yaml` on every
+      - Landed as **one `records.py`** rather than four modules. The
+        four kinds differ only in where they are filed and what they
+        validate against; splitting them would have meant four copies of
+        the same write-and-rebuild path, which is exactly where two of
+        them would eventually drift apart.
+      - Added `serialise.py`, which nothing in the plan called for
+        because nothing in the repository wrote YAML before. It is
+        deliberately the opposite of the hashing module's canonical
+        form: keys keep the order the model declares, lists indent,
+        multi-line text becomes a readable block, and unset optionals
+        are dropped. One form is for people, the other for
+        fingerprinting.
+- [x] Implement `index.py`: regenerate `competencies.yaml` on every
       write from the sign-off folders, the logbook and the
       certificates, since the index carries a `logbook_entries` count
       and the certificates relating to each competency. Includes the
@@ -1812,6 +1823,18 @@ three does not invalidate unit one.
       with `-2` on a same-day clash, write-time filenames for logbook
       and CPD entries with a bump to the next second — and a self-heal
       that rebuilds stale references.
+      - **The index is written in the same commit as the record it
+        summarises**, which needed a read-only overlay over the store so
+        the rebuild sees the passport as it will be rather than as it
+        is. Committing the records first and the index second would
+        leave a commit in history whose summary disagrees with its own
+        records — the precise state the "directories win" rule exists to
+        prevent. Pinned by a test that counts commits.
+      - The self-heal is not a repair step but a consequence: nothing
+        writes an index entry by hand, so there is no code path that
+        could produce a disagreement and leave it. A test tampers with
+        the index directly and confirms the next ordinary write
+        overwrites it.
 - [x] Implement content hashing against the contributing-field list,
       with the canonical form defined in the schema rather than in the
       hashing function. Tests: editing a comment or a display label

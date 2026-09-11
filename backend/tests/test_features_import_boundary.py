@@ -76,6 +76,9 @@ def _import_in_clean_subprocess(
         "app.features.passport.commits",
         "app.features.passport.store",
         "app.features.passport.hashing",
+        "app.features.passport.serialise",
+        "app.features.passport.index",
+        "app.features.passport.records",
     ],
 )
 def test_import_needs_no_secrets(module: str) -> None:
@@ -109,6 +112,9 @@ def test_import_needs_no_secrets(module: str) -> None:
         "app.features.passport.commits",
         "app.features.passport.store",
         "app.features.passport.hashing",
+        "app.features.passport.serialise",
+        "app.features.passport.index",
+        "app.features.passport.records",
     ],
 )
 def test_import_pulls_in_nothing_heavy(module: str) -> None:
