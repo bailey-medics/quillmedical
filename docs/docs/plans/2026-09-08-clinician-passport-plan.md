@@ -1770,7 +1770,7 @@ three does not invalidate unit one.
   lock. Last because it is the only unit that needs Postgres, and
   because it composes everything above.
 
-- [ ] Create `backend/app/features/passport/` with `paths.py` (typed
+- [x] Create `backend/app/features/passport/` with `paths.py` (typed
       relative paths, no I/O, after VPR's `crates/core/src/paths/`),
       `ids.py` (timestamp id generator with monotonic rule),
       `schemas.py` (Pydantic models for `manifest.yaml`,
@@ -1778,6 +1778,11 @@ three does not invalidate unit one.
       reflections and CPD), and
       `definitions.py` (reads the passport fields from
       `shared/competency-definitions/`).
+      - Landed in `fb80c6d2`, "add the record model and the on-disk
+        layout", which is this unit under another name. The box went
+        unticked at the time; noted here rather than silently corrected,
+        because a plan that quietly gains ticks is worth less than one
+        that says when it was wrong.
 - [x] Implement `store.py` with the `PassportStore` interface and the
       local filesystem backend, including `init_and_commit` with
       whole-directory cleanup on failure and `write_and_commit_files`
@@ -1948,19 +1953,75 @@ three does not invalidate unit one.
 
 ## Phase 2: storage on Cloud Storage
 
-- [ ] Implement the GCS backend of `PassportStore`: bundle download,
+- [x] Implement the GCS backend of `PassportStore`: bundle download,
       unbundle to a temporary directory, commit, re-bundle, upload with
       `if-generation-match`; blobs uploaded beside the bundle.
-- [ ] Add `PASSPORT_STORAGE_BACKEND` and `PASSPORT_GCS_BUCKET` to
-      `backend/app/config.py` following the teaching storage settings.
+      - **It delegates the commit to `LocalPassportStore` rather than
+        reimplementing it.** One write one commit, rollback, the rewrite
+        refusal and the HEAD assertion are then written once and
+        inherited, so the two backends cannot drift on the rules that
+        matter. What the bucket adds is the part it genuinely does
+        differently: compare-and-swap on the object generation, and
+        `if_generation_match=0` so creation refuses to clobber an
+        existing passport.
+      - **Bundling shells out to `git`, against the plan's own "no
+        shelling out" rule and `store.py`'s "no binary in the image".**
+        libgit2 has no bundle support — pygit2 1.20 exposes
+        `PackBuilder` and nothing that reads or writes the bundle
+        format — so there is no in-process route to the one format
+        holding a full history as a single object. The binary is already
+        in the backend image for the teaching version-lock tests, and
+        the calls are fixed argument lists with no shell. Writing a
+        bundle by hand to avoid a subprocess would mean implementing a
+        git format, which is the worse trade.
+      - **The bucket is a constructor argument, not a settings read.**
+        `test_features_import_boundary.py` pins that every module under
+        `app.features.passport` imports without `app.config`, so a
+        passport on disk stays readable by tooling with no application
+        around it. The composition point lives outside the package, in
+        `app/passport_storage.py`.
+- [x] Add `PASSPORT_GCS_BUCKET` to `backend/app/config.py`, with
+      `PASSPORT_LOCAL_ROOT` for development, and the composition point
+      in `app/passport_storage.py` that chooses between them.
+      - **`PASSPORT_STORAGE_BACKEND` was deliberately not added**, which
+        is a departure from what this task originally said. The teaching
+        settings it told us to follow turned out to carry the trap:
+        `TEACHING_STORAGE_BACKEND` is set in `compose.dev.yml`,
+        `compose.ci.yml` and `infra/main.tf` and read by nothing, since
+        `get_storage_backend()` branches on whether the bucket is set.
+        So a deployment can set it to `local` and still write to the
+        bucket. A switch that looks like one and is not is worse than no
+        switch, and it is the same species as the `esbuild.keepNames`
+        mistake Phase 6 warns about: a configuration option that does
+        nothing looks exactly like one that costs nothing. The bucket
+        name alone decides, and a test asserts no second setting exists.
+      - The stores are cached and the blob store always matches the
+        passport store, because a record names evidence by hash — a
+        passport in a bucket whose blobs are on a disk is a set of
+        broken references.
 - [ ] Add the bucket and the Cloud Run service account IAM binding to
       Terraform, following the teaching bucket and the IAM note in
       `docs/docs/infrastructure/gcp.md`. Enable object versioning on
       the bucket: it is a one-line setting and it is what preserves a
       replaced bundle's predecessors, which is the backstop for a
       history rewrite.
-- [ ] Tests against a fake GCS client covering generation mismatch,
+- [x] Tests against a fake GCS client covering generation mismatch,
       partial upload failure and re-open after failure.
+      - **The fake implements the generation rule for real** rather than
+        being a mock: every upload bumps the generation, and a mismatched
+        `if_generation_match` raises the 412 the library raises. A
+        `MagicMock` would accept any precondition and report success,
+        which is precisely the bug these tests exist to catch.
+      - Reaching the mismatch needed the fake to move the object
+        _between_ a write's download and its upload. Restoring older
+        bytes under the current generation does not test it: the store
+        re-downloads inside the write, so it would read the newer
+        generation and its precondition would match.
+      - The repositories underneath are real git repositories bundled
+        with real `git`, including a test proving the full history
+        survives the round trip rather than just the tip — a bundle
+        carrying only the latest state would pass every other test here
+        and quietly destroy the audit trail.
 
 ## Phase 3: API
 
