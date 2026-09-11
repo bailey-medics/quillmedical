@@ -163,3 +163,34 @@ def get_media_inventory(
         # may well return.
         unattached=[row for row in rows if row.media_key not in referenced],
     )
+
+
+def module_media_is_complete(
+    db: Session,
+    organisation_id: int,
+    module_id: str,
+) -> bool:
+    """Whether every ``<Video ref>`` in a module has a file behind it.
+
+    The learner gate. A module whose content references media nothing
+    has uploaded is not served at all, rather than served with a slide
+    the player cannot fill.
+
+    Checked continuously, not at the ``draft`` -> ``live`` transition: a
+    module can go live complete and lose a file afterwards, and the
+    version that only checked the transition would keep serving it.
+
+    Per organisation, because the links are. The same module can be
+    complete for one organisation and incomplete for another, and is
+    therefore visible to one organisation's learners and hidden from
+    another's.
+
+    A module referencing no media is complete. That is most modules, and
+    it is what keeps this gate invisible to content that never had video.
+    """
+    keys = get_referenced_media_keys(module_id)
+    if not keys:
+        return True
+
+    inventory = get_media_inventory(db, organisation_id, module_id, keys)
+    return inventory.is_complete

@@ -1082,7 +1082,7 @@ content calls for it.
 
 ### The endpoints
 
-- [ ] `POST /api/admin/teaching/modules/{module_id}/media/upload-url` —
+- [x] `POST /api/admin/teaching/modules/{module_id}/media/upload-url` —
       admin/superadmin. Returns a GCS resumable upload URL for
       `source-bucket/{org_id}/{module_id}/{asset_id}`, the asset id generated
       server-side. The uploaded filename never reaches the object path, so it
@@ -1123,18 +1123,18 @@ content calls for it.
 
 ### Availability gate
 
-- [ ] **A module with any unlinked media reference is not served to learners**,
+- [x] **A module with any unlinked media reference is not served to learners**,
       continuously — not only at the moment it goes live. The earlier version
       blocked the `draft` → `live` transition, which misses the case where a
       module goes live complete and a video is deleted afterwards.
-- [ ] Compute it beside `has_learning_content`, which is already resolved per
+- [x] Compute it beside `has_learning_content`, which is already resolved per
       module at `router.py:310` and `router.py:382`.
-- [ ] **Hide** incomplete modules from the learner's module list rather than
+- [x] **Hide** incomplete modules from the learner's module list rather than
       showing them disabled. A learner who can see a module they cannot open
       raises a support question the admin cannot answer from the learner's side.
-- [ ] Direct access to `/modules/{id}/learning` for an incomplete module returns
+- [x] Direct access to `/modules/{id}/learning` for an incomplete module returns
       404, matching every other refusal in Phase 2a so the shape stays uniform.
-- [ ] The gate is **per organisation**, because the links are. The same module
+- [x] The gate is **per organisation**, because the links are. The same module
       can be complete for one organisation and not another, and therefore visible
       to one organisation's learners and hidden from another's.
 - [ ] Surface incompleteness where an admin will actually see it — the admin

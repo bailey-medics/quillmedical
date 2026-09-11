@@ -474,6 +474,7 @@ def get_learning_content(
         load_module_yaml,
         parse_mdx_to_slides,
     )
+    from app.features.teaching.media import module_media_is_complete
     from app.features.teaching.storage import (
         download_learning_mdx_from_gcs,
         download_module_yaml_from_gcs,
@@ -481,7 +482,13 @@ def get_learning_content(
 
     # Before any bucket or filesystem read, so an unauthorised caller
     # cannot infer a module's existence from an error or from timing.
-    resolve_visible_module(user, db, module_id)
+    org_id = resolve_visible_module(user, db, module_id)
+
+    # A module missing any of its media is not served at all. Same 404
+    # as every other refusal here, so "incomplete" is indistinguishable
+    # from "not yours" and "no such module" from outside.
+    if not module_media_is_complete(db, org_id, module_id):
+        raise HTTPException(404, "Module not found")
 
     bucket = settings.TEACHING_GCS_BUCKET
     base_path = settings.TEACHING_QUESTION_BANK_PATH
@@ -592,6 +599,7 @@ def list_learning_modules(
         load_module_yaml,
         parse_mdx_to_slides,
     )
+    from app.features.teaching.media import module_media_is_complete
     from app.features.teaching.storage import (
         discover_local_banks,
         download_learning_mdx_from_gcs,
@@ -612,17 +620,25 @@ def list_learning_modules(
         # No organisation, nothing visible. Not an error for a list.
         return []
 
-    visible_bank_ids = {
-        status.question_bank_id
-        for status in db.execute(
+    # Which organisation makes each bank visible, not merely whether one
+    # does. Completeness is per organisation, so the media check below
+    # has to be asked of the same organisation that grants the view.
+    visible_org_by_bank: dict[str, int] = {}
+    for status in (
+        db.execute(
             select(QuestionBankOrgStatus).where(
                 QuestionBankOrgStatus.organisation_id.in_(org_ids),
             )
         )
         .scalars()
         .all()
-        if status.is_live
-    }
+    ):
+        if status.is_live:
+            visible_org_by_bank.setdefault(
+                status.question_bank_id, int(status.organisation_id)
+            )
+
+    visible_bank_ids = set(visible_org_by_bank)
     if not visible_bank_ids:
         return []
 
@@ -641,6 +657,13 @@ def list_learning_modules(
 
     for bank_id in bank_ids:
         if bank_id not in visible_bank_ids:
+            continue
+        # Hidden, not shown disabled. A learner who can see a module
+        # they cannot open raises a support question the admin cannot
+        # answer from the learner's side.
+        if not module_media_is_complete(
+            db, visible_org_by_bank[bank_id], bank_id
+        ):
             continue
         if bucket:
             meta = download_module_yaml_from_gcs(bucket, bank_id) or {}
@@ -711,11 +734,18 @@ def grant_video_access(
     organisation has live, one 404 at a time.
     """
     from app.config import settings
+    from app.features.teaching.media import module_media_is_complete
 
     # One helper, shared with the learning content routes, so the video
     # gate and the content gate cannot drift apart. Raises 404 for "not
     # yours", "not live" and "no such module" alike.
     org_id = resolve_visible_module(user, db, module_id)
+
+    # The content gate hides an incomplete module, so minting a cookie
+    # for one would grant access to material the learner cannot reach.
+    # Refused the same way, for the same reason.
+    if not module_media_is_complete(db, org_id, module_id):
+        raise HTTPException(404, "Module not found")
 
     base_url = settings.TEACHING_VIDEO_BASE_URL
     key_name = settings.TEACHING_VIDEO_SIGNING_KEY_NAME
