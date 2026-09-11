@@ -76,27 +76,31 @@ export default function VideoPlayer({
   return (
     <Box className={classes.wrapper}>
       <Suspense fallback={null}>
-        <ReactPlayer
-          ref={playerRef}
-          src={src}
-          width="100%"
-          height="100%"
-          controls
-          poster={posterUrl}
-          onCanPlay={handleReady}
-          onTimeUpdate={handleTimeUpdate}
-        >
-          {/*
-            react-player v3 forwards children to the underlying video
-            element, so a WebVTT track works without dropping to a
-            native <video> — which the plan flagged as the fallback if
-            it could not. Captions are a WCAG 2.1 AA requirement, so
-            this was the deciding question for the component's shape.
+        {/*
+          react-player v3 passes `children` straight into the underlying
+          custom element, so a WebVTT <track> works without dropping to a
+          native <video> — the fallback the plan flagged if it could not.
+          Captions are a WCAG 2.1 AA requirement.
 
-            YouTube carries its own captions, so a track is only added
-            for hosted video.
-          */}
-          {!youtubeId && captionsUrl && (
+          Two forms rather than one with a conditional child: an inline
+          `{cond && ...}` still hands the element a children argument —
+          `false`, plus any JSX comment and whitespace around it — and
+          the YouTube custom element builds its own DOM, so anything
+          passed in competes with it. Handing it no children at all is
+          the difference between a YouTube slide playing and rendering
+          blank. YouTube carries its own captions in any case.
+        */}
+        {!youtubeId && captionsUrl ? (
+          <ReactPlayer
+            ref={playerRef}
+            src={src}
+            width="100%"
+            height="100%"
+            controls
+            poster={posterUrl}
+            onCanPlay={handleReady}
+            onTimeUpdate={handleTimeUpdate}
+          >
             <track
               kind="captions"
               src={captionsUrl}
@@ -104,8 +108,19 @@ export default function VideoPlayer({
               label="English"
               default
             />
-          )}
-        </ReactPlayer>
+          </ReactPlayer>
+        ) : (
+          <ReactPlayer
+            ref={playerRef}
+            src={src}
+            width="100%"
+            height="100%"
+            controls
+            poster={posterUrl}
+            onCanPlay={handleReady}
+            onTimeUpdate={handleTimeUpdate}
+          />
+        )}
       </Suspense>
     </Box>
   );

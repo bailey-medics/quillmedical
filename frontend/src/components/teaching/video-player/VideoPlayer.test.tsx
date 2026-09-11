@@ -109,6 +109,21 @@ describe("VideoPlayer", () => {
     expect(track).toHaveAttribute("kind", "captions");
   });
 
+  it("hands YouTube no children at all", async () => {
+    // Not the same as "no track". react-player passes `children`
+    // straight into the underlying custom element, and the YouTube one
+    // builds its own DOM — so even a `false` from a conditional, or the
+    // whitespace around a JSX comment, is enough to render a blank
+    // player. This broke slide 5 in the learning centre; the assertion
+    // is on emptiness rather than on the absence of a <track>.
+    const { findByTestId } = renderWithMantine(
+      <VideoPlayer youtubeId="abc123" captionsUrl="https://x.test/a.vtt" />,
+    );
+
+    const player = await findByTestId("react-player");
+    expect(player).toBeEmptyDOMElement();
+  });
+
   it("adds no caption track for YouTube, which carries its own", async () => {
     const { container, findByTestId } = renderWithMantine(
       <VideoPlayer youtubeId="abc123" captionsUrl="https://x.test/a.vtt" />,

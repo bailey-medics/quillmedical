@@ -12,7 +12,8 @@ import TeachingLayout from "@/components/layouts/TeachingLayout";
 import PageHeader from "@components/typography/PageHeader";
 import ActionCard from "@/components/action-card/ActionCard";
 import { BodyText } from "@/components/typography";
-import { IconBook } from "@/components/icons/appIcons";
+import { IconAlertCircle, IconBook } from "@/components/icons/appIcons";
+import { StateMessage } from "@/components/message-cards";
 import type {
   LearningModule,
   LearnerProgress,
@@ -51,13 +52,24 @@ function getButtonLabel(progress: LearnerProgress | undefined): string {
 export default function LearningDashboard() {
   const [modules, setModules] = useState<LearningModule[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   // Phase 1: stub progress. Phase 2 will fetch from API
   const progress = STUB_PROGRESS;
 
   useEffect(() => {
-    getModules()
-      .then(setModules)
-      .finally(() => setLoading(false));
+    async function load() {
+      try {
+        setModules(await getModules());
+      } catch (err) {
+        // api.get throws, and without this the page sat on skeletons
+        // for ever with an unhandled rejection in the console — which
+        // to a learner is indistinguishable from a slow network.
+        setError(err instanceof Error ? err.message : "Failed to load modules");
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
   }, []);
 
   if (loading) {
@@ -70,6 +82,19 @@ export default function LearningDashboard() {
             <Skeleton height={160} />
           </SimpleGrid>
         </Stack>
+      </TeachingLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <TeachingLayout>
+        <StateMessage
+          icon={<IconAlertCircle />}
+          title="Error loading modules"
+          description={error}
+          colour="alert"
+        />
       </TeachingLayout>
     );
   }
