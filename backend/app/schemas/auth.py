@@ -177,6 +177,7 @@ class MeOut(BaseModel):
         email: User's email address.
         roles: List of assigned role names.
         system_permissions: User's system permission level.
+        platform_role: Whether this person operates Quill itself.
         totp_enabled: Whether 2FA is active.
         enabled_features: Features enabled on any of the user's orgs.
         clinical_services_enabled: Whether clinical services are enabled.
@@ -189,6 +190,10 @@ class MeOut(BaseModel):
     email: str
     roles: list[str]
     system_permissions: str
+    # Served alongside ``system_permissions`` while callers migrate; see
+    # docs/docs/plans/2026-09-09-platform-role-plan.md. Additive, so a
+    # stale client is unaffected.
+    platform_role: str
     totp_enabled: bool
     enabled_features: list[str]
     clinical_services_enabled: bool

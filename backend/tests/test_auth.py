@@ -228,6 +228,36 @@ class TestAuthMe:
         data = response.json()
         assert "manage_teaching_content" in data["competencies"]
 
+    def test_auth_me_includes_platform_role(
+        self, authenticated_client: TestClient, test_user: User
+    ):
+        """Test /auth/me exposes platform_role for the frontend guard."""
+        response = authenticated_client.get("/api/auth/me")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["platform_role"] == "member"
+
+    def test_auth_me_platform_role_reports_an_operator(
+        self,
+        authenticated_client: TestClient,
+        test_user: User,
+        db_session: Session,
+    ):
+        """Test /auth/me reports platform_role independently.
+
+        The field must come from the column rather than being derived
+        from ``system_permissions``, or the migration would look
+        finished while the two could still disagree.
+        """
+        test_user.platform_role = "superadmin"
+        db_session.commit()
+
+        response = authenticated_client.get("/api/auth/me")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["platform_role"] == "superadmin"
+        assert data["system_permissions"] != "superadmin"
+
     def test_auth_me_unauthenticated(self, test_client: TestClient):
         """Test /auth/me without authentication."""
         response = test_client.get("/api/auth/me")

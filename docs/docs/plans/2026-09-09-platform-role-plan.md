@@ -83,7 +83,7 @@ does not, and removing the ladder removes the suggestion.
         They now say `capacity="staff"`. Worth noting the default did its job: it did not
         break anything quietly, it made an unstated assumption visible the moment something
         started reading the column.
-- [ ] **Give the admin gates a competency.** `manage_users` already exists in
+- [x] **Give the admin gates a competency.** `manage_users` already exists in
       `competencies.yaml`, and `_require_own_org` is already the place check. Each admin
       route becomes that pair. Do it in batches by area — organisations, sites, users,
       teaching — not in one commit.
@@ -188,6 +188,42 @@ does not, and removing the ladder removes the suggestion.
         - **Two tests pin the pair**, and each fails for a different deletion: rank without
           the competency is refused 403, and the competency without a shared organisation
           is refused 404. Neither half alone is the gate.
+      - **Batch 2 of 4 done: the ten site routes.** `list_sites`, `create_site`,
+        `get_site`, `update_site`, `toggle_site_active`, `delete_site`, `link_site_to_org`,
+        `unlink_site_from_org`, `add_site_staff` and `remove_site_staff`. 28 string gates
+        down to 18.
+        - All ten already had a place check — `_require_site_in_own_org` or
+          `_require_own_org`, and `list_sites` filters rather than gates, which is right
+          for a listing — so this batch was the swap the step originally described.
+        - **Two superadmin comparisons inside route bodies are deliberately left.**
+          `list_sites` skips its filter for a superadmin and `get_site` hides superadmin
+          staff from an admin's view. Neither is a gate; both go when the column does.
+      - **Batch 3 of 4 done: eight of the nine user routes.**
+        `create_user_with_cbac`, `update_user`, `deactivate_user`, `reactivate_user`,
+        `send_invite_email`, `list_users`, `get_user` and `link_patient_to_user`. 18 string
+        gates down to 10.
+        - **`update_my_competencies` is deliberately not swapped**, and wants a decision
+          before it is. It is self-scoped by construction — `UpdateCompetenciesRequest`
+          carries no target user — so there is no place check to pair a competency with,
+          and gating it on `manage_users` would make the escalation self-referential:
+          holding the competency would be what lets a holder keep granting it to
+          themselves. Today the rank check is the only thing standing between an admin and
+          an unbounded grant. Leaving it on the rank keeps that visible until the
+          end-to-end work settles whether the route should exist at all.
+      - **Batch 4 of 4 done: the nine organisation routes.** `list_organisations`,
+        `get_organisation`, `update_organisation`, the four staff and patient membership
+        routes, `list_org_features` and `toggle_org_feature`. All nine already had
+        `get_user_org_ids` beside them.
+      - **Step complete: 30 of the 31 gates are competencies.** The one left is
+        `update_my_competencies`, on the rank deliberately — see the batch 3 note.
+        - **Two test helpers had no profession** and so took the column default of
+          `patient`: the `test_admin` fixture in `conftest.py` and `_make_admin` in
+          `test_organisation_features.py`. Both now carry `system_administrator`. Worth
+          expecting wherever a test builds an admin by hand.
+        - **One assertion tested the refusal's wording**, not its effect —
+          `test_get_organisations_forbidden` checked for "admin" in the detail. It now
+          checks for `manage_users`, which is the point of the change: the refusal names
+          what is missing rather than what someone is not.
       - **The twenty ready routes wait for the eleven.** They could go sooner, but
         splitting the batch by whether each route happened to be safe would leave a worse
         record than doing it in one pass once they are level.
@@ -353,9 +389,71 @@ does not, and removing the ladder removes the suggestion.
       one value meaning "not an operator", validated in code the way `SITE_CAPACITIES` is.
       - Autogenerate proposes drop-and-create for a rename. Write it by hand, as
         `site_member` had to be, and rename the auto-named constraints explicitly.
-- [ ] **Remove `default_system_permission` from `shared/base-professions.yaml`.** All 22
-      professions declare one — 17 `staff`, 3 `single-user`, 2 `admin` — and none of them
-      should default to being a Quill operator. Regenerate the frontend types.
+      - **235 references across five areas**, counted before starting: 74 in `backend/app`,
+        76 in tests, 63 in the frontend, 21 in scripts, 1 in a migration. Too large for one
+        reviewable change, so it runs as expand, migrate the callers, contract — the
+        sequence this plan already names.
+      - [x] **Expand: `platform_role` added alongside.** Column, `PLATFORM_ROLES`,
+            `validate_platform_role`, and a hand-written migration that backfills it.
+            Nothing reads it for authorisation yet and `system_permissions` is untouched,
+            so the two can disagree while callers move — pinned by a test, because a column
+            silently derived at read time would make the migration look finished when it
+            was not.
+            - **The backfill is not a copy.** Every row becomes `member` except those that
+              said `superadmin`. The other three levels described a relationship to a
+              place, and a place is not what this column records.
+            - **`member`, not an empty string or null**, so "not an operator" is a value
+              someone chose rather than the absence of one. Whether it should be nullable
+              instead was already an open question at the foot of this plan; this answers
+              it for now and can be revisited before the contract step.
+      - [ ] **Migrate the callers** — the 21 frontend `RequirePermission` guards, then the
+            backend reads. The gates are already competencies, so what remains is genuinely
+            about *operating Quill*, which should be a much smaller set than the raw count
+            suggests.
+            - **The guard counts include the component's own tests.** The tally of 21 —
+              13 `admin`, 4 `staff`, 4 `superadmin` — comes from grepping `level="..."`
+              across `.tsx`, and `RequirePermission.test.tsx` renders the guard to test
+              it. Real route call sites: **2** superadmin, both in `main.tsx`
+              (`organisations/new`, and the `teaching/modules` subtree). Re-count the
+              admin and staff figures the same way before sizing those batches.
+            - **`platform_role` reached the frontend nowhere**, so no guard could read it.
+              The expand step added the column but no response schema exposed it —
+              `MeOut`, `UserOut` and `UserSummaryItem` all carried only
+              `system_permissions`. Migrating any guard therefore starts with a backend
+              change, which is additive and needs no decision file.
+            - **The guard consults two fields while this runs.** `level="superadmin"`
+              reads `platform_role`; `staff` and `admin` still read `system_permissions`
+              until they become competency checks. Ugly but honest, and it is what
+              expand-migrate-contract looks like from inside.
+            - [x] **Superadmin guards migrated.** `platform_role` added to `MeOut` and to
+                  the frontend `User` type, and both route guards now ask it. A test pins
+                  a user who says `superadmin` in the old column and `member` in the new
+                  one: the guard must refuse them.
+            - [ ] **Five other places still test `system_permissions === "superadmin"`**
+                  and were deliberately left, since during expand the two columns agree:
+                  `SideNavContent.tsx`, `teaching/TeachingMainNav.tsx`, `LoginPage.tsx`,
+                  `UserInfoUpdatePage.tsx` and `AdminOrganisationsPage.tsx`. They decide
+                  what to _show_, not what to permit, so they are a tidy-up rather than a
+                  hole — but they must move before `system_permissions` is dropped.
+      - [ ] **Contract: drop `system_permissions`.** Breaking API change, three response
+            schemas, so it needs a decision file and the `api-breaking-change-review`
+            approval.
+- [ ] **Remove `default_system_permission` from `shared/base-professions.yaml`.** Now 24
+      professions declare one — the count has moved since this was written, with
+      `teaching_manager` and `superadmin_profession` added.
+      - **It has exactly one real consumer, and it is a feature.**
+        `UserInfoUpdatePage.tsx` reads it when creating a user: picking a profession
+        pre-fills the system permission field. The backend only *declares* the field in
+        `BaseProfessionEntry` and never reads it. So removing it is not tidying an unused
+        field — it removes a convenience from the create form, and something has to replace
+        it or the form loses a step.
+      - **What replaces it depends on the rename.** If `platform_role` ends up holding only
+        `superadmin` and its absence, then pre-filling it from a profession is close to
+        meaningless: the answer is "not an operator" for every profession but one. The
+        field stops being useful at the same moment the column narrows.
+      - **So this step should follow the rename, not precede it.** Doing it first would
+        mean designing a replacement for a form field that is about to change shape
+        anyway. The plan lists it before the rename; that ordering looks wrong.
 - [ ] **Delete `check_permission_level` and the ordered list.** A hierarchy of one is not a
       hierarchy. This is the step that makes the change irreversible in a good way: nothing
       can silently reintroduce a rung.
@@ -446,6 +544,9 @@ is no case to carve out, and no "public modules" branch to maintain.
 - **The frontend guard is used 21 times** — 13 `level="admin"`, 4 `level="staff"`,
   4 `level="superadmin"`. The admin and staff ones become competency checks, which the
   frontend already has hooks for (`useHasCompetency`).
+  - **This count is inflated by the guard's own test file**, found when migrating the
+    superadmin ones: only 2 of the 4 are real routes. Treat the 13 and the 4 as upper
+    bounds until each is checked against `main.tsx`.
 - **`system_permissions` is in three response schemas**, so removing or renaming it is a
   **breaking API change** needing an `oasdiff` finding and a decision file per change.
 - It is a rename plus a semantic change, so the sequence is expand, migrate the callers,
