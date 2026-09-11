@@ -23,8 +23,11 @@ from app.features.teaching.router import resolve_visible_module
 from app.models import (
     Organisation,
     OrganisationFeature,
+    Site,
     User,
     organisation_member,
+    organisation_site,
+    site_member,
 )
 from app.security import hash_password
 
@@ -1873,6 +1876,48 @@ class TestLearningContentGate:
         )
         resp = test_client.get("/api/teaching/modules/no-such-bank/learning")
         assert resp.status_code == 404
+
+    def test_a_site_member_reaches_the_organisation(
+        self, test_client, db_session
+    ):
+        """Reach, not membership — the case the plural resolver exists for.
+
+        A trainee attached to a ward is not a member of the trust, but
+        content is delivered downward, so they receive what the
+        organisation made available there. Worth a test of its own
+        because the two kinds of membership are easy to conflate, and
+        conflating them locks out exactly the people the teaching
+        feature is for.
+        """
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+
+        # The learner belongs to the site, and to no organisation.
+        learner = _make_learner(db_session, org)
+        db_session.execute(
+            organisation_member.delete().where(
+                organisation_member.c.user_id == learner.id
+            )
+        )
+        site = Site(name="Ward 9", type="ward")
+        db_session.add(site)
+        db_session.flush()
+        db_session.execute(
+            organisation_site.insert().values(
+                organisation_id=org.id, site_id=site.id
+            )
+        )
+        db_session.execute(
+            site_member.insert().values(
+                site_id=site.id, user_id=learner.id, capacity="staff"
+            )
+        )
+        db_session.commit()
+
+        assert (
+            resolve_visible_module(learner, db_session, "test-bank") == org.id
+        )
 
     def test_module_list_excludes_other_orgs(self, test_client, db_session):
         owner = _make_teaching_org(db_session)
