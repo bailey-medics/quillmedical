@@ -1812,17 +1812,44 @@ three does not invalidate unit one.
       with `-2` on a same-day clash, write-time filenames for logbook
       and CPD entries with a bump to the next second — and a self-heal
       that rebuilds stale references.
-- [ ] Implement content hashing against the contributing-field list,
+- [x] Implement content hashing against the contributing-field list,
       with the canonical form defined in the schema rather than in the
       hashing function. Tests: editing a comment or a display label
       leaves the hash alone, changing the level or the assessor
       changes it, and re-serialising an unchanged record reproduces
       the same value.
+      - `CONTRIBUTING` and `NON_CONTRIBUTING` sit together in
+        `hashing.py`, the second carrying a reason per field. A reader's
+        first question is always "what about X", and answering it
+        explicitly is cheaper than inferring it from an absence. A test
+        asserts the two lists never overlap.
+      - **JSON rather than YAML for the canonical form.** YAML has
+        several ways to write one value — quoted or bare, flow or block
+        — and a canonical form must have exactly one. JSON with sorted
+        keys and no inserted whitespace has one rendering per value,
+        which is the whole property being bought.
+      - A datetime normalises to UTC before formatting, so the same
+        instant written in two timezones fingerprints identically.
+        Attachment and registration lists sort, because the order two
+        files were uploaded in says nothing about the decision.
 - [ ] Require confirmation of the declaration on the sign-off service
       call, with tests proving an unconfirmed request is refused and
       writes nothing.
-- [ ] Implement the verify function and the `VERIFY.md` template for
+- [x] Implement the verify function and the `VERIFY.md` template for
       bundles, using `sha256sum` and no keys.
+      - **A gap worth naming: `sha256sum` cannot check a
+        `content_hash`.** It hashes whole files, while a `content_hash`
+        covers selected fields — which is exactly what makes tidying a
+        comment safe. So `VERIFY.md` offers what genuinely works offline
+        with no software: every evidence blob is named by the hash of
+        its own bytes and so is checkable with `sha256sum`, and `git
+        fsck` and `git log` check the history. For a sign-off's own
+        fingerprint it points the reader at the verify endpoint rather
+        than printing a command that would not reproduce it.
+      - The template says plainly what a match does **not** prove: not a
+        professional registration, and nothing at all to a reader who
+        distrusts Quill, since the same system computed the hash and
+        stored it.
 - [x] Reject non-fast-forward updates in the store, with a test
       proving a rewrite is refused. Two shapes are refused: a commit with
       no parent onto a repository that has history, which would discard
