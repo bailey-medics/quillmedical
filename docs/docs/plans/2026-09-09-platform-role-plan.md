@@ -429,12 +429,23 @@ does not, and removing the ladder removes the suggestion.
                   the frontend `User` type, and both route guards now ask it. A test pins
                   a user who says `superadmin` in the old column and `member` in the new
                   one: the guard must refuse them.
-            - [ ] **Five other places still test `system_permissions === "superadmin"`**
-                  and were deliberately left, since during expand the two columns agree:
-                  `SideNavContent.tsx`, `teaching/TeachingMainNav.tsx`, `LoginPage.tsx`,
-                  `UserInfoUpdatePage.tsx` and `AdminOrganisationsPage.tsx`. They decide
-                  what to _show_, not what to permit, so they are a tidy-up rather than a
-                  hole — but they must move before `system_permissions` is dropped.
+            - [x] **Two of those five now read `platform_role`.**
+                  `AdminOrganisationsPage.tsx` and `UserInfoUpdatePage.tsx` each asked
+                  `system_permissions === "superadmin"` on its own, which is the platform
+                  question exactly. Both test mocks gained the field, since a mock without
+                  it reads as `undefined` and silently hides what the test asserts.
+            - [ ] **The other three are not the same question**, and were left on purpose.
+                  `SideNavContent.tsx`, `teaching/TeachingMainNav.tsx` and `LoginPage.tsx`
+                  all ask `admin || superadmin` — that is _may this person reach admin
+                  pages_, not _do they operate Quill_. Rewriting them to `platform_role`
+                  would narrow them to superadmins and hide the admin nav from admins.
+                  They move when the `admin` half becomes a competency check, not before.
+            - **The guard counts were wrong by an order of magnitude.** Recounted against
+                  the code after the superadmin work merged: **one** real `admin` guard
+                  (`main.tsx:280`, wrapping the whole `/admin` subtree) and **zero**
+                  `staff` guards. The plan's "13 admin, 4 staff" counted the component's
+                  own docstring examples and its test cases. So the remaining frontend
+                  work is one guard, not seventeen.
       - [ ] **Contract: drop `system_permissions`.** Breaking API change, three response
             schemas, so it needs a decision file and the `api-breaking-change-review`
             approval.

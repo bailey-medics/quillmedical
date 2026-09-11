@@ -371,7 +371,7 @@ function Step3Permissions({
   setFormData: (data: UserFormData) => void;
 }) {
   const { state } = useAuth();
-  const isSuperadmin = state.user?.system_permissions === "superadmin";
+  const isSuperadmin = state.user?.platform_role === "superadmin";
 
   const permissionOptions = [
     { value: "single-user", label: "Single-user - No staff access" },

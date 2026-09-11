@@ -36,6 +36,7 @@ const mockAdminUser: User = {
   username: "admin.user",
   email: "admin@example.com",
   system_permissions: "admin",
+  platform_role: "member",
 };
 
 // Mock superadmin user
@@ -44,6 +45,7 @@ const mockSuperadminUser: User = {
   username: "superadmin.user",
   email: "superadmin@example.com",
   system_permissions: "superadmin",
+  platform_role: "superadmin",
 };
 
 describe("AdminOrganisationsPage", () => {

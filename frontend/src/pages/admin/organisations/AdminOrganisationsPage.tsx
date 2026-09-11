@@ -44,7 +44,7 @@ interface OrganisationsApiResponse {
 export default function AdminOrganisationsPage() {
   const navigate = useNavigate();
   const { state } = useAuth();
-  const isSuperadmin = state.user?.system_permissions === "superadmin";
+  const isSuperadmin = state.user?.platform_role === "superadmin";
   const [organisations, setOrganisations] = useState<Organisation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
