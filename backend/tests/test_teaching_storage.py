@@ -520,3 +520,55 @@ class TestGetModuleStatusFromGcs:
             result = get_module_status_from_gcs("test-bucket", "my-module")
 
         assert result == "retired"
+
+
+class TestMediaObjectPath:
+    """Where an uploaded asset lives in the source bucket.
+
+    The path is the authorisation boundary the video cookie is scoped
+    to, so a traversal here would widen a grant beyond one module.
+    """
+
+    def test_keyed_by_asset_id_not_filename(self) -> None:
+        from app.features.teaching.storage import media_object_path
+
+        assert media_object_path(7, "mod-1", "abc123") == "7/mod-1/abc123"
+
+    @pytest.mark.parametrize("org_id", [0, -1, -999])
+    def test_rejects_non_positive_org_ids(self, org_id: int) -> None:
+        from app.features.teaching.storage import media_object_path
+
+        with pytest.raises(ValueError):
+            media_object_path(org_id, "mod-1", "abc123")
+
+    @pytest.mark.parametrize(
+        "module_id,asset_id",
+        [
+            ("../etc", "abc123"),
+            ("mod-1", "../secret"),
+            ("", "abc123"),
+            ("mod-1", ""),
+            ("mod 1", "abc123"),
+            ("mod-1", "a/b"),
+        ],
+    )
+    def test_rejects_unsafe_components(
+        self, module_id: str, asset_id: str
+    ) -> None:
+        from app.features.teaching.storage import media_object_path
+
+        with pytest.raises(ValueError):
+            media_object_path(1, module_id, asset_id)
+
+    def test_the_allow_list_is_video_only(self) -> None:
+        """This is where the backend holds real write credentials.
+
+        The allow-list is the boundary rather than a convenience, so it
+        deliberately carries no image or document types.
+        """
+        from app.features.teaching.storage import ALLOWED_MEDIA_TYPES
+
+        assert set(ALLOWED_MEDIA_TYPES) == {".mp4", ".webm", ".mov"}
+        assert all(
+            t.startswith("video/") for t in ALLOWED_MEDIA_TYPES.values()
+        )
