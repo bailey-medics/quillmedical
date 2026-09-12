@@ -2200,11 +2200,26 @@ explicitly deferred here.
 
 ## Phase 4: rendering and export
 
-- [ ] Implement `render.py`: passport files to `passport.md`, with the
+- [x] Implement `render.py`: passport files to `passport.md`, with the
       front page, a competency table, sections for logbook,
       certificates, CPD and reflections, and the full sign-off
       appendix including superseded records. Logbook and CPD sort by
       the clinical date inside the entry, not by filename.
+      - **Reflections are excluded unless the caller asks**, which the
+        plan's section above does not say. A rendering handed to a panel
+        or an employer must not carry one by accident: written
+        reflection can be disclosed in legal proceedings, so the default
+        has to be the narrow one. `include_reflections=False` by
+        default, and a test asserts the default rather than the option.
+      - The rendering is never written back. A stored copy would be a
+        second version of the truth waiting to disagree with the files,
+        and a test pins it by asserting the head commit does not move.
+      - An empty passport renders every heading with "Nothing recorded"
+        rather than omitting the section: a missing heading reads as an
+        oversight, while a stated absence is an answer.
+      - CPD years descend because appraisal asks what you did *this*
+        year, and the current one should not be at the foot of a long
+        list. Entries within a year still ascend by clinical date.
 - [ ] Implement `pdf.py` with ReportLab `platypus`: a document
       template, the competency table, the sign-off appendix,
       `content_hash` per sign-off and the head commit in the footer.
