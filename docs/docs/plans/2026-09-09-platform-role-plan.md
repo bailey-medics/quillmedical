@@ -446,7 +446,7 @@ does not, and removing the ladder removes the suggestion.
                   `staff` guards. The plan's "13 admin, 4 staff" counted the component's
                   own docstring examples and its test cases. So the remaining frontend
                   work is one guard, not seventeen.
-      - [ ] **Migrate the backend reads — this is the bulk of what is left.** 76
+      - [x] **Migrate the backend reads — this is the bulk of what is left.** 76
             references across nine files, 59 of them in `main.py`. Counted and
             classified rather than estimated, because this plan's figures have been
             wrong three times running.
