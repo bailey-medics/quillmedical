@@ -123,6 +123,39 @@ describe("ModuleMediaCard", () => {
     expect(onDelete).toHaveBeenCalledWith("a1b2c3");
   });
 
+  it("shows what went wrong", () => {
+    // An upload that fails silently is indistinguishable from a button
+    // that does nothing — which is exactly how a 503 from an
+    // unconfigured deployment presented before this.
+    renderWithMantine(
+      <ModuleMediaCard
+        media={complete}
+        error="Media upload is not configured"
+      />,
+    );
+
+    expect(
+      screen.getByText("Media upload is not configured"),
+    ).toBeInTheDocument();
+  });
+
+  it("shows nothing when there is no error", () => {
+    renderWithMantine(<ModuleMediaCard media={complete} />);
+
+    expect(screen.queryByText("Something went wrong")).toBeNull();
+  });
+
+  it("shows an error and a missing-media warning together", () => {
+    // They answer different questions — what is absent, and what just
+    // failed — so one must not hide the other.
+    renderWithMantine(
+      <ModuleMediaCard media={incomplete} error="Upload failed" />,
+    );
+
+    expect(screen.getByText("Upload failed")).toBeInTheDocument();
+    expect(screen.getByText("1 video is missing")).toBeInTheDocument();
+  });
+
   it("offers no delete for a reference with nothing uploaded", () => {
     renderWithMantine(
       <ModuleMediaCard

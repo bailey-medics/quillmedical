@@ -476,6 +476,7 @@ def get_learning_content(
     )
     from app.features.teaching.media import module_media_is_complete
     from app.features.teaching.storage import (
+        ALLOWED_MEDIA_TYPES,
         download_learning_mdx_from_gcs,
         download_module_yaml_from_gcs,
     )
@@ -492,6 +493,10 @@ def get_learning_content(
 
     bucket = settings.TEACHING_GCS_BUCKET
     base_path = settings.TEACHING_QUESTION_BANK_PATH
+
+    # Bound on both branches: only the local one sets it below, and the
+    # fallback in _resolve_video_filename reads it either way.
+    module_dir: Path | None = None
 
     if bucket:
         # Production: load from GCS
@@ -522,7 +527,21 @@ def get_learning_content(
             return get_learning_image_url_gcs(bucket, module_id, filename)
         return f"/api/teaching/images/learning/{module_id}/{filename}"
 
-    def _resolve_video_filename(video_ref: str) -> str:
+    # Every link this module has, so resolving a ref below is a dict
+    # lookup rather than a query per slide.
+    _links = {
+        row.media_key: row
+        for row in db.execute(
+            select(ModuleMediaLink).where(
+                ModuleMediaLink.organisation_id == org_id,
+                ModuleMediaLink.question_bank_id == module_id,
+            )
+        )
+        .scalars()
+        .all()
+    }
+
+    def _resolve_video_filename(video_ref: str) -> str | None:
         """Resolve an MDX ``ref`` to the filename under the module prefix.
 
         A filename, not a URL: the player composes the full address from
@@ -530,14 +549,37 @@ def get_learning_content(
         between the CDN and the local development route. Splitting it
         this way is what lets the frontend stay blind to the difference.
 
-        **Development convention, not the production model.** The plan's
-        media-link table does not exist yet, so the key maps to
-        ``<ref>.mp4`` by the filename convention the plan sanctions for
-        local work. When that table lands this becomes a lookup, and the
-        MDX, the API shape and the player all stay as they are — which
-        is the point of the ``ref`` indirection.
+        An uploaded asset is named for its generated id, never for the
+        ref or the uploader's filename, so this is a link lookup. The
+        old ``<ref>.mp4`` convention survives only as a fallback, for
+        content whose video was dropped on disk by hand before there
+        was an upload path — the plan sanctions that for local work and
+        it still plays.
+
+        None where a ref has neither, which the availability gate has
+        already made unreachable for a learner: an incomplete module is
+        not served at all.
         """
-        return f"{video_ref}.mp4"
+        link = _links.get(video_ref)
+        if link is not None:
+            suffix = next(
+                (
+                    ext
+                    for ext, mime in ALLOWED_MEDIA_TYPES.items()
+                    if mime == link.content_type
+                ),
+                ".mp4",
+            )
+            return f"{link.asset_id}{suffix}"
+
+        # Hand-placed file, the convention from before uploads existed.
+        # Guarded before use rather than after: module_dir is None on
+        # the GCS branch, where this fallback does not apply at all.
+        if base_path and module_dir:
+            candidate = module_dir / "learning" / f"{video_ref}.mp4"
+            if candidate.is_file():
+                return f"{video_ref}.mp4"
+        return None
 
     return {
         "module_id": module_id,
@@ -1739,6 +1781,14 @@ def download_certificate(
 
 _DEP_MANAGE = Depends(has_competency("manage_teaching_content"))
 
+#: What a generated asset id may contain before it becomes a filename.
+#:
+#: The id is minted here with ``uuid4().hex``, so this can never fail in
+#: normal use — it is here because the value reaches a path, and a path
+#: component is checked rather than trusted regardless of who produced
+#: it. The same shape as ``storage._SAFE_BANK_ID``.
+_SAFE_ASSET_ID = re.compile(r"[a-zA-Z0-9_-]+")
+
 
 @teaching_router.get(
     "/items",
@@ -2016,12 +2066,38 @@ def create_media_upload_url(
             400, f"Content type does not match {ext} (expected {expected})"
         )
 
-    bucket = settings.TEACHING_VIDEOS_SOURCE_BUCKET
-    if not bucket:
-        raise HTTPException(503, "Media upload is not configured")
-
     org_id = _get_user_org_id(user, db)
     asset_id = uuid.uuid4().hex
+
+    bucket = settings.TEACHING_VIDEOS_SOURCE_BUCKET
+    if not bucket:
+        # Development: no bucket, so the bytes come through this API to
+        # the module's own learning/ directory instead. The frontend
+        # PUTs to whatever URL it is handed, so pointing it at a local
+        # route is the whole difference — nothing above this learns
+        # which environment it is in.
+        #
+        # Only where content is on disk. A deployment with neither a
+        # bucket nor a content path can genuinely not accept an upload,
+        # and should say so rather than pretend.
+        if not settings.TEACHING_QUESTION_BANK_PATH:
+            raise HTTPException(503, "Media upload is not configured")
+
+        logger.info(
+            "media upload url issued (local) user=%s org=%s module=%s "
+            "asset=%s",
+            user.id,
+            org_id,
+            module_id,
+            asset_id,
+        )
+        return MediaUploadUrlOut(
+            upload_url=(
+                f"/api/teaching/admin/modules/{module_id}"
+                f"/media/{asset_id}/content"
+            ),
+            asset_id=asset_id,
+        )
 
     try:
         url = create_resumable_upload_url(
@@ -3046,6 +3122,101 @@ def update_bank_org_settings(
         is_live=status_row.is_live,
         site_registration=status_row.site_registration,
     )
+
+
+# A 204 carries no body at all, so there is no schema for oasdiff to
+# diff. Same shape as the unlink 204 above.
+# api-schema-check: allow-opaque-permanent
+@teaching_router.put(
+    "/admin/modules/{module_id}/media/{asset_id}/content",
+    status_code=204,
+    dependencies=[_DEP_MANAGE],
+)
+async def upload_media_content_locally(
+    module_id: str,
+    asset_id: str,
+    request: Request,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+) -> Response:
+    """Receive an uploaded video and write it to disk. Development only.
+
+    In the teaching environment the bytes never touch this application:
+    the browser PUTs them straight to GCS on a resumable URL, which is
+    why a lecture does not pass through Cloud Run twice. There is no
+    bucket locally, so they come here instead and land in the module's
+    own ``learning/`` directory, beside the ``content.mdx`` that names
+    them.
+
+    The frontend PUTs to whatever URL the upload-url endpoint handed
+    it, so nothing above this knows which of the two happened — which
+    is the point. A developer drives the real admin card, and the only
+    difference is where the file ends up.
+
+    Refuses outright where a bucket is configured. This route writes to
+    a bind mount from an authenticated request body, which is
+    acceptable on a developer's machine and is not a thing to have
+    running anywhere a bucket exists.
+    """
+    from app.config import settings
+    from app.features.teaching.storage import (
+        ALLOWED_MEDIA_TYPES,
+        resolve_module_dir,
+    )
+
+    if settings.TEACHING_VIDEOS_SOURCE_BUCKET:
+        # Not 404: a deployment with a bucket has a real upload path,
+        # and this route existing there at all would be the surprise.
+        raise HTTPException(404, "Not found")
+
+    base_path = settings.TEACHING_QUESTION_BANK_PATH
+    if not base_path:
+        raise HTTPException(503, "Media upload is not configured")
+
+    content_type = request.headers.get("content-type", "")
+    if content_type not in ALLOWED_MEDIA_TYPES.values():
+        allowed = ", ".join(sorted(set(ALLOWED_MEDIA_TYPES.values())))
+        raise HTTPException(400, f"Unsupported type (allowed: {allowed})")
+
+    # The asset id is generated server-side and lands in a filename, so
+    # it is held to the same shape as every other path component rather
+    # than trusted because we made it.
+    if not _SAFE_ASSET_ID.fullmatch(asset_id):
+        raise HTTPException(400, "Invalid asset id")
+
+    module_dir = resolve_module_dir(base_path, module_id)
+    if not module_dir:
+        raise HTTPException(404, "Module not found")
+
+    suffix = next(
+        (
+            ext
+            for ext, mime in ALLOWED_MEDIA_TYPES.items()
+            if mime == content_type
+        ),
+        ".mp4",
+    )
+    learning_dir = module_dir / "learning"
+    learning_dir.mkdir(parents=True, exist_ok=True)
+    destination = learning_dir / f"{asset_id}{suffix}"
+
+    # Streamed rather than read whole: a lecture is hundreds of
+    # megabytes and holding one in memory to write it out again is a
+    # needless way to run a developer's machine out of it.
+    written = 0
+    with destination.open("wb") as handle:
+        async for chunk in request.stream():
+            written += len(chunk)
+            handle.write(chunk)
+
+    logger.info(
+        "media stored locally user=%s module=%s asset=%s bytes=%s",
+        user.id,
+        module_id,
+        asset_id,
+        written,
+    )
+    return Response(status_code=204)
 
 
 # A 204 carries no body at all, so there is no schema for oasdiff to
