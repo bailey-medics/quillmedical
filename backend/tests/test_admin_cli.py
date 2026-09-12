@@ -60,9 +60,79 @@ class TestCreateSuperadmin:
         assert user.email == "mark@example.com"
         assert user.email_verified is True
         assert user.system_permissions == "superadmin"
-        assert user.base_profession == "consultant"
+        assert user.platform_role == "superadmin"
+        # Not "consultant", which this used to set: `/admin` asks for the
+        # `manage_users` competency, and a consultant holds a pile of
+        # clinical ones instead of that single operator one.
+        assert user.base_profession == "superadmin_profession"
+        assert "manage_users" in user.get_final_competencies()
         assert verify_password("SecurePass123!", user.password_hash)
         assert any(r.name == "System Administrator" for r in user.roles)
+
+    @pytest.mark.usefixtures("_patch_session")
+    def test_a_new_superadmin_holds_no_clinical_access(
+        self, db_session: Session, sysadmin_role: Role
+    ) -> None:
+        """Operating Quill is not a clinical role.
+
+        The old `consultant` default handed every new operator account
+        the competencies of a senior doctor, which is the half of this
+        bug that grants too much rather than too little.
+        """
+        env = {
+            "ADMIN_ACTION": "create-superadmin",
+            "ADMIN_USERNAME": "operator",
+            "ADMIN_EMAIL": "operator@example.com",
+            "ADMIN_PASSWORD": "SecurePass123!",
+        }
+        with patch.dict(os.environ, env, clear=False):
+            from scripts.admin_cli import create_superadmin
+
+            create_superadmin()
+
+        user = (
+            db_session.query(User).filter(User.username == "operator").first()
+        )
+        assert user is not None
+        assert "access_patient_records" not in user.get_final_competencies()
+
+    @pytest.mark.usefixtures("_patch_session")
+    def test_promoting_an_existing_user_keeps_their_profession(
+        self, db_session: Session, sysadmin_role: Role
+    ) -> None:
+        """A clinician who also operates Quill keeps practising.
+
+        Overwriting the profession here would strip every clinical
+        competency it grants, so the operator ones are added alongside
+        instead.
+        """
+        db_session.add(
+            User(
+                username="drsmith",
+                email="drsmith@example.com",
+                password_hash=hash_password("OldPass123!"),
+                base_profession="consultant",
+            )
+        )
+        db_session.commit()
+
+        env = {
+            "ADMIN_ACTION": "create-superadmin",
+            "ADMIN_USERNAME": "drsmith",
+            "ADMIN_EMAIL": "drsmith@example.com",
+            "ADMIN_PASSWORD": "NewPass123!",
+        }
+        with patch.dict(os.environ, env, clear=False):
+            from scripts.admin_cli import create_superadmin
+
+            assert create_superadmin() == 0
+
+        user = (
+            db_session.query(User).filter(User.username == "drsmith").first()
+        )
+        assert user is not None
+        assert user.base_profession == "consultant"
+        assert "manage_users" in user.get_final_competencies()
 
     @pytest.mark.usefixtures("_patch_session")
     def test_updates_existing_user_to_superadmin(

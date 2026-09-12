@@ -77,6 +77,10 @@ def create_superadmin() -> int:
     email = env["ADMIN_EMAIL"]
     password = env["ADMIN_PASSWORD"]
 
+    from app.cbac.base_professions import (
+        SUPERADMIN_PROFESSION,
+        get_profession_base_competencies,
+    )
     from app.db.core_db import CoreSessionLocal
     from app.models import Role, User
     from app.security import hash_password
@@ -84,6 +88,7 @@ def create_superadmin() -> int:
     db = CoreSessionLocal()
     try:
         user = db.query(User).filter(User.username == username).first()
+        is_new = user is None
         if user:
             user.email = email
             user.password_hash = hash_password(password)
@@ -98,11 +103,28 @@ def create_superadmin() -> int:
             db.flush()
             print(f"Created new user: {username}")
 
-        # Set superadmin permissions and consultant base profession
         user.system_permissions = "superadmin"
         user.platform_role = "superadmin"
-        user.base_profession = "consultant"
         user.email_verified = True
+
+        # Operating Quill grants its competencies through a profession,
+        # like every other role, rather than by a rank check inside each
+        # gate — `/admin` now asks for `manage_users`, not for a
+        # permission level. This used to set `consultant`, which is both
+        # too much and too little: a pile of clinical competencies an
+        # operator has no business holding, and not the one the gates
+        # actually ask for.
+        if is_new:
+            user.base_profession = SUPERADMIN_PROFESSION
+        else:
+            # An existing user keeps the profession they practise under —
+            # overwriting it would strip a clinician's clinical
+            # competencies — so the operator ones are added alongside.
+            granted = set(user.additional_competencies or [])
+            granted.update(
+                get_profession_base_competencies(SUPERADMIN_PROFESSION)
+            )
+            user.additional_competencies = sorted(granted)
 
         # Add System Administrator role if it exists and not already assigned
         role = (
