@@ -22,7 +22,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import get_core_db
-from app.deps import DEP_REQUIRE_ADMIN
+from app.deps import DEP_REQUIRE_OPERATOR
 from app.models import PushSubscription, User
 
 router = APIRouter(prefix="/api/push", tags=["push-send"])
@@ -46,12 +46,12 @@ class SendTestOut(BaseModel):
 
 @router.post("/send-test", response_model=SendTestOut)
 def send_test(
-    _u: User = DEP_REQUIRE_ADMIN,
+    _u: User = DEP_REQUIRE_OPERATOR,
     db: Session = Depends(get_core_db),
 ) -> SendTestOut:
     """Send test push notification to all subscribed clients.
 
-    Requires admin or superadmin permissions.
+    Requires platform operator access.
 
     Attempts to send a test notification to all subscriptions. If a subscription
     fails (e.g., expired or invalid), it is automatically removed from the DB.
@@ -61,7 +61,7 @@ def send_test(
 
     Raises:
         HTTPException: 401 if not authenticated.
-        HTTPException: 403 if user is not admin.
+        HTTPException: 403 if the caller is not a platform operator.
         HTTPException: 400 if no subscriptions exist.
 
     Example:
