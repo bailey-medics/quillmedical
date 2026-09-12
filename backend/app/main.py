@@ -230,8 +230,6 @@ from app.security import (
 )
 from app.system_permissions.permissions import (
     PERMISSION_LEVELS,
-    PERMISSION_STAFF,
-    check_permission_level,
 )
 from app.test_api_endpoints import test_api_router
 
@@ -4072,11 +4070,10 @@ def add_staff_to_organisation(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    if not check_permission_level(user.system_permissions, PERMISSION_STAFF):
-        raise HTTPException(
-            status_code=400,
-            detail="User must have staff-level permissions or above",
-        )
+    # Eligibility to be staff here is the membership row itself, which is
+    # written below with ``capacity="staff"``. Requiring a staff rank
+    # elsewhere first was the old hierarchy answering a question that
+    # membership now answers — see the platform role plan.
 
     # Check if already a member
     existing = db.scalar(

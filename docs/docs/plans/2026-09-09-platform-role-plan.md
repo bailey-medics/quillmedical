@@ -499,9 +499,40 @@ does not, and removing the ladder removes the suggestion.
               this person an admin here_, which is the competency question, not the
               platform one. They belong with the `admin` work below, not with the
               rename.
-            - **Five are composite** (`in ["admin", "superadmin"]` at 2803, 3615, 5239,
-              5419, and `check_permission_level` at 4077). Each needs splitting into its
-              platform half and its place half before either half can move.
+            - **Four are composite** (`in ["admin", "superadmin"]` at 2803, 3615, 5239
+              and 5419). Each needs splitting into its platform half and its place half
+              before either half can move.
+            - **`check_permission_level` is not a composite, and is not a caller check
+              at all.** One live call site, at 4075 inside `add_org_staff`, and it asks
+              about the **target**: is the user being added to an organisation `staff`
+              or above? A 400 with "User must have staff-level permissions or above" if
+              not. The caller was already gated by `manage_users` and the org place
+              check three lines above.
+              - **It is the last consumer of the hierarchy as a ladder.** Everywhere
+                else compares for equality; this is the only place the ordering of
+                `single-user < staff < admin < superadmin` is actually used. That makes
+                it the blocker for the final step of this plan, which deletes
+                `check_permission_level` and the ordered list.
+              - **The replacement is probably nothing.** Under the new model, eligibility
+                to be staff somewhere is membership capacity, and the row written two
+                lines later already carries `capacity="staff"`. Adding someone as staff
+                is what makes them staff; requiring them to hold a staff rank elsewhere
+                first is the old model asking a question the new one answers by writing
+                the row.
+              - [x] **Decided and done: deleted.** The call site is gone, along with the
+                `PERMISSION_STAFF` and `check_permission_level` imports in `main.py`,
+                which had no other consumer there. A `single-user` can now be added as
+                organisation staff, which is the intended behaviour change rather than a
+                regression: the membership row is what makes someone staff.
+                - **One test asserted the old 400 and is now its mirror.**
+                  `test_add_staff_rejects_patient_user` became
+                  `test_add_staff_accepts_a_single_user`, asserting 200 and that the
+                  membership row exists. Rewriting rather than deleting keeps the case
+                  covered — the interesting user is still the `single-user`, only the
+                  expected answer changed.
+                - **`PERMISSION_LEVELS` stays in `main.py`.** It backs the
+                  `permission_level` query parameter at 2456, which is the four-level
+                  hierarchy as a public filter and moves with the contract step.
             - **The remainder are not checks at all** — schema fields, docstrings, and
               payload passthrough on create and update. They move with the contract
               step, not before it.
@@ -536,6 +567,10 @@ does not, and removing the ladder removes the suggestion.
 - [ ] **Delete `check_permission_level` and the ordered list.** A hierarchy of one is not a
       hierarchy. This is the step that makes the change irreversible in a good way: nothing
       can silently reintroduce a rung.
+      - **Its only consumer is already gone**, removed with the backend reads — see the
+        `check_permission_level` note under that step. What remains is deleting the
+        function and `PERMISSION_LEVELS` themselves, which waits on the
+        `permission_level` query parameter moving in the contract step.
 
 ## Live: learning content is readable across organisations
 
