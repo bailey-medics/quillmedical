@@ -452,6 +452,11 @@ module "teaching_video_pipeline" {
   region         = var.region
   environment    = var.environment
 
+  # The same host the app is served from, which is what makes the signed
+  # cookie same-origin — and what the bucket must name in CORS, because
+  # the upload itself goes cross-origin to storage.googleapis.com.
+  app_origin = "https://${var.app_domain}"
+
   # The signing key is written as a secret version, so the container must exist.
   depends_on = [module.secrets]
 }
