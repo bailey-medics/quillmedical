@@ -11,18 +11,24 @@ which is true everywhere or nowhere.
 not a ladder — a ranking is what invited the reading that `superadmin`
 subsumes clinical access, which it does not.
 
-This is the expand half. The column is written and validated; nothing
-reads it for authorisation yet, and `system_permissions` is untouched.
+The expand half wrote and validated the column. The routes now *read* it:
+every caller-side superadmin check in `main.py` asks `platform_role`, so
+the tests at the foot of this file pin a user whose two columns disagree.
+`system_permissions` is still written and still holds the other three
+levels, which move with the `admin` work.
 """
 
 from __future__ import annotations
 
 import pytest
+from sqlalchemy import insert
 from sqlalchemy.orm import Session
 
 from app.models import (
     PLATFORM_ROLES,
+    Organisation,
     User,
+    organisation_member,
     validate_platform_role,
 )
 from app.security import hash_password
@@ -101,3 +107,152 @@ class TestTheColumnDefaults:
         )
 
         assert person.platform_role == "superadmin"
+
+
+class TestTheRoutesReadTheNewColumn:
+    """The superadmin checks ask `platform_role`, not the old column.
+
+    Both columns agree for every real user, so a swap like this passes
+    trivially unless something makes them disagree. These tests do: each
+    user below says one thing in `system_permissions` and another in
+    `platform_role`, so they fail the moment a check reads the old one.
+
+    `POST /api/organisations` is the subject because it is the plainest
+    superadmin gate in `main.py` — no place check beside it, no
+    competency, just the platform question.
+    """
+
+    def _login(self, client, username: str) -> None:
+        resp = client.post(
+            "/api/auth/login",
+            json={"username": username, "password": "Password123!"},
+        )
+        assert resp.status_code == 200
+        # Mutating routes need the CSRF header, as the authenticated
+        # fixtures in conftest do after their own login.
+        csrf = client.cookies.get("XSRF-TOKEN")
+        if csrf:
+            client.headers["X-CSRF-Token"] = csrf
+
+    def test_a_stale_superadmin_is_refused(self, test_client, db_session):
+        """Says superadmin in the old column, `member` in the new one."""
+        _user(
+            db_session,
+            "stale",
+            system_permissions="superadmin",
+            platform_role="member",
+            base_profession="superadmin_profession",
+        )
+        self._login(test_client, "stale")
+
+        resp = test_client.post(
+            "/api/organisations",
+            json={"name": "Nowhere Trust", "type": "hospital_team"},
+        )
+
+        assert resp.status_code == 403
+
+    def test_a_true_operator_is_allowed(self, test_client, db_session):
+        """Says `single-user` in the old column, superadmin in the new one.
+
+        The mirror of the test above, so neither passes by accident: one
+        proves the old column no longer grants, this proves the new one
+        does.
+        """
+        _user(
+            db_session,
+            "operator2",
+            system_permissions="single-user",
+            platform_role="superadmin",
+            base_profession="superadmin_profession",
+        )
+        self._login(test_client, "operator2")
+
+        resp = test_client.post(
+            "/api/organisations",
+            json={"name": "Somewhere Trust", "type": "hospital_team"},
+        )
+
+        assert resp.status_code == 200
+
+
+class TestTheListingsHideOperatorsByTheNewColumn:
+    """An admin's listings hide operators, read from `platform_role`.
+
+    Three queries filter the *listed* user rather than the caller —
+    `GET /api/users`, and the staff lists on an organisation and a site.
+    Same column as the checks above, opposite side of the comparison, so
+    it is a separate change: miss it and an operator appears in an
+    admin's list the moment the old column stops being written.
+
+    The operator below says `single-user` in the old column, so the test
+    fails if the filter still reads it.
+    """
+
+    def test_an_operator_is_hidden_from_the_user_listing(
+        self,
+        authenticated_admin_client,
+        test_admin: User,
+        db_session: Session,
+    ):
+        org = Organisation(name="Shared Trust", type="hospital")
+        db_session.add(org)
+        db_session.commit()
+        db_session.refresh(org)
+
+        operator = _user(
+            db_session,
+            "hidden_operator",
+            system_permissions="single-user",
+            platform_role="superadmin",
+            base_profession="superadmin_profession",
+        )
+        for person in (test_admin, operator):
+            db_session.execute(
+                insert(organisation_member).values(
+                    organisation_id=org.id,
+                    user_id=person.id,
+                    capacity="staff",
+                )
+            )
+        db_session.commit()
+
+        resp = authenticated_admin_client.get("/api/users")
+
+        assert resp.status_code == 200
+        listed = {u["username"] for u in resp.json()["users"]}
+        assert "hidden_operator" not in listed
+
+    def test_an_ordinary_colleague_is_still_listed(
+        self,
+        authenticated_admin_client,
+        test_admin: User,
+        db_session: Session,
+    ):
+        """The mirror, so the test above cannot pass by listing nobody."""
+        org = Organisation(name="Shared Trust", type="hospital")
+        db_session.add(org)
+        db_session.commit()
+        db_session.refresh(org)
+
+        colleague = _user(
+            db_session,
+            "ordinary_colleague",
+            system_permissions="staff",
+            platform_role="member",
+        )
+        for person in (test_admin, colleague):
+            db_session.execute(
+                insert(organisation_member).values(
+                    organisation_id=org.id,
+                    user_id=person.id,
+                    capacity="staff",
+                )
+            )
+        db_session.commit()
+
+        resp = authenticated_admin_client.get("/api/users")
+
+        assert resp.status_code == 200
+        listed = {u["username"] for u in resp.json()["users"]}
+        assert "ordinary_colleague" in listed

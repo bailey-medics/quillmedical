@@ -230,8 +230,6 @@ from app.security import (
 )
 from app.system_permissions.permissions import (
     PERMISSION_LEVELS,
-    PERMISSION_STAFF,
-    check_permission_level,
 )
 from app.test_api_endpoints import test_api_router
 
@@ -1719,7 +1717,7 @@ def update_user(
 
     # Update organisation memberships if provided
     if payload.organisation_ids is not None:
-        if current_user.system_permissions == "superadmin":
+        if current_user.platform_role == "superadmin":
             # Superadmin: replace all memberships
             db.execute(
                 organisation_member.delete().where(
@@ -1755,7 +1753,7 @@ def update_user(
 
     # Update site memberships if provided
     if payload.site_ids is not None:
-        if current_user.system_permissions == "superadmin":
+        if current_user.platform_role == "superadmin":
             # Superadmin: replace all site memberships
             db.execute(
                 site_member.delete().where(site_member.c.user_id == user_id)
@@ -2496,7 +2494,7 @@ def list_users(
         stmt = stmt.where(User.id.in_(all_scoped_ids))
 
         # Admins must not see superadmin users
-        stmt = stmt.where(User.system_permissions != "superadmin")
+        stmt = stmt.where(User.platform_role != "superadmin")
 
     try:
         users = db.execute(stmt).scalars().unique().all()
@@ -3672,7 +3670,7 @@ def list_organisations(
     """
     # Check permissions
     try:
-        if current_user.system_permissions == "superadmin":
+        if current_user.platform_role == "superadmin":
             organisations = db.execute(select(Organisation)).scalars().all()
         else:
             user_org_ids = get_user_org_ids(db, current_user.id)
@@ -3771,9 +3769,7 @@ def get_organisation(
 
     # Admins must not see superadmin staff members
     if current_user.system_permissions == "admin":
-        staff_query = staff_query.where(
-            User.system_permissions != "superadmin"
-        )
+        staff_query = staff_query.where(User.platform_role != "superadmin")
 
     staff_members = db.execute(staff_query).all()
 
@@ -3951,7 +3947,7 @@ def create_organisation(
         HTTPException: 400 if type is invalid.
         HTTPException: 403 if user lacks superadmin permissions.
     """
-    if current_user.system_permissions != "superadmin":
+    if current_user.platform_role != "superadmin":
         raise HTTPException(
             status_code=403,
             detail="Requires superadmin permissions",
@@ -4013,7 +4009,7 @@ def delete_organisation(
         HTTPException: 403 if user lacks superadmin permissions.
         HTTPException: 404 if organisation not found.
     """
-    if current_user.system_permissions != "superadmin":
+    if current_user.platform_role != "superadmin":
         raise HTTPException(
             status_code=403,
             detail="Requires superadmin permissions",
@@ -4074,11 +4070,10 @@ def add_staff_to_organisation(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    if not check_permission_level(user.system_permissions, PERMISSION_STAFF):
-        raise HTTPException(
-            status_code=400,
-            detail="User must have staff-level permissions or above",
-        )
+    # Eligibility to be staff here is the membership row itself, which is
+    # written below with ``capacity="staff"``. Requiring a staff rank
+    # elsewhere first was the old hierarchy answering a question that
+    # membership now answers — see the platform role plan.
 
     # Check if already a member
     existing = db.scalar(
@@ -4423,7 +4418,7 @@ def list_sites(
     is the right way round to be wrong about one.
     """
     stmt = select(Site).order_by(Site.name)
-    if current_user.system_permissions != "superadmin":
+    if current_user.platform_role != "superadmin":
         own_org_ids = get_user_org_ids(db, current_user.id)
         stmt = stmt.where(
             Site.id.in_(
@@ -4611,7 +4606,7 @@ def _require_site_in_own_org(
     404 rather than 403, matching ``get_organisation``, so the response does
     not confirm that a site exists to someone who may not see it.
     """
-    if current_user.system_permissions == "superadmin":
+    if current_user.platform_role == "superadmin":
         return
 
     site_org_ids = set(
@@ -4629,7 +4624,7 @@ def _require_site_in_own_org(
 
 def _require_own_org(db: Session, current_user: User, org_id: int) -> None:
     """Refuse an organisation the admin does not belong to."""
-    if current_user.system_permissions == "superadmin":
+    if current_user.platform_role == "superadmin":
         return
     if org_id not in get_user_org_ids(db, current_user.id):
         raise HTTPException(status_code=404, detail="Organisation not found")
@@ -4659,7 +4654,7 @@ def _require_shared_org_with_patient(
     Raises:
         HTTPException: 404 if they share no organisation.
     """
-    if current_user.system_permissions == "superadmin":
+    if current_user.platform_role == "superadmin":
         return
     if not get_shared_org_ids(db, current_user.id, patient_id):
         raise HTTPException(status_code=404, detail="Patient not found")
@@ -4691,7 +4686,7 @@ def _require_shared_org_with_user(
     Raises:
         HTTPException: 404 if they share no organisation.
     """
-    if current_user.system_permissions == "superadmin":
+    if current_user.platform_role == "superadmin":
         return
     if target.id == current_user.id:
         return
@@ -4732,9 +4727,7 @@ def get_site(
 
     # Admins must not see superadmin staff members
     if current_user.system_permissions == "admin":
-        staff_query = staff_query.where(
-            User.system_permissions != "superadmin"
-        )
+        staff_query = staff_query.where(User.platform_role != "superadmin")
 
     staff = db.execute(staff_query).all()
 

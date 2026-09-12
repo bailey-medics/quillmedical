@@ -446,9 +446,108 @@ does not, and removing the ladder removes the suggestion.
                   `staff` guards. The plan's "13 admin, 4 staff" counted the component's
                   own docstring examples and its test cases. So the remaining frontend
                   work is one guard, not seventeen.
+      - [x] **Migrate the backend reads — this is the bulk of what is left.** 76
+            references across nine files, 59 of them in `main.py`. Counted and
+            classified rather than estimated, because this plan's figures have been
+            wrong three times running.
+            - [x] **Ten caller checks migrated.** The `== "superadmin"` and
+                  `!= "superadmin"` comparisons on `current_user` at 1722, 1758, 3675,
+                  3954, 4016, 4426, 4614, 4632, 4662 and 4694 now read `platform_role`.
+                  Every one was read before being changed, and all ten ask the platform
+                  question with no place involved — the four helper guards included
+                  (`_require_site_in_own_org`, `_require_own_org`,
+                  `_require_shared_org_with_patient`, `_require_shared_org_with_user`),
+                  where the superadmin early-return is exactly that question.
+                  - **Every writer had to move with the readers.** `test_superadmin` in
+                    `conftest.py`, four inline users in `test_main_endpoints.py`, and
+                    `create_superuser.py`, `seed_ci.py` and `admin_cli.py` all set
+                    `system_permissions` alone, so every superadmin they created would
+                    have been refused the moment the routes stopped reading it. Expect
+                    this shape for the rest of the migration: a read cannot move until
+                    every writer does.
+                  - **Two tests pin it by making the columns disagree.** A swap like
+                    this passes trivially while both columns agree, so
+                    `TestTheRoutesReadTheNewColumn` builds a stale superadmin (old
+                    column yes, new column no) and a true operator (the mirror), and
+                    asserts 403 and 200 against `POST /api/organisations` — the
+                    plainest superadmin gate in `main.py`, with no place check or
+                    competency beside it.
+            - **Two of the three "query filters" were misclassified**, found by reading
+              them rather than grepping. 3775 and 4736 test `current_user.
+              system_permissions == "admin"`, which is the admin question, so they
+              belong with the sixteen org-scoping branches below.
+            - [x] **The target-user filters migrated.** At 2499, 3775 and 4736 the
+                  comparison is on the _listed_ user rather than the caller —
+                  `User.platform_role != "superadmin"` now — which hides operators
+                  from an admin's view of the user list, an organisation's staff and
+                  a site's staff. Same column as the caller checks, opposite side of
+                  the comparison, which is why it was its own unit.
+                  - **The `== "admin"` caller half of each branch stays.** Each filter
+                    sits inside `if current_user.system_permissions == "admin"`; that
+                    half is the admin question and moves with the admin work.
+                  - **`User.system_permissions.in_(allowed)` at 2456 is not one of
+                    these.** It implements the `permission_level` query parameter, a
+                    public filter over the four-level hierarchy rather than a
+                    superadmin check, so it moves with the contract step. The plan
+                    listed three sites; reading found a fourth that does not belong.
+                  - **Verified by reverting.** Putting the old column back turns
+                    `test_an_operator_is_hidden_from_the_user_listing` red, and
+                    restoring it turns it green — so the test pins the change rather
+                    than passing because both columns happen to agree.
+            - **About sixteen are `== "admin"` org-scoping branches** — 3749, 3891,
+              4067, 4151, 4211, 4263, 4311, 4356, 4734 and neighbours. These ask _is
+              this person an admin here_, which is the competency question, not the
+              platform one. They belong with the `admin` work below, not with the
+              rename.
+            - **Four are composite** (`in ["admin", "superadmin"]` at 2803, 3615, 5239
+              and 5419). Each needs splitting into its platform half and its place half
+              before either half can move.
+            - **`check_permission_level` is not a composite, and is not a caller check
+              at all.** One live call site, at 4075 inside `add_org_staff`, and it asks
+              about the **target**: is the user being added to an organisation `staff`
+              or above? A 400 with "User must have staff-level permissions or above" if
+              not. The caller was already gated by `manage_users` and the org place
+              check three lines above.
+              - **It is the last consumer of the hierarchy as a ladder.** Everywhere
+                else compares for equality; this is the only place the ordering of
+                `single-user < staff < admin < superadmin` is actually used. That makes
+                it the blocker for the final step of this plan, which deletes
+                `check_permission_level` and the ordered list.
+              - **The replacement is probably nothing.** Under the new model, eligibility
+                to be staff somewhere is membership capacity, and the row written two
+                lines later already carries `capacity="staff"`. Adding someone as staff
+                is what makes them staff; requiring them to hold a staff rank elsewhere
+                first is the old model asking a question the new one answers by writing
+                the row.
+              - [x] **Decided and done: deleted.** The call site is gone, along with the
+                `PERMISSION_STAFF` and `check_permission_level` imports in `main.py`,
+                which had no other consumer there. A `single-user` can now be added as
+                organisation staff, which is the intended behaviour change rather than a
+                regression: the membership row is what makes someone staff.
+                - **One test asserted the old 400 and is now its mirror.**
+                  `test_add_staff_rejects_patient_user` became
+                  `test_add_staff_accepts_a_single_user`, asserting 200 and that the
+                  membership row exists. Rewriting rather than deleting keeps the case
+                  covered — the interesting user is still the `single-user`, only the
+                  expected answer changed.
+                - **`PERMISSION_LEVELS` stays in `main.py`.** It backs the
+                  `permission_level` query parameter at 2456, which is the four-level
+                  hierarchy as a public filter and moves with the contract step.
+            - **The remainder are not checks at all** — schema fields, docstrings, and
+              payload passthrough on create and update. They move with the contract
+              step, not before it.
+      - [ ] **Then the `admin` half becomes a competency** — the one frontend guard at
+            `main.tsx:280`, the three `admin || superadmin` checks in `SideNavContent`,
+            `TeachingMainNav` and `LoginPage`, and the sixteen backend branches above.
+            - **This is arguably its own plan.** It asks a different question from the
+              rename — _may this person administer this place_ — and entangling the two
+              is what produced the miscounts. Worth splitting out before it starts.
       - [ ] **Contract: drop `system_permissions`.** Breaking API change, three response
             schemas, so it needs a decision file and the `api-breaking-change-review`
             approval.
+            - **This cannot come next, though the plan long listed it there.** A column
+              with 76 live references is not droppable; every step above has to land
+              first. Recorded because the ordering error survived several readings.
 - [ ] **Remove `default_system_permission` from `shared/base-professions.yaml`.** Now 24
       professions declare one — the count has moved since this was written, with
       `teaching_manager` and `superadmin_profession` added.
@@ -468,6 +567,10 @@ does not, and removing the ladder removes the suggestion.
 - [ ] **Delete `check_permission_level` and the ordered list.** A hierarchy of one is not a
       hierarchy. This is the step that makes the change irreversible in a good way: nothing
       can silently reintroduce a rung.
+      - **Its only consumer is already gone**, removed with the backend reads — see the
+        `check_permission_level` note under that step. What remains is deleting the
+        function and `PERMISSION_LEVELS` themselves, which waits on the
+        `permission_level` query parameter moving in the contract step.
 
 ## Live: learning content is readable across organisations
 

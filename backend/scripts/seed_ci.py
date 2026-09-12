@@ -32,6 +32,7 @@ def seed() -> None:
                 email="admin@ci.local",
                 password_hash=hash_password("admin123"),
                 system_permissions="superadmin",
+                platform_role="superadmin",
                 is_active=True,
                 email_verified=True,
             )

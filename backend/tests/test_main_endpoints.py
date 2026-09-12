@@ -789,14 +789,21 @@ class TestOrganisationEndpoints:
         assert response.status_code == 409
         assert "already a staff member" in response.json()["detail"]
 
-    def test_add_staff_rejects_patient_user(
+    def test_add_staff_accepts_a_single_user(
         self,
         authenticated_admin_client: TestClient,
         db_session,
         test_admin: User,
     ):
-        """Test adding a patient-level user as staff is rejected."""
-        from sqlalchemy import insert
+        """A `single-user` may be added as staff of an organisation.
+
+        This asserted a 400 until the rank check was removed. Eligibility
+        to be staff somewhere is the membership row itself, written here
+        with ``capacity="staff"`` — requiring a staff rank elsewhere
+        first was the old hierarchy answering a question membership now
+        answers. See the platform role plan.
+        """
+        from sqlalchemy import insert, select
 
         from app.models import Organisation, organisation_member
 
@@ -825,8 +832,15 @@ class TestOrganisationEndpoints:
             f"/api/organisations/{org.id}/staff",
             json={"user_id": patient_user.id},
         )
-        assert response.status_code == 400
-        assert "staff-level permissions" in response.json()["detail"]
+        assert response.status_code == 200
+
+        membership = db_session.execute(
+            select(organisation_member).where(
+                organisation_member.c.organisation_id == org.id,
+                organisation_member.c.user_id == patient_user.id,
+            )
+        ).first()
+        assert membership is not None
 
     def test_list_users_permission_level_filter(
         self,
@@ -1184,6 +1198,7 @@ class TestOrganisationEndpoints:
             is_active=True,
             email_verified=True,
             system_permissions="superadmin",
+            platform_role="superadmin",
         )
         db_session.add(superadmin)
         db_session.flush()
@@ -1213,6 +1228,7 @@ class TestOrganisationEndpoints:
             is_active=True,
             email_verified=True,
             system_permissions="superadmin",
+            platform_role="superadmin",
         )
         db_session.add(superadmin)
         db_session.commit()
@@ -1245,6 +1261,7 @@ class TestOrganisationEndpoints:
             is_active=True,
             email_verified=True,
             system_permissions="superadmin",
+            platform_role="superadmin",
         )
         db_session.add(superadmin)
         db_session.flush()
@@ -1295,6 +1312,7 @@ class TestOrganisationEndpoints:
             is_active=True,
             email_verified=True,
             system_permissions="superadmin",
+            platform_role="superadmin",
         )
         db_session.add(superadmin)
         db_session.flush()
