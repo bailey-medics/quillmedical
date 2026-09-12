@@ -86,13 +86,14 @@ The arguments supplied to this command are: `$ARGUMENTS`
 ## Steps
 
 1. Check which branch you are on:
-   - **`main`** — ask the user to create a new branch and re-run the command.
-     Do not commit directly to main.
+   - **`main`** — never commit here. Create the branch for this work yourself:
+     name it and switch onto it as steps 3 and 4 of "Branch merged and deleted
+     at origin" describe, then carry on. There is no old branch to reconcile,
+     so skip that section's detection and stranded-commit checks.
    - **A `feature/*` branch whose pull request has merged and whose remote
      branch is gone** — the last batch of work has landed and this run starts
      the next one. Move onto a fresh branch before anything is committed or
-     built: see "Branch merged and deleted at origin" below. It is the one
-     case in which this command creates a branch.
+     built: see "Branch merged and deleted at origin" below.
    - **Anything else** — carry on.
 2. Only operate on the resolved target repository (see above).
 3. Check git status, and branch on what it reports:
@@ -144,11 +145,11 @@ The arguments supplied to this command are: `$ARGUMENTS`
    - If a test fails, stop and report it. Fixing it is a code change the human
      has not reviewed — do not fix and re-commit without approval.
 8. Push to the current branch. The only branch this command ever creates is
-   the one step 1 makes when the old branch was merged and deleted; push that
-   one with `git push -u origin feature/<name>`, never a bare `git push`, so
-   its upstream lands on the new remote branch and not on `main`. If there is
-   nothing to push, `Everything up-to-date` is a success, not an error — carry
-   on.
+   the one step 1 makes, when the run started on `main` or the old branch was
+   merged and deleted; push that one with `git push -u origin feature/<name>`,
+   never a bare `git push`, so its upstream lands on the new remote branch and
+   not on `main`. If there is nothing to push, `Everything up-to-date` is a
+   success, not an error — carry on.
 9. If `final` was given, update the pull request description and mark the pull
    request ready for review — see "Final: update the pull request description"
    below. Without `final`, go straight on to part two. Either way, never merge.
@@ -165,6 +166,10 @@ the state in step 1 and move onto a new branch before anything is committed.
 In this command the new branch is always created, even on a clean tree: part
 two is about to start the next unit, and it must not start on a branch that has
 already merged.
+
+Steps 3 and 4 also serve a run that starts on `main`: name the branch for the
+work in hand and switch onto it, skipping the detection and stranded-commit
+checks because there is no old branch to reconcile.
 
 1. **Detect it.** Prune first, or a stale tracking ref will hide the deletion:
 
@@ -431,10 +436,10 @@ committed once.
 ## Committing mechanics
 
 - One discrete change per commit; do not batch unrelated changes into a single commit.
-- Stay on the current branch. Do not start a new one — the only exception is
-  the one part one already handled, a branch merged and deleted at origin,
-  and that switch happens before any work is built.
-- However, if you are on main branch, then you are free to start an appropriate feature branch for the work you are doing.
+- Stay on the current branch. Do not start a new one — the only exceptions
+  are the ones part one already handled, a run that started on `main` or on a
+  branch merged and deleted at origin, and that switch happens before any
+  work is built.
 - The reviewed commits roll up into the branch's pull request, which serves as the durable, attributable sign-off record.
 
 ## Staying on track
