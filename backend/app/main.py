@@ -5897,6 +5897,10 @@ from app.features.teaching.router import teaching_router  # noqa: E402
 
 router.include_router(teaching_router)
 
+from app.features.passport.router import passport_router  # noqa: E402
+
+router.include_router(passport_router)
+
 
 # --- CI/CD sync endpoint (service token auth) ---
 @router.post(
