@@ -1043,7 +1043,7 @@ It goes at the foot of `AdminBankDetailPage.tsx`
 "Email templates" card at line 143 which is likewise rendered only when the
 content calls for it.
 
-- [ ] Render the card **only when the module's content references media**. A
+- [x] Render the card **only when the module's content references media**. A
       module of pure text never shows it. Whether media is needed is derived from
       the MDX references, never from a flag: a boolean an author sets is a second
       source of truth that can disagree with the content, and needs maintaining
@@ -1065,7 +1065,7 @@ content calls for it.
       delete confirmation, naming them: "this will make the module unavailable to
       learners in `<organisation>` until a replacement is uploaded." A warning, not
       a block. The admin cannot otherwise see that consequence from this page.
-- [ ] No route guard of its own. **[revised 2026-09-09]** The card needs one,
+- [x] No route guard of its own. **[revised 2026-09-09]** The card needs one,
       but it already has one: the whole `/admin` subtree sits under a single
       `<RequirePermission level="admin">` wrapper at
       `frontend/src/main.tsx:280`, and `AdminBankDetailPage` is inside it.

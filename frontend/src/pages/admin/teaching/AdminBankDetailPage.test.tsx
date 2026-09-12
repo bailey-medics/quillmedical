@@ -42,6 +42,33 @@ const mockBank = {
   },
 };
 
+const mockMedia = {
+  module_id: "test-bank",
+  references: [
+    {
+      key: "lecture-01",
+      asset: {
+        asset_id: "asset-1",
+        original_filename: "lecture.mp4",
+        content_type: "video/mp4",
+        size_bytes: 1024,
+        uploaded_at: "2026-09-02T09:14:00Z",
+      },
+    },
+  ],
+  unattached: [],
+  is_complete: true,
+};
+
+/** Route each GET the page makes. Media last, so /media/ wins over /banks/. */
+function routeGets(media: unknown = mockMedia) {
+  (api.get as Mock).mockImplementation((url: string) => {
+    if (url.includes("/media")) return Promise.resolve(media);
+    if (url.includes("/organisations")) return Promise.resolve(mockOrgs);
+    return Promise.resolve(mockBank);
+  });
+}
+
 const mockOrgs = [
   {
     organisation_id: 1,
@@ -129,5 +156,67 @@ describe("AdminBankDetailPage", () => {
       expect(screen.getByText("Test Bank")).toBeTruthy();
     });
     expect(screen.queryByText("Email templates")).toBeNull();
+  });
+});
+
+describe("AdminBankDetailPage media card", () => {
+  it("shows the card when the content references media", async () => {
+    routeGets();
+    renderWithRouter(<AdminBankDetailPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Videos")).toBeTruthy();
+    });
+    expect(screen.getByText("lecture-01")).toBeTruthy();
+  });
+
+  it("hides the card for a module of pure text", async () => {
+    // Derived from the MDX references, never a flag: a module with
+    // nothing to upload should not be asked to upload anything.
+    routeGets({
+      module_id: "test-bank",
+      references: [],
+      unattached: [],
+      is_complete: true,
+    });
+    renderWithRouter(<AdminBankDetailPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Test Bank")).toBeTruthy();
+    });
+    expect(screen.queryByText("Videos")).toBeNull();
+  });
+
+  it("warns that an incomplete module is hidden from learners", async () => {
+    // The gate hides such a module, and this line is the only place an
+    // admin finds out. Asserted through the page so the wiring is
+    // covered, not just the card in isolation.
+    routeGets({
+      module_id: "test-bank",
+      references: [{ key: "lecture-01", asset: null }],
+      unattached: [],
+      is_complete: false,
+    });
+    renderWithRouter(<AdminBankDetailPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("1 video is missing")).toBeTruthy();
+    });
+  });
+
+  it("still renders the page when the media call fails", async () => {
+    // The card is one part of the page. A media failure should not take
+    // the organisations table down with it.
+    (api.get as Mock).mockImplementation((url: string) => {
+      if (url.includes("/media")) return Promise.reject(new Error("nope"));
+      if (url.includes("/organisations")) return Promise.resolve(mockOrgs);
+      return Promise.resolve(mockBank);
+    });
+    renderWithRouter(<AdminBankDetailPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Test Bank")).toBeTruthy();
+    });
+    expect(screen.queryByText("Videos")).toBeNull();
   });
 });

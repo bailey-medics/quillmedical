@@ -21,6 +21,8 @@ import {
   Heading,
 } from "@/components/typography";
 import MarkdownView from "@/components/typography/MarkdownView";
+import { ModuleMediaCard } from "@/components/teaching/module-media-card";
+import { useModuleMedia } from "@/features/teaching/use-module-media";
 import { api } from "@/lib/api";
 import type {
   AdminBankDetail,
@@ -34,6 +36,17 @@ export default function AdminBankDetailPage() {
   const [orgs, setOrgs] = useState<BankOrganisation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Its own fetch rather than another leg of the page's Promise.all:
+  // the media list is the one thing that changes while the admin is
+  // here, so it refreshes after each upload without reloading the rest.
+  const {
+    media,
+    loading: mediaLoading,
+    uploadProgress,
+    upload,
+    remove,
+  } = useModuleMedia(bankId ?? null);
 
   const fetchData = useCallback(async () => {
     if (!bankId) {
@@ -61,6 +74,11 @@ export default function AdminBankDetailPage() {
   }, [bankId]);
 
   useEffect(() => {
+    // Every setState in `fetchData` runs after an await, so none of them
+    // happens synchronously in this effect body and no cascading render
+    // occurs. The rule cannot follow state updates across an async
+    // boundary, so it flags the call itself.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData();
   }, [fetchData]);
 
@@ -192,6 +210,29 @@ export default function AdminBankDetailPage() {
           </Stack>
         </BaseCard>
       )}
+
+      {/*
+        Only when the content references media. `references` comes from
+        the MDX itself, so a module of pure text shows no card and there
+        is no flag for an author to set — and therefore none to fall out
+        of step with the slides.
+
+        No route guard of its own: the whole /admin subtree sits under
+        one <RequirePermission level="admin"> in main.tsx, and this page
+        is inside it.
+      */}
+      {media?.references?.length ? (
+        <ModuleMediaCard
+          media={media}
+          liveOrganisations={orgs
+            .filter((o) => o.is_live)
+            .map((o) => o.organisation_name)}
+          uploadProgress={uploadProgress}
+          onUpload={upload}
+          onDelete={remove}
+          loading={mediaLoading}
+        />
+      ) : null}
     </Stack>
   );
 }
