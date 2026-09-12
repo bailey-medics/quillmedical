@@ -718,6 +718,20 @@ DEP_REQUIRE_CSRF = Depends(require_csrf)
 #: replaces.
 DEP_REQUIRE_MANAGE_USERS = Depends(has_competency("manage_users"))
 
+#: Which patients are cared for at a place. Separate from
+#: ``DEP_REQUIRE_MANAGE_USERS`` because a patient is not a user: a user is
+#: an account here, a patient is a record FHIR owns, and the two are
+#: linked through ``User.fhir_patient_id`` only where the same human is
+#: both. One competency over both would be authority over two unrelated
+#: populations.
+#:
+#: It grants no access to a patient's record — that is
+#: ``access_patient_records``. Like the rest it answers *what*, never
+#: *where*, so the routes carrying it keep their place check.
+DEP_REQUIRE_MANAGE_PATIENT_MEMBERSHIP = Depends(
+    has_competency("manage_patient_membership")
+)
+
 
 @router.post("/auth/login", response_model=LoginOut)
 @limiter.limit("5/minute")
@@ -1633,7 +1647,7 @@ def update_user(
     # Only an operator may modify another operator
     if (
         current_user.platform_role != "superadmin"
-        and user.system_permissions == "superadmin"
+        and user.platform_role == "superadmin"
     ):
         raise HTTPException(
             status_code=403, detail="Cannot modify superadmin users"
@@ -1846,7 +1860,7 @@ def deactivate_user(
     # Only an operator may deactivate another operator
     if (
         current_user.platform_role != "superadmin"
-        and user.system_permissions == "superadmin"
+        and user.platform_role == "superadmin"
     ):
         raise HTTPException(
             status_code=403, detail="Cannot modify superadmin users"
@@ -1909,7 +1923,7 @@ def reactivate_user(
     # Only an operator may reactivate another operator
     if (
         current_user.platform_role != "superadmin"
-        and user.system_permissions == "superadmin"
+        and user.platform_role == "superadmin"
     ):
         raise HTTPException(
             status_code=403, detail="Cannot modify superadmin users"
@@ -2605,7 +2619,7 @@ def get_user(
     # Only an operator may view another operator
     if (
         current_user.platform_role != "superadmin"
-        and user.system_permissions == "superadmin"
+        and user.platform_role == "superadmin"
     ):
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -2797,9 +2811,26 @@ def list_patients(
         metadata_records = db.execute(stmt).scalars().all()
         metadata_map = {m.patient_id: m.is_active for m in metadata_records}
 
-        # Determine which patients are accessible
-        is_admin = current_user.system_permissions in ["admin", "superadmin"]
-        admin_scope = scope == "admin" and is_admin
+        # Determine which patients are accessible.
+        #
+        # Seeing every patient in the deployment is not an administrative
+        # act at a place — it is reach unbounded by any place, which is
+        # what the platform role records. An admin at one trust is
+        # confined to the patients they share an organisation with, the
+        # same as anyone else.
+        is_operator = current_user.platform_role == "superadmin"
+        admin_scope = scope == "admin" and is_operator
+
+        # Seeing *deactivated* patients is a narrower question than
+        # seeing every patient: it applies within the list the caller can
+        # already reach, so it asks the patient competency rather than
+        # the platform role. Someone administering their own
+        # organisation's caseload has reason to see its deactivated
+        # patients; that is not a claim to reach every trust.
+        manages_patients = (
+            "manage_patient_membership"
+            in current_user.get_final_competencies()
+        )
 
         accessible_ids: set[str] | None = None
         if admin_scope:
@@ -2821,7 +2852,7 @@ def list_patients(
             is_active = metadata_map.get(patient_id, True)
 
             # Filter based on activation status
-            if is_active or (include_inactive and is_admin):
+            if is_active or (include_inactive and manages_patients):
                 enriched_patients.append(
                     PatientListItem.model_validate(
                         {**patient, "is_active": is_active}
@@ -4107,7 +4138,7 @@ def add_staff_to_organisation(
     "/organisations/{org_id}/patients",
     dependencies=[
         DEP_REQUIRE_CLINICAL,
-        DEP_REQUIRE_MANAGE_USERS,
+        DEP_REQUIRE_MANAGE_PATIENT_MEMBERSHIP,
     ],
     response_model=OrgPatientAddResponse,
 )
@@ -4121,20 +4152,20 @@ def add_patient_to_organisation(
 
     Adds a patient to an organisation by their FHIR patient ID.
 
-    Requires the ``manage_users`` competency and a shared organisation
+    Requires the ``manage_patient_membership`` competency and a shared organisation
     with the patient.
 
     Args:
         org_id: ID of the organisation.
         body: Patient details (patient_id).
-        current_user: Authenticated user holding ``manage_users``.
+        current_user: Authenticated user holding ``manage_patient_membership``.
         db: Database session.
 
     Returns:
         dict: Confirmation with organisation and patient IDs.
 
     Raises:
-        HTTPException: 403 if the user lacks ``manage_users``.
+        HTTPException: 403 if the user lacks ``manage_patient_membership``.
         HTTPException: 404 if organisation not found.
         HTTPException: 409 if patient is already a member.
     """
@@ -4231,7 +4262,7 @@ def remove_staff_from_organisation(
     "/organisations/{org_id}/patients/{patient_id}",
     dependencies=[
         DEP_REQUIRE_CSRF,
-        DEP_REQUIRE_MANAGE_USERS,
+        DEP_REQUIRE_MANAGE_PATIENT_MEMBERSHIP,
     ],
     response_model=StatusResponse,
 )
@@ -4243,12 +4274,12 @@ def remove_patient_from_organisation(
 ) -> StatusResponse:
     """Remove a patient from an organisation.
 
-    Requires ``manage_users``.
+    Requires ``manage_patient_membership``.
 
     Args:
         org_id: Organisation ID.
         patient_id: FHIR Patient resource ID.
-        current_user: Authenticated user holding ``manage_users``.
+        current_user: Authenticated user holding ``manage_patient_membership``.
         db: Database session.
 
     Returns:
@@ -5224,16 +5255,24 @@ def invite_external_user(
     Returns:
         dict: ``invite_url`` containing the signed JWT.
     """
-    # Only patient-self or admin can invite
+    # The patient themselves, or someone who administers patients here.
+    # `manage_patient_membership` rather than `manage_users`: inviting
+    # someone to a patient's record is patient centric, and a patient is
+    # not a user.
     is_own = (
         current_user.fhir_patient_id is not None
         and current_user.fhir_patient_id == patient_id
     )
-    is_admin = current_user.system_permissions in ("admin", "superadmin")
-    if not (is_own or is_admin):
+    manages_patients = (
+        "manage_patient_membership" in current_user.get_final_competencies()
+    )
+    if not (is_own or manages_patients):
         raise HTTPException(
             status_code=403,
-            detail="Only the patient or an admin can invite external users",
+            detail=(
+                "Only the patient or someone who manages patients can "
+                "invite external users"
+            ),
         )
 
     token = create_invite_token(
@@ -5404,13 +5443,16 @@ def list_external_access(
     Returns:
         dict: ``grants`` list with user info and access details.
     """
-    # Only admin or the patient themselves
+    # The patient themselves, or someone who administers patients here —
+    # the same pair as the invite route above.
     is_own = (
         current_user.fhir_patient_id is not None
         and current_user.fhir_patient_id == patient_id
     )
-    is_admin = current_user.system_permissions in ("admin", "superadmin")
-    if not (is_own or is_admin):
+    manages_patients = (
+        "manage_patient_membership" in current_user.get_final_competencies()
+    )
+    if not (is_own or manages_patients):
         raise HTTPException(status_code=403, detail="Access denied")
 
     grants = (

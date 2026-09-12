@@ -150,7 +150,10 @@ class User(Base):
     #: Written alongside ``system_permissions`` while callers migrate;
     #: nothing reads it for authorisation yet.
     platform_role: Mapped[str] = mapped_column(
-        String(20), nullable=False, default="member", server_default="member"
+        String(20),
+        nullable=False,
+        default="standard",
+        server_default="standard",
     )
 
     # CBAC: Competency-Based Access Control fields
@@ -688,11 +691,16 @@ organisation_site = Table(
 #: What a person is to Quill itself, as opposed to at a place.
 #:
 #: Two values, not a ladder. ``superadmin`` operates the platform;
-#: ``member`` is everyone else, and says nothing about what they may do —
+#: ``standard`` is everyone else, and says nothing about what they may do —
 #: that is competencies, and where they may do it is membership. The
 #: previous column ranked four values, which invited the reading that
 #: ``superadmin`` subsumes clinical access. It does not.
-PLATFORM_ROLES: tuple[str, ...] = ("member", "superadmin")
+#:
+#: ``standard`` rather than ``member``: membership already means belonging
+#: to an organisation or a site, with its own tables and its own capacity
+#: column. Reusing the word here would have put two unrelated ideas behind
+#: one term, which is the mistake this column exists to undo.
+PLATFORM_ROLES: tuple[str, ...] = ("standard", "superadmin")
 
 
 def validate_platform_role(value: str) -> str:

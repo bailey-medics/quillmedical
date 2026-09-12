@@ -18,7 +18,7 @@ const holder: User = {
   username: "admin.user",
   email: "admin@example.com",
   system_permissions: "staff",
-  platform_role: "member",
+  platform_role: "standard",
   competencies: ["manage_users"],
 };
 
@@ -29,7 +29,7 @@ const rankWithoutCompetency: User = {
   username: "ranked.user",
   email: "ranked@example.com",
   system_permissions: "admin",
-  platform_role: "member",
+  platform_role: "standard",
   competencies: [],
 };
 

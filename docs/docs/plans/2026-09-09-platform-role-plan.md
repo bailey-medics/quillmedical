@@ -402,11 +402,19 @@ does not, and removing the ladder removes the suggestion.
             - **The backfill is not a copy.** Every row becomes `member` except those that
               said `superadmin`. The other three levels described a relationship to a
               place, and a place is not what this column records.
-            - **`member`, not an empty string or null**, so "not an operator" is a value
-              someone chose rather than the absence of one. Whether it should be nullable
-              instead was already an open question at the foot of this plan; this answers
-              it for now and can be revisited before the contract step.
-      - [ ] **Migrate the callers** — the 21 frontend `RequirePermission` guards, then the
+            - **A named value, not an empty string or null**, so "not an operator" is
+              something someone chose rather than the absence of one. Whether it should
+              be nullable instead was already an open question at the foot of this plan;
+              this answers it for now and can be revisited before the contract step.
+            - **It was `member` at first, and is now `standard`.** `member` already means
+              belonging to an organisation or a site, with its own tables and its own
+              capacity column — so the word would have carried two unrelated ideas, which
+              is the mistake this column exists to undo. Renamed in
+              `b4d1e9c72a05`, by hand: autogenerate cannot see it, because
+              `compare_server_default` is off and a Python-side `default=` never reaches
+              the schema. The two paragraphs above describe what the merged expand
+              migration did and are left as they were.
+      - [x] **Migrate the callers** — the 21 frontend `RequirePermission` guards, then the
             backend reads. The gates are already competencies, so what remains is genuinely
             about *operating Quill*, which should be a much smaller set than the raw count
             suggests.
@@ -427,19 +435,20 @@ does not, and removing the ladder removes the suggestion.
               expand-migrate-contract looks like from inside.
             - [x] **Superadmin guards migrated.** `platform_role` added to `MeOut` and to
                   the frontend `User` type, and both route guards now ask it. A test pins
-                  a user who says `superadmin` in the old column and `member` in the new
-                  one: the guard must refuse them.
+                  a user who says `superadmin` in the old column and `standard` in the
+                  new one: the guard must refuse them.
             - [x] **Two of those five now read `platform_role`.**
                   `AdminOrganisationsPage.tsx` and `UserInfoUpdatePage.tsx` each asked
                   `system_permissions === "superadmin"` on its own, which is the platform
                   question exactly. Both test mocks gained the field, since a mock without
                   it reads as `undefined` and silently hides what the test asserts.
-            - [ ] **The other three are not the same question**, and were left on purpose.
+            - [x] **The other three moved with the route guard, not before it.**
                   `SideNavContent.tsx`, `teaching/TeachingMainNav.tsx` and `LoginPage.tsx`
-                  all ask `admin || superadmin` — that is _may this person reach admin
-                  pages_, not _do they operate Quill_. Rewriting them to `platform_role`
-                  would narrow them to superadmins and hide the admin nav from admins.
-                  They move when the `admin` half becomes a competency check, not before.
+                  asked `admin || superadmin` — _may this person reach admin pages_,
+                  not _do they operate Quill_ — so `platform_role` would have hidden
+                  the admin nav from admins. They now ask `manage_users`, the same as
+                  the `/admin` guard, so a link cannot advertise a route that answers
+                  404.
             - **The guard counts were wrong by an order of magnitude.** Recounted against
                   the code after the superadmin work merged: **one** real `admin` guard
                   (`main.tsx:280`, wrapping the whole `/admin` subtree) and **zero**
@@ -536,7 +545,7 @@ does not, and removing the ladder removes the suggestion.
             - **The remainder are not checks at all** — schema fields, docstrings, and
               payload passthrough on create and update. They move with the contract
               step, not before it.
-      - [ ] **Then the `admin` half** — the one frontend guard at `main.tsx:280`, the
+      - [x] **Then the `admin` half** — the one frontend guard at `main.tsx:280`, the
             three `admin || superadmin` checks in `SideNavContent`, `TeachingMainNav`
             and `LoginPage`, and the seventeen backend branches.
             - **Not a competency step after all.** All seventeen were read, and not one
@@ -612,6 +621,12 @@ does not, and removing the ladder removes the suggestion.
                     described admins by rank alone, so the admin link vanished until
                     they held `manage_users`. The same shape as the backend fixtures:
                     a read cannot move until every writer does.
+      - **The read side is finished.** 39 references remain, down from 76, and only
+            two are authorisation reads — both deliberately kept: the payload guard at
+            1710 refusing an admin granting `superadmin`, and `update_my_competencies`
+            at 3644. Everything else is carriage: schema fields, docstrings, the
+            `permission_level` filter, and one analytics label. Nothing else in the
+            codebase decides access on the old column.
       - [ ] **Contract: drop `system_permissions`.** Breaking API change, three response
             schemas, so it needs a decision file and the `api-breaking-change-review`
             approval.
@@ -620,15 +635,39 @@ does not, and removing the ladder removes the suggestion.
               first. Recorded because the ordering error survived several readings.
             - **46 backend references remain, and 8 frontend files**, counted after the
               admin work. Down from 76, and what is left is not one job:
-              - **Four superadmin-target comparisons** at 1636, 1849, 1912 and 2608 —
-                `user.system_permissions == "superadmin"`, protecting an operator from
-                being modified. The caller half of each already moved; these are the
-                target half and should follow it to `platform_role`. **This is a real
-                unit the plan never listed**, and it is the last authorisation read.
-              - **Four composites** at 2801, 3613, 5232 and 5412 —
-                `in ["admin", "superadmin"]`, all meaning "may reach admin pages". They
-                are the backend twin of the frontend nav checks and become
-                `manage_users`, not `platform_role`.
+              - [x] **Four superadmin-target comparisons migrated** at 1636, 1849, 1912
+                and 2608 — `update_user`, `deactivate_user`, `reactivate_user` and
+                `get_user`, each refusing a non-operator acting on an operator. The
+                caller half already asked `platform_role`; these were the target half,
+                and the last authorisation reads left on the old column. **The plan
+                never listed them as a unit**, which is why they were nearly missed.
+                - **The branch had to stack.** Cut off plain `main` first, and all four
+                  would have conflicted: the caller half changed on the previous branch
+                  sits on the line immediately above each target half, inside the same
+                  `if`. Stacking on that branch is what made it a clean change.
+                - **Five tests, verified by reverting.** Four refusals plus a mirror so
+                  they cannot pass by refusing everyone. `get_user` answers 404 rather
+                  than 403, so the refusal does not confirm the account exists.
+              - [x] **The composites, and the plan was wrong about them twice.** It
+                said all four mean "may reach admin pages" and all four become
+                `manage_users`. Reading them showed three different questions:
+                - **`list_patients` (2801) asks `platform_role`** for the unfiltered
+                  list. Seeing every patient in the deployment is reach unbounded by
+                  any place, not an administrative act at one. **A visible
+                  narrowing**: an admin at a trust now sees only the patients they
+                  share an organisation with.
+                - **Seeing _deactivated_ patients is a narrower question**, applying
+                  within the list a caller already reaches, so it asks
+                  `manage_patient_membership`. Found only because a half-finished
+                  rename left `is_admin` undefined and ruff caught it — the second
+                  use was never the same question as the first.
+                - **The two external-access routes (5232, 5412) ask
+                  `manage_patient_membership`**, not `manage_users`. Inviting someone
+                  to a patient's record is patient centric, and a patient is not a
+                  user.
+                - **`update_my_competencies` (3613) keeps the rank**, as decided
+                  earlier: it is self-scoped, so a competency gate would make the
+                  escalation self-referential.
               - **The `permission_level` query parameter** at 1360, 1422, 2454 — a
                 public API filter over the four levels. It cannot move; it is removed,
                 which is itself the breaking change.
@@ -811,9 +850,93 @@ someone actually holds, not a label that stopped being true.
   on promotion is right either way: being a superadmin is an addition to whoever someone
   already is, not a replacement for it.
 
+## Finding: a patient is not a user, and should not become one
+
+Surfaced while deciding which competency `list_patients` should ask. The question
+raised was whether a patient linked to an organisation or site ought to be a Quill
+user as well, merely one with no login details created yet. If so, one membership
+table would serve both and the question below would not arise.
+
+**The answer is no, and the standards are explicit about it.** Researched rather
+than reasoned from first principles, because it is a modelling decision the
+industry has already made.
+
+- **FHIR separates the human from their roles.** `Patient` is someone receiving
+  care, `Practitioner` someone providing it, `RelatedPerson` family involved in
+  another's care. The same human gets a _separate record in each role_, and a
+  fourth resource, `Person`, exists only to link them and assert they are one
+  individual. The specification states that Person instances are never referenced
+  as actors, and does not recommend creating a `Patient` for someone not receiving
+  care.
+- **NHS login draws the same line.** Authentication — username, password, a
+  verified account — is one system. Clinical identity — the NHS number, checked
+  against the Personal Demographics Service — is another, with a verification step
+  bridging them at a stated assurance level. A login is a credential _matched_ to a
+  patient record, not the record itself.
+- **Collapsing them breaks on the ordinary case.** A consultant who becomes a
+  patient at their own trust would need one row that is both, and the account
+  table carries password hashes, TOTP secrets and email verification state that
+  mean nothing for someone who never logs in.
+
+**Quill already has the right shape.** `User.fhir_patient_id` is nullable and
+points from an account to a patient record where the two are the same human — the
+`Person` linkage, in effect. The two membership tables are correct to be separate:
+`organisation_member` keys on `user_id`, `organisation_patient_member` on a FHIR
+`patient_id` with no foreign key, because FHIR owns patient identity.
+
+### What follows for the competencies
+
+- **`manage_users` is currently doing two jobs.** It gates both account
+  administration and patient-to-organisation membership at 4146 and 4258. Those are
+  different populations, and the conflation is the same shape as
+  `system_permissions` holding two ideas in one column.
+- [x] **Done: `manage_patient_membership`**, added to `clinical-admin.yaml` — which
+  already existed for exactly this, described in `admin.yaml`'s header as
+  "administration that is patient centric". The two routes at
+  `/organisations/{id}/patients` now carry `DEP_REQUIRE_MANAGE_PATIENT_MEMBERSHIP`
+  instead of `DEP_REQUIRE_MANAGE_USERS`, with their place checks unchanged.
+  - **A new `patient_manager` profession holds it, and nothing else does.**
+    `clinic_manager` was tried first and is the wrong scope: it reads as running a
+    clinic — rooms, rotas, appointment slots — where this competency is about an
+    organisation's caseload. `system_administrator` says "technical support only",
+    and `superadmin_profession` carries no clinical competency by rule.
+    - **The gap it fills is real**: every existing administrative profession is
+      clinic-level or IT. There was no organisation-level administrator at all.
+    - **The name is a placeholder**, and the profession is deliberately thin —
+      one competency. Nobody has described this job yet, and with no real
+      patients the question is close to moot. Revisit when it is not.
+  - **It grants no access to a record.** Adding a patient to an organisation and
+    reading their notes are different acts; the second is
+    `access_patient_records`.
+  - **Four tests moved to a new `clinic_manager` fixture**, three in
+    `test_main_endpoints.py` and one in `test_messaging.py`. They had used the
+    admin fixture, which now correctly fails these routes — the fixtures make the
+    distinction visible rather than hiding it.
+
+### Finding a patient at another organisation
+
+Asked alongside the above: who may search across organisations to pull in a patient
+who has moved hospital or is being treated elsewhere? Nothing in the codebase does
+this today, and every place check refuses it by design.
+
+**It is not a permissions question, and should not be solved by widening one.** The
+industry names both halves:
+
+- **An EMPI** — enterprise master patient index — is the component that matches
+  records across organisations, as distinct from an MPI that resolves identities
+  within one application.
+- **Break-the-glass** is the recognised pattern for reaching a record outside normal
+  access. It is permitted and it triggers a privacy audit; the audit is the point,
+  not an afterthought.
+
+So this is a feature with consent rules and an audit trail, not a step in this plan.
+Recorded here so the next reader does not mistake it for one.
+
 ## Not addressed here
 
 - What replaces `staff` for "may reach clinical workflows at all", if anything still needs
   it once the competency checks are in place.
+- Cross-organisation patient search — an EMPI-style match plus break-the-glass access,
+  with its own consent and audit design. See the finding above.
 - Whether `platform_role` should be nullable rather than carrying an explicit
   "not an operator" value.

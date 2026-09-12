@@ -143,6 +143,7 @@ def test_the_passport_is_not_a_default_for_patients_or_back_office() -> None:
         "medical_secretary",
         "receptionist",
         "clinic_manager",
+        "patient_manager",
         "system_administrator",
         "teaching_delegate",
         "teaching_admin",

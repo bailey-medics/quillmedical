@@ -337,6 +337,20 @@ base_professions:
       - access_clinic_admin
       - manage_users  # Staff account management
 
+  # Whose caseload an organisation carries, as opposed to how a clinic is
+  # run day to day. Deliberately thin: it exists so that
+  # manage_patient_membership has a holder, and the name is a placeholder
+  # for a role nobody has described yet — there is no organisation-level
+  # administrator among the other professions, only clinic-level ones and
+  # IT. Revisit when real patients make the shape of the job apparent.
+  - id: patient_manager
+    display_name: "Patient Manager"
+    description: "Manages which patients an organisation cares for"
+    default_system_permission: staff
+    requires_clinical_services: true
+    base_competencies:
+      - manage_patient_membership
+
   - id: system_administrator
     display_name: "System Administrator"
     description: "IT system administrator with technical access"
