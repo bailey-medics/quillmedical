@@ -52,9 +52,19 @@ from app.features.gating import requires_feature
 from app.models import User
 from app.passport_storage import get_passport_store
 from app.schemas.passport import (
+    CertificateIn,
+    CertificateOut,
     CompetencyStateOut,
+    CpdEntryIn,
+    CpdEntryOut,
+    LogbookEntryIn,
+    LogbookEntryOut,
+    LogbookOut,
     PassportDetailOut,
     PassportOut,
+    RecordResultOut,
+    ReflectionIn,
+    ReflectionOut,
     RegistrationOut,
     SignOffDeclineIn,
     SignOffIn,
@@ -64,11 +74,20 @@ from app.schemas.passport import (
     VerificationOut,
 )
 
-from . import definitions, hashing, ids, paths, service
+from . import definitions, hashing, ids, paths, records, service
 from .commits import Actor
 from .models import Passport, PassportSignOffRequest
-from .schemas import Index, Profile, SignOff
-from .serialise import from_yaml
+from .schemas import (
+    Certificate,
+    CompetencyRef,
+    CpdEntry,
+    Index,
+    LogbookEntry,
+    Profile,
+    Reflection,
+    SignOff,
+)
+from .serialise import from_yaml, reflection_from_markdown
 from .store import PassportNotFoundError, PassportStore
 
 logger = logging.getLogger(__name__)
@@ -776,6 +795,682 @@ def get_competency_state(
             )
 
     raise HTTPException(404, "No evidence for that competency")
+
+
+# --------------------------------------------------------------------
+# Self-declared evidence
+# --------------------------------------------------------------------
+#
+# Certificates, logbook entries, reflections and CPD are the holder's own
+# claims: they enter them, nobody countersigns, and they are editable
+# because a mistyped date should be fixable in seconds. That is the whole
+# difference between these and a sign-off, which is immutable once signed
+# and corrected only by superseding it — the difference follows from who
+# is accountable for each.
+#
+# So every route below requires the holder and nobody else.
+
+
+def _competency_refs(ids_given: list[str]) -> list[CompetencyRef]:
+    """Resolve competency ids to id-and-name pairs.
+
+    The label travels with the id into the stored record, so a
+    certificate read years later stays intelligible even if the
+    definition has since moved on.
+
+    Raises:
+        HTTPException: 404 if any id is not in the catalogue.
+    """
+    try:
+        return [definitions.competency_ref(given) for given in ids_given]
+    except definitions.UnknownCompetencyError as error:
+        raise HTTPException(404, str(error)) from None
+
+
+def _attachments(hashes: list[str]) -> list[dict[str, object]]:
+    """Placeholder for evidence already stored as blobs.
+
+    Upload lands in its own unit; until then a record may name no
+    attachments. Named hashes are refused rather than silently dropped,
+    because a caller believing evidence was attached when it was not is
+    worse than an error.
+    """
+    if hashes:
+        raise HTTPException(
+            501,
+            "Evidence upload is not built yet, so a record cannot name "
+            "attachments.",
+        )
+
+    return []
+
+
+@passport_router.post(
+    "/{passport_id}/certificates",
+    response_model=RecordResultOut,
+    status_code=201,
+    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+)
+def add_certificate(
+    passport_id: str,
+    body: CertificateIn,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+    store: PassportStore = _DEP_STORE,
+) -> RecordResultOut:
+    """File a certificate the holder is claiming.
+
+    Self-declared, with nobody countersigning. A certificate may relate
+    to several competencies at once, which is why they are filed flat
+    rather than under one.
+    """
+    row = _require_holder(db, passport_id, user)
+
+    # The service's generator, not a second one: the monotonic guarantee
+    # holds per instance, so two would each be monotonic alone and could
+    # still issue ids that interleave.
+    certificate = Certificate(
+        id=service.next_id(),
+        title=body.title,
+        issuer=body.issuer,
+        awarded_on=body.awarded_on,
+        expires_on=body.expires_on,
+        competencies=_competency_refs(body.competencies),
+        description=body.description,
+        attachments=_attachments(body.attachment_hashes),  # type: ignore[arg-type]
+    )
+
+    name, commit = records.add_certificate(
+        store, row.id, _actor(user), certificate
+    )
+    row.head_commit = commit
+    db.flush()
+
+    return RecordResultOut(name=name, commit=commit)
+
+
+@passport_router.get(
+    "/{passport_id}/certificates",
+    response_model=list[CertificateOut],
+    dependencies=[_DEP_PASSPORT],
+)
+def list_certificates(
+    passport_id: str,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+    store: PassportStore = _DEP_STORE,
+) -> list[CertificateOut]:
+    """Every certificate in the passport."""
+    row = _require_reader(db, passport_id, user)
+
+    found: list[CertificateOut] = []
+
+    for entry in store.list_dir(row.id, paths.CERTIFICATES):
+        name = entry.name
+        raw = store.read(row.id, paths.certificate_file(name))
+        certificate = from_yaml(Certificate, raw)
+        found.append(
+            CertificateOut.model_validate(
+                {"name": name, **certificate.model_dump(mode="json")}
+            )
+        )
+
+    return found
+
+
+@passport_router.patch(
+    "/{passport_id}/certificates/{name}",
+    response_model=RecordResultOut,
+    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+)
+def amend_certificate(
+    passport_id: str,
+    name: str,
+    body: CertificateIn,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+    store: PassportStore = _DEP_STORE,
+) -> RecordResultOut:
+    """Correct a certificate.
+
+    The folder name does not change even when the title or date does: it
+    is the handle the index refers to, and renaming would orphan every
+    reference to it.
+    """
+    row = _require_holder(db, passport_id, user)
+    existing = _existing_certificate(store, row.id, name)
+
+    certificate = Certificate(
+        id=existing.id,
+        title=body.title,
+        issuer=body.issuer,
+        awarded_on=body.awarded_on,
+        expires_on=body.expires_on,
+        competencies=_competency_refs(body.competencies),
+        description=body.description,
+        attachments=existing.attachments,
+    )
+
+    commit = records.amend_certificate(
+        store, row.id, _actor(user), name, certificate
+    )
+    row.head_commit = commit
+    db.flush()
+
+    return RecordResultOut(name=name, commit=commit)
+
+
+def _existing_certificate(
+    store: PassportStore, passport_id: str, name: str
+) -> Certificate:
+    """Read a certificate, or 404.
+
+    Amending preserves the identifier and the attachments rather than
+    letting a caller replace them: the id is what the history refers to,
+    and evidence is added through its own route.
+    """
+    try:
+        raw = store.read(passport_id, paths.certificate_file(name))
+    except (PassportNotFoundError, paths.PassportPathError):
+        raise HTTPException(404, "Certificate not found") from None
+
+    return from_yaml(Certificate, raw)
+
+
+@passport_router.delete(
+    "/{passport_id}/certificates/{name}",
+    response_model=RecordResultOut,
+    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+)
+def remove_certificate(
+    passport_id: str,
+    name: str,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+    store: PassportStore = _DEP_STORE,
+) -> RecordResultOut:
+    """Remove a certificate recorded in error.
+
+    The file goes; the history keeps it, as it keeps everything.
+    """
+    row = _require_holder(db, passport_id, user)
+
+    try:
+        commit = records.remove_certificate(store, row.id, _actor(user), name)
+    except records.RecordNotFoundError:
+        raise HTTPException(404, "Certificate not found") from None
+
+    row.head_commit = commit
+    db.flush()
+
+    return RecordResultOut(name=name, commit=commit)
+
+
+@passport_router.post(
+    "/{passport_id}/logbook/{competency_id}",
+    response_model=RecordResultOut,
+    status_code=201,
+    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+)
+def add_logbook_entry(
+    passport_id: str,
+    competency_id: str,
+    body: LogbookEntryIn,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+    store: PassportStore = _DEP_STORE,
+) -> RecordResultOut:
+    """Log one procedure against a competency.
+
+    ``performed_on`` carries no time, because nobody recalls whether a
+    procedure was at 09:30 or 11:00 when logging five on a Friday
+    evening. The filename records when it was written; the clinical date
+    lives inside the file.
+    """
+    row = _require_holder(db, passport_id, user)
+    _competency_refs([competency_id])
+
+    entry = LogbookEntry(
+        performed_on=body.performed_on,
+        setting=body.setting,
+        supervision=body.supervision,
+        supervisor=body.supervisor,
+        indication=body.indication,
+        outcome=body.outcome,
+        notes=body.notes,
+        also_counts_towards=body.also_counts_towards,
+        attachments=_attachments(body.attachment_hashes),  # type: ignore[arg-type]
+    )
+
+    stem, commit = records.add_logbook_entry(
+        store, row.id, _actor(user), competency_id, entry
+    )
+    row.head_commit = commit
+    db.flush()
+
+    return RecordResultOut(name=stem, commit=commit)
+
+
+@passport_router.get(
+    "/{passport_id}/logbook/{competency_id}",
+    response_model=LogbookOut,
+    dependencies=[_DEP_PASSPORT],
+)
+def get_logbook(
+    passport_id: str,
+    competency_id: str,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+    store: PassportStore = _DEP_STORE,
+) -> LogbookOut:
+    """A competency's logbook entries, and how many there are.
+
+    A count and no target, deliberately. Two hundred bronchoscopies
+    prove activity, not competence; the sign-off is what turns evidence
+    into a conclusion, and this response must not appear to draw it.
+
+    Entries sort by the clinical date they record rather than by
+    filename, since the filename is the moment Quill wrote the file.
+    """
+    row = _require_reader(db, passport_id, user)
+
+    entries: list[LogbookEntryOut] = []
+
+    for path in store.list_dir(row.id, paths.logbook_dir(competency_id)):
+        raw = store.read(row.id, path)
+        entry = from_yaml(LogbookEntry, raw)
+        entries.append(
+            LogbookEntryOut.model_validate(
+                {
+                    "filename": path.stem,
+                    "competency": competency_id,
+                    **entry.model_dump(mode="json"),
+                }
+            )
+        )
+
+    entries.sort(key=lambda item: item.performed_on)
+
+    return LogbookOut(
+        competency=competency_id, count=len(entries), entries=entries
+    )
+
+
+@passport_router.patch(
+    "/{passport_id}/logbook/{competency_id}/{stem}",
+    response_model=RecordResultOut,
+    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+)
+def amend_logbook_entry(
+    passport_id: str,
+    competency_id: str,
+    stem: str,
+    body: LogbookEntryIn,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+    store: PassportStore = _DEP_STORE,
+) -> RecordResultOut:
+    """Correct a logged procedure."""
+    row = _require_holder(db, passport_id, user)
+
+    entry = LogbookEntry(
+        performed_on=body.performed_on,
+        setting=body.setting,
+        supervision=body.supervision,
+        supervisor=body.supervisor,
+        indication=body.indication,
+        outcome=body.outcome,
+        notes=body.notes,
+        also_counts_towards=body.also_counts_towards,
+        attachments=[],
+    )
+
+    try:
+        commit = records.amend_logbook_entry(
+            store, row.id, _actor(user), competency_id, stem, entry
+        )
+    except (records.RecordNotFoundError, paths.PassportPathError):
+        raise HTTPException(404, "Logbook entry not found") from None
+
+    row.head_commit = commit
+    db.flush()
+
+    return RecordResultOut(name=stem, commit=commit)
+
+
+@passport_router.delete(
+    "/{passport_id}/logbook/{competency_id}/{stem}",
+    response_model=RecordResultOut,
+    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+)
+def remove_logbook_entry(
+    passport_id: str,
+    competency_id: str,
+    stem: str,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+    store: PassportStore = _DEP_STORE,
+) -> RecordResultOut:
+    """Remove a logged procedure recorded in error."""
+    row = _require_holder(db, passport_id, user)
+
+    try:
+        commit = records.remove_logbook_entry(
+            store, row.id, _actor(user), competency_id, stem
+        )
+    except (records.RecordNotFoundError, paths.PassportPathError):
+        raise HTTPException(404, "Logbook entry not found") from None
+
+    row.head_commit = commit
+    db.flush()
+
+    return RecordResultOut(name=stem, commit=commit)
+
+
+@passport_router.post(
+    "/{passport_id}/reflections",
+    response_model=RecordResultOut,
+    status_code=201,
+    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+)
+def add_reflection(
+    passport_id: str,
+    body: ReflectionIn,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+    store: PassportStore = _DEP_STORE,
+) -> RecordResultOut:
+    """Write a reflection.
+
+    Holder-only in both directions: nobody else writes one, and nobody
+    else reads one. Written reflection can be disclosed in legal
+    proceedings and UK doctors are wary of it for good reason, so the
+    narrower default is the safer one.
+
+    The anonymisation confirmation is required rather than defaulted.
+    Reflections are written about real cases and are one of only two
+    places patient data could enter a passport.
+    """
+    row = _require_holder(db, passport_id, user)
+
+    if not body.anonymised_confirmed:
+        raise HTTPException(
+            400,
+            "Confirm the reflection is anonymised before saving it. A "
+            "passport holds no patient data.",
+        )
+
+    reflection = Reflection(
+        title=body.title,
+        written_on=body.written_on,
+        competencies=_competency_refs(body.competencies),
+        attachments=_attachments(body.attachment_hashes),  # type: ignore[arg-type]
+    )
+
+    name, commit = records.add_reflection(
+        store, row.id, _actor(user), reflection, body.body
+    )
+    row.head_commit = commit
+    db.flush()
+
+    return RecordResultOut(name=name, commit=commit)
+
+
+@passport_router.get(
+    "/{passport_id}/reflections",
+    response_model=list[ReflectionOut],
+    dependencies=[_DEP_PASSPORT],
+)
+def list_reflections(
+    passport_id: str,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+    store: PassportStore = _DEP_STORE,
+) -> list[ReflectionOut]:
+    """Every reflection — holder only.
+
+    ``_require_holder`` rather than ``_require_reader``: an assessor
+    named on a request may read the sign-off they were asked about, and
+    still may not read a reflection. This is the one record type where a
+    reader with legitimate access to the rest is refused.
+    """
+    row = _require_holder(db, passport_id, user)
+
+    found: list[ReflectionOut] = []
+
+    for entry in store.list_dir(row.id, paths.REFLECTIONS):
+        name = entry.name
+        raw = store.read(row.id, paths.reflection_file(name))
+        reflection, prose = reflection_from_markdown(raw)
+        found.append(
+            ReflectionOut.model_validate(
+                {
+                    "name": name,
+                    "body": prose,
+                    **reflection.model_dump(mode="json"),
+                }
+            )
+        )
+
+    return found
+
+
+@passport_router.patch(
+    "/{passport_id}/reflections/{name}",
+    response_model=RecordResultOut,
+    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+)
+def amend_reflection(
+    passport_id: str,
+    name: str,
+    body: ReflectionIn,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+    store: PassportStore = _DEP_STORE,
+) -> RecordResultOut:
+    """Rewrite a reflection."""
+    row = _require_holder(db, passport_id, user)
+
+    if not body.anonymised_confirmed:
+        raise HTTPException(
+            400,
+            "Confirm the reflection is anonymised before saving it. A "
+            "passport holds no patient data.",
+        )
+
+    reflection = Reflection(
+        title=body.title,
+        written_on=body.written_on,
+        competencies=_competency_refs(body.competencies),
+        attachments=[],
+    )
+
+    try:
+        commit = records.amend_reflection(
+            store, row.id, _actor(user), name, reflection, body.body
+        )
+    except (records.RecordNotFoundError, paths.PassportPathError):
+        raise HTTPException(404, "Reflection not found") from None
+
+    row.head_commit = commit
+    db.flush()
+
+    return RecordResultOut(name=name, commit=commit)
+
+
+@passport_router.delete(
+    "/{passport_id}/reflections/{name}",
+    response_model=RecordResultOut,
+    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+)
+def remove_reflection(
+    passport_id: str,
+    name: str,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+    store: PassportStore = _DEP_STORE,
+) -> RecordResultOut:
+    """Remove a reflection."""
+    row = _require_holder(db, passport_id, user)
+
+    try:
+        commit = records.remove_reflection(store, row.id, _actor(user), name)
+    except (records.RecordNotFoundError, paths.PassportPathError):
+        raise HTTPException(404, "Reflection not found") from None
+
+    row.head_commit = commit
+    db.flush()
+
+    return RecordResultOut(name=name, commit=commit)
+
+
+@passport_router.post(
+    "/{passport_id}/cpd",
+    response_model=RecordResultOut,
+    status_code=201,
+    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+)
+def add_cpd_entry(
+    passport_id: str,
+    body: CpdEntryIn,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+    store: PassportStore = _DEP_STORE,
+) -> RecordResultOut:
+    """Record a continuing professional development activity.
+
+    Grouped by year on disk, because UK appraisal runs annually and asks
+    what you did this year — the grouping matches how the record is used
+    rather than being file management.
+    """
+    row = _require_holder(db, passport_id, user)
+
+    entry = CpdEntry(
+        activity_on=body.activity_on,
+        title=body.title,
+        activity_type=body.activity_type,
+        hours=body.hours,
+        competencies=_competency_refs(body.competencies),
+        certificate=body.certificate,
+        notes=body.notes,
+        attachments=_attachments(body.attachment_hashes),  # type: ignore[arg-type]
+    )
+
+    stem, commit = records.add_cpd_entry(store, row.id, _actor(user), entry)
+    row.head_commit = commit
+    db.flush()
+
+    return RecordResultOut(name=stem, commit=commit)
+
+
+@passport_router.get(
+    "/{passport_id}/cpd/{year}",
+    response_model=list[CpdEntryOut],
+    dependencies=[_DEP_PASSPORT],
+)
+def get_cpd_year(
+    passport_id: str,
+    year: int,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+    store: PassportStore = _DEP_STORE,
+) -> list[CpdEntryOut]:
+    """One year's CPD activities, sorted by when they happened."""
+    row = _require_reader(db, passport_id, user)
+
+    found: list[CpdEntryOut] = []
+
+    try:
+        listing = store.list_dir(row.id, paths.cpd_dir(year))
+    except paths.PassportPathError:
+        raise HTTPException(404, "Not a valid year") from None
+
+    for path in listing:
+        raw = store.read(row.id, path)
+        entry = from_yaml(CpdEntry, raw)
+        found.append(
+            CpdEntryOut.model_validate(
+                {
+                    "filename": path.stem,
+                    "year": year,
+                    **entry.model_dump(mode="json"),
+                }
+            )
+        )
+
+    found.sort(key=lambda item: item.activity_on)
+
+    return found
+
+
+@passport_router.patch(
+    "/{passport_id}/cpd/{year}/{stem}",
+    response_model=RecordResultOut,
+    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+)
+def amend_cpd_entry(
+    passport_id: str,
+    year: int,
+    stem: str,
+    body: CpdEntryIn,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+    store: PassportStore = _DEP_STORE,
+) -> RecordResultOut:
+    """Correct a CPD activity."""
+    row = _require_holder(db, passport_id, user)
+
+    entry = CpdEntry(
+        activity_on=body.activity_on,
+        title=body.title,
+        activity_type=body.activity_type,
+        hours=body.hours,
+        competencies=_competency_refs(body.competencies),
+        certificate=body.certificate,
+        notes=body.notes,
+        attachments=[],
+    )
+
+    try:
+        commit = records.amend_cpd_entry(
+            store, row.id, _actor(user), year, stem, entry
+        )
+    except (records.RecordNotFoundError, paths.PassportPathError):
+        raise HTTPException(404, "CPD entry not found") from None
+
+    row.head_commit = commit
+    db.flush()
+
+    return RecordResultOut(name=stem, commit=commit)
+
+
+@passport_router.delete(
+    "/{passport_id}/cpd/{year}/{stem}",
+    response_model=RecordResultOut,
+    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+)
+def remove_cpd_entry(
+    passport_id: str,
+    year: int,
+    stem: str,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+    store: PassportStore = _DEP_STORE,
+) -> RecordResultOut:
+    """Remove a CPD activity recorded in error."""
+    row = _require_holder(db, passport_id, user)
+
+    try:
+        commit = records.remove_cpd_entry(
+            store, row.id, _actor(user), year, stem
+        )
+    except (records.RecordNotFoundError, paths.PassportPathError):
+        raise HTTPException(404, "CPD entry not found") from None
+
+    row.head_commit = commit
+    db.flush()
+
+    return RecordResultOut(name=stem, commit=commit)
 
 
 def _now() -> datetime:
