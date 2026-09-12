@@ -1633,7 +1633,7 @@ def update_user(
     # Only an operator may modify another operator
     if (
         current_user.platform_role != "superadmin"
-        and user.system_permissions == "superadmin"
+        and user.platform_role == "superadmin"
     ):
         raise HTTPException(
             status_code=403, detail="Cannot modify superadmin users"
@@ -1846,7 +1846,7 @@ def deactivate_user(
     # Only an operator may deactivate another operator
     if (
         current_user.platform_role != "superadmin"
-        and user.system_permissions == "superadmin"
+        and user.platform_role == "superadmin"
     ):
         raise HTTPException(
             status_code=403, detail="Cannot modify superadmin users"
@@ -1909,7 +1909,7 @@ def reactivate_user(
     # Only an operator may reactivate another operator
     if (
         current_user.platform_role != "superadmin"
-        and user.system_permissions == "superadmin"
+        and user.platform_role == "superadmin"
     ):
         raise HTTPException(
             status_code=403, detail="Cannot modify superadmin users"
@@ -2605,7 +2605,7 @@ def get_user(
     # Only an operator may view another operator
     if (
         current_user.platform_role != "superadmin"
-        and user.system_permissions == "superadmin"
+        and user.platform_role == "superadmin"
     ):
         raise HTTPException(status_code=404, detail="User not found")
 

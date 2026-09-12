@@ -620,11 +620,19 @@ does not, and removing the ladder removes the suggestion.
               first. Recorded because the ordering error survived several readings.
             - **46 backend references remain, and 8 frontend files**, counted after the
               admin work. Down from 76, and what is left is not one job:
-              - **Four superadmin-target comparisons** at 1636, 1849, 1912 and 2608 —
-                `user.system_permissions == "superadmin"`, protecting an operator from
-                being modified. The caller half of each already moved; these are the
-                target half and should follow it to `platform_role`. **This is a real
-                unit the plan never listed**, and it is the last authorisation read.
+              - [x] **Four superadmin-target comparisons migrated** at 1636, 1849, 1912
+                and 2608 — `update_user`, `deactivate_user`, `reactivate_user` and
+                `get_user`, each refusing a non-operator acting on an operator. The
+                caller half already asked `platform_role`; these were the target half,
+                and the last authorisation reads left on the old column. **The plan
+                never listed them as a unit**, which is why they were nearly missed.
+                - **The branch had to stack.** Cut off plain `main` first, and all four
+                  would have conflicted: the caller half changed on the previous branch
+                  sits on the line immediately above each target half, inside the same
+                  `if`. Stacking on that branch is what made it a clean change.
+                - **Five tests, verified by reverting.** Four refusals plus a mirror so
+                  they cannot pass by refusing everyone. `get_user` answers 404 rather
+                  than 403, so the refusal does not confirm the account exists.
               - **Four composites** at 2801, 3613, 5232 and 5412 —
                 `in ["admin", "superadmin"]`, all meaning "may reach admin pages". They
                 are the backend twin of the frontend nav checks and become

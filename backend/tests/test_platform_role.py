@@ -372,3 +372,111 @@ class TestScopingAsksTheNewColumn:
 
         other = test_client.get(f"/api/organisations/{not_theirs}")
         assert other.status_code == 404
+
+
+class TestOperatorsAreProtectedByTheNewColumn:
+    """Four routes refuse to act on an operator, and now ask the new column.
+
+    `update_user`, `deactivate_user`, `reactivate_user` and `get_user`
+    each refuse a non-operator acting on an operator. The caller half of
+    that pair already asks `platform_role`; these are the target half,
+    and were the last authorisation reads left on `system_permissions`.
+
+    Both users below have divergent columns, so each test fails if the
+    check reads the old one — the operator says `single-user` there, and
+    would be treated as an ordinary user.
+    """
+
+    def _operator(self, db: Session) -> User:
+        """An operator by the new column, and nothing by the old one."""
+        return _user(
+            db,
+            "protected_operator",
+            system_permissions="single-user",
+            platform_role="superadmin",
+            base_profession="superadmin_profession",
+        )
+
+    def test_an_operator_cannot_be_modified(
+        self, authenticated_admin_client, db_session: Session
+    ):
+        operator = self._operator(db_session)
+
+        resp = authenticated_admin_client.patch(
+            f"/api/users/{operator.id}",
+            json={"email": "taken.over@example.test"},
+        )
+
+        assert resp.status_code == 403
+        assert "superadmin" in resp.json()["detail"].lower()
+
+    def test_an_operator_cannot_be_deactivated(
+        self, authenticated_admin_client, db_session: Session
+    ):
+        operator = self._operator(db_session)
+
+        resp = authenticated_admin_client.post(
+            f"/api/users/{operator.id}/deactivate"
+        )
+
+        assert resp.status_code == 403
+
+    def test_an_operator_cannot_be_reactivated(
+        self, authenticated_admin_client, db_session: Session
+    ):
+        operator = self._operator(db_session)
+        operator.is_active = False
+        db_session.commit()
+
+        resp = authenticated_admin_client.post(
+            f"/api/users/{operator.id}/reactivate"
+        )
+
+        assert resp.status_code == 403
+
+    def test_an_operator_cannot_be_viewed(
+        self, authenticated_admin_client, db_session: Session
+    ):
+        """404 here rather than 403, so the refusal does not confirm
+        that the account exists to someone who may not see it."""
+        operator = self._operator(db_session)
+
+        resp = authenticated_admin_client.get(f"/api/users/{operator.id}")
+
+        assert resp.status_code == 404
+
+    def test_an_ordinary_user_is_not_protected(
+        self,
+        authenticated_admin_client,
+        test_admin: User,
+        db_session: Session,
+    ):
+        """The mirror, so the four above cannot pass by refusing everyone.
+
+        Shares an organisation with the admin, since the place check runs
+        immediately after the operator check.
+        """
+        org = Organisation(name="Shared Trust", type="hospital")
+        db_session.add(org)
+        db_session.commit()
+        db_session.refresh(org)
+
+        colleague = _user(
+            db_session,
+            "ordinary_target",
+            system_permissions="staff",
+            platform_role="member",
+        )
+        for person in (test_admin, colleague):
+            db_session.execute(
+                insert(organisation_member).values(
+                    organisation_id=org.id,
+                    user_id=person.id,
+                    capacity="staff",
+                )
+            )
+        db_session.commit()
+
+        resp = authenticated_admin_client.get(f"/api/users/{colleague.id}")
+
+        assert resp.status_code == 200
