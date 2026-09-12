@@ -355,6 +355,8 @@ This is a rule about **how a response ends**, not about every line inside it.
 
 The closing summary:
 
+- **Opens with a level one heading reading `# TL;DR`.** Nothing else goes on
+  that line, and the bullets follow directly beneath it.
 - **Bullets, never paragraphs.** A handful of them. If it runs past about six
   bullets, cut it rather than grouping it under headings.
 - **Start each bullet with a bold short statement** carrying the main idea, so
@@ -382,9 +384,13 @@ Things that look like exceptions and are not:
 
 Example of a closing summary:
 
+```markdown
+# TL;DR
+
 - **Added the summary rule to CLAUDE.md.** It sits under the Claude-specific
   section so the Copilot sync will not overwrite it.
 - **Nothing else changed.** No tests or code were touched.
+```
 
 ### Attribution
 
