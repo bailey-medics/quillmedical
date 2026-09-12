@@ -47,6 +47,15 @@ export interface ModuleMediaCardProps {
   onDelete?: (assetId: string) => void | Promise<void>;
   /** Shows skeleton rows while the media list is in flight. */
   loading?: boolean;
+  /**
+   * What went wrong with the last upload, delete or load.
+   *
+   * Shown rather than swallowed: an upload that fails silently is
+   * indistinguishable from a button that does nothing, and the admin
+   * has no other way to find out. A 503 here means the deployment has
+   * no media bucket configured, which is the answer they need.
+   */
+  error?: string | null;
 }
 
 interface Row {
@@ -63,6 +72,7 @@ export default function ModuleMediaCard({
   onUpload,
   onDelete,
   loading = false,
+  error = null,
 }: ModuleMediaCardProps) {
   const [pendingDelete, setPendingDelete] = useState<MediaAsset | null>(null);
 
@@ -105,6 +115,15 @@ export default function ModuleMediaCard({
                   )} until every video is uploaded.`
                 : "This module will not be available to learners until every video is uploaded."
             }
+          />
+        )}
+
+        {error && (
+          <StateMessage
+            icon={<IconAlertTriangle />}
+            colour="alert"
+            title="Something went wrong"
+            description={error}
           />
         )}
 
