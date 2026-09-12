@@ -2061,14 +2061,73 @@ three does not invalidate unit one.
 
 ## Phase 3: API
 
+**Not every route listed under "API surface" belongs to this phase.**
+Three need Phase 4 (`export.md`, `export.pdf`, `export.zip` — there is no
+`render.py` or `pdf.py` yet) and four need Phase 5 (the external-assessor
+flow: invite, accept, verify-registration, revoke — there is no invite
+model, no `passport_assessor` token type and no `external` capacity).
+Writing them now would mean stubs returning 501 and an OpenAPI spec
+promising what does not work, so they arrive with the code behind them.
+
+That leaves about twelve routes, delivered as three reviewed commits:
+the schemas and the feature key, then the sign-off lifecycle, then the
+self-declared records. `PUT /api/sites/{site_id}/common-competencies`
+belongs to this phase — the model landed in Phase 1 and the endpoint was
+explicitly deferred here.
+
 - [ ] Add the `/api/passport` router under
       `backend/app/features/passport/router.py` with the routes listed
       above, `requires_feature("passport")`, CBAC dependencies, CSRF on
       mutations and rate limiting on uploads and exports.
-- [ ] Register `passport` as an organisation feature key alongside
+- [x] Register `passport` as an organisation feature key alongside
       `teaching`.
-- [ ] Add Pydantic request and response schemas under
+      - **Nothing to write: there is no registry.** `feature_key` is an
+        unconstrained `String(50)` on `OrganisationFeature`; the toggle
+        endpoint at `main.py:4332` takes any string as a path parameter;
+        `RequireFeature` on the frontend takes a plain string. `teaching`
+        is a convention held together by literals at its call sites, and
+        nothing anywhere enumerates valid keys.
+      - So `passport` becomes real when the router declares
+        `requires_feature("passport")` and an admin enables it on an
+        organisation through the existing endpoint. A constants module
+        was considered and rejected: it would be the only such list in
+        the codebase, and inventing a shared mechanism nobody asked for
+        is a worse outcome than a documented convention.
+- [x] Add Pydantic request and response schemas under
       `backend/app/schemas/passport.py` with `extra="forbid"`.
+      - **Deliberately a second set, not the record models reused.**
+        `app/features/passport/schemas.py` is the storage contract,
+        validated on read as well as write because a passport is a
+        portable directory somebody may have hand-edited. These are the
+        API contract, held to the additive-only rule in
+        `.claude/rules/backend.md`. Returning the record models directly
+        would make every on-disk format change a breaking API change,
+        and the storage layer could then never be refactored without a
+        release cycle.
+      - **The enums are imported from the record model rather than
+        restated**, and a test asserts each field's annotation accepts
+        exactly the record model's values. A second copy would drift:
+        a CPD activity type added on disk and forgotten here would be
+        storable but not submittable, or the reverse.
+      - **A word-list test pins that nothing on the wire judges
+        sufficiency.** Any response field gaining a name containing
+        `target`, `progress`, `complete`, `ready` or similar fails it.
+        The logbook returns `count` and stops, and the shortlist field
+        is `commonly_used_here` rather than `required` — the wording
+        matters as much as the behaviour, since a list presented as the
+        set that matters quietly becomes a syllabus.
+      - **Two confirmations are required rather than defaulted**:
+        `declaration_confirmed` on signing, and `anonymised_confirmed`
+        on a reflection. Both omitted is a validation error, not a
+        false. Defaulting the first would make signing a click; the
+        second guards one of only two places patient data could enter a
+        passport.
+      - Notes from the build: mypy's strict mode forbids implicit
+        re-export, so a test cannot reach an imported enum through the
+        API module; and it rejects `is` comparisons against `Literal`
+        forms, so the vocabulary tests compare `get_args` on both sides
+        instead. Both are mypy facts worth knowing before writing
+        similar tests elsewhere.
 - [ ] Add API tests: each route's authorisation matrix (holder,
       assessor, other user, admin), every state transition, self-sign
       refusal, and that the api-compatibility snapshot is additive.
