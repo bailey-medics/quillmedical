@@ -1,0 +1,128 @@
+/*
+ * Deliberately identical to VideoPlayer.module.css.
+ *
+ * The comparison in Storybook is only fair if the frame around each
+ * player is the same, so any difference you see is the player's doing
+ * rather than the wrapper's.
+ */
+
+.wrapper {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  max-height: 80vh;
+  max-width: 100%;
+  width: min(100%, calc(80vh * 16 / 9));
+  border-radius: var(--mantine-radius-md);
+  overflow: hidden;
+}
+
+.wrapper > * {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/*
+ * Brand the control bar.
+ *
+ * The point of the v10 evaluation: with `react-player` the browser draws
+ * this bar in shadow DOM and none of it can be reached. Here it is one
+ * custom property.
+ *
+ * `--media-popover` is what the bar's background actually reads — not
+ * `--media-controls`, which despite the name colours the backdrop
+ * gradient behind it. Checked against the shipped skin rather than
+ * guessed, because the names do not quite say which is which.
+ *
+ * Shade 8 is the brand navy (#001a36), per `theme.ts`. Not shade 7,
+ * which is the hover/pressed state, and not shade 5, which is for
+ * filled actions — a control bar is a surface, so it takes the brand
+ * colour itself.
+ *
+ * Set on `.media-skin` rather than on the wrapper. The skin defines
+ * these variables on that element itself, so a definition on an
+ * ancestor never wins: the closer declaration replaces the inherited
+ * one. `:global` because the class belongs to the library, so CSS
+ * modules must not hash it.
+ */
+.wrapper :global(.media-skin) {
+  --media-popover: var(--mantine-color-primary-8);
+  --media-popover-foreground: var(--mantine-color-white);
+
+  /*
+   * Match the corners to everything else in the app. The skin ships
+   * `--media-control-radius: 99px`, a full pill, which beside a
+   * `BaseCard` at `md` (0.5rem) reads as a different design system.
+   * `--media-controls-radius` inherits from it, so the bar and the
+   * buttons both follow.
+   */
+  --media-control-radius: var(--mantine-radius-md);
+  --media-controls-radius: var(--mantine-radius-md);
+
+  /*
+   * The visible outer corner is the skin's, not the wrapper's. The
+   * wrapper rounds at `md`, but `.media-container` sits inside it and
+   * rounds itself at `--media-video-border-radius`, which ships at
+   * 28px — so the wrapper's corner was never what you saw.
+   *
+   * Set through the variable rather than on `.media-container`
+   * directly: the skin zeroes it in fullscreen, and overriding the
+   * property would leave rounded corners on a fullscreen video.
+   */
+  --media-video-border-radius: var(--mantine-radius-md);
+}
+
+/*
+ * Amber controls: every button in the bar.
+ *
+ * The icon takes `color: inherit` from `.media-button`, so colouring the
+ * button colours the icon — there is no separate icon fill to chase.
+ * Shade 4 rather than the brand amber at 5: these sit on the navy bar,
+ * and the lighter tone holds its contrast against it.
+ *
+ * Hover lifts the background to a lighter primary rather than to amber.
+ * `--media-accent` is what fills the button's transparent background on
+ * hover, and left unset it would be the skin's own accent. Shade 5 reads
+ * as the same navy lifted off the bar (shade 8), which is what a hover
+ * should say; the amber icon stays amber against it.
+ *
+ * Grouped rather than repeated: these want identical treatment, and
+ * separate copies would be the ones that drift apart later. The mute
+ * button carries three icons (high, low, off) but they inherit alike,
+ * so none needs naming. The settings cog is a menu trigger rather than
+ * a plain button, hence the different class shape. Cast and AirPlay are
+ * absent because they are hidden below.
+ */
+.wrapper :global(.media-play-button),
+.wrapper :global(.media-mute-button),
+.wrapper :global(.media-settings-menu-trigger),
+.wrapper :global(.media-pip-button),
+.wrapper :global(.media-fullscreen-button) {
+  color: var(--mantine-color-secondary-4);
+
+  --media-accent: var(--mantine-color-primary-5);
+  --media-accent-foreground: var(--mantine-color-secondary-4);
+}
+
+/*
+ * Hide the cast and AirPlay buttons.
+ *
+ * Both are rendered unconditionally by the default skin, but their
+ * provider packages (`@videojs/google-cast`, and AirPlay's Safari
+ * equivalent) are not installed, so they sit in the bar permanently
+ * disabled — a control that cannot ever do anything.
+ *
+ * Hidden in CSS rather than removed from the layout: taking a control
+ * out of the skin means ejecting the whole thing into our own source,
+ * which is a commitment worth making when v10 is adopted for real, not
+ * for an evaluation.
+ *
+ * If casting is ever wanted, check first whether a cast receiver
+ * carries the signed CDN cookie or fetches the media itself — the
+ * second would route around the access gate the whole design rests on.
+ */
+.wrapper :global(.media-cast-button),
+.wrapper :global(.media-airplay-button) {
+  display: none;
+}
