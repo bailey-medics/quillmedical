@@ -1179,6 +1179,28 @@ content calls for it.
 
 Only after Phases 0–5 are shipped and a hand-encoded MP4 plays end to end.
 
+**[found 2026-09-12] The gate above was not met, and for a reason worth
+recording: four of the five video settings were never wired into Cloud Run.**
+Terraform created the buckets, the CDN backend and the signing key in Phase 1,
+and mapped `TEACHING_VIDEO_SIGNING_KEY` as a secret — but
+`TEACHING_VIDEOS_SOURCE_BUCKET`, `TEACHING_VIDEOS_BUCKET`,
+`TEACHING_VIDEO_SIGNING_KEY_NAME` and `TEACHING_VIDEO_BASE_URL` were not passed
+to the service. The feature was therefore inert rather than broken: uploads
+refuse with 503 for want of a bucket name, and `grant_video_access` falls
+through to its local-development branch and mints no cookie at all.
+
+Nothing caught it because every layer was tested in isolation — the cookie
+signing has unit tests, the endpoints have router tests, the card has component
+tests, and a video plays in Storybook off local disk. The join between them had
+never been exercised, which is exactly what this phase's opening gate was there
+to force.
+
+`TEACHING_VIDEO_BASE_URL` is `https://${var.app_domain}/videos`, the app's own
+host: `app_domain` is `teaching.quill-medical.com` in
+`infra/environments/teaching/terraform.tfvars`, and the load balancer routes
+`/videos/*` to the backend bucket on that same host, so the cookie stays
+same-origin. The other three come from the pipeline module's existing outputs.
+
 - [ ] Cloud Run job `video-transcode` — FFmpeg image, 4 CPU, 4 GB, 60-minute
       timeout. Reads from source, writes 720p and 1080p H.264 plus a poster frame
       to the processed bucket under `{org_id}/{module_id}/`, named from the asset

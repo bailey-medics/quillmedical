@@ -364,7 +364,7 @@ This is a rule about **how a response ends**, not about every line inside it.
 
 The closing summary:
 
-- **Opens with a level one heading reading `# TL;DR`.** Nothing else goes on
+- **Opens with a level two heading reading `## TL;DR`.** Nothing else goes on
   that line, and the bullets follow directly beneath it.
 - **Bullets, never paragraphs.** A handful of them. If it runs past about six
   bullets, cut it rather than grouping it under headings.
