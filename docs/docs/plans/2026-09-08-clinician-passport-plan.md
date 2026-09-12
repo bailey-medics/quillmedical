@@ -2272,8 +2272,33 @@ explicitly deferred here.
         the decisions actually happen and can be asserted precisely; and
         an end-to-end build, which catches what the story cannot — a
         flowable accepted at construction and rejected at build.
-- [ ] Implement the zip bundle export including a `git bundle` of the
+- [x] Implement the zip bundle export including a `git bundle` of the
       repository.
+      - **The canonical files are copied byte for byte**, not
+        re-serialised from the models. A round trip through Pydantic
+        could quietly normalise something, and then the export would be
+        a rendering of the record rather than a copy of it. A test
+        compares the exported `profile.yaml` against what the store
+        returns.
+      - **A broken rendering does not deny the export.** The record is
+        already in the archive by the time the views are attempted, so a
+        failure in either is logged and skipped: a holder with the files
+        and no PDF is far better off than one with nothing, and the
+        README says the files are the authority in any case.
+      - **The git bundle is only available from the local backend.** It
+        needs a working repository to run `git bundle` against, which
+        the bucket backend does not expose — it holds a bundle already,
+        but reaching for it would need the concrete type anyway. The
+        export logs and continues rather than failing. That gap matters
+        once the GCS backend is in use and is worth closing then, by
+        having the bucket backend hand over the bundle it already has.
+      - `LocalPassportStore.repository_path` was added for this, rather
+        than reaching into the private `_path`. It is the only thing the
+        export needs from the concrete type, and a named accessor at
+        least says in its signature that a filesystem path is what
+        comes back.
+      - **`VERIFY_TEMPLATE` was written in Phase 1 and had never been
+        used.** The bundle is what it was for.
 - [ ] Tests: rendered Markdown snapshot per fixture passport, PDF
       generation succeeds and contains the hashes, export logging
       records no content.
