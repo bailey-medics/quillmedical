@@ -12,7 +12,6 @@ import yaml
 from pydantic import BaseModel, ConfigDict
 
 from app.paths import SHARED_DIR
-from app.system_permissions import SystemPermission
 
 
 class BaseProfessionEntry(BaseModel):
@@ -23,7 +22,6 @@ class BaseProfessionEntry(BaseModel):
     id: str
     display_name: str
     description: str
-    default_system_permission: SystemPermission
     requires_clinical_services: bool
     base_competencies: list[str]
 

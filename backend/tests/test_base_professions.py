@@ -5,8 +5,7 @@ Covers:
   BaseProfessionEntry with no errors
 - get_profession_details / get_profession_base_competencies lookups
 - resolve_user_competencies' union-then-remove formula
-- BaseProfessionEntry rejects malformed data (extra fields, invalid
-  default_system_permission)
+- BaseProfessionEntry rejects malformed data (extra fields)
 """
 
 from __future__ import annotations
@@ -35,7 +34,6 @@ def test_get_profession_details_known_id() -> None:
     details = get_profession_details("patient")
     assert details is not None
     assert details.id == "patient"
-    assert details.default_system_permission == "single-user"
 
 
 def test_get_profession_details_unknown_id() -> None:
@@ -72,22 +70,9 @@ def test_base_profession_entry_rejects_extra_fields() -> None:
             id="x",
             display_name="X",
             description="desc",
-            default_system_permission="staff",
             requires_clinical_services=True,
             base_competencies=[],
             unexpected_field="oops",  # type: ignore[call-arg]
-        )
-
-
-def test_base_profession_entry_rejects_invalid_permission_level() -> None:
-    with pytest.raises(ValidationError):
-        BaseProfessionEntry(
-            id="x",
-            display_name="X",
-            description="desc",
-            default_system_permission="not-a-real-level",  # type: ignore[arg-type]
-            requires_clinical_services=True,
-            base_competencies=[],
         )
 
 
