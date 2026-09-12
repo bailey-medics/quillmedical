@@ -115,8 +115,23 @@ The arguments supplied to this command are: `$ARGUMENTS`
      attempts.
 7. Fetch the latest `main` (`git fetch origin main`) before checking whether
    the branch is behind — a stale local `main` ref will falsely report the
-   branch as up to date. Rebase onto `origin/main` if behind, resolve any
-   conflicts, and ensure tests pass. Force push if the rebase rewrites history.
+   branch as up to date. Rebase onto `origin/main` if behind and resolve any
+   conflicts. Force push if the rebase rewrites history. Then run the
+   **targeted** tests for the code this branch touched — `just ub -k "..."`
+   and `just uf src/path/to/file.test.tsx` — and nothing wider:
+   - **Do not run the full unit suite here.** CI's fast tier runs the full
+     backend and frontend suites on every push, and the merge queue re-runs
+     them against current `main`. A local full run duplicates that and costs
+     minutes per push for no new information. See "Test tiers" in
+     `CLAUDE.md`.
+   - The full suite is justified before pushing only when the rebase hit
+     conflicts, or the branch changes a shared module with wide blast radius
+     (`models.py`, `conftest.py`, `api.ts`, `shared/` YAML and its generated
+     types, a dependency bump). Say which of those applied when you report.
+   - If the targeted tests already passed on this exact code and nothing has
+     changed since, do not run them again.
+   - If a test fails, stop and report it. Fixing it is a code change the human
+     has not reviewed — do not fix and re-commit without approval.
 8. Push to current branch (do not create a new branch). If there is nothing
    to push, `Everything up-to-date` is a success, not an error — carry on.
 9. If `final` was given, update the pull request description and mark the pull
@@ -293,7 +308,7 @@ rather than inventing work.
 All code must be reviewed by a human before it enters git history. Work in discrete, self-contained units and gate each one:
 
 1. Implement a single discrete change (e.g. a feature implemented, a refactor complete, a test passing, normally a sub-heading in the plan document). Do not batch unrelated changes together.
-2. Ensure the change ships with matching tests — new or updated tests that actually exercise the new/changed behaviour (per the repo's testing requirements) — then run the relevant suite so the change is presented green (e.g. `just ub` / `just uf` for backend/frontend, targeted where possible).
+2. Ensure the change ships with matching tests — new or updated tests that actually exercise the new/changed behaviour (per the repo's testing requirements) — then run the targeted tests for that change so it is presented green (`just ub -k "..."` / `just uf src/path/to/file.test.tsx`). Not the full suite: CI's fast tier runs that on every push — see "Test tiers" in `CLAUDE.md`.
 3. **Stop and hand over for review.** Present a short review packet: what changed, why, which plan step it maps to, and any risks or assumptions. The packet is a brief written summary posted directly in the chat conversation.
 4. Wait for the human to review the actual diff in the VS Code Source Control / diff view and give explicit approval. If they request changes, apply them and return to step 2.
 5. Only after explicit approval, commit with a short descriptive message, then proceed to the next unit.

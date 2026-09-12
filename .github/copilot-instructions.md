@@ -27,7 +27,16 @@ See the `Justfile` if you want to know more.
   - Backend: `just ub` (all unit tests) or `just ub -k "test_name"` (targeted)
   - Frontend: `just uf` (all unit tests) or `just uf src/path/to/file.test.tsx` (targeted)
   - Both run in a throwaway container from `compose.unit-tests.yml` that mounts the current worktree, so they work from any worktree and do not need the dev stack running
-  - Prefer targeted tests during development; run the full suite only if CI is failing
+- **Test tiers — test what you touched locally; CI tests everything.** Each tier is wider and slower than the one before, and each only adds what the previous one cannot see:
+  - **Local, while developing**: only the tests for the code being changed (`just ub -k "..."`, `just uf src/path/to/file.test.tsx`). Seconds, run as often as useful.
+  - **Pre-commit, automatic**: lint, format, typecheck and spelling on the staged files, via the husky and pre-commit hooks.
+  - **CI fast tier**: the full backend and frontend unit suites plus Storybook build, on every push. The merge queue re-runs them against current `main` before anything lands.
+  - **CI heavy tier**: Storybook interaction tests, Semgrep and E2E, once the PR leaves draft.
+- **Do not run the full unit suite locally before committing or pushing** (`just ub` or `just uf` with no filter). It duplicates the fast tier and costs minutes per push. The only times it is justified:
+  - CI is red and you are iterating on the fix — each CI round trip is then slower than a local run
+  - a rebase onto `main` hit conflicts
+  - the change touches a shared module with wide blast radius: `models.py`, `conftest.py`, `api.ts`, `shared/` YAML and its generated types, a dependency bump
+- **Never claim a suite passed that was not run.** Name the exact commands that were run; "tests pass" on its own is not a report
 - Storybook: runs on the host — `just sb` (dev server), `just sbt` (tests), `just sbtci` (CI mode)
 - E2E: `just e2e` brings up a fresh per-worktree `compose.ci.yml` stack (the CI one) on a free port, runs Playwright against it and tears it down — never the dev stack
 - **Never run Storybook tests and `just e2e` at the same time** — both saturate the machine, and the Storybook runner then times out loading its own pages and reports mass failures that pass on their own

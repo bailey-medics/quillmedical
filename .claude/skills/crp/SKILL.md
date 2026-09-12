@@ -95,8 +95,23 @@ The arguments supplied to this command are: `$ARGUMENTS`
      attempts.
 7. Fetch the latest `main` (`git fetch origin main`) before checking whether
    the branch is behind — a stale local `main` ref will falsely report the
-   branch as up to date. Rebase onto `origin/main` if behind, resolve any
-   conflicts, and ensure tests pass. Force push if the rebase rewrites history.
+   branch as up to date. Rebase onto `origin/main` if behind and resolve any
+   conflicts. Force push if the rebase rewrites history. Then run the
+   **targeted** tests for the code this branch touched — `just ub -k "..."`
+   and `just uf src/path/to/file.test.tsx` — and nothing wider:
+   - **Do not run the full unit suite here.** CI's fast tier runs the full
+     backend and frontend suites on every push, and the merge queue re-runs
+     them against current `main`. A local full run duplicates that and costs
+     minutes per push for no new information. See "Test tiers" in
+     `CLAUDE.md`.
+   - The full suite is justified before pushing only when the rebase hit
+     conflicts, or the branch changes a shared module with wide blast radius
+     (`models.py`, `conftest.py`, `api.ts`, `shared/` YAML and its generated
+     types, a dependency bump). Say which of those applied when you report.
+   - If the targeted tests already passed on this exact code and nothing has
+     changed since, do not run them again.
+   - If a test fails, stop and report it. Fixing it is a code change the human
+     has not reviewed — do not fix and re-commit without approval.
 8. Push to current branch (do not create a new branch). If there is nothing
    to push, `Everything up-to-date` is a success, not an error — carry on.
 9. If `final` was given, update the pull request description and mark the pull
