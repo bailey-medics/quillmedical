@@ -2328,13 +2328,21 @@ explicitly deferred here.
 
 ## Phase 5: external assessors
 
-- [ ] Add `external` and `patient` to `MEMBER_CAPACITIES` in
+- [x] Add `external` and `patient` to `MEMBER_CAPACITIES` in
       `backend/app/models.py:671`, updating the assertion in
       `backend/tests/test_organisation_member_capacity.py` that pins
       the tuple. No migration: capacity is validated in Python, not by
       a database constraint. `patient` is added at the same time
       because the membership plan already anticipates it; what it
       means in business logic is settled there, not here.
+      - The declaration gained a comment saying what a capacity is and
+        is not — a relationship to a place, never a ranking and never a
+        permission check — because a four-word tuple with no note is
+        exactly where somebody later adds a fifth meaning "senior".
+      - Two tests were added beyond updating the pinned tuple: one per
+        new word, so the addition is exercised rather than merely
+        permitted. A third asserts the error message names the new ones
+        too, so it stays a complete answer as the list grows.
 - [ ] Extend `create_invite_token` and `decode_invite_token` in
       `backend/app/security.py` to accept the `passport_assessor` user
       type, with tests for expiry and single use.
