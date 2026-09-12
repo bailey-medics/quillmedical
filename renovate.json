@@ -11,29 +11,44 @@
     "Tier 1 — Clinical",
     "  Packages: fhirclient (HAPI FHIR), httpx (EHRbase direct HTTP)",
     "  Policy:   No automerge under any circumstances.",
-    "            Vulnerability alerts fire immediately, targeting clinical-live",
-    "            as a hotfix branch. Label: tier-1-clinical.",
+    "            Label: tier-1-clinical.",
     "",
     "Tier 2 — Infrastructure",
     "  Packages: FastAPI, SQLAlchemy, Uvicorn, Pydantic, Alembic, GCP SDKs,",
     "            Mantine, React, React Router, Docker base images",
     "  Policy:   No automerge; code review required.",
     "            Major version bumps labelled major-version-bump.",
-    "            Vulnerability alerts fire immediately, target clinical-live.",
     "",
     "Tier 3 — Tooling",
     "  Packages: eslint, @types/*, pytest, devDependencies,",
     "            GitHub Actions, pre-commit hooks",
     "  Policy:   No automerge. Every PR is reviewed and added to the merge",
     "            queue by hand — see .claude/rules/ci.md.",
-    "            Vulnerability alerts still bypass schedule and fire",
-    "            immediately, but target main (not clinical-live) — tooling",
-    "            vulnerabilities do not require a hotfix release.",
+    "",
+    "The tier governs how urgently a human responds and how deeply they",
+    "review. It does not change when Renovate opens the PR: every routine",
+    "update waits for the Wednesday schedule, whatever its tier.",
+    "",
+    "VULNERABILITY ALERTS",
+    "----------------------",
+    "Handled by the top-level vulnerabilityAlerts block, and only there.",
+    "Renovate always lets a vulnerability fix skip the schedule and the",
+    "rate limits; that cannot be overridden, per tier or otherwise. So a",
+    "vulnerability PR for any tier arrives immediately against main,",
+    "labelled security, with automerge switched off.",
+    "",
+    "Do NOT put isVulnerabilityAlert in a packageRule. It is a flag",
+    "Renovate sets on the rules it generates from GitHub's alerts, not a",
+    "matcher: Renovate has no vulnerability matcher at all. A rule carrying",
+    "it matches every update of the named packages and marks each one as a",
+    "vulnerability fix. That is how the Tier 2 packages came to open a PR",
+    "at any hour on hotfix/sec-* branches, labelled security, several",
+    "times a day, while the rest of the weekly group waited for Wednesday.",
     "",
     "SEVERITY-BASED RESPONSE POLICY",
     "--------------------------------",
     "Critical/High in Tier 1 or Tier 2:",
-    "  Hotfix branch off clinical-live within 24–48 hrs.",
+    "  Hotfix branch off the latest production tag within 24–48 hrs.",
     "  Safety assessment required before merge.",
     "",
     "Medium in Tier 2:",
@@ -41,7 +56,7 @@
     "  Include in next release if imminent.",
     "",
     "Low severity or any Tier 3:",
-    "  Pick up in next scheduled Wednesday Renovate run (vuln alerts included).",
+    "  Merge with the next scheduled Wednesday Renovate run.",
     "  No hotfix required.",
     "",
     "PULL REQUEST LIFECYCLE",
@@ -54,6 +69,13 @@
     "contexts — the two API breaking-change checks and the two DB destructive",
     "migration checks — and can never merge. Marking the PR ready for review",
     "fires them. See .claude/rules/ci.md.",
+    "",
+    "LABELS",
+    "--------",
+    "labels replaces the whole list when a rule matches, and the last",
+    "matching rule wins. Per-tier and per-update-type labels therefore use",
+    "addLabels, which appends, so a major fhirclient bump carries both",
+    "tier-1-clinical and major-version-bump.",
     "============================================================="
   ],
   "extends": ["config:recommended"],
@@ -68,9 +90,8 @@
   "minimumReleaseAge": "3 days",
   "labels": ["dependencies"],
   "vulnerabilityAlerts": {
-    "labels": ["security"],
-    "schedule": ["at any time"],
-    "prCreation": "immediate"
+    "labels": ["dependencies", "security"],
+    "automerge": false
   },
   "packageRules": [
     {
@@ -88,8 +109,7 @@
       "matchPackageNames": ["@types/**"],
       "groupName": "TypeScript @types packages",
       "groupSlug": "types-packages",
-      "automerge": false,
-      "labels": ["dependencies"]
+      "automerge": false
     },
     {
       "description": "Group all devDependencies minor/patch — no automerge, queued manually (Tier 3)",
@@ -98,58 +118,41 @@
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "devDependencies (minor and patch)",
       "groupSlug": "dev-deps-minor-patch",
-      "automerge": false,
-      "labels": ["dependencies"]
+      "automerge": false
     },
     {
       "description": "Group GitHub Actions version bumps — no automerge, queued manually (Tier 3)",
       "matchManagers": ["github-actions"],
       "groupName": "GitHub Actions",
       "groupSlug": "github-actions",
-      "automerge": false,
-      "labels": ["dependencies"]
+      "automerge": false
     },
     {
       "description": "Pre-commit hook updates — no automerge, queued manually (Tier 3)",
       "matchManagers": ["pre-commit"],
       "groupName": "pre-commit hooks",
       "groupSlug": "pre-commit-hooks",
-      "automerge": false,
-      "labels": ["dependencies"]
+      "automerge": false
     },
     {
       "description": "Terraform provider updates — no automerge, manual review required",
       "matchManagers": ["terraform"],
       "groupName": "Terraform providers",
       "groupSlug": "terraform-providers",
-      "automerge": false,
-      "labels": ["dependencies"]
+      "automerge": false
     },
     {
       "description": "Tier 2 — Docker base images: group and no automerge",
       "matchManagers": ["docker-compose", "dockerfile"],
       "groupName": "Docker base images",
       "groupSlug": "docker-images",
-      "automerge": false,
-      "labels": ["dependencies"]
+      "automerge": false
     },
     {
       "description": "Tier 1 — Clinical: fhirclient and httpx — never automerge",
       "matchPackageNames": ["fhirclient", "httpx"],
       "automerge": false,
-      "labels": ["dependencies", "tier-1-clinical"]
-    },
-    {
-      "description": "Tier 1 — Clinical: vulnerability alerts fire immediately, target clinical-live",
-      "matchPackageNames": ["fhirclient", "httpx"],
-      "matchUpdateTypes": ["patch", "minor", "major"],
-      "isVulnerabilityAlert": true,
-      "schedule": ["at any time"],
-      "prCreation": "immediate",
-      "baseBranches": ["clinical-live"],
-      "branchPrefix": "hotfix/sec-",
-      "labels": ["dependencies", "tier-1-clinical", "security", "hotfix"],
-      "automerge": false
+      "addLabels": ["tier-1-clinical"]
     },
     {
       "description": "Tier 2 — Infrastructure packages — no automerge",
@@ -172,91 +175,12 @@
         "react-router",
         "react-router-dom"
       ],
-      "automerge": false,
-      "labels": ["dependencies"]
+      "automerge": false
     },
     {
-      "description": "Tier 2 — Infrastructure: major version bumps get extra label",
-      "matchPackageNames": [
-        "fastapi",
-        "sqlalchemy",
-        "uvicorn",
-        "pydantic",
-        "alembic",
-        "google-cloud-storage",
-        "google-cloud-secret-manager",
-        "@mantine/core",
-        "@mantine/hooks",
-        "@mantine/form",
-        "@mantine/dates",
-        "@mantine/notifications",
-        "@mantine/modals",
-        "react",
-        "react-dom",
-        "react-router",
-        "react-router-dom"
-      ],
+      "description": "Major version bumps of any package get a dedicated label",
       "matchUpdateTypes": ["major"],
-      "labels": ["dependencies", "major-version-bump"]
-    },
-    {
-      "description": "Tier 2 — Infrastructure: vulnerability alerts fire immediately, target clinical-live",
-      "matchPackageNames": [
-        "fastapi",
-        "sqlalchemy",
-        "uvicorn",
-        "pydantic",
-        "alembic",
-        "google-cloud-storage",
-        "google-cloud-secret-manager",
-        "@mantine/core",
-        "@mantine/hooks",
-        "@mantine/form",
-        "@mantine/dates",
-        "@mantine/notifications",
-        "@mantine/modals",
-        "react",
-        "react-dom",
-        "react-router",
-        "react-router-dom"
-      ],
-      "isVulnerabilityAlert": true,
-      "schedule": ["at any time"],
-      "prCreation": "immediate",
-      "baseBranches": ["clinical-live"],
-      "branchPrefix": "hotfix/sec-",
-      "labels": ["dependencies", "security", "hotfix"],
-      "automerge": false
-    },
-    {
-      "description": "Tier 3 — Tooling vulnerability alerts: weekly schedule, target main",
-      "matchDepTypes": ["devDependencies", "dev"],
-      "isVulnerabilityAlert": true,
-      "schedule": ["on wednesday"],
-      "prCreation": "not-pending",
-      "labels": ["dependencies", "security"],
-      "automerge": false
-    },
-    {
-      "description": "Tier 3 — GitHub Actions and pre-commit vulnerability alerts: weekly schedule, target main",
-      "matchManagers": ["github-actions", "pre-commit"],
-      "isVulnerabilityAlert": true,
-      "schedule": ["on wednesday"],
-      "prCreation": "not-pending",
-      "labels": ["dependencies", "security"],
-      "automerge": false
-    },
-    {
-      "description": "All vulnerability alerts: never automerge regardless of tier",
-      "matchPackageNames": ["*"],
-      "isVulnerabilityAlert": true,
-      "automerge": false,
-      "labels": ["security"]
-    },
-    {
-      "description": "Task 7 — Notifications: major version bump PRs get a dedicated label",
-      "matchUpdateTypes": ["major"],
-      "labels": ["dependencies", "major-version-bump"]
+      "addLabels": ["major-version-bump"]
     },
     {
       "description": "Pin Python to 3.13.x — 3.14 does not yet work reliably in our Docker setup. Revisit Q3 2026.",
