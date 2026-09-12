@@ -2220,12 +2220,58 @@ explicitly deferred here.
       - CPD years descend because appraisal asks what you did *this*
         year, and the current one should not be at the foot of a long
         list. Entries within a year still ascend by clinical date.
-- [ ] Implement `pdf.py` with ReportLab `platypus`: a document
+- [x] Implement `pdf.py` with ReportLab `platypus`: a document
       template, the competency table, the sign-off appendix,
       `content_hash` per sign-off and the head commit in the footer.
       Follow `features/teaching/certificate.py` in parsing style
       config defensively, so a malformed value degrades to a default
       rather than failing the download.
+      - **There is no style config to parse defensively.** The
+        certificate module parses one because bank configs are authored
+        outside this repository; a passport has no equivalent. The same
+        discipline was applied where it does apply — to the record data.
+        Every value goes through `_text` or `_day`, which return a dash
+        rather than raising, and an unreadable certificate, CPD entry or
+        sign-off is skipped with a warning so the rest still prints.
+      - **Markup characters are escaped, and this is the one that would
+        have bitten.** Platypus reads `<` as markup, so an assessor
+        writing "sats <92% throughout" would raise at build time — after
+        the request was accepted, which is the worst moment to fail. A
+        test pins it with that exact comment.
+      - **Reflections are counted by year, never printed.** The count
+        is worth having — writing nine reflections across a year is the
+        evidence of a habit an appraiser looks for — and it discloses
+        nothing about any patient. The writing never appears, and nor
+        does the title: "the arrest on ward 12" names nobody and tells
+        anyone who was there exactly which patient it was. There is
+        deliberately no parameter that could switch the text on, and a
+        test asserts the signature has none, because that is the kind of
+        convenience a later change would add back without noticing what
+        it means.
+      - **Found while testing: a long reflection title can breach the
+        72-character commit subject limit.** `records.add_reflection`
+        builds a subject from the title, and `commits.py` refuses one
+        over the limit — correctly, but the refusal surfaces at write
+        time as a failed save rather than as validation on the field. A
+        title of about forty characters is enough to trigger it. Worth
+        either truncating the title in the subject or validating length
+        at the API boundary; noted rather than fixed here, since it
+        belongs with the records layer rather than with rendering.
+      - **A logbook totals table was added**, which the plan's PDF task
+        does not list. Counts by competency and by year, with a row
+        total and a grand total, grouped on `performed_on` rather than
+        the filename. Totals rather than entries is where this parts
+        company with the Markdown rendering: a registrar with three
+        hundred bronchoscopies does not want three hundred printed
+        lines, and the repository holds the detail for anyone who needs
+        it. Still counts and never comparisons — a test asserts no
+        "target", "required", "expected" or "sufficient" reaches a cell.
+      - The footer carries the head commit on every page rather than
+        only the first, because printed pages get separated.
+      - Tested two ways: the story platypus is handed, which is where
+        the decisions actually happen and can be asserted precisely; and
+        an end-to-end build, which catches what the story cannot — a
+        flowable accepted at construction and rejected at build.
 - [ ] Implement the zip bundle export including a `git bundle` of the
       repository.
 - [ ] Tests: rendered Markdown snapshot per fixture passport, PDF
