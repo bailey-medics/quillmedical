@@ -82,6 +82,6 @@ export const hostedVideoSlide: CompiledSlide = {
   slideIndex: 7,
   layout: "video-slide",
   title: "What the patient experiences",
-  videoSrc: "patient-experience.mp4",
+  videoSrc: "ltd-transition.mp4",
   durationSeconds: 180,
 };

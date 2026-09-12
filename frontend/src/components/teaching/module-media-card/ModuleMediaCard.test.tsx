@@ -55,7 +55,7 @@ describe("ModuleMediaCard", () => {
   it("shows no warning when every reference is linked", () => {
     renderWithMantine(<ModuleMediaCard media={complete} />);
 
-    expect(screen.queryByText(/Unavailable to learners/)).toBeNull();
+    expect(screen.queryByTestId("state-message")).toBeNull();
   });
 
   it("warns that an incomplete module is hidden from learners", () => {
@@ -63,8 +63,9 @@ describe("ModuleMediaCard", () => {
     // line is the only place an admin learns the module is hidden.
     renderWithMantine(<ModuleMediaCard media={incomplete} />);
 
+    expect(screen.getByText("1 video is missing")).toBeInTheDocument();
     expect(
-      screen.getByText("Unavailable to learners — 1 video is missing."),
+      screen.getByText(/will not be available to learners/),
     ).toBeInTheDocument();
   });
 
@@ -80,9 +81,7 @@ describe("ModuleMediaCard", () => {
     };
     renderWithMantine(<ModuleMediaCard media={twoMissing} />);
 
-    expect(
-      screen.getByText("Unavailable to learners — 2 videos are missing."),
-    ).toBeInTheDocument();
+    expect(screen.getByText("2 videos are missing")).toBeInTheDocument();
   });
 
   it("lists an upload that matches no reference", () => {

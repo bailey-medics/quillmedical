@@ -16,13 +16,13 @@
  */
 
 import { useState } from "react";
-import { Alert, Group, Progress, Stack } from "@mantine/core";
+import { Progress, Stack } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import ConfirmModal from "@/components/confirm-modal/ConfirmModal";
 import DataTable from "@/components/tables/DataTable";
-import Icon from "@/components/icons/Icon";
+import { StateMessage } from "@/components/message-cards";
 import IconTextButton from "@/components/button/IconTextButton";
-import { IconAlertTriangle, IconVideo } from "@/components/icons/appIcons";
+import { IconAlertTriangle } from "@/components/icons/appIcons";
 import { BodyText, BodyTextInline, Heading } from "@/components/typography";
 import type { MediaAsset, ModuleMedia } from "@/features/teaching/types";
 import MediaDropzone from "./MediaDropzone";
@@ -84,26 +84,28 @@ export default function ModuleMediaCard({
   return (
     <BaseCard>
       <Stack gap="sm">
-        <Group justify="space-between">
-          <Heading>Videos</Heading>
-          <Icon icon={<IconVideo />} />
-        </Group>
+        <Heading>Videos</Heading>
 
         {/* The gate fails safe, but it must not fail invisibly: without
             this line a typo in a reference hides the module from every
             learner with the only trace on a card nobody has opened. */}
         {!media.is_complete && (
-          <Alert
-            variant="light"
-            color="var(--warning-color)"
-            icon={<Icon icon={<IconAlertTriangle />} />}
-          >
-            <BodyText>
-              {missing === 1
-                ? "Unavailable to learners — 1 video is missing."
-                : `Unavailable to learners — ${missing} videos are missing.`}
-            </BodyText>
-          </Alert>
+          <StateMessage
+            icon={<IconAlertTriangle />}
+            colour="warning"
+            title={
+              missing === 1
+                ? "1 video is missing"
+                : `${missing} videos are missing`
+            }
+            description={
+              liveOrganisations.length > 0
+                ? `This module is not available to learners in ${liveOrganisations.join(
+                    ", ",
+                  )} until every video is uploaded.`
+                : "This module will not be available to learners until every video is uploaded."
+            }
+          />
         )}
 
         <DataTable

@@ -79,7 +79,10 @@ export const AllLinked: Story = {
 };
 
 export const SomethingMissing: Story = {
-  args: { media: incomplete },
+  args: {
+    media: incomplete,
+    liveOrganisations: ["East of England ETA"],
+  },
   render: (args) => (
     <>
       <ModuleMediaCard {...args} />
