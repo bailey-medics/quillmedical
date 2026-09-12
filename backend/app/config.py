@@ -237,6 +237,30 @@ class Settings(BaseSettings):
         ),
     )
 
+    # --- Clinician passport ---
+    # One setting decides the backend, deliberately. The teaching feature
+    # carries a second TEACHING_STORAGE_BACKEND naming "local" or "gcs"
+    # that nothing reads — get_storage_backend() branches on whether the
+    # bucket is set — so a deployment could set it to "local" and still
+    # write to the bucket. A switch that looks like one and is not is
+    # worse than no switch, so the passport has only the bucket.
+    PASSPORT_GCS_BUCKET: str | None = Field(
+        None,
+        description=(
+            "GCS bucket holding passport repositories and their evidence. "
+            "Set in production, where Cloud Run has no durable disk. Unset "
+            "in development, which keeps passports under "
+            "PASSPORT_LOCAL_ROOT instead."
+        ),
+    )
+    PASSPORT_LOCAL_ROOT: str = Field(
+        "/data/passports",
+        description=(
+            "Directory holding passport repositories when no bucket is "
+            "configured. Development and tests only."
+        ),
+    )
+
     # --- Email ---
     RESEND_API_KEY: SecretStr | None = Field(
         None,

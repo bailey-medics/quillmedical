@@ -80,6 +80,7 @@ def _import_in_clean_subprocess(
         "app.features.passport.index",
         "app.features.passport.records",
         "app.features.passport.blobs",
+        "app.features.passport.gcs_store",
         "app.features.passport.service",
     ],
 )
@@ -118,6 +119,7 @@ def test_import_needs_no_secrets(module: str) -> None:
         "app.features.passport.index",
         "app.features.passport.records",
         "app.features.passport.blobs",
+        "app.features.passport.gcs_store",
         "app.features.passport.service",
     ],
 )

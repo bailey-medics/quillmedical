@@ -1770,7 +1770,7 @@ three does not invalidate unit one.
   lock. Last because it is the only unit that needs Postgres, and
   because it composes everything above.
 
-- [ ] Create `backend/app/features/passport/` with `paths.py` (typed
+- [x] Create `backend/app/features/passport/` with `paths.py` (typed
       relative paths, no I/O, after VPR's `crates/core/src/paths/`),
       `ids.py` (timestamp id generator with monotonic rule),
       `schemas.py` (Pydantic models for `manifest.yaml`,
@@ -1778,6 +1778,11 @@ three does not invalidate unit one.
       reflections and CPD), and
       `definitions.py` (reads the passport fields from
       `shared/competency-definitions/`).
+      - Landed in `fb80c6d2`, "add the record model and the on-disk
+        layout", which is this unit under another name. The box went
+        unticked at the time; noted here rather than silently corrected,
+        because a plan that quietly gains ticks is worth less than one
+        that says when it was wrong.
 - [x] Implement `store.py` with the `PassportStore` interface and the
       local filesystem backend, including `init_and_commit` with
       whole-directory cleanup on failure and `write_and_commit_files`
@@ -1948,30 +1953,181 @@ three does not invalidate unit one.
 
 ## Phase 2: storage on Cloud Storage
 
-- [ ] Implement the GCS backend of `PassportStore`: bundle download,
+- [x] Implement the GCS backend of `PassportStore`: bundle download,
       unbundle to a temporary directory, commit, re-bundle, upload with
       `if-generation-match`; blobs uploaded beside the bundle.
-- [ ] Add `PASSPORT_STORAGE_BACKEND` and `PASSPORT_GCS_BUCKET` to
-      `backend/app/config.py` following the teaching storage settings.
-- [ ] Add the bucket and the Cloud Run service account IAM binding to
+      - **It delegates the commit to `LocalPassportStore` rather than
+        reimplementing it.** One write one commit, rollback, the rewrite
+        refusal and the HEAD assertion are then written once and
+        inherited, so the two backends cannot drift on the rules that
+        matter. What the bucket adds is the part it genuinely does
+        differently: compare-and-swap on the object generation, and
+        `if_generation_match=0` so creation refuses to clobber an
+        existing passport.
+      - **Bundling shells out to `git`, against the plan's own "no
+        shelling out" rule and `store.py`'s "no binary in the image".**
+        libgit2 has no bundle support — pygit2 1.20 exposes
+        `PackBuilder` and nothing that reads or writes the bundle
+        format — so there is no in-process route to the one format
+        holding a full history as a single object. The binary is already
+        in the backend image for the teaching version-lock tests, and
+        the calls are fixed argument lists with no shell. Writing a
+        bundle by hand to avoid a subprocess would mean implementing a
+        git format, which is the worse trade.
+      - **The bucket is a constructor argument, not a settings read.**
+        `test_features_import_boundary.py` pins that every module under
+        `app.features.passport` imports without `app.config`, so a
+        passport on disk stays readable by tooling with no application
+        around it. The composition point lives outside the package, in
+        `app/passport_storage.py`.
+- [x] Add `PASSPORT_GCS_BUCKET` to `backend/app/config.py`, with
+      `PASSPORT_LOCAL_ROOT` for development, and the composition point
+      in `app/passport_storage.py` that chooses between them.
+      - **`PASSPORT_STORAGE_BACKEND` was deliberately not added**, which
+        is a departure from what this task originally said. The teaching
+        settings it told us to follow turned out to carry the trap:
+        `TEACHING_STORAGE_BACKEND` is set in `compose.dev.yml`,
+        `compose.ci.yml` and `infra/main.tf` and read by nothing, since
+        `get_storage_backend()` branches on whether the bucket is set.
+        So a deployment can set it to `local` and still write to the
+        bucket. A switch that looks like one and is not is worse than no
+        switch, and it is the same species as the `esbuild.keepNames`
+        mistake Phase 6 warns about: a configuration option that does
+        nothing looks exactly like one that costs nothing. The bucket
+        name alone decides, and a test asserts no second setting exists.
+      - The stores are cached and the blob store always matches the
+        passport store, because a record names evidence by hash — a
+        passport in a bucket whose blobs are on a disk is a set of
+        broken references.
+- [x] Add the bucket and the Cloud Run service account IAM binding to
       Terraform, following the teaching bucket and the IAM note in
       `docs/docs/infrastructure/gcp.md`. Enable object versioning on
       the bucket: it is a one-line setting and it is what preserves a
       replaced bundle's predecessors, which is the backstop for a
       history rewrite.
-- [ ] Tests against a fake GCS client covering generation mismatch,
+      - **Its own `infra/modules/passport-storage/` rather than a second
+        instance of `cloud-storage`**, which this task first pointed at.
+        That module carries a lifecycle rule deleting at 365 days with
+        no `with_state`, so it matches live objects as well as noncurrent
+        ones. On a versioned bucket a Delete against a live object
+        archives it rather than erasing it — the bytes survive as a
+        noncurrent version — but the live object is gone, so the
+        application reads the passport as absent. Recoverable by hand,
+        and still an outage on a professional record. Teaching images
+        tolerate it because CI re-uploads them; a passport has no such
+        source. The new module has no lifecycle rule at all, which is
+        the point of a separate module rather than a flag: nothing
+        expires, and no setting could make it.
+      - `force_destroy = false` in every environment, unlike the shared
+        module which allows it outside prod. A staging passport is still
+        somebody's record, so `terraform destroy` should refuse.
+      - `public_access_prevention = "enforced"`, so an `allUsers` binding
+        cannot be added later by hand.
+      - **Not gated on an environment.** An empty bucket costs nothing
+        until written to, so every environment has somewhere to put a
+        passport rather than needing infrastructure work the day the
+        feature is enabled. Whether the feature is on stays an
+        organisation-level decision in the application.
+      - `terraform validate` passes on the module standalone. The root
+        configuration could not be validated locally — `versions.tf`
+        requires Terraform >= 1.15.2 and this machine has 1.15.0 — but
+        `.github/workflows/terraform.yml` runs `terraform plan` on pull
+        requests, which is where the root check actually happens.
+      - **Found alongside: the teaching bucket has the same rule live
+        today.** Its oldest objects are from May 2026, so nothing has
+        reached 365 days yet; the first would be around May 2027, and
+        only for files CI has not re-uploaded since, because an upload
+        resets the age. Adding `with_state = "ARCHIVED"` would make the
+        rule do what its comment already claims. Left alone here: it
+        changes teaching's production bucket and deserves its own review
+        rather than riding along with passport work.
+- [x] Tests against a fake GCS client covering generation mismatch,
       partial upload failure and re-open after failure.
+      - **The fake implements the generation rule for real** rather than
+        being a mock: every upload bumps the generation, and a mismatched
+        `if_generation_match` raises the 412 the library raises. A
+        `MagicMock` would accept any precondition and report success,
+        which is precisely the bug these tests exist to catch.
+      - Reaching the mismatch needed the fake to move the object
+        _between_ a write's download and its upload. Restoring older
+        bytes under the current generation does not test it: the store
+        re-downloads inside the write, so it would read the newer
+        generation and its precondition would match.
+      - The repositories underneath are real git repositories bundled
+        with real `git`, including a test proving the full history
+        survives the round trip rather than just the tip — a bundle
+        carrying only the latest state would pass every other test here
+        and quietly destroy the audit trail.
 
 ## Phase 3: API
+
+**Not every route listed under "API surface" belongs to this phase.**
+Three need Phase 4 (`export.md`, `export.pdf`, `export.zip` — there is no
+`render.py` or `pdf.py` yet) and four need Phase 5 (the external-assessor
+flow: invite, accept, verify-registration, revoke — there is no invite
+model, no `passport_assessor` token type and no `external` capacity).
+Writing them now would mean stubs returning 501 and an OpenAPI spec
+promising what does not work, so they arrive with the code behind them.
+
+That leaves about twelve routes, delivered as three reviewed commits:
+the schemas and the feature key, then the sign-off lifecycle, then the
+self-declared records. `PUT /api/sites/{site_id}/common-competencies`
+belongs to this phase — the model landed in Phase 1 and the endpoint was
+explicitly deferred here.
 
 - [ ] Add the `/api/passport` router under
       `backend/app/features/passport/router.py` with the routes listed
       above, `requires_feature("passport")`, CBAC dependencies, CSRF on
       mutations and rate limiting on uploads and exports.
-- [ ] Register `passport` as an organisation feature key alongside
+- [x] Register `passport` as an organisation feature key alongside
       `teaching`.
-- [ ] Add Pydantic request and response schemas under
+      - **Nothing to write: there is no registry.** `feature_key` is an
+        unconstrained `String(50)` on `OrganisationFeature`; the toggle
+        endpoint at `main.py:4332` takes any string as a path parameter;
+        `RequireFeature` on the frontend takes a plain string. `teaching`
+        is a convention held together by literals at its call sites, and
+        nothing anywhere enumerates valid keys.
+      - So `passport` becomes real when the router declares
+        `requires_feature("passport")` and an admin enables it on an
+        organisation through the existing endpoint. A constants module
+        was considered and rejected: it would be the only such list in
+        the codebase, and inventing a shared mechanism nobody asked for
+        is a worse outcome than a documented convention.
+- [x] Add Pydantic request and response schemas under
       `backend/app/schemas/passport.py` with `extra="forbid"`.
+      - **Deliberately a second set, not the record models reused.**
+        `app/features/passport/schemas.py` is the storage contract,
+        validated on read as well as write because a passport is a
+        portable directory somebody may have hand-edited. These are the
+        API contract, held to the additive-only rule in
+        `.claude/rules/backend.md`. Returning the record models directly
+        would make every on-disk format change a breaking API change,
+        and the storage layer could then never be refactored without a
+        release cycle.
+      - **The enums are imported from the record model rather than
+        restated**, and a test asserts each field's annotation accepts
+        exactly the record model's values. A second copy would drift:
+        a CPD activity type added on disk and forgotten here would be
+        storable but not submittable, or the reverse.
+      - **A word-list test pins that nothing on the wire judges
+        sufficiency.** Any response field gaining a name containing
+        `target`, `progress`, `complete`, `ready` or similar fails it.
+        The logbook returns `count` and stops, and the shortlist field
+        is `commonly_used_here` rather than `required` — the wording
+        matters as much as the behaviour, since a list presented as the
+        set that matters quietly becomes a syllabus.
+      - **Two confirmations are required rather than defaulted**:
+        `declaration_confirmed` on signing, and `anonymised_confirmed`
+        on a reflection. Both omitted is a validation error, not a
+        false. Defaulting the first would make signing a click; the
+        second guards one of only two places patient data could enter a
+        passport.
+      - Notes from the build: mypy's strict mode forbids implicit
+        re-export, so a test cannot reach an imported enum through the
+        API module; and it rejects `is` comparisons against `Literal`
+        forms, so the vocabulary tests compare `get_args` on both sides
+        instead. Both are mypy facts worth knowing before writing
+        similar tests elsewhere.
 - [ ] Add API tests: each route's authorisation matrix (holder,
       assessor, other user, admin), every state transition, self-sign
       refusal, and that the api-compatibility snapshot is additive.
