@@ -32,7 +32,7 @@ export type User = {
   system_permissions?: string;
   /**
    * Whether this person operates Quill itself ("superadmin") or not
-   * ("member"). Replacing the superadmin rung of `system_permissions` —
+   * ("standard"). Replacing the superadmin rung of `system_permissions` —
    * see docs/docs/plans/2026-09-09-platform-role-plan.md.
    */
   platform_role?: string;

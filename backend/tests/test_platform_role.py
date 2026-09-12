@@ -53,7 +53,7 @@ class TestTheVocabulary:
     """Two values, and no order between them."""
 
     def test_the_known_roles(self):
-        assert PLATFORM_ROLES == ("member", "superadmin")
+        assert PLATFORM_ROLES == ("standard", "superadmin")
 
     def test_a_known_role_passes(self):
         assert validate_platform_role("superadmin") == "superadmin"
@@ -63,7 +63,7 @@ class TestTheVocabulary:
             validate_platform_role("admin")
 
     def test_the_error_names_the_known_ones(self):
-        with pytest.raises(ValueError, match="member, superadmin"):
+        with pytest.raises(ValueError, match="standard, superadmin"):
             validate_platform_role("staff")
 
     def test_the_old_levels_are_not_platform_roles(self):
@@ -84,7 +84,7 @@ class TestTheColumnDefaults:
     def test_a_new_user_is_a_member(self, db_session):
         person = _user(db_session, "someone")
 
-        assert person.platform_role == "member"
+        assert person.platform_role == "standard"
 
     def test_it_is_independent_of_system_permissions(self, db_session):
         """Nothing reads it for authorisation yet.
@@ -95,7 +95,7 @@ class TestTheColumnDefaults:
         """
         person = _user(db_session, "testadmin", system_permissions="admin")
 
-        assert person.platform_role == "member"
+        assert person.platform_role == "standard"
         assert person.system_permissions == "admin"
 
     def test_a_superadmin_can_be_recorded(self, db_session):
@@ -135,12 +135,12 @@ class TestTheRoutesReadTheNewColumn:
             client.headers["X-CSRF-Token"] = csrf
 
     def test_a_stale_superadmin_is_refused(self, test_client, db_session):
-        """Says superadmin in the old column, `member` in the new one."""
+        """Says superadmin in the old column, `standard` in the new one."""
         _user(
             db_session,
             "stale",
             system_permissions="superadmin",
-            platform_role="member",
+            platform_role="standard",
             base_profession="superadmin_profession",
         )
         self._login(test_client, "stale")
@@ -239,7 +239,7 @@ class TestTheListingsHideOperatorsByTheNewColumn:
             db_session,
             "ordinary_colleague",
             system_permissions="staff",
-            platform_role="member",
+            platform_role="standard",
         )
         for person in (test_admin, colleague):
             db_session.execute(
@@ -327,7 +327,7 @@ class TestScopingAsksTheNewColumn:
         test_admin: User,
         db_session: Session,
     ):
-        """The mirror: `member` in the new column stays scoped."""
+        """The mirror: `standard` in the new column stays scoped."""
         unrelated = self._org_with(db_session, "Unrelated Trust")
         own = self._org_with(db_session, "Admin's Own Trust", test_admin)
 
@@ -355,7 +355,7 @@ class TestScopingAsksTheNewColumn:
             db_session,
             "scoped_holder",
             system_permissions="staff",
-            platform_role="member",
+            platform_role="standard",
             base_profession="system_administrator",
         )
         not_theirs = self._org_with(db_session, "Not Their Trust")
@@ -465,7 +465,7 @@ class TestOperatorsAreProtectedByTheNewColumn:
             db_session,
             "ordinary_target",
             system_permissions="staff",
-            platform_role="member",
+            platform_role="standard",
         )
         for person in (test_admin, colleague):
             db_session.execute(
@@ -533,7 +533,7 @@ class TestPatientAccessAsksTheRightQuestion:
             db_session,
             "their_own_patient",
             system_permissions="single-user",
-            platform_role="member",
+            platform_role="standard",
         )
         person.fhir_patient_id = "some-fhir-id"
         db_session.commit()

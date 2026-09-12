@@ -219,7 +219,7 @@ def test_patient_manager(db_session: Session) -> User:
         email_verified=True,
         base_profession="patient_manager",
         system_permissions="admin",
-        platform_role="member",
+        platform_role="standard",
     )
     db_session.add(user)
     db_session.commit()

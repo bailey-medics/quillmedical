@@ -402,11 +402,19 @@ does not, and removing the ladder removes the suggestion.
             - **The backfill is not a copy.** Every row becomes `member` except those that
               said `superadmin`. The other three levels described a relationship to a
               place, and a place is not what this column records.
-            - **`member`, not an empty string or null**, so "not an operator" is a value
-              someone chose rather than the absence of one. Whether it should be nullable
-              instead was already an open question at the foot of this plan; this answers
-              it for now and can be revisited before the contract step.
-      - [ ] **Migrate the callers** — the 21 frontend `RequirePermission` guards, then the
+            - **A named value, not an empty string or null**, so "not an operator" is
+              something someone chose rather than the absence of one. Whether it should
+              be nullable instead was already an open question at the foot of this plan;
+              this answers it for now and can be revisited before the contract step.
+            - **It was `member` at first, and is now `standard`.** `member` already means
+              belonging to an organisation or a site, with its own tables and its own
+              capacity column — so the word would have carried two unrelated ideas, which
+              is the mistake this column exists to undo. Renamed in
+              `b4d1e9c72a05`, by hand: autogenerate cannot see it, because
+              `compare_server_default` is off and a Python-side `default=` never reaches
+              the schema. The two paragraphs above describe what the merged expand
+              migration did and are left as they were.
+      - [x] **Migrate the callers** — the 21 frontend `RequirePermission` guards, then the
             backend reads. The gates are already competencies, so what remains is genuinely
             about *operating Quill*, which should be a much smaller set than the raw count
             suggests.
@@ -427,19 +435,20 @@ does not, and removing the ladder removes the suggestion.
               expand-migrate-contract looks like from inside.
             - [x] **Superadmin guards migrated.** `platform_role` added to `MeOut` and to
                   the frontend `User` type, and both route guards now ask it. A test pins
-                  a user who says `superadmin` in the old column and `member` in the new
-                  one: the guard must refuse them.
+                  a user who says `superadmin` in the old column and `standard` in the
+                  new one: the guard must refuse them.
             - [x] **Two of those five now read `platform_role`.**
                   `AdminOrganisationsPage.tsx` and `UserInfoUpdatePage.tsx` each asked
                   `system_permissions === "superadmin"` on its own, which is the platform
                   question exactly. Both test mocks gained the field, since a mock without
                   it reads as `undefined` and silently hides what the test asserts.
-            - [ ] **The other three are not the same question**, and were left on purpose.
+            - [x] **The other three moved with the route guard, not before it.**
                   `SideNavContent.tsx`, `teaching/TeachingMainNav.tsx` and `LoginPage.tsx`
-                  all ask `admin || superadmin` — that is _may this person reach admin
-                  pages_, not _do they operate Quill_. Rewriting them to `platform_role`
-                  would narrow them to superadmins and hide the admin nav from admins.
-                  They move when the `admin` half becomes a competency check, not before.
+                  asked `admin || superadmin` — _may this person reach admin pages_,
+                  not _do they operate Quill_ — so `platform_role` would have hidden
+                  the admin nav from admins. They now ask `manage_users`, the same as
+                  the `/admin` guard, so a link cannot advertise a route that answers
+                  404.
             - **The guard counts were wrong by an order of magnitude.** Recounted against
                   the code after the superadmin work merged: **one** real `admin` guard
                   (`main.tsx:280`, wrapping the whole `/admin` subtree) and **zero**
@@ -536,7 +545,7 @@ does not, and removing the ladder removes the suggestion.
             - **The remainder are not checks at all** — schema fields, docstrings, and
               payload passthrough on create and update. They move with the contract
               step, not before it.
-      - [ ] **Then the `admin` half** — the one frontend guard at `main.tsx:280`, the
+      - [x] **Then the `admin` half** — the one frontend guard at `main.tsx:280`, the
             three `admin || superadmin` checks in `SideNavContent`, `TeachingMainNav`
             and `LoginPage`, and the seventeen backend branches.
             - **Not a competency step after all.** All seventeen were read, and not one
@@ -612,6 +621,12 @@ does not, and removing the ladder removes the suggestion.
                     described admins by rank alone, so the admin link vanished until
                     they held `manage_users`. The same shape as the backend fixtures:
                     a read cannot move until every writer does.
+      - **The read side is finished.** 39 references remain, down from 76, and only
+            two are authorisation reads — both deliberately kept: the payload guard at
+            1710 refusing an admin granting `superadmin`, and `update_my_competencies`
+            at 3644. Everything else is carriage: schema fields, docstrings, the
+            `permission_level` filter, and one analytics label. Nothing else in the
+            codebase decides access on the old column.
       - [ ] **Contract: drop `system_permissions`.** Breaking API change, three response
             schemas, so it needs a decision file and the `api-breaking-change-review`
             approval.
@@ -633,10 +648,26 @@ does not, and removing the ladder removes the suggestion.
                 - **Five tests, verified by reverting.** Four refusals plus a mirror so
                   they cannot pass by refusing everyone. `get_user` answers 404 rather
                   than 403, so the refusal does not confirm the account exists.
-              - **Four composites** at 2801, 3613, 5232 and 5412 —
-                `in ["admin", "superadmin"]`, all meaning "may reach admin pages". They
-                are the backend twin of the frontend nav checks and become
-                `manage_users`, not `platform_role`.
+              - [x] **The composites, and the plan was wrong about them twice.** It
+                said all four mean "may reach admin pages" and all four become
+                `manage_users`. Reading them showed three different questions:
+                - **`list_patients` (2801) asks `platform_role`** for the unfiltered
+                  list. Seeing every patient in the deployment is reach unbounded by
+                  any place, not an administrative act at one. **A visible
+                  narrowing**: an admin at a trust now sees only the patients they
+                  share an organisation with.
+                - **Seeing _deactivated_ patients is a narrower question**, applying
+                  within the list a caller already reaches, so it asks
+                  `manage_patient_membership`. Found only because a half-finished
+                  rename left `is_admin` undefined and ruff caught it — the second
+                  use was never the same question as the first.
+                - **The two external-access routes (5232, 5412) ask
+                  `manage_patient_membership`**, not `manage_users`. Inviting someone
+                  to a patient's record is patient centric, and a patient is not a
+                  user.
+                - **`update_my_competencies` (3613) keeps the rank**, as decided
+                  earlier: it is self-scoped, so a competency gate would make the
+                  escalation self-referential.
               - **The `permission_level` query parameter** at 1360, 1422, 2454 — a
                 public API filter over the four levels. It cannot move; it is removed,
                 which is itself the breaking change.
