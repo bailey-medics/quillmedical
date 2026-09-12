@@ -62,6 +62,12 @@ the merge queue by hand — see `.claude/rules/ci.md` for that flow.
 
 All Renovate PRs receive the `dependencies` label. Vulnerability alert PRs also receive `security`. See tiering below for additional labels.
 
+### Vulnerability alerts
+
+Renovate reads the repository's Dependabot alerts and raises a fix PR for each one, configured by the `vulnerabilityAlerts` block in `renovate.json`. Renovate always lets those PRs skip the Wednesday schedule and the rate limits, and that cannot be overridden, per tier or otherwise. So a vulnerability PR for any tier arrives immediately, against `main`, on an ordinary `renovate/*` branch, labelled `dependencies` and `security`, with automerge switched off. The tier decides how urgently a human responds (see the response policy below), not when the PR opens.
+
+Do not add `isVulnerabilityAlert` to a package rule. It is a flag Renovate sets on the rules it generates from the alerts, not a matcher, and Renovate has no vulnerability matcher at all. A rule carrying it matches every update of the packages it names and treats each one as a vulnerability fix. Until September 2026 the Tier 2 rules did exactly that: every FastAPI and Mantine patch opened its own PR at any hour on a `hotfix/sec-*` branch, several times a day, while the rest of the weekly group waited for Wednesday.
+
 ## Dependency tiering
 
 ### Tier 1 — Clinical
@@ -70,8 +76,8 @@ Packages: **fhirclient** (HAPI FHIR), **httpx** (EHRbase via direct HTTP)
 
 - **No automerge under any circumstances.**
 - PRs labelled `tier-1-clinical`.
-- Vulnerability alerts bypass the Wednesday schedule and fire immediately.
-- Vulnerability alert PRs target `main` with branch prefix `hotfix/sec-`, labelled `security` + `hotfix`.
+- Routine updates wait for the Wednesday schedule. Vulnerability alerts arrive immediately, as for every tier.
+- A critical or high vulnerability also gets a hotfix branch cut by hand — see the hotfix flow below.
 
 ### Tier 2 — Infrastructure
 
@@ -79,15 +85,15 @@ Packages: FastAPI, SQLAlchemy, Uvicorn, Pydantic, Alembic, GCP SDKs, Mantine, Re
 
 - **No automerge**; code review required.
 - Major version bumps labelled `major-version-bump`.
-- Vulnerability alerts bypass schedule and fire immediately.
-- Vulnerability alert PRs target `main` as a hotfix branch.
+- Routine updates wait for the Wednesday schedule. Vulnerability alerts arrive immediately, as for every tier.
+- A critical or high vulnerability also gets a hotfix branch cut by hand — see the hotfix flow below.
 
 ### Tier 3 — Tooling
 
 Packages: eslint, `@types/*`, pytest, devDependencies, GitHub Actions, pre-commit hooks
 
 - **No automerge.** Routine updates are reviewed and queued by hand like every other tier; the tier governs urgency and review depth, not whether a human merges.
-- Vulnerability alerts still bypass the Wednesday schedule and fire immediately, but tooling vulnerabilities do not require urgency beyond normal CI validation.
+- Vulnerability alerts arrive immediately, as for every tier, but a tooling vulnerability needs no urgency beyond normal CI validation: merge it with the next Wednesday batch.
 
 ## Severity-based response policy
 
@@ -100,7 +106,7 @@ Packages: eslint, `@types/*`, pytest, devDependencies, GitHub Actions, pre-commi
 
 ## Hotfix flow
 
-For critical/high vulnerabilities in Tier 1 or Tier 2 dependencies:
+For critical/high vulnerabilities in Tier 1 or Tier 2 dependencies. Renovate's own alert PR targets `main`; the hotfix branch off the production tag is cut by hand and carries the same fix:
 
 1. Create a `hotfix/sec-*` branch from the latest production CalVer tag.
 2. Apply the dependency fix.

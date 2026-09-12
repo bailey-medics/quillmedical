@@ -13,7 +13,8 @@ After every merge to `main` it also re-evaluates open PRs — rebasing
 them or regenerating lock files as needed. This is normal and expected.
 
 Vulnerability alert PRs bypass the schedule and appear immediately.
-All vulnerability PRs now target `main` with `hotfix/sec-*` branch names.
+They target `main` on ordinary `renovate/*` branches, labelled
+`security`, whatever the tier of the package.
 
 ## Triage workflow
 
@@ -28,12 +29,12 @@ work. Start by filtering the PR list:
 
 ### 2. Identify the tier
 
-| Label                                                    | Tier                    | Merge policy                                                      |
-| -------------------------------------------------------- | ----------------------- | ----------------------------------------------------------------- |
-| `tier-1-clinical`                                        | Tier 1 — Clinical       | Never automerge. Safety review required.                          |
-| _(no tier label)_ + infrastructure package               | Tier 2 — Infrastructure | No automerge. Code review required.                               |
-| devDependency / `@types/*` / GitHub Actions / pre-commit | Tier 3 — Tooling        | Automerge on CI pass. Merge manually if automerge is not enabled. |
-| `major-version-bump`                                     | Any tier                | Extra caution — check changelogs for breaking changes.            |
+| Label                                                    | Tier                    | Merge policy                                                     |
+| -------------------------------------------------------- | ----------------------- | ---------------------------------------------------------------- |
+| `tier-1-clinical`                                        | Tier 1 — Clinical       | Never automerge. Safety review required.                         |
+| _(no tier label)_ + infrastructure package               | Tier 2 — Infrastructure | No automerge. Code review required.                              |
+| devDependency / `@types/*` / GitHub Actions / pre-commit | Tier 3 — Tooling        | No automerge. Reviewed and queued by hand like every other tier. |
+| `major-version-bump`                                     | Any tier                | Extra caution — check changelogs for breaking changes.           |
 
 ### 3. Review the diff
 
@@ -87,15 +88,19 @@ Major bumps (labelled `major-version-bump`) often require code changes.
    in dependency order or ask Renovate to group them by adding a
    `packageRules` entry in `renovate.json`.
 
-## Hotfix PRs (vulnerability alerts)
+## Vulnerability alert PRs
 
-Tier 1 and Tier 2 vulnerability alerts create `hotfix/sec-*` branches
-targeting `main`.
+A vulnerability alert PR looks like any other Renovate PR: a `renovate/*`
+branch targeting `main`, with the `security` label and `[SECURITY]` in
+the title. The tier of the package sets how fast a human responds, per
+the response policy in [Automatic updates](automatic-updates.md).
 
 1. Review the security advisory linked in the PR
 2. Verify CI passes (fast tier on push, heavy tier when marked ready)
 3. Merge to `main`
-4. Promote to production via the deploy workflow approval gate
+4. For a critical or high alert in a Tier 1 or Tier 2 package, cut a
+   `hotfix/sec-*` branch from the production tag by hand and promote it
+   via the deploy workflow approval gate
 
 ## Troubleshooting
 
