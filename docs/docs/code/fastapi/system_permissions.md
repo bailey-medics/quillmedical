@@ -8,7 +8,12 @@
 
 ::: app.system_permissions.permissions
 
-`require_admin()` and `require_superadmin()` live in `app.deps` — see
-[Dependencies](deps.md). `require_staff()` was deleted: nothing called it, and
-what it was checking is a per-place question rather than a rung on a ladder.
-See `docs/docs/plans/2026-09-09-platform-role-plan.md`.
+`require_operator()` lives in `app.deps` — see [Dependencies](deps.md). It asks
+`platform_role`, not a rung on a ladder.
+
+`require_staff()` and `require_superadmin()` were both deleted for the same
+reason: nothing called them. `require_admin()` became `require_operator()`,
+because its one consumer sends a push notification to every subscribed client
+in the deployment — unbounded by any organisation, so the platform question
+rather than an administrative act at a place. See
+`docs/docs/plans/2026-09-09-platform-role-plan.md`.

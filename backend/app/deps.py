@@ -85,32 +85,23 @@ def get_optional_user(
 DEP_OPTIONAL_USER = Depends(get_optional_user)
 
 
-def require_admin(current_user: User = DEP_CURRENT_USER) -> User:
-    """Require admin or superadmin system permissions.
+def require_operator(current_user: User = DEP_CURRENT_USER) -> User:
+    """Require that the caller operates Quill itself.
+
+    Its one consumer sends a test push notification to every subscribed
+    client in the deployment, which is unbounded by any organisation —
+    the platform question rather than an administrative act at a place.
+    See docs/docs/plans/2026-09-09-platform-role-plan.md.
 
     Raises:
-        HTTPException: 403 if user lacks admin permissions.
+        HTTPException: 403 if the caller is not an operator.
     """
-    if current_user.system_permissions not in ("admin", "superadmin"):
-        raise HTTPException(403, "Admin access required")
+    if current_user.platform_role != "superadmin":
+        raise HTTPException(403, "Platform operator access required")
     return current_user
 
 
-DEP_REQUIRE_ADMIN = Depends(require_admin)
-
-
-def require_superadmin(current_user: User = DEP_CURRENT_USER) -> User:
-    """Require superadmin system permissions.
-
-    Raises:
-        HTTPException: 403 if user lacks superadmin permissions.
-    """
-    if current_user.system_permissions != "superadmin":
-        raise HTTPException(403, "Superadmin access required")
-    return current_user
-
-
-DEP_REQUIRE_SUPERADMIN = Depends(require_superadmin)
+DEP_REQUIRE_OPERATOR = Depends(require_operator)
 
 
 def has_competency(competency: str) -> Callable[[Request, User], User]:

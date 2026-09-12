@@ -385,7 +385,7 @@ does not, and removing the ladder removes the suggestion.
               is in the shape of the API, not in a missing guard.
             - Changing this touches the frontend as well as the route, so it is a wider
               unit than the scoping fixes and wants its own branch.
-- [ ] **Then rename the column** to `platform_role`, narrowing its values to `superadmin` and
+- [x] **Then rename the column** to `platform_role`, narrowing its values to `superadmin` and
       one value meaning "not an operator", validated in code the way `SITE_CAPACITIES` is.
       - Autogenerate proposes drop-and-create for a rename. Write it by hand, as
         `site_member` had to be, and rename the auto-named constraints explicitly.
@@ -678,6 +678,66 @@ does not, and removing the ladder removes the suggestion.
               neither of which a diff can satisfy: `api-breaking-change-review` for the three
               response schemas, and `db-destructive-migration-review` for the
               `drop_column`. Expect the decision file too.
+            - **Split into three merges, because one would be unreviewable.** Scoping
+              the contract showed five units rather than one, two of them design
+              decisions rather than deletions. A single branch would produce a diff too
+              large to read properly and end in two approval gates granted while
+              looking at it.
+              - [x] **1. The backend reads — and only two of the four were reads.**
+                    Counted as four places consulting the old column for access.
+                    Reading them found three different kinds of change:
+                    - **`require_superadmin` was dead code.** No consumers anywhere,
+                      so it was deleted rather than migrated — the same finding as
+                      `DEP_REQUIRE_STAFF` at the top of this plan, and worth expecting
+                      again.
+                    - **`require_admin` became `require_operator`.** Its single
+                      consumer sends a test push notification to *every* subscribed
+                      client in the deployment, unbounded by any organisation. That is
+                      the platform question, so it asks `platform_role` rather than a
+                      competency. Renamed because a helper called `require_admin` that
+                      checks the platform role does not describe itself.
+                    - **A test pins it by making the columns disagree**: a user who is
+                      `admin` in the old column and `standard` in the new one is
+                      refused. Verified by reverting.
+                    - [ ] **`check_user_patient_access` is its own unit, and a
+                      security fix.** Its first line returns `True` for any admin —
+                      "always True for admin pages", as its own docstring says — so it
+                      grants access to any patient. `main.py:4670` already carries a
+                      comment saying it is *deliberately not* used for that reason: a
+                      previous unit routed around the hatch rather than closing it. Two
+                      live callers in `messaging.py`, both non-admin paths, so the
+                      hatch does nothing for them today. Removing it changes who may
+                      read a patient record, which is why it does not belong in a
+                      mechanical batch.
+                    - [ ] **The teaching router check needs a decision.** At line 2315
+                      it excludes `admin` and `superadmin` from a teaching participant
+                      list. That is neither the platform question nor obviously a
+                      competency — it reads as "do not offer staff-admin accounts as
+                      teaching participants", and what it should become is a product
+                      question rather than a migration one.
+              - [ ] **2. The form and the badge.** Decided rather than derived, so the
+                    reasoning is recorded here:
+                    - **The badge shows only operators.** `PermissionBadge` renders a
+                      SUPERADMIN pill where it applies and nothing otherwise. The
+                      alternatives were showing the platform role for everyone — a
+                      STANDARD pill on every row, which is noise — replacing it with
+                      competencies, which makes the lists busy, or dropping it. The
+                      rare case is the informative one.
+                    - **Renamed to `PlatformRoleBadge`.** A component called
+                      `PermissionBadge` showing one value no longer describes itself,
+                      and the name matches `CompetencyBadge`, which is the pattern the
+                      codebase already uses. `OperatorBadge` was the alternative and
+                      was rejected: it stops fitting if platform roles gain values.
+                    - **The create-user control stays a dropdown**, with two options
+                      rather than a checkbox. A checkbox reads more naturally for a
+                      yes/no, but the dropdown leaves room for more platform roles
+                      without redesigning the step.
+                    - **The create API must accept `platform_role`**, which it does not
+                      today. That backend work belongs with this unit rather than the
+                      column drop, since the form cannot set what the API will not take.
+              - [ ] **3. The column itself.** `drop_column`, the three response schemas,
+                    and the `permission_level` query parameter. The only unit needing
+                    the two approvals above.
 - [x] **Remove `default_system_permission` from `shared/base-professions.yaml`.** 25
       professions declared one by the time it went — the count moved twice while this
       plan was being worked through, with `teaching_manager`, `superadmin_profession`
@@ -716,6 +776,11 @@ does not, and removing the ladder removes the suggestion.
         `check_permission_level` note under that step. What remains is deleting the
         function and `PERMISSION_LEVELS` themselves, which waits on the
         `permission_level` query parameter moving in the contract step.
+      - **Not a separate step any more, in practice.** `PERMISSION_LEVELS` has one
+        consumer left — the `permission_level` query filter at `main.py:2461` — and
+        that filter is removed by the contract step itself. So this deletion happens
+        as part of unit 3 rather than after it, and the box stays open until the code
+        is actually gone.
 
 ## Live: learning content is readable across organisations
 
