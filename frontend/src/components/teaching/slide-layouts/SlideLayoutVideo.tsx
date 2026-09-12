@@ -20,6 +20,25 @@ export interface SlideLayoutVideoProps {
   slide: CompiledSlide;
   /** Module the slide belongs to, needed to request video access. */
   moduleId?: string;
+  /**
+   * Where the video lives, supplied instead of asking the backend.
+   *
+   * Only for Storybook and tests. A grant is a network call, so without
+   * this seam every hosted-video story renders the denial path and the
+   * player itself can never be seen — which makes restyling its
+   * controls impossible. Undefined in the app, where the grant is the
+   * whole authorisation boundary and must not be bypassed.
+   */
+  baseUrlOverride?: string;
+  /**
+   * Hold the loading state open, for Storybook and tests.
+   *
+   * The skeleton is normally visible only for as long as one network
+   * call takes, which is too brief to style against and impossible to
+   * catch in Storybook, where the call fails at once. Never set in the
+   * app: a slide stuck loading would show a learner nothing, forever.
+   */
+  forceLoading?: boolean;
   /** Called with playback position in seconds */
   onVideoProgress?: (seconds: number) => void;
   /** Resume position in seconds */
@@ -29,15 +48,23 @@ export interface SlideLayoutVideoProps {
 export default function SlideLayoutVideo({
   slide,
   moduleId,
+  baseUrlOverride,
+  forceLoading = false,
   onVideoProgress,
   resumeAt,
 }: SlideLayoutVideoProps) {
   // Only hosted video needs a grant. A YouTube slide asks for nothing,
-  // and neither does a slide whose module is unknown.
-  const needsAccess = Boolean(slide.videoSrc) && !slide.youtubeId;
-  const { baseUrl, loading, error } = useVideoAccess(
-    needsAccess && moduleId ? moduleId : null,
-  );
+  // and neither does a slide whose module is unknown. An override
+  // supplies the base directly, so nothing is requested at all.
+  const needsAccess =
+    Boolean(slide.videoSrc) && !slide.youtubeId && !baseUrlOverride;
+  const {
+    baseUrl: grantedBaseUrl,
+    loading,
+    error,
+  } = useVideoAccess(needsAccess && moduleId ? moduleId : null);
+
+  const baseUrl = baseUrlOverride ?? grantedBaseUrl;
 
   // The API gives a filename; the grant gives the base. Joining them
   // here is what keeps this component identical in development, where
@@ -48,8 +75,10 @@ export default function SlideLayoutVideo({
   return (
     <Stack gap="md">
       <Heading>{slide.title}</Heading>
-      {needsAccess && loading && <Skeleton height={320} radius="md" />}
-      {needsAccess && error && (
+      {(forceLoading || (needsAccess && loading)) && (
+        <Skeleton height={320} radius="md" />
+      )}
+      {!forceLoading && needsAccess && error && (
         <ErrorState
           variant="inline"
           title="Video unavailable"
@@ -60,7 +89,7 @@ export default function SlideLayoutVideo({
           action={{ label: "Reload page", onClick: () => location.reload() }}
         />
       )}
-      {(!needsAccess || (!loading && !error)) && (
+      {!forceLoading && (!needsAccess || (!loading && !error)) && (
         <VideoPlayer
           youtubeId={slide.youtubeId}
           src={hostedSrc}

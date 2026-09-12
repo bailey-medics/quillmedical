@@ -341,3 +341,56 @@ export interface LearnerProgress {
   last_video_position_seconds: number | null;
   completed_at: string | null;
 }
+
+// ------------------------------------------------------------------
+// Module media (admin)
+// ------------------------------------------------------------------
+
+/** One uploaded video, as the admin card shows it. */
+export interface MediaAsset {
+  asset_id: string;
+  original_filename: string;
+  content_type: string;
+  size_bytes: number;
+  uploaded_at: string;
+}
+
+/**
+ * One `<Video ref>` in the module's content.
+ *
+ * `asset` is null when nothing has been uploaded for the key yet,
+ * which is what makes the module incomplete and hides it from
+ * learners.
+ */
+export interface MediaReference {
+  key: string;
+  asset: MediaAsset | null;
+}
+
+/**
+ * The admin card's data.
+ *
+ * `unattached` is what a renamed or removed reference leaves behind:
+ * uploads matching no key in the current content. Without a row they
+ * would be invisible bytes nobody can reach or remove.
+ */
+export interface ModuleMedia {
+  module_id: string;
+  references: MediaReference[];
+  unattached: MediaAsset[];
+  is_complete: boolean;
+}
+
+/** What the backend needs recorded once an upload has landed. */
+export interface MediaLinkInput {
+  asset_id: string;
+  original_filename: string;
+  content_type: string;
+  size_bytes: number;
+}
+
+/** Where to send the bytes, and the id to link once they arrive. */
+export interface MediaUploadUrl {
+  upload_url: string;
+  asset_id: string;
+}

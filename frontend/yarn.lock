@@ -3412,6 +3412,20 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@mantine/dropzone@npm:9.6.0":
+  version: 9.6.0
+  resolution: "@mantine/dropzone@npm:9.6.0"
+  dependencies:
+    react-dropzone: "npm:20.1.1"
+  peerDependencies:
+    "@mantine/core": 9.6.0
+    "@mantine/hooks": 9.6.0
+    react: ^19.2.0
+    react-dom: ^19.2.0
+  checksum: 10c0/05b480959923bde929d538072cc37dc4b2f71d653b2dea82a62ca2c01c57d48d1e2a73e6f8515d2d897342a6bcbef0a54b7c9ef89f93d2a78ae88ed682d4c293
+  languageName: node
+  linkType: hard
+
 "@mantine/hooks@npm:^9.0.0":
   version: 9.6.0
   resolution: "@mantine/hooks@npm:9.6.0"
@@ -5725,6 +5739,141 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@videojs/core@npm:10.0.0-rc.2":
+  version: 10.0.0-rc.2
+  resolution: "@videojs/core@npm:10.0.0-rc.2"
+  dependencies:
+    "@videojs/media": "npm:10.0.0-rc.2"
+    "@videojs/store": "npm:10.0.0-rc.2"
+    "@videojs/utils": "npm:10.0.0-rc.2"
+  checksum: 10c0/ae90e2451530508fa0155b1f6d2891513ed82f149ae9053ab4d02335770689cf39bc808deb88206e2ab3b24f9180590a061d0117f51d3e05b672611c8c4bc891
+  languageName: node
+  linkType: hard
+
+"@videojs/media@npm:10.0.0-rc.2":
+  version: 10.0.0-rc.2
+  resolution: "@videojs/media@npm:10.0.0-rc.2"
+  dependencies:
+    "@videojs/utils": "npm:10.0.0-rc.2"
+  checksum: 10c0/9e7378a37402b6d75660c0336359d4afea0e0f21dbb0a3ba7836d32c83ee54f135ba4fe754e81f73a1ae8a3726f553ceed05717382ad7b8bb34f65db51641b09
+  languageName: node
+  linkType: hard
+
+"@videojs/native-hls-video@npm:10.0.0-rc.2":
+  version: 10.0.0-rc.2
+  resolution: "@videojs/native-hls-video@npm:10.0.0-rc.2"
+  dependencies:
+    "@videojs/media": "npm:10.0.0-rc.2"
+    "@videojs/utils": "npm:10.0.0-rc.2"
+  checksum: 10c0/42e6dfb9f9e62ca3e46bf74b30abd3a8a278368571510db2b0f96422fbfe46792063596670c4b0f8c624b810b7f3f7391aa54ff3ab4d4eb24578132e67286365
+  languageName: node
+  linkType: hard
+
+"@videojs/react@npm:10.0.0-rc.2":
+  version: 10.0.0-rc.2
+  resolution: "@videojs/react@npm:10.0.0-rc.2"
+  dependencies:
+    "@videojs/core": "npm:10.0.0-rc.2"
+    "@videojs/media": "npm:10.0.0-rc.2"
+    "@videojs/native-hls-video": "npm:10.0.0-rc.2"
+    "@videojs/spf": "npm:10.0.0-rc.2"
+    "@videojs/store": "npm:10.0.0-rc.2"
+    "@videojs/utils": "npm:10.0.0-rc.2"
+  peerDependencies:
+    "@videojs/cloudflare-video": 10.0.0-rc.2
+    "@videojs/dash-video": 10.0.0-rc.2
+    "@videojs/google-cast": 10.0.0-rc.2
+    "@videojs/hlsjs-video": 10.0.0-rc.2
+    "@videojs/mux-audio": 10.0.0-rc.2
+    "@videojs/mux-data": 10.0.0-rc.2
+    "@videojs/mux-video": 10.0.0-rc.2
+    "@videojs/shaka-video": 10.0.0-rc.2
+    "@videojs/spotify-audio": 10.0.0-rc.2
+    "@videojs/tiktok-video": 10.0.0-rc.2
+    "@videojs/twitch-video": 10.0.0-rc.2
+    "@videojs/vimeo-video": 10.0.0-rc.2
+    "@videojs/wistia-video": 10.0.0-rc.2
+    "@videojs/youtube-video": 10.0.0-rc.2
+    react: ^18.0.0 || ^19.0.0
+    react-dom: ^18.0.0 || ^19.0.0
+  peerDependenciesMeta:
+    "@videojs/cloudflare-video":
+      optional: true
+    "@videojs/dash-video":
+      optional: true
+    "@videojs/google-cast":
+      optional: true
+    "@videojs/hlsjs-video":
+      optional: true
+    "@videojs/mux-audio":
+      optional: true
+    "@videojs/mux-data":
+      optional: true
+    "@videojs/mux-video":
+      optional: true
+    "@videojs/shaka-video":
+      optional: true
+    "@videojs/spotify-audio":
+      optional: true
+    "@videojs/tiktok-video":
+      optional: true
+    "@videojs/twitch-video":
+      optional: true
+    "@videojs/vimeo-video":
+      optional: true
+    "@videojs/wistia-video":
+      optional: true
+    "@videojs/youtube-video":
+      optional: true
+  checksum: 10c0/369f44efc4567ef801f367156a3cbe0783ab16d8feab3e9704edb7e39900c0b295baa5f501fc6a11e581e865f88128a1facec9fec4a9079c4c4aaf423d80fab1
+  languageName: node
+  linkType: hard
+
+"@videojs/spf@npm:10.0.0-rc.2":
+  version: 10.0.0-rc.2
+  resolution: "@videojs/spf@npm:10.0.0-rc.2"
+  dependencies:
+    "@videojs/media": "npm:10.0.0-rc.2"
+    "@videojs/utils": "npm:10.0.0-rc.2"
+    signal-polyfill: "npm:^0.2.2"
+  checksum: 10c0/e90d4f8aefb84d74f520f51b5c437801cfa1467fedb01b470377ad4cb930103935d70482478fbc9dd9508d934fbccc6ee481c73ab8f74bce2f11be48ee75ee9f
+  languageName: node
+  linkType: hard
+
+"@videojs/store@npm:10.0.0-rc.2":
+  version: 10.0.0-rc.2
+  resolution: "@videojs/store@npm:10.0.0-rc.2"
+  dependencies:
+    "@videojs/utils": "npm:10.0.0-rc.2"
+  peerDependencies:
+    "@videojs/element": 10.0.0-rc.2
+    react: ^18.0.0 || ^19.0.0
+  peerDependenciesMeta:
+    "@videojs/element":
+      optional: true
+    react:
+      optional: true
+  checksum: 10c0/6f1ab21dbf1b8fd3527ebcefd350379789584b76791375f4f3fcecad46a4449b5c5d4416be42da3a3ed6f5d9e815772188d6916e8e7529493d4a92c6817f2977
+  languageName: node
+  linkType: hard
+
+"@videojs/utils@npm:10.0.0-rc.2":
+  version: 10.0.0-rc.2
+  resolution: "@videojs/utils@npm:10.0.0-rc.2"
+  checksum: 10c0/7eed1c06b9d7aa1c42cccc74957746c98ad69f61441fd7e367ddc253a982144e3207296c643c74866db5742656d98a61e292770640d21d47c6c5345a3bd5290d
+  languageName: node
+  linkType: hard
+
+"@videojs/youtube-video@npm:10.0.0-rc.2":
+  version: 10.0.0-rc.2
+  resolution: "@videojs/youtube-video@npm:10.0.0-rc.2"
+  dependencies:
+    "@videojs/media": "npm:10.0.0-rc.2"
+    "@videojs/utils": "npm:10.0.0-rc.2"
+  checksum: 10c0/311adb813f376e7efeefe8d8553dc2f3151f1dbf988e8331693ffd88c44705d02eeaf175af116d802d1de148e7e3a410a39f1428d5be1b616cda64c19b7b5733
+  languageName: node
+  linkType: hard
+
 "@vimeo/player@npm:2.29.0":
   version: 2.29.0
   resolution: "@vimeo/player@npm:2.29.0"
@@ -6259,6 +6408,13 @@ __metadata:
   version: 1.0.0
   resolution: "at-least-node@npm:1.0.0"
   checksum: 10c0/4c058baf6df1bc5a1697cf182e2029c58cd99975288a13f9e70068ef5d6f4e1f1fd7c4d2c3c4912eae44797d1725be9700995736deca441b39f3e66d8dee97ef
+  languageName: node
+  linkType: hard
+
+"attr-accept@npm:^4.0.0":
+  version: 4.0.0
+  resolution: "attr-accept@npm:4.0.0"
+  checksum: 10c0/4680157b8366780b9d209fabce33d509f7c60748911e77ca0e56927993e23631b3b87a2019e0142a22fe9851c41b0daae9b569f3aa33cb1f2bd7f6db97e6216f
   languageName: node
   linkType: hard
 
@@ -8822,6 +8978,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"file-selector@npm:^5.0.0":
+  version: 5.0.1
+  resolution: "file-selector@npm:5.0.1"
+  checksum: 10c0/ea4c36f4c50f509973244050882c6b0e7b68d215c1deaaf13d55739b1d1cbe7f738bd6e6bfd9b7c439f4e928ebb52b471049ed244042045dd4bf89b8d978db59
+  languageName: node
+  linkType: hard
+
 "filelist@npm:^1.0.4":
   version: 1.0.6
   resolution: "filelist@npm:1.0.6"
@@ -9014,6 +9177,7 @@ __metadata:
     "@fontsource-variable/atkinson-hyperlegible-next": "npm:^5.2.6"
     "@fontsource-variable/cormorant-garamond": "npm:^5.3.0"
     "@mantine/core": "npm:^9.0.0"
+    "@mantine/dropzone": "npm:9.6.0"
     "@mantine/hooks": "npm:^9.0.0"
     "@mantine/notifications": "npm:^9.0.0"
     "@playwright/test": "npm:^1.60.0"
@@ -9035,6 +9199,8 @@ __metadata:
     "@types/react-dom": "npm:^19.1.9"
     "@typescript-eslint/eslint-plugin": "npm:^8.69.0"
     "@typescript-eslint/parser": "npm:^8.69.0"
+    "@videojs/react": "npm:10.0.0-rc.2"
+    "@videojs/youtube-video": "npm:10.0.0-rc.2"
     "@vitejs/plugin-react": "npm:^6.0.0"
     "@vitejs/plugin-react-swc": "npm:^4.0.0"
     axios: "npm:^1.12.2"
@@ -13496,6 +13662,22 @@ __metadata:
   languageName: node
   linkType: hard
 
+"react-dropzone@npm:20.1.1":
+  version: 20.1.1
+  resolution: "react-dropzone@npm:20.1.1"
+  dependencies:
+    attr-accept: "npm:^4.0.0"
+    file-selector: "npm:^5.0.0"
+  peerDependencies:
+    "@types/react": "*"
+    react: ">= 18"
+  peerDependenciesMeta:
+    "@types/react":
+      optional: true
+  checksum: 10c0/6f84f9c59b90dc9494f47f8b7a76f40913736e283892aad2e2edaebf58a97308e1d359c56154757f05fb8059deabc585b7fcc701951adaaaa90d2c7b13df5be4
+  languageName: node
+  linkType: hard
+
 "react-hook-form@npm:^7.75.0":
   version: 7.87.0
   resolution: "react-hook-form@npm:7.87.0"
@@ -14478,6 +14660,13 @@ __metadata:
   version: 4.1.0
   resolution: "signal-exit@npm:4.1.0"
   checksum: 10c0/41602dce540e46d599edba9d9860193398d135f7ff72cab629db5171516cfae628d21e7bfccde1bbfdf11c48726bc2a6d1a8fb8701125852fbfda7cf19c6aa83
+  languageName: node
+  linkType: hard
+
+"signal-polyfill@npm:^0.2.2":
+  version: 0.2.2
+  resolution: "signal-polyfill@npm:0.2.2"
+  checksum: 10c0/485b0e66d93961454af32e7fbff88130138dffcbf7bce35e5c873d760ceb9ce33a125dd63cc59454c739c43246980515b1162cbe0ebc975a974ee036fb58d18a
   languageName: node
   linkType: hard
 

@@ -85,8 +85,69 @@ describe("SlideLayoutVideo", () => {
     // The base comes from the grant, the filename from the slide.
     expect(player).toHaveAttribute(
       "data-src",
-      "/api/teaching/videos/mod-1/patient-experience.mp4",
+      "/api/teaching/videos/mod-1/ltd-transition.mp4",
     );
+  });
+
+  it("plays from an override without asking for a grant", async () => {
+    // The seam Storybook needs. It must not reach the network: the
+    // grant is the whole authorisation boundary, so a component that
+    // quietly skipped it in the app would be a hole, not a shortcut.
+    mockPost.mockClear();
+
+    renderWithMantine(
+      <SlideLayoutVideo
+        slide={hostedVideoSlide}
+        baseUrlOverride="/teaching/sample"
+      />,
+    );
+
+    const player = await screen.findByTestId("react-player");
+    expect(player).toHaveAttribute(
+      "data-src",
+      "/teaching/sample/ltd-transition.mp4",
+    );
+    expect(mockPost).not.toHaveBeenCalled();
+  });
+
+  it("prefers an override to a grant it was also given", async () => {
+    // Both supplied is a story's doing, never the app's. The override
+    // wins so a story cannot accidentally depend on a mocked call.
+    mockPost.mockClear();
+    mockPost.mockResolvedValue({
+      base_url: "/api/teaching/videos/mod-1",
+      expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+    });
+
+    renderWithMantine(
+      <SlideLayoutVideo
+        slide={hostedVideoSlide}
+        moduleId="mod-1"
+        baseUrlOverride="/teaching/sample"
+      />,
+    );
+
+    const player = await screen.findByTestId("react-player");
+    expect(player).toHaveAttribute(
+      "data-src",
+      "/teaching/sample/ltd-transition.mp4",
+    );
+    expect(mockPost).not.toHaveBeenCalled();
+  });
+
+  it("holds the skeleton open when told to, and shows nothing else", () => {
+    // The three branches are mutually exclusive: a forced skeleton
+    // beside a player would be a state the app can never reach, and
+    // would make the story useless for judging the real thing.
+    mockPost.mockClear();
+
+    renderWithMantine(
+      <SlideLayoutVideo slide={hostedVideoSlide} forceLoading />,
+    );
+
+    expect(screen.queryByTestId("react-player")).not.toBeInTheDocument();
+    expect(screen.queryByText("Video unavailable")).not.toBeInTheDocument();
+    expect(mockPost).not.toHaveBeenCalled();
   });
 
   it("shows a readable message when access is refused", async () => {

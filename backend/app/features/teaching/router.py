@@ -3046,3 +3046,68 @@ def update_bank_org_settings(
         is_live=status_row.is_live,
         site_registration=status_row.site_registration,
     )
+
+
+# A 204 carries no body at all, so there is no schema for oasdiff to
+# diff. Same shape as the unlink 204 above.
+# api-schema-check: allow-opaque-permanent
+@teaching_router.delete(
+    "/admin/modules/{module_id}/media/{asset_id}",
+    status_code=204,
+    dependencies=[_DEP_MANAGE],
+)
+def delete_media_asset(
+    module_id: str,
+    asset_id: str,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+) -> Response:
+    """Remove an uploaded asset and its link. The destructive one.
+
+    Deleting cannot leave a learner with a broken slide: an incomplete
+    module is not served at all, so the reference simply reverts to
+    missing and the module goes quiet until a replacement lands. That
+    is what makes plain delete safe here, with no separate replace
+    action.
+
+    The row goes first and the object second. If the bucket call fails
+    the transaction rolls back, so a link never survives without its
+    file — the failure mode that would show a learner a broken player.
+    """
+    from app.config import settings
+    from app.features.teaching.storage import delete_media_object
+
+    org_id = _get_user_org_id(user, db)
+
+    link = db.execute(
+        select(ModuleMediaLink).where(
+            ModuleMediaLink.organisation_id == org_id,
+            ModuleMediaLink.question_bank_id == module_id,
+            ModuleMediaLink.asset_id == asset_id,
+        )
+    ).scalar_one_or_none()
+
+    # Scoped to the caller's organisation, so another trust's asset is
+    # not found rather than refused: whether they hold one is not this
+    # caller's to learn.
+    if link is None:
+        raise HTTPException(404, "No such media asset")
+
+    bucket = settings.TEACHING_VIDEOS_SOURCE_BUCKET
+    if not bucket:
+        raise HTTPException(503, "Media upload is not configured")
+
+    db.delete(link)
+    db.flush()
+    delete_media_object(bucket, org_id, module_id, asset_id)
+
+    # Destructive, so the actor and the module are recorded. No
+    # filename: this line goes to a log that is not PHI-safe.
+    logger.info(
+        "media asset deleted user=%s org=%s module=%s asset=%s",
+        user.id,
+        org_id,
+        module_id,
+        asset_id,
+    )
+    return Response(status_code=204)

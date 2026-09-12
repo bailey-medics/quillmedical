@@ -572,3 +572,67 @@ class TestMediaObjectPath:
         assert all(
             t.startswith("video/") for t in ALLOWED_MEDIA_TYPES.values()
         )
+
+
+class TestDeleteMediaObject:
+    """Removing one uploaded asset from the source bucket.
+
+    Built on ``media_object_path``, so the same validation guards the
+    delete path as guards the write path.
+    """
+
+    def test_deletes_the_object_at_the_asset_path(self) -> None:
+        from app.features.teaching.storage import delete_media_object
+
+        mock_client = MagicMock()
+        mock_bucket = MagicMock()
+        mock_blob = MagicMock()
+        mock_client.bucket.return_value = mock_bucket
+        mock_bucket.blob.return_value = mock_blob
+
+        ms = _mock_gcs_client(mock_client)
+        with patch.object(_gc, "storage", ms, create=True):
+            delete_media_object("src-bucket", 7, "mod-1", "abc123")
+
+        mock_client.bucket.assert_called_once_with("src-bucket")
+        mock_bucket.blob.assert_called_once_with("7/mod-1/abc123")
+        mock_blob.delete.assert_called_once()
+
+    def test_a_missing_object_is_not_an_error(self) -> None:
+        """So a link row never becomes permanently undeletable.
+
+        A half-finished upload, or a second delete, leaves the row as
+        the only record — clearing it must still be possible.
+        """
+        from google.api_core import exceptions as gcs_exceptions
+
+        from app.features.teaching.storage import delete_media_object
+
+        mock_client = MagicMock()
+        mock_bucket = MagicMock()
+        mock_blob = MagicMock()
+        mock_blob.delete.side_effect = gcs_exceptions.NotFound("gone")
+        mock_client.bucket.return_value = mock_bucket
+        mock_bucket.blob.return_value = mock_blob
+
+        ms = _mock_gcs_client(mock_client)
+        with patch.object(_gc, "storage", ms, create=True):
+            delete_media_object("src-bucket", 7, "mod-1", "abc123")
+
+    @pytest.mark.parametrize(
+        "org_id,module_id,asset_id",
+        [
+            (0, "mod-1", "abc123"),
+            (1, "../etc", "abc123"),
+            (1, "mod-1", "../secret"),
+            (1, "mod-1", "a/b"),
+        ],
+    )
+    def test_rejects_unsafe_components(
+        self, org_id: int, module_id: str, asset_id: str
+    ) -> None:
+        """Refused before any client is built, so nothing is reached."""
+        from app.features.teaching.storage import delete_media_object
+
+        with pytest.raises(ValueError):
+            delete_media_object("src-bucket", org_id, module_id, asset_id)

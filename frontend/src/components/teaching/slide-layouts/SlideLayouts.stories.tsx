@@ -1,6 +1,5 @@
 import { Stack } from "@mantine/core";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import ErrorState from "@/components/error-state/ErrorState";
 import { StoryNote } from "@/stories/variants";
 import SlideLayoutSectionTitle from "./SlideLayoutSectionTitle";
 import SlideLayoutVideo from "./SlideLayoutVideo";
@@ -14,6 +13,15 @@ import {
   calloutSlide,
   hostedVideoSlide,
 } from "./stubSlides";
+
+/**
+ * A short clip in `public/teaching/`, served by Storybook's staticDirs.
+ *
+ * Committed deliberately: the player's controls cannot be styled against
+ * a placeholder, and every alternative needs a running backend. Keep it
+ * small — it lives in git.
+ */
+const SAMPLE_VIDEO_BASE = "/teaching/sample";
 
 const meta: Meta = {
   title: "Teaching/Slide layouts",
@@ -30,23 +38,33 @@ export const PlainTextSlide: Story = {
   render: () => <SlideLayoutDefault slide={defaultSlide} />,
 };
 
-export const Video: Story = {
+export const YoutubeVideo: Story = {
   render: () => <SlideLayoutVideo slide={videoSlide} />,
 };
 
 export const HostedVideo: Story = {
   render: () => (
-    <SlideLayoutVideo slide={hostedVideoSlide} moduleId="demo-module" />
+    <Stack gap="sm">
+      <SlideLayoutVideo
+        slide={hostedVideoSlide}
+        baseUrlOverride={SAMPLE_VIDEO_BASE}
+      />
+      <StoryNote>
+        The base URL is supplied directly here: a grant is a network call, and
+        Storybook has no backend to answer it.
+      </StoryNote>
+    </Stack>
   ),
 };
 
 export const HostedVideoLoading: Story = {
   render: () => (
     <Stack gap="sm">
-      <SlideLayoutVideo slide={hostedVideoSlide} moduleId="demo-module" />
+      <SlideLayoutVideo slide={hostedVideoSlide} forceLoading />
       <StoryNote>
-        While the access grant is in flight. A skeleton rather than an empty
-        frame, so the slide does not look broken on a slow connection.
+        While the access grant is in flight: a skeleton rather than an empty
+        frame, so the slide does not look broken on a slow connection. Held open
+        deliberately here — in the app it lasts one network call.
       </StoryNote>
     </Stack>
   ),
@@ -55,19 +73,11 @@ export const HostedVideoLoading: Story = {
 export const HostedVideoAccessDenied: Story = {
   render: () => (
     <Stack gap="sm">
-      <ErrorState
-        variant="inline"
-        title="Video unavailable"
-        message={
-          "This video is not available — your access may have expired. " +
-          "Try reloading the page."
-        }
-        action={{ label: "Reload page", onClick: () => {} }}
-      />
+      <SlideLayoutVideo slide={hostedVideoSlide} moduleId="demo-module" />
       <StoryNote>
-        What a refused or expired grant shows in place of the player. Rendered
-        directly here, since the state depends on a failed network call the
-        story cannot make.
+        What a refused or expired grant shows in place of the player. This is
+        the component itself: Storybook has no backend, so the grant request
+        genuinely fails and the real refusal is what you see.
       </StoryNote>
     </Stack>
   ),

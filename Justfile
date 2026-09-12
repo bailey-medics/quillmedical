@@ -5,6 +5,23 @@ default:
     just --list
 
 
+# Read SB_MAX_WORKERS out of the root .env, if it is set there.
+#
+# Scoped deliberately rather than `set dotenv-load`: that would export
+# every line of .env — the Postgres and EHRbase credentials included —
+# into the environment of every recipe. One tuning knob does not justify
+# handing eight secrets to recipes that have no use for them.
+#
+# Unset means the flag is never passed and jest picks its own worker
+# count, which is what CI gets: a GitHub runner has no .env at all.
+sb_workers := 'if [ -f .env ]; then
+        _sb=$(sed -n "s/^SB_MAX_WORKERS=[[:space:]]*\([0-9][0-9]*\).*/\1/p" .env | tail -1)
+        if [ -n "$_sb" ]; then
+            export SB_MAX_WORKERS="$_sb"
+            echo "Storybook workers capped at $SB_MAX_WORKERS (SB_MAX_WORKERS in .env)"
+        fi
+    fi'
+
 initialise:= 'set -euxo pipefail
     initialise() {
         # Clear the terminal window title on exit
@@ -736,6 +753,7 @@ alias sbt := storybook-test
 storybook-test:
     #!/usr/bin/env bash
     {{initialise}} "storybook-test"
+    {{sb_workers}}
     cd frontend
     yarn storybook:test
 
@@ -744,6 +762,7 @@ alias sbtci := storybook-test-ci
 storybook-test-ci:
     #!/usr/bin/env bash
     {{initialise}} "storybook-test-ci"
+    {{sb_workers}}
     cd frontend
     yarn storybook:test:ci
 
