@@ -43,6 +43,7 @@ export default function AdminBankDetailPage() {
   const {
     media,
     loading: mediaLoading,
+    error: mediaError,
     uploadProgress,
     upload,
     remove,
@@ -231,6 +232,7 @@ export default function AdminBankDetailPage() {
           onUpload={upload}
           onDelete={remove}
           loading={mediaLoading}
+          error={mediaError}
         />
       ) : null}
     </Stack>
