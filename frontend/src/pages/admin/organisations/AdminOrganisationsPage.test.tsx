@@ -36,7 +36,7 @@ const mockAdminUser: User = {
   username: "admin.user",
   email: "admin@example.com",
   system_permissions: "admin",
-  platform_role: "member",
+  platform_role: "standard",
 };
 
 // Mock superadmin user

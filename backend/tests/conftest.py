@@ -202,6 +202,54 @@ def authenticated_admin_client(
 
 
 @pytest.fixture
+def test_patient_manager(db_session: Session) -> User:
+    """Create a user who manages an organisation's caseload.
+
+    Carries ``patient_manager``, the profession holding
+    ``manage_patient_membership``. Distinct from ``test_admin``, whose
+    ``system_administrator`` grants ``manage_users`` but not this: a
+    patient is not a user, so administering accounts does not confer
+    authority over which patients a place cares for.
+    """
+    user = User(
+        username="testpatientmanager",
+        email="patientmanager@example.com",
+        password_hash=hash_password("PatientMgrPassword123!"),
+        is_active=True,
+        email_verified=True,
+        base_profession="patient_manager",
+        system_permissions="admin",
+        platform_role="standard",
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user
+
+
+@pytest.fixture
+def authenticated_patient_manager_client(
+    test_client: TestClient, test_patient_manager: User
+) -> TestClient:
+    """An authenticated client holding ``manage_patient_membership``.
+
+    Automatically sets the X-CSRF-Token header for state-changing requests.
+    """
+    response = test_client.post(
+        "/api/auth/login",
+        json={
+            "username": "testpatientmanager",
+            "password": "PatientMgrPassword123!",
+        },
+    )
+    assert response.status_code == 200
+    csrf = test_client.cookies.get("XSRF-TOKEN")
+    if csrf:
+        test_client.headers["X-CSRF-Token"] = csrf
+    return test_client
+
+
+@pytest.fixture
 def test_superadmin(db_session: Session) -> User:
     """Create a test user with superadmin permissions.
 

@@ -33,3 +33,25 @@ competencies:
   # a competency awaiting a gate rather than one withdrawn.
   - id: access_clinic_admin
     display_name: "Access Clinic Administration Functions"
+
+  # ==========================================================================
+  # PATIENT MEMBERSHIP
+  # ==========================================================================
+
+  # Which patients are cared for at the holder's organisation. It adds
+  # and removes rows in organisation_patient_member, and nothing else —
+  # it grants no access to a patient's record, which is
+  # access_patient_records in clinical.yaml.
+  #
+  # Separate from manage_users because a patient is not a user. A user is
+  # an account in the core database; a patient is a record FHIR owns, and
+  # the two are linked through User.fhir_patient_id where the same human
+  # is both. Most patients have no account, and plenty of users are not
+  # patients, so one competency covering both would be authority over two
+  # unrelated populations — the same conflation this plan exists to undo,
+  # one layer down.
+  #
+  # Like every competency here it answers *what*, never *where*: the
+  # routes carrying it keep _require_own_org beside them.
+  - id: manage_patient_membership
+    display_name: "Manage Patient Membership of an Organisation"

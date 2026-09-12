@@ -34,7 +34,7 @@ const mockUsers: Record<string, User> = {
     username: "admin.user",
     email: "admin@example.com",
     system_permissions: "admin",
-    platform_role: "member",
+    platform_role: "standard",
   },
   superadmin: {
     id: "4",
@@ -50,7 +50,7 @@ const mockUsers: Record<string, User> = {
     username: "stale.superadmin",
     email: "stale@example.com",
     system_permissions: "superadmin",
-    platform_role: "member",
+    platform_role: "standard",
   },
 };
 

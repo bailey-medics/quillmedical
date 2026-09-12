@@ -70,6 +70,20 @@
     "migration checks — and can never merge. Marking the PR ready for review",
     "fires them. See .claude/rules/ci.md.",
     "",
+    "LOCK FILE MAINTENANCE",
+    "-----------------------",
+    "Renovate only ever bumps the dependencies declared in pyproject.toml",
+    "and package.json. Everything those pull in for themselves — Starlette",
+    "under FastAPI, aiohttp under pywebpush, Pillow under reportlab, the",
+    "npm tooling under jsdom and cspell — stays at whatever version the",
+    "lockfile first resolved, however many advisories it accrues. By",
+    "September 2026 that layer held every one of the repository's 130",
+    "open Dependabot alerts and Renovate had opened a PR for none of them.",
+    "lockFileMaintenance re-resolves poetry.lock and yarn.lock from scratch on the",
+    "Wednesday schedule, keeping every declared pin and range as it is and",
+    "moving only what they already allow. One PR per run, reviewed and",
+    "queued by hand like every other.",
+    "",
     "LABELS",
     "--------",
     "labels replaces the whole list when a rule matches, and the last",
@@ -92,6 +106,12 @@
   "vulnerabilityAlerts": {
     "labels": ["dependencies", "security"],
     "automerge": false
+  },
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["on wednesday"],
+    "automerge": false,
+    "addLabels": ["lock-file-maintenance"]
   },
   "packageRules": [
     {

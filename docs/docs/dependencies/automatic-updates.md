@@ -54,9 +54,16 @@ Routine updates run **every Wednesday** (`Europe/London` timezone) with a **3-da
 | GitHub Actions                  | Grouped PR, no automerge               |
 | pre-commit hooks                | Grouped PR, no automerge               |
 | Terraform providers             | Separate PR per provider, no automerge |
+| Lock file maintenance           | Single weekly PR, no automerge         |
 
 No Renovate PR is merged automatically. Every one is reviewed and added to
 the merge queue by hand — see `.claude/rules/ci.md` for that flow.
+
+### Lock file maintenance
+
+Renovate only bumps the dependencies declared in `pyproject.toml` and `package.json`. Everything those pull in for themselves is transitive, and the lockfile keeps each transitive package at whatever version it first resolved until something forces a re-resolution. Nothing routinely does, so by September 2026 that layer held every one of the repository's open Dependabot alerts (Starlette under FastAPI, aiohttp under pywebpush, Pillow under reportlab, the npm tooling under jsdom and cspell) and Renovate had opened a PR for none of them.
+
+`lockFileMaintenance` closes that gap. On the Wednesday schedule Renovate re-resolves `poetry.lock` and `yarn.lock` from scratch, keeping every declared pin and range exactly as it is and moving only the versions those already allow. The result is one PR labelled `lock-file-maintenance`, reviewed and queued by hand like every other. Its diff is long and mechanical; CI is what makes it safe to merge.
 
 ### Labels
 

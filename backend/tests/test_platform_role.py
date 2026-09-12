@@ -53,7 +53,7 @@ class TestTheVocabulary:
     """Two values, and no order between them."""
 
     def test_the_known_roles(self):
-        assert PLATFORM_ROLES == ("member", "superadmin")
+        assert PLATFORM_ROLES == ("standard", "superadmin")
 
     def test_a_known_role_passes(self):
         assert validate_platform_role("superadmin") == "superadmin"
@@ -63,7 +63,7 @@ class TestTheVocabulary:
             validate_platform_role("admin")
 
     def test_the_error_names_the_known_ones(self):
-        with pytest.raises(ValueError, match="member, superadmin"):
+        with pytest.raises(ValueError, match="standard, superadmin"):
             validate_platform_role("staff")
 
     def test_the_old_levels_are_not_platform_roles(self):
@@ -84,7 +84,7 @@ class TestTheColumnDefaults:
     def test_a_new_user_is_a_member(self, db_session):
         person = _user(db_session, "someone")
 
-        assert person.platform_role == "member"
+        assert person.platform_role == "standard"
 
     def test_it_is_independent_of_system_permissions(self, db_session):
         """Nothing reads it for authorisation yet.
@@ -95,7 +95,7 @@ class TestTheColumnDefaults:
         """
         person = _user(db_session, "testadmin", system_permissions="admin")
 
-        assert person.platform_role == "member"
+        assert person.platform_role == "standard"
         assert person.system_permissions == "admin"
 
     def test_a_superadmin_can_be_recorded(self, db_session):
@@ -135,12 +135,12 @@ class TestTheRoutesReadTheNewColumn:
             client.headers["X-CSRF-Token"] = csrf
 
     def test_a_stale_superadmin_is_refused(self, test_client, db_session):
-        """Says superadmin in the old column, `member` in the new one."""
+        """Says superadmin in the old column, `standard` in the new one."""
         _user(
             db_session,
             "stale",
             system_permissions="superadmin",
-            platform_role="member",
+            platform_role="standard",
             base_profession="superadmin_profession",
         )
         self._login(test_client, "stale")
@@ -239,7 +239,7 @@ class TestTheListingsHideOperatorsByTheNewColumn:
             db_session,
             "ordinary_colleague",
             system_permissions="staff",
-            platform_role="member",
+            platform_role="standard",
         )
         for person in (test_admin, colleague):
             db_session.execute(
@@ -327,7 +327,7 @@ class TestScopingAsksTheNewColumn:
         test_admin: User,
         db_session: Session,
     ):
-        """The mirror: `member` in the new column stays scoped."""
+        """The mirror: `standard` in the new column stays scoped."""
         unrelated = self._org_with(db_session, "Unrelated Trust")
         own = self._org_with(db_session, "Admin's Own Trust", test_admin)
 
@@ -355,7 +355,7 @@ class TestScopingAsksTheNewColumn:
             db_session,
             "scoped_holder",
             system_permissions="staff",
-            platform_role="member",
+            platform_role="standard",
             base_profession="system_administrator",
         )
         not_theirs = self._org_with(db_session, "Not Their Trust")
@@ -372,3 +372,181 @@ class TestScopingAsksTheNewColumn:
 
         other = test_client.get(f"/api/organisations/{not_theirs}")
         assert other.status_code == 404
+
+
+class TestOperatorsAreProtectedByTheNewColumn:
+    """Four routes refuse to act on an operator, and now ask the new column.
+
+    `update_user`, `deactivate_user`, `reactivate_user` and `get_user`
+    each refuse a non-operator acting on an operator. The caller half of
+    that pair already asks `platform_role`; these are the target half,
+    and were the last authorisation reads left on `system_permissions`.
+
+    Both users below have divergent columns, so each test fails if the
+    check reads the old one — the operator says `single-user` there, and
+    would be treated as an ordinary user.
+    """
+
+    def _operator(self, db: Session) -> User:
+        """An operator by the new column, and nothing by the old one."""
+        return _user(
+            db,
+            "protected_operator",
+            system_permissions="single-user",
+            platform_role="superadmin",
+            base_profession="superadmin_profession",
+        )
+
+    def test_an_operator_cannot_be_modified(
+        self, authenticated_admin_client, db_session: Session
+    ):
+        operator = self._operator(db_session)
+
+        resp = authenticated_admin_client.patch(
+            f"/api/users/{operator.id}",
+            json={"email": "taken.over@example.test"},
+        )
+
+        assert resp.status_code == 403
+        assert "superadmin" in resp.json()["detail"].lower()
+
+    def test_an_operator_cannot_be_deactivated(
+        self, authenticated_admin_client, db_session: Session
+    ):
+        operator = self._operator(db_session)
+
+        resp = authenticated_admin_client.post(
+            f"/api/users/{operator.id}/deactivate"
+        )
+
+        assert resp.status_code == 403
+
+    def test_an_operator_cannot_be_reactivated(
+        self, authenticated_admin_client, db_session: Session
+    ):
+        operator = self._operator(db_session)
+        operator.is_active = False
+        db_session.commit()
+
+        resp = authenticated_admin_client.post(
+            f"/api/users/{operator.id}/reactivate"
+        )
+
+        assert resp.status_code == 403
+
+    def test_an_operator_cannot_be_viewed(
+        self, authenticated_admin_client, db_session: Session
+    ):
+        """404 here rather than 403, so the refusal does not confirm
+        that the account exists to someone who may not see it."""
+        operator = self._operator(db_session)
+
+        resp = authenticated_admin_client.get(f"/api/users/{operator.id}")
+
+        assert resp.status_code == 404
+
+    def test_an_ordinary_user_is_not_protected(
+        self,
+        authenticated_admin_client,
+        test_admin: User,
+        db_session: Session,
+    ):
+        """The mirror, so the four above cannot pass by refusing everyone.
+
+        Shares an organisation with the admin, since the place check runs
+        immediately after the operator check.
+        """
+        org = Organisation(name="Shared Trust", type="hospital")
+        db_session.add(org)
+        db_session.commit()
+        db_session.refresh(org)
+
+        colleague = _user(
+            db_session,
+            "ordinary_target",
+            system_permissions="staff",
+            platform_role="standard",
+        )
+        for person in (test_admin, colleague):
+            db_session.execute(
+                insert(organisation_member).values(
+                    organisation_id=org.id,
+                    user_id=person.id,
+                    capacity="staff",
+                )
+            )
+        db_session.commit()
+
+        resp = authenticated_admin_client.get(f"/api/users/{colleague.id}")
+
+        assert resp.status_code == 200
+
+
+class TestPatientAccessAsksTheRightQuestion:
+    """The composites split by what they are actually about.
+
+    Three routes asked `system_permissions in ("admin", "superadmin")`,
+    which conflated two different questions. Each now asks the one that
+    fits:
+
+    - Listing every patient in the deployment is reach unbounded by any
+      place, so it asks `platform_role`.
+    - A patient's external access grants are patient centric, so they ask
+      `manage_patient_membership` — not `manage_users`, because a patient
+      is not a user.
+
+    `update_my_competencies` keeps the old rank deliberately: it is
+    self-scoped, so a competency gate would make the escalation
+    self-referential. See the batch 3 note in the plan.
+    """
+
+    def test_an_admin_cannot_list_a_patients_grants(
+        self, authenticated_admin_client, db_session: Session
+    ):
+        """`manage_users` is not authority over patients.
+
+        `test_admin` carries `system_administrator`, which grants
+        `manage_users` and not `manage_patient_membership`. Before the
+        split its rank alone would have allowed this.
+        """
+        resp = authenticated_admin_client.get(
+            "/api/patients/some-fhir-id/external-access"
+        )
+
+        assert resp.status_code == 403
+
+    def test_a_patient_manager_can_list_a_patients_grants(
+        self, authenticated_patient_manager_client, db_session: Session
+    ):
+        """The mirror: holding the competency is what opens it."""
+        resp = authenticated_patient_manager_client.get(
+            "/api/patients/some-fhir-id/external-access"
+        )
+
+        assert resp.status_code == 200
+
+    def test_the_patient_themselves_can_list_their_grants(
+        self, test_client, db_session: Session
+    ):
+        """Self-access is unchanged, and holds no competency at all."""
+        person = _user(
+            db_session,
+            "their_own_patient",
+            system_permissions="single-user",
+            platform_role="standard",
+        )
+        person.fhir_patient_id = "some-fhir-id"
+        db_session.commit()
+
+        resp = test_client.post(
+            "/api/auth/login",
+            json={
+                "username": "their_own_patient",
+                "password": "Password123!",
+            },
+        )
+        assert resp.status_code == 200
+
+        listed = test_client.get("/api/patients/some-fhir-id/external-access")
+
+        assert listed.status_code == 200

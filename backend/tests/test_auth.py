@@ -235,7 +235,7 @@ class TestAuthMe:
         response = authenticated_client.get("/api/auth/me")
         assert response.status_code == 200
         data = response.json()
-        assert data["platform_role"] == "member"
+        assert data["platform_role"] == "standard"
 
     def test_auth_me_platform_role_reports_an_operator(
         self,

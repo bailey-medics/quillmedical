@@ -31,8 +31,11 @@ RUN pip install --no-cache-dir "poetry==$(cat .poetry-version)" \
 
 # Install Python deps into the system site-packages (no venv = simpler image)
 COPY backend/pyproject.toml backend/poetry.lock* ./
-# TODO: use `--only main` here — the dev group isn't marked optional, so this
-# currently installs dev deps (mypy, pytest, etc.) into the production image.
+# Main group only. The prod, admin and CI images run the app and its
+# scripts and need nothing from the dev group (pytest, mypy, the mkdocs
+# toolchain), so shipping it only widened the production image's
+# dependency surface: every advisory in a docs package counted against a
+# service that never imports it. The dev stage adds the dev group below.
 # PyPI reads occasionally time out mid-download; Poetry's default 15s request
 # timeout makes that likely on a cold build. Raise it, keep Poetry's artifact
 # cache on a BuildKit cache mount so a retry resumes rather than restarting,
@@ -41,7 +44,7 @@ ENV POETRY_REQUESTS_TIMEOUT=60
 RUN --mount=type=cache,target=/root/.cache/pypoetry \
     poetry config virtualenvs.create false \
  && for attempt in 1 2 3; do \
-        poetry install --no-interaction --no-ansi && exit 0; \
+        poetry install --only main --no-interaction --no-ansi && exit 0; \
         echo "poetry install failed (attempt $attempt of 3); retrying..." >&2; \
         sleep 5; \
     done; \
@@ -79,6 +82,16 @@ USER root
 RUN apt-get update \
  && apt-get install -y --no-install-recommends git \
  && rm -rf /var/lib/apt/lists/*
+# The dev group (pytest, mypy, the mkdocs toolchain) on top of the main
+# group the base layer installed. Same retry loop as the base layer, for
+# the same reason. Dev stage only — never in `prod` or `admin`.
+RUN --mount=type=cache,target=/root/.cache/pypoetry \
+    for attempt in 1 2 3; do \
+        poetry install --only dev --no-interaction --no-ansi && exit 0; \
+        echo "poetry install failed (attempt $attempt of 3); retrying..." >&2; \
+        sleep 5; \
+    done; \
+    exit 1
 USER appuser
 # Copy the scripts directory into the dev image and set ownership to the unprivileged user.
 COPY --chown=appuser:appuser backend/scripts ./scripts
