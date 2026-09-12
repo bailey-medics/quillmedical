@@ -37,7 +37,6 @@ declare module "@/generated/base-professions.json" {
     id: string;
     display_name: string;
     description: string;
-    default_system_permission: string;
     requires_clinical_services: boolean;
     base_competencies: string[];
     notes: string;
