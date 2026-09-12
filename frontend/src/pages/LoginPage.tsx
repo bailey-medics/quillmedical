@@ -6,7 +6,6 @@
  * and handles auth context integration, error parsing, and redirection.
  */
 
-/* eslint-disable no-restricted-syntax */
 // Auth pages use centred form layout, not Container
 
 import { LoginForm, type LoginFormData } from "@components/registration";
@@ -29,15 +28,15 @@ export default function LoginPage() {
     try {
       const user = await login(data.username, data.password, data.totp);
 
-      // Safety net: don't redirect to admin paths if the user lacks
-      // admin permissions — prevents PHI leakage across login sessions.
-      const isAdmin =
-        user.system_permissions === "admin" ||
-        user.system_permissions === "superadmin";
+      // Safety net: don't redirect to admin paths if the user cannot use
+      // them — prevents PHI leakage across login sessions. Asks the
+      // competency the `/admin` guard asks, so the two cannot disagree.
+      const canAdminister =
+        user.competencies?.includes("manage_users") ?? false;
       const canRedirect =
         redirectFrom &&
         redirectFrom !== "/" &&
-        (!redirectFrom.startsWith("/admin") || isAdmin);
+        (!redirectFrom.startsWith("/admin") || canAdminister);
 
       if (canRedirect) {
         window.location.assign(redirectFrom);

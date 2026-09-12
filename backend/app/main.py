@@ -1523,7 +1523,7 @@ def create_user_with_cbac(
                 status_code=404,
                 detail=f"Organisation {org_id} not found",
             )
-        if current_user.system_permissions == "admin":
+        if current_user.platform_role != "superadmin":
             if org_id not in get_user_org_ids(db, current_user.id):
                 raise HTTPException(
                     status_code=403,
@@ -1630,9 +1630,9 @@ def update_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Admins cannot modify superadmin users
+    # Only an operator may modify another operator
     if (
-        current_user.system_permissions == "admin"
+        current_user.platform_role != "superadmin"
         and user.system_permissions == "superadmin"
     ):
         raise HTTPException(
@@ -1843,9 +1843,9 @@ def deactivate_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Admins cannot deactivate superadmin users
+    # Only an operator may deactivate another operator
     if (
-        current_user.system_permissions == "admin"
+        current_user.platform_role != "superadmin"
         and user.system_permissions == "superadmin"
     ):
         raise HTTPException(
@@ -1906,9 +1906,9 @@ def reactivate_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Admins cannot reactivate superadmin users
+    # Only an operator may reactivate another operator
     if (
-        current_user.system_permissions == "admin"
+        current_user.platform_role != "superadmin"
         and user.system_permissions == "superadmin"
     ):
         raise HTTPException(
@@ -2462,9 +2462,9 @@ def list_users(
         )
         stmt = stmt.where(User.id.notin_(existing_staff_ids))
 
-    # Admins only see users in their own organisations;
-    # superadmins see all users.
-    if current_user.system_permissions == "admin":
+    # Anyone but an operator sees only users at their own places;
+    # operators see everyone.
+    if current_user.platform_role != "superadmin":
         admin_orgs = get_user_org_ids(db, current_user.id)
         org_scoped_ids = get_org_staff_ids(db, admin_orgs)
 
@@ -2602,9 +2602,9 @@ def get_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Admins cannot view superadmin users
+    # Only an operator may view another operator
     if (
-        current_user.system_permissions == "admin"
+        current_user.platform_role != "superadmin"
         and user.system_permissions == "superadmin"
     ):
         raise HTTPException(status_code=404, detail="User not found")
@@ -3743,8 +3743,8 @@ def get_organisation(
     if not org:
         raise HTTPException(status_code=404, detail="Organisation not found")
 
-    # Admin users can only view orgs they belong to
-    if current_user.system_permissions == "admin":
+    # Anyone but an operator is confined to their own organisations
+    if current_user.platform_role != "superadmin":
         user_org_ids = get_user_org_ids(db, current_user.id)
         if org_id not in user_org_ids:
             raise HTTPException(
@@ -3767,8 +3767,8 @@ def get_organisation(
         .where(organisation_member.c.organisation_id == org_id)
     )
 
-    # Admins must not see superadmin staff members
-    if current_user.system_permissions == "admin":
+    # Operators are hidden from everyone but another operator
+    if current_user.platform_role != "superadmin":
         staff_query = staff_query.where(User.platform_role != "superadmin")
 
     staff_members = db.execute(staff_query).all()
@@ -3883,8 +3883,8 @@ def update_organisation(
     if not org:
         raise HTTPException(status_code=404, detail="Organisation not found")
 
-    # Admin users can only modify orgs they belong to
-    if current_user.system_permissions == "admin":
+    # Anyone but an operator is confined to their own organisations
+    if current_user.platform_role != "superadmin":
         if org_id not in get_user_org_ids(db, current_user.id):
             raise HTTPException(
                 status_code=404, detail="Organisation not found"
@@ -4059,8 +4059,8 @@ def add_staff_to_organisation(
     if not org:
         raise HTTPException(status_code=404, detail="Organisation not found")
 
-    # Admin users can only modify orgs they belong to
-    if current_user.system_permissions == "admin":
+    # Anyone but an operator is confined to their own organisations
+    if current_user.platform_role != "superadmin":
         if org_id not in get_user_org_ids(db, current_user.id):
             raise HTTPException(
                 status_code=404, detail="Organisation not found"
@@ -4142,8 +4142,8 @@ def add_patient_to_organisation(
     if not org:
         raise HTTPException(status_code=404, detail="Organisation not found")
 
-    # Admin users can only modify orgs they belong to
-    if current_user.system_permissions == "admin":
+    # Anyone but an operator is confined to their own organisations
+    if current_user.platform_role != "superadmin":
         if org_id not in get_user_org_ids(db, current_user.id):
             raise HTTPException(
                 status_code=404, detail="Organisation not found"
@@ -4202,8 +4202,8 @@ def remove_staff_from_organisation(
     Returns:
         dict: Confirmation.
     """
-    # Admin users can only modify orgs they belong to
-    if current_user.system_permissions == "admin":
+    # Anyone but an operator is confined to their own organisations
+    if current_user.platform_role != "superadmin":
         if org_id not in get_user_org_ids(db, current_user.id):
             raise HTTPException(
                 status_code=404, detail="Organisation not found"
@@ -4254,8 +4254,8 @@ def remove_patient_from_organisation(
     Returns:
         dict: Confirmation.
     """
-    # Admin users can only modify orgs they belong to
-    if current_user.system_permissions == "admin":
+    # Anyone but an operator is confined to their own organisations
+    if current_user.platform_role != "superadmin":
         if org_id not in get_user_org_ids(db, current_user.id):
             raise HTTPException(
                 status_code=404, detail="Organisation not found"
@@ -4302,8 +4302,8 @@ def list_org_features(
     if not org:
         raise HTTPException(status_code=404, detail="Organisation not found")
 
-    # Admin users can only view orgs they belong to
-    if current_user.system_permissions == "admin":
+    # Anyone but an operator is confined to their own organisations
+    if current_user.platform_role != "superadmin":
         if org_id not in get_user_org_ids(db, current_user.id):
             raise HTTPException(
                 status_code=404, detail="Organisation not found"
@@ -4347,8 +4347,8 @@ def toggle_org_feature(
     if not org:
         raise HTTPException(status_code=404, detail="Organisation not found")
 
-    # Admin users can only modify orgs they belong to
-    if current_user.system_permissions == "admin":
+    # Anyone but an operator is confined to their own organisations
+    if current_user.platform_role != "superadmin":
         if org_id not in get_user_org_ids(db, current_user.id):
             raise HTTPException(
                 status_code=404, detail="Organisation not found"
@@ -4725,8 +4725,8 @@ def get_site(
         .where(site_member.c.site_id == site_id)
     )
 
-    # Admins must not see superadmin staff members
-    if current_user.system_permissions == "admin":
+    # Operators are hidden from everyone but another operator
+    if current_user.platform_role != "superadmin":
         staff_query = staff_query.where(User.platform_role != "superadmin")
 
     staff = db.execute(staff_query).all()

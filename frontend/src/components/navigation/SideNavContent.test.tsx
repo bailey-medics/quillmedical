@@ -23,6 +23,7 @@ const mockUsers: Record<string, User> = {
     email: "admin@example.com",
     roles: ["Clinician", "Administrator"],
     system_permissions: "admin",
+    competencies: ["manage_users"],
     clinical_services_enabled: true,
   },
   superadmin: {
@@ -31,6 +32,7 @@ const mockUsers: Record<string, User> = {
     email: "superadmin@example.com",
     roles: ["Clinician", "Administrator"],
     system_permissions: "superadmin",
+    competencies: ["manage_users"],
     clinical_services_enabled: true,
   },
   patient: {
@@ -55,6 +57,7 @@ const mockUsers: Record<string, User> = {
     email: "admin.teaching@example.com",
     roles: ["Clinician", "Administrator"],
     system_permissions: "admin",
+    competencies: ["manage_users"],
     clinical_services_enabled: false,
   },
 };

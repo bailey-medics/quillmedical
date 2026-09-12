@@ -58,11 +58,9 @@ export default function SideNavContent({
   );
   const [bankTitle, setBankTitle] = useState<string | null>(null);
 
-  // Check if user has admin or superadmin permissions
-  const hasAdminAccess =
-    state.status === "authenticated" &&
-    (state.user.system_permissions === "admin" ||
-      state.user.system_permissions === "superadmin");
+  // The admin link should advertise exactly what `/admin` requires, or
+  // it offers a route that answers 404.
+  const hasAdminAccess = useHasCompetency("manage_users");
 
   // Check if teaching feature is enabled for this user's organisation
   const hasTeaching = useHasFeature("teaching");

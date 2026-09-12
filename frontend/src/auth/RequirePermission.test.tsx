@@ -69,7 +69,7 @@ describe("RequirePermission", () => {
       });
 
       renderWithRouter(
-        <RequirePermission level="admin">
+        <RequirePermission level="staff">
           <div>Protected Content</div>
         </RequirePermission>,
       );
@@ -89,119 +89,13 @@ describe("RequirePermission", () => {
       });
 
       renderWithRouter(
-        <RequirePermission level="admin">
+        <RequirePermission level="staff">
           <div>Protected Content</div>
         </RequirePermission>,
         { initialRoute: "/admin/patients" },
       );
 
       expect(window.location.pathname).toBe("/login");
-    });
-  });
-
-  describe("Admin level protection", () => {
-    it("allows admin users to access admin-protected routes", () => {
-      vi.spyOn(authContext, "useAuth").mockReturnValue({
-        state: {
-          status: "authenticated",
-          user: mockUsers.admin,
-        },
-        login: vi.fn(),
-        logout: vi.fn(),
-        reload: vi.fn(),
-      });
-
-      renderWithRouter(
-        <RequirePermission level="admin">
-          <div>Admin Content</div>
-        </RequirePermission>,
-      );
-
-      expect(screen.getByText("Admin Content")).toBeInTheDocument();
-    });
-
-    it("allows superadmin users to access admin-protected routes", () => {
-      vi.spyOn(authContext, "useAuth").mockReturnValue({
-        state: {
-          status: "authenticated",
-          user: mockUsers.superadmin,
-        },
-        login: vi.fn(),
-        logout: vi.fn(),
-        reload: vi.fn(),
-      });
-
-      renderWithRouter(
-        <RequirePermission level="admin">
-          <div>Admin Content</div>
-        </RequirePermission>,
-      );
-
-      expect(screen.getByText("Admin Content")).toBeInTheDocument();
-    });
-
-    it("shows 404 to single-user accounts trying to access admin routes", () => {
-      vi.spyOn(authContext, "useAuth").mockReturnValue({
-        state: {
-          status: "authenticated",
-          user: mockUsers.singleUser,
-        },
-        login: vi.fn(),
-        logout: vi.fn(),
-        reload: vi.fn(),
-      });
-
-      renderWithRouter(
-        <RequirePermission level="admin">
-          <div>Admin Content</div>
-        </RequirePermission>,
-      );
-
-      expect(screen.getByText("404 — Page not found")).toBeInTheDocument();
-      expect(screen.queryByText("Admin Content")).not.toBeInTheDocument();
-    });
-
-    it("shows 404 to staff users trying to access admin routes (default fallback)", () => {
-      vi.spyOn(authContext, "useAuth").mockReturnValue({
-        state: {
-          status: "authenticated",
-          user: mockUsers.staff,
-        },
-        login: vi.fn(),
-        logout: vi.fn(),
-        reload: vi.fn(),
-      });
-
-      renderWithRouter(
-        <RequirePermission level="admin">
-          <div>Admin Content</div>
-        </RequirePermission>,
-      );
-
-      expect(screen.getByText("404 — Page not found")).toBeInTheDocument();
-      expect(screen.queryByText("Admin Content")).not.toBeInTheDocument();
-    });
-
-    it("redirects staff users when fallback is set to redirect", () => {
-      vi.spyOn(authContext, "useAuth").mockReturnValue({
-        state: {
-          status: "authenticated",
-          user: mockUsers.staff,
-        },
-        login: vi.fn(),
-        logout: vi.fn(),
-        reload: vi.fn(),
-      });
-
-      renderWithRouter(
-        <RequirePermission level="admin" fallback="redirect">
-          <div>Admin Content</div>
-        </RequirePermission>,
-        { initialRoute: "/admin/patients" },
-      );
-
-      expect(window.location.pathname).toBe("/");
-      expect(screen.queryByText("Admin Content")).not.toBeInTheDocument();
     });
   });
 
@@ -339,7 +233,7 @@ describe("RequirePermission", () => {
       vi.spyOn(authContext, "useAuth").mockReturnValue({
         state: {
           status: "authenticated",
-          user: mockUsers.staff,
+          user: mockUsers.singleUser,
         },
         login: vi.fn(),
         logout: vi.fn(),
@@ -347,7 +241,7 @@ describe("RequirePermission", () => {
       });
 
       renderWithRouter(
-        <RequirePermission level="admin">
+        <RequirePermission level="staff">
           <div>Admin Content</div>
         </RequirePermission>,
       );
@@ -359,7 +253,7 @@ describe("RequirePermission", () => {
       vi.spyOn(authContext, "useAuth").mockReturnValue({
         state: {
           status: "authenticated",
-          user: mockUsers.staff,
+          user: mockUsers.singleUser,
         },
         login: vi.fn(),
         logout: vi.fn(),
@@ -367,7 +261,7 @@ describe("RequirePermission", () => {
       });
 
       renderWithRouter(
-        <RequirePermission level="admin" fallback="404">
+        <RequirePermission level="staff" fallback="404">
           <div>Admin Content</div>
         </RequirePermission>,
       );
@@ -375,11 +269,11 @@ describe("RequirePermission", () => {
       expect(screen.getByText("404 — Page not found")).toBeInTheDocument();
     });
 
-    it("redirects to home when fallback is redirect", () => {
+    it("still shows 404 to a single-user asking for the redirect fallback", () => {
       vi.spyOn(authContext, "useAuth").mockReturnValue({
         state: {
           status: "authenticated",
-          user: mockUsers.staff,
+          user: mockUsers.singleUser,
         },
         login: vi.fn(),
         logout: vi.fn(),
@@ -387,13 +281,16 @@ describe("RequirePermission", () => {
       });
 
       renderWithRouter(
-        <RequirePermission level="admin" fallback="redirect">
+        <RequirePermission level="staff" fallback="redirect">
           <div>Admin Content</div>
         </RequirePermission>,
         { initialRoute: "/admin/settings" },
       );
 
-      expect(window.location.pathname).toBe("/");
+      // `single-user` is the only remaining level below `staff`, and it
+      // always gets 404 — so `fallback="redirect"` is now unreachable
+      // for `level="staff"`. It stays supported for `superadmin`.
+      expect(screen.getByText("404 — Page not found")).toBeInTheDocument();
     });
 
     it("always shows 404 to single-user accounts regardless of fallback setting", () => {
@@ -408,7 +305,7 @@ describe("RequirePermission", () => {
       });
 
       renderWithRouter(
-        <RequirePermission level="admin" fallback="redirect">
+        <RequirePermission level="staff" fallback="redirect">
           <div>Admin Content</div>
         </RequirePermission>,
       );
