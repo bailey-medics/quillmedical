@@ -40,6 +40,14 @@ VIDEO_PATTERN = (
 )
 FIGURE_PATTERN = r"<Figure\s+([^>]*)/>"
 
+#: What a ``<Video ref>`` may contain.
+#:
+#: Deliberately the same shape as ``storage._SAFE_BANK_ID``, because the
+#: ref becomes a media key that travels as a URL path segment. Kept as a
+#: separate constant rather than imported: ``mdx_parser`` is used by the
+#: content tooling, which has no business importing the storage layer.
+SAFE_MEDIA_KEY = re.compile(r"[a-zA-Z0-9_-]+")
+
 #: Any JSX-style tag whose name starts with a capital letter.
 _COMPONENT_TAG_RE = re.compile(r"<([A-Z]\w*)(\s[^>]*)?/?>")
 
@@ -225,12 +233,23 @@ def _check_component(name: str, tag: str) -> str | None:
             )
 
     if name == "Video":
-        if not re.search(r'ref="[^"]+"', tag):
+        ref_match = re.search(r'ref="([^"]*)"', tag)
+        if not ref_match or not ref_match.group(1):
             return "<Video> needs a ref prop"
         if not re.fullmatch(VIDEO_PATTERN, tag):
             return (
                 "<Video> has props the renderer cannot read, so it would "
                 "be dropped — only ref and duration are supported"
+            )
+        # The ref is not just a label: it is the media key an admin
+        # uploads against, and it travels as a path segment in the link
+        # and delete endpoints. A space or a slash here produces a key
+        # nothing can ever be attached to, and the module then stays
+        # permanently hidden from learners with no obvious cause.
+        if not re.fullmatch(SAFE_MEDIA_KEY, ref_match.group(1)):
+            return (
+                f'<Video ref="{ref_match.group(1)}"> is not a usable media '
+                "key — use letters, numbers, hyphens and underscores only"
             )
 
     if name == "Figure":

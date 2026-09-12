@@ -113,6 +113,49 @@ class TestSilentlyDroppedContent:
         assert any("needs a ref prop" in e for e in errors)
 
 
+class TestVideoRefIsAUsableMediaKey:
+    """A ref is a media key, not a label.
+
+    It is what an admin uploads against, and it travels as a path
+    segment in the link and delete endpoints. A ref nothing can be
+    attached to leaves the module permanently incomplete — and because
+    the availability gate then hides it, the symptom is a module that
+    has simply vanished, with the cause three steps away.
+    """
+
+    def test_a_plain_key_is_accepted(self) -> None:
+        assert validate_mdx('## Slide\n<Video ref="lecture-01" />') == []
+
+    def test_underscores_and_digits_are_accepted(self) -> None:
+        assert validate_mdx('## Slide\n<Video ref="part_2_debrief" />') == []
+
+    def test_a_space_is_rejected(self) -> None:
+        errors = validate_mdx('## Slide\n<Video ref="my lecture" />')
+        assert any("not a usable media key" in e for e in errors)
+
+    def test_a_slash_is_rejected(self) -> None:
+        # Would read as a path separator wherever the key is used in a
+        # URL, which is every endpoint that takes one.
+        errors = validate_mdx('## Slide\n<Video ref="lectures/one" />')
+        assert any("not a usable media key" in e for e in errors)
+
+    def test_traversal_is_rejected(self) -> None:
+        errors = validate_mdx('## Slide\n<Video ref="../secret" />')
+        assert any("not a usable media key" in e for e in errors)
+
+    def test_an_empty_ref_still_asks_for_one(self) -> None:
+        # The older message is the right one here: nothing to validate
+        # rather than something invalid.
+        errors = validate_mdx('## Slide\n<Video ref="" />')
+        assert any("needs a ref prop" in e for e in errors)
+
+    def test_the_message_names_the_offending_key(self) -> None:
+        # An author fixing this has to find it in the file, and a module
+        # may carry several refs.
+        errors = validate_mdx('## Slide\n<Video ref="my lecture" />')
+        assert any("my lecture" in e for e in errors)
+
+
 class TestBothMediaTags:
     """One slide cannot carry both media forms.
 

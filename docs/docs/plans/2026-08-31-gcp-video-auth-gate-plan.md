@@ -960,7 +960,7 @@ introduce an unknown component.
       table does not exist yet. The indirection is what makes that
       swappable: when the table lands, only `_resolve_video_filename`
       changes, and the MDX, the API shape and the player all stay put.
-- [ ] Extend validation so a module referencing a `video_src` that does not exist
+- [x] Extend validation so a module referencing a `video_src` that does not exist
       in the processed bucket cannot be promoted. **[revised 2026-09-09]** The
       helper this was waiting on has landed: `tooling/validate.py` now validates
       content whose images live in GCS rather than on disk, and runs at both the
@@ -968,6 +968,38 @@ introduce an unknown component.
       [Image on GCP Check](2026-06-14-image-on-gcp-check-plan.md) plan's Phase 2,
       which this superseded. `_validate_image_bytes` (`tooling/validate.py:230`)
       is the closest existing shape.
+      **[closed differently, 2026-09-12]** The item as written cannot be built,
+      and the reason is that the model changed underneath it. "Does this video
+      exist" has no answer the merge gate can reach: uploads live in
+      `ModuleMediaLink`, the validator has no database (its imports are `sys`,
+      `pathlib`, `pydantic`, `yaml` and two local schemas), and completeness is
+      **per organisation** — the same module is complete for one trust and not
+      another, while the validator sees only content. The content repository
+      holds no videos at all, which was the point of moving media out: a
+      `<Video ref>` names a key an admin uploads against later, so at merge time
+      there is legitimately nothing to check against.
+      What the merge gate *can* know is whether the ref is usable as a key, and
+      that turned out to be a real gap: `VIDEO_PATTERN` accepted `ref="[^"]+"`,
+      so `ref="my lecture"` or `ref="../secret"` passed validation and produced a
+      key nothing could ever be attached to. The module would then sit
+      permanently incomplete and — since the availability gate hides it — simply
+      vanish for learners, with the cause three steps away. `SAFE_MEDIA_KEY` in
+      `mdx_parser.py` now holds refs to the same shape as `storage._SAFE_BANK_ID`,
+      and the error names the offending key.
+      Duplicate refs across slides are deliberately **not** an error:
+      `get_referenced_media_keys` de-duplicates, so two slides sharing a key is
+      one upload serving both, which is supported rather than a mistake.
+      The original intent is already met at runtime by the availability gate,
+      which hides an incomplete module from learners continuously rather than
+      only at promotion, and by the admin card, which names what is missing.
+      **It would also have been the wrong thing to build.** Content must sync to
+      the bucket whether or not its videos are there yet: an author writes the
+      slides, and each organisation uploads its own copy of the lecture
+      afterwards, possibly days later and at different times. Blocking promotion
+      would invert that order and demand the video exist before the content that
+      references it. The three layers are deliberately independent — sync always
+      runs, the gate hides an incomplete module from learners, and the card shows
+      an admin what is missing.
 
 ## Phase 4: Frontend — GCS playback
 
