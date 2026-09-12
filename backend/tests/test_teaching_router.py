@@ -2181,14 +2181,18 @@ class TestMediaUploadUrl:
         body.update(over)
         return body
 
-    def test_upload_is_refused_without_a_source_bucket(
-        self, test_client, db_session
+    def test_upload_is_refused_with_neither_bucket_nor_content_path(
+        self, test_client, db_session, monkeypatch
     ):
-        """No source bucket means no upload, rather than a 500.
+        """Nowhere to put it, so say so rather than pretend.
 
-        This is the development answer: the bucket exists only in the
-        teaching environment.
+        A deployment with no bucket *and* no content directory can
+        genuinely not accept an upload. Distinct from development,
+        which has a directory and is handled below.
         """
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_QUESTION_BANK_PATH", None
+        )
         org = _make_teaching_org(db_session)
         _make_educator(db_session, org)
         db_session.commit()
@@ -2200,6 +2204,38 @@ class TestMediaUploadUrl:
             headers=headers,
         )
         assert resp.status_code == 503
+
+    def test_without_a_bucket_the_url_points_back_at_this_api(
+        self, test_client, db_session, monkeypatch, tmp_path
+    ):
+        """Development uploads come through here instead of to GCS.
+
+        The frontend PUTs to whatever URL it is handed, so a local URL
+        is the whole difference between the two environments — nothing
+        above this endpoint knows which it got.
+        """
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_QUESTION_BANK_PATH", str(tmp_path)
+        )
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        db_session.commit()
+
+        headers = self._login(test_client)
+        resp = test_client.post(
+            "/api/teaching/admin/modules/test-bank/media/upload-url",
+            json=self._body(),
+            headers=headers,
+        )
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["upload_url"].startswith("/api/teaching/admin/modules/")
+        assert body["upload_url"].endswith("/content")
+        # Addressed by generated id, never the uploaded filename — the
+        # same rule the bucket path follows.
+        assert body["asset_id"] in body["upload_url"]
+        assert "EoEETA" not in body["upload_url"]
 
     @pytest.mark.parametrize(
         "filename",
@@ -3016,3 +3052,296 @@ class TestMediaAssetDeletion:
         # Detached, not deleted: no source bucket is configured here, so
         # a delete would have failed with 503 rather than succeeded.
         assert resp.status_code == 204
+
+
+class TestVideoResolutionOnTheGcsPath:
+    """Resolving a ref where content comes from the bucket.
+
+    Neither test here is a regression test for the None-dereference
+    mypy caught in the disk fallback, and it is worth saying so: the
+    availability gate refuses an incomplete module before resolution
+    runs, so on the GCS branch that fallback is unreachable through the
+    route. The guard there is correct in isolation rather than correct
+    because something else happens to run first, which is why it was
+    reordered — but only mypy can see it.
+
+    What these do pin is the behaviour either side of that: a linked
+    ref resolves to its asset, and a module missing one is hidden
+    rather than erroring.
+    """
+
+    def _login(self, test_client) -> None:
+        test_client.post(
+            "/api/auth/login",
+            json={"username": "testlearner", "password": "Learner123!"},
+        )
+
+    def test_a_linked_ref_resolves_without_touching_the_disk(
+        self, test_client, db_session, monkeypatch
+    ):
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        _make_learner(db_session, org)
+        db_session.add(
+            ModuleMediaLink(
+                organisation_id=org.id,
+                question_bank_id="test-bank",
+                media_key="lecture-01",
+                asset_id="asset1",
+                original_filename="lecture.mp4",
+                content_type="video/mp4",
+                size_bytes=1024,
+                uploaded_at=datetime.now(UTC),
+            )
+        )
+        db_session.commit()
+
+        # GCS branch: a bucket and no content path at all.
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_GCS_BUCKET", "a-bucket"
+        )
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_QUESTION_BANK_PATH", None
+        )
+        monkeypatch.setattr(
+            "app.features.teaching.router.download_module_yaml_from_gcs",
+            lambda *a: {"title": "Test"},
+            raising=False,
+        )
+        monkeypatch.setattr(
+            "app.features.teaching.storage.download_learning_mdx_from_gcs",
+            lambda *a: '## Slide\n<Video ref="lecture-01" />',
+        )
+        monkeypatch.setattr(
+            "app.features.teaching.storage.download_module_yaml_from_gcs",
+            lambda *a: {"title": "Test"},
+        )
+
+        self._login(test_client)
+        resp = test_client.get("/api/teaching/modules/test-bank/learning")
+
+        assert resp.status_code == 200
+        slides = resp.json()["slides"]
+        assert slides[0]["video_src"] == "asset1.mp4"
+
+    def test_a_module_with_an_unlinked_ref_is_hidden_not_broken(
+        self, test_client, db_session, monkeypatch
+    ):
+        """An unlinked ref on the GCS path produces a 404, not a 500.
+
+        The availability gate reaches this first, so resolution never
+        runs — which is the reason the disk fallback below it cannot be
+        exercised from here.
+        """
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        _make_learner(db_session, org)
+        db_session.commit()
+
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_GCS_BUCKET", "a-bucket"
+        )
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_QUESTION_BANK_PATH", None
+        )
+        monkeypatch.setattr(
+            "app.features.teaching.storage.download_learning_mdx_from_gcs",
+            lambda *a: '## Slide\n<Video ref="unlinked" />',
+        )
+        monkeypatch.setattr(
+            "app.features.teaching.storage.download_module_yaml_from_gcs",
+            lambda *a: {"title": "Test"},
+        )
+
+        self._login(test_client)
+        resp = test_client.get("/api/teaching/modules/test-bank/learning")
+
+        # Hidden by the availability gate rather than a 500 — the point
+        # is that nothing raises on the way to deciding that.
+        assert resp.status_code == 404
+
+
+class TestLocalMediaUpload:
+    """Receiving an upload on a developer's machine.
+
+    In the teaching environment the bytes go straight to GCS and never
+    touch this application. There is no bucket locally, so they land in
+    the module's own learning/ directory instead — which is what lets a
+    developer drive the real admin card rather than a stub.
+    """
+
+    def _login(self, test_client) -> dict[str, str]:
+        return _login(test_client, "testeducator", "Educator123!")
+
+    def _module_on_disk(self, tmp_path) -> str:
+        module = tmp_path / "content-repo" / "modules" / "test-bank"
+        (module / "learning").mkdir(parents=True)
+        (module / "module.yaml").write_text(
+            "moduleId: test-bank\ntitle: Test\n", encoding="utf-8"
+        )
+        assessment = module / "assessment"
+        assessment.mkdir()
+        (assessment / "config.yaml").write_text(
+            "id: test-bank\n", encoding="utf-8"
+        )
+        return str(tmp_path)
+
+    def _use_local(self, monkeypatch, base_path: str) -> None:
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_QUESTION_BANK_PATH", base_path
+        )
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_VIDEOS_SOURCE_BUCKET", None
+        )
+
+    def _url(self, asset_id: str = "abc123") -> str:
+        return (
+            f"/api/teaching/admin/modules/test-bank/media/{asset_id}/content"
+        )
+
+    def test_the_bytes_land_in_the_modules_learning_directory(
+        self, test_client, db_session, monkeypatch, tmp_path
+    ):
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        db_session.commit()
+        base = self._module_on_disk(tmp_path)
+        self._use_local(monkeypatch, base)
+
+        resp = test_client.put(
+            self._url(),
+            content=b"fake mp4 bytes",
+            headers={
+                **self._login(test_client),
+                "Content-Type": "video/mp4",
+            },
+        )
+
+        assert resp.status_code == 204
+        written = (
+            tmp_path
+            / "content-repo"
+            / "modules"
+            / "test-bank"
+            / "learning"
+            / "abc123.mp4"
+        )
+        assert written.read_bytes() == b"fake mp4 bytes"
+
+    def test_the_extension_follows_the_content_type(
+        self, test_client, db_session, monkeypatch, tmp_path
+    ):
+        # The player picks the file by name, so a .webm stored as .mp4
+        # would be served with the wrong type.
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        db_session.commit()
+        base = self._module_on_disk(tmp_path)
+        self._use_local(monkeypatch, base)
+
+        test_client.put(
+            self._url(),
+            content=b"x",
+            headers={
+                **self._login(test_client),
+                "Content-Type": "video/webm",
+            },
+        )
+
+        learning = (
+            tmp_path / "content-repo" / "modules" / "test-bank" / "learning"
+        )
+        assert (learning / "abc123.webm").is_file()
+
+    def test_an_unlisted_type_is_refused(
+        self, test_client, db_session, monkeypatch, tmp_path
+    ):
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        db_session.commit()
+        self._use_local(monkeypatch, self._module_on_disk(tmp_path))
+
+        resp = test_client.put(
+            self._url(),
+            content=b"#!/bin/sh",
+            headers={
+                **self._login(test_client),
+                "Content-Type": "application/x-sh",
+            },
+        )
+
+        assert resp.status_code == 400
+
+    @pytest.mark.parametrize("asset_id", ["../escape", "a/b", "a b"])
+    def test_an_unsafe_asset_id_is_refused(
+        self, test_client, db_session, monkeypatch, tmp_path, asset_id
+    ):
+        # Generated server-side, so this cannot happen in normal use —
+        # but it reaches a filename, and a path component is checked
+        # rather than trusted because of where it came from.
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        db_session.commit()
+        self._use_local(monkeypatch, self._module_on_disk(tmp_path))
+
+        resp = test_client.put(
+            self._url(asset_id),
+            content=b"x",
+            headers={
+                **self._login(test_client),
+                "Content-Type": "video/mp4",
+            },
+        )
+
+        assert resp.status_code in (400, 404)
+
+    def test_the_route_does_not_exist_where_a_bucket_does(
+        self, test_client, db_session, monkeypatch, tmp_path
+    ):
+        """This writes to a bind mount from a request body.
+
+        Acceptable on a developer's machine; not a thing to leave
+        running anywhere with a real bucket behind it.
+        """
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        db_session.commit()
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_QUESTION_BANK_PATH",
+            self._module_on_disk(tmp_path),
+        )
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_VIDEOS_SOURCE_BUCKET", "a-bucket"
+        )
+
+        resp = test_client.put(
+            self._url(),
+            content=b"x",
+            headers={
+                **self._login(test_client),
+                "Content-Type": "video/mp4",
+            },
+        )
+
+        assert resp.status_code == 404
+
+    def test_an_unknown_module_is_refused(
+        self, test_client, db_session, monkeypatch, tmp_path
+    ):
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        db_session.commit()
+        self._use_local(monkeypatch, str(tmp_path))
+
+        resp = test_client.put(
+            self._url(),
+            content=b"x",
+            headers={
+                **self._login(test_client),
+                "Content-Type": "video/mp4",
+            },
+        )
+
+        assert resp.status_code == 404
