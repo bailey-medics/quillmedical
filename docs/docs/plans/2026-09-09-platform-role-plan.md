@@ -618,6 +618,27 @@ does not, and removing the ladder removes the suggestion.
             - **This cannot come next, though the plan long listed it there.** A column
               with 76 live references is not droppable; every step above has to land
               first. Recorded because the ordering error survived several readings.
+            - **46 backend references remain, and 8 frontend files**, counted after the
+              admin work. Down from 76, and what is left is not one job:
+              - **Four superadmin-target comparisons** at 1636, 1849, 1912 and 2608 —
+                `user.system_permissions == "superadmin"`, protecting an operator from
+                being modified. The caller half of each already moved; these are the
+                target half and should follow it to `platform_role`. **This is a real
+                unit the plan never listed**, and it is the last authorisation read.
+              - **Four composites** at 2801, 3613, 5232 and 5412 —
+                `in ["admin", "superadmin"]`, all meaning "may reach admin pages". They
+                are the backend twin of the frontend nav checks and become
+                `manage_users`, not `platform_role`.
+              - **The `permission_level` query parameter** at 1360, 1422, 2454 — a
+                public API filter over the four levels. It cannot move; it is removed,
+                which is itself the breaking change.
+              - **The rest are carriage**: schema fields, payload passthrough on create
+                and update, and one analytics label at 5433. They go when the column
+                goes.
+            - **Two required-reviewer approvals gate this step**, both human-only and
+              neither of which a diff can satisfy: `api-breaking-change-review` for the three
+              response schemas, and `db-destructive-migration-review` for the
+              `drop_column`. Expect the decision file too.
 - [ ] **Remove `default_system_permission` from `shared/base-professions.yaml`.** Now 24
       professions declare one — the count has moved since this was written, with
       `teaching_manager` and `superadmin_profession` added.
