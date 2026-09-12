@@ -819,9 +819,93 @@ someone actually holds, not a label that stopped being true.
   on promotion is right either way: being a superadmin is an addition to whoever someone
   already is, not a replacement for it.
 
+## Finding: a patient is not a user, and should not become one
+
+Surfaced while deciding which competency `list_patients` should ask. The question
+raised was whether a patient linked to an organisation or site ought to be a Quill
+user as well, merely one with no login details created yet. If so, one membership
+table would serve both and the question below would not arise.
+
+**The answer is no, and the standards are explicit about it.** Researched rather
+than reasoned from first principles, because it is a modelling decision the
+industry has already made.
+
+- **FHIR separates the human from their roles.** `Patient` is someone receiving
+  care, `Practitioner` someone providing it, `RelatedPerson` family involved in
+  another's care. The same human gets a _separate record in each role_, and a
+  fourth resource, `Person`, exists only to link them and assert they are one
+  individual. The specification states that Person instances are never referenced
+  as actors, and does not recommend creating a `Patient` for someone not receiving
+  care.
+- **NHS login draws the same line.** Authentication — username, password, a
+  verified account — is one system. Clinical identity — the NHS number, checked
+  against the Personal Demographics Service — is another, with a verification step
+  bridging them at a stated assurance level. A login is a credential _matched_ to a
+  patient record, not the record itself.
+- **Collapsing them breaks on the ordinary case.** A consultant who becomes a
+  patient at their own trust would need one row that is both, and the account
+  table carries password hashes, TOTP secrets and email verification state that
+  mean nothing for someone who never logs in.
+
+**Quill already has the right shape.** `User.fhir_patient_id` is nullable and
+points from an account to a patient record where the two are the same human — the
+`Person` linkage, in effect. The two membership tables are correct to be separate:
+`organisation_member` keys on `user_id`, `organisation_patient_member` on a FHIR
+`patient_id` with no foreign key, because FHIR owns patient identity.
+
+### What follows for the competencies
+
+- **`manage_users` is currently doing two jobs.** It gates both account
+  administration and patient-to-organisation membership at 4146 and 4258. Those are
+  different populations, and the conflation is the same shape as
+  `system_permissions` holding two ideas in one column.
+- [x] **Done: `manage_patient_membership`**, added to `clinical-admin.yaml` — which
+  already existed for exactly this, described in `admin.yaml`'s header as
+  "administration that is patient centric". The two routes at
+  `/organisations/{id}/patients` now carry `DEP_REQUIRE_MANAGE_PATIENT_MEMBERSHIP`
+  instead of `DEP_REQUIRE_MANAGE_USERS`, with their place checks unchanged.
+  - **A new `patient_manager` profession holds it, and nothing else does.**
+    `clinic_manager` was tried first and is the wrong scope: it reads as running a
+    clinic — rooms, rotas, appointment slots — where this competency is about an
+    organisation's caseload. `system_administrator` says "technical support only",
+    and `superadmin_profession` carries no clinical competency by rule.
+    - **The gap it fills is real**: every existing administrative profession is
+      clinic-level or IT. There was no organisation-level administrator at all.
+    - **The name is a placeholder**, and the profession is deliberately thin —
+      one competency. Nobody has described this job yet, and with no real
+      patients the question is close to moot. Revisit when it is not.
+  - **It grants no access to a record.** Adding a patient to an organisation and
+    reading their notes are different acts; the second is
+    `access_patient_records`.
+  - **Four tests moved to a new `clinic_manager` fixture**, three in
+    `test_main_endpoints.py` and one in `test_messaging.py`. They had used the
+    admin fixture, which now correctly fails these routes — the fixtures make the
+    distinction visible rather than hiding it.
+
+### Finding a patient at another organisation
+
+Asked alongside the above: who may search across organisations to pull in a patient
+who has moved hospital or is being treated elsewhere? Nothing in the codebase does
+this today, and every place check refuses it by design.
+
+**It is not a permissions question, and should not be solved by widening one.** The
+industry names both halves:
+
+- **An EMPI** — enterprise master patient index — is the component that matches
+  records across organisations, as distinct from an MPI that resolves identities
+  within one application.
+- **Break-the-glass** is the recognised pattern for reaching a record outside normal
+  access. It is permitted and it triggers a privacy audit; the audit is the point,
+  not an afterthought.
+
+So this is a feature with consent rules and an audit trail, not a step in this plan.
+Recorded here so the next reader does not mistake it for one.
+
 ## Not addressed here
 
 - What replaces `staff` for "may reach clinical workflows at all", if anything still needs
   it once the competency checks are in place.
+- Cross-organisation patient search — an EMPI-style match plus break-the-glass access,
+  with its own consent and audit design. See the finding above.
 - Whether `platform_role` should be nullable rather than carrying an explicit
   "not an operator" value.

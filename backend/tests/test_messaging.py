@@ -1436,19 +1436,24 @@ class TestRemoveStaffFromOrg:
 class TestRemovePatientFromOrg:
     """Test DELETE /api/organisations/{org_id}/patients/{patient_id}."""
 
-    def test_admin_can_remove_patient(
+    def test_patient_manager_can_remove_patient(
         self,
         authenticated_client: TestClient,
-        test_admin: User,
+        test_patient_manager: User,
         test_org: Organisation,
         db_session: Session,
     ):
-        """Admin can remove a patient from an org."""
-        # Add admin to org so they pass the membership check
+        """Someone holding `manage_patient_membership` can remove a patient.
+
+        A `system_administrator` cannot: that profession holds
+        `manage_users`, which is authority over accounts rather than over
+        which patients a place cares for.
+        """
+        # Add them to the org so they pass the membership check
         db_session.execute(
             organisation_member.insert().values(
                 organisation_id=test_org.id,
-                user_id=test_admin.id,
+                user_id=test_patient_manager.id,
                 capacity="staff",
             )
         )
@@ -1456,7 +1461,10 @@ class TestRemovePatientFromOrg:
 
         authenticated_client.post(
             "/api/auth/login",
-            json={"username": "testadmin", "password": "AdminPassword123!"},
+            json={
+                "username": "testpatientmanager",
+                "password": "PatientMgrPassword123!",
+            },
         )
         authenticated_client.get("/api/auth/me")
         token = authenticated_client.cookies.get("XSRF-TOKEN")

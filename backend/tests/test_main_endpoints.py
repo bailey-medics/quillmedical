@@ -1400,10 +1400,10 @@ class TestOrganisationEndpoints:
         assert response.status_code == 403
 
     def test_add_patient_org_not_found(
-        self, authenticated_admin_client: TestClient
+        self, authenticated_patient_manager_client: TestClient
     ):
         """Test adding patient to non-existent organisation."""
-        response = authenticated_admin_client.post(
+        response = authenticated_patient_manager_client.post(
             "/api/organisations/999/patients",
             json={"patient_id": "fhir-123"},
         )
@@ -1411,9 +1411,9 @@ class TestOrganisationEndpoints:
 
     def test_add_patient_success(
         self,
-        authenticated_admin_client: TestClient,
+        authenticated_patient_manager_client: TestClient,
         db_session,
-        test_admin: User,
+        test_patient_manager: User,
     ):
         """Test successfully adding a patient."""
         from sqlalchemy import insert
@@ -1426,12 +1426,12 @@ class TestOrganisationEndpoints:
 
         db_session.execute(
             insert(organisation_member).values(
-                organisation_id=org.id, user_id=test_admin.id
+                organisation_id=org.id, user_id=test_patient_manager.id
             )
         )
         db_session.commit()
 
-        response = authenticated_admin_client.post(
+        response = authenticated_patient_manager_client.post(
             f"/api/organisations/{org.id}/patients",
             json={"patient_id": "fhir-456"},
         )
@@ -1442,9 +1442,9 @@ class TestOrganisationEndpoints:
 
     def test_add_patient_duplicate(
         self,
-        authenticated_admin_client: TestClient,
+        authenticated_patient_manager_client: TestClient,
         db_session,
-        test_admin: User,
+        test_patient_manager: User,
     ):
         """Test adding patient who is already a member."""
         from sqlalchemy import insert
@@ -1461,7 +1461,7 @@ class TestOrganisationEndpoints:
 
         db_session.execute(
             insert(organisation_member).values(
-                organisation_id=org.id, user_id=test_admin.id
+                organisation_id=org.id, user_id=test_patient_manager.id
             )
         )
         db_session.execute(
@@ -1472,7 +1472,7 @@ class TestOrganisationEndpoints:
         )
         db_session.commit()
 
-        response = authenticated_admin_client.post(
+        response = authenticated_patient_manager_client.post(
             f"/api/organisations/{org.id}/patients",
             json={"patient_id": "fhir-789"},
         )

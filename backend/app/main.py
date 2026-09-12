@@ -718,6 +718,20 @@ DEP_REQUIRE_CSRF = Depends(require_csrf)
 #: replaces.
 DEP_REQUIRE_MANAGE_USERS = Depends(has_competency("manage_users"))
 
+#: Which patients are cared for at a place. Separate from
+#: ``DEP_REQUIRE_MANAGE_USERS`` because a patient is not a user: a user is
+#: an account here, a patient is a record FHIR owns, and the two are
+#: linked through ``User.fhir_patient_id`` only where the same human is
+#: both. One competency over both would be authority over two unrelated
+#: populations.
+#:
+#: It grants no access to a patient's record — that is
+#: ``access_patient_records``. Like the rest it answers *what*, never
+#: *where*, so the routes carrying it keep their place check.
+DEP_REQUIRE_MANAGE_PATIENT_MEMBERSHIP = Depends(
+    has_competency("manage_patient_membership")
+)
+
 
 @router.post("/auth/login", response_model=LoginOut)
 @limiter.limit("5/minute")
@@ -4107,7 +4121,7 @@ def add_staff_to_organisation(
     "/organisations/{org_id}/patients",
     dependencies=[
         DEP_REQUIRE_CLINICAL,
-        DEP_REQUIRE_MANAGE_USERS,
+        DEP_REQUIRE_MANAGE_PATIENT_MEMBERSHIP,
     ],
     response_model=OrgPatientAddResponse,
 )
@@ -4121,20 +4135,20 @@ def add_patient_to_organisation(
 
     Adds a patient to an organisation by their FHIR patient ID.
 
-    Requires the ``manage_users`` competency and a shared organisation
+    Requires the ``manage_patient_membership`` competency and a shared organisation
     with the patient.
 
     Args:
         org_id: ID of the organisation.
         body: Patient details (patient_id).
-        current_user: Authenticated user holding ``manage_users``.
+        current_user: Authenticated user holding ``manage_patient_membership``.
         db: Database session.
 
     Returns:
         dict: Confirmation with organisation and patient IDs.
 
     Raises:
-        HTTPException: 403 if the user lacks ``manage_users``.
+        HTTPException: 403 if the user lacks ``manage_patient_membership``.
         HTTPException: 404 if organisation not found.
         HTTPException: 409 if patient is already a member.
     """
@@ -4231,7 +4245,7 @@ def remove_staff_from_organisation(
     "/organisations/{org_id}/patients/{patient_id}",
     dependencies=[
         DEP_REQUIRE_CSRF,
-        DEP_REQUIRE_MANAGE_USERS,
+        DEP_REQUIRE_MANAGE_PATIENT_MEMBERSHIP,
     ],
     response_model=StatusResponse,
 )
@@ -4243,12 +4257,12 @@ def remove_patient_from_organisation(
 ) -> StatusResponse:
     """Remove a patient from an organisation.
 
-    Requires ``manage_users``.
+    Requires ``manage_patient_membership``.
 
     Args:
         org_id: Organisation ID.
         patient_id: FHIR Patient resource ID.
-        current_user: Authenticated user holding ``manage_users``.
+        current_user: Authenticated user holding ``manage_patient_membership``.
         db: Database session.
 
     Returns:
