@@ -256,3 +256,119 @@ class TestTheListingsHideOperatorsByTheNewColumn:
         assert resp.status_code == 200
         listed = {u["username"] for u in resp.json()["users"]}
         assert "ordinary_colleague" in listed
+
+
+class TestScopingAsksTheNewColumn:
+    """Place scoping turns on `platform_role`, not the old rank.
+
+    Sixteen branches read `== "admin"` and meant *confine this caller to
+    their own organisations*. A superadmin skipped them because they are
+    global — which is the platform question, not an admin one. They now
+    read `platform_role != "superadmin"`.
+
+    The swap widens each branch: `== "admin"` excluded `staff` and
+    `single-user`, `!= "superadmin"` does not. That is safe only because
+    `manage_users` gates the door, so the last test here pins it — a
+    competency holder who is not an admin must be scoped, never handed
+    the unscoped branch a superadmin gets.
+    """
+
+    def _org_with(self, db: Session, name: str, *members: User) -> int:
+        org = Organisation(name=name, type="hospital")
+        db.add(org)
+        db.commit()
+        db.refresh(org)
+        for person in members:
+            db.execute(
+                insert(organisation_member).values(
+                    organisation_id=org.id,
+                    user_id=person.id,
+                    capacity="staff",
+                )
+            )
+        db.commit()
+        return int(org.id)
+
+    def test_an_operator_is_not_confined_to_their_organisations(
+        self,
+        test_client,
+        db_session: Session,
+    ):
+        """`single-user` in the old column, operator in the new one.
+
+        Fails if the branch still reads `system_permissions`: that user
+        is not an `admin`, so the old condition would skip the scoping
+        for the wrong reason and the assertion could pass by accident.
+        Here the org they do not belong to must still be visible.
+        """
+        _user(
+            db_session,
+            "global_operator",
+            system_permissions="single-user",
+            platform_role="superadmin",
+            base_profession="superadmin_profession",
+        )
+        other = self._org_with(db_session, "Somebody Else's Trust")
+
+        resp = test_client.post(
+            "/api/auth/login",
+            json={"username": "global_operator", "password": "Password123!"},
+        )
+        assert resp.status_code == 200
+
+        # `GET /organisations/{id}` carries one of the migrated branches:
+        # a non-operator is refused an organisation they do not belong to.
+        fetched = test_client.get(f"/api/organisations/{other}")
+        assert fetched.status_code == 200
+
+    def test_a_non_operator_is_confined_to_their_organisations(
+        self,
+        authenticated_admin_client,
+        test_admin: User,
+        db_session: Session,
+    ):
+        """The mirror: `member` in the new column stays scoped."""
+        unrelated = self._org_with(db_session, "Unrelated Trust")
+        own = self._org_with(db_session, "Admin's Own Trust", test_admin)
+
+        mine = authenticated_admin_client.get(f"/api/organisations/{own}")
+        assert mine.status_code == 200
+
+        theirs = authenticated_admin_client.get(
+            f"/api/organisations/{unrelated}"
+        )
+        assert theirs.status_code == 404
+
+    def test_a_competency_holder_below_admin_is_still_scoped(
+        self,
+        test_client,
+        db_session: Session,
+    ):
+        """The widening the swap introduces, pinned.
+
+        `staff` never satisfied `== "admin"`, so this caller could not
+        have reached the scoping branch before. It can now, and must be
+        confined like any other non-operator rather than handed the
+        unscoped path.
+        """
+        holder = _user(
+            db_session,
+            "scoped_holder",
+            system_permissions="staff",
+            platform_role="member",
+            base_profession="system_administrator",
+        )
+        not_theirs = self._org_with(db_session, "Not Their Trust")
+        theirs = self._org_with(db_session, "Their Own Trust", holder)
+
+        resp = test_client.post(
+            "/api/auth/login",
+            json={"username": "scoped_holder", "password": "Password123!"},
+        )
+        assert resp.status_code == 200
+
+        own = test_client.get(f"/api/organisations/{theirs}")
+        assert own.status_code == 200
+
+        other = test_client.get(f"/api/organisations/{not_theirs}")
+        assert other.status_code == 404

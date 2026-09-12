@@ -536,12 +536,67 @@ does not, and removing the ladder removes the suggestion.
             - **The remainder are not checks at all** — schema fields, docstrings, and
               payload passthrough on create and update. They move with the contract
               step, not before it.
-      - [ ] **Then the `admin` half becomes a competency** — the one frontend guard at
-            `main.tsx:280`, the three `admin || superadmin` checks in `SideNavContent`,
-            `TeachingMainNav` and `LoginPage`, and the sixteen backend branches above.
-            - **This is arguably its own plan.** It asks a different question from the
-              rename — _may this person administer this place_ — and entangling the two
-              is what produced the miscounts. Worth splitting out before it starts.
+      - [ ] **Then the `admin` half** — the one frontend guard at `main.tsx:280`, the
+            three `admin || superadmin` checks in `SideNavContent`, `TeachingMainNav`
+            and `LoginPage`, and the seventeen backend branches.
+            - **Not a competency step after all.** All seventeen were read, and not one
+              asks whether the caller may administer anything: every route already
+              carries `DEP_REQUIRE_MANAGE_USERS` at the decorator, so by the time a
+              branch runs, the competency question is settled. What each branch asks is
+              _is this person **not** a superadmin, and therefore confined to their own
+              place_ — which is the platform question inverted, and moves to
+              `platform_role` exactly like the ten caller checks did.
+            - **Three shapes, all the same question.**
+              - **Place scoping, eleven of them** — 1526, 3747, 3887, 4063, 4146, 4206,
+                4258, 4306, 4351 and neighbours. Each reads `if admin: if org_id not in
+                get_user_org_ids(...)` and refuses. A superadmin skips the check because
+                they are global, which is the platform role and nothing else.
+              - **Superadmin-target protection, five of them** — 1635, 1696, 1848, 1911
+                and 2607. `admin` caller **and** `superadmin` target: cannot modify,
+                deactivate, reactivate, view, or grant the rank. Both halves are the
+                platform question, on opposite sides — the target half is already
+                `platform_role` for the two listing filters, and these should match.
+              - **Query scoping, two** — 2467 (`list_users`) and the pair at 3771 and
+                4729 whose target half already moved. The caller half is the same
+                inverted platform question.
+            - **So it is one mechanical step, not a design problem.** `== "admin"`
+              becomes `platform_role != "superadmin"`. The behaviour is identical while
+              both columns agree, which is why it needs the same divergent-column tests
+              the earlier batches used.
+            - **One wrinkle worth care.** `== "admin"` excludes `staff` and
+              `single-user`; `!= "superadmin"` includes them. That widens each branch's
+              _scoping_ to callers who could not previously reach these routes at all —
+              harmless only because `manage_users` gates the door. Worth a test that a
+              competency-holding non-admin is scoped rather than left unscoped.
+            - **1696 is the exception and does not move.** It refuses an admin granting
+              `system_permissions: superadmin` through the payload. That is about the
+              old column's own values, so it dies with the contract step rather than
+              migrating.
+            - [x] **The sixteen backend branches migrated**, with their comments
+                  rewritten: they said "Admin users can only…" where the condition now
+                  says "anyone but an operator", and a comment that describes a
+                  narrower rule than the code is worse than none.
+                  - **The first tests written for this did not pin it.** They exercised
+                    `GET /organisations`, whose scoping came from the earlier merged
+                    work rather than from any of these sixteen — so reverting all
+                    sixteen left them green. Rewritten against
+                    `GET /organisations/{id}`, which carries the branch at 3747, and
+                    re-checked: green with the change, red without.
+                  - **A whole-file revert is not the check.** Replacing every
+                    `platform_role != "superadmin"` also reverts the three helper
+                    guards from the previous branch, so an older test fails first and
+                    hides whether the new ones would have. Revert by line number.
+            - [ ] **The frontend half is blocked on a decision**, and is not the three
+                  nav checks alone. `SideNavContent`, `TeachingMainNav` and
+                  `LoginPage` ask _may this person reach admin pages_, so they should
+                  ask what the routes ask — but `main.tsx:280` is still
+                  `RequirePermission level="admin"` reading `system_permissions`.
+                  Moving the nav without the guard shows links that lead to a 404.
+                  - **They move together, and the guard needs a shape.** Either
+                    `RequirePermission` learns to take a competency, or a
+                    `RequireCompetency` replaces it and `level` loses its `admin`
+                    value. That is an API change to a shared component, so it wants a
+                    decision before code.
       - [ ] **Contract: drop `system_permissions`.** Breaking API change, three response
             schemas, so it needs a decision file and the `api-breaking-change-review`
             approval.
