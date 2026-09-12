@@ -608,6 +608,23 @@ def status_for(
     return existing[-1][1].status
 
 
+def next_id(moment: datetime | None = None) -> str:
+    """Issue a timestamp id from the one generator this process shares.
+
+    Public because records outside the sign-off lifecycle need ids too —
+    a certificate carries one — and a second generator would defeat the
+    point: the monotonic guarantee holds per instance, so two would each
+    be monotonic alone while issuing ids that interleave.
+
+    Args:
+        moment: When, defaulting to now. For tests.
+
+    Returns:
+        A ``YYYYMMDDTHHMMSS.sssZ-<uuid4>`` id.
+    """
+    return _ids.next(moment if moment is not None else datetime.now(UTC))
+
+
 # --- Internals ------------------------------------------------------------
 
 _ids = ids.TimestampIdGenerator()

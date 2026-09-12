@@ -148,6 +148,7 @@ nav:
           - Messaging: code/fastapi/messaging.md
           - Organisations: code/fastapi/organisations.md
           - Teaching: code/fastapi/features_teaching.md
+          - Clinician passport: code/fastapi/features_passport.md
           - Logging Configuration: code/fastapi/logging_config.md
           - Log Context: code/fastapi/log_context.md
           - Utilities: code/fastapi/utils.md

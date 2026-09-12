@@ -2075,10 +2075,44 @@ self-declared records. `PUT /api/sites/{site_id}/common-competencies`
 belongs to this phase — the model landed in Phase 1 and the endpoint was
 explicitly deferred here.
 
-- [ ] Add the `/api/passport` router under
+- [x] Add the `/api/passport` router under
       `backend/app/features/passport/router.py` with the routes listed
       above, `requires_feature("passport")`, CBAC dependencies, CSRF on
       mutations and rate limiting on uploads and exports.
+      - **Authorisation is three guard clauses**, applied before storage
+        is touched. `_require_holder` for acts nobody else may perform;
+        `_require_reader` for the holder or somebody named on a request
+        row, which is how an external assessor's whole reach resolves in
+        Phase 5; and `_checked_id`, because a passport id decides a
+        filesystem path and must never reach the store unvalidated.
+      - **An unauthorised read answers 404, not 403.** Whether a
+        particular passport exists is not something a stranger is
+        entitled to learn, and a 403 confirms it.
+      - **Organisation admins are deliberately not admitted yet**, which
+        narrows what the API surface above describes. How "admin of the
+        holder's organisation" is evaluated is being settled by
+        `2026-09-06-org-scoped-access-findings.md`; inventing a scope
+        here that that plan then changes would be worse than shipping
+        the narrower rule and widening it once it lands.
+      - **Reflections use `_require_holder` where every other read uses
+        `_require_reader`.** An assessor named on a request may read the
+        sign-off they were asked about and still may not read a
+        reflection. It is the one record type where a reader with
+        legitimate access to the rest is refused, and a test asserts it.
+      - **Rate limiting was not added.** The plan asks for it on uploads
+        and exports, and neither exists yet — evidence upload and the
+        three export routes both belong to later units. Adding limits to
+        routes that cannot be called would be untestable decoration.
+      - **Naming an attachment returns 501 rather than being ignored.**
+        A caller believing evidence was attached when it was not is
+        worse than an error, so the records refuse a hash until upload
+        is built.
+      - Found during the build: `service.py` kept its timestamp
+        generator private, and certificates need ids too. Exposed as
+        `service.next_id()` rather than instantiating a second
+        generator, since the monotonic guarantee holds per instance —
+        two would each be monotonic alone while issuing ids that
+        interleave.
 - [x] Register `passport` as an organisation feature key alongside
       `teaching`.
       - **Nothing to write: there is no registry.** `feature_key` is an
@@ -2128,11 +2162,41 @@ explicitly deferred here.
         forms, so the vocabulary tests compare `get_args` on both sides
         instead. Both are mypy facts worth knowing before writing
         similar tests elsewhere.
-- [ ] Add API tests: each route's authorisation matrix (holder,
+- [x] Add API tests: each route's authorisation matrix (holder,
       assessor, other user, admin), every state transition, self-sign
       refusal, and that the api-compatibility snapshot is additive.
-- [ ] Update `docs/docs/code/fastapi/` and the Swagger index for the new
+      - Holder, assessor and other-user rows landed with the routes they
+        test. `test_passport_api_contract.py` adds the fourth.
+      - **The admin row asserts a refusal, not an allowance**, which is
+        narrower than the API surface above describes. The router admits
+        only the holder and named assessors until the org-scoped access
+        plan settles how "admin of the holder's organisation" is
+        evaluated. Pinning today's answer means widening it later fails
+        a test and has to be deliberate. One of those assertions must
+        survive the widening: an admin may never read a reflection.
+      - **The api-compatibility check is not a pytest test.** It is
+        `oasdiff` in `gate-breaking.yml` comparing the branch's spec
+        against main's, plus `validate-compat-files.sh`. Nothing to
+        write in the suite — so what the contract tests assert instead
+        is the property that makes the diff meaningful: all twenty
+        passport paths appear in the spec, and every one carries a
+        response schema with named fields. A schema with no properties
+        is invisible to `oasdiff`, which is how a removed field once
+        escaped review.
+      - Confirmed additive by generating the spec: all twenty paths are
+        new, and additions are not breaking changes, so no
+        `api-compatibility/` decision file is needed.
+- [x] Update `docs/docs/code/fastapi/` and the Swagger index for the new
       module.
+      - `features_passport.md` documents all eighteen modules, with the
+        storage design stated up front: files are canonical, the
+        database holds only what files cannot answer, and there is no
+        sign-off table by design.
+      - **The Swagger index needed nothing committed.**
+        `docs/docs/code/swagger/openapi.json` is a build artefact
+        regenerated by `dump_openapi.py` (Justfile:239) and is not
+        tracked; only its `index.md` is. Worth knowing before anyone
+        tries to update it by hand.
 
 ## Phase 4: rendering and export
 
