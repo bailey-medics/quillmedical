@@ -169,20 +169,10 @@ function Step1BasicDetails({
         required
         value={formData.baseProfession}
         onChange={(value) => {
-          const updates: Partial<UserFormData> = {
+          setFormData({
+            ...formData,
             baseProfession: value as BaseProfessionId,
-          };
-          // In create mode, auto-set the default system permission
-          if (!isEditMode && value) {
-            const profession = baseProfessionsData.base_professions.find(
-              (p) => p.id === value,
-            );
-            if (profession?.default_system_permission) {
-              updates.systemPermissions =
-                profession.default_system_permission as SystemPermission;
-            }
-          }
-          setFormData({ ...formData, ...updates });
+          });
         }}
         error={errors.baseProfession}
         searchable

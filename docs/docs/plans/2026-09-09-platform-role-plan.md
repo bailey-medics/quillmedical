@@ -678,9 +678,10 @@ does not, and removing the ladder removes the suggestion.
               neither of which a diff can satisfy: `api-breaking-change-review` for the three
               response schemas, and `db-destructive-migration-review` for the
               `drop_column`. Expect the decision file too.
-- [ ] **Remove `default_system_permission` from `shared/base-professions.yaml`.** Now 24
-      professions declare one — the count has moved since this was written, with
-      `teaching_manager` and `superadmin_profession` added.
+- [x] **Remove `default_system_permission` from `shared/base-professions.yaml`.** 25
+      professions declared one by the time it went — the count moved twice while this
+      plan was being worked through, with `teaching_manager`, `superadmin_profession`
+      and `patient_manager` added.
       - **It has exactly one real consumer, and it is a feature.**
         `UserInfoUpdatePage.tsx` reads it when creating a user: picking a profession
         pre-fills the system permission field. The backend only *declares* the field in
@@ -694,6 +695,20 @@ does not, and removing the ladder removes the suggestion.
       - **So this step should follow the rename, not precede it.** Doing it first would
         mean designing a replacement for a form field that is about to change shape
         anyway. The plan lists it before the rename; that ordering looks wrong.
+      - **Done, and nothing replaced it.** The worry above was that removing the
+        pre-fill would cost the create form a step. It does not: the dropdown it fed
+        still stands, and becomes a platform-role control in the contract step, when
+        three of its four values stop existing. Pre-filling it from a profession was
+        decorating a field already on its way out.
+        - **Removed from four places**: the 25 YAML declarations and the header
+          paragraph documenting them, the `BaseProfessionEntry` field (and the
+          `SystemPermission` import that became unused with it), the hand-maintained
+          declaration in `frontend/src/generated/index.d.ts`, and the pre-fill in
+          `UserInfoUpdatePage.tsx`.
+        - **One test went with it.**
+          `test_base_profession_entry_rejects_invalid_permission_level` existed only
+          to check that field's validation, so it tested nothing once the field was
+          gone. Deleted rather than left asserting an absence.
 - [ ] **Delete `check_permission_level` and the ordered list.** A hierarchy of one is not a
       hierarchy. This is the step that makes the change irreversible in a good way: nothing
       can silently reintroduce a rung.
