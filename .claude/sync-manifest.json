@@ -1,7 +1,7 @@
 {
   "version": 1,
   "generatedBy": "/sync-copilot-config",
-  "lastRun": "2026-09-08T18:14:48Z",
+  "lastRun": "2026-09-12T00:00:00Z",
   "notes": [
     "Prompt targets live under .claude/skills/<name>/SKILL.md (a skill is a directory, not a single file). A skill's invocable /name comes from the directory name, never the SKILL.md filename and never a name: frontmatter field (that only sets a display label for personal/project skills).",
     "Targets marked targetRenamed:true deliberately do not use the default source-derived directory name. Copilot's 'name:' frontmatter values were used as the directory names to preserve /crp, /e, and /read-project-instructions.",
@@ -23,7 +23,8 @@
     "2026-09-06: .claude/rules/ci.md is DIVERGED and was NOT written to. The target describes the merge queue - queue with \"Merge when ready\", GitHub builds a merge-group ref, re-runs required checks, merges automatically, and every Renovate group sets automerge: false - while the source still describes rebase-before-merge. The target is AHEAD, not stale, so syncing source over it would delete the current process and reinstate a superseded one. Ordinary one-way drift, not divergentByDesign: nothing in it is platform-specific, so the fix is to back-port to .github/instructions/ci.instructions.md. Hashes deliberately NOT refreshed, so this keeps being reported until that happens.",
     "2026-09-06: the workflows back-port recorded on 2026-09-04 has largely landed - the source now carries 'Readability: one idea per line' and 'Testing scripts with bats', and is 121 lines to the target's 125. Two bullets remain Claude-only, both covering the containerised local run: `just test-scripts` (alias `ts`) running bats inside ubuntu:24.04, and the warning not to judge a script by a bare bats run on macOS. Still DIVERGED and still not written to; hashes deliberately NOT refreshed so the remainder keeps being reported.",
     "2026-09-08: CLAUDE.md target drift is the hand-written '## Claude-specific' section again, which this skill never writes into. A subsection was added recording that `git checkout -b feature/x origin/main` sets the new branch's upstream to refs/heads/main, so the first push must be `git push -u origin feature/x` or a bare push aims at the protected branch. Source unchanged this run and all 38 of its headings are present in CLAUDE.md, so nothing was merged; the target hash is refreshed to mean 'last state reconciled'. Consider whether that rule belongs in copilot-instructions.md's Critical Rules > Git instead, which would make it apply to Copilot too - it is git behaviour, not a Claude platform feature.",
-    "2026-09-08: .claude/rules/ci.md and .claude/rules/workflows.md are both still DIVERGED and were NOT written to, exactly as the 2026-09-06 notes describe. Re-verified this run rather than assumed: ci.md (161 lines) still describes the merge queue while its source (57 lines) still describes rebase-before-merge, so the target is ahead; workflows.md differs only by the applyTo/paths frontmatter conversion this skill performs and the same two Claude-only bullets about `just test-scripts` and not judging a script by a bare bats run on macOS. Hashes deliberately NOT refreshed for either, so both keep being reported until the back-port to .github/ lands."
+    "2026-09-08: .claude/rules/ci.md and .claude/rules/workflows.md are both still DIVERGED and were NOT written to, exactly as the 2026-09-06 notes describe. Re-verified this run rather than assumed: ci.md (161 lines) still describes the merge queue while its source (57 lines) still describes rebase-before-merge, so the target is ahead; workflows.md differs only by the applyTo/paths frontmatter conversion this skill performs and the same two Claude-only bullets about `just test-scripts` and not judging a script by a bare bats run on macOS. Hashes deliberately NOT refreshed for either, so both keep being reported until the back-port to .github/ lands.",
+    "2026-09-12: crp gained a 'Branch merged and deleted at origin' section on BOTH sides in the same commit (.github/prompts/commit-rebase-push.prompt.md remains the source of truth; the Claude copy was updated in step, not synced over). Step 1 now detects a feature branch whose pull request has merged and whose remote branch is gone, and moves the next batch of work onto a fresh feature/* branch named for that work before committing, pushing it with `git push -u`. The Claude copy additionally allows `git switch` and `git stash` in its frontmatter. crpf, which has no Copilot counterpart, carries the same section with part-two-specific wording. Hashes refreshed to record the reconciled state - not outstanding drift."
   ],
   "files": [
     {
@@ -80,9 +81,9 @@
     {
       "source": ".github/prompts/commit-rebase-push.prompt.md",
       "target": ".claude/skills/crp/SKILL.md",
-      "sourceSha256": "d1b4151948591fb06a7a6f42c336135003ec22b8ee33da16facb52e8c680636b",
-      "targetSha256": "9a0bbcd8b81ec00cb7f55a6cfcd17db7ec71f1ba8fedf0cceb5b4a4d62dadaf7",
-      "syncedAt": "2026-09-02T18:18:27Z",
+      "sourceSha256": "60522c9742b1442fb71a8d4fe03f3dc8034e007a28387df26abf1890f7c20893",
+      "targetSha256": "72434161abd2f7df0394a28952dcd1b5a4eb9807067e8551042d648661e3746d",
+      "syncedAt": "2026-09-12T00:00:00Z",
       "targetRenamed": true,
       "divergentByDesign": true,
       "divergenceReason": "Argument passing: the Claude copy uses `$ARGUMENTS`, which has no Copilot equivalent, and says '(Claude)' where the Copilot copy says 'you'. The Claude copy also carries skill frontmatter with no Copilot counterpart (argument-hint, allowed-tools, disable-model-invocation). Markdown table whitespace also differs because Prettier formats the Claude side. The substantive instructions are identical - do not sync either way."
