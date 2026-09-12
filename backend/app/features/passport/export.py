@@ -121,6 +121,7 @@ def build_bundle(
     store: PassportStore,
     passport_id: str,
     *,
+    requested_by: str | None = None,
     head_commit: str | None = None,
     generated_at: datetime | None = None,
 ) -> bytes:
@@ -129,6 +130,10 @@ def build_bundle(
     Args:
         store: Where the passport lives.
         passport_id: Whose passport.
+        requested_by: The user id that asked for this, recorded in the
+            audit line. Optional because a background or administrative
+            export has no user, and a line saying ``unattributed`` is
+            more honest than one inventing an actor.
         head_commit: The commit being exported, printed in the PDF
             footer so a printed page can be tied to a repository state.
         generated_at: When, for tests.
@@ -160,7 +165,23 @@ def build_bundle(
         _write_views(archive, store, passport_id, head_commit, moment)
         _write_history(archive, store, passport_id)
 
-    return buffer.getvalue()
+    data = buffer.getvalue()
+
+    # Who exported which passport, and when. Deliberately nothing else:
+    # no holder name, no competency, no filename, no size breakdown. A
+    # passport carries no patient data, but it is somebody's assessment
+    # record, and an application log is read by people who have no
+    # business with its contents. The size is the one detail included,
+    # because an export that silently produced almost nothing is worth
+    # being able to spot afterwards.
+    logger.info(
+        "Passport export: passport=%s requested_by=%s bytes=%d",
+        passport_id,
+        requested_by or "unattributed",
+        len(data),
+    )
+
+    return data
 
 
 def _write_record(

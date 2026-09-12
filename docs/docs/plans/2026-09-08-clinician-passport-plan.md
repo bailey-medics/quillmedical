@@ -2299,9 +2299,32 @@ explicitly deferred here.
         comes back.
       - **`VERIFY_TEMPLATE` was written in Phase 1 and had never been
         used.** The bundle is what it was for.
-- [ ] Tests: rendered Markdown snapshot per fixture passport, PDF
+- [x] Tests: rendered Markdown snapshot per fixture passport, PDF
       generation succeeds and contains the hashes, export logging
       records no content.
+      - **Export logging did not exist and had to be written first.**
+        The plan's audit rule says exports are recorded in the
+        application log — who, which passport, when, with no content —
+        and nothing did it. `build_bundle` now takes `requested_by` and
+        logs one line. Optional, because a background or administrative
+        export has no user and `unattributed` is more honest than an
+        invented actor.
+      - The test is not merely that a line appears but that it carries
+        **no content**: a word list of names, competencies, issuers and
+        registration numbers is asserted absent. A passport holds no
+        patient data, but it is somebody's assessment record and an
+        application log is read by people with no business in it.
+      - **The snapshot cannot pin the fingerprint.** A `content_hash`
+        covers the sign-off's id, which carries a uuid4, so the same
+        sign-off made twice with identical inputs is deliberately a
+        different record with a different hash. The snapshot normalises
+        it and a separate test asserts a real one is present.
+      - **Found by the snapshot: "1 activities".** Writing out a whole
+        rendered document made a wording bug obvious that no assertion
+        would have caught — the CPD summary did not handle the singular,
+        in both the Markdown and the PDF. Fixed in both. This is the
+        argument for snapshot tests in one line: the failure was visible
+        only because somebody had to look at the output.
 
 ## Phase 5: external assessors
 
