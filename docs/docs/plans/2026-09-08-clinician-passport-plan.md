@@ -2200,22 +2200,131 @@ explicitly deferred here.
 
 ## Phase 4: rendering and export
 
-- [ ] Implement `render.py`: passport files to `passport.md`, with the
+- [x] Implement `render.py`: passport files to `passport.md`, with the
       front page, a competency table, sections for logbook,
       certificates, CPD and reflections, and the full sign-off
       appendix including superseded records. Logbook and CPD sort by
       the clinical date inside the entry, not by filename.
-- [ ] Implement `pdf.py` with ReportLab `platypus`: a document
+      - **Reflections are excluded unless the caller asks**, which the
+        plan's section above does not say. A rendering handed to a panel
+        or an employer must not carry one by accident: written
+        reflection can be disclosed in legal proceedings, so the default
+        has to be the narrow one. `include_reflections=False` by
+        default, and a test asserts the default rather than the option.
+      - The rendering is never written back. A stored copy would be a
+        second version of the truth waiting to disagree with the files,
+        and a test pins it by asserting the head commit does not move.
+      - An empty passport renders every heading with "Nothing recorded"
+        rather than omitting the section: a missing heading reads as an
+        oversight, while a stated absence is an answer.
+      - CPD years descend because appraisal asks what you did *this*
+        year, and the current one should not be at the foot of a long
+        list. Entries within a year still ascend by clinical date.
+- [x] Implement `pdf.py` with ReportLab `platypus`: a document
       template, the competency table, the sign-off appendix,
       `content_hash` per sign-off and the head commit in the footer.
       Follow `features/teaching/certificate.py` in parsing style
       config defensively, so a malformed value degrades to a default
       rather than failing the download.
-- [ ] Implement the zip bundle export including a `git bundle` of the
+      - **There is no style config to parse defensively.** The
+        certificate module parses one because bank configs are authored
+        outside this repository; a passport has no equivalent. The same
+        discipline was applied where it does apply — to the record data.
+        Every value goes through `_text` or `_day`, which return a dash
+        rather than raising, and an unreadable certificate, CPD entry or
+        sign-off is skipped with a warning so the rest still prints.
+      - **Markup characters are escaped, and this is the one that would
+        have bitten.** Platypus reads `<` as markup, so an assessor
+        writing "sats <92% throughout" would raise at build time — after
+        the request was accepted, which is the worst moment to fail. A
+        test pins it with that exact comment.
+      - **Reflections are counted by year, never printed.** The count
+        is worth having — writing nine reflections across a year is the
+        evidence of a habit an appraiser looks for — and it discloses
+        nothing about any patient. The writing never appears, and nor
+        does the title: "the arrest on ward 12" names nobody and tells
+        anyone who was there exactly which patient it was. There is
+        deliberately no parameter that could switch the text on, and a
+        test asserts the signature has none, because that is the kind of
+        convenience a later change would add back without noticing what
+        it means.
+      - **Found while testing: a long reflection title can breach the
+        72-character commit subject limit.** `records.add_reflection`
+        builds a subject from the title, and `commits.py` refuses one
+        over the limit — correctly, but the refusal surfaces at write
+        time as a failed save rather than as validation on the field. A
+        title of about forty characters is enough to trigger it. Worth
+        either truncating the title in the subject or validating length
+        at the API boundary; noted rather than fixed here, since it
+        belongs with the records layer rather than with rendering.
+      - **A logbook totals table was added**, which the plan's PDF task
+        does not list. Counts by competency and by year, with a row
+        total and a grand total, grouped on `performed_on` rather than
+        the filename. Totals rather than entries is where this parts
+        company with the Markdown rendering: a registrar with three
+        hundred bronchoscopies does not want three hundred printed
+        lines, and the repository holds the detail for anyone who needs
+        it. Still counts and never comparisons — a test asserts no
+        "target", "required", "expected" or "sufficient" reaches a cell.
+      - The footer carries the head commit on every page rather than
+        only the first, because printed pages get separated.
+      - Tested two ways: the story platypus is handed, which is where
+        the decisions actually happen and can be asserted precisely; and
+        an end-to-end build, which catches what the story cannot — a
+        flowable accepted at construction and rejected at build.
+- [x] Implement the zip bundle export including a `git bundle` of the
       repository.
-- [ ] Tests: rendered Markdown snapshot per fixture passport, PDF
+      - **The canonical files are copied byte for byte**, not
+        re-serialised from the models. A round trip through Pydantic
+        could quietly normalise something, and then the export would be
+        a rendering of the record rather than a copy of it. A test
+        compares the exported `profile.yaml` against what the store
+        returns.
+      - **A broken rendering does not deny the export.** The record is
+        already in the archive by the time the views are attempted, so a
+        failure in either is logged and skipped: a holder with the files
+        and no PDF is far better off than one with nothing, and the
+        README says the files are the authority in any case.
+      - **The git bundle is only available from the local backend.** It
+        needs a working repository to run `git bundle` against, which
+        the bucket backend does not expose — it holds a bundle already,
+        but reaching for it would need the concrete type anyway. The
+        export logs and continues rather than failing. That gap matters
+        once the GCS backend is in use and is worth closing then, by
+        having the bucket backend hand over the bundle it already has.
+      - `LocalPassportStore.repository_path` was added for this, rather
+        than reaching into the private `_path`. It is the only thing the
+        export needs from the concrete type, and a named accessor at
+        least says in its signature that a filesystem path is what
+        comes back.
+      - **`VERIFY_TEMPLATE` was written in Phase 1 and had never been
+        used.** The bundle is what it was for.
+- [x] Tests: rendered Markdown snapshot per fixture passport, PDF
       generation succeeds and contains the hashes, export logging
       records no content.
+      - **Export logging did not exist and had to be written first.**
+        The plan's audit rule says exports are recorded in the
+        application log — who, which passport, when, with no content —
+        and nothing did it. `build_bundle` now takes `requested_by` and
+        logs one line. Optional, because a background or administrative
+        export has no user and `unattributed` is more honest than an
+        invented actor.
+      - The test is not merely that a line appears but that it carries
+        **no content**: a word list of names, competencies, issuers and
+        registration numbers is asserted absent. A passport holds no
+        patient data, but it is somebody's assessment record and an
+        application log is read by people with no business in it.
+      - **The snapshot cannot pin the fingerprint.** A `content_hash`
+        covers the sign-off's id, which carries a uuid4, so the same
+        sign-off made twice with identical inputs is deliberately a
+        different record with a different hash. The snapshot normalises
+        it and a separate test asserts a real one is present.
+      - **Found by the snapshot: "1 activities".** Writing out a whole
+        rendered document made a wording bug obvious that no assertion
+        would have caught — the CPD summary did not handle the singular,
+        in both the Markdown and the PDF. Fixed in both. This is the
+        argument for snapshot tests in one line: the failure was visible
+        only because somebody had to look at the output.
 
 ## Phase 5: external assessors
 

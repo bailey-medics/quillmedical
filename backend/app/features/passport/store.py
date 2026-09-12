@@ -224,6 +224,27 @@ class LocalPassportStore(PassportStore):
         """
         return self._root / paths.shard(passport_id)
 
+    def repository_path(self, passport_id: str) -> Path:
+        """Where one passport's repository sits on disk.
+
+        Public because the export needs to run ``git bundle`` against a
+        real working repository, and only this backend has one. Reaching
+        into ``_path`` from there would couple the two modules more
+        tightly than a named accessor does, and this at least says in
+        its signature that a filesystem path is what comes back.
+
+        Args:
+            passport_id: Whose passport.
+
+        Returns:
+            The directory, whether or not anything is in it.
+
+        Raises:
+            PassportPathError: If the id is not 32 lower-case hex
+                characters.
+        """
+        return self._path(passport_id)
+
     def _open(self, passport_id: str) -> pygit2.Repository:
         """Open an existing repository.
 
