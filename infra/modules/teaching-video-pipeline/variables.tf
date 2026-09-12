@@ -25,3 +25,8 @@ variable "source_retention_days" {
   type        = number
   default     = 90
 }
+
+variable "app_origin" {
+  description = "Origin the admin UI is served from, e.g. https://teaching.quill-medical.com. Named explicitly in the source bucket's CORS policy: the browser uploads straight to GCS, which is cross-origin from the app, so without this the preflight is refused and no upload can start."
+  type        = string
+}

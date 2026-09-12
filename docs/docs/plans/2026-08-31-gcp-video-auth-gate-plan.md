@@ -1201,6 +1201,33 @@ host: `app_domain` is `teaching.quill-medical.com` in
 `/videos/*` to the backend bucket on that same host, so the cookie stays
 same-origin. The other three come from the pipeline module's existing outputs.
 
+**[found 2026-09-12, second attempt] With the settings deployed, the upload
+still failed — two further faults, either one sufficient on its own.** The
+progress bar appeared for a second and the row reverted to a dropzone, because
+the request failed and the `finally` cleared it.
+
+The first is that the **source bucket had no CORS policy**. The browser uploads
+straight to `storage.googleapis.com`, which is cross-origin from
+`teaching.quill-medical.com`, so it sends a preflight — and a bucket with no
+policy refuses it. Nothing reaches GCS and nothing reaches our logs, because the
+request never touches the backend. The module now sets `cors` on the source
+bucket, naming the app origin explicitly and exposing `Location`, which is what
+carries the session URL back.
+
+The second is that **the signed URL and the browser disagreed about the method**.
+`create_resumable_upload_url` mints it for `POST` with `x-goog-resumable: start`
+— that *begins* a resumable upload, and GCS answers with a session URL the bytes
+then go to. The frontend sent a plain `PUT`. The v4 signature covers the method
+and headers, so GCS rejects the mismatch. `putToBucket` now does both steps, and
+falls back to a single `PUT` for the local development route, which is not a GCS
+URL at all.
+
+Both went unnoticed for the same reason as the missing settings: **the tests
+stub the upload entirely.** The hook's tests asserted the order of calls — mint,
+send, link — against a stub that accepted any request, and the backend's assert
+a URL is minted rather than that anything can use it. The stub now models the
+handshake, and reverting to a single `PUT` fails five of eleven tests.
+
 - [ ] Cloud Run job `video-transcode` — FFmpeg image, 4 CPU, 4 GB, 60-minute
       timeout. Reads from source, writes 720p and 1080p H.264 plus a poster frame
       to the processed bucket under `{org_id}/{module_id}/`, named from the asset
@@ -1244,13 +1271,30 @@ Video files never enter this repository. They live in the gitignored
 backend serves them straight off disk with no bucket, no signature and no cookie.
 
 **[revised 2026-09-09]** In production media is uploaded through the admin UI and
-found through a link row, not by filename — see **Media uploads**. Dev keeps the
-filename convention below because there is no upload UI to drive and no bucket to
-upload to: a file named for its reference key is the simplest thing that lets a
-developer see a slide play. The `LocalVideoBackend` resolves a `ref` to
-`<ref>.mp4` on disk, and that resolution is the _only_ place the two models
-differ. Everything above it — the parser, the API shape, the player — is
-identical, so nothing downstream learns the local convention.
+found through a link row, not by filename — see **Media uploads**. Dev kept the
+filename convention below because there was no upload UI to drive and no bucket
+to upload to: a file named for its reference key was the simplest thing that let
+a developer see a slide play.
+
+**[superseded 2026-09-12] A developer can now upload through the admin card.**
+The reasoning above stopped holding once the card existed: the one thing a
+developer could not try was the thing they were building, and a stub is a poor
+rehearsal for an upload path whose failures turned out to live in the joins.
+`create_media_upload_url` returns a local URL when there is no bucket, and a
+route behind it streams the body into the module's own `learning/` directory.
+The frontend PUTs to whatever URL it is handed, so that is the whole difference
+between the two environments — nothing above the endpoint learns which it got.
+The receiving route refuses outright where a bucket exists, because writing a
+request body into a bind mount is a development affordance rather than a thing
+to leave running anywhere real.
+
+Resolution is a **link lookup** now that `ModuleMediaLink` exists: an uploaded
+asset is named for its generated id, never for the ref or the uploader's
+filename. The `<ref>.mp4` convention survives only as a fallback, so a file
+dropped on disk by hand before there was an upload path still plays. That
+lookup remains the _only_ place the two models differ — everything above it, the
+parser, the API shape and the player, is identical, so nothing downstream learns
+which environment it is in.
 
 ### Where the files go
 
