@@ -293,6 +293,22 @@ module "cloud_run_backend" {
       TEACHING_STORAGE_BACKEND  = "gcs"
       TEACHING_GCS_BUCKET       = module.cloud_storage[0].bucket_name
       TEACHING_IMAGES_BASE_URL  = "https://storage.googleapis.com/${module.cloud_storage[0].bucket_name}"
+
+      # Video. The signing key itself is a secret and is mapped below; these
+      # four are not secret, but without them the feature is inert rather
+      # than broken: the upload endpoint refuses with 503 because it has no
+      # bucket to write to, and the access endpoint falls back to the local
+      # development route and mints no cookie at all.
+      TEACHING_VIDEOS_SOURCE_BUCKET   = module.teaching_video_pipeline[0].source_bucket_name
+      TEACHING_VIDEOS_BUCKET          = module.teaching_video_pipeline[0].processed_bucket_name
+      TEACHING_VIDEO_SIGNING_KEY_NAME = module.teaching_video_pipeline[0].signing_key_name
+
+      # Same host as the app, deliberately: the load balancer routes
+      # /videos/* to the backend bucket, so the signed cookie is same-origin
+      # and the browser sends it on media requests with no cross-site
+      # handling. A different host here would scope every cookie to
+      # somewhere the player never asks.
+      TEACHING_VIDEO_BASE_URL = "https://${var.app_domain}/videos"
     } : {},
     {
       # Set in every environment: this one setting decides where passports
