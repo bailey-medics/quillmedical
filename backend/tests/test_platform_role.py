@@ -480,3 +480,73 @@ class TestOperatorsAreProtectedByTheNewColumn:
         resp = authenticated_admin_client.get(f"/api/users/{colleague.id}")
 
         assert resp.status_code == 200
+
+
+class TestPatientAccessAsksTheRightQuestion:
+    """The composites split by what they are actually about.
+
+    Three routes asked `system_permissions in ("admin", "superadmin")`,
+    which conflated two different questions. Each now asks the one that
+    fits:
+
+    - Listing every patient in the deployment is reach unbounded by any
+      place, so it asks `platform_role`.
+    - A patient's external access grants are patient centric, so they ask
+      `manage_patient_membership` — not `manage_users`, because a patient
+      is not a user.
+
+    `update_my_competencies` keeps the old rank deliberately: it is
+    self-scoped, so a competency gate would make the escalation
+    self-referential. See the batch 3 note in the plan.
+    """
+
+    def test_an_admin_cannot_list_a_patients_grants(
+        self, authenticated_admin_client, db_session: Session
+    ):
+        """`manage_users` is not authority over patients.
+
+        `test_admin` carries `system_administrator`, which grants
+        `manage_users` and not `manage_patient_membership`. Before the
+        split its rank alone would have allowed this.
+        """
+        resp = authenticated_admin_client.get(
+            "/api/patients/some-fhir-id/external-access"
+        )
+
+        assert resp.status_code == 403
+
+    def test_a_patient_manager_can_list_a_patients_grants(
+        self, authenticated_patient_manager_client, db_session: Session
+    ):
+        """The mirror: holding the competency is what opens it."""
+        resp = authenticated_patient_manager_client.get(
+            "/api/patients/some-fhir-id/external-access"
+        )
+
+        assert resp.status_code == 200
+
+    def test_the_patient_themselves_can_list_their_grants(
+        self, test_client, db_session: Session
+    ):
+        """Self-access is unchanged, and holds no competency at all."""
+        person = _user(
+            db_session,
+            "their_own_patient",
+            system_permissions="single-user",
+            platform_role="member",
+        )
+        person.fhir_patient_id = "some-fhir-id"
+        db_session.commit()
+
+        resp = test_client.post(
+            "/api/auth/login",
+            json={
+                "username": "their_own_patient",
+                "password": "Password123!",
+            },
+        )
+        assert resp.status_code == 200
+
+        listed = test_client.get("/api/patients/some-fhir-id/external-access")
+
+        assert listed.status_code == 200

@@ -2811,9 +2811,26 @@ def list_patients(
         metadata_records = db.execute(stmt).scalars().all()
         metadata_map = {m.patient_id: m.is_active for m in metadata_records}
 
-        # Determine which patients are accessible
-        is_admin = current_user.system_permissions in ["admin", "superadmin"]
-        admin_scope = scope == "admin" and is_admin
+        # Determine which patients are accessible.
+        #
+        # Seeing every patient in the deployment is not an administrative
+        # act at a place — it is reach unbounded by any place, which is
+        # what the platform role records. An admin at one trust is
+        # confined to the patients they share an organisation with, the
+        # same as anyone else.
+        is_operator = current_user.platform_role == "superadmin"
+        admin_scope = scope == "admin" and is_operator
+
+        # Seeing *deactivated* patients is a narrower question than
+        # seeing every patient: it applies within the list the caller can
+        # already reach, so it asks the patient competency rather than
+        # the platform role. Someone administering their own
+        # organisation's caseload has reason to see its deactivated
+        # patients; that is not a claim to reach every trust.
+        manages_patients = (
+            "manage_patient_membership"
+            in current_user.get_final_competencies()
+        )
 
         accessible_ids: set[str] | None = None
         if admin_scope:
@@ -2835,7 +2852,7 @@ def list_patients(
             is_active = metadata_map.get(patient_id, True)
 
             # Filter based on activation status
-            if is_active or (include_inactive and is_admin):
+            if is_active or (include_inactive and manages_patients):
                 enriched_patients.append(
                     PatientListItem.model_validate(
                         {**patient, "is_active": is_active}
@@ -5238,16 +5255,24 @@ def invite_external_user(
     Returns:
         dict: ``invite_url`` containing the signed JWT.
     """
-    # Only patient-self or admin can invite
+    # The patient themselves, or someone who administers patients here.
+    # `manage_patient_membership` rather than `manage_users`: inviting
+    # someone to a patient's record is patient centric, and a patient is
+    # not a user.
     is_own = (
         current_user.fhir_patient_id is not None
         and current_user.fhir_patient_id == patient_id
     )
-    is_admin = current_user.system_permissions in ("admin", "superadmin")
-    if not (is_own or is_admin):
+    manages_patients = (
+        "manage_patient_membership" in current_user.get_final_competencies()
+    )
+    if not (is_own or manages_patients):
         raise HTTPException(
             status_code=403,
-            detail="Only the patient or an admin can invite external users",
+            detail=(
+                "Only the patient or someone who manages patients can "
+                "invite external users"
+            ),
         )
 
     token = create_invite_token(
@@ -5418,13 +5443,16 @@ def list_external_access(
     Returns:
         dict: ``grants`` list with user info and access details.
     """
-    # Only admin or the patient themselves
+    # The patient themselves, or someone who administers patients here —
+    # the same pair as the invite route above.
     is_own = (
         current_user.fhir_patient_id is not None
         and current_user.fhir_patient_id == patient_id
     )
-    is_admin = current_user.system_permissions in ("admin", "superadmin")
-    if not (is_own or is_admin):
+    manages_patients = (
+        "manage_patient_membership" in current_user.get_final_competencies()
+    )
+    if not (is_own or manages_patients):
         raise HTTPException(status_code=403, detail="Access denied")
 
     grants = (

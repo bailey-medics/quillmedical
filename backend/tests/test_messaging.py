@@ -1234,16 +1234,24 @@ class TestInviteExternal:
         )
         assert resp.status_code == 403
 
-    def test_admin_can_invite(
+    def test_patient_manager_can_invite(
         self,
         authenticated_client: TestClient,
-        test_admin: User,
+        test_patient_manager: User,
         db_session: Session,
     ):
-        """Admin can generate an invite."""
+        """Someone holding `manage_patient_membership` can invite.
+
+        Was an admin, by rank. Inviting someone to a patient's record is
+        patient centric, so it asks the patient competency rather than
+        `manage_users`, which is authority over accounts.
+        """
         authenticated_client.post(
             "/api/auth/login",
-            json={"username": "testadmin", "password": "AdminPassword123!"},
+            json={
+                "username": "testpatientmanager",
+                "password": "PatientMgrPassword123!",
+            },
         )
         authenticated_client.get("/api/auth/me")
         token = authenticated_client.cookies.get("XSRF-TOKEN")
@@ -1265,15 +1273,18 @@ class TestAcceptInvite:
     def test_new_user_registration(
         self,
         test_client: TestClient,
-        test_admin: User,
+        test_patient_manager: User,
         authenticated_client: TestClient,
         db_session: Session,
     ):
         """New user can register via invite token."""
-        # Generate invite as admin
+        # Generate the invite as someone who manages patients
         authenticated_client.post(
             "/api/auth/login",
-            json={"username": "testadmin", "password": "AdminPassword123!"},
+            json={
+                "username": "testpatientmanager",
+                "password": "PatientMgrPassword123!",
+            },
         )
         authenticated_client.get("/api/auth/me")
         token = authenticated_client.cookies.get("XSRF-TOKEN")
