@@ -1209,11 +1209,34 @@ assumption runs the other way.
   user registers with name, email and password under Quill's ordinary
   account policy; an existing user signs in. Either way the result is
   a user with no platform role — the only one is `superadmin`, and
-  they do not operate Quill — plus a base profession chosen from a
-  short list, still to be designed, and the declared registrations in
-  `professional_registrations`. Their standing comes entirely from the
-  place membership below. Nothing about the passport imposes extra
-  account requirements.
+  they do not operate Quill — plus the `external_assessor` base
+  profession and the declared registrations in
+  `professional_registrations`. Nothing about the passport imposes
+  extra account requirements.
+
+  **The profession is the whole grant, and it replaces what this
+  section first proposed.** `external_assessor` carries
+  `access_clinician_passport` and nothing else, so an invited
+  consultant's ceiling comes from their profession in the ordinary way
+  — no `PractisingCompetency` row is written, and the clinical
+  authorisation table keeps meaning only clinical things. That table
+  frames itself as credentialing versus privileging, "may this person
+  practise this competency here"; a feature gate is neither, and
+  putting one there would have been a category error discovered later.
+
+  **It is only needed for a new account.** All fourteen clinical
+  professions already carry `access_clinician_passport`, so a
+  consultant who already uses Quill needs no change at all on
+  acceptance — they can reach the passport routes today, and what they
+  may act on is resolved from the request rows naming them.
+
+  **The competency is a ceiling, not a place.** It applies wherever the
+  feature is enabled rather than only at the holder's site. That grants
+  nothing extra in practice, because an assessor's reach is resolved
+  from `passport_signoff_request` rows, but it does mean the site
+  membership below is a plain record that they were there rather than
+  the thing granting access — which is what "honest rather than a
+  device" was reaching for.
 
 - **Membership at the holder's place, with an `external` capacity** —
   the assessor becomes a member of a place the holder is already a
@@ -2343,9 +2366,37 @@ explicitly deferred here.
         new word, so the addition is exercised rather than merely
         permitted. A third asserts the error message names the new ones
         too, so it stays a complete answer as the list grows.
-- [ ] Extend `create_invite_token` and `decode_invite_token` in
+- [x] Extend `create_invite_token` and `decode_invite_token` in
       `backend/app/security.py` to accept the `passport_assessor` user
       type, with tests for expiry and single use.
+      - **Written as a separate pair rather than extending the existing
+        one**, which departs from this task's wording. The patient
+        invite is built around a patient: `patient_id` is a required
+        argument, it is carried in every payload, and `accept_invite`
+        reads it unconditionally to create an `ExternalPatientAccess`
+        grant. A passport invite has no patient at all, so "extending"
+        would have meant making the patient optional and branching the
+        code path that gates patient record sharing, for a caller that
+        shares none of its logic.
+      - **The token carries the invite row's id, not the passport's.**
+        The token says which invitation was issued; the row says what it
+        was for and whether it has been used. A passport id here would
+        let one token be replayed against a passport rather than spent
+        once.
+      - **Single use cannot be enforced here and is not.** A JWT carries
+        no record of having been spent, so nothing in `security.py` can
+        do it — `passport_assessor_invite.token_hash` and `accepted_at`
+        will, in the next task. Rather than write a test that would pass
+        while testing nothing, one asserts the token *is* replayable,
+        documenting the gap the row has to close.
+      - **The type is checked on decode.** Both invites are signed with
+        the same key, so without it a token minted to share one
+        patient's record would decode cleanly as authority to sign off a
+        clinician's competency. Tested in both directions.
+      - Fourteen days needed no change: `ttl_days` was already an
+        argument. These are also the first direct tests of any invite
+        token in the codebase — the patient pair has only ever been
+        covered incidentally, through the messaging routes.
 - [ ] Add the `passport_assessor_invite` model and migration.
 - [ ] Add the invite endpoint and an email template alongside
       `features/teaching/email_templates.py`; rate limit invites per
@@ -2353,12 +2404,22 @@ explicitly deferred here.
 - [ ] Add the accept endpoint: register or link the user, store
       registrations, derive the place from the holder's memberships
       taking the narrowest they hold, create the membership there with
-      capacity `external`, grant `access_clinician_passport` at that
-      place, and consume the invite. Tests: a holder sited under an
-      organisation yields a site membership; a holder at organisation
-      level only yields an organisation membership; and an assessor
-      who already holds `staff` elsewhere keeps it, gaining the
-      `external` membership alongside rather than in place of it.
+      capacity `external`, and consume the invite. Tests: a holder
+      sited under an organisation yields a site membership; a holder at
+      organisation level only yields an organisation membership; and an
+      assessor who already holds `staff` elsewhere keeps it, gaining
+      the `external` membership alongside rather than in place of it.
+      - **No competency is granted at the place**, which this task
+        originally called for. A new account gets the
+        `external_assessor` base profession, which carries
+        `access_clinician_passport` as its ceiling; an existing account
+        already has it, since all fourteen clinical professions do. So
+        no `PractisingCompetency` row is written and the clinical
+        authorisation table keeps meaning only clinical things. See the
+        acceptance section above.
+      - Consuming the invite is what makes it single-use: the token
+        cannot enforce that, so `accepted_at` on the row is the check,
+        and the endpoint must refuse a row already carrying one.
 - [ ] Confirm `requires_feature("passport")` resolves through the
       assessor's new membership, so no sibling gate is needed.
 - [ ] Add the verify-registration and revoke endpoints for organisation
@@ -2863,7 +2924,13 @@ close them off, and so nobody builds them before there is a need.
   than anything in this plan. Worth establishing before building
   Phase 5 onwards.
 
-- **Organisation scoping** — the organisation-scoped access findings
-  plan (`2026-09-06-org-scoped-access-findings.md`) may change how
-  "admin of the holder's organisation" is evaluated; the passport
-  should adopt whatever that plan lands rather than invent a scope.
+- **Organisation scoping** — _settled in part._ The membership and
+  platform-role plans have landed: `PractisingCompetency` and
+  `cbac/scoped.py` now answer "what may this person do at this place",
+  and `platform_role` has replaced the permission hierarchy. The
+  passport router was built against them and deliberately admits only
+  the holder and assessors named on a request row — organisation admins
+  are refused, with a test pinning that refusal so widening it later
+  has to be deliberate. What remains open is whether an admin *should*
+  read a passport at all, which is a governance question rather than a
+  technical one.
