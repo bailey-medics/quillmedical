@@ -2,7 +2,7 @@
 name: crpf
 description: Commit, rebase and push, then continue the current plan document
 argument-hint: "[repo: eoeeta|resp|all] [final]"
-allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git add:*), Bash(git commit:*), Bash(git fetch:*), Bash(git rebase:*), Bash(git push:*), Bash(git -C *), Bash(gh pr list:*), Bash(gh pr view:*), Bash(gh pr edit:*), Bash(gh pr ready:*)
+allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git add:*), Bash(git commit:*), Bash(git fetch:*), Bash(git rebase:*), Bash(git push:*), Bash(git switch:*), Bash(git stash:*), Bash(git -C *), Bash(gh pr list:*), Bash(gh pr view:*), Bash(gh pr edit:*), Bash(gh pr ready:*)
 disallowed-tools: Bash(gh pr merge:*), mcp__github__merge_pull_request, mcp__github__enable_pr_auto_merge
 disable-model-invocation: true
 ---
@@ -72,12 +72,12 @@ at a different plan, use `/follow-the-plan-document <path>` instead.
 
 The repository argument maps as follows:
 
-| Argument  | Repository path                                                             |
-| --------- | --------------------------------------------------------------------------- |
-| _(none)_  | `/Users/markbailey/github/quillmedical`                                     |
-| `eoeeta`  | `/Users/markbailey/github/quillmedical/teaching-repos/eoeeta-teaching`      |
-| `resp`    | `/Users/markbailey/github/quillmedical/teaching-repos/respiratory-teaching` |
-| `all`     | _all of the above repos_                                                    |
+| Argument | Repository path                                                             |
+| -------- | --------------------------------------------------------------------------- |
+| _(none)_ | `/Users/markbailey/github/quillmedical`                                     |
+| `eoeeta` | `/Users/markbailey/github/quillmedical/teaching-repos/eoeeta-teaching`      |
+| `resp`   | `/Users/markbailey/github/quillmedical/teaching-repos/respiratory-teaching` |
+| `all`    | _all of the above repos_                                                    |
 
 The arguments supplied to this command are: `$ARGUMENTS`
 
@@ -85,17 +85,29 @@ The arguments supplied to this command are: `$ARGUMENTS`
 
 ## Steps
 
-1. Check you are not on main. If you are, ask the user to create a new branch and re-run the command. Do not commit directly to main.
+1. Check which branch you are on:
+   - **`main`** — never commit here. Create the branch for this work yourself:
+     name it and switch onto it as steps 3 and 4 of "Branch merged and deleted
+     at origin" describe, then carry on. There is no old branch to reconcile,
+     so skip that section's detection and stranded-commit checks.
+   - **A `feature/*` branch whose pull request has merged and whose remote
+     branch is gone** — the last batch of work has landed and this run starts
+     the next one. Move onto a fresh branch before anything is committed or
+     built: see "Branch merged and deleted at origin" below.
+   - **Anything else** — carry on.
 2. Only operate on the resolved target repository (see above).
 3. Check git status, and branch on what it reports:
    - **Changes to commit** — carry on with steps 4 to 6.
    - **Clean tree, no `final`** — there is nothing to commit. Say so, skip to
      step 8, and carry on into part two: an already-pushed branch is the
-     ordinary way to arrive here wanting the next unit built.
+     ordinary way to arrive here wanting the next unit built. If step 1 moved
+     onto a new branch, part two builds there.
    - **Clean tree, with `final`** — skip steps 4 to 6 and continue from step 7.
      The branch is already committed; this run only finalises the pull request.
      Never manufacture something to commit in order to have a commit: no empty
-     commits, no whitespace edits, no version bumps.
+     commits, no whitespace edits, no version bumps. If step 1 found the branch
+     merged and deleted, there is no open pull request left to finalise: say
+     so, skip the final section and carry on into part two.
 4. Review the changes and create a clear, descriptive commit message following conventional commit format (e.g., "feat:", "fix:", "refactor:").
 5. Stage and commit the changes.
 6. If pre-commit hooks fail, distinguish two cases:
@@ -132,11 +144,102 @@ The arguments supplied to this command are: `$ARGUMENTS`
      changed since, do not run them again.
    - If a test fails, stop and report it. Fixing it is a code change the human
      has not reviewed — do not fix and re-commit without approval.
-8. Push to current branch (do not create a new branch). If there is nothing
-   to push, `Everything up-to-date` is a success, not an error — carry on.
+8. Push to the current branch. The only branch this command ever creates is
+   the one step 1 makes, when the run started on `main` or the old branch was
+   merged and deleted; push that one with `git push -u origin feature/<name>`,
+   never a bare `git push`, so its upstream lands on the new remote branch and
+   not on `main`. If there is nothing to push, `Everything up-to-date` is a
+   success, not an error — carry on.
 9. If `final` was given, update the pull request description and mark the pull
    request ready for review — see "Final: update the pull request description"
    below. Without `final`, go straight on to part two. Either way, never merge.
+
+## Branch merged and deleted at origin
+
+The ordinary rhythm is: a branch is pushed, `auto-pr.yml` opens its pull
+request, a human merges it, and GitHub deletes the remote branch. The local
+checkout is then still on the old branch when the next piece of work arrives.
+Pushing that work from there would recreate the dead branch at origin and open
+a pull request whose title describes the last batch, not this one. So detect
+the state in step 1 and move onto a new branch before anything is committed.
+
+In this command the new branch is always created, even on a clean tree: part
+two is about to start the next unit, and it must not start on a branch that has
+already merged.
+
+Steps 3 and 4 also serve a run that starts on `main`: name the branch for the
+work in hand and switch onto it, skipping the detection and stranded-commit
+checks because there is no old branch to reconcile.
+
+1. **Detect it.** Prune first, or a stale tracking ref will hide the deletion:
+
+   ```bash
+   git fetch --prune origin
+   branch="$(git branch --show-current)"
+   git rev-parse --verify --quiet "origin/$branch" || echo "remote branch gone"
+   gh pr list --head "$branch" --state merged --json number,url,headRefOid
+   ```
+
+   The branch counts as merged and deleted only when **both** hold:
+   `origin/<branch>` no longer exists, and the merged pull request list is not
+   empty. One without the other means something else:
+
+   - Remote gone, no merged pull request — a new branch that has never been
+     pushed. Carry on as normal; step 8's push creates it.
+   - Remote gone, only a closed unmerged pull request — the work was
+     abandoned. Stop and ask.
+   - Remote present — not this case, whatever the pull request says.
+
+2. **Check nothing is stranded.** Compare local `HEAD` with the merged pull
+   request's `headRefOid`. If they differ, there are local commits made after
+   the merge that a new branch cut from `main` would leave behind. Stop, show
+   them (`git log --oneline <headRefOid>..HEAD`) and ask whether to cherry-pick
+   them onto the new branch. Uncommitted changes are fine: they travel with the
+   checkout in step 4.
+
+3. **Name the new branch after the work it will carry.** `auto-pr.yml` turns
+   the name into the pull request title — `feature/add-site-staff-page` becomes
+   "Feature: Add site staff page" — so write it as that title, lower-case and
+   hyphenated: `feature/` plus three to six words, verb first, saying what the
+   next batch of work does.
+
+   Read the uncommitted diff and the plan's next unit — the one part two is
+   about to build — and name the branch for the batch they make up together.
+   The plan's remaining phase is usually the right size: enough to hold
+   several `/crpf` rounds, not so wide that the title says nothing.
+
+   Not the old name with a suffix, not `-continued` or `-2`, not a date, a
+   ticket number or the pull request number. Confirm the name is free on both
+   sides:
+
+   ```bash
+   git rev-parse --verify --quiet "feature/<name>"
+   git rev-parse --verify --quiet "origin/feature/<name>"
+   ```
+
+4. **Switch onto it from current `main`**, carrying the working tree:
+
+   ```bash
+   git switch --no-track -c feature/<name> origin/main
+   ```
+
+   `--no-track` matters. Without it the new branch's upstream is `main`, the
+   trap described in `CLAUDE.md`, and a bare `git push` would aim at the
+   protected branch. Step 8 then pushes with an explicit `git push -u`, which
+   sets the upstream correctly. If git refuses to switch because a modified
+   file also changed on `main`, stash, switch and pop
+   (`git stash push --include-untracked`, then `git stash pop`). A conflict on
+   pop is a stop-and-ask, never something to resolve by guessing.
+
+5. **Say what happened** in one line before carrying on with step 2 and then
+   part two: the old branch, its merged pull request, and the new branch name.
+   Leave the old
+   local branch in place; deleting it is not this command's job, and
+   `git branch -d` is safe for the human to run whenever they like.
+
+From there the run is ordinary: the commit lands on the new branch, step 8's
+push creates it at origin, and `auto-pr.yml` answers with a fresh draft pull
+request titled from the name you chose.
 
 ## Final: update the pull request description
 
@@ -324,7 +427,7 @@ one failure this command is most prone to:
 - **Part two does not** — it ends at the review packet, leaving the working
   tree dirty for the human to read in the diff view.
 
-So a normal `/crpf` finishes with a clean push *and* an uncommitted change,
+So a normal `/crpf` finishes with a clean push _and_ an uncommitted change,
 which is correct and not an oversight. The next `/crpf` commits that change and
 starts the unit after it. Never fold part two's work into part one's commit, and
 never commit part two's work "while you are there" because the command already
@@ -333,8 +436,10 @@ committed once.
 ## Committing mechanics
 
 - One discrete change per commit; do not batch unrelated changes into a single commit.
-- Stay on the current branch. Do not start a new one.
-- However, if you are on main branch, then you are free to start an appropriate feature branch for the work you are doing.
+- Stay on the current branch. Do not start a new one — the only exceptions
+  are the ones part one already handled, a run that started on `main` or on a
+  branch merged and deleted at origin, and that switch happens before any
+  work is built.
 - The reviewed commits roll up into the branch's pull request, which serves as the durable, attributable sign-off record.
 
 ## Staying on track
