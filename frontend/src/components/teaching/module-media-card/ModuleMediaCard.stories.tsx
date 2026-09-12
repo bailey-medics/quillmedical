@@ -6,6 +6,7 @@
  * renamed reference, and an upload in flight.
  */
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { Stack } from "@mantine/core";
 import ModuleMediaCard from "./ModuleMediaCard";
 import type { MediaAsset, ModuleMedia } from "@/features/teaching/types";
 import { StoryNote } from "@/stories/variants";
@@ -84,13 +85,13 @@ export const SomethingMissing: Story = {
     liveOrganisations: ["East of England ETA"],
   },
   render: (args) => (
-    <>
+    <Stack gap="sm">
       <ModuleMediaCard {...args} />
       <StoryNote>
         The warning is the point: without it a mistyped reference hides the
         module from every learner with no trace an admin would see.
       </StoryNote>
-    </>
+    </Stack>
   ),
 };
 
@@ -113,13 +114,13 @@ export const UnattachedUploads: Story = {
     media: { ...incomplete, unattached: [orphan] },
   },
   render: (args) => (
-    <>
+    <Stack gap="sm">
       <ModuleMediaCard {...args} />
       <StoryNote>
         What a renamed or removed reference leaves behind. Without a row these
         are invisible bytes nobody can reach or remove.
       </StoryNote>
-    </>
+    </Stack>
   ),
 };
 
@@ -136,14 +137,14 @@ export const DeleteWarnsAboutLiveOrganisations: Story = {
     liveOrganisations: ["East of England ETA", "Norfolk and Norwich"],
   },
   render: (args) => (
-    <>
+    <Stack gap="sm">
       <ModuleMediaCard {...args} />
       <StoryNote>
         Press delete to see the confirmation. It names the organisations the
         module is live for, because the admin cannot see that consequence from
         this page.
       </StoryNote>
-    </>
+    </Stack>
   ),
 };
 
@@ -157,13 +158,13 @@ export const NoMediaReferenced: Story = {
     },
   },
   render: (args) => (
-    <>
+    <Stack gap="sm">
       <ModuleMediaCard {...args} />
       <StoryNote>
         The page renders no card at all in this case — shown here only to pin
         the empty state.
       </StoryNote>
-    </>
+    </Stack>
   ),
 };
 
