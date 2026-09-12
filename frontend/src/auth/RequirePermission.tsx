@@ -3,9 +3,11 @@
  *
  * Higher-order component that protects routes requiring specific permission levels.
  * Provides tiered security approach:
- * - Patients accessing admin routes: 404 (hide feature existence)
- * - Staff accessing admin-only routes: Redirect to home (inform but redirect)
- * - Admin: Allow access to staff and admin routes
+ * - Single-user accounts: 404 (hide feature existence)
+ * - Anyone else lacking the level: 404 by default, redirect if asked
+ *
+ * Administering a place is no longer a level here — it is the
+ * `manage_users` competency, guarded by `RequireCompetency`.
  *
  * `level="superadmin"` is not part of that hierarchy: it asks the
  * separate `platform_role` field, because operating Quill itself is
@@ -35,8 +37,14 @@ const PERMISSION_HIERARCHY: Record<SystemPermission, number> = {
  * RequirePermission Props
  */
 interface RequirePermissionProps {
-  /** Minimum permission level required */
-  level: "staff" | "admin" | "superadmin";
+  /**
+   * Minimum permission level required.
+   *
+   * `admin` is gone: administering a place is a competency, so those
+   * routes use `RequireCompetency` instead. `staff` remains until it
+   * becomes membership, and `superadmin` reads `platform_role`.
+   */
+  level: "staff" | "superadmin";
   /** Child components to render if authorized */
   children: ReactNode;
   /** Fallback behavior for unauthorized access */

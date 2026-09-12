@@ -586,17 +586,32 @@ does not, and removing the ladder removes the suggestion.
                     `platform_role != "superadmin"` also reverts the three helper
                     guards from the previous branch, so an older test fails first and
                     hides whether the new ones would have. Revert by line number.
-            - [ ] **The frontend half is blocked on a decision**, and is not the three
-                  nav checks alone. `SideNavContent`, `TeachingMainNav` and
-                  `LoginPage` ask _may this person reach admin pages_, so they should
-                  ask what the routes ask — but `main.tsx:280` is still
-                  `RequirePermission level="admin"` reading `system_permissions`.
-                  Moving the nav without the guard shows links that lead to a 404.
-                  - **They move together, and the guard needs a shape.** Either
-                    `RequirePermission` learns to take a competency, or a
-                    `RequireCompetency` replaces it and `level` loses its `admin`
-                    value. That is an API change to a shared component, so it wants a
-                    decision before code.
+            - [x] **The frontend half, done as one unit.** It was never the three nav
+                  checks alone: `main.tsx:280` gated `/admin` on
+                  `RequirePermission level="admin"`, so moving the nav without the
+                  guard would have advertised links that answer 404.
+                  - **Decided: a separate `RequireCompetency`**, rather than teaching
+                    `RequirePermission` to take a competency. The alternative would
+                    leave one component answering two unrelated questions through one
+                    prop — the conflation this whole plan exists to undo. It mirrors
+                    the backend, where the competency gates the door and
+                    `platform_role` scopes what is behind it.
+                  - **`level` loses `"admin"`**, leaving `staff` and `superadmin`.
+                    The union is the enforcement: nothing can pass `admin` again
+                    without the type failing.
+                  - **All four now ask `manage_users`** — the route guard, the two
+                    navigations, and `LoginPage`'s post-login redirect safety net,
+                    which reads `user.competencies` since it has the user in hand
+                    rather than a hook.
+                  - **`fallback="redirect"` is now unreachable for `level="staff"`.**
+                    `single-user` is the only level left below it and always gets 404,
+                    so the test that asserted a redirect now asserts the 404 and says
+                    why. The prop stays for `superadmin`.
+                  - **Mock users needed the competency added.** Three in
+                    `SideNavContent.test.tsx` and one in `TeachingMainNav.test.tsx`
+                    described admins by rank alone, so the admin link vanished until
+                    they held `manage_users`. The same shape as the backend fixtures:
+                    a read cannot move until every writer does.
       - [ ] **Contract: drop `system_permissions`.** Breaking API change, three response
             schemas, so it needs a decision file and the `api-breaking-change-review`
             approval.

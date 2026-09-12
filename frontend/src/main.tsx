@@ -104,6 +104,7 @@ import { ConnectivityProvider } from "@lib/connectivity";
 import GuestOnly from "./auth/GuestOnly";
 import RequireAuth from "./auth/RequireAuth";
 import RequirePermission from "./auth/RequirePermission";
+import RequireCompetency from "./auth/RequireCompetency";
 import { RequireFeature } from "./auth/RequireFeature";
 import RequireClinical from "./auth/RequireClinical";
 import { NoAccessLayout } from "@/components/layouts";
@@ -273,13 +274,13 @@ const routes: RouteObject[] = [
         ],
       },
 
-      // Admin routes — require admin permission
+      // Admin routes — require the competency the API itself requires
       {
         path: "/admin",
         element: (
-          <RequirePermission level="admin">
+          <RequireCompetency competency="manage_users">
             <Outlet />
-          </RequirePermission>
+          </RequireCompetency>
         ),
         children: [
           {

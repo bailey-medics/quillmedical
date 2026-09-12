@@ -9,6 +9,7 @@
 
 import { NavLink, Stack } from "@mantine/core";
 import { useAuth } from "@/auth/AuthContext";
+import { useHasCompetency } from "@/lib/cbac/hooks";
 import NavIcon from "@/components/icons/NavIcon";
 import NestedNavLink, { type NavItem } from "../NestedNavLink";
 import { navLinkStyles } from "../navStyles";
@@ -27,12 +28,10 @@ export default function TeachingMainNav({
   moduleHref,
   onNavigate,
 }: TeachingMainNavProps) {
-  const { logout, state } = useAuth();
+  const { logout } = useAuth();
 
-  const hasAdminAccess =
-    state.user !== null &&
-    (state.user.system_permissions === "admin" ||
-      state.user.system_permissions === "superadmin");
+  // Matches the `/admin` route guard, so the link never leads to a 404.
+  const hasAdminAccess = useHasCompetency("manage_users");
 
   const truncatedName =
     moduleName && moduleName.length > 15
