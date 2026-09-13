@@ -105,3 +105,15 @@ variable "client_error_threshold" {
   type        = number
   default     = 10
 }
+
+variable "video_not_found_metric" {
+  description = "Name of the log-based metric counting 404s for video files. Null where the analytics module is not deployed, in which case no rendition-drift alert is created."
+  type        = string
+  default     = null
+}
+
+variable "video_not_found_threshold" {
+  description = "Video 404s in five minutes above which the alert fires. Low on purpose, unlike the browser-error threshold: a learner should never request a rendition the database claims exists, so a handful is already a fault rather than noise. One is not zero only because a cancelled request mid-seek can occasionally present this way."
+  type        = number
+  default     = 3
+}

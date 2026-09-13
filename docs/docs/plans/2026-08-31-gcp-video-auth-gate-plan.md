@@ -1492,7 +1492,7 @@ Consequences to hold on to:
       retention** decision — the 7-day lifecycle rule is only a backstop for
       uploads whose job never ran. Delete after the verification above, never
       before: a source dropped on an unverified encode is unrecoverable.
-- [ ] Alert on 404s under `/videos/*` from the load balancer's `httpRequest`
+- [x] Alert on 404s under `/videos/*` from the load balancer's `httpRequest`
       logs. **[added 2026-09-13]** The drift signal, per the Decisions entry:
       a learner requesting a rendition the database claims exists is the one
       symptom that matters, and it is currently invisible. One monitoring rule;

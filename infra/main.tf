@@ -524,6 +524,15 @@ module "monitoring" {
   # not exist. Null here means the browser error policy is not created, rather
   # than a policy pointing at a metric that was never made.
   client_errors_metric = var.landing_domain != null ? module.analytics[0].client_errors_metric : null
+
+  # Same conditionality, and additionally only where video is served at all:
+  # prod and staging have no video buckets, so a 404 under /videos/ there is
+  # an unrecognised path falling through to the frontend, not rendition drift.
+  video_not_found_metric = (
+    var.landing_domain != null && var.environment == "teaching"
+    ? module.analytics[0].video_not_found_metric
+    : null
+  )
 }
 
 # ---------- Analytics: usage metrics, archive, and the shared dashboard ----------

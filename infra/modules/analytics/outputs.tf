@@ -14,3 +14,8 @@ output "client_errors_metric" {
   description = "Name of the log-based metric counting browser error reports, so the monitoring module can alert on the same counter the dashboard charts"
   value       = google_logging_metric.client_errors.name
 }
+
+output "video_not_found_metric" {
+  description = "Name of the log-based metric counting 404s for video files, so the monitoring module can alert on rendition drift"
+  value       = google_logging_metric.video_not_found.name
+}

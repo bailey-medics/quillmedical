@@ -514,6 +514,101 @@ resource "google_monitoring_alert_policy" "client_errors" {
   }
 }
 
+# ---------- Alert policy — video renditions that are not there ----------
+#
+# Drift between what the database says a transcode produced and what the
+# processed bucket actually holds. The player composes its URL from the
+# record rather than listing the bucket, so a missing object is invisible
+# everywhere except to the learner staring at a player that will not start.
+#
+# Deliberately an alert rather than a reconciliation job. A sweep comparing
+# every link row against the bucket would run green almost always — the job
+# verifies its own uploads before recording them, so the only way to reach
+# this state is a hand-deletion — and a check that never finds anything stops
+# being read. This fires only when a real learner has hit the fault.
+resource "google_monitoring_alert_policy" "video_not_found" {
+  count = var.video_not_found_metric != null ? 1 : 0
+
+  project      = var.project_id
+  display_name = "Video files not found (${var.environment})"
+  combiner     = "OR"
+
+  documentation {
+    mime_type = "text/markdown"
+    subject   = "Learners are requesting video files that do not exist"
+    content   = <<-EOT
+      A learner asked the CDN for a video rendition and the processed bucket
+      did not have it. The database records which renditions each upload
+      produced, and the player trusts that record, so this means the two have
+      drifted apart.
+
+      Note this is a 404, not a 403. An expired signed cookie returns 403 and
+      is ordinary; this is the file genuinely not being there.
+
+      The likeliest cause is an object deleted from the processed bucket by
+      hand. The transcode job verifies its own uploads are readable before it
+      records them, so a job that half-succeeded should not produce this.
+
+      Which module and organisation, from the path — the object key is
+      `{org_id}/{module_id}/{asset_id}-720p.mp4` and the URL mirrors it:
+
+      ```
+      resource.type="http_load_balancer"
+      httpRequest.requestUrl =~ "/videos/"
+      httpRequest.status = 404
+      ```
+
+      Logs: https://console.cloud.google.com/logs/query?project=$${project}
+
+      The fix is to re-run the transcode for that asset. Past the source
+      bucket's retention the master is gone, in which case the admin
+      re-uploads the lecture through the module's admin card.
+    EOT
+  }
+
+  conditions {
+    display_name = "Video 404s at the edge"
+
+    condition_threshold {
+      # Same resource.type restriction the browser-error policy needs, and
+      # for the same reason: Monitoring rejects an alert filter without one.
+      # These entries come from the load balancer, not Cloud Run, because
+      # /videos/* is served from the backend bucket and never reaches the app.
+      filter = join(" AND ", [
+        "resource.type = \"http_load_balancer\"",
+        "metric.type = \"logging.googleapis.com/user/${var.video_not_found_metric}\"",
+      ])
+
+      comparison      = "COMPARISON_GT"
+      threshold_value = var.video_not_found_threshold
+      duration        = "0s"
+
+      # DELTA, so ALIGN_SUM reads as "this many in five minutes" rather than
+      # a rate per second — the same shape as the browser-error policy.
+      aggregations {
+        alignment_period     = "300s"
+        per_series_aligner   = "ALIGN_SUM"
+        cross_series_reducer = "REDUCE_SUM"
+      }
+
+      trigger {
+        count = 1
+      }
+    }
+  }
+
+  notification_channels = local.notification_channels
+
+  # Tier one only. Nobody is woken for this: the module is already hidden
+  # from learners by the availability gate where the link is missing
+  # entirely, and where it is not, the damage is one video rather than an
+  # outage. No notification_rate_limit — Google rejects it on a metric
+  # threshold policy.
+  alert_strategy {
+    auto_close = "1800s" # 30 minutes
+  }
+}
+
 # ---------- Alert policy — Cloud SQL disk filling ----------
 #
 # The failure that gives days of warning and still takes the service down if

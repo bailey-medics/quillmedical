@@ -204,6 +204,44 @@ resource "google_logging_metric" "app_page_loads" {
   }
 }
 
+# ---------- Missing video renditions ----------
+#
+# The drift signal for hosted video. The database records which renditions a
+# transcode produced, and the player composes its URL from that record rather
+# than asking the bucket what is there — so if an object is deleted by hand,
+# or a transcode is recorded that did not land, the learner requests a file
+# that does not exist and nothing else here would notice.
+#
+# A 404 under /videos/ is that symptom, and the only party who sees it today
+# is the learner looking at a player that will not start. The job verifies its
+# own uploads before recording them, which closes the window the system
+# creates itself; this catches the rest.
+#
+# Counted at the load balancer rather than in the application, because these
+# requests never reach it: /videos/* is served from the backend bucket at the
+# edge, so the backend has no idea they happened.
+resource "google_logging_metric" "video_not_found" {
+  project = var.project_id
+  name    = "quill/video_not_found_${var.environment}"
+
+  description = "Requests for a video file that is not in the processed bucket"
+
+  # 404 specifically, not 4xx. A 403 under this prefix is the signed-cookie
+  # gate doing its job — an expired grant, or someone without one — which is
+  # ordinary and would drown the signal this exists to carry.
+  filter = <<-EOT
+    resource.type="http_load_balancer"
+    httpRequest.requestUrl =~ "//${local.app_domain_pattern}/videos/"
+    httpRequest.status = 404
+  EOT
+
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+    unit        = "1"
+  }
+}
+
 # ---------- Archive ----------
 #
 # The dashboard reads metrics, which are aggregates fixed at the moment they
