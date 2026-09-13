@@ -53,13 +53,20 @@ from app.db import get_core_db
 from app.deps import has_competency
 from app.email_send import EmailRateLimitError, send_email
 from app.features.gating import requires_feature
-from app.models import User, organisation_member, site_member
+from app.models import (
+    User,
+    organisation_member,
+    organisation_site,
+    site_member,
+)
+from app.organisations import get_member_org_ids, get_reachable_org_ids
 from app.passport_storage import get_passport_store
 from app.schemas.passport import (
     AssessorInviteAcceptIn,
     AssessorInviteAcceptOut,
     AssessorInviteIn,
     AssessorInviteOut,
+    AssessorRevokeOut,
     CertificateIn,
     CertificateOut,
     CompetencyStateOut,
@@ -75,6 +82,8 @@ from app.schemas.passport import (
     ReflectionIn,
     ReflectionOut,
     RegistrationOut,
+    RegistrationVerificationOut,
+    RegistrationVerifyIn,
     SignOffDeclineIn,
     SignOffIn,
     SignOffOut,
@@ -100,6 +109,7 @@ from . import (
 )
 from .commits import Actor
 from .models import (
+    AssessorRegistrationVerification,
     Passport,
     PassportAssessorInvite,
     PassportSignOffRequest,
@@ -1685,6 +1695,255 @@ def list_assessor_invites(
         )
         for invite in invites
     ]
+
+
+# --------------------------------------------------------------------
+# Organisation admins: verifying a registration, and revoking access
+# --------------------------------------------------------------------
+#
+# **"Admin of the holder's organisation" is two questions, not one.**
+# ``manage_users`` says *what* somebody may do and is global; membership
+# says *where*. Either alone is wrong — the competency on its own would
+# make an admin at one trust an administrator of every assessor in Quill,
+# which is the trap ``_require_shared_org_with_user`` exists to close for
+# the admin routes in ``main``. Both are required here, in that order.
+#
+# The admin's authority comes from *membership* of the organisation
+# rather than reach into it, so a trainee at a ward does not administer
+# the trust above them. The assessor's place is resolved by *reach*,
+# because the accept endpoint may have put them at a site.
+
+
+def _require_org_admin_over(
+    db: Session, admin: User, assessor_user_id: int
+) -> int:
+    """Require that *admin* administers somebody at a shared organisation.
+
+    Returns:
+        The organisation id the authority runs through, so the
+        verification row can record whose assurance it is.
+
+    Raises:
+        HTTPException: 404 if they share no organisation, matching
+            ``_require_shared_org_with_user``: the response must not
+            confirm that an assessor exists to somebody who may not act
+            on them.
+    """
+    if "manage_users" not in admin.get_final_competencies():
+        raise HTTPException(404, "Assessor not found")
+
+    if admin.platform_role == "superadmin":
+        shared = get_reachable_org_ids(db, assessor_user_id)
+        if shared:
+            return shared[0]
+        raise HTTPException(404, "Assessor not found")
+
+    # Membership for the admin, reach for the assessor. An admin is an
+    # admin of a place they belong to; an assessor put at a ward by the
+    # accept endpoint is reachable from the organisation above it.
+    admin_orgs = set(get_member_org_ids(db, admin.id))
+    assessor_orgs = set(get_reachable_org_ids(db, assessor_user_id))
+    shared_ids = sorted(admin_orgs & assessor_orgs)
+
+    if not shared_ids:
+        raise HTTPException(404, "Assessor not found")
+
+    return shared_ids[0]
+
+
+@passport_router.post(
+    "/assessors/{assessor_user_id}/registration-verification",
+    response_model=RegistrationVerificationOut,
+    status_code=201,
+    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+)
+def verify_assessor_registration(
+    assessor_user_id: int,
+    body: RegistrationVerifyIn,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+) -> RegistrationVerificationOut:
+    """Record that an admin checked a registration against its register.
+
+    By hand in phase 1: Quill queries no register, so this records a
+    human act rather than an automated lookup, and the record says so.
+
+    **It does not reach back into sign-offs already written.** A sign-off
+    is a snapshot of what was known at the moment of signing, and the
+    flag applies to those signed after this point. Rewriting the earlier
+    ones would make the record claim a check that had not happened when
+    it was signed.
+    """
+    organisation_id = _require_org_admin_over(db, user, assessor_user_id)
+
+    assessor = db.get(User, assessor_user_id)
+
+    if assessor is None or not assessor.is_active:
+        raise HTTPException(404, "Assessor not found")
+
+    authority = body.registration_authority.strip()
+    number = body.registration_number.strip()
+
+    declared = assessor.professional_registrations or {}
+
+    # The number must be one they actually declared. Verifying a number
+    # the assessor never gave would record a check of something Quill
+    # has no reason to associate with them.
+    if (
+        not isinstance(declared, dict)
+        or str(declared.get(authority, "")) != number
+    ):
+        raise HTTPException(
+            400,
+            (
+                "That registration is not one this assessor declared, so "
+                "there is nothing to verify."
+            ),
+        )
+
+    existing = db.scalar(
+        select(AssessorRegistrationVerification).where(
+            AssessorRegistrationVerification.user_id == assessor_user_id,
+            AssessorRegistrationVerification.registration_authority
+            == authority,
+            AssessorRegistrationVerification.registration_number == number,
+            AssessorRegistrationVerification.organisation_id
+            == organisation_id,
+        )
+    )
+
+    if existing is not None:
+        # Re-checking is an update of when it was last confirmed rather
+        # than a second fact, so the row moves instead of multiplying.
+        existing.verified_by_user_id = user.id
+        existing.verified_at = _now()
+        row = existing
+    else:
+        row = AssessorRegistrationVerification(
+            user_id=assessor_user_id,
+            registration_authority=authority,
+            registration_number=number,
+            verified_by_user_id=user.id,
+            organisation_id=organisation_id,
+        )
+        db.add(row)
+
+    db.flush()
+
+    return RegistrationVerificationOut(
+        user_id=assessor_user_id,
+        registration_authority=authority,
+        registration_number=number,
+        verified_by_name=user.full_name or user.username,
+        verified_at=_as_utc(row.verified_at),
+        organisation_id=organisation_id,
+    )
+
+
+@passport_router.delete(
+    "/assessors/{assessor_user_id}/membership",
+    response_model=AssessorRevokeOut,
+    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+)
+def revoke_assessor_membership(
+    assessor_user_id: int,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+) -> AssessorRevokeOut:
+    """Remove an assessor's membership at this admin's organisation.
+
+    Which takes ``access_clinician_passport`` at that place with it,
+    since competencies are granted per place.
+
+    **The sign-offs they already made stand**, and the count is returned
+    so an admin sees that stated rather than having to trust it. A record
+    of who assessed somebody is not undone by that person later losing
+    their access — the assessment happened.
+    """
+    organisation_id = _require_org_admin_over(db, user, assessor_user_id)
+
+    if assessor_user_id == user.id:
+        raise HTTPException(400, "You cannot revoke your own access this way.")
+
+    sign_offs_kept = (
+        db.scalar(
+            select(func.count())
+            .select_from(PassportSignOffRequest)
+            .where(
+                PassportSignOffRequest.assessor_user_id == assessor_user_id,
+                PassportSignOffRequest.status == "signed_off",
+            )
+        )
+        or 0
+    )
+
+    # A site membership first: the accept endpoint prefers the narrowest
+    # place, so that is where an invited assessor usually sits.
+    site_id = db.scalar(
+        select(site_member.c.site_id)
+        .join(
+            organisation_site,
+            organisation_site.c.site_id == site_member.c.site_id,
+        )
+        .where(
+            site_member.c.user_id == assessor_user_id,
+            site_member.c.capacity == "external",
+            organisation_site.c.organisation_id == organisation_id,
+        )
+    )
+
+    if site_id is not None:
+        db.execute(
+            site_member.delete().where(
+                site_member.c.site_id == site_id,
+                site_member.c.user_id == assessor_user_id,
+            )
+        )
+        db.flush()
+
+        return AssessorRevokeOut(
+            user_id=assessor_user_id,
+            place="site",
+            place_id=int(site_id),
+            sign_offs_kept=int(sign_offs_kept),
+        )
+
+    # Only an ``external`` membership is removable here. Revoking a
+    # ``staff`` row would let a passport route quietly sack somebody from
+    # the trust they actually work for.
+    #
+    # Looked up before deleting rather than by inspecting the delete's
+    # result: ``rowcount`` belongs to the cursor rather than to what
+    # ``Session.execute`` is typed to return, and a select says what is
+    # meant anyway.
+    external = db.scalar(
+        select(organisation_member.c.user_id).where(
+            organisation_member.c.organisation_id == organisation_id,
+            organisation_member.c.user_id == assessor_user_id,
+            organisation_member.c.capacity == "external",
+        )
+    )
+
+    if external is None:
+        raise HTTPException(
+            404, "That person has no external assessor access here."
+        )
+
+    db.execute(
+        organisation_member.delete().where(
+            organisation_member.c.organisation_id == organisation_id,
+            organisation_member.c.user_id == assessor_user_id,
+            organisation_member.c.capacity == "external",
+        )
+    )
+    db.flush()
+
+    return AssessorRevokeOut(
+        user_id=assessor_user_id,
+        place="organisation",
+        place_id=organisation_id,
+        sign_offs_kept=int(sign_offs_kept),
+    )
 
 
 # --------------------------------------------------------------------

@@ -39,7 +39,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.features.passport import router
-from app.features.passport.models import PassportAssessorInvite
+from app.features.passport.models import (
+    AssessorRegistrationVerification,
+    Passport,
+    PassportAssessorInvite,
+    PassportSignOffRequest,
+)
 from app.features.passport.store import LocalPassportStore
 from app.main import app
 from app.models import (
@@ -1475,6 +1480,353 @@ class TestTheGateResolvesForAnAcceptedAssessor:
 
         assessor_client = _login(test_client, "okafor")
         response = assessor_client.get(f"/api/passport/{passport_id}")
+
+        assert response.status_code == 404
+
+
+class TestAdminVerifyAndRevoke:
+    """What an organisation's admin may do about an outside assessor.
+
+    "Admin of the holder's organisation" is two questions. ``manage_users``
+    says *what* somebody may do and is global; membership says *where*.
+    Either alone is wrong — the competency by itself would make an admin
+    at one trust an administrator of every assessor in Quill — so the
+    tests that matter most here are the ones proving an admin elsewhere
+    is refused.
+    """
+
+    @pytest.fixture
+    def sent(self, monkeypatch: pytest.MonkeyPatch) -> list[dict[str, str]]:
+        outbox: list[dict[str, str]] = []
+
+        def capture(
+            *, to: str, subject: str, html_body: str, **kw: object
+        ) -> None:
+            outbox.append({"to": to, "html_body": html_body})
+
+        monkeypatch.setattr(router, "send_email", capture)
+        return outbox
+
+    @pytest.fixture
+    def admin(self, db_session: Session, org: Organisation) -> User:
+        """An admin of the holder's organisation."""
+        user = _make_user(db_session, "orgadmin", profession="consultant")
+        user.additional_competencies = ["manage_users"]
+        db_session.execute(
+            organisation_member.insert().values(
+                organisation_id=org.id, user_id=user.id, capacity="staff"
+            )
+        )
+        db_session.commit()
+        db_session.refresh(user)
+        return user
+
+    @pytest.fixture
+    def outsider_admin(self, db_session: Session) -> User:
+        """An admin, but of a different trust entirely.
+
+        The case a check on ``manage_users`` alone would wrongly allow.
+        """
+        user = _make_user(db_session, "otheradmin", profession="consultant")
+        user.additional_competencies = ["manage_users"]
+
+        other = Organisation(name="Unrelated Trust")
+        db_session.add(other)
+        db_session.commit()
+        db_session.refresh(other)
+
+        db_session.add(
+            OrganisationFeature(
+                organisation_id=other.id, feature_key="passport"
+            )
+        )
+        db_session.execute(
+            organisation_member.insert().values(
+                organisation_id=other.id, user_id=user.id, capacity="staff"
+            )
+        )
+        db_session.commit()
+        db_session.refresh(user)
+        return user
+
+    def _accept_an_assessor(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        sent: list[dict[str, str]],
+    ) -> int:
+        """Run the real invite and accept flow; return the assessor's id."""
+        passport_id = _create_passport(holder_client)
+        holder_client.post(
+            f"/api/passport/{passport_id}/assessor-invites",
+            json={
+                "email": "okafor@other-trust.nhs.uk",
+                "name": "Dr Amara Okafor",
+                "registration_authority": "GMC",
+                "registration_number": "7654321",
+            },
+        )
+        token = sent[-1]["html_body"].split("token=")[1].split('"')[0]
+
+        accepted = test_client.post(
+            "/api/passport/assessor-invites/accept",
+            json={
+                "token": token,
+                "username": "okafor",
+                "password": "PassportPassword123!",
+            },
+        )
+        assert accepted.status_code == 200, accepted.text
+        return int(accepted.json()["user_id"])
+
+    def test_an_admin_can_verify_a_declared_registration(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        db_session: Session,
+        admin: User,
+        sent: list[dict[str, str]],
+    ) -> None:
+        assessor_id = self._accept_an_assessor(
+            holder_client, test_client, sent
+        )
+
+        admin_client = _login(test_client, "orgadmin")
+        response = admin_client.post(
+            f"/api/passport/assessors/{assessor_id}/registration-verification",
+            json={
+                "registration_authority": "GMC",
+                "registration_number": "7654321",
+            },
+        )
+
+        assert response.status_code == 201, response.text
+        body = response.json()
+        assert body["verified_by_name"] == "Dr Orgadmin"
+        assert body["verified_at"] is not None
+
+    def test_an_admin_at_another_trust_cannot(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        outsider_admin: User,
+        sent: list[dict[str, str]],
+    ) -> None:
+        """The whole reason a place check sits beside the competency.
+
+        A 404 rather than a 403, so the response does not confirm the
+        assessor exists to somebody who may not act on them.
+        """
+        assessor_id = self._accept_an_assessor(
+            holder_client, test_client, sent
+        )
+
+        admin_client = _login(test_client, "otheradmin")
+        response = admin_client.post(
+            f"/api/passport/assessors/{assessor_id}/registration-verification",
+            json={
+                "registration_authority": "GMC",
+                "registration_number": "7654321",
+            },
+        )
+
+        assert response.status_code == 404
+
+    def test_a_clinician_without_manage_users_cannot(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        sent: list[dict[str, str]],
+    ) -> None:
+        """Membership alone is not authority."""
+        assessor_id = self._accept_an_assessor(
+            holder_client, test_client, sent
+        )
+
+        response = holder_client.post(
+            f"/api/passport/assessors/{assessor_id}/registration-verification",
+            json={
+                "registration_authority": "GMC",
+                "registration_number": "7654321",
+            },
+        )
+
+        assert response.status_code == 404
+
+    def test_a_number_the_assessor_never_declared_is_refused(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        admin: User,
+        sent: list[dict[str, str]],
+    ) -> None:
+        """Otherwise the row records a check of something Quill has no
+        reason to associate with them."""
+        assessor_id = self._accept_an_assessor(
+            holder_client, test_client, sent
+        )
+
+        admin_client = _login(test_client, "orgadmin")
+        response = admin_client.post(
+            f"/api/passport/assessors/{assessor_id}/registration-verification",
+            json={
+                "registration_authority": "GMC",
+                "registration_number": "0000000",
+            },
+        )
+
+        assert response.status_code == 400
+
+    def test_verifying_twice_updates_rather_than_duplicates(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        db_session: Session,
+        admin: User,
+        sent: list[dict[str, str]],
+    ) -> None:
+        """Re-checking is an update of when it was last confirmed."""
+        assessor_id = self._accept_an_assessor(
+            holder_client, test_client, sent
+        )
+
+        admin_client = _login(test_client, "orgadmin")
+        payload = {
+            "registration_authority": "GMC",
+            "registration_number": "7654321",
+        }
+
+        first = admin_client.post(
+            f"/api/passport/assessors/{assessor_id}/registration-verification",
+            json=payload,
+        )
+        second = admin_client.post(
+            f"/api/passport/assessors/{assessor_id}/registration-verification",
+            json=payload,
+        )
+
+        assert first.status_code == 201
+        assert second.status_code == 201, second.text
+
+        rows = db_session.scalars(
+            select(AssessorRegistrationVerification).where(
+                AssessorRegistrationVerification.user_id == assessor_id
+            )
+        ).all()
+        assert len(rows) == 1
+
+    def test_revoking_removes_the_membership(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        db_session: Session,
+        admin: User,
+        org: Organisation,
+        sent: list[dict[str, str]],
+    ) -> None:
+        assessor_id = self._accept_an_assessor(
+            holder_client, test_client, sent
+        )
+
+        admin_client = _login(test_client, "orgadmin")
+        response = admin_client.delete(
+            f"/api/passport/assessors/{assessor_id}/membership"
+        )
+
+        assert response.status_code == 200, response.text
+
+        remaining = db_session.scalar(
+            select(organisation_member.c.user_id).where(
+                organisation_member.c.organisation_id == org.id,
+                organisation_member.c.user_id == assessor_id,
+            )
+        )
+        assert remaining is None
+
+    def test_revoking_leaves_the_sign_offs_they_made_intact(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        db_session: Session,
+        admin: User,
+        sent: list[dict[str, str]],
+    ) -> None:
+        """A record of who assessed somebody is not undone by that person
+        later losing their access — the assessment happened."""
+        assessor_id = self._accept_an_assessor(
+            holder_client, test_client, sent
+        )
+
+        # A resolved request stands in for a sign-off the assessor made.
+        passport_id = db_session.scalar(select(Passport.id))
+        db_session.add(
+            PassportSignOffRequest(
+                passport_id=passport_id,
+                signoff_id="2026-03-14-a-thing",
+                competency_id=COMPETENCY,
+                assessor_user_id=assessor_id,
+                status="signed_off",
+            )
+        )
+        db_session.commit()
+
+        admin_client = _login(test_client, "orgadmin")
+        response = admin_client.delete(
+            f"/api/passport/assessors/{assessor_id}/membership"
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json()["sign_offs_kept"] == 1
+
+        still_there = db_session.scalar(
+            select(PassportSignOffRequest.id).where(
+                PassportSignOffRequest.assessor_user_id == assessor_id,
+                PassportSignOffRequest.status == "signed_off",
+            )
+        )
+        assert still_there is not None
+
+    def test_revoking_never_removes_a_staff_membership(
+        self,
+        test_client: TestClient,
+        db_session: Session,
+        admin: User,
+        assessor: User,
+        org: Organisation,
+        passport_store: LocalPassportStore,
+    ) -> None:
+        """Otherwise a passport route could quietly sack somebody from
+        the trust they actually work for."""
+        admin_client = _login(test_client, "orgadmin")
+        response = admin_client.delete(
+            f"/api/passport/assessors/{assessor.id}/membership"
+        )
+
+        assert response.status_code == 404
+
+        still_staff = db_session.scalar(
+            select(organisation_member.c.user_id).where(
+                organisation_member.c.organisation_id == org.id,
+                organisation_member.c.user_id == assessor.id,
+            )
+        )
+        assert still_staff is not None
+
+    def test_an_admin_at_another_trust_cannot_revoke(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        outsider_admin: User,
+        sent: list[dict[str, str]],
+    ) -> None:
+        assessor_id = self._accept_an_assessor(
+            holder_client, test_client, sent
+        )
+
+        admin_client = _login(test_client, "otheradmin")
+        response = admin_client.delete(
+            f"/api/passport/assessors/{assessor_id}/membership"
+        )
 
         assert response.status_code == 404
 

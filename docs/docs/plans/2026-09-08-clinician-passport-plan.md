@@ -2519,8 +2519,43 @@ explicitly deferred here.
         from the request rows naming them and they are named on none.
         Worth stating outright, since "they got through the gate" is an
         easy thing to mistake for "they may read it".
-- [ ] Add the verify-registration and revoke endpoints for organisation
+- [x] Add the verify-registration and revoke endpoints for organisation
       admins.
+      - **"Admin of the holder's organisation" resolved to two checks,
+        not one.** `manage_users` says _what_ somebody may do and is
+        global; membership says _where_. Either alone is wrong — the
+        competency by itself would make an admin at one trust an
+        administrator of every assessor in Quill. `_require_org_admin_over`
+        requires both, after `_require_shared_org_with_user` in `main.py`,
+        and returns 404 rather than 403 so the response does not confirm
+        an assessor exists to somebody who may not act on them.
+      - **Membership for the admin, reach for the assessor.** An admin
+        administers a place they belong to, so a trainee at a ward does
+        not thereby administer the trust above it; but an assessor the
+        accept endpoint put at a site is reachable from that
+        organisation. Hence `get_member_org_ids` for one and
+        `get_reachable_org_ids` for the other.
+      - **Verification is a row, not a flag on the user.** `Registration`
+        in the record model refuses `verified` without `verified_by` and
+        `verified_on`, because a bare boolean asserts a check happened
+        while recording nothing about who made it or when. The same
+        reasoning gives `AssessorRegistrationVerification`: one row per
+        authority, number and organisation, so an admin who checked a
+        GMC number has not thereby claimed to have checked an NMC one,
+        and two trusts may each hold their own assurance.
+      - **A number the assessor never declared is refused**, or the row
+        would record a check of something Quill has no reason to
+        associate with them. Re-checking updates when it was last
+        confirmed rather than writing a second fact.
+      - **Nothing reaches back into sign-offs already written.** A
+        sign-off is a snapshot of what was known when it was signed, and
+        the flag applies to those signed afterwards; rewriting earlier
+        ones would make the record claim a check that had not happened.
+      - **Revoke removes only an `external` membership**, and a test
+        pins that a `staff` row is refused — otherwise a passport route
+        could quietly sack somebody from the trust they actually work
+        for. The response returns `sign_offs_kept` so an admin sees the
+        sign-offs stand rather than having to trust it.
 - [ ] Tests: an external assessor cannot read a passport, another
       assessor's requests, users or organisations; a consumed or
       expired token is refused; and revoking an assessor's access
