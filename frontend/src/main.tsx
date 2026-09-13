@@ -103,7 +103,7 @@ import { ForcedReloadProvider } from "@lib/compat-generation";
 import { ConnectivityProvider } from "@lib/connectivity";
 import GuestOnly from "./auth/GuestOnly";
 import RequireAuth from "./auth/RequireAuth";
-import RequirePermission from "./auth/RequirePermission";
+import RequireOperator from "./auth/RequireOperator";
 import RequireCompetency from "./auth/RequireCompetency";
 import { RequireFeature } from "./auth/RequireFeature";
 import RequireClinical from "./auth/RequireClinical";
@@ -338,9 +338,9 @@ const routes: RouteObject[] = [
           {
             path: "organisations/new",
             element: (
-              <RequirePermission level="superadmin">
+              <RequireOperator>
                 <CreateOrganisationPage />
-              </RequirePermission>
+              </RequireOperator>
             ),
           },
           {
@@ -382,9 +382,9 @@ const routes: RouteObject[] = [
           },
           {
             element: (
-              <RequirePermission level="superadmin">
+              <RequireOperator>
                 <Outlet />
-              </RequirePermission>
+              </RequireOperator>
             ),
             children: [
               {

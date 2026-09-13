@@ -50,6 +50,7 @@ def seed() -> None:
                 email="educator@ci.local",
                 password_hash=hash_password("educator123"),
                 system_permissions="admin",
+                platform_role="standard",
                 base_profession="teaching_admin",
                 is_active=True,
                 email_verified=True,

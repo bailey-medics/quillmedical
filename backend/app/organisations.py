@@ -144,11 +144,13 @@ def check_user_patient_access(
 ) -> bool:
     """Check whether *user* may access *patient_id*.
 
-    Access is granted if:
-    - the user *is* the patient, OR
-    - they hold ``access_patient_records`` **and** share at least one
-      organisation with the patient, OR
-    - they hold an active ExternalPatientAccess grant.
+    Three routes reach a record, and each pairs a competency saying
+    *what* with a scope saying *which*:
+
+    - ``access_own_patient_records`` and the account's own patient link
+    - ``access_granted_patient_records`` and an ExternalPatientAccess
+      grant naming this patient
+    - ``access_patient_records`` and a shared organisation
 
     **The rank hatch this used to open with is gone.** Its first line
     returned ``True`` for any ``admin`` or ``superadmin`` — "always True
@@ -170,27 +172,40 @@ def check_user_patient_access(
     Returns:
         True if they may access the patient, False otherwise.
     """
-    # Patient can always access their own records
-    if user.fhir_patient_id and user.fhir_patient_id == patient_id:
+    competencies = user.get_final_competencies()
+
+    # Their own record. The patient link is the scope: it names exactly
+    # one record, so there is nothing further to check.
+    if (
+        "access_own_patient_records" in competencies
+        and user.fhir_patient_id
+        and user.fhir_patient_id == patient_id
+    ):
         return True
 
-    # Org membership check, paired with the competency. Membership alone
-    # is not enough: sharing an organisation with a patient says only
-    # that they are in reach, never that this person may read them.
-    if "access_patient_records" in user.get_final_competencies():
-        shared = get_shared_org_ids(db, user.id, patient_id)
-        if shared:
+    # A record they were invited to. The grant row names which patient,
+    # exactly as organisation membership does below; without the pairing
+    # revoking a competency could not cut access, only deleting the row
+    # could.
+    if "access_granted_patient_records" in competencies:
+        grant = db.scalar(
+            select(ExternalPatientAccess).where(
+                ExternalPatientAccess.user_id == user.id,
+                ExternalPatientAccess.patient_id == patient_id,
+                ExternalPatientAccess.revoked_at.is_(None),
+            )
+        )
+        if grant is not None:
             return True
 
-    # External access grant check
-    grant = db.scalar(
-        select(ExternalPatientAccess).where(
-            ExternalPatientAccess.user_id == user.id,
-            ExternalPatientAccess.patient_id == patient_id,
-            ExternalPatientAccess.revoked_at.is_(None),
-        )
-    )
-    return grant is not None
+    # A patient they are treating. Membership alone is not enough:
+    # sharing an organisation says only that the patient is in reach,
+    # never that this person may read them.
+    if "access_patient_records" in competencies:
+        if get_shared_org_ids(db, user.id, patient_id):
+            return True
+
+    return False
 
 
 def get_org_patient_ids(db: Session, org_ids: list[int]) -> set[str]:

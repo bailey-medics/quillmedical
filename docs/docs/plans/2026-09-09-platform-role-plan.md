@@ -816,6 +816,409 @@ does not, and removing the ladder removes the suggestion.
               - [ ] **3. The column itself.** `drop_column`, the three response schemas,
                     and the `permission_level` query parameter. The only unit needing
                     the two approvals above.
+                    - **Blocked on the migration merging, not on anything in the code.**
+                      Units 1 and 2 are on `feature/contract-backend-reads` (#657),
+                      which is open. Dropping the column on top of that branch would
+                      put the destructive migration and the migration it depends on in
+                      one diff, so both approval gates would be granted while looking
+                      at work that is still under review — and a change requested on
+                      #657 would rebase the drop underneath it. Expand, migrate,
+                      **then** contract: start this unit from a branch cut after #657
+                      lands.
+                    - **87 references remain, not the 46 recorded above.** Counted
+                      after unit 2: 36 in `backend/app`, 33 test files, 18 frontend
+                      files outside tests, and four scripts —
+                      `create_superuser.py`, `admin_cli.py`, `seed_ci.py` and
+                      `update_system_permissions.py`, the last of which exists only to
+                      write the column. The plan's figures have now been wrong four
+                      times; count before sizing this unit rather than trusting the
+                      number above.
+                    - **Most of that is carriage, and could move first.** Only the
+                      `permission_level` filter and the three response schemas are the
+                      breaking change. Migrating the scripts, tests and frontend types
+                      onto `platform_role` needs neither approval and would leave the
+                      contract diff small enough to review properly — worth doing as
+                      its own branch if this unit stays blocked for long.
+                    - **The frontend carriage was not carriage.** Counted as types to
+                      retype; reading it found three different things, two of them
+                      dead code and the third a gap.
+                      - **`RequirePermission` was a hierarchy nobody climbed.** Its
+                        `level` prop compared against the four rungs, but only its own
+                        tests ever passed anything below `superadmin`, and that branch
+                        already read `platform_role`. So `PERMISSION_HIERARCHY`, the
+                        `single-user` fallback and the prop itself could not run.
+                        Replaced by `RequireOperator`, which takes no level and asks
+                        the one question left. The fourth dead thing this plan has
+                        turned up, after `DEP_REQUIRE_STAFF`, `require_superadmin` and
+                        `update_system_permissions.py` — check for consumers before
+                        migrating anything else here.
+                      - **Three `AdminPage` fetch gates could never fail.** Each read
+                        `!["admin", "superadmin"].includes(userPermissions)` before
+                        loading users, patients or organisations, on a page whose whole
+                        subtree sits behind `RequireCompetency manage_users` in
+                        `main.tsx`. Removed, along with the `userPermissions`
+                        derivation they were the last consumers of.
+                    - **`NewMessageModal` blocks, and the competency it wants does not
+                      exist.** `system_permissions === "single-user"` decides whether
+                      the composer hides the patient picker. The obvious migration is a
+                      competency meaning "only their own health" — but `patient` holds
+                      exactly one competency, `access_patient_records`, and **nineteen
+                      professions hold that same one**. It distinguishes nobody; the
+                      scoping happens in the route, not the competency.
+                      - **So what marks a patient account is an open question.** The
+                        candidates are holding no staff competency at all, or being
+                        linked to a patient record — `User.fhir_patient_id` exists and
+                        is nullable, but `MeOut` does not serve it. Either way it is a
+                        modelling decision plus a backend change, not a retype.
+                      - **Answered with `fhir_patient_id`, and it is not a
+                        stopgap.** `MeOut` serves the patient record an account is
+                        linked to, and the modal asks that. It is how the backend
+                        already answers the same question — `organisations.py:174`,
+                        `main.py:5314` and `main.py:5500` all test
+                        `user.fhir_patient_id == patient_id` — so the interface
+                        stops inferring what the API knows. Additive, no decision
+                        file.
+                      - **The split did not replace it, though it was written as
+                        though it would.** `access_own_patient_records` now belongs
+                        to `patient` alone, so a competency *can* mark a patient —
+                        the condition under which this field was said to become
+                        removable. It does not become removable, for two reasons
+                        found on re-reading:
+                        - A clinician registered at the trust they work in holds
+                          both competencies, so a modal asking for the own-records
+                          one would hide the patient picker from someone messaging
+                          about a patient they treat.
+                        - The modal needs *which* record is theirs, to name it on
+                          the conversation. A competency says what someone may do
+                          and never which record it applies to.
+                      - **So the two answer different questions** and the comments
+                        saying otherwise were corrected, along with the test that
+                        asserted no competency could ever serve. It now asserts the
+                        case that keeps the field: someone who is both.
+
+## Finding: the staff picker's rank filter is removed, not replaced
+
+`?permission_level=staff` populates three "add staff" pickers —
+`AddStaffToOrgPage`, `AddSiteToOrgPage` and `EditSitePage`. It filters by the
+retiring column, and `PERMISSION_LEVELS` exists only to serve it, so it is the
+last thing standing between this plan and the column drop.
+
+**Every replacement filter was wrong, and the example that broke them is a
+patient becoming a healthcare assistant.** Filtering on existing staff
+membership, on holding a staff competency, or on not being linked to a patient
+record each hides exactly that person — the one case the picker most needs to
+support. A filter cannot express "could become staff" without deciding who
+never can.
+
+**Decided: anyone with an account can be added as staff.** The parameter goes
+and nothing takes its place; the picker lists users. One fewer concept rather
+than a substitute for one.
+
+- **A `staff` competency was considered and rejected.** It would name a
+  category of person where every other competency names an action, and it would
+  duplicate what `capacity="staff"` membership already records — two sources of
+  truth that can disagree, which is the fault `site_staff_member.role` was split
+  apart to remove.
+- **`fhir_patient_id` was considered and rejected**, and the reasoning is worth
+  keeping: nearly every staff member is or will one day be a patient, so a
+  consultant registering at their own trust would trigger it. It also
+  contradicts the "a patient is not a user" finding below, which records that
+  field as the *link* between two roles the same human holds.
+
+### The confirmation is where the judgement moves
+
+**Warn when the target holds no staff-like competency**, and in the same step
+offer to grant one.
+
+- **It survives every edge case.** A patient, an advocate, and an LPOA holder
+  all hold nothing staff-like and all get the prompt. A consultant who is also
+  a patient holds clinical competencies and does not.
+- **The grant is the point, not the warning.** Adding someone as staff today
+  writes a membership row and nothing else, so a new HCA can do nothing until
+  somebody separately remembers to edit their competencies. Asking *which*
+  competency makes that one action instead of two, and makes the person adding
+  them state what the new starter will actually do.
+- **"Staff-like" means anything in the competency catalogue except the
+  patient's own-records competency.** Exact once `access_own_patient_records`
+  exists — see the finding below — which is why this waits on that split.
+- **Decided: both, in that order.** The prompt offers a profession first,
+  because that is how the job is described — "they are starting as a healthcare
+  assistant" — and then individual competencies, either alongside it or on their
+  own. A profession without the second step is rigid: it grants what the
+  template says and nothing else, when the point of `additional_competencies` is
+  that real people diverge from templates.
+  - **Granting a profession must keep what the person already holds.** A patient
+    becoming an HCA keeps their own-records competency and gains the HCA set;
+    the profession adds, never replaces.
+  - **Done: the grant is additive.** `update_user` now carries the old
+    profession's competencies into `additional_competencies`, minus anything
+    the new profession grants in its own right, so nothing is lost and nothing
+    is duplicated. It previously assigned the field alone, dropping every
+    competency from the old profession unless separately listed — silently,
+    with nothing recording why.
+    - **The merge runs after an explicit `additional_competencies` payload.**
+      Written the other way round first, where a request carrying both fields
+      discarded the carried-over set. Ordering is the whole of the change.
+    - **`removed_competencies` still wins**, applied after the merge, so a
+      profession change cannot quietly undo a deliberate removal — the same
+      silent surprise in the other direction.
+    - **Verified by reverting.** Restoring the bare assignment turns
+      `test_a_patient_becoming_a_delegate_keeps_their_own_records` red, so the
+      test pins the fix rather than passing because the professions happen to
+      overlap. `teaching_delegate` is the profession that exposes it:
+      `healthcare_assistant` grants `access_patient_records` too, so the loss
+      is invisible on the obvious example.
+  - **It is the same conclusion as the stored-profession finding below**,
+    reached from the other end: that finding argues a profession should
+    initialise a user and then be let go, which is what "keep what they had and
+    add the new set" means in practice. Two routes to one answer is a reason to
+    trust it.
+  - **So the two are one unit of work.** Making the grant additive and making
+    `base_profession` a template rather than stored state are the same change,
+    and the staff-picker prompt is what will exercise it.
+
+### Finding: `patient_advocate` is accepted but does not exist
+
+Surfaced while testing the rule above against an advocate — a relative holding
+LPOA for someone who cannot manage their own care.
+
+- **The grant mechanism is built.** `ExternalPatientAccess` is per-patient,
+  invite-based and revocable, and its docstring names patient advocates.
+- **The profession is not.** `InviteExternalIn` validates `user_type` against
+  `^(external_hcp|patient_advocate)$` and `accept_invite` writes it straight to
+  `base_profession`, but neither id appears in `base-professions.yaml`.
+- **`get_profession_base_competencies` returns `[]` for an unknown id**, with no
+  error, so an accepted advocate invite creates an account holding no
+  competencies at all. Latent while nobody uses it, and wrong regardless: a
+  validated field writes a value that silently resolves to nothing.
+- **The grant does still admit them**, checked rather than assumed. The
+  external-grant branch of `check_user_patient_access` runs after the competency
+  check and returns on the grant alone, so an advocate holding no competencies
+  reaches the record they were invited to. The empty profession is therefore
+  latent rather than breaking — but it means an advocate's access rests entirely
+  on one table row, with no competency recording what they may do with it.
+
+### Decided: `access_granted_patient_records`, and both professions defined
+
+Not yet built. Recorded here so the reasoning survives.
+
+**The third route gets a competency, like the other two.** Reading a record you
+were invited to is a different permission from reading your own and from reading
+your patients', and it was the only one of the three naming no competency at
+all.
+
+- **`access_granted_patient_records`**, in `clinical.yaml`. It names what the
+  holder may do rather than how the scope is decided — `read_defined_other_patient_record`
+  was the first suggestion and describes the mechanism instead, which no other
+  id in the catalogue does. It reads symmetrically beside the split recorded
+  below:
+  - `access_own_patient_records` — your own record
+  - `access_granted_patient_records` — someone else's, by invitation
+  - `access_patient_records` — your patients', by clinical role
+- **`patient_advocate` and `external_hcp` both hold it**, and nothing else.
+  Neither is staff anywhere and neither reaches a caseload.
+- **The grant branch must require it.** The `ExternalPatientAccess` row says
+  *which* patient and the competency says *what*, the same pairing organisation
+  and site membership already use. Without it, revoking a competency could not
+  cut access — only deleting the row could, and the competency would be
+  documentation rather than a gate, which is the `access_clinic_admin` fault
+  this plan already records.
+- **It is a behaviour change, not an addition.** An existing advocate account
+  without the competency loses access when the pairing lands. Harmless with no
+  real users, and worth stating because it touches who may read a patient
+  record.
+
+**Three routes reach a record, and only one is a competency**: your own record
+via `fhir_patient_id`, someone else's via a grant, and your patients' via a
+competency plus a shared organisation. A model that assumes the third is the
+only one will keep mis-sorting advocates.
+
+## Finding: nobody grants themselves competencies
+
+Surfaced while deciding what should gate `update_my_competencies` once the rank
+column goes, and the question turned out to be wider than that route.
+
+**Two routes write competencies, and both could be pointed at the caller.**
+`PATCH /api/cbac/my-competencies` is self-scoped by construction, and
+`PATCH /users/{id}` takes any id including one's own. Neither checked *which*
+competencies were being granted, so a holder of `manage_users` could award
+themselves anything in the catalogue — clinical ids included, and more
+`manage_users`. The competency was the key to its own lock.
+
+**Decided: nobody edits their own competencies, profession or platform role.**
+Ask another holder of `manage_users`, so the person granting and the person
+gaining are never the same.
+
+- **Both routes needed it.** Guarding only the self-route would have been
+  decorative: an admin could pass their own id to `PATCH /users/{id}` and
+  achieve the same thing.
+- **An operator is exempt**, because they already reach everything and somebody
+  has to be able to bootstrap a deployment.
+- **Name, email and password stay editable on oneself.** Ordinary self-service,
+  available on the profile routes anyway, so blocking it here would be
+  inconsistent rather than stricter.
+
+### Why not "you cannot grant what you do not hold"
+
+The textbook rule, and it breaks on the ordinary case. **The person who
+administers accounts is usually not the person qualified to judge clinical
+competence**: an IT administrator should be able to record that a doctor may
+prescribe without being able to prescribe themselves.
+
+That is what the NHS Registration Authority model separates — the RA does not
+decide someone is a consultant, they record that an employer verified it. So
+the authority to grant and the evidence for granting are different things.
+
+**What that suggests, and is not built here:** granting a clinical competency
+should require pointing at something — a qualification, a sign-off, a named
+person who vouched. The clinician passport work is already part of the way
+there. Recorded as a direction rather than a decision.
+
+## Finding: the three-way split sits inside the industry standard
+
+Researched before building the competency split, to check whether the model was
+eccentric. It is not, and the closest comparator is the one nobody here had
+heard of.
+
+### NHS national RBAC is almost the same design
+
+The Spine's [national RBAC](https://digital.nhs.uk/developer/guides-and-documentation/security-and-authorisation/national-rbac-for-developers)
+maps onto this codebase directly:
+
+- **Job Roles ("R" codes)** — `base_profession`
+- **Activities ("B" codes)** — competencies
+- **Role profiles, which are organisation-scoped** — membership
+
+Three details match decisions reached here independently:
+
+- **Activities can be assigned to a role profile directly**, not only through a
+  job role — which is `additional_competencies`. The e-Referral Service has
+  "activities but no associated roles" at all, so a competency without a
+  profession is a supported shape rather than a workaround.
+- **The organisation is a separate element of the role profile**, not part of
+  the activity. That is "the competency says what, membership says where",
+  which this plan arrived at by splitting `site_staff_member.role`.
+- **Several hundred attributes** are granted in combination nationally, so the
+  catalogue here is conservative rather than over-elaborate.
+
+### Where this codebase sits outside the norm, deliberately
+
+**Most EPRs keep patients out of the permission model entirely.** Epic, Cerner
+and the Spine put the portal on a separate plane with its own identity;
+patients hold a portal account, not activities. `access_own_patient_records`
+brings the patient inside one model, which is the unusual choice.
+
+It is defensible, but the evidence for it is weaker than it first looked — see
+the correction below.
+
+### The advocate design matches practice closely
+
+[NHS proxy access](https://www.england.nhs.uk/long-read/proxy-access/) states
+the same shape this plan reached from the LPOA example:
+
+> "Proxy has their own account and login credentials"
+
+> "The level of access can be different from that of the patient... A patient
+> may choose to have more than one proxy, and each can have a different level
+> of access."
+
+Separate account, per patient, individually revocable, audited — which is
+`ExternalPatientAccess` plus `access_granted_patient_records`.
+
+[FHIR's Permission resource](https://build.fhir.org/ig/HL7/data-access-policies/en/StructureDefinition-Permission.html)
+splits the same way, `rule.data` for which records and `rule.activity` for what
+actions. Notably it does **not** distinguish a `RelatedPerson`'s delegated
+access from a `Practitioner`'s role-based access, so the three-way split here is
+more explicit than the standard requires.
+
+- **The sector says "proxy" or "shared access" where this says "granted".**
+  Worth knowing when reading the literature; not a reason to rename, since
+  "granted" describes the mechanism this codebase actually uses.
+
+### Two gaps, both known
+
+- **No break-the-glass.** Near universal in EPRs, and already recorded as out
+  of scope under the cross-organisation search finding.
+- **No safeguarding on the invite.** NHS proxy access requires identity checks,
+  a capacity assessment and explicitly "assessment of the risk of coercion"
+  before a proxy account is created. The invite route here asks for an email
+  address. A product gap rather than a modelling one, and it matters most for
+  exactly the LPOA case that prompted this research.
+
+### Employees use two systems to see their own data
+
+[Analysis of Employee Patient Portal Use and Electronic Health Record Access at
+an Academic Medical Center](https://pubmed.ncbi.nlm.nih.gov/32557441/)
+(*Applied Clinical Informatics*, 2020) followed employees at a large medical
+centre who looked at their own health data. Of 28,631 who did, 25,193 used the
+patient portal and 13,318 went to the EHR — so roughly 9,900 used both.
+
+The paper attributes the double use to the portal showing *less* than the EHR:
+clinical notes were over 42% of employees' EHR accesses. That is an argument
+about what each system displays rather than about how identity is modelled, so
+it supports a unified model only indirectly. Recorded because it is the best
+available measure of how often one person is both staff and patient — nearly a
+third of the employees who looked at all.
+
+## Finding: `access_patient_records` names two different permissions
+
+Surfaced while migrating `NewMessageModal` off `system_permissions`.
+
+**For a consultant it means "read the records of patients I am treating". For a
+patient it means "read my own record".** One id, two permissions, and the
+`patient` profession carries a comment — *"Own records only (filtered by
+system)"* — explaining that the competency does not mean what it says. That is
+the same fault as `system_permissions` holding rank and place in one column,
+one layer down.
+
+**The counts show it.** Eighteen staff professions hold `access_patient_records`
+alongside `patient`, from `healthcare_assistant` with three competencies to
+`consultant` with twenty-eight. Only `patient` holds it alone, so today a
+patient is identifiable only by holding *nothing else* — an inference rather
+than a fact.
+
+- **The split:** `access_own_patient_records` for the patient, leaving
+  `access_patient_records` as the clinical one scoped by shared organisation.
+  `isPatientUser` then becomes an honest competency check.
+- **Nothing is mis-scoped today.** `check_user_patient_access` lets a patient
+  through on `fhir_patient_id == patient_id` before any competency is consulted,
+  so this is about naming a permission correctly, not closing a hole.
+- **It touches shared YAML and the generated types**, which `CLAUDE.md` flags as
+  wide blast radius, and it needs the two `main.py` self-access routes and
+  `check_user_patient_access` to learn the new id.
+- **Built ahead of the column drop after all.** The advocate work needed it:
+  `patient_advocate` and `external_hcp` had to hold *something*, and
+  `access_patient_records` would have given them a caseload.
+  - **`access_own_patient_records`** now belongs to the `patient` profession,
+    which previously carried the clinical id under a comment explaining it did
+    not mean what it said.
+  - **`access_granted_patient_records`** belongs to both external professions,
+    paired in `check_user_patient_access` with the grant row.
+  - **The old id keeps its name and its eighteen holders**, so nothing was
+    retired and the CI deletion guard stays green.
+  - **26 messaging tests failed, all for one reason.** The `test_user` fixture
+    declared no profession, took the column default of `patient`, and was then
+    placed as *staff* at an organisation to read a patient there — relying on
+    the patient profession to carry a clinical competency, which is exactly the
+    conflation being removed. It now carries `registered_nurse`.
+  - **One test asserted a bare grant admits anyone**: it gave a clinician an
+    `ExternalPatientAccess` row and expected entry. The pairing refuses that,
+    and the fixture is now `external_hcp`.
+                    - **No CLI replacement for `update-permissions`.** A
+                      `set-platform-role` action and a `just spr` recipe were written
+                      and then removed: the admin pages already set a platform role
+                      through `PATCH /users/{id}`, with the same operator-only guard,
+                      and `create-superadmin` still makes the first operator on a new
+                      environment. The only gap left is promoting an existing user
+                      when nobody can sign in as an operator, which is rare enough not
+                      to justify a second command writing a second column. When the
+                      column goes, `update-permissions` goes with it and nothing
+                      replaces it.
+                    - **`update_system_permissions.py` was dead** — no callers, and
+                      `admin_cli.py`'s `update-permissions` action does the same job
+                      behind `just up`. Deleted rather than migrated, the same finding
+                      as `DEP_REQUIRE_STAFF` and `require_superadmin` before it. That
+                      is three dead things this plan has turned up; expect more.
 - [x] **Remove `default_system_permission` from `shared/base-professions.yaml`.** 25
       professions declared one by the time it went — the count moved twice while this
       plan was being worked through, with `teaching_manager`, `superadmin_profession`
@@ -994,6 +1397,18 @@ quietly does nothing, or something else. Nobody sees this happen and nothing rec
 expands the profession's competencies into that user's own list; after that the user has
 competencies and the profession is not consulted again. The audit trail then records what
 someone actually holds, not a label that stopped being true.
+
+**The staff-picker decision above reaches the same conclusion from the other
+end**, and the two are one unit of work: granting a profession there must keep
+what the person already holds, which is this finding stated as behaviour rather
+than as a model. Whichever is built first settles both.
+
+**Nothing tests the destructive overwrite.** No test in `backend/tests` exercises
+a `base_profession` change through `PATCH /users/{id}`, so the current
+behaviour is unpinned — nothing goes red when it is fixed, and nothing would
+have gone red if it had been introduced by accident. A test asserting the
+silent loss should come first, as the escalation test did for
+`update_my_competencies`, so the fix is a visible change to a red test.
 
 - **This is a breaking API change.** `base_profession` is in two response schemas —
   `UserCompetenciesResponse` in `schemas/cbac.py` and the user response in

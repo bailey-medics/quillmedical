@@ -182,6 +182,8 @@ class MeOut(BaseModel):
         enabled_features: Features enabled on any of the user's orgs.
         clinical_services_enabled: Whether clinical services are enabled.
         competencies: Resolved CBAC competency IDs.
+        fhir_patient_id: The patient record this account belongs to, where
+            the same human is both. Null for staff who are not patients here.
     """
 
     id: int
@@ -198,6 +200,19 @@ class MeOut(BaseModel):
     enabled_features: list[str]
     clinical_services_enabled: bool
     competencies: list[str]
+    # Which record is this person's own. The interface needs it to decide
+    # whether someone is messaging about their own health, and to name
+    # the record when they are; the backend answers the same question
+    # this way in three places.
+    #
+    # `access_own_patient_records` does not replace this, now that it
+    # exists and belongs to the `patient` profession alone. The two
+    # answer different questions: the competency says *may they read
+    # their own record*, this says *which record is theirs*. A clinician
+    # who is also a patient at their own trust holds the competency as
+    # well, so reading it here would hide the patient picker from
+    # someone messaging about a patient they treat.
+    fhir_patient_id: str | None
 
 
 class ServiceHealthStatus(BaseModel):

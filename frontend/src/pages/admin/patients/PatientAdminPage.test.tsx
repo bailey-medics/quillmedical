@@ -56,7 +56,8 @@ describe("PatientAdminPage", () => {
     vi.restoreAllMocks();
     mockNavigate.mockClear();
 
-    // Mock auth context to return admin user (permission checking is done by RequirePermission HOC)
+    // Mock auth context to return admin user (the competency check is
+    // done by the RequireCompetency guard on the /admin subtree)
     vi.spyOn(authContext, "useAuth").mockReturnValue({
       state: {
         status: "authenticated",

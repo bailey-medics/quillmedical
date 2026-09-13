@@ -111,6 +111,33 @@ competencies:
   # PATIENT RECORDS
   # ==========================================================================
 
+  # Three routes reach a patient record, and each names what its holder
+  # may do rather than how the scope is decided. The scope comes from
+  # beside the competency every time: the account's own patient link, an
+  # ExternalPatientAccess grant, or a shared organisation.
+  #
+  #   access_own_patient_records     — your own record
+  #   access_granted_patient_records — someone else's, by invitation
+  #   access_patient_records         — your patients', by clinical role
+  #
+  # See docs/docs/plans/2026-09-09-platform-role-plan.md.
+
+  # Reading your own record, as the subject of it. Held by patients and
+  # by any member of staff who is also a patient here — which is the
+  # ordinary case rather than the exception.
+  - id: access_own_patient_records
+    display_name: "Access Own Patient Records"
+
+  # Reading a record you were invited to, rather than one you treat. The
+  # invite writes an ExternalPatientAccess row naming *which* patient;
+  # this names what the holder may do with it.
+  - id: access_granted_patient_records
+    display_name: "Access Granted Patient Records"
+
+  # Reading the records of patients you are treating, scoped by a shared
+  # organisation. Deliberately not the patient's own competency: for
+  # eighteen staff professions this meant a caseload, and for `patient`
+  # it meant one record, which is two permissions under one id.
   - id: access_patient_records
     display_name: "Access Patient Records"
 

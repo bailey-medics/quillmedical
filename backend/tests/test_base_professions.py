@@ -42,7 +42,10 @@ def test_get_profession_details_unknown_id() -> None:
 
 def test_get_profession_base_competencies_known_id() -> None:
     competencies = get_profession_base_competencies("patient")
-    assert "access_patient_records" in competencies
+    assert "access_own_patient_records" in competencies
+    # Not the clinical one: a patient reaches their own record, never a
+    # caseload. The two were one id until the split.
+    assert "access_patient_records" not in competencies
 
 
 def test_get_profession_base_competencies_unknown_id() -> None:
@@ -53,10 +56,10 @@ def test_resolve_user_competencies_combines_and_removes() -> None:
     result = resolve_user_competencies(
         base_profession="patient",
         additional_competencies=["extra_one"],
-        removed_competencies=["access_patient_records"],
+        removed_competencies=["access_own_patient_records"],
     )
     assert "extra_one" in result
-    assert "access_patient_records" not in result
+    assert "access_own_patient_records" not in result
 
 
 def test_resolve_user_competencies_unknown_profession_defaults_empty() -> None:

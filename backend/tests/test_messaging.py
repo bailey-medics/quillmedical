@@ -60,7 +60,14 @@ def _setup_org_context(
 
 @pytest.fixture
 def second_user(db_session: Session, test_org: Organisation) -> User:
-    """Create a second test user with staff permissions in the same org."""
+    """Create a second test user with staff permissions in the same org.
+
+    ``registered_nurse`` for the same reason as the ``test_user``
+    fixture: declaring no profession takes the column default of
+    ``patient``, whose competency is now ``access_own_patient_records``
+    — their own record, not the caseload this fixture is placed in an
+    organisation to read.
+    """
     user = User(
         username="seconduser",
         email="second@example.com",
@@ -68,6 +75,7 @@ def second_user(db_session: Session, test_org: Organisation) -> User:
         is_active=True,
         email_verified=True,
         system_permissions="staff",
+        base_profession="registered_nurse",
     )
     db_session.add(user)
     db_session.flush()

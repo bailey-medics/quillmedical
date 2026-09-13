@@ -72,6 +72,12 @@ You will be prompted for the username and the new permission level. The four lev
 | `admin`      | User management, patient admin, audit logs         |
 | `superadmin` | System configuration, database access, full access |
 
+This command is on its way out. The four levels held two unrelated ideas —
+whether someone operates Quill, and where they work — and the second has moved
+to organisation and site membership. Once `system_permissions` is dropped, a
+user's platform role is set from the admin pages, and `create-superadmin` above
+still makes the first operator on a new environment.
+
 ### Add a role to a user
 
 Assign an additional role to an existing user:
