@@ -1288,6 +1288,197 @@ class TestAcceptingAnInvitation:
         assert preview.status_code == 200, preview.text
 
 
+class TestTheGateResolvesForAnAcceptedAssessor:
+    """The membership the accept endpoint writes is what lets them in.
+
+    ``requires_feature`` unions organisation membership with site
+    membership resolved through ``organisation_site``, and reads no
+    capacity at all — so an ``external`` member passes exactly as a
+    ``staff`` one does. That is the whole reason no sibling gate is
+    needed, and it is pinned here rather than reasoned about, because
+    it is a property of code in another module that could change
+    without anybody thinking about assessors.
+
+    A passport route also demands ``access_clinician_passport``, which
+    for a new account comes from the ``external_assessor`` profession.
+    Both halves have to hold for an assessor to reach anything, so both
+    are exercised together through a real route.
+    """
+
+    @pytest.fixture
+    def sent(self, monkeypatch: pytest.MonkeyPatch) -> list[dict[str, str]]:
+        outbox: list[dict[str, str]] = []
+
+        def capture(
+            *, to: str, subject: str, html_body: str, **kw: object
+        ) -> None:
+            outbox.append({"to": to, "html_body": html_body})
+
+        monkeypatch.setattr(router, "send_email", capture)
+        return outbox
+
+    def _invite_and_accept(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        passport_id: str,
+        sent: list[dict[str, str]],
+    ) -> int:
+        """Run the real flow, and return the new assessor's user id."""
+        invited = holder_client.post(
+            f"/api/passport/{passport_id}/assessor-invites",
+            json={
+                "email": "okafor@other-trust.nhs.uk",
+                "name": "Dr Amara Okafor",
+                "registration_authority": "GMC",
+                "registration_number": "7654321",
+            },
+        )
+        assert invited.status_code == 201, invited.text
+
+        token = sent[-1]["html_body"].split("token=")[1].split('"')[0]
+
+        accepted = test_client.post(
+            "/api/passport/assessor-invites/accept",
+            json={
+                "token": token,
+                "username": "okafor",
+                # The password ``_login`` uses, so the assessor can then
+                # sign in through the ordinary route like anybody else.
+                "password": "PassportPassword123!",
+            },
+        )
+        assert accepted.status_code == 200, accepted.text
+
+        return int(accepted.json()["user_id"])
+
+    def test_an_organisation_membership_opens_the_gate(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        db_session: Session,
+        sent: list[dict[str, str]],
+    ) -> None:
+        """The ordinary case: the holder sits at organisation level."""
+        passport_id = _create_passport(holder_client)
+        self._invite_and_accept(holder_client, test_client, passport_id, sent)
+
+        assessor_client = _login(test_client, "okafor")
+        response = assessor_client.get("/api/passport/requests/inbox")
+
+        assert response.status_code == 200, response.text
+        assert response.json() == []
+
+    def test_a_site_membership_opens_it_through_its_organisation(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        db_session: Session,
+        holder: User,
+        org: Organisation,
+        sent: list[dict[str, str]],
+    ) -> None:
+        """The feature is enabled on the organisation, not the site.
+
+        So this only works because ``requires_feature`` joins
+        ``organisation_site`` back up to the organisation. A site
+        membership alone would otherwise resolve to nothing.
+        """
+        site = Site(name="Ward 11", type="ward")
+        db_session.add(site)
+        db_session.commit()
+        db_session.refresh(site)
+        db_session.execute(
+            organisation_site.insert().values(
+                organisation_id=org.id, site_id=site.id
+            )
+        )
+        db_session.execute(
+            site_member.insert().values(
+                site_id=site.id, user_id=holder.id, capacity="trainee"
+            )
+        )
+        db_session.commit()
+
+        passport_id = _create_passport(holder_client)
+        assessor_id = self._invite_and_accept(
+            holder_client, test_client, passport_id, sent
+        )
+
+        # The membership written was a site one, not an organisation one.
+        at_site = db_session.scalar(
+            select(site_member.c.capacity).where(
+                site_member.c.site_id == site.id,
+                site_member.c.user_id == assessor_id,
+            )
+        )
+        at_org = db_session.scalar(
+            select(organisation_member.c.user_id).where(
+                organisation_member.c.organisation_id == org.id,
+                organisation_member.c.user_id == assessor_id,
+            )
+        )
+        assert at_site == "external"
+        assert at_org is None
+
+        assessor_client = _login(test_client, "okafor")
+        response = assessor_client.get("/api/passport/requests/inbox")
+
+        assert response.status_code == 200, response.text
+
+    def test_capacity_is_not_read_by_the_gate(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        db_session: Session,
+        sent: list[dict[str, str]],
+    ) -> None:
+        """``external`` passes exactly as ``staff`` would.
+
+        Stated as its own test because the opposite — a gate that
+        quietly required ``staff`` — would leave every invited assessor
+        with a 403 and no obvious cause.
+        """
+        passport_id = _create_passport(holder_client)
+        assessor_id = self._invite_and_accept(
+            holder_client, test_client, passport_id, sent
+        )
+
+        capacity = db_session.scalar(
+            select(organisation_member.c.capacity).where(
+                organisation_member.c.user_id == assessor_id,
+            )
+        )
+        assert capacity == "external"
+
+        assessor_client = _login(test_client, "okafor")
+
+        assert (
+            assessor_client.get("/api/passport/requests/inbox").status_code
+            == 200
+        )
+
+    def test_an_assessor_still_cannot_read_the_holder_s_passport(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        sent: list[dict[str, str]],
+    ) -> None:
+        """The gate is not authorisation, and must not be mistaken for it.
+
+        Passing ``requires_feature`` says only that the passport feature
+        is on where they are. What they may see is still resolved from
+        the request rows naming them, and they are named on none.
+        """
+        passport_id = _create_passport(holder_client)
+        self._invite_and_accept(holder_client, test_client, passport_id, sent)
+
+        assessor_client = _login(test_client, "okafor")
+        response = assessor_client.get(f"/api/passport/{passport_id}")
+
+        assert response.status_code == 404
+
+
 class TestFeatureGate:
     def test_the_feature_must_be_enabled(
         self,

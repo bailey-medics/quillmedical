@@ -2499,8 +2499,26 @@ explicitly deferred here.
       - Consuming the invite is what makes it single-use: the token
         cannot enforce that, so `accepted_at` on the row is the check,
         and the endpoint must refuse a row already carrying one.
-- [ ] Confirm `requires_feature("passport")` resolves through the
+- [x] Confirm `requires_feature("passport")` resolves through the
       assessor's new membership, so no sibling gate is needed.
+      - **Confirmed, and no code was needed.** `requires_feature` in
+        `features/gating.py` unions organisation membership with site
+        membership joined back up through `organisation_site`, so either
+        shape the accept endpoint writes resolves to the holder's
+        organisation, which is where the feature is enabled.
+      - **It reads no capacity at all**, so `external` passes exactly as
+        `staff` does. That is the property the whole design leans on,
+        and it lives in another module that could change without anybody
+        thinking about assessors — so it is pinned by tests rather than
+        left as a reasoned conclusion. The opposite, a gate quietly
+        requiring `staff`, would leave every invited assessor with a 403
+        and no obvious cause.
+      - **The gate is not authorisation**, and a test says so: an
+        accepted assessor passes `requires_feature` and still gets a 404
+        on the holder's passport, because what they may see is resolved
+        from the request rows naming them and they are named on none.
+        Worth stating outright, since "they got through the gate" is an
+        easy thing to mistake for "they may read it".
 - [ ] Add the verify-registration and revoke endpoints for organisation
       admins.
 - [ ] Tests: an external assessor cannot read a passport, another
