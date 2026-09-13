@@ -9,7 +9,6 @@ import Admin from "@/components/admin";
 import { useAuth } from "@/auth/AuthContext";
 import { api } from "@/lib/api";
 import { FHIR_POLLING_TIME } from "@/lib/constants";
-import type { SystemPermission } from "@/types/cbac";
 import { useEffect, useState } from "react";
 
 /**
@@ -67,22 +66,12 @@ export default function AdminPage() {
   // LoginPage and UserInfoUpdatePage rather than a new one.
   const isClinical = import.meta.env.VITE_CLINICAL_SERVICES_ENABLED !== "false";
 
-  // Extract system permissions from auth state
-  const userPermissions: SystemPermission =
-    state.status === "authenticated"
-      ? (state.user.system_permissions as SystemPermission)
-      : "single-user";
-
   // Fetch users (loads immediately)
   useEffect(() => {
     let cancelled = false;
 
     async function fetchUsers() {
-      // Only fetch if user is authenticated and has admin permissions
-      if (
-        state.status !== "authenticated" ||
-        !["admin", "superadmin"].includes(userPermissions)
-      ) {
+      if (state.status !== "authenticated") {
         setUsersLoading(false);
         return;
       }
@@ -114,7 +103,7 @@ export default function AdminPage() {
     return () => {
       cancelled = true;
     };
-  }, [state.status, userPermissions]);
+  }, [state.status]);
 
   // Fetch patients (waits for FHIR to be ready)
   useEffect(() => {
@@ -134,11 +123,7 @@ export default function AdminPage() {
         return;
       }
 
-      // Only fetch if user is authenticated and has admin permissions
-      if (
-        state.status !== "authenticated" ||
-        !["admin", "superadmin"].includes(userPermissions)
-      ) {
+      if (state.status !== "authenticated") {
         setPatientsLoading(false);
         return;
       }
@@ -188,17 +173,14 @@ export default function AdminPage() {
     return () => {
       cancelled = true;
     };
-  }, [state.status, userPermissions, isClinical]);
+  }, [state.status, isClinical]);
 
   // Fetch organisations
   useEffect(() => {
     let cancelled = false;
 
     async function fetchOrganisations() {
-      if (
-        state.status !== "authenticated" ||
-        !["admin", "superadmin"].includes(userPermissions)
-      ) {
+      if (state.status !== "authenticated") {
         setOrganisationsLoading(false);
         return;
       }
@@ -226,7 +208,7 @@ export default function AdminPage() {
     return () => {
       cancelled = true;
     };
-  }, [state.status, userPermissions]);
+  }, [state.status]);
 
   // TODO: Wire up actual API callbacks for:
   // - onLinkUserPatient
