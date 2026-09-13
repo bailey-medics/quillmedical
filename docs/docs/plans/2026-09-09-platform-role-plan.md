@@ -756,7 +756,7 @@ does not, and removing the ladder removes the suggestion.
                       - **The scoping is asserted beside the change**, so dropping a
                         display filter cannot later be mistaken for dropping the place
                         check. `test_list_delegates_lists_everyone.py`.
-              - [ ] **2. The form and the badge.** Decided rather than derived, so the
+              - [x] **2. The form and the badge.** Decided rather than derived, so the
                     reasoning is recorded here:
                     - **The badge shows only operators.** `PermissionBadge` renders a
                       SUPERADMIN pill where it applies and nothing otherwise. The
@@ -776,6 +776,43 @@ does not, and removing the ladder removes the suggestion.
                     - **The create API must accept `platform_role`**, which it does not
                       today. That backend work belongs with this unit rather than the
                       column drop, since the form cannot set what the API will not take.
+                    - **Done, in two commits.** The badge first, then the form and the
+                      write paths.
+                      - **The badge could not read the column, because nothing served
+                        it.** `MeOut` carried `platform_role`; `UserSummaryItem` and
+                        `UserOut` carried only `system_permissions`, so the user list
+                        and the user page had nothing to show. Added to both, with
+                        their three construction sites in `main.py`. Additive, no
+                        decision file. Expect this shape again: a frontend read cannot
+                        move until the response schema behind it does.
+                      - **Every reference to the column was a read.** The expand step
+                        added `platform_role` and backfilled it, and the routes
+                        migrated to consult it, but no route ever *wrote* it — an
+                        operator could only be made by hand in the database. Both
+                        request schemas now accept it, validated through
+                        `validate_platform_role`.
+                      - **Only an operator may make another.** `manage_users` opens
+                        these routes and says what someone may administer; it does not
+                        say they may promote someone to run the platform. The guard
+                        mirrors the one over `system_permissions`, and the promotion
+                        adds `superadmin_profession`'s competencies alongside the
+                        person's own profession — without them a new operator would be
+                        refused by every competency gate.
+                      - **The create default is `standard`.** An operator is made
+                        deliberately, never by omitting a field.
+                      - **The summary row keeps plain text beside the badge.** The
+                        badge renders nothing for a standard account, so a label
+                        pointing at an empty space reads as a fault rather than an
+                        answer. The row shows the badge for an operator and the word
+                        "Standard" otherwise.
+                      - **The user list's permission filter still reads the old
+                        column.** Filtering on two values, one of which renders
+                        nothing, offers the reader no way to narrow anything, so it
+                        goes with the column in unit 3.
+                      - **The step heading and the summary label are both "Platform
+                        role"**, so five form tests asserting the text by name became
+                        ambiguous. They now match the heading by role, which is what
+                        they meant: step 4 rendered.
               - [ ] **3. The column itself.** `drop_column`, the three response schemas,
                     and the `permission_level` query parameter. The only unit needing
                     the two approvals above.

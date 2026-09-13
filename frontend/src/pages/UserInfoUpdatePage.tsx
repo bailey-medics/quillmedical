@@ -47,6 +47,9 @@ import competenciesData from "@/generated/competencies.json";
 import baseProfessionsData from "@/generated/base-professions.json";
 import { api } from "@/lib/api";
 import { useAuth } from "@/auth/AuthContext";
+import PlatformRoleBadge, {
+  type PlatformRole,
+} from "@/components/badge/PlatformRoleBadge";
 import ErrorState from "@/components/error-state/ErrorState";
 
 /**
@@ -70,6 +73,7 @@ interface UserFormData {
   additionalCompetencies: CompetencyId[];
   removedCompetencies: CompetencyId[];
   systemPermissions: SystemPermission;
+  platformRole: PlatformRole;
   organisationIds: string[];
   siteIds: string[];
 }
@@ -362,29 +366,45 @@ function Step3Permissions({
   const { state } = useAuth();
   const isSuperadmin = state.user?.platform_role === "superadmin";
 
-  const permissionOptions = [
-    { value: "single-user", label: "Single-user - No staff access" },
-    { value: "staff", label: "Staff - Basic access" },
-    { value: "admin", label: "Admin - User & patient management" },
+  // A dropdown rather than a checkbox, though there are only two
+  // options. A checkbox reads more naturally for a yes/no, but the
+  // dropdown leaves room for further platform roles without redesigning
+  // the step.
+  //
+  // Only an operator is offered the operator option, matching the
+  // backend guard on PATCH /users/{id}: the manage_users competency says
+  // what someone may administer, never that they may promote someone to
+  // run the platform.
+  const platformRoleOptions = [
+    { value: "standard", label: "Standard - Not a Quill operator" },
     ...(isSuperadmin
-      ? [{ value: "superadmin", label: "Super Admin - Full system access" }]
+      ? [
+          {
+            value: "superadmin",
+            label: "Superadmin - Operates Quill itself",
+          },
+        ]
       : []),
   ];
 
   return (
     <Stack gap="md">
-      <Heading>System permissions</Heading>
-      <BodyText>Set the system permission level for this user.</BodyText>
+      <Heading>Platform role</Heading>
+      <BodyText>
+        Whether this person operates Quill itself. It grants no clinical access:
+        what someone may do with patient records comes from their competencies,
+        wherever they work.
+      </BodyText>
 
       <SelectField
-        label="System permission level"
-        data={permissionOptions}
-        value={formData.systemPermissions}
+        label="Platform role"
+        data={platformRoleOptions}
+        value={formData.platformRole}
         onChange={(value) => {
           if (value) {
             setFormData({
               ...formData,
-              systemPermissions: value as SystemPermission,
+              platformRole: value as PlatformRole,
             });
           }
         }}
@@ -443,16 +463,17 @@ function Step4Review({
             </BodyTextInline>
           </Group>
           {/*
-            Plain text, not a badge. This row echoes the dropdown above
-            it, which still carries the four `system_permissions` rungs;
-            `PlatformRoleBadge` marks operators only, so it would leave
-            this label pointing at nothing for almost every user. The row
-            becomes a platform-role control with the dropdown, in the
-            form unit of the platform role plan.
+            The badge marks operators and renders nothing otherwise, so
+            the plain text carries the standard case — a label pointing
+            at an empty space reads as a fault rather than as an answer.
           */}
           <Group justify="space-between">
-            <BodyTextBold>System permissions:</BodyTextBold>
-            <BodyTextInline>{formData.systemPermissions}</BodyTextInline>
+            <BodyTextBold>Platform role:</BodyTextBold>
+            {formData.platformRole === "superadmin" ? (
+              <PlatformRoleBadge platformRole={formData.platformRole} />
+            ) : (
+              <BodyTextInline>Standard</BodyTextInline>
+            )}
           </Group>
           {selectedOrgs.length > 0 && (
             <Group justify="space-between">
@@ -583,6 +604,7 @@ export default function UserInfoUpdatePage() {
     additionalCompetencies: [],
     removedCompetencies: [],
     systemPermissions: "staff",
+    platformRole: "standard",
     organisationIds: [],
     siteIds: [],
   });
@@ -603,6 +625,7 @@ export default function UserInfoUpdatePage() {
           additional_competencies?: string[];
           removed_competencies?: string[];
           system_permissions?: SystemPermission;
+          platform_role?: PlatformRole;
           organisation_ids?: number[];
           site_ids?: number[];
         }>(`/users/${userId}`);
@@ -617,6 +640,7 @@ export default function UserInfoUpdatePage() {
           additionalCompetencies: data.additional_competencies || [],
           removedCompetencies: data.removed_competencies || [],
           systemPermissions: data.system_permissions || "staff",
+          platformRole: data.platform_role || "standard",
           organisationIds: data.organisation_ids
             ? data.organisation_ids.map(String)
             : [],
@@ -738,6 +762,7 @@ export default function UserInfoUpdatePage() {
         additional_competencies: CompetencyId[];
         removed_competencies: CompetencyId[];
         system_permissions: SystemPermission;
+        platform_role: PlatformRole;
         password?: string;
         organisation_ids: number[];
         site_ids: number[];
@@ -749,6 +774,7 @@ export default function UserInfoUpdatePage() {
         additional_competencies: formData.additionalCompetencies,
         removed_competencies: formData.removedCompetencies,
         system_permissions: formData.systemPermissions,
+        platform_role: formData.platformRole,
         organisation_ids: formData.organisationIds.map(Number),
         site_ids: formData.siteIds.map(Number),
       };
