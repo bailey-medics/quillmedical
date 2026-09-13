@@ -2422,10 +2422,65 @@ explicitly deferred here.
         absence: verification is an administrator's later act recorded
         against the assessor, and a flag on the invitation would be
         read as Quill having checked something it has not.
-- [ ] Add the invite endpoint and an email template alongside
+- [x] Add the invite endpoint and an email template alongside
       `features/teaching/email_templates.py`; rate limit invites per
       holder per day.
-- [ ] Add the accept endpoint: register or link the user, store
+      - **The rate limit is counted, not `@limiter.limit`ed.** The
+        shared limiter keys on the remote address, which is the wrong
+        unit here twice over: it would throttle a hospital's whole NAT,
+        and it would leave a holder free to carry on inviting from
+        anywhere else. `_invites_today` counts this passport's own rows
+        over a rolling twenty-four hours instead. Rolling rather than a
+        calendar day, because a midnight reset lets twice the limit go
+        out either side of it.
+      - **The token is emailed and never returned.** The response
+        carries the invitation but not the credential, so it can only be
+        redeemed by whoever controls the address. Returning it would let
+        a holder forward it by any route they liked, which is the whole
+        thing the emailed link is for. A test pins that the token does
+        not appear anywhere in the response body.
+      - **The competency is accepted but deliberately not stored**,
+        which departs from what this task first implied. An invitation
+        brings a _person_ onto the platform, and one assessor goes on to
+        sign off many competencies over months. A competency on the row
+        would either force a second invitation for somebody who already
+        has an account, or sit there describing only the first of the
+        things they were eventually asked for. What they were actually
+        asked is `passport_signoff_request`, which cannot name them
+        until they have accepted and have a user id at all. So it shapes
+        the email — a cold recipient decides whether to act on it — and
+        is then discarded. Discussed and settled with the human before
+        implementing, after the first draft persisted it.
+      - The email template is rendered in Python rather than loaded
+        from YAML, unlike teaching's. Teaching's are configurable
+        because a coordinator writes them per bank; this is a fixed
+        transactional message about a named clinician, and the thing it
+        must never do is vary in ways nobody reviewed. Every
+        interpolated value is escaped: the holder types the assessor's
+        name, so a name containing a bracket must not become markup in
+        somebody's inbox.
+      - `EXPECTED_PATHS` in `test_passport_api_contract.py` needed the
+        new path. That test failing is the mechanism working — a route
+        missing from the pinned list is a route `oasdiff` cannot diff.
+- [x] **Opening the link is not what consumes it — completing
+      registration is.** Two acts were conflated by "single use", and
+      separating them is the difference between a workable invitation
+      and a dead end. Following the link only proves control of the
+      address, and must stay repeatable for the whole fourteen days: an
+      assessor who opens it between clinics and closes the tab, or who
+      starts registering and is interrupted, has to be able to come
+      back to it. Only finishing registration sets `accepted_at`, and
+      only that is refused a second time. Once they have an account the
+      link has done its job, so a later click signs them in rather than
+      erroring — an invitation that scolds somebody for reusing their
+      own link is the software blaming a person for its own model.
+      Nothing here constrains how long they then take over the
+      assessment itself: the fourteen days bounds joining, never
+      assessing. Tests: the link opens twice and still works; an
+      interrupted registration can be resumed; a completed one is
+      refused a second time; and a click after acceptance is not an
+      error.
+- [x] Add the accept endpoint: register or link the user, store
       registrations, derive the place from the holder's memberships
       taking the narrowest they hold, create the membership there with
       capacity `external`, and consume the invite. Tests: a holder

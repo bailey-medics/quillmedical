@@ -6019,9 +6019,18 @@ from app.features.teaching.router import teaching_router  # noqa: E402
 
 router.include_router(teaching_router)
 
-from app.features.passport.router import passport_router  # noqa: E402
+from app.features.passport.router import (  # noqa: E402
+    passport_public_router,
+    passport_router,
+)
 
 router.include_router(passport_router)
+
+# Accepting an assessor invitation cannot sit behind the feature gate:
+# the person accepting has no account, no organisation and therefore no
+# membership for `requires_feature` to resolve through. The signed,
+# expiring token is what stands in for it.
+router.include_router(passport_public_router)
 
 
 # --- CI/CD sync endpoint (service token auth) ---
