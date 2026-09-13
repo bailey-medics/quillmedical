@@ -1127,6 +1127,64 @@ assumption runs the other way.
   assessor confirms before signing, which is what a wet signature
   actually is. Someone reads a statement and puts their name to it.
 
+- **How the assessor confirms it: a tick box and a named submit
+  button.** Not a drawn signature, not an uploaded one. This looks like
+  the weaker option and is the stronger one, so the reasoning is worth
+  writing down rather than rediscovering.
+
+  **It is what UK clinical practice already does.** The systems holding
+  UK training records — NES Turas, Kaizen, the RCP ePortfolio — all
+  take a confirmation box and a submit action for workplace-based
+  assessment sign-off. A deanery accepts that today. The wet signature
+  in the paper booklets came along when they were scanned; the digital
+  successors dropped it deliberately rather than reproducing it.
+
+  **A drawn signature looks more official and proves less.** Anyone can
+  draw anyone's name, verifying one needs a reference specimen nobody
+  holds, and it produces an image that cannot be hashed or diffed
+  meaningfully. It invites precisely the false confidence this plan
+  refuses elsewhere: something that _looks_ verified because it looks
+  like a signature. The authenticated session already proves more — a
+  named account, at a recorded time, with a registration attached.
+
+  **An uploaded signature image is worse again.** It is a reusable
+  credential sitting in storage, and once copied it can be pasted onto
+  anything. It turns a one-time act into an artefact somebody can
+  steal and reuse.
+
+  **The law does not ask for more.** Under the Electronic
+  Communications Act and UK eIDAS, a simple electronic signature — a
+  confirmed box behind authentication — is valid and admissible.
+  Advanced and qualified signatures need key material held by the
+  signer, which is the future item this plan already defers on the
+  grounds that a key held by Quill asserts nothing the database does
+  not. A drawn image does not climb that ladder; it stays a simple
+  signature with extra pixels.
+
+  **What carries the weight is the record, not the input.** The named
+  account, the timestamp, the assessor's registrations frozen as they
+  were, the `content_hash`, and the fact the record cannot be edited
+  afterwards. Two details in the interface matter, though:
+
+  - The box is **unticked by default and required**. Never pre-ticked,
+    and `declaration_confirmed` never defaults to true — the deliberate
+    act is the whole point, and the API refuses without it.
+  - The button **names what it does** — "Sign off competency", not
+    "Save". A specific verb carries weight a generic one does not.
+
+  **Adoption is the real risk, and the answer is not a drawing
+  canvas.** If a bare tick feels insubstantial to a consultant, the fix
+  is weight in the interface — the declaration shown in full, a clear
+  and plainly irreversible action — rather than theatre that weakens
+  the record.
+
+  **Unverified against published guidance.** The above is reasoned from
+  how the ePortfolio systems work and from the legal framework, not
+  from a college or deanery document stating what electronic sign-off
+  it accepts. If such guidance exists it beats this reasoning, and the
+  South West SACT passport in the open questions is the fastest route
+  to it.
+
 - **Verification** —
   `GET /api/passport/{id}/sign-offs/{signoff_id}/verify` recomputes the
   hash and reports whether the record is unchanged. The exported bundle
@@ -2716,6 +2774,26 @@ explicitly deferred here.
         - **The field imposes no date rules of its own.** A logbook entry
           cannot be in the future but a certificate expiry legitimately
           is, so `maxDate` belongs to the calling form.
+      - [x] **`CheckboxField`, and `SignOffForm` with it.** No checkbox
+        wrapper existed in `components/form/` — the only checkbox in the
+        codebase was a raw Mantine one in `NewPatientPage.tsx`, bypassing
+        the field conventions. `SolidSwitch` was the nearest thing and is
+        wrong for an attestation: a switch is for settings flipped back
+        and forth, not for putting your name to something once. Added
+        `CheckboxField` matching `TextField`'s description and error
+        treatment, then `SignOffForm` using it for
+        `declaration_confirmed`.
+        - **Submission is refused until a basis is chosen and the box is
+          ticked**, mirroring the API, which writes nothing without
+          `declaration_confirmed`. Both are pinned by tests, along with
+          the absence of any canvas, image or file input.
+        - **The level is read-only on the form.** It is the holder's
+          request; the assessor accepts or declines what was asked for
+          rather than choosing a different one.
+        - **The button reads "Sign off competency", not "Save".**
+        - **Mantine's `ButtonPair` disables via `aria-disabled`**, not
+          the `disabled` attribute, so `toBeDisabled()` does not apply
+          and the tests assert the attribute instead.
       - **Pre-existing: `ErrorMessage` produces invalid HTML in every
         form field.** Mantine renders the error slot inside a `<p>` and
         `ErrorMessage` puts a `<div>` in it, so React warns "`<p>` cannot
@@ -3029,6 +3107,39 @@ close them off, and so nobody builds them before there is a need.
   because `staff` carries a live behavioural check that would let a
   visiting assessor self-join conversations. Their sign-off access is
   still resolved from the request rows that name them.
+
+- **The assessor signs the level that was asked for, or declines** — the
+  level is the holder's request and is read-only on the sign-off form.
+  An assessor who thinks the registrar is at a lower level than they
+  claimed declines, and the holder asks again at that level; they cannot
+  quietly sign a smaller thing than was requested. The cost is real and
+  accepted: a consultant who would have said "not unsupervised, but
+  supervised, yes" has to decline instead, which is more friction and
+  turns an ordinary piece of clinical judgement into a rejection. It is
+  taken anyway because a sign-off is an agreement to a specific claim,
+  and a holder should never discover afterwards that they were given
+  something other than what they asked for. This is the direction that
+  can safely be relaxed: letting an assessor sign at a different level
+  can be added later if the friction proves worse than the ambiguity, and the
+  interface would then have to make the substitution obvious to both
+  parties. Doing it the other way round — starting permissive and
+  tightening — would invalidate records already signed.
+
+- **A tick box and a named button, not a drawn or uploaded signature** —
+  it is what NES Turas, Kaizen and the RCP ePortfolio already do for
+  workplace-based assessment, so a deanery accepts it today. A drawn
+  signature looks more official and proves less: anyone can draw anyone's
+  name, no reference specimens exist to check one against, and it invites
+  the false confidence this plan refuses elsewhere. An uploaded image is
+  worse, being a reusable credential that can be pasted onto anything.
+  A confirmed box behind authentication is a valid simple electronic
+  signature under UK law, and a drawing does not climb to an advanced one
+  — only key material held by the signer does, which is a deferred item.
+  What carries the weight is the record around the tick: the named
+  account, the timestamp, the frozen registrations, the `content_hash`
+  and the refusal to edit afterwards. The wet signature in the paper
+  booklets arrived by scanning, not by design, and the digital systems
+  dropped it deliberately.
 
 - **Registration is declared, and the record says so** — Quill cannot
   check the GMC register in phase 1, so it records

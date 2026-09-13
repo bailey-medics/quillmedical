@@ -11,4 +11,5 @@ export { default as CompetencyRow } from "./CompetencyRow";
 export { default as CompetencySummary } from "./CompetencySummary";
 export { default as RegistrationBadge } from "./RegistrationBadge";
 export { default as SignOffCard } from "./SignOffCard";
+export { default as SignOffForm } from "./SignOffForm";
 export { default as VerificationPanel } from "./VerificationPanel";

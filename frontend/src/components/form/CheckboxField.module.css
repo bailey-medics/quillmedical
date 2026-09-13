@@ -1,0 +1,35 @@
+/**
+ * CheckboxField styles
+ *
+ * Matches the other form fields' border, focus and error treatment in
+ * both colour schemes, against Checkbox's own class names.
+ */
+
+.root {
+  align-items: flex-start;
+}
+
+/* The label carries the words being agreed to, so it wraps rather than
+   truncating and reads at body size like every other field label. */
+.label {
+  font-size: var(--mantine-font-size-md);
+  color: var(--mantine-color-text);
+  line-height: 1.4;
+}
+
+[data-mantine-color-scheme="dark"] .root :global(.mantine-Checkbox-input) {
+  border-color: var(--mantine-color-primary-9);
+}
+
+.root :global(.mantine-Checkbox-input:focus) {
+  border-color: var(--mantine-color-primary-4) !important;
+}
+
+.root :global(.mantine-Checkbox-input[data-error]) {
+  border-width: 2px;
+  border-color: var(--error-color) !important;
+}
+
+.root :global(.mantine-Checkbox-input[data-error]:focus) {
+  border-color: var(--error-focus-color) !important;
+}

@@ -1,3 +1,4 @@
+export { default as CheckboxField } from "./CheckboxField";
 export { default as DateField } from "./DateField";
 export { default as EmailField } from "./EmailField";
 export { EMAIL_PATTERN } from "./emailPattern";
