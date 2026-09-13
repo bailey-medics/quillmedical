@@ -1033,6 +1033,47 @@ via `fhir_patient_id`, someone else's via a grant, and your patients' via a
 competency plus a shared organisation. A model that assumes the third is the
 only one will keep mis-sorting advocates.
 
+## Finding: nobody grants themselves competencies
+
+Surfaced while deciding what should gate `update_my_competencies` once the rank
+column goes, and the question turned out to be wider than that route.
+
+**Two routes write competencies, and both could be pointed at the caller.**
+`PATCH /api/cbac/my-competencies` is self-scoped by construction, and
+`PATCH /users/{id}` takes any id including one's own. Neither checked *which*
+competencies were being granted, so a holder of `manage_users` could award
+themselves anything in the catalogue — clinical ids included, and more
+`manage_users`. The competency was the key to its own lock.
+
+**Decided: nobody edits their own competencies, profession or platform role.**
+Ask another holder of `manage_users`, so the person granting and the person
+gaining are never the same.
+
+- **Both routes needed it.** Guarding only the self-route would have been
+  decorative: an admin could pass their own id to `PATCH /users/{id}` and
+  achieve the same thing.
+- **An operator is exempt**, because they already reach everything and somebody
+  has to be able to bootstrap a deployment.
+- **Name, email and password stay editable on oneself.** Ordinary self-service,
+  available on the profile routes anyway, so blocking it here would be
+  inconsistent rather than stricter.
+
+### Why not "you cannot grant what you do not hold"
+
+The textbook rule, and it breaks on the ordinary case. **The person who
+administers accounts is usually not the person qualified to judge clinical
+competence**: an IT administrator should be able to record that a doctor may
+prescribe without being able to prescribe themselves.
+
+That is what the NHS Registration Authority model separates — the RA does not
+decide someone is a consultant, they record that an employer verified it. So
+the authority to grant and the evidence for granting are different things.
+
+**What that suggests, and is not built here:** granting a clinical competency
+should require pointing at something — a qualification, a sign-off, a named
+person who vouched. The clinician passport work is already part of the way
+there. Recorded as a direction rather than a decision.
+
 ## Finding: the three-way split sits inside the industry standard
 
 Researched before building the competency split, to check whether the model was

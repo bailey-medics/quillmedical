@@ -1710,6 +1710,38 @@ def update_user(
 
     _require_shared_org_with_user(db, current_user, user)
 
+    # Nobody awards themselves competencies. Ask another holder of
+    # `manage_users` to do it, so the person granting and the person
+    # gaining are never the same — which is what stops the competency
+    # becoming the key to its own lock. The same separation the NHS
+    # Registration Authority model relies on: an administrator records
+    # access that somebody else verified.
+    #
+    # An operator is exempt. They already reach everything, so the
+    # restriction would be theatre, and somebody has to be able to
+    # bootstrap a deployment.
+    #
+    # Name, email and password are deliberately not covered: those are
+    # ordinary self-service, available on the profile routes anyway, and
+    # blocking them here would be inconsistent rather than stricter.
+    if user.id == current_user.id and current_user.platform_role != (
+        "superadmin"
+    ):
+        self_granting = (
+            payload.base_profession is not None
+            or payload.additional_competencies is not None
+            or payload.removed_competencies is not None
+            or payload.platform_role is not None
+        )
+        if self_granting:
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    "Competencies and platform role must be changed by "
+                    "another user who holds manage_users"
+                ),
+            )
+
     # Validate and update username
     if payload.username is not None:
         username = payload.username.strip()
@@ -3751,10 +3783,20 @@ async def update_my_competencies(
     Raises:
         HTTPException: 403 if the user lacks ``manage_users``.
     """
-    if user.system_permissions not in ["admin", "superadmin"]:
+    # Self-granting, so only an operator may use it. Everyone else asks
+    # another holder of `manage_users`, through `PATCH /users/{id}`,
+    # which does the same job with a place check and a second person.
+    #
+    # Gating this on `manage_users` was considered and rejected: holding
+    # the competency would then be what lets a holder keep granting it to
+    # themselves, and the competency becomes the key to its own lock.
+    if user.platform_role != "superadmin":
         raise HTTPException(
             status_code=403,
-            detail="Requires admin or superadmin permissions",
+            detail=(
+                "Competencies must be changed by another user who holds "
+                "manage_users"
+            ),
         )
     # Update user's competencies
     if data.additional_competencies is not None:
