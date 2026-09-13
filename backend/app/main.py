@@ -1751,10 +1751,39 @@ def update_user(
 
     # Update CBAC fields if provided
     if payload.base_profession is not None:
+        # A profession is a template, not state: `additional` and
+        # `removed` exist precisely so reality can diverge from it. So
+        # changing one *adds* what the new profession grants and keeps
+        # what the person has already become — a patient who becomes a
+        # healthcare assistant keeps the competency for their own
+        # record, rather than losing it by being given a clinical role.
+        #
+        # Assigning the field alone dropped every competency from the
+        # old profession unless it happened to be listed in
+        # `additional_competencies`, silently. The superadmin promotion
+        # below has always merged for the same reason.
+        carried_over = set(
+            get_profession_base_competencies(user.base_profession)
+        )
         user.base_profession = payload.base_profession
+    else:
+        carried_over = set()
 
     if payload.additional_competencies is not None:
         user.additional_competencies = payload.additional_competencies
+
+    if carried_over:
+        # Applied after any explicit `additional_competencies`, so a
+        # payload carrying both fields does not discard what the old
+        # profession granted.
+        granted = set(user.additional_competencies or [])
+        granted.update(carried_over)
+        # Anything the new profession grants in its own right needs no
+        # entry here; this carries only what would otherwise be lost.
+        granted.difference_update(
+            get_profession_base_competencies(user.base_profession)
+        )
+        user.additional_competencies = sorted(granted)
 
     if payload.removed_competencies is not None:
         user.removed_competencies = payload.removed_competencies
