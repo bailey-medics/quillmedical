@@ -2381,22 +2381,22 @@ def list_delegates(
     if not member_ids:
         return []
 
-    # Fetch user details — exclude admins/superadmins
+    # Fetch user details. Every member of the caller's organisations is
+    # listed: this used to exclude anyone whose rank said "admin" or
+    # "superadmin", which was a display preference rather than a check —
+    # the route is already gated by ``_DEP_MANAGE`` and scoped to the
+    # caller's own organisations. It also read the column being retired,
+    # and an administrator who is also a trainee is an ordinary case
+    # rather than one worth hiding.
     user_ids = list(member_ids)
     users_map: dict[int, User] = {
         u.id: u
-        for u in db.execute(
-            select(User).where(
-                User.id.in_(user_ids),
-                User.system_permissions.notin_(["admin", "superadmin"]),
-            )
-        )
+        for u in db.execute(select(User).where(User.id.in_(user_ids)))
         .unique()
         .scalars()
         .all()
     }
 
-    # Narrow to only non-admin user IDs
     user_ids = list(users_map.keys())
     if not user_ids:
         return []

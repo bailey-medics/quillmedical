@@ -699,22 +699,63 @@ does not, and removing the ladder removes the suggestion.
                     - **A test pins it by making the columns disagree**: a user who is
                       `admin` in the old column and `standard` in the new one is
                       refused. Verified by reverting.
-                    - [ ] **`check_user_patient_access` is its own unit, and a
-                      security fix.** Its first line returns `True` for any admin —
-                      "always True for admin pages", as its own docstring says — so it
-                      grants access to any patient. `main.py:4670` already carries a
+                    - [x] **`check_user_patient_access` is its own unit, and a
+                      security fix.** Its first line returned `True` for any admin —
+                      "always True for admin pages", as its own docstring said — so it
+                      granted access to any patient. `main.py:4670` already carries a
                       comment saying it is *deliberately not* used for that reason: a
-                      previous unit routed around the hatch rather than closing it. Two
-                      live callers in `messaging.py`, both non-admin paths, so the
-                      hatch does nothing for them today. Removing it changes who may
-                      read a patient record, which is why it does not belong in a
-                      mechanical batch.
-                    - [ ] **The teaching router check needs a decision.** At line 2315
-                      it excludes `admin` and `superadmin` from a teaching participant
-                      list. That is neither the platform question nor obviously a
-                      competency — it reads as "do not offer staff-admin accounts as
-                      teaching participants", and what it should become is a product
-                      question rather than a migration one.
+                      previous unit routed around the hatch rather than closing it.
+                      - **"Both non-admin paths, so the hatch does nothing for them
+                        today" was wrong**, and it is the sort of wrong worth
+                        recording. Neither `messaging.py` caller sits behind an admin
+                        gate — `POST /conversations` and
+                        `GET /patients/{id}/conversations` carry
+                        `DEP_REQUIRE_CLINICAL` and nothing more — so the hatch fired
+                        for any admin who reached them. It was the live grant, not
+                        dead code: an admin sharing no organisation with a patient
+                        could start a conversation about them, or list every
+                        conversation about them by naming the id.
+                      - **Decided: gate on `access_patient_records`**, paired with the
+                        shared-organisation check that follows it. The competency
+                        answers _what_ and the membership answers _where_, which is
+                        the pattern the rest of this plan settled on. Deleting the
+                        hatch outright and keeping a superadmin-only hatch were both
+                        considered; the second was rejected as leaving an operator
+                        bypass on clinical data, against "A superadmin is not a
+                        clinician".
+                      - **It removes an old-column read as a side effect**, which is
+                        why it belonged in this unit at all. A mechanical swap to
+                        `platform_role` would have preserved a superadmin hatch and
+                        contradicted that rule.
+                      - **`system_administrator` holds `access_patient_records`**, for
+                        technical support, so an IT admin at the patient's own
+                        organisation is still granted access. This broke the first
+                        version of the "shared organisation, no competency" test,
+                        which assumed the opposite; `receptionist` is the profession
+                        that genuinely lacks it. Worth expecting wherever a test
+                        wants a user who is staff somewhere but may not read a record.
+                      - **Done:** the hatch is gone from `organisations.py`, with
+                        `test_patient_access_competency.py` covering both halves, the
+                        two cases the hatch got backwards, and the two routes in it
+                        does not touch — self-access and external grants.
+                    - [x] **The teaching router check — a display preference, not a
+                      gate.** The plan cited "line 2315" in `main.py`; the check
+                      actually lives at `features/teaching/router.py:2315`, inside
+                      `list_delegates`, as
+                      `User.system_permissions.notin_(["admin", "superadmin"])`.
+                      - **It filters the listed users, never the caller.** The route
+                        already carries `_DEP_MANAGE` at the decorator and already
+                        scopes to `get_member_org_ids`, so both the _what_ and the
+                        _where_ are settled before the query runs. Nothing about
+                        access depended on it.
+                      - **Decided: dropped entirely.** An administrator who is also a
+                        trainee is an ordinary case, and hiding them made their
+                        assessment results unreachable to the person meant to review
+                        them. Narrowing it to `platform_role != "superadmin"` was the
+                        alternative and preserves a distinction nobody asked for.
+                      - **The scoping is asserted beside the change**, so dropping a
+                        display filter cannot later be mistaken for dropping the place
+                        check. `test_list_delegates_lists_everyone.py`.
               - [ ] **2. The form and the badge.** Decided rather than derived, so the
                     reasoning is recorded here:
                     - **The badge shows only operators.** `PermissionBadge` renders a

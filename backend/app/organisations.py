@@ -145,21 +145,42 @@ def check_user_patient_access(
     """Check whether *user* may access *patient_id*.
 
     Access is granted if:
-    - admin/superadmin (always True for admin pages), OR
-    - user shares at least one org with the patient, OR
-    - user is an external type with an active ExternalPatientAccess grant.
-    """
-    if user.system_permissions in ("admin", "superadmin"):
-        return True
+    - the user *is* the patient, OR
+    - they hold ``access_patient_records`` **and** share at least one
+      organisation with the patient, OR
+    - they hold an active ExternalPatientAccess grant.
 
+    **The rank hatch this used to open with is gone.** Its first line
+    returned ``True`` for any ``admin`` or ``superadmin`` — "always True
+    for admin pages" — so an operator who shared no organisation with a
+    patient could still reach them. That is the conflation the platform
+    role work exists to undo: a rank said *what* someone is and was read
+    as *where* they may act.
+
+    The competency answers *what* and the shared organisation answers
+    *where*, and both are required. A superadmin is not thereby a
+    clinician: ``superadmin_profession`` grants ``manage_users`` alone,
+    so operating Quill confers no access to a record here.
+
+    Args:
+        db: Core database session.
+        user: The person asking.
+        patient_id: FHIR Patient resource ID being reached for.
+
+    Returns:
+        True if they may access the patient, False otherwise.
+    """
     # Patient can always access their own records
     if user.fhir_patient_id and user.fhir_patient_id == patient_id:
         return True
 
-    # Org membership check (for staff / patient users)
-    shared = get_shared_org_ids(db, user.id, patient_id)
-    if shared:
-        return True
+    # Org membership check, paired with the competency. Membership alone
+    # is not enough: sharing an organisation with a patient says only
+    # that they are in reach, never that this person may read them.
+    if "access_patient_records" in user.get_final_competencies():
+        shared = get_shared_org_ids(db, user.id, patient_id)
+        if shared:
+            return True
 
     # External access grant check
     grant = db.scalar(
