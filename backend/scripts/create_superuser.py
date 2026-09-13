@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Create a superadmin user in the local development database.
 
-This is a convenience wrapper around `create_user.py` that also sets the
-user's ``system_permissions`` to ``superadmin``.  It is intended for
-local development setup only.
+This is a convenience wrapper around `create_user.py` that also marks the
+user as an operator — ``platform_role`` of ``superadmin``, and the
+retiring ``system_permissions`` alongside it while callers migrate. It is
+intended for local development setup only.
 
 Usage (inside the backend container):
 

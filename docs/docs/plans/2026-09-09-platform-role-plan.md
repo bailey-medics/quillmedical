@@ -816,6 +816,44 @@ does not, and removing the ladder removes the suggestion.
               - [ ] **3. The column itself.** `drop_column`, the three response schemas,
                     and the `permission_level` query parameter. The only unit needing
                     the two approvals above.
+                    - **Blocked on the migration merging, not on anything in the code.**
+                      Units 1 and 2 are on `feature/contract-backend-reads` (#657),
+                      which is open. Dropping the column on top of that branch would
+                      put the destructive migration and the migration it depends on in
+                      one diff, so both approval gates would be granted while looking
+                      at work that is still under review — and a change requested on
+                      #657 would rebase the drop underneath it. Expand, migrate,
+                      **then** contract: start this unit from a branch cut after #657
+                      lands.
+                    - **87 references remain, not the 46 recorded above.** Counted
+                      after unit 2: 36 in `backend/app`, 33 test files, 18 frontend
+                      files outside tests, and four scripts —
+                      `create_superuser.py`, `admin_cli.py`, `seed_ci.py` and
+                      `update_system_permissions.py`, the last of which exists only to
+                      write the column. The plan's figures have now been wrong four
+                      times; count before sizing this unit rather than trusting the
+                      number above.
+                    - **Most of that is carriage, and could move first.** Only the
+                      `permission_level` filter and the three response schemas are the
+                      breaking change. Migrating the scripts, tests and frontend types
+                      onto `platform_role` needs neither approval and would leave the
+                      contract diff small enough to review properly — worth doing as
+                      its own branch if this unit stays blocked for long.
+                    - **No CLI replacement for `update-permissions`.** A
+                      `set-platform-role` action and a `just spr` recipe were written
+                      and then removed: the admin pages already set a platform role
+                      through `PATCH /users/{id}`, with the same operator-only guard,
+                      and `create-superadmin` still makes the first operator on a new
+                      environment. The only gap left is promoting an existing user
+                      when nobody can sign in as an operator, which is rare enough not
+                      to justify a second command writing a second column. When the
+                      column goes, `update-permissions` goes with it and nothing
+                      replaces it.
+                    - **`update_system_permissions.py` was dead** — no callers, and
+                      `admin_cli.py`'s `update-permissions` action does the same job
+                      behind `just up`. Deleted rather than migrated, the same finding
+                      as `DEP_REQUIRE_STAFF` and `require_superadmin` before it. That
+                      is three dead things this plan has turned up; expect more.
 - [x] **Remove `default_system_permission` from `shared/base-professions.yaml`.** 25
       professions declared one by the time it went — the count moved twice while this
       plan was being worked through, with `teaching_manager`, `superadmin_profession`
