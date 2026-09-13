@@ -16,7 +16,7 @@ describe("MediaDropzone", () => {
   it("invites a file", () => {
     renderWithMantine(<MediaDropzone onDrop={vi.fn()} />);
     expect(
-      screen.getByText("Drop a video, or click to browse"),
+      screen.getByText("Drop a video or click to browse"),
     ).toBeInTheDocument();
   });
 

@@ -132,6 +132,55 @@ class TestRequestBodySizeLimit:
         # Should get past the size check (will fail auth, not 413)
         assert response.status_code != 413
 
+    def test_media_upload_exceeds_the_general_limit(
+        self, test_client: TestClient
+    ):
+        """A lecture is far past 10 MB and must still be admitted.
+
+        The body never reaches this application in a real deployment —
+        the browser uploads straight to GCS — so this route exists for
+        local development, where the general limit would block the one
+        endpoint built to carry a whole video.
+        """
+        response = test_client.put(
+            "/api/teaching/admin/modules/a-module/media/abc123/content",
+            content=b"x",
+            headers={
+                "Content-Length": str(50 * 1024 * 1024),
+                "Content-Type": "video/mp4",
+            },
+        )
+        # Past the size check. What it fails on afterwards — auth, a
+        # missing module — is not this middleware's business.
+        assert response.status_code != 413
+
+    def test_media_upload_still_has_a_ceiling(self, test_client: TestClient):
+        """The exemption raises the limit rather than removing it."""
+        response = test_client.put(
+            "/api/teaching/admin/modules/a-module/media/abc123/content",
+            content=b"x",
+            headers={
+                "Content-Length": str(3 * 1024 * 1024 * 1024),
+                "Content-Type": "video/mp4",
+            },
+        )
+        assert response.status_code == 413
+
+    def test_the_exemption_is_not_a_general_media_hole(
+        self, test_client: TestClient
+    ):
+        """Only the upload route is exempt, not everything under media.
+
+        The match is on the trailing path segment as well as the
+        method, so a POST to a media endpoint keeps the 10 MB limit.
+        """
+        response = test_client.post(
+            "/api/teaching/admin/modules/a-module/media/upload-url",
+            content=b"x",
+            headers={"Content-Length": str(11 * 1024 * 1024)},
+        )
+        assert response.status_code == 413
+
 
 class TestPatientEndpoints:
     """Test patient-related endpoints with mocked FHIR client."""

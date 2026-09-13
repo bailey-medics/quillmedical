@@ -270,6 +270,30 @@ app.add_middleware(
 # --- Request body size limit (10 MB) ---
 MAX_REQUEST_BODY_BYTES = 10 * 1024 * 1024  # 10 MB
 
+# The local media upload is the one route a whole file travels through
+# this application, so the general limit would block the only endpoint
+# designed to exceed it. It is development-only — it refuses outright
+# wherever a media bucket is configured, because in a real deployment
+# the browser uploads straight to GCS and the bytes never come here —
+# and it streams to disk in chunks rather than holding a lecture in
+# memory. A ceiling is still set rather than none at all, so a runaway
+# or mistaken upload cannot fill a developer's disk unbounded.
+MAX_MEDIA_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024  # 2 GB
+
+
+def _is_media_upload(request: Request) -> bool:
+    """Whether this is the local media upload route.
+
+    Matched on method and path shape rather than by importing the
+    router, so the middleware stays independent of the teaching
+    feature. The path is ``.../media/{asset_id}/content``.
+    """
+    return (
+        request.method == "PUT"
+        and "/media/" in request.url.path
+        and request.url.path.endswith("/content")
+    )
+
 
 @app.middleware("http")
 async def limit_request_body_size(
@@ -277,8 +301,13 @@ async def limit_request_body_size(
     call_next: Callable,  # type: ignore[type-arg]
 ) -> Response:
     """Reject requests with Content-Length exceeding the limit."""
+    limit = (
+        MAX_MEDIA_UPLOAD_BYTES
+        if _is_media_upload(request)
+        else MAX_REQUEST_BODY_BYTES
+    )
     content_length = request.headers.get("content-length")
-    if content_length and int(content_length) > MAX_REQUEST_BODY_BYTES:
+    if content_length and int(content_length) > limit:
         return Response(status_code=413, content="Request body too large")
     return await call_next(request)  # type: ignore[no-any-return]
 

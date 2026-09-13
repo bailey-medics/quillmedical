@@ -233,6 +233,30 @@ describe("useModuleMedia", () => {
     expect(calls.some((c) => c.includes("/link"))).toBe(false);
   });
 
+  it("says a file is too large rather than showing a status code", async () => {
+    // 413 on a video almost always means the file, and "Upload failed
+    // (413)" leaves the admin to guess which of size, format or
+    // permissions it was.
+    stubFailingUpload(413);
+    (api.get as Mock).mockResolvedValue(media);
+    (api.post as Mock).mockResolvedValue({
+      upload_url: "/api/teaching/admin/modules/mod-1/media/asset-1/content",
+      asset_id: "asset-1",
+    });
+
+    const { result } = renderHook(() => useModuleMedia("mod-1"));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    await act(async () => {
+      await result.current.upload(
+        "lecture-01",
+        new File(["x"], "lecture.mp4", { type: "video/mp4" }),
+      );
+    });
+
+    expect(result.current.error).toContain("too large");
+    expect(result.current.error).not.toContain("413");
+  });
+
   it("sends a local upload in one request, with no handshake", async () => {
     // Development has no bucket, so the backend hands back a relative
     // URL and the body comes straight to it. Only GCS speaks resumable.
@@ -278,10 +302,10 @@ describe("useModuleMedia", () => {
 
     const calls = (api.post as Mock).mock.calls.map((c) => c[0] as string);
     expect(calls.some((c) => c.includes("/link"))).toBe(false);
-    // Failing at the handshake says so specifically: "could not start"
-    // points at the session, not at the bytes, which is the difference
-    // between a CORS problem and a transfer that died midway.
-    expect(result.current.error).toContain("Could not start upload");
+    // A 500 is ours, not the file's, and the message says so — an
+    // admin who reads "too large" starts re-exporting a video that was
+    // never the problem.
+    expect(result.current.error).toContain("not a problem with your file");
   });
 
   it("clears progress after a failure", async () => {

@@ -30,7 +30,7 @@ export const Default: Story = {
     <Stack gap="sm">
       <MediaDropzone {...args} />
       <StoryNote>
-        Drag a file onto it, or click to browse. Only video is accepted — the
+        Drag a file onto it or click to browse. Only video is accepted — the
         type is checked here, before a byte leaves the browser.
       </StoryNote>
     </Stack>

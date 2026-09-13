@@ -16,6 +16,7 @@ import Icon from "@/components/icons/Icon";
 import { IconUpload } from "@/components/icons/appIcons";
 import { BodyTextInline } from "@/components/typography";
 import { ACCEPTED_VIDEO_TYPES } from "./mediaFormat";
+import classes from "./MediaDropzone.module.css";
 
 export interface MediaDropzoneProps {
   /** Called with the first accepted file. */
@@ -36,11 +37,13 @@ export default function MediaDropzone({
       accept={ACCEPTED_VIDEO_TYPES}
       disabled={disabled}
       multiple={false}
-      p="xs"
+      px="sm"
+      py={4}
+      className={classes.dropzone}
     >
-      <Group gap="xs" justify="center">
+      <Group gap="xs" justify="center" wrap="nowrap">
         <Icon icon={<IconUpload />} />
-        <BodyTextInline>Drop a video, or click to browse</BodyTextInline>
+        <BodyTextInline>Drop a video or click to browse</BodyTextInline>
       </Group>
     </Dropzone>
   );

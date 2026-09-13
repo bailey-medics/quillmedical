@@ -254,6 +254,33 @@ def _build_candidate_item(
 # ------------------------------------------------------------------
 
 
+def _module_is_servable(
+    db: Session,
+    organisation_id: int | None,
+    module_id: str,
+) -> bool:
+    """Whether a module may be shown to a learner at all.
+
+    A module missing any of its media is not served — not the learning
+    half of it, the whole thing, assessment included. Half a module is
+    not a lesser version of the module: it is a module whose author
+    intended a video the learner would never see, and the assessment
+    may well examine exactly that content.
+
+    Per organisation, because media links are. The same module can be
+    servable for one organisation and hidden from another.
+
+    A module referencing no media is servable, which is most of them —
+    this gate is invisible to content that never had video.
+    """
+    if organisation_id is None:
+        return False
+
+    from app.features.teaching.media import module_media_is_complete
+
+    return module_media_is_complete(db, organisation_id, module_id)
+
+
 @teaching_router.get(
     "/question-banks",
     response_model=list[QuestionBankOut],
@@ -290,6 +317,7 @@ def list_question_banks(
     live_map: dict[str, bool] = {}
     active_map: dict[str, int] = {}
     visible_bank_ids: set[str] = set()
+    org_by_bank: dict[str, int] = {}
     for s in statuses:
         if s.active_version is None:
             continue
@@ -299,6 +327,10 @@ def list_question_banks(
         )
         if s.is_live:
             live_map[s.question_bank_id] = True
+        # Which organisation makes this bank visible, for the media
+        # gate below. Media links are per organisation, so completeness
+        # has no global answer — only one per organisation.
+        org_by_bank.setdefault(s.question_bank_id, int(s.organisation_id))
 
     if not visible_bank_ids:
         return []
@@ -326,6 +358,14 @@ def list_question_banks(
     results: list[dict[str, Any]] = []
     for c in configs:
         if c.question_bank_id in seen:
+            continue
+        # A module missing any of its media is not offered at all —
+        # hidden rather than shown disabled, because a learner who can
+        # see a module they cannot open raises a support question the
+        # admin cannot answer from the learner's side.
+        if not _module_is_servable(
+            db, org_by_bank.get(c.question_bank_id), c.question_bank_id
+        ):
             continue
         # Only the promoted version, not whichever happens to be newest.
         if c.version != active_map.get(c.question_bank_id):
@@ -419,6 +459,12 @@ def get_question_bank(
         .first()
     )
     if not config:
+        raise HTTPException(404, "Question bank not found")
+
+    # Missing media hides the whole module, assessment included. Same
+    # 404 as every other refusal here, so "incomplete" is
+    # indistinguishable from "not yours" and "no such bank".
+    if not _module_is_servable(db, int(status_row.organisation_id), bank_id):
         raise HTTPException(404, "Question bank not found")
 
     return {
@@ -3219,6 +3265,46 @@ async def upload_media_content_locally(
     return Response(status_code=204)
 
 
+def _delete_local_media_object(
+    module_id: str,
+    asset_id: str,
+    content_type: str,
+) -> None:
+    """Remove a locally uploaded asset from the module's directory.
+
+    The development counterpart of ``delete_media_object``. The file is
+    named for its asset id, so the id validation that guards the write
+    guards the delete too — a traversal here would reach outside the
+    module.
+
+    A missing file is not an error, matching the bucket path: the link
+    row is what the admin acts on, and a file already gone should still
+    let the row be cleared rather than leaving it undeletable.
+    """
+    from app.config import settings
+    from app.features.teaching.storage import ALLOWED_MEDIA_TYPES
+
+    base_path = settings.TEACHING_QUESTION_BANK_PATH
+    if not base_path:
+        return
+    if not _SAFE_ASSET_ID.fullmatch(asset_id):
+        return
+
+    module_dir = resolve_module_dir(base_path, module_id)
+    if not module_dir:
+        return
+
+    suffix = next(
+        (
+            ext
+            for ext, mime in ALLOWED_MEDIA_TYPES.items()
+            if mime == content_type
+        ),
+        ".mp4",
+    )
+    (module_dir / "learning" / f"{asset_id}{suffix}").unlink(missing_ok=True)
+
+
 # A 204 carries no body at all, so there is no schema for oasdiff to
 # diff. Same shape as the unlink 204 above.
 # api-schema-check: allow-opaque-permanent
@@ -3264,13 +3350,18 @@ def delete_media_asset(
     if link is None:
         raise HTTPException(404, "No such media asset")
 
-    bucket = settings.TEACHING_VIDEOS_SOURCE_BUCKET
-    if not bucket:
-        raise HTTPException(503, "Media upload is not configured")
-
     db.delete(link)
     db.flush()
-    delete_media_object(bucket, org_id, module_id, asset_id)
+
+    bucket = settings.TEACHING_VIDEOS_SOURCE_BUCKET
+    if bucket:
+        delete_media_object(bucket, org_id, module_id, asset_id)
+    else:
+        # Development, where the upload landed on disk rather than in a
+        # bucket. Refusing here would leave the admin unable to undo the
+        # one thing they can now do locally, and the row would outlive
+        # every attempt to clear it.
+        _delete_local_media_object(module_id, asset_id, link.content_type)
 
     # Destructive, so the actor and the module are recorded. No
     # filename: this line goes to a log that is not PHI-safe.
