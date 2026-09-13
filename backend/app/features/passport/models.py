@@ -23,6 +23,8 @@ Tables:
 
 - ``Passport`` — the pointer to one holder's repository.
 - ``PassportSignOffRequest`` — an open ask, closed when resolved.
+- ``PassportAssessorInvite`` — an outside assessor being brought in.
+- ``AssessorRegistrationVerification`` — that an admin checked a register.
 - ``SiteCommonCompetency`` — an admin-curated shortlist for the picker.
 """
 
@@ -169,6 +171,195 @@ class PassportSignOffRequest(Base):
             "ix_passport_signoff_request_inbox",
             "assessor_user_id",
             "status",
+        ),
+    )
+
+
+class PassportAssessorInvite(Base):
+    """An invitation asking somebody outside to sign a competency off.
+
+    Workflow, like the request above, and for the same reason: bringing
+    an assessor in spans accounts that may not exist yet, which no
+    repository can record. Nothing here is part of the passport — the
+    sign-off the assessor eventually makes is a file, and this row is
+    only how they were reached.
+
+    **This row, not the token, is what makes an invite single-use.** A
+    JWT carries no record of having been spent, so
+    ``create_passport_invite_token`` in ``security.py`` can only make one
+    that expires. ``accepted_at`` is the check: the accept endpoint must
+    refuse a row already carrying one.
+
+    The declared registration is the assessor's own claim at the moment
+    of inviting, stored because the sign-off has to say who signed and
+    on what standing. Quill has not checked it here and the record says
+    so elsewhere; verification is an administrator's act, later.
+    """
+
+    __tablename__ = "passport_assessor_invite"
+
+    #: A uuid4 string, matching what the invite token carries as its
+    #: ``invite_id``. The token names the invitation rather than the
+    #: passport, so that a token can be spent once against this row
+    #: instead of replayed against a passport.
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+
+    passport_id: Mapped[str] = mapped_column(
+        ForeignKey("passport.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    invited_by_user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+
+    #: Who it was sent to, and who may redeem it. Checked on acceptance
+    #: against the token's own copy, so a forwarded link cannot be
+    #: redeemed by whoever happened to receive it.
+    email: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    #: The assessor's name as the holder gave it, for the email and for
+    #: the invitation list. The name on the eventual sign-off comes from
+    #: the account, not from here.
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    #: Self-declared at invite: "GMC", "NMC", "HCPC" and so on, with the
+    #: number alongside. A plain string rather than an enumeration —
+    #: the registers a visiting assessor might hold are not Quill's list
+    #: to close, and refusing an unfamiliar one would block a legitimate
+    #: sign-off.
+    registration_authority: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )
+
+    registration_number: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )
+
+    #: A hash of the token, never the token itself. What is emailed is a
+    #: credential, and a readable copy in the database would let anyone
+    #: with a row redeem the invitation.
+    token_hash: Mapped[str] = mapped_column(
+        String(64), nullable=False, unique=True, index=True
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+    )
+
+    #: When the token stops working. Stored as well as signed into the
+    #: token so that an invitation list can show it without decoding,
+    #: and so expiry survives a key rotation that would make every
+    #: outstanding token undecodable.
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+    #: Set when the invite is consumed, and the reason it is single-use.
+    #: Null means outstanding.
+    accepted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    #: Who accepted, which may be a brand new account or one that
+    #: already existed. Null until then, and null forever if the
+    #: invitation lapses.
+    accepted_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+
+
+class AssessorRegistrationVerification(Base):
+    """That somebody checked an assessor's registration against a register.
+
+    **A row is the act, not a flag on a person.** ``Registration`` in the
+    record model refuses ``verified`` without ``verified_by`` and
+    ``verified_on``, because a bare flag asserts that a check happened
+    while recording nothing about who did it or when — which is the part
+    a later reader needs. The same reasoning applies here, so this is a
+    row per check rather than a boolean on ``users``.
+
+    **Per authority and number, not per person.** Somebody may hold a GMC
+    and an NMC registration, and an admin who checked one has not checked
+    the other. Verifying "the assessor" rather than a specific number
+    would claim more than was done.
+
+    **It records what was true when checked, and never expires itself.**
+    A registration that later lapses does not make the check dishonest —
+    it was accurate on the day. Acting on expiry is deferred in the plan,
+    and would arrive as a separate reading of these rows rather than by
+    mutating them.
+
+    **Sign-offs already written are untouched.** The flag applies to
+    sign-offs signed after the check, because a sign-off is a snapshot of
+    what was known at the moment of signing. Revoking an assessor later
+    leaves both the sign-offs and these rows standing.
+    """
+
+    __tablename__ = "passport_assessor_registration_verification"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    #: Whose registration was checked.
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    #: The register consulted — "GMC", "NMC", "HCPC". A plain string for
+    #: the same reason the invite's is: the registers a visiting assessor
+    #: might hold are not Quill's list to close.
+    registration_authority: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )
+
+    #: The number as it stood when checked. Stored rather than read from
+    #: the user's profile at render time, so that editing a number later
+    #: cannot silently inherit a verification of a different one.
+    registration_number: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )
+
+    #: The admin who checked. RESTRICT rather than CASCADE: deleting an
+    #: administrator must not erase the record of what they confirmed.
+    verified_by_user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+
+    #: Which organisation's admin checked it, so a reader can tell whose
+    #: assurance this is. Two trusts may each check the same number, and
+    #: one may be more diligent than the other.
+    organisation_id: Mapped[int] = mapped_column(
+        ForeignKey("organisations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    verified_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+    )
+
+    __table_args__ = (
+        # One standing check per number per organisation. A second would
+        # make "is this verified" ambiguous, and re-checking is an update
+        # of when it was last confirmed rather than a new fact.
+        UniqueConstraint(
+            "user_id",
+            "registration_authority",
+            "registration_number",
+            "organisation_id",
+            name="uq_assessor_registration_verified_here",
         ),
     )
 

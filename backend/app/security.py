@@ -433,6 +433,108 @@ def decode_invite_token(tok: str) -> dict[str, Any]:
     return data
 
 
+# --- Passport assessor invite tokens ---
+#
+# Deliberately separate from ``create_invite_token`` above, which the
+# passport plan first proposed extending. That function is built around a
+# patient: ``patient_id`` is required, it is carried in every payload,
+# and ``accept_invite`` reads it unconditionally to create an
+# ``ExternalPatientAccess`` grant. A passport assessor invite has no
+# patient at all — it concerns a trainee's competency — so extending it
+# would mean making the patient optional and branching the code path that
+# gates patient record sharing, for a caller sharing none of its logic.
+#
+# **Single use is not enforced here, and cannot be.** A JWT carries no
+# record of having been spent. What makes a passport invite single-use is
+# the ``passport_assessor_invite`` row: its ``token_hash`` identifies the
+# invite and ``accepted_at`` records that it has been consumed. This
+# function only makes a token that expires; the row decides whether it
+# may still be used.
+
+#: How long a passport assessor invite lasts. Fourteen days because a
+#: consultant asked to sign something off may be on nights, on leave, or
+#: simply slow to read email, and a link that dies over a fortnight's
+#: annual leave means the holder has to ask twice.
+PASSPORT_INVITE_TTL_DAYS = 14
+
+#: Marks a passport invite apart from the patient-sharing invite above.
+#: Checked on decode, so a token minted for one purpose cannot be
+#: presented for the other even though both are signed with the same key.
+PASSPORT_INVITE_TYPE = "passport_assessor_invite"
+
+
+def create_passport_invite_token(
+    invite_id: str,
+    email: str,
+    *,
+    ttl_days: int = PASSPORT_INVITE_TTL_DAYS,
+) -> str:
+    """Create a signed invite for somebody asked to sign off a competency.
+
+    Args:
+        invite_id: The ``passport_assessor_invite`` row this token is for.
+            The row, not the passport: the token says which invitation
+            was issued, and the row says what it was for and whether it
+            has been used. A passport id here would let one token be
+            replayed against a passport rather than spent once.
+        email: Who it was sent to. Checked on acceptance, so a forwarded
+            link cannot be redeemed by whoever received it.
+        ttl_days: How long it lasts, defaulting to a fortnight.
+
+    Returns:
+        The signed token.
+
+    Raises:
+        ValueError: If the invite id or email is empty, or the lifetime
+            is outside one day to one year.
+    """
+    if not invite_id or not invite_id.strip():
+        raise ValueError("invite_id must be a non-empty string")
+    if not email or not email.strip():
+        raise ValueError("email must be a non-empty string")
+    if ttl_days < 1 or ttl_days > 365:
+        raise ValueError("ttl_days must be between 1 and 365")
+
+    payload: dict[str, Any] = {
+        "type": PASSPORT_INVITE_TYPE,
+        "invite_id": invite_id.strip(),
+        "email": email.strip().lower(),
+        "exp": _now() + timedelta(days=ttl_days),
+    }
+    return jwt.encode(  # type: ignore[no-any-return]
+        payload,
+        settings.JWT_SECRET.get_secret_value(),
+        algorithm=settings.JWT_ALG,
+    )
+
+
+def decode_passport_invite_token(tok: str) -> dict[str, Any]:
+    """Decode and verify a passport assessor invite.
+
+    Args:
+        tok: The token from the invite link.
+
+    Returns:
+        The payload, carrying ``invite_id`` and ``email``.
+
+    Raises:
+        jose.JWTError: If the signature is wrong, the token has expired,
+            or it is not a passport invite. A patient-sharing invite is
+            signed with the same key and would otherwise decode cleanly
+            here, so the type is checked rather than assumed.
+    """
+    data: dict[str, Any] = jwt.decode(
+        tok,
+        settings.JWT_SECRET.get_secret_value(),
+        algorithms=[settings.JWT_ALG],
+    )
+
+    if data.get("type") != PASSPORT_INVITE_TYPE:
+        raise jwt.JWTError("Not a passport assessor invite token")
+
+    return data
+
+
 # --- Password reset tokens ---
 _password_reset = URLSafeTimedSerializer(
     settings.JWT_SECRET.get_secret_value(), salt="password-reset"

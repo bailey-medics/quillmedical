@@ -108,10 +108,28 @@ class TestOnePlaceVocabulary:
     """An organisation and a site use the same words for the same thing."""
 
     def test_the_known_capacities(self):
-        assert MEMBER_CAPACITIES == ("staff", "trainee")
+        assert MEMBER_CAPACITIES == (
+            "staff",
+            "trainee",
+            "external",
+            "patient",
+        )
 
     def test_a_known_capacity_passes(self):
         assert validate_member_capacity("trainee") == "trainee"
+
+    def test_external_is_a_capacity(self):
+        """For somebody here from another place, for one purpose.
+
+        A visiting assessor signing off a trainee's competency. Its own
+        word rather than ``staff``, which carries a live behavioural
+        check letting a member self-join a conversation.
+        """
+        assert validate_member_capacity("external") == "external"
+
+    def test_patient_is_a_capacity(self):
+        """Reserved by the membership plan; meaning settled there."""
+        assert validate_member_capacity("patient") == "patient"
 
     def test_an_unknown_capacity_is_refused(self):
         with pytest.raises(ValueError, match="Unknown member capacity"):
@@ -119,6 +137,11 @@ class TestOnePlaceVocabulary:
 
     def test_the_error_names_the_known_ones(self):
         with pytest.raises(ValueError, match="staff, trainee"):
+            validate_member_capacity("visitor")
+
+    def test_the_error_names_the_new_ones_too(self):
+        """So the message stays a complete answer as the list grows."""
+        with pytest.raises(ValueError, match="external, patient"):
             validate_member_capacity("visitor")
 
     def test_sites_and_organisations_share_the_list(self):

@@ -407,3 +407,29 @@ base_professions:
       - manage_teaching_content
       - view_teaching_analytics
       - manage_users
+
+  # ==========================================================================
+  # EXTERNAL ASSESSORS
+  # ==========================================================================
+
+  # A consultant from another trust, invited by a holder to sign off one
+  # of their competencies. They do not work here and must not be made
+  # staff of a trust they have no relationship with, so this profession
+  # is the whole grant: it carries access to the passport and nothing
+  # else — no patient records, no clinical actions, no teaching.
+  #
+  # Only ever assigned to a *new* account accepting an invitation. All
+  # fourteen clinical professions already carry
+  # access_clinician_passport, so a consultant who already uses Quill
+  # keeps the profession they have; what they may act on is resolved
+  # from the passport_signoff_request rows naming them, not from here.
+  #
+  # requires_clinical_services is false: a passport is a record of a
+  # clinician's own competence, with no patient data in it, so an
+  # assessor needs nothing clinical switched on to do their part.
+  - id: external_assessor
+    display_name: "External assessor"
+    description: "Clinician from elsewhere, invited to sign off a competency; passport access only"
+    requires_clinical_services: false
+    base_competencies:
+      - access_clinician_passport

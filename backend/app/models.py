@@ -728,7 +728,27 @@ def validate_platform_role(value: str) -> str:
     return value
 
 
-MEMBER_CAPACITIES: tuple[str, ...] = ("staff", "trainee")
+#: What relationship a person has to a place. Never a ranking and never a
+#: permission check: what somebody may do comes from their competencies,
+#: and this says only how they come to be here at all.
+#:
+#: ``external`` is for somebody who belongs to another place entirely and
+#: is here for one purpose — a consultant from another trust invited to
+#: sign off a trainee's competency. It has to be its own word rather than
+#: reusing ``staff``: ``staff`` carries a live behavioural check, letting
+#: a member self-join a conversation in ``messaging.py``, and a visiting
+#: assessor should not gain that.
+#:
+#: ``patient`` is added alongside because the membership plan already
+#: anticipates it. What it means in business logic is settled there, not
+#: here — this only reserves the word so the two plans cannot each invent
+#: a different one.
+MEMBER_CAPACITIES: tuple[str, ...] = (
+    "staff",
+    "trainee",
+    "external",
+    "patient",
+)
 
 # Kept as the name the site code already uses.
 SITE_CAPACITIES: tuple[str, ...] = MEMBER_CAPACITIES

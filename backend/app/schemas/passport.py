@@ -32,7 +32,7 @@ them to defer to it.
 
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.features.passport.schemas import (
     CompetencyIdField,
@@ -508,3 +508,162 @@ class CommonCompetenciesOut(BaseModel):
 
     site_id: int
     competency_ids: list[CompetencyIdField] = Field(default_factory=list)
+
+
+# --------------------------------------------------------------------
+# External assessors
+# --------------------------------------------------------------------
+
+
+class AssessorInviteIn(_In):
+    """The holder bringing in somebody from outside.
+
+    The registration is what the holder was told, not something Quill
+    has checked. It is collected here so the invitation can say who is
+    being asked, and confirmed by the assessor themselves on acceptance;
+    an administrator verifies it separately, later.
+    """
+
+    email: EmailStr
+    name: NonEmptyText
+    registration_authority: NonEmptyText
+    registration_number: NonEmptyText
+
+    #: What the holder wants assessed, if they already know. Used to
+    #: write a more specific email and deliberately not stored: an
+    #: invitation brings a *person* onto the platform, and one assessor
+    #: goes on to sign off many competencies over months. A competency
+    #: recorded here would either force a second invitation for somebody
+    #: who already has an account, or sit there describing only the
+    #: first of the things they were eventually asked to assess. What
+    #: they were actually asked for is ``passport_signoff_request``,
+    #: which can only name them once they have accepted and have a user
+    #: id at all.
+    competency_id: CompetencyIdField | None = None
+
+
+class AssessorInviteOut(BaseModel):
+    """An invitation that has been issued.
+
+    No token and no link. The invitation goes to the assessor by email,
+    and returning the credential to the caller would let a holder hand it
+    on by any route they liked, defeating the point of sending it to a
+    verified address. ``expires_at`` is returned so the holder can see
+    when it lapses without being able to use it.
+
+    No competency either, for the reason ``AssessorInviteIn`` gives: the
+    invitation is about a person, and claiming otherwise would make a
+    listing that goes stale the moment the assessor signs off a second
+    thing.
+    """
+
+    id: NonEmptyText
+    email: EmailStr
+    name: NonEmptyText
+    created_at: datetime
+    expires_at: datetime
+    accepted_at: datetime | None = None
+
+
+class InvitePreviewOut(BaseModel):
+    """What the accept page shows before anybody commits to anything.
+
+    Reading an invitation is not accepting it. This is what the link
+    resolves to when opened — as often as the assessor likes, for the
+    whole fourteen days — so somebody who opens it between clinics and
+    closes the tab can come back to it.
+
+    ``needs_account`` tells the page which of two things to render: a
+    registration form, or a prompt to sign in. ``already_accepted``
+    means the invitation has done its job; the page then sends them to
+    sign in rather than showing an error, because scolding somebody for
+    reusing their own link is the software blaming a person for its own
+    model.
+
+    The holder's name is included because a cold recipient needs to know
+    who is asking. Nothing else about the passport is: not its id, not
+    its contents, not any competency.
+    """
+
+    holder_name: NonEmptyText
+    assessor_name: NonEmptyText
+    email: EmailStr
+    expires_at: datetime
+    needs_account: bool
+    already_accepted: bool
+
+
+class AssessorInviteAcceptIn(_In):
+    """Finishing registration, which is what consumes the invitation.
+
+    ``username`` and ``password`` are required only when the invitation
+    resolves to somebody without an account. An assessor who already
+    uses Quill sends the token alone and signs in normally; nothing
+    about their existing account is changed.
+    """
+
+    token: NonEmptyText
+    username: str | None = None
+    password: str | None = None
+
+
+class RegistrationVerifyIn(_In):
+    """An admin recording that they checked a register by hand.
+
+    The authority and number are given rather than inferred from the
+    assessor's profile, so the check is pinned to the number that was
+    actually looked at. Editing a number afterwards then cannot inherit
+    a verification of a different one.
+    """
+
+    registration_authority: NonEmptyText
+    registration_number: NonEmptyText
+
+
+class RegistrationVerificationOut(BaseModel):
+    """One recorded check.
+
+    ``verified_by_name`` and ``verified_at`` travel with the flag for
+    the reason ``Registration`` in the record model refuses a bare
+    boolean: a check that does not say who made it, and when, records
+    that somebody looked at a register without the part a later reader
+    needs.
+    """
+
+    user_id: int
+    registration_authority: NonEmptyText
+    registration_number: NonEmptyText
+    verified_by_name: NonEmptyText
+    verified_at: datetime
+    organisation_id: int
+
+
+class AssessorRevokeOut(BaseModel):
+    """What removing an assessor's membership did.
+
+    ``sign_offs_kept`` is returned and deliberately never zero by
+    design: revoking removes their reach, and the sign-offs they already
+    made stand. An admin about to revoke should see that stated rather
+    than have to trust it.
+    """
+
+    user_id: int
+    place: NonEmptyText
+    place_id: int
+    sign_offs_kept: int
+
+
+class AssessorInviteAcceptOut(BaseModel):
+    """The outcome of accepting.
+
+    ``status`` is ``registered`` when an account was created and
+    ``linked`` when an existing one was used. Both end with the assessor
+    holding a membership at the holder's place with capacity
+    ``external``, which is what ``requires_feature("passport")`` then
+    resolves through.
+    """
+
+    status: NonEmptyText
+    user_id: int
+    place: NonEmptyText
+    place_id: int

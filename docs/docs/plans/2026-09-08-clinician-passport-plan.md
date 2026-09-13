@@ -1209,11 +1209,34 @@ assumption runs the other way.
   user registers with name, email and password under Quill's ordinary
   account policy; an existing user signs in. Either way the result is
   a user with no platform role — the only one is `superadmin`, and
-  they do not operate Quill — plus a base profession chosen from a
-  short list, still to be designed, and the declared registrations in
-  `professional_registrations`. Their standing comes entirely from the
-  place membership below. Nothing about the passport imposes extra
-  account requirements.
+  they do not operate Quill — plus the `external_assessor` base
+  profession and the declared registrations in
+  `professional_registrations`. Nothing about the passport imposes
+  extra account requirements.
+
+  **The profession is the whole grant, and it replaces what this
+  section first proposed.** `external_assessor` carries
+  `access_clinician_passport` and nothing else, so an invited
+  consultant's ceiling comes from their profession in the ordinary way
+  — no `PractisingCompetency` row is written, and the clinical
+  authorisation table keeps meaning only clinical things. That table
+  frames itself as credentialing versus privileging, "may this person
+  practise this competency here"; a feature gate is neither, and
+  putting one there would have been a category error discovered later.
+
+  **It is only needed for a new account.** All fourteen clinical
+  professions already carry `access_clinician_passport`, so a
+  consultant who already uses Quill needs no change at all on
+  acceptance — they can reach the passport routes today, and what they
+  may act on is resolved from the request rows naming them.
+
+  **The competency is a ceiling, not a place.** It applies wherever the
+  feature is enabled rather than only at the holder's site. That grants
+  nothing extra in practice, because an assessor's reach is resolved
+  from `passport_signoff_request` rows, but it does mean the site
+  membership below is a plain record that they were there rather than
+  the thing granting access — which is what "honest rather than a
+  device" was reaching for.
 
 - **Membership at the holder's place, with an `external` capacity** —
   the assessor becomes a member of a place the holder is already a
@@ -2328,37 +2351,240 @@ explicitly deferred here.
 
 ## Phase 5: external assessors
 
-- [ ] Add `external` and `patient` to `MEMBER_CAPACITIES` in
+- [x] Add `external` and `patient` to `MEMBER_CAPACITIES` in
       `backend/app/models.py:671`, updating the assertion in
       `backend/tests/test_organisation_member_capacity.py` that pins
       the tuple. No migration: capacity is validated in Python, not by
       a database constraint. `patient` is added at the same time
       because the membership plan already anticipates it; what it
       means in business logic is settled there, not here.
-- [ ] Extend `create_invite_token` and `decode_invite_token` in
+      - The declaration gained a comment saying what a capacity is and
+        is not — a relationship to a place, never a ranking and never a
+        permission check — because a four-word tuple with no note is
+        exactly where somebody later adds a fifth meaning "senior".
+      - Two tests were added beyond updating the pinned tuple: one per
+        new word, so the addition is exercised rather than merely
+        permitted. A third asserts the error message names the new ones
+        too, so it stays a complete answer as the list grows.
+- [x] Extend `create_invite_token` and `decode_invite_token` in
       `backend/app/security.py` to accept the `passport_assessor` user
       type, with tests for expiry and single use.
-- [ ] Add the `passport_assessor_invite` model and migration.
-- [ ] Add the invite endpoint and an email template alongside
+      - **Written as a separate pair rather than extending the existing
+        one**, which departs from this task's wording. The patient
+        invite is built around a patient: `patient_id` is a required
+        argument, it is carried in every payload, and `accept_invite`
+        reads it unconditionally to create an `ExternalPatientAccess`
+        grant. A passport invite has no patient at all, so "extending"
+        would have meant making the patient optional and branching the
+        code path that gates patient record sharing, for a caller that
+        shares none of its logic.
+      - **The token carries the invite row's id, not the passport's.**
+        The token says which invitation was issued; the row says what it
+        was for and whether it has been used. A passport id here would
+        let one token be replayed against a passport rather than spent
+        once.
+      - **Single use cannot be enforced here and is not.** A JWT carries
+        no record of having been spent, so nothing in `security.py` can
+        do it — `passport_assessor_invite.token_hash` and `accepted_at`
+        will, in the next task. Rather than write a test that would pass
+        while testing nothing, one asserts the token *is* replayable,
+        documenting the gap the row has to close.
+      - **The type is checked on decode.** Both invites are signed with
+        the same key, so without it a token minted to share one
+        patient's record would decode cleanly as authority to sign off a
+        clinician's competency. Tested in both directions.
+      - Fourteen days needed no change: `ttl_days` was already an
+        argument. These are also the first direct tests of any invite
+        token in the codebase — the patient pair has only ever been
+        covered incidentally, through the messaging routes.
+- [x] Add the `passport_assessor_invite` model and migration.
+      - **The primary key is a uuid4 string, not an integer**, unlike
+        the sibling `passport_signoff_request`. The token minted last
+        task carries `invite_id` as its subject, so a guessable
+        sequential id would let somebody mint nothing but still name a
+        row that exists. The column matches what the token already
+        carries rather than the table beside it.
+      - **`expires_at` is stored as well as signed into the token.**
+        Redundant on the face of it, and kept for two reasons: an
+        invitation list can show when a link dies without decoding a
+        token per row, and expiry survives a key rotation that would
+        make every outstanding token undecodable at once.
+      - **Only the hash of the token is stored.** What is emailed is a
+        credential; a readable copy in the database would let anyone
+        with a row redeem the invitation. The unique index on
+        `token_hash` is what makes single use decidable — two rows
+        sharing a hash would make one emailed link ambiguous.
+      - `registration_authority` is a plain string rather than an
+        enumeration. The registers a visiting assessor might hold are
+        not Quill's list to close, and refusing an unfamiliar one would
+        block a legitimate sign-off for a data-modelling preference.
+      - No `registration_verified` column here, and a test pins its
+        absence: verification is an administrator's later act recorded
+        against the assessor, and a flag on the invitation would be
+        read as Quill having checked something it has not.
+- [x] Add the invite endpoint and an email template alongside
       `features/teaching/email_templates.py`; rate limit invites per
       holder per day.
-- [ ] Add the accept endpoint: register or link the user, store
+      - **The rate limit is counted, not `@limiter.limit`ed.** The
+        shared limiter keys on the remote address, which is the wrong
+        unit here twice over: it would throttle a hospital's whole NAT,
+        and it would leave a holder free to carry on inviting from
+        anywhere else. `_invites_today` counts this passport's own rows
+        over a rolling twenty-four hours instead. Rolling rather than a
+        calendar day, because a midnight reset lets twice the limit go
+        out either side of it.
+      - **The token is emailed and never returned.** The response
+        carries the invitation but not the credential, so it can only be
+        redeemed by whoever controls the address. Returning it would let
+        a holder forward it by any route they liked, which is the whole
+        thing the emailed link is for. A test pins that the token does
+        not appear anywhere in the response body.
+      - **The competency is accepted but deliberately not stored**,
+        which departs from what this task first implied. An invitation
+        brings a _person_ onto the platform, and one assessor goes on to
+        sign off many competencies over months. A competency on the row
+        would either force a second invitation for somebody who already
+        has an account, or sit there describing only the first of the
+        things they were eventually asked for. What they were actually
+        asked is `passport_signoff_request`, which cannot name them
+        until they have accepted and have a user id at all. So it shapes
+        the email — a cold recipient decides whether to act on it — and
+        is then discarded. Discussed and settled with the human before
+        implementing, after the first draft persisted it.
+      - The email template is rendered in Python rather than loaded
+        from YAML, unlike teaching's. Teaching's are configurable
+        because a coordinator writes them per bank; this is a fixed
+        transactional message about a named clinician, and the thing it
+        must never do is vary in ways nobody reviewed. Every
+        interpolated value is escaped: the holder types the assessor's
+        name, so a name containing a bracket must not become markup in
+        somebody's inbox.
+      - `EXPECTED_PATHS` in `test_passport_api_contract.py` needed the
+        new path. That test failing is the mechanism working — a route
+        missing from the pinned list is a route `oasdiff` cannot diff.
+- [x] **Opening the link is not what consumes it — completing
+      registration is.** Two acts were conflated by "single use", and
+      separating them is the difference between a workable invitation
+      and a dead end. Following the link only proves control of the
+      address, and must stay repeatable for the whole fourteen days: an
+      assessor who opens it between clinics and closes the tab, or who
+      starts registering and is interrupted, has to be able to come
+      back to it. Only finishing registration sets `accepted_at`, and
+      only that is refused a second time. Once they have an account the
+      link has done its job, so a later click signs them in rather than
+      erroring — an invitation that scolds somebody for reusing their
+      own link is the software blaming a person for its own model.
+      Nothing here constrains how long they then take over the
+      assessment itself: the fourteen days bounds joining, never
+      assessing. Tests: the link opens twice and still works; an
+      interrupted registration can be resumed; a completed one is
+      refused a second time; and a click after acceptance is not an
+      error.
+- [x] Add the accept endpoint: register or link the user, store
       registrations, derive the place from the holder's memberships
       taking the narrowest they hold, create the membership there with
-      capacity `external`, grant `access_clinician_passport` at that
-      place, and consume the invite. Tests: a holder sited under an
-      organisation yields a site membership; a holder at organisation
-      level only yields an organisation membership; and an assessor
-      who already holds `staff` elsewhere keeps it, gaining the
-      `external` membership alongside rather than in place of it.
-- [ ] Confirm `requires_feature("passport")` resolves through the
+      capacity `external`, and consume the invite. Tests: a holder
+      sited under an organisation yields a site membership; a holder at
+      organisation level only yields an organisation membership; and an
+      assessor who already holds `staff` elsewhere keeps it, gaining
+      the `external` membership alongside rather than in place of it.
+      - **No competency is granted at the place**, which this task
+        originally called for. A new account gets the
+        `external_assessor` base profession, which carries
+        `access_clinician_passport` as its ceiling; an existing account
+        already has it, since all fourteen clinical professions do. So
+        no `PractisingCompetency` row is written and the clinical
+        authorisation table keeps meaning only clinical things. See the
+        acceptance section above.
+      - Consuming the invite is what makes it single-use: the token
+        cannot enforce that, so `accepted_at` on the row is the check,
+        and the endpoint must refuse a row already carrying one.
+- [x] Confirm `requires_feature("passport")` resolves through the
       assessor's new membership, so no sibling gate is needed.
-- [ ] Add the verify-registration and revoke endpoints for organisation
+      - **Confirmed, and no code was needed.** `requires_feature` in
+        `features/gating.py` unions organisation membership with site
+        membership joined back up through `organisation_site`, so either
+        shape the accept endpoint writes resolves to the holder's
+        organisation, which is where the feature is enabled.
+      - **It reads no capacity at all**, so `external` passes exactly as
+        `staff` does. That is the property the whole design leans on,
+        and it lives in another module that could change without anybody
+        thinking about assessors — so it is pinned by tests rather than
+        left as a reasoned conclusion. The opposite, a gate quietly
+        requiring `staff`, would leave every invited assessor with a 403
+        and no obvious cause.
+      - **The gate is not authorisation**, and a test says so: an
+        accepted assessor passes `requires_feature` and still gets a 404
+        on the holder's passport, because what they may see is resolved
+        from the request rows naming them and they are named on none.
+        Worth stating outright, since "they got through the gate" is an
+        easy thing to mistake for "they may read it".
+- [x] Add the verify-registration and revoke endpoints for organisation
       admins.
-- [ ] Tests: an external assessor cannot read a passport, another
+      - **"Admin of the holder's organisation" resolved to two checks,
+        not one.** `manage_users` says _what_ somebody may do and is
+        global; membership says _where_. Either alone is wrong — the
+        competency by itself would make an admin at one trust an
+        administrator of every assessor in Quill. `_require_org_admin_over`
+        requires both, after `_require_shared_org_with_user` in `main.py`,
+        and returns 404 rather than 403 so the response does not confirm
+        an assessor exists to somebody who may not act on them.
+      - **Membership for the admin, reach for the assessor.** An admin
+        administers a place they belong to, so a trainee at a ward does
+        not thereby administer the trust above it; but an assessor the
+        accept endpoint put at a site is reachable from that
+        organisation. Hence `get_member_org_ids` for one and
+        `get_reachable_org_ids` for the other.
+      - **Verification is a row, not a flag on the user.** `Registration`
+        in the record model refuses `verified` without `verified_by` and
+        `verified_on`, because a bare boolean asserts a check happened
+        while recording nothing about who made it or when. The same
+        reasoning gives `AssessorRegistrationVerification`: one row per
+        authority, number and organisation, so an admin who checked a
+        GMC number has not thereby claimed to have checked an NMC one,
+        and two trusts may each hold their own assurance.
+      - **A number the assessor never declared is refused**, or the row
+        would record a check of something Quill has no reason to
+        associate with them. Re-checking updates when it was last
+        confirmed rather than writing a second fact.
+      - **Nothing reaches back into sign-offs already written.** A
+        sign-off is a snapshot of what was known when it was signed, and
+        the flag applies to those signed afterwards; rewriting earlier
+        ones would make the record claim a check that had not happened.
+      - **Revoke removes only an `external` membership**, and a test
+        pins that a `staff` row is refused — otherwise a passport route
+        could quietly sack somebody from the trust they actually work
+        for. The response returns `sign_offs_kept` so an admin sees the
+        sign-offs stand rather than having to trust it.
+- [x] Tests: an external assessor cannot read a passport, another
       assessor's requests, users or organisations; a consumed or
       expired token is refused; and revoking an assessor's access
       leaves the sign-offs they already made intact.
+      - **Stated as what they cannot reach, not what they can.** An
+        external assessor is the widest-reaching account the passport
+        creates without an administrator ever approving it: a holder
+        sends an email and a stranger gets a Quill login. So each
+        clause is its own test rather than inferred from the design,
+        and one test gathers the lot — membership held, and still
+        nothing reachable at the place.
+      - **Reflections were added to the list.** Not in this task's
+        wording, but holder-only is the rule most costly to get wrong:
+        written reflection can be disclosed in legal proceedings, so an
+        assessor gaining it by way of an invitation would be the worst
+        version of this feature.
+      - **Expiry turned out to be two checks, so it is two tests.** The
+        token's own `exp`, enforced inside `jwt.decode`, and the row's
+        `expires_at`, checked separately in `_decoded_invite` because
+        the row is what an administrator can see and the two must not
+        disagree. Each has to refuse on its own, so one test backdates
+        the row and the other signs a token directly.
+      - **`create_passport_invite_token` refuses a lifetime below a
+        day**, which is correct everywhere except a test that wants an
+        already-dead token — minting one is a bug in real code. The
+        second test signs with the same key rather than weakening the
+        validator to suit itself.
+      - Revocation leaving sign-offs intact is covered above, in the
+        verify-and-revoke task, so it is not repeated here.
 
 ## Phase 6: frontend
 
@@ -2855,7 +3081,13 @@ close them off, and so nobody builds them before there is a need.
   than anything in this plan. Worth establishing before building
   Phase 5 onwards.
 
-- **Organisation scoping** — the organisation-scoped access findings
-  plan (`2026-09-06-org-scoped-access-findings.md`) may change how
-  "admin of the holder's organisation" is evaluated; the passport
-  should adopt whatever that plan lands rather than invent a scope.
+- **Organisation scoping** — _settled in part._ The membership and
+  platform-role plans have landed: `PractisingCompetency` and
+  `cbac/scoped.py` now answer "what may this person do at this place",
+  and `platform_role` has replaced the permission hierarchy. The
+  passport router was built against them and deliberately admits only
+  the holder and assessors named on a request row — organisation admins
+  are refused, with a test pinning that refusal so widening it later
+  has to be deliberate. What remains open is whether an admin *should*
+  read a passport at all, which is a governance question rather than a
+  technical one.

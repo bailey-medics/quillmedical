@@ -52,8 +52,13 @@ LEVEL = "review_and_authorise"
 EXPECTED_PATHS = {
     "/api/passport",
     "/api/passport/me",
+    "/api/passport/assessor-invites/accept",
+    "/api/passport/assessor-invites/preview",
+    "/api/passport/assessors/{assessor_user_id}/membership",
+    "/api/passport/assessors/{assessor_user_id}/registration-verification",
     "/api/passport/requests/inbox",
     "/api/passport/{passport_id}",
+    "/api/passport/{passport_id}/assessor-invites",
     "/api/passport/{passport_id}/certificates",
     "/api/passport/{passport_id}/certificates/{name}",
     "/api/passport/{passport_id}/competencies/{competency_id}",
