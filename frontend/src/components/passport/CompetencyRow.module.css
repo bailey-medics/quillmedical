@@ -1,0 +1,21 @@
+/**
+ * CompetencyRow styles
+ *
+ * The row is a full-width block whether or not it is selectable, so a
+ * passport reads the same when nothing is clickable.
+ */
+
+.row {
+  display: block;
+  width: 100%;
+  padding-block: 0.5rem;
+  text-align: left;
+}
+
+button.row:hover {
+  background-color: var(--mantine-color-gray-0);
+}
+
+[data-mantine-color-scheme="dark"] button.row:hover {
+  background-color: var(--mantine-color-primary-9);
+}

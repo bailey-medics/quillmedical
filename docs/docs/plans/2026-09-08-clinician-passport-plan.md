@@ -2668,6 +2668,45 @@ explicitly deferred here.
       `frontend/src/components/passport/` with stories and tests; present
       any genuinely new component for review before implementing, per
       the component reuse hierarchy.
+      - [x] **The display components.** `CompetencySummary`,
+        `CompetencyRow`, `SignOffCard`, `AssessorDeclaration`,
+        `RegistrationBadge` and `VerificationPanel`, plus
+        `SignOffStatusBadge` in `components/badge/`. Fifty-three tests
+        across the six, nine on the badge.
+      - **`SignOffStatusBadge` is new rather than a reuse of
+        `AssessmentResultBadge`.** That one carries a teaching
+        assessment's pass/fail, and borrowing "Pass" for a clinical
+        sign-off would blur two things the passport keeps apart. It is
+        also not `CompetencyBadge`, which carries a competency's _name_
+        rather than the state of anything. Declined renders pink rather
+        than red: an assessor saying "not yet" is ordinary, not an error.
+      - **A shared `fixtures.ts`** so a story and its test describe the
+        same sign-off, and a type change surfaces once.
+      - **The "counts, never comparisons" rule is pinned by tests**, not
+        just observed in the markup — no denominator, no percentage, no
+        `progressbar` role in either `CompetencyRow` or
+        `CompetencySummary`. It is the rule most easily lost to a
+        later well-meaning "12 of 20" addition.
+      - [ ] **The forms are deferred and need `DateField` first.** No date
+        input exists anywhere in the codebase and `@mantine/dates` is not
+        installed, yet nine passport components need one — `observed_on`,
+        `performed_on`, `awarded_on`, `written_on`, `activity_on`.
+        Decided: add the dependency and wrap it as `DateField` in
+        `components/form/`, matching `TextField`'s shape.
+      - [ ] **The evidence uploaders need a backend route, and should
+        follow the video upload pattern rather than inventing one.**
+        `2026-08-31-gcp-video-auth-gate-plan.md` established it: the
+        browser asks for a signed URL, PUTs straight to GCS with progress
+        via `XMLHttpRequest`, then calls back to record the result — the
+        backend never sees the bytes. The working code is
+        `startResumableUpload` / `sendToSession` / `putToBucket` in
+        `frontend/src/features/teaching/use-module-media.ts`, private to
+        that module and wired to the teaching endpoints; `MediaDropzone`
+        beside it hardcodes video MIME types with no `accept` prop.
+        Neither is reusable as-is, but both are the right shape to lift.
+        The passport has no signed-URL endpoint at all — `blobs.py` is
+        server-side storage, not a browser path — so this is backend work
+        before it is frontend work.
 - [ ] Build the pages and register routes in `frontend/src/main.tsx`
       with `RequireAuth`, `RequireFeature feature="passport"` and CBAC
       hooks. Load the subtree on demand with React Router's
