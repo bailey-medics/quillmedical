@@ -225,10 +225,14 @@ class TestTheOtherTwoRoutesIn:
         )
 
     def test_an_external_grant_still_works(self, db_session: Session) -> None:
-        """An external clinician holds no membership and is still let in."""
-        external = _user(
-            db_session, "external", profession="specialty_trainee_1_2"
-        )
+        """An invited person holds no membership and is still let in.
+
+        ``external_hcp`` rather than a clinical profession: the grant is
+        paired with ``access_granted_patient_records`` now, so holding a
+        caseload competency does not open the invited route. See
+        ``test_three_routes_to_a_record.py``.
+        """
+        external = _user(db_session, "external", profession="external_hcp")
         db_session.add(
             ExternalPatientAccess(
                 user_id=external.id,

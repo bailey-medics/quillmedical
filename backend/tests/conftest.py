@@ -87,13 +87,25 @@ def test_client(db_session: Session) -> TestClient:
 
 @pytest.fixture
 def test_user(db_session: Session) -> User:
-    """Create a test user in the database."""
+    """Create a test user in the database.
+
+    Carries ``registered_nurse``, so the competencies are a member of
+    staff's. The fixture previously declared no profession and took the
+    column default of ``patient``, which granted
+    ``access_patient_records`` back when that id meant both a caseload
+    and one's own record. Splitting it into
+    ``access_own_patient_records`` made the assumption visible: a
+    fixture placed as staff at an organisation, reading a patient there,
+    was relying on the patient profession to carry a clinical
+    competency.
+    """
     user = User(
         username="testuser",
         email="test@example.com",
         password_hash=hash_password("TestPassword123!"),
         is_active=True,
         email_verified=True,
+        base_profession="registered_nurse",
     )
     db_session.add(user)
     db_session.commit()
@@ -113,13 +125,20 @@ def clinician_role(db_session: Session) -> Role:
 
 @pytest.fixture
 def test_clinician(db_session: Session, clinician_role: Role) -> User:
-    """Create a test user with Clinician role."""
+    """Create a test user with Clinician role.
+
+    The Clinician *role* is a separate idea from the profession, and only
+    the profession grants competencies. Without one this fixture took
+    the column default of ``patient``, so a user called "clinician" held
+    a patient's competency and nothing clinical.
+    """
     user = User(
         username="testclinician",
         email="clinician@example.com",
         password_hash=hash_password("ClinicianPassword123!"),
         is_active=True,
         email_verified=True,
+        base_profession="specialty_trainee_1_2",
     )
     user.roles.append(clinician_role)
     db_session.add(user)

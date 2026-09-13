@@ -980,10 +980,126 @@ LPOA for someone who cannot manage their own care.
   latent rather than breaking — but it means an advocate's access rests entirely
   on one table row, with no competency recording what they may do with it.
 
+### Decided: `access_granted_patient_records`, and both professions defined
+
+Not yet built. Recorded here so the reasoning survives.
+
+**The third route gets a competency, like the other two.** Reading a record you
+were invited to is a different permission from reading your own and from reading
+your patients', and it was the only one of the three naming no competency at
+all.
+
+- **`access_granted_patient_records`**, in `clinical.yaml`. It names what the
+  holder may do rather than how the scope is decided — `read_defined_other_patient_record`
+  was the first suggestion and describes the mechanism instead, which no other
+  id in the catalogue does. It reads symmetrically beside the split recorded
+  below:
+  - `access_own_patient_records` — your own record
+  - `access_granted_patient_records` — someone else's, by invitation
+  - `access_patient_records` — your patients', by clinical role
+- **`patient_advocate` and `external_hcp` both hold it**, and nothing else.
+  Neither is staff anywhere and neither reaches a caseload.
+- **The grant branch must require it.** The `ExternalPatientAccess` row says
+  *which* patient and the competency says *what*, the same pairing organisation
+  and site membership already use. Without it, revoking a competency could not
+  cut access — only deleting the row could, and the competency would be
+  documentation rather than a gate, which is the `access_clinic_admin` fault
+  this plan already records.
+- **It is a behaviour change, not an addition.** An existing advocate account
+  without the competency loses access when the pairing lands. Harmless with no
+  real users, and worth stating because it touches who may read a patient
+  record.
+
 **Three routes reach a record, and only one is a competency**: your own record
 via `fhir_patient_id`, someone else's via a grant, and your patients' via a
 competency plus a shared organisation. A model that assumes the third is the
 only one will keep mis-sorting advocates.
+
+## Finding: the three-way split sits inside the industry standard
+
+Researched before building the competency split, to check whether the model was
+eccentric. It is not, and the closest comparator is the one nobody here had
+heard of.
+
+### NHS national RBAC is almost the same design
+
+The Spine's [national RBAC](https://digital.nhs.uk/developer/guides-and-documentation/security-and-authorisation/national-rbac-for-developers)
+maps onto this codebase directly:
+
+- **Job Roles ("R" codes)** — `base_profession`
+- **Activities ("B" codes)** — competencies
+- **Role profiles, which are organisation-scoped** — membership
+
+Three details match decisions reached here independently:
+
+- **Activities can be assigned to a role profile directly**, not only through a
+  job role — which is `additional_competencies`. The e-Referral Service has
+  "activities but no associated roles" at all, so a competency without a
+  profession is a supported shape rather than a workaround.
+- **The organisation is a separate element of the role profile**, not part of
+  the activity. That is "the competency says what, membership says where",
+  which this plan arrived at by splitting `site_staff_member.role`.
+- **Several hundred attributes** are granted in combination nationally, so the
+  catalogue here is conservative rather than over-elaborate.
+
+### Where this codebase sits outside the norm, deliberately
+
+**Most EPRs keep patients out of the permission model entirely.** Epic, Cerner
+and the Spine put the portal on a separate plane with its own identity;
+patients hold a portal account, not activities. `access_own_patient_records`
+brings the patient inside one model, which is the unusual choice.
+
+It is defensible, but the evidence for it is weaker than it first looked — see
+the correction below.
+
+### The advocate design matches practice closely
+
+[NHS proxy access](https://www.england.nhs.uk/long-read/proxy-access/) states
+the same shape this plan reached from the LPOA example:
+
+> "Proxy has their own account and login credentials"
+
+> "The level of access can be different from that of the patient... A patient
+> may choose to have more than one proxy, and each can have a different level
+> of access."
+
+Separate account, per patient, individually revocable, audited — which is
+`ExternalPatientAccess` plus `access_granted_patient_records`.
+
+[FHIR's Permission resource](https://build.fhir.org/ig/HL7/data-access-policies/en/StructureDefinition-Permission.html)
+splits the same way, `rule.data` for which records and `rule.activity` for what
+actions. Notably it does **not** distinguish a `RelatedPerson`'s delegated
+access from a `Practitioner`'s role-based access, so the three-way split here is
+more explicit than the standard requires.
+
+- **The sector says "proxy" or "shared access" where this says "granted".**
+  Worth knowing when reading the literature; not a reason to rename, since
+  "granted" describes the mechanism this codebase actually uses.
+
+### Two gaps, both known
+
+- **No break-the-glass.** Near universal in EPRs, and already recorded as out
+  of scope under the cross-organisation search finding.
+- **No safeguarding on the invite.** NHS proxy access requires identity checks,
+  a capacity assessment and explicitly "assessment of the risk of coercion"
+  before a proxy account is created. The invite route here asks for an email
+  address. A product gap rather than a modelling one, and it matters most for
+  exactly the LPOA case that prompted this research.
+
+### Employees use two systems to see their own data
+
+[Analysis of Employee Patient Portal Use and Electronic Health Record Access at
+an Academic Medical Center](https://pubmed.ncbi.nlm.nih.gov/32557441/)
+(*Applied Clinical Informatics*, 2020) followed employees at a large medical
+centre who looked at their own health data. Of 28,631 who did, 25,193 used the
+patient portal and 13,318 went to the EHR — so roughly 9,900 used both.
+
+The paper attributes the double use to the portal showing *less* than the EHR:
+clinical notes were over 42% of employees' EHR accesses. That is an argument
+about what each system displays rather than about how identity is modelled, so
+it supports a unified model only indirectly. Recorded because it is the best
+available measure of how often one person is both staff and patient — nearly a
+third of the employees who looked at all.
 
 ## Finding: `access_patient_records` names two different permissions
 
@@ -1011,9 +1127,24 @@ than a fact.
 - **It touches shared YAML and the generated types**, which `CLAUDE.md` flags as
   wide blast radius, and it needs the two `main.py` self-access routes and
   `check_user_patient_access` to learn the new id.
-- **Deliberately scheduled after the column drop**, so a competency redesign
-  does not hold up the contract step. `fhir_patient_id` on `MeOut` carries the
-  interface until then.
+- **Built ahead of the column drop after all.** The advocate work needed it:
+  `patient_advocate` and `external_hcp` had to hold *something*, and
+  `access_patient_records` would have given them a caseload.
+  - **`access_own_patient_records`** now belongs to the `patient` profession,
+    which previously carried the clinical id under a comment explaining it did
+    not mean what it said.
+  - **`access_granted_patient_records`** belongs to both external professions,
+    paired in `check_user_patient_access` with the grant row.
+  - **The old id keeps its name and its eighteen holders**, so nothing was
+    retired and the CI deletion guard stays green.
+  - **26 messaging tests failed, all for one reason.** The `test_user` fixture
+    declared no profession, took the column default of `patient`, and was then
+    placed as *staff* at an organisation to read a patient there — relying on
+    the patient profession to carry a clinical competency, which is exactly the
+    conflation being removed. It now carries `registered_nurse`.
+  - **One test asserted a bare grant admits anyone**: it gave a clinician an
+    `ExternalPatientAccess` row and expected entry. The pairing refuses that,
+    and the fixture is now `external_hcp`.
                     - **No CLI replacement for `update-permissions`.** A
                       `set-platform-role` action and a `just spr` recipe were written
                       and then removed: the admin pages already set a platform role

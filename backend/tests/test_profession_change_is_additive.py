@@ -11,13 +11,11 @@ says so itself, since ``additional``/``removed`` exist precisely so
 reality can diverge from it — so changing one should add what the new
 profession grants, not replace what the person has become.
 
-**The case that shows it.** A patient who becomes a healthcare assistant
-holds ``access_patient_records`` for their own record. Under the old
-assignment the HCA profession replaced the patient one, and because the
-HCA template happens to grant the same competency, nothing looked wrong.
-Move to a profession that does *not* grant it — ``teaching_delegate``,
-say — and the loss is visible: they stop being able to see their own
-record by becoming a teaching delegate, which nobody asked for.
+**The case that shows it.** A patient holds
+``access_own_patient_records`` for their own record. Move them to a
+profession that does not grant it — ``teaching_delegate``, say — and a
+bare assignment loses it: they stop being able to see their own record
+by becoming a teaching delegate, which nobody asked for.
 
 The merge mirrors the superadmin promotion a few lines below in
 ``update_user``, which has always added the operator competencies
@@ -117,7 +115,7 @@ class TestTheOldCompetenciesSurvive:
         """
         target = _user(db_session, "new_delegate", profession="patient")
         _place(db_session, org, target)
-        assert "access_patient_records" in target.get_final_competencies()
+        assert "access_own_patient_records" in target.get_final_competencies()
 
         client = _login(test_client, "the_admin")
         response = client.patch(
@@ -129,7 +127,7 @@ class TestTheOldCompetenciesSurvive:
         assert response.status_code == 200, response.text
         db_session.refresh(target)
         final = target.get_final_competencies()
-        assert "access_patient_records" in final
+        assert "access_own_patient_records" in final
         assert "view_teaching_cases" in final
 
     def test_the_new_profession_is_granted_too(
@@ -153,6 +151,9 @@ class TestTheOldCompetenciesSurvive:
         assert response.status_code == 200, response.text
         db_session.refresh(target)
         final = target.get_final_competencies()
+        # The HCA profession grants the clinical id; the patient's own
+        # survives alongside it, which is the whole point.
+        assert "access_own_patient_records" in final
         assert "access_patient_records" in final
         assert "perform_venepuncture" in final
 
@@ -184,7 +185,7 @@ class TestTheOldCompetenciesSurvive:
         final = target.get_final_competencies()
         assert "view_teaching_cases" in final
         assert "access_clinic_admin" in final
-        assert "access_patient_records" in final
+        assert "access_own_patient_records" in final
 
 
 class TestWhatTheMergeDoesNotDo:
@@ -220,7 +221,7 @@ class TestWhatTheMergeDoesNotDo:
         db_session.refresh(target)
         final = target.get_final_competencies()
         assert "perform_venepuncture" not in final
-        assert "access_patient_records" in final
+        assert "access_own_patient_records" in final
 
     def test_setting_the_same_profession_changes_nothing(
         self,

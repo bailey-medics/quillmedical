@@ -18,7 +18,12 @@ base_professions:
     description: "Member of the public with patient account (no clinical access)"
     requires_clinical_services: true
     base_competencies:
-      - access_patient_records  # Own records only (filtered by system)
+      # Their own record and nothing else. This was
+      # access_patient_records, commented "Own records only (filtered by
+      # system)" — a comment explaining that the competency did not mean
+      # what it said, because eighteen staff professions held the same id
+      # to mean a caseload.
+      - access_own_patient_records
 
   # ==========================================================================
   # MEDICAL DOCTORS
@@ -427,6 +432,31 @@ base_professions:
   # requires_clinical_services is false: a passport is a record of a
   # clinician's own competence, with no patient data in it, so an
   # assessor needs nothing clinical switched on to do their part.
+  # ==========================================================================
+  # EXTERNAL, PER-PATIENT
+  # ==========================================================================
+
+  # Invited to one patient's record and no further. Both were accepted by
+  # the invite route and written to base_profession long before they
+  # existed here, and an unknown id resolves to no competencies at all
+  # without complaint — so an accepted invite made an account holding
+  # nothing. Their reach is the ExternalPatientAccess row, which names
+  # the patient; the competency names what they may do with it.
+
+  - id: patient_advocate
+    display_name: "Patient advocate"
+    description: "Family member or representative invited to a patient's record"
+    requires_clinical_services: true
+    base_competencies:
+      - access_granted_patient_records
+
+  - id: external_hcp
+    display_name: "External healthcare professional"
+    description: "Clinician from elsewhere, invited to a single patient's record"
+    requires_clinical_services: true
+    base_competencies:
+      - access_granted_patient_records
+
   - id: external_assessor
     display_name: "External assessor"
     description: "Clinician from elsewhere, invited to sign off a competency; passport access only"
