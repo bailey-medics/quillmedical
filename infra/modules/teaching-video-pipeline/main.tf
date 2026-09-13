@@ -30,6 +30,23 @@ resource "google_storage_bucket" "source" {
       type = "Delete"
     }
   }
+
+  # The browser uploads straight here rather than through Cloud Run, so
+  # the request is cross-origin from the app and the browser sends a
+  # preflight first. A bucket with no CORS policy refuses that, and the
+  # upload fails before a byte is sent — with nothing in our logs, since
+  # the request never reaches us.
+  #
+  # POST begins a resumable upload and PUT sends the chunks to the
+  # session URL it returns; both are needed. The exposed header is what
+  # carries that session URL back to the browser, and without it the
+  # first step succeeds and the second has nowhere to go.
+  cors {
+    origin          = [var.app_origin]
+    method          = ["POST", "PUT", "OPTIONS"]
+    response_header = ["Content-Type", "Location", "x-goog-resumable"]
+    max_age_seconds = 3600
+  }
 }
 
 # ---------- Processed bucket: what learners are served ----------

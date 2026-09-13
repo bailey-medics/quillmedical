@@ -26,9 +26,50 @@ export interface ModuleMediaState {
   remove: (assetId: string) => Promise<void>;
 }
 
-/** Send one file to GCS, reporting progress as it goes. */
-function putToBucket(
-  url: string,
+/**
+ * Open a resumable upload session and return the URL to send bytes to.
+ *
+ * The signed URL the backend mints is for `POST` with an
+ * `x-goog-resumable: start` header — that is what *begins* a resumable
+ * upload rather than performing one. GCS answers with a session URL in
+ * the `Location` header, and the bytes go there.
+ *
+ * The signature covers the method and those headers, so sending
+ * anything else is rejected as a mismatch. A plain `PUT` to this URL
+ * fails, which is exactly how this was broken.
+ */
+function startResumableUpload(url: string, file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open("POST", url);
+    request.setRequestHeader("x-goog-resumable", "start");
+    request.setRequestHeader("Content-Type", file.type);
+
+    request.addEventListener("load", () => {
+      if (request.status < 200 || request.status >= 300) {
+        reject(new Error(`Could not start upload (${request.status})`));
+        return;
+      }
+      const session = request.getResponseHeader("Location");
+      if (!session) {
+        // The bucket's CORS policy has to expose Location, or the
+        // browser hides it and the upload has nowhere to go.
+        reject(new Error("Upload session was not returned"));
+        return;
+      }
+      resolve(session);
+    });
+    request.addEventListener("error", () =>
+      reject(new Error("Could not start upload")),
+    );
+
+    request.send();
+  });
+}
+
+/** Send the file to an open session, reporting progress as it goes. */
+function sendToSession(
+  sessionUrl: string,
   file: File,
   onProgress: (percent: number) => void,
 ): Promise<void> {
@@ -36,7 +77,7 @@ function putToBucket(
   // progress, and on a file this size a bar is not decoration.
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
-    request.open("PUT", url);
+    request.open("PUT", sessionUrl);
     request.setRequestHeader("Content-Type", file.type);
 
     request.upload.addEventListener("progress", (event) => {
@@ -59,6 +100,28 @@ function putToBucket(
 
     request.send(file);
   });
+}
+
+/**
+ * Send one file to GCS.
+ *
+ * Two steps, not one. A local development URL is not a GCS resumable
+ * URL, so it takes the single PUT it expects instead — the backend
+ * decides which by whether it handed back an absolute URL.
+ */
+async function putToBucket(
+  url: string,
+  file: File,
+  onProgress: (percent: number) => void,
+): Promise<void> {
+  // A relative URL is the local route, which receives the body
+  // directly. Only GCS speaks the resumable handshake.
+  if (!/^https?:\/\//.test(url)) {
+    return sendToSession(url, file, onProgress);
+  }
+
+  const session = await startResumableUpload(url, file);
+  return sendToSession(session, file, onProgress);
 }
 
 export function useModuleMedia(moduleId: string | null): ModuleMediaState {
