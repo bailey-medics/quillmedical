@@ -168,6 +168,41 @@ export const NoMediaReferenced: Story = {
   ),
 };
 
+export const UploadFailed: Story = {
+  args: {
+    media: incomplete,
+    error: "Media upload is not configured",
+  },
+  render: (args) => (
+    <Stack gap="sm">
+      <ModuleMediaCard {...args} />
+      <StoryNote>
+        What a failed upload, delete or load says. Shown rather than swallowed:
+        an upload that fails silently is indistinguishable from a button that
+        does nothing, and the admin has no other way to find out. This
+        particular message means the deployment has no media bucket.
+      </StoryNote>
+    </Stack>
+  ),
+};
+
+export const UploadFailedOnACompleteModule: Story = {
+  args: {
+    media: complete,
+    error: "Upload failed",
+  },
+  render: (args) => (
+    <Stack gap="sm">
+      <ModuleMediaCard {...args} />
+      <StoryNote>
+        A complete module shows no missing-media warning, so the error stands
+        alone. The two are independent: one says what is absent, the other says
+        what just went wrong.
+      </StoryNote>
+    </Stack>
+  ),
+};
+
 export const Loading: Story = {
   args: { media: complete, loading: true },
 };
