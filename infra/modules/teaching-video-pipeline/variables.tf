@@ -21,9 +21,9 @@ variable "environment" {
 }
 
 variable "source_retention_days" {
-  description = "Days to keep raw uploads in the source bucket before deletion. They exist only until the transcode job has produced its renditions."
+  description = "Days to keep raw uploads in the source bucket before deletion. A backstop, not the routine path: the transcode job deletes its own source once it has verified the renditions, so anything still here is an upload whose job never ran or never finished. Short deliberately — a never-transcoded upload then fails loudly within a week, while re-uploading is still merely annoying, rather than silently at 90 days when the master is unrecoverable."
   type        = number
-  default     = 90
+  default     = 7
 }
 
 variable "app_origin" {

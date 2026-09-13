@@ -236,6 +236,16 @@ class Settings(BaseSettings):
             "window is bounded and the frontend refreshes silently."
         ),
     )
+    TEACHING_TRANSCODE_JOB: str | None = Field(
+        None,
+        description=(
+            "Fully-qualified Cloud Run Job to invoke when an upload is "
+            "linked, e.g. projects/p/locations/europe-west2/jobs/"
+            "quill-transcode-teaching. Unset in development, where the "
+            "upload simply records no transcode and the module stays "
+            "incomplete rather than erroring."
+        ),
+    )
 
     # --- Clinician passport ---
     # One setting decides the backend, deliberately. The teaching feature

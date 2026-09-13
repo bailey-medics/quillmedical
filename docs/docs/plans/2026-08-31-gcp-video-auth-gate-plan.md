@@ -126,6 +126,65 @@ from the edge on the origin the app already runs on.
   until the in-flight rework of `backend/app/features/teaching/` is finished and
   the work is explicitly released. See the sequencing section below.
 
+- **Which renditions exist is recorded in the database, not discovered from the
+  bucket** — **[decided 2026-09-13]** The alternative was a `list_blobs` call
+  per module inside `get_learning_content`, following the
+  `list_bank_images_in_gcs` precedent. Rejected: that puts a network round trip
+  on the learner's hot read path to detect something that changes once in an
+  asset's life, and it fails in the wrong direction — a listing that errors
+  either 500s a lecture that was playing fine, or silently reports no
+  renditions and drops the learner to the original upload, a quality regression
+  nobody would notice. The link rows are already loaded for the module, so
+  reading the state off them costs nothing and adds no failure mode. The
+  trade is that the database can lie where an object is deleted by hand; that
+  is a rare operational event with a visible symptom, and `ModuleMediaLink`
+  already records that an upload happened without re-checking the object is
+  still there. This is also the state the availability gate needs anyway — see
+  the last item of Phase 6 — so recording it here builds it once rather than
+  twice.
+
+- **Source retention: the job deletes its own master, with a 7-day backstop** —
+  **[decided 2026-09-13, replacing 90 days]** Once the renditions exist the
+  master's only use is re-encoding, which is wanted within days of a video
+  going up — a bad encode is noticed immediately, not on day 87. So the
+  transcode job deletes its source once it has verified its outputs are
+  readable, and the lifecycle rule drops to 7 days as a backstop for uploads
+  whose job never ran or never cleaned up. Lifecycle rules are good at orphans
+  and bad at routine cleanup: they can only see object age, never whether the
+  database still links it to a live slide.
+
+  The point is exposure rather than cost. Storage is cheap; what 90 days bought
+  was a long window in which a never-transcoded upload could age silently
+  toward an unrecoverable state. At 7 days that failure is loud and quick, and
+  re-uploading is still merely annoying. Note the clock starts at **upload**,
+  not at successful transcode — GCS cannot express "90 days after the job
+  succeeded" — which is precisely why the job must do its own cleanup rather
+  than leave it to the rule.
+
+  Keeping masters for later re-encoding — HLS, say — is a different decision
+  with a different answer: cold storage kept permanently, not a longer fuse. No
+  realistic retention survives until a deferred format lands.
+
+- **Drift between the database and the bucket is surfaced, not swept** —
+  **[decided 2026-09-13]** A periodic reconciler was considered and rejected
+  for now. The job's own failure mode already fails safe: it writes objects
+  then records completion, so dying between the two leaves the row simply
+  never saying "transcoded" — the module stays incomplete, the gate hides it,
+  and the admin card names it. What a sweep would catch is a hand-deletion
+  from the bucket, which is rare enough that the job would run green almost
+  always and stop being read. Instead: **the job verifies its uploads are
+  readable before recording completion**, closing the only window the system
+  creates itself; and **a 404 under `/videos/*` is alerted on** from the load
+  balancer's existing `httpRequest` logs, which is drift detected by the only
+  party who cares, at the moment it matters. A weekly sweep is easy to add if
+  those alerts ever fire with any regularity — and by then its purpose will be
+  known rather than guessed.
+
+  A re-transcode control on the admin card was considered as the remedy and
+  dropped: delete-and-re-upload is already the sanctioned replacement flow from
+  Phase 5, and past the retention window a re-transcode cannot work either,
+  since it needs the same vanished source.
+
 ## Sequencing
 
 Quill was built quickly as a proof of concept, with coding plans written
@@ -647,6 +706,11 @@ how `module "cloud_storage"` is gated at `infra/main.tf:367`.
 - [x] `quill-teaching-videos-source-teaching` — raw uploads. Region
       `europe-west2`, uniform bucket-level access, public access prevention
       enforced, no versioning, lifecycle rule deleting objects after 90 days.
+      **[revised 2026-09-13 — now 7 days]** Ninety was a placeholder picked
+      before anything was known about how the master would be used. See
+      **Source retention** under Decisions: the job deletes its own source on
+      success, and the rule is only a backstop for uploads whose job never
+      ran.
 - [x] `quill-teaching-videos-processed-teaching` — transcoded renditions, poster
       frames and WebVTT. Same region and access settings, versioning enabled, no
       deletion lifecycle rule.
@@ -1414,11 +1478,31 @@ Consequences to hold on to:
 - [x] `backend/scripts/transcode_cli.py`, modelled on `admin_cli.py` —
       environment-variable driven, no arguments. Takes the org, module and asset
       ids, downloads the source object, runs FFmpeg, uploads each output.
+- [x] Record on `ModuleMediaLink` what the transcode produced, and have the job
+      verify before it records. **[added 2026-09-13]** Which renditions exist is
+      read from the link row, never discovered by listing the bucket — see the
+      Decisions entry. Needs a migration, and needs the job to reach the
+      database, which today it cannot: the CLI talks only to GCS. **Who writes
+      this column depends on the trigger question below**, so settle that
+      first: if the backend invokes the job it can record completion when the
+      job returns and the CLI stays database-free; if Eventarc fires it, the job
+      must write its own state.
+- [ ] Have the transcode job delete its source object once its outputs verify.
+      **[added 2026-09-13]** The routine cleanup path, per the **Source
+      retention** decision — the 7-day lifecycle rule is only a backstop for
+      uploads whose job never ran. Delete after the verification above, never
+      before: a source dropped on an unverified encode is unrecoverable.
+- [ ] Alert on 404s under `/videos/*` from the load balancer's `httpRequest`
+      logs. **[added 2026-09-13]** The drift signal, per the Decisions entry:
+      a learner requesting a rendition the database claims exists is the one
+      symptom that matters, and it is currently invisible. One monitoring rule;
+      `infra/modules/monitoring/` is where it belongs.
 - [ ] Expose the renditions additively in `LearningSlideOut`
       (`features/teaching/schemas.py`) and resolve them in
       `_resolve_video_filename`. `video_src` keeps pointing at 720p; the 1080p
       file, the poster and the captions are new optional fields. Absent files
-      must resolve to `None`, not to a broken filename.
+      must resolve to `None`, not to a broken filename — which is what the link
+      column above is for, rather than trusting the naming convention.
 - [ ] Quality switch in `VideoPlayer.tsx`, defaulting to 720p and offering 1080p
       only when the API returned one. Preserve the playback position across a
       switch — dropping the learner back to the start of a lecture to change
@@ -1434,23 +1518,36 @@ Consequences to hold on to:
       is exactly the kind of property that is invisible until a bill arrives.
       Left unticked because the caption job does not exist yet and this item
       covers both.
-- [ ] Trigger both on upload, not from the content repo's deploy workflow.
+- [x] Trigger both on upload, not from the content repo's deploy workflow.
       **[revised 2026-09-09]** The original wording predates the decision that
       media is uploaded through the admin UI rather than committed to the content
       repository: the deploy workflow never sees a video, so it cannot be the
       trigger. Fire from the upload completing instead, and reflect progress in
       the admin card — a reference whose asset is uploaded but not yet transcoded
       is not yet complete, and the module stays unavailable until it is.
-      **[open question, 2026-09-13]** Two candidate designs, neither free:
-      **the backend invokes the job** when `link_module_media` records the
-      upload (`router.py`) — it already knows the moment the bytes landed and
-      already holds credentials, but needs `google-cloud-run` added to
-      `backend/pyproject.toml`; or **Eventarc fires on a GCS object-finalise
-      event**, which needs a new API enabled, a service agent, and IAM, none of
-      which this repository uses yet. The backend route is the smaller step and
-      fits the existing shape; the Eventarc route survives an upload that
-      completes without the link call ever being made. Decide before building
-      the trigger, not while building it.
+      **[decided 2026-09-13: the backend invokes the job]** The alternative was
+      Eventarc on a GCS object-finalise event, which is the more robust of the
+      two — it survives an upload that completes without the link call ever
+      being made — but it needs a new API enabled, a service agent and IAM,
+      none of which this repository uses yet. The backend route is the smaller
+      step and fits the existing shape: `link_module_media` already knows the
+      moment the bytes landed, already holds credentials, and already has the
+      organisation, module and asset ids the job needs. It costs
+      `google-cloud-run` in `backend/pyproject.toml`.
+      The consequence that matters is that **the backend, not the job, records
+      completion** — so the transcode CLI stays database-free and keeps talking
+      only to GCS, which is what it was built as. An upload whose link call
+      never happens is the accepted gap; the 7-day lifecycle rule sweeps the
+      orphaned source, and the module simply stays incomplete and hidden, which
+      is the safe direction.
+      **[done 2026-09-13, for the transcode job only]** `start_transcode` in
+      `features/teaching/transcode.py`, called from `link_module_media` after
+      the row is flushed. Ticked because the trigger mechanism is built and the
+      decision is settled, but two things named in this item are not done:
+      **nothing yet writes `transcoded_at`**, since the invocation is
+      deliberately not awaited and no polling or callback exists, so every link
+      currently keeps a null transcode state; and the caption job has no
+      trigger because it has no job. Both belong to the items below.
 - [ ] Captions are reviewed by the content author before a module goes `live` —
       Whisper output on clinical terminology needs a human pass. Surface review
       state on the admin video page.

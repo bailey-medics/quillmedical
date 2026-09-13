@@ -24,6 +24,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    false,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -454,4 +455,37 @@ class ModuleMediaLink(Base):
     )
     uploaded_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
+    )
+    #: When the transcode job finished and its outputs verified, or None
+    #: where it has not run. Recorded here rather than discovered by
+    #: listing the bucket: which renditions exist changes once in an
+    #: asset's life, and asking GCS on every learner's read would put a
+    #: network round trip on the hot path to detect it.
+    #:
+    #: Written by the backend when the job it invoked returns, so the
+    #: transcode CLI stays database-free — see the trigger decision in
+    #: the video plan.
+    #:
+    #: None also means "uploaded but not yet transcoded", the state the
+    #: availability gate needs so a module is not served with a slide
+    #: whose video has no renditions yet.
+    transcoded_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    #: Which outputs the job actually produced. Separate booleans rather
+    #: than inferred from ``transcoded_at``, because they genuinely
+    #: differ: captions come from a second job that may not have run, and
+    #: a 1080p rendition is skipped for a source smaller than that.
+    #:
+    #: The filenames themselves are deterministic — ``{asset_id}-720p.mp4``
+    #: and so on — so these say whether to offer a file, never where it
+    #: is.
+    has_1080p: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=false()
+    )
+    has_poster: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=false()
+    )
+    has_captions: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=false()
     )
