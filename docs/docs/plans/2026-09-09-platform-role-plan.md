@@ -870,13 +870,31 @@ does not, and removing the ladder removes the suggestion.
                         linked to a patient record — `User.fhir_patient_id` exists and
                         is nullable, but `MeOut` does not serve it. Either way it is a
                         modelling decision plus a backend change, not a retype.
-                      - **Unblocked with `fhir_patient_id` instead.** `MeOut` now
-                        serves the patient record an account is linked to, and the
-                        modal asks that. It is how the backend already answers the
-                        same question — `organisations.py:174`, `main.py:5314` and
-                        `main.py:5500` all test `user.fhir_patient_id == patient_id`
-                        — so the interface stops inferring what the API knows.
-                        Additive, no decision file.
+                      - **Answered with `fhir_patient_id`, and it is not a
+                        stopgap.** `MeOut` serves the patient record an account is
+                        linked to, and the modal asks that. It is how the backend
+                        already answers the same question — `organisations.py:174`,
+                        `main.py:5314` and `main.py:5500` all test
+                        `user.fhir_patient_id == patient_id` — so the interface
+                        stops inferring what the API knows. Additive, no decision
+                        file.
+                      - **The split did not replace it, though it was written as
+                        though it would.** `access_own_patient_records` now belongs
+                        to `patient` alone, so a competency *can* mark a patient —
+                        the condition under which this field was said to become
+                        removable. It does not become removable, for two reasons
+                        found on re-reading:
+                        - A clinician registered at the trust they work in holds
+                          both competencies, so a modal asking for the own-records
+                          one would hide the patient picker from someone messaging
+                          about a patient they treat.
+                        - The modal needs *which* record is theirs, to name it on
+                          the conversation. A competency says what someone may do
+                          and never which record it applies to.
+                      - **So the two answer different questions** and the comments
+                        saying otherwise were corrected, along with the test that
+                        asserted no competency could ever serve. It now asserts the
+                        case that keeps the field: someone who is both.
 
 ## Finding: the staff picker's rank filter is removed, not replaced
 

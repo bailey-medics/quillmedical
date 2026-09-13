@@ -201,8 +201,13 @@ export default function NewMessageModal({
   const { state } = useAuth();
   // Whether this person is messaging about their own health. Read from
   // the patient record the account is linked to, which is how the
-  // backend answers the same question. It used to read the
-  // `single-user` rung of `system_permissions`, a column being retired.
+  // backend answers the same question.
+  //
+  // Not `access_own_patient_records`, though that competency exists and
+  // belongs to patients alone: a clinician registered at the trust they
+  // work in holds it too, so asking for it would hide the picker from
+  // someone messaging about a patient they treat. The link also names
+  // *which* record is theirs, which a competency cannot.
   const isPatientUser =
     isPatientView ??
     (state.status === "authenticated" && state.user.fhir_patient_id != null);

@@ -4,17 +4,22 @@ The message composer needs to know whether someone is writing about
 their own health, so it can hide the patient picker. It used to ask the
 ``single-user`` rung of ``system_permissions``, a column being retired.
 
-**A competency cannot answer this yet.** The natural test is
-``access_patient_records``, and eighteen staff professions hold it
-alongside ``patient`` — from ``healthcare_assistant`` to ``consultant``
-— because the id names two different permissions: reading the records of
-patients you treat, and reading your own. Splitting it is recorded in
-the plan as its own unit.
+**A competency does not answer this, even now one could.** The id was
+split into ``access_own_patient_records`` and ``access_patient_records``,
+so a competency *can* mark a patient — only the ``patient`` profession
+holds the first. It still does not serve here, for two reasons:
+
+- A clinician who is also a patient at their own trust holds both, so
+  reading the competency would hide the patient picker from someone
+  messaging about a patient they treat.
+- The interface needs to know *which* record is theirs, to name it on
+  the conversation. A competency says what someone may do, never which
+  record it applies to.
 
 So the interface reads ``fhir_patient_id``, which is how the backend
-already answers the same question in ``check_user_patient_access`` and
-the two self-access routes in ``main.py``. Additive, so a stale client
-is unaffected.
+answers the same question in ``check_user_patient_access`` and the two
+self-access routes in ``main.py``. Additive, so a stale client is
+unaffected.
 """
 
 from __future__ import annotations
@@ -92,28 +97,62 @@ class TestTheFieldIsServed:
         assert response.json()["fhir_patient_id"] is None
 
 
-class TestTheCompetencyCannotServeInstead:
+class TestTheCompetencyDoesNotServeInstead:
     """Why the interface reads a link rather than a competency."""
 
-    def test_a_clinician_holds_the_patient_competency_too(
+    def test_a_clinician_who_is_also_a_patient_holds_both(
         self, test_client: TestClient, db_session: Session
     ) -> None:
-        """The reason this field exists, asserted rather than assumed.
+        """The case that keeps this field, asserted rather than assumed.
 
-        If ``access_patient_records`` distinguished patients from staff,
-        the modal could ask for it and no new field would be needed. It
-        does not, and this fails the day the competency is split — which
-        is the point at which the field can go.
+        Someone treating patients at the trust where they are also
+        registered holds ``access_patient_records`` for their caseload
+        and ``access_own_patient_records`` for themselves. A modal
+        reading the second would hide their patient picker, which is
+        wrong whenever they are messaging about someone they treat.
+
+        The link says which record is theirs and the competencies do
+        not, so the two are not interchangeable.
         """
-        _user(db_session, "also_holds_it", profession="specialty_trainee_1_2")
+        clinician = _user(
+            db_session,
+            "treats_and_is_treated",
+            profession="specialty_trainee_1_2",
+            fhir_patient_id=PATIENT_RECORD,
+        )
+        clinician.additional_competencies = ["access_own_patient_records"]
+        db_session.commit()
 
-        client = _login(test_client, "also_holds_it")
+        client = _login(test_client, "treats_and_is_treated")
         response = client.get("/api/auth/me")
 
         assert response.status_code == 200, response.text
         body = response.json()
         assert "access_patient_records" in body["competencies"]
-        assert body["fhir_patient_id"] is None
+        assert "access_own_patient_records" in body["competencies"]
+        assert body["fhir_patient_id"] == PATIENT_RECORD
+
+    def test_a_patient_holds_only_the_own_records_competency(
+        self, test_client: TestClient, db_session: Session
+    ) -> None:
+        """The split did work: the competency alone marks a patient.
+
+        It is simply not what this field is for.
+        """
+        _user(
+            db_session,
+            "just_a_patient",
+            profession="patient",
+            fhir_patient_id=PATIENT_RECORD,
+        )
+
+        client = _login(test_client, "just_a_patient")
+        response = client.get("/api/auth/me")
+
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert "access_own_patient_records" in body["competencies"]
+        assert "access_patient_records" not in body["competencies"]
 
 
 @pytest.mark.parametrize(
