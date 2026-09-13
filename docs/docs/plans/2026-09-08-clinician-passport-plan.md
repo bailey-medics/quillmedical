@@ -2556,10 +2556,35 @@ explicitly deferred here.
         could quietly sack somebody from the trust they actually work
         for. The response returns `sign_offs_kept` so an admin sees the
         sign-offs stand rather than having to trust it.
-- [ ] Tests: an external assessor cannot read a passport, another
+- [x] Tests: an external assessor cannot read a passport, another
       assessor's requests, users or organisations; a consumed or
       expired token is refused; and revoking an assessor's access
       leaves the sign-offs they already made intact.
+      - **Stated as what they cannot reach, not what they can.** An
+        external assessor is the widest-reaching account the passport
+        creates without an administrator ever approving it: a holder
+        sends an email and a stranger gets a Quill login. So each
+        clause is its own test rather than inferred from the design,
+        and one test gathers the lot — membership held, and still
+        nothing reachable at the place.
+      - **Reflections were added to the list.** Not in this task's
+        wording, but holder-only is the rule most costly to get wrong:
+        written reflection can be disclosed in legal proceedings, so an
+        assessor gaining it by way of an invitation would be the worst
+        version of this feature.
+      - **Expiry turned out to be two checks, so it is two tests.** The
+        token's own `exp`, enforced inside `jwt.decode`, and the row's
+        `expires_at`, checked separately in `_decoded_invite` because
+        the row is what an administrator can see and the two must not
+        disagree. Each has to refuse on its own, so one test backdates
+        the row and the other signs a token directly.
+      - **`create_passport_invite_token` refuses a lifetime below a
+        day**, which is correct everywhere except a test that wants an
+        already-dead token — minting one is a bug in real code. The
+        second test signs with the same key rather than weakening the
+        validator to suit itself.
+      - Revocation leaving sign-offs intact is covered above, in the
+        verify-and-revoke task, so it is not repeated here.
 
 ## Phase 6: frontend
 

@@ -30,14 +30,17 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import Iterator
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 from httpx import Response
+from jose import jwt
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.features.passport import router
 from app.features.passport.models import (
     AssessorRegistrationVerification,
@@ -57,7 +60,7 @@ from app.models import (
     site_member,
 )
 from app.passport_storage import get_passport_store
-from app.security import hash_password
+from app.security import PASSPORT_INVITE_TYPE, hash_password
 
 #: From the oncology set drafted in Phase 0. Chosen because it declares
 #: the UK SACT Board's four levels, so the level paths are exercised
@@ -1829,6 +1832,383 @@ class TestAdminVerifyAndRevoke:
         )
 
         assert response.status_code == 404
+
+
+class TestWhatAnExternalAssessorCannotReach:
+    """The authorisation matrix for somebody invited from outside.
+
+    An external assessor is the widest-reaching account the passport
+    creates without an administrator ever approving it: a holder sends an
+    email and a stranger gets a Quill login. So what they *cannot* do
+    matters more here than what they can, and each clause is stated as
+    its own test rather than inferred from the design.
+
+    The membership they gain is a record that they were there. It is not
+    a key to the place: what they may act on is resolved from the
+    request rows naming them, and an assessor named on nothing reaches
+    nothing.
+    """
+
+    @pytest.fixture
+    def sent(self, monkeypatch: pytest.MonkeyPatch) -> list[dict[str, str]]:
+        outbox: list[dict[str, str]] = []
+
+        def capture(
+            *, to: str, subject: str, html_body: str, **kw: object
+        ) -> None:
+            outbox.append({"to": to, "html_body": html_body})
+
+        monkeypatch.setattr(router, "send_email", capture)
+        return outbox
+
+    def _accept(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        sent: list[dict[str, str]],
+        *,
+        passport_id: str,
+        email: str = "okafor@other-trust.nhs.uk",
+        username: str = "okafor",
+    ) -> int:
+        """Invite and accept for real; return the new assessor's id."""
+        invited = holder_client.post(
+            f"/api/passport/{passport_id}/assessor-invites",
+            json={
+                "email": email,
+                "name": "Dr Amara Okafor",
+                "registration_authority": "GMC",
+                "registration_number": "7654321",
+            },
+        )
+        assert invited.status_code == 201, invited.text
+
+        token = sent[-1]["html_body"].split("token=")[1].split('"')[0]
+
+        accepted = test_client.post(
+            "/api/passport/assessor-invites/accept",
+            json={
+                "token": token,
+                "username": username,
+                "password": "PassportPassword123!",
+            },
+        )
+        assert accepted.status_code == 200, accepted.text
+        return int(accepted.json()["user_id"])
+
+    def test_they_cannot_read_the_passport_that_invited_them(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        sent: list[dict[str, str]],
+    ) -> None:
+        """Being invited is not being given the record.
+
+        A 404 rather than a 403: an assessor guessing at ids should not
+        be able to tell which passports exist.
+        """
+        passport_id = _create_passport(holder_client)
+        self._accept(holder_client, test_client, sent, passport_id=passport_id)
+
+        assessor_client = _login(test_client, "okafor")
+
+        assert (
+            assessor_client.get(f"/api/passport/{passport_id}").status_code
+            == 404
+        )
+
+    def test_they_cannot_read_the_holder_s_reflections(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        sent: list[dict[str, str]],
+    ) -> None:
+        """Holder-only, and the narrower default is the safer one.
+
+        Written reflection can be disclosed in legal proceedings, so an
+        assessor gaining it by way of an invitation would be the worst
+        version of this feature.
+        """
+        passport_id = _create_passport(holder_client)
+        self._accept(holder_client, test_client, sent, passport_id=passport_id)
+
+        assessor_client = _login(test_client, "okafor")
+        response = assessor_client.get(
+            f"/api/passport/{passport_id}/reflections"
+        )
+
+        assert response.status_code == 404
+
+    def test_they_cannot_see_another_assessor_s_requests(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        db_session: Session,
+        assessor: User,
+        sent: list[dict[str, str]],
+    ) -> None:
+        """The inbox is a cross-passport query, so it is the one place a
+        leak would expose every holder at once."""
+        passport_id = _create_passport(holder_client)
+        external_id = self._accept(
+            holder_client, test_client, sent, passport_id=passport_id
+        )
+
+        # A request naming the *other* assessor, not the external one.
+        holder_client.post(
+            f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
+            json={
+                "assessor_user_id": assessor.id,
+                "observed_on": "2026-03-14",
+                "level_id": LEVEL,
+            },
+        )
+
+        assessor_client = _login(test_client, "okafor")
+        response = assessor_client.get("/api/passport/requests/inbox")
+
+        assert response.status_code == 200, response.text
+        assert response.json() == []
+        assert external_id != assessor.id
+
+    def test_they_cannot_list_users(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        sent: list[dict[str, str]],
+    ) -> None:
+        """``external_assessor`` carries the passport competency alone.
+
+        Without this the invitation would hand a stranger the staff
+        directory of a trust they do not work for.
+        """
+        passport_id = _create_passport(holder_client)
+        self._accept(holder_client, test_client, sent, passport_id=passport_id)
+
+        assessor_client = _login(test_client, "okafor")
+
+        assert assessor_client.get("/api/users").status_code == 403
+
+    def test_they_cannot_list_organisations(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        sent: list[dict[str, str]],
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+        self._accept(holder_client, test_client, sent, passport_id=passport_id)
+
+        assessor_client = _login(test_client, "okafor")
+
+        assert assessor_client.get("/api/organisations").status_code == 403
+
+    def test_they_cannot_verify_or_revoke_anybody(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        sent: list[dict[str, str]],
+    ) -> None:
+        """The admin endpoints need ``manage_users``, which they lack.
+
+        Worth its own test because an assessor *is* a member of the
+        place, and a check that asked only about membership would let
+        them administer the people there.
+        """
+        passport_id = _create_passport(holder_client)
+        external_id = self._accept(
+            holder_client, test_client, sent, passport_id=passport_id
+        )
+
+        assessor_client = _login(test_client, "okafor")
+
+        verify = assessor_client.post(
+            f"/api/passport/assessors/{external_id}/registration-verification",
+            json={
+                "registration_authority": "GMC",
+                "registration_number": "7654321",
+            },
+        )
+        revoke = assessor_client.delete(
+            f"/api/passport/assessors/{external_id}/membership"
+        )
+
+        assert verify.status_code == 404
+        assert revoke.status_code == 404
+
+    def _stale_invite(
+        self, holder_client: TestClient, db_session: Session, passport_id: str
+    ) -> PassportAssessorInvite:
+        """An invitation whose fortnight has already run out."""
+        holder_client.post(
+            f"/api/passport/{passport_id}/assessor-invites",
+            json={
+                "email": "late@other-trust.nhs.uk",
+                "name": "Dr Late Arrival",
+                "registration_authority": "GMC",
+                "registration_number": "1112223",
+            },
+        )
+
+        invite = db_session.scalar(
+            select(PassportAssessorInvite).where(
+                PassportAssessorInvite.email == "late@other-trust.nhs.uk"
+            )
+        )
+        assert invite is not None
+
+        invite.expires_at = datetime.now(UTC) - timedelta(days=1)
+        db_session.commit()
+
+        return invite
+
+    def test_an_invitation_past_its_fortnight_is_refused(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        db_session: Session,
+        sent: list[dict[str, str]],
+    ) -> None:
+        """Fourteen days bounds joining, and the bound is real.
+
+        The row's own ``expires_at`` is the check exercised here. It is
+        checked as well as the token's ``exp`` because the row is what an
+        administrator can see and reason about, and the two must not be
+        able to disagree — so the row alone has to be able to refuse.
+        """
+        passport_id = _create_passport(holder_client)
+        self._stale_invite(holder_client, db_session, passport_id)
+
+        token = sent[-1]["html_body"].split("token=")[1].split('"')[0]
+
+        preview = test_client.get(
+            "/api/passport/assessor-invites/preview",
+            params={"token": token},
+        )
+        accepted = test_client.post(
+            "/api/passport/assessor-invites/accept",
+            json={
+                "token": token,
+                "username": "late-arrival",
+                "password": "PassportPassword123!",
+            },
+        )
+
+        assert preview.status_code == 400
+        assert accepted.status_code == 400
+
+    def test_a_token_whose_own_expiry_has_passed_is_refused(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        db_session: Session,
+        sent: list[dict[str, str]],
+    ) -> None:
+        """The other half of the same guarantee.
+
+        ``create_passport_invite_token`` refuses a lifetime below a day,
+        which is right everywhere but here — minting an already-dead
+        token is a bug in real code. So this signs one directly with the
+        same key to reach the ``exp`` check inside ``jwt.decode``, which
+        is what actually stops a fortnight-old link.
+        """
+        passport_id = _create_passport(holder_client)
+        holder_client.post(
+            f"/api/passport/{passport_id}/assessor-invites",
+            json={
+                "email": "stale@other-trust.nhs.uk",
+                "name": "Dr Stale Link",
+                "registration_authority": "GMC",
+                "registration_number": "4445556",
+            },
+        )
+
+        invite = db_session.scalar(
+            select(PassportAssessorInvite).where(
+                PassportAssessorInvite.email == "stale@other-trust.nhs.uk"
+            )
+        )
+        assert invite is not None
+
+        expired = jwt.encode(
+            {
+                "type": PASSPORT_INVITE_TYPE,
+                "invite_id": invite.id,
+                "email": invite.email,
+                "exp": datetime.now(UTC) - timedelta(seconds=1),
+            },
+            settings.JWT_SECRET.get_secret_value(),
+            algorithm=settings.JWT_ALG,
+        )
+
+        response = test_client.get(
+            "/api/passport/assessor-invites/preview",
+            params={"token": expired},
+        )
+
+        assert response.status_code == 400
+
+    def test_a_consumed_token_is_refused(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        sent: list[dict[str, str]],
+    ) -> None:
+        """Single use is enforced by the row, since a JWT cannot carry a
+        record of having been spent."""
+        passport_id = _create_passport(holder_client)
+        self._accept(holder_client, test_client, sent, passport_id=passport_id)
+
+        token = sent[-1]["html_body"].split("token=")[1].split('"')[0]
+
+        again = test_client.post(
+            "/api/passport/assessor-invites/accept",
+            json={
+                "token": token,
+                "username": "okafor-again",
+                "password": "PassportPassword123!",
+            },
+        )
+
+        assert again.status_code == 409
+
+    def test_the_membership_alone_grants_nothing_at_the_place(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        db_session: Session,
+        org: Organisation,
+        sent: list[dict[str, str]],
+    ) -> None:
+        """The summary of the whole matrix.
+
+        They hold a membership at the holder's organisation and the
+        passport competency as a ceiling, and still reach nothing there:
+        not the passport that invited them, not the people, not the
+        organisation itself. What they may act on comes from the request
+        rows naming them, and they are named on none.
+        """
+        passport_id = _create_passport(holder_client)
+        assessor_id = self._accept(
+            holder_client, test_client, sent, passport_id=passport_id
+        )
+
+        member = db_session.scalar(
+            select(organisation_member.c.capacity).where(
+                organisation_member.c.organisation_id == org.id,
+                organisation_member.c.user_id == assessor_id,
+            )
+        )
+        assert member == "external"
+
+        assessor_client = _login(test_client, "okafor")
+
+        assert (
+            assessor_client.get(f"/api/passport/{passport_id}").status_code
+            == 404
+        )
+        assert assessor_client.get("/api/users").status_code == 403
+        assert assessor_client.get("/api/organisations").status_code == 403
+        assert assessor_client.get("/api/passport/requests/inbox").json() == []
 
 
 class TestFeatureGate:
