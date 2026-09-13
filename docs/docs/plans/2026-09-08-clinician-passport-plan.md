@@ -2637,8 +2637,33 @@ explicitly deferred here.
         support still needs it.
       - Eighteen tests added to `swUpdateGate.test.ts` (33 in the file);
         `just uf src/lib/swUpdateGate.test.ts` green.
-- [ ] Add `frontend/src/lib/passport/` API client functions using
+- [x] Add `frontend/src/lib/passport/` API client functions using
       `api.ts` and types generated from the backend schemas.
+      - **Three routes this plan describes do not exist.** The API
+        surface above lists `export.md`, `export.pdf` and `export.zip`;
+        no export route was ever wired. `export.py` builds a zip and is
+        called directly by its own tests. Schemas for evidence upload
+        (`EvidenceUploadOut`), the competency catalogue
+        (`CompetencyCatalogueOut`) and the site shortlist
+        (`CommonCompetenciesIn`/`Out`) exist in
+        `backend/app/schemas/passport.py` with no routes behind them
+        either — only schema tests reference them. The client covers the
+        33 operations that do exist and omits the rest, so phase 7 needs
+        those routes added before export or evidence upload can be built.
+      - **The competency picker has no endpoint to call.** Until one
+        exists it must read `src/generated/competencies.json`, which is
+        already listed under deferred items as something to stop doing.
+      - **`withdraw` returns `status: "declined"`** while setting the
+        request row to `withdrawn` — `router.py` around line 757. Looks
+        like a copy-paste slip. The client types the field to the real
+        enum and documents the quirk rather than encoding it; worth
+        fixing in phase 7.
+      - **`PASSPORT_PATHS` mirrors the backend's `EXPECTED_PATHS`**, with
+        a test asserting the two agree. A mistyped path compiles cleanly
+        and surfaces as a 404 in front of a user, and most of these
+        routes have no caller yet to notice.
+      - Thirty-six tests in `src/lib/passport/api.test.ts`;
+        `just uf src/lib/passport/api.test.ts` green.
 - [ ] Build the components listed above in
       `frontend/src/components/passport/` with stories and tests; present
       any genuinely new component for review before implementing, per
