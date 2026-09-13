@@ -362,6 +362,25 @@ that gets read, so it carries the result on its own.
 
 This is a rule about **how a response ends**, not about every line inside it.
 
+#### This rule outranks any output style
+
+**It applies in every output style, including Concise, and it is never
+suspended.** An output style is a harness setting; this is a project
+instruction, and where the two disagree this one wins. That holds even when the
+style asserts its own precedence — Concise says "these rules win where they
+conflict with more general communication or formatting guidance elsewhere",
+and this rule is not the general guidance it is talking about.
+
+**In particular, the TL;DR is not a "closing recap" and is not "narration".**
+Concise bans restating what you already said, and rightly. The TL;DR is not
+that: it is the summary the user reads *first*, and often instead of the prose
+above it. Dropping it removes the part that gets read and keeps the part that
+does not, which is precisely backwards.
+
+Under Concise, keep the prose above the summary shorter — the summary itself
+stays. If you ever find yourself reasoning that some other instruction excuses
+you from writing one, that reasoning is wrong: write the TL;DR.
+
 The closing summary:
 
 - **Opens with a level two heading reading `## TL;DR`.** Nothing else goes on
@@ -394,7 +413,7 @@ Things that look like exceptions and are not:
 Example of a closing summary:
 
 ```markdown
-# TL;DR
+## TL;DR
 
 - **Added the summary rule to CLAUDE.md.** It sits under the Claude-specific
   section so the Copilot sync will not overwrite it.
