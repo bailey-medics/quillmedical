@@ -23,6 +23,7 @@ Tables:
 
 - ``Passport`` — the pointer to one holder's repository.
 - ``PassportSignOffRequest`` — an open ask, closed when resolved.
+- ``PassportAssessorInvite`` — an outside assessor being brought in.
 - ``SiteCommonCompetency`` — an admin-curated shortlist for the picker.
 """
 
@@ -170,6 +171,107 @@ class PassportSignOffRequest(Base):
             "assessor_user_id",
             "status",
         ),
+    )
+
+
+class PassportAssessorInvite(Base):
+    """An invitation asking somebody outside to sign a competency off.
+
+    Workflow, like the request above, and for the same reason: bringing
+    an assessor in spans accounts that may not exist yet, which no
+    repository can record. Nothing here is part of the passport — the
+    sign-off the assessor eventually makes is a file, and this row is
+    only how they were reached.
+
+    **This row, not the token, is what makes an invite single-use.** A
+    JWT carries no record of having been spent, so
+    ``create_passport_invite_token`` in ``security.py`` can only make one
+    that expires. ``accepted_at`` is the check: the accept endpoint must
+    refuse a row already carrying one.
+
+    The declared registration is the assessor's own claim at the moment
+    of inviting, stored because the sign-off has to say who signed and
+    on what standing. Quill has not checked it here and the record says
+    so elsewhere; verification is an administrator's act, later.
+    """
+
+    __tablename__ = "passport_assessor_invite"
+
+    #: A uuid4 string, matching what the invite token carries as its
+    #: ``invite_id``. The token names the invitation rather than the
+    #: passport, so that a token can be spent once against this row
+    #: instead of replayed against a passport.
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+
+    passport_id: Mapped[str] = mapped_column(
+        ForeignKey("passport.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    invited_by_user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+
+    #: Who it was sent to, and who may redeem it. Checked on acceptance
+    #: against the token's own copy, so a forwarded link cannot be
+    #: redeemed by whoever happened to receive it.
+    email: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    #: The assessor's name as the holder gave it, for the email and for
+    #: the invitation list. The name on the eventual sign-off comes from
+    #: the account, not from here.
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    #: Self-declared at invite: "GMC", "NMC", "HCPC" and so on, with the
+    #: number alongside. A plain string rather than an enumeration —
+    #: the registers a visiting assessor might hold are not Quill's list
+    #: to close, and refusing an unfamiliar one would block a legitimate
+    #: sign-off.
+    registration_authority: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )
+
+    registration_number: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )
+
+    #: A hash of the token, never the token itself. What is emailed is a
+    #: credential, and a readable copy in the database would let anyone
+    #: with a row redeem the invitation.
+    token_hash: Mapped[str] = mapped_column(
+        String(64), nullable=False, unique=True, index=True
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+    )
+
+    #: When the token stops working. Stored as well as signed into the
+    #: token so that an invitation list can show it without decoding,
+    #: and so expiry survives a key rotation that would make every
+    #: outstanding token undecodable.
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+    #: Set when the invite is consumed, and the reason it is single-use.
+    #: Null means outstanding.
+    accepted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    #: Who accepted, which may be a brand new account or one that
+    #: already existed. Null until then, and null forever if the
+    #: invitation lapses.
+    accepted_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
     )
 
 

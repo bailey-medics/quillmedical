@@ -15,6 +15,8 @@ a real database is available.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
+
 import pytest
 from sqlalchemy import inspect
 from sqlalchemy.exc import IntegrityError
@@ -24,6 +26,7 @@ from app.features.passport import locking
 from app.features.passport.models import (
     REQUEST_STATUSES,
     Passport,
+    PassportAssessorInvite,
     PassportSignOffRequest,
     SiteCommonCompetency,
 )
@@ -220,6 +223,156 @@ class TestSiteCommonCompetency:
 
         for permissive in ("required", "mandatory", "enabled", "allowed"):
             assert permissive not in columns
+
+
+class TestAssessorInvite:
+    """Bringing somebody outside in, and spending the invitation once."""
+
+    def _invite(
+        self,
+        db_session: Session,
+        *,
+        invite_id: str,
+        token_hash: str,
+        email: str = "amara@example.nhs.uk",
+    ) -> PassportAssessorInvite:
+        """One invitation against a fresh holder and inviter."""
+        holder = _user(db_session, f"holder-{invite_id}@example.nhs.uk")
+        db_session.add(Passport(id=PASSPORT_ID, user_id=holder.id))
+        db_session.flush()
+
+        return PassportAssessorInvite(
+            id=invite_id,
+            passport_id=PASSPORT_ID,
+            invited_by_user_id=holder.id,
+            email=email,
+            name="Dr Amara Okafor",
+            registration_authority="GMC",
+            registration_number="1234567",
+            token_hash=token_hash,
+            expires_at=datetime.now(UTC) + timedelta(days=14),
+        )
+
+    def test_it_carries_no_part_of_the_record(self) -> None:
+        """It is how an assessor was reached, never what they decided.
+        The sign-off is a file; a level or a signature here would be a
+        second version of it."""
+        columns = {
+            column.name for column in inspect(PassportAssessorInvite).columns
+        }
+
+        for content in (
+            "level",
+            "observed_on",
+            "signed_at",
+            "content_hash",
+            "competency_id",
+        ):
+            assert content not in columns
+
+    def test_the_raw_token_is_never_stored(self) -> None:
+        """What is emailed is a credential. A readable copy would let
+        anyone with a row redeem the invitation."""
+        columns = {
+            column.name for column in inspect(PassportAssessorInvite).columns
+        }
+
+        assert "token_hash" in columns
+        assert "token" not in columns
+
+    def test_a_fresh_invite_is_outstanding(self, db_session: Session) -> None:
+        """Null ``accepted_at`` is what "not yet spent" looks like."""
+        invite = self._invite(
+            db_session, invite_id="inv-1", token_hash="hash-1"
+        )
+        db_session.add(invite)
+        db_session.flush()
+        db_session.refresh(invite)
+
+        assert invite.accepted_at is None
+        assert invite.accepted_user_id is None
+        assert invite.created_at is not None
+
+    def test_one_invite_per_token(self, db_session: Session) -> None:
+        """Two rows sharing a hash would make one emailed link ambiguous,
+        and single use undecidable."""
+        first = self._invite(
+            db_session, invite_id="inv-2", token_hash="shared-hash"
+        )
+        db_session.add(first)
+        db_session.flush()
+
+        db_session.add(
+            PassportAssessorInvite(
+                id="inv-3",
+                passport_id=PASSPORT_ID,
+                invited_by_user_id=first.invited_by_user_id,
+                email="other@example.nhs.uk",
+                name="Dr Someone Else",
+                registration_authority="NMC",
+                registration_number="99AB1234",
+                token_hash="shared-hash",
+                expires_at=datetime.now(UTC) + timedelta(days=14),
+            )
+        )
+
+        with pytest.raises(IntegrityError):
+            db_session.flush()
+
+    def test_accepting_records_who_and_when(self, db_session: Session) -> None:
+        """Consuming the invite is what the accept endpoint checks, so
+        both halves have to be writable."""
+        invite = self._invite(
+            db_session, invite_id="inv-4", token_hash="hash-4"
+        )
+        db_session.add(invite)
+        db_session.flush()
+
+        assessor = _user(db_session, "assessor-accepts@example.nhs.uk")
+        accepted = datetime.now(UTC)
+        invite.accepted_at = accepted
+        invite.accepted_user_id = assessor.id
+        db_session.flush()
+        db_session.refresh(invite)
+
+        assert invite.accepted_at is not None
+        assert invite.accepted_user_id == assessor.id
+
+    def test_the_declared_registration_is_kept(
+        self, db_session: Session
+    ) -> None:
+        """Self-declared at invite, and stored because the sign-off has
+        to say on what standing somebody signed. Quill has not checked
+        it here, and no column claims otherwise."""
+        invite = self._invite(
+            db_session, invite_id="inv-5", token_hash="hash-5"
+        )
+        db_session.add(invite)
+        db_session.flush()
+        db_session.refresh(invite)
+
+        assert invite.registration_authority == "GMC"
+        assert invite.registration_number == "1234567"
+
+        columns = {
+            column.name for column in inspect(PassportAssessorInvite).columns
+        }
+        assert "registration_verified" not in columns
+
+    def test_expiry_is_stored_as_well_as_signed(
+        self, db_session: Session
+    ) -> None:
+        """So a list can show it without decoding a token, and so expiry
+        survives a key rotation that makes outstanding tokens
+        undecodable."""
+        invite = self._invite(
+            db_session, invite_id="inv-6", token_hash="hash-6"
+        )
+        db_session.add(invite)
+        db_session.flush()
+        db_session.refresh(invite)
+
+        assert invite.expires_at is not None
 
 
 class TestLockKey:

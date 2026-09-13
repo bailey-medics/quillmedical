@@ -2397,7 +2397,31 @@ explicitly deferred here.
         argument. These are also the first direct tests of any invite
         token in the codebase — the patient pair has only ever been
         covered incidentally, through the messaging routes.
-- [ ] Add the `passport_assessor_invite` model and migration.
+- [x] Add the `passport_assessor_invite` model and migration.
+      - **The primary key is a uuid4 string, not an integer**, unlike
+        the sibling `passport_signoff_request`. The token minted last
+        task carries `invite_id` as its subject, so a guessable
+        sequential id would let somebody mint nothing but still name a
+        row that exists. The column matches what the token already
+        carries rather than the table beside it.
+      - **`expires_at` is stored as well as signed into the token.**
+        Redundant on the face of it, and kept for two reasons: an
+        invitation list can show when a link dies without decoding a
+        token per row, and expiry survives a key rotation that would
+        make every outstanding token undecodable at once.
+      - **Only the hash of the token is stored.** What is emailed is a
+        credential; a readable copy in the database would let anyone
+        with a row redeem the invitation. The unique index on
+        `token_hash` is what makes single use decidable — two rows
+        sharing a hash would make one emailed link ambiguous.
+      - `registration_authority` is a plain string rather than an
+        enumeration. The registers a visiting assessor might hold are
+        not Quill's list to close, and refusing an unfamiliar one would
+        block a legitimate sign-off for a data-modelling preference.
+      - No `registration_verified` column here, and a test pins its
+        absence: verification is an administrator's later act recorded
+        against the assessor, and a flag on the invitation would be
+        read as Quill having checked something it has not.
 - [ ] Add the invite endpoint and an email template alongside
       `features/teaching/email_templates.py`; rate limit invites per
       holder per day.
