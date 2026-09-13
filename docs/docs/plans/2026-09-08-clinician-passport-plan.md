@@ -2604,7 +2604,7 @@ explicitly deferred here.
         refusing.
       - On branch `feature/add-passport-to-org-features`, PR #660.
 
-- [ ] **First, and before anything is loaded on demand: handle
+- [x] **First, and before anything is loaded on demand: handle
       `vite:preloadError`.** Listen for it and route it through the
       update gate in `frontend/src/lib/swUpdateGate.ts`, so a tab
       running an old bundle that asks for a chunk the container no
@@ -2614,6 +2614,29 @@ explicitly deferred here.
       split until it exists. Test it by requesting a chunk name that
       was never built and asserting the gate is consulted, rather than
       by deploying twice.
+      - **The gate did not already know how to preserve work**, which
+        this task's wording above assumed. `swUpdateGate.ts` knew route
+        safety and nothing else; persisting in-progress input lives in
+        `persistFormState` in `lib/compat-generation/`, written for the
+        API-compatibility forced reload. The handler composes the two
+        rather than finding them in one place.
+      - **The fail-safe direction is inverted, and deliberately.** The
+        service-worker gate defers when a route is unsafe because the
+        tab is working and an update can wait. Here the navigation has
+        _already_ failed, so deferring leaves the user on a dead page:
+        reloading is the recovery, and deferral is reserved for when a
+        reload would destroy something — an unsafe route, or a flash
+        message in flight.
+      - **A separate reload-loop guard key**, `quill-preload-reloaded`
+        rather than the service worker's `quill-sw-update-reloaded`.
+        Sharing one would let an SW reload suppress a preload recovery,
+        and the reverse. Pinned by a test.
+      - **Wired outside the `"serviceWorker" in navigator` block** in
+        `main.tsx`, since a preload failure is the router's problem
+        rather than the worker's and a browser without service-worker
+        support still needs it.
+      - Eighteen tests added to `swUpdateGate.test.ts` (33 in the file);
+        `just uf src/lib/swUpdateGate.test.ts` green.
 - [ ] Add `frontend/src/lib/passport/` API client functions using
       `api.ts` and types generated from the backend schemas.
 - [ ] Build the components listed above in

@@ -1,7 +1,9 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import {
   checkForUpdateAndReloadIfSafe,
+  decidePreloadFailureAction,
   isRouteSafeForReload,
+  wirePreloadErrorRecovery,
   wireUpdateChecks,
   HOURLY_INTERVAL_MS,
   type RouteMatchLike,
@@ -316,5 +318,249 @@ describe("wireUpdateChecks", () => {
     await vi.advanceTimersByTimeAsync(customIntervalMs);
 
     expect(update).toHaveBeenCalledTimes(1);
+  });
+});
+
+function makePreloadRouter(
+  safeForReload: boolean,
+  locationState: unknown = null,
+): RouterLike {
+  return {
+    subscribe: vi.fn(() => () => {}),
+    state: {
+      matches: [{ route: { handle: { safeForReload } } }],
+      location: { state: locationState },
+    },
+  };
+}
+
+describe("decidePreloadFailureAction", () => {
+  let storage: ReturnType<typeof makeStorage>;
+
+  beforeEach(() => {
+    storage = makeStorage();
+  });
+
+  it("reloads on a safe route with no flash", () => {
+    expect(
+      decidePreloadFailureAction({
+        routeIsSafe: true,
+        hasFlash: false,
+        storage,
+      }),
+    ).toBe("reload");
+  });
+
+  it("records the reload-loop guard when it decides to reload", () => {
+    decidePreloadFailureAction({
+      routeIsSafe: true,
+      hasFlash: false,
+      storage,
+    });
+
+    expect(storage.setItem).toHaveBeenCalledWith("quill-preload-reloaded", "1");
+  });
+
+  it("defers on an unsafe route rather than destroying work", () => {
+    expect(
+      decidePreloadFailureAction({
+        routeIsSafe: false,
+        hasFlash: false,
+        storage,
+      }),
+    ).toBe("defer");
+  });
+
+  it("defers while a flash message is in flight", () => {
+    expect(
+      decidePreloadFailureAction({
+        routeIsSafe: true,
+        hasFlash: true,
+        storage,
+      }),
+    ).toBe("defer");
+  });
+
+  it("does not record the guard when it defers", () => {
+    decidePreloadFailureAction({
+      routeIsSafe: false,
+      hasFlash: false,
+      storage,
+    });
+
+    expect(storage.setItem).not.toHaveBeenCalled();
+  });
+
+  it("defers a second time, so a chunk missing from the current build cannot spin", () => {
+    expect(
+      decidePreloadFailureAction({
+        routeIsSafe: true,
+        hasFlash: false,
+        storage,
+      }),
+    ).toBe("reload");
+
+    expect(
+      decidePreloadFailureAction({
+        routeIsSafe: true,
+        hasFlash: false,
+        storage,
+      }),
+    ).toBe("defer");
+  });
+
+  it("uses a different guard key from the service-worker gate", () => {
+    const shared = makeStorage({ "quill-sw-update-reloaded": "1" });
+
+    expect(
+      decidePreloadFailureAction({
+        routeIsSafe: true,
+        hasFlash: false,
+        storage: shared,
+      }),
+    ).toBe("reload");
+  });
+});
+
+describe("wirePreloadErrorRecovery", () => {
+  let storage: ReturnType<typeof makeStorage>;
+  let listeners: Map<string, (event: Event) => void>;
+  let addEventListener: typeof window.addEventListener;
+
+  function firePreloadError(): Event {
+    const event = new Event("vite:preloadError", { cancelable: true });
+    listeners.get("vite:preloadError")?.(event);
+    return event;
+  }
+
+  beforeEach(() => {
+    storage = makeStorage();
+    listeners = new Map();
+    addEventListener = vi.fn((type: string, listener: unknown) => {
+      listeners.set(type, listener as (event: Event) => void);
+    }) as unknown as typeof window.addEventListener;
+  });
+
+  it("listens for vite:preloadError", () => {
+    wirePreloadErrorRecovery({
+      router: makePreloadRouter(true),
+      persist: vi.fn(),
+      reload: vi.fn(),
+      addEventListener,
+      storage,
+    });
+
+    expect(listeners.has("vite:preloadError")).toBe(true);
+  });
+
+  it("reloads on a safe route, persisting form state first", () => {
+    const persist = vi.fn();
+    const reload = vi.fn();
+    const order: string[] = [];
+    persist.mockImplementation(() => order.push("persist"));
+    reload.mockImplementation(() => order.push("reload"));
+
+    wirePreloadErrorRecovery({
+      router: makePreloadRouter(true),
+      persist,
+      reload,
+      addEventListener,
+      currentPathname: () => "/passport",
+      storage,
+    });
+    firePreloadError();
+
+    expect(persist).toHaveBeenCalledWith("/passport");
+    expect(reload).toHaveBeenCalledTimes(1);
+    // Persisting after the reload call would save nothing.
+    expect(order).toEqual(["persist", "reload"]);
+  });
+
+  it("does not reload on an unsafe route, and reports the deferral", () => {
+    const reload = vi.fn();
+    const onDeferred = vi.fn();
+
+    wirePreloadErrorRecovery({
+      router: makePreloadRouter(false),
+      persist: vi.fn(),
+      reload,
+      onDeferred,
+      addEventListener,
+      storage,
+    });
+    firePreloadError();
+
+    expect(reload).not.toHaveBeenCalled();
+    expect(onDeferred).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not persist form state when it defers, leaving the live page untouched", () => {
+    const persist = vi.fn();
+
+    wirePreloadErrorRecovery({
+      router: makePreloadRouter(false),
+      persist,
+      reload: vi.fn(),
+      addEventListener,
+      storage,
+    });
+    firePreloadError();
+
+    expect(persist).not.toHaveBeenCalled();
+  });
+
+  it("defers when a flash message is in flight on a safe route", () => {
+    const reload = vi.fn();
+
+    wirePreloadErrorRecovery({
+      router: makePreloadRouter(true, { flash: "Saved" }),
+      persist: vi.fn(),
+      reload,
+      addEventListener,
+      storage,
+    });
+    firePreloadError();
+
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it("prevents default so Vite does not also rethrow the error", () => {
+    wirePreloadErrorRecovery({
+      router: makePreloadRouter(true),
+      persist: vi.fn(),
+      reload: vi.fn(),
+      addEventListener,
+      storage,
+    });
+
+    expect(firePreloadError().defaultPrevented).toBe(true);
+  });
+
+  it("prevents default on the deferred path too", () => {
+    wirePreloadErrorRecovery({
+      router: makePreloadRouter(false),
+      persist: vi.fn(),
+      reload: vi.fn(),
+      addEventListener,
+      storage,
+    });
+
+    expect(firePreloadError().defaultPrevented).toBe(true);
+  });
+
+  it("reloads only once, so a chunk missing from the current build cannot spin", () => {
+    const reload = vi.fn();
+
+    wirePreloadErrorRecovery({
+      router: makePreloadRouter(true),
+      persist: vi.fn(),
+      reload,
+      addEventListener,
+      storage,
+    });
+    firePreloadError();
+    firePreloadError();
+
+    expect(reload).toHaveBeenCalledTimes(1);
   });
 });

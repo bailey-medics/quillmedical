@@ -51,7 +51,8 @@ import {
 } from "react-router-dom";
 import type { RouteObject } from "react-router-dom";
 import { theme, cssVariablesResolver } from "./theme";
-import { wireUpdateChecks } from "@lib/swUpdateGate";
+import { wirePreloadErrorRecovery, wireUpdateChecks } from "@lib/swUpdateGate";
+import { persistFormState } from "@lib/compat-generation";
 import { installGlobalErrorReporting } from "@lib/error-reporting/globalHandlers";
 import RouteTracking from "@lib/error-reporting/RouteTracking";
 
@@ -512,6 +513,17 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     </ConnectivityProvider>
   </MantineProvider>,
 );
+
+// Recovery for a lazily-loaded route chunk this tab can no longer fetch,
+// because the container serving the build it downloaded has moved on. Wired
+// outside the service-worker block on purpose: it is the router's problem,
+// not the worker's, and a browser without service-worker support still
+// needs it. Must exist before any route is loaded on demand.
+wirePreloadErrorRecovery({
+  router,
+  persist: persistFormState,
+  reload: () => window.location.reload(),
+});
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", async () => {

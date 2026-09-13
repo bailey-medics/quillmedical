@@ -76,6 +76,127 @@ export interface RouterLike {
   };
 }
 
+/* ------------------------------------------------------------------ *
+ * Lazy-chunk preload failures
+ * ------------------------------------------------------------------ */
+
+/**
+ * Reload-loop guard for preload recovery. Deliberately *not* the same key
+ * as the service-worker one above: the two reload for different reasons,
+ * and sharing a key would let an SW reload silently suppress a preload
+ * recovery (or the reverse), leaving a tab stuck on a dead navigation
+ * with nothing to show for it.
+ */
+const PRELOAD_RELOADED_ONCE_KEY = "quill-preload-reloaded";
+
+/**
+ * What to do about a lazy chunk this tab could not fetch.
+ *
+ * - `reload` — the route is safe to reload, so fetch the current build and
+ *   let the navigation complete against it.
+ * - `defer` — reloading here would destroy work the user cannot get back,
+ *   so leave the tab where it is. The navigation has already failed; the
+ *   caller decides what to show.
+ */
+export type PreloadFailureAction = "reload" | "defer";
+
+export interface PreloadFailureOptions {
+  routeIsSafe: boolean;
+  hasFlash: boolean;
+  storage?: Pick<Storage, "getItem" | "setItem">;
+}
+
+/**
+ * Decides how to recover from `vite:preloadError`.
+ *
+ * A tab holds the bundle it downloaded until it reloads, and a long-lived
+ * session can outlive the container that served it — rotating refresh
+ * tokens mean it never re-logs-in. Once the router loads routes on demand,
+ * that tab asks for a chunk hash the container stopped serving weeks ago
+ * and the *navigation* throws. JavaScript is not in the precache manifest
+ * (`globPatterns` in `vite.config.ts` covers logos and favicons only) and
+ * there is no offline fallback page, so the failure is a dead page rather
+ * than a slow one.
+ *
+ * The same route-safety rule as the service-worker gate applies, for the
+ * same reason: a reload is only free when the route says it owns nothing
+ * the user would lose. The difference is the fail-safe direction. The SW
+ * gate defers because the tab is working and an update can wait; here the
+ * navigation has *already* failed, so deferring is the worse outcome and
+ * is reserved for when reloading would actively destroy something.
+ */
+export function decidePreloadFailureAction(
+  options: PreloadFailureOptions,
+): PreloadFailureAction {
+  const { routeIsSafe, hasFlash } = options;
+  const storage = options.storage ?? sessionStorage;
+
+  // Reloading twice for the same reason means the reload is not fixing it
+  // (a chunk missing from the *current* build, a broken deploy). A second
+  // attempt would spin.
+  if (storage.getItem(PRELOAD_RELOADED_ONCE_KEY)) return "defer";
+
+  if (!routeIsSafe || hasFlash) return "defer";
+
+  storage.setItem(PRELOAD_RELOADED_ONCE_KEY, "1");
+  return "reload";
+}
+
+export interface PreloadErrorWiring {
+  router: RouterLike;
+  /** Snapshots in-progress form input before a reload discards it. */
+  persist: (pathname: string) => void;
+  reload: () => void;
+  /** Called instead of reloading when recovery is deferred. */
+  onDeferred?: () => void;
+  addEventListener?: typeof window.addEventListener;
+  currentPathname?: () => string;
+  storage?: Pick<Storage, "getItem" | "setItem">;
+}
+
+/**
+ * Listens for `vite:preloadError` and routes it through the route-safety
+ * gate above.
+ *
+ * Vite fires this event on `window` when a dynamic import fails. Calling
+ * `preventDefault()` tells Vite we have handled it and stops it rethrowing
+ * — which we do in both branches, because an unhandled rethrow surfaces to
+ * the user as an unexplained crash either way.
+ *
+ * Form state is persisted before reloading, reusing the same helper the
+ * API-compatibility forced reload uses. That helper is best-effort and
+ * covers native text inputs only, which is why it is a belt-and-braces
+ * measure *behind* the route-safety check rather than a substitute for it.
+ */
+export function wirePreloadErrorRecovery(wiring: PreloadErrorWiring): void {
+  const listen =
+    wiring.addEventListener ?? window.addEventListener.bind(window);
+  const pathname = wiring.currentPathname ?? (() => window.location.pathname);
+
+  listen("vite:preloadError", (event: Event) => {
+    // Ours to handle now — Vite must not also rethrow it.
+    event.preventDefault();
+
+    const hasFlash = Boolean(
+      (wiring.router.state.location.state as { flash?: unknown } | null)?.flash,
+    );
+
+    const action = decidePreloadFailureAction({
+      routeIsSafe: isRouteSafeForReload(wiring.router.state.matches),
+      hasFlash,
+      storage: wiring.storage,
+    });
+
+    if (action === "defer") {
+      wiring.onDeferred?.();
+      return;
+    }
+
+    wiring.persist(pathname());
+    wiring.reload();
+  });
+}
+
 export const HOURLY_INTERVAL_MS = 60 * 60 * 1000;
 
 /**
