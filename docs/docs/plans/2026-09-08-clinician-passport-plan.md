@@ -2687,12 +2687,45 @@ explicitly deferred here.
         `progressbar` role in either `CompetencyRow` or
         `CompetencySummary`. It is the rule most easily lost to a
         later well-meaning "12 of 20" addition.
-      - [ ] **The forms are deferred and need `DateField` first.** No date
-        input exists anywhere in the codebase and `@mantine/dates` is not
-        installed, yet nine passport components need one — `observed_on`,
-        `performed_on`, `awarded_on`, `written_on`, `activity_on`.
-        Decided: add the dependency and wrap it as `DateField` in
-        `components/form/`, matching `TextField`'s shape.
+      - [x] **`DateField`, the forms' precondition.** No date input
+        existed anywhere in the codebase, yet nine passport components
+        need one — `observed_on`, `performed_on`, `awarded_on`,
+        `written_on`, `activity_on`. Added `@mantine/dates` 9.6.1 and
+        `dayjs`, wrapped as `DateField` in `components/form/` matching
+        `TextField`'s label, description and error treatment.
+        - **Values are `YYYY-MM-DD` strings, never `Date` objects.**
+          Mantine 9's `DateInput` is string-native and so is every date
+          the API sends or accepts, so nothing parses or re-serialises —
+          which is where a timezone silently shifts a clinical date by a
+          day. Pinned by a test asserting `onChange` yields
+          `"2026-03-14"`.
+        - **`@mantine/dates/styles.css` must be imported** in both
+          `main.tsx` and `.storybook/preview.tsx`, or the calendar
+          renders unstyled. Easy to miss, since nothing fails.
+        - **A new dependency needs installing in two places, and they
+          are separate.** `just utr` rebuilds the throwaway unit-test
+          image, and the first test run failed with "Failed to resolve
+          import @mantine/dates" until it did — dependencies are baked
+          into that image, as `CLAUDE.md` records. The **dev stack is a
+          different container with its own `node_modules` volume**, so it
+          went on failing in the browser with the same message after the
+          test image was fixed. `just yi` runs `yarn install` inside the
+          running frontend container and settles it; Vite notices the
+          lockfile changed, re-optimises and recovers without a restart.
+          Do both, or the failure moves rather than going away.
+        - **The field imposes no date rules of its own.** A logbook entry
+          cannot be in the future but a certificate expiry legitimately
+          is, so `maxDate` belongs to the calling form.
+      - **Pre-existing: `ErrorMessage` produces invalid HTML in every
+        form field.** Mantine renders the error slot inside a `<p>` and
+        `ErrorMessage` puts a `<div>` in it, so React warns "`<p>` cannot
+        contain a nested `<div>`". Not new and not `DateField`'s: no
+        existing form-field test renders the `error` prop, so nothing had
+        surfaced it before, though `TextField.stories.tsx` and
+        `SelectField.stories.tsx` both pass one. The fix belongs to
+        `ErrorMessage` — its icon box wants to be a `<span>` — and
+        affects every field, so it is its own change rather than
+        something to slip into a passport commit.
       - [ ] **The evidence uploaders need a backend route, and should
         follow the video upload pattern rather than inventing one.**
         `2026-08-31-gcp-video-auth-gate-plan.md` established it: the

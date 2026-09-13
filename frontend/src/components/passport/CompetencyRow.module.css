@@ -9,13 +9,21 @@
   display: block;
   width: 100%;
   padding-block: 0.5rem;
+  padding-inline: 0.5rem;
   text-align: left;
+  border-radius: var(--mantine-radius-sm);
+}
+
+/* Only a clickable row reacts to the pointer. A row rendered as a plain
+   div has no hover state at all, so the two are never confusable. */
+button.row {
+  cursor: pointer;
 }
 
 button.row:hover {
-  background-color: var(--mantine-color-gray-0);
+  background-color: var(--mantine-color-gray-1);
 }
 
 [data-mantine-color-scheme="dark"] button.row:hover {
-  background-color: var(--mantine-color-primary-9);
+  background-color: var(--mantine-color-primary-8);
 }

@@ -7,7 +7,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Group, Stack } from "@mantine/core";
 import PlatformRoleBadge from "./PlatformRoleBadge";
-import { StoryNote, VariantRow, VariantStack } from "@/stories/variants";
+import { StoryNote } from "@/stories/variants";
 
 const meta: Meta<typeof PlatformRoleBadge> = {
   title: "Badge/Platform role badge",
@@ -36,55 +36,5 @@ export const Default: Story = {
         so the badge stays rare enough to mean something.
       </StoryNote>
     </Stack>
-  ),
-};
-
-/**
- * Both roles
- *
- * The empty row is the ordinary case, not a bug.
- */
-export const BothRoles: Story = {
-  render: () => (
-    <VariantStack>
-      <VariantRow label="superadmin">
-        <PlatformRoleBadge platformRole="superadmin" />
-      </VariantRow>
-      <VariantRow label="standard (renders nothing)">
-        <PlatformRoleBadge platformRole="standard" />
-      </VariantRow>
-    </VariantStack>
-  ),
-};
-
-/**
- * Variants
- */
-export const Variants: Story = {
-  render: () => (
-    <VariantStack>
-      <VariantRow label="light (default)">
-        <PlatformRoleBadge platformRole="superadmin" variant="light" />
-      </VariantRow>
-      <VariantRow label="filled">
-        <PlatformRoleBadge platformRole="superadmin" variant="filled" />
-      </VariantRow>
-      <VariantRow label="outline">
-        <PlatformRoleBadge platformRole="superadmin" variant="outline" />
-      </VariantRow>
-    </VariantStack>
-  ),
-};
-
-/**
- * Loading
- */
-export const Loading: Story = {
-  render: () => (
-    <VariantStack>
-      <VariantRow label="loading" horizontal={false}>
-        <PlatformRoleBadge platformRole="superadmin" isLoading />
-      </VariantRow>
-    </VariantStack>
   ),
 };

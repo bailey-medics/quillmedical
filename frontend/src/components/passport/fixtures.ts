@@ -56,8 +56,8 @@ export const requestedCompetency: CompetencyState = {
   expires_on: null,
   sign_off: "2026-03-21-perform-thoracic-ultrasound",
   previous_sign_offs: [],
-  logbook_entries: 4,
-  certificates: [],
+  logbook_entries: 26,
+  certificates: ["2026-01-15-thoracic-ultrasound-course"],
 };
 
 export const declinedCompetency: CompetencyState = {
@@ -70,7 +70,7 @@ export const declinedCompetency: CompetencyState = {
   expires_on: null,
   sign_off: "2026-02-01-prescribe-sact",
   previous_sign_offs: [],
-  logbook_entries: 0,
+  logbook_entries: 12,
   certificates: [],
 };
 
