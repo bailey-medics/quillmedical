@@ -878,6 +878,113 @@ does not, and removing the ladder removes the suggestion.
                         — so the interface stops inferring what the API knows.
                         Additive, no decision file.
 
+## Finding: the staff picker's rank filter is removed, not replaced
+
+`?permission_level=staff` populates three "add staff" pickers —
+`AddStaffToOrgPage`, `AddSiteToOrgPage` and `EditSitePage`. It filters by the
+retiring column, and `PERMISSION_LEVELS` exists only to serve it, so it is the
+last thing standing between this plan and the column drop.
+
+**Every replacement filter was wrong, and the example that broke them is a
+patient becoming a healthcare assistant.** Filtering on existing staff
+membership, on holding a staff competency, or on not being linked to a patient
+record each hides exactly that person — the one case the picker most needs to
+support. A filter cannot express "could become staff" without deciding who
+never can.
+
+**Decided: anyone with an account can be added as staff.** The parameter goes
+and nothing takes its place; the picker lists users. One fewer concept rather
+than a substitute for one.
+
+- **A `staff` competency was considered and rejected.** It would name a
+  category of person where every other competency names an action, and it would
+  duplicate what `capacity="staff"` membership already records — two sources of
+  truth that can disagree, which is the fault `site_staff_member.role` was split
+  apart to remove.
+- **`fhir_patient_id` was considered and rejected**, and the reasoning is worth
+  keeping: nearly every staff member is or will one day be a patient, so a
+  consultant registering at their own trust would trigger it. It also
+  contradicts the "a patient is not a user" finding below, which records that
+  field as the *link* between two roles the same human holds.
+
+### The confirmation is where the judgement moves
+
+**Warn when the target holds no staff-like competency**, and in the same step
+offer to grant one.
+
+- **It survives every edge case.** A patient, an advocate, and an LPOA holder
+  all hold nothing staff-like and all get the prompt. A consultant who is also
+  a patient holds clinical competencies and does not.
+- **The grant is the point, not the warning.** Adding someone as staff today
+  writes a membership row and nothing else, so a new HCA can do nothing until
+  somebody separately remembers to edit their competencies. Asking *which*
+  competency makes that one action instead of two, and makes the person adding
+  them state what the new starter will actually do.
+- **"Staff-like" means anything in the competency catalogue except the
+  patient's own-records competency.** Exact once `access_own_patient_records`
+  exists — see the finding below — which is why this waits on that split.
+- **Decided: both, in that order.** The prompt offers a profession first,
+  because that is how the job is described — "they are starting as a healthcare
+  assistant" — and then individual competencies, either alongside it or on their
+  own. A profession without the second step is rigid: it grants what the
+  template says and nothing else, when the point of `additional_competencies` is
+  that real people diverge from templates.
+  - **Granting a profession must keep what the person already holds.** A patient
+    becoming an HCA keeps their own-records competency and gains the HCA set;
+    the profession adds, never replaces.
+  - **Done: the grant is additive.** `update_user` now carries the old
+    profession's competencies into `additional_competencies`, minus anything
+    the new profession grants in its own right, so nothing is lost and nothing
+    is duplicated. It previously assigned the field alone, dropping every
+    competency from the old profession unless separately listed — silently,
+    with nothing recording why.
+    - **The merge runs after an explicit `additional_competencies` payload.**
+      Written the other way round first, where a request carrying both fields
+      discarded the carried-over set. Ordering is the whole of the change.
+    - **`removed_competencies` still wins**, applied after the merge, so a
+      profession change cannot quietly undo a deliberate removal — the same
+      silent surprise in the other direction.
+    - **Verified by reverting.** Restoring the bare assignment turns
+      `test_a_patient_becoming_a_delegate_keeps_their_own_records` red, so the
+      test pins the fix rather than passing because the professions happen to
+      overlap. `teaching_delegate` is the profession that exposes it:
+      `healthcare_assistant` grants `access_patient_records` too, so the loss
+      is invisible on the obvious example.
+  - **It is the same conclusion as the stored-profession finding below**,
+    reached from the other end: that finding argues a profession should
+    initialise a user and then be let go, which is what "keep what they had and
+    add the new set" means in practice. Two routes to one answer is a reason to
+    trust it.
+  - **So the two are one unit of work.** Making the grant additive and making
+    `base_profession` a template rather than stored state are the same change,
+    and the staff-picker prompt is what will exercise it.
+
+### Finding: `patient_advocate` is accepted but does not exist
+
+Surfaced while testing the rule above against an advocate — a relative holding
+LPOA for someone who cannot manage their own care.
+
+- **The grant mechanism is built.** `ExternalPatientAccess` is per-patient,
+  invite-based and revocable, and its docstring names patient advocates.
+- **The profession is not.** `InviteExternalIn` validates `user_type` against
+  `^(external_hcp|patient_advocate)$` and `accept_invite` writes it straight to
+  `base_profession`, but neither id appears in `base-professions.yaml`.
+- **`get_profession_base_competencies` returns `[]` for an unknown id**, with no
+  error, so an accepted advocate invite creates an account holding no
+  competencies at all. Latent while nobody uses it, and wrong regardless: a
+  validated field writes a value that silently resolves to nothing.
+- **The grant does still admit them**, checked rather than assumed. The
+  external-grant branch of `check_user_patient_access` runs after the competency
+  check and returns on the grant alone, so an advocate holding no competencies
+  reaches the record they were invited to. The empty profession is therefore
+  latent rather than breaking — but it means an advocate's access rests entirely
+  on one table row, with no competency recording what they may do with it.
+
+**Three routes reach a record, and only one is a competency**: your own record
+via `fhir_patient_id`, someone else's via a grant, and your patients' via a
+competency plus a shared organisation. A model that assumes the third is the
+only one will keep mis-sorting advocates.
+
 ## Finding: `access_patient_records` names two different permissions
 
 Surfaced while migrating `NewMessageModal` off `system_permissions`.
@@ -1100,6 +1207,18 @@ quietly does nothing, or something else. Nobody sees this happen and nothing rec
 expands the profession's competencies into that user's own list; after that the user has
 competencies and the profession is not consulted again. The audit trail then records what
 someone actually holds, not a label that stopped being true.
+
+**The staff-picker decision above reaches the same conclusion from the other
+end**, and the two are one unit of work: granting a profession there must keep
+what the person already holds, which is this finding stated as behaviour rather
+than as a model. Whichever is built first settles both.
+
+**Nothing tests the destructive overwrite.** No test in `backend/tests` exercises
+a `base_profession` change through `PATCH /users/{id}`, so the current
+behaviour is unpinned — nothing goes red when it is fixed, and nothing would
+have gone red if it had been introduced by accident. A test asserting the
+silent loss should come first, as the escalation test did for
+`update_my_competencies`, so the fix is a visible change to a red test.
 
 - **This is a breaking API change.** `base_profession` is in two response schemas —
   `UserCompetenciesResponse` in `schemas/cbac.py` and the user response in
