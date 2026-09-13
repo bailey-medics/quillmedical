@@ -1,0 +1,49 @@
+/*
+ * A pill rather than a panel.
+ *
+ * Mantine's Dropzone defaults to a large bordered block, which reads as
+ * the main event on a page. Here it is one row of a media table, so it
+ * is sized as a badge: inline, rounded, and no heavier than the text
+ * beside it.
+ */
+.dropzone {
+  display: inline-flex;
+  border: none;
+  border-radius: 999px;
+
+  /* Transparent at rest so the row reads as text, and the pill only
+     appears under the pointer. */
+  background: transparent;
+  transition: background-color 150ms ease;
+}
+
+/*
+ * Darker on hover in both themes, so the affordance is the same
+ * gesture either way rather than lightening in one and darkening in
+ * the other.
+ *
+ * Note the dark pair looks inverted and is not: this theme overrides
+ * Mantine's scale, so dark-5 (#042340) is darker than dark-7
+ * (#0a2f56). Picking by number alone would lighten this on hover.
+ */
+.dropzone:hover:not([data-disabled]) {
+  background: light-dark(
+    var(--mantine-color-gray-3),
+    var(--mantine-color-dark-5)
+  );
+}
+
+/* While a file is over it, the accept state should be unmistakable. */
+.dropzone[data-accept] {
+  background: light-dark(
+    var(--mantine-color-primary-1),
+    var(--mantine-color-primary-8)
+  );
+}
+
+.dropzone[data-reject] {
+  background: light-dark(
+    var(--mantine-color-red-1),
+    var(--mantine-color-red-9)
+  );
+}

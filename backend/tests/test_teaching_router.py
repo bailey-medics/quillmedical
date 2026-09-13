@@ -323,6 +323,100 @@ class TestQuestionBanks:
         assert len(data) == 1
         assert data[0]["question_bank_id"] == "test-bank"
 
+    def _module_with_video_on_disk(self, tmp_path) -> str:
+        """A module whose MDX references one video."""
+        module = tmp_path / "content-repo" / "modules" / "test-bank"
+        learning = module / "learning"
+        learning.mkdir(parents=True)
+        (module / "module.yaml").write_text(
+            "moduleId: test-bank\ntitle: Test\n", encoding="utf-8"
+        )
+        assessment = module / "assessment"
+        assessment.mkdir()
+        (assessment / "config.yaml").write_text(
+            "id: test-bank\n", encoding="utf-8"
+        )
+        (learning / "content.mdx").write_text(
+            '# Slide one\n\n<Video ref="lecture-01" />\n',
+            encoding="utf-8",
+        )
+        return str(tmp_path)
+
+    def test_the_module_is_hidden_when_media_is_missing(
+        self, test_client, db_session, monkeypatch, tmp_path
+    ):
+        """The whole module goes, assessment included.
+
+        Half a module is not a lesser version of it: the author meant a
+        video the learner would never see, and the assessment may
+        examine exactly that content. Hidden rather than shown
+        disabled, so nobody asks the admin why a button does nothing.
+        """
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        _make_learner(db_session, org)
+        db_session.commit()
+
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_QUESTION_BANK_PATH",
+            self._module_with_video_on_disk(tmp_path),
+        )
+        monkeypatch.setattr("app.config.settings.TEACHING_GCS_BUCKET", None)
+
+        test_client.post(
+            "/api/auth/login",
+            json={"username": "testlearner", "password": "Learner123!"},
+        )
+
+        listed = test_client.get("/api/teaching/question-banks")
+        assert listed.status_code == 200
+        assert listed.json() == []
+
+        # A 404, not a 403: whether an incomplete module exists is not
+        # something the refusal should confirm.
+        detail = test_client.get("/api/teaching/question-banks/test-bank")
+        assert detail.status_code == 404
+
+    def test_the_module_returns_once_the_media_is_linked(
+        self, test_client, db_session, monkeypatch, tmp_path
+    ):
+        """The gate lifts when the upload is linked, not before."""
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        _make_learner(db_session, org)
+        db_session.add(
+            ModuleMediaLink(
+                organisation_id=org.id,
+                question_bank_id="test-bank",
+                media_key="lecture-01",
+                asset_id="asset-1",
+                original_filename="lecture.mp4",
+                content_type="video/mp4",
+                size_bytes=1024,
+                uploaded_at=datetime.now(UTC),
+            )
+        )
+        db_session.commit()
+
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_QUESTION_BANK_PATH",
+            self._module_with_video_on_disk(tmp_path),
+        )
+        monkeypatch.setattr("app.config.settings.TEACHING_GCS_BUCKET", None)
+
+        test_client.post(
+            "/api/auth/login",
+            json={"username": "testlearner", "password": "Learner123!"},
+        )
+
+        listed = test_client.get("/api/teaching/question-banks")
+        assert [b["question_bank_id"] for b in listed.json()] == ["test-bank"]
+
+        detail = test_client.get("/api/teaching/question-banks/test-bank")
+        assert detail.status_code == 200
+
     def test_get_bank_detail(self, test_client, db_session):
         org = _make_teaching_org(db_session)
         educator = _make_educator(db_session, org)
@@ -3004,30 +3098,91 @@ class TestMediaAssetDeletion:
 
         assert resp.status_code == 404
 
-    def test_deletion_is_refused_without_a_source_bucket(
-        self, test_client, db_session, monkeypatch
+    def test_deleting_without_a_bucket_removes_the_local_file(
+        self, test_client, db_session, monkeypatch, tmp_path
     ):
-        """The development answer, rather than a 500.
+        """Development deletes from disk rather than refusing.
 
-        Checked before the row is touched, so a misconfigured
-        deployment cannot drop a link it has no way to unpick.
+        This used to answer 503, which left an admin able to upload
+        locally but never to undo it — the row outlived every attempt
+        to clear it, and the card kept offering a button that could not
+        work.
         """
         org = _make_teaching_org(db_session)
         _make_educator(db_session, org)
         self._existing(db_session, org.id, "lecture-01", "asset-1")
         db_session.commit()
+
+        module = tmp_path / "content-repo" / "modules" / "test-bank"
+        (module / "learning").mkdir(parents=True)
+        (module / "module.yaml").write_text(
+            "moduleId: test-bank\ntitle: Test\n", encoding="utf-8"
+        )
+        assessment = module / "assessment"
+        assessment.mkdir()
+        (assessment / "config.yaml").write_text(
+            "id: test-bank\n", encoding="utf-8"
+        )
+        video = module / "learning" / "asset-1.mp4"
+        video.write_bytes(b"fake mp4 bytes")
+
         self._bucket(monkeypatch, None)
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_QUESTION_BANK_PATH", str(tmp_path)
+        )
 
         resp = test_client.delete(
             self._url(), headers=self._login(test_client)
         )
 
-        assert resp.status_code == 503
+        assert resp.status_code == 204
+        assert not video.exists()
         assert (
             db_session.query(ModuleMediaLink)
             .filter_by(asset_id="asset-1")
             .count()
-            == 1
+            == 0
+        )
+
+    def test_a_missing_local_file_still_clears_the_row(
+        self, test_client, db_session, monkeypatch, tmp_path
+    ):
+        """A file already gone must not make the row undeletable.
+
+        Matches the bucket path, where a NotFound is swallowed for the
+        same reason: the link row is what the admin acts on.
+        """
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        self._existing(db_session, org.id, "lecture-01", "asset-1")
+        db_session.commit()
+
+        module = tmp_path / "content-repo" / "modules" / "test-bank"
+        (module / "learning").mkdir(parents=True)
+        (module / "module.yaml").write_text(
+            "moduleId: test-bank\ntitle: Test\n", encoding="utf-8"
+        )
+        assessment = module / "assessment"
+        assessment.mkdir()
+        (assessment / "config.yaml").write_text(
+            "id: test-bank\n", encoding="utf-8"
+        )
+
+        self._bucket(monkeypatch, None)
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_QUESTION_BANK_PATH", str(tmp_path)
+        )
+
+        resp = test_client.delete(
+            self._url(), headers=self._login(test_client)
+        )
+
+        assert resp.status_code == 204
+        assert (
+            db_session.query(ModuleMediaLink)
+            .filter_by(asset_id="asset-1")
+            .count()
+            == 0
         )
 
     def test_unlinking_still_reaches_the_link_route(
@@ -3049,9 +3204,15 @@ class TestMediaAssetDeletion:
             headers=self._login(test_client),
         )
 
-        # Detached, not deleted: no source bucket is configured here, so
-        # a delete would have failed with 503 rather than succeeded.
+        # Detached, not deleted: the asset survives, which is what
+        # distinguishes this route from its sibling.
         assert resp.status_code == 204
+        assert (
+            db_session.query(ModuleMediaLink)
+            .filter_by(asset_id="asset-1")
+            .count()
+            == 0
+        )
 
 
 class TestVideoResolutionOnTheGcsPath:

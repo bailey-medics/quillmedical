@@ -26,6 +26,42 @@ export interface ModuleMediaState {
   remove: (assetId: string) => Promise<void>;
 }
 
+/** Round a byte count to something a person reads at a glance. */
+function formatSize(bytes: number): string {
+  const mb = bytes / (1024 * 1024);
+  if (mb >= 1024) {
+    return `${(mb / 1024).toFixed(1)} GB`;
+  }
+  return `${Math.round(mb)} MB`;
+}
+
+/**
+ * Say what actually went wrong, not merely that something did.
+ *
+ * A bare status code makes the admin guess, and the guess for a video
+ * is usually wrong — "too large" and "wrong format" look identical as
+ * a number. Each case here names the fault and, where the admin can
+ * act on it, what to do instead.
+ */
+function describeUploadFailure(status: number, file: File): string {
+  if (status === 413) {
+    return `This file is too large to upload (${formatSize(file.size)}). Try a shorter recording or a more compressed export.`;
+  }
+  if (status === 415 || status === 400) {
+    return `This file type cannot be uploaded (${file.type || "unknown type"}). Videos must be MP4, WebM or QuickTime.`;
+  }
+  if (status === 401 || status === 403) {
+    return "You do not have permission to upload here, or your session has expired. Try reloading the page.";
+  }
+  if (status === 404) {
+    return "This module no longer exists, so the upload had nowhere to go.";
+  }
+  if (status >= 500) {
+    return `The server could not accept the upload (${status}). This is not a problem with your file — try again shortly.`;
+  }
+  return `Upload failed (${status})`;
+}
+
 /**
  * Open a resumable upload session and return the URL to send bytes to.
  *
@@ -47,7 +83,7 @@ function startResumableUpload(url: string, file: File): Promise<string> {
 
     request.addEventListener("load", () => {
       if (request.status < 200 || request.status >= 300) {
-        reject(new Error(`Could not start upload (${request.status})`));
+        reject(new Error(describeUploadFailure(request.status, file)));
         return;
       }
       const session = request.getResponseHeader("Location");
@@ -90,7 +126,7 @@ function sendToSession(
       if (request.status >= 200 && request.status < 300) {
         resolve();
       } else {
-        reject(new Error(`Upload failed (${request.status})`));
+        reject(new Error(describeUploadFailure(request.status, file)));
       }
     });
     request.addEventListener("error", () => reject(new Error("Upload failed")));
