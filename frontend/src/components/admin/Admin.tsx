@@ -12,13 +12,13 @@
 import { Group, SimpleGrid, Stack } from "@mantine/core";
 import StatCard from "@/components/stats-card";
 import PageHeader from "@/components/page-header";
-import PermissionBadge, {
-  type UserPermission,
-} from "@/components/badge/PermissionBadge";
+import PlatformRoleBadge, {
+  type PlatformRole,
+} from "@/components/badge/PlatformRoleBadge";
 
 interface AdminProps {
-  /** Current user's system permissions */
-  userPermissions: UserPermission;
+  /** Whether the current user operates Quill itself */
+  platformRole: PlatformRole | undefined;
   /** Whether clinical services (FHIR/EHRbase) are enabled */
   clinicalServicesEnabled?: boolean;
   /** Loading state for users statistics */
@@ -36,7 +36,7 @@ interface AdminProps {
 }
 
 export default function Admin({
-  userPermissions,
+  platformRole,
   clinicalServicesEnabled = true,
   usersLoading = false,
   patientsLoading = false,
@@ -49,7 +49,7 @@ export default function Admin({
     <Stack gap="lg">
       <Group justify="space-between" align="center">
         <PageHeader title="Administration" />
-        <PermissionBadge permission={userPermissions} />
+        <PlatformRoleBadge platformRole={platformRole} />
       </Group>
 
       <SimpleGrid cols={{ base: 1, sm: 2 }}>

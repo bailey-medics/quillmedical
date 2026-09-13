@@ -6,5 +6,5 @@ export { default as FeatureBadge } from "./FeatureBadge";
 export { default as LetterStatusBadge } from "./LetterStatusBadge";
 export { default as NoteCategoryBadge } from "./NoteCategoryBadge";
 export { default as OnQuillBadge } from "./OnQuillBadge";
-export { default as PermissionBadge } from "./PermissionBadge";
+export { default as PlatformRoleBadge } from "./PlatformRoleBadge";
 export { default as UnreadBadge } from "./UnreadBadge";

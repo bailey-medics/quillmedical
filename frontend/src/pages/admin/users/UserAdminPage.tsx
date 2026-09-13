@@ -17,7 +17,7 @@ import {
   BodyTextBold,
   Heading,
 } from "@/components/typography";
-import PermissionBadge from "@/components/badge/PermissionBadge";
+import PlatformRoleBadge from "@/components/badge/PlatformRoleBadge";
 import CompetencyBadge from "@/components/badge/CompetencyBadge";
 import {
   IconPencil,
@@ -45,6 +45,7 @@ interface UserDetails {
   additional_competencies: string[];
   removed_competencies: string[];
   system_permissions: "superadmin" | "admin" | "staff" | "single-user";
+  platform_role: "superadmin" | "standard";
   is_active: boolean;
 }
 
@@ -118,7 +119,7 @@ export default function UserAdminPage() {
         <Stack gap="md">
           <Group justify="space-between">
             <Heading>Account information</Heading>
-            <PermissionBadge permission={user.system_permissions} />
+            <PlatformRoleBadge platformRole={user.platform_role} />
           </Group>
 
           <Stack gap="xs">

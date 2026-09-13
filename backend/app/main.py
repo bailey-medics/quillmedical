@@ -106,6 +106,7 @@ from app.models import (
     organisation_patient_member,
     organisation_site,
     site_member,
+    validate_platform_role,
 )
 from app.organisations import (
     get_accessible_patient_ids,
@@ -1358,6 +1359,7 @@ class AdminUserCreateIn(BaseModel):
         additional_competencies: Extra competencies beyond base profession.
         removed_competencies: Competencies to remove from base profession.
         system_permissions: System permission level (single-user, staff, admin, superadmin).
+        platform_role: Whether this person operates Quill itself.
         organisation_ids: Organisations to assign user to (optional).
         site_ids: Sites to assign user to as trainee (optional).
     """
@@ -1372,8 +1374,19 @@ class AdminUserCreateIn(BaseModel):
     additional_competencies: list[str] = []
     removed_competencies: list[str] = []
     system_permissions: str = "single-user"
+    # Defaults to a standard account: an operator is made deliberately,
+    # never by omitting a field.
+    platform_role: str = "standard"
     organisation_ids: list[int] = []
     site_ids: list[int] = []
+
+    @field_validator("platform_role")
+    @classmethod
+    def _platform_role_known(cls, value: str) -> str:
+        try:
+            return validate_platform_role(value)
+        except ValueError as exc:
+            raise ValueError(str(exc)) from exc
 
     @field_validator("additional_competencies", "removed_competencies")
     @classmethod
@@ -1422,6 +1435,7 @@ class AdminUserUpdateIn(BaseModel):
         additional_competencies: Competencies to add (optional).
         removed_competencies: Competencies to remove (optional).
         system_permissions: System permission level (optional).
+        platform_role: Whether this person operates Quill itself (optional).
     """
 
     model_config = {"extra": "forbid"}
@@ -1434,8 +1448,19 @@ class AdminUserUpdateIn(BaseModel):
     additional_competencies: list[str] | None = None
     removed_competencies: list[str] | None = None
     system_permissions: str | None = None
+    platform_role: str | None = None
     organisation_ids: list[int] | None = None
     site_ids: list[int] | None = None
+
+    @field_validator("platform_role")
+    @classmethod
+    def _platform_role_known(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        try:
+            return validate_platform_role(value)
+        except ValueError as exc:
+            raise ValueError(str(exc)) from exc
 
     @field_validator("additional_competencies", "removed_competencies")
     @classmethod
@@ -1562,6 +1587,7 @@ def create_user_with_cbac(
         additional_competencies=payload.additional_competencies,
         removed_competencies=payload.removed_competencies,
         system_permissions=payload.system_permissions,
+        platform_role=payload.platform_role,
         email_verified=True,
     )
     db.add(user)
@@ -1703,6 +1729,28 @@ def update_user(
 
     if payload.removed_competencies is not None:
         user.removed_competencies = payload.removed_competencies
+
+    if payload.platform_role is not None:
+        # Only an operator may make another. The competency that opens
+        # this route says *what* someone may administer and never that
+        # they may promote someone to run the platform.
+        if (
+            current_user.platform_role != "superadmin"
+            and payload.platform_role == "superadmin"
+        ):
+            raise HTTPException(
+                status_code=403,
+                detail="Cannot grant the superadmin platform role",
+            )
+        user.platform_role = payload.platform_role
+        # Same reasoning as the promotion below: an operator holding no
+        # profession competencies would be refused by every gate.
+        if payload.platform_role == "superadmin":
+            granted = set(user.additional_competencies or [])
+            granted.update(
+                get_profession_base_competencies(SUPERADMIN_PROFESSION)
+            )
+            user.additional_competencies = sorted(granted)
 
     if payload.system_permissions is not None:
         # Admins cannot grant superadmin permissions
@@ -2450,6 +2498,7 @@ def list_users(
                     username=user.username,
                     email=user.email,
                     system_permissions=user.system_permissions,
+                    platform_role=user.platform_role,
                     is_active=user.is_active,
                 )
                 for user in users
@@ -2553,6 +2602,7 @@ def list_users(
                     email=user.email,
                     full_name=user.full_name or "",
                     system_permissions=user.system_permissions,
+                    platform_role=user.platform_role,
                     is_active=user.is_active,
                     organisations=user_orgs.get(user.id, []),
                     sites=user_sites.get(user.id, []),
@@ -2652,6 +2702,7 @@ def get_user(
         additional_competencies=user.additional_competencies or [],
         removed_competencies=user.removed_competencies or [],
         system_permissions=user.system_permissions,
+        platform_role=user.platform_role,
         is_active=user.is_active,
         organisation_ids=user_org_ids,
         site_ids=user_site_ids,

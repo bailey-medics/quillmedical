@@ -56,6 +56,7 @@ const mockUserDetails = {
   additional_competencies: ["cardiology", "surgery"],
   removed_competencies: ["dermatology"],
   system_permissions: "staff" as const,
+  platform_role: "standard" as const,
   is_active: true,
 };
 
@@ -124,43 +125,11 @@ describe("UserAdminPage", () => {
     });
   });
 
-  describe("System permissions badge", () => {
-    it("displays STAFF badge for staff users", async () => {
+  describe("Platform role badge", () => {
+    it("marks an operator", async () => {
       vi.spyOn(apiLib.api, "get").mockResolvedValue({
         ...mockUserDetails,
-        system_permissions: "staff",
-      });
-
-      renderWithRouter(<UserAdminPage />, {
-        routePath: "/admin/users/:id",
-        initialRoute: "/admin/users/1",
-      });
-
-      await waitFor(() => {
-        expect(screen.getByText("STAFF")).toBeInTheDocument();
-      });
-    });
-
-    it("displays ADMIN badge for admin users", async () => {
-      vi.spyOn(apiLib.api, "get").mockResolvedValue({
-        ...mockUserDetails,
-        system_permissions: "admin",
-      });
-
-      renderWithRouter(<UserAdminPage />, {
-        routePath: "/admin/users/:id",
-        initialRoute: "/admin/users/1",
-      });
-
-      await waitFor(() => {
-        expect(screen.getByText("ADMIN")).toBeInTheDocument();
-      });
-    });
-
-    it("displays SUPERADMIN badge for superadmin users", async () => {
-      vi.spyOn(apiLib.api, "get").mockResolvedValue({
-        ...mockUserDetails,
-        system_permissions: "superadmin",
+        platform_role: "superadmin",
       });
 
       renderWithRouter(<UserAdminPage />, {
@@ -171,6 +140,27 @@ describe("UserAdminPage", () => {
       await waitFor(() => {
         expect(screen.getByText("SUPERADMIN")).toBeInTheDocument();
       });
+    });
+
+    it("marks nobody else, whatever the old column says", async () => {
+      // The retired rungs must not resurface as a pill: an `admin` in
+      // the old column is a standard account in the new one.
+      vi.spyOn(apiLib.api, "get").mockResolvedValue({
+        ...mockUserDetails,
+        system_permissions: "admin",
+        platform_role: "standard",
+      });
+
+      renderWithRouter(<UserAdminPage />, {
+        routePath: "/admin/users/:id",
+        initialRoute: "/admin/users/1",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("Account information")).toBeInTheDocument();
+      });
+      expect(screen.queryByText("SUPERADMIN")).not.toBeInTheDocument();
+      expect(screen.queryByText("ADMIN")).not.toBeInTheDocument();
     });
   });
 

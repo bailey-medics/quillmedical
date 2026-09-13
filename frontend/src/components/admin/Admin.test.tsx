@@ -26,30 +26,30 @@ const mockPatients = [
 describe("Admin", () => {
   describe("Basic rendering", () => {
     it("renders administration title", () => {
-      renderWithRouter(<Admin userPermissions="superadmin" />);
+      renderWithRouter(<Admin platformRole="superadmin" />);
       expect(screen.getByText("Administration")).toBeInTheDocument();
     });
 
-    it("renders permission badge for superadmin", () => {
-      renderWithRouter(<Admin userPermissions="superadmin" />);
+    it("marks an operator", () => {
+      renderWithRouter(<Admin platformRole="superadmin" />);
       expect(screen.getByText("SUPERADMIN")).toBeInTheDocument();
     });
 
-    it("renders permission badge for admin", () => {
-      renderWithRouter(<Admin userPermissions="admin" />);
-      expect(screen.getByText("ADMIN")).toBeInTheDocument();
+    it("marks nobody else", () => {
+      renderWithRouter(<Admin platformRole="standard" />);
+      expect(screen.queryByText("SUPERADMIN")).not.toBeInTheDocument();
     });
 
-    it("renders permission badge for staff", () => {
-      renderWithRouter(<Admin userPermissions="staff" />);
-      expect(screen.getByText("STAFF")).toBeInTheDocument();
+    it("says nothing when the role is unknown", () => {
+      renderWithRouter(<Admin platformRole={undefined} />);
+      expect(screen.queryByText("SUPERADMIN")).not.toBeInTheDocument();
     });
   });
 
   describe("Statistics display", () => {
     it("displays total users count", () => {
       renderWithRouter(
-        <Admin userPermissions="superadmin" existingUsers={mockUsers} />,
+        <Admin platformRole="superadmin" existingUsers={mockUsers} />,
       );
       expect(screen.getByText("Total users")).toBeInTheDocument();
       expect(screen.getByText("3")).toBeInTheDocument();
@@ -57,7 +57,7 @@ describe("Admin", () => {
 
     it("displays total patients count", () => {
       renderWithRouter(
-        <Admin userPermissions="superadmin" existingPatients={mockPatients} />,
+        <Admin platformRole="superadmin" existingPatients={mockPatients} />,
       );
       expect(screen.getByText("Total patients")).toBeInTheDocument();
       expect(screen.getByText("3")).toBeInTheDocument();
@@ -65,21 +65,21 @@ describe("Admin", () => {
 
     it("displays total organisations count", () => {
       renderWithRouter(
-        <Admin userPermissions="superadmin" organisationCount={5} />,
+        <Admin platformRole="superadmin" organisationCount={5} />,
       );
       expect(screen.getByText("Total organisations")).toBeInTheDocument();
       expect(screen.getByText("5")).toBeInTheDocument();
     });
 
     it("displays zero counts when no data", () => {
-      renderWithRouter(<Admin userPermissions="superadmin" />);
+      renderWithRouter(<Admin platformRole="superadmin" />);
       expect(screen.getAllByText("0")).toHaveLength(3);
     });
 
     it("shows skeleton loaders when loading", () => {
       renderWithRouter(
         <Admin
-          userPermissions="superadmin"
+          platformRole="superadmin"
           usersLoading={true}
           patientsLoading={true}
           existingUsers={mockUsers}
@@ -92,7 +92,7 @@ describe("Admin", () => {
     it("shows skeleton loader only for patients when FHIR is initializing", () => {
       renderWithRouter(
         <Admin
-          userPermissions="superadmin"
+          platformRole="superadmin"
           usersLoading={false}
           patientsLoading={true}
           existingUsers={mockUsers}
@@ -109,7 +109,7 @@ describe("Admin", () => {
   describe("Action cards", () => {
     // NOTE: Action cards have been moved to separate admin child pages
     it.skip("renders Add User card", () => {
-      renderWithRouter(<Admin userPermissions="superadmin" />);
+      renderWithRouter(<Admin platformRole="superadmin" />);
       expect(screen.getByText("Add user")).toBeInTheDocument();
       expect(
         screen.getByText(
@@ -122,7 +122,7 @@ describe("Admin", () => {
     });
 
     it.skip("renders Add Patient card", () => {
-      renderWithRouter(<Admin userPermissions="superadmin" />);
+      renderWithRouter(<Admin platformRole="superadmin" />);
       expect(screen.getByText("Add patient")).toBeInTheDocument();
       expect(
         screen.getByText("Register a new patient record with demographics"),
@@ -133,7 +133,7 @@ describe("Admin", () => {
     });
 
     it.skip("renders Edit User card", () => {
-      renderWithRouter(<Admin userPermissions="superadmin" />);
+      renderWithRouter(<Admin platformRole="superadmin" />);
       expect(
         screen.getByRole("heading", { name: "Edit user" }),
       ).toBeInTheDocument();
@@ -146,7 +146,7 @@ describe("Admin", () => {
     });
 
     it.skip("renders Edit Patient card", () => {
-      renderWithRouter(<Admin userPermissions="superadmin" />);
+      renderWithRouter(<Admin platformRole="superadmin" />);
       expect(
         screen.getByRole("heading", { name: "Edit patient" }),
       ).toBeInTheDocument();
@@ -159,7 +159,7 @@ describe("Admin", () => {
     });
 
     it.skip("renders Link User to Patient card", () => {
-      renderWithRouter(<Admin userPermissions="superadmin" />);
+      renderWithRouter(<Admin platformRole="superadmin" />);
       expect(
         screen.getByRole("heading", { name: "Link user and patient" }),
       ).toBeInTheDocument();
@@ -175,7 +175,7 @@ describe("Admin", () => {
   describe("Add User Navigation", () => {
     // NOTE: Add User functionality is now on AdminUsersPage
     it.skip("has correct link to create new user page", () => {
-      renderWithRouter(<Admin userPermissions="superadmin" />);
+      renderWithRouter(<Admin platformRole="superadmin" />);
 
       const addUserButton = screen.getByRole("link", {
         name: /Add New User/i,
@@ -188,7 +188,7 @@ describe("Admin", () => {
   describe.skip("Add User Modal (Obsolete)", () => {
     it("opens Add User modal when button clicked", async () => {
       const user = userEvent.setup();
-      renderWithRouter(<Admin userPermissions="superadmin" />);
+      renderWithRouter(<Admin platformRole="superadmin" />);
 
       await user.click(screen.getByRole("button", { name: /Add New User/i }));
 
@@ -201,7 +201,7 @@ describe("Admin", () => {
 
     it("closes Add User modal when cancel clicked", async () => {
       const user = userEvent.setup();
-      renderWithRouter(<Admin userPermissions="superadmin" />);
+      renderWithRouter(<Admin platformRole="superadmin" />);
 
       await user.click(screen.getByRole("button", { name: /Add New User/i }));
 
@@ -224,7 +224,7 @@ describe("Admin", () => {
     // TODO: Fix - form fields don't render in test environment (Mantine Modal + Portal issue)
     it.skip("calls onAddUser when form submitted", async () => {
       const user = userEvent.setup();
-      renderWithRouter(<Admin userPermissions="superadmin" />);
+      renderWithRouter(<Admin platformRole="superadmin" />);
 
       await user.click(screen.getByRole("button", { name: /Add New User/i }));
 
@@ -270,7 +270,7 @@ describe("Admin", () => {
   describe("Add Patient Navigation", () => {
     // NOTE: Add Patient functionality is now on AdminPatientsPage
     it.skip("has correct link to create new patient page", () => {
-      renderWithRouter(<Admin userPermissions="superadmin" />);
+      renderWithRouter(<Admin platformRole="superadmin" />);
 
       const addPatientButton = screen.getByRole("link", {
         name: /Add New Patient/i,
@@ -283,7 +283,7 @@ describe("Admin", () => {
   describe.skip("Add Patient Modal (Obsolete)", () => {
     it("opens Add Patient modal when button clicked", async () => {
       const user = userEvent.setup();
-      renderWithRouter(<Admin userPermissions="superadmin" />);
+      renderWithRouter(<Admin platformRole="superadmin" />);
 
       await user.click(
         screen.getByRole("button", { name: /Add New Patient/i }),
@@ -298,7 +298,7 @@ describe("Admin", () => {
 
     it("closes Add Patient modal when cancel clicked", async () => {
       const user = userEvent.setup();
-      renderWithRouter(<Admin userPermissions="superadmin" />);
+      renderWithRouter(<Admin platformRole="superadmin" />);
 
       await user.click(
         screen.getByRole("button", { name: /Add New Patient/i }),
@@ -322,7 +322,7 @@ describe("Admin", () => {
 
     it("calls onAddPatient when form submitted", async () => {
       const user = userEvent.setup();
-      renderWithRouter(<Admin userPermissions="superadmin" />);
+      renderWithRouter(<Admin platformRole="superadmin" />);
 
       await user.click(
         screen.getByRole("button", { name: /Add New Patient/i }),
@@ -363,7 +363,7 @@ describe("Admin", () => {
       const user = userEvent.setup();
       renderWithRouter(
         <Admin
-          userPermissions="superadmin"
+          platformRole="superadmin"
           existingUsers={mockUsers}
           existingPatients={mockPatients}
         />,
@@ -381,7 +381,7 @@ describe("Admin", () => {
       const user = userEvent.setup();
       renderWithRouter(
         <Admin
-          userPermissions="superadmin"
+          platformRole="superadmin"
           existingUsers={mockUsers}
           existingPatients={mockPatients}
         />,
@@ -410,7 +410,7 @@ describe("Admin", () => {
       const user = userEvent.setup();
       renderWithRouter(
         <Admin
-          userPermissions="superadmin"
+          platformRole="superadmin"
           existingUsers={mockUsers}
           existingPatients={mockPatients}
         />,
@@ -442,7 +442,7 @@ describe("Admin", () => {
       const user = userEvent.setup();
       renderWithRouter(
         <Admin
-          userPermissions="superadmin"
+          platformRole="superadmin"
           existingUsers={mockUsers}
           existingPatients={mockPatients}
         />,
@@ -480,16 +480,14 @@ describe("Admin", () => {
 
   describe("Edge cases", () => {
     it("handles empty users array", () => {
-      renderWithRouter(
-        <Admin userPermissions="superadmin" existingUsers={[]} />,
-      );
+      renderWithRouter(<Admin platformRole="superadmin" existingUsers={[]} />);
       const zeros = screen.getAllByText("0");
       expect(zeros.length).toBeGreaterThan(0);
     });
 
     it("handles empty patients array", () => {
       renderWithRouter(
-        <Admin userPermissions="superadmin" existingPatients={[]} />,
+        <Admin platformRole="superadmin" existingPatients={[]} />,
       );
       const zeros = screen.getAllByText("0");
       expect(zeros.length).toBeGreaterThan(0);
@@ -498,7 +496,7 @@ describe("Admin", () => {
     // Test is obsolete - modal callbacks replaced with navigation to dedicated pages
     it.skip("handles undefined callbacks gracefully", async () => {
       const user = userEvent.setup();
-      renderWithRouter(<Admin userPermissions="superadmin" />);
+      renderWithRouter(<Admin platformRole="superadmin" />);
 
       await user.click(screen.getByRole("button", { name: /Add New User/i }));
       await waitFor(() => {
@@ -519,9 +517,9 @@ describe("Admin", () => {
       });
     });
 
-    it("renders with staff permission level", () => {
-      renderWithRouter(<Admin userPermissions="staff" />);
-      expect(screen.getByText("STAFF")).toBeInTheDocument();
+    it("renders for a standard account", () => {
+      renderWithRouter(<Admin platformRole="standard" />);
+      expect(screen.getByText("Administration")).toBeInTheDocument();
     });
   });
 
@@ -529,7 +527,7 @@ describe("Admin", () => {
     // TODO: Fix - form fields don't render in test environment (Mantine Modal + Portal issue)
     it.skip("resets user form after successful submission", async () => {
       const user = userEvent.setup();
-      renderWithRouter(<Admin userPermissions="superadmin" />);
+      renderWithRouter(<Admin platformRole="superadmin" />);
 
       // Open modal and fill form
       await user.click(screen.getByRole("button", { name: /Add New User/i }));

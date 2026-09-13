@@ -258,7 +258,9 @@ describe("UserInfoUpdatePage", () => {
       await user.click(screen.getByRole("button", { name: /next/i }));
 
       await waitFor(() => {
-        expect(screen.getByText("System permissions")).toBeInTheDocument();
+        expect(
+          screen.getByRole("heading", { name: "Platform role" }),
+        ).toBeInTheDocument();
       });
     }, 30000);
   });
@@ -305,7 +307,9 @@ describe("UserInfoUpdatePage", () => {
       await user.click(screen.getByRole("button", { name: /next/i }));
 
       await waitFor(() => {
-        expect(screen.getByText("System permissions")).toBeInTheDocument();
+        expect(
+          screen.getByRole("heading", { name: "Platform role" }),
+        ).toBeInTheDocument();
       });
 
       // Step 4 → Step 5 (Review)
@@ -389,7 +393,9 @@ describe("UserInfoUpdatePage", () => {
 
       // Step 4 - permissions
       await waitFor(() => {
-        expect(screen.getByText("System permissions")).toBeInTheDocument();
+        expect(
+          screen.getByRole("heading", { name: "Platform role" }),
+        ).toBeInTheDocument();
       });
       await user.click(screen.getByRole("button", { name: /next/i }));
 
@@ -454,7 +460,9 @@ describe("UserInfoUpdatePage", () => {
       });
       await user.click(screen.getByRole("button", { name: /next/i }));
       await waitFor(() => {
-        expect(screen.getByText("System permissions")).toBeInTheDocument();
+        expect(
+          screen.getByRole("heading", { name: "Platform role" }),
+        ).toBeInTheDocument();
       });
       await user.click(screen.getByRole("button", { name: /next/i }));
       await waitFor(() => {
@@ -522,7 +530,9 @@ describe("UserInfoUpdatePage", () => {
       });
       await user.click(screen.getByRole("button", { name: /next/i }));
       await waitFor(() => {
-        expect(screen.getByText("System permissions")).toBeInTheDocument();
+        expect(
+          screen.getByRole("heading", { name: "Platform role" }),
+        ).toBeInTheDocument();
       });
       await user.click(screen.getByRole("button", { name: /next/i }));
       await waitFor(() => {
