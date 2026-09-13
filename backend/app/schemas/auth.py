@@ -324,6 +324,7 @@ class UserSummaryItem(BaseModel):
         username: User's username.
         email: User's email.
         system_permissions: User's system permission level.
+        platform_role: Whether this person operates Quill itself.
         is_active: Whether user is active.
         full_name: User's full name (optional, for admin responses).
         organisations: List of organisation names (optional, for admin responses).
@@ -334,6 +335,10 @@ class UserSummaryItem(BaseModel):
     username: str
     email: str
     system_permissions: str
+    # Served alongside ``system_permissions`` while callers migrate; see
+    # docs/docs/plans/2026-09-09-platform-role-plan.md. Additive, so a
+    # stale client is unaffected.
+    platform_role: str
     is_active: bool
     full_name: str | None = None
     organisations: list[str] | None = None
@@ -362,6 +367,7 @@ class UserOut(BaseModel):
         additional_competencies: User's additional competencies.
         removed_competencies: User's removed competencies.
         system_permissions: User's system permission level.
+        platform_role: Whether this person operates Quill itself.
         is_active: Whether user is active.
         organisation_ids: Organisations the user belongs to.
         site_ids: Sites the user belongs to.
@@ -375,6 +381,10 @@ class UserOut(BaseModel):
     additional_competencies: list[str]
     removed_competencies: list[str]
     system_permissions: str
+    # Served alongside ``system_permissions`` while callers migrate; see
+    # docs/docs/plans/2026-09-09-platform-role-plan.md. Additive, so a
+    # stale client is unaffected.
+    platform_role: str
     is_active: bool
     organisation_ids: list[int]
     site_ids: list[int]

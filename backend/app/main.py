@@ -2450,6 +2450,7 @@ def list_users(
                     username=user.username,
                     email=user.email,
                     system_permissions=user.system_permissions,
+                    platform_role=user.platform_role,
                     is_active=user.is_active,
                 )
                 for user in users
@@ -2553,6 +2554,7 @@ def list_users(
                     email=user.email,
                     full_name=user.full_name or "",
                     system_permissions=user.system_permissions,
+                    platform_role=user.platform_role,
                     is_active=user.is_active,
                     organisations=user_orgs.get(user.id, []),
                     sites=user_sites.get(user.id, []),
@@ -2652,6 +2654,7 @@ def get_user(
         additional_competencies=user.additional_competencies or [],
         removed_competencies=user.removed_competencies or [],
         system_permissions=user.system_permissions,
+        platform_role=user.platform_role,
         is_active=user.is_active,
         organisation_ids=user_org_ids,
         site_ids=user_site_ids,

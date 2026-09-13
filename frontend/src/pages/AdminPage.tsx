@@ -235,7 +235,11 @@ export default function AdminPage() {
 
   return (
     <Admin
-      userPermissions={userPermissions as "admin" | "superadmin" | "staff"}
+      platformRole={
+        state.status === "authenticated"
+          ? (state.user.platform_role as "superadmin" | "standard")
+          : undefined
+      }
       clinicalServicesEnabled={clinicalServicesEnabled}
       existingUsers={users}
       existingPatients={patients}

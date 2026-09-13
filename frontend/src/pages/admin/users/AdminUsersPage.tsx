@@ -14,7 +14,7 @@ import AddButton from "@/components/button/AddButton";
 import type { Column } from "@/components/tables/DataTable";
 import DataTableControlled from "@/components/tables/DataTableControlled";
 import ActiveStatusBadge from "@/components/badge/ActiveStatusBadge";
-import PermissionBadge from "@/components/badge/PermissionBadge";
+import PlatformRoleBadge from "@/components/badge/PlatformRoleBadge";
 import { api } from "@/lib/api";
 
 interface User {
@@ -23,6 +23,7 @@ interface User {
   email: string;
   full_name: string;
   system_permissions: "superadmin" | "admin" | "staff" | "single-user";
+  platform_role: "superadmin" | "standard";
   is_active: boolean;
   organisations: string[];
   sites: string[];
@@ -147,11 +148,13 @@ export default function AdminUsersPage() {
         [...user.organisations, ...user.sites].join(", ") || "",
     },
     {
-      header: "Permission",
-      render: (user) => (
-        <PermissionBadge permission={user.system_permissions} />
-      ),
-      accessor: (user) => user.system_permissions,
+      // Marks operators only, so the column is empty for almost every
+      // row. The filter beside it still reads ``system_permissions``:
+      // filtering on a field with two values, one of which renders
+      // nothing, would offer the reader no way to narrow anything.
+      header: "Platform role",
+      render: (user) => <PlatformRoleBadge platformRole={user.platform_role} />,
+      accessor: (user) => user.platform_role,
     },
     {
       header: "Status",

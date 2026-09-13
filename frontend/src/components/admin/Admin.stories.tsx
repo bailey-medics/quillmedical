@@ -45,7 +45,7 @@ const samplePatients = [
  */
 export const SuperAdminView: Story = {
   args: {
-    userPermissions: "superadmin",
+    platformRole: "superadmin",
     existingUsers: sampleUsers,
     existingPatients: samplePatients,
   },
@@ -59,7 +59,7 @@ export const SuperAdminView: Story = {
  */
 export const LoadingState: Story = {
   args: {
-    userPermissions: "superadmin",
+    platformRole: "superadmin",
     usersLoading: true,
     patientsLoading: true,
     organisationsLoading: true,
@@ -76,7 +76,7 @@ export const LoadingState: Story = {
  */
 export const PatientsLoadingState: Story = {
   args: {
-    userPermissions: "superadmin",
+    platformRole: "superadmin",
     usersLoading: false,
     patientsLoading: true,
     existingUsers: sampleUsers,

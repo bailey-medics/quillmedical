@@ -28,7 +28,6 @@ import {
   BodyTextBold,
   Heading,
 } from "@/components/typography";
-import PermissionBadge from "@/components/badge/PermissionBadge";
 import CompetencyBadge from "@/components/badge/CompetencyBadge";
 import { StateMessage } from "@/components/message-cards";
 import MultiStepForm, {
@@ -443,13 +442,17 @@ function Step4Review({
               {profession?.display_name || "None"}
             </BodyTextInline>
           </Group>
+          {/*
+            Plain text, not a badge. This row echoes the dropdown above
+            it, which still carries the four `system_permissions` rungs;
+            `PlatformRoleBadge` marks operators only, so it would leave
+            this label pointing at nothing for almost every user. The row
+            becomes a platform-role control with the dropdown, in the
+            form unit of the platform role plan.
+          */}
           <Group justify="space-between">
             <BodyTextBold>System permissions:</BodyTextBold>
-            <PermissionBadge
-              permission={
-                formData.systemPermissions as "admin" | "superadmin" | "staff"
-              }
-            />
+            <BodyTextInline>{formData.systemPermissions}</BodyTextInline>
           </Group>
           {selectedOrgs.length > 0 && (
             <Group justify="space-between">
