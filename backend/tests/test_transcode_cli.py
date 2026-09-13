@@ -31,12 +31,21 @@ def fake_gcs():
 
     def _blob_for(bucket_name: str):
         def _make(path: str) -> MagicMock:
+            # One mock per path, not per call. The job asks for the same
+            # blob twice — once to upload, once to verify it is readable
+            # — and a fresh mock on the second call would discard what
+            # the upload set on the first.
+            key = f"{bucket_name}/{path}"
+            existing = uploaded.get(key)
+            if existing is not None:
+                return existing
+
             blob = MagicMock()
             blob.exists.return_value = True
             blob.download_to_filename.side_effect = lambda dest: Path(
                 dest
             ).write_bytes(b"fake source")
-            uploaded[f"{bucket_name}/{path}"] = blob
+            uploaded[key] = blob
             return blob
 
         return _make
@@ -142,6 +151,108 @@ class TestTranscode:
 
         heights = [call.args[2] for call in build_rendition.call_args_list]
         assert heights == [720, 1080]
+
+
+class TestSourceCleanup:
+    """The master is deleted on success, and only on success.
+
+    Once renditions exist the source's sole remaining use is
+    re-encoding, wanted within days rather than months — so the job
+    cleans up after itself and the 7-day lifecycle rule is only a
+    backstop for uploads whose job never ran.
+    """
+
+    SOURCE = "source-bucket/7/colonoscopy-basics/a1b2c3d4"
+
+    def test_deletes_the_source_once_outputs_verify(
+        self, fake_gcs, stub_ffmpeg
+    ) -> None:
+        with patch.dict(os.environ, BASE_ENV, clear=False):
+            from scripts.transcode_cli import transcode
+
+            assert transcode() == 0
+
+        fake_gcs[self.SOURCE].delete.assert_called_once()
+
+    def test_keeps_the_source_when_an_output_is_missing(
+        self, stub_ffmpeg
+    ) -> None:
+        """An upload that reported success but left nothing readable.
+
+        Deleting here would cost the master as well as the rendition,
+        and there is no second copy of either.
+        """
+        source_blob = MagicMock()
+        source_blob.exists.return_value = True
+        source_blob.download_to_filename.side_effect = lambda dest: Path(
+            dest
+        ).write_bytes(b"fake source")
+
+        # The verification pass re-reads each written object. Make the
+        # poster unreadable and nothing else.
+        def _processed_blob(path: str) -> MagicMock:
+            blob = MagicMock()
+            blob.exists.return_value = not path.endswith("-poster.jpg")
+            return blob
+
+        source = MagicMock()
+        source.blob.return_value = source_blob
+        processed = MagicMock()
+        processed.blob.side_effect = _processed_blob
+
+        client = MagicMock()
+        client.bucket.side_effect = lambda name: (
+            source if name == "source-bucket" else processed
+        )
+
+        # Patched through sys.modules, matching the fake_gcs fixture.
+        # Patching `google.cloud.storage.Client` by name would force a
+        # real import of that module and leave it in sys.modules,
+        # shadowing the fixture's mock for every later test in the file.
+        storage_module = MagicMock()
+        storage_module.Client.return_value = client
+
+        with patch.dict(os.environ, BASE_ENV, clear=False):
+            from scripts.transcode_cli import transcode
+
+            with patch.dict(
+                "sys.modules", {"google.cloud.storage": storage_module}
+            ):
+                assert transcode() == 1
+
+        source_blob.delete.assert_not_called()
+
+    def test_keeps_the_source_when_an_encode_fails(self, fake_gcs) -> None:
+        """Nothing was uploaded, so nothing has replaced the master."""
+        with patch.dict(os.environ, BASE_ENV, clear=False):
+            from scripts.transcode_cli import transcode
+
+            with patch(
+                "scripts.transcode_cli.build_rendition",
+                side_effect=RuntimeError("ffmpeg failed (1): bad codec"),
+            ):
+                assert transcode() == 1
+
+        fake_gcs[self.SOURCE].delete.assert_not_called()
+
+    def test_a_delete_failure_does_not_fail_the_job(
+        self, fake_gcs, stub_ffmpeg
+    ) -> None:
+        """The transcode genuinely succeeded by that point.
+
+        A master left behind is swept by the lifecycle rule within a
+        week; failing here would re-run an encode that already worked.
+        """
+        with patch.dict(os.environ, BASE_ENV, clear=False):
+            from scripts.transcode_cli import transcode
+
+            # First run populates the fixture's blob for the source and
+            # deletes it; arm the failure and run again.
+            assert transcode() == 0
+            fake_gcs[self.SOURCE].delete.side_effect = RuntimeError(
+                "permission"
+            )
+            assert transcode() == 0
 
 
 class TestValidation:

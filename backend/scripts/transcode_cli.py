@@ -226,12 +226,50 @@ def transcode() -> int:
         # Same prefix as the source, because that is what the signed
         # cookie covers and what `base_url` addresses.
         prefix = f"{org_id}/{module_id}"
+        written: list[str] = []
         for local, name, content_type in outputs:
             dest = f"{prefix}/{name}"
             print(f"Uploading {dest}...")
             blob = processed_bucket.blob(dest)
             blob.cache_control = CACHE_CONTROL
             blob.upload_from_filename(str(local), content_type=content_type)
+            written.append(dest)
+
+    # Verify before deleting anything. An upload that reported success
+    # but left nothing readable would otherwise cost us the master too,
+    # and the renditions are what the learner is served — there is no
+    # second copy of either once the source is gone.
+    #
+    # This also closes the only drift window the system creates itself:
+    # the database records what the job produced, so recording an output
+    # that is not there would have the player ask for a missing file.
+    for dest in written:
+        if not processed_bucket.blob(dest).exists():
+            print(
+                f"ERROR: {dest} is not readable after upload; "
+                f"keeping the source object",
+                file=sys.stderr,
+            )
+            return 1
+
+    # The routine cleanup path. The 7-day lifecycle rule on the source
+    # bucket is only a backstop for uploads whose job never ran: once
+    # renditions exist the master's sole remaining use is re-encoding,
+    # which is wanted within days of a video going up, not months.
+    #
+    # A source already gone is not an error — a re-run over an asset
+    # cleaned up by a previous attempt should still succeed.
+    print(f"Deleting source {source_path}...")
+    try:
+        source_blob.delete()
+    except Exception as exc:  # noqa: BLE001
+        # Never fails the job: the renditions are uploaded and verified
+        # by this point, so the transcode genuinely succeeded. A master
+        # left behind is swept by the lifecycle rule within a week.
+        print(
+            f"WARNING: could not delete source {source_path}: {exc}",
+            file=sys.stderr,
+        )
 
     print(f"✓ Transcoded {asset_id} to {len(outputs)} outputs")
     return 0

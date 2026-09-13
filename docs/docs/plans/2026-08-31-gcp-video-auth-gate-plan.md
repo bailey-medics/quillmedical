@@ -1487,7 +1487,7 @@ Consequences to hold on to:
       first: if the backend invokes the job it can record completion when the
       job returns and the CLI stays database-free; if Eventarc fires it, the job
       must write its own state.
-- [ ] Have the transcode job delete its source object once its outputs verify.
+- [x] Have the transcode job delete its source object once its outputs verify.
       **[added 2026-09-13]** The routine cleanup path, per the **Source
       retention** decision — the 7-day lifecycle rule is only a backstop for
       uploads whose job never ran. Delete after the verification above, never
