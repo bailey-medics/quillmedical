@@ -85,10 +85,19 @@ def test_clinicians_hold_the_passport_and_others_do_not() -> None:
     whether the profession practises and accumulates assessed
     competencies.
 
-    Every one of these is both holder and assessor. The passport has a
-    single competency precisely because they are not separate people —
-    a consultant still gets signed off on new things, and a registrar
-    signed off last year is often who signs off a junior this year.
+    Every clinical one of these is both holder and assessor. The passport
+    has a single competency precisely because they are not separate
+    people — a consultant still gets signed off on new things, and a
+    registrar signed off last year is often who signs off a junior this
+    year.
+
+    ``external_assessor`` is the one exception, and belongs to the set
+    for the opposite reason: it is the *only* thing that profession can
+    do. A consultant invited from another trust gets it on a new account
+    so they can reach the passport routes and nothing else — no patient
+    records, no clinical actions. Somebody who already uses Quill keeps
+    the clinical profession they have, since all fourteen above already
+    carry the competency.
     """
     holders = {
         p.id
@@ -111,7 +120,21 @@ def test_clinicians_hold_the_passport_and_others_do_not() -> None:
         "physiotherapist",
         "occupational_therapist",
         "paramedic",
+        "external_assessor",
     }
+
+
+def test_the_external_assessor_can_reach_nothing_but_the_passport() -> None:
+    """The profession is the whole grant, so its ceiling is the point.
+
+    An invited consultant does not work here. Anything else on this list
+    would be access to a trust's data granted by a trainee sending an
+    email, which is why it is pinned rather than left to review.
+    """
+    assessor = next(p for p in BASE_PROFESSIONS if p.id == "external_assessor")
+
+    assert assessor.base_competencies == ["access_clinician_passport"]
+    assert not assessor.requires_clinical_services
 
 
 def test_the_passport_is_not_a_default_for_patients_or_back_office() -> None:
