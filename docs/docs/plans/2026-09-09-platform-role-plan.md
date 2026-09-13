@@ -839,6 +839,74 @@ does not, and removing the ladder removes the suggestion.
                       onto `platform_role` needs neither approval and would leave the
                       contract diff small enough to review properly — worth doing as
                       its own branch if this unit stays blocked for long.
+                    - **The frontend carriage was not carriage.** Counted as types to
+                      retype; reading it found three different things, two of them
+                      dead code and the third a gap.
+                      - **`RequirePermission` was a hierarchy nobody climbed.** Its
+                        `level` prop compared against the four rungs, but only its own
+                        tests ever passed anything below `superadmin`, and that branch
+                        already read `platform_role`. So `PERMISSION_HIERARCHY`, the
+                        `single-user` fallback and the prop itself could not run.
+                        Replaced by `RequireOperator`, which takes no level and asks
+                        the one question left. The fourth dead thing this plan has
+                        turned up, after `DEP_REQUIRE_STAFF`, `require_superadmin` and
+                        `update_system_permissions.py` — check for consumers before
+                        migrating anything else here.
+                      - **Three `AdminPage` fetch gates could never fail.** Each read
+                        `!["admin", "superadmin"].includes(userPermissions)` before
+                        loading users, patients or organisations, on a page whose whole
+                        subtree sits behind `RequireCompetency manage_users` in
+                        `main.tsx`. Removed, along with the `userPermissions`
+                        derivation they were the last consumers of.
+                    - **`NewMessageModal` blocks, and the competency it wants does not
+                      exist.** `system_permissions === "single-user"` decides whether
+                      the composer hides the patient picker. The obvious migration is a
+                      competency meaning "only their own health" — but `patient` holds
+                      exactly one competency, `access_patient_records`, and **nineteen
+                      professions hold that same one**. It distinguishes nobody; the
+                      scoping happens in the route, not the competency.
+                      - **So what marks a patient account is an open question.** The
+                        candidates are holding no staff competency at all, or being
+                        linked to a patient record — `User.fhir_patient_id` exists and
+                        is nullable, but `MeOut` does not serve it. Either way it is a
+                        modelling decision plus a backend change, not a retype.
+                      - **Unblocked with `fhir_patient_id` instead.** `MeOut` now
+                        serves the patient record an account is linked to, and the
+                        modal asks that. It is how the backend already answers the
+                        same question — `organisations.py:174`, `main.py:5314` and
+                        `main.py:5500` all test `user.fhir_patient_id == patient_id`
+                        — so the interface stops inferring what the API knows.
+                        Additive, no decision file.
+
+## Finding: `access_patient_records` names two different permissions
+
+Surfaced while migrating `NewMessageModal` off `system_permissions`.
+
+**For a consultant it means "read the records of patients I am treating". For a
+patient it means "read my own record".** One id, two permissions, and the
+`patient` profession carries a comment — *"Own records only (filtered by
+system)"* — explaining that the competency does not mean what it says. That is
+the same fault as `system_permissions` holding rank and place in one column,
+one layer down.
+
+**The counts show it.** Eighteen staff professions hold `access_patient_records`
+alongside `patient`, from `healthcare_assistant` with three competencies to
+`consultant` with twenty-eight. Only `patient` holds it alone, so today a
+patient is identifiable only by holding *nothing else* — an inference rather
+than a fact.
+
+- **The split:** `access_own_patient_records` for the patient, leaving
+  `access_patient_records` as the clinical one scoped by shared organisation.
+  `isPatientUser` then becomes an honest competency check.
+- **Nothing is mis-scoped today.** `check_user_patient_access` lets a patient
+  through on `fhir_patient_id == patient_id` before any competency is consulted,
+  so this is about naming a permission correctly, not closing a hole.
+- **It touches shared YAML and the generated types**, which `CLAUDE.md` flags as
+  wide blast radius, and it needs the two `main.py` self-access routes and
+  `check_user_patient_access` to learn the new id.
+- **Deliberately scheduled after the column drop**, so a competency redesign
+  does not hold up the contract step. `fhir_patient_id` on `MeOut` carries the
+  interface until then.
                     - **No CLI replacement for `update-permissions`.** A
                       `set-platform-role` action and a `just spr` recipe were written
                       and then removed: the admin pages already set a platform role

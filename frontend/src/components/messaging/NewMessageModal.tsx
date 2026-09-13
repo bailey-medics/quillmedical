@@ -199,10 +199,13 @@ export default function NewMessageModal({
   isPatientView,
 }: NewMessageModalProps) {
   const { state } = useAuth();
+  // Whether this person is messaging about their own health. Read from
+  // the patient record the account is linked to, which is how the
+  // backend answers the same question. It used to read the
+  // `single-user` rung of `system_permissions`, a column being retired.
   const isPatientUser =
     isPatientView ??
-    (state.status === "authenticated" &&
-      state.user.system_permissions === "single-user");
+    (state.status === "authenticated" && state.user.fhir_patient_id != null);
 
   const [patients, setPatients] = useState<PatientOption[]>([]);
   const [users, setUsers] = useState<UserOption[]>([]);

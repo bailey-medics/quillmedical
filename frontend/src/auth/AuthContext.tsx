@@ -42,6 +42,17 @@ export type User = {
   clinical_services_enabled?: boolean;
   /** Resolved CBAC competency IDs for this user */
   competencies?: string[];
+  /**
+   * The patient record this account belongs to, where the same human is
+   * both. Null for staff who are not patients here, so it is what marks
+   * an account as a patient's own.
+   *
+   * A competency would be the natural test and cannot serve yet:
+   * `access_patient_records` is held by eighteen staff professions as
+   * well as by patients, because it names two different permissions.
+   * See docs/docs/plans/2026-09-09-platform-role-plan.md.
+   */
+  fhir_patient_id?: string | null;
 };
 
 /**

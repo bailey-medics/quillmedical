@@ -182,6 +182,8 @@ class MeOut(BaseModel):
         enabled_features: Features enabled on any of the user's orgs.
         clinical_services_enabled: Whether clinical services are enabled.
         competencies: Resolved CBAC competency IDs.
+        fhir_patient_id: The patient record this account belongs to, where
+            the same human is both. Null for staff who are not patients here.
     """
 
     id: int
@@ -198,6 +200,14 @@ class MeOut(BaseModel):
     enabled_features: list[str]
     clinical_services_enabled: bool
     competencies: list[str]
+    # What marks an account as a patient's own. The interface needs it to
+    # decide whether someone is messaging about themselves; the backend
+    # already answers the same question this way in three places. A
+    # competency cannot serve here yet: `access_patient_records` is held
+    # by eighteen staff professions as well as by patients, because it
+    # names two permissions — see the competency split recorded in
+    # docs/docs/plans/2026-09-09-platform-role-plan.md.
+    fhir_patient_id: str | None
 
 
 class ServiceHealthStatus(BaseModel):
