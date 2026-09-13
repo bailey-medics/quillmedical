@@ -12,4 +12,5 @@ export { default as CompetencySummary } from "./CompetencySummary";
 export { default as RegistrationBadge } from "./RegistrationBadge";
 export { default as SignOffCard } from "./SignOffCard";
 export { default as SignOffForm } from "./SignOffForm";
+export { default as SignOffRequestForm } from "./SignOffRequestForm";
 export { default as VerificationPanel } from "./VerificationPanel";

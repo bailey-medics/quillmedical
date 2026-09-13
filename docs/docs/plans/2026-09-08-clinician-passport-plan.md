@@ -2794,6 +2794,26 @@ explicitly deferred here.
         - **Mantine's `ButtonPair` disables via `aria-disabled`**, not
           the `disabled` attribute, so `toBeDisabled()` does not apply
           and the tests assert the attribute instead.
+      - [x] **`SignOffRequestForm`, the holder's half.** Names an
+        assessor, records `observed_on`, and optionally carries a level,
+        comments and a reflection. Eleven tests.
+        - **The assessor list is not filtered.** Every assessor the page
+          hands it is offered, because who is fit to assess whom varies
+          by procedure, department and the people involved. The API
+          enforces the one rule that matters — not the holder
+          themselves. A test pins that nobody is filtered out.
+        - **The list arrives as a prop**, following `NewMessageModal`:
+          the page fetches, the component stays presentational. There is
+          no passport endpoint listing assessors, so a page will read
+          `/users` as the admin pages do.
+        - **`observed_on` cannot be in the future** (`maxDate`), since it
+          records work that already happened, and `maxLevel="year"`
+          keeps the picker on days rather than offering a decade.
+        - **The level picker appears only where the competency declares
+          levels**, which most do not.
+        - **The reflection field carries the anonymisation reminder** in
+          its description, since reflections are one of only two places
+          patient data could enter a passport.
       - **Pre-existing: `ErrorMessage` produces invalid HTML in every
         form field.** Mantine renders the error slot inside a `<p>` and
         `ErrorMessage` puts a `<div>` in it, so React warns "`<p>` cannot
