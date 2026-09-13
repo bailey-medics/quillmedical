@@ -69,6 +69,12 @@ variable "admin_image" {
   default     = "gcr.io/cloudrun/hello:latest"
 }
 
+variable "transcode_image" {
+  description = "Container image for the video transcode Cloud Run Job (built from Dockerfile transcode target). Like admin_image, the real image is pushed by CI and set by `gcloud run jobs execute --image` at call time; Terraform does not track it."
+  type        = string
+  default     = "gcr.io/cloudrun/hello:latest"
+}
+
 variable "lb_domains" {
   description = "Domain names for the load balancer SSL certificate and routing"
   type        = list(string)

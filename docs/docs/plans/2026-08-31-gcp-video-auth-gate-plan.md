@@ -1397,7 +1397,7 @@ Consequences to hold on to:
 
 ### The checklist
 
-- [ ] Cloud Run job `video-transcode` — FFmpeg image, 4 CPU, 4 GB, timeout set
+- [x] Cloud Run job `video-transcode` — FFmpeg image, 4 CPU, 4 GB, timeout set
       deliberately rather than left at 60 minutes. Reads from source, writes
       720p and 1080p H.264 plus a poster frame to the processed bucket under
       `{org_id}/{module_id}/`, named from the asset id per the contract above.
@@ -1407,11 +1407,11 @@ Consequences to hold on to:
       the MDX has no `poster` prop — the author names one reference and gets the
       rendition set. Until this phase lands, a hand-encoded MP4 and a
       hand-made poster are uploaded as the same asset's files.
-- [ ] Grant the compute service account `roles/storage.objectAdmin` on the
+- [x] Grant the compute service account `roles/storage.objectAdmin` on the
       **processed** bucket in `infra/modules/teaching-video-pipeline/`. It has
       this on source already; the transcode job cannot write its output without
       it.
-- [ ] `backend/scripts/transcode_cli.py`, modelled on `admin_cli.py` —
+- [x] `backend/scripts/transcode_cli.py`, modelled on `admin_cli.py` —
       environment-variable driven, no arguments. Takes the org, module and asset
       ids, downloads the source object, runs FFmpeg, uploads each output.
 - [ ] Expose the renditions additively in `LearningSlideOut`
@@ -1429,6 +1429,11 @@ Consequences to hold on to:
 - [ ] Set `Cache-Control: public, max-age=86400` on every object both jobs write,
       so Cloud CDN actually caches them. Objects written without it will be
       revalidated on every request and the CDN buys us nothing.
+      **[half done 2026-09-13]** The transcode job sets it on every output it
+      writes, and a test asserts it rather than trusting the constant — this
+      is exactly the kind of property that is invisible until a bill arrives.
+      Left unticked because the caption job does not exist yet and this item
+      covers both.
 - [ ] Trigger both on upload, not from the content repo's deploy workflow.
       **[revised 2026-09-09]** The original wording predates the decision that
       media is uploaded through the admin UI rather than committed to the content

@@ -107,3 +107,18 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--worker
 FROM base AS admin
 COPY --chown=appuser:appuser backend/scripts/admin_cli.py ./scripts/admin_cli.py
 CMD ["python", "scripts/admin_cli.py"]
+
+# ---------- Transcode target (Cloud Run Job for video renditions) ----------
+# FFmpeg is the only thing this target adds over `base`. It is an apt
+# install of a few hundred megabytes, which has no business in the image
+# the API serves from — hence a target of its own rather than a line in
+# `base`. Whisper, when the caption job is built, pulls torch and a
+# multi-gigabyte model and will likely want its own Dockerfile again.
+FROM base AS transcode
+USER root
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ffmpeg \
+ && rm -rf /var/lib/apt/lists/*
+USER appuser
+COPY --chown=appuser:appuser backend/scripts/transcode_cli.py ./scripts/transcode_cli.py
+CMD ["python", "scripts/transcode_cli.py"]

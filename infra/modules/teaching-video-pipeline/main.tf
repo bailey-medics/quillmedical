@@ -86,6 +86,20 @@ resource "google_storage_bucket_iam_member" "backend_source_writer" {
   member = "serviceAccount:${var.project_number}-compute@developer.gserviceaccount.com"
 }
 
+# ---------- The transcode job writes renditions to the processed bucket ----------
+# The job runs as the same default compute service account as the backend —
+# `modules/cloud-run-job/` has no `service_account` variable — so this widens
+# that identity rather than granting a new one. It reads the source bucket
+# through the binding above and needs to write its output here.
+#
+# The CDN fill grant above is read-only and separate: it is how the edge
+# fetches, not how anything writes.
+resource "google_storage_bucket_iam_member" "transcode_processed_writer" {
+  bucket = google_storage_bucket.processed.name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${var.project_number}-compute@developer.gserviceaccount.com"
+}
+
 # ---------- Backend bucket with CDN ----------
 resource "google_compute_backend_bucket" "videos" {
   project     = var.project_id

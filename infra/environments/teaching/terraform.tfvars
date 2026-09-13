@@ -14,9 +14,10 @@ cloud_run_max_instances = 5
 lb_domains     = ["teaching.quill-medical.com"]
 landing_domain = "quill-medical.com"
 
-backend_image  = "gcr.io/cloudrun/hello:latest"
-frontend_image = "gcr.io/cloudrun/hello:latest"
-admin_image    = "gcr.io/cloudrun/hello:latest"
+backend_image   = "gcr.io/cloudrun/hello:latest"
+frontend_image  = "gcr.io/cloudrun/hello:latest"
+admin_image     = "gcr.io/cloudrun/hello:latest"
+transcode_image = "gcr.io/cloudrun/hello:latest"
 
 monitored_hostnames        = ["teaching.quill-medical.com", "quill-medical.com"]
 app_domain                 = "teaching.quill-medical.com"
