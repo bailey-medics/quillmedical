@@ -2588,6 +2588,22 @@ explicitly deferred here.
 
 ## Phase 6: frontend
 
+- [x] Offer the passport on the organisation features page, so it can be
+      switched on per organisation at
+      `/admin/organisations/{id}/features`. Out of order, and trivial:
+      the page already had the toggles, the confirmation dialog and the
+      endpoints behind them, and `AVAILABLE_FEATURES` in
+      `OrgFeaturesPage.tsx` simply did not list the passport.
+      - **The backend validates no feature key at all.**
+        `toggle_org_feature` in `main.py` writes whatever string it is
+        given, so the only thing tying the switch to the gate is that
+        both spell `passport` the same way. A test asserts the exact key
+        reaches the endpoint, because a misspelling would be very hard
+        to diagnose: the switch would save, the confirmation would
+        report success, and every passport route would carry on
+        refusing.
+      - On branch `feature/add-passport-to-org-features`, PR #660.
+
 - [ ] **First, and before anything is loaded on demand: handle
       `vite:preloadError`.** Listen for it and route it through the
       update gate in `frontend/src/lib/swUpdateGate.ts`, so a tab
@@ -2624,6 +2640,75 @@ explicitly deferred here.
       `access_clinician_passport`.
 - [ ] Frontend tests with `just uf src/components/passport` and
       `just uf src/pages/passport`; Storybook tests with `just sbt`.
+
+### Where the work stands, 13 September
+
+Written for whoever picks this up next, in another worktree or another
+session. Phases 0 to 5 are done and merged; phase 6 has barely started.
+
+**All of the backend is on `main`**, by way of PR #655. That is the
+store, the record model, the API, rendering and PDF export, and the
+whole of phase 5's external assessors: the invite table, the signed
+invite token, invite and accept endpoints, the `external_assessor`
+profession, admin verify and revoke, and the authorisation matrix
+tests. Roughly thirty endpoints under `/api/passport`, all tested.
+
+**Nothing is visible in the application.** There were no files under
+`frontend/src` matching `passport` at all when phase 6 began, beyond the
+features-page entry above. No routes, no navigation entry, no API
+client.
+
+**The one thing that must come first** is the `vite:preloadError`
+handler in the next task. Nothing may be lazily loaded until it exists,
+and every passport page is to be lazily loaded, so it gates the rest of
+the phase rather than merely preceding it.
+
+**Things a fresh session will otherwise rediscover the hard way:**
+
+- **`requires_feature` reads no capacity**, and unions organisation
+  membership with site membership joined up through
+  `organisation_site`. This is why an `external` assessor membership
+  opens the gate at either level, and why no sibling gate was needed.
+  Pinned by `TestTheGateResolvesForAnAcceptedAssessor`.
+
+- **The feature gate is not authorisation.** An accepted assessor
+  passes `requires_feature("passport")` and still gets a 404 on the
+  holder's passport, because what they may see comes from the
+  `passport_signoff_request` rows naming them. Do not let a frontend
+  guard imply otherwise: `RequireFeature` says the feature is on here,
+  never that this person may read this record.
+
+- **Two invite-token pairs exist in `security.py` and they are not
+  interchangeable.** `create_invite_token` is the patient-sharing one
+  and requires a `patient_id`; `create_passport_invite_token` is this
+  one and carries an `invite_id`. The type is checked on decode, so a
+  token minted for one purpose cannot be presented for the other.
+
+- **`create_passport_invite_token` refuses a lifetime below one day**,
+  which matters only when a test wants an already-expired token. Sign
+  one directly with the same key rather than relaxing the validator.
+
+- **SQLite drops `tzinfo`** on a `DateTime(timezone=True)` column, so a
+  stored timestamp reads back naive under the unit suite and comparing
+  it against an aware `_now()` raises. `_as_utc` in `router.py` exists
+  for exactly this; use it on anything read from a row.
+
+- **`EXPECTED_PATHS` in `test_passport_api_contract.py` pins every
+  passport route.** Adding a route fails that test until the path is
+  listed, which is the mechanism working — a route missing from the
+  list is a route `oasdiff` cannot diff.
+
+- **`just ub` runs from `/app`**, so paths are relative to `backend/`:
+  `just ub tests/test_passport_router.py`, not
+  `backend/tests/...`. A `-k` expression containing `or` must be
+  quoted twice, as `just ub -k "'A or B'"`.
+
+**What phase 6 needs from the backend, and where to find it.** The API
+schemas in `backend/app/schemas/passport.py` are the contract the
+frontend types should mirror; `backend/app/features/passport/router.py`
+is the route list. The competency catalogue already ships to the
+browser through `src/generated/competencies.json`, which is listed under
+deferred items above as something to stop doing eventually.
 
 ## Phase 7: hardening and launch
 
