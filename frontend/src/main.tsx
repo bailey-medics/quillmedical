@@ -37,6 +37,7 @@
 // src/main.tsx
 import "@fontsource-variable/atkinson-hyperlegible-next";
 import "@mantine/core/styles.css";
+import "@mantine/dates/styles.css";
 import "@mantine/notifications/styles.css";
 import "./styles/typography.css";
 import "./styles/dark-overrides.css";
