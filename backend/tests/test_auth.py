@@ -243,11 +243,11 @@ class TestAuthMe:
         test_user: User,
         db_session: Session,
     ):
-        """Test /auth/me reports platform_role independently.
+        """Test /auth/me reports platform_role.
 
-        The field must come from the column rather than being derived
-        from ``system_permissions``, or the migration would look
-        finished while the two could still disagree.
+        Once asserted independence from ``system_permissions``, so the
+        migration could not look finished while the two disagreed. That
+        column is gone; the field itself still wants covering.
         """
         test_user.platform_role = "superadmin"
         db_session.commit()
@@ -256,7 +256,6 @@ class TestAuthMe:
         assert response.status_code == 200
         data = response.json()
         assert data["platform_role"] == "superadmin"
-        assert data["system_permissions"] != "superadmin"
 
     def test_auth_me_unauthenticated(self, test_client: TestClient):
         """Test /auth/me without authentication."""

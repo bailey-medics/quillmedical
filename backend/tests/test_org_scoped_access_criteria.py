@@ -92,7 +92,6 @@ def _user(
         is_active=True,
         email_verified=True,
         base_profession=profession,
-        system_permissions="staff",
         fhir_patient_id=fhir_patient_id,
     )
     db.add(user)

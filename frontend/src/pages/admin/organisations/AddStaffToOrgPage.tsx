@@ -96,7 +96,7 @@ export default function AddStaffToOrgPage() {
     async function fetchUsers() {
       try {
         const response = await api.get<{ users: ApiUser[] }>(
-          `/users?permission_level=staff&exclude_org=${id}`,
+          `/users?exclude_org=${id}`,
         );
         setUsers(response.users);
       } catch (err) {

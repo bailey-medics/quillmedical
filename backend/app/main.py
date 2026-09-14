@@ -229,9 +229,6 @@ from app.security import (
     verify_password_reset_token,
     verify_totp_code,
 )
-from app.system_permissions.permissions import (
-    PERMISSION_LEVELS,
-)
 from app.test_api_endpoints import test_api_router
 
 setup_logging()
@@ -1387,7 +1384,6 @@ class AdminUserCreateIn(BaseModel):
         base_profession: Base profession template (e.g., "consultant", "patient").
         additional_competencies: Extra competencies beyond base profession.
         removed_competencies: Competencies to remove from base profession.
-        system_permissions: System permission level (single-user, staff, admin, superadmin).
         platform_role: Whether this person operates Quill itself.
         organisation_ids: Organisations to assign user to (optional).
         site_ids: Sites to assign user to as trainee (optional).
@@ -1402,7 +1398,6 @@ class AdminUserCreateIn(BaseModel):
     base_profession: str = "patient"
     additional_competencies: list[str] = []
     removed_competencies: list[str] = []
-    system_permissions: str = "single-user"
     # Defaults to a standard account: an operator is made deliberately,
     # never by omitting a field.
     platform_role: str = "standard"
@@ -1463,7 +1458,6 @@ class AdminUserUpdateIn(BaseModel):
         base_profession: Base profession ID (optional).
         additional_competencies: Competencies to add (optional).
         removed_competencies: Competencies to remove (optional).
-        system_permissions: System permission level (optional).
         platform_role: Whether this person operates Quill itself (optional).
     """
 
@@ -1476,7 +1470,6 @@ class AdminUserUpdateIn(BaseModel):
     base_profession: str | None = None
     additional_competencies: list[str] | None = None
     removed_competencies: list[str] | None = None
-    system_permissions: str | None = None
     platform_role: str | None = None
     organisation_ids: list[int] | None = None
     site_ids: list[int] | None = None
@@ -1615,7 +1608,6 @@ def create_user_with_cbac(
         base_profession=payload.base_profession,
         additional_competencies=payload.additional_competencies,
         removed_competencies=payload.removed_competencies,
-        system_permissions=payload.system_permissions,
         platform_role=payload.platform_role,
         email_verified=True,
     )
@@ -1836,31 +1828,6 @@ def update_user(
         # Same reasoning as the promotion below: an operator holding no
         # profession competencies would be refused by every gate.
         if payload.platform_role == "superadmin":
-            granted = set(user.additional_competencies or [])
-            granted.update(
-                get_profession_base_competencies(SUPERADMIN_PROFESSION)
-            )
-            user.additional_competencies = sorted(granted)
-
-    if payload.system_permissions is not None:
-        # Admins cannot grant superadmin permissions
-        if (
-            current_user.system_permissions == "admin"
-            and payload.system_permissions == "superadmin"
-        ):
-            raise HTTPException(
-                status_code=403,
-                detail="Cannot grant superadmin permissions",
-            )
-        user.system_permissions = payload.system_permissions
-        # Operating Quill grants its competencies through a profession,
-        # so a superadmin holding none would be refused by every
-        # competency gate. A promoted user keeps the profession they
-        # already practise under — overwriting a consultant's would strip
-        # their clinical competencies the moment someone made them an
-        # operator — so the operator competencies are added alongside it
-        # instead.
-        if payload.system_permissions == "superadmin":
             granted = set(user.additional_competencies or [])
             granted.update(
                 get_profession_base_competencies(SUPERADMIN_PROFESSION)
@@ -2409,7 +2376,6 @@ def me(
             - username: User's username
             - email: User's email address
             - roles: List of assigned role names
-            - system_permissions: User's system permission level
             - totp_enabled: Whether 2FA is active
             - enabled_features: Features enabled on any of the user's orgs
             - competencies: Resolved CBAC competency IDs
@@ -2460,7 +2426,6 @@ def me(
         name=current_user.full_name,
         email=current_user.email,
         roles=[r.name for r in current_user.roles],
-        system_permissions=current_user.system_permissions,
         platform_role=current_user.platform_role,
         fhir_patient_id=current_user.fhir_patient_id,
         totp_enabled=current_user.is_totp_enabled,
@@ -2525,7 +2490,6 @@ def update_profile(
 )
 def list_users(
     patient_id: str | None = None,
-    permission_level: str | None = None,
     exclude_org: int | None = None,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
@@ -2537,14 +2501,11 @@ def list_users(
     used by the message participant picker.
 
     Without ``patient_id``, returns all users the caller may administer.
-    Use ``permission_level`` to filter by minimum permission level
-    (e.g. ``staff`` returns staff, admin, and superadmin users).
     Use ``exclude_org`` to exclude users who are already staff members
     of the given organisation.
 
     Args:
         patient_id: Optional FHIR patient ID to filter by shared org.
-        permission_level: Optional minimum permission level to filter by.
         exclude_org: Optional organisation ID to exclude existing members.
         current_user: Currently authenticated user.
         db: Database session.
@@ -2554,7 +2515,6 @@ def list_users(
 
     Raises:
         HTTPException: 403 if user lacks permissions.
-        HTTPException: 400 if permission_level is invalid.
     """
     if patient_id:
         # Filtered mode: staff in patient's orgs + external with access
@@ -2588,7 +2548,6 @@ def list_users(
                     id=user.id,
                     username=user.username,
                     email=user.email,
-                    system_permissions=user.system_permissions,
                     platform_role=user.platform_role,
                     is_active=user.is_active,
                 )
@@ -2597,17 +2556,7 @@ def list_users(
         )
 
     # Unfiltered mode: admin/superadmin only
-    if permission_level is not None:
-        if permission_level not in PERMISSION_LEVELS:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid permission_level: {permission_level}",
-            )
-        min_index = PERMISSION_LEVELS.index(permission_level)
-        allowed = PERMISSION_LEVELS[min_index:]
-        stmt = select(User).where(User.system_permissions.in_(allowed))
-    else:
-        stmt = select(User)
+    stmt = select(User)
 
     # Exclude users who are already staff of the given organisation
     if exclude_org is not None:
@@ -2692,7 +2641,6 @@ def list_users(
                     username=user.username,
                     email=user.email,
                     full_name=user.full_name or "",
-                    system_permissions=user.system_permissions,
                     platform_role=user.platform_role,
                     is_active=user.is_active,
                     organisations=user_orgs.get(user.id, []),
@@ -2745,7 +2693,6 @@ def get_user(
             - base_profession: Base profession ID
             - additional_competencies: Array of additional competency IDs
             - removed_competencies: Array of removed competency IDs
-            - system_permissions: System permission level
 
     Raises:
         HTTPException: 403 if the user lacks ``manage_users``.
@@ -2792,7 +2739,6 @@ def get_user(
         base_profession=user.base_profession,
         additional_competencies=user.additional_competencies or [],
         removed_competencies=user.removed_competencies or [],
-        system_permissions=user.system_permissions,
         platform_role=user.platform_role,
         is_active=user.is_active,
         organisation_ids=user_org_ids,
@@ -5508,7 +5454,6 @@ def accept_invite(
         username=body.username,
         email=email,
         password_hash=hash_password(body.password),
-        system_permissions="single-user",
         base_profession=user_type,
     )
     db.add(new_user)
@@ -5624,7 +5569,6 @@ def list_external_access(
                 user_id=g.user_id,
                 username=g.user.username,
                 email=g.user.email,
-                user_type=g.user.system_permissions,
                 granted_at=g.granted_at.isoformat(),
                 access_level=g.access_level,
             )

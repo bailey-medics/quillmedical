@@ -45,7 +45,6 @@ def _setup_org_with_site_and_lead(
         full_name="Dr Lead",
         password_hash=hash_password("Lead123!"),
         is_active=True,
-        system_permissions="staff",
     )
     db.add(lead)
     db.flush()
@@ -123,7 +122,6 @@ class TestValidateClinicalLead:
             email="staff@test.local",
             password_hash=hash_password("Staff123!"),
             is_active=True,
-            system_permissions="staff",
         )
         db_session.add(staff_user)
         db_session.flush()
@@ -192,7 +190,6 @@ class TestValidateClinicalLead:
             email="otherlead@test.local",
             password_hash=hash_password("Lead123!"),
             is_active=True,
-            system_permissions="staff",
         )
         db_session.add(other_lead)
         db_session.flush()

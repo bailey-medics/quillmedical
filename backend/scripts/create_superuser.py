@@ -2,9 +2,8 @@
 """Create a superadmin user in the local development database.
 
 This is a convenience wrapper around `create_user.py` that also marks the
-user as an operator — ``platform_role`` of ``superadmin``, and the
-retiring ``system_permissions`` alongside it while callers migrate. It is
-intended for local development setup only.
+user as an operator — ``platform_role`` of ``superadmin``. It is intended
+for local development setup only.
 
 Usage (inside the backend container):
 
@@ -91,7 +90,6 @@ def main() -> int:
                 username=username,
                 email=email,
                 password_hash=hash_password(password),
-                system_permissions="superadmin",
                 platform_role="superadmin",
                 # Operating Quill grants its competencies through a
                 # profession like every other role, rather than by a rank
@@ -107,7 +105,6 @@ def main() -> int:
         else:
             u.email = email
             u.password_hash = hash_password(password)
-            u.system_permissions = "superadmin"
             u.platform_role = "superadmin"
             # An existing user keeps the profession they practise under;
             # the operator competencies are added alongside it.

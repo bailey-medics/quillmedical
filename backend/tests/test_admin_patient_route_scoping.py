@@ -141,7 +141,6 @@ class TestAnAdminCannotReachAnotherOrganisationsPatient:
             is_active=True,
             email_verified=True,
             base_profession="consultant",
-            system_permissions="single-user",
         )
         db_session.add(external)
         db_session.flush()
@@ -194,7 +193,6 @@ class TestTheGateIsACompetencyNotARank:
         holding the patient, so only the competency is missing. Under the
         old string comparison this would have succeeded.
         """
-        test_user.system_permissions = "admin"
         test_user.base_profession = "consultant"
         db_session.execute(
             insert(organisation_member).values(

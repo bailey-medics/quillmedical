@@ -1,18 +1,16 @@
-"""The user responses carry ``platform_role`` alongside the old column.
+"""The user responses carry ``platform_role``.
 
-The badge that marks operators reads ``platform_role``, and three
-response schemas fed it only ``system_permissions``: ``MeOut`` already
-carried both, ``UserSummaryItem`` and ``UserOut`` carried neither. A
-frontend component cannot show what the API does not send, so this is
-the backend half of that change.
+The badge that marks operators reads it, and three response schemas once
+fed only ``system_permissions``: ``MeOut`` carried both, while
+``UserSummaryItem`` and ``UserOut`` carried neither. A frontend component
+cannot show what the API does not send, so this was the backend half of
+that change.
 
-Additive, so a stale client is unaffected and no decision file is
-needed. The old column is still served beside it while callers migrate.
-
-Each test makes the two columns **disagree** — an `admin` in the old
-column who is `standard` in the new one, and an operator who is
-`superadmin` in both. A test where they agree passes whichever field the
-route actually reads, which is exactly the bug worth catching.
+These tests originally made the two columns **disagree** — an ``admin``
+in the old column who was ``standard`` in the new one — because a test
+where they agreed would pass whichever field the route actually read.
+The old column has since been dropped, so there is nothing left to
+disagree with and the assertions simply read the field.
 """
 
 from __future__ import annotations
@@ -31,7 +29,6 @@ def _user(
     username: str,
     *,
     profession: str,
-    system_permissions: str,
     platform_role: str,
 ) -> User:
     user = User(
@@ -41,7 +38,6 @@ def _user(
         is_active=True,
         email_verified=True,
         base_profession=profession,
-        system_permissions=system_permissions,
         platform_role=platform_role,
     )
     db.add(user)
@@ -75,7 +71,6 @@ def caller(db_session: Session, org: Organisation) -> User:
         db_session,
         "the_admin",
         profession="system_administrator",
-        system_permissions="admin",
         platform_role="standard",
     )
     _place(db_session, org, admin)
@@ -101,14 +96,13 @@ class TestTheListingCarriesIt:
         org: Organisation,
         caller: User,
     ) -> None:
-        """The columns disagree, and the new one is served as it stands."""
+        """The listing carries the field for an ordinary account."""
         client = _login(test_client, "the_admin")
         response = client.get("/api/users")
 
         assert response.status_code == 200, response.text
         rows = {u["username"]: u for u in response.json()["users"]}
         assert rows["the_admin"]["platform_role"] == "standard"
-        assert rows["the_admin"]["system_permissions"] == "admin"
 
 
 class TestTheDetailCarriesIt:
@@ -125,7 +119,6 @@ class TestTheDetailCarriesIt:
             db_session,
             "a_colleague",
             profession="receptionist",
-            system_permissions="staff",
             platform_role="standard",
         )
         _place(db_session, org, target)

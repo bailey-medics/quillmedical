@@ -62,7 +62,6 @@ def _make_educator(db: Session, org: Organisation) -> User:
         is_active=True,
         email_verified=True,
         base_profession="teaching_admin",
-        system_permissions="admin",
     )
     db.add(user)
     db.flush()
@@ -84,7 +83,6 @@ def _make_learner(db: Session, org: Organisation) -> User:
         is_active=True,
         email_verified=True,
         base_profession="teaching_delegate",
-        system_permissions="staff",
     )
     db.add(user)
     db.flush()
@@ -2198,7 +2196,6 @@ class TestLearningRoutesRequireTheViewCompetency:
             is_active=True,
             email_verified=True,
             base_profession="consultant",
-            system_permissions="staff",
         )
         db.add(user)
         db.flush()

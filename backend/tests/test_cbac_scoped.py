@@ -29,7 +29,6 @@ def _user(db: Session, username: str, profession: str = "consultant") -> User:
         is_active=True,
         email_verified=True,
         base_profession=profession,
-        system_permissions="staff",
     )
     db.add(user)
     db.commit()

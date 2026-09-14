@@ -39,7 +39,6 @@ class TestPushSend:
             password_hash=hash_password("Password123!"),
             is_active=True,
             email_verified=True,
-            system_permissions="admin",
             platform_role="standard",
         )
         db_session.add(user)

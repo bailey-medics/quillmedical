@@ -176,7 +176,6 @@ class MeOut(BaseModel):
         name: User's full name (may be null).
         email: User's email address.
         roles: List of assigned role names.
-        system_permissions: User's system permission level.
         platform_role: Whether this person operates Quill itself.
         totp_enabled: Whether 2FA is active.
         enabled_features: Features enabled on any of the user's orgs.
@@ -191,10 +190,6 @@ class MeOut(BaseModel):
     name: str | None
     email: str
     roles: list[str]
-    system_permissions: str
-    # Served alongside ``system_permissions`` while callers migrate; see
-    # docs/docs/plans/2026-09-09-platform-role-plan.md. Additive, so a
-    # stale client is unaffected.
     platform_role: str
     totp_enabled: bool
     enabled_features: list[str]
@@ -338,7 +333,6 @@ class UserSummaryItem(BaseModel):
         id: User's ID.
         username: User's username.
         email: User's email.
-        system_permissions: User's system permission level.
         platform_role: Whether this person operates Quill itself.
         is_active: Whether user is active.
         full_name: User's full name (optional, for admin responses).
@@ -349,10 +343,6 @@ class UserSummaryItem(BaseModel):
     id: int
     username: str
     email: str
-    system_permissions: str
-    # Served alongside ``system_permissions`` while callers migrate; see
-    # docs/docs/plans/2026-09-09-platform-role-plan.md. Additive, so a
-    # stale client is unaffected.
     platform_role: str
     is_active: bool
     full_name: str | None = None
@@ -381,7 +371,6 @@ class UserOut(BaseModel):
         base_profession: User's base profession ID.
         additional_competencies: User's additional competencies.
         removed_competencies: User's removed competencies.
-        system_permissions: User's system permission level.
         platform_role: Whether this person operates Quill itself.
         is_active: Whether user is active.
         organisation_ids: Organisations the user belongs to.
@@ -395,10 +384,6 @@ class UserOut(BaseModel):
     base_profession: str
     additional_competencies: list[str]
     removed_competencies: list[str]
-    system_permissions: str
-    # Served alongside ``system_permissions`` while callers migrate; see
-    # docs/docs/plans/2026-09-09-platform-role-plan.md. Additive, so a
-    # stale client is unaffected.
     platform_role: str
     is_active: bool
     organisation_ids: list[int]

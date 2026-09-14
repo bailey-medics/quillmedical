@@ -86,24 +86,24 @@ class TestTheColumnDefaults:
 
         assert person.platform_role == "standard"
 
-    def test_it_is_independent_of_system_permissions(self, db_session):
-        """Nothing reads it for authorisation yet.
+    def test_it_defaults_to_standard(self, db_session):
+        """An operator is made deliberately, never by omission.
 
-        The expand step writes the column and leaves every caller on the
-        old one, so the two can disagree until the callers move. This
-        pins that the new column is not silently derived at read time.
+        This once asserted the new column was independent of
+        ``system_permissions`` — that the two could disagree while
+        callers migrated, so the column was not silently derived at read
+        time. The old column is gone and the independence it guarded is
+        moot; the default it relied on is still worth pinning.
         """
-        person = _user(db_session, "testadmin", system_permissions="admin")
+        person = _user(db_session, "testadmin")
 
         assert person.platform_role == "standard"
-        assert person.system_permissions == "admin"
 
     def test_a_superadmin_can_be_recorded(self, db_session):
         person = _user(
             db_session,
             "operator",
             platform_role="superadmin",
-            system_permissions="superadmin",
         )
 
         assert person.platform_role == "superadmin"
@@ -139,7 +139,6 @@ class TestTheRoutesReadTheNewColumn:
         _user(
             db_session,
             "stale",
-            system_permissions="superadmin",
             platform_role="standard",
             base_profession="superadmin_profession",
         )
@@ -162,7 +161,6 @@ class TestTheRoutesReadTheNewColumn:
         _user(
             db_session,
             "operator2",
-            system_permissions="single-user",
             platform_role="superadmin",
             base_profession="superadmin_profession",
         )
@@ -203,7 +201,6 @@ class TestTheListingsHideOperatorsByTheNewColumn:
         operator = _user(
             db_session,
             "hidden_operator",
-            system_permissions="single-user",
             platform_role="superadmin",
             base_profession="superadmin_profession",
         )
@@ -238,7 +235,6 @@ class TestTheListingsHideOperatorsByTheNewColumn:
         colleague = _user(
             db_session,
             "ordinary_colleague",
-            system_permissions="staff",
             platform_role="standard",
         )
         for person in (test_admin, colleague):
@@ -304,7 +300,6 @@ class TestScopingAsksTheNewColumn:
         _user(
             db_session,
             "global_operator",
-            system_permissions="single-user",
             platform_role="superadmin",
             base_profession="superadmin_profession",
         )
@@ -354,7 +349,6 @@ class TestScopingAsksTheNewColumn:
         holder = _user(
             db_session,
             "scoped_holder",
-            system_permissions="staff",
             platform_role="standard",
             base_profession="system_administrator",
         )
@@ -392,7 +386,6 @@ class TestOperatorsAreProtectedByTheNewColumn:
         return _user(
             db,
             "protected_operator",
-            system_permissions="single-user",
             platform_role="superadmin",
             base_profession="superadmin_profession",
         )
@@ -464,7 +457,6 @@ class TestOperatorsAreProtectedByTheNewColumn:
         colleague = _user(
             db_session,
             "ordinary_target",
-            system_permissions="staff",
             platform_role="standard",
         )
         for person in (test_admin, colleague):
@@ -532,7 +524,6 @@ class TestPatientAccessAsksTheRightQuestion:
         person = _user(
             db_session,
             "their_own_patient",
-            system_permissions="single-user",
             platform_role="standard",
         )
         person.fhir_patient_id = "some-fhir-id"

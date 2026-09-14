@@ -794,7 +794,6 @@ class TestOrganisationEndpoints:
             email="newstaff@example.com",
             password_hash=hash_password("StaffPass123!"),
             is_active=True,
-            system_permissions="staff",
         )
         db_session.add(staff_user)
         db_session.commit()
@@ -872,7 +871,6 @@ class TestOrganisationEndpoints:
             email="patient@example.com",
             password_hash=hash_password("PatientPass123!"),
             is_active=True,
-            system_permissions="single-user",
         )
         db_session.add(patient_user)
         db_session.commit()
@@ -890,71 +888,6 @@ class TestOrganisationEndpoints:
             )
         ).first()
         assert membership is not None
-
-    def test_list_users_permission_level_filter(
-        self,
-        authenticated_admin_client: TestClient,
-        db_session,
-        test_admin: User,
-    ):
-        """Test filtering users by minimum permission level."""
-        # Create an org and add admin + test users to it
-        org = Organisation(name="Filter Org")
-        db_session.add(org)
-        db_session.flush()
-
-        db_session.execute(
-            organisation_member.insert().values(
-                organisation_id=org.id,
-                user_id=test_admin.id,
-            )
-        )
-
-        patient_user = User(
-            username="listpatient",
-            email="listpatient@example.com",
-            password_hash=hash_password("PatientPass123!"),
-            is_active=True,
-            email_verified=True,
-            system_permissions="single-user",
-        )
-        staff_user = User(
-            username="liststaff",
-            email="liststaff@example.com",
-            password_hash=hash_password("StaffPass123!"),
-            is_active=True,
-            email_verified=True,
-            system_permissions="staff",
-        )
-        db_session.add_all([patient_user, staff_user])
-        db_session.flush()
-
-        # Add both to the org so the admin can see them
-        db_session.execute(
-            organisation_member.insert().values(
-                [
-                    {
-                        "organisation_id": org.id,
-                        "user_id": patient_user.id,
-                    },
-                    {
-                        "organisation_id": org.id,
-                        "user_id": staff_user.id,
-                    },
-                ]
-            )
-        )
-        db_session.commit()
-
-        response = authenticated_admin_client.get(
-            "/api/users?permission_level=staff"
-        )
-        assert response.status_code == 200
-
-        usernames = [u["username"] for u in response.json()["users"]]
-        assert "liststaff" in usernames
-        assert "testadmin" in usernames
-        assert "listpatient" not in usernames
 
     def test_list_users_admin_only_sees_own_org(
         self,
@@ -984,7 +917,6 @@ class TestOrganisationEndpoints:
             password_hash=hash_password("OtherPass123!"),
             is_active=True,
             email_verified=True,
-            system_permissions="staff",
         )
         db_session.add(other_user)
         db_session.flush()
@@ -1001,16 +933,6 @@ class TestOrganisationEndpoints:
         usernames = [u["username"] for u in response.json()["users"]]
         assert "testadmin" in usernames
         assert "otherorguser" not in usernames
-
-    def test_list_users_invalid_permission_level(
-        self,
-        authenticated_admin_client: TestClient,
-    ):
-        """Test invalid permission_level returns 400."""
-        response = authenticated_admin_client.get(
-            "/api/users?permission_level=invalid"
-        )
-        assert response.status_code == 400
 
     def test_list_users_exclude_org(
         self,
@@ -1038,7 +960,6 @@ class TestOrganisationEndpoints:
             password_hash=hash_password("Password123!"),
             is_active=True,
             email_verified=True,
-            system_permissions="staff",
         )
         non_member_user = User(
             username="staff-available",
@@ -1046,7 +967,6 @@ class TestOrganisationEndpoints:
             password_hash=hash_password("Password123!"),
             is_active=True,
             email_verified=True,
-            system_permissions="staff",
         )
         db_session.add_all([member_user, non_member_user])
         db_session.flush()
@@ -1069,9 +989,7 @@ class TestOrganisationEndpoints:
         db_session.commit()
 
         # Without exclude_org: both visible
-        response = authenticated_admin_client.get(
-            "/api/users?permission_level=staff"
-        )
+        response = authenticated_admin_client.get("/api/users")
         assert response.status_code == 200
         usernames = [u["username"] for u in response.json()["users"]]
         assert "staff-member-a" in usernames
@@ -1079,7 +997,7 @@ class TestOrganisationEndpoints:
 
         # With exclude_org: members of that org are excluded
         response = authenticated_admin_client.get(
-            f"/api/users?permission_level=staff&exclude_org={org.id}"
+            f"/api/users?exclude_org={org.id}"
         )
         assert response.status_code == 200
         usernames = [u["username"] for u in response.json()["users"]]
@@ -1110,7 +1028,6 @@ class TestOrganisationEndpoints:
             email="deactivate@example.com",
             password_hash=hash_password("Password123!"),
             is_active=True,
-            system_permissions="staff",
         )
         db_session.add(user)
         db_session.flush()
@@ -1175,7 +1092,6 @@ class TestOrganisationEndpoints:
             email="inactive@example.com",
             password_hash=hash_password("Password123!"),
             is_active=False,
-            system_permissions="staff",
         )
         db_session.add(user)
         db_session.flush()
@@ -1246,7 +1162,6 @@ class TestOrganisationEndpoints:
             password_hash=hash_password("SuperPass123!"),
             is_active=True,
             email_verified=True,
-            system_permissions="superadmin",
             platform_role="superadmin",
         )
         db_session.add(superadmin)
@@ -1276,7 +1191,6 @@ class TestOrganisationEndpoints:
             password_hash=hash_password("SuperPass123!"),
             is_active=True,
             email_verified=True,
-            system_permissions="superadmin",
             platform_role="superadmin",
         )
         db_session.add(superadmin)
@@ -1309,7 +1223,6 @@ class TestOrganisationEndpoints:
             password_hash=hash_password("SuperPass123!"),
             is_active=True,
             email_verified=True,
-            system_permissions="superadmin",
             platform_role="superadmin",
         )
         db_session.add(superadmin)
@@ -1360,7 +1273,6 @@ class TestOrganisationEndpoints:
             password_hash=hash_password("SuperPass123!"),
             is_active=True,
             email_verified=True,
-            system_permissions="superadmin",
             platform_role="superadmin",
         )
         db_session.add(superadmin)
@@ -1413,7 +1325,6 @@ class TestOrganisationEndpoints:
             password_hash=hash_password("StaffPass123!"),
             is_active=True,
             email_verified=True,
-            system_permissions="staff",
         )
         db_session.add(staff_user)
         db_session.flush()
@@ -1427,10 +1338,10 @@ class TestOrganisationEndpoints:
 
         response = authenticated_admin_client.patch(
             f"/api/users/{staff_user.id}",
-            json={"system_permissions": "superadmin"},
+            json={"platform_role": "superadmin"},
         )
         assert response.status_code == 403
-        assert "Cannot grant superadmin" in response.json()["detail"]
+        assert "Cannot grant the superadmin" in response.json()["detail"]
 
     def test_add_patient_unauthenticated(self, test_client: TestClient):
         """Test adding patient without authentication."""

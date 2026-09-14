@@ -132,23 +132,14 @@ class User(Base):
     )
 
     # System Permissions: Administrative and system-level access control.
-    #
-    # Being replaced by ``platform_role`` below. This column holds one
-    # field's worth of two unrelated ideas: ``admin`` and ``staff`` are
-    # things a person is *somewhere*, now expressed as membership plus
-    # competencies, while ``superadmin`` says they operate Quill itself,
-    # which is true everywhere or nowhere. Kept until every caller has
-    # moved — see docs/docs/plans/2026-09-09-platform-role-plan.md.
-    system_permissions: Mapped[str] = mapped_column(
-        String(20), nullable=False, default="single-user"
-    )
-
     #: Whether this person operates Quill itself. One value and its
     #: absence, because that is the only question the old four-level
-    #: column asked that was not about a place.
+    #: ``system_permissions`` column asked that was not about a place.
     #:
-    #: Written alongside ``system_permissions`` while callers migrate;
-    #: nothing reads it for authorisation yet.
+    #: That column is gone. ``admin`` and ``staff`` described a person
+    #: *somewhere* and became membership plus competencies; only
+    #: ``superadmin`` stood alone, and it is this. See
+    #: docs/docs/plans/2026-09-09-platform-role-plan.md.
     platform_role: Mapped[str] = mapped_column(
         String(20),
         nullable=False,

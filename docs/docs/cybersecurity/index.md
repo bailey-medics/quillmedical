@@ -97,17 +97,29 @@ Anti-enumeration prevents attackers from discovering valid usernames or email ad
 
 ## Authorisation
 
-### System permissions
+### Platform role
 
-A four-level hierarchical permission system where each level inherits access from the levels below it:
+One question, with one value and its absence: does this person operate Quill
+itself?
 
 ```
-patient < staff < admin < superadmin
+standard | superadmin
 ```
 
-- Permission checks use `check_permission_level(user_permission, required_permission)` which compares hierarchy positions.
-- External user types (`external_hcp`, `patient_advocate`, `teaching_delegate`) are treated as `patient` level for hierarchy checks.
-- Admin endpoints explicitly check `system_permissions in ["admin", "superadmin"]`.
+- `platform_role` is read directly — there is no hierarchy and no ordering, so
+  nothing can sit "above" anything else.
+- It confers **no clinical access**. A superadmin who does not hold
+  `access_patient_records` cannot read a record, the same as anyone else.
+- It scopes what an administrator reaches: routes acting at a place check
+  membership, and an operator skips that check because they are global.
+- Administering users is the `manage_users` competency, paired with a place
+  check on every route that carries it.
+
+This replaced a four-level `system_permissions` column
+(`single-user < staff < admin < superadmin`) which held two unrelated ideas at
+once. Three of its rungs described a person *somewhere* and became organisation
+and site membership plus competencies; only `superadmin` stood alone. See
+`docs/docs/plans/2026-09-09-platform-role-plan.md`.
 
 ### Competency-based access control (CBAC)
 

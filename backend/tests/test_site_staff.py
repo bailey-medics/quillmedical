@@ -26,7 +26,6 @@ class TestSiteStaffClinicalLeadConstraint:
             full_name="Staff One",
             password_hash=hash_password("Pass123!"),
             is_active=True,
-            system_permissions="staff",
         )
         db_session.add(target)
         db_session.commit()
@@ -52,7 +51,6 @@ class TestSiteStaffClinicalLeadConstraint:
             full_name="Existing Lead",
             password_hash=hash_password("Pass123!"),
             is_active=True,
-            system_permissions="staff",
         )
         db_session.add(existing_lead)
         db_session.flush()
@@ -72,7 +70,6 @@ class TestSiteStaffClinicalLeadConstraint:
             full_name="New Lead",
             password_hash=hash_password("Pass123!"),
             is_active=True,
-            system_permissions="staff",
         )
         db_session.add(new_user)
         db_session.commit()
@@ -98,7 +95,6 @@ class TestSiteStaffClinicalLeadConstraint:
             full_name="Update Lead",
             password_hash=hash_password("Pass123!"),
             is_active=True,
-            system_permissions="staff",
         )
         db_session.add(lead)
         db_session.flush()
@@ -119,7 +115,6 @@ class TestSiteStaffClinicalLeadConstraint:
             full_name="Update Staff",
             password_hash=hash_password("Pass123!"),
             is_active=True,
-            system_permissions="staff",
         )
         db_session.add(staff)
         db_session.flush()
@@ -152,7 +147,6 @@ class TestSiteStaffClinicalLeadConstraint:
             full_name="Same Lead",
             password_hash=hash_password("Pass123!"),
             is_active=True,
-            system_permissions="staff",
         )
         db_session.add(lead)
         db_session.flush()
@@ -189,7 +183,6 @@ class TestSiteStaffClinicalLeadConstraint:
             full_name="Mixed Lead",
             password_hash=hash_password("Pass123!"),
             is_active=True,
-            system_permissions="staff",
         )
         db_session.add(lead)
         db_session.flush()
@@ -210,7 +203,6 @@ class TestSiteStaffClinicalLeadConstraint:
             full_name="Mixed Staff",
             password_hash=hash_password("Pass123!"),
             is_active=True,
-            system_permissions="staff",
         )
         db_session.add(staff)
         db_session.commit()

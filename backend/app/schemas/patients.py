@@ -380,7 +380,6 @@ class ExternalAccessGrant(BaseModel):
         user_id: Core DB user ID of the grantee.
         username: Grantee's username.
         email: Grantee's email.
-        user_type: Grantee's system permission level.
         granted_at: ISO-8601 timestamp the grant was created.
         access_level: Access level (e.g. "full").
     """
@@ -388,7 +387,6 @@ class ExternalAccessGrant(BaseModel):
     user_id: int
     username: str
     email: str
-    user_type: str
     granted_at: str
     access_level: str
 

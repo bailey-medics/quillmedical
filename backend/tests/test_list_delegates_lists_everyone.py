@@ -41,7 +41,6 @@ def _user(
     username: str,
     *,
     profession: str = "teaching_delegate",
-    system_permissions: str = "staff",
     platform_role: str = "standard",
 ) -> User:
     user = User(
@@ -51,7 +50,6 @@ def _user(
         is_active=True,
         email_verified=True,
         base_profession=profession,
-        system_permissions=system_permissions,
         platform_role=platform_role,
     )
     db.add(user)
@@ -112,7 +110,6 @@ class TestAdminsAreListed:
             db_session,
             "orgadmin",
             profession="system_administrator",
-            system_permissions="admin",
         )
         _place(db_session, org, admin)
 
@@ -141,7 +138,6 @@ class TestAdminsAreListed:
             db_session,
             "operator_user",
             profession="superadmin_profession",
-            system_permissions="superadmin",
             platform_role="superadmin",
         )
         _place(db_session, org, operator)

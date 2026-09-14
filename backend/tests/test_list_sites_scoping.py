@@ -175,7 +175,6 @@ class TestTheGateIsACompetencyNotARank:
         """
         own = two_trusts["own"]
         assert isinstance(own, Organisation)
-        test_user.system_permissions = "admin"
         test_user.base_profession = "consultant"
         _join(db_session, own, test_user)
 

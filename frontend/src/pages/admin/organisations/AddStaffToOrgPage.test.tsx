@@ -57,9 +57,7 @@ describe("AddStaffToOrgPage", () => {
     });
 
     await waitFor(() => {
-      expect(apiLib.api.get).toHaveBeenCalledWith(
-        "/users?permission_level=staff&exclude_org=1",
-      );
+      expect(apiLib.api.get).toHaveBeenCalledWith("/users?exclude_org=1");
     });
   });
 

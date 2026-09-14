@@ -213,7 +213,7 @@ The infrastructure is defined in `infra/` using Terraform modules:
 | `networking`    | VPC, subnet, Cloud NAT, VPC connector, firewall rules                   |
 | `cloud-sql`     | PostgreSQL instances with private IP, backups, auto-generated passwords |
 | `cloud-run`     | Backend and frontend services with secret injection                     |
-| `cloud-run-job` | Admin CLI jobs (create-user, update-permissions, etc.)                  |
+| `cloud-run-job` | Admin CLI jobs (create-superadmin, add-role, run-migrations)           |
 | `load-balancer` | Global HTTPS LB, Cloud Armor WAF, serverless NEGs, SSL certs            |
 | `compute-fhir`  | VM running HAPI FHIR + EHRbase (prod/staging only)                      |
 | `monitoring`    | Uptime checks and email alerting                                        |

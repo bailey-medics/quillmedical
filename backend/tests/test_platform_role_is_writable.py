@@ -35,7 +35,6 @@ def _user(
     username: str,
     *,
     profession: str,
-    system_permissions: str,
     platform_role: str,
 ) -> User:
     user = User(
@@ -45,7 +44,6 @@ def _user(
         is_active=True,
         email_verified=True,
         base_profession=profession,
-        system_permissions=system_permissions,
         platform_role=platform_role,
     )
     db.add(user)
@@ -79,7 +77,6 @@ def admin(db_session: Session, org: Organisation) -> User:
         db_session,
         "the_admin",
         profession="system_administrator",
-        system_permissions="admin",
         platform_role="standard",
     )
     _place(db_session, org, user)
@@ -92,7 +89,6 @@ def operator(db_session: Session, org: Organisation) -> User:
         db_session,
         "the_operator",
         profession="superadmin_profession",
-        system_permissions="superadmin",
         platform_role="superadmin",
     )
     _place(db_session, org, user)
@@ -208,7 +204,6 @@ class TestUpdate:
             db_session,
             "a_colleague",
             profession="receptionist",
-            system_permissions="staff",
             platform_role="standard",
         )
         _place(db_session, org, target)
@@ -236,7 +231,6 @@ class TestUpdate:
             db_session,
             "gains_competencies",
             profession="receptionist",
-            system_permissions="staff",
             platform_role="standard",
         )
         _place(db_session, org, target)
@@ -266,7 +260,6 @@ class TestUpdate:
             db_session,
             "stays_standard",
             profession="receptionist",
-            system_permissions="staff",
             platform_role="standard",
         )
         _place(db_session, org, target)
@@ -294,7 +287,6 @@ class TestUpdate:
             db_session,
             "set_to_standard",
             profession="receptionist",
-            system_permissions="staff",
             platform_role="standard",
         )
         _place(db_session, org, target)

@@ -65,7 +65,6 @@ def outsider(db_session: Session, other_org: Organisation) -> User:
         is_active=True,
         email_verified=True,
         base_profession="consultant",
-        system_permissions="staff",
     )
     db_session.add(user)
     db_session.flush()
@@ -91,7 +90,6 @@ def insider(db_session: Session, admin_org: Organisation) -> User:
         is_active=True,
         email_verified=True,
         base_profession="consultant",
-        system_permissions="staff",
     )
     db_session.add(user)
     db_session.flush()
@@ -224,7 +222,6 @@ class TestTheGateIsACompetencyNotARank:
         grants clinical competencies and not `manage_users`, which is the
         distinction the swap exists to make.
         """
-        test_user.system_permissions = "admin"
         test_user.base_profession = "consultant"
         db_session.execute(
             insert(organisation_member).values(
@@ -297,7 +294,6 @@ class TestAUserInNoOrganisationFailsClosed:
             is_active=True,
             email_verified=True,
             base_profession="consultant",
-            system_permissions="staff",
         )
         db_session.add(orphan)
         db_session.commit()

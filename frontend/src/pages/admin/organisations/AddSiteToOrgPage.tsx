@@ -149,9 +149,7 @@ export default function AddSiteToOrgPage() {
   useEffect(() => {
     async function fetchUsers() {
       try {
-        const response = await api.get<{ users: ApiUser[] }>(
-          "/users?permission_level=staff",
-        );
+        const response = await api.get<{ users: ApiUser[] }>("/users");
         setUsers(response.users);
       } catch (err) {
         setLoadError(

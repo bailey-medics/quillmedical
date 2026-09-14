@@ -36,12 +36,7 @@ import MultiStepForm, {
 } from "@/components/multi-step-form";
 import DirtyFormNavigation from "@/components/warnings";
 import PageHeader from "@/components/page-header";
-import type {
-  BaseProfessionId,
-  CompetencyId,
-  SystemPermission,
-  Competency,
-} from "@/types/cbac";
+import type { BaseProfessionId, CompetencyId, Competency } from "@/types/cbac";
 import { getBaseProfessionDetails } from "@/types/cbac";
 import competenciesData from "@/generated/competencies.json";
 import baseProfessionsData from "@/generated/base-professions.json";
@@ -72,7 +67,6 @@ interface UserFormData {
   baseProfession: BaseProfessionId | "";
   additionalCompetencies: CompetencyId[];
   removedCompetencies: CompetencyId[];
-  systemPermissions: SystemPermission;
   platformRole: PlatformRole;
   organisationIds: string[];
   siteIds: string[];
@@ -603,7 +597,6 @@ export default function UserInfoUpdatePage() {
     baseProfession: "",
     additionalCompetencies: [],
     removedCompetencies: [],
-    systemPermissions: "staff",
     platformRole: "standard",
     organisationIds: [],
     siteIds: [],
@@ -624,7 +617,6 @@ export default function UserInfoUpdatePage() {
           base_profession?: string;
           additional_competencies?: string[];
           removed_competencies?: string[];
-          system_permissions?: SystemPermission;
           platform_role?: PlatformRole;
           organisation_ids?: number[];
           site_ids?: number[];
@@ -639,7 +631,6 @@ export default function UserInfoUpdatePage() {
           baseProfession: data.base_profession || "",
           additionalCompetencies: data.additional_competencies || [],
           removedCompetencies: data.removed_competencies || [],
-          systemPermissions: data.system_permissions || "staff",
           platformRole: data.platform_role || "standard",
           organisationIds: data.organisation_ids
             ? data.organisation_ids.map(String)
@@ -761,7 +752,6 @@ export default function UserInfoUpdatePage() {
         base_profession: BaseProfessionId | "";
         additional_competencies: CompetencyId[];
         removed_competencies: CompetencyId[];
-        system_permissions: SystemPermission;
         platform_role: PlatformRole;
         password?: string;
         organisation_ids: number[];
@@ -773,7 +763,6 @@ export default function UserInfoUpdatePage() {
         base_profession: formData.baseProfession,
         additional_competencies: formData.additionalCompetencies,
         removed_competencies: formData.removedCompetencies,
-        system_permissions: formData.systemPermissions,
         platform_role: formData.platformRole,
         organisation_ids: formData.organisationIds.map(Number),
         site_ids: formData.siteIds.map(Number),
