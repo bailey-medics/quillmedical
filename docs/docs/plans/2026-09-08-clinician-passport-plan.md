@@ -808,7 +808,10 @@ several.
 - **`profile.yaml`** — the holder's user id, name and current
   registrations, regenerated whenever any of them changes rather than
   frozen at creation. It is the one place the passport says whose it
-  is, which is why no other record repeats it.
+  is, which is why no other record repeats it. It also carries
+  `appraisal_periods`, the declared ranges CPD is tallied over — see the
+  CPD entry below, and note that those are appended rather than
+  regenerated, since a past period stays true once it has passed.
 
 - **`competencies.yaml`** — the derived index, regenerated on every
   write and never hand-edited. One entry per competency the holder has
@@ -928,7 +931,58 @@ several.
   UK appraisal runs annually and asks what you did this year, so the
   grouping matches how the record is used.
 
-- [ ] We need to figure out how to show a tally each year of CPD points (hours)
+- **CPD is tallied in points, over declared appraisal periods** — and
+  the periods are a history in `profile.yaml`, not a single setting.
+
+  **Points are what they are called, and one point is one hour.** The
+  two are used interchangeably in practice and there is no conversion,
+  but "points" is the common usage — it is what a clinician says and
+  what an appraiser asks for, so it is what the interface says back.
+
+  **The field is `points` end to end** — the React form, the API schemas
+  and the on-disk record model all name it the same thing. It was
+  briefly `hours` on the wire with "points" only on screen, and that
+  divergence was removed rather than documented: a field whose name
+  disagrees with its label is a trap for whoever reads the code next,
+  and the cost of fixing it only ever rises.
+
+  **Renaming it was a breaking API change**, flagged by `oasdiff` and
+  needing the `api-breaking-change-review` environment approval plus an
+  `api-compatibility/` decision file. Worth taking now: the passport is
+  unreleased, the feature is off for every organisation, and no client
+  has ever called the endpoint, so this is the cheapest the rename will
+  ever be. There is no database column — CPD lives in YAML files — so no
+  migration was involved.
+
+  **Appraisal years do not start in January, and they move.** An
+  appraisal falls in whatever month a person's arrangement puts it, and
+  that month changes when they move post. So `profile.yaml` carries a
+  list of periods rather than one `appraisal_month`:
+
+  ```yaml
+  appraisal_periods:
+    - from: 2025-08-01
+      to: 2026-07-31
+    - from: 2026-08-01
+      to: 2026-11-30 # shortened: moved post, appraisal brought forward
+  ```
+
+  **A list, because a short year has to explain itself.** Thirty-two
+  hours across four months and thirty-two across twelve are different
+  records, and only the declared range tells a reader which they are
+  looking at. Storing one current month would lose every previous
+  boundary and make an honest short period look like a poor year. So
+  **every CPD total states the range it covers** — in the passport page,
+  the rendered Markdown and the PDF alike — never a bare year label.
+
+  **June to June is the fallback**, used when a holder has declared no
+  period at all. It is a convention rather than a guess dressed up as
+  one, and the displayed range says so, so nobody mistakes it for their
+  actual cycle.
+
+  **Revalidation is not this.** Revalidation is the five-yearly GMC
+  event; appraisal is the annual one, and it is the annual cycle these
+  periods anchor. Naming them `appraisal_periods` keeps that distinct.
 
 - **Failures are recorded like anything else.** An unsuccessful
   procedure, an abandoned attempt or a declined sign-off is part of the
@@ -2833,6 +2887,24 @@ explicitly deferred here.
           five is not a form-filling exercise.
         - **Two anonymisation reminders**, on the indication and the
           notes, since both invite writing about a patient.
+      - [x] **`CpdEntryForm`, the second self-declared record.** One
+        activity — conference, grand round, teaching day, course or
+        other. Twelve tests.
+        - **Hours are optional and never totalled here.** A form records
+          one activity; what a year adds up to is a display concern
+          belonging to `CpdTable`, and the yearly tally above is still an
+          open question. A running total on the entry form would answer
+          it by accident, so a test pins that no total, percentage or
+          progress bar appears.
+        - **The date decides the appraisal year**, which is why it
+          cannot be in the future and why the description says so. UK
+          appraisal asks what you did this year, so the date is what
+          makes the record usable rather than merely stored.
+        - **Date, title and type are required; everything else is
+          not.** Those three are what make an entry readable a year
+          later at appraisal.
+        - Same self-declared guards as the logbook: no declaration, no
+          assessor, and an anonymisation reminder on the notes.
       - **Every Mantine `SelectField` is `role="combobox"`, not
         `textbox`.** Caught three times now across the passport forms.
         Query it with `getByRole("combobox")`, and index

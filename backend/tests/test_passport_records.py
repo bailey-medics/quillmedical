@@ -389,7 +389,7 @@ class TestCpd:
                 activity_on=date(2026, 2, 11),
                 title="Regional oncology day",
                 activity_type="conference",
-                hours=6.5,
+                points=6.5,
             ),
             now=NOW,
         )
@@ -398,7 +398,7 @@ class TestCpd:
             schemas.CpdEntry,
             passport.read(PASSPORT_ID, paths.cpd_entry(2026, stem)),
         )
-        assert stored.hours == 6.5
+        assert stored.points == 6.5
 
     def test_an_activity_does_not_reach_the_index(
         self, passport: store.LocalPassportStore, actor: commits.Actor

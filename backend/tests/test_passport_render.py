@@ -271,10 +271,10 @@ class TestCertificatesAndCpd:
         assert "SACT administration course" in output
         assert "nobody" in output.lower()
 
-    def test_cpd_hours_are_totalled_per_year(
+    def test_cpd_points_are_totalled_per_year(
         self, store: LocalPassportStore, holder: Actor
     ) -> None:
-        for hours in (6, 3):
+        for points in (6, 3):
             records.add_cpd_entry(
                 store,
                 PASSPORT_ID,
@@ -283,13 +283,13 @@ class TestCertificatesAndCpd:
                     activity_on=date(2026, 2, 11),
                     title="Regional oncology study day",
                     activity_type="teaching day",
-                    hours=hours,
+                    points=points,
                 ),
             )
 
         output = render.render(store, PASSPORT_ID)
 
-        assert "9 hours" in output
+        assert "9 points" in output
 
 
 class TestReflectionsAreExcludedByDefault:

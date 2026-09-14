@@ -428,7 +428,7 @@ class CpdEntry(PassportModel):
     activity_on: date
     title: NonEmptyText
     activity_type: CpdActivityType
-    hours: float | None = Field(default=None, ge=0)
+    points: float | None = Field(default=None, ge=0)
     competencies: list[CompetencyRef] = Field(default_factory=list)
     certificate: str | None = None
     notes: str | None = None

@@ -375,7 +375,7 @@ export interface CpdEntryInput {
   activity_on: IsoDate;
   title: string;
   activity_type: CpdActivityType;
-  hours?: number | null;
+  points?: number | null;
   competencies?: string[];
   certificate?: string | null;
   notes?: string | null;
@@ -389,7 +389,7 @@ export interface CpdEntry {
   activity_on: IsoDate;
   title: string;
   activity_type: CpdActivityType;
-  hours: number | null;
+  points: number | null;
   competencies: CompetencyRef[];
   certificate: string | null;
   notes: string | null;

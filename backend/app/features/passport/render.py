@@ -302,22 +302,22 @@ def _cpd_section(store: PassportStore, passport_id: str) -> str:
             continue
 
         any_entries = True
-        hours = sum(e.hours or 0 for e in entries)
+        points = sum(e.points or 0 for e in entries)
         lines.extend([f"### {year}", ""])
 
         # "1 activities" reads as a bug to anyone looking at their own
         # record, and this document is read by the person it describes.
         activities = "activity" if len(entries) == 1 else "activities"
 
-        if hours:
-            lines.append(f"{len(entries)} {activities}, {hours:g} hours.")
+        if points:
+            lines.append(f"{len(entries)} {activities}, {points:g} points.")
         else:
             lines.append(f"{len(entries)} {activities}.")
 
         lines.append("")
 
         for entry in entries:
-            suffix = f" ({entry.hours:g} hours)" if entry.hours else ""
+            suffix = f" ({entry.points:g} points)" if entry.points else ""
             lines.append(
                 f"- **{entry.activity_on.isoformat()}** — {entry.title}"
                 f" [{entry.activity_type}]{suffix}"
