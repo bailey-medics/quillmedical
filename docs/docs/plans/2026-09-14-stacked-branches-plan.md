@@ -5,6 +5,8 @@
 
 1st change
 2nd change
+3rd change
+4th change added to 3rd change
 
 ## Outcome: wait for GitHub's stacks to mature
 
