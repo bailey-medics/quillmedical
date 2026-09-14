@@ -50,15 +50,31 @@ declare module "@/generated/base-professions.json" {
 }
 
 declare module "@/generated/jurisdiction-config.json" {
+  // Generated from shared/jurisdiction-config.yaml. This declaration was
+  // wrong until the passport read it: it described a single
+  // `jurisdiction` with `regulatory_bodies`, while the generated file
+  // has always held `jurisdictions` keyed by id. Nothing caught it
+  // because nothing imported the file — the first reader had to cast
+  // around it, which is exactly how a stale declaration survives.
+  interface ProfessionalRegistration {
+    id: string;
+    display_name: string;
+    description?: string;
+    verification_url?: string;
+    required_for_professions?: string[];
+  }
+
+  interface Jurisdiction {
+    display_name: string;
+    regulatory_authority?: string;
+    data_protection?: string;
+    prescribing_regulations?: string;
+    professional_registrations?: ProfessionalRegistration[];
+  }
+
   const data: {
-    jurisdiction: {
-      country: string;
-      regulatory_bodies: Array<{
-        id: string;
-        name: string;
-        role: string;
-      }>;
-    };
+    jurisdictions: Record<string, Jurisdiction>;
+    default_jurisdiction: string;
   };
 
   export default data;

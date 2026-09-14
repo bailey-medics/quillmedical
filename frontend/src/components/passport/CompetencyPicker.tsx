@@ -128,7 +128,6 @@ export default function CompetencyPicker({
       value={value}
       onChange={onChange}
       searchable
-      clearable
       nothingFoundMessage="No competency found"
       required={required}
       disabled={disabled}

@@ -129,7 +129,6 @@ export default function LogbookEntryForm({
           data={SUPERVISION_OPTIONS}
           value={supervision}
           onChange={(value) => setSupervision(value as Supervision | null)}
-          clearable
         />
 
         <TextField

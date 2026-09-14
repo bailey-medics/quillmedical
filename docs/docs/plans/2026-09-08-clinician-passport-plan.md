@@ -3046,7 +3046,7 @@ explicitly deferred here.
         The passport has no signed-URL endpoint at all — `blobs.py` is
         server-side storage, not a browser path — so this is backend work
         before it is frontend work.
-- [ ] Build the pages and register routes in `frontend/src/main.tsx`
+- [x] Build the pages and register routes in `frontend/src/main.tsx`
       with `RequireAuth`, `RequireFeature feature="passport"` and CBAC
       hooks. Load the subtree on demand with React Router's
       `lazy: () => import(...)`, each page exporting `Component`, and
@@ -3054,6 +3054,55 @@ explicitly deferred here.
       than in the lazy module — the gate reads it before the module
       loads. Never `element: import(...).then(...)`, which defers
       nothing.
+      - **Nine pages, nine routes.** Seven sit inside `RequireAuth`
+        under one pathless route carrying both gates — the feature and
+        `access_clinician_passport` — so a route added later inherits
+        them rather than needing somebody to remember.
+      - **Two routes sit outside `RequireAuth` deliberately.** The
+        invite landing must open for somebody with no Quill account at
+        all, and the verify page is what the QR code on a printed
+        passport opens for a reader who may have no session either. Both
+        authenticate on the signed token or the record id in the URL.
+      - **`/passport/sign-off/:signOffId` carries no `safeForReload`**,
+        unlike the other eight: an in-progress sign-off holds a
+        half-written assessment, and a silent reload would discard it.
+      - **The sign-off page cannot resolve its passport id yet.** The
+        inbox carries the record but not which passport it belongs to,
+        and no endpoint returns that for an assessor. The page renders
+        and refuses to submit rather than guessing; phase 7 needs either
+        the id on the inbox response or a lookup.
+- [x] **Two pre-existing bugs the build caught**, neither introduced
+      here, and both invisible until something imported the file.
+      - **`src/generated/index.d.ts` described
+        `jurisdiction-config.json` wrongly** — a single `jurisdiction`
+        with `regulatory_bodies`, where the generated file has always
+        held `jurisdictions` keyed by id with
+        `professional_registrations`. Nothing had imported it, so
+        nothing caught it; the first reader had to cast around the
+        declaration, which is exactly how a stale type survives. Now
+        corrected to match what the generator writes.
+      - **`yarn build` is stricter than `tsc --noEmit`.** Both errors
+        passed the typecheck this session has been running after every
+        unit and failed the build. Run the build, not just the
+        typecheck, before claiming a frontend change compiles.
+      - **Five `react-hooks/set-state-in-effect` errors**, all the same
+        shape: a guard clause or loading flag set synchronously in an
+        effect body. Each was derivable during render instead, which is
+        what the rule is pointing at.
+- [x] **Measured, 14 September.** Entry chunk **1,016.57 kB raw,
+      280.38 kB gzipped**, down from the 10 September baseline of
+      1,106 kB raw and 309 kB gzipped — **28.6 kB gzipped smaller**. Nine
+      passport chunks appeared, 1.02–3.20 kB raw each and roughly 10.4 kB
+      gzipped in total, plus a 0.34 kB stylesheet. `dist/index.html`
+      references none of them, which is the check that matters: a `lazy`
+      that defers nothing looks identical in the diff and would show the
+      passport code still inside the entry chunk.
+      - The saving is small in proportion because the plan already said
+        it would be: roughly seventy per cent of the entry chunk is
+        Mantine, React and React Router, which every route needs
+        whatever we do. The point was never the bytes — it was proving
+        the pattern on a doubly-gated subtree with no users, and that is
+        what the nine chunks demonstrate.
 - [ ] Prove the split in the build output rather than in the diff: a
       passport chunk exists, `index.html` does not reference it, and the
       entry chunk is smaller. Record the entry chunk gzipped before and

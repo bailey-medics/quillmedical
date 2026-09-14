@@ -43,19 +43,7 @@ import type { AssessorInviteInput } from "@lib/passport";
  * as it is everywhere else.
  */
 function registrationAuthorities(): { value: string; label: string }[] {
-  const { jurisdictions, default_jurisdiction: defaultId } =
-    jurisdictionConfig as {
-      jurisdictions: Record<
-        string,
-        {
-          professional_registrations?: {
-            id: string;
-            display_name: string;
-          }[];
-        }
-      >;
-      default_jurisdiction: string;
-    };
+  const { jurisdictions, default_jurisdiction: defaultId } = jurisdictionConfig;
 
   const registrations =
     jurisdictions[defaultId]?.professional_registrations ?? [];
