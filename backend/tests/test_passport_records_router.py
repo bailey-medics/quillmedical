@@ -532,7 +532,7 @@ class TestCpd:
                 "activity_on": "2026-02-11",
                 "title": "Regional oncology study day",
                 "activity_type": "teaching day",
-                "hours": 6,
+                "points": 6,
             },
         )
 
@@ -549,7 +549,7 @@ class TestCpd:
                 "activity_on": "2026-02-11",
                 "title": "Regional oncology study day",
                 "activity_type": "teaching day",
-                "hours": 6,
+                "points": 6,
             },
         )
 
@@ -558,7 +558,7 @@ class TestCpd:
         assert response.status_code == 200, response.text
         body = response.json()
         assert len(body) == 1
-        assert body[0]["hours"] == 6
+        assert body[0]["points"] == 6
 
     def test_an_activity_can_be_corrected(
         self, passport: tuple[TestClient, str]
@@ -568,9 +568,9 @@ class TestCpd:
             f"/api/passport/{passport_id}/cpd",
             json={
                 "activity_on": "2026-02-11",
-                "title": "Wrong hours",
+                "title": "Wrong points",
                 "activity_type": "conference",
-                "hours": 60,
+                "points": 60,
             },
         )
         stem = created.json()["name"]
@@ -579,16 +579,16 @@ class TestCpd:
             f"/api/passport/{passport_id}/cpd/2026/{stem}",
             json={
                 "activity_on": "2026-02-11",
-                "title": "Wrong hours",
+                "title": "Wrong points",
                 "activity_type": "conference",
-                "hours": 6,
+                "points": 6,
             },
         )
 
         assert response.status_code == 200, response.text
 
         body = client.get(f"/api/passport/{passport_id}/cpd/2026").json()
-        assert body[0]["hours"] == 6
+        assert body[0]["points"] == 6
 
     def test_an_activity_can_be_removed(
         self, passport: tuple[TestClient, str]

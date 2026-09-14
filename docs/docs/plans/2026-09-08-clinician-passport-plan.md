@@ -808,7 +808,10 @@ several.
 - **`profile.yaml`** — the holder's user id, name and current
   registrations, regenerated whenever any of them changes rather than
   frozen at creation. It is the one place the passport says whose it
-  is, which is why no other record repeats it.
+  is, which is why no other record repeats it. It also carries
+  `appraisal_periods`, the declared ranges CPD is tallied over — see the
+  CPD entry below, and note that those are appended rather than
+  regenerated, since a past period stays true once it has passed.
 
 - **`competencies.yaml`** — the derived index, regenerated on every
   write and never hand-edited. One entry per competency the holder has
@@ -928,7 +931,58 @@ several.
   UK appraisal runs annually and asks what you did this year, so the
   grouping matches how the record is used.
 
-- [ ] We need to figure out how to show a tally each year of CPD points (hours)
+- **CPD is tallied in points, over declared appraisal periods** — and
+  the periods are a history in `profile.yaml`, not a single setting.
+
+  **Points are what they are called, and one point is one hour.** The
+  two are used interchangeably in practice and there is no conversion,
+  but "points" is the common usage — it is what a clinician says and
+  what an appraiser asks for, so it is what the interface says back.
+
+  **The field is `points` end to end** — the React form, the API schemas
+  and the on-disk record model all name it the same thing. It was
+  briefly `hours` on the wire with "points" only on screen, and that
+  divergence was removed rather than documented: a field whose name
+  disagrees with its label is a trap for whoever reads the code next,
+  and the cost of fixing it only ever rises.
+
+  **Renaming it was a breaking API change**, flagged by `oasdiff` and
+  needing the `api-breaking-change-review` environment approval plus an
+  `api-compatibility/` decision file. Worth taking now: the passport is
+  unreleased, the feature is off for every organisation, and no client
+  has ever called the endpoint, so this is the cheapest the rename will
+  ever be. There is no database column — CPD lives in YAML files — so no
+  migration was involved.
+
+  **Appraisal years do not start in January, and they move.** An
+  appraisal falls in whatever month a person's arrangement puts it, and
+  that month changes when they move post. So `profile.yaml` carries a
+  list of periods rather than one `appraisal_month`:
+
+  ```yaml
+  appraisal_periods:
+    - from: 2025-08-01
+      to: 2026-07-31
+    - from: 2026-08-01
+      to: 2026-11-30 # shortened: moved post, appraisal brought forward
+  ```
+
+  **A list, because a short year has to explain itself.** Thirty-two
+  hours across four months and thirty-two across twelve are different
+  records, and only the declared range tells a reader which they are
+  looking at. Storing one current month would lose every previous
+  boundary and make an honest short period look like a poor year. So
+  **every CPD total states the range it covers** — in the passport page,
+  the rendered Markdown and the PDF alike — never a bare year label.
+
+  **June to June is the fallback**, used when a holder has declared no
+  period at all. It is a convention rather than a guess dressed up as
+  one, and the displayed range says so, so nobody mistakes it for their
+  actual cycle.
+
+  **Revalidation is not this.** Revalidation is the five-yearly GMC
+  event; appraisal is the annual one, and it is the annual cycle these
+  periods anchor. Naming them `appraisal_periods` keeps that distinct.
 
 - **Failures are recorded like anything else.** An unsuccessful
   procedure, an abandoned attempt or a declined sign-off is part of the
@@ -1126,6 +1180,64 @@ assumption runs the other way.
   What makes it a deliberate act is the declaration: fixed text the
   assessor confirms before signing, which is what a wet signature
   actually is. Someone reads a statement and puts their name to it.
+
+- **How the assessor confirms it: a tick box and a named submit
+  button.** Not a drawn signature, not an uploaded one. This looks like
+  the weaker option and is the stronger one, so the reasoning is worth
+  writing down rather than rediscovering.
+
+  **It is what UK clinical practice already does.** The systems holding
+  UK training records — NES Turas, Kaizen, the RCP ePortfolio — all
+  take a confirmation box and a submit action for workplace-based
+  assessment sign-off. A deanery accepts that today. The wet signature
+  in the paper booklets came along when they were scanned; the digital
+  successors dropped it deliberately rather than reproducing it.
+
+  **A drawn signature looks more official and proves less.** Anyone can
+  draw anyone's name, verifying one needs a reference specimen nobody
+  holds, and it produces an image that cannot be hashed or diffed
+  meaningfully. It invites precisely the false confidence this plan
+  refuses elsewhere: something that _looks_ verified because it looks
+  like a signature. The authenticated session already proves more — a
+  named account, at a recorded time, with a registration attached.
+
+  **An uploaded signature image is worse again.** It is a reusable
+  credential sitting in storage, and once copied it can be pasted onto
+  anything. It turns a one-time act into an artefact somebody can
+  steal and reuse.
+
+  **The law does not ask for more.** Under the Electronic
+  Communications Act and UK eIDAS, a simple electronic signature — a
+  confirmed box behind authentication — is valid and admissible.
+  Advanced and qualified signatures need key material held by the
+  signer, which is the future item this plan already defers on the
+  grounds that a key held by Quill asserts nothing the database does
+  not. A drawn image does not climb that ladder; it stays a simple
+  signature with extra pixels.
+
+  **What carries the weight is the record, not the input.** The named
+  account, the timestamp, the assessor's registrations frozen as they
+  were, the `content_hash`, and the fact the record cannot be edited
+  afterwards. Two details in the interface matter, though:
+
+  - The box is **unticked by default and required**. Never pre-ticked,
+    and `declaration_confirmed` never defaults to true — the deliberate
+    act is the whole point, and the API refuses without it.
+  - The button **names what it does** — "Sign off competency", not
+    "Save". A specific verb carries weight a generic one does not.
+
+  **Adoption is the real risk, and the answer is not a drawing
+  canvas.** If a bare tick feels insubstantial to a consultant, the fix
+  is weight in the interface — the declaration shown in full, a clear
+  and plainly irreversible action — rather than theatre that weakens
+  the record.
+
+  **Unverified against published guidance.** The above is reasoned from
+  how the ePortfolio systems work and from the legal framework, not
+  from a college or deanery document stating what electronic sign-off
+  it accepts. If such guidance exists it beats this reasoning, and the
+  South West SACT passport in the open questions is the fastest route
+  to it.
 
 - **Verification** —
   `GET /api/passport/{id}/sign-offs/{signoff_id}/verify` recomputes the
@@ -2588,7 +2700,23 @@ explicitly deferred here.
 
 ## Phase 6: frontend
 
-- [ ] **First, and before anything is loaded on demand: handle
+- [x] Offer the passport on the organisation features page, so it can be
+      switched on per organisation at
+      `/admin/organisations/{id}/features`. Out of order, and trivial:
+      the page already had the toggles, the confirmation dialog and the
+      endpoints behind them, and `AVAILABLE_FEATURES` in
+      `OrgFeaturesPage.tsx` simply did not list the passport.
+      - **The backend validates no feature key at all.**
+        `toggle_org_feature` in `main.py` writes whatever string it is
+        given, so the only thing tying the switch to the gate is that
+        both spell `passport` the same way. A test asserts the exact key
+        reaches the endpoint, because a misspelling would be very hard
+        to diagnose: the switch would save, the confirmation would
+        report success, and every passport route would carry on
+        refusing.
+      - On branch `feature/add-passport-to-org-features`, PR #660.
+
+- [x] **First, and before anything is loaded on demand: handle
       `vite:preloadError`.** Listen for it and route it through the
       update gate in `frontend/src/lib/swUpdateGate.ts`, so a tab
       running an old bundle that asks for a chunk the container no
@@ -2598,13 +2726,327 @@ explicitly deferred here.
       split until it exists. Test it by requesting a chunk name that
       was never built and asserting the gate is consulted, rather than
       by deploying twice.
-- [ ] Add `frontend/src/lib/passport/` API client functions using
+      - **The gate did not already know how to preserve work**, which
+        this task's wording above assumed. `swUpdateGate.ts` knew route
+        safety and nothing else; persisting in-progress input lives in
+        `persistFormState` in `lib/compat-generation/`, written for the
+        API-compatibility forced reload. The handler composes the two
+        rather than finding them in one place.
+      - **The fail-safe direction is inverted, and deliberately.** The
+        service-worker gate defers when a route is unsafe because the
+        tab is working and an update can wait. Here the navigation has
+        _already_ failed, so deferring leaves the user on a dead page:
+        reloading is the recovery, and deferral is reserved for when a
+        reload would destroy something — an unsafe route, or a flash
+        message in flight.
+      - **A separate reload-loop guard key**, `quill-preload-reloaded`
+        rather than the service worker's `quill-sw-update-reloaded`.
+        Sharing one would let an SW reload suppress a preload recovery,
+        and the reverse. Pinned by a test.
+      - **Wired outside the `"serviceWorker" in navigator` block** in
+        `main.tsx`, since a preload failure is the router's problem
+        rather than the worker's and a browser without service-worker
+        support still needs it.
+      - Eighteen tests added to `swUpdateGate.test.ts` (33 in the file);
+        `just uf src/lib/swUpdateGate.test.ts` green.
+- [x] Add `frontend/src/lib/passport/` API client functions using
       `api.ts` and types generated from the backend schemas.
+      - **Three routes this plan describes do not exist.** The API
+        surface above lists `export.md`, `export.pdf` and `export.zip`;
+        no export route was ever wired. `export.py` builds a zip and is
+        called directly by its own tests. Schemas for evidence upload
+        (`EvidenceUploadOut`), the competency catalogue
+        (`CompetencyCatalogueOut`) and the site shortlist
+        (`CommonCompetenciesIn`/`Out`) exist in
+        `backend/app/schemas/passport.py` with no routes behind them
+        either — only schema tests reference them. The client covers the
+        33 operations that do exist and omits the rest, so phase 7 needs
+        those routes added before export or evidence upload can be built.
+      - **The competency picker has no endpoint to call.** Until one
+        exists it must read `src/generated/competencies.json`, which is
+        already listed under deferred items as something to stop doing.
+      - **`withdraw` returns `status: "declined"`** while setting the
+        request row to `withdrawn` — `router.py` around line 757. Looks
+        like a copy-paste slip. The client types the field to the real
+        enum and documents the quirk rather than encoding it; worth
+        fixing in phase 7.
+      - **`PASSPORT_PATHS` mirrors the backend's `EXPECTED_PATHS`**, with
+        a test asserting the two agree. A mistyped path compiles cleanly
+        and surfaces as a 404 in front of a user, and most of these
+        routes have no caller yet to notice.
+      - Thirty-six tests in `src/lib/passport/api.test.ts`;
+        `just uf src/lib/passport/api.test.ts` green.
 - [ ] Build the components listed above in
       `frontend/src/components/passport/` with stories and tests; present
       any genuinely new component for review before implementing, per
       the component reuse hierarchy.
-- [ ] Build the pages and register routes in `frontend/src/main.tsx`
+      - [x] **The display components.** `CompetencySummary`,
+        `CompetencyRow`, `SignOffCard`, `AssessorDeclaration`,
+        `RegistrationBadge` and `VerificationPanel`, plus
+        `SignOffStatusBadge` in `components/badge/`. Fifty-three tests
+        across the six, nine on the badge.
+      - **`SignOffStatusBadge` is new rather than a reuse of
+        `AssessmentResultBadge`.** That one carries a teaching
+        assessment's pass/fail, and borrowing "Pass" for a clinical
+        sign-off would blur two things the passport keeps apart. It is
+        also not `CompetencyBadge`, which carries a competency's _name_
+        rather than the state of anything. Declined renders pink rather
+        than red: an assessor saying "not yet" is ordinary, not an error.
+      - **A shared `fixtures.ts`** so a story and its test describe the
+        same sign-off, and a type change surfaces once.
+      - **The "counts, never comparisons" rule is pinned by tests**, not
+        just observed in the markup — no denominator, no percentage, no
+        `progressbar` role in either `CompetencyRow` or
+        `CompetencySummary`. It is the rule most easily lost to a
+        later well-meaning "12 of 20" addition.
+      - [x] **`DateField`, the forms' precondition.** No date input
+        existed anywhere in the codebase, yet nine passport components
+        need one — `observed_on`, `performed_on`, `awarded_on`,
+        `written_on`, `activity_on`. Added `@mantine/dates` 9.6.1 and
+        `dayjs`, wrapped as `DateField` in `components/form/` matching
+        `TextField`'s label, description and error treatment.
+        - **Values are `YYYY-MM-DD` strings, never `Date` objects.**
+          Mantine 9's `DateInput` is string-native and so is every date
+          the API sends or accepts, so nothing parses or re-serialises —
+          which is where a timezone silently shifts a clinical date by a
+          day. Pinned by a test asserting `onChange` yields
+          `"2026-03-14"`.
+        - **`@mantine/dates/styles.css` must be imported** in both
+          `main.tsx` and `.storybook/preview.tsx`, or the calendar
+          renders unstyled. Easy to miss, since nothing fails.
+        - **A new dependency needs installing in two places, and they
+          are separate.** `just utr` rebuilds the throwaway unit-test
+          image, and the first test run failed with "Failed to resolve
+          import @mantine/dates" until it did — dependencies are baked
+          into that image, as `CLAUDE.md` records. The **dev stack is a
+          different container with its own `node_modules` volume**, so it
+          went on failing in the browser with the same message after the
+          test image was fixed. `just yi` runs `yarn install` inside the
+          running frontend container and settles it; Vite notices the
+          lockfile changed, re-optimises and recovers without a restart.
+          Do both, or the failure moves rather than going away.
+        - **The field imposes no date rules of its own.** A logbook entry
+          cannot be in the future but a certificate expiry legitimately
+          is, so `maxDate` belongs to the calling form.
+      - [x] **`CheckboxField`, and `SignOffForm` with it.** No checkbox
+        wrapper existed in `components/form/` — the only checkbox in the
+        codebase was a raw Mantine one in `NewPatientPage.tsx`, bypassing
+        the field conventions. `SolidSwitch` was the nearest thing and is
+        wrong for an attestation: a switch is for settings flipped back
+        and forth, not for putting your name to something once. Added
+        `CheckboxField` matching `TextField`'s description and error
+        treatment, then `SignOffForm` using it for
+        `declaration_confirmed`.
+        - **Submission is refused until a basis is chosen and the box is
+          ticked**, mirroring the API, which writes nothing without
+          `declaration_confirmed`. Both are pinned by tests, along with
+          the absence of any canvas, image or file input.
+        - **The level is read-only on the form.** It is the holder's
+          request; the assessor accepts or declines what was asked for
+          rather than choosing a different one.
+        - **The button reads "Sign off competency", not "Save".**
+        - **Mantine's `ButtonPair` disables via `aria-disabled`**, not
+          the `disabled` attribute, so `toBeDisabled()` does not apply
+          and the tests assert the attribute instead.
+      - [x] **`SignOffRequestForm`, the holder's half.** Names an
+        assessor, records `observed_on`, and optionally carries a level,
+        comments and a reflection. Eleven tests.
+        - **The assessor list is not filtered.** Every assessor the page
+          hands it is offered, because who is fit to assess whom varies
+          by procedure, department and the people involved. The API
+          enforces the one rule that matters — not the holder
+          themselves. A test pins that nobody is filtered out.
+        - **The list arrives as a prop**, following `NewMessageModal`:
+          the page fetches, the component stays presentational. There is
+          no passport endpoint listing assessors, so a page will read
+          `/users` as the admin pages do.
+        - **`observed_on` cannot be in the future** (`maxDate`), since it
+          records work that already happened, and `maxLevel="year"`
+          keeps the picker on days rather than offering a decade.
+        - **The level picker appears only where the competency declares
+          levels**, which most do not.
+        - **The reflection field carries the anonymisation reminder** in
+          its description, since reflections are one of only two places
+          patient data could enter a passport.
+      - [x] **`LogbookEntryForm`, the first self-declared record.** One
+        procedure as the holder recorded it. Twelve tests.
+        - **Nothing implies a countersignature.** No declaration
+          checkbox, no assessor field, no target and no progress — a
+          logbook proves activity, not competence, and it is the sign-off
+          that turns evidence into a conclusion. Three tests pin those
+          absences, because they are what a later well-meaning addition
+          would quietly reintroduce.
+        - **`outcome` is free text, never a success flag.** An abandoned
+          attempt belongs in the record, and a logbook showing only
+          successes is worth less to everyone reading it.
+        - **Supervision is recorded, never ranked.** Both states are
+          offered and the field is clearable; a supervised entry is a
+          different fact, not a lesser one.
+        - **Only the date is required.** The rest is detail the holder
+          adds where it is worth adding, so a Friday-evening batch of
+          five is not a form-filling exercise.
+        - **Two anonymisation reminders**, on the indication and the
+          notes, since both invite writing about a patient.
+      - [x] **`CpdEntryForm`, the second self-declared record.** One
+        activity — conference, grand round, teaching day, course or
+        other. Twelve tests.
+        - **Hours are optional and never totalled here.** A form records
+          one activity; what a year adds up to is a display concern
+          belonging to `CpdTable`, and the yearly tally above is still an
+          open question. A running total on the entry form would answer
+          it by accident, so a test pins that no total, percentage or
+          progress bar appears.
+        - **The date decides the appraisal year**, which is why it
+          cannot be in the future and why the description says so. UK
+          appraisal asks what you did this year, so the date is what
+          makes the record usable rather than merely stored.
+        - **Date, title and type are required; everything else is
+          not.** Those three are what make an entry readable a year
+          later at appraisal.
+        - Same self-declared guards as the logbook: no declaration, no
+          assessor, and an anonymisation reminder on the notes.
+      - [x] **`ReflectionEditor`, the last self-declared record.**
+        Frontmatter fields then the writing, with the anonymisation
+        declaration as a required tick. Thirteen tests.
+        - **The holder-only rule is stated in the interface**, not just
+          enforced at the API: a `StateMessage` says nobody else can read
+          it and names who is excluded. Somebody deciding how frankly to
+          write deserves to be told who can read it rather than having to
+          infer it, and written reflection can be disclosed in legal
+          proceedings.
+        - **The anonymisation declaration names what must not appear** —
+          no name, date of birth, NHS number, hospital number, "and no
+          detail so unusual that it would single somebody out". Firmer
+          than the logbook's passive note, as the plan asks, and the last
+          clause covers the subtle case: no identifier, but an
+          unmistakable presentation.
+        - **The tick is required**, mirroring the API, which writes
+          nothing without `anonymised_confirmed`. A test pins that the
+          button stays disabled without it.
+        - **A test asserting the word "assessor" was absent had to
+          change.** The holder-only panel says reflections are not shown
+          to assessors, so the word legitimately appears. It now checks
+          for the absence of an assessor _field_ and for exactly one
+          checkbox, which is what "nobody countersigns this" actually
+          means in markup.
+      - [x] **`LogbookTable`, the first of the two tables.** A
+        competency's entries and how many there are, composed from
+        `DataTable`. Twelve tests.
+        - **The count comes from the server, not `entries.length`.** The
+          API reports the true total and a page may hold a subset, so
+          deriving it from the array would quietly under-report the day
+          pagination arrives. The fixture pins this: `count: 38` with
+          three entries listed.
+        - **Four tests guard the absence of a target** — no denominator,
+          no percentage, no progress bar, and nothing saying "complete"
+          or "remaining". This is the component where a well-meaning
+          "38 of 50" is most tempting, so the guards are heavier here
+          than elsewhere.
+        - **Entries sort by `performed_on`, not by filename.** The server
+          names each file for the moment it was written, so the raw order
+          is logging order — five logged on a Friday evening would
+          otherwise read as five procedures on a Friday. The fixture is
+          deliberately out of clinical order so the test means something.
+        - **Supervision renders as recorded and never ranked**, with a
+          dash where nothing was given.
+      - [x] **`CpdTable`, the second table.** One appraisal period's
+        activities and the points they add up to. Twelve tests.
+        - **Every total states the range it covers**, as the CPD decision
+          requires — the actual dates, never a bare year label. Three
+          tests guard it, including one asserting a _short_ period shows
+          its real end date: that is the case the rule exists for, since
+          the same points across four months would otherwise read as a
+          poor year.
+        - **The fallback names itself a convention.** With no declared
+          period the heading reads "June to June — you have not set an
+          appraisal period, so this is a convention rather than your
+          actual cycle", so nobody mistakes it for their own.
+        - **A total is legitimate here, unlike the logbook.** A logbook
+          count with a target implies the software judged competence; a
+          CPD total is arithmetic over what the holder claimed, and an
+          appraiser asks for exactly that number. It still carries no
+          target, and a test pins that.
+        - **Activities claiming no points still count as activities** —
+          the points sum skips them, the activity count does not.
+        - **The period arrives as a prop.** `appraisal_periods` is not in
+          the API types yet, so the page supplies it, the same shape the
+          assessor list uses.
+      - [x] **`CompetencyPicker`, the last component of the phase.**
+        A searchable select: the site's competencies under one heading,
+        every other competency beneath. Nine tests.
+        - **Nothing is hidden and nothing is refused.** The shortlist is
+          a Mantine option group rather than a filter, so an unusual
+          competency stays reachable. A test searches for something
+          deliberately off the shortlist and finds it.
+        - **The heading wording is asserted by a test.** It reads
+          "Commonly used here", never "Required" or "Available" — the
+          second and third would turn a convenience list into a syllabus,
+          which is the sufficiency judgement the passport refuses to
+          make.
+        - **No shortlist means one flat alphabetical list**, since a
+          group of one reads worse than no grouping at all.
+        - **The catalogue comes from `src/generated/competencies.json`.**
+          `GET /api/passport/competencies` is described in the API
+          surface above but was never built, so this reads the generated
+          bundle as the admin pages do. Serving it from the API is
+          already a deferred item, and this is a second caller now
+          depending on the build-time import.
+      - [x] **`InviteAssessorForm`, completing the external-assessor
+        flow** whose backend landed in phase 5. Ten tests.
+        - **The form says Quill checks no register**, in a panel rather
+          than leaving the field to imply the number has been validated.
+          The registration is what the holder was told; the assessor
+          confirms it on acceptance and an administrator verifies it by
+          hand later.
+        - **Registration bodies come from
+          `jurisdiction-config.json`**, not a hardcoded list, so adding
+          one stays a YAML change as everywhere else. A test asserts GMC
+          and NMC both appear.
+        - **The competency is optional and says it is not kept.** It
+          writes a clearer email and is deliberately not stored, because
+          one assessor signs off many competencies over months and a
+          stored one would describe only the first.
+      - **Three components remain, all blocked on backend routes that
+        were never built**: `EvidenceUploader` and `CertificateUploader`
+        need a signed-URL endpoint (follow the video pattern in
+        `use-module-media.ts`), and `PassportExportButtons` needs the
+        export routes. `CertificateCard` is unblocked but was left for
+        the same round as the uploader it sits beside.
+      - **Every Mantine `SelectField` is `role="combobox"`, not
+        `textbox`. Made this mistake four times now** — in
+        `SignOffForm`, `SignOffRequestForm`, `LogbookEntryForm` and
+        `CompetencyPicker`, the last after having already fixed it three
+        times. Query it with `getByRole("combobox")`, and index
+        `getAllByRole("combobox")` where a form has more than one. The
+        symptom is always the same: most tests in the file fail at once
+        on a query that reads as though it should work. Caught three times now across the passport forms.
+        Query it with `getByRole("combobox")`, and index
+        `getAllByRole("combobox")` where a form has more than one.
+      - **Pre-existing: `ErrorMessage` produces invalid HTML in every
+        form field.** Mantine renders the error slot inside a `<p>` and
+        `ErrorMessage` puts a `<div>` in it, so React warns "`<p>` cannot
+        contain a nested `<div>`". Not new and not `DateField`'s: no
+        existing form-field test renders the `error` prop, so nothing had
+        surfaced it before, though `TextField.stories.tsx` and
+        `SelectField.stories.tsx` both pass one. The fix belongs to
+        `ErrorMessage` — its icon box wants to be a `<span>` — and
+        affects every field, so it is its own change rather than
+        something to slip into a passport commit.
+      - [ ] **The evidence uploaders need a backend route, and should
+        follow the video upload pattern rather than inventing one.**
+        `2026-08-31-gcp-video-auth-gate-plan.md` established it: the
+        browser asks for a signed URL, PUTs straight to GCS with progress
+        via `XMLHttpRequest`, then calls back to record the result — the
+        backend never sees the bytes. The working code is
+        `startResumableUpload` / `sendToSession` / `putToBucket` in
+        `frontend/src/features/teaching/use-module-media.ts`, private to
+        that module and wired to the teaching endpoints; `MediaDropzone`
+        beside it hardcodes video MIME types with no `accept` prop.
+        Neither is reusable as-is, but both are the right shape to lift.
+        The passport has no signed-URL endpoint at all — `blobs.py` is
+        server-side storage, not a browser path — so this is backend work
+        before it is frontend work.
+- [x] Build the pages and register routes in `frontend/src/main.tsx`
       with `RequireAuth`, `RequireFeature feature="passport"` and CBAC
       hooks. Load the subtree on demand with React Router's
       `lazy: () => import(...)`, each page exporting `Component`, and
@@ -2612,18 +3054,174 @@ explicitly deferred here.
       than in the lazy module — the gate reads it before the module
       loads. Never `element: import(...).then(...)`, which defers
       nothing.
-- [ ] Prove the split in the build output rather than in the diff: a
+      - **Nine pages, nine routes.** Seven sit inside `RequireAuth`
+        under one pathless route carrying both gates — the feature and
+        `access_clinician_passport` — so a route added later inherits
+        them rather than needing somebody to remember.
+      - **Two routes sit outside `RequireAuth` deliberately.** The
+        invite landing must open for somebody with no Quill account at
+        all, and the verify page is what the QR code on a printed
+        passport opens for a reader who may have no session either. Both
+        authenticate on the signed token or the record id in the URL.
+      - **`/passport/sign-off/:signOffId` carries no `safeForReload`**,
+        unlike the other eight: an in-progress sign-off holds a
+        half-written assessment, and a silent reload would discard it.
+      - **The sign-off page cannot resolve its passport id yet.** The
+        inbox carries the record but not which passport it belongs to,
+        and no endpoint returns that for an assessor. The page renders
+        and refuses to submit rather than guessing; phase 7 needs either
+        the id on the inbox response or a lookup.
+- [x] **Two pre-existing bugs the build caught**, neither introduced
+      here, and both invisible until something imported the file.
+      - **`src/generated/index.d.ts` described
+        `jurisdiction-config.json` wrongly** — a single `jurisdiction`
+        with `regulatory_bodies`, where the generated file has always
+        held `jurisdictions` keyed by id with
+        `professional_registrations`. Nothing had imported it, so
+        nothing caught it; the first reader had to cast around the
+        declaration, which is exactly how a stale type survives. Now
+        corrected to match what the generator writes.
+      - **`yarn build` is stricter than `tsc --noEmit`.** Both errors
+        passed the typecheck this session has been running after every
+        unit and failed the build. Run the build, not just the
+        typecheck, before claiming a frontend change compiles.
+      - **Five `react-hooks/set-state-in-effect` errors**, all the same
+        shape: a guard clause or loading flag set synchronously in an
+        effect body. Each was derivable during render instead, which is
+        what the rule is pointing at.
+- [x] **Measured, 14 September.** Entry chunk **1,016.57 kB raw,
+      280.38 kB gzipped**, down from the 10 September baseline of
+      1,106 kB raw and 309 kB gzipped — **28.6 kB gzipped smaller**. Nine
+      passport chunks appeared, 1.02–3.20 kB raw each and roughly 10.4 kB
+      gzipped in total, plus a 0.34 kB stylesheet. `dist/index.html`
+      references none of them, which is the check that matters: a `lazy`
+      that defers nothing looks identical in the diff and would show the
+      passport code still inside the entry chunk.
+      - The saving is small in proportion because the plan already said
+        it would be: roughly seventy per cent of the entry chunk is
+        Mantine, React and React Router, which every route needs
+        whatever we do. The point was never the bytes — it was proving
+        the pattern on a doubly-gated subtree with no users, and that is
+        what the nine chunks demonstrate.
+- [x] Prove the split in the build output rather than in the diff: a
       passport chunk exists, `index.html` does not reference it, and the
       entry chunk is smaller. Record the entry chunk gzipped before and
       after, and the passport chunk's size, in this plan and in the
       `vite.config.ts` comment beside `keepNames` if the shape matches.
+      Done — the figures are in the measurement entry above. Not added
+      to the `keepNames` comment: that one records a trade-off inside a
+      single config option, and a nine-chunk split across a route
+      subtree is not the same shape.
       Baseline on 10 September, before any passport code: entry chunk
       1,106 kB raw, 309 kB gzipped, across 51 statically imported
       pages.
-- [ ] Add the passport entry to navigation for users holding
+- [x] Add the passport entry to navigation for users holding
       `access_clinician_passport`.
-- [ ] Frontend tests with `just uf src/components/passport` and
+      - **The entry asks both questions the route asks**, unlike
+        teaching, which gates its nav entry on the feature alone and only
+        varies its children by competency. The passport routes carry
+        `RequireFeature` _and_ `RequireCompetency`, so an entry shown on
+        the feature alone would offer some users a route that answers
+        404. Three tests pin it: shown with both, hidden with the feature
+        alone, hidden with neither.
+      - **`IconEPassport` registered** in `appIcons.ts` and added to
+        `NavIcon`'s name allowlist. Nothing in the existing sixteen
+        fitted: `book` already means teaching material, and
+        `IconShieldCheck` already means a verified registration in
+        `RegistrationBadge`.
+      - **Two errors the build caught and the tests did not.**
+        `useHasFeature(...) && useHasCompetency(...)` short-circuits the
+        second hook, so the hook order changes with the feature flag —
+        `react-hooks/rules-of-hooks`. Both are now called
+        unconditionally and combined afterwards. And `appIcons.ts` needs
+        an icon added in **three** places — the import, the `export`
+        block and `iconCatalogue` — where adding two of the three
+        compiles locally and fails the build.
+      - **The tests passed while the hook bug was live**, because both
+        mock users happened to satisfy the short-circuit either way. A
+        hook-order warning in the test output was the only sign, and it
+        reads as noise beside the passing count.
+- [x] Frontend tests with `just uf src/components/passport` and
       `just uf src/pages/passport`; Storybook tests with `just sbt`.
+
+### Where the work stands, 14 September
+
+Written for whoever picks this up next, in another worktree or another
+session. Phases 0 to 6 are done; everything left is phase 7.
+
+**All of the backend is on `main`**, by way of PR #655. That is the
+store, the record model, the API, rendering and PDF export, and the
+whole of phase 5's external assessors: the invite table, the signed
+invite token, invite and accept endpoints, the `external_assessor`
+profession, admin verify and revoke, and the authorisation matrix
+tests. Roughly thirty endpoints under `/api/passport`, all tested.
+
+**Phase 6 is complete and on the branch**, not yet merged. That is the
+`vite:preloadError` handler, the API client mirroring all 33 backend
+functions, fifteen components with stories and tests, two new shared
+form fields, nine lazily-loaded pages with tests, and the navigation
+entry. The suite stands at 38 page tests, 159 component tests and 586
+Storybook tests.
+
+**Three components could not be built**, because the routes they need
+were never written despite having schemas: `EvidenceUploader` and
+`CertificateUploader` want a signed-URL endpoint (the video pattern in
+`use-module-media.ts` is the model), and `PassportExportButtons` wants
+the export routes. `CertificateCard` is unblocked but was left with
+them. These are listed under deferred items.
+
+**One page is knowingly incomplete.** `PassportSignOffPage` resolves
+its record from the assessor's inbox, but the inbox carries no passport
+id, so the page renders the record and refuses to submit. The fix is a
+backend change — either the inbox returns the passport id, or sign-off
+is addressed by request id alone.
+
+**Things a fresh session will otherwise rediscover the hard way:**
+
+- **`requires_feature` reads no capacity**, and unions organisation
+  membership with site membership joined up through
+  `organisation_site`. This is why an `external` assessor membership
+  opens the gate at either level, and why no sibling gate was needed.
+  Pinned by `TestTheGateResolvesForAnAcceptedAssessor`.
+
+- **The feature gate is not authorisation.** An accepted assessor
+  passes `requires_feature("passport")` and still gets a 404 on the
+  holder's passport, because what they may see comes from the
+  `passport_signoff_request` rows naming them. Do not let a frontend
+  guard imply otherwise: `RequireFeature` says the feature is on here,
+  never that this person may read this record.
+
+- **Two invite-token pairs exist in `security.py` and they are not
+  interchangeable.** `create_invite_token` is the patient-sharing one
+  and requires a `patient_id`; `create_passport_invite_token` is this
+  one and carries an `invite_id`. The type is checked on decode, so a
+  token minted for one purpose cannot be presented for the other.
+
+- **`create_passport_invite_token` refuses a lifetime below one day**,
+  which matters only when a test wants an already-expired token. Sign
+  one directly with the same key rather than relaxing the validator.
+
+- **SQLite drops `tzinfo`** on a `DateTime(timezone=True)` column, so a
+  stored timestamp reads back naive under the unit suite and comparing
+  it against an aware `_now()` raises. `_as_utc` in `router.py` exists
+  for exactly this; use it on anything read from a row.
+
+- **`EXPECTED_PATHS` in `test_passport_api_contract.py` pins every
+  passport route.** Adding a route fails that test until the path is
+  listed, which is the mechanism working — a route missing from the
+  list is a route `oasdiff` cannot diff.
+
+- **`just ub` runs from `/app`**, so paths are relative to `backend/`:
+  `just ub tests/test_passport_router.py`, not
+  `backend/tests/...`. A `-k` expression containing `or` must be
+  quoted twice, as `just ub -k "'A or B'"`.
+
+**What phase 6 needs from the backend, and where to find it.** The API
+schemas in `backend/app/schemas/passport.py` are the contract the
+frontend types should mirror; `backend/app/features/passport/router.py`
+is the route list. The competency catalogue already ships to the
+browser through `src/generated/competencies.json`, which is listed under
+deferred items above as something to stop doing eventually.
 
 ## Phase 7: hardening and launch
 
@@ -2824,6 +3422,39 @@ close them off, and so nobody builds them before there is a need.
   because `staff` carries a live behavioural check that would let a
   visiting assessor self-join conversations. Their sign-off access is
   still resolved from the request rows that name them.
+
+- **The assessor signs the level that was asked for, or declines** — the
+  level is the holder's request and is read-only on the sign-off form.
+  An assessor who thinks the registrar is at a lower level than they
+  claimed declines, and the holder asks again at that level; they cannot
+  quietly sign a smaller thing than was requested. The cost is real and
+  accepted: a consultant who would have said "not unsupervised, but
+  supervised, yes" has to decline instead, which is more friction and
+  turns an ordinary piece of clinical judgement into a rejection. It is
+  taken anyway because a sign-off is an agreement to a specific claim,
+  and a holder should never discover afterwards that they were given
+  something other than what they asked for. This is the direction that
+  can safely be relaxed: letting an assessor sign at a different level
+  can be added later if the friction proves worse than the ambiguity, and the
+  interface would then have to make the substitution obvious to both
+  parties. Doing it the other way round — starting permissive and
+  tightening — would invalidate records already signed.
+
+- **A tick box and a named button, not a drawn or uploaded signature** —
+  it is what NES Turas, Kaizen and the RCP ePortfolio already do for
+  workplace-based assessment, so a deanery accepts it today. A drawn
+  signature looks more official and proves less: anyone can draw anyone's
+  name, no reference specimens exist to check one against, and it invites
+  the false confidence this plan refuses elsewhere. An uploaded image is
+  worse, being a reusable credential that can be pasted onto anything.
+  A confirmed box behind authentication is a valid simple electronic
+  signature under UK law, and a drawing does not climb to an advanced one
+  — only key material held by the signer does, which is a deferred item.
+  What carries the weight is the record around the tick: the named
+  account, the timestamp, the frozen registrations, the `content_hash`
+  and the refusal to edit afterwards. The wet signature in the paper
+  booklets arrived by scanning, not by design, and the digital systems
+  dropped it deliberately.
 
 - **Registration is declared, and the record says so** — Quill cannot
   check the GMC register in phase 1, so it records

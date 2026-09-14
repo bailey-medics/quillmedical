@@ -413,7 +413,7 @@ class CpdEntryIn(_In):
     activity_on: date
     title: NonEmptyText
     activity_type: CpdActivityType
-    hours: float | None = Field(default=None, ge=0)
+    points: float | None = Field(default=None, ge=0)
     competencies: list[CompetencyIdField] = Field(default_factory=list)
     certificate: str | None = None
     notes: str | None = None
@@ -428,7 +428,7 @@ class CpdEntryOut(BaseModel):
     activity_on: date
     title: NonEmptyText
     activity_type: CpdActivityType
-    hours: float | None = None
+    points: float | None = None
     competencies: list[CompetencyRefOut] = Field(default_factory=list)
     certificate: str | None = None
     notes: str | None = None

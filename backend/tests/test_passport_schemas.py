@@ -313,23 +313,23 @@ class TestSelfDeclaredRecords:
 
         assert len(certificate.competencies) == 2
 
-    def test_a_cpd_entry_records_hours_when_claimed(self) -> None:
+    def test_a_cpd_entry_records_points_when_claimed(self) -> None:
         entry = schemas.CpdEntry(
             activity_on=date(2026, 2, 11),
             title="Regional oncology day",
             activity_type="conference",
-            hours=6.5,
+            points=6.5,
         )
 
-        assert entry.hours == 6.5
+        assert entry.points == 6.5
 
-    def test_cpd_hours_cannot_be_negative(self) -> None:
+    def test_cpd_points_cannot_be_negative(self) -> None:
         with pytest.raises(ValidationError):
             schemas.CpdEntry(
                 activity_on=date(2026, 2, 11),
                 title="A thing",
                 activity_type="course",
-                hours=-1,
+                points=-1,
             )
 
     def test_a_reflection_carries_its_structure_in_frontmatter(self) -> None:

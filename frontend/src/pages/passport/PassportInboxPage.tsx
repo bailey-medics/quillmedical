@@ -1,0 +1,76 @@
+/**
+ * Passport Inbox Page
+ *
+ * The caller's open sign-off requests, as an assessor.
+ *
+ * **This is the one passport page an external assessor reaches.** They
+ * see exactly the requests naming them and nothing else — not the
+ * holder's passport, not other holders. The API resolves that from
+ * `passport_signoff_request` rows, so no extra gate is needed here.
+ */
+
+import { useEffect, useState } from "react";
+import { Stack } from "@mantine/core";
+import { useNavigate } from "react-router-dom";
+import PageHeader from "@/components/page-header";
+import SignOffCard from "@/components/passport/SignOffCard";
+import ErrorState from "@/components/error-state/ErrorState";
+import StateMessage from "@/components/message-cards/StateMessage";
+import { IconFileText } from "@/components/icons/appIcons";
+import { UnstyledButton } from "@mantine/core";
+import { fetchInbox } from "@lib/passport";
+import type { SignOff } from "@lib/passport";
+
+export function Component() {
+  const navigate = useNavigate();
+  const [requests, setRequests] = useState<SignOff[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchInbox()
+      .then((result) => {
+        if (!cancelled) setRequests(result);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setError("Your inbox could not be loaded. Please try again.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return (
+    <Stack gap="lg">
+      <PageHeader title="Sign-off requests" />
+
+      {error && <ErrorState message={error} />}
+
+      {!loading && requests.length === 0 && (
+        <StateMessage
+          icon={<IconFileText />}
+          title="Nothing waiting"
+          description="Requests appear here when somebody asks you to assess them."
+        />
+      )}
+
+      {requests.map((signOff) => (
+        <UnstyledButton
+          key={signOff.id}
+          onClick={() => navigate(`/passport/sign-off/${signOff.id}`)}
+          aria-label={signOff.competency.name}
+        >
+          <SignOffCard signOff={signOff} />
+        </UnstyledButton>
+      ))}
+    </Stack>
+  );
+}

@@ -52,6 +52,12 @@ const AVAILABLE_FEATURES: {
     label: "Letters",
     description: "Clinical letter composition and management",
   },
+  {
+    key: "passport",
+    label: "Clinician passport",
+    description:
+      "Competency records signed off by a named assessor, held per clinician",
+  },
 ];
 
 interface FeatureOut {

@@ -504,10 +504,10 @@ class TestLogbookTotals:
 
 
 class TestCpdTotals:
-    def test_hours_are_summed_per_year(
+    def test_points_are_summed_per_year(
         self, store: LocalPassportStore, holder: Actor
     ) -> None:
-        for hours in (6, 3):
+        for points in (6, 3):
             records.add_cpd_entry(
                 store,
                 PASSPORT_ID,
@@ -516,11 +516,11 @@ class TestCpdTotals:
                     activity_on=date(2026, 2, 11),
                     title="Regional oncology study day",
                     activity_type="teaching day",
-                    hours=hours,
+                    points=points,
                 ),
             )
 
         story = pdf._cpd(store, PASSPORT_ID, pdf._styles())
         text = " ".join(item.text for item in story if hasattr(item, "text"))
 
-        assert "9 hours" in text
+        assert "9 points" in text

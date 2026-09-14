@@ -151,7 +151,7 @@ def populated(
             activity_on=date(2026, 2, 11),
             title="Regional study day",
             activity_type="teaching day",
-            hours=6,
+            points=6,
         ),
         now=datetime(2026, 2, 12, 10, 0, tzinfo=UTC),
     )
@@ -303,9 +303,9 @@ Self-declared: recorded by the holder, with nobody countersigning.
 
 ### 2026
 
-1 activity, 6 hours.
+1 activity, 6 points.
 
-- **2026-02-11** — Regional study day [teaching day] (6 hours)
+- **2026-02-11** — Regional study day [teaching day] (6 points)
 
 ## Sign-offs in full
 

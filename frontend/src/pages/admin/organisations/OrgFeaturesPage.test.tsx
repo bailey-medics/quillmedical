@@ -63,6 +63,7 @@ describe("OrgFeaturesPage", () => {
       expect(screen.getByText("Teaching")).toBeInTheDocument();
       expect(screen.getByText("Messaging")).toBeInTheDocument();
       expect(screen.getByText("Letters")).toBeInTheDocument();
+      expect(screen.getByText("Clinician passport")).toBeInTheDocument();
     });
   });
 
@@ -222,6 +223,41 @@ describe("OrgFeaturesPage", () => {
     await user.click(screen.getByRole("button", { name: "Confirm" }));
 
     expect(putSpy).toHaveBeenCalledWith("/organisations/3/features/teaching", {
+      enabled: true,
+    });
+  });
+
+  it("toggles the clinician passport against its own key", async () => {
+    const user = userEvent.setup();
+    const putSpy = vi
+      .spyOn(apiLib.api, "put")
+      .mockResolvedValue({ status: "enabled" });
+
+    vi.spyOn(apiLib.api, "get").mockImplementation((url: string) => {
+      if (url.includes("/features")) return Promise.resolve({ features: [] });
+      return Promise.resolve(mockOrg);
+    });
+
+    const { container } = renderWithRouter(<OrgFeaturesPage />, {
+      routePath: "/admin/organisations/:id/features",
+      initialRoute: "/admin/organisations/3/features",
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Clinician passport")).toBeInTheDocument();
+    });
+
+    // The key sent to the backend is what `requires_feature("passport")`
+    // resolves against, so a mismatch here would leave the switch working
+    // and every passport route still refusing.
+    const switches = container.querySelectorAll<HTMLInputElement>(
+      "input[type='checkbox']",
+    );
+    await user.click(switches[3]);
+    await user.click(screen.getByTestId("submit-button"));
+    await user.click(screen.getByRole("button", { name: "Confirm" }));
+
+    expect(putSpy).toHaveBeenCalledWith("/organisations/3/features/passport", {
       enabled: true,
     });
   });

@@ -7,4 +7,5 @@ export { default as LetterStatusBadge } from "./LetterStatusBadge";
 export { default as NoteCategoryBadge } from "./NoteCategoryBadge";
 export { default as OnQuillBadge } from "./OnQuillBadge";
 export { default as PlatformRoleBadge } from "./PlatformRoleBadge";
+export { default as SignOffStatusBadge } from "./SignOffStatusBadge";
 export { default as UnreadBadge } from "./UnreadBadge";

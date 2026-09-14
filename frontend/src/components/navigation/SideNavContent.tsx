@@ -66,6 +66,17 @@ export default function SideNavContent({
   const hasTeaching = useHasFeature("teaching");
   const canManageContent = useHasCompetency("manage_teaching_content");
 
+  // The passport link asks both questions the route asks, unlike
+  // teaching, which gates its entry on the feature alone. The passport
+  // routes carry RequireFeature *and* RequireCompetency, so an entry
+  // shown on the feature alone would lead some users to a 404.
+  // Both hooks are called unconditionally and combined afterwards: `&&`
+  // between them short-circuits the second, so the hook order changes
+  // with the feature flag.
+  const passportEnabled = useHasFeature("passport");
+  const canUsePassport = useHasCompetency("access_clinician_passport");
+  const hasPassport = passportEnabled && canUsePassport;
+
   // Check if clinical services (FHIR/EHRbase) are available
   const hasClinicalServices =
     state.status === "authenticated" &&
@@ -466,6 +477,18 @@ export default function SideNavContent({
           item={teachingNavItem}
           onNavigate={onNavigate}
           showIcons={showIcons}
+        />
+      )}
+      {hasPassport && (
+        <NavLink
+          label="Passport"
+          styles={navLinkStyles}
+          active={location.pathname.startsWith("/passport")}
+          onClick={() => {
+            navigate("/passport");
+            if (onNavigate) onNavigate();
+          }}
+          leftSection={showIcons ? <NavIcon name="passport" /> : undefined}
         />
       )}
       <NavLink

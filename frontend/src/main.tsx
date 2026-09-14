@@ -37,6 +37,7 @@
 // src/main.tsx
 import "@fontsource-variable/atkinson-hyperlegible-next";
 import "@mantine/core/styles.css";
+import "@mantine/dates/styles.css";
 import "@mantine/notifications/styles.css";
 import "./styles/typography.css";
 import "./styles/dark-overrides.css";
@@ -51,7 +52,8 @@ import {
 } from "react-router-dom";
 import type { RouteObject } from "react-router-dom";
 import { theme, cssVariablesResolver } from "./theme";
-import { wireUpdateChecks } from "@lib/swUpdateGate";
+import { wirePreloadErrorRecovery, wireUpdateChecks } from "@lib/swUpdateGate";
+import { persistFormState } from "@lib/compat-generation";
 import { installGlobalErrorReporting } from "@lib/error-reporting/globalHandlers";
 import RouteTracking from "@lib/error-reporting/RouteTracking";
 
@@ -204,6 +206,58 @@ const routes: RouteObject[] = [
     ),
     children: [
       { path: "/", element: <HomeRedirect /> },
+
+      // Passport — lazily loaded, and gated twice: the organisation
+      // feature and the CBAC competency. Most people who download the
+      // app can never open these, which is why this subtree is the
+      // pilot for code splitting rather than the largest one.
+      {
+        element: (
+          <RequireFeature feature="passport">
+            <RequireCompetency competency="access_clinician_passport">
+              <Outlet />
+            </RequireCompetency>
+          </RequireFeature>
+        ),
+        children: [
+          {
+            path: "/passport",
+            lazy: () => import("./pages/passport/PassportPage"),
+            handle: { safeForReload: true },
+          },
+          {
+            path: "/passport/competency/:id",
+            lazy: () => import("./pages/passport/PassportCompetencyPage"),
+            handle: { safeForReload: true },
+          },
+          {
+            path: "/passport/logbook",
+            lazy: () => import("./pages/passport/PassportLogbookPage"),
+            handle: { safeForReload: true },
+          },
+          {
+            path: "/passport/cpd",
+            lazy: () => import("./pages/passport/PassportCpdPage"),
+            handle: { safeForReload: true },
+          },
+          {
+            path: "/passport/reflections",
+            lazy: () => import("./pages/passport/PassportReflectionsPage"),
+            handle: { safeForReload: true },
+          },
+          {
+            path: "/passport/inbox",
+            lazy: () => import("./pages/passport/PassportInboxPage"),
+            handle: { safeForReload: true },
+          },
+          {
+            // An in-progress sign-off holds a half-written assessment,
+            // so a silent reload would discard it.
+            path: "/passport/sign-off/:signOffId",
+            lazy: () => import("./pages/passport/PassportSignOffPage"),
+          },
+        ],
+      },
 
       // Clinical routes — require FHIR/EHRbase connectivity
       {
@@ -478,6 +532,29 @@ const routes: RouteObject[] = [
     ],
   },
 
+  // Passport — the app's first lazily-loaded subtree.
+  //
+  // Two routes sit out here rather than inside RequireAuth: the invite
+  // landing, which somebody with no Quill account at all must be able to
+  // open, and the verify page, which the QR code on a printed passport
+  // opens for a reader who may have no session either. Both authenticate
+  // on the signed token or the record id in the URL instead.
+  //
+  // `handle` stays on the route object, never inside the lazy module:
+  // isRouteSafeForReload reads it synchronously, before the module has
+  // loaded. Moving it would silently make every passport route
+  // unsafe-by-default and stop it receiving updates.
+  {
+    path: "/passport/assessors/accept",
+    lazy: () => import("./pages/passport/PassportAcceptInvitePage"),
+    handle: { safeForReload: true },
+  },
+  {
+    path: "/passport/verify/:signOffId",
+    lazy: () => import("./pages/passport/PassportVerifyPage"),
+    handle: { safeForReload: true },
+  },
+
   // Fallback -> show 404 page instead of redirecting to home
   { path: "*", element: <NotFound /> },
 ];
@@ -512,6 +589,17 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     </ConnectivityProvider>
   </MantineProvider>,
 );
+
+// Recovery for a lazily-loaded route chunk this tab can no longer fetch,
+// because the container serving the build it downloaded has moved on. Wired
+// outside the service-worker block on purpose: it is the router's problem,
+// not the worker's, and a browser without service-worker support still
+// needs it. Must exist before any route is loaded on demand.
+wirePreloadErrorRecovery({
+  router,
+  persist: persistFormState,
+  reload: () => window.location.reload(),
+});
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", async () => {

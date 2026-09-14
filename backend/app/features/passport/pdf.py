@@ -552,12 +552,12 @@ def _cpd(
 
         any_entries = True
         entries.sort(key=lambda entry: entry.activity_on)
-        hours = sum(entry.hours or 0 for entry in entries)
+        points = sum(entry.points or 0 for entry in entries)
         activities = "activity" if len(entries) == 1 else "activities"
         summary = f"{len(entries)} {activities}"
 
-        if hours:
-            summary += f", {hours:g} hours"
+        if points:
+            summary += f", {points:g} points"
 
         story.append(
             Paragraph(f"{_text(year)} — {summary}", styles["subheading"])
