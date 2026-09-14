@@ -1497,7 +1497,7 @@ Consequences to hold on to:
       a learner requesting a rendition the database claims exists is the one
       symptom that matters, and it is currently invisible. One monitoring rule;
       `infra/modules/monitoring/` is where it belongs.
-- [ ] Expose the renditions additively in `LearningSlideOut`
+- [x] Expose the renditions additively in `LearningSlideOut`
       (`features/teaching/schemas.py`) and resolve them in
       `_resolve_video_filename`. `video_src` keeps pointing at 720p; the 1080p
       file, the poster and the captions are new optional fields. Absent files
