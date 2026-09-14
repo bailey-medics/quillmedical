@@ -2237,6 +2237,7 @@ def link_module_media(
     unattached, so nothing is lost by re-pointing.
     """
     from app.features.teaching.storage import ALLOWED_MEDIA_TYPES
+    from app.features.teaching.transcode import start_transcode
 
     # The same allow-list the upload URL was minted against. A caller
     # controls this body, so trusting it to describe what it uploaded
@@ -2277,6 +2278,15 @@ def link_module_media(
         )
         db.add(link)
 
+    # Re-linking points the key at different bytes, so whatever the old
+    # asset's job produced says nothing about this one. Cleared rather
+    # than left behind: a stale `has_1080p` would have the player ask
+    # for a rendition of a file that no longer backs this reference.
+    link.transcoded_at = None
+    link.has_1080p = False
+    link.has_poster = False
+    link.has_captions = False
+
     db.flush()
     db.refresh(link)
     logger.info(
@@ -2287,6 +2297,15 @@ def link_module_media(
         media_key,
         body.asset_id,
     )
+
+    # The trigger. Fired after the row is flushed, so the link exists
+    # before anything can act on it, and deliberately not awaited —
+    # encoding a lecture takes minutes. It never raises: the upload the
+    # admin asked for has already succeeded, and failing the request now
+    # would report that as a failure. A job that never runs leaves the
+    # module incomplete and hidden, which is the safe direction.
+    start_transcode(org_id, module_id, body.asset_id)
+
     return MediaAssetOut.model_validate(link)
 
 

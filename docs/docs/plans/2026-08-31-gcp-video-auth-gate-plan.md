@@ -126,6 +126,65 @@ from the edge on the origin the app already runs on.
   until the in-flight rework of `backend/app/features/teaching/` is finished and
   the work is explicitly released. See the sequencing section below.
 
+- **Which renditions exist is recorded in the database, not discovered from the
+  bucket** — **[decided 2026-09-13]** The alternative was a `list_blobs` call
+  per module inside `get_learning_content`, following the
+  `list_bank_images_in_gcs` precedent. Rejected: that puts a network round trip
+  on the learner's hot read path to detect something that changes once in an
+  asset's life, and it fails in the wrong direction — a listing that errors
+  either 500s a lecture that was playing fine, or silently reports no
+  renditions and drops the learner to the original upload, a quality regression
+  nobody would notice. The link rows are already loaded for the module, so
+  reading the state off them costs nothing and adds no failure mode. The
+  trade is that the database can lie where an object is deleted by hand; that
+  is a rare operational event with a visible symptom, and `ModuleMediaLink`
+  already records that an upload happened without re-checking the object is
+  still there. This is also the state the availability gate needs anyway — see
+  the last item of Phase 6 — so recording it here builds it once rather than
+  twice.
+
+- **Source retention: the job deletes its own master, with a 7-day backstop** —
+  **[decided 2026-09-13, replacing 90 days]** Once the renditions exist the
+  master's only use is re-encoding, which is wanted within days of a video
+  going up — a bad encode is noticed immediately, not on day 87. So the
+  transcode job deletes its source once it has verified its outputs are
+  readable, and the lifecycle rule drops to 7 days as a backstop for uploads
+  whose job never ran or never cleaned up. Lifecycle rules are good at orphans
+  and bad at routine cleanup: they can only see object age, never whether the
+  database still links it to a live slide.
+
+  The point is exposure rather than cost. Storage is cheap; what 90 days bought
+  was a long window in which a never-transcoded upload could age silently
+  toward an unrecoverable state. At 7 days that failure is loud and quick, and
+  re-uploading is still merely annoying. Note the clock starts at **upload**,
+  not at successful transcode — GCS cannot express "90 days after the job
+  succeeded" — which is precisely why the job must do its own cleanup rather
+  than leave it to the rule.
+
+  Keeping masters for later re-encoding — HLS, say — is a different decision
+  with a different answer: cold storage kept permanently, not a longer fuse. No
+  realistic retention survives until a deferred format lands.
+
+- **Drift between the database and the bucket is surfaced, not swept** —
+  **[decided 2026-09-13]** A periodic reconciler was considered and rejected
+  for now. The job's own failure mode already fails safe: it writes objects
+  then records completion, so dying between the two leaves the row simply
+  never saying "transcoded" — the module stays incomplete, the gate hides it,
+  and the admin card names it. What a sweep would catch is a hand-deletion
+  from the bucket, which is rare enough that the job would run green almost
+  always and stop being read. Instead: **the job verifies its uploads are
+  readable before recording completion**, closing the only window the system
+  creates itself; and **a 404 under `/videos/*` is alerted on** from the load
+  balancer's existing `httpRequest` logs, which is drift detected by the only
+  party who cares, at the moment it matters. A weekly sweep is easy to add if
+  those alerts ever fire with any regularity — and by then its purpose will be
+  known rather than guessed.
+
+  A re-transcode control on the admin card was considered as the remedy and
+  dropped: delete-and-re-upload is already the sanctioned replacement flow from
+  Phase 5, and past the retention window a re-transcode cannot work either,
+  since it needs the same vanished source.
+
 ## Sequencing
 
 Quill was built quickly as a proof of concept, with coding plans written
@@ -647,6 +706,11 @@ how `module "cloud_storage"` is gated at `infra/main.tf:367`.
 - [x] `quill-teaching-videos-source-teaching` — raw uploads. Region
       `europe-west2`, uniform bucket-level access, public access prevention
       enforced, no versioning, lifecycle rule deleting objects after 90 days.
+      **[revised 2026-09-13 — now 7 days]** Ninety was a placeholder picked
+      before anything was known about how the master would be used. See
+      **Source retention** under Decisions: the job deletes its own source on
+      success, and the rule is only a backstop for uploads whose job never
+      ran.
 - [x] `quill-teaching-videos-processed-teaching` — transcoded renditions, poster
       frames and WebVTT. Same region and access settings, versioning enabled, no
       deletion lifecycle rule.
@@ -1175,6 +1239,32 @@ content calls for it.
       silently unavailable to everyone, permanently, with the only trace on a
       card nobody has opened. The gate fails safe; it must not fail invisibly.
 
+**[revised 2026-09-13] The gate hides the whole module, assessment included,
+and it had to be applied to the entry points as well as the learning routes.**
+
+The wording above says "the learner's module list", and that was read as the
+_learning_ list alone. Both learner-facing entry points — the dashboard at
+`/teaching` and the module page at `/teaching/{id}` — are served by
+`list_question_banks` and `get_question_bank`, which computed `has_learning`
+from content on disk and never consulted the media gate. So the learning routes
+refused an incomplete module with a 404 while the card in front of them still
+offered a way in, and clicking it landed on that 404 with nothing to explain it.
+
+- **The whole module goes, not just its learning half.** The first fix reported
+  `has_learning` as false, which removed the "Start learning" action and left
+  the card and its assessment. Rejected on review: half a module is not a lesser
+  version of it. The author intended a video the learner would never see, and
+  the assessment may examine exactly the content that is missing.
+
+- **`_module_is_servable` in `router.py` is the one helper**, used by both
+  entry points — `list_question_banks` skips the bank, `get_question_bank`
+  raises 404. Per organisation, like every other part of this gate.
+
+- **The consequence is deliberate and sharp**: deleting a video takes the
+  assessment away from a learner part-way through it, with no explanation on
+  their side. The admin card is the only place the cause is visible, which is
+  what makes the last item above matter more than it first appears.
+
 ## Phase 6: Transcoding and captions
 
 Only after Phases 0–5 are shipped and a hand-encoded MP4 plays end to end.
@@ -1228,29 +1318,245 @@ send, link — against a stub that accepted any request, and the backend's asser
 a URL is minted rather than that anything can use it. The stub now models the
 handshake, and reverting to a single `PUT` fails five of eleven tests.
 
-- [ ] Cloud Run job `video-transcode` — FFmpeg image, 4 CPU, 4 GB, 60-minute
-      timeout. Reads from source, writes 720p and 1080p H.264 plus a poster frame
-      to the processed bucket under `{org_id}/{module_id}/`, named from the asset
-      id. Built on the existing `infra/modules/cloud-run-job/` module.
+**[2026-09-13] The gate is met.** A video was uploaded through the admin card,
+played on a slide, and deleted, on a developer machine. Three more faults
+surfaced getting there, and all three sat in the same place as the earlier ones
+— a join no test crossed, each layer correct on its own.
+
+- **The 10 MB request body cap applied to the upload route.** `main.py` capped
+  every body at 10 MB, and rejected on `Content-Length` before a byte was read,
+  so the chunked streaming write behind it never ran. The route now has its own
+  2 GB ceiling, matched on method and path shape so the middleware needs no
+  knowledge of the teaching feature. It cost nothing in the teaching
+  environment, where the bytes go straight to GCS and never meet this
+  middleware at all — which is exactly why local was the only place it showed.
+
+- **Delete had the mirror of the upload bug.** `delete_media_asset` checked for
+  a source bucket and raised 503 before touching anything, so on a machine with
+  no bucket the row outlived every attempt to clear it and the card kept
+  offering a button that could not work. It now removes the file from the
+  module's `learning/` directory instead, keeping the row-first ordering and
+  treating a missing file as success, as the bucket path already does.
+
+- **The learner entry points were ungated.** See the revision under Phase 5's
+  availability gate.
+
+**What these three have in common is worth more than any of them.** Every fault
+in this phase's three attempts has been a join: settings that were never passed,
+a CORS policy nobody set, a method the two ends disagreed on, a middleware that
+predated the route it blocked, a guard clause written for one branch of an
+if/else. None was a mistake inside a layer, and none was catchable by a test of
+one. The lesson the gate was written to force has now been demonstrated five
+times, and it should be read as an argument for exercising the whole path
+locally before the next phase, not as five unrelated bugs.
+
+**Upload failures now name the fault**, rather than showing a status code. A
+413 on a video is almost always the file, and "Upload failed (413)" left the
+admin to guess between size, format and permissions. `describeUploadFailure`
+covers size, type, permission, missing module and server fault; the 5xx case
+says explicitly that it is not the file, so a server error does not send
+someone re-exporting a lecture.
+
+### Groundwork, surveyed 2026-09-13
+
+**[added 2026-09-13]** What the repository already provides, established by
+reading it rather than assuming. Anyone starting this phase cold can take these
+as findings and skip the survey.
+
+- **A new job image is one build step, not new machinery.**
+  `backend/Dockerfile` is multi-stage and already ships an `admin` target for
+  the existing Cloud Run job. `deploy.yml` builds it with a second
+  `docker/build-push-action` step (`target: admin`, `if: matrix.service ==
+  'backend'`), tagged `quill/admin:{sha}` and `:latest`. A `transcode` target
+  follows exactly that shape. `just build-admin <env>` is the matching local
+  recipe and is the template for `just build-transcode`.
+
+- **Whisper probably wants its own Dockerfile.** FFmpeg is an `apt-get install`
+  on the existing `base` layer. Whisper pulls torch and a multi-gigabyte model,
+  which has no business in a layer the API image shares. Judge this when the
+  caption job is built; the transcode job does not force the decision.
+
+- **The jobs run as the default compute service account.**
+  `infra/modules/cloud-run-job/` has **no** `service_account` variable — unlike
+  `infra/modules/cloud-run/`, which does. So both jobs run as
+  `{project_number}-compute@developer.gserviceaccount.com`, the same identity
+  the backend uses. It already holds `objectAdmin` on the **source** bucket
+  (`teaching-video-pipeline/main.tf`, `backend_source_writer`). The transcode
+  job needs the same on **processed**, which is one more
+  `google_storage_bucket_iam_member` in that module. Adding a service-account
+  variable to the job module would be tidier and is not required.
+
+- **`admin_cli.py` is the entrypoint pattern**: environment variables only, no
+  arguments and no prompts, because a Cloud Run Job has no terminal. Copy its
+  shape — a required-env reader that exits with a clear message on anything
+  missing.
+
+- **Terraform does not own the job's image.** `admin_image` is
+  `gcr.io/cloudrun/hello:latest` in all three `terraform.tfvars`, and the job
+  module sets `lifecycle { ignore_changes = [...containers[0].image] }`. The
+  real image is pushed by CI and set by `gcloud run jobs execute --image` at
+  call time (see `.github/scripts/deploy/run-migrations.sh`). Follow that: do
+  not try to make Terraform track the transcode image.
+
+- **Cloud Run Jobs cost only while running.** They are not services and do not
+  idle. The bill is per video, once — replays are served from the CDN and cost
+  nothing further. The real cost of this phase is build complexity, not
+  runtime. Set each job's timeout deliberately, though: a hung job burns its
+  full timeout before failing, and 60 minutes is a long time to wait to find
+  out nothing happened.
+
+- **No Eventarc and no Pub/Sub exist anywhere in `infra/`**, and the backend
+  has `google-cloud-storage` but not `google-cloud-run`. Both trigger designs
+  therefore cost something new — see the trigger item below.
+
+### The object-key contract, which constrains everything here
+
+**[added 2026-09-13] Read this before writing the transcode job.** Phase 0
+proved the load balancer does not strip the URL prefix: a request for
+`/videos/{org}/{module}/x.mp4` asks the bucket for the object key
+`{org}/{module}/x.mp4`. The path and the key must agree, and a mismatch
+presents as a 404 on a file that is plainly in the bucket.
+
+- **Source** objects are `{org_id}/{module_id}/{asset_id}` with **no
+  extension** — `storage.media_object_path()`.
+- **Processed** objects must therefore live under the same
+  `{org_id}/{module_id}/` prefix, because that is what the signed cookie's
+  `URLPrefix` covers and what `base_url` addresses.
+- The player composes its URL as `base_url` + the filename that
+  `_resolve_video_filename()` returns, which today is `{asset_id}{suffix}`
+  from the link's content type. `base_url` comes from `/video-access` and is
+  `{TEACHING_VIDEO_BASE_URL}/{org_id}/{module_id}`.
+
+### Decision: the player gets a quality switch
+
+**[decided 2026-09-13]** Phase 6 produces two renditions, and the player as
+shipped asks for exactly one file — `LearningSlideOut.video_src` is a single
+optional string. Three options were weighed: emit only 720p and change nothing;
+add both renditions to the API and let the learner choose; or defer quality
+switching to a future HLS piece.
+
+**Chosen: add both renditions to the API and give the learner a quality
+control.** A single 720p file would be the smaller change, but it silently
+caps quality for everyone to suit the worst connection, and the renditions are
+being produced either way — storing a 1080p file nothing can reach is waste
+with no upside. Adaptive HLS remains the eventual answer and stays deferred;
+this is a manual switch, not an attempt to pre-empt it.
+
+Consequences to hold on to:
+
+- **The API change is additive**, so it is not a breaking change under the
+  backend rules: `video_src` stays exactly as it is and keeps pointing at the
+  default rendition. New optional fields carry the alternatives. Nothing about
+  the existing contract moves, and a stale client keeps working.
+- **720p is the default** — what `video_src` resolves to, and what plays
+  without the learner touching anything. Hospital wifi is the common case.
+- **The names must be deterministic**, because the API returns them and the
+  cookie covers the prefix, not each file: `{asset_id}-720p.mp4`,
+  `{asset_id}-1080p.mp4`, `{asset_id}-poster.jpg`, `{asset_id}.vtt`.
+- **`_resolve_video_filename` is the single place resolution happens**, and it
+  already has a local-development fallback to `<ref>.mp4`. Keep that property:
+  a developer with a hand-dropped file must still get a playing video with no
+  renditions present, so the alternatives have to be optional all the way
+  through rather than assumed.
+
+### The checklist
+
+- [x] Cloud Run job `video-transcode` — FFmpeg image, 4 CPU, 4 GB, timeout set
+      deliberately rather than left at 60 minutes. Reads from source, writes
+      720p and 1080p H.264 plus a poster frame to the processed bucket under
+      `{org_id}/{module_id}/`, named from the asset id per the contract above.
+      Built on the existing `infra/modules/cloud-run-job/` module, as a
+      `transcode` target in `backend/Dockerfile`.
       **[revised 2026-09-09]** The job is what produces the poster, which is why
       the MDX has no `poster` prop — the author names one reference and gets the
       rendition set. Until this phase lands, a hand-encoded MP4 and a
       hand-made poster are uploaded as the same asset's files.
+- [x] Grant the compute service account `roles/storage.objectAdmin` on the
+      **processed** bucket in `infra/modules/teaching-video-pipeline/`. It has
+      this on source already; the transcode job cannot write its output without
+      it.
+- [x] `backend/scripts/transcode_cli.py`, modelled on `admin_cli.py` —
+      environment-variable driven, no arguments. Takes the org, module and asset
+      ids, downloads the source object, runs FFmpeg, uploads each output.
+- [x] Record on `ModuleMediaLink` what the transcode produced, and have the job
+      verify before it records. **[added 2026-09-13]** Which renditions exist is
+      read from the link row, never discovered by listing the bucket — see the
+      Decisions entry. Needs a migration, and needs the job to reach the
+      database, which today it cannot: the CLI talks only to GCS. **Who writes
+      this column depends on the trigger question below**, so settle that
+      first: if the backend invokes the job it can record completion when the
+      job returns and the CLI stays database-free; if Eventarc fires it, the job
+      must write its own state.
+- [x] Have the transcode job delete its source object once its outputs verify.
+      **[added 2026-09-13]** The routine cleanup path, per the **Source
+      retention** decision — the 7-day lifecycle rule is only a backstop for
+      uploads whose job never ran. Delete after the verification above, never
+      before: a source dropped on an unverified encode is unrecoverable.
+- [x] Alert on 404s under `/videos/*` from the load balancer's `httpRequest`
+      logs. **[added 2026-09-13]** The drift signal, per the Decisions entry:
+      a learner requesting a rendition the database claims exists is the one
+      symptom that matters, and it is currently invisible. One monitoring rule;
+      `infra/modules/monitoring/` is where it belongs.
+- [ ] Expose the renditions additively in `LearningSlideOut`
+      (`features/teaching/schemas.py`) and resolve them in
+      `_resolve_video_filename`. `video_src` keeps pointing at 720p; the 1080p
+      file, the poster and the captions are new optional fields. Absent files
+      must resolve to `None`, not to a broken filename — which is what the link
+      column above is for, rather than trusting the naming convention.
+- [ ] Quality switch in `VideoPlayer.tsx`, defaulting to 720p and offering 1080p
+      only when the API returned one. Preserve the playback position across a
+      switch — dropping the learner back to the start of a lecture to change
+      quality is worse than not offering it. Stories and tests per the
+      components rule.
 - [ ] Cloud Run job `video-caption` — Whisper-large, 4 CPU, 10 GB, 60-minute
       timeout. Writes WebVTT beside the renditions.
 - [ ] Set `Cache-Control: public, max-age=86400` on every object both jobs write,
       so Cloud CDN actually caches them. Objects written without it will be
       revalidated on every request and the CDN buys us nothing.
-- [ ] Trigger both on upload, not from the content repo's deploy workflow.
+      **[half done 2026-09-13]** The transcode job sets it on every output it
+      writes, and a test asserts it rather than trusting the constant — this
+      is exactly the kind of property that is invisible until a bill arrives.
+      Left unticked because the caption job does not exist yet and this item
+      covers both.
+- [x] Trigger both on upload, not from the content repo's deploy workflow.
       **[revised 2026-09-09]** The original wording predates the decision that
       media is uploaded through the admin UI rather than committed to the content
       repository: the deploy workflow never sees a video, so it cannot be the
       trigger. Fire from the upload completing instead, and reflect progress in
       the admin card — a reference whose asset is uploaded but not yet transcoded
       is not yet complete, and the module stays unavailable until it is.
+      **[decided 2026-09-13: the backend invokes the job]** The alternative was
+      Eventarc on a GCS object-finalise event, which is the more robust of the
+      two — it survives an upload that completes without the link call ever
+      being made — but it needs a new API enabled, a service agent and IAM,
+      none of which this repository uses yet. The backend route is the smaller
+      step and fits the existing shape: `link_module_media` already knows the
+      moment the bytes landed, already holds credentials, and already has the
+      organisation, module and asset ids the job needs. It costs
+      `google-cloud-run` in `backend/pyproject.toml`.
+      The consequence that matters is that **the backend, not the job, records
+      completion** — so the transcode CLI stays database-free and keeps talking
+      only to GCS, which is what it was built as. An upload whose link call
+      never happens is the accepted gap; the 7-day lifecycle rule sweeps the
+      orphaned source, and the module simply stays incomplete and hidden, which
+      is the safe direction.
+      **[done 2026-09-13, for the transcode job only]** `start_transcode` in
+      `features/teaching/transcode.py`, called from `link_module_media` after
+      the row is flushed. Ticked because the trigger mechanism is built and the
+      decision is settled, but two things named in this item are not done:
+      **nothing yet writes `transcoded_at`**, since the invocation is
+      deliberately not awaited and no polling or callback exists, so every link
+      currently keeps a null transcode state; and the caption job has no
+      trigger because it has no job. Both belong to the items below.
 - [ ] Captions are reviewed by the content author before a module goes `live` —
       Whisper output on clinical terminology needs a human pass. Surface review
       state on the admin video page.
+- [ ] Reconcile the availability gate with transcoding. `module_media_is_complete`
+      currently treats a linked asset as complete, so a module becomes visible
+      the moment the upload is linked and before any rendition exists — a
+      learner would reach a slide whose video is not there yet. The gate has to
+      account for "uploaded but not yet transcoded", which is a state the model
+      does not currently have.
 
 ## Phase 7: Cutover
 
@@ -1295,6 +1601,17 @@ dropped on disk by hand before there was an upload path still plays. That
 lookup remains the _only_ place the two models differ — everything above it, the
 parser, the API shape and the player, is identical, so nothing downstream learns
 which environment it is in.
+
+**[added 2026-09-13] Delete works locally too**, and had to be written
+separately: `delete_media_object` is a GCS call, so `_delete_local_media_object`
+is its counterpart, removing `{asset_id}{suffix}` from the module's `learning/`
+directory. The asset id is validated the same way on the way out as on the way
+in, since it lands in a filename and a traversal would reach outside the module.
+A missing file is not an error on either path — the link row is what the admin
+acts on, and a file already gone must not leave a row that can never be cleared.
+
+The upload also needs the request body cap lifted, which is a property of the
+application rather than of this feature: see the 2026-09-13 note under Phase 6.
 
 ### Where the files go
 

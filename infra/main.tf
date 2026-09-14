@@ -383,6 +383,49 @@ module "cloud_run_admin_job" {
   ]
 }
 
+# ---------- Cloud Run Job: video transcode (teaching only) ----------
+# Produces the renditions a learner is served, from one uploaded source
+# object. Gated on the environment for the same reason the pipeline module is:
+# prod and staging have no video buckets for it to read or write.
+#
+# No VPC connector is wanted here — unlike the admin job, which reaches Cloud
+# SQL on a private address, this one talks only to GCS and holds no database
+# connection at all. It is given one regardless because the module requires it,
+# and `PRIVATE_RANGES_ONLY` egress leaves the public GCS endpoint reachable.
+#
+# Terraform does not track the image: CI pushes it and
+# `gcloud run jobs execute --image` sets it at call time, as it already does
+# for the admin job. The module's `ignore_changes` on the image is what makes
+# that safe.
+module "cloud_run_transcode_job" {
+  count       = var.environment == "teaching" ? 1 : 0
+  source      = "./modules/cloud-run-job"
+  project_id  = var.project_id
+  region      = var.region
+  environment = var.environment
+
+  job_name         = "transcode"
+  image            = var.transcode_image
+  vpc_connector_id = module.networking.vpc_connector_id
+
+  # Encoding is CPU-bound and the whole source file is held on local disk
+  # while FFmpeg works on it, so both are sized above the module defaults.
+  cpu    = "4"
+  memory = "4Gi"
+
+  # Deliberate rather than the module's default: a hung job burns its full
+  # timeout before failing, and a lecture that has not encoded in twenty
+  # minutes has gone wrong rather than gone slowly.
+  timeout = "1200s"
+
+  env_vars = {
+    TEACHING_VIDEOS_SOURCE_BUCKET = module.teaching_video_pipeline[0].source_bucket_name
+    TEACHING_VIDEOS_BUCKET        = module.teaching_video_pipeline[0].processed_bucket_name
+  }
+
+  depends_on = [module.teaching_video_pipeline]
+}
+
 # ---------- Cloud Run: frontend ----------
 module "cloud_run_frontend" {
   source      = "./modules/cloud-run"
@@ -481,6 +524,15 @@ module "monitoring" {
   # not exist. Null here means the browser error policy is not created, rather
   # than a policy pointing at a metric that was never made.
   client_errors_metric = var.landing_domain != null ? module.analytics[0].client_errors_metric : null
+
+  # Same conditionality, and additionally only where video is served at all:
+  # prod and staging have no video buckets, so a 404 under /videos/ there is
+  # an unrecognised path falling through to the frontend, not rendition drift.
+  video_not_found_metric = (
+    var.landing_domain != null && var.environment == "teaching"
+    ? module.analytics[0].video_not_found_metric
+    : null
+  )
 }
 
 # ---------- Analytics: usage metrics, archive, and the shared dashboard ----------

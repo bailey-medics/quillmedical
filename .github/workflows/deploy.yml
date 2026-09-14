@@ -128,6 +128,20 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Build and push transcode image
+        if: ${{ matrix.service == 'backend' }}
+        uses: docker/build-push-action@v7.3.0
+        with:
+          context: .
+          file: ./backend/Dockerfile
+          target: transcode
+          push: true
+          tags: |
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/transcode:${{ needs.prepare.outputs.sha }}
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/transcode:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   # ---------- Deploy to teaching ----------
   deploy-teaching:
     name: Deploy to teaching

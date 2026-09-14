@@ -76,6 +76,7 @@
     "EMIS",
     "EMPI",
     "ESCO",
+    "Eventarc",
     "FHIR",
     "Fernet",
     "Firestore",
