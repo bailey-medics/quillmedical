@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "response-required-property-removed GET /api/patients/{patient_id}/external-access removed the required property `grants/items/user_type` from the response with the `200` status"
+reason: 'The field was fed from `system_permissions` and said `single-user` for every grantee, which distinguished nobody and told a reader nothing about why that person could see the record. It is removed rather than repointed at something truer, because no frontend code reads it and no interface calls this route: what a grantee may do with a record is now the `access_granted_patient_records` competency, and which record is the grant row itself. No open tab needs reloading, and none can be affected, since nothing rendered this value.'
