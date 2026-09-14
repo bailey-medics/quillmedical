@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
+import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@test/test-utils";
 
 // Mock react-player to avoid actual YouTube embedding in tests
@@ -143,5 +144,65 @@ describe("VideoPlayer", () => {
 
     const player = await findByTestId("react-player");
     expect(player).toHaveAttribute("data-poster", "https://x.test/p.jpg");
+  });
+
+  describe("quality switch", () => {
+    const SRC_720 = "https://x.test/a-720p.mp4";
+    const SRC_1080 = "https://x.test/a-1080p.mp4";
+
+    it("offers no control when there is only one rendition", async () => {
+      // The common case: a source too short to warrant 1080p gets no
+      // second file, and must not be offered a choice it cannot make.
+      const { findByTestId, queryByLabelText } = renderWithMantine(
+        <VideoPlayer src={SRC_720} />,
+      );
+
+      await findByTestId("react-player");
+      expect(queryByLabelText("Video quality")).not.toBeInTheDocument();
+    });
+
+    it("offers a control when a 1080p rendition exists", async () => {
+      const { findByTestId, getByLabelText } = renderWithMantine(
+        <VideoPlayer src={SRC_720} src1080p={SRC_1080} />,
+      );
+
+      await findByTestId("react-player");
+      expect(getByLabelText("Video quality")).toBeInTheDocument();
+    });
+
+    it("offers no control for YouTube, which has its own", async () => {
+      const { findByTestId, queryByLabelText } = renderWithMantine(
+        <VideoPlayer youtubeId="abc123" src1080p={SRC_1080} />,
+      );
+
+      await findByTestId("react-player");
+      expect(queryByLabelText("Video quality")).not.toBeInTheDocument();
+    });
+
+    it("starts on 720p", async () => {
+      // Hospital wifi is the common case, so the default is the
+      // smaller file rather than the best available.
+      const { findByTestId } = renderWithMantine(
+        <VideoPlayer src={SRC_720} src1080p={SRC_1080} />,
+      );
+
+      const player = await findByTestId("react-player");
+      expect(player).toHaveAttribute("data-src", SRC_720);
+    });
+
+    it("plays the 1080p file once selected", async () => {
+      const user = userEvent.setup();
+      const { findByTestId, getByRole } = renderWithMantine(
+        <VideoPlayer src={SRC_720} src1080p={SRC_1080} />,
+      );
+
+      await findByTestId("react-player");
+      await user.click(getByRole("radio", { name: "1080p" }));
+
+      expect(await findByTestId("react-player")).toHaveAttribute(
+        "data-src",
+        SRC_1080,
+      );
+    });
   });
 });

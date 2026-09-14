@@ -302,6 +302,19 @@ export interface CompiledSlide {
    * code identical in both environments.
    */
   videoSrc?: string;
+  /**
+   * Filename of the 1080p rendition, where the transcode job made one.
+   *
+   * Absent rather than guessed: the names are deterministic, so this
+   * could be derived from `videoSrc` — but a derived name for a file
+   * nobody wrote is a 404 the player cannot explain. The API only
+   * returns it when the link records that the job produced it.
+   */
+  videoSrc1080p?: string;
+  /** Poster frame, shown before playback begins. */
+  videoPoster?: string;
+  /** WebVTT captions. A WCAG 2.1 AA requirement for the learning centre. */
+  videoCaptions?: string;
   /** Video duration in seconds */
   durationSeconds?: number;
   /** Image source filename for image/figure slides */

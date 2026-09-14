@@ -17,11 +17,14 @@
  * hangs during Storybook's static build (no real browser DOM).
  */
 
-import { Box } from "@mantine/core";
-import { lazy, Suspense, useCallback, useRef } from "react";
+import { Box, SegmentedControl } from "@mantine/core";
+import { lazy, Suspense, useCallback, useRef, useState } from "react";
 import classes from "./VideoPlayer.module.css";
 
 const ReactPlayer = lazy(() => import("react-player"));
+
+/** Which rendition is playing. 720p is the default everywhere. */
+type Quality = "720p" | "1080p";
 
 export interface VideoPlayerProps {
   /** YouTube video ID, for public content */
@@ -33,6 +36,14 @@ export interface VideoPlayerProps {
    * ordinary address that happens to require one.
    */
   src?: string;
+  /**
+   * Full URL of the 1080p rendition, where one exists.
+   *
+   * Only supplied when the transcode job recorded producing it, so its
+   * presence is what decides whether a quality control is offered at
+   * all. A source shorter than 1080p never gets one.
+   */
+  src1080p?: string;
   /** Poster image URL */
   posterUrl?: string;
   /** WebVTT captions URL. Captions are a WCAG 2.1 AA requirement. */
@@ -46,6 +57,7 @@ export interface VideoPlayerProps {
 export default function VideoPlayer({
   youtubeId,
   src: hostedSrc,
+  src1080p,
   posterUrl,
   captionsUrl,
   onProgress,
@@ -53,13 +65,43 @@ export default function VideoPlayer({
 }: VideoPlayerProps) {
   const playerRef = useRef<HTMLVideoElement>(null);
   const hasResumed = useRef(false);
+  const [quality, setQuality] = useState<Quality>("720p");
+  // Where the learner was when they changed quality. Swapping `src`
+  // reloads the element from zero, so the position has to be caught
+  // before the switch and restored once the new file can play —
+  // dropping someone back to the start of a lecture is worse than not
+  // offering the choice at all.
+  const pendingSeek = useRef<number | null>(null);
+
+  // Only hosted video has renditions, and only when the job made a
+  // second one. YouTube draws its own quality menu.
+  const canSwitch = Boolean(!youtubeId && hostedSrc && src1080p);
+  const activeSrc = canSwitch && quality === "1080p" ? src1080p : hostedSrc;
 
   const src = youtubeId
     ? `https://www.youtube.com/watch?v=${youtubeId}`
-    : hostedSrc;
+    : activeSrc;
+
+  const handleQualityChange = useCallback((value: string) => {
+    if (playerRef.current) {
+      pendingSeek.current = playerRef.current.currentTime;
+    }
+    setQuality(value as Quality);
+  }, []);
 
   const handleReady = useCallback(() => {
-    if (resumeAt && !hasResumed.current && playerRef.current) {
+    if (!playerRef.current) return;
+
+    // A pending seek wins over the resume position: it means the
+    // learner was already watching and changed quality mid-lecture.
+    if (pendingSeek.current !== null) {
+      playerRef.current.currentTime = pendingSeek.current;
+      pendingSeek.current = null;
+      void playerRef.current.play?.();
+      return;
+    }
+
+    if (resumeAt && !hasResumed.current) {
       playerRef.current.currentTime = resumeAt;
       hasResumed.current = true;
     }
@@ -74,9 +116,10 @@ export default function VideoPlayer({
   if (!src) return null;
 
   return (
-    <Box className={classes.wrapper}>
-      <Suspense fallback={null}>
-        {/*
+    <Box>
+      <Box className={classes.wrapper}>
+        <Suspense fallback={null}>
+          {/*
           react-player v3 passes `children` straight into the underlying
           custom element, so a WebVTT <track> works without dropping to a
           native <video> — the fallback the plan flagged if it could not.
@@ -90,38 +133,53 @@ export default function VideoPlayer({
           the difference between a YouTube slide playing and rendering
           blank. YouTube carries its own captions in any case.
         */}
-        {!youtubeId && captionsUrl ? (
-          <ReactPlayer
-            ref={playerRef}
-            src={src}
-            width="100%"
-            height="100%"
-            controls
-            poster={posterUrl}
-            onCanPlay={handleReady}
-            onTimeUpdate={handleTimeUpdate}
-          >
-            <track
-              kind="captions"
-              src={captionsUrl}
-              srcLang="en"
-              label="English"
-              default
+          {!youtubeId && captionsUrl ? (
+            <ReactPlayer
+              ref={playerRef}
+              src={src}
+              width="100%"
+              height="100%"
+              controls
+              poster={posterUrl}
+              onCanPlay={handleReady}
+              onTimeUpdate={handleTimeUpdate}
+            >
+              <track
+                kind="captions"
+                src={captionsUrl}
+                srcLang="en"
+                label="English"
+                default
+              />
+            </ReactPlayer>
+          ) : (
+            <ReactPlayer
+              ref={playerRef}
+              src={src}
+              width="100%"
+              height="100%"
+              controls
+              poster={posterUrl}
+              onCanPlay={handleReady}
+              onTimeUpdate={handleTimeUpdate}
             />
-          </ReactPlayer>
-        ) : (
-          <ReactPlayer
-            ref={playerRef}
-            src={src}
-            width="100%"
-            height="100%"
-            controls
-            poster={posterUrl}
-            onCanPlay={handleReady}
-            onTimeUpdate={handleTimeUpdate}
+          )}
+        </Suspense>
+      </Box>
+      {canSwitch && (
+        <Box className={classes.qualityBar}>
+          <SegmentedControl
+            size="xs"
+            value={quality}
+            onChange={handleQualityChange}
+            data={[
+              { label: "720p", value: "720p" },
+              { label: "1080p", value: "1080p" },
+            ]}
+            aria-label="Video quality"
           />
-        )}
-      </Suspense>
+        </Box>
+      )}
     </Box>
   );
 }

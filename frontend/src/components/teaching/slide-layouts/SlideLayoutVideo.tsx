@@ -66,11 +66,17 @@ export default function SlideLayoutVideo({
 
   const baseUrl = baseUrlOverride ?? grantedBaseUrl;
 
-  // The API gives a filename; the grant gives the base. Joining them
+  // The API gives filenames; the grant gives the base. Joining them
   // here is what keeps this component identical in development, where
   // the base is a local route, and in production, where it is the CDN.
-  const hostedSrc =
-    baseUrl && slide.videoSrc ? `${baseUrl}/${slide.videoSrc}` : undefined;
+  //
+  // Every rendition lives under the same prefix, which is what the
+  // signed cookie covers — so one grant reaches all of them and none
+  // needs a request of its own.
+  const withBase = (filename?: string) =>
+    baseUrl && filename ? `${baseUrl}/${filename}` : undefined;
+
+  const hostedSrc = withBase(slide.videoSrc);
 
   return (
     <Stack gap="md">
@@ -93,6 +99,9 @@ export default function SlideLayoutVideo({
         <VideoPlayer
           youtubeId={slide.youtubeId}
           src={hostedSrc}
+          src1080p={withBase(slide.videoSrc1080p)}
+          posterUrl={withBase(slide.videoPoster)}
+          captionsUrl={withBase(slide.videoCaptions)}
           onProgress={onVideoProgress}
           resumeAt={resumeAt}
         />

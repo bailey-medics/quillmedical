@@ -44,6 +44,9 @@ interface ApiSlide {
   callout_body?: string;
   youtube_id?: string;
   video_src?: string;
+  video_src_1080p?: string;
+  video_poster?: string;
+  video_captions?: string;
   duration_seconds?: number;
   image_src?: string;
   image_alt?: string;
@@ -62,6 +65,9 @@ function toCompiledSlide(s: ApiSlide): CompiledSlide {
     calloutBody: s.callout_body,
     youtubeId: s.youtube_id,
     videoSrc: s.video_src,
+    videoSrc1080p: s.video_src_1080p,
+    videoPoster: s.video_poster,
+    videoCaptions: s.video_captions,
     durationSeconds: s.duration_seconds,
     imageSrc: s.image_src,
     imageAlt: s.image_alt,
