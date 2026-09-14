@@ -3141,13 +3141,13 @@ explicitly deferred here.
         mock users happened to satisfy the short-circuit either way. A
         hook-order warning in the test output was the only sign, and it
         reads as noise beside the passing count.
-- [ ] Frontend tests with `just uf src/components/passport` and
+- [x] Frontend tests with `just uf src/components/passport` and
       `just uf src/pages/passport`; Storybook tests with `just sbt`.
 
-### Where the work stands, 13 September
+### Where the work stands, 14 September
 
 Written for whoever picks this up next, in another worktree or another
-session. Phases 0 to 5 are done and merged; phase 6 has barely started.
+session. Phases 0 to 6 are done; everything left is phase 7.
 
 **All of the backend is on `main`**, by way of PR #655. That is the
 store, the record model, the API, rendering and PDF export, and the
@@ -3156,15 +3156,25 @@ invite token, invite and accept endpoints, the `external_assessor`
 profession, admin verify and revoke, and the authorisation matrix
 tests. Roughly thirty endpoints under `/api/passport`, all tested.
 
-**Nothing is visible in the application.** There were no files under
-`frontend/src` matching `passport` at all when phase 6 began, beyond the
-features-page entry above. No routes, no navigation entry, no API
-client.
+**Phase 6 is complete and on the branch**, not yet merged. That is the
+`vite:preloadError` handler, the API client mirroring all 33 backend
+functions, fifteen components with stories and tests, two new shared
+form fields, nine lazily-loaded pages with tests, and the navigation
+entry. The suite stands at 38 page tests, 159 component tests and 586
+Storybook tests.
 
-**The one thing that must come first** is the `vite:preloadError`
-handler in the next task. Nothing may be lazily loaded until it exists,
-and every passport page is to be lazily loaded, so it gates the rest of
-the phase rather than merely preceding it.
+**Three components could not be built**, because the routes they need
+were never written despite having schemas: `EvidenceUploader` and
+`CertificateUploader` want a signed-URL endpoint (the video pattern in
+`use-module-media.ts` is the model), and `PassportExportButtons` wants
+the export routes. `CertificateCard` is unblocked but was left with
+them. These are listed under deferred items.
+
+**One page is knowingly incomplete.** `PassportSignOffPage` resolves
+its record from the assessor's inbox, but the inbox carries no passport
+id, so the page renders the record and refuses to submit. The fix is a
+backend change — either the inbox returns the passport id, or sign-off
+is addressed by request id alone.
 
 **Things a fresh session will otherwise rediscover the hard way:**
 
