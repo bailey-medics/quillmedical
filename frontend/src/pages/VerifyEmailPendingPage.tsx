@@ -5,7 +5,6 @@
  * their email. Provides a resend button with rate limiting feedback.
  */
 
-/* eslint-disable no-restricted-syntax */
 // Auth pages use centred form layout, not Container
 
 import { useState } from "react";

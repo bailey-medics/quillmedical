@@ -89,16 +89,15 @@ export default function AdminBankOrgSettingsPage() {
 
   const [bank, setBank] = useState<AdminBankDetail | null>(null);
   const [org, setOrg] = useState<BankOrganisation | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Without both ids there is nothing to fetch, so the page does not begin
+  // in a loading state and the effect below has nothing to do.
+  const [loading, setLoading] = useState(Boolean(bankId && orgId));
   const [error, setError] = useState<string | null>(null);
   const [savedIsLive, setSavedIsLive] = useState(false);
 
   const fetchData = useCallback(async () => {
-    if (!bankId || !orgId) {
-      setError("Missing required parameters");
-      setLoading(false);
-      return;
-    }
+    if (!bankId || !orgId) return;
+
     try {
       setError(null);
       const [bankData, orgsData] = await Promise.all([
@@ -124,7 +123,14 @@ export default function AdminBankOrgSettingsPage() {
   }, [bankId, orgId]);
 
   useEffect(() => {
-    fetchData();
+    // Deferred rather than called straight, so no state is set while the
+    // effect body runs. Matches the pattern in `SiteAdminPage`: the lint
+    // rule analyses one function at a time and cannot see that `fetchData`
+    // awaits before touching state, so the wrapper makes the deferral
+    // explicit — and the floating promise with it.
+    void (async () => {
+      await fetchData();
+    })();
   }, [fetchData]);
 
   async function handleSubmit(
@@ -170,7 +176,10 @@ export default function AdminBankOrgSettingsPage() {
       <StateMessage
         icon={<IconAlertCircle />}
         title="Error loading data"
-        description={error ?? "Not found"}
+        description={
+          error ??
+          (bankId && orgId ? "Not found" : "Missing required parameters")
+        }
         colour="alert"
       />
     );

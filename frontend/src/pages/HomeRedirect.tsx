@@ -5,7 +5,6 @@
  * deployment), otherwise renders the patient-list Home page.
  */
 
-/* eslint-disable no-restricted-syntax */
 // Routing wrapper — delegates layout to Home component
 
 import { Navigate } from "react-router-dom";

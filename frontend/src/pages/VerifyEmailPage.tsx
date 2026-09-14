@@ -5,7 +5,6 @@
  * the user's email. Calls the backend to mark the email as verified.
  */
 
-/* eslint-disable no-restricted-syntax */
 // Auth pages use centred form layout, not Container
 
 import { useEffect, useState } from "react";

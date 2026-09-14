@@ -281,6 +281,13 @@ export default function Form<T extends FieldValues>({
     <FormContext.Provider value={contextValue}>
       <FormProvider {...methods}>
         <form
+          /*
+            eslint-disable-next-line react-hooks/refs -- `handleSubmit`
+            registers the callback rather than calling it: `handleValidated`
+            runs on submit, and the ref it writes is never touched during
+            render. The rule analyses one function at a time and cannot see
+            the deferral.
+          */
           onSubmit={methods.handleSubmit(handleValidated, handleInvalid)}
           noValidate
         >
