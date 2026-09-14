@@ -2255,11 +2255,13 @@ def get_module_media(
             MediaReferenceOut(
                 key=ref.key,
                 asset=_asset(ref.link) if ref.link else None,
+                awaiting_transcode=ref.is_awaiting_transcode,
             )
             for ref in inventory.references
         ],
         unattached=[_asset(link) for link in inventory.unattached],
         is_complete=inventory.is_complete,
+        is_servable=inventory.is_servable,
     )
 
 

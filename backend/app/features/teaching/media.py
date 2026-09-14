@@ -84,8 +84,37 @@ class MediaReference:
 
     @property
     def is_present(self) -> bool:
-        """Whether this reference has a file behind it."""
+        """Whether this reference has a file behind it.
+
+        The admin's question: has anyone uploaded anything for this key?
+        Deliberately not the learner's question — see ``is_servable``.
+        """
         return self.link is not None
+
+    @property
+    def is_servable(self) -> bool:
+        """Whether a learner could actually play this reference.
+
+        An upload is not yet a video. The transcode job produces what
+        the player asks for, and until it has run the processed bucket
+        holds nothing under this asset's name — so a module served in
+        that window puts a learner on a slide whose file is not there.
+
+        Kept apart from ``is_present`` because the two answer different
+        people. An admin who has uploaded needs to be told the job is
+        still running, not that their file is missing; a learner needs
+        the module hidden either way.
+        """
+        return self.link is not None and self.link.transcoded_at is not None
+
+    @property
+    def is_awaiting_transcode(self) -> bool:
+        """Uploaded, but the job has not recorded finishing.
+
+        The state the admin card needs a distinct row for, and the one
+        the model gained with ``transcoded_at``.
+        """
+        return self.link is not None and self.link.transcoded_at is None
 
 
 @dataclass(frozen=True)
@@ -103,18 +132,44 @@ class MediaInventory:
 
     @property
     def is_complete(self) -> bool:
-        """Whether every reference has a file.
+        """Whether every reference has a file uploaded against it.
 
-        An incomplete module is not served to learners at all — which is
-        what makes plain delete safe in the admin card, since deleting
-        cannot leave a learner with a broken slide.
+        The admin card's measure: has the person been asked for
+        everything the content references? It says nothing about whether
+        a learner could play them — ``is_servable`` is that question.
         """
         return all(ref.is_present for ref in self.references)
+
+    @property
+    def is_servable(self) -> bool:
+        """Whether every reference could actually be played.
+
+        The learner gate. Stricter than ``is_complete``: a module whose
+        uploads are all present but not yet transcoded is complete from
+        the admin's side and not yet playable from the learner's.
+
+        A module in that state is hidden rather than served with a slide
+        the player cannot fill — which is also what makes plain delete
+        safe in the admin card, since deleting cannot leave a learner
+        with a broken slide.
+        """
+        return all(ref.is_servable for ref in self.references)
 
     @property
     def missing_keys(self) -> list[str]:
         """References still waiting on an upload."""
         return [ref.key for ref in self.references if not ref.is_present]
+
+    @property
+    def awaiting_transcode_keys(self) -> list[str]:
+        """References uploaded but not yet transcoded.
+
+        Separate from ``missing_keys`` because the remedy differs: these
+        need waiting for, not uploading again.
+        """
+        return [
+            ref.key for ref in self.references if ref.is_awaiting_transcode
+        ]
 
 
 def get_media_inventory(
@@ -187,10 +242,18 @@ def module_media_is_complete(
 
     A module referencing no media is complete. That is most modules, and
     it is what keeps this gate invisible to content that never had video.
+
+    **An upload alone is not enough.** The player asks for the files the
+    transcode job produces, so a module whose uploads are linked but not
+    yet transcoded would put a learner on a slide whose video is not in
+    the processed bucket. The gate therefore reads ``is_servable``, not
+    ``is_complete`` — the admin card keeps the looser measure, because
+    "we are still processing it" and "you have not uploaded it" are
+    different things to tell the person who uploaded it.
     """
     keys = get_referenced_media_keys(module_id)
     if not keys:
         return True
 
     inventory = get_media_inventory(db, organisation_id, module_id, keys)
-    return inventory.is_complete
+    return inventory.is_servable

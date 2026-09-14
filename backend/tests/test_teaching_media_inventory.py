@@ -23,7 +23,21 @@ def _org(db: Session, name: str) -> Organisation:
     return org
 
 
-def _upload(db: Session, org_id: int, key: str, asset: str) -> ModuleMediaLink:
+def _upload(
+    db: Session,
+    org_id: int,
+    key: str,
+    asset: str,
+    *,
+    transcoded: bool = True,
+) -> ModuleMediaLink:
+    """An upload, transcoded by default.
+
+    Default true so the existing tests keep asserting what they were
+    written to assert — that a *usable* upload completes a module. The
+    window this parameter opens is the new one: uploaded, linked, and
+    not yet playable.
+    """
     link = ModuleMediaLink(
         organisation_id=org_id,
         question_bank_id="test-bank",
@@ -33,6 +47,7 @@ def _upload(db: Session, org_id: int, key: str, asset: str) -> ModuleMediaLink:
         content_type="video/mp4",
         size_bytes=1024,
         uploaded_at=datetime.now(UTC),
+        transcoded_at=datetime.now(UTC) if transcoded else None,
     )
     db.add(link)
     db.flush()
@@ -129,6 +144,78 @@ class TestMediaInventory:
 
         assert inv.is_complete
         assert inv.references == []
+
+
+class TestServableVersusComplete:
+    """An upload is not yet a video.
+
+    The transcode job produces what the player asks for, so between the
+    link being recorded and the job finishing there is a window where
+    the module looks finished to an admin and is unplayable to a
+    learner. These two measures are what keep those apart.
+    """
+
+    def test_an_upload_awaiting_transcode_is_present_not_servable(
+        self, db_session: Session
+    ):
+        org = _org(db_session, "Trust Waiting")
+        _upload(db_session, org.id, "lecture-01", "asset-1", transcoded=False)
+
+        inv = get_media_inventory(
+            db_session, org.id, "test-bank", ["lecture-01"]
+        )
+
+        # The admin uploaded it, so nothing is missing from their side.
+        assert inv.is_complete
+        assert inv.missing_keys == []
+        # The learner cannot play it, so the module stays hidden.
+        assert not inv.is_servable
+        assert inv.awaiting_transcode_keys == ["lecture-01"]
+
+    def test_a_transcoded_upload_is_both(self, db_session: Session):
+        org = _org(db_session, "Trust Ready")
+        _upload(db_session, org.id, "lecture-01", "asset-1")
+
+        inv = get_media_inventory(
+            db_session, org.id, "test-bank", ["lecture-01"]
+        )
+
+        assert inv.is_complete
+        assert inv.is_servable
+        assert inv.awaiting_transcode_keys == []
+
+    def test_a_missing_upload_is_neither(self, db_session: Session):
+        """And is not reported as awaiting a transcode.
+
+        The remedies differ — upload it, versus wait for it — so a key
+        with no file at all must not appear in the waiting list.
+        """
+        org = _org(db_session, "Trust Empty")
+
+        inv = get_media_inventory(
+            db_session, org.id, "test-bank", ["lecture-01"]
+        )
+
+        assert not inv.is_complete
+        assert not inv.is_servable
+        assert inv.missing_keys == ["lecture-01"]
+        assert inv.awaiting_transcode_keys == []
+
+    def test_one_awaiting_transcode_of_two_blocks_the_module(
+        self, db_session: Session
+    ):
+        """Every reference, not any: a half-ready module is not served."""
+        org = _org(db_session, "Trust Partial")
+        _upload(db_session, org.id, "lecture-01", "asset-1")
+        _upload(db_session, org.id, "lecture-02", "asset-2", transcoded=False)
+
+        inv = get_media_inventory(
+            db_session, org.id, "test-bank", ["lecture-01", "lecture-02"]
+        )
+
+        assert inv.is_complete
+        assert not inv.is_servable
+        assert inv.awaiting_transcode_keys == ["lecture-02"]
 
 
 class TestModuleMediaIsComplete:

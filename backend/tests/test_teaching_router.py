@@ -376,10 +376,15 @@ class TestQuestionBanks:
         detail = test_client.get("/api/teaching/question-banks/test-bank")
         assert detail.status_code == 404
 
-    def test_the_module_returns_once_the_media_is_linked(
+    def test_the_module_returns_once_the_media_is_playable(
         self, test_client, db_session, monkeypatch, tmp_path
     ):
-        """The gate lifts when the upload is linked, not before."""
+        """The gate lifts when the upload can actually be played.
+
+        Linking is not the moment. The transcode job produces what the
+        player asks for, so a link alone leaves the processed bucket
+        empty under that asset's name — see the sibling below.
+        """
         org = _make_teaching_org(db_session)
         educator = _make_educator(db_session, org)
         _seed_bank(db_session, org.id, educator.id)
@@ -394,6 +399,7 @@ class TestQuestionBanks:
                 content_type="video/mp4",
                 size_bytes=1024,
                 uploaded_at=datetime.now(UTC),
+                transcoded_at=datetime.now(UTC),
             )
         )
         db_session.commit()
@@ -414,6 +420,55 @@ class TestQuestionBanks:
 
         detail = test_client.get("/api/teaching/question-banks/test-bank")
         assert detail.status_code == 200
+
+    def test_an_upload_still_transcoding_keeps_the_module_hidden(
+        self, test_client, db_session, monkeypatch, tmp_path
+    ):
+        """The window between the upload landing and the job finishing.
+
+        Minutes long, and the module looks finished from the admin's
+        side throughout it. Serving it here would put a learner on a
+        slide whose video is not in the bucket yet, with nothing to
+        explain the failure.
+        """
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        _make_learner(db_session, org)
+        db_session.add(
+            ModuleMediaLink(
+                organisation_id=org.id,
+                question_bank_id="test-bank",
+                media_key="lecture-01",
+                asset_id="asset-1",
+                original_filename="lecture.mp4",
+                content_type="video/mp4",
+                size_bytes=1024,
+                uploaded_at=datetime.now(UTC),
+                # Linked, but the job has not recorded finishing.
+                transcoded_at=None,
+            )
+        )
+        db_session.commit()
+
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_QUESTION_BANK_PATH",
+            self._module_with_video_on_disk(tmp_path),
+        )
+        monkeypatch.setattr("app.config.settings.TEACHING_GCS_BUCKET", None)
+
+        test_client.post(
+            "/api/auth/login",
+            json={"username": "testlearner", "password": "Learner123!"},
+        )
+
+        listed = test_client.get("/api/teaching/question-banks")
+        assert listed.json() == []
+
+        # A 404 like every other refusal here, so "still processing" is
+        # indistinguishable from "not yours" and "no such module".
+        detail = test_client.get("/api/teaching/question-banks/test-bank")
+        assert detail.status_code == 404
 
     def test_get_bank_detail(self, test_client, db_session):
         org = _make_teaching_org(db_session)
@@ -1936,7 +1991,29 @@ class TestVideoSrcResolution:
         The alternatives must be absent rather than named: a filename
         that resolves to a file nobody wrote is a 404 the player cannot
         explain to the learner.
+
+        **The availability gate is stubbed out for this one test.** It
+        hides a module awaiting its transcode from learners, which is
+        correct and tested elsewhere — but it also refuses the request
+        before
+        resolution runs, so the behaviour asserted here is unreachable
+        through the route while the gate is live. The resolver is a
+        closure inside ``get_learning_content``, so there is no seam to
+        call it through instead.
+
+        The path is not dead code: a development machine has no
+        transcode job configured, so every link sits in this state and
+        this is what makes local video play at all.
+
+        Patched at ``media`` rather than on the router, because
+        ``get_learning_content`` imports the name inside the function on
+        every call — a router attribute would never be consulted.
         """
+        monkeypatch.setattr(
+            "app.features.teaching.media.module_media_is_complete",
+            lambda *_args, **_kwargs: True,
+        )
+
         slides = _slides_for_linked_video(
             test_client, db_session, monkeypatch, transcoded=False
         )
@@ -2570,7 +2647,22 @@ class TestModuleMedia:
         )
         monkeypatch.setattr("app.config.settings.TEACHING_GCS_BUCKET", None)
 
-    def _upload(self, db, org_id: int, key: str, asset: str) -> None:
+    def _upload(
+        self,
+        db,
+        org_id: int,
+        key: str,
+        asset: str,
+        *,
+        transcoded: bool = True,
+    ) -> None:
+        """An upload, transcoded by default.
+
+        Default true so these tests keep asserting what they were
+        written to assert — that a *playable* upload completes a
+        module. Pass false for the window between the link landing and
+        the job finishing.
+        """
         db.add(
             ModuleMediaLink(
                 organisation_id=org_id,
@@ -2581,6 +2673,7 @@ class TestModuleMedia:
                 content_type="video/mp4",
                 size_bytes=1024,
                 uploaded_at=datetime.now(UTC),
+                transcoded_at=datetime.now(UTC) if transcoded else None,
             )
         )
         db.flush()
@@ -2603,7 +2696,15 @@ class TestModuleMedia:
         assert resp.status_code == 200
         body = resp.json()
         assert body["is_complete"] is False
-        assert body["references"] == [{"key": "lecture-01", "asset": None}]
+        assert body["references"] == [
+            {
+                "key": "lecture-01",
+                "asset": None,
+                # Nothing uploaded, so nothing to wait for either. The
+                # admin needs "upload this", not "still processing".
+                "awaiting_transcode": False,
+            }
+        ]
 
     def test_a_linked_reference_reports_its_file(
         self, test_client, db_session, monkeypatch, tmp_path
@@ -2989,7 +3090,22 @@ class TestIncompleteModulesAreNotServed:
         )
         monkeypatch.setattr("app.config.settings.TEACHING_GCS_BUCKET", None)
 
-    def _upload(self, db, org_id: int, key: str, asset: str) -> None:
+    def _upload(
+        self,
+        db,
+        org_id: int,
+        key: str,
+        asset: str,
+        *,
+        transcoded: bool = True,
+    ) -> None:
+        """An upload, transcoded by default.
+
+        Default true so these tests keep asserting what they were
+        written to assert — that a *playable* upload completes a
+        module. Pass false for the window between the link landing and
+        the job finishing.
+        """
         db.add(
             ModuleMediaLink(
                 organisation_id=org_id,
@@ -3000,6 +3116,7 @@ class TestIncompleteModulesAreNotServed:
                 content_type="video/mp4",
                 size_bytes=1024,
                 uploaded_at=datetime.now(UTC),
+                transcoded_at=datetime.now(UTC) if transcoded else None,
             )
         )
         db.flush()
@@ -3396,6 +3513,9 @@ class TestVideoResolutionOnTheGcsPath:
                 content_type="video/mp4",
                 size_bytes=1024,
                 uploaded_at=datetime.now(UTC),
+                # Transcoded, or the availability gate hides the module
+                # before resolution is ever reached.
+                transcoded_at=datetime.now(UTC),
             )
         )
         db_session.commit()
@@ -3426,7 +3546,11 @@ class TestVideoResolutionOnTheGcsPath:
 
         assert resp.status_code == 200
         slides = resp.json()["slides"]
-        assert slides[0]["video_src"] == "asset1.mp4"
+        # The 720p rendition, not the original upload: this link is
+        # transcoded, so resolution returns what the job produced. What
+        # the test pins is that the name came from the link row rather
+        # than from anything on disk.
+        assert slides[0]["video_src"] == "asset1-720p.mp4"
 
     def test_a_module_with_an_unlinked_ref_is_hidden_not_broken(
         self, test_client, db_session, monkeypatch

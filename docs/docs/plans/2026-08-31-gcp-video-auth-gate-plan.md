@@ -1571,7 +1571,7 @@ Consequences to hold on to:
 - [ ] Captions are reviewed by the content author before a module goes `live` —
       Whisper output on clinical terminology needs a human pass. Surface review
       state on the admin video page.
-- [ ] **Do this next.** Reconcile the availability gate with transcoding. `module_media_is_complete`
+- [x] Reconcile the availability gate with transcoding. `module_media_is_complete`
       currently treats a linked asset as complete, so a module becomes visible
       the moment the upload is linked and before any rendition exists — a
       learner would reach a slide whose video is not there yet. The gate has to

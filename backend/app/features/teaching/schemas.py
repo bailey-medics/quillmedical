@@ -594,6 +594,11 @@ class MediaReferenceOut(BaseModel):
     key: str
     #: The linked upload, or None when nothing has been uploaded yet.
     asset: MediaAssetOut | None = None
+    #: Uploaded, but the transcode job has not recorded finishing.
+    #: Distinct from having no asset at all, because the remedy differs:
+    #: this needs waiting for, not uploading again. Optional, so the
+    #: change is additive.
+    awaiting_transcode: bool = False
 
 
 class MediaLinkIn(BaseModel):
@@ -626,6 +631,12 @@ class ModuleMediaOut(BaseModel):
     module_id: str
     references: list[MediaReferenceOut]
     unattached: list[MediaAssetOut]
-    #: Whether every reference has a file. An incomplete module is not
-    #: served to learners at all.
+    #: Whether every reference has a file uploaded against it. The
+    #: admin's measure: has everything the content references been
+    #: asked for?
     is_complete: bool
+    #: Whether a learner could actually play every reference. Stricter
+    #: than ``is_complete``: a module whose uploads are all present but
+    #: still transcoding is complete and not yet servable, and is hidden
+    #: from learners until it is. Optional, so the change is additive.
+    is_servable: bool = False
