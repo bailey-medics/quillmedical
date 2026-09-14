@@ -13,7 +13,25 @@ import os
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import google.cloud as _gc
 import pytest
+
+
+def _patch_storage(storage_module: MagicMock):
+    """Make ``from google.cloud import storage`` resolve to a mock.
+
+    Both the ``sys.modules`` entry and the attribute on the parent
+    package, because once ``google.cloud`` has been imported that import
+    form reads the attribute and never consults ``sys.modules``. Patching
+    only the latter passes in isolation and fails once any earlier test
+    has imported the real module — which is exactly what happened here,
+    with ``test_teaching_storage.py`` running first in the full suite.
+    """
+    return (
+        patch.dict("sys.modules", {"google.cloud.storage": storage_module}),
+        patch.object(_gc, "storage", storage_module, create=True),
+    )
+
 
 BASE_ENV = {
     "TRANSCODE_ORG_ID": "7",
@@ -62,9 +80,9 @@ def fake_gcs():
     storage_module = MagicMock()
     storage_module.Client.return_value = client
 
-    with patch.dict("sys.modules", {"google.cloud.storage": storage_module}):
-        with patch("google.cloud.storage.Client", return_value=client):
-            yield uploaded
+    modules_patch, attr_patch = _patch_storage(storage_module)
+    with modules_patch, attr_patch:
+        yield uploaded
 
 
 @pytest.fixture
@@ -205,19 +223,18 @@ class TestSourceCleanup:
             source if name == "source-bucket" else processed
         )
 
-        # Patched through sys.modules, matching the fake_gcs fixture.
-        # Patching `google.cloud.storage.Client` by name would force a
-        # real import of that module and leave it in sys.modules,
-        # shadowing the fixture's mock for every later test in the file.
+        # Patched the same way as the fake_gcs fixture. Patching
+        # `google.cloud.storage.Client` by name would force a real
+        # import of that module, which is what contaminates every later
+        # test — see _patch_storage.
         storage_module = MagicMock()
         storage_module.Client.return_value = client
+        modules_patch, attr_patch = _patch_storage(storage_module)
 
         with patch.dict(os.environ, BASE_ENV, clear=False):
             from scripts.transcode_cli import transcode
 
-            with patch.dict(
-                "sys.modules", {"google.cloud.storage": storage_module}
-            ):
+            with modules_patch, attr_patch:
                 assert transcode() == 1
 
         source_blob.delete.assert_not_called()
@@ -298,17 +315,26 @@ class TestValidation:
                 transcode()
             assert exc.value.code == 1
 
-    def test_fails_when_the_source_object_is_absent(self, fake_gcs) -> None:
+    def test_fails_when_the_source_object_is_absent(self) -> None:
+        blob = MagicMock()
+        blob.exists.return_value = False
+        bucket = MagicMock()
+        bucket.blob.return_value = blob
+        client = MagicMock()
+        client.bucket.return_value = bucket
+
+        # Not `patch("google.cloud.storage.Client")`: patching by name
+        # imports the real module to reach the attribute, and leaves it
+        # bound on the parent package for every later test. That is the
+        # fault that broke the full-suite run — see _patch_storage.
+        storage_module = MagicMock()
+        storage_module.Client.return_value = client
+        modules_patch, attr_patch = _patch_storage(storage_module)
+
         with patch.dict(os.environ, BASE_ENV, clear=False):
             from scripts.transcode_cli import transcode
 
-            with patch("google.cloud.storage.Client") as client_cls:
-                blob = MagicMock()
-                blob.exists.return_value = False
-                bucket = MagicMock()
-                bucket.blob.return_value = blob
-                client_cls.return_value.bucket.return_value = bucket
-
+            with modules_patch, attr_patch:
                 assert transcode() == 1
 
 
