@@ -11,6 +11,7 @@
 
 import type {
   CompetencyState,
+  Logbook,
   Registration,
   SignOff,
   Verification,
@@ -154,4 +155,72 @@ export const changedVerification: Verification = {
   ...unchangedVerification,
   unchanged: false,
   recomputed_hash: "sha256:0000deadbeef",
+};
+
+/**
+ * A competency's logbook. The entries are deliberately out of clinical
+ * order — logged in one sitting, performed across three weeks — so a
+ * test can tell whether the table sorts by `performed_on` rather than by
+ * the order the server returned them.
+ *
+ * `count` is 38 while only three entries are listed: the API reports the
+ * true total and a page may hold a subset, so the count must come from
+ * the server rather than from `entries.length`.
+ */
+export const logbook: Logbook = {
+  competency: "perform_bronchoscopy",
+  count: 38,
+  entries: [
+    {
+      filename: "2026-03-21-143207.yaml",
+      competency: "perform_bronchoscopy",
+      performed_on: "2026-03-18",
+      setting: "Southmead Hospital",
+      supervision: "independent",
+      supervisor: null,
+      indication: "Persistent cough, abnormal imaging",
+      outcome: "Successful",
+      notes: null,
+      also_counts_towards: [],
+      attachments: [],
+    },
+    {
+      filename: "2026-03-21-143512.yaml",
+      competency: "perform_bronchoscopy",
+      performed_on: "2026-03-10",
+      setting: "Bristol Royal Infirmary",
+      supervision: "supervised",
+      supervisor: "Dr Amara Okonkwo",
+      indication: "Suspected endobronchial lesion",
+      outcome: "Successful. Biopsies taken from right upper lobe.",
+      notes: null,
+      also_counts_towards: [],
+      attachments: [],
+    },
+    {
+      filename: "2026-03-21-144001.yaml",
+      competency: "perform_bronchoscopy",
+      performed_on: "2026-03-21",
+      setting: null,
+      supervision: null,
+      supervisor: null,
+      indication: null,
+      outcome: "Abandoned — patient could not tolerate the procedure.",
+      notes: "Rebooked with sedation.",
+      also_counts_towards: [],
+      attachments: [],
+    },
+  ],
+};
+
+export const singleEntryLogbook: Logbook = {
+  competency: "perform_thoracic_ultrasound",
+  count: 1,
+  entries: [logbook.entries[1]],
+};
+
+export const emptyLogbook: Logbook = {
+  competency: "prescribe_sact",
+  count: 0,
+  entries: [],
 };

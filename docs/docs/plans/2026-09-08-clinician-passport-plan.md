@@ -2929,6 +2929,26 @@ explicitly deferred here.
           for the absence of an assessor _field_ and for exactly one
           checkbox, which is what "nobody countersigns this" actually
           means in markup.
+      - [x] **`LogbookTable`, the first of the two tables.** A
+        competency's entries and how many there are, composed from
+        `DataTable`. Twelve tests.
+        - **The count comes from the server, not `entries.length`.** The
+          API reports the true total and a page may hold a subset, so
+          deriving it from the array would quietly under-report the day
+          pagination arrives. The fixture pins this: `count: 38` with
+          three entries listed.
+        - **Four tests guard the absence of a target** — no denominator,
+          no percentage, no progress bar, and nothing saying "complete"
+          or "remaining". This is the component where a well-meaning
+          "38 of 50" is most tempting, so the guards are heavier here
+          than elsewhere.
+        - **Entries sort by `performed_on`, not by filename.** The server
+          names each file for the moment it was written, so the raw order
+          is logging order — five logged on a Friday evening would
+          otherwise read as five procedures on a Friday. The fixture is
+          deliberately out of clinical order so the test means something.
+        - **Supervision renders as recorded and never ranked**, with a
+          dash where nothing was given.
       - **Every Mantine `SelectField` is `role="combobox"`, not
         `textbox`.** Caught three times now across the passport forms.
         Query it with `getByRole("combobox")`, and index
