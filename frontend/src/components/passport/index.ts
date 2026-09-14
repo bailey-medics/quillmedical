@@ -11,6 +11,8 @@ export { default as CompetencyRow } from "./CompetencyRow";
 export { default as CompetencySummary } from "./CompetencySummary";
 export { default as CpdEntryForm } from "./CpdEntryForm";
 export { default as LogbookEntryForm } from "./LogbookEntryForm";
+export { default as ReflectionEditor } from "./ReflectionEditor";
+export { ANONYMISATION_DECLARATION } from "./ReflectionEditor";
 export { default as RegistrationBadge } from "./RegistrationBadge";
 export { default as SignOffCard } from "./SignOffCard";
 export { default as SignOffForm } from "./SignOffForm";

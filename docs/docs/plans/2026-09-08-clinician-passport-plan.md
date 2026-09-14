@@ -2905,6 +2905,30 @@ explicitly deferred here.
           later at appraisal.
         - Same self-declared guards as the logbook: no declaration, no
           assessor, and an anonymisation reminder on the notes.
+      - [x] **`ReflectionEditor`, the last self-declared record.**
+        Frontmatter fields then the writing, with the anonymisation
+        declaration as a required tick. Thirteen tests.
+        - **The holder-only rule is stated in the interface**, not just
+          enforced at the API: a `StateMessage` says nobody else can read
+          it and names who is excluded. Somebody deciding how frankly to
+          write deserves to be told who can read it rather than having to
+          infer it, and written reflection can be disclosed in legal
+          proceedings.
+        - **The anonymisation declaration names what must not appear** —
+          no name, date of birth, NHS number, hospital number, "and no
+          detail so unusual that it would single somebody out". Firmer
+          than the logbook's passive note, as the plan asks, and the last
+          clause covers the subtle case: no identifier, but an
+          unmistakable presentation.
+        - **The tick is required**, mirroring the API, which writes
+          nothing without `anonymised_confirmed`. A test pins that the
+          button stays disabled without it.
+        - **A test asserting the word "assessor" was absent had to
+          change.** The holder-only panel says reflections are not shown
+          to assessors, so the word legitimately appears. It now checks
+          for the absence of an assessor _field_ and for exactly one
+          checkbox, which is what "nobody countersigns this" actually
+          means in markup.
       - **Every Mantine `SelectField` is `role="combobox"`, not
         `textbox`.** Caught three times now across the passport forms.
         Query it with `getByRole("combobox")`, and index
