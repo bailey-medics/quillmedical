@@ -669,6 +669,43 @@ rebase:
     fi
 
 
+# Refuse to run when HEAD is detached, and say how to get back.
+#
+# git-spice reports this as "get current branch: in detached HEAD state",
+# which is accurate and says nothing about the cure. The usual way to end up
+# here is an interrupted `branch create`: it checks the new branch out before
+# it commits, so quitting the editor at the commit message leaves HEAD on a
+# bare SHA with the working tree untouched. `git switch <branch>` reattaches
+# and carries the changes across.
+_branch-guard:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    if git symbolic-ref -q HEAD >/dev/null 2>&1; then
+        exit 0
+    fi
+    sha=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+    echo "" >&2
+    echo "✗ HEAD is detached at ${sha} - no branch is checked out." >&2
+    echo "" >&2
+    # A branch whose tip is this commit is almost certainly the one that was
+    # being worked on, so name it rather than making the reader go looking.
+    candidates=$(git for-each-ref --format='%(refname:short)' \
+        --points-at HEAD refs/heads/ 2>/dev/null | head -3)
+    if [ -n "${candidates}" ]; then
+        echo "  This commit is the tip of:" >&2
+        echo "${candidates}" | sed 's/^/      /' >&2
+        echo "" >&2
+        echo "  Reattach with:" >&2
+        echo "${candidates}" | head -1 | sed 's/^/      git switch /' >&2
+    else
+        echo "  Reattach with: git switch <branch>" >&2
+    fi
+    echo "" >&2
+    echo "  Uncommitted changes travel with you - nothing is lost." >&2
+    echo "" >&2
+    exit 1
+
+
 # Resolve the git-spice binary, or explain how to get one.
 #
 # Homebrew installs it as `git-spice`, not `gs` as the upstream docs use, and
@@ -796,7 +833,22 @@ stack-new name="" message="":
         echo "    just sn video-quality \"feat(teaching): add quality switch\"" >&2
         exit 1
     fi
+    just _branch-guard
     gs=$(just _git-spice)
+
+    # spice.branchCreate.prefix already adds `feature/`, so a name given as
+    # `feature/x` would become `feature/feature/x`. That does not error - it
+    # simply produces a daft branch and a daft pull request title - and every
+    # branch here is named feature/something, so including it is the natural
+    # guess rather than a careless one. Strip it and carry on.
+    name="{{name}}"
+    case "${name}" in
+        feature/*)
+            name="${name#feature/}"
+            echo "Note: dropped the feature/ prefix - it is added automatically."
+            ;;
+    esac
+
     # The prefix config makes this feature/<name>, which branch protection
     # requires; passing the bare name keeps the recipe readable.
     #
@@ -810,7 +862,7 @@ stack-new name="" message="":
     # cannot answer it - a script, a CI job, an agent session - which is
     # the same failure that killed the VS Code panel on an uninitialised
     # repository.
-    "${gs}" branch create --all --message "{{message}}" "{{name}}"
+    "${gs}" branch create --all --message "{{message}}" "${name}"
 
 
 alias sr := stack-restack
@@ -818,6 +870,7 @@ alias sr := stack-restack
 stack-restack:
     #!/usr/bin/env bash
     set -euo pipefail
+    just _branch-guard
     gs=$(just _git-spice)
     # `upstack restack`, not `stack restack`: git-spice keeps its state in a
     # ref shared by every worktree of this repository, and stack-wide commands
@@ -832,6 +885,7 @@ alias ss := stack-submit
 stack-submit:
     #!/usr/bin/env bash
     set -euo pipefail
+    just _branch-guard
     gs=$(just _git-spice)
     # Draft is explicit rather than left to the default. Every pull request
     # here must open as a draft: the heavy CI tier and the four gate checks
