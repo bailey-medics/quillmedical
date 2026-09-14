@@ -4,6 +4,7 @@
 **Status:** Investigated, then parked. Nothing below was adopted.
 
 1st change
+2nd change
 
 ## Outcome: wait for GitHub's stacks to mature
 
@@ -900,7 +901,7 @@ alone and verify it before touching branch protection.
       `initialise-repo`. Done 2026-09-14: it installs git-spice when
       absent, links the binary directly rather than re-running the
       `brew link` that fails here, runs `repo init --trunk main --remote
-  origin` only when `refs/spice/data` is absent, and sets both
+origin` only when `refs/spice/data` is absent, and sets both
       `spice.branchCreate.prefix` and `spice.submit.draft`. Idempotent,
       because `just i` runs per worktree while the state ref is shared
       by all of them.
