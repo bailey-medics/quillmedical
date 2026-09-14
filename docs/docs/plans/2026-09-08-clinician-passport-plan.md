@@ -2814,6 +2814,29 @@ explicitly deferred here.
         - **The reflection field carries the anonymisation reminder** in
           its description, since reflections are one of only two places
           patient data could enter a passport.
+      - [x] **`LogbookEntryForm`, the first self-declared record.** One
+        procedure as the holder recorded it. Twelve tests.
+        - **Nothing implies a countersignature.** No declaration
+          checkbox, no assessor field, no target and no progress — a
+          logbook proves activity, not competence, and it is the sign-off
+          that turns evidence into a conclusion. Three tests pin those
+          absences, because they are what a later well-meaning addition
+          would quietly reintroduce.
+        - **`outcome` is free text, never a success flag.** An abandoned
+          attempt belongs in the record, and a logbook showing only
+          successes is worth less to everyone reading it.
+        - **Supervision is recorded, never ranked.** Both states are
+          offered and the field is clearable; a supervised entry is a
+          different fact, not a lesser one.
+        - **Only the date is required.** The rest is detail the holder
+          adds where it is worth adding, so a Friday-evening batch of
+          five is not a form-filling exercise.
+        - **Two anonymisation reminders**, on the indication and the
+          notes, since both invite writing about a patient.
+      - **Every Mantine `SelectField` is `role="combobox"`, not
+        `textbox`.** Caught three times now across the passport forms.
+        Query it with `getByRole("combobox")`, and index
+        `getAllByRole("combobox")` where a form has more than one.
       - **Pre-existing: `ErrorMessage` produces invalid HTML in every
         form field.** Mantine renders the error slot inside a `<p>` and
         `ErrorMessage` puts a `<div>` in it, so React warns "`<p>` cannot
