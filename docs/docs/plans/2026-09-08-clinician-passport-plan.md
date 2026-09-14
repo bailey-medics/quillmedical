@@ -3103,16 +3103,44 @@ explicitly deferred here.
         whatever we do. The point was never the bytes — it was proving
         the pattern on a doubly-gated subtree with no users, and that is
         what the nine chunks demonstrate.
-- [ ] Prove the split in the build output rather than in the diff: a
+- [x] Prove the split in the build output rather than in the diff: a
       passport chunk exists, `index.html` does not reference it, and the
       entry chunk is smaller. Record the entry chunk gzipped before and
       after, and the passport chunk's size, in this plan and in the
       `vite.config.ts` comment beside `keepNames` if the shape matches.
+      Done — the figures are in the measurement entry above. Not added
+      to the `keepNames` comment: that one records a trade-off inside a
+      single config option, and a nine-chunk split across a route
+      subtree is not the same shape.
       Baseline on 10 September, before any passport code: entry chunk
       1,106 kB raw, 309 kB gzipped, across 51 statically imported
       pages.
-- [ ] Add the passport entry to navigation for users holding
+- [x] Add the passport entry to navigation for users holding
       `access_clinician_passport`.
+      - **The entry asks both questions the route asks**, unlike
+        teaching, which gates its nav entry on the feature alone and only
+        varies its children by competency. The passport routes carry
+        `RequireFeature` _and_ `RequireCompetency`, so an entry shown on
+        the feature alone would offer some users a route that answers
+        404. Three tests pin it: shown with both, hidden with the feature
+        alone, hidden with neither.
+      - **`IconEPassport` registered** in `appIcons.ts` and added to
+        `NavIcon`'s name allowlist. Nothing in the existing sixteen
+        fitted: `book` already means teaching material, and
+        `IconShieldCheck` already means a verified registration in
+        `RegistrationBadge`.
+      - **Two errors the build caught and the tests did not.**
+        `useHasFeature(...) && useHasCompetency(...)` short-circuits the
+        second hook, so the hook order changes with the feature flag —
+        `react-hooks/rules-of-hooks`. Both are now called
+        unconditionally and combined afterwards. And `appIcons.ts` needs
+        an icon added in **three** places — the import, the `export`
+        block and `iconCatalogue` — where adding two of the three
+        compiles locally and fails the build.
+      - **The tests passed while the hook bug was live**, because both
+        mock users happened to satisfy the short-circuit either way. A
+        hook-order warning in the test output was the only sign, and it
+        reads as noise beside the passing count.
 - [ ] Frontend tests with `just uf src/components/passport` and
       `just uf src/pages/passport`; Storybook tests with `just sbt`.
 

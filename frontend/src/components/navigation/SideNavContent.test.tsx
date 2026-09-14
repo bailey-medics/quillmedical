@@ -46,6 +46,23 @@ const mockUsers: Record<string, User> = {
     roles: ["Clinician"],
     clinical_services_enabled: false,
   },
+  passport_holder: {
+    id: "7",
+    username: "passport.holder",
+    email: "passport@example.com",
+    roles: ["Clinician"],
+    competencies: ["access_clinician_passport"],
+    enabled_features: ["passport"],
+    clinical_services_enabled: true,
+  },
+  passport_feature_only: {
+    id: "8",
+    username: "passport.feature.only",
+    email: "feature.only@example.com",
+    roles: ["Clinician"],
+    enabled_features: ["passport"],
+    clinical_services_enabled: true,
+  },
   admin_no_clinical: {
     id: "6",
     username: "admin.teaching",
@@ -497,6 +514,38 @@ describe("SideNavContent Component", () => {
         expect(screen.getByText("Settings")).toBeInTheDocument();
         expect(screen.getByText("Logout")).toBeInTheDocument();
       });
+    });
+  });
+
+  describe("Passport", () => {
+    it("shows Passport to somebody holding the feature and the competency", async () => {
+      renderWithAuth(<SideNavContent />, "passport_holder");
+
+      await waitFor(() => {
+        expect(screen.getByText("Passport")).toBeInTheDocument();
+      });
+    });
+
+    it("hides Passport when the feature is on but the competency is missing", async () => {
+      // The link asks both questions the route asks. Showing it on the
+      // feature alone would offer a route that answers 404.
+      renderWithAuth(<SideNavContent />, "passport_feature_only");
+
+      await waitFor(() => {
+        expect(screen.getByText("Settings")).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText("Passport")).not.toBeInTheDocument();
+    });
+
+    it("hides Passport when the organisation does not have the feature", async () => {
+      renderWithAuth(<SideNavContent />, "staff");
+
+      await waitFor(() => {
+        expect(screen.getByText("Settings")).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText("Passport")).not.toBeInTheDocument();
     });
   });
 });

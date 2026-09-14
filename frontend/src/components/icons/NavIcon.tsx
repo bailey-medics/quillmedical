@@ -18,6 +18,7 @@ import {
   IconBuildingCommunity,
   IconBuildingHospital,
   IconChalkboardTeacher,
+  IconEPassport,
   IconBook,
   IconCurrencyPound,
   IconDatabase,
@@ -37,6 +38,7 @@ type IconName =
   | "building-community"
   | "building-hospital"
   | "teaching"
+  | "passport"
   | "book"
   | "pricing"
   | "database"
@@ -68,6 +70,7 @@ const iconMap = {
   "building-community": IconBuildingCommunity,
   "building-hospital": IconBuildingHospital,
   teaching: IconChalkboardTeacher,
+  passport: IconEPassport,
   book: IconBook,
   pricing: IconCurrencyPound,
   database: IconDatabase,
