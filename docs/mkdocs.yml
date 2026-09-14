@@ -140,7 +140,6 @@ nav:
           - Schemas: code/fastapi/schemas.md
           - Security: code/fastapi/security.md
           - CBAC: code/fastapi/cbac.md
-          - System Permissions: code/fastapi/system_permissions.md
           - FHIR Client: code/fastapi/fhir_client.md
           - EHRbase Client: code/fastapi/ehrbase_client.md
           - Email Send: code/fastapi/email_send.md

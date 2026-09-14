@@ -15,7 +15,6 @@ This section contains automatically generated documentation from the FastAPI bac
 
 - [Security](security.md) - Authentication and security utilities
 - [CBAC](cbac.md) - Competency-based access control
-- [System Permissions](system_permissions.md) - Permission hierarchy
 
 ## Integrations
 
