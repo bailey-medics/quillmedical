@@ -319,6 +319,10 @@ initialise-repo:
     git config core.hooksPath .husky
     # The only package.json is the frontend's; the repository root has none.
     (cd frontend && yarn install)
+    # Installs git-spice if missing, and initialises it. Idempotent, which
+    # matters because this recipe runs per worktree while git-spice's state
+    # is one ref shared by all of them.
+    just stack-init
     just aj
 
 
@@ -663,6 +667,161 @@ rebase:
         git rebase main
         git push --force-with-lease
     fi
+
+
+# Resolve the git-spice binary, or explain how to get one.
+#
+# Homebrew installs it as `git-spice`, not `gs` as the upstream docs use, and
+# its `brew link` step is all-or-nothing: on this machine it aborted on an
+# unwritable fish completions directory and left nothing on PATH while still
+# reporting the formula as installed. So check for the binary rather than
+# trusting the install, and say exactly how to fix it.
+_git-spice:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if command -v git-spice >/dev/null 2>&1; then
+        command -v git-spice
+        exit 0
+    fi
+    # The Cellar copy works even when the symlink is missing.
+    for candidate in /usr/local/opt/git-spice/bin/git-spice \
+                     /opt/homebrew/opt/git-spice/bin/git-spice; do
+        if [ -x "${candidate}" ]; then
+            echo "${candidate}"
+            exit 0
+        fi
+    done
+    echo "git-spice not found. Install it with:" >&2
+    echo "    brew install git-spice" >&2
+    echo "If brew says it is installed, its link step probably failed:" >&2
+    echo "    ln -sf /usr/local/opt/git-spice/bin/git-spice /usr/local/bin/git-spice" >&2
+    exit 1
+
+
+alias si := stack-init
+# Install git-spice if missing and initialise it for this repository [git-spice]
+stack-init:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    # Idempotent throughout: `just i` calls this, and `just i` is run once per
+    # worktree while git-spice's state lives in a ref shared by all of them.
+    # Every step below therefore checks before acting.
+
+    if ! command -v git-spice >/dev/null 2>&1 \
+        && [ ! -x /usr/local/opt/git-spice/bin/git-spice ] \
+        && [ ! -x /opt/homebrew/opt/git-spice/bin/git-spice ]; then
+        if ! command -v brew >/dev/null 2>&1; then
+            echo "git-spice is missing and Homebrew is not installed." >&2
+            echo "See https://abhinav.github.io/git-spice/install/" >&2
+            exit 1
+        fi
+        echo "Installing git-spice..."
+        brew install git-spice
+    fi
+
+    # Homebrew's link step is all-or-nothing. It has already failed here on an
+    # unwritable fish completions directory, which left the formula installed
+    # and nothing on PATH, so link the binary directly rather than re-running
+    # `brew link` and hitting the same wall.
+    if ! command -v git-spice >/dev/null 2>&1; then
+        for prefix in /usr/local /opt/homebrew; do
+            if [ -x "${prefix}/opt/git-spice/bin/git-spice" ] && [ -w "${prefix}/bin" ]; then
+                ln -sf "${prefix}/opt/git-spice/bin/git-spice" "${prefix}/bin/git-spice"
+                echo "Linked git-spice into ${prefix}/bin"
+                break
+            fi
+        done
+    fi
+
+    gs=$(just _git-spice)
+
+    # --trunk and --remote are not optional. Without them git-spice asks which
+    # branch is trunk, and anything that cannot answer a prompt - the VS Code
+    # panel, a CI job, an agent session - dies with "not allowed to prompt for
+    # input" instead.
+    if git show-ref --quiet refs/spice/data; then
+        echo "git-spice already initialised (refs/spice/data exists)"
+    else
+        "${gs}" repo init --trunk main --remote origin
+    fi
+
+    # Branch protection rejects anything outside feature/, hotfix/, copilot/
+    # and renovate/, and `repo init` does not set this.
+    git config spice.branchCreate.prefix "feature/"
+
+    # Belt and braces with `just ss`: every pull request must open as a draft
+    # or it never gets the heavy CI tier or the four gate checks.
+    git config spice.submit.draft true
+
+    echo "git-spice ready. Run 'just sl' to see the stack."
+
+
+alias sl := stack-log
+# Show the current stack of branches [git-spice]
+stack-log:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    gs=$(just _git-spice)
+    "${gs}" log short
+
+
+alias sn := stack-new
+# Start a new branch stacked on the current one, committing staged changes [git-spice]
+stack-new name="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ -z "{{name}}" ]; then
+        echo "Usage: just sn <short-name>" >&2
+        echo "Creates feature/<short-name> stacked on the current branch." >&2
+        exit 1
+    fi
+    gs=$(just _git-spice)
+    # The prefix config makes this feature/<name>, which branch protection
+    # requires; passing the bare name keeps the recipe readable.
+    "${gs}" branch create "{{name}}"
+
+
+alias sr := stack-restack
+# Rebase the branches above this one after changing it [git-spice]
+stack-restack:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    gs=$(just _git-spice)
+    # `upstack restack`, not `stack restack`: git-spice keeps its state in a
+    # ref shared by every worktree of this repository, and stack-wide commands
+    # are not worktree-scoped upstream yet, so a bare `stack restack` reaches
+    # branches belonging to another worktree. This touches only what sits
+    # above the current branch.
+    "${gs}" upstack restack
+
+
+alias ss := stack-submit
+# Open or update the pull request for this branch, as a draft [git-spice]
+stack-submit:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    gs=$(just _git-spice)
+    # Draft is explicit rather than left to the default. Every pull request
+    # here must open as a draft: the heavy CI tier and the four gate checks
+    # fire on ready_for_review and synchronize, never on opened, so one
+    # created ready for review gets none of them and hangs on "Expected -
+    # Waiting for status to be reported".
+    #
+    # One branch, not the stack: submitting the stack is what the VS Code
+    # extension's "Submit Stack" button does, and it passes --no-draft.
+    "${gs}" branch submit --draft
+
+
+alias sy := stack-sync
+# Drop merged branches and re-target the rest onto main [git-spice]
+stack-sync:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    gs=$(just _git-spice)
+    # Run this after a pull request merges: it notices the merge, deletes the
+    # branch, and re-points whatever sat above it at main.
+    "${gs}" repo sync
 
 
 alias pi := poetry-install
