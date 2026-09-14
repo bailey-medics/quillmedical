@@ -993,3 +993,165 @@ merge` exist — the latter is Graphite's "merge everything below"
   pull request that hangs with nothing in the Actions tab to explain it.
   One deliberate two-branch experiment costs an afternoon; discovering
   the same facts inside a six-deep stack costs more.
+
+---
+
+## Revisited: GitHub stacks with a local CLI wrapper
+
+**Date:** 2026-09-14, later the same day
+**Status:** Adopted. Tooling built, not yet used on real work.
+
+git-spice is dropped. Graphite was tried and dropped too — it does not fit
+the pull request comments, the breaking-change gates or the workflow
+layout here. What remains is GitHub's own native stacks, which is where
+the plan above already pointed, and the decision is to adopt them now
+rather than wait for a VS Code extension.
+
+The reason the wait no longer makes sense: stacks are for one specific
+job here — an LLM builds a feature unattended, and the stack is what
+makes the result reviewable line by line the next morning. That is
+terminal work already. An extension would be pleasant, but nothing about
+the job is blocked without one.
+
+### What the earlier assessment got wrong
+
+The sections above rejected native stacks on two grounds. Both were
+checked against `gh stack` v0.1.1 on 2026-09-14 and **both have been
+fixed upstream** since they were written:
+
+- **Drafts.** The plan warned that a pull request opened ready for review
+  never gets the heavy CI tier or the four gate contexts, because those
+  fire on `ready_for_review` and `synchronize` and never on `opened`.
+  `gh stack submit --auto` now opens every new pull request as a draft,
+  with `--open` as the opt-out. The gate is safe by default.
+
+- **The merge queue.** `gh stack merge` is now queue-aware: "If the base
+  branch uses a merge queue, the stack is added to the queue". Issue #444
+  is still open, but it needs a stack large enough to overflow a merge
+  group, and merging one pull request at a time cannot reach it.
+
+### What is still broken, and it is the worktree handling
+
+Four open issues, all in the same place, and the important one was
+**reproduced here on 2026-09-14** rather than taken from the tracker:
+
+- **`gh stack rebase` reports success after doing nothing (#35).** Given a
+  stack branch checked out in another worktree, it prints the git error,
+  skips that branch, and **still exits 0**. The branch is left un-rebased.
+  Anything chaining `rebase && submit` would push a stack it believed was
+  rebased and was not.
+
+  This is the same silent-success failure class as the stale-worktree test
+  runs recorded in `CLAUDE.md` — the ones that produced a "full suite
+  green" claim that had to be retracted. It is the single reason the
+  recipes below guard rather than simply wrap.
+
+- **Stack state is worktree-local (#459).** It lives at
+  `$(git rev-parse --git-dir)/gh-stack`, which in a worktree resolves to
+  `.git/worktrees/<name>/gh-stack`. Other worktrees cannot see it, and
+  `git worktree remove` deletes it. Confirmed directly: a stack created in
+  one checkout was invisible from a sibling worktree.
+
+- **`gh stack sync` fails on worktrees (#87)**, and **`init` can write
+  `branch.<name>.remote = .` (#480)**, which makes a later submit report a
+  push that never happened. #480 did not reproduce here.
+
+### Decisions
+
+- **Adopt GitHub native stacks, driven by `just` recipes.** The web
+  interface is good and the CLI is adequate; the recipes exist to make the
+  CLI safe rather than to hide it. No VS Code extension is waited on.
+
+- **One stack lives in one worktree.** Forced by #459 rather than chosen:
+  the state is worktree-local and dies with the worktree. It costs
+  nothing, because a stack is one feature and a worktree already holds one
+  plan's work. The alternative — symlinking the state file into the common
+  git directory, which is the fix upstream is weighing — was rejected: it
+  is an unsupported layout for a tool on v0.1.1 shipping monthly, and a
+  format change would corrupt a stack at the worst moment.
+
+- **Guard hard, do not warn.** Every stack operation refuses outright when
+  a stack branch is checked out in another worktree, naming the branch and
+  the worktree. Warning and continuing was considered and rejected: the
+  failure it guards against is one that already reports success, so a
+  warning would be one more line of output above a green tick.
+
+- **Verify the rebase afterwards as well.** `gh stack rebase` exiting 0
+  is not evidence it worked, so `just str` re-reads the stack and fails if
+  any branch still needs a rebase. `gh stack view --json` reports
+  `needsRebase` correctly for exactly the branch a silent skip leaves
+  behind — confirmed in the same experiment that reproduced #35.
+
+- **Two log recipes, not one.** `just stl` is local-only and instant;
+  `just stll` joins pull request and CI state in one `gh pr list` call.
+  Kept separate for now rather than picking one, to see which gets used.
+
+- **GitHub is the recovery path.** If a worktree is lost with its stack
+  state, `gh stack checkout <n>` re-fetches the stack. This works only
+  once two or more pull requests exist, so it is a backstop, not a plan.
+
+- **Merging stays a human decision.** `gh stack merge` is not wrapped in
+  any recipe. Unchanged from the rules above, and from `/crp`.
+
+### What was built
+
+- **`scripts/stack-status.py`** — draws the stack, joining two things
+  `gh stack view` cannot know: which branches another worktree holds
+  (from `git worktree list --porcelain`), and, with `--prs`, the pull
+  request number, draft state and a CI roll-up (one `gh pr list` call for
+  the whole stack). `--check` exits 2 when a branch is held elsewhere,
+  which is what the guard reads.
+
+- **Justfile recipes**, all prefixed `st` so they sit apart from the
+  container recipes (`sd`, `sb`, `sc`) that already own the short `s`
+  names — `stn` (start a stack), `sta` (add a branch on top), `stl`
+  (log), `stll` (log with pull requests and CI), `stm` (move about the
+  stack), `stc` (check a stack out, the recovery path), `str` (rebase,
+  guarded and verified), `sts` (submit as drafts), `sty` (sync), plus the
+  private `_stack-guard` and `_stack-branch-name`.
+
+  The whole flow is `just` commands: `gh stack` is never typed directly.
+  `stn` and `sta` add the `feature/` prefix when it is missing, because
+  branch protection rejects anything else at creation time, and both
+  stage and commit in the same step rather than leaving a bare `git add`
+  to be remembered. `stn` takes optional file arguments — the bottom of a
+  stack is the branch most likely to want a subset of a dirty tree, since
+  it has to stand alone and deploy on its own.
+
+### Phases
+
+#### Phase A: tooling
+
+- [x] Install `gh stack` and establish the real command surface rather
+      than the one the plan above assumed. Done 2026-09-14, v0.1.1.
+- [x] Reproduce #35 in a scratch repository, and confirm
+      `gh stack view --json` still reports `needsRebase` correctly for the
+      branch it skipped. Done 2026-09-14 — that is what makes the
+      after-the-fact check in `just str` possible.
+- [x] Write `scripts/stack-status.py` with `--prs`, `--check` and
+      `--no-colour`. Done 2026-09-14.
+- [x] Add the `sl`, `sll`, `sr`, `ss`, `sy` recipes and `_stack-guard`.
+      Done 2026-09-14.
+- [ ] Use the recipes on one real stack before trusting them further.
+      Everything so far has been exercised in scratch repositories.
+
+#### Phase B: fold into the existing workflow
+
+- [ ] Write `.claude/rules/stacks.md`: one stack per worktree, the guard
+      and why it refuses, and that merging is never automated.
+- [ ] Decide whether `just rebase` (`rb`) should refuse inside a stack.
+      It assumes one branch on `main` and would flatten a stack today.
+- [ ] Teach `/crp` to use `just sts` when the branch is in a stack, and to
+      push as it does now when it is not. Mirror into `/crpf`.
+- [ ] Clear the abandoned git-spice state: the `refs/spice/data` ref and
+      the four trial branches (`feature/git-spice-introduce`,
+      `feature/introduce-git-spice`, `feature/stacked-branches-plan`,
+      `feature/stacked-branches-findings`). Two tools' notes in one
+      repository is a trap for whoever reads it next.
+
+#### Phase C: the overnight run
+
+- [ ] Use a stack for one unattended feature build, then review it the
+      next morning and record whether the unit boundaries survived.
+- [ ] Record whether `sl` or `sll` is the one actually reached for, and
+      drop the other if the answer is clear.
