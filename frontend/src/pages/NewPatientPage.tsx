@@ -510,7 +510,7 @@ export default function NewPatientPage() {
             password: formData.userPassword,
           });
 
-          // TODO: Link user to patient and set system_permissions to "single-user"
+          // TODO: Link the new user to this patient record.
           // Note: Backend /auth/register creates basic user without roles
           // Will need additional endpoint to set base_profession and link to patient
         }

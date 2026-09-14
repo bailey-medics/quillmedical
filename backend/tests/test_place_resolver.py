@@ -43,7 +43,6 @@ def _user(db: Session, username: str) -> User:
         is_active=True,
         email_verified=True,
         base_profession="consultant",
-        system_permissions="staff",
     )
     db.add(user)
     db.commit()

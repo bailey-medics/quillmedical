@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "response-required-property-removed GET /api/users removed the required property `users/items/system_permissions` from the response with the `200` status"
+reason: 'The same retirement as on the current-user response, applied to the listing that the admin user table reads. `platform_role` is served in its place and the table''s column was moved onto it in an earlier release, so the field removed here is one no interface still renders. No open tab needs reloading. A stale tab holding the old user list shows a Permission column that renders nothing, which is a missing column rather than a fault, and no action it offers depends on the value.'

@@ -22,7 +22,6 @@ interface User {
   username: string;
   email: string;
   full_name: string;
-  system_permissions: "superadmin" | "admin" | "staff" | "single-user";
   platform_role: "superadmin" | "standard";
   is_active: boolean;
   organisations: string[];
@@ -69,23 +68,15 @@ export default function AdminUsersPage() {
       user.email,
       ...user.organisations,
       ...user.sites,
-      user.system_permissions,
     ],
     [],
   );
 
+  // No dependency: this used to read `users` to collect the distinct
+  // permission levels for a filter group, and that filter went with the
+  // column it read. What is left is a fixed pair of options.
   const filterOptions = useMemo(() => {
-    const permissions = [
-      ...new Set(users.map((u) => u.system_permissions)),
-    ].sort();
     return [
-      {
-        group: "Permission",
-        items: permissions.map((p) => ({
-          value: `perm:${p}`,
-          label: p.charAt(0).toUpperCase() + p.slice(1).replace(/_/g, " "),
-        })),
-      },
       {
         group: "Status",
         items: [
@@ -94,23 +85,14 @@ export default function AdminUsersPage() {
         ],
       },
     ];
-  }, [users]);
+  }, []);
 
   const filterPredicate = useCallback((filters: string[]) => {
-    const permFilters = filters
-      .filter((f) => f.startsWith("perm:"))
-      .map((f) => f.slice(5));
     const statusFilters = filters
       .filter((f) => f.startsWith("status:"))
       .map((f) => f.slice(7));
 
     return (user: User) => {
-      if (
-        permFilters.length > 0 &&
-        !permFilters.includes(user.system_permissions)
-      ) {
-        return false;
-      }
       if (statusFilters.length > 0) {
         const userStatus = user.is_active ? "active" : "inactive";
         if (!statusFilters.includes(userStatus)) return false;
@@ -149,9 +131,8 @@ export default function AdminUsersPage() {
     },
     {
       // Marks operators only, so the column is empty for almost every
-      // row. The filter beside it still reads ``system_permissions``:
-      // filtering on a field with two values, one of which renders
-      // nothing, would offer the reader no way to narrow anything.
+      // row. There is no filter beside it: a field with two values,
+      // one of which renders nothing, offers no way to narrow anything.
       header: "Platform role",
       render: (user) => <PlatformRoleBadge platformRole={user.platform_role} />,
       accessor: (user) => user.platform_role,

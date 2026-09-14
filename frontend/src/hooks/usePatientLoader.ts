@@ -58,26 +58,26 @@ type UsePatientLoaderResult = {
 export function usePatientLoader(): UsePatientLoaderResult {
   const { id } = useParams<{ id: string }>();
   const { patient, setPatient, setPatientNav } = useOutletContext<LayoutCtx>();
-  const [isLoading, setIsLoading] = useState(true);
+  // Derived rather than set in the effect. Without an id there is nothing
+  // to fetch, and a patient already loaded for this id needs no second
+  // call, so neither case begins in a loading state.
+  const alreadyLoaded = Boolean(patient && patient.id === id);
+  const [isLoading, setIsLoading] = useState(Boolean(id) && !alreadyLoaded);
   const [error, setError] = useState<string | null>(null);
   const loadedIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!id) {
-      setError("No patient ID provided");
-      setIsLoading(false);
-      return;
-    }
+    // Both guards return without touching state: the missing-id message is
+    // derived at render below, and an already-loaded patient starts with
+    // `isLoading` false rather than being switched off here.
+    if (!id) return;
 
-    // If patient is already loaded for this ID, skip the API call
     if (loadedIdRef.current === id || (patient && patient.id === id)) {
       loadedIdRef.current = id;
-      setIsLoading(false);
       return;
     }
 
     let cancelled = false;
-    setIsLoading(true);
 
     api
       .get<PatientDemographicsRes>(`/patients/${id}/demographics`)
@@ -167,5 +167,14 @@ export function usePatientLoader(): UsePatientLoaderResult {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- patient intentionally excluded to prevent infinite loop
   }, [id, setPatient]);
 
-  return { id, patient, isLoading, error, setPatientNav };
+  return {
+    id,
+    patient,
+    isLoading,
+    // Derived, not stored: setting it in the effect was the synchronous
+    // state write the lint rule objects to, and the condition is knowable
+    // at render anyway.
+    error: id ? error : "No patient ID provided",
+    setPatientNav,
+  };
 }

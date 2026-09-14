@@ -28,7 +28,6 @@ const mockAuthState = {
     id: 1,
     username: "staffuser",
     email: "staff@example.com",
-    system_permissions: "staff",
   },
   loading: false,
 };

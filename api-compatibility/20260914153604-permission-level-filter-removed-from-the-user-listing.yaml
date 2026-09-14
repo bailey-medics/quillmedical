@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "request-parameter-removed GET /api/users deleted the `query` request parameter `permission_level`"
+reason: 'The filter selected users at or above a rank, and the ordered list it compared against is gone with the column. It is removed rather than replaced: under the new model being staff is something a person is at a *place*, expressed as membership capacity, so there is no global rank left to filter on. Every replacement considered hid the case the pickers most need — a patient becoming a healthcare assistant — so the three staff pickers now list everyone and the judgement moves to a confirmation at the point of adding. No open tab needs reloading. A stale tab sending the parameter has it ignored rather than rejected, so it receives a wider list than it asked for and its own filtering still applies.'

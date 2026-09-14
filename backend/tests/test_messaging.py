@@ -39,7 +39,6 @@ def _setup_org_context(
     Makes the default test_user a staff member and registers
     PATIENT_ID as a patient in the same organisation.
     """
-    test_user.system_permissions = "staff"
     db_session.flush()
 
     db_session.execute(
@@ -74,7 +73,6 @@ def second_user(db_session: Session, test_org: Organisation) -> User:
         password_hash=hash_password("SecondPassword123!"),
         is_active=True,
         email_verified=True,
-        system_permissions="staff",
         base_profession="registered_nurse",
     )
     db_session.add(user)
@@ -120,7 +118,6 @@ def patient_user(db_session: Session, test_org: Organisation) -> User:
         password_hash=hash_password("PatientPassword123!"),
         is_active=True,
         email_verified=True,
-        system_permissions="single-user",
     )
     db_session.add(user)
     db_session.flush()
@@ -1058,7 +1055,6 @@ class TestJoinConversation:
             password_hash=hash_password("DelegatePass123!"),
             is_active=True,
             email_verified=True,
-            system_permissions="staff",
         )
         db_session.add(delegate)
         db_session.flush()
@@ -1164,7 +1160,6 @@ class TestOrgScopedAccess:
             password_hash=hash_password("OutsiderPass123!"),
             is_active=True,
             email_verified=True,
-            system_permissions="staff",
         )
         db_session.add(outsider)
         other_org = Organisation(name="Other Hospital", type="hospital_team")
@@ -1356,7 +1351,6 @@ class TestRevokeExternalAccess:
             password_hash=hash_password("ExtPass123!"),
             is_active=True,
             email_verified=True,
-            system_permissions="external_hcp",
         )
         db_session.add(ext_user)
         db_session.flush()
@@ -1545,7 +1539,6 @@ class TestLinkPatient:
             password_hash=hash_password("OtherPass123!"),
             is_active=True,
             email_verified=True,
-            system_permissions="single-user",
         )
         db_session.add(other)
         db_session.flush()

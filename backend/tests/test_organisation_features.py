@@ -165,7 +165,6 @@ def _make_admin(db_session, org: Organisation | None = None) -> User:
         # this takes the column default of ``patient`` and holds nothing
         # an administrator needs.
         base_profession="system_administrator",
-        system_permissions="admin",
     )
     db_session.add(user)
     db_session.flush()
@@ -320,7 +319,6 @@ class TestFeatureEndpoints:
             password_hash=hash_password("Password123!"),
             is_active=True,
             email_verified=True,
-            system_permissions="single-user",
         )
         db_session.add(user)
         db_session.commit()
@@ -342,7 +340,6 @@ class TestFeatureEndpoints:
             password_hash=hash_password("Password123!"),
             is_active=True,
             email_verified=True,
-            system_permissions="single-user",
         )
         db_session.add(user)
         db_session.commit()

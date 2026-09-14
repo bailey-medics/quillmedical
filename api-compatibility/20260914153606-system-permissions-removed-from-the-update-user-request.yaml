@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "request-property-removed PATCH /api/users/{user_id} removed the request property `system_permissions`"
+reason: 'The update counterpart of the create-request removal, and the guard that stood over it goes too: an administrator could not grant `superadmin` through this field, and the equivalent rule now sits on `platform_role`, where only an operator may make another. No open tab needs reloading. A stale tab sending the field has it ignored rather than rejected, so an edit it submits still applies every other change in the payload.'

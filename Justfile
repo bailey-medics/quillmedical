@@ -1121,29 +1121,6 @@ create-superadmin env:
         --wait
 
 
-alias up := update-permissions-remote
-# Update a user's system permissions on a remote environment
-update-permissions-remote env:
-    #!/usr/bin/env bash
-    {{initialise}} "update-permissions ({{env}})"
-    set -euo pipefail
-
-    PROJECT=$(just _gcp_env_project "{{env}}")
-    REGION="europe-west2"
-
-    echo "Update permissions on ${PROJECT}"
-    echo "─────────────────────────────────"
-    read -rp "Username: " username
-    echo "Permission levels: patient, staff, admin, superadmin"
-    read -rp "Permission: " permission
-
-    gcloud run jobs execute "quill-admin-{{env}}" \
-        --project="$PROJECT" \
-        --region="$REGION" \
-        --update-env-vars "ADMIN_ACTION=update-permissions,ADMIN_USERNAME=${username},ADMIN_PERMISSION=${permission}" \
-        --wait
-
-
 alias ar := add-role-remote
 # Add a role to a user on a remote environment
 add-role-remote env:

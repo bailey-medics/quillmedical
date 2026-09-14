@@ -5,7 +5,6 @@
  * email address. Delegates form rendering to ForgotPasswordForm.
  */
 
-/* eslint-disable no-restricted-syntax */
 // Auth pages use centred form layout, not Container
 
 import { api } from "@/lib/api";

@@ -59,7 +59,6 @@ class TestCreateSuperadmin:
         assert user is not None
         assert user.email == "mark@example.com"
         assert user.email_verified is True
-        assert user.system_permissions == "superadmin"
         assert user.platform_role == "superadmin"
         # Not "consultant", which this used to set: `/admin` asks for the
         # `manage_users` competency, and a consultant holds a pile of
@@ -142,7 +141,6 @@ class TestCreateSuperadmin:
             username="existing",
             email="old@example.com",
             password_hash=hash_password("OldPassword"),
-            system_permissions="single-user",
         )
         db_session.add(existing)
         db_session.commit()
@@ -162,7 +160,6 @@ class TestCreateSuperadmin:
         db_session.refresh(existing)
         assert existing.email == "new@example.com"
         assert existing.email_verified is True
-        assert existing.system_permissions == "superadmin"
         assert verify_password("NewPass123!", existing.password_hash)
 
     @pytest.mark.usefixtures("_patch_session")
@@ -182,7 +179,6 @@ class TestCreateSuperadmin:
         assert result == 0
         user = db_session.query(User).filter(User.username == "norole").first()
         assert user is not None
-        assert user.system_permissions == "superadmin"
         assert len(user.roles) == 0
 
     def test_missing_env_vars_exits(self) -> None:
@@ -196,63 +192,6 @@ class TestCreateSuperadmin:
             with pytest.raises(SystemExit) as exc_info:
                 create_superadmin()
             assert exc_info.value.code == 1
-
-
-class TestUpdatePermissions:
-    """Tests for the update-permissions action."""
-
-    @pytest.mark.usefixtures("_patch_session")
-    def test_updates_permissions(self, db_session: Session) -> None:
-        user = User(
-            username="staffuser",
-            email="staff@example.com",
-            password_hash=hash_password("Pass123!"),
-            system_permissions="single-user",
-        )
-        db_session.add(user)
-        db_session.commit()
-
-        env = {
-            "ADMIN_ACTION": "update-permissions",
-            "ADMIN_USERNAME": "staffuser",
-            "ADMIN_PERMISSION": "admin",
-        }
-        with patch.dict(os.environ, env, clear=False):
-            from scripts.admin_cli import update_permissions
-
-            result = update_permissions()
-
-        assert result == 0
-        db_session.refresh(user)
-        assert user.system_permissions == "admin"
-
-    @pytest.mark.usefixtures("_patch_session")
-    def test_invalid_permission_level(self) -> None:
-        env = {
-            "ADMIN_ACTION": "update-permissions",
-            "ADMIN_USERNAME": "anyone",
-            "ADMIN_PERMISSION": "godmode",
-        }
-        with patch.dict(os.environ, env, clear=False):
-            from scripts.admin_cli import update_permissions
-
-            result = update_permissions()
-
-        assert result == 1
-
-    @pytest.mark.usefixtures("_patch_session")
-    def test_user_not_found(self, db_session: Session) -> None:
-        env = {
-            "ADMIN_ACTION": "update-permissions",
-            "ADMIN_USERNAME": "nonexistent",
-            "ADMIN_PERMISSION": "admin",
-        }
-        with patch.dict(os.environ, env, clear=False):
-            from scripts.admin_cli import update_permissions
-
-            result = update_permissions()
-
-        assert result == 1
 
 
 class TestAddRole:

@@ -55,55 +55,6 @@ This creates a new user (or updates an existing one) with:
 
 Replace `staging` with `teaching` or `prod` to target a different environment.
 
-### Update a user's permission level
-
-Change the system permission level for an existing user:
-
-```bash
-just update-permissions-remote staging
-```
-
-You will be prompted for the username and the new permission level. The four levels, from lowest to highest, are:
-
-| Level        | Access                                             |
-| ------------ | -------------------------------------------------- |
-| `patient`    | Own records only                                   |
-| `staff`      | Clinical application access                        |
-| `admin`      | User management, patient admin, audit logs         |
-| `superadmin` | System configuration, database access, full access |
-
-This command is on its way out. The four levels held two unrelated ideas —
-whether someone operates Quill, and where they work — and the second has moved
-to organisation and site membership. Once `system_permissions` is dropped, a
-user's platform role is set from the admin pages, and `create-superadmin` above
-still makes the first operator on a new environment.
-
-### Add a role to a user
-
-Assign an additional role to an existing user:
-
-```bash
-just add-role-remote staging
-```
-
-You will be prompted for the username and the role name. Available roles:
-
-- System Administrator
-- Clinical Administrator
-- Clinician
-- Clinical Support Staff
-- Patient
-- Patient Advocate
-
-### Run database migrations
-
-Apply all pending Alembic migrations (`alembic upgrade head`) against a live environment's core database:
-
-```bash
-just migrate-remote staging
-```
-
-**Teaching and production run this automatically** as a pre-deploy step in `deploy.yml`, before the new backend revision is deployed — see [Alembic migration safety](../backend/alembic-migration-safety.md). Use this command directly only for staging (not wired into the CI deploy pipeline) or to manually re-run migrations.
 
 ## Command aliases
 
@@ -113,7 +64,6 @@ All commands have short aliases for convenience:
 | ---------------------------------------- | ----------------- |
 | `just build-admin staging`               | `just ba staging` |
 | `just create-superadmin staging`         | `just cs staging` |
-| `just update-permissions-remote staging` | `just up staging` |
 | `just add-role-remote staging`           | `just ar staging` |
 | `just migrate-remote staging`            | `just mr staging` |
 

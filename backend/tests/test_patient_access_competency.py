@@ -52,7 +52,6 @@ def _user(
     username: str,
     *,
     profession: str,
-    system_permissions: str = "staff",
     platform_role: str = "standard",
 ) -> User:
     """A user carrying a profession, so their competencies are real.
@@ -68,7 +67,6 @@ def _user(
         is_active=True,
         email_verified=True,
         base_profession=profession,
-        system_permissions=system_permissions,
         platform_role=platform_role,
     )
     db.add(user)
@@ -176,7 +174,6 @@ class TestTheRankHatchIsGone:
             db_session,
             "far_admin",
             profession="system_administrator",
-            system_permissions="admin",
         )
 
         assert (
@@ -197,7 +194,6 @@ class TestTheRankHatchIsGone:
             db_session,
             "operator",
             profession="superadmin_profession",
-            system_permissions="superadmin",
             platform_role="superadmin",
         )
         _place(db_session, org_with_patient, operator)

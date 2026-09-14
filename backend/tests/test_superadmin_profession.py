@@ -87,7 +87,6 @@ class TestProvisioningGrantsTheOperatorCompetencies:
             password_hash=hash_password("Password123!"),
             is_active=True,
             email_verified=True,
-            system_permissions="staff",
         )
         db_session.add(target)
         db_session.commit()
@@ -96,7 +95,7 @@ class TestProvisioningGrantsTheOperatorCompetencies:
         csrf = authenticated_superadmin_client.cookies.get("XSRF-TOKEN", "")
         resp = authenticated_superadmin_client.patch(
             f"/api/users/{target.id}",
-            json={"system_permissions": "superadmin"},
+            json={"platform_role": "superadmin"},
             headers={"X-CSRF-Token": csrf},
         )
 
@@ -123,7 +122,6 @@ class TestProvisioningGrantsTheOperatorCompetencies:
             is_active=True,
             email_verified=True,
             base_profession="consultant",
-            system_permissions="staff",
         )
         db_session.add(target)
         db_session.commit()
@@ -132,7 +130,7 @@ class TestProvisioningGrantsTheOperatorCompetencies:
         csrf = authenticated_superadmin_client.cookies.get("XSRF-TOKEN", "")
         resp = authenticated_superadmin_client.patch(
             f"/api/users/{target.id}",
-            json={"system_permissions": "superadmin"},
+            json={"platform_role": "superadmin"},
             headers={"X-CSRF-Token": csrf},
         )
 

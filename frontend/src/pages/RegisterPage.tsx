@@ -6,7 +6,6 @@
  * Teaching environments show a placeholder pending bespoke registration flow.
  */
 
-/* eslint-disable no-restricted-syntax */
 // Auth pages use centred form layout, not Container
 
 import { Center, Stack } from "@mantine/core";

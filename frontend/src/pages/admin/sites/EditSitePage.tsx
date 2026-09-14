@@ -193,7 +193,7 @@ export default function EditSitePage() {
       try {
         const [site, usersResponse] = await Promise.all([
           api.get<SiteData>(`/sites/${id}`),
-          api.get<{ users: ApiUser[] }>("/users?permission_level=staff"),
+          api.get<{ users: ApiUser[] }>("/users"),
         ]);
         setSiteData(site);
         setIsActive(site.is_active);

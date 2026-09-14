@@ -39,7 +39,6 @@ def admin_user(db_session: Session) -> User:
         email="sync@example.com",
         password_hash=hash_password("Pass123!"),
         is_active=True,
-        system_permissions="admin",
     )
     db_session.add(user)
     db_session.commit()

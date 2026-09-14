@@ -30,7 +30,6 @@ const mockAdminUser: User = {
   id: "3",
   username: "admin.user",
   email: "admin@example.com",
-  system_permissions: "admin",
 };
 
 const lead = {

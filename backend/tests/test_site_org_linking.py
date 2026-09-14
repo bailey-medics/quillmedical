@@ -122,7 +122,6 @@ class TestRemoveSiteStaff:
             full_name="Remove Me",
             password_hash=hash_password("Pass123!"),
             is_active=True,
-            system_permissions="staff",
         )
         db_session.add(member)
         db_session.flush()
@@ -150,7 +149,6 @@ class TestRemoveSiteStaff:
             full_name="Not Assigned",
             password_hash=hash_password("Pass123!"),
             is_active=True,
-            system_permissions="staff",
         )
         db_session.add_all([site, member])
         db_session.commit()

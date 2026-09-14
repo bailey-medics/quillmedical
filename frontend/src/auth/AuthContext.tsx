@@ -28,12 +28,10 @@ export type User = {
   name?: string;
   /** Assigned role names (e.g., ["Clinician", "Administrator"]) */
   roles?: string[];
-  /** System permission level (patient, staff, admin, superadmin) */
-  system_permissions?: string;
   /**
    * Whether this person operates Quill itself ("superadmin") or not
-   * ("standard"). Replacing the superadmin rung of `system_permissions` —
-   * see docs/docs/plans/2026-09-09-platform-role-plan.md.
+   * ("standard"). Replaced the four-rung `system_permissions` column,
+   * now dropped — see docs/docs/plans/2026-09-09-platform-role-plan.md.
    */
   platform_role?: string;
   /** Features enabled on the user's primary organisation */

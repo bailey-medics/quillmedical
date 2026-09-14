@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "response-required-property-removed GET /api/auth/me removed the required property `system_permissions` from the response with the `200` status"
+reason: 'The four-level rank held two unrelated ideas in one field. `single-user`, `staff` and `admin` said where a person works, which is now organisation and site membership plus competencies; `superadmin` said they operate Quill itself, which is `platform_role`. Both replacements have been served on this response for several releases and every caller has moved to them. No open tab needs reloading. The interface reads `platform_role` for the operator guard and `competencies` for everything else, so a stale tab already has what it asks for; the removed field is one it no longer reads. Nothing a stale tab can do produces a wrong result, because the authorisation decisions were moved off this field before it was removed rather than at the same time.'

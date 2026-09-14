@@ -26,7 +26,6 @@ vi.mock("@/auth/AuthContext", () => ({
         id: 1,
         username: "staffuser",
         email: "staff@example.com",
-        system_permissions: "staff",
       },
       loading: false,
     },

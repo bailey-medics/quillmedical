@@ -242,6 +242,30 @@ resource "google_logging_metric" "video_not_found" {
   }
 }
 
+# A log-based metric cannot be alerted on straight away. Creating one
+# registers it with Logging immediately, but Monitoring learns of the
+# descriptor separately, and a policy filtering on it before then is
+# rejected outright:
+#
+#   Field ...condition_threshold.filter had an invalid value of
+#   "... metric.type = "logging.googleapis.com/user/quill/video_not_found_teaching""
+#   The resource name does not represent a known descriptor.
+#
+# Terraform ordered it correctly — the metric completed 33 seconds before the
+# policy was attempted — so this is propagation rather than a missing
+# dependency, and the graph cannot model it. The same shape as
+# `wait_for_backend_bucket` in the teaching-video-pipeline module, and the same
+# remedy: the consumer reads an output that depends on this, rather than the
+# resource directly.
+#
+# Only the video metric needs it. The others were created in earlier applies
+# and their descriptors have long since propagated, so a wait there would cost
+# a minute on every apply and buy nothing.
+resource "time_sleep" "wait_for_video_not_found_metric" {
+  depends_on      = [google_logging_metric.video_not_found]
+  create_duration = "90s"
+}
+
 # ---------- Archive ----------
 #
 # The dashboard reads metrics, which are aggregates fixed at the moment they

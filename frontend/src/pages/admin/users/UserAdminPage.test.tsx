@@ -36,13 +36,11 @@ const mockAuthUsers: Record<string, User> = {
     id: "3",
     username: "admin.user",
     email: "admin@example.com",
-    system_permissions: "admin",
   },
   superadmin: {
     id: "4",
     username: "superadmin.user",
     email: "superadmin@example.com",
-    system_permissions: "superadmin",
   },
 };
 
@@ -55,7 +53,6 @@ const mockUserDetails = {
   base_profession: "doctor",
   additional_competencies: ["cardiology", "surgery"],
   removed_competencies: ["dermatology"],
-  system_permissions: "staff" as const,
   platform_role: "standard" as const,
   is_active: true,
 };
@@ -147,7 +144,6 @@ describe("UserAdminPage", () => {
       // the old column is a standard account in the new one.
       vi.spyOn(apiLib.api, "get").mockResolvedValue({
         ...mockUserDetails,
-        system_permissions: "admin",
         platform_role: "standard",
       });
 

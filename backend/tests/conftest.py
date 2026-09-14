@@ -193,7 +193,6 @@ def test_admin(db_session: Session) -> User:
         is_active=True,
         email_verified=True,
         base_profession="system_administrator",
-        system_permissions="admin",
     )
     db_session.add(user)
     db_session.commit()
@@ -237,7 +236,6 @@ def test_patient_manager(db_session: Session) -> User:
         is_active=True,
         email_verified=True,
         base_profession="patient_manager",
-        system_permissions="admin",
         platform_role="standard",
     )
     db_session.add(user)
@@ -284,7 +282,6 @@ def test_superadmin(db_session: Session) -> User:
         is_active=True,
         email_verified=True,
         base_profession="superadmin_profession",
-        system_permissions="superadmin",
         platform_role="superadmin",
     )
     db_session.add(user)

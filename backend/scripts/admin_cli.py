@@ -7,12 +7,11 @@ it suitable for execution as a Cloud Run Job where interactive prompts are
 not available.
 
 Environment Variables:
-    ADMIN_ACTION:     Required.  One of: create-superadmin, update-permissions,
-                      add-role, verify-email, run-migrations.
+    ADMIN_ACTION:     Required.  One of: create-superadmin, add-role,
+                      verify-email, run-migrations.
     ADMIN_USERNAME:   Required.  Target username.
     ADMIN_EMAIL:      Required for create-superadmin.
     ADMIN_PASSWORD:   Required for create-superadmin.
-    ADMIN_PERMISSION: Required for update-permissions (patient|staff|admin|superadmin).
     ADMIN_ROLE:       Required for add-role (e.g. "System Administrator").
 
     run-migrations takes no ADMIN_* variables — it runs `alembic upgrade
@@ -103,7 +102,6 @@ def create_superadmin() -> int:
             db.flush()
             print(f"Created new user: {username}")
 
-        user.system_permissions = "superadmin"
         user.platform_role = "superadmin"
         user.email_verified = True
 
@@ -142,45 +140,6 @@ def create_superadmin() -> int:
 
         db.commit()
         print(f"✓ User '{username}' is now a superadmin")
-        return 0
-
-    except Exception as exc:
-        db.rollback()
-        print(f"✗ Database error: {exc}", file=sys.stderr)
-        return 1
-    finally:
-        db.close()
-
-
-def update_permissions() -> int:
-    """Update system_permissions for an existing user."""
-    env = _require_env("ADMIN_USERNAME", "ADMIN_PERMISSION")
-    username = env["ADMIN_USERNAME"]
-    permission = env["ADMIN_PERMISSION"]
-
-    from app.db.core_db import CoreSessionLocal
-    from app.models import User
-    from app.system_permissions import PERMISSION_LEVELS
-
-    if permission not in PERMISSION_LEVELS:
-        print(
-            f"ERROR: Invalid permission '{permission}'. "
-            f"Valid: {', '.join(PERMISSION_LEVELS)}",
-            file=sys.stderr,
-        )
-        return 1
-
-    db = CoreSessionLocal()
-    try:
-        user = db.query(User).filter(User.username == username).first()
-        if not user:
-            print(f"✗ User '{username}' not found", file=sys.stderr)
-            return 1
-
-        old = user.system_permissions
-        user.system_permissions = permission
-        db.commit()
-        print(f"✓ Updated '{username}' permissions: {old} → {permission}")
         return 0
 
     except Exception as exc:
@@ -292,10 +251,6 @@ ACTIONS: dict[str, tuple[Callable[[], int], str]] = {
     "create-superadmin": (
         create_superadmin,
         "Create user with superadmin permissions",
-    ),
-    "update-permissions": (
-        update_permissions,
-        "Update system_permissions for a user",
     ),
     "add-role": (
         add_role,

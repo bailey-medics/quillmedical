@@ -9,7 +9,7 @@ vi.mock("@/auth/AuthContext", () => ({
   useAuth: () => ({
     state: {
       status: "authenticated",
-      user: { system_permissions: "user" },
+      user: {},
     },
     logout: vi.fn(),
     login: vi.fn(),

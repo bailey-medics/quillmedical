@@ -92,9 +92,7 @@ export function PageMessageProvider({ children }: PageMessageProviderProps) {
   useEffect(() => {
     if (location.pathname !== prevPathnameRef.current) {
       prevPathnameRef.current = location.pathname;
-      /* eslint-disable react-hooks/set-state-in-effect -- legitimate navigation side effect: clearing messages on route change */
       setMessages([]);
-      /* eslint-enable react-hooks/set-state-in-effect */
     }
   }, [location.pathname]);
 

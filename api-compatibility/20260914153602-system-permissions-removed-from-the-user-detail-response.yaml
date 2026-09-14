@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "response-required-property-removed GET /api/users/{user_id} removed the required property `system_permissions` from the response with the `200` status"
+reason: 'The last of the three response schemas carrying the retiring rank. The admin page for one user rendered it as a badge, and that badge was replaced by one reading `platform_role` before this removal, so nothing reads the field. No open tab needs reloading. A stale tab renders the account card without its permission badge and is otherwise unaffected; every decision the page makes about what an administrator may do now comes from competencies, which this response still carries.'

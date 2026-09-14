@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "request-property-removed POST /api/users removed the request property `system_permissions`"
+reason: 'Creating a user no longer sets a rank, because there is no longer a rank to set. What the field expressed is now two things the same request already carries: `platform_role` for whether the person operates Quill, and `base_profession` with `additional_competencies` for what they may do. No open tab needs reloading. A stale tab sending the field has it ignored rather than rejected, and the account it creates is complete, because the profession it also sends is what grants competencies.'

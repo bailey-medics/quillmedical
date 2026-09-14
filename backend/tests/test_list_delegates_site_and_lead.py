@@ -39,7 +39,6 @@ def _user(
         is_active=True,
         email_verified=True,
         base_profession=profession,
-        system_permissions="staff",
     )
     db.add(user)
     db.commit()
