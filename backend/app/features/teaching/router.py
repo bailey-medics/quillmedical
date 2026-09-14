@@ -516,6 +516,7 @@ def get_learning_content(
     """
     from app.config import settings
     from app.features.teaching.mdx_parser import (
+        ParsedSlide,
         load_learning_content,
         load_module_yaml,
         parse_mdx_to_slides,
@@ -587,10 +588,10 @@ def get_learning_content(
         .all()
     }
 
-    def _resolve_video_filename(video_ref: str) -> str | None:
-        """Resolve an MDX ``ref`` to the filename under the module prefix.
+    def _resolve_video_filename(video_ref: str) -> dict[str, str | None]:
+        """Resolve an MDX ``ref`` to the files under the module prefix.
 
-        A filename, not a URL: the player composes the full address from
+        Filenames, not URLs: the player composes each full address from
         the ``base_url`` that ``/video-access`` returns, which differs
         between the CDN and the local development route. Splitting it
         this way is what lets the frontend stay blind to the difference.
@@ -602,21 +603,56 @@ def get_learning_content(
         was an upload path — the plan sanctions that for local work and
         it still plays.
 
-        None where a ref has neither, which the availability gate has
-        already made unreachable for a learner: an incomplete module is
-        not served at all.
+        ``src`` is what plays by default. The rest are what the
+        transcode and caption jobs produce, and each appears only where
+        the link records that job having produced it — never inferred
+        from the naming convention, because a name that resolves to a
+        file nobody wrote is a 404 the player cannot explain.
+
+        Every value is None where a ref has no link at all, which the
+        availability gate has already made unreachable for a learner: an
+        incomplete module is not served at all.
         """
+        empty: dict[str, str | None] = {
+            "src": None,
+            "src_1080p": None,
+            "poster": None,
+            "captions": None,
+        }
+
         link = _links.get(video_ref)
         if link is not None:
-            suffix = next(
-                (
-                    ext
-                    for ext, mime in ALLOWED_MEDIA_TYPES.items()
-                    if mime == link.content_type
+            asset = link.asset_id
+
+            # Before the transcode job has run there are no renditions,
+            # only the original upload — so the default rendition falls
+            # back to it and the alternatives stay absent. A module in
+            # that state is hidden from learners anyway, but the shape
+            # has to be right for the admin card and for a dev machine
+            # with no job configured at all.
+            if link.transcoded_at is None:
+                suffix = next(
+                    (
+                        ext
+                        for ext, mime in ALLOWED_MEDIA_TYPES.items()
+                        if mime == link.content_type
+                    ),
+                    ".mp4",
+                )
+                return {**empty, "src": f"{asset}{suffix}"}
+
+            # Deterministic names, matching what the job writes. The
+            # flags say which of them exist; the cookie covers the
+            # prefix rather than each file, so nothing has to ask the
+            # bucket what is there.
+            return {
+                "src": f"{asset}-720p.mp4",
+                "src_1080p": (
+                    f"{asset}-1080p.mp4" if link.has_1080p else None
                 ),
-                ".mp4",
-            )
-            return f"{link.asset_id}{suffix}"
+                "poster": (f"{asset}-poster.jpg" if link.has_poster else None),
+                "captions": f"{asset}.vtt" if link.has_captions else None,
+            }
 
         # Hand-placed file, the convention from before uploads existed.
         # Guarded before use rather than after: module_dir is None on
@@ -624,38 +660,53 @@ def get_learning_content(
         if base_path and module_dir:
             candidate = module_dir / "learning" / f"{video_ref}.mp4"
             if candidate.is_file():
-                return f"{video_ref}.mp4"
-        return None
+                return {**empty, "src": f"{video_ref}.mp4"}
+        return empty
+
+    def _slide_out(s: ParsedSlide) -> dict[str, Any]:
+        """One slide as the API returns it.
+
+        A function rather than a comprehension because video now
+        resolves to four fields from one lookup, and doing that inline
+        would call the resolver once per field.
+        """
+        video = (
+            _resolve_video_filename(s.video_ref)
+            if s.video_ref
+            else {
+                "src": None,
+                "src_1080p": None,
+                "poster": None,
+                "captions": None,
+            }
+        )
+        return {
+            "slide_index": s.slide_index,
+            "layout": s.layout,
+            "title": s.title,
+            "body": s.body,
+            "callout_type": s.callout_type,
+            "callout_body": s.callout_body,
+            "youtube_id": s.youtube_id,
+            "duration_seconds": s.duration_seconds,
+            "image_src": (
+                _resolve_image_url(module_id, s.figure_src)
+                if s.figure_src
+                else None
+            ),
+            "image_alt": s.figure_alt,
+            "image_caption": s.figure_caption,
+            "image_position": s.figure_position,
+            "video_src": video["src"],
+            "video_src_1080p": video["src_1080p"],
+            "video_poster": video["poster"],
+            "video_captions": video["captions"],
+        }
 
     return {
         "module_id": module_id,
         "title": meta.get("title", module_id),
-        "slides": [
-            {
-                "slide_index": s.slide_index,
-                "layout": s.layout,
-                "title": s.title,
-                "body": s.body,
-                "callout_type": s.callout_type,
-                "callout_body": s.callout_body,
-                "youtube_id": s.youtube_id,
-                "duration_seconds": s.duration_seconds,
-                "image_src": (
-                    _resolve_image_url(module_id, s.figure_src)
-                    if s.figure_src
-                    else None
-                ),
-                "image_alt": s.figure_alt,
-                "image_caption": s.figure_caption,
-                "image_position": s.figure_position,
-                "video_src": (
-                    _resolve_video_filename(s.video_ref)
-                    if s.video_ref
-                    else None
-                ),
-            }
-            for s in slides
-        ],
+        "slides": [_slide_out(s) for s in slides],
     }
 
 

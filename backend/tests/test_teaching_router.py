@@ -1820,6 +1820,73 @@ class TestAdminBanks:
         assert data["coordinator_email_template"] is None
 
 
+def _slides_for_linked_video(
+    test_client,
+    db_session,
+    monkeypatch,
+    *,
+    transcoded: bool,
+    has_1080p: bool = False,
+    has_poster: bool = False,
+    has_captions: bool = False,
+):
+    """Fetch a module's slides for a ref backed by one uploaded asset.
+
+    Drives the GCS branch, where resolution is a pure link lookup with
+    no disk fallback available — which is what makes the rendition
+    fields worth asserting here rather than through the filename
+    convention development still allows.
+    """
+    org = _make_teaching_org(db_session)
+    educator = _make_educator(db_session, org)
+    _seed_bank(db_session, org.id, educator.id)
+    _make_learner(db_session, org)
+    db_session.add(
+        ModuleMediaLink(
+            organisation_id=org.id,
+            question_bank_id="test-bank",
+            media_key="lecture-01",
+            asset_id="asset1",
+            original_filename="lecture.mp4",
+            content_type="video/mp4",
+            size_bytes=1024,
+            uploaded_at=datetime.now(UTC),
+            transcoded_at=datetime.now(UTC) if transcoded else None,
+            has_1080p=has_1080p,
+            has_poster=has_poster,
+            has_captions=has_captions,
+        )
+    )
+    db_session.commit()
+
+    # GCS branch: a bucket and no content path at all.
+    monkeypatch.setattr("app.config.settings.TEACHING_GCS_BUCKET", "a-bucket")
+    monkeypatch.setattr(
+        "app.config.settings.TEACHING_QUESTION_BANK_PATH", None
+    )
+    monkeypatch.setattr(
+        "app.features.teaching.router.download_module_yaml_from_gcs",
+        lambda *a: {"title": "Test"},
+        raising=False,
+    )
+    monkeypatch.setattr(
+        "app.features.teaching.storage.download_learning_mdx_from_gcs",
+        lambda *a: '## Slide\n<Video ref="lecture-01" />',
+    )
+    monkeypatch.setattr(
+        "app.features.teaching.storage.download_module_yaml_from_gcs",
+        lambda *a: {"title": "Test"},
+    )
+
+    test_client.post(
+        "/api/auth/login",
+        json={"username": "testlearner", "password": "Learner123!"},
+    )
+    resp = test_client.get("/api/teaching/modules/test-bank/learning")
+    assert resp.status_code == 200
+    return resp.json()["slides"]
+
+
 class TestVideoSrcResolution:
     """The API exposes a resolved filename, never the raw MDX key.
 
@@ -1840,11 +1907,89 @@ class TestVideoSrcResolution:
         assert field.default is None
         assert not field.is_required()
 
+    @pytest.mark.parametrize(
+        "field_name",
+        ["video_src_1080p", "video_poster", "video_captions"],
+    )
+    def test_the_rendition_fields_are_additive(self, field_name) -> None:
+        """Each alternative is optional, like ``video_src`` before them.
+
+        The quality switch is an addition to the contract, not a change
+        to it: ``video_src`` keeps pointing at what plays by default, so
+        a client that has never heard of these keeps working.
+        """
+        from app.features.teaching.schemas import LearningSlideOut
+
+        field = LearningSlideOut.model_fields[field_name]
+        assert field.default is None
+        assert not field.is_required()
+
     def test_a_slide_without_video_resolves_to_none(self) -> None:
         from app.features.teaching.mdx_parser import parse_mdx_to_slides
 
         slides = parse_mdx_to_slides("## Plain\n\nJust prose.\n")
         assert slides[0].video_ref is None
+
+    def test_a_link_without_a_transcode_offers_only_the_upload(
+        self, test_client, db_session, monkeypatch
+    ):
+        """Before the job runs there is nothing but the original.
+
+        The alternatives must be absent rather than named: a filename
+        that resolves to a file nobody wrote is a 404 the player cannot
+        explain to the learner.
+        """
+        slides = _slides_for_linked_video(
+            test_client, db_session, monkeypatch, transcoded=False
+        )
+
+        assert slides[0]["video_src"] == "asset1.mp4"
+        assert slides[0]["video_src_1080p"] is None
+        assert slides[0]["video_poster"] is None
+        assert slides[0]["video_captions"] is None
+
+    def test_a_transcoded_link_offers_what_the_job_produced(
+        self, test_client, db_session, monkeypatch
+    ):
+        """Deterministic names, gated by the flags on the link.
+
+        The names are not discovered by listing the bucket — the signed
+        cookie covers the prefix rather than each file, so the API can
+        address them directly from what the job recorded.
+        """
+        slides = _slides_for_linked_video(
+            test_client,
+            db_session,
+            monkeypatch,
+            transcoded=True,
+            has_1080p=True,
+            has_poster=True,
+        )
+
+        # 720p is what plays untouched: hospital wifi is the common case.
+        assert slides[0]["video_src"] == "asset1-720p.mp4"
+        assert slides[0]["video_src_1080p"] == "asset1-1080p.mp4"
+        assert slides[0]["video_poster"] == "asset1-poster.jpg"
+        # No caption job exists yet, so this stays absent even though
+        # the transcode succeeded.
+        assert slides[0]["video_captions"] is None
+
+    def test_a_rendition_the_job_did_not_produce_is_absent(
+        self, test_client, db_session, monkeypatch
+    ):
+        """A short source gets no 1080p, and must not be offered one."""
+        slides = _slides_for_linked_video(
+            test_client,
+            db_session,
+            monkeypatch,
+            transcoded=True,
+            has_1080p=False,
+            has_poster=True,
+        )
+
+        assert slides[0]["video_src"] == "asset1-720p.mp4"
+        assert slides[0]["video_src_1080p"] is None
+        assert slides[0]["video_poster"] == "asset1-poster.jpg"
 
     def test_the_ref_reaches_the_parser_unchanged(self) -> None:
         """The key is carried verbatim; resolution happens later.

@@ -60,7 +60,26 @@ class LearningSlideOut(BaseModel):
     #: the player composes a URL from the video-access ``base_url`` plus
     #: this filename, and should not have to resolve anything itself.
     #: Optional, so the API change is additive.
+    #:
+    #: The default rendition, and what plays without the learner
+    #: touching anything — 720p where the transcode job has run, because
+    #: hospital wifi is the common case. Falls back to the original
+    #: upload where it has not.
     video_src: str | None = None
+    #: The alternatives, each present only where the job recorded
+    #: producing it. All optional and all additive: ``video_src`` keeps
+    #: its meaning exactly, so a client that has never heard of these
+    #: keeps working, per the expand-contract rule.
+    #:
+    #: Offered to the learner as a quality switch rather than chosen for
+    #: them. Adaptive HLS is the eventual answer and stays deferred.
+    video_src_1080p: str | None = None
+    #: Poster frame, shown before playback begins.
+    video_poster: str | None = None
+    #: WebVTT captions. A WCAG 2.1 AA requirement for the learning
+    #: centre, produced by the caption job rather than the transcode one,
+    #: so this stays None until that job exists.
+    video_captions: str | None = None
 
 
 class LearningModuleOut(BaseModel):
