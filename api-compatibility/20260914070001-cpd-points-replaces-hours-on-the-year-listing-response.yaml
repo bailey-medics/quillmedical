@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "response-optional-property-removed GET /api/passport/{passport_id}/cpd/{year} removed the optional property `items/hours` from the response with the `200` status"
+reason: "CPD is measured in points, not hours, and the field is now named `points` on every CPD entry the year listing returns. One point is one hour so no value changes, only the name. No open tab needs reloading and nothing can break: the passport feature is off for every organisation, no released bundle reads this response, and this endpoint has never been called by a client. The rename was taken now precisely because that is true — the passport is unreleased, so this is the cheapest the change will ever be, and a field whose name disagrees with the word on screen is a trap for whoever reads the code next. There is no database column involved: CPD entries live in per-holder YAML files, so no migration was required."

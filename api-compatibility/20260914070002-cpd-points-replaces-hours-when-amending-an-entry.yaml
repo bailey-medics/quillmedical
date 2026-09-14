@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "request-property-removed PATCH /api/passport/{passport_id}/cpd/{year}/{stem} removed the request property `hours`"
+reason: "CPD is measured in points, not hours, and the amend request now carries `points` to match the create request and the stored record. One point is one hour so no value changes, only the name. No open tab needs reloading and nothing can break: the passport feature is off for every organisation, no released bundle sends this request, and this endpoint has never been called by a client. The rename was taken now precisely because that is true — the passport is unreleased, so this is the cheapest the change will ever be, and a field whose name disagrees with the word on screen is a trap for whoever reads the code next. There is no database column involved: CPD entries live in per-holder YAML files, so no migration was required."
