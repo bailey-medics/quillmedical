@@ -1508,6 +1508,26 @@ Consequences to hold on to:
       switch — dropping the learner back to the start of a lecture to change
       quality is worse than not offering it. Stories and tests per the
       components rule.
+      **[done 2026-09-14]** A Mantine `SegmentedControl`, shown only when the
+      API returned a 1080p filename. The names are deterministic, so the
+      player could derive one from the other — it deliberately does not, because
+      a derived name for a file nobody wrote is a 404 with nothing to tell the
+      learner.
+      **The seek was verified in a browser, not only against the mock.**
+      Switching mid-playback resumes from the same position, seamlessly. That
+      mattered because the behaviour depends on a real `HTMLVideoElement`
+      firing `canplay` after the source swaps, which no unit test can
+      establish — the position is captured before the switch and restored on
+      that event, then playback resumes.
+      The control sits **below** the frame rather than over it: the browser
+      draws its own controls in shadow DOM and decides where they go, so an
+      overlay risks covering the play button at some viewport width.
+      **A real gap closed on the way**: `posterUrl` and `captionsUrl` were
+      props `VideoPlayer` had accepted since Phase 4 and nothing ever passed,
+      so the poster and captions the backend returns reached nothing at all.
+      `SlideLayoutVideo` now composes every rendition URL from the one grant —
+      they all live under the prefix the signed cookie covers, so none needs a
+      request of its own.
 - [ ] Cloud Run job `video-caption` — Whisper-large, 4 CPU, 10 GB, 60-minute
       timeout. Writes WebVTT beside the renditions.
 - [ ] Set `Cache-Control: public, max-age=86400` on every object both jobs write,
@@ -1551,12 +1571,21 @@ Consequences to hold on to:
 - [ ] Captions are reviewed by the content author before a module goes `live` —
       Whisper output on clinical terminology needs a human pass. Surface review
       state on the admin video page.
-- [ ] Reconcile the availability gate with transcoding. `module_media_is_complete`
+- [ ] **Do this next.** Reconcile the availability gate with transcoding. `module_media_is_complete`
       currently treats a linked asset as complete, so a module becomes visible
       the moment the upload is linked and before any rendition exists — a
       learner would reach a slide whose video is not there yet. The gate has to
       account for "uploaded but not yet transcoded", which is a state the model
       does not currently have.
+      **[noted 2026-09-14]** The state now exists — `transcoded_at` on
+      `ModuleMediaLink` — but the gate does not read it, so the gap is real
+      rather than theoretical. It is masked only because **nothing writes that
+      column yet**: the backend fires the job and does not wait, and no polling
+      or callback records completion. Every link therefore has a null
+      timestamp, every module resolves through the fallback branch, and no
+      learner can currently reach a missing rendition. The day completions
+      start being recorded, the window opens — so this wants doing before the
+      caption job rather than after it.
 
 ## Phase 7: Cutover
 
@@ -1680,6 +1709,31 @@ WEBVTT
 00:00:04.000 --> 00:00:08.500
 Test caption, first cue.
 ```
+
+### A stale `node_modules` presents as this plan's own bugs
+
+**[added 2026-09-14]** Worth writing down because it cost time twice in one
+session, and both times it looked like something else.
+
+Video work has added two frontend dependencies — `@videojs/react` for the v10
+player evaluation, and `@mantine/dropzone` for the admin media card. A checkout
+whose `node_modules` predates those commits has them in `package.json` and not
+on disk, and the symptom is never "a package is missing":
+
+- **`yarn typecheck:all` reports four errors that look structural** — two
+  unresolved modules, an implicit `any` that follows from one of them, and
+  `Unknown compiler option 'erasableSyntaxOnly'`, which reads as a TypeScript
+  version mismatch in `tsconfig.app.json`. All four are the one cause, and all
+  four vanish on `yarn install`. They were treated as an unavoidable baseline
+  for a whole session before anyone checked.
+
+- **Storybook fails to boot**, with Vite reporting `Failed to resolve import
+  "@videojs/react/video/skin.css"` on repeat. The file genuinely is not at that
+  path — it resolves through the package's `"./*.css"` export map — so looking
+  for it on disk confirms the wrong conclusion.
+
+`yarn install` from `frontend/` fixes both and leaves `yarn.lock` untouched.
+Check it before investigating any frontend failure that names a module.
 
 ### Caddy's aborted-range warnings, deferred
 
