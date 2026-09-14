@@ -2971,8 +2971,34 @@ explicitly deferred here.
         - **The period arrives as a prop.** `appraisal_periods` is not in
           the API types yet, so the page supplies it, the same shape the
           assessor list uses.
+      - [x] **`CompetencyPicker`, the last component of the phase.**
+        A searchable select: the site's competencies under one heading,
+        every other competency beneath. Nine tests.
+        - **Nothing is hidden and nothing is refused.** The shortlist is
+          a Mantine option group rather than a filter, so an unusual
+          competency stays reachable. A test searches for something
+          deliberately off the shortlist and finds it.
+        - **The heading wording is asserted by a test.** It reads
+          "Commonly used here", never "Required" or "Available" — the
+          second and third would turn a convenience list into a syllabus,
+          which is the sufficiency judgement the passport refuses to
+          make.
+        - **No shortlist means one flat alphabetical list**, since a
+          group of one reads worse than no grouping at all.
+        - **The catalogue comes from `src/generated/competencies.json`.**
+          `GET /api/passport/competencies` is described in the API
+          surface above but was never built, so this reads the generated
+          bundle as the admin pages do. Serving it from the API is
+          already a deferred item, and this is a second caller now
+          depending on the build-time import.
       - **Every Mantine `SelectField` is `role="combobox"`, not
-        `textbox`.** Caught three times now across the passport forms.
+        `textbox`. Made this mistake four times now** — in
+        `SignOffForm`, `SignOffRequestForm`, `LogbookEntryForm` and
+        `CompetencyPicker`, the last after having already fixed it three
+        times. Query it with `getByRole("combobox")`, and index
+        `getAllByRole("combobox")` where a form has more than one. The
+        symptom is always the same: most tests in the file fail at once
+        on a query that reads as though it should work. Caught three times now across the passport forms.
         Query it with `getByRole("combobox")`, and index
         `getAllByRole("combobox")` where a form has more than one.
       - **Pre-existing: `ErrorMessage` produces invalid HTML in every

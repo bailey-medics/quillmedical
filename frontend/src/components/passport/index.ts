@@ -7,6 +7,7 @@
 
 export { default as AssessorDeclaration } from "./AssessorDeclaration";
 export { ASSESSOR_DECLARATION_TEXT } from "./AssessorDeclaration";
+export { default as CompetencyPicker } from "./CompetencyPicker";
 export { default as CompetencyRow } from "./CompetencyRow";
 export { default as CompetencySummary } from "./CompetencySummary";
 export { default as CpdEntryForm } from "./CpdEntryForm";
