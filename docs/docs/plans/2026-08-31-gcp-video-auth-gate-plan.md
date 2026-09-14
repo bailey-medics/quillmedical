@@ -1503,7 +1503,7 @@ Consequences to hold on to:
       file, the poster and the captions are new optional fields. Absent files
       must resolve to `None`, not to a broken filename — which is what the link
       column above is for, rather than trusting the naming convention.
-- [ ] Quality switch in `VideoPlayer.tsx`, defaulting to 720p and offering 1080p
+- [x] Quality switch in `VideoPlayer.tsx`, defaulting to 720p and offering 1080p
       only when the API returned one. Preserve the playback position across a
       switch — dropping the learner back to the start of a lecture to change
       quality is worse than not offering it. Stories and tests per the

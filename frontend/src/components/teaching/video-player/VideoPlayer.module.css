@@ -14,3 +14,14 @@
   width: 100%;
   height: 100%;
 }
+
+/* The quality control sits outside the frame rather than over it. The
+   browser draws its own controls in shadow DOM and decides where they
+   go, so anything overlaid risks covering them at some viewport width
+   — and covering the play button to offer a quality choice is a poor
+   trade. */
+.qualityBar {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--mantine-spacing-xs);
+}
