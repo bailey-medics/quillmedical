@@ -2949,6 +2949,28 @@ explicitly deferred here.
           deliberately out of clinical order so the test means something.
         - **Supervision renders as recorded and never ranked**, with a
           dash where nothing was given.
+      - [x] **`CpdTable`, the second table.** One appraisal period's
+        activities and the points they add up to. Twelve tests.
+        - **Every total states the range it covers**, as the CPD decision
+          requires — the actual dates, never a bare year label. Three
+          tests guard it, including one asserting a _short_ period shows
+          its real end date: that is the case the rule exists for, since
+          the same points across four months would otherwise read as a
+          poor year.
+        - **The fallback names itself a convention.** With no declared
+          period the heading reads "June to June — you have not set an
+          appraisal period, so this is a convention rather than your
+          actual cycle", so nobody mistakes it for their own.
+        - **A total is legitimate here, unlike the logbook.** A logbook
+          count with a target implies the software judged competence; a
+          CPD total is arithmetic over what the holder claimed, and an
+          appraiser asks for exactly that number. It still carries no
+          target, and a test pins that.
+        - **Activities claiming no points still count as activities** —
+          the points sum skips them, the activity count does not.
+        - **The period arrives as a prop.** `appraisal_periods` is not in
+          the API types yet, so the page supplies it, the same shape the
+          assessor list uses.
       - **Every Mantine `SelectField` is `role="combobox"`, not
         `textbox`.** Caught three times now across the passport forms.
         Query it with `getByRole("combobox")`, and index

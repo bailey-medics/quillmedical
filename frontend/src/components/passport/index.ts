@@ -10,6 +10,7 @@ export { ASSESSOR_DECLARATION_TEXT } from "./AssessorDeclaration";
 export { default as CompetencyRow } from "./CompetencyRow";
 export { default as CompetencySummary } from "./CompetencySummary";
 export { default as CpdEntryForm } from "./CpdEntryForm";
+export { default as CpdTable } from "./CpdTable";
 export { default as LogbookEntryForm } from "./LogbookEntryForm";
 export { default as LogbookTable } from "./LogbookTable";
 export { default as ReflectionEditor } from "./ReflectionEditor";

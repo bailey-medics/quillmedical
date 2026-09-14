@@ -11,6 +11,7 @@
 
 import type {
   CompetencyState,
+  CpdEntry,
   Logbook,
   Registration,
   SignOff,
@@ -224,3 +225,73 @@ export const emptyLogbook: Logbook = {
   count: 0,
   entries: [],
 };
+
+/**
+ * A declared appraisal period: August to July, the ordinary case for
+ * somebody whose appraisal falls in the summer.
+ */
+export const appraisalPeriod = { from: "2025-08-01", to: "2026-07-31" };
+
+/**
+ * A shortened period — moved post, appraisal brought forward. The reason
+ * `appraisal_periods` is a history rather than one current month: the
+ * same points across four months read very differently from twelve, and
+ * only the stated range tells a reader which they are seeing.
+ */
+export const shortAppraisalPeriod = { from: "2026-08-01", to: "2026-11-30" };
+
+/**
+ * A period's CPD activities, deliberately out of clinical order so a
+ * test can tell whether the table sorts by `activity_on`. One entry
+ * claims no points, which still counts as an activity.
+ */
+export const cpdEntries: CpdEntry[] = [
+  {
+    filename: "2026-02-11-171930.yaml",
+    year: 2026,
+    activity_on: "2026-02-11",
+    title: "Regional study day",
+    activity_type: "teaching day",
+    points: 6,
+    competencies: [],
+    certificate: null,
+    notes: null,
+    attachments: [],
+  },
+  {
+    filename: "2025-09-04-090015.yaml",
+    year: 2025,
+    activity_on: "2025-09-04",
+    title: "Thoracic oncology conference",
+    activity_type: "conference",
+    points: 3,
+    competencies: [],
+    certificate: null,
+    notes: null,
+    attachments: [],
+  },
+  {
+    filename: "2026-01-20-084500.yaml",
+    year: 2026,
+    activity_on: "2026-01-20",
+    title: "Departmental grand round",
+    activity_type: "grand round",
+    points: 2.5,
+    competencies: [],
+    certificate: null,
+    notes: null,
+    attachments: [],
+  },
+  {
+    filename: "2026-03-02-130000.yaml",
+    year: 2026,
+    activity_on: "2026-03-02",
+    title: "Journal club",
+    activity_type: "other",
+    points: null,
+    competencies: [],
+    certificate: null,
+    notes: "No points claimed.",
+    attachments: [],
+  },
+];
