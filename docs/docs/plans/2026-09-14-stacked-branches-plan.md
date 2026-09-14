@@ -1102,6 +1102,12 @@ Four open issues, all in the same place, and the important one was
   the whole stack). `--check` exits 2 when a branch is held elsewhere,
   which is what the guard reads.
 
+  `--files` is the review view: what each branch changes **against its
+  own parent**, which is the unit to read. Diffed against the trunk a
+  branch three layers up replays everything below it — the wall of diff
+  stacking exists to avoid. `--patch` gives the full diff instead of the
+  per-file summary.
+
 - **Justfile recipes**, all prefixed `st` so they sit apart from the
   container recipes (`sd`, `sb`, `sc`) that already own the short `s`
   names — `stn` (start a stack), `sta` (add a branch on top), `stl`
