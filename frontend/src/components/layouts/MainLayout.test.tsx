@@ -180,7 +180,6 @@ const mockAuthContext: {
       id: "1",
       username: "doctor@example.com",
       email: "doctor@example.com",
-      system_permissions: "staff",
     },
   },
   login: vi.fn(),
@@ -390,7 +389,6 @@ describe("MainLayout", () => {
           id: "1",
           username: "doctor@example.com",
           email: "doctor@example.com",
-          system_permissions: "staff",
         },
       };
     });

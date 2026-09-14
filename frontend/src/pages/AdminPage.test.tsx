@@ -25,7 +25,7 @@ vi.mock("@/auth/AuthContext", () => ({
   useAuth: () => ({
     state: {
       status: "authenticated",
-      user: { username: "admin-user", system_permissions: "superadmin" },
+      user: { username: "admin-user", platform_role: "superadmin" },
     },
   }),
 }));

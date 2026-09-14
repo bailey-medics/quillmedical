@@ -110,7 +110,6 @@ describe("RequireAuth", () => {
           id: "1",
           username: "doc",
           email: "doc@example.com",
-          system_permissions: "staff",
         },
       },
       login: vi.fn(),

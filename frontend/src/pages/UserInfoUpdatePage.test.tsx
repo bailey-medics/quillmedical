@@ -53,7 +53,7 @@ vi.mock("@/auth/AuthContext", () => ({
     state: {
       // A plain admin: `standard` on the platform, so the superadmin
       // option is absent from the permissions list.
-      user: { system_permissions: "admin", platform_role: "standard" },
+      user: { platform_role: "standard" },
     },
   }),
 }));

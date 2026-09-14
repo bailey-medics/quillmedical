@@ -83,7 +83,6 @@ describe("RequireOperator", () => {
       // The whole point of the migration: `system_permissions` no longer
       // decides anything here.
       mockAuth({
-        system_permissions: "superadmin",
         platform_role: "standard",
       });
 

@@ -14,7 +14,6 @@ const mockUsers: Record<string, User> = {
     username: "staff.user",
     email: "staff@example.com",
     roles: ["Clinician"],
-    system_permissions: "staff",
     clinical_services_enabled: true,
   },
   admin: {
@@ -22,7 +21,6 @@ const mockUsers: Record<string, User> = {
     username: "admin.user",
     email: "admin@example.com",
     roles: ["Clinician", "Administrator"],
-    system_permissions: "admin",
     competencies: ["manage_users"],
     clinical_services_enabled: true,
   },
@@ -31,7 +29,6 @@ const mockUsers: Record<string, User> = {
     username: "superadmin.user",
     email: "superadmin@example.com",
     roles: ["Clinician", "Administrator"],
-    system_permissions: "superadmin",
     competencies: ["manage_users"],
     clinical_services_enabled: true,
   },
@@ -40,7 +37,6 @@ const mockUsers: Record<string, User> = {
     username: "patient.user",
     email: "patient@example.com",
     roles: ["Patient"],
-    system_permissions: "single-user",
     clinical_services_enabled: true,
   },
   staff_no_clinical: {
@@ -48,7 +44,6 @@ const mockUsers: Record<string, User> = {
     username: "staff.teaching",
     email: "teaching@example.com",
     roles: ["Clinician"],
-    system_permissions: "staff",
     clinical_services_enabled: false,
   },
   admin_no_clinical: {
@@ -56,7 +51,6 @@ const mockUsers: Record<string, User> = {
     username: "admin.teaching",
     email: "admin.teaching@example.com",
     roles: ["Clinician", "Administrator"],
-    system_permissions: "admin",
     competencies: ["manage_users"],
     clinical_services_enabled: false,
   },

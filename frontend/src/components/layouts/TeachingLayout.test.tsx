@@ -108,7 +108,6 @@ const mockAuthContext: {
       id: "1",
       username: "dr.jones",
       email: "jones@example.com",
-      system_permissions: "staff",
     },
   },
   login: vi.fn(),

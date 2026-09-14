@@ -11,7 +11,6 @@ vi.mock("@/auth/AuthContext", () => ({
     state: {
       status: "authenticated",
       user: {
-        system_permissions: "admin",
         competencies: ["manage_users"],
       },
     },
