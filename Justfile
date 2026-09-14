@@ -961,19 +961,29 @@ stack-rebase:
         echo "" >&2
         echo "✗ Branches still need a rebase after gh stack rebase." >&2
         echo "  It reports success even when it skips a branch." >&2
-        echo "  Run 'just stl' to see which." >&2
+        echo "  Run 'just stack-log' to see which." >&2
         exit 1
     fi
     python3 scripts/stack-status.py
 
 
 alias sts := stack-submit
-# Push the stack and open or update its pull requests, as drafts
+# Rebase onto the latest trunk, then push and open or update the drafts
 stack-submit:
     #!/usr/bin/env bash
     {{initialise}} "stack-submit"
     set -euo pipefail
-    just _stack-guard
+    # Rebase first, every time. A stack is submitted over and over as the
+    # units above it are revised, and trunk moves underneath it while that
+    # happens — 22 commits in one afternoon, the first time this was used.
+    # Submitting without rebasing pushes branches whose pull requests then
+    # sit behind main, which the merge queue has to sort out later.
+    #
+    # `stack-rebase` rather than a bare `gh stack rebase`: it carries the
+    # worktree guard and the after-the-fact check that catches a rebase
+    # which reported success and silently skipped a branch. Both belong
+    # here too, and are better called than copied.
+    just stack-rebase
     # --auto skips the interactive editor and opens every new pull request as
     # a draft, which is what this repository needs: the heavy CI tier and the
     # four gate contexts fire on ready_for_review and synchronize, never on
