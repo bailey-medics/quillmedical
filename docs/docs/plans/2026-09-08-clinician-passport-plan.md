@@ -2991,6 +2991,27 @@ explicitly deferred here.
           bundle as the admin pages do. Serving it from the API is
           already a deferred item, and this is a second caller now
           depending on the build-time import.
+      - [x] **`InviteAssessorForm`, completing the external-assessor
+        flow** whose backend landed in phase 5. Ten tests.
+        - **The form says Quill checks no register**, in a panel rather
+          than leaving the field to imply the number has been validated.
+          The registration is what the holder was told; the assessor
+          confirms it on acceptance and an administrator verifies it by
+          hand later.
+        - **Registration bodies come from
+          `jurisdiction-config.json`**, not a hardcoded list, so adding
+          one stays a YAML change as everywhere else. A test asserts GMC
+          and NMC both appear.
+        - **The competency is optional and says it is not kept.** It
+          writes a clearer email and is deliberately not stored, because
+          one assessor signs off many competencies over months and a
+          stored one would describe only the first.
+      - **Three components remain, all blocked on backend routes that
+        were never built**: `EvidenceUploader` and `CertificateUploader`
+        need a signed-URL endpoint (follow the video pattern in
+        `use-module-media.ts`), and `PassportExportButtons` needs the
+        export routes. `CertificateCard` is unblocked but was left for
+        the same round as the uploader it sits beside.
       - **Every Mantine `SelectField` is `role="combobox"`, not
         `textbox`. Made this mistake four times now** — in
         `SignOffForm`, `SignOffRequestForm`, `LogbookEntryForm` and
