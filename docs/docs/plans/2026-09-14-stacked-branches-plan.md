@@ -647,8 +647,10 @@ than retyped:
 just si    # stack-init     — install and set up git-spice (once per clone)
 just sl    # stack-log      — show the stack
 just sn x "feat: y"  # stack-new — branch feature/x on top, committing your changes
+just sm    # stack-amend    — fold changes into this branch's commit
 just sr    # stack-restack  — rebase the branches above this one
 just ss    # stack-submit   — open or update this branch's PR, as a draft
+just ssa   # stack-submit-all — ditto for every branch in the stack
 just sy    # stack-sync     — drop merged branches, re-target the rest
 ```
 

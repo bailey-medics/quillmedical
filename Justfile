@@ -706,6 +706,53 @@ _branch-guard:
     exit 1
 
 
+# Derive a pull request title from a branch name, as auto-pr.yml does.
+#
+# Deliberately the same derivation as .github/scripts/auto-pr/create-pr.sh:
+# feature/add-login becomes "Feature: Add login". Titles in this repository
+# come from branch names, and `/crp` is forbidden from rewriting them, so a
+# branch submitted by git-spice must arrive with the title auto-pr.yml would
+# have given it - otherwise the two routes produce differently-shaped titles
+# for no reason.
+#
+# `${remainder^}` would be shorter but is bash 4 syntax, and macOS ships
+# bash 3.2 - the same reason create-pr.sh spells it out longhand.
+_pr-title branch:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    prefix=$(echo "{{branch}}" | cut -d'/' -f1)
+    remainder=$(echo "{{branch}}" | cut -d'/' -f2- | tr '-' ' ')
+    case "${prefix}" in
+        feature) type="Feature" ;;
+        hotfix)  type="Hotfix" ;;
+        *)       type="${prefix}" ;;
+    esac
+    first=$(printf '%s' "${remainder:0:1}" | tr '[:lower:]' '[:upper:]')
+    echo "${type}: ${first}${remainder:1}"
+
+
+# The placeholder pull request body, as auto-pr.yml writes it.
+#
+# This repository has no pull request template: the real description is
+# written at the end by `/crp final`, and the placeholder says so. Keeping
+# it identical to create-pr.sh's means a reader cannot tell which route
+# opened the pull request.
+_pr-body:
+    #!/usr/bin/env bash
+    # printf rather than a heredoc: just strips the recipe's common
+    # indentation before bash sees it, so an indented EOF terminator never
+    # matches and the heredoc swallows the rest of the file.
+    printf '%s\n' \
+        '**Placeholder for the PR description**' \
+        '' \
+        'You can autogenerate a PR description covering the whole PR if you are using' \
+        'VSCode Copilot or Claude Code. Run the below in the chat:' \
+        '' \
+        '```' \
+        '/crp final' \
+        '```'
+
+
 # Resolve the git-spice binary, or explain how to get one.
 #
 # Homebrew installs it as `git-spice`, not `gs` as the upstream docs use, and
@@ -733,6 +780,34 @@ _git-spice:
     echo "If brew says it is installed, its link step probably failed:" >&2
     echo "    ln -sf /usr/local/opt/git-spice/bin/git-spice /usr/local/bin/git-spice" >&2
     exit 1
+
+
+alias sa := stack-amend
+# Fold the current changes into this branch's commit, restacking above [git-spice]
+stack-amend message="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just _branch-guard
+    gs=$(just _git-spice)
+
+    # `git-spice commit amend`, not `git commit --amend`: amending rewrites
+    # this branch's commit, so every branch stacked above it is left
+    # pointing at a commit that no longer exists. git-spice restacks them
+    # automatically; plain git would strand them and the next submit would
+    # push the wrong history.
+    #
+    # --all stages modified and deleted files, as `git commit -a` does, so
+    # this needs no separate `git add`. Untracked files are not picked up -
+    # a brand new file still needs `git add` first.
+    #
+    # The message is optional here, unlike `just sn`: amending usually
+    # keeps the message it has, and --no-edit is what makes that possible
+    # without opening an editor that a script or agent cannot answer.
+    if [ -n "{{message}}" ]; then
+        "${gs}" commit amend --all --message "{{message}}"
+    else
+        "${gs}" commit amend --all --no-edit
+    fi
 
 
 alias si := stack-init
@@ -893,8 +968,10 @@ stack-submit:
     # created ready for review gets none of them and hangs on "Expected -
     # Waiting for status to be reported".
     #
-    # One branch, not the stack: submitting the stack is what the VS Code
-    # extension's "Submit Stack" button does, and it passes --no-draft.
+    # One branch only. Use `just ssa` to submit the whole stack - that is
+    # fine by hand, because it passes --draft too. What is not fine is the
+    # VS Code extension's "Submit Stack" button, which hardcodes
+    # --no-draft.
 
     # A branch made with plain `git switch -c` is invisible to git-spice:
     # only `branch create` registers one. Submitting it then fails with
@@ -909,7 +986,94 @@ stack-submit:
     # guessed by comparing against the other tracked branches.
     "${gs}" branch track >/dev/null 2>&1 || true
 
-    "${gs}" branch submit --draft
+    # Title from the branch name and the placeholder body, exactly as
+    # auto-pr.yml would produce them - not --fill, which would take the
+    # title from the commit message and give this route a different shape
+    # of title from every other pull request here.
+    branch=$(git rev-parse --abbrev-ref HEAD)
+    "${gs}" branch submit --draft \
+        --title "$(just _pr-title "${branch}")" \
+        --body "$(just _pr-body)"
+
+
+alias ssa := stack-submit-all
+# Open or update pull requests for every branch in the stack, as drafts [git-spice]
+stack-submit-all:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just _branch-guard
+    gs=$(just _git-spice)
+    # The same --draft reasoning as `just ss`, applied to every branch at
+    # once. Submitting a whole stack is only dangerous when something else
+    # chooses the draft flag for you: the VS Code extension's "Submit
+    # Stack" button runs `stack submit --fill --no-draft`, so every pull
+    # request opens ready for review and none of them ever fires the heavy
+    # CI tier or the four gate checks. Passing --draft here removes that
+    # objection entirely.
+    #
+    # Note this pushes every branch in the stack and opens or updates a
+    # pull request for each, so it is several remote operations at once.
+    #
+    # Submitted one branch at a time rather than with `stack submit`,
+    # because that command takes no --title or --body: it offers only
+    # --fill or a prompt per branch, and neither gives the branch-name
+    # title every other pull request here has. Looping lets each branch
+    # carry its own derived title.
+    #
+    # Order comes from `ll --json`, walked from trunk upwards, so a branch
+    # is always submitted after the one it is based on and each pull
+    # request finds its base already present.
+    # Walked in bash rather than with an inline python script: just parses
+    # the recipe body itself, and a heredoc of python trips its tokeniser.
+    #
+    # `ll --json` prints one object per branch, each naming the branch
+    # below it. Follow `down` from the current branch to trunk, collecting
+    # names, then reverse - which yields trunk-first order.
+    json=$("${gs}" ll -a --json 2>/dev/null)
+    branches=""
+    cursor=$(git rev-parse --abbrev-ref HEAD)
+
+    # The match must be anchored to the start of the object. A branch name
+    # appears on several lines - its own entry, and the "down" or "ups" of
+    # its neighbours - so an unanchored grep picks whichever line comes
+    # first and can resolve a branch to itself, which spins forever. The
+    # branch's own row is the one whose FIRST key is its name.
+    #
+    # The counter is belt and braces: a cycle in the store would otherwise
+    # hang the recipe rather than fail it, and a hang is far harder to
+    # diagnose than an error.
+    guard=0
+    while [ -n "${cursor}" ]; do
+        branches="${cursor}"$'\n'"${branches}"
+
+        guard=$((guard + 1))
+        if [ "${guard}" -gt 50 ]; then
+            echo "Giving up walking the stack after 50 branches -" >&2
+            echo "the git-spice store may contain a cycle." >&2
+            exit 1
+        fi
+
+        cursor=$(printf '%s\n' "${json}" \
+            | grep "^{\"name\":\"${cursor}\"," \
+            | sed -n 's/.*"down":{"name":"\([^"]*\)".*/\1/p' \
+            | head -1)
+        # trunk is not submitted, and has no row of its own to walk from.
+        [ "${cursor}" = "main" ] && cursor=""
+    done
+    branches=$(printf '%s\n' "${branches}" | sed '/^$/d')
+
+    if [ -z "${branches}" ]; then
+        echo "No tracked branches to submit." >&2
+        exit 1
+    fi
+
+    while IFS= read -r branch; do
+        [ -n "${branch}" ] || continue
+        echo "Submitting ${branch}..."
+        "${gs}" branch submit --draft --branch "${branch}" \
+            --title "$(just _pr-title "${branch}")" \
+            --body "$(just _pr-body)"
+    done <<< "${branches}"
 
 
 alias sy := stack-sync
