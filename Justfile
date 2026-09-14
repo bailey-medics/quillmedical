@@ -754,6 +754,21 @@ stack-init:
     # or it never gets the heavy CI tier or the four gate checks.
     git config spice.submit.draft true
 
+    # Authentication is checked, never performed. `auth login` opens an
+    # interactive menu of methods, which would hijack a setup that is
+    # otherwise unattended, and it fails outright when a token already
+    # exists - so running it here would also break the idempotency that
+    # lets `just i` call this recipe from every worktree. The token lives
+    # in the system keychain, per machine rather than per repository, so
+    # this is a one-off even across clones.
+    if ! "${gs}" auth status --forge=github >/dev/null 2>&1; then
+        echo ""
+        echo "git-spice is not logged in to GitHub. Run:"
+        echo "    git-spice auth login --forge=github"
+        echo "and choose 'CLI' to reuse the token gh already holds."
+        echo ""
+    fi
+
     echo "git-spice ready. Run 'just sl' to see the stack."
 
 
@@ -767,19 +782,35 @@ stack-log:
 
 
 alias sn := stack-new
-# Start a new branch stacked on the current one, committing staged changes [git-spice]
-stack-new name="":
+# Start a new branch stacked on the current one, committing the current changes [git-spice]
+stack-new name="" message="":
     #!/usr/bin/env bash
     set -euo pipefail
-    if [ -z "{{name}}" ]; then
-        echo "Usage: just sn <short-name>" >&2
-        echo "Creates feature/<short-name> stacked on the current branch." >&2
+    if [ -z "{{name}}" ] || [ -z "{{message}}" ]; then
+        echo "Usage: just sn <short-name> \"<commit message>\"" >&2
+        echo "" >&2
+        echo "Creates feature/<short-name> stacked on the current branch," >&2
+        echo "committing the current changes with the message given." >&2
+        echo "" >&2
+        echo "Example:" >&2
+        echo "    just sn video-quality \"feat(teaching): add quality switch\"" >&2
         exit 1
     fi
     gs=$(just _git-spice)
     # The prefix config makes this feature/<name>, which branch protection
     # requires; passing the bare name keeps the recipe readable.
-    "${gs}" branch create "{{name}}"
+    #
+    # -a stages modified and deleted files first, as `git commit -a` does,
+    # so the branch carries the work in hand without a separate `git add`.
+    # It does NOT pick up untracked files: a brand new file still needs
+    # `git add` before this runs, exactly as with `git commit -a`.
+    #
+    # The message is required rather than optional, so -m is always passed
+    # and an editor never opens. An editor prompt hangs anything that
+    # cannot answer it - a script, a CI job, an agent session - which is
+    # the same failure that killed the VS Code panel on an uninitialised
+    # repository.
+    "${gs}" branch create --all --message "{{message}}" "{{name}}"
 
 
 alias sr := stack-restack
@@ -810,6 +841,20 @@ stack-submit:
     #
     # One branch, not the stack: submitting the stack is what the VS Code
     # extension's "Submit Stack" button does, and it passes --no-draft.
+
+    # A branch made with plain `git switch -c` is invisible to git-spice:
+    # only `branch create` registers one. Submitting it then fails with
+    # "lookup branch: does not exist in store", which is accurate and says
+    # nothing about the cure.
+    #
+    # `branch track` is run unconditionally rather than behind a check.
+    # It is idempotent - on an already-tracked branch it re-confirms the
+    # base and exits 0 - and git-spice offers no "is this tracked?" query
+    # to test with, so tracking every time is both simpler and the only
+    # reliable option. Reversible with `branch untrack`. The base is
+    # guessed by comparing against the other tracked branches.
+    "${gs}" branch track >/dev/null 2>&1 || true
+
     "${gs}" branch submit --draft
 
 

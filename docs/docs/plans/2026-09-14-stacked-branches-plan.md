@@ -532,6 +532,59 @@ WRN Please run 'git-spice repo sync' before other git-spice commands.
 A stack built on a stale trunk produces pull requests whose diffs carry
 unrelated changes. Sync first.
 
+### Log in to GitHub
+
+git-spice keeps its own credentials rather than borrowing the ones `gh`
+holds, so there is a one-off login per machine:
+
+```bash
+git-spice auth login --forge=github
+```
+
+Choose **CLI** from the menu it offers. That reuses the token `gh`
+already has, which avoids creating a second credential to rotate or
+revoke. The other methods — OAuth, a GitHub App, a personal access
+token, Git Credential Manager — all mean another secret in another
+place.
+
+The token is stored in the system keychain, so this is once per machine
+rather than once per clone or worktree. `just si` checks for it and says
+what to run, but deliberately does not run it: the menu is interactive,
+and `auth login` fails outright when a token already exists.
+
+Without it, the first submit fails like this:
+
+```text
+ERR No authentication token found for github.
+FTL git-spice: submit branch feature/...: not logged in to github
+```
+
+### Tracking a branch git-spice did not create
+
+`just sn` (`git-spice branch create`) registers a branch as it creates
+it. A branch made the ordinary way — `git switch -c`, or `git checkout
+-b` — is invisible to git-spice, and submitting it fails:
+
+```text
+FTL git-spice: submit branch feature/...: lookup branch:
+    does not exist in store
+```
+
+The cure is to track it:
+
+```bash
+git-spice branch track --base main
+```
+
+`just ss` now runs `branch track` before every submit, so this is mostly
+background. It does so unconditionally rather than after checking:
+tracking is idempotent — on an already-tracked branch it re-confirms the
+base and exits 0 — and git-spice offers no query for "is this branch
+tracked", so there is nothing to check against. Tracking is harmless and
+reversible with `git-spice branch untrack`, which is why the recipe acts
+here rather than only reporting — unlike the login above, which it never
+performs.
+
 ### The VS Code extension
 
 Optional, and a viewer rather than a replacement for the command line.
@@ -593,7 +646,7 @@ than retyped:
 ```bash
 just si    # stack-init     — install and set up git-spice (once per clone)
 just sl    # stack-log      — show the stack
-just sn x  # stack-new      — branch feature/x on top of this one
+just sn x "feat: y"  # stack-new — branch feature/x on top, committing your changes
 just sr    # stack-restack  — rebase the branches above this one
 just ss    # stack-submit   — open or update this branch's PR, as a draft
 just sy    # stack-sync     — drop merged branches, re-target the rest
