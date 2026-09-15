@@ -2,7 +2,7 @@
 name: st-follow-the-plan-document
 description: Build a plan document as a stack, one branch per reviewable unit
 argument-hint: "[path/to/plan.md]"
-allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git add:*), Bash(git commit:*), Bash(git fetch:*), Bash(git push:*), Bash(git switch:*), Bash(just stack-log:*), Bash(just stack-log-long:*), Bash(just stack-files:*), Bash(just stack-new:*), Bash(just stack-add:*), Bash(just stack-update:*), Bash(just stack-rebase:*), Bash(just stack-submit:*), Bash(just stack-move:*), Bash(just stack-help:*), Bash(gh stack view:*), Bash(gh pr list:*), Bash(gh pr view:*), Bash(gh pr edit:*), Bash(gh pr ready:*), Bash(python3 scripts/stack-status.py:*)
+allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git add:*), Bash(git commit:*), Bash(git fetch:*), Bash(git push:*), Bash(git switch:*), Bash(just stack-log:*), Bash(just stack-log-long:*), Bash(just stack-files:*), Bash(just stack-update:*), Bash(just stack-rebase:*), Bash(just stack-submit:*), Bash(just stack-move:*), Bash(just stack-help:*), Bash(gh stack view:*), Bash(gh pr list:*), Bash(gh pr view:*), Bash(gh pr edit:*), Bash(gh pr ready:*), Bash(python3 scripts/stack-status.py:*)
 disallowed-tools: Bash(gh pr merge:*), Bash(gh stack merge:*), Bash(git rebase:*), mcp__github__merge_pull_request, mcp__github__enable_pr_auto_merge
 disable-model-invocation: true
 ---
@@ -106,41 +106,25 @@ current unit, or the human left it there and you should ask.
 
 Then, for each unit in the plan:
 
-1. **Start the branch.**
-
-   - The first unit of a new stack, from `main`:
-
-     ```bash
-     just stack-new <name> "<commit message>"
-     ```
-
-   - Every unit after it:
-
-     ```bash
-     just stack-add <name> "<commit message>"
-     ```
-
-   Both stage everything and commit, so run them **after** the unit is built,
-   not before. Name the branch for the unit, not the plan: `passport-store`,
-   not `passport-plan-phase-2`.
-
-2. **Build the unit**, re-reading that section of the plan first. Ship it
+1. **Build the unit**, re-reading that section of the plan first. Ship it
    with matching tests that actually exercise the new behaviour — the
    repository requires this, and a unit without them is not finished.
 
-3. **Run the targeted tests** for what the unit touched (`just ub -k "..."`,
-   `just uf src/path/to/file.test.tsx`). Not the full suite: CI's fast tier
-   runs that on every push. If a test fails, stop and report it rather than
-   fixing and carrying on — an unreviewed fix compounds into the next unit.
+   Do not create a branch first. `/st-crpd` makes the branch from the work
+   in step 3, so the unit is built on whatever branch is checked out and
+   lifted onto its own branch when it is finished.
 
-4. **Finish the unit** with `/st-crpd`, which commits, cascade-rebases,
-   pushes, and writes the pull request description for this branch alone.
-   Leave it a draft.
+2. **Tick the plan.** Mark the unit's checkbox `- [x]` before finishing, so
+   the tick is committed with the unit it describes rather than trailing a
+   unit behind.
 
-5. **Tick the plan.** Mark the unit's checkbox `- [x]` and commit that with
-   the unit, so the plan document stays a true record of progress.
+3. **Finish the unit** with `/st-crpd`. It commits the work onto a **new**
+   stacked branch, cascade-rebases, pushes, and writes that branch's pull
+   request description. One unit, one branch, one pull request. Leave it a
+   draft.
 
-6. **Next unit**, back to step 1 with `just stack-add`.
+4. **Next unit**, back to step 1. Nothing to check out: the new branch is
+   already the top of the stack, so the next unit builds on it.
 
 ## Stopping
 
