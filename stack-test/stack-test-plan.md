@@ -13,8 +13,8 @@ Please implement all of the phases below. Each phase is an individual stacked br
 
 ## Phase 1
 
-- [ ] Create a file in the folder `./stack-tests/text-files/`. Given this file an animal name and the `.md` extension.
-- [ ] Create a python script at `./stack-tests/scripts/` that adds one animal name to all the files in the `./stack-tests/text-files/` folder.
+- [x] Create a file in the folder `./stack-tests/text-files/`. Given this file an animal name and the `.md` extension.
+- [x] Create a python script at `./stack-tests/scripts/` that adds one animal name to all the files in the `./stack-tests/text-files/` folder.
 
 ## Phase 2
 
