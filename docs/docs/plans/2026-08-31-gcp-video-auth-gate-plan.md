@@ -1641,6 +1641,44 @@ Consequences to hold on to:
       start being recorded, the window opens — so this wants doing before the
       caption job rather than after it.
 
+### The 404 alert named the load balancer by its Logging name
+
+**[found 2026-09-15]** Three consecutive applies on `main` failed creating the
+video 404 alert policy, with:
+
+```
+Field alert_policy.conditions[0].condition_threshold.filter had an invalid
+value of "resource.type = "http_load_balancer" AND metric.type =
+"logging.googleapis.com/user/quill/video_not_found_teaching"":
+The resource name does not represent a known descriptor.
+```
+
+- **The resource type was wrong, not the metric.** The error says "the resource
+  name", and it means it. A global external load balancer is
+  `http_load_balancer` to Logging and `l7_lb_rule` to Monitoring. The metric's
+  own log filter correctly uses the first; the alert filter is read by
+  Monitoring and must use the second. Verified against the live descriptor,
+  which lists `monitoredResourceTypes: [l7_lb_rule]`, and by querying the
+  Monitoring API with each spelling — `l7_lb_rule` is accepted,
+  `http_load_balancer` returns the identical error.
+
+- **The message misleads, and cost a day.** It reads as though the metric is
+  unknown to Monitoring, so the first fix was a 90-second `time_sleep` waiting
+  for a descriptor that already existed. That wait has been removed along with
+  the `depends_on` in `outputs.tf`; the `time` provider stays in `versions.tf`
+  because `wait_for_backend_bucket` still uses it, so this takes one apply
+  rather than the two the Phase 0 teardown needed.
+
+- **The browser-error policy was a false precedent.** It says
+  `cloud_run_revision` and works, which made the pattern look right. Its
+  descriptor genuinely is `cloud_run_revision` — it was matching the
+  descriptor all along, not naming a Logging type that happened to be accepted.
+
+- **A log-based metric with no data still registers its descriptor.** The video
+  metric has never matched an entry — no learner has requested a missing video
+  — yet the descriptor exists. So "wait for data before alerting" is not a
+  constraint, and was considered and rejected as an explanation here.
+
 ## Phase 7: Cutover
 
 - [ ] Migrate one real EoEETA lecture from YouTube to GCS end to end and confirm

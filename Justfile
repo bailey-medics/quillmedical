@@ -865,6 +865,68 @@ stack-files patch="":
     fi
 
 
+alias sth := stack-help
+# List the stack commands, one per line, with their arguments
+stack-help:
+    #!/usr/bin/env bash
+    set +x
+    {{initialise}} "stack-help"
+    set +x
+    # Read back out of `just --list` rather than written out here: a hard-coded
+    # list is one more thing to update when a recipe gains an argument, and the
+    # copy that goes stale is the one being consulted precisely because someone
+    # has forgotten the command.
+    #
+    # `--list` prints "  name args   # description [alias: x]". Only the part
+    # before the comment is wanted — this is a reminder of the exact wording
+    # and argument order, not documentation; `just --list` already carries the
+    # descriptions for anyone who wants them.
+    #
+    # Coloured only when stdout is a terminal, so piping or capturing the
+    # output does not pick up escape sequences.
+    #
+    # 206,166,87 as a 24-bit RGB escape rather than an ANSI palette index: it
+    # is the colour an editor gives a recipe name in this Justfile, sampled
+    # from the screen, and the point is to match it. Palette colour 33
+    # ("yellow") renders anywhere from amber to orange depending on the
+    # theme, so it could not. A terminal with only 256 colours degrades this
+    # to the nearest entry, 179, which is close enough not to detect.
+    # The arguments are coloured separately from the name, so the shape of a
+    # command — what it is, and what it wants — reads at a glance.
+    if [ -t 1 ]; then
+        recipe_colour=$'\033[38;2;206;166;87m'
+        argument_colour=$'\033[38;2;159;206;253m'
+        reset=$'\033[0m'
+    else
+        recipe_colour=""
+        argument_colour=""
+        reset=""
+    fi
+    echo ""
+    echo "  Prefix any of these with 'just' or 'j' to run it:"
+    echo ""
+    just --list 2>/dev/null \
+        | grep -E '^\s+stack(-[a-z-]+)?( |$)' \
+        | sed -E 's/[[:space:]]*#.*$//; s/^[[:space:]]+//' \
+        | while IFS= read -r signature; do
+            # Everything up to the first space is the recipe name; the rest,
+            # if there is any, is its arguments. A recipe that takes none
+            # leaves `arguments` empty and prints as just the name.
+            name="${signature%% *}"
+            arguments="${signature#"${name}"}"
+            arguments="${arguments# }"
+
+            if [ -n "${arguments}" ]; then
+                printf '  %s%s%s %s%s%s\n' \
+                    "${recipe_colour}" "${name}" "${reset}" \
+                    "${argument_colour}" "${arguments}" "${reset}"
+            else
+                printf '  %s%s%s\n' "${recipe_colour}" "${name}" "${reset}"
+            fi
+        done
+    echo ""
+
+
 alias stl := stack-log
 # Show the current stack (fast, local only — no network)
 stack-log:
@@ -1004,6 +1066,75 @@ stack-sync:
     # branch, cascade-rebases what sat above it and pushes the result.
     gh stack sync
     python3 scripts/stack-status.py --prs
+
+
+alias stu := stack-update
+# Fold changes into this branch's last commit (message optional, to reword it)
+stack-update message="":
+    #!/usr/bin/env bash
+    {{initialise}} "stack-update"
+    set -euo pipefail
+    # The counterpart to stack-new and stack-add, which both create a branch.
+    # This one revises the branch already checked out — the ordinary case when
+    # a review comment, or a second pass over generated code, changes a unit
+    # that already exists.
+    #
+    # It amends rather than adding a commit, because a stacked branch reads
+    # best as one commit doing one thing: that is the unit being reviewed. A
+    # branch that accumulates "fix: typo" on top of its real change is how a
+    # two-unit stack became four branches on the first real run of this
+    # tooling. Amending keeps each branch to its single, finished commit.
+    #
+    # Either way the branches above this one must be rebased afterwards, so
+    # amending costs nothing extra: a plain commit leaves them behind just as
+    # surely, only less visibly. `stack-rebase` is the repair, and
+    # `stack-log` flags what still needs it.
+    #
+    # No stack guard: amending the branch you have checked out touches nothing
+    # another worktree holds. `stack-submit` runs the guard when this work is
+    # pushed — and pushes with --force-with-lease, which an amended branch
+    # needs and a stack does on every submit anyway.
+    if git diff --quiet && git diff --cached --quiet && \
+       [ -z "$(git ls-files --others --exclude-standard)" ] && \
+       [ -z "{{message}}" ]; then
+        echo "Nothing to fold in — the working tree is clean." >&2
+        echo "  Pass a message to reword the last commit on its own." >&2
+        exit 1
+    fi
+    # -A to match stack-new and stack-add: all three stage everything,
+    # untracked files included, so the three commands cannot differ in what
+    # they quietly leave behind.
+    git add -A
+    if [ -n "{{message}}" ]; then
+        git commit --amend -m "{{message}}"
+    else
+        # --no-edit keeps the existing message rather than opening an editor,
+        # which would hang anywhere non-interactive.
+        git commit --amend --no-edit
+    fi
+
+    # Amending rewrote this branch's commit, so every branch above it now sits
+    # on a commit that no longer exists. Rebasing is not optional afterwards —
+    # it is the other half of the same operation — so it runs here rather than
+    # being left as something to remember. `stack-rebase` carries the worktree
+    # guard and the check that catches a rebase which reported success and
+    # silently skipped a branch.
+    #
+    # Skipped when this branch is not in a stack: there is nothing above it to
+    # restack, and `stack-rebase` would refuse for want of a stack rather than
+    # for any real problem. That also lets this recipe be used on an ordinary
+    # branch, which is worth having.
+    # --check exits 0 in a stack, 1 when this branch is in none, and 2 when a
+    # stack branch is checked out in another worktree. Only 1 means "nothing
+    # above to restack"; 2 is a real problem and must still reach the guard
+    # inside stack-rebase rather than being quietly taken for "no stack".
+    stack_state=0
+    python3 scripts/stack-status.py --check >/dev/null 2>&1 || stack_state=$?
+    if [ "${stack_state}" -eq 1 ]; then
+        echo "  Amended. Not in a stack, so nothing above needs rebasing."
+    else
+        just stack-rebase
+    fi
 
 
 alias sd := start-dev

@@ -54,12 +54,31 @@ reports against the merge-group ref, so the entry waits until
 mark a check "required on the PR but not in the queue" — GitHub uses one
 list for both. So when you add a required check, add the trigger with it.
 
-**Don't let a workflow fire on both `push` and `merge_group`.** Creating the
-queue branch fires a `push` event too. If both runs share a concurrency
-group keyed on `github.ref`, `cancel-in-progress` makes one kill the other,
-and a cancelled required check reads as a failure. `ci.yml` excludes
-`gh-readonly-queue/**` from its push trigger and keys concurrency by
-`github.event_name` as well as `github.ref`.
+**Two runs that may cancel each other must be doing the same work.** A
+cancelled required check reads as a *failure*, not as "did not run", so any
+`cancel-in-progress` group holding two different kinds of run will block a
+pull request that has nothing wrong with it. `ci.yml` keys its group by
+`github.event_name` **and** `github.event.action` as well as `github.ref`,
+and excludes `gh-readonly-queue/**` from its push trigger. This was arrived
+at twice, from the same failure:
+
+- **`push` versus `merge_group`.** Creating the queue branch fires a `push`
+  event too, and with the group keyed on `github.ref` alone one killed the
+  other. Fixed by adding `github.event_name`.
+- **`synchronize` versus `ready_for_review`.** Both are `pull_request`, so
+  adding the event name did not separate them. A tool that pushes a branch
+  and marks its pull request ready in one operation fires both in the same
+  second — `gh stack submit` does, every time — and the two are not
+  equivalent: the heavy tier is gated on `draft == false`, so the
+  synchronize run skips it while the ready_for_review run carries it. The
+  cheap run cancelled the expensive one and five required checks ended
+  CANCELLED. Fixed by adding `github.event.action`, which is empty for
+  `push` and `merge_group` and so leaves those keys untouched.
+
+The general rule is the one at the top: if two runs would do different work,
+they belong in different concurrency groups. `gate-breaking.yml` takes the
+same principle further and has no workflow-level concurrency at all, because
+nothing in it may ever be cancelled.
 
 **The naming ruleset must permit the queue's own branches.** The queue builds
 each entry on `gh-readonly-queue/main/pr-<n>-<sha>`. `branch_rules.tf` allows
