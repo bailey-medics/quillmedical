@@ -14,7 +14,11 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { api } from "@/lib/api";
-import type { MediaUploadUrl, ModuleMedia } from "@/features/teaching/types";
+import type {
+  Captions,
+  MediaUploadUrl,
+  ModuleMedia,
+} from "@/features/teaching/types";
 
 export interface ModuleMediaState {
   media: ModuleMedia | null;
@@ -24,6 +28,17 @@ export interface ModuleMediaState {
   uploadProgress: Record<string, number>;
   upload: (key: string, file: File) => Promise<void>;
   remove: (assetId: string) => Promise<void>;
+  /**
+   * Fetch one asset's WebVTT, or null if it could not be read.
+   *
+   * On demand rather than with the media list: a WebVTT is a whole
+   * lecture transcript, and loading one per row would cost several
+   * requests to render a card whose captions are usually not being
+   * looked at.
+   */
+  loadCaptions: (assetId: string) => Promise<Captions | null>;
+  /** Replace one asset's WebVTT. True when it saved. */
+  saveCaptions: (assetId: string, webvtt: string) => Promise<boolean>;
 }
 
 /** Round a byte count to something a person reads at a glance. */
@@ -274,6 +289,51 @@ export function useModuleMedia(moduleId: string | null): ModuleMediaState {
     [moduleId, refresh],
   );
 
+  // Captions are fetched on demand rather than with the media list: a
+  // WebVTT is a whole lecture transcript, and loading one per row would
+  // cost several requests to render a card whose captions are usually
+  // not being looked at.
+  const loadCaptions = useCallback(
+    async (assetId: string): Promise<Captions | null> => {
+      if (!moduleId) return null;
+      try {
+        setError(null);
+        return await api.get<Captions>(
+          `/teaching/admin/modules/${moduleId}/media/${assetId}/captions`,
+        );
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Failed to load captions",
+        );
+        return null;
+      }
+    },
+    [moduleId],
+  );
+
+  const saveCaptions = useCallback(
+    async (assetId: string, webvtt: string): Promise<boolean> => {
+      if (!moduleId) return false;
+      try {
+        setError(null);
+        await api.put(
+          `/teaching/admin/modules/${moduleId}/media/${assetId}/captions`,
+          { webvtt },
+        );
+        // Saving records the review, so the card's badge is stale until
+        // the media list is fetched again.
+        await refresh();
+        return true;
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Failed to save captions",
+        );
+        return false;
+      }
+    },
+    [moduleId, refresh],
+  );
+
   // Derived rather than stored, so a null module reports "nothing to
   // load" immediately without an extra render.
   if (!moduleId) {
@@ -284,8 +344,19 @@ export function useModuleMedia(moduleId: string | null): ModuleMediaState {
       uploadProgress: {},
       upload,
       remove,
+      loadCaptions,
+      saveCaptions,
     };
   }
 
-  return { media, loading, error, uploadProgress, upload, remove };
+  return {
+    media,
+    loading,
+    error,
+    uploadProgress,
+    upload,
+    remove,
+    loadCaptions,
+    saveCaptions,
+  };
 }

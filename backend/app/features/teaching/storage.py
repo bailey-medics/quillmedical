@@ -736,6 +736,66 @@ def create_resumable_upload_url(
     )
 
 
+def caption_object_path(org_id: int, module_id: str, asset_id: str) -> str:
+    """Where an asset's WebVTT lives in the processed bucket.
+
+    The caption job writes ``{asset_id}.vtt`` beside the renditions, and
+    ``_resolve_video_filename`` returns that name to the player, so this
+    is the one place the spelling is stated for the admin path too.
+
+    Built on ``media_object_path`` so the same validation guards it: a
+    traversal here would let a caller read or overwrite another
+    organisation's captions.
+    """
+    return f"{media_object_path(org_id, module_id, asset_id)}.vtt"
+
+
+def read_caption_object(
+    bucket_name: str,
+    org_id: int,
+    module_id: str,
+    asset_id: str,
+) -> str | None:
+    """The current WebVTT for one asset, or None where there is none.
+
+    None rather than an empty string, because "the job has not run" and
+    "the captions are empty" are different things to show an admin.
+    """
+    from google.cloud import storage
+
+    path = caption_object_path(org_id, module_id, asset_id)
+
+    client = storage.Client()
+    blob = client.bucket(bucket_name).blob(path)
+    if not blob.exists():
+        return None
+    return str(blob.download_as_text(encoding="utf-8"))
+
+
+def write_caption_object(
+    bucket_name: str,
+    org_id: int,
+    module_id: str,
+    asset_id: str,
+    webvtt: str,
+) -> None:
+    """Replace one asset's WebVTT with corrected text.
+
+    Carries the same ``Cache-Control`` the caption job sets. Without it
+    the object would be written with none, and Cloud CDN would go on
+    serving the old text until something evicted it — so the admin's
+    correction would appear to have done nothing.
+    """
+    from google.cloud import storage
+
+    path = caption_object_path(org_id, module_id, asset_id)
+
+    client = storage.Client()
+    blob = client.bucket(bucket_name).blob(path)
+    blob.cache_control = "public, max-age=86400"
+    blob.upload_from_string(webvtt, content_type="text/vtt")
+
+
 def delete_media_object(
     bucket_name: str,
     org_id: int,

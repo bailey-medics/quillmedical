@@ -489,3 +489,19 @@ class ModuleMediaLink(Base):
     has_captions: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=false()
     )
+    #: When someone last saved the captions after reading them, or None
+    #: where nobody has.
+    #:
+    #: Whisper mishears clinical terminology — "caecum" as "seek 'em",
+    #: drug names mangled — and captions are a WCAG 2.1 AA requirement,
+    #: so a learner relying on them is given the wrong word with nothing
+    #: to signal it. Machine output is therefore a draft until a human
+    #: has been over it, and this is what records that they have.
+    #:
+    #: Set by saving the captions rather than by a separate "mark as
+    #: reviewed" action: someone who has edited the text has read it,
+    #: and a button that only claims review is a box to tick without
+    #: looking.
+    captions_reviewed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )

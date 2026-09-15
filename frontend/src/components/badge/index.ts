@@ -1,6 +1,7 @@
 export { default as ActiveStatusBadge } from "./ActiveStatusBadge";
 export { default as AppointmentStatusBadge } from "./AppointmentStatusBadge";
 export { default as AssessmentResultBadge } from "./AssessmentResultBadge";
+export { default as CaptionStatusBadge } from "./CaptionStatusBadge";
 export { default as CompetencyBadge } from "./CompetencyBadge";
 export { default as FeatureBadge } from "./FeatureBadge";
 export { default as LetterStatusBadge } from "./LetterStatusBadge";

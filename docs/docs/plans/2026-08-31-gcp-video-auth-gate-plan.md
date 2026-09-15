@@ -1508,16 +1508,54 @@ Consequences to hold on to:
       switch — dropping the learner back to the start of a lecture to change
       quality is worse than not offering it. Stories and tests per the
       components rule.
-- [ ] Cloud Run job `video-caption` — Whisper-large, 4 CPU, 10 GB, 60-minute
+      **[done 2026-09-14]** A Mantine `SegmentedControl`, shown only when the
+      API returned a 1080p filename. The names are deterministic, so the
+      player could derive one from the other — it deliberately does not, because
+      a derived name for a file nobody wrote is a 404 with nothing to tell the
+      learner.
+      **The seek was verified in a browser, not only against the mock.**
+      Switching mid-playback resumes from the same position, seamlessly. That
+      mattered because the behaviour depends on a real `HTMLVideoElement`
+      firing `canplay` after the source swaps, which no unit test can
+      establish — the position is captured before the switch and restored on
+      that event, then playback resumes.
+      The control sits **below** the frame rather than over it: the browser
+      draws its own controls in shadow DOM and decides where they go, so an
+      overlay risks covering the play button at some viewport width.
+      **A real gap closed on the way**: `posterUrl` and `captionsUrl` were
+      props `VideoPlayer` had accepted since Phase 4 and nothing ever passed,
+      so the poster and captions the backend returns reached nothing at all.
+      `SlideLayoutVideo` now composes every rendition URL from the one grant —
+      they all live under the prefix the signed cookie covers, so none needs a
+      request of its own.
+- [x] Cloud Run job `video-caption` — Whisper-large, 4 CPU, 10 GB, 60-minute
       timeout. Writes WebVTT beside the renditions.
-- [ ] Set `Cache-Control: public, max-age=86400` on every object both jobs write,
+      **[done 2026-09-15]** Built as `backend/Dockerfile.caption` with its
+      own pinned `requirements-caption.txt`, which is the decision this
+      plan deferred to "judge when the caption job is built". Whisper pulls
+      torch; putting it in the shared lock file would inflate the API,
+      admin and transcode images with a dependency tree none of them
+      imports. The cost is a second dependency file outside `poetry.lock`
+      and therefore outside Renovate's view, so it is pinned exactly.
+      CPU-only torch via the PyTorch index, because a Cloud Run Job has no
+      GPU and the default wheel carries gigabytes of CUDA for nothing.
+      **It reads the processed bucket, not the source.** The transcode job
+      deletes its master once the renditions verify, so by the time
+      captions are wanted the original is usually gone — the 720p rendition
+      is the input instead, and carries the same audio for a smaller
+      download.
+      The model is fetched on first run rather than baked in: a Cloud Run
+      Job keeps no disk between executions, so baking it would add
+      gigabytes to every push and save nothing on the second run.
+- [x] Set `Cache-Control: public, max-age=86400` on every object both jobs write,
       so Cloud CDN actually caches them. Objects written without it will be
       revalidated on every request and the CDN buys us nothing.
       **[half done 2026-09-13]** The transcode job sets it on every output it
       writes, and a test asserts it rather than trusting the constant — this
       is exactly the kind of property that is invisible until a bill arrives.
-      Left unticked because the caption job does not exist yet and this item
-      covers both.
+      **[done 2026-09-15]** The caption job now sets the same constant on
+      the WebVTT it writes, and its tests assert it the same way. Both
+      halves of this item are covered.
 - [x] Trigger both on upload, not from the content repo's deploy workflow.
       **[revised 2026-09-09]** The original wording predates the decision that
       media is uploaded through the admin UI rather than committed to the content
@@ -1548,15 +1586,60 @@ Consequences to hold on to:
       deliberately not awaited and no polling or callback exists, so every link
       currently keeps a null transcode state; and the caption job has no
       trigger because it has no job. Both belong to the items below.
-- [ ] Captions are reviewed by the content author before a module goes `live` —
+- [x] **Let an admin correct the captions.** **[added 2026-09-15]** Whisper
+      will get clinical terminology wrong — "caecum" as "seek 'em", drug names
+      mangled, abbreviations wrongly expanded — and captions are a WCAG 2.1 AA
+      requirement, so a learner relying on them is given the wrong word with
+      nothing to signal it. Today nothing in the application reads or writes
+      the `.vtt` after the job puts it in the bucket, so there is no way to fix
+      one at all.
+      **Decided 2026-09-15: a raw WebVTT textarea**, not a cue-by-cue editor.
+      The whole file in one editable box on the admin card, saved back as it
+      stands. Chosen over a per-cue editor with video sync because it is a
+      fraction of the work and makes captions correctable now; the nicer tool
+      can follow once there is a real lecture to try it against. The cost is
+      that timestamps are edited by hand and a stray character breaks the file
+      silently — so the save endpoint should reject a body that does not begin
+      `WEBVTT`, which catches the common mistake without pretending to
+      validate the format.
+      Two endpoints beside the existing media ones in `router.py`, following
+      `/admin/modules/{module_id}/media/{asset_id}/…` and gated by
+      `_DEP_MANAGE`: one returning the current WebVTT as text, one replacing
+      it. Both read and write the processed bucket, where the caption job put
+      the file, and the replacement must carry the same `Cache-Control` the
+      job sets or the CDN will serve the old text.
+      The editor itself belongs on `ModuleMediaCard.tsx`, on the row whose
+      asset has captions, so it sits where the admin already manages that
+      media rather than on a page of its own. `AdminBankDetailPage.tsx` hosts
+      the card and needs no change.
+- [x] Captions are reviewed by the content author before a module goes `live` —
       Whisper output on clinical terminology needs a human pass. Surface review
       state on the admin video page.
-- [ ] Reconcile the availability gate with transcoding. `module_media_is_complete`
+      **[noted 2026-09-15]** This item asks only to _surface_ review state; it
+      never said how a correction gets made, so completing it as written would
+      leave an author able to see that captions are wrong and unable to do
+      anything about it. The editing item above is what makes "reviewed" mean
+      something, and wants building first.
+      **[done 2026-09-15]** `captions_reviewed_at` on `ModuleMediaLink`, set by
+      saving the captions rather than by a separate "mark as reviewed" button:
+      someone who has edited the text has read it, whereas a button that only
+      claims review is a box to tick without looking. The admin card shows the
+      state per row, so an unreviewed track is visible without opening it.
+- [x] Reconcile the availability gate with transcoding. `module_media_is_complete`
       currently treats a linked asset as complete, so a module becomes visible
       the moment the upload is linked and before any rendition exists — a
       learner would reach a slide whose video is not there yet. The gate has to
       account for "uploaded but not yet transcoded", which is a state the model
       does not currently have.
+      **[noted 2026-09-14]** The state now exists — `transcoded_at` on
+      `ModuleMediaLink` — but the gate does not read it, so the gap is real
+      rather than theoretical. It is masked only because **nothing writes that
+      column yet**: the backend fires the job and does not wait, and no polling
+      or callback records completion. Every link therefore has a null
+      timestamp, every module resolves through the fallback branch, and no
+      learner can currently reach a missing rendition. The day completions
+      start being recorded, the window opens — so this wants doing before the
+      caption job rather than after it.
 
 ## Phase 7: Cutover
 
@@ -1680,6 +1763,31 @@ WEBVTT
 00:00:04.000 --> 00:00:08.500
 Test caption, first cue.
 ```
+
+### A stale `node_modules` presents as this plan's own bugs
+
+**[added 2026-09-14]** Worth writing down because it cost time twice in one
+session, and both times it looked like something else.
+
+Video work has added two frontend dependencies — `@videojs/react` for the v10
+player evaluation, and `@mantine/dropzone` for the admin media card. A checkout
+whose `node_modules` predates those commits has them in `package.json` and not
+on disk, and the symptom is never "a package is missing":
+
+- **`yarn typecheck:all` reports four errors that look structural** — two
+  unresolved modules, an implicit `any` that follows from one of them, and
+  `Unknown compiler option 'erasableSyntaxOnly'`, which reads as a TypeScript
+  version mismatch in `tsconfig.app.json`. All four are the one cause, and all
+  four vanish on `yarn install`. They were treated as an unavoidable baseline
+  for a whole session before anyone checked.
+
+- **Storybook fails to boot**, with Vite reporting `Failed to resolve import
+  "@videojs/react/video/skin.css"` on repeat. The file genuinely is not at that
+  path — it resolves through the package's `"./*.css"` export map — so looking
+  for it on disk confirms the wrong conclusion.
+
+`yarn install` from `frontend/` fixes both and leaves `yarn.lock` untouched.
+Check it before investigating any frontend failure that names a module.
 
 ### Caddy's aborted-range warnings, deferred
 

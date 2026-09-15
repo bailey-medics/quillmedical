@@ -142,6 +142,22 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # Its own Dockerfile, not a target: Whisper pulls torch, which has
+      # no business in the image the API serves from. Expect this step to
+      # be the slow one in the build job.
+      - name: Build and push caption image
+        if: ${{ matrix.service == 'backend' }}
+        uses: docker/build-push-action@v7.3.0
+        with:
+          context: .
+          file: ./backend/Dockerfile.caption
+          push: true
+          tags: |
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/caption:${{ needs.prepare.outputs.sha }}
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/caption:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   # ---------- Deploy to teaching ----------
   deploy-teaching:
     name: Deploy to teaching

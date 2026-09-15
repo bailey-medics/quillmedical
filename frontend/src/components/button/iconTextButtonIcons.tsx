@@ -8,6 +8,7 @@
 import {
   IconArrowLeft,
   IconDownload,
+  IconPencil,
   IconRefresh,
   IconSettings,
   IconTrash,
@@ -18,6 +19,7 @@ import type { ReactElement } from "react";
 const iconTextButtonIcons = {
   arrowLeft: <IconArrowLeft />,
   download: <IconDownload />,
+  pencil: <IconPencil />,
   refresh: <IconRefresh />,
   settings: <IconSettings />,
   trash: <IconTrash />,

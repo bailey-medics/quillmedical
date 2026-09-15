@@ -366,6 +366,25 @@ export interface MediaAsset {
   content_type: string;
   size_bytes: number;
   uploaded_at: string;
+  /** Whether the caption job produced a WebVTT track for this asset. */
+  has_captions?: boolean;
+  /**
+   * When someone last saved the captions after reading them.
+   *
+   * Null where nobody has. Whisper mishears clinical terminology, so
+   * machine output is a draft until a human has been over it — and a
+   * learner relying on captions cannot tell the difference.
+   */
+  captions_reviewed_at?: string | null;
+}
+
+/** One asset's WebVTT, as the caption editor loads and saves it. */
+export interface Captions {
+  asset_id: string;
+  /** Null where the caption job has not run, which is not the same as
+   * captions that exist and are empty. */
+  webvtt: string | null;
+  reviewed_at: string | null;
 }
 
 /**

@@ -1,0 +1,6 @@
+/* WebVTT is positional: the timestamp line is read by eye against the
+   cue below it, and a proportional font makes those columns wander.
+   Monospace keeps them aligned so a mistyped timestamp is visible. */
+.editor {
+  font-family: var(--mantine-font-family-monospace);
+}

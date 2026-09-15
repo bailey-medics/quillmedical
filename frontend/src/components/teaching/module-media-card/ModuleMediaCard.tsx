@@ -18,6 +18,7 @@
 import { useState } from "react";
 import { Progress, Stack } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
+import { CaptionStatusBadge } from "@/components/badge";
 import ConfirmModal from "@/components/confirm-modal/ConfirmModal";
 import DataTable from "@/components/tables/DataTable";
 import { StateMessage } from "@/components/message-cards";
@@ -45,6 +46,13 @@ export interface ModuleMediaCardProps {
   onUpload?: (key: string, file: File) => void;
   /** Called once the admin has confirmed removing an asset. */
   onDelete?: (assetId: string) => void | Promise<void>;
+  /**
+   * Called to open the caption editor for one asset.
+   *
+   * Handed upward like every other action here, so the card stays
+   * presentational and can be driven from Storybook with no network.
+   */
+  onEditCaptions?: (asset: MediaAsset) => void;
   /** Shows skeleton rows while the media list is in flight. */
   loading?: boolean;
   /**
@@ -71,6 +79,7 @@ export default function ModuleMediaCard({
   uploadProgress = {},
   onUpload,
   onDelete,
+  onEditCaptions,
   loading = false,
   error = null,
 }: ModuleMediaCardProps) {
@@ -157,6 +166,33 @@ export default function ModuleMediaCard({
                 ) : (
                   <MediaDropzone onDrop={(file) => onUpload?.(row.key, file)} />
                 ),
+            },
+            {
+              header: "Captions",
+              render: (row) =>
+                row.asset?.has_captions ? (
+                  <Stack gap={4} align="flex-start">
+                    {/* Whisper mishears clinical terminology, so the
+                        state is worth showing without opening the
+                        editor: an unreviewed track is machine output a
+                        learner is relying on. */}
+                    <CaptionStatusBadge
+                      status={
+                        row.asset.captions_reviewed_at
+                          ? "reviewed"
+                          : "unreviewed"
+                      }
+                    />
+                    <IconTextButton
+                      icon="pencil"
+                      label="Edit captions"
+                      variant="light"
+                      onClick={() => onEditCaptions?.(row.asset as MediaAsset)}
+                    />
+                  </Stack>
+                ) : row.asset ? (
+                  <BodyTextInline>No captions</BodyTextInline>
+                ) : null,
             },
             {
               header: "",
