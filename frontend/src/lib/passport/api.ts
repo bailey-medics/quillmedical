@@ -45,6 +45,7 @@ import type {
   CertificateInput,
   CpdEntry,
   CpdEntryInput,
+  EvidenceUpload,
   InboxItem,
   InvitePreview,
   Logbook,

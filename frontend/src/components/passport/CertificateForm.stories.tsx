@@ -21,6 +21,10 @@ const meta = {
   title: "Passport/CertificateForm",
   component: CertificateForm,
   parameters: { layout: "padded" },
+  // `satisfies Meta<>` makes a required prop mandatory in `args` rather
+  // than letting Storybook's `argTypesRegex` fill it in, so the handler
+  // is declared once here and every story inherits it.
+  args: { onSubmit: () => {} },
 } satisfies Meta<typeof CertificateForm>;
 
 export default meta;
