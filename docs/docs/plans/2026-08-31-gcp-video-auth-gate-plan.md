@@ -1684,8 +1684,21 @@ The resource name does not represent a known descriptor.
 - [ ] Migrate one real EoEETA lecture from YouTube to GCS end to end and confirm
       playback, seeking, captions, and the resume position from parent-plan
       item 18 all behave.
-- [ ] Document the video path in `docs/docs/teaching/index.md` and the storage
+- [x] Document the video path in `docs/docs/teaching/index.md` and the storage
       architecture in `docs/docs/backend/files/index.md`.
+      **[done 2026-09-15]** `backend/files/index.md` was a "Planned feature"
+      page describing a three-layer MinIO architecture for clinical documents.
+      MinIO appears nowhere in the codebase, the page mentioned video zero
+      times, and nothing linked to it but this plan line. Replaced outright
+      rather than appended to, on the instruction that the MinIO plan is old
+      and can go — so the page is now the video storage architecture, and its
+      mkdocs nav label changed from "Files" to "Teaching video".
+      Written from the code and Terraform rather than from this plan, because
+      the plan is stale in places the doc must not be: Section 8 of the
+      Learning Section plan still says 90-day source retention and an
+      unversioned processed bucket, and both are now the opposite.
+      `teaching/index.md` gets a shorter "Video" section under its existing
+      storage backends, saying why video does not use them, and links across.
 - [ ] Amend Section 8 of the Learning Section plan to point here, and tick items
       26–30 of its Phase 3 checklist as this plan's phases complete.
 - [ ] Raise a hazard-log entry for unauthorised access to licensed teaching
