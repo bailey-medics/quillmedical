@@ -1200,6 +1200,12 @@ Four open issues, all in the same place, and the important one was
   directly — on a stack the correct base is the branch below, and
   rebasing onto `main` flattens it.
 
+  `/st-crpd` writes each description in a fixed shape: **LLM decisions**,
+  then **Risks**, then **What has changed**, each bullet leading with a
+  bold sentence that stands alone. No summary line — the title already
+  carries that. Risks is always present, even as "none found", because an
+  omitted section cannot be told apart from one nobody thought about.
+
 ### What the first real stack found
 
 Three defects that scratch repositories had not surfaced. All three shared
@@ -1238,6 +1244,56 @@ failure this repository has the most scar tissue about.
   swallowed the error, and rendered the empty result as "no pull request"
   — a wrong answer indistinguishable from a right one. It now asks for 30
   open pull requests, and says so loudly when the read fails.
+
+### The workflow this is all for
+
+Two halves, deliberately asymmetric. The first runs without a human; the
+second is a human and an assistant working together on code that already
+exists. Stacking is what makes the join between them work.
+
+**Half one: the unattended build.** An agreed plan, then
+`/st-follow-the-plan-document` worked top to bottom with nobody watching.
+It builds a unit, ticks the plan, and calls `/st-crpd`, which lands that
+unit on its own branch and its own draft pull request. Then the next unit,
+stacked on the last. A night of this leaves a chain of small pull requests
+rather than one large one.
+
+- **A unit is twenty to thirty minutes of human reading**, and its parts
+  belong together. Two unrelated things that each take fifteen minutes are
+  two units, not one — the measure is the reading, but relatedness decides
+  the boundary.
+- **Every pull request stays a draft.** The heavy CI tier is gated on
+  `draft == false`, so a ten-branch stack built ready would fire roughly
+  55 heavy runs, nearly all testing code a later rebase discards. Nothing
+  is lost: the merge queue re-runs the heavy tier before anything merges.
+- **Nothing merges.** Both skills are barred from it at the permission
+  layer, not only in their instructions.
+
+**Half two: the review pass, together.** The next morning the stack is
+read branch by branch — `stf` shows each unit against its own parent, so
+the third pull request is its own change and not a replay of the two
+below. This is where the work actually becomes right: readability,
+business logic, and the clinical knowledge an assistant does not have.
+
+- **Revisions fold into the branch they belong to**, with
+  `just stack-update`. It amends that branch's commit and cascade-rebases
+  everything above, so a correction to unit two does not become unit
+  eleven. This is the one place amending is right, and why `stack-update`
+  exists alongside `/st-crpd`, which never amends.
+- **`str` then `sts`** push the corrected stack back up. Both carry the
+  worktree guard and the check that catches a rebase reporting success
+  while doing nothing.
+- **Merging stays a human decision, one at a time from the bottom.**
+  Enqueue the bottom pull request, let it land, `sty`, repeat. GitHub
+  queues only the bottom of a stack, so there is no shortcut here and no
+  need for one.
+
+**What the pull request description is for, given all this.** The reviewer
+reads every line of the diff, so describing the diff is waste. It carries
+only what the code cannot say: what was decided, what might be risky, and
+what is different now — decisions first, because that is where clinical
+expertise is the strongest lever and a wrong one means the whole pull
+request needs a closer read.
 
 ### Phases
 
@@ -1290,7 +1346,14 @@ failure this repository has the most scar tissue about.
 #### Phase C: the overnight run
 
 - [ ] Use a stack for one unattended feature build, then review it the
-      next morning and record whether the unit boundaries survived.
+      next morning and record whether the unit boundaries survived. The
+      shape of the run is set out in "The workflow this is all for" above;
+      what this phase tests is whether a generated batch holds to it.
+- [ ] Record whether the twenty-to-thirty-minute unit holds as a measure.
+      It is the weakest instruction in `/st-follow-the-plan-document`,
+      because reading time is something a model estimates badly. If it
+      drifts, replace it with something a tool can measure — `stf` already
+      prints changed lines per branch.
 - [ ] Record whether `stl` or `stll` is the one actually reached for, and
       drop the other if the answer is clear. Early evidence favours
       `stll`: the question asked in practice is "is this one green yet",
