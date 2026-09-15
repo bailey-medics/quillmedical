@@ -1721,8 +1721,46 @@ than reading the code, which looks complete.
   because the plan reasoned about the trigger design and not about whether the
   caller was allowed to pull the trigger.
 
-- **Captions remain unwired**, deliberately, as the next unit. There is no
-  `TEACHING_CAPTION_JOB` setting and nothing calls the caption job at all.
+- **Nothing recorded that the job had finished**, which was the fault under
+  the other three. `start_transcode` fires and deliberately does not wait, so
+  `transcoded_at` was written by nothing, anywhere — and that column is what
+  the availability gate reads. Fixing the three faults above makes renditions
+  appear in the bucket while the database still says they do not exist, so
+  every video module would have stayed hidden regardless.
+
+  **[decided 2026-09-15: the job reports back]** A callback, chosen over
+  polling the bucket on read and over Eventarc. The job knows what it wrote
+  and knows the moment it verified it; the alternatives either put a network
+  round trip on a learner's hot path or need an API, a service agent and IAM
+  this repository does not otherwise use.
+
+  `POST /api/ci/teaching/transcode-complete`, beside the CI sync endpoint and
+  authenticated the same way — a shared token Terraform generates and fills at
+  both ends, as it does the video signing key, because two ends holding
+  identical bytes is not a thing to have a human type twice.
+
+  Three properties worth recording:
+
+  - **It sits on the plain router, not `teaching_router`.** That router
+    carries `requires_feature("teaching")`, which resolves a feature flag
+    through the caller's organisation membership — and a Cloud Run Job has no
+    user and no organisation. The passport's public router is apart for the
+    same reason.
+  - **The job reports filenames; the backend maps them to columns.** The
+    suffix-to-column mapping stays in `RENDITION_FLAGS`, so a renamed column
+    does not mean redeploying a job image. Names only, never paths: the
+    prefix is rebuilt from the ids, so a report cannot name a path outside
+    its own module.
+  - **The callback can never fail the job.** By the time it runs the encode
+    has succeeded, the outputs are verified and the source is about to be
+    deleted. A failure is logged and the module stays hidden — visible in the
+    admin card as "awaiting transcode", which is the safe direction.
+
+- **Captions remain unwired**, deliberately, and are now unblocked: the
+  completion report is the hook they hang off, since the caption job needs
+  the 720p rendition and nothing previously knew when it existed. Still to
+  do: a `TEACHING_CAPTION_JOB` setting, an invoker grant, a deploy step, and
+  the call itself.
 
 - [ ] Migrate one real EoEETA lecture from YouTube to GCS end to end and confirm
       playback, seeking, captions, and the resume position from parent-plan

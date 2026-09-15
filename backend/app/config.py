@@ -246,6 +246,17 @@ class Settings(BaseSettings):
             "incomplete rather than erroring."
         ),
     )
+    TEACHING_TRANSCODE_CALLBACK_TOKEN: SecretStr | None = Field(
+        None,
+        description=(
+            "Shared secret the transcode job presents when reporting that "
+            "it finished. Both ends must hold the same bytes, so Terraform "
+            "generates it and fills the secret rather than a human typing "
+            "it in — the same arrangement as the video signing key. Unset "
+            "in development, where the callback endpoint refuses outright "
+            "and nothing calls it."
+        ),
+    )
 
     # --- Clinician passport ---
     # One setting decides the backend, deliberately. The teaching feature

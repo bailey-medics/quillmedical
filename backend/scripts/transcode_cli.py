@@ -13,6 +13,13 @@ Environment Variables:
     TRANSCODE_ASSET_ID:   Required.  Generated id of the uploaded asset.
     TEACHING_VIDEOS_SOURCE_BUCKET:  Required.  Where the raw upload is.
     TEACHING_VIDEOS_BUCKET:         Required.  Where renditions go.
+    TRANSCODE_CALLBACK_URL:   Optional.  Where to report completion.
+    TRANSCODE_CALLBACK_TOKEN: Optional.  Bearer token for that report.
+
+Both callback variables are optional together: unset means development,
+where there is no backend to tell. Set in teaching, where the report is
+what makes a module servable — the backend fires this job and does not
+wait, so nothing else records that the renditions exist.
 
 Usage (Cloud Run Job):
     gcloud run jobs execute quill-transcode-teaching \\
@@ -81,6 +88,78 @@ def _require_env(*names: str) -> dict[str, str]:
         )
         sys.exit(1)
     return values
+
+
+def _report_complete(
+    org_id: int,
+    module_id: str,
+    asset_id: str,
+    written: list[str],
+) -> None:
+    """Tell the backend the renditions are up, so the module can serve.
+
+    Until this call lands, ``transcoded_at`` stays null and the
+    availability gate keeps the module hidden — the renditions exist and
+    no learner can reach them. This is the only thing that closes that
+    gap: the backend fires the job and does not wait, so nothing else
+    knows the job finished.
+
+    **Never fails the job.** The encode succeeded, the outputs verified
+    and the source is about to be deleted; a callback that cannot be
+    delivered must not undo any of that or trigger a re-encode. It is
+    logged loudly instead, and the module stays hidden until someone
+    re-runs the job or the state is corrected by hand — the safe
+    direction, and visible in the admin card as "awaiting transcode".
+
+    Unconfigured is not an error either: in development there is no
+    backend to call and no token to call it with, which is the same
+    shape as the rest of this script's optional wiring.
+    """
+    url = os.environ.get("TRANSCODE_CALLBACK_URL", "").strip()
+    token = os.environ.get("TRANSCODE_CALLBACK_TOKEN", "").strip()
+    if not url or not token:
+        print(
+            "Callback not configured; skipping completion report. "
+            "The module stays hidden until it is recorded.",
+            file=sys.stderr,
+        )
+        return
+
+    # Names only. The backend rebuilds the prefix from the ids it is
+    # given, so a compromised job cannot name a path outside its own
+    # module by reporting one.
+    names = [dest.rsplit("/", 1)[-1] for dest in written]
+
+    try:
+        import httpx
+
+        response = httpx.post(
+            url,
+            json={
+                "org_id": org_id,
+                "module_id": module_id,
+                "asset_id": asset_id,
+                "outputs": names,
+            },
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=30.0,
+        )
+        if response.status_code >= 400:
+            print(
+                f"ERROR: completion callback refused "
+                f"({response.status_code}); module stays hidden",
+                file=sys.stderr,
+            )
+            return
+    except Exception as exc:  # noqa: BLE001
+        print(
+            f"ERROR: completion callback failed ({exc}); "
+            f"module stays hidden",
+            file=sys.stderr,
+        )
+        return
+
+    print(f"✓ Reported completion for {asset_id}")
 
 
 def _run_ffmpeg(args: list[str]) -> None:
@@ -270,6 +349,8 @@ def transcode() -> int:
             f"WARNING: could not delete source {source_path}: {exc}",
             file=sys.stderr,
         )
+
+    _report_complete(org_id, module_id, asset_id, written)
 
     print(f"✓ Transcoded {asset_id} to {len(outputs)} outputs")
     return 0

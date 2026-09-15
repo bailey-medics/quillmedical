@@ -59,6 +59,7 @@ module "secrets" {
     var.environment == "teaching" ? [
       "teaching-video-signing-key",
       "teaching-sync-token",
+      "teaching-transcode-callback-token",
     ] : []
   )
 }
@@ -240,6 +241,26 @@ resource "google_secret_manager_secret_version" "jwt_secret" {
   depends_on  = [module.secrets]
 }
 
+# The transcode job's completion report is authenticated with a shared
+# secret, so Terraform both generates and fills it — the same reasoning as
+# the video signing key, and the same exception to modules/secrets'
+# usual convention that Terraform creates containers and humans add
+# versions. Two ends must hold identical bytes; a human typing it into
+# both is a transcription error waiting to happen, and there is nothing
+# to be gained by anyone ever seeing it.
+resource "random_password" "transcode_callback_token" {
+  count   = var.environment == "teaching" ? 1 : 0
+  length  = 48
+  special = false
+}
+
+resource "google_secret_manager_secret_version" "transcode_callback_token" {
+  count       = var.environment == "teaching" ? 1 : 0
+  secret      = "projects/${var.project_id}/secrets/teaching-transcode-callback-token"
+  secret_data = random_password.transcode_callback_token[0].result
+  depends_on  = [module.secrets]
+}
+
 resource "random_password" "vapid_placeholder" {
   length  = 32
   special = false
@@ -356,6 +377,9 @@ module "cloud_run_backend" {
     var.environment == "teaching" ? {
       TEACHING_SYNC_TOKEN        = "teaching-sync-token"
       TEACHING_VIDEO_SIGNING_KEY = "teaching-video-signing-key"
+      # The other end of the transcode job's completion report. Same
+      # secret on both sides — the job presents it, this verifies it.
+      TEACHING_TRANSCODE_CALLBACK_TOKEN = "teaching-transcode-callback-token"
     } : {}
   )
 
@@ -438,6 +462,19 @@ module "cloud_run_transcode_job" {
   env_vars = {
     TEACHING_VIDEOS_SOURCE_BUCKET = module.teaching_video_pipeline[0].source_bucket_name
     TEACHING_VIDEOS_BUCKET        = module.teaching_video_pipeline[0].processed_bucket_name
+
+    # Where the job reports that its outputs verified. Until that report
+    # lands `transcoded_at` stays null and the module stays hidden, so
+    # this is what turns a finished encode into a playable module.
+    #
+    # The public app domain rather than an internal address: the job's
+    # VPC egress is PRIVATE_RANGES_ONLY, so public traffic leaves
+    # directly and this resolves the same way a browser would.
+    TRANSCODE_CALLBACK_URL = "https://${var.app_domain}/api/ci/teaching/transcode-complete"
+  }
+
+  secret_env_vars = {
+    TRANSCODE_CALLBACK_TOKEN = "teaching-transcode-callback-token"
   }
 
   depends_on = [module.teaching_video_pipeline]
