@@ -240,17 +240,24 @@ def best_conclusion_per_check(
     outcome per name is the true one — a job that has succeeded once on
     this head has succeeded.
     """
-    # Ranked so a better outcome replaces a worse one. SKIPPED sits below
-    # SUCCESS rather than beside it: both are "passing" in the sense that
-    # neither blocks a merge, but a job that actually ran and passed is the
-    # truer account of the same name, and ranking them equal let whichever
-    # arrived first win — which reported every heavy job as skipped even
-    # after it had run.
+    # Ranked so the most important outcome for the same name wins, which is
+    # not the same as the best one:
+    #
+    # - **failing** beats everything. A job that failed on this head has
+    #   failed, whatever a sibling entry says.
+    # - **pending** beats both finished states. A name with a run still in
+    #   flight is not settled, and reporting it as passed — which ranking
+    #   pending below passing did — showed a tick while the heavy tier was
+    #   visibly still running.
+    # - **passing** beats **skipped**, because a job that actually ran and
+    #   passed is the truer account of the same name than the draft run
+    #   that skipped it. Ranking those two equal reported every heavy job
+    #   as skipped even after it had run.
     rank = {
-        "failing": 0,
-        "pending": 1,
-        "skipped": 2,
-        "passing": 3,
+        "skipped": 0,
+        "passing": 1,
+        "pending": 2,
+        "failing": 3,
     }
     best: dict[str, tuple[str, str]] = {}
 
@@ -306,7 +313,9 @@ def summarise_checks(pr: dict[str, object], palette: Palette) -> str:
         if "failing" in kinds:
             return palette.red("✗")
         if "pending" in kinds:
-            return palette.yellow("●")
+            # Green like the tick and the dash: a tier still running is not
+            # a problem, and only ✗ should draw the eye.
+            return palette.green("●")
         # Every job skipped means the tier has not run — the ordinary state
         # of a draft's heavy tier. Say so rather than showing a tick nobody
         # earned. One job having actually run is enough to call it a pass,
