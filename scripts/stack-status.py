@@ -156,25 +156,44 @@ def read_pull_requests(branches: list[str]) -> dict[str, dict[str, object]]:
     six-deep stack would otherwise be six round trips. Checks come back in
     the same response via statusCheckRollup.
     """
+    # `--state open` and a small limit, deliberately. Asking for
+    # statusCheckRollup across 60 pull requests makes one GraphQL query large
+    # enough that GitHub answers HTTP 504, and the empty result then rendered
+    # as "no pull request" against every branch — a wrong answer that looked
+    # like an answer. A stack's branches are open by definition; a merged one
+    # is reported by `isMerged` in the stack data itself.
     raw = run(
         [
             "gh",
             "pr",
             "list",
             "--state",
-            "all",
+            "open",
             "--limit",
-            "60",
+            "30",
             "--json",
             "number,headRefName,isDraft,state,statusCheckRollup,url",
         ],
         check=False,
     )
     if not raw.strip():
+        # Say so rather than returning silently: every branch would otherwise
+        # be labelled "no pull request", which is indistinguishable from the
+        # truth and is how this went unnoticed for two runs.
+        print(
+            "  ⚠ Could not read pull requests from GitHub — "
+            "showing the stack without them.",
+            file=sys.stderr,
+        )
         return {}
     try:
         pull_requests = json.loads(raw)
     except json.JSONDecodeError:
+        print(
+            "  ⚠ Unreadable response from `gh pr list` — "
+            "showing the stack without pull requests.",
+            file=sys.stderr,
+        )
         return {}
 
     wanted = set(branches)

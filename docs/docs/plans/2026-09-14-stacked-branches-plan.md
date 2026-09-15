@@ -1155,8 +1155,22 @@ Four open issues, all in the same place, and the important one was
       and why it refuses, and that merging is never automated.
 - [ ] Decide whether `just rebase` (`rb`) should refuse inside a stack.
       It assumes one branch on `main` and would flatten a stack today.
-- [ ] Teach `/crp` to use `just sts` when the branch is in a stack, and to
-      push as it does now when it is not. Mirror into `/crpf`.
+- [x] Teach `/crp` to use `just sts` when the branch is in a stack, and to
+      push as it does now when it is not. Mirror into `/crpf`. Done
+      2026-09-15, but as two new skills rather than by changing the existing
+      pair: `/st-crpd` finishes one stacked branch (commit, cascade-rebase,
+      push, describe against its own parent), and
+      `/st-follow-the-plan-document` calls it once per unit to build a whole
+      plan as a stack. `/crp` and `/crpf` are left alone for flat branches —
+      teaching them both models would have made the conditionals harder to
+      follow than two clear commands.
+
+      Two differences from the flat pair are load-bearing. The description
+      diffs against the branch's own parent, not `origin/main`, or a stacked
+      pull request describes every unit beneath it. And the review gate moves
+      from pre-commit to pre-merge: an unattended run commits each unit so it
+      can keep going, and the human reads the stack as pull requests the next
+      morning. Nothing merges without a human either way.
 - [ ] Clear the abandoned git-spice state: the `refs/spice/data` ref and
       the four trial branches (`feature/git-spice-introduce`,
       `feature/introduce-git-spice`, `feature/stacked-branches-plan`,

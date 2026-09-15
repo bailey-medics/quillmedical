@@ -31,9 +31,27 @@ permissions:
   packages: write
 
 concurrency:
-  # Keyed by event as well as ref so two runs for the same ref from different
-  # triggers can never cancel each other, as push and merge_group did above.
-  group: feature-${{ github.ref }}-${{ github.event_name }}
+  # Keyed by event AND action as well as ref, so two runs for the same ref from
+  # different triggers can never cancel each other.
+  #
+  # `github.event_name` alone was not enough. `pull_request` covers two action
+  # types here, ready_for_review and synchronize, and a tool that pushes a
+  # branch and marks its pull request ready in one operation fires both within
+  # the same second — `gh stack submit` does exactly that, every time. Both
+  # runs then landed in one group and cancel-in-progress killed one of them.
+  #
+  # The two are not interchangeable, which is what made it destructive rather
+  # than merely wasteful. Every heavy-tier job below is gated on
+  # `draft == false`, so the synchronize run — fired while the pull request was
+  # still a draft — skips the heavy tier, while the ready_for_review run is the
+  # one that carries it. The cheap run cancelled the expensive one, five
+  # required checks ended CANCELLED, and GitHub reads a cancelled required
+  # check as a failure: PR #683 sat BLOCKED with nothing wrong with it.
+  #
+  # `github.event.action` is empty for push and merge_group, so their keys are
+  # unchanged and the fix above for those two still stands. Rapid re-pushes
+  # still cancel each other, since successive synchronize runs share an action.
+  group: feature-${{ github.ref }}-${{ github.event_name }}-${{ github.event.action }}
   cancel-in-progress: true
 
 jobs:
