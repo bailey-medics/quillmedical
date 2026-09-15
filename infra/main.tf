@@ -502,6 +502,20 @@ resource "google_cloud_run_v2_job_iam_member" "backend_invokes_transcode" {
   member   = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
 }
 
+# The same grant for captions, needed for the same reason. The backend
+# fires this job too — from the transcode completion report rather than
+# from the upload, because Whisper transcribes the 720p rendition and
+# that does not exist until the transcode job has written it.
+resource "google_cloud_run_v2_job_iam_member" "backend_invokes_caption" {
+  count = var.environment == "teaching" ? 1 : 0
+
+  project  = var.project_id
+  location = var.region
+  name     = module.cloud_run_caption_job[0].job_name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
+}
+
 # ---------- Cloud Run Job: video captions (teaching only) ----------
 # Whisper over a transcoded lecture, writing WebVTT beside the renditions.
 # Captions are a WCAG 2.1 AA requirement for the learning centre.
@@ -532,6 +546,17 @@ module "cloud_run_caption_job" {
 
   env_vars = {
     TEACHING_VIDEOS_BUCKET = module.teaching_video_pipeline[0].processed_bucket_name
+
+    # Its own endpoint, not the transcode one. A caption report names a
+    # single output, and the transcode callback rewrites every rendition
+    # flag from the list it is given — so sending captions there would
+    # clear `has_1080p` and `has_poster` and claim a transcode that did
+    # not happen.
+    CAPTION_CALLBACK_URL = "https://${var.app_domain}/api/ci/teaching/caption-complete"
+  }
+
+  secret_env_vars = {
+    CAPTION_CALLBACK_TOKEN = "teaching-transcode-callback-token"
   }
 
   depends_on = [module.teaching_video_pipeline]

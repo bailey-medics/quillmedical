@@ -661,6 +661,25 @@ class TranscodeCompleteOut(BaseModel):
     flags: list[str]
 
 
+class CaptionCompleteIn(BaseModel):
+    """What the caption job reports once its track verifies.
+
+    No output list, unlike the transcode report: this job writes exactly
+    one file, at a name derived from the asset id. Naming it would add a
+    value to validate and nothing to learn from it.
+    """
+
+    org_id: int
+    module_id: str
+    asset_id: str
+
+
+class CaptionCompleteOut(BaseModel):
+    """Confirmation that the caption track was recorded."""
+
+    recorded: bool
+
+
 class MediaLinkIn(BaseModel):
     """Attach an uploaded asset to an MDX reference.
 

@@ -15,6 +15,13 @@ Environment Variables:
     TEACHING_VIDEOS_BUCKET:  Required.  Where renditions live, and where
                              the WebVTT is written.
     WHISPER_MODEL:      Optional.  Defaults to ``small``.
+    CAPTION_CALLBACK_URL:   Optional.  Where to report the track exists.
+    CAPTION_CALLBACK_TOKEN: Optional.  Bearer token for that report.
+
+Both callback variables are optional together: unset means development,
+where there is no backend to tell. Set in teaching, where the report is
+what turns ``has_captions`` true — the player composes the track's URL
+from that column, so a WebVTT nobody recorded is never offered.
 
 Usage (Cloud Run Job):
     gcloud run jobs execute quill-caption-teaching \\
@@ -58,6 +65,63 @@ CACHE_CONTROL = "public, max-age=86400"
 #: Which rendition to transcribe. The 720p one always exists where the
 #: transcode job succeeded, and carries the same audio as the 1080p.
 SOURCE_SUFFIX = "-720p.mp4"
+
+
+def _report_captions(org_id: int, module_id: str, asset_id: str) -> None:
+    """Tell the backend a caption track now exists.
+
+    The player composes the track's URL from ``has_captions``, not by
+    listing the bucket, so a WebVTT nobody recorded is never offered to
+    a learner. This call is what sets that column.
+
+    Its own endpoint rather than the transcode one: that callback
+    rewrites every rendition flag from the list it is given, so a report
+    naming only a ``.vtt`` would clear ``has_1080p`` and ``has_poster``
+    and claim a transcode that never ran.
+
+    **Never fails the job.** The track is written and verified by the
+    time this runs. A failure here means captions exist and are not
+    offered, which is worse than nothing but far better than a job that
+    reports failure and gets re-run over an hour of Whisper.
+    """
+    url = os.environ.get("CAPTION_CALLBACK_URL", "").strip()
+    token = os.environ.get("CAPTION_CALLBACK_TOKEN", "").strip()
+    if not url or not token:
+        print(
+            "Callback not configured; skipping caption report. The "
+            "track exists but will not be offered.",
+            file=sys.stderr,
+        )
+        return
+
+    try:
+        import httpx
+
+        response = httpx.post(
+            url,
+            json={
+                "org_id": org_id,
+                "module_id": module_id,
+                "asset_id": asset_id,
+            },
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=30.0,
+        )
+        if response.status_code >= 400:
+            print(
+                f"ERROR: caption callback refused "
+                f"({response.status_code}); track not offered",
+                file=sys.stderr,
+            )
+            return
+    except Exception as exc:  # noqa: BLE001
+        print(
+            f"ERROR: caption callback failed ({exc}); track not offered",
+            file=sys.stderr,
+        )
+        return
+
+    print(f"✓ Reported captions for {asset_id}")
 
 
 def _require_env(*names: str) -> dict[str, str]:
@@ -238,6 +302,8 @@ def caption() -> int:
             file=sys.stderr,
         )
         return 1
+
+    _report_captions(org_id, module_id, asset_id)
 
     print(f"✓ Captioned {asset_id} in {len(segments)} segments")
     return 0

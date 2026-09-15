@@ -222,6 +222,18 @@ jobs:
             --region=${{ env.GCP_REGION }} \
             --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/transcode:${{ needs.prepare.outputs.sha }}
 
+      # The caption image is built from its own Dockerfile rather than a
+      # target of the shared one, because Whisper pulls torch and has no
+      # business in the image the API serves from. It is pointed at the
+      # same way regardless.
+      - name: Point the caption job at this build
+        if: ${{ needs.prepare.outputs.backend_changed == 'true' }}
+        run: |
+          gcloud run jobs update quill-caption-teaching \
+            --project=${{ secrets.GCP_TEACHING_PROJECT_ID }} \
+            --region=${{ env.GCP_REGION }} \
+            --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/caption:${{ needs.prepare.outputs.sha }}
+
       - name: Deploy backend
         if: ${{ needs.prepare.outputs.backend_changed == 'true' }}
         run: |

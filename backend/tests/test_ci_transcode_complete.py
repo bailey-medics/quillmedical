@@ -203,3 +203,73 @@ class TestUnknownAsset:
         # naming a different organisation finds nothing rather than
         # writing to a row it was not about.
         assert _post(test_client, org_id=999).status_code == 404
+
+
+CAPTION_ENDPOINT = "/api/ci/teaching/caption-complete"
+
+
+def _post_caption(client: TestClient, token: str | None = TOKEN, **overrides):
+    body = {"org_id": 1, "module_id": "test-bank", "asset_id": "asset-1"}
+    body.update(overrides)
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
+    return client.post(CAPTION_ENDPOINT, json=body, headers=headers)
+
+
+class TestCaptionCallback:
+    """The caption job's own report, deliberately a separate endpoint."""
+
+    def test_unconfigured_refuses(
+        self, test_client: TestClient, monkeypatch
+    ) -> None:
+        monkeypatch.setattr(
+            settings, "TEACHING_TRANSCODE_CALLBACK_TOKEN", None
+        )
+        assert _post_caption(test_client).status_code == 503
+
+    def test_wrong_token(self, test_client: TestClient, configured) -> None:
+        assert _post_caption(test_client, token="nope").status_code == 401
+
+    def test_sets_has_captions(
+        self, test_client: TestClient, configured, link, db_session
+    ) -> None:
+        assert link.has_captions is False
+
+        assert _post_caption(test_client).status_code == 200
+
+        db_session.refresh(link)
+        assert link.has_captions is True
+
+    def test_it_does_not_disturb_the_other_flags(
+        self, test_client: TestClient, configured, link, db_session
+    ) -> None:
+        """The reason this is not a mode of the transcode callback.
+
+        That endpoint rewrites every rendition flag from the list it is
+        given, so a caption-only report sent there would clear
+        has_1080p and has_poster and stamp a transcode that never ran.
+        """
+        _post(test_client)
+        db_session.refresh(link)
+        transcoded = link.transcoded_at
+
+        _post_caption(test_client)
+
+        db_session.refresh(link)
+        assert link.has_1080p is True
+        assert link.has_poster is True
+        assert link.transcoded_at == transcoded
+
+    def test_it_never_claims_a_human_review(
+        self, test_client: TestClient, configured, link, db_session
+    ) -> None:
+        """`captions_reviewed_at` says a person read the text. Whisper
+        finishing is not that."""
+        _post_caption(test_client)
+
+        db_session.refresh(link)
+        assert link.captions_reviewed_at is None
+
+    def test_unknown_asset_is_404(
+        self, test_client: TestClient, configured
+    ) -> None:
+        assert _post_caption(test_client, asset_id="nope").status_code == 404

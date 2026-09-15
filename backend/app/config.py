@@ -246,6 +246,16 @@ class Settings(BaseSettings):
             "incomplete rather than erroring."
         ),
     )
+    TEACHING_CAPTION_JOB: str | None = Field(
+        None,
+        description=(
+            "Fully-qualified Cloud Run Job to invoke once a transcode "
+            "reports its 720p rendition, e.g. projects/p/locations/"
+            "europe-west2/jobs/quill-caption-teaching. Unset in "
+            "development, where a module simply has no captions until "
+            "someone writes them by hand."
+        ),
+    )
     TEACHING_TRANSCODE_CALLBACK_TOKEN: SecretStr | None = Field(
         None,
         description=(
