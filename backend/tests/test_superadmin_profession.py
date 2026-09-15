@@ -57,10 +57,24 @@ class TestItIsDeliberatelyNarrow:
 
         assert "access_patient_records" not in granted
 
-    def test_it_grants_only_manage_users(self):
-        """One competency, so the blast radius is visible at a glance."""
+    def test_it_grants_only_administrative_competencies(self):
+        """Two now, both administrative, so the blast radius stays visible.
+
+        `manage_staff_membership` was split out of `manage_users` — who
+        belongs to a place, as opposed to who has an account at all — and
+        granted alongside it to every profession that held it, superadmin
+        included. Without it an operator could not add staff to an
+        organisation, and `has_competency` has no rank bypass to fall
+        back on, which is the refusal this profession exists to prevent.
+
+        The narrowness this class defends is *clinical*. That line is
+        held by the test above, not by this one; this is a snapshot, so
+        that a competency gained here has to be stated deliberately
+        rather than noticed later.
+        """
         assert get_profession_base_competencies("superadmin_profession") == [
-            "manage_users"
+            "manage_users",
+            "manage_staff_membership",
         ]
 
 

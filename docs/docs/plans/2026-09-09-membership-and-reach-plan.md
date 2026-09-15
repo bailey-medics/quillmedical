@@ -87,21 +87,6 @@ of the unused staff guard. Everything else on the lists below is still a plan.
       - Existing rows are a separate question and do say `staff`, because they were added
         when the table meant staff and those people are staff. The migration sets them, then
         flips the default, so history and future inserts get the answers they each need.
-- [ ] **Stop registration writing an organisation row for a student.** A student registers
-      into a site. Remove the requirement that a site needs an organisation alongside it, in
-      `register` and in the two admin user routes.
-      - **The reason for this step has changed since it was written**, and it is worth
-        re-examining rather than doing on the original grounds. It was written because the
-        organisation row was a lie — it called a delegate staff. It no longer is: the row now
-        says `trainee`.
-      - What remains is a duplication argument rather than a correctness one. Reach into an
-        organisation should come from the site-to-organisation link, not from a second row
-        that says the same thing; two sources of truth for one fact will eventually
-        disagree. That is a good reason, but a weaker one, and it should be weighed against
-        the cost of the resolver having to walk the link on every request.
-      - It also depends on the step below. Until one resolver answers *which places can this
-        person reach*, removing the organisation row would make delegates invisible to
-        everything outside teaching.
 - [x] **Backfill by capacity, not by guesswork.** Done in the same migration, since a
       NOT NULL column cannot be added without deciding what existing rows say. A row becomes
       `trainee` when that person is a trainee at a site belonging to **that same
@@ -128,10 +113,189 @@ of the unused staff guard. Everything else on the lists below is still a plan.
         the explicit `get_org_member_ids(..., capacity=...)`, not a silent change under
         them. **Worth remembering: the capacity column makes it possible to narrow a query,
         which is not the same as it being right to.**
-- [ ] **Walk the call sites in batches.** 29 calls to the app-wide resolver — 15 in `main.py`,
+- [x] **Walk the call sites in batches.** 29 calls to the app-wide resolver — 15 in `main.py`,
       7 in the teaching router, 5 in `messaging.py`, 2 internal — and 17 in teaching's own.
       Fifty references to the organisation table in total.
-- [ ] **Filter the organisation admin page to staff**, so students stop appearing on it.
+      - **Done, and the count was wrong in both directions.** It missed eighteen call sites
+        of the singular `_get_user_org_id`, invisible to a grep for the plural name; and it
+        assumed the split would be roughly even. It was not. `get_user_org_ids` now has no
+        callers at all.
+      - **Almost everything meant membership.** Of roughly fifty sites, exactly three still
+        ask reach: teaching's content wrapper and two in the passport router. Every other
+        one — admin place checks, deletion scoping, patient sharing, messaging overlap,
+        eighteen teaching admin routes — means *is this person a member here*.
+      - **Two of the three batches found live defects**, not renames. A ward-level teaching
+        admin could administer the trust above them, in two separate ways. That is the case
+        for walking call sites one at a time rather than running a rename across them.
+      - [x] **Batch one: the membership half.** All 24 `get_user_org_ids` call sites outside
+        teaching now say `get_member_org_ids` — 18 in `main.py`, 4 in `messaging.py`, 2
+        internal to `organisations.py`. Behaviour-identical, because `get_user_org_ids`
+        already delegated there; what changes is that each site states the question it asks.
+        - **Every one of them meant membership**, read individually rather than assumed:
+          admin place checks (`if org_id not in ...`), membership deletion scoping, the
+          patient-sharing check, and messaging's org overlap. Not one wanted a site trainee
+          to reach up into the trust, and several would be wrong if they did —
+          `get_shared_org_ids` gates patient records, and `_ensure_shared_org` decides
+          whether an admin may see a user at all.
+        - **`test_admin_routes_ask_membership.py` pins the routes**, which no test did;
+          `test_place_resolver.py` only ever pinned the resolvers. Verified by temporarily
+          pointing `get_organisation` at `get_reachable_org_ids`: the new test went red with
+          `assert 200 == 404`, which is the widening it exists to catch.
+        - **`get_user_org_ids` now has no callers.** Left in place so this batch reads as a
+          rename and nothing else; deleting it is a one-line follow-up.
+      - [x] **Batch two: teaching, and it was not all reach.** The nine call sites split two
+        ways, and reading them as one batch would have missed it.
+        - **Five ask content visibility** — `resolve_visible_module`, the bank list and
+          detail, the module list, and starting an assessment. Reach is right there and
+          deliberate: a ward trainee receives what the trust made available, which is what
+          `TestLearningContentGate` already pins.
+        - **Two ask authority, and were wrong.** `promote_bank_version` and
+          `update_bank_org_settings` scoped by reach, so a `teaching_admin` whose only
+          membership was a linked site could decide which version the whole trust serves, or
+          close a bank mid-cohort and lock its candidates out. Both now use
+          `get_member_org_ids`. `update_bank_org_settings` already said "the caller must
+          belong to the organisation named in the path" in its own docstring — reaching a
+          trust from a ward is not belonging to it.
+        - **This one narrows, against the direction named above.** The walk's stated risk is
+          widening, so a narrowing needs evidence nobody legitimate is locked out:
+          `test_teaching_authority_needs_membership.py` asserts the ward admin is refused
+          *and* that an organisation member still passes the place check.
+        - **The existing coverage did not reach it.**
+          `test_promoting_for_an_organisation_you_are_not_in_is_refused` uses an
+          organisation the caller has no relationship to at all, so the site-linked case —
+          the only one where reach and membership differ — was untested.
+      - [x] **Batch three: `_get_user_org_id`, eighteen sites — the security half done.**
+        Not counted in the figures above, because the singular helper was invisible to a
+        grep for the plural one. It is `_get_user_org_ids(user, db)[0]`, so every caller
+        inherits reach *and* takes an arbitrary first organisation.
+        - **All eighteen hold `_DEP_MANAGE`**, and many write: `sync_items`,
+          `link_module_media`, `unlink_module_media`, `update_settings`,
+          `delete_media_asset`, `put_media_captions`. A teaching admin whose only
+          membership is a linked ward resolves to the trust and acts on it — the same
+          defect batch two fixed, eighteen times over.
+        - **The arbitrary `[0]` is a second bug, already known.** `promote_bank_version`'s
+          docstring says so: "`_get_user_org_id` returns whichever organisation happens to
+          come back first, so a person teaching for two would silently promote for the
+          wrong one." That is why that route takes `org_id` in the path instead.
+        - **This is a design decision, not a walk.** There is no correct `[0]` once
+          membership is plural. The shape that works is the one those two routes already
+          use — name the organisation in the path and check membership of it — but that
+          changes eighteen route signatures and their callers, so it wants deciding before
+          it is built rather than during.
+        - **Fixed by narrowing the resolver, not the eighteen call sites.**
+          `_get_user_org_id` now asks `get_member_org_ids` directly and raises its own 403.
+          One function, no route signatures touched, and the escalation is closed: a
+          ward-only teaching admin is refused everywhere the singular resolver is used.
+          `_get_user_org_ids` keeps reach, so content visibility is unchanged.
+        - **The 403 message changed with it.** "User has no organisation" was untrue for
+          somebody at a ward of the trust — they have a place, just not a membership that
+          confers authority — and would have sent them looking for the wrong fix. It now
+          says they are not a member of any organisation.
+        - [ ] **Still open: the arbitrary organisation.** Narrowing shrinks the set `[0]`
+          chooses from without making the choice correct. Someone administering for two
+          organisations still gets whichever comes back first. The fix is the path
+          parameter those two routes already use, and it is the eighteen-signature change
+          deferred above.
+      - **Two modules were never in the count at all**: `features/gating.py` and
+        `features/passport/router.py` both read `organisation_member` directly. Passport
+        already distinguishes the two questions deliberately; gating has one inline query
+        worth a look when this reaches it.
+- [ ] **Stop registration writing an organisation row for a student.** A student registers
+      into a site. Remove the requirement that a site needs an organisation alongside it.
+      - **Blocked by the walk's *outcome*, not by the walk being unfinished.** This item's
+        precondition was "each call site moves to `get_reachable_org_ids` where it means
+        reach". That did not happen, and it was never going to: the walk found almost every
+        site means membership, and only three in the whole backend ask reach. So a delegate
+        with no organisation row would be invisible to every membership caller — the failure
+        this item has predicted from the start, reached by the opposite route from the one
+        it expected. `test_a_site_member_is_not_a_member_of_the_organisation` is the proof:
+        membership of a ward returns `[]` for the organisation.
+      - **Superseded by the site tree, and not to be decided here.**
+        `2026-09-11-site-tree-unification-plan.md` merges organisations and sites into one
+        table where an organisation is a site with no parent. A ward then has a `parent_id`
+        pointing at its trust, so "which trust does this ward belong to" is answered by the
+        tree edge rather than by a second membership row. The duplication this item objects
+        to stops existing, without anything being deleted.
+      - **It does not become automatic there either.** That plan keeps the same rule —
+        "membership and authorisation still do not inherit" — so a ward-only delegate is
+        still invisible to a membership query. What changes is that the question is worth
+        revisiting once the tree exists, and its step 8 ("switch scoping and reach to
+        subtree queries") is where it belongs. Deciding it now would mean deciding it twice,
+        against a schema that is about to change underneath it.
+      - **One gap to carry across**: that plan's risk note says `register` must keep working
+        at every step, but does not say whether a delegate ends up with one row or two after
+        its step 5. That is this item's real question, asked in the right place.
+      - **One correction: it is `register` only, not "the two admin user routes".** There is
+        exactly one "organisation_id required when site_id is provided" check in `main.py`.
+        The admin routes write both rows but do not require the pairing, so there is less
+        here to change than the item implies.
+      - **The reason for this step has changed since it was written**, and it is worth
+        re-examining rather than doing on the original grounds. It was written because the
+        organisation row was a lie — it called a delegate staff. It no longer is: the row now
+        says `trainee`.
+      - What remains is a duplication argument rather than a correctness one. Reach into an
+        organisation should come from the site-to-organisation link, not from a second row
+        that says the same thing; two sources of truth for one fact will eventually
+        disagree. That is a good reason, but a weaker one, and it should be weighed against
+        the cost of the resolver having to walk the link on every request.
+      - **It depends on the call-site walk above**, which is why it now sits after it.
+        Until the call sites ask *which places can this person reach*, removing the
+        organisation row would make delegates invisible to everything outside teaching.
+      - **Re-examined, and the dependency is on the call-site walk rather than the resolver
+        split.** `get_reachable_org_ids` exists and that box is ticked, but almost nothing
+        calls it: `get_user_org_ids` — 19 call sites in `main.py` alone, plus messaging and
+        teaching — delegates to `get_member_org_ids`, which deliberately does *not* walk the
+        site link. So removing the organisation row today would make delegates invisible to
+        every one of those callers, which is exactly the failure this bullet predicted.
+      - **This item was listed before the walk until that was found, and has been moved
+        below it.** Each call site moves to `get_reachable_org_ids` where it means reach;
+        only then is the organisation row genuinely redundant and safe to stop writing.
+      - **The cost objection is smaller than it looks.** `get_reachable_org_ids` is one extra
+        query — a join of `organisation_site` against `site_member` — not a walk per
+        membership. Worth weighing against duplication on its merits, not as a performance
+        worry.
+- [x] **Filter the organisation admin page to staff**, so students stop appearing on it.
+      - **The column could tell them apart since it was added; the page still could not**,
+        because no caller had been changed to ask. `get_organisation`'s staff query now
+        filters on `capacity == "staff"`, which is what its own heading promises.
+      - **`staff_count` is derived from the same rows**, so the number and the list cannot
+        disagree. Pinned by a test, since a count taken from a second query is exactly the
+        kind of drift nobody reports — they just stop trusting the number.
+      - **Trainees are not hidden from administration.** They are listed on the delegates
+        pages, which read the same table asking for their own capacity.
+      - **It broke six fixtures, and they were already wrong.** Every bare
+        `insert(organisation_member)` in `test_main_endpoints.py` described an admin or a
+        staff member while writing `trainee`, because the column defaults to the narrower
+        capacity. The same thing happened to five fixtures in `test_messaging.py` when that
+        step landed — the default is doing its job, making an unstated assumption visible
+        the moment something reads the column.
+      - **Six more bare inserts remain, one in each of six other test files**, latent rather than
+        broken: nothing else reads capacity yet. Whoever changes the next caller to ask
+        should expect the same failure and read it as the fixture being wrong, not the
+        caller.
+- [x] **Give staff membership its own competency, `manage_staff_membership`.** Writing a
+      membership row is gated on `manage_users` today, which also gates twenty-five other
+      routes: creating and deleting accounts, activating patients, editing organisations,
+      toggling feature flags, and site CRUD. So the person who should be able to add a
+      nurse to their ward can also delete the site.
+      - **It pairs with `manage_patient_membership`**, which already exists and already
+        made this separation for patients, for the same reason and one layer down. Staff
+        membership had no equivalent only because this work replaced the *rank* on those
+        routes with a competency and kept the competency's existing breadth.
+      - **Four routes carry it**: `add_staff_to_organisation`,
+        `remove_staff_from_organisation`, `add_site_staff`, `remove_site_staff`. Their
+        place check is unchanged — the competency answers *what*, membership answers
+        *where*.
+      - **Expand before contract, because narrowing a gate takes access away.** Add the
+        competency and grant it to all four professions holding `manage_users`
+        (`clinic_manager`, `system_administrator`, `superadmin_profession`,
+        `teaching_manager`) in the same change that switches the routes. Nobody loses
+        anything at the switch; what becomes possible is granting one without the other,
+        which is the point.
+      - **Whether site CRUD and organisation feature toggles also want separating is a
+        real question and not this one.** Both are further from "managing users" than
+        membership is. Recorded so the next reader sees it was considered rather than
+        missed.
 
 ## Why the batches matter
 

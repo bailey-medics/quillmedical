@@ -22,7 +22,7 @@ is dropped:
   reason, so ``test_shared_org_without_competency`` covers the mirror.
 
 **A superadmin is not a clinician.** ``superadmin_profession`` grants
-``manage_users`` alone, so an operator is refused here like anyone else
+no clinical competency, so an operator is refused here like anyone else
 — pinned by ``test_an_operator_is_not_thereby_a_clinician``, which is
 the case the old hatch got backwards.
 """
@@ -186,9 +186,9 @@ class TestTheRankHatchIsGone:
     ) -> None:
         """Operating Quill confers no access to a record.
 
-        ``superadmin_profession`` grants ``manage_users`` and nothing
-        clinical, so even at the patient's own organisation the answer
-        is no.
+        ``superadmin_profession`` grants administrative competencies
+        and nothing clinical, so even at the patient's own organisation
+        the answer is no.
         """
         operator = _user(
             db_session,

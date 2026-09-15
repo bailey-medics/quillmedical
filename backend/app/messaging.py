@@ -27,7 +27,6 @@ from app.organisations import (
     check_user_patient_access,
     get_member_org_ids,
     get_shared_org_ids,
-    get_user_org_ids,
 )
 from app.schemas.messaging import (
     ConversationDetailOut,
@@ -137,7 +136,7 @@ class NotInMessageOrganisation(MessagingError):
 
 def _snowball_orgs(db: Session, conversation_id: int, user_id: int) -> None:
     """Add a user's org(s) to a conversation (org snowball effect)."""
-    user_orgs = get_user_org_ids(db, user_id)
+    user_orgs = get_member_org_ids(db, user_id)
     if not user_orgs:
         return
     # Get existing conversation org IDs
@@ -173,7 +172,7 @@ def _user_has_conversation_access(
         return True
 
     # Org overlap check
-    user_orgs = set(get_user_org_ids(db, user.id))
+    user_orgs = set(get_member_org_ids(db, user.id))
     conv_org_ids = {o.id for o in conv.organisations}
     if user_orgs & conv_org_ids:
         return True
@@ -380,7 +379,7 @@ def list_conversations(
     query = query.order_by(Conversation.updated_at.desc())
     conversations = query.all()
 
-    user_org_ids = set(get_user_org_ids(db, user.id))
+    user_org_ids = set(get_member_org_ids(db, user.id))
 
     # Get per-patient access grants (for users with external patient access)
     external_patient_ids: set[str] = set()
@@ -626,7 +625,7 @@ def list_patient_conversations(
     query = query.order_by(Conversation.updated_at.desc())
     conversations = query.all()
 
-    user_org_ids = set(get_user_org_ids(db, user.id))
+    user_org_ids = set(get_member_org_ids(db, user.id))
 
     # Get per-patient access grants
     ext_rows = db.execute(

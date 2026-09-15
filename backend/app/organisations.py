@@ -109,13 +109,19 @@ def get_reachable_org_ids(
 def get_user_org_ids(db: Session, user_id: int) -> list[int]:
     """Return organisation IDs the user belongs to, in any capacity.
 
-    Retained as the name 20-odd call sites already use. It answers direct
-    membership without regard to capacity, which is what it has always
-    done — the previous docstring said "as staff", and that was never true
-    once registration began writing trainees into the same table.
+    **Nothing calls this any more.** It was retained as the name 20-odd
+    call sites already used, while they said neither *membership* nor
+    *reach* out loud; all of them now say :func:`get_member_org_ids`
+    directly, and teaching's own wrapper says :func:`get_reachable_org_ids`.
 
-    Call sites that mean staff should say so via
-    :func:`get_member_org_ids`.
+    Left in place rather than deleted in the same change as the walk, so
+    that the walk is reviewable as a rename and nothing else. Deleting it
+    is a one-line follow-up once that has landed.
+
+    It answers direct membership without regard to capacity, which is what
+    it has always done — an older docstring said "as staff", and that was
+    never true once registration began writing trainees into the same
+    table.
     """
     return get_member_org_ids(db, user_id)
 
@@ -134,7 +140,7 @@ def get_shared_org_ids(
     db: Session, user_id: int, patient_id: str
 ) -> list[int]:
     """Return organisation IDs shared between a staff user and a patient."""
-    user_orgs = set(get_user_org_ids(db, user_id))
+    user_orgs = set(get_member_org_ids(db, user_id))
     patient_orgs = set(get_patient_org_ids(db, patient_id))
     return sorted(user_orgs & patient_orgs)
 
@@ -274,7 +280,7 @@ def get_accessible_patient_ids(db: Session, user: User) -> set[str]:
     result: set[str] = set()
 
     # Org-based access
-    user_orgs = get_user_org_ids(db, user.id)
+    user_orgs = get_member_org_ids(db, user.id)
     if user_orgs:
         result |= get_org_patient_ids(db, user_orgs)
 
