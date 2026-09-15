@@ -15,23 +15,39 @@ setup() {
   CALLS="${BATS_TEST_TMPDIR}/gh-create-args"
   LIST_RESULTS="${BATS_TEST_TMPDIR}/gh-list-results"
   LIST_COUNTER="${BATS_TEST_TMPDIR}/gh-list-counter"
+  EXISTING_BODY="${BATS_TEST_TMPDIR}/gh-existing-body"
 
   : > "$CALLS"
   : > "$LIST_COUNTER"
+  : > "$EXISTING_BODY"
   set_list_results 0
 
   STUB_DIR="${BATS_TEST_TMPDIR}/bin"
   mkdir -p "$STUB_DIR"
 
-  # `gh pr list` returns the next scripted count; `gh pr create` records every
-  # argument on its own line, so a body containing spaces stays intact.
+  # `gh pr list` returns the next scripted count, except for the --jq that asks
+  # for a number, which yields the existing pull request's number. `gh pr view`
+  # returns the scripted current body. Everything else — `pr create`, `pr edit`
+  # — records every argument on its own line, so a body containing spaces stays
+  # intact.
   cat > "${STUB_DIR}/gh" <<EOF
 #!/usr/bin/env bash
 if [ "\$2" = "list" ]; then
+  for a in "\$@"; do
+    if [ "\$a" = ".[0].number" ]; then
+      echo "4242"
+      exit 0
+    fi
+  done
   call=\$(cat "${LIST_COUNTER}" 2>/dev/null || echo 0)
   call=\$((call + 1))
   echo "\$call" > "${LIST_COUNTER}"
   sed -n "\${call}p" "${LIST_RESULTS}"
+  exit 0
+fi
+
+if [ "\$2" = "view" ]; then
+  cat "${EXISTING_BODY}"
   exit 0
 fi
 
@@ -52,6 +68,11 @@ set_list_results() {
 
 set_create_status() {
   echo "$1" > "${BATS_TEST_TMPDIR}/gh-create-status"
+}
+
+# The body `gh pr view` reports for an already-open pull request.
+set_existing_body() {
+  printf '%s' "$1" > "$EXISTING_BODY"
 }
 
 # The value gh was given for a named flag, e.g. arg_after --title.
@@ -79,14 +100,17 @@ body_arg() {
   [[ "$output" == *"No branch name provided"* ]]
 }
 
-@test "skips when a pull request already exists for the branch" {
+@test "leaves an existing pull request alone when it has a description" {
   set_list_results 1
+  set_existing_body "A real description someone wrote."
 
   run bash "$SCRIPT" feature/already-open
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Pull request already exists"* ]]
-  [ ! -s "$CALLS" ]
+  [[ "$output" == *"already exists"* ]]
+  [[ "$output" == *"with a description"* ]]
+  # Nothing was created, and crucially nothing was edited.
+  run ! grep -qx -- "--body" "$CALLS"
 }
 
 @test "creates a draft pull request against main" {
@@ -159,4 +183,55 @@ body_arg() {
 
   [ "$status" -eq 1 ]
   [[ "$output" == *"Failed to create pull request"* ]]
+}
+
+# The reason this branch exists: `gh stack submit` opens the pull request
+# itself, seconds before this workflow runs, leaving a body that is only its
+# own stack footer. The placeholder has to reach those pull requests too.
+@test "fills in the placeholder when an existing pull request has no body" {
+  set_list_results 1
+  set_existing_body ""
+
+  run bash "$SCRIPT" feature/stacked
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"no description"* ]]
+  [ "$(arg_after --body)" = "**Placeholder for the PR description**" ]
+}
+
+@test "treats a body of only a stack footer as empty" {
+  set_list_results 1
+  set_existing_body '<sub>Stack created with <a href="https://github.com/github/gh-stack">GitHub Stacks CLI</a></sub>'
+
+  run bash "$SCRIPT" feature/stacked
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"no description"* ]]
+
+  body="$(body_arg)"
+  [[ "$body" == *"**Placeholder for the PR description**"* ]]
+  # The footer is kept — it is what links the pull request to its stack.
+  [[ "$body" == *"GitHub Stacks CLI"* ]]
+}
+
+@test "edits the pull request the listing named" {
+  set_list_results 1
+  set_existing_body ""
+
+  run bash "$SCRIPT" feature/stacked
+
+  [ "$status" -eq 0 ]
+  grep -qx -- "4242" "$CALLS"
+  grep -qx -- "edit" "$CALLS"
+}
+
+@test "does not overwrite a description that only mentions HTML" {
+  set_list_results 1
+  set_existing_body "Fixes the <div> rendering bug."
+
+  run bash "$SCRIPT" feature/already-open
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"with a description"* ]]
+  run ! grep -qx -- "--body" "$CALLS"
 }
