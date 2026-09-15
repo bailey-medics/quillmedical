@@ -1076,6 +1076,13 @@ Four open issues, all in the same place, and the important one was
   failure it guards against is one that already reports success, so a
   warning would be one more line of output above a green tick.
 
+- **`sts` rebases before it submits.** A stack is submitted repeatedly
+  while the units above it are revised, and trunk moves underneath it
+  meanwhile — 22 commits in one afternoon, the first time this was used.
+  Submitting without rebasing pushes branches whose pull requests then sit
+  behind `main`. It calls `stack-rebase` rather than `gh stack rebase`, so
+  the worktree guard and the verification below apply there too.
+
 - **Verify the rebase afterwards as well.** `gh stack rebase` exiting 0
   is not evidence it worked, so `just str` re-reads the stack and fails if
   any branch still needs a rebase. `gh stack view --json` reports
