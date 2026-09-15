@@ -1397,6 +1397,14 @@ as findings and skip the survey.
   real image is pushed by CI and set by `gcloud run jobs execute --image` at
   call time (see `.github/scripts/deploy/run-migrations.sh`). Follow that: do
   not try to make Terraform track the transcode image.
+  **[corrected 2026-09-15] There is no `gcloud run jobs execute --image`.**
+  The conclusion above is right and the mechanism named is not. `run-migrations.sh`
+  does it in two steps — `gcloud run jobs update --image`, then
+  `gcloud run jobs execute` — because the image is a property of the job, not
+  of an execution. The Python client agrees: `RunJobRequest.Overrides.ContainerOverride`
+  carries `name`, `args`, `env` and `clear_args`, and no image field. So the
+  backend cannot choose an image when it invokes, and the deploy sets it once
+  per deploy instead.
 
 - **Cloud Run Jobs cost only while running.** They are not services and do not
   idle. The bill is per video, once — replays are served from the CDN and cost
@@ -1681,9 +1689,48 @@ The resource name does not represent a known descriptor.
 
 ## Phase 7: Cutover
 
+### The pipeline was never connected end to end
+
+**[found 2026-09-15]** Every phase above completed, and an upload still
+produced nothing. The parts were each built and tested; the joins between them
+were nobody's phase, so three were missing. Found by checking live GCP rather
+than reading the code, which looks complete.
+
+- **The jobs ran a placeholder image.** `transcode_image` and `caption_image`
+  are `gcr.io/cloudrun/hello:latest`, correctly — the job module sets
+  `ignore_changes` on the image and CI owns it, as it does for `admin`. But
+  nothing in `deploy.yml` ever pointed the transcode job at the image it
+  builds, so the deployed job stayed the placeholder. Fixed: a
+  `gcloud run jobs update --image` step, mirroring `run-migrations.sh`.
+
+- **`TEACHING_TRANSCODE_JOB` was never set.** `start_transcode` reads it,
+  finds nothing, logs "transcode not configured" and returns None. Every
+  upload since the feature shipped has taken that path. Fixed: the variable is
+  now set on the backend service from the job's fully-qualified name.
+
+- **The backend had no permission to invoke the job.** The runtime service
+  account holds `roles/secretmanager.secretAccessor` and nothing else — not
+  the broad editor role a default Compute Engine account is often assumed to
+  carry. `start_transcode` would have raised, been swallowed by its own
+  try/except, and logged. Fixed: `roles/run.invoker` scoped to the transcode
+  job alone.
+
+  This one is worth dwelling on. Both other faults were quiet; this one would
+  have stayed quiet **after** the others were fixed, and presented as
+  "transcoding mysteriously does nothing". Nothing in the plan anticipated it,
+  because the plan reasoned about the trigger design and not about whether the
+  caller was allowed to pull the trigger.
+
+- **Captions remain unwired**, deliberately, as the next unit. There is no
+  `TEACHING_CAPTION_JOB` setting and nothing calls the caption job at all.
+
 - [ ] Migrate one real EoEETA lecture from YouTube to GCS end to end and confirm
       playback, seeking, captions, and the resume position from parent-plan
       item 18 all behave.
+      **[noted 2026-09-15]** Resume position does not exist to confirm:
+      `LearnerProgress` is a frontend type with no model, no column and no
+      endpoint behind it. Parent-plan item 18 is correctly unchecked. Either
+      build it first or drop it from this item's bar.
 - [x] Document the video path in `docs/docs/teaching/index.md` and the storage
       architecture in `docs/docs/backend/files/index.md`.
       **[done 2026-09-15]** `backend/files/index.md` was a "Planned feature"
@@ -1699,10 +1746,27 @@ The resource name does not represent a known descriptor.
       unversioned processed bucket, and both are now the opposite.
       `teaching/index.md` gets a shorter "Video" section under its existing
       storage backends, saying why video does not use them, and links across.
-- [ ] Amend Section 8 of the Learning Section plan to point here, and tick items
+- [x] Amend Section 8 of the Learning Section plan to point here, and tick items
       26–30 of its Phase 3 checklist as this plan's phases complete.
-- [ ] Raise a hazard-log entry for unauthorised access to licensed teaching
-      content, following the existing `docs/docs/safety/hazards/` format.
+      **[done 2026-09-15]** Section 8 now opens with a superseding note
+      pointing here and at the storage doc, and records the five things that
+      changed in building it: signed cookies rather than signed URLs, 7-day
+      source retention with the job deleting its own master, an unversioned
+      source bucket, the backend invoking the jobs rather than GitHub Actions,
+      and a 20-minute transcode timeout. The original sketch is kept beneath
+      it, because the reasoning is only legible against what it replaced.
+      **Only 26 and 29 could honestly be ticked**, and the rest was checked
+      against live GCP rather than assumed. 27 and 28 are **not** done:
+      `transcode_image` and `caption_image` in
+      `infra/environments/teaching/terraform.tfvars` are both still
+      `gcr.io/cloudrun/hello:latest`, so the deployed jobs are placeholders
+      and the Cloud Run API reports **0 executions** for each. The CLIs and
+      the image builds in `deploy.yml` exist; nothing has ever run through
+      them. That gap between "the code is written" and "the pipeline works"
+      is what the cutover item above will hit first.
+      30 is not done either: the hosted path was added _alongside_ YouTube
+      rather than swapping it — `react-player` is still imported and
+      `youtubeId` is still a live branch in `VideoPlayer.tsx`.
 
 ## Local development
 

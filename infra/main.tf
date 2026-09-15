@@ -303,6 +303,23 @@ module "cloud_run_backend" {
       TEACHING_VIDEOS_BUCKET          = module.teaching_video_pipeline[0].processed_bucket_name
       TEACHING_VIDEO_SIGNING_KEY_NAME = module.teaching_video_pipeline[0].signing_key_name
 
+      # The job `link_module_media` invokes once an upload lands. Written
+      # out rather than taken from the module's `id` output: this is the
+      # name `run_job` addresses, the API wants the fully-qualified form,
+      # and a wrong value fails at runtime inside a handler that logs and
+      # swallows — so it would present as "transcoding silently never
+      # happens" rather than as an error anyone sees.
+      #
+      # Unset until now, which is why no upload has ever been transcoded:
+      # `start_transcode` reads this, finds nothing, logs "transcode not
+      # configured" and returns. Everything downstream was built and
+      # tested; this one line is what connects it.
+      TEACHING_TRANSCODE_JOB = join("/", [
+        "projects", var.project_id,
+        "locations", var.region,
+        "jobs", "quill-transcode-${var.environment}",
+      ])
+
       # Same host as the app, deliberately: the load balancer routes
       # /videos/* to the backend bucket, so the signed cookie is same-origin
       # and the browser sends it on media requests with no cross-site
@@ -424,6 +441,28 @@ module "cloud_run_transcode_job" {
   }
 
   depends_on = [module.teaching_video_pipeline]
+}
+
+# The backend invokes this job, so it needs permission to. Nothing else
+# grants it: the runtime service account holds only
+# `roles/secretmanager.secretAccessor` at project level, not the broad
+# editor role a default Compute Engine account is often assumed to carry.
+#
+# Scoped to this one job rather than granted project-wide, because the
+# backend has no business starting any other job — the admin job runs
+# migrations and is CI's to invoke, not the serving application's.
+#
+# Without this, `start_transcode` raises inside its own try/except, logs,
+# and returns None. The upload still succeeds and the module stays
+# hidden, which is the safe direction but an entirely silent failure.
+resource "google_cloud_run_v2_job_iam_member" "backend_invokes_transcode" {
+  count = var.environment == "teaching" ? 1 : 0
+
+  project  = var.project_id
+  location = var.region
+  name     = module.cloud_run_transcode_job[0].job_name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
 }
 
 # ---------- Cloud Run Job: video captions (teaching only) ----------

@@ -587,6 +587,37 @@ Non-negotiable, builds in from the start:
 
 ## 8. Video hosting infrastructure (Terraform)
 
+> **[superseded 2026-09-15] This section is now history.** The video work is
+> specified and tracked in
+> [the GCP video auth gate plan](2026-08-31-gcp-video-auth-gate-plan.md), and
+> the built architecture is documented in
+> `docs/docs/backend/files/index.md`. What follows is the original sketch,
+> kept because the reasoning behind the changes is only legible against it.
+> Where the two disagree, the video plan is right and this is stale.
+>
+> The sketch below was largely sound. Five things changed in building it:
+>
+> - **Access is a signed cookie, not a signed URL.** One grant covers every
+>   asset beneath a module's prefix, so the player fetches renditions, poster
+>   and captions without a round trip per file — and the design survives a
+>   later move to segmented HLS, where per-URL signing would be untenable.
+> - **Source retention is 7 days, not 90, and the job deletes its own
+>   master.** Once the renditions verify, the master's only remaining use is
+>   re-encoding. The lifecycle rule is a backstop for uploads whose job never
+>   ran, and a short one so that failure is loud while re-uploading is still
+>   merely annoying.
+> - **The source bucket is not versioned.** A replaced raw upload is simply a
+>   new upload. Versioning stayed on the processed bucket, where losing a
+>   transcode would mean re-running a job over a source that may be gone.
+> - **The backend invokes the jobs, not GitHub Actions.** Content deploys and
+>   video uploads are not the same event: an admin uploads a lecture through
+>   the admin card at an arbitrary moment, so the upload path fires the job.
+>   The job CLIs stay database-free as a result.
+> - **Transcode times out at 20 minutes, not 60.** A hung job burns its full
+>   timeout before failing, and a lecture that has not encoded in twenty
+>   minutes has gone wrong rather than gone slowly. The caption job kept the
+>   hour, because Whisper genuinely is that slow.
+
 Extend the existing teaching GCP project infrastructure (`infra/environments/teaching/`).
 
 ### Buckets
@@ -1689,11 +1720,28 @@ Steps:
 
 > **Note:** Phase 3 will be built, but only after Phases 1–2 and 4–5 are complete and shipped. YouTube embeds via `react-player` are sufficient for the initial release. Begin this phase when explicitly instructed.
 
-- [ ] 26. Terraform: video buckets and Cloud CDN (`infra/modules/teaching-video-pipeline/`)
+- [x] 26. Terraform: video buckets and Cloud CDN (`infra/modules/teaching-video-pipeline/`)
+      — applied and live: both buckets exist in `quill-medical-teaching`, the
+      backend bucket serves `/videos/*`, and the 404 alert is in place.
 - [ ] 27. Cloud Run transcoding job — get one test video through end to end
+      — code and image build exist (`backend/scripts/transcode_cli.py`,
+      `deploy.yml` target `transcode`), but `transcode_image` in
+      `infra/environments/teaching/terraform.tfvars` is still
+      `gcr.io/cloudrun/hello:latest`, so the deployed job is a placeholder
+      and has **0 executions**. Nothing has been through it.
 - [ ] 28. Cloud Run caption job — Whisper integration
-- [ ] 29. Signed URL minting endpoint — security-critical, prioritise tests
+      — same state: `caption_cli.py` and `Dockerfile.caption` exist,
+      `caption_image` is still the placeholder, **0 executions**.
+- [x] 29. Signed URL minting endpoint — security-critical, prioritise tests
+      — built as a signed **cookie** endpoint rather than signed URLs (see
+      Section 8's note). `video_access.py` plus 16 tests in
+      `test_teaching_video_access.py`, covering prefix construction,
+      traversal refusal, signature correctness and CDN field order.
 - [ ] 30. Swap `<VideoPlayer>` from `react-player`/YouTube to GCS signed URLs (evaluate Plyr at this point)
+      — the hosted path was **added alongside** YouTube, not swapped for it:
+      `VideoPlayer.tsx` still imports `react-player`, still takes `youtubeId`
+      and still branches on it, and `react-player` remains a dependency. The
+      swap completes when the last YouTube-backed module is migrated.
 
 **Phase 4 — Migrate assessments to TeachingLayout**
 
