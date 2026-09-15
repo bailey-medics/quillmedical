@@ -570,12 +570,23 @@ resource "google_monitoring_alert_policy" "video_not_found" {
     display_name = "Video 404s at the edge"
 
     condition_threshold {
-      # Same resource.type restriction the browser-error policy needs, and
-      # for the same reason: Monitoring rejects an alert filter without one.
-      # These entries come from the load balancer, not Cloud Run, because
-      # /videos/* is served from the backend bucket and never reaches the app.
+      # `l7_lb_rule`, not `http_load_balancer`. The two name the same load
+      # balancer in different systems: the metric's *log* filter matches
+      # `resource.type="http_load_balancer"`, which is what Logging calls it,
+      # and Logging then derives the Monitoring resource type — `l7_lb_rule`
+      # — for the descriptor it registers. An alert filter is read by
+      # Monitoring, so it must use Monitoring's name.
+      #
+      # Naming the Logging one here fails with "The resource name does not
+      # represent a known descriptor", which reads as though the *metric* is
+      # unknown and sent an earlier fix chasing a propagation delay that was
+      # never there. The unknown name is the resource. Confirmed against the
+      # live descriptor, which lists monitoredResourceTypes: [l7_lb_rule].
+      #
+      # The browser-error policy above says `cloud_run_revision` because that
+      # genuinely is its descriptor's type; it is not a precedent for this.
       filter = join(" AND ", [
-        "resource.type = \"http_load_balancer\"",
+        "resource.type = \"l7_lb_rule\"",
         "metric.type = \"logging.googleapis.com/user/${var.video_not_found_metric}\"",
       ])
 

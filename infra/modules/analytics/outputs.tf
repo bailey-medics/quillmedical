@@ -18,10 +18,4 @@ output "client_errors_metric" {
 output "video_not_found_metric" {
   description = "Name of the log-based metric counting 404s for video files, so the monitoring module can alert on rendition drift"
   value       = google_logging_metric.video_not_found.name
-
-  # Held back until Monitoring knows the descriptor. Without this the alert
-  # policy consuming it is created in the same apply as the metric and is
-  # refused, because Logging and Monitoring learn of a new metric separately.
-  # See the resource's comment in main.tf.
-  depends_on = [time_sleep.wait_for_video_not_found_metric]
 }
