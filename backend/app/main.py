@@ -746,6 +746,20 @@ DEP_REQUIRE_CSRF = Depends(require_csrf)
 #: replaces.
 DEP_REQUIRE_MANAGE_USERS = Depends(has_competency("manage_users"))
 
+#: Who belongs to an organisation or a site. Separate from
+#: ``DEP_REQUIRE_MANAGE_USERS`` because adding an existing colleague to a
+#: ward is not the authority to create, delete or re-competency an
+#: account, and ``manage_users`` carries twenty-nine routes including
+#: site deletion. Adding a nurse to a ward should not imply the power to
+#: delete the ward.
+#:
+#: It mirrors ``DEP_REQUIRE_MANAGE_PATIENT_MEMBERSHIP`` below, which made
+#: the same separation for patients. Like the rest it answers *what*,
+#: never *where*, so the four routes carrying it keep their place check.
+DEP_REQUIRE_MANAGE_STAFF_MEMBERSHIP = Depends(
+    has_competency("manage_staff_membership")
+)
+
 #: Which patients are cared for at a place. Separate from
 #: ``DEP_REQUIRE_MANAGE_USERS`` because a patient is not a user: a user is
 #: an account here, a patient is a record FHIR owns, and the two are
@@ -4158,7 +4172,7 @@ def delete_organisation(
 @router.post(
     "/organisations/{org_id}/staff",
     response_model=OrgStaffAddResponse,
-    dependencies=[DEP_REQUIRE_MANAGE_USERS],
+    dependencies=[DEP_REQUIRE_MANAGE_STAFF_MEMBERSHIP],
 )
 def add_staff_to_organisation(
     org_id: int,
@@ -4325,7 +4339,7 @@ def add_patient_to_organisation(
     "/organisations/{org_id}/staff/{user_id}",
     dependencies=[
         DEP_REQUIRE_CSRF,
-        DEP_REQUIRE_MANAGE_USERS,
+        DEP_REQUIRE_MANAGE_STAFF_MEMBERSHIP,
     ],
     response_model=StatusResponse,
 )
@@ -5160,7 +5174,7 @@ def _mirror_clinical_lead(
     response_model=AddSiteStaffResponse,
     dependencies=[
         DEP_REQUIRE_CSRF,
-        DEP_REQUIRE_MANAGE_USERS,
+        DEP_REQUIRE_MANAGE_STAFF_MEMBERSHIP,
     ],
 )
 def add_site_staff(
@@ -5257,7 +5271,7 @@ def add_site_staff(
     response_model=StatusResponse,
     dependencies=[
         DEP_REQUIRE_CSRF,
-        DEP_REQUIRE_MANAGE_USERS,
+        DEP_REQUIRE_MANAGE_STAFF_MEMBERSHIP,
     ],
 )
 def remove_site_staff(

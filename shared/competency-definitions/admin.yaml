@@ -45,3 +45,24 @@ competencies:
   # grant of everything, one step removed.
   - id: manage_users
     display_name: "Manage User Accounts"
+
+  # Who belongs to an organisation or a site, as opposed to who has an
+  # account at all.
+  #
+  # Separate from manage_users because adding an existing colleague to a
+  # ward is not the same authority as creating, deleting or re-competency
+  # -ing an account. manage_users gates twenty-nine routes — account
+  # lifecycle, patient activation, organisation editing, feature toggles,
+  # site CRUD — so without this, the person who should be able to add a
+  # nurse to their ward can also delete the site.
+  #
+  # It mirrors manage_patient_membership in clinical-admin.yaml, which
+  # made exactly this separation for patients and for the same reason.
+  # Staff membership lacked an equivalent only because the platform role
+  # work replaced a *rank* on these routes with a competency and kept
+  # that competency's existing breadth.
+  #
+  # Like every competency here it answers *what*, never *where*: the four
+  # routes carrying it keep their place check beside them.
+  - id: manage_staff_membership
+    display_name: "Manage Staff Membership of an Organisation or Site"

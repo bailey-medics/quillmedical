@@ -132,6 +132,29 @@ of the unused staff guard. Everything else on the lists below is still a plan.
       7 in the teaching router, 5 in `messaging.py`, 2 internal — and 17 in teaching's own.
       Fifty references to the organisation table in total.
 - [ ] **Filter the organisation admin page to staff**, so students stop appearing on it.
+- [ ] **Give staff membership its own competency, `manage_staff_membership`.** Writing a
+      membership row is gated on `manage_users` today, which also gates twenty-five other
+      routes: creating and deleting accounts, activating patients, editing organisations,
+      toggling feature flags, and site CRUD. So the person who should be able to add a
+      nurse to their ward can also delete the site.
+      - **It pairs with `manage_patient_membership`**, which already exists and already
+        made this separation for patients, for the same reason and one layer down. Staff
+        membership had no equivalent only because this work replaced the *rank* on those
+        routes with a competency and kept the competency's existing breadth.
+      - **Four routes carry it**: `add_staff_to_organisation`,
+        `remove_staff_from_organisation`, `add_site_staff`, `remove_site_staff`. Their
+        place check is unchanged — the competency answers *what*, membership answers
+        *where*.
+      - **Expand before contract, because narrowing a gate takes access away.** Add the
+        competency and grant it to all four professions holding `manage_users`
+        (`clinic_manager`, `system_administrator`, `superadmin_profession`,
+        `teaching_manager`) in the same change that switches the routes. Nobody loses
+        anything at the switch; what becomes possible is granting one without the other,
+        which is the point.
+      - **Whether site CRUD and organisation feature toggles also want separating is a
+        real question and not this one.** Both are further from "managing users" than
+        membership is. Recorded so the next reader sees it was considered rather than
+        missed.
 
 ## Why the batches matter
 

@@ -319,6 +319,7 @@ base_professions:
       - access_patient_records  # For service delivery oversight
       - access_clinic_admin
       - manage_users  # Staff account management
+      - manage_staff_membership
 
   # Whose caseload an organisation carries, as opposed to how a clinic is
   # run day to day. Deliberately thin: it exists so that
@@ -341,6 +342,7 @@ base_professions:
       - access_patient_records  # Technical support only
       - access_clinic_admin
       - manage_users
+      - manage_staff_membership
 
   # ==========================================================================
   # SUPERADMIN
@@ -370,6 +372,7 @@ base_professions:
     requires_clinical_services: false
     base_competencies:
       - manage_users
+      - manage_staff_membership
 
   # ==========================================================================
   # TEACHING PROFESSIONS
@@ -412,6 +415,7 @@ base_professions:
       - manage_teaching_content
       - view_teaching_analytics
       - manage_users
+      - manage_staff_membership
 
   # ==========================================================================
   # EXTERNAL ASSESSORS
