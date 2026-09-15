@@ -299,8 +299,9 @@ def summarise_checks(pr: dict[str, object], palette: Palette) -> str:
     def mark(names: dict[str, tuple[str, str]]) -> str:
         if not names:
             # No heavy check has reported at all: the ordinary state of a
-            # draft pull request, and not a failure.
-            return palette.dim("–")
+            # draft pull request, and not a failure — hence green, like the
+            # tick, rather than dim. Nothing is wrong; nothing has run.
+            return palette.green("–")
         kinds = {kind for kind, _ in names.values()}
         if "failing" in kinds:
             return palette.red("✗")
@@ -311,7 +312,7 @@ def summarise_checks(pr: dict[str, object], palette: Palette) -> str:
         # earned. One job having actually run is enough to call it a pass,
         # since the rest skipped on their own conditions.
         if kinds == {"skipped"}:
-            return palette.dim("–")
+            return palette.green("–")
         return palette.green("✓")
 
     heavy = {n: v for n, v in best.items() if n in HEAVY_CHECKS}
