@@ -32,8 +32,16 @@ relaxation:
   harder. Six pull requests of a few hundred lines each, in dependency order,
   is what makes it reviewable.
 
-If a unit genuinely needs approval before it is committed — an irreversible
-migration, a change to auth — stop and ask. Judgement still applies.
+One narrow exception: if a unit would do something **irreversible** — a
+destructive migration, a change to who can log in — stop and ask before
+committing it.
+
+**That exception is about consequence, not about doubt.** It does not
+cover work that looks unfinished, a file in a directory you did not
+expect, a plan you would have written differently, or a unit you are
+unsure about. Build those and land them; the pull request is where they
+get questioned. Stopping on a hunch is how an unattended run becomes an
+attended one.
 
 ## Never
 

@@ -182,16 +182,35 @@ Two things to check rather than assume:
      itself; the name and message should come from the code, not from what
      the conversation was about.
 
-   **Do not assess whether the work is one unit.** Whatever is uncommitted
-   becomes one branch and one pull request, however many concerns it spans.
-   Deciding when a unit is finished is the caller's job — running this
-   command *is* that decision — and stopping to second-guess it would turn
-   a one-word command into a negotiation, and break an unattended run at
-   the moment it most needs to keep going.
+   **Do not judge the work. Commit it.** Whatever is uncommitted becomes
+   one branch and one pull request. Running this command *is* the decision
+   that the work is ready, and it has already been taken by the person who
+   ran it. Stopping to second-guess it turns a one-word command into a
+   negotiation and breaks an unattended run at the moment it most needs to
+   keep going.
 
-   So: no asking, no splitting, no suggesting the work be split. Read the
-   diff only to name the branch and write the message. Where the work spans
-   two concerns, name it for the larger and let the description carry both.
+   This covers every kind of second-guessing, not only whether the work is
+   one unit:
+
+   - **What the work is.** A plan document, a scratch file, notes, a
+     half-built feature — all of it is the unit. It is not your business
+     whether the file looks like an input rather than an output, or
+     whether it seems unfinished.
+   - **Where it lives.** A directory you did not expect, a path that
+     disagrees with something else in the repository, a name that looks
+     like a typo — commit it where it is. The person who put it there
+     chose that.
+   - **Whether it belongs on this stack.** It does, because it is here.
+   - **Whether it is ready.** It is, because the command was run.
+
+   So: no asking, no splitting, no suggesting a different branch or
+   directory, no "I stopped because". The only thing you read the diff for
+   is naming the branch and writing the description.
+
+   **Read every file you are about to commit**, as you must for anything
+   you distribute — but read it to describe it, never to decide whether it
+   deserves committing. Noticing something odd is fine; say it in the
+   report, after the work is landed, not instead of landing it.
 
 3. **Bring the branches above back into line.**
 
@@ -356,5 +375,12 @@ One short block:
   checked.
 - Which tests were run, by name. Never claim a suite that was not run.
 
-If at any step there is an error requiring human judgement, stop and report
-it rather than working around it.
+If a step fails mechanically — a test fails, a rebase conflicts, two pull
+requests match the branch — stop and report it rather than working around
+it.
+
+**That is not licence to stop because the work itself gave you pause.**
+The stopping conditions in this command are all of the first kind: no
+stack, a stack spanning worktrees, a failing test, an ambiguous pull
+request. None of them is about what the work is, where it lives, or
+whether it looks ready. Those are settled by the command having been run.
