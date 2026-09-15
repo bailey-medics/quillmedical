@@ -255,7 +255,8 @@ Two things to check rather than assume:
    just stack-files p
    ```
 
-   Base the summary on what the code does, not on the commit message alone.
+   Read the patch, not just the file list: the decisions and risks step 9
+   asks for are visible only in the change itself.
 
 8. **Check you are not overwriting a human.** Replace the body without asking
    only when it is empty, is the `auto-pr.yml` placeholder, carries only
@@ -263,32 +264,68 @@ Two things to check rather than assume:
    `<!-- crp:pr-summary -->` marker meaning it was generated here before.
    Anything else is someone's writing: show it, and ask before replacing it.
 
-9. **Write the body — short and scannable.** A reviewer should take it in
-   within thirty seconds. This repository has no pull request template, so
-   the shape below is the whole specification:
+9. **Write the body.** The reader reads every line of the diff, so never
+   describe the diff. Write only what reading the code cannot tell them:
+   what you chose, what might be risky, and what is different now.
 
-   - **One-line summary first.** A single sentence saying what this branch
-     does. Two only if the why is not obvious. No preamble, no restating the
-     title.
-   - **Then bullets.** Six or fewer: one flat list, no headings. More than
-     six: group under two to four bold one-line headings in sentence case,
-     grouping by theme rather than by file or commit.
-   - **One line per bullet**, ideally under fifteen words and never wrapping
-     past two lines. Start with a verb — adds, fixes, moves, removes — and
-     name the file, function or symbol in backticks. No sub-bullets.
-   - **Say what this unit depends on** when it is not the bottom of the
-     stack: one line naming the branch below and why this sits on it. A
-     reviewer arriving at the third pull request needs to know what it
-     assumes.
-   - **No closing paragraph**, no overall-effect section, no praise, no
-     restating a bullet in prose.
-   - Finish with `<!-- crp:pr-summary -->` on its own line — nothing after
-     it, and no attribution footer anywhere in the body.
+   Three sections, in this order, each a level-two heading:
 
-   Hard ceiling: **twelve bullets and 200 words**. Over either, you are
-   describing the diff instead of summarising it. A stacked unit should
-   rarely approach it — if it does, the unit is too big and that is worth
-   saying in the report.
+   ```markdown
+   One sentence saying what this branch does.
+
+   ## LLM decisions
+
+   - **Bold sentence carrying the whole point.** Then a sentence or two of
+     plainer detail, which the reader may skip.
+
+   ## Risks
+
+   - **None found.** …or one bullet per risk.
+
+   ## What has changed
+
+   - **Bold sentence naming the change.** Then the detail.
+   ```
+
+   **Every bullet leads with a bold sentence that stands alone.** The
+   reader should be able to read only the bold text and have the whole
+   pull request. What follows the bold is expansion for anyone who wants
+   it, never the point itself.
+
+   **Write for a sixteen-year-old.** Short words, short sentences, no
+   jargon. Say what someone using the thing would see, not what the code
+   does: "shows a dot while tests run" rather than "returns a pending
+   mark". Use no word that exists only in the diff — a function name, a
+   constant, an enum value. Those belong in code comments.
+
+   Each section:
+
+   - **`## LLM decisions`** — the choices you made that a human might have
+     made differently. This is where a clinician's expertise is the
+     strongest lever: a wrong decision here means the whole pull request
+     needs a closer read, so it comes first. Include **departures from the
+     plan** — say so plainly, leading with "Departed from the plan:" — and
+     **assumptions**, where the plan was silent and you picked a reading.
+     Following the plan is not a decision. Omit the section when there
+     genuinely were none.
+
+   - **`## Risks`** — security, data leaks, patient safety, anything that
+     could go wrong beyond the code being incorrect. **Always present**,
+     even as "**None found.**", because an omitted section cannot be told
+     apart from one nobody thought about. Say "none found", never "none":
+     it is what you noticed, not a guarantee, and your judgement of risk
+     is not well calibrated.
+
+   - **`## What has changed`** — what is different now, in terms of what a
+     user of the thing would see. Not a file list and not a commit list:
+     the diff already carries those, and repeating them is the most common
+     way this section becomes noise.
+
+   Finish with `<!-- crp:pr-summary -->` on its own line — nothing after
+   it, and no attribution footer anywhere in the body.
+
+   Hard ceiling: **200 words**. A description that long usually means the
+   "What has changed" section has drifted into describing the diff.
 
    ```bash
    gh pr edit <number> --body "..."
@@ -313,6 +350,10 @@ One short block:
 - The pull request URL, and one line on what the description now says.
 - Whether it was left a draft or marked ready.
 - The commit message used, since the name and message were chosen for you.
+- **Any decision or risk written into the description**, repeated here in
+  one line each. After an unattended run the terminal is read before the
+  pull requests are, and a decision nobody sees is a decision nobody
+  checked.
 - Which tests were run, by name. Never claim a suite that was not run.
 
 If at any step there is an error requiring human judgement, stop and report
