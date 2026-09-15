@@ -304,6 +304,53 @@ def draw(
     print()
 
 
+def draw_files(
+    stack: dict[str, object],
+    occupied: dict[str, str],
+    palette: Palette,
+    patch: bool,
+) -> None:
+    """List what each branch changes, against its own parent.
+
+    The parent, not the trunk: that is what makes a stack reviewable. A
+    branch three layers up diffed against `main` replays everything below
+    it, while diffed against its parent it shows only the unit it adds.
+    `base` in the stack JSON is the parent commit, so it is exactly the
+    left-hand side wanted here.
+    """
+    entries = stack_entries(stack)
+    print()
+    for entry in entries:
+        name = str(entry.get("name", ""))
+        base = str(entry.get("base", ""))
+        if not name or not base:
+            continue
+
+        marker = GLYPH_CURRENT if entry.get("isCurrent") else GLYPH_OPEN
+        heading = palette.bold(name) if entry.get("isCurrent") else name
+        print(f"  {marker} {heading}")
+
+        held = occupied.get(name)
+        if held:
+            note = f"{GLYPH_WARN} checked out in {held}"
+            print(f"      {palette.yellow(note)}")
+
+        # --stat for the summary, or the full patch when asked. Both are
+        # plain git, so the output is what any other review tool shows.
+        args = ["git", "diff", "--stat" if not patch else "--patch"]
+        body = run([*args, f"{base}..{name}"], check=False)
+        text = body.rstrip("\n")
+        if not text:
+            print(f"      {palette.dim('no changes')}")
+        else:
+            for line in text.split("\n"):
+                print(f"      {line}")
+        print()
+
+    print(f"  {ELBOW}─ {palette.dim(str(stack.get('trunk', 'main')))}")
+    print()
+
+
 def report_blockers(branches: list[Branch], palette: Palette) -> bool:
     """Name branches held by another worktree. True when any were found."""
     blocked = [b for b in branches if b.worktree]
@@ -347,6 +394,16 @@ def main() -> int:
         help="exit 2 if a stack branch is checked out in another worktree",
     )
     parser.add_argument(
+        "--files",
+        action="store_true",
+        help="list what each branch changes against its own parent",
+    )
+    parser.add_argument(
+        "--patch",
+        action="store_true",
+        help="with --files, show the full diff rather than a summary",
+    )
+    parser.add_argument(
         "--no-colour", action="store_true", help="disable ANSI colour"
     )
     args = parser.parse_args()
@@ -371,7 +428,9 @@ def main() -> int:
     branches = build_branches(stack, occupied, pull_requests)
     trunk = str(stack.get("trunk", "main"))
 
-    if not args.check:
+    if args.files:
+        draw_files(stack, occupied, palette, patch=args.patch)
+    elif not args.check:
         draw(branches, trunk, palette, show_prs=args.prs)
         # The drawing goes to stdout and the warning to stderr; flushing
         # between them keeps the warning under the stack it refers to

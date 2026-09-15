@@ -847,6 +847,24 @@ stack-checkout target="":
     python3 scripts/stack-status.py
 
 
+alias stf := stack-files
+# List what each branch in the stack changes, against its own parent
+stack-files patch="":
+    #!/usr/bin/env bash
+    set +x
+    {{initialise}} "stack-files"
+    set +x
+    # Against its own parent, not the trunk: a branch three layers up
+    # diffed against main replays every change below it, which is the
+    # wall of diff that stacking exists to avoid. Pass 'p' for the full
+    # patch rather than the per-file summary.
+    if [ "{{patch}}" = "p" ]; then
+        python3 scripts/stack-status.py --files --patch || true
+    else
+        python3 scripts/stack-status.py --files || true
+    fi
+
+
 alias stl := stack-log
 # Show the current stack (fast, local only — no network)
 stack-log:
