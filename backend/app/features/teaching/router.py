@@ -41,6 +41,8 @@ from app.features.teaching.schemas import (
     AssessmentWithFirstItem,
     BankOrgRow,
     CandidateItemOut,
+    CaptionsIn,
+    CaptionsOut,
     CompletionResultOut,
     CriterionResult,
     DelegateOut,
@@ -3445,3 +3447,139 @@ def delete_media_asset(
         asset_id,
     )
     return Response(status_code=204)
+
+
+def _caption_link_or_404(
+    db: Session, org_id: int, module_id: str, asset_id: str
+) -> ModuleMediaLink:
+    """The link for one asset, scoped to the caller's organisation.
+
+    Scoped rather than refused, so another trust's asset is *not found*
+    instead of forbidden: whether they hold one is not this caller's to
+    learn. The same shape as ``delete_media_asset``.
+    """
+    link = db.execute(
+        select(ModuleMediaLink).where(
+            ModuleMediaLink.organisation_id == org_id,
+            ModuleMediaLink.question_bank_id == module_id,
+            ModuleMediaLink.asset_id == asset_id,
+        )
+    ).scalar_one_or_none()
+    if link is None:
+        raise HTTPException(404, "No such media asset")
+    return link
+
+
+@teaching_router.get(
+    "/admin/modules/{module_id}/media/{asset_id}/captions",
+    response_model=CaptionsOut,
+    dependencies=[_DEP_MANAGE],
+)
+def get_media_captions(
+    module_id: str,
+    asset_id: str,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+) -> CaptionsOut:
+    """The current WebVTT for one asset, for the admin editor.
+
+    Whisper mishears clinical terminology, so what the caption job wrote
+    is a draft. This is how an admin reads it — and, with the sibling
+    below, how they fix it.
+
+    A missing file is not an error: ``webvtt`` is None where the caption
+    job has not run, which the editor shows as "no captions yet" rather
+    than as an empty box the admin might save over nothing.
+    """
+    from app.config import settings
+    from app.features.teaching.storage import read_caption_object
+
+    org_id = _get_user_org_id(user, db)
+    link = _caption_link_or_404(db, org_id, module_id, asset_id)
+
+    bucket = settings.TEACHING_VIDEOS_BUCKET
+    if not bucket:
+        # Development, where the caption job has never run and there is
+        # no processed bucket to read. Reported as "none yet" rather
+        # than a 503, so the card renders the same everywhere.
+        return CaptionsOut(
+            asset_id=asset_id,
+            webvtt=None,
+            reviewed_at=link.captions_reviewed_at,
+        )
+
+    return CaptionsOut(
+        asset_id=asset_id,
+        webvtt=read_caption_object(bucket, org_id, module_id, asset_id),
+        reviewed_at=link.captions_reviewed_at,
+    )
+
+
+@teaching_router.put(
+    "/admin/modules/{module_id}/media/{asset_id}/captions",
+    response_model=CaptionsOut,
+    dependencies=[_DEP_MANAGE],
+)
+def put_media_captions(
+    module_id: str,
+    asset_id: str,
+    body: CaptionsIn,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+) -> CaptionsOut:
+    """Replace one asset's WebVTT with corrected text.
+
+    Saving is what records the review. Someone who has edited the text
+    has read it, whereas a separate "mark as reviewed" button is a box
+    to tick without looking — so ``captions_reviewed_at`` is set here
+    rather than by an action of its own.
+
+    The body is checked to begin ``WEBVTT`` and nothing more. That
+    catches the common mistake — a paste that lost its header, or the
+    wrong file entirely — without pretending to validate a format this
+    endpoint has no business parsing. A player given a malformed track
+    shows no captions and says nothing about why, so the cheap check
+    earns its place.
+    """
+    from app.config import settings
+    from app.features.teaching.storage import write_caption_object
+
+    org_id = _get_user_org_id(user, db)
+    link = _caption_link_or_404(db, org_id, module_id, asset_id)
+
+    text = body.webvtt.strip()
+    if not text.startswith("WEBVTT"):
+        raise HTTPException(
+            400, "Captions must be WebVTT, beginning with the line WEBVTT"
+        )
+
+    bucket = settings.TEACHING_VIDEOS_BUCKET
+    if not bucket:
+        raise HTTPException(
+            503, "No video bucket configured; captions cannot be saved"
+        )
+
+    write_caption_object(bucket, org_id, module_id, asset_id, text)
+
+    # Recorded only once the write succeeded: claiming a review for text
+    # that never reached the bucket would tell the next person the
+    # captions had been checked when what they will hear is Whisper's.
+    link.captions_reviewed_at = datetime.now(UTC)
+    link.has_captions = True
+    db.flush()
+
+    # No caption text in the log — it is a transcript of a lecture and
+    # this log is not PHI-safe.
+    logger.info(
+        "captions saved user=%s org=%s module=%s asset=%s",
+        user.id,
+        org_id,
+        module_id,
+        asset_id,
+    )
+
+    return CaptionsOut(
+        asset_id=asset_id,
+        webvtt=text,
+        reviewed_at=link.captions_reviewed_at,
+    )

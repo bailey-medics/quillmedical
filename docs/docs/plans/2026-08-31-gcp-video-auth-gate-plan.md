@@ -1586,7 +1586,7 @@ Consequences to hold on to:
       deliberately not awaited and no polling or callback exists, so every link
       currently keeps a null transcode state; and the caption job has no
       trigger because it has no job. Both belong to the items below.
-- [ ] **Let an admin correct the captions.** **[added 2026-09-15]** Whisper
+- [x] **Let an admin correct the captions.** **[added 2026-09-15]** Whisper
       will get clinical terminology wrong — "caecum" as "seek 'em", drug names
       mangled, abbreviations wrongly expanded — and captions are a WCAG 2.1 AA
       requirement, so a learner relying on them is given the wrong word with
@@ -1612,7 +1612,7 @@ Consequences to hold on to:
       asset has captions, so it sits where the admin already manages that
       media rather than on a page of its own. `AdminBankDetailPage.tsx` hosts
       the card and needs no change.
-- [ ] Captions are reviewed by the content author before a module goes `live` —
+- [x] Captions are reviewed by the content author before a module goes `live` —
       Whisper output on clinical terminology needs a human pass. Surface review
       state on the admin video page.
       **[noted 2026-09-15]** This item asks only to _surface_ review state; it
@@ -1620,6 +1620,11 @@ Consequences to hold on to:
       leave an author able to see that captions are wrong and unable to do
       anything about it. The editing item above is what makes "reviewed" mean
       something, and wants building first.
+      **[done 2026-09-15]** `captions_reviewed_at` on `ModuleMediaLink`, set by
+      saving the captions rather than by a separate "mark as reviewed" button:
+      someone who has edited the text has read it, whereas a button that only
+      claims review is a box to tick without looking. The admin card shows the
+      state per row, so an unreviewed track is visible without opening it.
 - [x] Reconcile the availability gate with transcoding. `module_media_is_complete`
       currently treats a linked asset as complete, so a module becomes visible
       the moment the upload is linked and before any rendition exists — a

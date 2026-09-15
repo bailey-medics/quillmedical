@@ -585,6 +585,15 @@ class MediaAssetOut(BaseModel):
     content_type: str
     size_bytes: int
     uploaded_at: datetime
+    #: Whether the caption job produced a WebVTT track. Exposed so the
+    #: admin card knows which rows can offer a caption editor at all.
+    #: Optional, so the change is additive.
+    has_captions: bool = False
+    #: When someone last saved the captions after reading them, or None
+    #: where nobody has. Whisper mishears clinical terminology, so
+    #: machine output is a draft until a human has been over it — and a
+    #: learner relying on captions cannot tell the difference.
+    captions_reviewed_at: datetime | None = None
 
 
 class MediaReferenceOut(BaseModel):
@@ -599,6 +608,26 @@ class MediaReferenceOut(BaseModel):
     #: this needs waiting for, not uploading again. Optional, so the
     #: change is additive.
     awaiting_transcode: bool = False
+
+
+class CaptionsOut(BaseModel):
+    """One asset's WebVTT, as the admin editor loads it."""
+
+    asset_id: str
+    #: The whole file. None where the caption job has not run, which is
+    #: a different thing from captions that exist and are empty.
+    webvtt: str | None = None
+    #: When someone last saved it after reading, or None where nobody
+    #: has. Machine output is a draft until a human has been over it.
+    reviewed_at: datetime | None = None
+
+
+class CaptionsIn(BaseModel):
+    """Corrected WebVTT, replacing what the caption job produced."""
+
+    #: The whole file, not a patch. The editor hands back what it was
+    #: given with the text fixed, so there is nothing to merge.
+    webvtt: str
 
 
 class MediaLinkIn(BaseModel):

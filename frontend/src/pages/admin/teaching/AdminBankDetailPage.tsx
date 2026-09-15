@@ -21,12 +21,16 @@ import {
   Heading,
 } from "@/components/typography";
 import MarkdownView from "@/components/typography/MarkdownView";
-import { ModuleMediaCard } from "@/components/teaching/module-media-card";
+import {
+  CaptionEditorModal,
+  ModuleMediaCard,
+} from "@/components/teaching/module-media-card";
 import { useModuleMedia } from "@/features/teaching/use-module-media";
 import { api } from "@/lib/api";
 import type {
   AdminBankDetail,
   BankOrganisation,
+  MediaAsset,
 } from "@/features/teaching/types";
 
 export default function AdminBankDetailPage() {
@@ -47,7 +51,33 @@ export default function AdminBankDetailPage() {
     uploadProgress,
     upload,
     remove,
+    loadCaptions,
+    saveCaptions,
   } = useModuleMedia(bankId ?? null);
+
+  // Which asset's captions are open, and the text once fetched. Held
+  // here rather than in the card so the card stays presentational and
+  // drivable from Storybook with no network.
+  const [captionAsset, setCaptionAsset] = useState<MediaAsset | null>(null);
+  const [captionText, setCaptionText] = useState<string | null>(null);
+  const [captionsLoading, setCaptionsLoading] = useState(false);
+
+  const openCaptions = useCallback(
+    async (asset: MediaAsset) => {
+      // Opened first, so the modal appears with a spinner rather than
+      // after a silent pause the admin reads as a dead button.
+      setCaptionAsset(asset);
+      setCaptionText(null);
+      setCaptionsLoading(true);
+      try {
+        const loaded = await loadCaptions(asset.asset_id);
+        setCaptionText(loaded?.webvtt ?? null);
+      } finally {
+        setCaptionsLoading(false);
+      }
+    },
+    [loadCaptions],
+  );
 
   const fetchData = useCallback(async () => {
     if (!bankId) {
@@ -231,10 +261,31 @@ export default function AdminBankDetailPage() {
           uploadProgress={uploadProgress}
           onUpload={upload}
           onDelete={remove}
+          onEditCaptions={openCaptions}
           loading={mediaLoading}
           error={mediaError}
         />
       ) : null}
+
+      {/*
+        Fetched when the editor opens rather than with the media list: a
+        WebVTT is a whole lecture transcript, and loading one per row
+        would cost several requests to render a card whose captions are
+        usually not being looked at.
+      */}
+      <CaptionEditorModal
+        opened={captionAsset !== null}
+        onClose={() => setCaptionAsset(null)}
+        filename={captionAsset?.original_filename}
+        webvtt={captionText}
+        loading={captionsLoading}
+        onSave={(webvtt) =>
+          captionAsset
+            ? saveCaptions(captionAsset.asset_id, webvtt)
+            : Promise.resolve(false)
+        }
+        error={mediaError}
+      />
     </Stack>
   );
 }

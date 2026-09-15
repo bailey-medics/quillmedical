@@ -2683,6 +2683,9 @@ class TestModuleMedia:
             "/api/teaching/admin/modules/test-bank/media", headers=headers
         )
 
+    def _captions_url(self, asset: str) -> str:
+        return f"/api/teaching/admin/modules/test-bank/media/{asset}/captions"
+
     def test_a_reference_without_an_upload_reads_as_missing(
         self, test_client, db_session, monkeypatch, tmp_path
     ):
@@ -3040,6 +3043,191 @@ class TestMediaLinking:
         resp = test_client.delete(self._url(), headers=headers)
 
         assert resp.status_code == 403
+
+
+class TestMediaCaptions:
+    """Reading and correcting one asset's WebVTT.
+
+    Whisper mishears clinical terminology — "caecum" as "seek 'em",
+    drug names mangled — and captions are a WCAG 2.1 AA requirement, so
+    machine output is a draft until a human has been over it. These are
+    the endpoints that let them.
+
+    **The bucket-backed success path is not reachable here.** The test
+    environment configures no `TEACHING_VIDEOS_BUCKET`, so a save is
+    refused with 503 before it reaches storage. Rather than mock the
+    storage layer into pretending otherwise, these pin what the route
+    itself decides: who may ask, what shape is accepted, and what each
+    refusal is.
+    """
+
+    def _login(self, test_client) -> dict[str, str]:
+        return _login(test_client, "testeducator", "Educator123!")
+
+    def _url(self, asset: str) -> str:
+        return f"/api/teaching/admin/modules/test-bank/media/{asset}/captions"
+
+    def _upload(self, db, org_id: int, asset: str) -> None:
+        db.add(
+            ModuleMediaLink(
+                organisation_id=org_id,
+                question_bank_id="test-bank",
+                media_key="lecture-01",
+                asset_id=asset,
+                original_filename=f"{asset}.mp4",
+                content_type="video/mp4",
+                size_bytes=1024,
+                uploaded_at=datetime.now(UTC),
+                transcoded_at=datetime.now(UTC),
+                has_captions=True,
+            )
+        )
+        db.flush()
+
+    def test_reading_an_asset_with_no_bucket_reports_no_captions(
+        self, test_client, db_session, monkeypatch
+    ):
+        """None, not an error: the card shows "no captions yet" rather
+        than an empty box the admin might save over nothing."""
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        self._upload(db_session, org.id, "asset-1")
+        db_session.commit()
+        monkeypatch.setattr("app.config.settings.TEACHING_VIDEOS_BUCKET", None)
+
+        resp = test_client.get(
+            self._url("asset-1"), headers=self._login(test_client)
+        )
+
+        assert resp.status_code == 200
+        assert resp.json()["webvtt"] is None
+        assert resp.json()["reviewed_at"] is None
+
+    def test_reading_an_asset_that_is_not_ours_is_not_found(
+        self, test_client, db_session, monkeypatch
+    ):
+        """A 404 rather than a 403: whether another trust holds an asset
+        is not this caller's to learn."""
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        other = Organisation(name="Another Trust")
+        db_session.add(other)
+        db_session.flush()
+        self._upload(db_session, other.id, "asset-theirs")
+        db_session.commit()
+        monkeypatch.setattr("app.config.settings.TEACHING_VIDEOS_BUCKET", None)
+
+        resp = test_client.get(
+            self._url("asset-theirs"), headers=self._login(test_client)
+        )
+
+        assert resp.status_code == 404
+
+    def test_saving_something_that_is_not_webvtt_is_refused(
+        self, test_client, db_session, monkeypatch
+    ):
+        """The one cheap check worth making.
+
+        A player given a malformed track shows no captions and says
+        nothing about why, so a paste that lost its header would fail
+        silently for every learner. This catches that without
+        pretending to validate a format the endpoint has no business
+        parsing.
+        """
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        self._upload(db_session, org.id, "asset-1")
+        db_session.commit()
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_VIDEOS_BUCKET", "a-bucket"
+        )
+
+        resp = test_client.put(
+            self._url("asset-1"),
+            json={"webvtt": "00:00:01.000 --> 00:00:02.000\nNo header"},
+            headers=self._login(test_client),
+        )
+
+        assert resp.status_code == 400
+        assert "WEBVTT" in resp.json()["detail"]
+
+    def test_the_header_check_allows_leading_whitespace(
+        self, test_client, db_session, monkeypatch
+    ):
+        """Trimmed before checking, so a copied file with a leading
+        newline is not rejected for something invisible."""
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        self._upload(db_session, org.id, "asset-1")
+        db_session.commit()
+        # No bucket, so this gets as far as the 503 — which is itself
+        # proof the header check passed.
+        monkeypatch.setattr("app.config.settings.TEACHING_VIDEOS_BUCKET", None)
+
+        resp = test_client.put(
+            self._url("asset-1"),
+            json={"webvtt": "\n  WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nHi"},
+            headers=self._login(test_client),
+        )
+
+        assert resp.status_code == 503
+
+    def test_saving_with_no_bucket_is_refused_not_silently_dropped(
+        self, test_client, db_session, monkeypatch
+    ):
+        """An admin who is told nothing assumes it saved."""
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        self._upload(db_session, org.id, "asset-1")
+        db_session.commit()
+        monkeypatch.setattr("app.config.settings.TEACHING_VIDEOS_BUCKET", None)
+
+        resp = test_client.put(
+            self._url("asset-1"),
+            json={"webvtt": "WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nHi"},
+            headers=self._login(test_client),
+        )
+
+        assert resp.status_code == 503
+
+    def test_a_failed_save_records_no_review(
+        self, test_client, db_session, monkeypatch
+    ):
+        """Claiming a review for text that never reached the bucket
+        would tell the next person the captions had been checked when
+        what they will hear is Whisper's."""
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        self._upload(db_session, org.id, "asset-1")
+        db_session.commit()
+        monkeypatch.setattr("app.config.settings.TEACHING_VIDEOS_BUCKET", None)
+
+        test_client.put(
+            self._url("asset-1"),
+            json={"webvtt": "WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nHi"},
+            headers=self._login(test_client),
+        )
+
+        link = (
+            db_session.query(ModuleMediaLink)
+            .filter_by(asset_id="asset-1")
+            .one()
+        )
+        assert link.captions_reviewed_at is None
+
+    def test_a_missing_asset_is_not_found(
+        self, test_client, db_session, monkeypatch
+    ):
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        db_session.commit()
+        monkeypatch.setattr("app.config.settings.TEACHING_VIDEOS_BUCKET", None)
+
+        resp = test_client.get(
+            self._url("no-such-asset"), headers=self._login(test_client)
+        )
+
+        assert resp.status_code == 404
 
 
 class TestIncompleteModulesAreNotServed:
