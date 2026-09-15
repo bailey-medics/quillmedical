@@ -1114,9 +1114,10 @@ Four open issues, all in the same place, and the important one was
   `stn` and `sta` add the `feature/` prefix when it is missing, because
   branch protection rejects anything else at creation time, and both
   stage and commit in the same step rather than leaving a bare `git add`
-  to be remembered. `stn` takes optional file arguments — the bottom of a
-  stack is the branch most likely to want a subset of a dirty tree, since
-  it has to stand alone and deploy on its own.
+  to be remembered. Both stage everything, untracked files included:
+  splitting a dirty tree across a stack is done by committing what is
+  ready and leaving the rest for the branch above, not by naming files on
+  the command line.
 
 ### Phases
 

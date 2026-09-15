@@ -908,8 +908,8 @@ stack-move direction="":
 
 
 alias stn := stack-new
-# Start a new stack: branch, commit named files (or all), draw the stack
-stack-new name message *FILES:
+# Start a new stack: create the bottom branch, commit everything, draw it
+stack-new name message:
     #!/usr/bin/env bash
     {{initialise}} "stack-new"
     set -euo pipefail
@@ -919,15 +919,11 @@ stack-new name message *FILES:
     # worktree yet, and this is the command that creates one.
     git switch -c "${branch}"
     gh stack init "${branch}"
-    # Named files stage only those; no argument stages everything. The
-    # bottom of a stack is the branch most likely to want a subset — it has
-    # to stand alone and deploy on its own — while the branches above it
-    # usually take the rest, which is why `stack-add` always stages all.
-    if [ -n "{{FILES}}" ]; then
-        git add -- {{FILES}}
-    else
-        git add -A
-    fi
+    # -A stages everything, untracked files included, to match `stack-add`.
+    # Splitting a dirty tree across branches is done by committing what is
+    # ready and leaving the rest for the branch above — not by naming files
+    # here, which only moved the bookkeeping into the command line.
+    git add -A
     git commit -m "{{message}}"
     python3 scripts/stack-status.py
 
