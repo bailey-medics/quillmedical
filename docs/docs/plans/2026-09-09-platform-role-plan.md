@@ -1025,7 +1025,11 @@ LPOA for someone who cannot manage their own care.
 
 ### Decided: `access_granted_patient_records`, and both professions defined
 
-Not yet built. Recorded here so the reasoning survives.
+Built. The competency is in `clinical.yaml`, both professions are in
+`base-professions.yaml` holding it and nothing else, and the grant branch
+of `check_user_patient_access` requires it. The reasoning is kept below
+because the three-way split is the part of this design a later reader is
+most likely to try to collapse.
 
 **The third route gets a competency, like the other two.** Reading a record you
 were invited to is a different permission from reading your own and from reading

@@ -170,43 +170,51 @@ describe("AddStaffToSitePage", () => {
       expect(post).not.toHaveBeenCalled();
     });
 
-    it("grants the chosen profession in the same request", async () => {
-      mockLoad([A_PATIENT]);
-      const post = vi
-        .spyOn(apiLib.api, "post")
-        .mockResolvedValue({ status: "added" });
+    // The longest path in the file: two dropdowns, the profession picker
+    // over a catalogue of every profession, then the modal. It fits well
+    // inside the default alone, and only overruns when the whole suite
+    // is competing for the machine.
+    it(
+      "grants the chosen profession in the same request",
+      { timeout: 15000 },
+      async () => {
+        mockLoad([A_PATIENT]);
+        const post = vi
+          .spyOn(apiLib.api, "post")
+          .mockResolvedValue({ status: "added" });
 
-      const user = userEvent.setup();
-      renderPage();
+        const user = userEvent.setup();
+        renderPage();
 
-      await waitFor(() => expect(apiLib.api.get).toHaveBeenCalled());
-      await selectUser(user, "janesmith (jane@test.com)");
-      await selectRole(user, "Staff");
+        await waitFor(() => expect(apiLib.api.get).toHaveBeenCalled());
+        await selectUser(user, "janesmith (jane@test.com)");
+        await selectRole(user, "Staff");
 
-      const professionSelect = await screen.findByRole("combobox", {
-        name: /Base profession/,
-      });
-      await user.click(professionSelect);
-      await user.click(
-        await screen.findByRole("option", {
-          name: "Healthcare Assistant (HCA)",
-        }),
-      );
-
-      await user.click(screen.getByTestId("submit-button"));
-      await screen.findByText("Add as a staff member?");
-      const modal = screen.getByRole("dialog");
-      await user.click(
-        within(modal).getByRole("button", { name: "Add as staff" }),
-      );
-
-      await waitFor(() => {
-        expect(post).toHaveBeenCalledWith("/sites/1/staff", {
-          user_id: 2,
-          role: "staff",
-          base_profession: "healthcare_assistant",
+        const professionSelect = await screen.findByRole("combobox", {
+          name: /Base profession/,
         });
-      });
-    });
+        await user.click(professionSelect);
+        await user.click(
+          await screen.findByRole("option", {
+            name: "Healthcare Assistant (HCA)",
+          }),
+        );
+
+        await user.click(screen.getByTestId("submit-button"));
+        await screen.findByText("Add as a staff member?");
+        const modal = screen.getByRole("dialog");
+        await user.click(
+          within(modal).getByRole("button", { name: "Add as staff" }),
+        );
+
+        await waitFor(() => {
+          expect(post).toHaveBeenCalledWith("/sites/1/staff", {
+            user_id: 2,
+            role: "staff",
+            base_profession: "healthcare_assistant",
+          });
+        });
+      },
+    );
   });
 });
