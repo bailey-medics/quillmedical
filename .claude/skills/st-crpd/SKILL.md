@@ -2,7 +2,7 @@
 name: st-crpd
 description: Commit, rebase, push and describe one stacked branch
 argument-hint: "[ready]"
-allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git add:*), Bash(git commit:*), Bash(git fetch:*), Bash(git push:*), Bash(git switch:*), Bash(just stack-log:*), Bash(just stack-log-long:*), Bash(just stack-files:*), Bash(just stack-update:*), Bash(just stack-rebase:*), Bash(just stack-submit:*), Bash(just stack-move:*), Bash(gh stack view:*), Bash(gh pr list:*), Bash(gh pr view:*), Bash(gh pr edit:*), Bash(gh pr ready:*), Bash(python3 scripts/stack-status.py:*)
+allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git add:*), Bash(git commit:*), Bash(git fetch:*), Bash(git push:*), Bash(git switch:*), Bash(just stack-log:*), Bash(just stack-log-long:*), Bash(just stack-files:*), Bash(just stack-rebase:*), Bash(just stack-submit:*), Bash(just stack-move:*), Bash(gh stack view:*), Bash(gh pr list:*), Bash(gh pr view:*), Bash(gh pr edit:*), Bash(gh pr ready:*), Bash(python3 scripts/stack-status.py:*)
 disallowed-tools: Bash(gh pr merge:*), Bash(gh stack merge:*), Bash(git rebase:*), mcp__github__merge_pull_request, mcp__github__enable_pr_auto_merge
 disable-model-invocation: true
 ---
@@ -14,8 +14,9 @@ branch cut from `main`; this does it for a branch whose base is the branch
 below it.
 
 It is deliberately one act rather than four, because on a stack the four are
-not separable: amending a branch invalidates every branch above it, so
-committing without rebasing pushes a stack that is already inconsistent.
+not separable: any commit on a branch leaves every branch above it sitting on
+an older parent, so committing without rebasing pushes a stack that is
+already inconsistent.
 
 `/st-follow-the-plan-document` calls this once per unit. It is also useful on
 its own, to finish a stacked branch by hand.
@@ -84,25 +85,43 @@ read it. Pass `ready` when finishing a branch deliberately, by hand.
 
 ## Steps
 
-1. **Commit and rebase in one step.**
+1. **Commit what is uncommitted, as a new commit.**
 
    ```bash
-   just stack-update "<message>"
+   git add -A
+   git commit -m "<message>"
    ```
 
-   This amends the branch's commit with everything uncommitted, then
-   cascade-rebases the branches above it. Amend rather than add: a stacked
-   branch reads best as one commit doing one thing, and that commit is the
-   unit being reviewed.
+   A new commit, never `--amend`. This command is called repeatedly through
+   a long run, and amending would make each call silently absorb the one
+   before it, leaving no record of what happened between. A branch ending up
+   with several commits is fine: the pull request is still one reviewable
+   unit, which is what the stack is for.
 
-   - **Pass a message only to reword the commit.** Omit it to keep the
-     existing message, which is the normal case when revising a unit.
-   - **On a clean tree it refuses**, which is correct: there is nothing to
-     fold in. Carry on to step 2 — a branch already committed still needs
-     pushing and describing.
-   - Write the message as the commit for this unit alone: what this branch
-     does, not what the stack does. Conventional-commit style, matching the
-     branch's own history.
+   - **Never reword an existing commit.** The message on a commit already
+     made is the author's, not yours to rewrite — and on an amend it is lost
+     without trace.
+   - **On a clean tree, commit nothing and carry on to step 2.** A branch
+     already committed still needs pushing and describing; that is the
+     ordinary case when finishing a unit whose work was committed earlier.
+   - Write the message for this unit alone: what this branch does, not what
+     the stack does. Conventional-commit style, matching the branch's own
+     history.
+
+   Then bring the branches above this one back into line:
+
+   ```bash
+   just stack-rebase
+   ```
+
+   Not optional, and not separable from the commit: a new commit on a branch
+   mid-stack leaves every branch above it behind, exactly as an amend would.
+   `stack-rebase` cascades onto parents, carries the worktree guard, and
+   verifies afterwards that no branch was silently skipped.
+
+   **Do not use `just stack-update` here.** It amends, which is right when
+   you are deliberately folding a fix into a unit by hand, and wrong for this
+   command.
 
 2. **Run the targeted tests for what this branch touched** — `just ub -k
    "..."` and `just uf src/path/to/file.test.tsx` — and nothing wider. CI's

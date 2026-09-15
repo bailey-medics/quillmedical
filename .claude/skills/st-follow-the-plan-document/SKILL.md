@@ -133,7 +133,7 @@ Then, for each unit in the plan:
    runs that on every push. If a test fails, stop and report it rather than
    fixing and carrying on — an unreviewed fix compounds into the next unit.
 
-4. **Finish the unit** with `/st-crpd`, which amends, cascade-rebases,
+4. **Finish the unit** with `/st-crpd`, which commits, cascade-rebases,
    pushes, and writes the pull request description for this branch alone.
    Leave it a draft.
 

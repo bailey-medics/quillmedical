@@ -1158,7 +1158,7 @@ Four open issues, all in the same place, and the important one was
 - [x] Teach `/crp` to use `just sts` when the branch is in a stack, and to
       push as it does now when it is not. Mirror into `/crpf`. Done
       2026-09-15, but as two new skills rather than by changing the existing
-      pair: `/st-crpd` finishes one stacked branch (amend, cascade-rebase,
+      pair: `/st-crpd` finishes one stacked branch (commit, cascade-rebase,
       push, describe against its own parent), and
       `/st-follow-the-plan-document` calls it once per unit to build a whole
       plan as a stack. `/crp` and `/crpf` are left alone for flat branches —
