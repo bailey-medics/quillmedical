@@ -571,7 +571,12 @@ class TestInbox:
 
         assert response.status_code == 200, response.text
         assert len(response.json()) == 1
-        assert response.json()[0]["competency"]["id"] == COMPETENCY
+        assert response.json()[0]["sign_off"]["competency"]["id"] == COMPETENCY
+
+        # The passport the request belongs to, which the assessor cannot
+        # work out for themselves: this is the only sign-off response
+        # that names it, and without it they cannot act on the request.
+        assert response.json()[0]["passport_id"] == passport_id
 
     def test_an_unrelated_assessor_sees_nothing(
         self,

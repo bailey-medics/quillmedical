@@ -72,6 +72,7 @@ from app.schemas.passport import (
     CompetencyStateOut,
     CpdEntryIn,
     CpdEntryOut,
+    InboxItemOut,
     InvitePreviewOut,
     LogbookEntryIn,
     LogbookEntryOut,
@@ -416,14 +417,14 @@ def get_my_passport(
 
 @passport_router.get(
     "/requests/inbox",
-    response_model=list[SignOffOut],
+    response_model=list[InboxItemOut],
     dependencies=[_DEP_PASSPORT],
 )
 def get_inbox(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
-) -> list[SignOffOut]:
+) -> list[InboxItemOut]:
     """The caller's open requests as an assessor.
 
     A cross-passport query, which is the entire reason a request row
@@ -444,7 +445,7 @@ def get_inbox(
         .all()
     )
 
-    found: list[SignOffOut] = []
+    found: list[InboxItemOut] = []
 
     for row in rows:
         try:
@@ -461,7 +462,12 @@ def get_inbox(
             )
             continue
 
-        found.append(_sign_off_out(row.signoff_id, record))
+        found.append(
+            InboxItemOut(
+                passport_id=row.passport_id,
+                sign_off=_sign_off_out(row.signoff_id, record),
+            )
+        )
 
     return found
 

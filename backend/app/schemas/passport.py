@@ -225,6 +225,21 @@ class SignOffOut(BaseModel):
     content_hash: str | None = None
 
 
+class InboxItemOut(BaseModel):
+    """One open request, with the passport it belongs to.
+
+    The inbox is the only sign-off response that names its passport,
+    because it is the only one whose caller does not already know it:
+    every other sign-off route takes ``passport_id`` in the path. An
+    assessor needs it to act on the request, and needs it for no other
+    reason, so it is carried here rather than added to ``SignOffOut``
+    where five routes would repeat what their caller just sent.
+    """
+
+    passport_id: str
+    sign_off: SignOffOut
+
+
 class SignOffRequestIn(_In):
     """The holder asking for a sign-off.
 
