@@ -208,6 +208,18 @@ export interface SignOff {
 }
 
 /**
+ * One open request, with the passport it belongs to.
+ *
+ * The inbox is the only sign-off response that names its passport,
+ * because it is the only one whose caller does not already know it:
+ * every other sign-off route takes the passport id in its path.
+ */
+export interface InboxItem {
+  passport_id: string;
+  sign_off: SignOff;
+}
+
+/**
  * The holder asking for a sign-off.
  *
  * `assessor_user_id` names who is being asked. The holder chooses,

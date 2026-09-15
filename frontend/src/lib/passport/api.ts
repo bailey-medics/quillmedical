@@ -43,6 +43,7 @@ import type {
   CertificateInput,
   CpdEntry,
   CpdEntryInput,
+  InboxItem,
   InvitePreview,
   Logbook,
   LogbookEntryInput,
@@ -136,9 +137,14 @@ export function fetchPassport(passportId: string): Promise<PassportDetail> {
 // Sign-offs
 // ---------------------------------------------------------------------------
 
-/** The caller's open requests as an assessor, across every passport. */
-export function fetchInbox(): Promise<SignOff[]> {
-  return api.get<SignOff[]>("/passport/requests/inbox");
+/**
+ * The caller's open requests as an assessor, across every passport.
+ *
+ * Each item names its passport, which no other sign-off response does:
+ * this is the one an assessor reaches without already knowing it.
+ */
+export function fetchInbox(): Promise<InboxItem[]> {
+  return api.get<InboxItem[]>("/passport/requests/inbox");
 }
 
 /**

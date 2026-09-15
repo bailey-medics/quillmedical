@@ -67,6 +67,7 @@ export type {
   LogbookEntryInput,
   Passport,
   PassportDetail,
+  InboxItem,
   RecordResult,
   Reflection,
   ReflectionInput,
