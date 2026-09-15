@@ -268,11 +268,11 @@ Two things to check rather than assume:
    describe the diff. Write only what reading the code cannot tell them:
    what you chose, what might be risky, and what is different now.
 
-   Three sections, in this order, each a level-two heading:
+   Three sections, in this order, each a level-two heading. **No summary
+   line above them** — the pull request title already says what the branch
+   does, and repeating it is the first thing the reader has to skip:
 
    ```markdown
-   One sentence saying what this branch does.
-
    ## LLM decisions
 
    - **Bold sentence carrying the whole point.** Then a sentence or two of
