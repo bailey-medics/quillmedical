@@ -958,6 +958,13 @@ stack-log-long:
     # One `gh pr list` for the whole stack rather than one call per branch,
     # so a six-deep stack is one round trip. This is the view that answers
     # "is this one green yet" without opening a browser.
+    #
+    # The two tiers are reported as two marks, fast then heavy, always in
+    # that order: `✓ –`. They answer different questions — the fast tier
+    # runs on every push, while the heavy tier is gated on the pull
+    # request not being a draft and so on a stack usually has not run at
+    # all. One combined tick would hide that, and a dash is not a failure:
+    # it means "not run yet".
     python3 scripts/stack-status.py --prs || true
 
 

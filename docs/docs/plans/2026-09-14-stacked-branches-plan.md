@@ -1100,6 +1100,36 @@ Four open issues, all in the same place, and the important one was
 - **Merging stays a human decision.** `gh stack merge` is not wrapped in
   any recipe. Unchanged from the rules above, and from `/crp`.
 
+- **One unit, one branch, one commit, one pull request.** `/st-crpd`
+  creates a branch on every call rather than adding a commit to the one
+  checked out, which is the model Graphite established and the reason
+  stacking is worth the trouble. The alternative — several commits on a
+  branch — was tried for one afternoon and produced a branch carrying the
+  Justfile recipes, two skills, a CI fix and a bug fix, which is three or
+  four units wearing one pull request.
+
+  This is a constraint on _unit sizing_, not on commit hygiene. The
+  branch-per-call rule is what forces the question "is this a unit?" at
+  the moment the work is finished, rather than at review time when the
+  answer is expensive.
+
+- **The commit message is the durable record; the description is not.**
+  `merge_method = "MERGE"` means every commit lands on `main` individually
+  and is what `git log` and `git blame` show years later. A pull request
+  description never enters the repository — it stays on GitHub, reachable
+  but rarely reached. So the commit message carries the explanation, and
+  the description carries what a reviewer needs _before_ merging: what the
+  unit assumes, and which branch it sits on.
+
+- **Keep pull requests as drafts through a deep stack.** Six heavy jobs
+  are gated on `draft == false`. Rebasing rewrites every branch above the
+  one touched, so a ten-branch stack built non-draft would fire roughly
+  55 heavy-tier runs, nearly all testing code a later rebase discards.
+  Nothing is lost by waiting: every one of those jobs also runs on
+  `merge_group`, so a branch that was never non-draft is still fully
+  tested against current `main` before it merges. Mark the bottom branch
+  ready early — it is the one that has stopped moving.
+
 ### What was built
 
 - **`scripts/stack-status.py`** — draws the stack, joining two things
@@ -1108,6 +1138,16 @@ Four open issues, all in the same place, and the important one was
   request number, draft state and a CI roll-up (one `gh pr list` call for
   the whole stack). `--check` exits 2 when a branch is held elsewhere,
   which is what the guard reads.
+
+  The roll-up reports the fast and heavy tiers as two marks, fast then
+  heavy — `✓ –` — because on a stack they answer different questions: the
+  fast tier runs on every push, while the heavy tier is gated on the pull
+  request not being a draft and so usually has not run. A dash means "not
+  run", not "failed". Getting this right needed one subtlety: a check
+  name appears twice in the roll-up, SKIPPED from the draft run and
+  SUCCESS from a later one, so the reduction ranks SKIPPED below SUCCESS
+  rather than treating both as passing — otherwise whichever arrived
+  first won, and every heavy job read as skipped forever.
 
   `--files` is the review view: what each branch changes **against its
   own parent**, which is the unit to read. Diffed against the trunk a
@@ -1132,6 +1172,73 @@ Four open issues, all in the same place, and the important one was
   ready and leaving the rest for the branch above, not by naming files on
   the command line.
 
+  Three more were added while the first real stack was being built, each
+  because its absence was felt rather than predicted:
+
+  - **`stf` (`stack-files`)** — what each branch changes against its own
+    parent, which is the review view. `stf p` gives the full patch.
+  - **`sth` (`stack-help`)** — the command list, one per line, names and
+    arguments in the editor's own colours. For finding the command
+    without leaving the terminal.
+  - **`stu` (`stack-update`)** — folds working changes into the current
+    branch's commit and cascade-rebases what sits above. The by-hand way
+    to revise a unit that already exists.
+
+- **Two skills**, for driving the whole cycle rather than one command of
+  it:
+
+  - **`/st-crpd`** — the single act that finishes one unit: it commits
+    the uncommitted work onto a **new** stacked branch, cascade-rebases,
+    pushes, and writes that branch's pull request description. One call,
+    one branch, one commit, one pull request.
+  - **`/st-follow-the-plan-document`** — works a plan top to bottom,
+    calling `/st-crpd` once per unit, so an unattended run lands a chain
+    of small draft pull requests instead of one large one.
+
+  Both refuse to merge anything, at the permission layer as well as in
+  their instructions, and both are barred from running `git rebase`
+  directly — on a stack the correct base is the branch below, and
+  rebasing onto `main` flattens it.
+
+### What the first real stack found
+
+Three defects that scratch repositories had not surfaced. All three shared
+a shape: **something reported success while doing nothing**, which is the
+failure this repository has the most scar tissue about.
+
+- **CI cancelled five required checks and blocked a pull request that had
+  nothing wrong with it.** `ci.yml` keyed its concurrency group on
+  `github.event_name`, but `pull_request` covers two action types here —
+  `ready_for_review` and `synchronize` — and `gh stack submit` fires both
+  within the same second, every time, because it pushes the branch and
+  marks the pull request ready in one operation. Both runs landed in one
+  group and `cancel-in-progress` killed one. The two are not equivalent:
+  the heavy tier is gated on `draft == false`, so the synchronize run
+  skips it while the ready_for_review run carries it — the cheap run
+  cancelled the expensive one. A cancelled required check reads as a
+  failure, so #683 sat `BLOCKED`. Fixed by adding `github.event.action`
+  to the key, which is empty for `push` and `merge_group` and so leaves
+  the earlier fix untouched. Recorded in `.claude/rules/ci.md`, whose
+  concurrency section now states the general rule rather than the two
+  instances of it.
+
+- **Stacked pull requests arrived with no description at all.**
+  `auto-pr.yml` fires on branch push and seeds the `/crp final`
+  placeholder, but `gh stack submit` pushes _and_ opens the pull request
+  itself, seconds ahead of the workflow — which then hit its "pull request
+  already exists, skipping" guard. `create-pr.sh` now fills in the
+  placeholder when an existing pull request has no description of its own,
+  and leaves a real one alone. Recognising "no description" needed care:
+  gh-stack's footer is a single `<sub>…</sub>` line, and stripping only
+  the tags leaves "GitHub Stacks CLI" behind, which reads as prose.
+
+- **`stack-log-long` silently claimed every branch had no pull request.**
+  Asking GitHub for `statusCheckRollup` across 60 pull requests in one
+  GraphQL query returns **HTTP 504**. The script passed `check=False`,
+  swallowed the error, and rendered the empty result as "no pull request"
+  — a wrong answer indistinguishable from a right one. It now asks for 30
+  open pull requests, and says so loudly when the read fails.
+
 ### Phases
 
 #### Phase A: tooling
@@ -1146,8 +1253,11 @@ Four open issues, all in the same place, and the important one was
       `--no-colour`. Done 2026-09-14.
 - [x] Add the `sl`, `sll`, `sr`, `ss`, `sy` recipes and `_stack-guard`.
       Done 2026-09-14.
-- [ ] Use the recipes on one real stack before trusting them further.
-      Everything so far has been exercised in scratch repositories.
+- [x] Use the recipes on one real stack before trusting them further.
+      Done 2026-09-15. Pull requests #677 to #683 were built, submitted and
+      merged as a stack, then #685 and #688 as a second one. Three defects
+      surfaced that scratch repositories had not — see "What the first real
+      stack found" below.
 
 #### Phase B: fold into the existing workflow
 
@@ -1165,21 +1275,24 @@ Four open issues, all in the same place, and the important one was
       teaching them both models would have made the conditionals harder to
       follow than two clear commands.
 
-      Two differences from the flat pair are load-bearing. The description
-      diffs against the branch's own parent, not `origin/main`, or a stacked
-      pull request describes every unit beneath it. And the review gate moves
-      from pre-commit to pre-merge: an unattended run commits each unit so it
-      can keep going, and the human reads the stack as pull requests the next
-      morning. Nothing merges without a human either way.
-- [ ] Clear the abandoned git-spice state: the `refs/spice/data` ref and
-      the four trial branches (`feature/git-spice-introduce`,
-      `feature/introduce-git-spice`, `feature/stacked-branches-plan`,
-      `feature/stacked-branches-findings`). Two tools' notes in one
-      repository is a trap for whoever reads it next.
+  Two differences from the flat pair are load-bearing. The description
+  diffs against the branch's own parent, not `origin/main`, or a stacked
+  pull request describes every unit beneath it. And the review gate moves
+  from pre-commit to pre-merge: an unattended run commits each unit so it
+  can keep going, and the human reads the stack as pull requests the next
+  morning. Nothing merges without a human either way.
+- [ ] Clear the abandoned git-spice state. As of 2026-09-15 what remains
+      is the `refs/spice/data` ref and one branch,
+      `feature/introduce-git-spice`; the other three trial branches have
+      gone with their pull requests. Two tools' notes in one repository is
+      a trap for whoever reads it next.
 
 #### Phase C: the overnight run
 
 - [ ] Use a stack for one unattended feature build, then review it the
       next morning and record whether the unit boundaries survived.
-- [ ] Record whether `sl` or `sll` is the one actually reached for, and
-      drop the other if the answer is clear.
+- [ ] Record whether `stl` or `stll` is the one actually reached for, and
+      drop the other if the answer is clear. Early evidence favours
+      `stll`: the question asked in practice is "is this one green yet",
+      which only `stll` answers. `stl` earns its place while a stack is
+      being built and the network call is not worth the second.

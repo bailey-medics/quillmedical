@@ -207,35 +207,120 @@ def read_pull_requests(branches: list[str]) -> dict[str, dict[str, object]]:
     return found
 
 
+# The heavy tier: the jobs in ci.yml gated on `draft == false`, which a
+# draft pull request skips and the merge queue runs regardless. Held as
+# names because that is what statusCheckRollup reports; a job renamed in
+# ci.yml has to be renamed here too, and the roll-up then shows it as fast
+# rather than silently vanishing.
+HEAVY_CHECKS = frozenset(
+    {
+        "Storybook interaction tests",
+        "Semgrep (frontend SAST)",
+        "E2E image build",
+        "E2E (Playwright)",
+        "Competency catalogue check",
+        "DB migration immutability check",
+    }
+)
+
+PASSING = frozenset({"SUCCESS", "SKIPPED", "NEUTRAL"})
+FAILING = frozenset({"FAILURE", "ERROR", "TIMED_OUT", "CANCELLED"})
+PENDING = frozenset({"QUEUED", "IN_PROGRESS", "PENDING", "WAITING"})
+
+
+def best_conclusion_per_check(
+    rollup: list[object],
+) -> dict[str, tuple[str, str]]:
+    """Reduce the roll-up to one status and conclusion per check name.
+
+    A check name appears more than once: the run fired while the pull
+    request was a draft skips the heavy tier, and a later run does it, so
+    the same name carries both SKIPPED and SUCCESS. Taking the last, or the
+    worst, would report every heavy job as skipped forever. The best
+    outcome per name is the true one — a job that has succeeded once on
+    this head has succeeded.
+    """
+    # Ranked so a better outcome replaces a worse one. SKIPPED sits below
+    # SUCCESS rather than beside it: both are "passing" in the sense that
+    # neither blocks a merge, but a job that actually ran and passed is the
+    # truer account of the same name, and ranking them equal let whichever
+    # arrived first win — which reported every heavy job as skipped even
+    # after it had run.
+    rank = {
+        "failing": 0,
+        "pending": 1,
+        "skipped": 2,
+        "passing": 3,
+    }
+    best: dict[str, tuple[str, str]] = {}
+
+    for check in rollup:
+        if not isinstance(check, dict):
+            continue
+        name = str(check.get("name") or check.get("context") or "")
+        if not name:
+            continue
+        status = str(check.get("status") or "")
+        conclusion = str(check.get("conclusion") or check.get("state") or "")
+
+        if status in PENDING:
+            kind = "pending"
+        elif conclusion == "SKIPPED":
+            kind = "skipped"
+        elif conclusion in PASSING:
+            kind = "passing"
+        elif conclusion in FAILING:
+            kind = "failing"
+        else:
+            kind = "pending"
+
+        previous = best.get(name)
+        if previous is None or rank[kind] > rank[previous[0]]:
+            best[name] = (kind, conclusion)
+
+    return best
+
+
 def summarise_checks(pr: dict[str, object], palette: Palette) -> str:
-    """Condense statusCheckRollup into one short cell."""
+    """Report the fast and heavy tiers separately, as two marks.
+
+    Two marks rather than one count, because they answer different
+    questions. The fast tier runs on every push and says whether the code
+    compiles and its tests pass. The heavy tier — Storybook, Semgrep, E2E
+    — is gated on the pull request not being a draft, so on a stack it is
+    usually not run at all, and one combined tick would hide that.
+    """
     rollup = pr.get("statusCheckRollup") or []
     if not isinstance(rollup, list) or not rollup:
         return palette.dim("no checks")
 
-    passed = failed = running = 0
-    for check in rollup:
-        if not isinstance(check, dict):
-            continue
-        status = check.get("status")
-        # A CheckRun reports status/conclusion; a StatusContext reports
-        # state. SKIPPED and NEUTRAL are not failures.
-        conclusion = check.get("conclusion") or check.get("state") or ""
-        if status in {"QUEUED", "IN_PROGRESS", "PENDING", "WAITING"}:
-            running += 1
-        elif conclusion in {"SUCCESS", "SKIPPED", "NEUTRAL"}:
-            passed += 1
-        elif conclusion in {"FAILURE", "ERROR", "TIMED_OUT", "CANCELLED"}:
-            failed += 1
-        else:
-            running += 1
+    best = best_conclusion_per_check(rollup)
 
-    total = passed + failed + running
-    if failed:
-        return palette.red(f"✗ {failed} failed")
-    if running:
-        return palette.yellow(f"● {running} running")
-    return palette.green(f"✓ {passed}/{total}")
+    def mark(names: dict[str, tuple[str, str]]) -> str:
+        if not names:
+            # No heavy check has reported at all: the ordinary state of a
+            # draft pull request, and not a failure.
+            return palette.dim("–")
+        kinds = {kind for kind, _ in names.values()}
+        if "failing" in kinds:
+            return palette.red("✗")
+        if "pending" in kinds:
+            return palette.yellow("●")
+        # Every job skipped means the tier has not run — the ordinary state
+        # of a draft's heavy tier. Say so rather than showing a tick nobody
+        # earned. One job having actually run is enough to call it a pass,
+        # since the rest skipped on their own conditions.
+        if kinds == {"skipped"}:
+            return palette.dim("–")
+        return palette.green("✓")
+
+    heavy = {n: v for n, v in best.items() if n in HEAVY_CHECKS}
+    fast = {n: v for n, v in best.items() if n not in HEAVY_CHECKS}
+
+    # Fast tier first, heavy second, always in that order and unlabelled:
+    # two marks in a fixed position are read at a glance, where the words
+    # only made the line longer.
+    return f"{mark(fast)} {mark(heavy)}"
 
 
 def build_branches(
