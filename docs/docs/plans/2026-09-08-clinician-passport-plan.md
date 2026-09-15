@@ -3171,14 +3171,24 @@ passport components. `MediaDropzone` was generalised rather than
 duplicated: `accept` and `label` default to the teaching video
 behaviour, so its existing caller is untouched.
 
-**Nothing renders them yet, and that is the gap to close next.** No
-page imports `CertificateForm`, `CertificateUploader`, `exportPdf`,
-`exportMarkdown` or `exportBundle`, so a holder still cannot record a
-certificate, attach a scan or download their passport through the
-interface — every piece works and none is reachable. `CertificateCard`
-and `PassportExportButtons` were never built either; whether they are
-needed depends on how the pages choose to present this, which is why
-they are not listed as work in their own right.
+**They are rendered now.** `PassportExportButtons` sits on the passport
+page once a passport exists, and `PassportCertificatesPage` composes the
+uploader above the form so an upload that fails cannot cost a filled-in
+form. `CertificateCard` was never built: the page renders a certificate
+inline, as the reflections page does, and a component earns its place
+when a second caller wants one.
+
+**Four passport pages have no link anywhere, which nothing had noticed.**
+`/passport/logbook`, `/passport/cpd`, `/passport/reflections` and now
+`/passport/certificates` are reachable only by typing the URL. The side
+navigation has a single passport entry pointing at `/passport`, and that
+page lists competencies and offers the exports — nothing on it leads to
+the other four. This predates the certificates page rather than being
+caused by it, and it is the reason a holder could not reach their own
+logbook or CPD record either. Whoever picks it up should decide whether
+these belong in the side navigation, as links on the passport page, or
+both; the answer is a design judgement rather than an oversight to
+patch, which is why it is recorded here rather than fixed in passing.
 
 The components were commentary buried in finished phase 6 steps until
 somebody asked why uploads and export were not on the list, which is a
