@@ -26,8 +26,26 @@
 		# did not exist, and removal from a list shipped inside browsers
 		# takes months, so it should be added only alongside a submission.
 		Strict-Transport-Security "max-age=63072000; includeSubDomains"
-		# CSP — only allow resources from our own domain
-		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://storage.googleapis.com; font-src 'self'; connect-src 'self'; frame-src 'self' https://www.youtube.com; frame-ancestors 'none'"
+		# CSP — our own domain, plus GCS for the two things that cannot
+		# come from it.
+		#
+		# `connect-src` carries https://storage.googleapis.com because an
+		# admin uploading a lecture sends the bytes straight to the bucket
+		# on a signed resumable URL: a POST to open the session, then a PUT
+		# of the file to the session URL GCS hands back. Both are XHR, so
+		# both are `connect-src`, and with `'self'` alone the browser
+		# blocks them before they leave the page — reported to the admin
+		# only as "Could not start upload", with the real reason in the
+		# console.
+		#
+		# Routing those bytes through the API instead would keep the
+		# policy tighter, but a lecture is hundreds of megabytes and would
+		# be paid for twice and held in a Cloud Run request throughout,
+		# which is the reason the upload goes direct in the first place.
+		#
+		# Playback needs nothing here: video is served from /videos/* on
+		# this same domain, through the load balancer's backend bucket.
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://storage.googleapis.com; font-src 'self'; connect-src 'self' https://storage.googleapis.com; frame-src 'self' https://www.youtube.com; frame-ancestors 'none'"
 		# Prevent clickjacking
 		X-Frame-Options "DENY"
 		# Prevent MIME-type sniffing

@@ -117,7 +117,7 @@ standard | superadmin
 
 This replaced a four-level `system_permissions` column
 (`single-user < staff < admin < superadmin`) which held two unrelated ideas at
-once. Three of its rungs described a person *somewhere* and became organisation
+once. Three of its rungs described a person _somewhere_ and became organisation
 and site membership plus competencies; only `superadmin` stood alone. See
 `docs/docs/plans/2026-09-09-platform-role-plan.md`.
 
@@ -172,15 +172,15 @@ SSRF attacks trick the server into making requests to unintended destinations. N
 
 Security headers are instructions sent by the server that tell the browser how to behave when handling the site's content. Enforced by the Caddy reverse proxy on all responses:
 
-| Header                      | Value                                                                                                                                                                                       | Purpose                                                         |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| `Strict-Transport-Security` | `max-age=63072000; includeSubDomains; preload` (2 years)                                                                                                                                    | Forces browsers to always use HTTPS                             |
-| `Content-Security-Policy`   | `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://storage.googleapis.com; font-src 'self'; connect-src 'self'; frame-ancestors 'none'` | Controls which resources the browser is allowed to load         |
-| `X-Frame-Options`           | `DENY`                                                                                                                                                                                      | Prevents the site from being embedded in iframes (clickjacking) |
-| `X-Content-Type-Options`    | `nosniff`                                                                                                                                                                                   | Prevents the browser from guessing file types                   |
-| `Referrer-Policy`           | `strict-origin-when-cross-origin`                                                                                                                                                           | Limits what URL information is shared with other sites          |
-| `Permissions-Policy`        | `camera=(), microphone=(), geolocation=()`                                                                                                                                                  | Blocks access to device features the app does not need          |
-| `Server`                    | Removed                                                                                                                                                                                     | Hides server software details from potential attackers          |
+| Header                      | Value                                                                                                                                                                                                                      | Purpose                                                         |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| `Strict-Transport-Security` | `max-age=63072000; includeSubDomains; preload` (2 years)                                                                                                                                                                   | Forces browsers to always use HTTPS                             |
+| `Content-Security-Policy`   | `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://storage.googleapis.com; font-src 'self'; connect-src 'self' https://storage.googleapis.com; frame-ancestors 'none'` | Controls which resources the browser is allowed to load         |
+| `X-Frame-Options`           | `DENY`                                                                                                                                                                                                                     | Prevents the site from being embedded in iframes (clickjacking) |
+| `X-Content-Type-Options`    | `nosniff`                                                                                                                                                                                                                  | Prevents the browser from guessing file types                   |
+| `Referrer-Policy`           | `strict-origin-when-cross-origin`                                                                                                                                                                                          | Limits what URL information is shared with other sites          |
+| `Permissions-Policy`        | `camera=(), microphone=(), geolocation=()`                                                                                                                                                                                 | Blocks access to device features the app does not need          |
+| `Server`                    | Removed                                                                                                                                                                                                                    | Hides server software details from potential attackers          |
 
 ### Transport Layer Security (TLS)
 
