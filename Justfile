@@ -1062,7 +1062,7 @@ stack-submit:
     python3 scripts/stack-status.py --prs
 
 
-alias sty := stack-sync
+alias stsy := stack-sync
 # Drop merged branches, re-target the rest, and redraw the stack
 stack-sync:
     #!/usr/bin/env bash
@@ -1142,6 +1142,40 @@ stack-update message="":
     else
         just stack-rebase
     fi
+
+
+alias stw := stack-watch
+# Redraw the stack with pull request and CI state every minute, until stopped
+stack-watch:
+    #!/usr/bin/env bash
+    set +x
+    {{initialise}} "stack-watch"
+    set +x
+    # `stack-log-long` in a loop. A minute is the cadence because CI state
+    # does not change faster than that in any way worth watching, and one
+    # `gh pr list` a minute is 60 calls an hour against a 5000-point limit.
+    #
+    # Not `watch(1)`: macOS does not ship it, and this needs to survive the
+    # script exiting non-zero when there is no stack.
+    while true; do
+        # Fetch first, then clear. Clearing before the ~3s `gh pr list` call
+        # left the terminal blank for the whole of it, which read as a hang;
+        # capturing the new stack first means the old one stays on screen
+        # until the moment it is replaced.
+        #
+        # `--colour` because capturing makes stdout a pipe, and the script
+        # drops colour when it is not a terminal. `|| true` for the same
+        # reason `stack-log` has it: "no stack here" is an ordinary answer,
+        # and the loop should keep drawing it rather than dying on it.
+        drawn=$(python3 scripts/stack-status.py --prs --colour 2>&1 || true)
+
+        # \033[H homes the cursor, \033[2J clears — together they replace
+        # the previous draw rather than scrolling.
+        printf '\033[H\033[2J'
+        echo "  updated $(date '+%H:%M:%S') · every 60s · ctrl-c to stop"
+        printf '%s\n' "${drawn}"
+        sleep 60
+    done
 
 
 alias sd := start-dev
