@@ -1,0 +1,62 @@
+# backend/Dockerfile.caption — Whisper, for the video caption Cloud Run Job
+#
+# A file of its own rather than a target in `backend/Dockerfile`, which is
+# the decision the video plan deferred until this job was built.
+#
+# Whisper pulls torch and a multi-gigabyte model. Adding it to the shared
+# `pyproject.toml` would put that in one lock file and therefore in every
+# backend image — the API, the admin job, the transcode job — none of which
+# import it. Splitting the dependency file is the smaller cost: this image
+# is built once per deploy and run per lecture, while the API image is
+# pulled on every Cloud Run cold start.
+#
+# The trade-off, stated plainly: dependencies here are pinned in
+# `requirements-caption.txt` and are not covered by `poetry.lock`, so
+# Renovate and the lock file do not see them. That is the price of keeping
+# torch out of the serving image.
+#
+# Build context: repository root, like the other two.
+#   just build-caption teaching
+FROM python:3.13-slim@sha256:9d2e5553305c7c7b0097999bb17187c69b921ccd6bc9d40e4bb5ebe652c00285
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+WORKDIR /app
+
+# FFmpeg is not optional here: Whisper shells out to it to decode audio,
+# whatever container the video arrives in.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ffmpeg \
+ && rm -rf /var/lib/apt/lists/*
+
+# CPU-only torch. The default wheel carries CUDA libraries worth several
+# gigabytes, and a Cloud Run Job has no GPU to use them with — so the
+# index URL is what keeps this image merely large rather than enormous.
+COPY backend/requirements-caption.txt ./
+RUN pip install --no-cache-dir \
+      --extra-index-url https://download.pytorch.org/whl/cpu \
+      -r requirements-caption.txt
+
+# The model is fetched on first run rather than baked in. Baking it would
+# add gigabytes to every push for a file that never changes, and Cloud Run
+# Jobs keep no disk between executions — so a baked model saves nothing on
+# the second run either. The download is part of the job's first minute.
+ENV WHISPER_MODEL=small
+
+# The application package, for `media_object_path` — the same helper that
+# guards the upload, delete and transcode paths, so one traversal check
+# serves them all.
+COPY backend/app ./app
+COPY backend/scripts/caption_cli.py ./scripts/caption_cli.py
+
+RUN useradd --uid 10001 --create-home appuser \
+ && chown -R appuser:appuser /app
+USER appuser
+
+# Whisper caches the model under the home directory, which must therefore
+# be writable by the unprivileged user.
+ENV XDG_CACHE_HOME=/home/appuser/.cache
+
+CMD ["python", "scripts/caption_cli.py"]

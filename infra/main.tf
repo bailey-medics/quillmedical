@@ -426,6 +426,41 @@ module "cloud_run_transcode_job" {
   depends_on = [module.teaching_video_pipeline]
 }
 
+# ---------- Cloud Run Job: video captions (teaching only) ----------
+# Whisper over a transcoded lecture, writing WebVTT beside the renditions.
+# Captions are a WCAG 2.1 AA requirement for the learning centre.
+#
+# Reads the processed bucket and writes back to it, so it needs no access to
+# the source bucket at all — the transcode job has usually deleted the master
+# by the time captions are wanted, which is why the 720p rendition is the
+# input.
+#
+# Sized for the model rather than the media: Whisper holds weights in memory
+# and is far more memory-hungry than FFmpeg, hence 10 GB against the transcode
+# job's 4. The hour-long timeout is the plan's figure and deliberate — a
+# transcription that has not finished in an hour has gone wrong.
+module "cloud_run_caption_job" {
+  count       = var.environment == "teaching" ? 1 : 0
+  source      = "./modules/cloud-run-job"
+  project_id  = var.project_id
+  region      = var.region
+  environment = var.environment
+
+  job_name         = "caption"
+  image            = var.caption_image
+  vpc_connector_id = module.networking.vpc_connector_id
+
+  cpu     = "4"
+  memory  = "10Gi"
+  timeout = "3600s"
+
+  env_vars = {
+    TEACHING_VIDEOS_BUCKET = module.teaching_video_pipeline[0].processed_bucket_name
+  }
+
+  depends_on = [module.teaching_video_pipeline]
+}
+
 # ---------- Cloud Run: frontend ----------
 module "cloud_run_frontend" {
   source      = "./modules/cloud-run"

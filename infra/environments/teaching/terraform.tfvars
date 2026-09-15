@@ -18,6 +18,7 @@ backend_image   = "gcr.io/cloudrun/hello:latest"
 frontend_image  = "gcr.io/cloudrun/hello:latest"
 admin_image     = "gcr.io/cloudrun/hello:latest"
 transcode_image = "gcr.io/cloudrun/hello:latest"
+caption_image   = "gcr.io/cloudrun/hello:latest"
 
 monitored_hostnames        = ["teaching.quill-medical.com", "quill-medical.com"]
 app_domain                 = "teaching.quill-medical.com"

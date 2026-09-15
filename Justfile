@@ -1274,6 +1274,60 @@ build-admin env:
     echo "✓ Cloud Run Job deployed"
 
 
+alias bc := build-caption
+# Build and push the video caption Docker image (teaching only)
+build-caption env:
+    #!/usr/bin/env bash
+    {{initialise}} "build-caption ({{env}})"
+    set -euo pipefail
+
+    if [ "{{env}}" != "teaching" ]; then
+        echo "ERROR: the caption job exists only in teaching — prod and staging have no video buckets" >&2
+        exit 1
+    fi
+
+    PROJECT=$(just _gcp_env_project "{{env}}")
+    REGION="europe-west2"
+    REGISTRY="${REGION}-docker.pkg.dev"
+    IMAGE="${REGISTRY}/${PROJECT}/quill/caption:latest"
+
+    # Its own Dockerfile rather than a target: Whisper pulls torch, which
+    # has no business in the image the API serves from. Expect this build
+    # to be slow and the image to be several gigabytes.
+    echo "Building caption image for ${PROJECT}..."
+    gcloud auth configure-docker "$REGISTRY" --quiet
+
+    docker build \
+        --platform linux/amd64 \
+        -t "$IMAGE" \
+        -f backend/Dockerfile.caption \
+        .
+
+    echo "Pushing ${IMAGE}..."
+    docker push "$IMAGE"
+    echo "✓ Caption image pushed to ${IMAGE}"
+
+    # Reads and writes the processed bucket only: the transcode job has
+    # usually deleted the master by the time captions are wanted, so the
+    # 720p rendition is the input.
+    PROCESSED_BUCKET="quill-teaching-videos-processed-{{env}}"
+
+    echo "Deploying Cloud Run Job..."
+    gcloud run jobs deploy "quill-caption-{{env}}" \
+        --project="$PROJECT" \
+        --region="$REGION" \
+        --image="$IMAGE" \
+        --vpc-connector="quill-vpc-cx-{{env}}" \
+        --vpc-egress=private-ranges-only \
+        --max-retries=0 \
+        --task-timeout=3600s \
+        --cpu=4 \
+        --memory=10Gi \
+        --set-env-vars "TEACHING_VIDEOS_BUCKET=${PROCESSED_BUCKET}" \
+        --quiet
+    echo "✓ Cloud Run Job deployed"
+
+
 alias bt := build-transcode
 # Build and push the video transcode Docker image (teaching only)
 build-transcode env:

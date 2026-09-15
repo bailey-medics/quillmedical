@@ -1528,16 +1528,34 @@ Consequences to hold on to:
       `SlideLayoutVideo` now composes every rendition URL from the one grant —
       they all live under the prefix the signed cookie covers, so none needs a
       request of its own.
-- [ ] Cloud Run job `video-caption` — Whisper-large, 4 CPU, 10 GB, 60-minute
+- [x] Cloud Run job `video-caption` — Whisper-large, 4 CPU, 10 GB, 60-minute
       timeout. Writes WebVTT beside the renditions.
-- [ ] Set `Cache-Control: public, max-age=86400` on every object both jobs write,
+      **[done 2026-09-15]** Built as `backend/Dockerfile.caption` with its
+      own pinned `requirements-caption.txt`, which is the decision this
+      plan deferred to "judge when the caption job is built". Whisper pulls
+      torch; putting it in the shared lock file would inflate the API,
+      admin and transcode images with a dependency tree none of them
+      imports. The cost is a second dependency file outside `poetry.lock`
+      and therefore outside Renovate's view, so it is pinned exactly.
+      CPU-only torch via the PyTorch index, because a Cloud Run Job has no
+      GPU and the default wheel carries gigabytes of CUDA for nothing.
+      **It reads the processed bucket, not the source.** The transcode job
+      deletes its master once the renditions verify, so by the time
+      captions are wanted the original is usually gone — the 720p rendition
+      is the input instead, and carries the same audio for a smaller
+      download.
+      The model is fetched on first run rather than baked in: a Cloud Run
+      Job keeps no disk between executions, so baking it would add
+      gigabytes to every push and save nothing on the second run.
+- [x] Set `Cache-Control: public, max-age=86400` on every object both jobs write,
       so Cloud CDN actually caches them. Objects written without it will be
       revalidated on every request and the CDN buys us nothing.
       **[half done 2026-09-13]** The transcode job sets it on every output it
       writes, and a test asserts it rather than trusting the constant — this
       is exactly the kind of property that is invisible until a bill arrives.
-      Left unticked because the caption job does not exist yet and this item
-      covers both.
+      **[done 2026-09-15]** The caption job now sets the same constant on
+      the WebVTT it writes, and its tests assert it the same way. Both
+      halves of this item are covered.
 - [x] Trigger both on upload, not from the content repo's deploy workflow.
       **[revised 2026-09-09]** The original wording predates the decision that
       media is uploaded through the admin UI rather than committed to the content
@@ -1568,9 +1586,40 @@ Consequences to hold on to:
       deliberately not awaited and no polling or callback exists, so every link
       currently keeps a null transcode state; and the caption job has no
       trigger because it has no job. Both belong to the items below.
+- [ ] **Let an admin correct the captions.** **[added 2026-09-15]** Whisper
+      will get clinical terminology wrong — "caecum" as "seek 'em", drug names
+      mangled, abbreviations wrongly expanded — and captions are a WCAG 2.1 AA
+      requirement, so a learner relying on them is given the wrong word with
+      nothing to signal it. Today nothing in the application reads or writes
+      the `.vtt` after the job puts it in the bucket, so there is no way to fix
+      one at all.
+      **Decided 2026-09-15: a raw WebVTT textarea**, not a cue-by-cue editor.
+      The whole file in one editable box on the admin card, saved back as it
+      stands. Chosen over a per-cue editor with video sync because it is a
+      fraction of the work and makes captions correctable now; the nicer tool
+      can follow once there is a real lecture to try it against. The cost is
+      that timestamps are edited by hand and a stray character breaks the file
+      silently — so the save endpoint should reject a body that does not begin
+      `WEBVTT`, which catches the common mistake without pretending to
+      validate the format.
+      Two endpoints beside the existing media ones in `router.py`, following
+      `/admin/modules/{module_id}/media/{asset_id}/…` and gated by
+      `_DEP_MANAGE`: one returning the current WebVTT as text, one replacing
+      it. Both read and write the processed bucket, where the caption job put
+      the file, and the replacement must carry the same `Cache-Control` the
+      job sets or the CDN will serve the old text.
+      The editor itself belongs on `ModuleMediaCard.tsx`, on the row whose
+      asset has captions, so it sits where the admin already manages that
+      media rather than on a page of its own. `AdminBankDetailPage.tsx` hosts
+      the card and needs no change.
 - [ ] Captions are reviewed by the content author before a module goes `live` —
       Whisper output on clinical terminology needs a human pass. Surface review
       state on the admin video page.
+      **[noted 2026-09-15]** This item asks only to _surface_ review state; it
+      never said how a correction gets made, so completing it as written would
+      leave an author able to see that captions are wrong and unable to do
+      anything about it. The editing item above is what makes "reviewed" mean
+      something, and wants building first.
 - [x] Reconcile the availability gate with transcoding. `module_media_is_complete`
       currently treats a linked asset as complete, so a module becomes visible
       the moment the upload is linked and before any rendition exists — a
