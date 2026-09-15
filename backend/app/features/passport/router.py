@@ -44,7 +44,7 @@ import re
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -102,10 +102,13 @@ from app.security import (
 from . import (
     definitions,
     email_templates,
+    export,
     hashing,
     ids,
     paths,
+    pdf,
     records,
+    render,
     service,
 )
 from .commits import Actor
@@ -2210,6 +2213,153 @@ def accept_assessor_invite(
         user_id=user.id,
         place=place,
         place_id=place_id,
+    )
+
+
+# ------------------------------------------------------------------
+# Export
+# ------------------------------------------------------------------
+#
+# All three are holder-only. The zip copies the canonical files
+# byte-for-byte, reflections among them, so it could never be anything
+# else. The Markdown and the PDF could in principle be read by a named
+# assessor, but an export is the holder taking their record away, and a
+# route that hands somebody else a whole passport in one call is not
+# something to add for the sake of symmetry with the per-record reads.
+#
+# Reflections are the reason the Markdown takes a parameter. `render()`
+# defaults them off because a rendering handed to a panel or an employer
+# must not carry one by accident, and written reflection can be
+# disclosed in legal proceedings. The holder may ask for them; nothing
+# else does it for them.
+
+
+def _export_filename(passport_id: str, suffix: str) -> str:
+    """A download name that says what the file is.
+
+    The passport id rather than the holder's name: a downloads folder is
+    not a place to scatter somebody's name, and the id is what the
+    record is addressed by everywhere else.
+    """
+    return f"passport-{passport_id}{suffix}"
+
+
+# api-schema-check: allow-opaque-permanent
+@passport_router.get(
+    "/{passport_id}/export.md",
+    dependencies=[_DEP_PASSPORT],
+    response_class=Response,
+    responses={200: {"content": {"text/markdown": {}}}},
+)
+def export_markdown(
+    passport_id: str,
+    reflections: bool = Query(
+        default=False,
+        description=(
+            "Include the holder's reflections. Off unless asked for: a "
+            "rendering shown to a panel or an employer must not carry "
+            "one by accident."
+        ),
+    ),
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+    store: PassportStore = _DEP_STORE,
+) -> Response:
+    """The whole passport as Markdown, for reading rather than parsing."""
+    row = _require_holder(db, passport_id, user)
+
+    try:
+        text = render.render(store, row.id, include_reflections=reflections)
+    except PassportNotFoundError:
+        raise HTTPException(404, "Passport not found") from None
+
+    return Response(
+        content=text,
+        media_type="text/markdown; charset=utf-8",
+        headers={
+            "Content-Disposition": (
+                "attachment; filename=" f'"{_export_filename(row.id, ".md")}"'
+            )
+        },
+    )
+
+
+# api-schema-check: allow-opaque-permanent
+@passport_router.get(
+    "/{passport_id}/export.pdf",
+    dependencies=[_DEP_PASSPORT],
+    response_class=Response,
+    responses={200: {"content": {"application/pdf": {}}}},
+)
+def export_pdf(
+    passport_id: str,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+    store: PassportStore = _DEP_STORE,
+) -> Response:
+    """The whole passport as a PDF.
+
+    Never carries reflections — `render_pdf` excludes them by design and
+    says so on the page, so a holder handing this to a panel is not
+    relying on having remembered a parameter.
+    """
+    row = _require_holder(db, passport_id, user)
+
+    try:
+        data = pdf.render_pdf(store, row.id, head_commit=row.head_commit)
+    except PassportNotFoundError:
+        raise HTTPException(404, "Passport not found") from None
+
+    return Response(
+        content=data,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": (
+                "attachment; filename=" f'"{_export_filename(row.id, ".pdf")}"'
+            )
+        },
+    )
+
+
+# api-schema-check: allow-opaque-permanent
+@passport_router.get(
+    "/{passport_id}/export.zip",
+    dependencies=[_DEP_PASSPORT],
+    response_class=Response,
+    responses={200: {"content": {"application/zip": {}}}},
+)
+def export_bundle(
+    passport_id: str,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+    store: PassportStore = _DEP_STORE,
+) -> Response:
+    """The portable bundle: the record, the renderings and the history.
+
+    The artefact a registrar carries between trusts, and the only export
+    that contains the canonical files themselves — reflections included,
+    copied byte-for-byte. Holder-only for that reason above all.
+    """
+    row = _require_holder(db, passport_id, user)
+
+    try:
+        data = export.build_bundle(
+            store,
+            row.id,
+            requested_by=str(user.id),
+            head_commit=row.head_commit,
+        )
+    except PassportNotFoundError:
+        raise HTTPException(404, "Passport not found") from None
+
+    return Response(
+        content=data,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": (
+                "attachment; filename=" f'"{_export_filename(row.id, ".zip")}"'
+            )
+        },
     )
 
 
