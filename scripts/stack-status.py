@@ -520,9 +520,19 @@ def main() -> int:
     parser.add_argument(
         "--no-colour", action="store_true", help="disable ANSI colour"
     )
+    parser.add_argument(
+        "--colour",
+        action="store_true",
+        help="force ANSI colour even when stdout is not a terminal",
+    )
     args = parser.parse_args()
 
-    palette = Palette(sys.stdout.isatty() and not args.no_colour)
+    # `--colour` forces it on for a caller that captures the output and
+    # prints it itself — `just stack-watch` does exactly that, to fetch the
+    # new stack before clearing the screen rather than after. Without it the
+    # capture looks like a pipe and the colour is dropped.
+    coloured = args.colour or sys.stdout.isatty()
+    palette = Palette(coloured and not args.no_colour)
 
     stack = read_stack()
     if stack is None:
