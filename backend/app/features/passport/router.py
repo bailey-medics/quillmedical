@@ -44,7 +44,15 @@ import re
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query,
+    Request,
+    Response,
+    UploadFile,
+)
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -60,18 +68,20 @@ from app.models import (
     site_member,
 )
 from app.organisations import get_member_org_ids, get_reachable_org_ids
-from app.passport_storage import get_passport_store
+from app.passport_storage import get_blob_store, get_passport_store
 from app.schemas.passport import (
     AssessorInviteAcceptIn,
     AssessorInviteAcceptOut,
     AssessorInviteIn,
     AssessorInviteOut,
     AssessorRevokeOut,
+    AttachmentIn,
     CertificateIn,
     CertificateOut,
     CompetencyStateOut,
     CpdEntryIn,
     CpdEntryOut,
+    EvidenceUploadOut,
     InboxItemOut,
     InvitePreviewOut,
     LogbookEntryIn,
@@ -111,7 +121,13 @@ from . import (
     render,
     service,
 )
+from .blobs import (
+    BlobConflictError,
+    BlobError,
+    BlobStore,
+)
 from .commits import Actor
+from .gcs_store import GcsBlobStore
 from .models import (
     AssessorRegistrationVerification,
     Passport,
@@ -119,6 +135,7 @@ from .models import (
     PassportSignOffRequest,
 )
 from .schemas import (
+    Attachment,
     Certificate,
     CompetencyRef,
     CpdEntry,
@@ -165,6 +182,21 @@ _DEP_USER = Depends(_get_current_user)
 _DEP_REQUIRE_CSRF = Depends(_require_csrf)
 _DEP_PASSPORT = Depends(has_competency("access_clinician_passport"))
 _DEP_STORE = Depends(get_passport_store)
+_DEP_BLOBS = Depends(get_blob_store)
+
+#: What evidence may be. Deliberately short: a scan, a photograph of a
+#: logbook page, or a PDF of a course certificate is what this is for.
+#: `blobs.py` decides none of this on purpose — storing is separate from
+#: admitting — so the allow-list lives at the boundary that admits.
+ALLOWED_EVIDENCE_TYPES: frozenset[str] = frozenset(
+    {
+        "application/pdf",
+        "image/jpeg",
+        "image/png",
+        "image/heic",
+        "image/webp",
+    }
+)
 
 
 def _actor(user: User) -> Actor:
@@ -873,22 +905,127 @@ def _competency_refs(ids_given: list[str]) -> list[CompetencyRef]:
         raise HTTPException(404, str(error)) from None
 
 
-def _attachments(hashes: list[str]) -> list[dict[str, object]]:
-    """Placeholder for evidence already stored as blobs.
+def _attachments(
+    blobs: BlobStore | GcsBlobStore,
+    passport_id: str,
+    named: list[AttachmentIn],
+) -> list[Attachment]:
+    """Check evidence exists, and describe it as the record will.
 
-    Upload lands in its own unit; until then a record may name no
-    attachments. Named hashes are refused rather than silently dropped,
-    because a caller believing evidence was attached when it was not is
-    worse than an error.
+    The caller supplies the filename and media type because it is the
+    only party that knows them: a blob is bytes at a path named by their
+    hash, and nothing beside it records what the file was called. The
+    record is where that description lives, which is why ``Attachment``
+    carries all four fields and the store carries none of them.
+
+    What is verified here is existence, and against this passport rather
+    than in general. A record naming a blob that is not there would be a
+    dangling reference in a document whose whole claim is that it can be
+    checked years later; naming one stored against somebody else's
+    passport would attach evidence the holder has never seen.
     """
-    if hashes:
-        raise HTTPException(
-            501,
-            "Evidence upload is not built yet, so a record cannot name "
-            "attachments.",
+    found: list[Attachment] = []
+
+    for item in named:
+        try:
+            present = blobs.exists(passport_id, item.hash)
+        except paths.PassportPathError:
+            raise HTTPException(400, "That is not a valid hash") from None
+
+        if not present:
+            raise HTTPException(
+                400,
+                "That evidence is not stored against this passport. "
+                "Upload it before naming it.",
+            )
+
+        found.append(
+            Attachment(
+                hash=item.hash,
+                filename=item.filename,
+                size_bytes=item.size_bytes,
+                media_type=item.media_type,
+            )
         )
 
-    return []
+    return found
+
+
+# api-schema-check: allow-opaque-permanent is not needed here: this
+# returns a typed body describing what was stored, not the bytes.
+@passport_router.post(
+    "/{passport_id}/evidence",
+    response_model=EvidenceUploadOut,
+    status_code=201,
+    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+)
+async def upload_evidence(
+    passport_id: str,
+    file: UploadFile,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+    blobs: BlobStore | GcsBlobStore = _DEP_BLOBS,
+) -> EvidenceUploadOut:
+    """Store one piece of evidence and return the hash to name it by.
+
+    **The bytes come through this application deliberately.** A blob is
+    addressed by the SHA-256 of its contents, which is what lets a
+    holder check their own record years later with nothing but a
+    checksum tool — so the address cannot be computed without reading
+    every byte. That rules out the signed-URL pattern the teaching
+    videos use, where the browser uploads straight to the bucket: a
+    video is addressed by a generated id, so nobody has to look inside
+    it.
+
+    Uploading the same file twice yields the same hash and stores one
+    copy, so an interrupted upload is retried rather than reconciled.
+    """
+    row = _require_holder(db, passport_id, user)
+
+    media_type = (file.content_type or "").split(";")[0].strip().lower()
+
+    if media_type not in ALLOWED_EVIDENCE_TYPES:
+        allowed = ", ".join(sorted(ALLOWED_EVIDENCE_TYPES))
+        raise HTTPException(
+            400, f"Unsupported evidence type (allowed: {allowed})"
+        )
+
+    data = await file.read()
+
+    if not data:
+        raise HTTPException(400, "That file is empty")
+
+    try:
+        attachment = blobs.put(
+            row.id,
+            data,
+            filename=file.filename or "evidence",
+            media_type=media_type,
+        )
+    except BlobConflictError:
+        # The hash is the name, so this means the same address already
+        # holds different bytes. Not something a caller can fix, and not
+        # something to overwrite: every record naming that hash would
+        # silently come to mean something else.
+        raise HTTPException(
+            409, "Stored evidence already exists at that hash"
+        ) from None
+    except BlobError:
+        raise HTTPException(500, "That file could not be stored") from None
+
+    logger.info(
+        "Passport evidence stored: passport=%s bytes=%d type=%s",
+        row.id,
+        attachment.size_bytes,
+        media_type,
+    )
+
+    return EvidenceUploadOut(
+        hash=attachment.hash,
+        filename=attachment.filename,
+        size_bytes=attachment.size_bytes,
+        media_type=attachment.media_type,
+    )
 
 
 @passport_router.post(
@@ -903,6 +1040,7 @@ def add_certificate(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
+    blobs: BlobStore | GcsBlobStore = _DEP_BLOBS,
 ) -> RecordResultOut:
     """File a certificate the holder is claiming.
 
@@ -923,7 +1061,7 @@ def add_certificate(
         expires_on=body.expires_on,
         competencies=_competency_refs(body.competencies),
         description=body.description,
-        attachments=_attachments(body.attachment_hashes),  # type: ignore[arg-type]
+        attachments=_attachments(blobs, row.id, body.attachments),
     )
 
     name, commit = records.add_certificate(
@@ -1065,6 +1203,7 @@ def add_logbook_entry(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
+    blobs: BlobStore | GcsBlobStore = _DEP_BLOBS,
 ) -> RecordResultOut:
     """Log one procedure against a competency.
 
@@ -1085,7 +1224,7 @@ def add_logbook_entry(
         outcome=body.outcome,
         notes=body.notes,
         also_counts_towards=body.also_counts_towards,
-        attachments=_attachments(body.attachment_hashes),  # type: ignore[arg-type]
+        attachments=_attachments(blobs, row.id, body.attachments),
     )
 
     stem, commit = records.add_logbook_entry(
@@ -1225,6 +1364,7 @@ def add_reflection(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
+    blobs: BlobStore | GcsBlobStore = _DEP_BLOBS,
 ) -> RecordResultOut:
     """Write a reflection.
 
@@ -1250,7 +1390,7 @@ def add_reflection(
         title=body.title,
         written_on=body.written_on,
         competencies=_competency_refs(body.competencies),
-        attachments=_attachments(body.attachment_hashes),  # type: ignore[arg-type]
+        attachments=_attachments(blobs, row.id, body.attachments),
     )
 
     name, commit = records.add_reflection(
@@ -1382,6 +1522,7 @@ def add_cpd_entry(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
+    blobs: BlobStore | GcsBlobStore = _DEP_BLOBS,
 ) -> RecordResultOut:
     """Record a continuing professional development activity.
 
@@ -1399,7 +1540,7 @@ def add_cpd_entry(
         competencies=_competency_refs(body.competencies),
         certificate=body.certificate,
         notes=body.notes,
-        attachments=_attachments(body.attachment_hashes),  # type: ignore[arg-type]
+        attachments=_attachments(blobs, row.id, body.attachments),
     )
 
     stem, commit = records.add_cpd_entry(store, row.id, _actor(user), entry)

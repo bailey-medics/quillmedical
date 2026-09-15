@@ -78,6 +78,7 @@ EXPECTED_PATHS = {
     "/api/passport/{passport_id}/competencies/{competency_id}",
     "/api/passport/{passport_id}/competencies/{competency_id}/requests",
     "/api/passport/{passport_id}/cpd",
+    "/api/passport/{passport_id}/evidence",
     "/api/passport/{passport_id}/export.md",
     "/api/passport/{passport_id}/export.pdf",
     "/api/passport/{passport_id}/export.zip",

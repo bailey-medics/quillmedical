@@ -3257,21 +3257,40 @@ not deferred items: deferring is for what nobody should build yet.
 - [ ] Add a file to a certificate. The four certificate routes exist
       and are full CRUD, but `CertificateIn` carries metadata alone, so
       a holder can record "ALS course, March 2026" and cannot attach
-      the certificate. Needs the signed-URL endpoint below, then
+      the certificate. Needs the upload route below, then
       `CertificateUploader` and `CertificateCard`.
-- [ ] Add evidence upload, the one genuinely unbuilt piece. No route
-      and no signed-URL endpoint: `EvidenceUploadOut` is a schema with
-      nothing behind it, and `blobs.py` is server-side storage rather
-      than a browser path. Follow the video pattern established by
-      `2026-08-31-gcp-video-auth-gate-plan.md` — the browser asks for a
-      signed URL, PUTs straight to GCS with progress via
-      `XMLHttpRequest`, then calls back to record the result, so the
-      backend never sees the bytes. `startResumableUpload` /
-      `sendToSession` / `putToBucket` in
-      `frontend/src/features/teaching/use-module-media.ts` are the
-      working shape to lift; `MediaDropzone` beside them hardcodes
-      video MIME types and needs an `accept` prop. Then build
-      `EvidenceUploader`.
+- [x] Add evidence upload, the one genuinely unbuilt piece.
+      `EvidenceUploadOut` is a schema with nothing behind it. One route
+      taking the file, hashing it, storing it through `BlobStore` or
+      `GcsBlobStore`, and returning the hash for a record to name in
+      its `attachment_hashes`. Cap the size and check the media type at
+      the route, since `blobs.py` deliberately decides neither —
+      storing is separate from admitting. Then build `EvidenceUploader`
+      and give `MediaDropzone` an `accept` prop, since it hardcodes
+      video MIME types.
+
+  - **Not the video pattern, and this plan said otherwise until
+    somebody tried to build it.** The earlier wording said to follow
+    `2026-08-31-gcp-video-auth-gate-plan.md`: the browser asks for a
+    signed URL, PUTs straight to GCS, and the backend never sees the
+    bytes. That cannot work here. Evidence is content-addressed — a
+    blob's name _is_ the SHA-256 of its contents, which is what lets
+    `VERIFY.md` offer a check a holder can run in ten years with no
+    software and no trust in Quill. Computing that address requires
+    reading every byte, so the bytes must pass through the backend.
+    Both `BlobStore.put` and `GcsBlobStore.put` already take
+    `data: bytes` for exactly this reason. A video is addressed by a
+    generated `asset_id` instead, so nobody has to look inside it, and
+    that is the whole difference between the two features.
+  - **The ceiling is Quill's own 10 MB, not Cloud Run's 32.**
+    `MAX_REQUEST_BODY_BYTES` in `main.py` rejects any body over 10 MB
+    before a route sees it, and the one exemption is the teaching local
+    media PUT. A scanned certificate sits well inside that, so the
+    evidence route should live within the general limit rather than
+    claim a second exemption. If evidence ever genuinely needs to be
+    large, the answer is a deliberate design change — the browser
+    hashing the file itself and the backend verifying by reading the
+    object back — not a signed URL that skips the hash.
 - [ ] End-to-end test: holder requests, assessor signs, holder exports
       PDF, hash on PDF matches repository.
 - [ ] Security review of upload handling (type sniffing, size limits,

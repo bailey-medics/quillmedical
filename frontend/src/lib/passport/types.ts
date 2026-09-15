@@ -227,13 +227,28 @@ export interface InboxItem {
  * their supervisor. The one rule the API enforces is that it may not be
  * the holder themselves.
  */
+/**
+ * Evidence a record is about to name.
+ *
+ * The same four fields the record stores. A blob is bytes at a path
+ * named by their hash and nothing beside it records what the file was
+ * called, so the uploader says: `uploadEvidence` returns exactly this
+ * shape, and it is passed straight back when the record is written.
+ */
+export interface AttachmentInput {
+  hash: string;
+  filename: string;
+  size_bytes: number;
+  media_type: string;
+}
+
 export interface SignOffRequestInput {
   assessor_user_id: number;
   observed_on: IsoDate;
   level_id?: string | null;
   comments?: string | null;
   reflection?: string | null;
-  attachment_hashes?: string[];
+  attachments?: AttachmentInput[];
 }
 
 /**
@@ -281,6 +296,21 @@ export interface Verification {
   does_not_prove: string;
 }
 
+/**
+ * A file that has been stored, and the hash a record names it by.
+ *
+ * Passed straight back into the record being written: this is the only
+ * place the filename and media type exist, because a blob is bytes at a
+ * path named by their hash and nothing beside it records what the file
+ * was called.
+ */
+export interface EvidenceUpload {
+  hash: string;
+  filename: string;
+  size_bytes: number;
+  media_type: string;
+}
+
 // ---------------------------------------------------------------------------
 // Self-declared evidence
 //
@@ -299,7 +329,7 @@ export interface CertificateInput {
   expires_on?: IsoDate | null;
   competencies?: string[];
   description?: string | null;
-  attachment_hashes?: string[];
+  attachments?: AttachmentInput[];
 }
 
 /** A certificate as stored. */
@@ -325,7 +355,7 @@ export interface LogbookEntryInput {
   outcome?: string | null;
   notes?: string | null;
   also_counts_towards?: string[];
-  attachment_hashes?: string[];
+  attachments?: AttachmentInput[];
 }
 
 /** A logbook entry as stored. */
@@ -369,7 +399,7 @@ export interface ReflectionInput {
   body: string;
   anonymised_confirmed: boolean;
   competencies?: string[];
-  attachment_hashes?: string[];
+  attachments?: AttachmentInput[];
 }
 
 /** A reflection as stored, with its prose. */
@@ -391,7 +421,7 @@ export interface CpdEntryInput {
   competencies?: string[];
   certificate?: string | null;
   notes?: string | null;
-  attachment_hashes?: string[];
+  attachments?: AttachmentInput[];
 }
 
 /** A CPD activity as stored. */
