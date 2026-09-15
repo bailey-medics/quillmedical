@@ -2,7 +2,7 @@
 name: st-crpd
 description: Commit, rebase, push and describe one stacked branch
 argument-hint: "[ready]"
-allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git fetch:*), Bash(git push:*), Bash(just stack-log:*), Bash(just stack-log-long:*), Bash(just stack-files:*), Bash(just stack-add:*), Bash(just stack-new:*), Bash(just stack-rebase:*), Bash(just stack-submit:*), Bash(just stack-move:*), Bash(gh stack view:*), Bash(gh pr list:*), Bash(gh pr view:*), Bash(gh pr edit:*), Bash(gh pr ready:*), Bash(python3 scripts/stack-status.py:*)
+allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git fetch:*), Bash(git push:*), Bash(just stack-log:*), Bash(just stack-log-long:*), Bash(just stack-files:*), Bash(git switch:*), Bash(just stack-add:*), Bash(just stack-new:*), Bash(just stack-sync:*), Bash(just stack-rebase:*), Bash(just stack-submit:*), Bash(just stack-move:*), Bash(gh stack view:*), Bash(gh pr list:*), Bash(gh pr view:*), Bash(gh pr edit:*), Bash(gh pr ready:*), Bash(python3 scripts/stack-status.py:*)
 disallowed-tools: Bash(gh pr merge:*), Bash(gh stack merge:*), Bash(git rebase:*), mcp__github__merge_pull_request, mcp__github__enable_pr_auto_merge
 disable-model-invocation: true
 ---
@@ -79,8 +79,13 @@ read it. Pass `ready` when finishing a branch deliberately, by hand.
    just stack-log
    ```
 
-   - **In a stack** — the ordinary case. Step 2 uses `just stack-add`, which
-     stacks the new branch on the one checked out.
+   - **In a stack with at least one unmerged branch** — the ordinary case.
+     Step 2 uses `just stack-add`, which stacks the new branch on the one
+     checked out.
+   - **In a stack where every branch is merged** — the stack is spent, and
+     the next unit belongs to a new one. See "Starting again after a stack
+     has merged" below; the work is carried to `main` first, and step 2
+     then uses `just stack-new`.
    - **"No stack on this branch", and on `main`** — this is the first unit.
      Step 2 uses `just stack-new` instead, which starts the stack. Everything
      else is the same.
@@ -88,10 +93,44 @@ read it. Pass `ready` when finishing a branch deliberately, by hand.
      Committing here would put the work on a branch that is not part of any
      stack, and `/crp` is the command for that.
 
+   The merged case is easy to miss, because `stack-log` still draws the
+   stack — every branch simply carries `merged`. Read the marks, not the
+   shape: stacking onto a merged branch bases the new unit on history that
+   is already in `main`, and its pull request then carries the old stack's
+   merge commits.
+
 2. **Stop if the stack spans worktrees.** `just stack-log` names any branch
    checked out elsewhere. A stack lives in one worktree; `gh stack rebase`
    would skip those branches and still report success. Report it and stop
    rather than working around it.
+
+## Starting again after a stack has merged
+
+Only when step 1 found every branch in the stack marked `merged`. The
+branch checked out is then behind `main` by at least the merge commits of
+the stack's own pull requests, and the working tree holds the next unit.
+
+```bash
+just stack-sync
+git switch main
+```
+
+`stack-sync` reconciles the merged stack with GitHub and fast-forwards
+`main`; `git switch main` carries the uncommitted work across, which git
+does cleanly because the merged branch and `main` no longer differ in the
+files being changed. Then carry on at step 1 of "Steps" and use
+`just stack-new`, exactly as for a first unit.
+
+Two things to check rather than assume:
+
+- **The working tree survived the switch.** `git status --short` should
+  still list the same files. If git refused the switch because the changes
+  conflict with `main`, stop and report it — that means the unit overlaps
+  something merged while it was being built, and a human should look.
+- **`main` is actually current.** `git rev-list --left-right --count
+  HEAD...origin/main` should report `ahead=0 behind=0`. Starting a stack
+  on a stale `main` produces a pull request carrying commits that are
+  already merged.
 
 ## Steps
 
@@ -112,13 +151,22 @@ read it. Pass `ready` when finishing a branch deliberately, by hand.
    just stack-add <name> "<message>"
    ```
 
+   …or, when step 1 said this is the first unit of a new stack — on `main`,
+   or on `main` having just carried the work off a merged stack:
+
+   ```bash
+   just stack-new <name> "<message>"
+   ```
+
    One call, one new branch, one commit, one pull request. That is the
    point: each unit of work gets a pull request of its own rather than
    accumulating commits on a branch someone has to disentangle later.
 
-   `stack-add` stages everything, commits it, and stacks the branch on top of
-   the one currently checked out, so the new unit depends on the one below it
-   exactly as the stack describes.
+   Both stage everything and commit it. `stack-add` stacks the branch on
+   top of the one currently checked out, so the new unit depends on the one
+   below it exactly as the stack describes; `stack-new` starts a fresh
+   stack from `main` instead. The name and message are chosen the same way
+   either way.
 
    **Choose both the name and the message yourself**, from what actually
    changed — do not ask for them. This command is called unattended, and
@@ -134,9 +182,16 @@ read it. Pass `ready` when finishing a branch deliberately, by hand.
      itself; the name and message should come from the code, not from what
      the conversation was about.
 
-   If the uncommitted work is plainly two unrelated things, say so and ask
-   rather than committing them as one unit — that is the judgement this
-   command cannot make for you.
+   **Do not assess whether the work is one unit.** Whatever is uncommitted
+   becomes one branch and one pull request, however many concerns it spans.
+   Deciding when a unit is finished is the caller's job — running this
+   command *is* that decision — and stopping to second-guess it would turn
+   a one-word command into a negotiation, and break an unattended run at
+   the moment it most needs to keep going.
+
+   So: no asking, no splitting, no suggesting the work be split. Read the
+   diff only to name the branch and write the message. Where the work spans
+   two concerns, name it for the larger and let the description carry both.
 
 3. **Bring the branches above back into line.**
 
