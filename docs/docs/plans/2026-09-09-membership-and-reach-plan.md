@@ -210,11 +210,21 @@ of the unused staff guard. Everything else on the lists below is still a plan.
         this item has predicted from the start, reached by the opposite route from the one
         it expected. `test_a_site_member_is_not_a_member_of_the_organisation` is the proof:
         membership of a ward returns `[]` for the organisation.
-      - **What would actually unblock it**, and each is a decision rather than a step:
-        make the delegate-facing callers ask reach; or give `organisation_member` a capacity
-        that means "reached through a site" so one row can serve both questions; or accept
-        the duplication and close this item as won't-do. The duplication argument alone does
-        not justify making delegates invisible.
+      - **Superseded by the site tree, and not to be decided here.**
+        `2026-09-11-site-tree-unification-plan.md` merges organisations and sites into one
+        table where an organisation is a site with no parent. A ward then has a `parent_id`
+        pointing at its trust, so "which trust does this ward belong to" is answered by the
+        tree edge rather than by a second membership row. The duplication this item objects
+        to stops existing, without anything being deleted.
+      - **It does not become automatic there either.** That plan keeps the same rule —
+        "membership and authorisation still do not inherit" — so a ward-only delegate is
+        still invisible to a membership query. What changes is that the question is worth
+        revisiting once the tree exists, and its step 8 ("switch scoping and reach to
+        subtree queries") is where it belongs. Deciding it now would mean deciding it twice,
+        against a schema that is about to change underneath it.
+      - **One gap to carry across**: that plan's risk note says `register` must keep working
+        at every step, but does not say whether a delegate ends up with one row or two after
+        its step 5. That is this item's real question, asked in the right place.
       - **One correction: it is `register` only, not "the two admin user routes".** There is
         exactly one "organisation_id required when site_id is provided" check in `main.py`.
         The admin routes write both rows but do not require the pairing, so there is less
