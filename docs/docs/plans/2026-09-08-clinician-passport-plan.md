@@ -2776,7 +2776,7 @@ explicitly deferred here.
         routes have no caller yet to notice.
       - Thirty-six tests in `src/lib/passport/api.test.ts`;
         `just uf src/lib/passport/api.test.ts` green.
-- [ ] Build the components listed above in
+- [x] Build the components listed above in
       `frontend/src/components/passport/` with stories and tests; present
       any genuinely new component for review before implementing, per
       the component reuse hierarchy.
@@ -3164,17 +3164,27 @@ form fields, nine lazily-loaded pages with tests, and the navigation
 entry. The suite stands at 38 page tests, 159 component tests and 586
 Storybook tests.
 
-**Three components could not be built**, because the routes they need
-have no path behind them: `EvidenceUploader` and `CertificateUploader`
-want a signed-URL endpoint, and `PassportExportButtons` wants the export
-routes — whose work is written and tested in `export.py` and simply
-never given a path. `CertificateCard` is unblocked but was left with
-them. **All three are phase 7 checkboxes**, at the head of that
-section. They were commentary buried in finished phase 6 steps until
-somebody asked why
-uploads and export were not on the list, which is a fair question to
-have had to ask: a holder expects to take their record away and to
-attach their evidence, and neither was written down as work.
+**The three blocked components are unblocked, and two of them are
+built.** The export routes now exist, so does evidence upload, and
+`CertificateForm` and `CertificateUploader` sit beside the other
+passport components. `MediaDropzone` was generalised rather than
+duplicated: `accept` and `label` default to the teaching video
+behaviour, so its existing caller is untouched.
+
+**Nothing renders them yet, and that is the gap to close next.** No
+page imports `CertificateForm`, `CertificateUploader`, `exportPdf`,
+`exportMarkdown` or `exportBundle`, so a holder still cannot record a
+certificate, attach a scan or download their passport through the
+interface — every piece works and none is reachable. `CertificateCard`
+and `PassportExportButtons` were never built either; whether they are
+needed depends on how the pages choose to present this, which is why
+they are not listed as work in their own right.
+
+The components were commentary buried in finished phase 6 steps until
+somebody asked why uploads and export were not on the list, which is a
+fair question to have had to ask: a holder expects to take their record
+away and to attach their evidence, and neither was written down as
+work.
 
 **The assessor sign-off flow now works.** `PassportSignOffPage` used to
 render a request and refuse to submit, because the inbox carried no

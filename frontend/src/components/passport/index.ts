@@ -18,6 +18,7 @@ export { default as CpdTable } from "./CpdTable";
 export { default as InviteAssessorForm } from "./InviteAssessorForm";
 export { default as LogbookEntryForm } from "./LogbookEntryForm";
 export { default as LogbookTable } from "./LogbookTable";
+export { default as PassportExportButtons } from "./PassportExportButtons";
 export { default as ReflectionEditor } from "./ReflectionEditor";
 export { ANONYMISATION_DECLARATION } from "./ReflectionEditor";
 export { default as RegistrationBadge } from "./RegistrationBadge";
