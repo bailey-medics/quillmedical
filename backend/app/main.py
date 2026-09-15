@@ -112,10 +112,10 @@ from app.models import (
 )
 from app.organisations import (
     get_accessible_patient_ids,
+    get_member_org_ids,
     get_org_staff_ids,
     get_patient_org_ids,
     get_shared_org_ids,
-    get_user_org_ids,
 )
 from app.push import router as push_router
 from app.push_send import router as push_send_router
@@ -1601,7 +1601,7 @@ def create_user_with_cbac(
                 detail=f"Organisation {org_id} not found",
             )
         if current_user.platform_role != "superadmin":
-            if org_id not in get_user_org_ids(db, current_user.id):
+            if org_id not in get_member_org_ids(db, current_user.id):
                 raise HTTPException(
                     status_code=403,
                     detail="You do not have access to this organisation",
@@ -1861,7 +1861,7 @@ def update_user(
             )
         else:
             # Admin: only remove memberships within admin's own orgs
-            admin_org_ids = get_user_org_ids(db, current_user.id)
+            admin_org_ids = get_member_org_ids(db, current_user.id)
             db.execute(
                 organisation_member.delete().where(
                     organisation_member.c.user_id == user_id,
@@ -1895,7 +1895,7 @@ def update_user(
             )
         else:
             # Admin: only remove memberships for sites within admin's orgs
-            admin_org_ids = get_user_org_ids(db, current_user.id)
+            admin_org_ids = get_member_org_ids(db, current_user.id)
             admin_site_ids = [
                 row[0]
                 for row in db.execute(
@@ -2585,7 +2585,7 @@ def list_users(
     # Anyone but an operator sees only users at their own places;
     # operators see everyone.
     if current_user.platform_role != "superadmin":
-        admin_orgs = get_user_org_ids(db, current_user.id)
+        admin_orgs = get_member_org_ids(db, current_user.id)
         org_scoped_ids = get_org_staff_ids(db, admin_orgs)
 
         # Also include site-only members for sites linked to admin's orgs
@@ -3820,7 +3820,7 @@ def list_organisations(
         if current_user.platform_role == "superadmin":
             organisations = db.execute(select(Organisation)).scalars().all()
         else:
-            user_org_ids = get_user_org_ids(db, current_user.id)
+            user_org_ids = get_member_org_ids(db, current_user.id)
             organisations = (
                 db.execute(
                     select(Organisation).where(
@@ -3892,7 +3892,7 @@ def get_organisation(
 
     # Anyone but an operator is confined to their own organisations
     if current_user.platform_role != "superadmin":
-        user_org_ids = get_user_org_ids(db, current_user.id)
+        user_org_ids = get_member_org_ids(db, current_user.id)
         if org_id not in user_org_ids:
             raise HTTPException(
                 status_code=404,
@@ -4045,7 +4045,7 @@ def update_organisation(
 
     # Anyone but an operator is confined to their own organisations
     if current_user.platform_role != "superadmin":
-        if org_id not in get_user_org_ids(db, current_user.id):
+        if org_id not in get_member_org_ids(db, current_user.id):
             raise HTTPException(
                 status_code=404, detail="Organisation not found"
             )
@@ -4221,7 +4221,7 @@ def add_staff_to_organisation(
 
     # Anyone but an operator is confined to their own organisations
     if current_user.platform_role != "superadmin":
-        if org_id not in get_user_org_ids(db, current_user.id):
+        if org_id not in get_member_org_ids(db, current_user.id):
             raise HTTPException(
                 status_code=404, detail="Organisation not found"
             )
@@ -4318,7 +4318,7 @@ def add_patient_to_organisation(
 
     # Anyone but an operator is confined to their own organisations
     if current_user.platform_role != "superadmin":
-        if org_id not in get_user_org_ids(db, current_user.id):
+        if org_id not in get_member_org_ids(db, current_user.id):
             raise HTTPException(
                 status_code=404, detail="Organisation not found"
             )
@@ -4378,7 +4378,7 @@ def remove_staff_from_organisation(
     """
     # Anyone but an operator is confined to their own organisations
     if current_user.platform_role != "superadmin":
-        if org_id not in get_user_org_ids(db, current_user.id):
+        if org_id not in get_member_org_ids(db, current_user.id):
             raise HTTPException(
                 status_code=404, detail="Organisation not found"
             )
@@ -4430,7 +4430,7 @@ def remove_patient_from_organisation(
     """
     # Anyone but an operator is confined to their own organisations
     if current_user.platform_role != "superadmin":
-        if org_id not in get_user_org_ids(db, current_user.id):
+        if org_id not in get_member_org_ids(db, current_user.id):
             raise HTTPException(
                 status_code=404, detail="Organisation not found"
             )
@@ -4478,7 +4478,7 @@ def list_org_features(
 
     # Anyone but an operator is confined to their own organisations
     if current_user.platform_role != "superadmin":
-        if org_id not in get_user_org_ids(db, current_user.id):
+        if org_id not in get_member_org_ids(db, current_user.id):
             raise HTTPException(
                 status_code=404, detail="Organisation not found"
             )
@@ -4523,7 +4523,7 @@ def toggle_org_feature(
 
     # Anyone but an operator is confined to their own organisations
     if current_user.platform_role != "superadmin":
-        if org_id not in get_user_org_ids(db, current_user.id):
+        if org_id not in get_member_org_ids(db, current_user.id):
             raise HTTPException(
                 status_code=404, detail="Organisation not found"
             )
@@ -4593,7 +4593,7 @@ def list_sites(
     """
     stmt = select(Site).order_by(Site.name)
     if current_user.platform_role != "superadmin":
-        own_org_ids = get_user_org_ids(db, current_user.id)
+        own_org_ids = get_member_org_ids(db, current_user.id)
         stmt = stmt.where(
             Site.id.in_(
                 select(organisation_site.c.site_id).where(
@@ -4792,7 +4792,7 @@ def _require_site_in_own_org(
         .scalars()
         .all()
     )
-    if not site_org_ids & set(get_user_org_ids(db, current_user.id)):
+    if not site_org_ids & set(get_member_org_ids(db, current_user.id)):
         raise HTTPException(status_code=404, detail="Site not found")
 
 
@@ -4800,7 +4800,7 @@ def _require_own_org(db: Session, current_user: User, org_id: int) -> None:
     """Refuse an organisation the admin does not belong to."""
     if current_user.platform_role == "superadmin":
         return
-    if org_id not in get_user_org_ids(db, current_user.id):
+    if org_id not in get_member_org_ids(db, current_user.id):
         raise HTTPException(status_code=404, detail="Organisation not found")
 
 
@@ -4864,8 +4864,8 @@ def _require_shared_org_with_user(
         return
     if target.id == current_user.id:
         return
-    admin_org_ids = set(get_user_org_ids(db, current_user.id))
-    target_org_ids = set(get_user_org_ids(db, target.id))
+    admin_org_ids = set(get_member_org_ids(db, current_user.id))
+    target_org_ids = set(get_member_org_ids(db, target.id))
     if not (admin_org_ids & target_org_ids):
         raise HTTPException(status_code=404, detail="User not found")
 

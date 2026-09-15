@@ -87,21 +87,6 @@ of the unused staff guard. Everything else on the lists below is still a plan.
       - Existing rows are a separate question and do say `staff`, because they were added
         when the table meant staff and those people are staff. The migration sets them, then
         flips the default, so history and future inserts get the answers they each need.
-- [ ] **Stop registration writing an organisation row for a student.** A student registers
-      into a site. Remove the requirement that a site needs an organisation alongside it, in
-      `register` and in the two admin user routes.
-      - **The reason for this step has changed since it was written**, and it is worth
-        re-examining rather than doing on the original grounds. It was written because the
-        organisation row was a lie — it called a delegate staff. It no longer is: the row now
-        says `trainee`.
-      - What remains is a duplication argument rather than a correctness one. Reach into an
-        organisation should come from the site-to-organisation link, not from a second row
-        that says the same thing; two sources of truth for one fact will eventually
-        disagree. That is a good reason, but a weaker one, and it should be weighed against
-        the cost of the resolver having to walk the link on every request.
-      - It also depends on the step below. Until one resolver answers *which places can this
-        person reach*, removing the organisation row would make delegates invisible to
-        everything outside teaching.
 - [x] **Backfill by capacity, not by guesswork.** Done in the same migration, since a
       NOT NULL column cannot be added without deciding what existing rows say. A row becomes
       `trainee` when that person is a trainee at a site belonging to **that same
@@ -131,6 +116,54 @@ of the unused staff guard. Everything else on the lists below is still a plan.
 - [ ] **Walk the call sites in batches.** 29 calls to the app-wide resolver — 15 in `main.py`,
       7 in the teaching router, 5 in `messaging.py`, 2 internal — and 17 in teaching's own.
       Fifty references to the organisation table in total.
+      - [x] **Batch one: the membership half.** All 24 `get_user_org_ids` call sites outside
+        teaching now say `get_member_org_ids` — 18 in `main.py`, 4 in `messaging.py`, 2
+        internal to `organisations.py`. Behaviour-identical, because `get_user_org_ids`
+        already delegated there; what changes is that each site states the question it asks.
+        - **Every one of them meant membership**, read individually rather than assumed:
+          admin place checks (`if org_id not in ...`), membership deletion scoping, the
+          patient-sharing check, and messaging's org overlap. Not one wanted a site trainee
+          to reach up into the trust, and several would be wrong if they did —
+          `get_shared_org_ids` gates patient records, and `_ensure_shared_org` decides
+          whether an admin may see a user at all.
+        - **`test_admin_routes_ask_membership.py` pins the routes**, which no test did;
+          `test_place_resolver.py` only ever pinned the resolvers. Verified by temporarily
+          pointing `get_organisation` at `get_reachable_org_ids`: the new test went red with
+          `assert 200 == 404`, which is the widening it exists to catch.
+        - **`get_user_org_ids` now has no callers.** Left in place so this batch reads as a
+          rename and nothing else; deleting it is a one-line follow-up.
+      - [ ] **Batch two: the reach half**, in teaching's router — nine call sites through
+        `_get_user_org_ids`, which already wraps `get_reachable_org_ids`. This is where the
+        widening actually lives, so it wants its own review rather than being buried among
+        renames.
+- [ ] **Stop registration writing an organisation row for a student.** A student registers
+      into a site. Remove the requirement that a site needs an organisation alongside it, in
+      `register` and in the two admin user routes.
+      - **The reason for this step has changed since it was written**, and it is worth
+        re-examining rather than doing on the original grounds. It was written because the
+        organisation row was a lie — it called a delegate staff. It no longer is: the row now
+        says `trainee`.
+      - What remains is a duplication argument rather than a correctness one. Reach into an
+        organisation should come from the site-to-organisation link, not from a second row
+        that says the same thing; two sources of truth for one fact will eventually
+        disagree. That is a good reason, but a weaker one, and it should be weighed against
+        the cost of the resolver having to walk the link on every request.
+      - **It depends on the call-site walk above**, which is why it now sits after it.
+        Until the call sites ask *which places can this person reach*, removing the
+        organisation row would make delegates invisible to everything outside teaching.
+      - **Re-examined, and the dependency is on the call-site walk rather than the resolver
+        split.** `get_reachable_org_ids` exists and that box is ticked, but almost nothing
+        calls it: `get_user_org_ids` — 19 call sites in `main.py` alone, plus messaging and
+        teaching — delegates to `get_member_org_ids`, which deliberately does *not* walk the
+        site link. So removing the organisation row today would make delegates invisible to
+        every one of those callers, which is exactly the failure this bullet predicted.
+      - **This item was listed before the walk until that was found, and has been moved
+        below it.** Each call site moves to `get_reachable_org_ids` where it means reach;
+        only then is the organisation row genuinely redundant and safe to stop writing.
+      - **The cost objection is smaller than it looks.** `get_reachable_org_ids` is one extra
+        query — a join of `organisation_site` against `site_member` — not a walk per
+        membership. Worth weighing against duplication on its merits, not as a performance
+        worry.
 - [x] **Filter the organisation admin page to staff**, so students stop appearing on it.
       - **The column could tell them apart since it was added; the page still could not**,
         because no caller had been changed to ask. `get_organisation`'s staff query now
