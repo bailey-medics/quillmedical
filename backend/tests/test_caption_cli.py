@@ -230,3 +230,90 @@ class TestCaptionJob:
             with pytest.raises(SystemExit) as exc:
                 caption()
             assert exc.value.code == 1
+
+
+class TestCaptionReport:
+    """The callback that makes the track reachable.
+
+    The player composes the caption URL from `has_captions`, not by
+    listing the bucket, so a WebVTT nobody recorded is never offered.
+    """
+
+    def test_skips_silently_when_unconfigured(self, capsys) -> None:
+        from scripts.caption_cli import _report_captions
+
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("CAPTION_CALLBACK_URL", None)
+            os.environ.pop("CAPTION_CALLBACK_TOKEN", None)
+            _report_captions(7, "mod", "asset-1")
+
+        assert "Callback not configured" in capsys.readouterr().err
+
+    def test_posts_the_three_ids(self) -> None:
+        from scripts.caption_cli import _report_captions
+
+        env = {
+            "CAPTION_CALLBACK_URL": "https://example.test/cb",
+            "CAPTION_CALLBACK_TOKEN": "tok",
+        }
+        with patch.dict(os.environ, env, clear=False):
+            with patch("httpx.post") as post:
+                post.return_value = MagicMock(status_code=200)
+                _report_captions(7, "mod", "asset-1")
+
+        sent = post.call_args.kwargs["json"]
+        assert sent == {
+            "org_id": 7,
+            "module_id": "mod",
+            "asset_id": "asset-1",
+        }
+        assert post.call_args.kwargs["headers"]["Authorization"] == (
+            "Bearer tok"
+        )
+
+    def test_it_uses_its_own_endpoint_not_the_transcode_one(self) -> None:
+        """Sending a caption report to the transcode callback would
+        clear has_1080p and has_poster, because that endpoint rewrites
+        every flag from the list it is given."""
+        from scripts.caption_cli import _report_captions
+
+        env = {
+            "CAPTION_CALLBACK_URL": "https://example.test/caption-complete",
+            "CAPTION_CALLBACK_TOKEN": "tok",
+        }
+        with patch.dict(os.environ, env, clear=False):
+            with patch("httpx.post") as post:
+                post.return_value = MagicMock(status_code=200)
+                _report_captions(7, "mod", "asset-1")
+
+        assert "caption-complete" in post.call_args.args[0]
+        assert "outputs" not in post.call_args.kwargs["json"]
+
+    def test_a_refusal_does_not_raise(self, capsys) -> None:
+        from scripts.caption_cli import _report_captions
+
+        env = {
+            "CAPTION_CALLBACK_URL": "https://example.test/cb",
+            "CAPTION_CALLBACK_TOKEN": "tok",
+        }
+        with patch.dict(os.environ, env, clear=False):
+            with patch("httpx.post") as post:
+                post.return_value = MagicMock(status_code=401)
+                _report_captions(7, "mod", "asset-1")
+
+        assert "refused" in capsys.readouterr().err
+
+    def test_a_network_failure_does_not_raise(self, capsys) -> None:
+        """An hour of Whisper must not be re-run over an unreachable
+        callback."""
+        from scripts.caption_cli import _report_captions
+
+        env = {
+            "CAPTION_CALLBACK_URL": "https://example.test/cb",
+            "CAPTION_CALLBACK_TOKEN": "tok",
+        }
+        with patch.dict(os.environ, env, clear=False):
+            with patch("httpx.post", side_effect=OSError("no route")):
+                _report_captions(7, "mod", "asset-1")
+
+        assert "callback failed" in capsys.readouterr().err

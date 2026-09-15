@@ -630,6 +630,56 @@ class CaptionsIn(BaseModel):
     webvtt: str
 
 
+class TranscodeCompleteIn(BaseModel):
+    """What the transcode job reports once its outputs verify.
+
+    Filenames rather than flags, deliberately. The job knows what it
+    uploaded; the backend holds the mapping from suffix to column
+    (``RENDITION_FLAGS``), and keeping that mapping in one place is what
+    stops the two drifting apart. A job that learns column names is a
+    job that has to be redeployed when a column is renamed.
+
+    The three ids are the ones the job was invoked with, so the callback
+    addresses the same link row the invocation came from.
+    """
+
+    org_id: int
+    module_id: str
+    asset_id: str
+    #: Object keys written under ``{org_id}/{module_id}/``, as the job
+    #: verified them. Names only — the prefix is reconstructed here, so a
+    #: callback cannot name a path outside its own module.
+    outputs: list[str]
+
+
+class TranscodeCompleteOut(BaseModel):
+    """Confirmation that completion was recorded."""
+
+    recorded: bool
+    #: Which rendition flags were set, so a job's logs say what the
+    #: backend understood rather than only what was sent.
+    flags: list[str]
+
+
+class CaptionCompleteIn(BaseModel):
+    """What the caption job reports once its track verifies.
+
+    No output list, unlike the transcode report: this job writes exactly
+    one file, at a name derived from the asset id. Naming it would add a
+    value to validate and nothing to learn from it.
+    """
+
+    org_id: int
+    module_id: str
+    asset_id: str
+
+
+class CaptionCompleteOut(BaseModel):
+    """Confirmation that the caption track was recorded."""
+
+    recorded: bool
+
+
 class MediaLinkIn(BaseModel):
     """Attach an uploaded asset to an MDX reference.
 

@@ -38,6 +38,35 @@ question-bank repo (Git)
 
 The backend is selected automatically based on config: if `TEACHING_GCS_BUCKET` is set, GCS is used; otherwise `TEACHING_IMAGES_BASE_URL` (or fallback `/static`) is used.
 
+### Video
+
+Lecture video does not go through the storage backends above. It has its own
+path, because the constraints are different: a lecture is hundreds of megabytes
+and licensed per organisation, so the application must stay out of the data
+path and a link that works forever is not acceptable.
+
+Instead, video is served from a private bucket behind Cloud CDN and authorised
+by a short-lived signed cookie. The backend decides whether a learner may
+watch; the edge then serves the bytes without the request reaching the
+application again.
+
+```text
+admin upload ──▶ source bucket ──▶ transcode job ──▶ processed bucket
+                                   (720p, 1080p,      │
+                                    poster, captions)  ▼
+                                              Cloud CDN at /videos/*
+                                                       │ Cloud-CDN-Cookie
+                                                       ▼
+                                                  learner's player
+```
+
+In development there is no bucket and no cookie — video is streamed off disk
+from the module's `learning/` directory, and the frontend runs the same code
+path in both environments.
+
+See [Teaching video storage](../backend/files/index.md) for the buckets, object
+key contract, cookie mechanics and monitoring.
+
 ---
 
 ## Question bank format
@@ -351,12 +380,12 @@ All reusable components live in `frontend/src/components/teaching/`.
 
 Set in `compose.dev.yml` for local development:
 
-| Variable                        | Dev value              | Description                                 |
-| ------------------------------- | ---------------------- | ------------------------------------------- |
-| `TEACHING_QUESTION_BANK_PATH`   | `/question-banks`      | Container path to question bank directories |
-| `TEACHING_IMAGES_BASE_URL`      | `/api/teaching/images` | Base URL for image serving                  |
-| `TEACHING_GCS_BUCKET`           | _(not set)_            | GCS bucket name (production only)           |
-| `TEACHING_SYNC_TOKEN`           | _(not set)_            | Auth token for CI sync endpoint             |
+| Variable                      | Dev value              | Description                                 |
+| ----------------------------- | ---------------------- | ------------------------------------------- |
+| `TEACHING_QUESTION_BANK_PATH` | `/question-banks`      | Container path to question bank directories |
+| `TEACHING_IMAGES_BASE_URL`    | `/api/teaching/images` | Base URL for image serving                  |
+| `TEACHING_GCS_BUCKET`         | _(not set)_            | GCS bucket name (production only)           |
+| `TEACHING_SYNC_TOKEN`         | _(not set)_            | Auth token for CI sync endpoint             |
 
 ### Docker volume mount
 

@@ -59,6 +59,7 @@ module "secrets" {
     var.environment == "teaching" ? [
       "teaching-video-signing-key",
       "teaching-sync-token",
+      "teaching-transcode-callback-token",
     ] : []
   )
 }
@@ -240,6 +241,26 @@ resource "google_secret_manager_secret_version" "jwt_secret" {
   depends_on  = [module.secrets]
 }
 
+# The transcode job's completion report is authenticated with a shared
+# secret, so Terraform both generates and fills it — the same reasoning as
+# the video signing key, and the same exception to modules/secrets'
+# usual convention that Terraform creates containers and humans add
+# versions. Two ends must hold identical bytes; a human typing it into
+# both is a transcription error waiting to happen, and there is nothing
+# to be gained by anyone ever seeing it.
+resource "random_password" "transcode_callback_token" {
+  count   = var.environment == "teaching" ? 1 : 0
+  length  = 48
+  special = false
+}
+
+resource "google_secret_manager_secret_version" "transcode_callback_token" {
+  count       = var.environment == "teaching" ? 1 : 0
+  secret      = "projects/${var.project_id}/secrets/teaching-transcode-callback-token"
+  secret_data = random_password.transcode_callback_token[0].result
+  depends_on  = [module.secrets]
+}
+
 resource "random_password" "vapid_placeholder" {
   length  = 32
   special = false
@@ -303,6 +324,23 @@ module "cloud_run_backend" {
       TEACHING_VIDEOS_BUCKET          = module.teaching_video_pipeline[0].processed_bucket_name
       TEACHING_VIDEO_SIGNING_KEY_NAME = module.teaching_video_pipeline[0].signing_key_name
 
+      # The job `link_module_media` invokes once an upload lands. Written
+      # out rather than taken from the module's `id` output: this is the
+      # name `run_job` addresses, the API wants the fully-qualified form,
+      # and a wrong value fails at runtime inside a handler that logs and
+      # swallows — so it would present as "transcoding silently never
+      # happens" rather than as an error anyone sees.
+      #
+      # Unset until now, which is why no upload has ever been transcoded:
+      # `start_transcode` reads this, finds nothing, logs "transcode not
+      # configured" and returns. Everything downstream was built and
+      # tested; this one line is what connects it.
+      TEACHING_TRANSCODE_JOB = join("/", [
+        "projects", var.project_id,
+        "locations", var.region,
+        "jobs", "quill-transcode-${var.environment}",
+      ])
+
       # Same host as the app, deliberately: the load balancer routes
       # /videos/* to the backend bucket, so the signed cookie is same-origin
       # and the browser sends it on media requests with no cross-site
@@ -339,6 +377,9 @@ module "cloud_run_backend" {
     var.environment == "teaching" ? {
       TEACHING_SYNC_TOKEN        = "teaching-sync-token"
       TEACHING_VIDEO_SIGNING_KEY = "teaching-video-signing-key"
+      # The other end of the transcode job's completion report. Same
+      # secret on both sides — the job presents it, this verifies it.
+      TEACHING_TRANSCODE_CALLBACK_TOKEN = "teaching-transcode-callback-token"
     } : {}
   )
 
@@ -421,9 +462,58 @@ module "cloud_run_transcode_job" {
   env_vars = {
     TEACHING_VIDEOS_SOURCE_BUCKET = module.teaching_video_pipeline[0].source_bucket_name
     TEACHING_VIDEOS_BUCKET        = module.teaching_video_pipeline[0].processed_bucket_name
+
+    # Where the job reports that its outputs verified. Until that report
+    # lands `transcoded_at` stays null and the module stays hidden, so
+    # this is what turns a finished encode into a playable module.
+    #
+    # The public app domain rather than an internal address: the job's
+    # VPC egress is PRIVATE_RANGES_ONLY, so public traffic leaves
+    # directly and this resolves the same way a browser would.
+    TRANSCODE_CALLBACK_URL = "https://${var.app_domain}/api/ci/teaching/transcode-complete"
+  }
+
+  secret_env_vars = {
+    TRANSCODE_CALLBACK_TOKEN = "teaching-transcode-callback-token"
   }
 
   depends_on = [module.teaching_video_pipeline]
+}
+
+# The backend invokes this job, so it needs permission to. Nothing else
+# grants it: the runtime service account holds only
+# `roles/secretmanager.secretAccessor` at project level, not the broad
+# editor role a default Compute Engine account is often assumed to carry.
+#
+# Scoped to this one job rather than granted project-wide, because the
+# backend has no business starting any other job — the admin job runs
+# migrations and is CI's to invoke, not the serving application's.
+#
+# Without this, `start_transcode` raises inside its own try/except, logs,
+# and returns None. The upload still succeeds and the module stays
+# hidden, which is the safe direction but an entirely silent failure.
+resource "google_cloud_run_v2_job_iam_member" "backend_invokes_transcode" {
+  count = var.environment == "teaching" ? 1 : 0
+
+  project  = var.project_id
+  location = var.region
+  name     = module.cloud_run_transcode_job[0].job_name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
+}
+
+# The same grant for captions, needed for the same reason. The backend
+# fires this job too — from the transcode completion report rather than
+# from the upload, because Whisper transcribes the 720p rendition and
+# that does not exist until the transcode job has written it.
+resource "google_cloud_run_v2_job_iam_member" "backend_invokes_caption" {
+  count = var.environment == "teaching" ? 1 : 0
+
+  project  = var.project_id
+  location = var.region
+  name     = module.cloud_run_caption_job[0].job_name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
 }
 
 # ---------- Cloud Run Job: video captions (teaching only) ----------
@@ -456,6 +546,17 @@ module "cloud_run_caption_job" {
 
   env_vars = {
     TEACHING_VIDEOS_BUCKET = module.teaching_video_pipeline[0].processed_bucket_name
+
+    # Its own endpoint, not the transcode one. A caption report names a
+    # single output, and the transcode callback rewrites every rendition
+    # flag from the list it is given — so sending captions there would
+    # clear `has_1080p` and `has_poster` and claim a transcode that did
+    # not happen.
+    CAPTION_CALLBACK_URL = "https://${var.app_domain}/api/ci/teaching/caption-complete"
+  }
+
+  secret_env_vars = {
+    CAPTION_CALLBACK_TOKEN = "teaching-transcode-callback-token"
   }
 
   depends_on = [module.teaching_video_pipeline]

@@ -50,7 +50,7 @@ nav:
           - Overview: backend/openehr/index.md
       - Caddy:
           - Overview: backend/caddy/index.md
-      - Files:
+      - Teaching video:
           - Overview: backend/files/index.md
       - Payments:
           - Overview: backend/payments/index.md

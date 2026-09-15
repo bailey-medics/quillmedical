@@ -198,6 +198,42 @@ jobs:
             ${{ env.GCP_REGION }} \
             ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/admin:${{ needs.prepare.outputs.sha }}
 
+      # A Cloud Run job cannot be created without naming some image, and at
+      # `terraform apply` time ours has not been built yet — so every image
+      # variable in this repository starts as `gcr.io/cloudrun/hello` and CI
+      # replaces it. The job module sets `ignore_changes` on the image so a
+      # later apply does not revert what CI put there.
+      #
+      # This step is the replacement half, and until now it was missing for
+      # the transcode job alone: backend and frontend are replaced below,
+      # admin by run-migrations.sh, and transcode by nothing — so it has
+      # been running Google's hello-world container since the day it was
+      # created, looking perfectly healthy in the console.
+      #
+      # `jobs update`, not `jobs execute --image` — there is no such flag,
+      # and the Python client's ContainerOverride carries name, args, env
+      # and clear_args but no image, so the image cannot be chosen per
+      # execution. It is a property of the job, set here once per deploy.
+      - name: Point the transcode job at this build
+        if: ${{ needs.prepare.outputs.backend_changed == 'true' }}
+        run: |
+          gcloud run jobs update quill-transcode-teaching \
+            --project=${{ secrets.GCP_TEACHING_PROJECT_ID }} \
+            --region=${{ env.GCP_REGION }} \
+            --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/transcode:${{ needs.prepare.outputs.sha }}
+
+      # The caption image is built from its own Dockerfile rather than a
+      # target of the shared one, because Whisper pulls torch and has no
+      # business in the image the API serves from. It is pointed at the
+      # same way regardless.
+      - name: Point the caption job at this build
+        if: ${{ needs.prepare.outputs.backend_changed == 'true' }}
+        run: |
+          gcloud run jobs update quill-caption-teaching \
+            --project=${{ secrets.GCP_TEACHING_PROJECT_ID }} \
+            --region=${{ env.GCP_REGION }} \
+            --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/caption:${{ needs.prepare.outputs.sha }}
+
       - name: Deploy backend
         if: ${{ needs.prepare.outputs.backend_changed == 'true' }}
         run: |

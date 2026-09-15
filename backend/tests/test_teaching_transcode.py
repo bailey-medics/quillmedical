@@ -162,3 +162,65 @@ def test_flags_are_not_nullable(field: str) -> None:
     column = ModuleMediaLink.__table__.columns[field]
     assert column.nullable is False
     assert column.server_default is not None
+
+
+class TestStartCaption:
+    """Firing the caption job, which the transcode report triggers.
+
+    Invoked from the completion callback rather than from the upload,
+    because Whisper transcribes the 720p rendition and that does not
+    exist until the transcode job has written it.
+    """
+
+    def test_returns_none_when_no_job_is_configured(self, monkeypatch) -> None:
+        """Development: a module has no captions until someone writes
+        them in the admin editor, which is a real workflow."""
+        from app.features.teaching.transcode import start_caption
+
+        monkeypatch.setattr("app.config.settings.TEACHING_CAPTION_JOB", None)
+        assert start_caption(7, "colonoscopy-basics", "a1b2c3d4") is None
+
+    def test_passes_the_three_ids_as_env_overrides(self, monkeypatch) -> None:
+        """Its own variable names, not the transcode job's."""
+        from app.features.teaching.transcode import start_caption
+
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_CAPTION_JOB",
+            "projects/p/locations/l/jobs/quill-caption-teaching",
+        )
+
+        client = MagicMock()
+        client.run_job.return_value.operation.name = "operations/xyz"
+
+        with patch("google.cloud.run_v2.JobsClient", return_value=client):
+            result = start_caption(7, "colonoscopy-basics", "a1b2c3d4")
+
+        assert result == "operations/xyz"
+        request = client.run_job.call_args.kwargs["request"]
+        assert request.name.endswith("quill-caption-teaching")
+
+        env = request.overrides.container_overrides[0].env
+        passed = {var.name: var.value for var in env}
+        assert passed == {
+            "CAPTION_ORG_ID": "7",
+            "CAPTION_MODULE_ID": "colonoscopy-basics",
+            "CAPTION_ASSET_ID": "a1b2c3d4",
+        }
+
+    def test_a_failure_is_swallowed_not_raised(self, monkeypatch) -> None:
+        """The caller is the transcode completion endpoint, and the
+        renditions it is recording are what matter. A caption job that
+        cannot be reached must not cost the module its transcoded_at,
+        or the video stays hidden over a missing subtitle track."""
+        from app.features.teaching.transcode import start_caption
+
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_CAPTION_JOB",
+            "projects/p/locations/l/jobs/quill-caption-teaching",
+        )
+
+        with patch(
+            "google.cloud.run_v2.JobsClient",
+            side_effect=RuntimeError("no credentials"),
+        ):
+            assert start_caption(7, "mod", "asset") is None

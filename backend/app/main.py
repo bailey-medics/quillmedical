@@ -70,9 +70,13 @@ from app.ehrbase_client import (
 )
 from app.email_send import send_email
 from app.features.teaching.schemas import (
+    CaptionCompleteIn,
+    CaptionCompleteOut,
     CiSyncBankResult,
     CiSyncErrorItem,
     CiTeachingSyncOut,
+    TranscodeCompleteIn,
+    TranscodeCompleteOut,
 )
 from app.fhir_client import (
     FhirClientError,
@@ -6247,6 +6251,171 @@ def ci_teaching_sync(
         response.status_code = 422
 
     return CiTeachingSyncOut(synced=synced, errors=errors)
+
+
+# --- Transcode completion callback (service token auth) ---
+#
+# Beside the sync endpoint rather than on `teaching_router`, and for the
+# same reason the passport's public router sits apart: that router carries
+# `requires_feature("teaching")`, which resolves a feature flag through the
+# caller's organisation membership. A Cloud Run Job has no user, no
+# organisation and nothing for that gate to resolve through.
+#
+# This closes the one gap that kept the pipeline from working end to end.
+# The backend fires the transcode job and deliberately does not wait —
+# encoding takes minutes and an admin's request cannot hold open for it —
+# so without this report nothing ever learns the job finished,
+# `transcoded_at` stays null, and the availability gate hides a module
+# whose renditions are sitting in the bucket.
+@router.post(
+    "/ci/teaching/transcode-complete",
+    response_model=TranscodeCompleteOut,
+)
+def ci_transcode_complete(
+    request: Request,
+    body: TranscodeCompleteIn,
+    db: Session = Depends(get_core_db),
+) -> TranscodeCompleteOut:
+    """Record that the transcode job produced and verified its outputs.
+
+    Authenticates with a shared token (TEACHING_TRANSCODE_CALLBACK_TOKEN),
+    the same shape as the CI sync endpoint above. Terraform generates the
+    value and fills both ends, so the two cannot drift apart.
+
+    Idempotent: re-running a job for the same asset reports the same
+    outputs and rewrites the same columns, which is what makes a manual
+    re-run a safe remedy.
+    """
+    from app.features.teaching.models import ModuleMediaLink
+    from app.features.teaching.transcode import RENDITION_FLAGS, start_caption
+
+    token = settings.TEACHING_TRANSCODE_CALLBACK_TOKEN
+    if not token:
+        raise HTTPException(503, "Transcode callback token not configured")
+
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(401, "Missing Bearer token")
+
+    provided = auth_header.removeprefix("Bearer ").strip()
+    if not hmac.compare_digest(provided, token.get_secret_value()):
+        raise HTTPException(401, "Invalid token")
+
+    link = db.execute(
+        select(ModuleMediaLink).where(
+            ModuleMediaLink.organisation_id == body.org_id,
+            ModuleMediaLink.question_bank_id == body.module_id,
+            ModuleMediaLink.asset_id == body.asset_id,
+        )
+    ).scalar_one_or_none()
+    if link is None:
+        # A job whose link row was deleted while it ran. Not an error the
+        # job can act on, and it must not retry: the bytes it wrote are
+        # orphaned and the lifecycle rule will sweep them.
+        raise HTTPException(404, "No such media asset")
+
+    # The job reports filenames; the suffix-to-column mapping lives here,
+    # in the one place that already owns it. A job that knew column names
+    # would need redeploying whenever one was renamed.
+    names = set(body.outputs)
+    set_flags: list[str] = []
+    for field, suffix in RENDITION_FLAGS:
+        present = any(name.endswith(suffix) for name in names)
+        setattr(link, field, present)
+        if present:
+            set_flags.append(field)
+
+    # Last, and only once the flags are right: this is what the
+    # availability gate reads, so setting it before them would open a
+    # window where a module is servable and its renditions unrecorded.
+    link.transcoded_at = datetime.now(UTC)
+    db.flush()
+
+    logger.info(
+        "transcode recorded org=%s module=%s asset=%s outputs=%d",
+        body.org_id,
+        body.module_id,
+        body.asset_id,
+        len(names),
+    )
+
+    # Captions follow the renditions, and only now can they: Whisper
+    # transcribes the 720p file, so firing at upload would race a job
+    # that takes minutes and lose. Fired after the flush, so a caption
+    # job that starts immediately finds the row already recorded.
+    #
+    # Never allowed to fail this request. The renditions are what was
+    # being recorded here, and losing `transcoded_at` over an
+    # unreachable caption job would keep the module hidden — a missing
+    # subtitle track is a smaller fault than a video nobody can watch.
+    if any(name.endswith("-720p.mp4") for name in names):
+        start_caption(body.org_id, body.module_id, body.asset_id)
+
+    return TranscodeCompleteOut(recorded=True, flags=set_flags)
+
+
+# --- Caption completion callback (service token auth) ---
+#
+# Its own endpoint rather than a mode of the one above. The transcode
+# callback rewrites every rendition flag from the list it is given, so a
+# report naming only a `.vtt` would clear `has_1080p` and `has_poster`
+# and stamp a `transcoded_at` for a transcode that never ran.
+@router.post(
+    "/ci/teaching/caption-complete",
+    response_model=CaptionCompleteOut,
+)
+def ci_caption_complete(
+    request: Request,
+    body: CaptionCompleteIn,
+    db: Session = Depends(get_core_db),
+) -> CaptionCompleteOut:
+    """Record that a caption track exists for one asset.
+
+    Shares the transcode callback's token: both are the same trust
+    boundary — a Cloud Run Job in this project reporting on work the
+    backend asked it to do — and a second secret would be two things to
+    rotate for one guarantee.
+    """
+    from app.features.teaching.models import ModuleMediaLink
+
+    token = settings.TEACHING_TRANSCODE_CALLBACK_TOKEN
+    if not token:
+        raise HTTPException(503, "Transcode callback token not configured")
+
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(401, "Missing Bearer token")
+
+    provided = auth_header.removeprefix("Bearer ").strip()
+    if not hmac.compare_digest(provided, token.get_secret_value()):
+        raise HTTPException(401, "Invalid token")
+
+    link = db.execute(
+        select(ModuleMediaLink).where(
+            ModuleMediaLink.organisation_id == body.org_id,
+            ModuleMediaLink.question_bank_id == body.module_id,
+            ModuleMediaLink.asset_id == body.asset_id,
+        )
+    ).scalar_one_or_none()
+    if link is None:
+        raise HTTPException(404, "No such media asset")
+
+    # This column only. `captions_reviewed_at` is a human's statement
+    # that they read the text, and a job re-running must not erase it —
+    # nor claim it, which is why this never sets it either.
+    link.has_captions = True
+    db.flush()
+
+    # No caption text here or anywhere near this log: it is a transcript
+    # of a lecture and this log is not PHI-safe.
+    logger.info(
+        "captions recorded org=%s module=%s asset=%s",
+        body.org_id,
+        body.module_id,
+        body.asset_id,
+    )
+
+    return CaptionCompleteOut(recorded=True)
 
 
 app.include_router(router)

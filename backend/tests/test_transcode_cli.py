@@ -360,3 +360,81 @@ class TestFfmpegFailure:
             )
             with pytest.raises(RuntimeError, match="Invalid data found"):
                 _run_ffmpeg(["-i", "x.mp4", "out.mp4"])
+
+
+class TestCompletionReport:
+    """The callback that tells the backend the renditions exist.
+
+    Until this lands, `transcoded_at` stays null and the module stays
+    hidden — so what matters is that it is attempted, that it carries
+    filenames rather than paths, and above all that it can never fail
+    the job. The encode has succeeded and the source is about to be
+    deleted by the time it runs.
+    """
+
+    def test_skips_silently_when_unconfigured(self, capsys) -> None:
+        from scripts.transcode_cli import _report_complete
+
+        # Development: no backend to tell. Not an error.
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("TRANSCODE_CALLBACK_URL", None)
+            os.environ.pop("TRANSCODE_CALLBACK_TOKEN", None)
+            _report_complete(7, "mod", "asset-1", ["7/mod/asset-1.mp4"])
+
+        assert "Callback not configured" in capsys.readouterr().err
+
+    def test_posts_names_not_paths(self) -> None:
+        from scripts.transcode_cli import _report_complete
+
+        env = {
+            "TRANSCODE_CALLBACK_URL": "https://example.test/cb",
+            "TRANSCODE_CALLBACK_TOKEN": "tok",
+        }
+        with patch.dict(os.environ, env, clear=False):
+            with patch("httpx.post") as post:
+                post.return_value = MagicMock(status_code=200)
+                _report_complete(
+                    7,
+                    "mod",
+                    "asset-1",
+                    ["7/mod/asset-1-720p.mp4", "7/mod/asset-1-poster.jpg"],
+                )
+
+        # The backend rebuilds the prefix from the ids, so a report
+        # cannot name a path outside its own module.
+        sent = post.call_args.kwargs["json"]
+        assert sent["outputs"] == [
+            "asset-1-720p.mp4",
+            "asset-1-poster.jpg",
+        ]
+        assert sent["org_id"] == 7
+        assert post.call_args.kwargs["headers"]["Authorization"] == (
+            "Bearer tok"
+        )
+
+    def test_a_refusal_does_not_raise(self, capsys) -> None:
+        from scripts.transcode_cli import _report_complete
+
+        env = {
+            "TRANSCODE_CALLBACK_URL": "https://example.test/cb",
+            "TRANSCODE_CALLBACK_TOKEN": "tok",
+        }
+        with patch.dict(os.environ, env, clear=False):
+            with patch("httpx.post") as post:
+                post.return_value = MagicMock(status_code=401)
+                _report_complete(7, "mod", "asset-1", ["7/mod/a.mp4"])
+
+        assert "refused" in capsys.readouterr().err
+
+    def test_a_network_failure_does_not_raise(self, capsys) -> None:
+        from scripts.transcode_cli import _report_complete
+
+        env = {
+            "TRANSCODE_CALLBACK_URL": "https://example.test/cb",
+            "TRANSCODE_CALLBACK_TOKEN": "tok",
+        }
+        with patch.dict(os.environ, env, clear=False):
+            with patch("httpx.post", side_effect=OSError("no route")):
+                _report_complete(7, "mod", "asset-1", ["7/mod/a.mp4"])
+
+        assert "callback failed" in capsys.readouterr().err
