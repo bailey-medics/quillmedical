@@ -29,6 +29,8 @@ the caller was told.
 from __future__ import annotations
 
 import hashlib
+import io
+import zipfile
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -1834,6 +1836,160 @@ class TestAdminVerifyAndRevoke:
         admin_client = _login(test_client, "otheradmin")
         response = admin_client.delete(
             f"/api/passport/assessors/{assessor_id}/membership"
+        )
+
+        assert response.status_code == 404
+
+
+class TestExport:
+    """Taking the record away.
+
+    All three are holder-only. The zip is the one that could never be
+    anything else — it copies the canonical files byte for byte, so it
+    carries the holder's reflections whatever the caller asked for — but
+    an export hands over a whole passport in one call, and that is not
+    something to offer a named assessor for the sake of symmetry with
+    the per-record reads.
+
+    The content checks are deliberately about the bytes rather than the
+    status code. A route that returned an empty body, or JSON, or an
+    error page with a 200 on it, would satisfy a status assertion and
+    hand the holder a file that is not what it claims to be.
+    """
+
+    def test_the_holder_can_export_markdown(
+        self, holder_client: TestClient
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+
+        response = holder_client.get(f"/api/passport/{passport_id}/export.md")
+
+        assert response.status_code == 200, response.text
+        assert response.headers["content-type"].startswith("text/markdown")
+        assert passport_id in response.headers["content-disposition"]
+
+    def test_the_holder_can_export_a_pdf(
+        self, holder_client: TestClient
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+
+        response = holder_client.get(f"/api/passport/{passport_id}/export.pdf")
+
+        assert response.status_code == 200, response.text
+        assert response.headers["content-type"] == "application/pdf"
+        # A PDF says so in its first bytes. Without this the test would
+        # pass on an empty body or an error page served with a 200.
+        assert response.content.startswith(b"%PDF")
+
+    def test_the_holder_can_export_the_bundle(
+        self, holder_client: TestClient
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+
+        response = holder_client.get(f"/api/passport/{passport_id}/export.zip")
+
+        assert response.status_code == 200, response.text
+        assert response.headers["content-type"] == "application/zip"
+        assert response.content.startswith(b"PK")
+
+    def test_the_bundle_holds_what_a_holder_needs(
+        self, holder_client: TestClient
+    ) -> None:
+        """The README and the git bundle above all.
+
+        The zip is the artefact a registrar carries between trusts, and
+        it is worth nothing if it arrives without the explanation or the
+        history.
+        """
+        passport_id = _create_passport(holder_client)
+
+        response = holder_client.get(f"/api/passport/{passport_id}/export.zip")
+
+        with zipfile.ZipFile(io.BytesIO(response.content)) as archive:
+            names = set(archive.namelist())
+
+        assert "README.md" in names
+        assert "VERIFY.md" in names
+        assert "passport.bundle" in names
+
+    def test_reflections_are_left_out_unless_asked_for(
+        self, holder_client: TestClient
+    ) -> None:
+        """The default is the narrow one.
+
+        A rendering handed to a panel or an employer must not carry a
+        reflection by accident: written reflection can be disclosed in
+        legal proceedings, so forgetting the parameter has to fail
+        safe rather than fail open.
+        """
+        passport_id = _create_passport(holder_client)
+        holder_client.post(
+            f"/api/passport/{passport_id}/reflections",
+            json={
+                "title": "A difficult airway",
+                "written_on": "2026-03-14",
+                "body": "What I would do differently next time.",
+                "anonymised_confirmed": True,
+            },
+        )
+
+        default = holder_client.get(f"/api/passport/{passport_id}/export.md")
+        asked = holder_client.get(
+            f"/api/passport/{passport_id}/export.md?reflections=true"
+        )
+
+        assert "What I would do differently" not in default.text
+        assert "What I would do differently" in asked.text
+
+    @pytest.mark.parametrize("suffix", ["md", "pdf", "zip"])
+    def test_an_unrelated_user_cannot_export(
+        self,
+        test_client: TestClient,
+        passport_store: LocalPassportStore,
+        org: Organisation,
+        suffix: str,
+    ) -> None:
+        """404 rather than 403, as everywhere else."""
+        holder_client = _login(test_client, "holder")
+        passport_id = _create_passport(holder_client)
+
+        bystander_client = _login(test_client, "bystander")
+        response = bystander_client.get(
+            f"/api/passport/{passport_id}/export.{suffix}"
+        )
+
+        assert response.status_code == 404
+
+    @pytest.mark.parametrize("suffix", ["md", "pdf", "zip"])
+    def test_a_named_assessor_cannot_export_either(
+        self,
+        test_client: TestClient,
+        passport_store: LocalPassportStore,
+        org: Organisation,
+        assessor: User,
+        suffix: str,
+    ) -> None:
+        """Being asked to sign one competency is not being handed the lot.
+
+        An assessor may read the sign-off they were named on. An export
+        is every record in the passport, reflections included in the
+        zip's case, which is a different thing entirely.
+        """
+        holder_client = _login(test_client, "holder")
+        passport_id = _create_passport(holder_client)
+        holder_client.post(
+            f"/api/passport/{passport_id}/competencies/{COMPETENCY}"
+            "/requests",
+            json={
+                "assessor_user_id": assessor.id,
+                "observed_on": "2026-03-14",
+                "level_id": LEVEL,
+            },
+        )
+
+        assessor_client = _login(test_client, "assessor")
+        response = assessor_client.get(
+            f"/api/passport/{passport_id}/export.{suffix}"
         )
 
         assert response.status_code == 404

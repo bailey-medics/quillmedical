@@ -3032,7 +3032,8 @@ explicitly deferred here.
         `ErrorMessage` — its icon box wants to be a `<span>` — and
         affects every field, so it is its own change rather than
         something to slip into a passport commit.
-      - [ ] **The evidence uploaders need a backend route, and should
+      - [x] **Moved to phase 7 as its own checkbox.** Left here as the
+        note that found it. **The evidence uploaders need a backend route, and should
         follow the video upload pattern rather than inventing one.**
         `2026-08-31-gcp-video-auth-gate-plan.md` established it: the
         browser asks for a signed URL, PUTs straight to GCS with progress
@@ -3164,17 +3165,32 @@ entry. The suite stands at 38 page tests, 159 component tests and 586
 Storybook tests.
 
 **Three components could not be built**, because the routes they need
-were never written despite having schemas: `EvidenceUploader` and
-`CertificateUploader` want a signed-URL endpoint (the video pattern in
-`use-module-media.ts` is the model), and `PassportExportButtons` wants
-the export routes. `CertificateCard` is unblocked but was left with
-them. These are listed under deferred items.
+have no path behind them: `EvidenceUploader` and `CertificateUploader`
+want a signed-URL endpoint, and `PassportExportButtons` wants the export
+routes — whose work is written and tested in `export.py` and simply
+never given a path. `CertificateCard` is unblocked but was left with
+them. **All three are phase 7 checkboxes**, at the head of that
+section. They were commentary buried in finished phase 6 steps until
+somebody asked why
+uploads and export were not on the list, which is a fair question to
+have had to ask: a holder expects to take their record away and to
+attach their evidence, and neither was written down as work.
 
-**One page is knowingly incomplete.** `PassportSignOffPage` resolves
-its record from the assessor's inbox, but the inbox carries no passport
-id, so the page renders the record and refuses to submit. The fix is a
-backend change — either the inbox returns the passport id, or sign-off
-is addressed by request id alone.
+**The assessor sign-off flow now works.** `PassportSignOffPage` used to
+render a request and refuse to submit, because the inbox carried no
+passport id while the sign-off endpoint is addressed by one. The inbox
+now returns `InboxItemOut` — the passport id paired with the sign-off —
+rather than a bare `SignOffOut`. It was not added to `SignOffOut`
+because the other five sign-off routes take the passport in their path,
+so a response should carry only what its reader cannot already know.
+The id was on `passport_signoff_request` all along and the route read
+it to fetch each record, then dropped it. Six compatibility decisions
+cover the move, one per required field that nesting pushed a level
+down.
+
+The two options weighed at the time were the one taken — the inbox
+returns the passport id — and addressing sign-off by request id alone,
+which would have meant a second way to reach the same operation.
 
 **Things a fresh session will otherwise rediscover the hard way:**
 
@@ -3225,6 +3241,37 @@ deferred items above as something to stop doing eventually.
 
 ## Phase 7: hardening and launch
 
+The first three were written up as commentary inside finished phase 6
+steps rather than as work, which left three things a holder would
+reasonably expect — take my record away, attach my certificate, attach
+my evidence — recorded nowhere anybody would look for them. They are
+not deferred items: deferring is for what nobody should build yet.
+
+- [x] Wire the export routes: `GET /api/passport/{id}/export.md`,
+      `export.pdf` and `export.zip`. The work behind them is already
+      built and tested — `export.py` renders the Markdown, the PDF and
+      the zip bundle with a `git bundle` inside it — but no route was
+      ever added, so the module is imported only by its own two test
+      files. Smallest of the three, and the end-to-end test below
+      cannot run until it is done. Then build `PassportExportButtons`.
+- [ ] Add a file to a certificate. The four certificate routes exist
+      and are full CRUD, but `CertificateIn` carries metadata alone, so
+      a holder can record "ALS course, March 2026" and cannot attach
+      the certificate. Needs the signed-URL endpoint below, then
+      `CertificateUploader` and `CertificateCard`.
+- [ ] Add evidence upload, the one genuinely unbuilt piece. No route
+      and no signed-URL endpoint: `EvidenceUploadOut` is a schema with
+      nothing behind it, and `blobs.py` is server-side storage rather
+      than a browser path. Follow the video pattern established by
+      `2026-08-31-gcp-video-auth-gate-plan.md` — the browser asks for a
+      signed URL, PUTs straight to GCS with progress via
+      `XMLHttpRequest`, then calls back to record the result, so the
+      backend never sees the bytes. `startResumableUpload` /
+      `sendToSession` / `putToBucket` in
+      `frontend/src/features/teaching/use-module-media.ts` are the
+      working shape to lift; `MediaDropzone` beside them hardcodes
+      video MIME types and needs an `accept` prop. Then build
+      `EvidenceUploader`.
 - [ ] End-to-end test: holder requests, assessor signs, holder exports
       PDF, hash on PDF matches repository.
 - [ ] Security review of upload handling (type sniffing, size limits,
