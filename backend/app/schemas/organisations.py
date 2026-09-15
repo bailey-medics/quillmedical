@@ -4,7 +4,10 @@ This module defines request and response models for managing organisations,
 sites, staff assignments, and feature toggles.
 """
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
+
+from app.cbac.base_professions import PROFESSION_IDS
+from app.cbac.competencies import validate_competency_ids
 
 # === Organisations: Request Models ===
 
@@ -48,11 +51,39 @@ class AddStaffIn(BaseModel):
 
     Attributes:
         user_id: ID of the user to add as staff.
+        base_profession: Profession to grant in the same act, where the
+            person holds nothing a member of staff would. Optional: adding
+            somebody who is already staff elsewhere needs no grant.
+        additional_competencies: Competencies to grant alongside it, for
+            the ordinary case where a real person diverges from a template.
     """
 
     model_config = ConfigDict(extra="forbid")
 
     user_id: int
+    base_profession: str | None = None
+    additional_competencies: list[str] | None = None
+
+    @field_validator("base_profession")
+    @classmethod
+    def _profession_exists(cls, value: str | None) -> str | None:
+        """Reject a profession that is not in the catalogue."""
+        if value is None:
+            return None
+        if value not in PROFESSION_IDS:
+            raise ValueError(
+                f"Unknown base profession: {value}. Professions are "
+                "defined in shared/base-professions.yaml."
+            )
+        return value
+
+    @field_validator("additional_competencies")
+    @classmethod
+    def _competencies_exist(cls, value: list[str] | None) -> list[str] | None:
+        """Reject a competency id that is not in the catalogue."""
+        if value is None:
+            return None
+        return validate_competency_ids(value)
 
 
 class AddPatientIn(BaseModel):

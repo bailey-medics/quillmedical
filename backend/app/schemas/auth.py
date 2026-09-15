@@ -334,6 +334,7 @@ class UserSummaryItem(BaseModel):
         username: User's username.
         email: User's email.
         platform_role: Whether this person operates Quill itself.
+        competencies: Resolved CBAC competency IDs.
         is_active: Whether user is active.
         full_name: User's full name (optional, for admin responses).
         organisations: List of organisation names (optional, for admin responses).
@@ -344,6 +345,12 @@ class UserSummaryItem(BaseModel):
     username: str
     email: str
     platform_role: str
+    # So a staff picker can tell whether this person holds anything a
+    # member of staff would. Adding somebody who holds nothing staff-like
+    # is a real progression — a patient becoming a healthcare assistant —
+    # and the interface asks rather than refusing, which it cannot do
+    # without knowing what they hold.
+    competencies: list[str]
     is_active: bool
     full_name: str | None = None
     organisations: list[str] | None = None

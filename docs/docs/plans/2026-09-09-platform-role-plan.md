@@ -627,9 +627,21 @@ does not, and removing the ladder removes the suggestion.
             at 3644. Everything else is carriage: schema fields, docstrings, the
             `permission_level` filter, and one analytics label. Nothing else in the
             codebase decides access on the old column.
-      - [ ] **Contract: drop `system_permissions`.** Breaking API change, three response
+      - [x] **Contract: drop `system_permissions`.** Breaking API change, three response
             schemas, so it needs a decision file and the `api-breaking-change-review`
             approval.
+            - **Done, merged as #663.** Both approvals were granted and the column is
+              gone. Seven changes were flagged rather than the three anticipated: the
+              three response schemas, two request bodies, the `permission_level` query
+              parameter, and `ExternalAccessGrant.user_type`, which nobody had counted
+              because nothing read it. Seven decision files, all
+              `forces_reload: false`.
+            - **The merge broke the docs build**, and it is the sort of break no test
+              tier catches. `code/fastapi/system_permissions.md` asked `mkdocstrings`
+              to import a package that had just been deleted, so the failure appeared
+              only once the merge landed on `main`. Fixed in #666, along with three
+              stale passages in `backend/fastapi/index.md` describing the four-level
+              ladder as current.
             - **This cannot come next, though the plan long listed it there.** A column
               with 76 live references is not droppable; every step above has to land
               first. Recorded because the ordering error survived several readings.
@@ -813,9 +825,22 @@ does not, and removing the ladder removes the suggestion.
                         role"**, so five form tests asserting the text by name became
                         ambiguous. They now match the heading by role, which is what
                         they meant: step 4 rendered.
-              - [ ] **3. The column itself.** `drop_column`, the three response schemas,
+              - [x] **3. The column itself.** `drop_column`, the three response schemas,
                     and the `permission_level` query parameter. The only unit needing
                     the two approvals above.
+                    - **The filter was removed, not replaced**, as the staff-picker
+                      finding settled: being staff is membership at a place, so there
+                      was no global rank left to filter on. The three pickers now list
+                      everyone.
+                    - **`update-permissions` went with it** — the CLI action, its
+                      Justfile recipe and its documentation. It existed only to write
+                      this column, and nothing replaces it: a platform role is set from
+                      the admin pages, and `create-superadmin` still makes the first
+                      operator on a new environment.
+                    - **The downgrade restores the shape, not the values.** Nothing else
+                      records what each user's rank was, so every row returns as
+                      `single-user`. Said plainly in the migration rather than left for
+                      somebody to discover during a rollback.
                     - **Blocked on the migration merging, not on anything in the code.**
                       Units 1 and 2 are on `feature/contract-backend-reads` (#657),
                       which is open. Dropping the column on top of that branch would
@@ -1250,9 +1275,16 @@ than a fact.
           `test_base_profession_entry_rejects_invalid_permission_level` existed only
           to check that field's validation, so it tested nothing once the field was
           gone. Deleted rather than left asserting an absence.
-- [ ] **Delete `check_permission_level` and the ordered list.** A hierarchy of one is not a
+- [x] **Delete `check_permission_level` and the ordered list.** A hierarchy of one is not a
       hierarchy. This is the step that makes the change irreversible in a good way: nothing
       can silently reintroduce a rung.
+      - **Done, in the contract step as predicted.** The whole `app.system_permissions`
+        package is deleted — `check_permission_level`, `PERMISSION_LEVELS` and the
+        module that held them. Nothing in live code names any of them.
+      - **What remains is prose, and should stay.** Around 38 mentions survive across
+        migrations that must keep the column name in their DDL, and comments explaining
+        what replaced it. A comment naming the thing that went is how the next reader
+        understands why `platform_role` is shaped as it is.
       - **Its only consumer is already gone**, removed with the backend reads — see the
         `check_permission_level` note under that step. What remains is deleting the
         function and `PERMISSION_LEVELS` themselves, which waits on the
@@ -1263,7 +1295,12 @@ than a fact.
         as part of unit 3 rather than after it, and the box stays open until the code
         is actually gone.
 
-## Live: learning content is readable across organisations
+## Fixed: learning content was readable across organisations
+
+Headed "Live" while it was, which is why it sat above the steps rather than
+among the findings. All three boxes below are closed; the heading is changed
+rather than the section moved, so anyone who saw it open finds it where they
+left it.
 
 Found while planning self-hosted video. `get_learning_content`
 (`GET /api/teaching/modules/{module_id}/learning`) is guarded by two things and
@@ -1370,10 +1407,27 @@ is no case to carve out, and no "public modules" branch to maintain.
 - **Do not start this while the staff and patient namespaces are unsettled.** If patients end
   up needing a platform-side representation, the shape of this field could change again.
 
-## Finding: `base_profession` should initialise a user, not be stored against them
+## Decided: `base_profession` stays stored against a person
 
-Surfaced while deciding how a superadmin comes to hold `manage_users`. Recorded here
-because it is a separate question from this plan and should not be smuggled into it.
+Surfaced while deciding how a superadmin comes to hold `manage_users`, and argued
+below for removing the field. **That argument was not taken.** The field stays,
+and the reasoning against it is left standing so the next reader can see both
+sides rather than only the conclusion.
+
+**What it records is worth keeping: what this person was last intended to hold.**
+Competencies drift from the template by design, and the gap between the two is
+itself information — it says somebody made a deliberate exception. Expanding the
+profession into a competency list at creation and discarding it would throw that
+away, leaving a set of ids with nothing saying what shape they were meant to be.
+
+**Changing it is no longer destructive**, which was the strongest objection. A
+profession change now carries the old profession's competencies into
+`additional_competencies` rather than replacing them, so a patient who becomes a
+healthcare assistant keeps the competency for their own record. Anything a person
+should lose is removed deliberately through `removed_competencies`, which is
+visible, rather than vanishing because a template changed underneath them.
+
+The paragraphs below describe the position this replaces.
 
 **A profession describes a person at one moment, and people do not stay still.** They
 progress through training grades. They lose competencies by not practising. They have
@@ -1410,11 +1464,11 @@ have gone red if it had been introduced by accident. A test asserting the
 silent loss should come first, as the escalation test did for
 `update_my_competencies`, so the fix is a visible change to a red test.
 
-- **This is a breaking API change.** `base_profession` is in two response schemas —
-  `UserCompetenciesResponse` in `schemas/cbac.py` and the user response in
-  `schemas/auth.py` — so removing it needs an `oasdiff` finding and a decision file, and
-  the column needs a migration that expands each user's profession into their competencies
-  before it is dropped.
+- **Removing it would have been a breaking API change**, since `base_profession` is in
+  two response schemas — `UserCompetenciesResponse` in `schemas/cbac.py` and the user
+  response in `schemas/auth.py`. Moot now the field stays, and worth noting that both
+  schemas are right to carry it: a caller showing someone's competencies can also show
+  what they were meant to be.
 - **It interacts with per-place competencies.** `2026-09-06-org-scoped-access-findings.md`
   argues a competency is held *somewhere*; a single global profession is the wrong shape
   for that regardless, so these two questions may be answered together rather than

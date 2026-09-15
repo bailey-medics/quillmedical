@@ -2549,6 +2549,7 @@ def list_users(
                     username=user.username,
                     email=user.email,
                     platform_role=user.platform_role,
+                    competencies=user.get_final_competencies(),
                     is_active=user.is_active,
                 )
                 for user in users
@@ -2642,6 +2643,7 @@ def list_users(
                     email=user.email,
                     full_name=user.full_name or "",
                     platform_role=user.platform_role,
+                    competencies=user.get_final_competencies(),
                     is_active=user.is_active,
                     organisations=user_orgs.get(user.id, []),
                     sites=user_sites.get(user.id, []),
@@ -4224,6 +4226,34 @@ def add_staff_to_organisation(
             capacity="staff",
         )
     )
+
+    # The grant, in the same act as the membership. Adding somebody as
+    # staff and then separately remembering to give them competencies is
+    # two steps that can be half-done, and the half-done state is a new
+    # starter who can reach nothing. The interface asks for both at once
+    # where the person holds nothing a member of staff would; either
+    # field may be omitted for somebody who is already staff elsewhere.
+    #
+    # Additive, like a profession change on `update_user`: whatever the
+    # person already held survives, because a patient becoming a
+    # healthcare assistant keeps the competency for their own record.
+    if body.base_profession is not None:
+        carried_over = set(
+            get_profession_base_competencies(user.base_profession)
+        )
+        user.base_profession = body.base_profession
+        if carried_over:
+            granted = set(user.additional_competencies or [])
+            granted.update(carried_over)
+            granted.difference_update(
+                get_profession_base_competencies(body.base_profession)
+            )
+            user.additional_competencies = sorted(granted)
+
+    if body.additional_competencies:
+        granted = set(user.additional_competencies or [])
+        granted.update(body.additional_competencies)
+        user.additional_competencies = sorted(granted)
 
     return OrgStaffAddResponse(
         organisation_id=org_id,
