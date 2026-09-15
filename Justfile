@@ -775,6 +775,213 @@ show-dev-containers:
     docker compose -f compose.dev.yml ps
 
 
+# Prefix a bare name with feature/, leaving an already-prefixed one alone.
+#
+# Branch protection rejects anything outside feature/*, hotfix/*, copilot/*
+# and renovate/*, and it rejects it at creation time — so a stack branch
+# named without the prefix fails at the push, once the commits already
+# exist. Cheaper to add it here than to unpick a branch by hand.
+_stack-branch-name name:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    case "{{name}}" in
+        feature/*|hotfix/*|copilot/*|renovate/*) echo "{{name}}" ;;
+        *) echo "feature/{{name}}" ;;
+    esac
+
+
+# Refuse a stack operation when a stack branch lives in another worktree.
+#
+# gh-stack keeps its state in $(git rev-parse --git-dir)/gh-stack, which for
+# a worktree is .git/worktrees/<name>/gh-stack: worktree-local, invisible to
+# the other checkouts, and removed with the worktree. So a stack belongs to
+# the worktree that created it.
+#
+# The guard matters because `gh stack rebase` does not enforce that itself.
+# Given a branch checked out elsewhere it prints the git error, skips the
+# branch, and still exits 0 (github/gh-stack#35, reproduced here on
+# 2026-09-14). Anything chaining `rebase && submit` would then push a stack
+# it believed was rebased and was not — the silent-success failure the
+# worktree notes in CLAUDE.md already record once.
+_stack-guard:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    python3 scripts/stack-status.py --check
+    status=$?
+    # 1 is "no stack here", which the calling recipe reports for itself.
+    if [ "${status}" -eq 2 ]; then
+        echo "✗ Refusing to run: this stack spans more than one worktree." >&2
+        echo "  Free the branches above, or run this from the worktree" >&2
+        echo "  that owns the stack." >&2
+        exit 1
+    fi
+
+
+alias sta := stack-add
+# Add a branch on top of the current stack, committing what is staged
+stack-add name message:
+    #!/usr/bin/env bash
+    {{initialise}} "stack-add"
+    set -euo pipefail
+    just _stack-guard
+    branch="$(just _stack-branch-name '{{name}}')"
+    # -A stages everything including untracked files, which is what makes
+    # this one command rather than three. The commit message is required
+    # rather than optional: without -m, gh opens an editor, and a recipe
+    # that sometimes opens an editor is a recipe that hangs in a script.
+    gh stack add -A -m "{{message}}" "${branch}"
+    python3 scripts/stack-status.py
+
+
+alias stc := stack-checkout
+# Check out a stack by number, PR number, PR URL or branch (picker if empty)
+stack-checkout target="":
+    #!/usr/bin/env bash
+    {{initialise}} "stack-checkout"
+    set -euo pipefail
+    # The recovery path when a stack's local state is gone — a removed
+    # worktree takes .git/worktrees/<name>/gh-stack with it. This fetches
+    # the stack back from GitHub, which works once two or more pull
+    # requests exist. With no argument it opens a picker of every stack.
+    gh stack checkout {{target}}
+    python3 scripts/stack-status.py
+
+
+alias stl := stack-log
+# Show the current stack (fast, local only — no network)
+stack-log:
+    #!/usr/bin/env bash
+    # Trace off before `initialise`, not after: this recipe exists to draw a
+    # picture, and even the two trace lines the setup itself emits are
+    # enough to push the stack down the terminal. Same reasoning as
+    # `terraform-github`, applied one line earlier.
+    set +x
+    {{initialise}} "stack-log"
+    set +x
+    # Local flags only: branch order, merged/queued, needs-rebase, and which
+    # branches another worktree holds. Instant and works offline. `just stll`
+    # is the same picture with pull request and CI state joined on.
+    #
+    # Exit 1 means "no stack here", which the script has already explained.
+    # Passing it through would make just print "Recipe failed", dressing an
+    # ordinary answer up as a fault.
+    python3 scripts/stack-status.py || true
+
+
+alias stll := stack-log-long
+# Show the current stack with pull request and CI state (one network call)
+stack-log-long:
+    #!/usr/bin/env bash
+    set +x
+    {{initialise}} "stack-log-long"
+    set +x
+    # One `gh pr list` for the whole stack rather than one call per branch,
+    # so a six-deep stack is one round trip. This is the view that answers
+    # "is this one green yet" without opening a browser.
+    python3 scripts/stack-status.py --prs || true
+
+
+alias stm := stack-move
+# Move about the stack: up, down, top, bottom, trunk, or a picker if empty
+stack-move direction="":
+    #!/usr/bin/env bash
+    {{initialise}} "stack-move"
+    set -euo pipefail
+    # `gh stack switch` with no argument opens an interactive picker; the
+    # named directions are the cheap ones. Wrapped together because they
+    # are the same act — going somewhere else in the stack — and because
+    # redrawing afterwards is what makes the move legible.
+    case "{{direction}}" in
+        "")               gh stack switch ;;
+        up|u)             gh stack up ;;
+        down|d)           gh stack down ;;
+        top|t)            gh stack top ;;
+        bottom|b)         gh stack bottom ;;
+        trunk|main)       gh stack trunk ;;
+        *)
+            echo "✗ Unknown direction: {{direction}}" >&2
+            echo "  Use: up, down, top, bottom, trunk — or none for a picker." >&2
+            exit 1
+            ;;
+    esac
+    python3 scripts/stack-status.py
+
+
+alias stn := stack-new
+# Start a new stack: branch, commit named files (or all), draw the stack
+stack-new name message *FILES:
+    #!/usr/bin/env bash
+    {{initialise}} "stack-new"
+    set -euo pipefail
+    branch="$(just _stack-branch-name '{{name}}')"
+    # init adopts the branch it creates as the bottom of a new stack, based
+    # on the default branch. No guard here: there is no stack to span a
+    # worktree yet, and this is the command that creates one.
+    git switch -c "${branch}"
+    gh stack init "${branch}"
+    # Named files stage only those; no argument stages everything. The
+    # bottom of a stack is the branch most likely to want a subset — it has
+    # to stand alone and deploy on its own — while the branches above it
+    # usually take the rest, which is why `stack-add` always stages all.
+    if [ -n "{{FILES}}" ]; then
+        git add -- {{FILES}}
+    else
+        git add -A
+    fi
+    git commit -m "{{message}}"
+    python3 scripts/stack-status.py
+
+
+alias str := stack-rebase
+# Rebase the whole stack onto an updated trunk, refusing if it spans worktrees
+stack-rebase:
+    #!/usr/bin/env bash
+    {{initialise}} "stack-rebase"
+    set -euo pipefail
+    just _stack-guard
+    gh stack rebase
+    # gh stack rebase exits 0 even when it skipped a branch, so the result is
+    # verified rather than trusted: `view --json` reports needsRebase
+    # correctly for exactly the branch a silent skip leaves behind.
+    if python3 scripts/stack-status.py --no-colour | grep -q "needs rebase"; then
+        echo "" >&2
+        echo "✗ Branches still need a rebase after gh stack rebase." >&2
+        echo "  It reports success even when it skips a branch." >&2
+        echo "  Run 'just stl' to see which." >&2
+        exit 1
+    fi
+    python3 scripts/stack-status.py
+
+
+alias sts := stack-submit
+# Push the stack and open or update its pull requests, as drafts
+stack-submit:
+    #!/usr/bin/env bash
+    {{initialise}} "stack-submit"
+    set -euo pipefail
+    just _stack-guard
+    # --auto skips the interactive editor and opens every new pull request as
+    # a draft, which is what this repository needs: the heavy CI tier and the
+    # four gate contexts fire on ready_for_review and synchronize, never on
+    # opened, so a pull request created ready never gets them. Do not add
+    # --open here; `gh pr ready` or /crp final is how a branch leaves draft.
+    gh stack submit --auto
+    python3 scripts/stack-status.py --prs
+
+
+alias sty := stack-sync
+# Drop merged branches, re-target the rest, and redraw the stack
+stack-sync:
+    #!/usr/bin/env bash
+    {{initialise}} "stack-sync"
+    set -euo pipefail
+    just _stack-guard
+    # Run this after a pull request merges: it notices the merge, deletes the
+    # branch, cascade-rebases what sat above it and pushes the result.
+    gh stack sync
+    python3 scripts/stack-status.py --prs
+
+
 alias sd := start-dev
 # Start the dev app (build: 'b' will also build the images)
 start-dev build="":
