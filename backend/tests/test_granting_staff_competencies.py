@@ -28,7 +28,13 @@ from fastapi.testclient import TestClient
 from sqlalchemy import insert, select
 from sqlalchemy.orm import Session
 
-from app.models import Organisation, User, organisation_member
+from app.models import (
+    Organisation,
+    Site,
+    User,
+    organisation_member,
+    organisation_site,
+)
 from app.security import hash_password
 
 
@@ -275,6 +281,141 @@ class TestWhatIsRefused:
             json={
                 "user_id": starter.id,
                 "additional_competencies": ["prescribe_moonbeams"],
+            },
+            headers=_csrf(client),
+        )
+
+        assert response.status_code == 422, response.text
+
+
+class TestTheSameAtASite:
+    """A site is where somebody works, so it asks the same question.
+
+    The two routes share ``grant_staff_competencies`` rather than each
+    carrying a copy of the merge rule, which would drift. These tests
+    are here so the site route is covered in its own right, not left
+    resting on the organisation route's.
+    """
+
+    @pytest.fixture
+    def site(self, db_session: Session, org: Organisation) -> Site:
+        site = Site(name="Ward 9", type="ward")
+        db_session.add(site)
+        db_session.commit()
+        db_session.refresh(site)
+        db_session.execute(
+            insert(organisation_site).values(
+                organisation_id=org.id, site_id=site.id
+            )
+        )
+        db_session.commit()
+        return site
+
+    def test_a_profession_is_granted_with_the_membership(
+        self,
+        test_client: TestClient,
+        db_session: Session,
+        org: Organisation,
+        site: Site,
+        admin: User,
+    ) -> None:
+        starter = _user(db_session, "site_starter", profession="patient")
+
+        client = _login(test_client, "the_admin")
+        response = client.post(
+            f"/api/sites/{site.id}/staff",
+            json={
+                "user_id": starter.id,
+                "role": "staff",
+                "base_profession": "healthcare_assistant",
+            },
+            headers=_csrf(client),
+        )
+
+        assert response.status_code == 200, response.text
+        db_session.refresh(starter)
+        held = starter.get_final_competencies()
+        assert "perform_venepuncture" in held
+        # Additive here too: their own record survives.
+        assert "access_own_patient_records" in held
+
+    def test_the_grant_is_optional(
+        self,
+        test_client: TestClient,
+        db_session: Session,
+        org: Organisation,
+        site: Site,
+        admin: User,
+    ) -> None:
+        nurse = _user(db_session, "site_nurse", profession="registered_nurse")
+        before = sorted(nurse.get_final_competencies())
+
+        client = _login(test_client, "the_admin")
+        response = client.post(
+            f"/api/sites/{site.id}/staff",
+            json={"user_id": nurse.id, "role": "staff"},
+            headers=_csrf(client),
+        )
+
+        assert response.status_code == 200, response.text
+        db_session.refresh(nurse)
+        assert sorted(nurse.get_final_competencies()) == before
+
+    def test_it_reaches_a_role_change_too(
+        self,
+        test_client: TestClient,
+        db_session: Session,
+        org: Organisation,
+        site: Site,
+        admin: User,
+    ) -> None:
+        """Appointing an existing member is when a gap gets noticed.
+
+        The route returns early on an existing membership row, so a
+        grant applied only on insert would silently do nothing here.
+        """
+        member = _user(db_session, "site_member", profession="patient")
+
+        client = _login(test_client, "the_admin")
+        first = client.post(
+            f"/api/sites/{site.id}/staff",
+            json={"user_id": member.id, "role": "trainee"},
+            headers=_csrf(client),
+        )
+        assert first.status_code == 200, first.text
+
+        second = client.post(
+            f"/api/sites/{site.id}/staff",
+            json={
+                "user_id": member.id,
+                "role": "staff",
+                "base_profession": "healthcare_assistant",
+            },
+            headers=_csrf(client),
+        )
+
+        assert second.status_code == 200, second.text
+        assert second.json()["status"] == "updated"
+        db_session.refresh(member)
+        assert "perform_venepuncture" in member.get_final_competencies()
+
+    def test_an_unknown_profession_is_refused(
+        self,
+        test_client: TestClient,
+        db_session: Session,
+        org: Organisation,
+        site: Site,
+        admin: User,
+    ) -> None:
+        starter = _user(db_session, "site_bad", profession="patient")
+
+        client = _login(test_client, "the_admin")
+        response = client.post(
+            f"/api/sites/{site.id}/staff",
+            json={
+                "user_id": starter.id,
+                "role": "staff",
+                "base_profession": "chief_wizard",
             },
             headers=_csrf(client),
         )

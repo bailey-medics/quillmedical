@@ -52,6 +52,7 @@ from app.cbac.base_professions import (
     PROFESSION_IDS,
     SUPERADMIN_PROFESSION,
     get_profession_base_competencies,
+    grant_staff_competencies,
 )
 from app.cbac.competencies import validate_competency_ids
 from app.cbac.positions import (
@@ -4237,23 +4238,9 @@ def add_staff_to_organisation(
     # Additive, like a profession change on `update_user`: whatever the
     # person already held survives, because a patient becoming a
     # healthcare assistant keeps the competency for their own record.
-    if body.base_profession is not None:
-        carried_over = set(
-            get_profession_base_competencies(user.base_profession)
-        )
-        user.base_profession = body.base_profession
-        if carried_over:
-            granted = set(user.additional_competencies or [])
-            granted.update(carried_over)
-            granted.difference_update(
-                get_profession_base_competencies(body.base_profession)
-            )
-            user.additional_competencies = sorted(granted)
-
-    if body.additional_competencies:
-        granted = set(user.additional_competencies or [])
-        granted.update(body.additional_competencies)
-        user.additional_competencies = sorted(granted)
+    grant_staff_competencies(
+        user, body.base_profession, body.additional_competencies
+    )
 
     return OrgStaffAddResponse(
         organisation_id=org_id,
@@ -5232,6 +5219,17 @@ def add_site_staff(
             site_member.c.user_id == user_id,
         )
     ).first()
+    # The grant, in the same act as the membership — see
+    # `grant_staff_competencies`. A site is where somebody works, so the
+    # person becoming staff here is as likely to hold nothing staff-like
+    # as one joining an organisation, and the interface asks the same
+    # question. Applied before the early return below so it reaches a
+    # role change too: appointing an existing member clinical lead is
+    # exactly when a missing competency would be noticed.
+    grant_staff_competencies(
+        target_user, body.base_profession, body.additional_competencies
+    )
+
     if existing:
         # Update role
         db.execute(
