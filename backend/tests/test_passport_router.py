@@ -44,6 +44,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.features.passport import router
+from app.features.passport.blobs import BlobStore
 from app.features.passport.models import (
     AssessorRegistrationVerification,
     Passport,
@@ -61,7 +62,7 @@ from app.models import (
     organisation_site,
     site_member,
 )
-from app.passport_storage import get_passport_store
+from app.passport_storage import get_blob_store, get_passport_store
 from app.security import PASSPORT_INVITE_TYPE, hash_password
 
 #: From the oncology set drafted in Phase 0. Chosen because it declares
@@ -81,10 +82,21 @@ def passport_store(tmp_path: Path) -> Iterator[LocalPassportStore]:
     location even if settings are wrong. Cleared afterwards so one test
     cannot leak a store into the next.
     """
-    store = LocalPassportStore(tmp_path / "passports")
+    root = tmp_path / "passports"
+    store = LocalPassportStore(root)
+    blobs = BlobStore(root)
+
+    # Both, rooted together. Evidence lives beside the repository it
+    # belongs to, so overriding only the passport store would leave the
+    # blob store resolving the real configured location — which is the
+    # one thing this fixture exists to make impossible.
     app.dependency_overrides[get_passport_store] = lambda: store
+    app.dependency_overrides[get_blob_store] = lambda: blobs
+
     yield store
+
     app.dependency_overrides.pop(get_passport_store, None)
+    app.dependency_overrides.pop(get_blob_store, None)
 
 
 def _make_user(
@@ -1839,6 +1851,166 @@ class TestAdminVerifyAndRevoke:
         )
 
         assert response.status_code == 404
+
+
+class TestEvidence:
+    """Uploading a file, and naming it in a record.
+
+    The bytes come through this application deliberately: a blob is
+    addressed by the SHA-256 of its own contents, so the address cannot
+    be computed without reading every byte. That is the whole reason the
+    signed-URL pattern used for teaching videos does not apply, and the
+    reason the size and type checks live at this boundary — `blobs.py`
+    decides neither, because storing is separate from admitting.
+    """
+
+    def _upload(
+        self,
+        client: TestClient,
+        passport_id: str,
+        *,
+        content: bytes = b"%PDF-1.4 a scanned certificate",
+        filename: str = "certificate.pdf",
+        media_type: str = "application/pdf",
+    ) -> Response:
+        return client.post(
+            f"/api/passport/{passport_id}/evidence",
+            files={"file": (filename, content, media_type)},
+        )
+
+    def test_a_holder_can_upload_evidence(
+        self, holder_client: TestClient
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+
+        response = self._upload(holder_client, passport_id)
+
+        assert response.status_code == 201, response.text
+        body = response.json()
+        assert body["filename"] == "certificate.pdf"
+        assert body["media_type"] == "application/pdf"
+        assert body["size_bytes"] > 0
+
+    def test_the_hash_is_of_the_bytes(self, holder_client: TestClient) -> None:
+        """The address is the content, which is the whole integrity claim.
+
+        Asserted against a hash computed here rather than merely checking
+        the shape: a route returning a plausible-looking digest of
+        something else would satisfy a format check and break every
+        verification a holder could run.
+        """
+        passport_id = _create_passport(holder_client)
+        content = b"%PDF-1.4 a scanned certificate"
+
+        response = self._upload(holder_client, passport_id, content=content)
+
+        expected = hashlib.sha256(content).hexdigest()
+        assert response.json()["hash"] == f"sha256:{expected}"
+
+    def test_the_same_file_twice_is_one_blob(
+        self, holder_client: TestClient
+    ) -> None:
+        """So an interrupted upload is retried rather than reconciled."""
+        passport_id = _create_passport(holder_client)
+
+        first = self._upload(holder_client, passport_id)
+        second = self._upload(holder_client, passport_id)
+
+        assert first.status_code == 201
+        assert second.status_code == 201
+        assert first.json()["hash"] == second.json()["hash"]
+
+    def test_an_unsupported_type_is_refused(
+        self, holder_client: TestClient
+    ) -> None:
+        """Storing is separate from admitting, and this is admitting."""
+        passport_id = _create_passport(holder_client)
+
+        response = self._upload(
+            holder_client,
+            passport_id,
+            content=b"#!/bin/sh\necho hello",
+            filename="script.sh",
+            media_type="application/x-sh",
+        )
+
+        assert response.status_code == 400
+
+    def test_an_empty_file_is_refused(self, holder_client: TestClient) -> None:
+        passport_id = _create_passport(holder_client)
+
+        response = self._upload(holder_client, passport_id, content=b"")
+
+        assert response.status_code == 400
+
+    def test_an_unrelated_user_cannot_upload(
+        self,
+        test_client: TestClient,
+        passport_store: LocalPassportStore,
+        org: Organisation,
+    ) -> None:
+        """404 rather than 403, as everywhere else."""
+        holder_client = _login(test_client, "holder")
+        passport_id = _create_passport(holder_client)
+
+        bystander_client = _login(test_client, "bystander")
+        response = self._upload(bystander_client, passport_id)
+
+        assert response.status_code == 404
+
+    def test_a_record_can_name_uploaded_evidence(
+        self, holder_client: TestClient
+    ) -> None:
+        """The upload response goes straight back into the record.
+
+        It is the only place the filename and media type exist: the blob
+        store keeps bytes at a path named by their hash and nothing
+        beside it says what the file was called.
+        """
+        passport_id = _create_passport(holder_client)
+        uploaded = self._upload(holder_client, passport_id).json()
+
+        response = holder_client.post(
+            f"/api/passport/{passport_id}/certificates",
+            json={
+                "title": "Advanced life support",
+                "issuer": "Resuscitation Council UK",
+                "awarded_on": "2026-03-14",
+                "attachments": [uploaded],
+            },
+        )
+
+        assert response.status_code == 201, response.text
+
+    def test_a_record_cannot_name_evidence_that_is_not_there(
+        self, holder_client: TestClient
+    ) -> None:
+        """A dangling reference in a record that claims to be checkable.
+
+        Refused rather than recorded and hoped for: the passport's whole
+        claim is that somebody can verify it years later, and a hash
+        resolving to nothing defeats that quietly.
+        """
+        passport_id = _create_passport(holder_client)
+
+        response = holder_client.post(
+            f"/api/passport/{passport_id}/certificates",
+            json={
+                "title": "Advanced life support",
+                "issuer": "Resuscitation Council UK",
+                "awarded_on": "2026-03-14",
+                "attachments": [
+                    {
+                        "hash": "sha256:" + "ab" * 32,
+                        "filename": "invented.pdf",
+                        "size_bytes": 1,
+                        "media_type": "application/pdf",
+                    }
+                ],
+            },
+        )
+
+        assert response.status_code == 400
 
 
 class TestExport:
