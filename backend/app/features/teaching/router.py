@@ -3084,7 +3084,12 @@ def promote_bank_version(
 
     Rolling back is the same operation naming an earlier version.
     """
-    if org_id not in _get_user_org_ids(user, db):
+    # Membership, not reach. Reach is why a ward trainee receives the
+    # trust's content; it is not why they would decide which version the
+    # trust serves. `_get_user_org_ids` answers reach, so a teaching admin
+    # whose only membership is a linked site passed this check and could
+    # promote for the whole organisation above them.
+    if org_id not in get_member_org_ids(db, user.id):
         raise HTTPException(
             403, "You cannot promote a version for that organisation"
         )
@@ -3163,7 +3168,11 @@ def update_bank_org_settings(
     or closed for any organisation at all — and closing one mid-cohort
     locks its candidates out of an assessment they are part-way through.
     """
-    org_ids = _get_user_org_ids(user, db)
+    # Membership, not reach — the docstring above already says *belong*,
+    # and reaching a trust from a ward is not belonging to it. Closing a
+    # bank is the operation this protects: it locks candidates out of an
+    # assessment they are part-way through.
+    org_ids = get_member_org_ids(db, user.id)
     if org_id not in org_ids:
         raise HTTPException(
             403, "You cannot change settings for that organisation"

@@ -132,10 +132,27 @@ of the unused staff guard. Everything else on the lists below is still a plan.
           `assert 200 == 404`, which is the widening it exists to catch.
         - **`get_user_org_ids` now has no callers.** Left in place so this batch reads as a
           rename and nothing else; deleting it is a one-line follow-up.
-      - [ ] **Batch two: the reach half**, in teaching's router — nine call sites through
-        `_get_user_org_ids`, which already wraps `get_reachable_org_ids`. This is where the
-        widening actually lives, so it wants its own review rather than being buried among
-        renames.
+      - [x] **Batch two: teaching, and it was not all reach.** The nine call sites split two
+        ways, and reading them as one batch would have missed it.
+        - **Five ask content visibility** — `resolve_visible_module`, the bank list and
+          detail, the module list, and starting an assessment. Reach is right there and
+          deliberate: a ward trainee receives what the trust made available, which is what
+          `TestLearningContentGate` already pins.
+        - **Two ask authority, and were wrong.** `promote_bank_version` and
+          `update_bank_org_settings` scoped by reach, so a `teaching_admin` whose only
+          membership was a linked site could decide which version the whole trust serves, or
+          close a bank mid-cohort and lock its candidates out. Both now use
+          `get_member_org_ids`. `update_bank_org_settings` already said "the caller must
+          belong to the organisation named in the path" in its own docstring — reaching a
+          trust from a ward is not belonging to it.
+        - **This one narrows, against the direction named above.** The walk's stated risk is
+          widening, so a narrowing needs evidence nobody legitimate is locked out:
+          `test_teaching_authority_needs_membership.py` asserts the ward admin is refused
+          *and* that an organisation member still passes the place check.
+        - **The existing coverage did not reach it.**
+          `test_promoting_for_an_organisation_you_are_not_in_is_refused` uses an
+          organisation the caller has no relationship to at all, so the site-linked case —
+          the only one where reach and membership differ — was untested.
 - [ ] **Stop registration writing an organisation row for a student.** A student registers
       into a site. Remove the requirement that a site needs an organisation alongside it, in
       `register` and in the two admin user routes.
