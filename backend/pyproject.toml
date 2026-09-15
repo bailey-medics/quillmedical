@@ -24,6 +24,11 @@ psycopg = {extras = ["binary"], version = ">=3.2,<4.0"}
 python-dotenv = "1.2.3"
 httpx = "0.28.1"
 python-jose = {extras = ["cryptography"], version = ">=3.5.0,<4.0.0"}
+# Parsing multipart form bodies, which is how FastAPI receives an
+# uploaded file. Needed by the passport evidence route: a blob is
+# addressed by the hash of its own bytes, so the bytes come through this
+# application rather than going straight to a bucket.
+python-multipart = ">=0.0.20,<0.1.0"
 argon2-cffi = ">=25.1.0,<25.2.0"
 pyotp = ">=2.8.0,<3.0.0"
 itsdangerous = ">=2.2.0,<3.0.0"
