@@ -113,9 +113,20 @@ of the unused staff guard. Everything else on the lists below is still a plan.
         the explicit `get_org_member_ids(..., capacity=...)`, not a silent change under
         them. **Worth remembering: the capacity column makes it possible to narrow a query,
         which is not the same as it being right to.**
-- [ ] **Walk the call sites in batches.** 29 calls to the app-wide resolver — 15 in `main.py`,
+- [x] **Walk the call sites in batches.** 29 calls to the app-wide resolver — 15 in `main.py`,
       7 in the teaching router, 5 in `messaging.py`, 2 internal — and 17 in teaching's own.
       Fifty references to the organisation table in total.
+      - **Done, and the count was wrong in both directions.** It missed eighteen call sites
+        of the singular `_get_user_org_id`, invisible to a grep for the plural name; and it
+        assumed the split would be roughly even. It was not. `get_user_org_ids` now has no
+        callers at all.
+      - **Almost everything meant membership.** Of roughly fifty sites, exactly three still
+        ask reach: teaching's content wrapper and two in the passport router. Every other
+        one — admin place checks, deletion scoping, patient sharing, messaging overlap,
+        eighteen teaching admin routes — means *is this person a member here*.
+      - **Two of the three batches found live defects**, not renames. A ward-level teaching
+        admin could administer the trust above them, in two separate ways. That is the case
+        for walking call sites one at a time rather than running a rename across them.
       - [x] **Batch one: the membership half.** All 24 `get_user_org_ids` call sites outside
         teaching now say `get_member_org_ids` — 18 in `main.py`, 4 in `messaging.py`, 2
         internal to `organisations.py`. Behaviour-identical, because `get_user_org_ids`
@@ -190,8 +201,24 @@ of the unused staff guard. Everything else on the lists below is still a plan.
         already distinguishes the two questions deliberately; gating has one inline query
         worth a look when this reaches it.
 - [ ] **Stop registration writing an organisation row for a student.** A student registers
-      into a site. Remove the requirement that a site needs an organisation alongside it, in
-      `register` and in the two admin user routes.
+      into a site. Remove the requirement that a site needs an organisation alongside it.
+      - **Blocked by the walk's *outcome*, not by the walk being unfinished.** This item's
+        precondition was "each call site moves to `get_reachable_org_ids` where it means
+        reach". That did not happen, and it was never going to: the walk found almost every
+        site means membership, and only three in the whole backend ask reach. So a delegate
+        with no organisation row would be invisible to every membership caller — the failure
+        this item has predicted from the start, reached by the opposite route from the one
+        it expected. `test_a_site_member_is_not_a_member_of_the_organisation` is the proof:
+        membership of a ward returns `[]` for the organisation.
+      - **What would actually unblock it**, and each is a decision rather than a step:
+        make the delegate-facing callers ask reach; or give `organisation_member` a capacity
+        that means "reached through a site" so one row can serve both questions; or accept
+        the duplication and close this item as won't-do. The duplication argument alone does
+        not justify making delegates invisible.
+      - **One correction: it is `register` only, not "the two admin user routes".** There is
+        exactly one "organisation_id required when site_id is provided" check in `main.py`.
+        The admin routes write both rows but do not require the pairing, so there is less
+        here to change than the item implies.
       - **The reason for this step has changed since it was written**, and it is worth
         re-examining rather than doing on the original grounds. It was written because the
         organisation row was a lie — it called a delegate staff. It no longer is: the row now
