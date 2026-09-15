@@ -2,25 +2,40 @@
  * Add Staff to Site Page
  *
  * Form for adding a staff member to a site with a role.
- * Only accessible to admin/superadmin users.
+ *
+ * Like the organisation staff picker, the list is unfiltered: there is
+ * no rank left to filter on, and any filter would hide the patient
+ * becoming a healthcare assistant — the case the picker most needs to
+ * support. So selecting somebody who holds nothing a member of staff
+ * would opens a confirmation, and offers to grant them a profession and
+ * competencies in the same act as the membership. The grant is additive
+ * on the backend, so what they already hold survives.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Stack } from "@mantine/core";
 import { Controller } from "react-hook-form";
 import BaseCard from "@/components/base-card/BaseCard";
 import SelectField from "@/components/form/SelectField";
+import MultiSelectField from "@/components/form/MultiSelectField";
 import PageHeader from "@/components/page-header";
+import { BodyText } from "@/components/typography";
 import {
   Form,
   FormStatus,
   SubmitButton,
   useFormContext,
 } from "@/components/form/Form";
-import type { FormSubmitResult } from "@/components/form/Form";
+import type {
+  FormConfirmConfig,
+  FormSubmitResult,
+} from "@/components/form/Form";
 import { api } from "@/lib/api";
 import ErrorState from "@/components/error-state/ErrorState";
+import { holdsStaffLikeCompetency } from "@/lib/cbac/staffLike";
+import competenciesData from "@/generated/competencies.json";
+import baseProfessionsData from "@/generated/base-professions.json";
 
 const ROLE_OPTIONS = [
   { value: "clinical_lead", label: "Clinical lead" },
@@ -32,6 +47,7 @@ interface ApiUser {
   id: number;
   username: string;
   email: string;
+  competencies: string[];
 }
 
 interface SiteStaff {
@@ -46,6 +62,8 @@ interface SiteData {
 interface AddStaffFormValues {
   userId: string | null;
   role: string | null;
+  baseProfession: string | null;
+  additionalCompetencies: string[];
 }
 
 function AddStaffFields({
@@ -53,11 +71,15 @@ function AddStaffFields({
   users,
   usersLoading,
   hasClinicalLead,
+  onUserChange,
+  showGrantFields,
 }: {
   siteId: string;
   users: ApiUser[];
   usersLoading: boolean;
   hasClinicalLead: boolean;
+  onUserChange: (userId: string | null) => void;
+  showGrantFields: boolean;
 }) {
   const navigate = useNavigate();
   const { methods } = useFormContext();
@@ -66,6 +88,24 @@ function AddStaffFields({
     opt.value === "clinical_lead" && hasClinicalLead
       ? { ...opt, disabled: true }
       : opt,
+  );
+
+  const professionOptions = useMemo(
+    () =>
+      baseProfessionsData.base_professions.map((p) => ({
+        value: p.id,
+        label: p.display_name,
+      })),
+    [],
+  );
+
+  const competencyOptions = useMemo(
+    () =>
+      competenciesData.competencies.map((c) => ({
+        value: c.id,
+        label: c.display_name,
+      })),
+    [],
   );
 
   return (
@@ -86,7 +126,10 @@ function AddStaffFields({
                   label: `${u.username} (${u.email})`,
                 }))}
                 value={field.value as string | null}
-                onChange={field.onChange}
+                onChange={(value) => {
+                  field.onChange(value);
+                  onUserChange(value);
+                }}
                 error={fieldState.error?.message}
                 searchable
                 disabled={usersLoading}
@@ -112,6 +155,53 @@ function AddStaffFields({
             )}
           />
 
+          {/*
+            Shown only where the selected person holds nothing staff-like.
+            Somebody already staff elsewhere needs no grant, and asking
+            would be noise on the common path.
+          */}
+          {showGrantFields && (
+            <>
+              <BodyText>
+                This person holds nothing a member of staff would. Grant them
+                what they need for the job, or leave both blank to add them
+                without any.
+              </BodyText>
+
+              <Controller
+                name="baseProfession"
+                control={methods.control}
+                render={({ field }) => (
+                  <SelectField
+                    label="Base profession"
+                    description="Grants that profession's competencies. What they already hold is kept."
+                    placeholder="Optional — select base profession"
+                    data={professionOptions}
+                    value={field.value as string | null}
+                    onChange={field.onChange}
+                    searchable
+                  />
+                )}
+              />
+
+              <Controller
+                name="additionalCompetencies"
+                control={methods.control}
+                render={({ field }) => (
+                  <MultiSelectField
+                    label="Additional competencies"
+                    description="Anything beyond the profession's defaults"
+                    placeholder="Optional — select competencies"
+                    data={competencyOptions}
+                    value={field.value as string[]}
+                    onChange={field.onChange}
+                    searchable
+                  />
+                )}
+              />
+            </>
+          )}
+
           <SubmitButton
             onCancel={() => navigate(`/admin/sites/${siteId}`)}
             disabled={usersLoading}
@@ -129,6 +219,9 @@ export default function AddStaffToSitePage() {
   const [usersLoading, setUsersLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [hasClinicalLead, setHasClinicalLead] = useState(false);
+  // Lifted out of the form because `confirm` is a prop on `Form`, which
+  // sits above the field that sets it.
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -162,6 +255,25 @@ export default function AddStaffToSitePage() {
     fetchData();
   }, [id]);
 
+  const selectedUser = users.find((u) => String(u.id) === selectedUserId);
+  // `competencies` is absent on a stale cached response; treat that as
+  // holding nothing rather than crashing, which prompts needlessly at
+  // worst and never skips the question when it matters.
+  const needsConfirmation =
+    selectedUser !== undefined &&
+    !holdsStaffLikeCompetency(selectedUser.competencies ?? []);
+
+  // Undefined submits straight through — `Form` only gates when this is
+  // set, so the question is asked for exactly the people it is about.
+  const confirm: FormConfirmConfig | undefined = needsConfirmation
+    ? {
+        title: "Add as a staff member?",
+        acceptLabel: "Add as staff",
+        submittingLabel: "Adding…",
+        children: `${selectedUser.username} holds nothing a member of staff would — only access to patient records as a patient or advocate. Adding them here makes them staff of this site.`,
+      }
+    : undefined;
+
   async function handleSubmit(
     data: AddStaffFormValues,
   ): Promise<FormSubmitResult> {
@@ -169,6 +281,14 @@ export default function AddStaffToSitePage() {
       await api.post(`/sites/${id}/staff`, {
         user_id: Number(data.userId),
         role: data.role,
+        // Omitted rather than sent as null, so the request says nothing
+        // about a grant where none was asked for.
+        ...(data.baseProfession
+          ? { base_profession: data.baseProfession }
+          : {}),
+        ...(data.additionalCompetencies.length > 0
+          ? { additional_competencies: data.additionalCompetencies }
+          : {}),
       });
       const addedUser = users.find((u) => String(u.id) === data.userId);
       navigate(`/admin/sites/${id}`, {
@@ -203,8 +323,14 @@ export default function AddStaffToSitePage() {
       )}
 
       <Form<AddStaffFormValues>
-        defaultValues={{ userId: null, role: null }}
+        defaultValues={{
+          userId: null,
+          role: null,
+          baseProfession: null,
+          additionalCompetencies: [],
+        }}
         onSubmit={handleSubmit}
+        confirm={confirm}
         submitLabel="Add staff member"
         submittingLabel="Adding…"
       >
@@ -213,6 +339,8 @@ export default function AddStaffToSitePage() {
           users={users}
           usersLoading={usersLoading}
           hasClinicalLead={hasClinicalLead}
+          onUserChange={setSelectedUserId}
+          showGrantFields={needsConfirmation}
         />
       </Form>
     </Stack>

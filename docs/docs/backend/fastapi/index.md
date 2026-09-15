@@ -66,10 +66,6 @@ app/
 ├── features/
 │   ├── __init__.py      # Feature-gating utilities (requires_feature dependency)
 │   └── teaching/        # Teaching feature module
-├── system_permissions/
-│   ├── __init__.py      # Permission module exports
-│   ├── permissions.py   # Permission types and hierarchy validation
-│   └── decorators.py    # requires_staff(), requires_admin() dependencies
 ├── schemas/
 │   ├── __init__.py      # Schema module exports
 │   ├── auth.py          # Authentication request/response models
@@ -218,33 +214,37 @@ The backend implements a multi-layered permission system:
 3. **Resource layer**: Ownership and assignment validation
 4. **Audit layer**: All access attempts logged
 
-##### Permission hierarchy
+##### Platform role
 
 ```python
-# 4-level hierarchy for permission checks: patient < staff < admin < superadmin
-PERMISSION_LEVELS = ["patient", "staff", "admin", "superadmin"]
-
-# All valid permission values (includes non-hierarchical external types)
-ALL_PERMISSIONS = [
-    "patient", "external_hcp", "patient_advocate",
-    "staff", "admin", "superadmin",
-]
-
-# check_permission_level(user_permission, required_permission)
-# Returns True if user meets or exceeds required level
-# External types (external_hcp, patient_advocate) treated as patient level
+# One question with one value and its absence: does this person operate
+# Quill itself? There is no hierarchy and nothing sits "above" anything.
+PLATFORM_ROLES = ("standard", "superadmin")
 ```
+
+This replaced a four-level `system_permissions` column
+(`single-user < staff < admin < superadmin`), which held two unrelated ideas
+at once. Three of its rungs described a person at a *place* and became
+organisation and site membership plus competencies; only `superadmin` stood
+alone. Operating Quill confers no clinical access: a superadmin who does not
+hold `access_patient_records` cannot read a record.
 
 ##### Usage in endpoints
 
 ```python
-# Require minimum permission level
-@router.get("/admin/users")
-def list_users(
-    user: User = Depends(get_current_user)
+# Administering users is a competency, paired with a place check. The
+# competency says *what*, membership says *where*, and a route carrying
+# the competency without a place check beside it is global.
+@router.get(
+    "/organisations/{org_id}/users",
+    dependencies=[DEP_REQUIRE_MANAGE_USERS],
+)
+def list_org_users(
+    org_id: int,
+    user: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
 ):
-    if user.system_permissions not in ["admin", "superadmin"]:
-        raise HTTPException(403, "Insufficient permissions")
+    _require_own_org(db, user, org_id)
     # ... list users
 
 # CBAC-protected endpoint
