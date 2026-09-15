@@ -153,6 +153,42 @@ of the unused staff guard. Everything else on the lists below is still a plan.
           `test_promoting_for_an_organisation_you_are_not_in_is_refused` uses an
           organisation the caller has no relationship to at all, so the site-linked case —
           the only one where reach and membership differ — was untested.
+      - [x] **Batch three: `_get_user_org_id`, eighteen sites — the security half done.**
+        Not counted in the figures above, because the singular helper was invisible to a
+        grep for the plural one. It is `_get_user_org_ids(user, db)[0]`, so every caller
+        inherits reach *and* takes an arbitrary first organisation.
+        - **All eighteen hold `_DEP_MANAGE`**, and many write: `sync_items`,
+          `link_module_media`, `unlink_module_media`, `update_settings`,
+          `delete_media_asset`, `put_media_captions`. A teaching admin whose only
+          membership is a linked ward resolves to the trust and acts on it — the same
+          defect batch two fixed, eighteen times over.
+        - **The arbitrary `[0]` is a second bug, already known.** `promote_bank_version`'s
+          docstring says so: "`_get_user_org_id` returns whichever organisation happens to
+          come back first, so a person teaching for two would silently promote for the
+          wrong one." That is why that route takes `org_id` in the path instead.
+        - **This is a design decision, not a walk.** There is no correct `[0]` once
+          membership is plural. The shape that works is the one those two routes already
+          use — name the organisation in the path and check membership of it — but that
+          changes eighteen route signatures and their callers, so it wants deciding before
+          it is built rather than during.
+        - **Fixed by narrowing the resolver, not the eighteen call sites.**
+          `_get_user_org_id` now asks `get_member_org_ids` directly and raises its own 403.
+          One function, no route signatures touched, and the escalation is closed: a
+          ward-only teaching admin is refused everywhere the singular resolver is used.
+          `_get_user_org_ids` keeps reach, so content visibility is unchanged.
+        - **The 403 message changed with it.** "User has no organisation" was untrue for
+          somebody at a ward of the trust — they have a place, just not a membership that
+          confers authority — and would have sent them looking for the wrong fix. It now
+          says they are not a member of any organisation.
+        - [ ] **Still open: the arbitrary organisation.** Narrowing shrinks the set `[0]`
+          chooses from without making the choice correct. Someone administering for two
+          organisations still gets whichever comes back first. The fix is the path
+          parameter those two routes already use, and it is the eighteen-signature change
+          deferred above.
+      - **Two modules were never in the count at all**: `features/gating.py` and
+        `features/passport/router.py` both read `organisation_member` directly. Passport
+        already distinguishes the two questions deliberately; gating has one inline query
+        worth a look when this reaches it.
 - [ ] **Stop registration writing an organisation row for a student.** A student registers
       into a site. Remove the requirement that a site needs an organisation alongside it, in
       `register` and in the two admin user routes.

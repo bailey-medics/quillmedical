@@ -152,8 +152,37 @@ def _get_user_org_ids(user: User, db: Session) -> list[int]:
 
 
 def _get_user_org_id(user: User, db: Session) -> int:
-    """Return the user's first organisation ID or raise 403."""
-    return _get_user_org_ids(user, db)[0]
+    """Return an organisation the user is a *member* of, or raise 403.
+
+    **Membership, not reach**, and it is the only caller of the two that
+    asks for the narrower answer. Every one of its eighteen call sites is
+    an administrative route behind ``manage_teaching_content`` — syncing
+    items, linking and deleting media, writing captions, changing bank
+    settings. Reach is why a ward trainee *receives* the trust's content;
+    it was never why they would edit it. While this delegated to
+    :func:`_get_user_org_ids`, a teaching admin whose only membership was
+    a linked site resolved to the trust and administered it.
+
+    The plural helper keeps reach, deliberately: content visibility is
+    the question it answers, and narrowing it would lock out exactly the
+    people teaching exists for.
+
+    **Which organisation it returns is still arbitrary**, and that is a
+    separate, known bug rather than something this fixes. With two
+    memberships it picks whichever comes back first — see
+    ``promote_bank_version``, which takes ``org_id`` in the path for that
+    reason, and the test named
+    ``test_a_bank_held_only_by_your_second_organisation_is_found``.
+    Narrowing to membership shrinks the set it chooses from without
+    making the choice correct.
+    """
+    org_ids = get_member_org_ids(db, user.id)
+    if not org_ids:
+        # Deliberately not "no organisation": somebody at a ward of the
+        # trust has a place, and saying otherwise would send them looking
+        # for the wrong fix.
+        raise HTTPException(403, "User is not a member of any organisation")
+    return org_ids[0]
 
 
 def resolve_visible_module(user: User, db: Session, module_id: str) -> int:
