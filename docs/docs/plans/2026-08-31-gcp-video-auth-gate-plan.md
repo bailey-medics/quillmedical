@@ -1762,6 +1762,47 @@ than reading the code, which looks complete.
   do: a `TEACHING_CAPTION_JOB` setting, an invoker grant, a deploy step, and
   the call itself.
 
+### The upload was blocked by our own Content Security Policy
+
+**[found 2026-09-15]** The first real upload attempt failed with "Could not
+start upload", and no upload has ever succeeded in production — zero `media
+linked` entries in thirty days. The cause is not signing, CORS or IAM, all of
+which were verified correct:
+
+```
+Refused to connect to 'https://storage.googleapis.com/...' because it
+violates the following Content Security Policy directive:
+"connect-src 'self'"
+```
+
+- **The browser never sent the request.** `connect-src 'self'` in
+  `caddy/prod/Caddyfile` blocks XHR to any other origin, and the upload goes
+  straight to GCS on a signed resumable URL by design — a `POST` to open the
+  session, then a `PUT` of the bytes to the session URL GCS returns. Both are
+  XHR, so both are `connect-src`.
+
+- **It presents as a network error, not a refusal.** The blocked request fires
+  the XHR `error` event with no status, so `startResumableUpload` reports
+  "Could not start upload" and the real reason appears only in the browser
+  console. That is why the server-side evidence all looked healthy: the
+  backend minted the URL, logged it, returned 200, and nothing ever came back
+  to it.
+
+- **The policy already carried `storage.googleapis.com` under `img-src`**, for
+  question-bank images. Whoever added that reached for the directive the
+  images needed and had no reason to think about uploads, which did not exist
+  yet.
+
+- **Fixed in `caddy/prod/Caddyfile`, not in Terraform.** The load balancer's
+  `custom_response_headers` also sets a CSP, and it was the tempting place to
+  look — but it belongs to `google_compute_backend_bucket.landing`, the
+  marketing site, which never passes through Caddy. Editing it would have
+  changed nothing here. The application's header comes from the Caddy config
+  baked into the frontend image.
+
+- **Playback needs no change**: video is served from `/videos/*` on the app's
+  own domain through the backend bucket, so it is same-origin.
+
 - [ ] Migrate one real EoEETA lecture from YouTube to GCS end to end and confirm
       playback, seeking, captions, and the resume position from parent-plan
       item 18 all behave.
