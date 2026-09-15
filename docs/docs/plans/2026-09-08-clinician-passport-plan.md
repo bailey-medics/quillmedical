@@ -3254,7 +3254,7 @@ not deferred items: deferring is for what nobody should build yet.
       ever added, so the module is imported only by its own two test
       files. Smallest of the three, and the end-to-end test below
       cannot run until it is done. Then build `PassportExportButtons`.
-- [ ] Add a file to a certificate. The four certificate routes exist
+- [x] Add a file to a certificate. The four certificate routes exist
       and are full CRUD, but `CertificateIn` carries metadata alone, so
       a holder can record "ALS course, March 2026" and cannot attach
       the certificate. Needs the upload route below, then
