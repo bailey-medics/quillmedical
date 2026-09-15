@@ -107,6 +107,7 @@ from app.models import (
     organisation_patient_member,
     organisation_site,
     site_member,
+    validate_member_capacity,
     validate_platform_role,
 )
 from app.organisations import (
@@ -3911,6 +3912,19 @@ def get_organisation(
             organisation_member.c.user_id == User.id,
         )
         .where(organisation_member.c.organisation_id == org_id)
+        # Staff, not everyone. The table held two columns until recently,
+        # so a teaching delegate and a consultant were the same row and
+        # this page listed students among the staff — it could not tell
+        # them apart, because nothing could. The capacity column can, and
+        # this is the heading that promises it: "Organisation staff
+        # members".
+        #
+        # Trainees are not thereby hidden from administration. They are
+        # listed where they belong — the delegates pages, which read the
+        # same table asking for their capacity.
+        .where(
+            organisation_member.c.capacity == validate_member_capacity("staff")
+        )
     )
 
     # Operators are hidden from everyone but another operator

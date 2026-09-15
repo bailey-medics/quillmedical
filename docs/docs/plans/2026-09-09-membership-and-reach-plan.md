@@ -131,8 +131,26 @@ of the unused staff guard. Everything else on the lists below is still a plan.
 - [ ] **Walk the call sites in batches.** 29 calls to the app-wide resolver — 15 in `main.py`,
       7 in the teaching router, 5 in `messaging.py`, 2 internal — and 17 in teaching's own.
       Fifty references to the organisation table in total.
-- [ ] **Filter the organisation admin page to staff**, so students stop appearing on it.
-- [ ] **Give staff membership its own competency, `manage_staff_membership`.** Writing a
+- [x] **Filter the organisation admin page to staff**, so students stop appearing on it.
+      - **The column could tell them apart since it was added; the page still could not**,
+        because no caller had been changed to ask. `get_organisation`'s staff query now
+        filters on `capacity == "staff"`, which is what its own heading promises.
+      - **`staff_count` is derived from the same rows**, so the number and the list cannot
+        disagree. Pinned by a test, since a count taken from a second query is exactly the
+        kind of drift nobody reports — they just stop trusting the number.
+      - **Trainees are not hidden from administration.** They are listed on the delegates
+        pages, which read the same table asking for their own capacity.
+      - **It broke six fixtures, and they were already wrong.** Every bare
+        `insert(organisation_member)` in `test_main_endpoints.py` described an admin or a
+        staff member while writing `trainee`, because the column defaults to the narrower
+        capacity. The same thing happened to five fixtures in `test_messaging.py` when that
+        step landed — the default is doing its job, making an unstated assumption visible
+        the moment something reads the column.
+      - **Six more bare inserts remain, one in each of six other test files**, latent rather than
+        broken: nothing else reads capacity yet. Whoever changes the next caller to ask
+        should expect the same failure and read it as the fixture being wrong, not the
+        caller.
+- [x] **Give staff membership its own competency, `manage_staff_membership`.** Writing a
       membership row is gated on `manage_users` today, which also gates twenty-five other
       routes: creating and deleting accounts, activating patients, editing organisations,
       toggling feature flags, and site CRUD. So the person who should be able to add a

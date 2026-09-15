@@ -378,8 +378,16 @@ class TestOrganisationEndpoints:
         db_session.execute(
             insert(organisation_member).values(
                 [
-                    {"organisation_id": org1.id, "user_id": test_admin.id},
-                    {"organisation_id": org2.id, "user_id": test_admin.id},
+                    {
+                        "organisation_id": org1.id,
+                        "user_id": test_admin.id,
+                        "capacity": "staff",
+                    },
+                    {
+                        "organisation_id": org2.id,
+                        "user_id": test_admin.id,
+                        "capacity": "staff",
+                    },
                 ]
             )
         )
@@ -415,7 +423,9 @@ class TestOrganisationEndpoints:
         # Admin is only a member of org1
         db_session.execute(
             insert(organisation_member).values(
-                organisation_id=org1.id, user_id=test_admin.id
+                organisation_id=org1.id,
+                user_id=test_admin.id,
+                capacity="staff",
             )
         )
         db_session.commit()
@@ -470,7 +480,7 @@ class TestOrganisationEndpoints:
 
         # Add staff member
         stmt = insert(organisation_member).values(
-            organisation_id=org.id, user_id=test_admin.id
+            organisation_id=org.id, user_id=test_admin.id, capacity="staff"
         )
         db_session.execute(stmt)
         db_session.commit()
@@ -636,7 +646,7 @@ class TestOrganisationEndpoints:
 
         db_session.execute(
             insert(organisation_member).values(
-                organisation_id=org.id, user_id=test_admin.id
+                organisation_id=org.id, user_id=test_admin.id, capacity="staff"
             )
         )
         db_session.commit()
@@ -669,7 +679,7 @@ class TestOrganisationEndpoints:
 
         db_session.execute(
             insert(organisation_member).values(
-                organisation_id=org.id, user_id=test_admin.id
+                organisation_id=org.id, user_id=test_admin.id, capacity="staff"
             )
         )
         db_session.commit()
@@ -700,7 +710,7 @@ class TestOrganisationEndpoints:
 
         db_session.execute(
             insert(organisation_member).values(
-                organisation_id=org.id, user_id=test_admin.id
+                organisation_id=org.id, user_id=test_admin.id, capacity="staff"
             )
         )
         db_session.commit()
@@ -754,7 +764,7 @@ class TestOrganisationEndpoints:
 
         db_session.execute(
             insert(organisation_member).values(
-                organisation_id=org.id, user_id=test_admin.id
+                organisation_id=org.id, user_id=test_admin.id, capacity="staff"
             )
         )
         db_session.commit()
@@ -783,7 +793,7 @@ class TestOrganisationEndpoints:
         # Pre-add admin as member so they can manage this org
         db_session.execute(
             insert(organisation_member).values(
-                organisation_id=org.id, user_id=test_admin.id
+                organisation_id=org.id, user_id=test_admin.id, capacity="staff"
             )
         )
         db_session.commit()
@@ -826,6 +836,7 @@ class TestOrganisationEndpoints:
         stmt = insert(organisation_member).values(
             organisation_id=org.id,
             user_id=test_admin.id,
+            capacity="staff",
         )
         db_session.execute(stmt)
         db_session.commit()
@@ -861,7 +872,7 @@ class TestOrganisationEndpoints:
 
         db_session.execute(
             insert(organisation_member).values(
-                organisation_id=org.id, user_id=test_admin.id
+                organisation_id=org.id, user_id=test_admin.id, capacity="staff"
             )
         )
         db_session.commit()
@@ -1386,7 +1397,9 @@ class TestOrganisationEndpoints:
 
         db_session.execute(
             insert(organisation_member).values(
-                organisation_id=org.id, user_id=test_patient_manager.id
+                organisation_id=org.id,
+                user_id=test_patient_manager.id,
+                capacity="staff",
             )
         )
         db_session.commit()
@@ -1421,7 +1434,9 @@ class TestOrganisationEndpoints:
 
         db_session.execute(
             insert(organisation_member).values(
-                organisation_id=org.id, user_id=test_patient_manager.id
+                organisation_id=org.id,
+                user_id=test_patient_manager.id,
+                capacity="staff",
             )
         )
         db_session.execute(
