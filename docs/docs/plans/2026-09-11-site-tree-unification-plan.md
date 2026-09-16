@@ -879,7 +879,8 @@ So the remaining steps land as:
 - [x] 11a — the `/api/org-units` surface, alongside the old ones
 - [x] 11b-i — one place client and type for the screens to use
 - [x] 11b-ii — the organisation screens onto it
-- [ ] 11b-iii — the place screens onto it, and the thin-pages gap closed
+- [x] 11b-iii — the place screens onto it, and the edit page tested
+- [ ] 11b-iv — a list page and a create page for places
 - [ ] 12a — retire the old API surfaces
 - [ ] 12b — drop the `organisations` table, and enforce the type flags
 
@@ -1051,6 +1052,33 @@ because moving them is what showed they were missing: a place's children
 carry their clinical lead's *name* as well as their id, so a list reads
 without a request per row; and there is a route for naming or vacating a
 clinical lead.
+
+#### 11b-iii — the place screens onto it
+
+The three screens under `pages/admin/sites/` now speak in places: the
+place page, the edit page and the staff picker. Nothing on them fetches an
+organisation any more.
+
+- **A place says where it sits.** The detail answer now carries
+  `parent_name` beside `parent_id`, so the page can print "inside Test
+  Trust" without a second request for a single word. Empty at the top of a
+  tree, which is a fact about the place rather than a missing value.
+- **The staff picker separates what somebody is from what they hold.** The
+  old form had one "role" field where clinical lead sat alongside staff
+  and trainee, as if they were three of a kind. They are not: the first is
+  a post, the other two are what a person is. Picking clinical lead now
+  adds the person as staff and then names them to the post.
+- **The edit page has a test at last.** It covers loading, renaming,
+  naming a lead, leaving an unchanged lead alone, and the confirmation
+  before a place is taken out of use. This was the gap the plan named, and
+  the page that most needed it — it is the one screen that can rename a
+  place, put it out of use, and change who leads it.
+
+The gap the plan named has three parts, and this unit closes one of them.
+The list page and the create page are the other two, and they are new
+screens rather than moved ones, so they land as **11b-iv** rather than
+swelling this unit past what anybody can read at a sitting. Creating a
+place still works today, from the organisation side.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to

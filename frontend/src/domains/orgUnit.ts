@@ -71,6 +71,11 @@ export type OrgUnitChild = {
 
 /** One place and everything hanging off it. */
 export type OrgUnitDetail = OrgUnit & {
+  /**
+   * What the place above is called, so a page can say where this one
+   * sits without a second request. Empty at the top of a tree.
+   */
+  parent_name: string;
   /** Who is here. */
   members: OrgUnitMember[];
   /** The places directly inside this one. */
