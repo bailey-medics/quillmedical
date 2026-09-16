@@ -162,39 +162,6 @@ class TestManageUsersAloneIsNotEnough:
 
         assert response.status_code == 403, response.text
 
-    def test_it_cannot_add_staff_to_a_site(
-        self,
-        test_client: TestClient,
-        org: Organisation,
-        site: OrgUnit,
-        account_admin: User,
-        colleague: User,
-    ) -> None:
-        client = _login(test_client, "account_admin")
-        response = client.post(
-            f"/api/sites/{site.id}/staff",
-            json={"user_id": colleague.id, "role": "staff"},
-            headers=_csrf(client),
-        )
-
-        assert response.status_code == 403, response.text
-
-    def test_it_cannot_remove_staff_from_a_site(
-        self,
-        test_client: TestClient,
-        org: Organisation,
-        site: OrgUnit,
-        account_admin: User,
-        colleague: User,
-    ) -> None:
-        client = _login(test_client, "account_admin")
-        response = client.delete(
-            f"/api/sites/{site.id}/staff/{colleague.id}",
-            headers=_csrf(client),
-        )
-
-        assert response.status_code == 403, response.text
-
 
 class TestTheNewCompetencyOpensThem:
     """And it opens them without ``manage_users``.
@@ -243,47 +210,6 @@ class TestTheNewCompetencyOpensThem:
         client = _login(test_client, "membership_admin")
         response = client.delete(
             f"/api/organisations/{org.id}/staff/{colleague.id}",
-            headers=_csrf(client),
-        )
-
-        assert response.status_code == 200, response.text
-
-    def test_it_adds_staff_to_a_site(
-        self,
-        test_client: TestClient,
-        org: Organisation,
-        site: OrgUnit,
-        membership_admin: User,
-        colleague: User,
-    ) -> None:
-        client = _login(test_client, "membership_admin")
-        response = client.post(
-            f"/api/sites/{site.id}/staff",
-            json={"user_id": colleague.id, "role": "staff"},
-            headers=_csrf(client),
-        )
-
-        assert response.status_code == 200, response.text
-
-    def test_it_removes_staff_from_a_site(
-        self,
-        test_client: TestClient,
-        org: Organisation,
-        site: OrgUnit,
-        membership_admin: User,
-        colleague: User,
-    ) -> None:
-        """Added first, so the removal has something to remove."""
-        client = _login(test_client, "membership_admin")
-        added = client.post(
-            f"/api/sites/{site.id}/staff",
-            json={"user_id": colleague.id, "role": "staff"},
-            headers=_csrf(client),
-        )
-        assert added.status_code == 200, added.text
-
-        response = client.delete(
-            f"/api/sites/{site.id}/staff/{colleague.id}",
             headers=_csrf(client),
         )
 

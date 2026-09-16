@@ -884,7 +884,7 @@ So the remaining steps land as:
 - [x] 11b-v — the last readers of the old surfaces, bar one
 - [x] 12a-i — the rules the old surfaces prove, proved on the new one
 - [x] 12a-ii — the rest of those rules: scoping, and one place per site
-- [ ] 12a-iii — retire `/api/sites`
+- [x] 12a-iii — retire `/api/sites`
 - [ ] 12b — drop the `organisations` table, and enforce the type flags
 
 #### 10a — write both names for the place column
@@ -1180,8 +1180,31 @@ place has one parent column, so a second owner is not a rule to enforce
 but a state that cannot be written down. The link and unlink routes that
 rule existed for go with the surface.
 
-**12a-iii** retires `/api/sites` — the routes answer 410, the tests that
-only exercised that address go, and the breaking-change gate is signed.
+**12a-iii** retired `/api/sites`. Thirteen addresses answer 410, and
+about 1,100 lines of routes and 1,300 lines of tests went with them.
+
+- **The shapes stay, the answers stop.** Each retired route still
+  declares the request it always took, so a stale client sending what it
+  always sent is told the address has gone rather than that its request
+  is malformed. Deleting the paths outright is a later step, and a
+  visible one.
+- **410 rather than 404**, so a caller can tell "this never existed" from
+  "this used to be here": the second says there is somewhere else to
+  look, and the answer names `/api/org-units`.
+- **Same answer to everybody.** A retired address holds nothing to
+  protect, so it answers without a permission check. Replying 403 to one
+  caller and 410 to another would only tell them apart.
+- **`oasdiff` sees no breaking change**, because the schema did not
+  change — the behaviour did. So the gate is not raised by this step, and
+  the deliberateness lives here and in the pull request instead. The one
+  client that used these addresses is this repository's own frontend, and
+  it moved in 11b.
+- **Two gaps surfaced while moving the tests.** The new surface accepted
+  a misspelt base profession where the old one refused it, which would
+  have written a profession nobody holds onto a person's record; and an
+  organisation could be read through the sites addresses, which is now
+  moot.
+
 `/api/organisations` cannot follow until the user form moves, which is
 12b.
 

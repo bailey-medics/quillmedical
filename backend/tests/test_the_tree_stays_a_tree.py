@@ -6,11 +6,12 @@ checked on every move, or the tree quietly stops being one — and until
 scoping walked the column, nothing noticed: a place under its own ward
 was accepted and simply never followed.
 
+Covers the guard and the walk it depends on. What the route does with
+the answer is tested on the place surface, where the route lives.
+
 Covers:
 - A place cannot be its own parent
 - A place cannot be moved under its own child, or a deeper descendant
-- A legitimate move within the same organisation still works
-- The row is unchanged after every refusal
 - The walk itself: ancestors, and what a broken chain does
 """
 
@@ -99,65 +100,3 @@ class TestWalkingUp:
         db_session.commit()
 
         assert len(ancestor_ids(db_session, first.id)) <= MAX_TREE_DEPTH
-
-
-class TestThroughTheRoute:
-    def test_moving_a_place_under_itself_is_refused(
-        self, authenticated_superadmin_client, db_session
-    ):
-        org = _org(db_session)
-        ward = _under(db_session, org.org_unit_id, "Ward")
-
-        resp = authenticated_superadmin_client.put(
-            f"/api/sites/{ward.id}", json={"parent_id": ward.id}
-        )
-
-        assert resp.status_code == 400
-        db_session.refresh(ward)
-        assert ward.parent_id == org.org_unit_id
-
-    def test_moving_a_place_under_its_own_child_is_refused(
-        self, authenticated_superadmin_client, db_session
-    ):
-        org = _org(db_session)
-        ward = _under(db_session, org.org_unit_id, "Ward")
-        room = _under(db_session, ward.id, "Room")
-
-        resp = authenticated_superadmin_client.put(
-            f"/api/sites/{ward.id}", json={"parent_id": room.id}
-        )
-
-        assert resp.status_code == 400
-        db_session.refresh(ward)
-        assert ward.parent_id == org.org_unit_id
-
-    def test_moving_a_place_under_a_deeper_descendant_is_refused(
-        self, authenticated_superadmin_client, db_session
-    ):
-        org = _org(db_session)
-        hospital = _under(db_session, org.org_unit_id, "Hospital")
-        ward = _under(db_session, hospital.id, "Ward")
-        room = _under(db_session, ward.id, "Room")
-
-        resp = authenticated_superadmin_client.put(
-            f"/api/sites/{hospital.id}", json={"parent_id": room.id}
-        )
-
-        assert resp.status_code == 400
-        db_session.refresh(hospital)
-        assert hospital.parent_id == org.org_unit_id
-
-    def test_a_legitimate_move_still_works(
-        self, authenticated_superadmin_client, db_session
-    ):
-        org = _org(db_session)
-        first = _under(db_session, org.org_unit_id, "Building A")
-        second = _under(db_session, org.org_unit_id, "Building B")
-
-        resp = authenticated_superadmin_client.put(
-            f"/api/sites/{first.id}", json={"parent_id": second.id}
-        )
-
-        assert resp.status_code == 200
-        db_session.refresh(first)
-        assert first.parent_id == second.id

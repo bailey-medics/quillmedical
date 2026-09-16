@@ -12,7 +12,10 @@ place ids, which is what makes them different surfaces rather than one
 surface with two names.
 """
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
+
+from app.cbac.base_professions import PROFESSION_IDS
+from app.cbac.competencies import validate_competency_ids
 
 
 class CreateOrgUnitIn(BaseModel):
@@ -150,6 +153,32 @@ class AddOrgUnitMemberIn(BaseModel):
     capacity: str = "trainee"
     base_profession: str | None = None
     additional_competencies: list[str] | None = None
+
+    @field_validator("base_profession")
+    @classmethod
+    def _profession_exists(cls, value: str | None) -> str | None:
+        """Reject a profession that is not in the catalogue.
+
+        The grant rides along with the membership, so a misspelt
+        profession would otherwise be written to the person's record and
+        leave them holding nothing.
+        """
+        if value is None:
+            return None
+        if value not in PROFESSION_IDS:
+            raise ValueError(
+                f"Unknown base profession: {value}. Professions are "
+                "defined in shared/base-professions.yaml."
+            )
+        return value
+
+    @field_validator("additional_competencies")
+    @classmethod
+    def _competencies_exist(cls, value: list[str] | None) -> list[str] | None:
+        """Reject a competency id that is not in the catalogue."""
+        if value is None:
+            return None
+        return validate_competency_ids(value)
 
 
 class OrgUnitChildItem(BaseModel):

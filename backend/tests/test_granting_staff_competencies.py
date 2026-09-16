@@ -318,10 +318,10 @@ class TestTheSameAtASite:
 
         client = _login(test_client, "the_admin")
         response = client.post(
-            f"/api/sites/{site.id}/staff",
+            f"/api/org-units/{site.id}/members",
             json={
                 "user_id": starter.id,
-                "role": "staff",
+                "capacity": "staff",
                 "base_profession": "healthcare_assistant",
             },
             headers=_csrf(client),
@@ -347,8 +347,8 @@ class TestTheSameAtASite:
 
         client = _login(test_client, "the_admin")
         response = client.post(
-            f"/api/sites/{site.id}/staff",
-            json={"user_id": nurse.id, "role": "staff"},
+            f"/api/org-units/{site.id}/members",
+            json={"user_id": nurse.id, "capacity": "staff"},
             headers=_csrf(client),
         )
 
@@ -373,17 +373,17 @@ class TestTheSameAtASite:
 
         client = _login(test_client, "the_admin")
         first = client.post(
-            f"/api/sites/{site.id}/staff",
-            json={"user_id": member.id, "role": "trainee"},
+            f"/api/org-units/{site.id}/members",
+            json={"user_id": member.id, "capacity": "trainee"},
             headers=_csrf(client),
         )
         assert first.status_code == 200, first.text
 
         second = client.post(
-            f"/api/sites/{site.id}/staff",
+            f"/api/org-units/{site.id}/members",
             json={
                 "user_id": member.id,
-                "role": "staff",
+                "capacity": "staff",
                 "base_profession": "healthcare_assistant",
             },
             headers=_csrf(client),
@@ -406,10 +406,10 @@ class TestTheSameAtASite:
 
         client = _login(test_client, "the_admin")
         response = client.post(
-            f"/api/sites/{site.id}/staff",
+            f"/api/org-units/{site.id}/members",
             json={
                 "user_id": starter.id,
-                "role": "staff",
+                "capacity": "staff",
                 "base_profession": "chief_wizard",
             },
             headers=_csrf(client),
