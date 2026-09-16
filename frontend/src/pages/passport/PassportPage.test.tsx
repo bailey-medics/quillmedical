@@ -59,6 +59,46 @@ describe("PassportPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("leads to the rest of the passport", async () => {
+    // The side navigation has one Passport entry and it points here, so
+    // these cards are the only route to the logbook, CPD, certificates
+    // and reflections. Without them those pages are addressable only by
+    // typing the URL, which is how they sat for a fortnight.
+    fetchMyPassport.mockResolvedValue(detail);
+    renderWithRouter(<PassportPage />);
+
+    for (const name of ["Logbook", "CPD", "Certificates", "Reflections"]) {
+      expect(await screen.findByText(name)).toBeInTheDocument();
+    }
+  });
+
+  it("offers a way into each section", async () => {
+    fetchMyPassport.mockResolvedValue(detail);
+    renderWithRouter(<PassportPage />);
+
+    for (const label of [
+      "Open logbook",
+      "Open CPD",
+      "Open certificates",
+      "Open reflections",
+    ]) {
+      expect(
+        await screen.findByRole("button", { name: label }),
+      ).toBeInTheDocument();
+    }
+  });
+
+  it("says reflections are private on the card itself", async () => {
+    // Before a holder clicks into them, not after. Somebody deciding how
+    // frankly to write deserves to know who can read it beforehand.
+    fetchMyPassport.mockResolvedValue(detail);
+    renderWithRouter(<PassportPage />);
+
+    expect(
+      await screen.findByText(/no assessor or administrator can read them/),
+    ).toBeInTheDocument();
+  });
+
   it("does not render the competency list when the load failed", async () => {
     fetchMyPassport.mockRejectedValue(new Error("network"));
     renderWithRouter(<PassportPage />);

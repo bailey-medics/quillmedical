@@ -3178,17 +3178,24 @@ form. `CertificateCard` was never built: the page renders a certificate
 inline, as the reflections page does, and a component earns its place
 when a second caller wants one.
 
-**Four passport pages have no link anywhere, which nothing had noticed.**
-`/passport/logbook`, `/passport/cpd`, `/passport/reflections` and now
-`/passport/certificates` are reachable only by typing the URL. The side
-navigation has a single passport entry pointing at `/passport`, and that
-page lists competencies and offers the exports — nothing on it leads to
-the other four. This predates the certificates page rather than being
-caused by it, and it is the reason a holder could not reach their own
-logbook or CPD record either. Whoever picks it up should decide whether
-these belong in the side navigation, as links on the passport page, or
-both; the answer is a design judgement rather than an oversight to
-patch, which is why it is recorded here rather than fixed in passing.
+**Four passport pages had no link anywhere, and now the passport page
+carries them.** `/passport/logbook`, `/passport/cpd`,
+`/passport/reflections` and `/passport/certificates` were reachable only
+by typing the URL: the side navigation has a single passport entry
+pointing at `/passport`, and that page led to none of them. A holder
+could not reach their own logbook or CPD record.
+
+`PassportPage` now renders an `ActionCard` for each, in the two-column
+grid `Settings` uses. The side navigation keeps its single entry: the
+passport page was already the hub it looked like, and a collapsible
+section listing five children would make the sidebar mostly passport
+whenever it was open. The reflections card says on its face that nobody
+else can read them — before a holder clicks in, not after, because
+somebody deciding how frankly to write deserves to know beforehand.
+
+Adding a fifth page means adding a card here, which is the one place to
+remember. A test asserts all four are present and reachable, so removing
+one silently is not possible.
 
 The components were commentary buried in finished phase 6 steps until
 somebody asked why uploads and export were not on the list, which is a
@@ -3312,7 +3319,18 @@ not deferred items: deferring is for what nobody should build yet.
     hashing the file itself and the backend verifying by reading the
     object back — not a signed URL that skips the hash.
 - [ ] End-to-end test: holder requests, assessor signs, holder exports
-      PDF, hash on PDF matches repository.
+      PDF, hash on PDF matches repository. **Deferred deliberately, and
+      it is larger than a spec file.** `seed_ci.py` knows nothing about
+      the passport — two users, one teaching organisation, no feature
+      flag and no `access_clinician_passport` — so the test would stop
+      at the feature gate. And every existing spec runs as the single
+      session `auth.setup.ts` stores, whereas this one needs two people
+      in sequence. So the work is: seed a holder and an assessor with
+      the competency in a passport-enabled organisation, add a second
+      stored session, then write the spec. A holder-only spec — create
+      a passport, record a certificate, download the export, check the
+      hash — would get the assertion that matters most under test for a
+      fraction of that, and leave the assessor half clearly scoped.
 - [ ] Security review of upload handling (type sniffing, size limits,
       path containment, symlink refusal) and of the authorisation
       matrix, including external assessors and the reflections
