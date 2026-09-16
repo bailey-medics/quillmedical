@@ -16,7 +16,14 @@ const __dirname = path.dirname(__filename);
 const SHARED_DIR = path.join(__dirname, "..", "..", "shared");
 const FRONTEND_GENERATED_DIR = path.join(__dirname, "..", "src", "generated");
 
-const FILES_TO_GENERATE = ["base-professions.yaml", "jurisdiction-config.yaml"];
+const FILES_TO_GENERATE = [
+  "base-professions.yaml",
+  "jurisdiction-config.yaml",
+  // The screens that offer a kind of place to pick from used to
+  // carry their own copy of the list, which is how three of them
+  // came to disagree with the backend about what exists.
+  "org-unit-types.yaml",
+];
 
 // Competencies are split across a directory by kind — clinical.yaml and
 // feature-admin.yaml — and merged back into one competencies.json here,

@@ -880,7 +880,7 @@ So the remaining steps land as:
 - [x] 11b-i — one place client and type for the screens to use
 - [x] 11b-ii — the organisation screens onto it
 - [x] 11b-iii — the place screens onto it, and the edit page tested
-- [ ] 11b-iv — a list page and a create page for places
+- [x] 11b-iv — a list page and a create page for places
 - [ ] 12a — retire the old API surfaces
 - [ ] 12b — drop the `organisations` table, and enforce the type flags
 
@@ -1079,6 +1079,33 @@ The list page and the create page are the other two, and they are new
 screens rather than moved ones, so they land as **11b-iv** rather than
 swelling this unit past what anybody can read at a sitting. Creating a
 place still works today, from the organisation side.
+
+#### 11b-iv — a list page and a create page for places
+
+The rest of the thin-pages gap. Both screens existed for organisations and
+neither for the places inside them, which is why a site could only be
+reached through the organisation that owns it.
+
+- **One request builds the list.** Every place the person may administer
+  comes back at once; the organisations among them name each site's owner
+  rather than appearing as rows. Asking twice would cost a round trip to
+  say the same thing.
+- **A site whose owner is not in the answer is still listed.** Somebody
+  may administer a ward without administering the trust above it, so the
+  owner column reads "not known" rather than the row disappearing.
+- **The create page asks what the old flow assumed.** Creating from the
+  organisation side decided the parent before the question was put, so a
+  ward could not be placed inside a building. The place above is now a
+  field like any other.
+- **Who leads a site is not asked while creating one.** The person has to
+  be at the place before they can hold the post there, and both are one
+  act on the site's own pages once it exists.
+- **The list of kinds of place now comes from the shared file.** Three
+  screens carried their own copy of it, which is how a screen comes to
+  offer something the server will refuse. `shared/org-unit-types.yaml` is
+  generated into the frontend like the professions and competencies
+  already are, and `requires_parent` is what separates a ward from a
+  trust.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to
