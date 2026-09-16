@@ -21,17 +21,12 @@ import {
   useFormContext,
 } from "@/components/form/Form";
 import type { FormSubmitResult } from "@/components/form/Form";
-import { orgUnits, type OrgUnitDetail } from "@/domains/orgUnit";
+import {
+  orgUnits,
+  organisationTypeOptions,
+  type OrgUnitDetail,
+} from "@/domains/orgUnit";
 import ErrorState from "@/components/error-state/ErrorState";
-
-/** Organisation type options for the select input */
-const ORGANISATION_TYPE_OPTIONS = [
-  { value: "hospital_team", label: "Hospital team" },
-  { value: "gp_practice", label: "GP practice" },
-  { value: "private_clinic", label: "Private clinic" },
-  { value: "department", label: "Department" },
-  { value: "teaching_establishment", label: "Teaching establishment" },
-];
 
 interface EditFormValues {
   name: string;
@@ -68,7 +63,7 @@ function EditFields({ orgId }: { orgId: string }) {
               <SelectField
                 label="Organisation type"
                 placeholder="Select a type"
-                data={ORGANISATION_TYPE_OPTIONS}
+                data={organisationTypeOptions}
                 value={field.value as string | null}
                 onChange={field.onChange}
                 error={fieldState.error?.message}

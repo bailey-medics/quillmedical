@@ -50,7 +50,7 @@ from sqlalchemy.orm import (
 from app.cbac.base_professions import resolve_user_competencies
 from app.cbac.competencies import validate_competency_ids
 from app.org_units.relations import validate_org_unit_relation
-from app.org_units.types import ORGANISATION_TYPE
+from app.org_units.types import ORGANISATION_TYPE, ROOT_TYPE_IDS
 
 
 class Base(DeclarativeBase):
@@ -989,7 +989,7 @@ def _give_every_organisation_a_root(
         insert(OrgUnit)
         .values(
             name=target.name,
-            type=ORGANISATION_TYPE,
+            type=_kind_of(target),
             location=target.location,
             is_active=True,
             created_at=now,
@@ -997,6 +997,19 @@ def _give_every_organisation_a_root(
         )
         .returning(OrgUnit.id)
     ).scalar_one()
+
+
+def _kind_of(organisation: Organisation) -> str:
+    """What kind of place an organisation's tree row is.
+
+    The kinds of organisation — a practice, a teaching establishment —
+    are types of place now, so the tree row can say which one it is
+    rather than every root looking alike. A kind the tree does not know
+    falls back to the plain one, because a row that cannot be created is
+    worse than a row that is less specific than it could be.
+    """
+    kind = organisation.type or ORGANISATION_TYPE
+    return kind if kind in ROOT_TYPE_IDS else ORGANISATION_TYPE
 
 
 @event.listens_for(Organisation, "before_update")
@@ -1019,6 +1032,7 @@ def _keep_the_root_in_step(
         .where(OrgUnit.id == target.org_unit_id)
         .values(
             name=target.name,
+            type=_kind_of(target),
             location=target.location,
             updated_at=datetime.now(UTC),
         )

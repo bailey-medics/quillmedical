@@ -27,7 +27,7 @@ from app.org_units.tree import (
     root_ids_of_organisations,
     site_ids_of_organisations,
 )
-from app.org_units.types import ORGANISATION_TYPE
+from app.org_units.types import ORGANISATION_TYPE, ROOT_TYPE_IDS
 
 
 def _org(db: Session, name: str) -> Organisation:
@@ -55,8 +55,20 @@ class TestEveryOrganisationIsInTheTree:
         assert org.org_unit_id is not None
         root = db_session.get(OrgUnit, org.org_unit_id)
         assert root.name == "Trust"
-        assert root.type == ORGANISATION_TYPE
+        # The kind of organisation is a kind of place now, so the tree
+        # row says which one it is rather than every root looking alike.
+        assert root.type == "hospital_team"
+        assert root.type in ROOT_TYPE_IDS
         assert root.parent_id is None
+
+    def test_a_kind_the_tree_does_not_know_falls_back(self, db_session):
+        """A less specific row beats a row that cannot be created."""
+        org = Organisation(name="Odd One", type="something_else")
+        db_session.add(org)
+        db_session.commit()
+
+        root = db_session.get(OrgUnit, org.org_unit_id)
+        assert root.type == ORGANISATION_TYPE
 
     def test_renaming_one_renames_its_row(self, db_session):
         org = _org(db_session, "Old Name")

@@ -203,6 +203,32 @@ class TestCreating:
 
         assert resp.status_code == 422
 
+    def test_each_kind_of_organisation_can_be_created(
+        self, authenticated_superadmin_client
+    ):
+        """The kinds used to be a column on the organisations table.
+
+        They are types of place now, so a screen offering them is
+        offering something the server will accept — which it was not
+        while the tree knew only one kind of organisation.
+        """
+        kinds = [
+            "organisation",
+            "hospital_team",
+            "gp_practice",
+            "private_clinic",
+            "teaching_establishment",
+        ]
+
+        for kind in kinds:
+            resp = authenticated_superadmin_client.post(
+                "/api/org-units",
+                json={"name": f"A {kind}", "type": kind},
+            )
+
+            assert resp.status_code == 200, resp.text
+            assert resp.json()["is_root"] is True
+
     def test_an_unknown_type_is_refused(
         self, authenticated_superadmin_client, db_session
     ):

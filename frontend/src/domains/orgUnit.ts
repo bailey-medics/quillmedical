@@ -29,6 +29,17 @@ export const placeTypeOptions = orgUnitTypesData.org_unit_types
   .filter((type) => type.requires_parent)
   .map((type) => ({ value: type.id, label: type.display_name }));
 
+/**
+ * The kinds of organisation — the places that stand at the top of a tree.
+ *
+ * These used to be a list of their own on two screens, and a column on a
+ * table that is going. A kind that the server does not know is a kind the
+ * screen must not offer, which is what reading them from one file buys.
+ */
+export const organisationTypeOptions = orgUnitTypesData.org_unit_types
+  .filter((type) => !type.requires_parent)
+  .map((type) => ({ value: type.id, label: type.display_name }));
+
 /** One place in the tree, as a list shows it. */
 export type OrgUnit = {
   /** Place ID. */

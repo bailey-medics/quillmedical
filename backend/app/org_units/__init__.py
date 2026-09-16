@@ -23,6 +23,7 @@ from app.org_units.types import (
     ORG_UNIT_TYPE_IDS,
     ORG_UNIT_TYPES,
     ORGANISATION_TYPE,
+    ROOT_TYPE_IDS,
     OrgUnitTypeEntry,
     get_org_unit_type,
     type_can_have_members,
@@ -35,6 +36,7 @@ from app.org_units.types import (
 
 __all__ = [
     "ORGANISATION_TYPE",
+    "ROOT_TYPE_IDS",
     "ORG_UNIT_RELATIONS",
     "ORG_UNIT_RELATION_IDS",
     "ORG_UNIT_TYPES",
