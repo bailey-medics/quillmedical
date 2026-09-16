@@ -69,8 +69,7 @@ def _authorise(
     db.add(
         PractisingCompetency(
             user_id=user.id,
-            organisation_id=org.id if org else None,
-            site_id=site.id if site else None,
+            site_id=org.org_unit_id if org else (site.id if site else None),
             competency=competency,
         )
     )

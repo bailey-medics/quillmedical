@@ -744,9 +744,28 @@ to 9 perform the merge; steps 10 to 12 perform the rename.
      replaced every row would have undone the organisation edit made
      moments earlier. It is narrowed to places inside an organisation.
 
-6. [ ] **Move practising competencies and positions.** Backfill the single place
+6. [x] **Move practising competencies and positions.** Backfill the single place
    column from the organisation column via the root rows, then drop the
    organisation columns, the check constraints and the partial indexes.
+
+   Three readings the plan left open were settled while building:
+
+   - **"Required" is a check constraint, not a NOT NULL column.** The
+     backend rules refuse a NOT NULL column added to a populated table
+     without a server default, and there is no sensible default for the id
+     of a place. A check saying the column may not be null says the same
+     thing and needs no default.
+   - **It took three migrations, in that order.** The old check refuses a
+     row with both columns set, and the backfill has to set both for a
+     moment, so the check comes off first; then the backfill and the new
+     rules; then the column.
+   - **An organisation the tree has never heard of authorises nobody.**
+     The one branch that translates an organisation into its row fails
+     closed rather than matching every place.
+
+   `cbac/scoped.py` paid for itself here: it says in its own docstring that
+   confining the place branch to one function means the storage can change
+   without touching call sites, and not one call site changed.
 
 7. [ ] **Move features, patient membership and conversation links** the same way.
 

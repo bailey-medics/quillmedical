@@ -35,7 +35,6 @@ from sqlalchemy import (
     delete,
     event,
     insert,
-    text,
     update,
 )
 from sqlalchemy.engine import Connection
@@ -1074,14 +1073,20 @@ class PractisingCompetency(Base):
     state, so practice cannot be silently withdrawn without removing the row
     that says who authorised it.
 
-    **Exactly one of organisation_id and site_id is set**, enforced by
-    ``ck_practising_competency_one_place``. A shared "places" table was
-    considered and rejected: it would need a row for every organisation and
-    site forever, and a missed one makes that place invisible to the whole
-    permission system.
+    **One place column, and it is required**, enforced by
+    ``ck_practising_competency_place_required``. It used to be a pair of
+    columns with exactly one of them set, because organisations and sites
+    were different tables. They are one table now, so the pair, the check
+    that policed it and the two partial unique indexes it forced all go.
+
+    The objection once raised against a shared "places" table — that it
+    would need a row for every organisation and site forever, and a missed
+    one makes that place invisible to the whole permission system — does
+    not apply: every place is a row by construction, because there is
+    nowhere else for it to be.
 
     Nothing is inherited. A row at an organisation says nothing about its
-    sites, and one at a site says nothing about its organisation — so a ward
+    wards, and one at a ward says nothing about its organisation — so a ward
     manager can administer their ward without trust-wide authority, and "why
     could this person do that?" is answered by one row rather than by
     replaying a hierarchy.
@@ -1089,8 +1094,11 @@ class PractisingCompetency(Base):
     Attributes:
         id: Primary key.
         user_id: The person.
-        organisation_id: The organisation, when the place is an organisation.
-        site_id: The site, when the place is a site.
+        site_id: The place. An organisation's place is its own row in the
+            tree. Nullable in the column type only: the check constraint
+            requires it, which is how a required column is added to a
+            populated table without a server default that would make no
+            sense for an id.
         competency: A competency id from ``shared/competency-definitions/``.
         authorised_by: Who authorised practice here. Null once that user is
             deleted, so the fact it was authorised outlives the person who
@@ -1101,40 +1109,21 @@ class PractisingCompetency(Base):
     __tablename__ = "practising_competency"
     __table_args__ = (
         CheckConstraint(
-            "(organisation_id IS NOT NULL) <> (site_id IS NOT NULL)",
-            name="ck_practising_competency_one_place",
+            "site_id IS NOT NULL",
+            name="ck_practising_competency_place_required",
         ),
-        # Two partial unique indexes rather than one UniqueConstraint over
-        # all four columns. One of the place columns is always NULL, and SQL
-        # treats NULLs as distinct, so a four-column constraint never fires
-        # and the same row could be written twice. Declared for both
-        # dialects: the unit-test database is SQLite, where
-        # postgresql_where is silently ignored.
-        Index(
-            "uq_practising_competency_org",
-            "user_id",
-            "organisation_id",
-            "competency",
-            unique=True,
-            postgresql_where=text("organisation_id IS NOT NULL"),
-            sqlite_where=text("organisation_id IS NOT NULL"),
-        ),
-        Index(
-            "uq_practising_competency_site",
+        # One ordinary unique constraint now that there is one place
+        # column. It used to be two partial unique indexes, because one of
+        # the two place columns was always NULL and SQL treats NULLs as
+        # distinct, so a constraint over all of them never fired.
+        UniqueConstraint(
             "user_id",
             "site_id",
             "competency",
-            unique=True,
-            postgresql_where=text("site_id IS NOT NULL"),
-            sqlite_where=text("site_id IS NOT NULL"),
+            name="uq_practising_competency_place",
         ),
         # Both directions the resolver asks: what may this person practise
         # here, and who here may practise this.
-        Index(
-            "ix_practising_competency_org",
-            "organisation_id",
-            "competency",
-        ),
         Index(
             "ix_practising_competency_site",
             "site_id",
@@ -1146,9 +1135,6 @@ class PractisingCompetency(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), nullable=False
-    )
-    organisation_id: Mapped[int | None] = mapped_column(
-        ForeignKey("organisations.id", ondelete="CASCADE"), nullable=True
     )
     site_id: Mapped[int | None] = mapped_column(
         ForeignKey("sites.id", ondelete="CASCADE"), nullable=True
@@ -1191,7 +1177,7 @@ POSITION_KINDS: tuple[str, ...] = (
 
 
 class Position(Base):
-    """A slot an organisation or site has, which may be vacant.
+    """A slot a place has, which may be vacant.
 
     The test that separates this from a competency is **can it be vacant?**
     "This site has no clinical lead" is a real and actionable state; a
@@ -1210,13 +1196,13 @@ class Position(Base):
     Holding is recorded separately, in ``PositionHolding``, so the slot
     outlives whoever fills it and the post's history is queryable.
 
-    **Exactly one of organisation_id and site_id is set**, matching
+    **One place column, and it is required**, matching
     ``PractisingCompetency`` and enforced the same way.
 
     Attributes:
         id: Primary key.
-        organisation_id: The organisation, when the place is an organisation.
-        site_id: The site, when the place is a site.
+        site_id: The place. An organisation's place is its own row in the
+            tree.
         kind: One of ``POSITION_KINDS``.
         title: What this organisation calls it, for display.
         requires_competency: A competency the holder must have authorised at
@@ -1230,35 +1216,21 @@ class Position(Base):
     __tablename__ = "position"
     __table_args__ = (
         CheckConstraint(
-            "(organisation_id IS NOT NULL) <> (site_id IS NOT NULL)",
-            name="ck_position_one_place",
+            "site_id IS NOT NULL",
+            name="ck_position_place_required",
         ),
         CheckConstraint(
             "max_holders IS NULL OR max_holders > 0",
             name="ck_position_max_holders_positive",
         ),
-        Index(
-            "uq_position_org_kind",
-            "organisation_id",
-            "kind",
-            unique=True,
-            postgresql_where=text("organisation_id IS NOT NULL"),
-            sqlite_where=text("organisation_id IS NOT NULL"),
-        ),
-        Index(
-            "uq_position_site_kind",
+        UniqueConstraint(
             "site_id",
             "kind",
-            unique=True,
-            postgresql_where=text("site_id IS NOT NULL"),
-            sqlite_where=text("site_id IS NOT NULL"),
+            name="uq_position_place_kind",
         ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    organisation_id: Mapped[int | None] = mapped_column(
-        ForeignKey("organisations.id", ondelete="CASCADE"), nullable=True
-    )
     site_id: Mapped[int | None] = mapped_column(
         ForeignKey("sites.id", ondelete="CASCADE"), nullable=True
     )
