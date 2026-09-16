@@ -27,7 +27,7 @@ import time
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, NoReturn
 from uuid import uuid4
 
 import httpx
@@ -57,7 +57,6 @@ from app.cbac.base_professions import (
 from app.cbac.competencies import validate_competency_ids
 from app.cbac.positions import (
     clinical_leads_of,
-    set_clinical_lead,
 )
 from app.config import settings
 from app.db import get_core_db
@@ -108,7 +107,6 @@ from app.models import (
     Organisation,
     OrgUnit,
     OrgUnitFeature,
-    OrgUnitLink,
     PatientMetadata,
     User,
     org_unit_member,
@@ -117,19 +115,14 @@ from app.models import (
     validate_platform_role,
 )
 from app.org_units import (
-    ORG_UNIT_RELATION_IDS,
     ORGANISATION_TYPE,
-    get_org_unit_relation,
-    validate_org_unit_relation,
 )
 from app.org_units.router import router as org_units_router
 from app.org_units.tree import (
-    descendant_ids,
     organisation_id_of_site,
     organisation_ids_of_sites,
     root_ids_of_organisations,
     site_ids_of_organisations,
-    would_make_a_cycle,
 )
 from app.organisations import (
     add_organisation_member,
@@ -210,7 +203,6 @@ from app.schemas.organisations import (
     OrganisationsListOut,
     OrgPatientAddResponse,
     OrgStaffAddResponse,
-    OrgUnitLinkItem,
     OrgUnitLinksOut,
     SiteDetailOut,
     SiteOut,
@@ -4533,188 +4525,51 @@ VALID_SITE_TYPES = {
 }
 
 
+def _gone() -> NoReturn:
+    """Say that an address has been retired, and where to go instead.
+
+    Both the sites surface and the organisations surface are views over
+    one table now, and the places answer at ``/api/org-units``. A retired
+    address answers 410 rather than 404 so a caller can tell "this never
+    existed" from "this used to be here and has gone".
+    """
+    raise HTTPException(
+        status_code=410,
+        detail=(
+            "This address has been retired. The places are at "
+            "/api/org-units."
+        ),
+    )
+
+
 @router.get(
     "/sites",
     response_model=SitesListOut,
-    dependencies=[DEP_REQUIRE_MANAGE_USERS],
 )
-def list_sites(
-    current_user: User = DEP_CURRENT_USER,
-    db: Session = DEP_GET_SESSION,
-) -> SitesListOut:
-    """List the sites of the caller's organisations.
+def list_sites() -> SitesListOut:
+    """Retired. Places live at ``/api/org-units``.
 
-    Requires ``manage_users``.
-
-    Filtered the way ``list_organisations`` is filtered: a superadmin sees
-    the estate, an admin sees the sites of organisations they belong to.
-    It previously returned every site in the deployment to any admin —
-    not a by-id leak, since no id was needed to read it.
-
-    A site linked to no organisation is not listed. Sites are created from
-    inside an organisation and linked in the same action, so an unlinked
-    site is an anomaly rather than a shared resource, and failing closed
-    is the right way round to be wrong about one.
+    Answers 410 to anybody who asks, without a permission check:
+    a retired address holds nothing to protect, and saying that it
+    has gone discloses nothing a reader of these notes cannot see.
     """
-    # Roots are organisations, and have their own list. This one shows
-    # the places inside them.
-    stmt = (
-        select(OrgUnit)
-        .where(OrgUnit.type != ORGANISATION_TYPE)
-        .order_by(OrgUnit.name)
-    )
-    if current_user.platform_role != "superadmin":
-        own_org_ids = get_member_org_ids(db, current_user.id)
-        stmt = stmt.where(
-            OrgUnit.id.in_(site_ids_of_organisations(db, own_org_ids))
-        )
-
-    rows = db.execute(stmt).scalars().all()
-
-    return SitesListOut(
-        sites=[
-            {
-                "id": s.id,
-                "name": s.name,
-                "type": s.type,
-                "parent_id": s.parent_id,
-                "location": s.location or "",
-                "is_active": s.is_active,
-                "created_at": s.created_at.isoformat(),
-                "updated_at": s.updated_at.isoformat(),
-            }
-            for s in rows
-        ]
-    )
+    _gone()
 
 
 @router.post(
     "/sites",
     response_model=SiteOut,
-    dependencies=[
-        DEP_REQUIRE_CSRF,
-        DEP_REQUIRE_MANAGE_USERS,
-    ],
 )
 def create_site(
     body: CreateSiteIn,
-    current_user: User = DEP_CURRENT_USER,
-    db: Session = DEP_GET_SESSION,
 ) -> SiteOut:
-    """Create a site inside an organisation. Requires ``manage_users``.
+    """Retired. Places live at ``/api/org-units``.
 
-    The organisation is required and written on the row itself, so a site
-    is never ownerless. It used to be created bare and linked by a second
-    request, which left a window where the record belonged nowhere —
-    permanently, if that second call never came.
-    ``_require_site_in_own_org`` already assumed this was impossible when
-    it called a site's organisation "the site's owner"; now it is.
+    Answers 410 to anybody who asks, without a permission check:
+    a retired address holds nothing to protect, and saying that it
+    has gone discloses nothing a reader of these notes cannot see.
     """
-    if body.type not in VALID_SITE_TYPES:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Invalid site type. Must be one of: "
-            f"{', '.join(sorted(VALID_SITE_TYPES))}",
-        )
-
-    org = db.get(Organisation, body.organisation_id)
-    if org is None:
-        raise HTTPException(status_code=404, detail="Organisation not found")
-    _require_own_org(db, current_user, body.organisation_id)
-
-    if org.org_unit_id is None:
-        raise HTTPException(status_code=404, detail="Organisation not found")
-
-    if body.parent_id is not None:
-        parent = db.get(OrgUnit, body.parent_id)
-        if not parent:
-            raise HTTPException(
-                status_code=404, detail="Parent site not found"
-            )
-        _require_parent_in_org(db, body.parent_id, body.organisation_id)
-        parent_id = body.parent_id
-    else:
-        # Naming no parent means "directly inside the organisation", which
-        # is the organisation's own row in the tree.
-        parent_id = org.org_unit_id
-
-    site = OrgUnit(
-        name=body.name,
-        type=body.type,
-        parent_id=parent_id,
-        location=body.location,
-    )
-    db.add(site)
-    db.flush()
-    db.refresh(site)
-
-    return SiteOut(
-        id=site.id,
-        name=site.name,
-        type=site.type,
-        parent_id=site.parent_id,
-        location=site.location or "",
-        is_active=site.is_active,
-        created_at=site.created_at.isoformat(),
-        updated_at=site.updated_at.isoformat(),
-    )
-
-
-def _require_parent_in_org(db: Session, parent_id: int, org_id: int) -> None:
-    """Refuse a parent site that belongs to a different organisation.
-
-    Sites nest — hospital, building, ward, room — so creating one means
-    naming the site it sits inside. The route checked that the parent
-    existed and not that it was the caller's, which let an admin at one
-    trust hang a ward inside another trust's building: a write into a
-    structure they do not own.
-
-    The rule is same-organisation rather than merely "one of the caller's",
-    which differ when an admin belongs to several. A ward in Trust A's
-    building is Trust A's ward, whoever created it.
-
-    This used to be two functions, one for creating and one for moving,
-    because a site could have several organisations and they had to
-    referee between the two sets. A site now has one owner, so both
-    questions are the same comparison.
-
-    404 rather than 403, matching the other site checks, so the response
-    does not confirm that a site exists to someone who may not see it.
-
-    Args:
-        db: Core database session.
-        parent_id: The site being nested under.
-        org_id: The organisation the new or updated site belongs to.
-
-    Raises:
-        HTTPException: 404 if the parent is not in that organisation.
-    """
-    roots = root_ids_of_organisations(db, [org_id])
-    allowed = set(roots) | descendant_ids(db, roots)
-    if parent_id not in allowed:
-        raise HTTPException(status_code=404, detail="Parent site not found")
-
-
-def _require_site_in_own_org(
-    db: Session, current_user: User, site_id: int
-) -> None:
-    """Refuse a site outside the admin's own organisations.
-
-    Sites are not standalone: one is created from inside an organisation and
-    linked to it in the same action, so "an organisation the site belongs
-    to" is the site's owner. Superadmins are global and skip the check.
-
-    404 rather than 403, matching ``get_organisation``, so the response does
-    not confirm that a site exists to someone who may not see it.
-    """
-    if current_user.platform_role == "superadmin":
-        return
-
-    accountable = organisation_id_of_site(db, site_id)
-    if accountable is None:
-        raise HTTPException(status_code=404, detail="Site not found")
-    if accountable not in get_member_org_ids(db, current_user.id):
-        raise HTTPException(status_code=404, detail="Site not found")
+    _gone()
 
 
 def _place_of_organisation(db: Session, org_id: int) -> int:
@@ -4739,20 +4594,6 @@ def _place_of_organisation(db: Session, org_id: int) -> int:
     if not roots:
         raise HTTPException(status_code=404, detail="Organisation not found")
     return roots[0]
-
-
-def _require_not_a_root(site: OrgUnit) -> None:
-    """Refuse a row that is an organisation rather than a place inside one.
-
-    Organisations are rows in the same table now, carrying no parent, and
-    they have their own routes. Letting the site routes reach them would
-    mean a trust could be renamed, deactivated or deleted from a screen
-    built for wards, and shown in a list of them.
-
-    404 rather than 403, matching the other site checks.
-    """
-    if site.type == ORGANISATION_TYPE:
-        raise HTTPException(status_code=404, detail="Site not found")
 
 
 def _require_own_org(db: Session, current_user: User, org_id: int) -> None:
@@ -4832,668 +4673,185 @@ def _require_shared_org_with_user(
 @router.get(
     "/sites/{site_id}",
     response_model=SiteDetailOut,
-    dependencies=[DEP_REQUIRE_MANAGE_USERS],
 )
 def get_site(
     site_id: int,
-    current_user: User = DEP_CURRENT_USER,
-    db: Session = DEP_GET_SESSION,
 ) -> SiteDetailOut:
-    """Get site details including staff. Requires ``manage_users``."""
-    _require_site_in_own_org(db, current_user, site_id)
+    """Retired. Places live at ``/api/org-units``.
 
-    site = db.get(OrgUnit, site_id)
-    if not site:
-        raise HTTPException(status_code=404, detail="Site not found")
-    _require_not_a_root(site)
-
-    # Get staff
-    staff_query = (
-        select(
-            User.id,
-            User.username,
-            User.email,
-            User.full_name,
-        )
-        .join(org_unit_member, org_unit_member.c.user_id == User.id)
-        .where(org_unit_member.c.org_unit_id == site_id)
-    )
-
-    # Operators are hidden from everyone but another operator
-    if current_user.platform_role != "superadmin":
-        staff_query = staff_query.where(User.platform_role != "superadmin")
-
-    staff = db.execute(staff_query).all()
-
-    # The owning organisation, returned as a list of one so the response
-    # shape does not change while the frontend still reads a list. `type`
-    # is selected because LinkedOrganisationItem requires it: without it
-    # this endpoint raises a validation error for any site that has an
-    # organisation, which is every site the product can actually create.
-    org_query = select(
-        Organisation.id, Organisation.name, Organisation.type
-    ).where(Organisation.id == organisation_id_of_site(db, site_id))
-    orgs = db.execute(org_query).all()
-
-    return SiteDetailOut(
-        id=site.id,
-        name=site.name,
-        type=site.type,
-        parent_id=site.parent_id,
-        location=site.location or "",
-        is_active=site.is_active,
-        created_at=site.created_at.isoformat(),
-        updated_at=site.updated_at.isoformat(),
-        staff=[
-            {
-                "id": s.id,
-                "username": s.username,
-                "email": s.email,
-                "full_name": s.full_name or "",
-            }
-            for s in staff
-        ],
-        organisations=[
-            {"id": o.id, "name": o.name, "type": o.type} for o in orgs
-        ],
-        clinical_lead_id=clinical_leads_of(db, [site_id]).get(site_id),
-    )
+    Answers 410 to anybody who asks, without a permission check:
+    a retired address holds nothing to protect, and saying that it
+    has gone discloses nothing a reader of these notes cannot see.
+    """
+    _gone()
 
 
 @router.put(
     "/sites/{site_id}",
     response_model=SiteOut,
-    dependencies=[
-        DEP_REQUIRE_CSRF,
-        DEP_REQUIRE_MANAGE_USERS,
-    ],
 )
 def update_site(
     site_id: int,
     body: UpdateSiteIn,
-    current_user: User = DEP_CURRENT_USER,
-    db: Session = DEP_GET_SESSION,
 ) -> SiteOut:
-    """Update a site. Requires ``manage_users``."""
-    _require_site_in_own_org(db, current_user, site_id)
+    """Retired. Places live at ``/api/org-units``.
 
-    site = db.get(OrgUnit, site_id)
-    if not site:
-        raise HTTPException(status_code=404, detail="Site not found")
-    _require_not_a_root(site)
-
-    if body.type is not None:
-        if body.type not in VALID_SITE_TYPES:
-            raise HTTPException(
-                status_code=422,
-                detail=f"Invalid site type. Must be one of: "
-                f"{', '.join(sorted(VALID_SITE_TYPES))}",
-            )
-        site.type = body.type
-
-    if body.name is not None:
-        site.name = body.name
-    if body.parent_id is not None:
-        # A tree is one parent each *and* no cycles. The column gives the
-        # first for nothing; the second has to be checked here, or the
-        # tree quietly stops being one and every walk up it hits the
-        # depth cap instead of a root. Only the obvious case — a place
-        # inside itself — was checked before, so a place could be moved
-        # inside its own ward.
-        if would_make_a_cycle(db, site_id, body.parent_id):
-            raise HTTPException(
-                status_code=400,
-                detail="A place cannot sit inside itself",
-            )
-        parent = db.get(OrgUnit, body.parent_id)
-        if not parent:
-            raise HTTPException(
-                status_code=404, detail="Parent site not found"
-            )
-            # Same fault as create_site had: existence was checked, ownership
-            # was not, so a site could be re-parented under another trust's.
-            # Compared against this site's own organisation rather than the
-            # caller's, which differ when an admin belongs to several.
-        accountable = organisation_id_of_site(db, site_id)
-        if accountable is None:
-            raise HTTPException(
-                status_code=404, detail="Parent site not found"
-            )
-        _require_parent_in_org(db, body.parent_id, accountable)
-        site.parent_id = body.parent_id
-    if body.location is not None:
-        site.location = body.location
-
-    db.flush()
-    db.refresh(site)
-
-    return SiteOut(
-        id=site.id,
-        name=site.name,
-        type=site.type,
-        parent_id=site.parent_id,
-        location=site.location or "",
-        is_active=site.is_active,
-        created_at=site.created_at.isoformat(),
-        updated_at=site.updated_at.isoformat(),
-    )
+    Answers 410 to anybody who asks, without a permission check:
+    a retired address holds nothing to protect, and saying that it
+    has gone discloses nothing a reader of these notes cannot see.
+    """
+    _gone()
 
 
 @router.patch(
     "/sites/{site_id}/active",
     response_model=SiteOut,
-    dependencies=[
-        DEP_REQUIRE_CSRF,
-        DEP_REQUIRE_MANAGE_USERS,
-    ],
 )
 def toggle_site_active(
     site_id: int,
     body: ToggleSiteActiveIn,
-    current_user: User = DEP_CURRENT_USER,
-    db: Session = DEP_GET_SESSION,
 ) -> SiteOut:
-    """Toggle a site's active status. Requires ``manage_users``."""
-    _require_site_in_own_org(db, current_user, site_id)
+    """Retired. Places live at ``/api/org-units``.
 
-    site = db.get(OrgUnit, site_id)
-    if not site:
-        raise HTTPException(status_code=404, detail="Site not found")
-    _require_not_a_root(site)
-
-    site.is_active = body.is_active
-    db.flush()
-    db.refresh(site)
-
-    return SiteOut(
-        id=site.id,
-        name=site.name,
-        type=site.type,
-        parent_id=site.parent_id,
-        location=site.location or "",
-        is_active=site.is_active,
-        created_at=site.created_at.isoformat(),
-        updated_at=site.updated_at.isoformat(),
-    )
+    Answers 410 to anybody who asks, without a permission check:
+    a retired address holds nothing to protect, and saying that it
+    has gone discloses nothing a reader of these notes cannot see.
+    """
+    _gone()
 
 
 @router.delete(
     "/sites/{site_id}",
     response_model=StatusResponse,
-    dependencies=[
-        DEP_REQUIRE_CSRF,
-        DEP_REQUIRE_MANAGE_USERS,
-    ],
 )
 def delete_site(
     site_id: int,
-    current_user: User = DEP_CURRENT_USER,
-    db: Session = DEP_GET_SESSION,
 ) -> StatusResponse:
-    """Delete a site. Requires ``manage_users``."""
-    _require_site_in_own_org(db, current_user, site_id)
+    """Retired. Places live at ``/api/org-units``.
 
-    site = db.get(OrgUnit, site_id)
-    if not site:
-        raise HTTPException(status_code=404, detail="Site not found")
-    _require_not_a_root(site)
-
-    db.delete(site)
-    return StatusResponse(status="deleted")
+    Answers 410 to anybody who asks, without a permission check:
+    a retired address holds nothing to protect, and saying that it
+    has gone discloses nothing a reader of these notes cannot see.
+    """
+    _gone()
 
 
 @router.post(
     "/organisations/{org_id}/sites/{site_id}",
     response_model=StatusResponse,
-    dependencies=[
-        DEP_REQUIRE_CSRF,
-        DEP_REQUIRE_MANAGE_USERS,
-    ],
 )
 def link_site_to_org(
     org_id: int,
     site_id: int,
-    current_user: User = DEP_CURRENT_USER,
-    db: Session = DEP_GET_SESSION,
 ) -> StatusResponse:
-    """Give a site to an organisation. Requires ``manage_users``.
+    """Retired. Places live at ``/api/org-units``.
 
-    A site now has one owner rather than a set of them, so this moves the
-    site rather than adding a second organisation to it. Moving a site
-    that already belongs to somebody else is refused: it would take the
-    site out of the reach of the admins who have it today, and doing that
-    from a route named "link" would be a surprise.
+    Answers 410 to anybody who asks, without a permission check:
+    a retired address holds nothing to protect, and saying that it
+    has gone discloses nothing a reader of these notes cannot see.
     """
-    _require_own_org(db, current_user, org_id)
-
-    org = db.get(Organisation, org_id)
-    if not org:
-        raise HTTPException(status_code=404, detail="Organisation not found")
-
-    site = db.get(OrgUnit, site_id)
-    if not site:
-        raise HTTPException(status_code=404, detail="Site not found")
-
-    if org.org_unit_id is None:
-        raise HTTPException(status_code=404, detail="Organisation not found")
-
-    if site.parent_id == org.org_unit_id:
-        return StatusResponse(status="already_linked")
-
-    if site.parent_id is not None:
-        raise HTTPException(
-            status_code=409,
-            detail=(
-                "Site already belongs to another organisation. Remove it "
-                "from that organisation first."
-            ),
-        )
-
-    site.parent_id = org.org_unit_id
-    db.flush()
-    return StatusResponse(status="linked")
+    _gone()
 
 
 @router.delete(
     "/organisations/{org_id}/sites/{site_id}",
     response_model=StatusResponse,
-    dependencies=[
-        DEP_REQUIRE_CSRF,
-        DEP_REQUIRE_MANAGE_USERS,
-    ],
 )
 def unlink_site_from_org(
     org_id: int,
     site_id: int,
-    current_user: User = DEP_CURRENT_USER,
-    db: Session = DEP_GET_SESSION,
 ) -> StatusResponse:
-    """Take a site away from an organisation. Requires ``manage_users``.
+    """Retired. Places live at ``/api/org-units``.
 
-    The site is left owned by nobody, which is what this route has always
-    done — it is the second half of moving one, and the site is invisible
-    to every admin list until it is given a new owner.
+    Answers 410 to anybody who asks, without a permission check:
+    a retired address holds nothing to protect, and saying that it
+    has gone discloses nothing a reader of these notes cannot see.
     """
-    _require_own_org(db, current_user, org_id)
-
-    org = db.get(Organisation, org_id)
-    site = db.get(OrgUnit, site_id)
-    if org is None or site is None or site.parent_id != org.org_unit_id:
-        raise HTTPException(status_code=404, detail="Link not found")
-
-    site.parent_id = None
-    db.flush()
-
-    return StatusResponse(status="unlinked")
-
-    # ==========================================================================
-    # LINKS BETWEEN PLACES
-    # ==========================================================================
-    #
-    # Ownership is the parent column and nothing else. Everything that is not
-    # ownership — a school teaching on a trust's wards, two trusts sharing a
-    # laboratory — is a row here, so that a second relationship never becomes a
-    # second parent and splits "who is accountable for this place" into two
-    # answers.
-    #
-    # A link confers nothing on its own. What a relation is expected to confer
-    # is declared beside it in ``app/org_units/relations.py``.
-
-
-def _link_item(link: OrgUnitLink, names: dict[int, str]) -> OrgUnitLinkItem:
-    """Build the response for one link, naming both of its ends."""
-    relation = get_org_unit_relation(link.relation)
-    return OrgUnitLinkItem(
-        id=link.id,
-        source_id=link.source_id,
-        source_name=names.get(link.source_id, ""),
-        target_id=link.target_id,
-        target_name=names.get(link.target_id, ""),
-        relation=link.relation,
-        relation_display_name=(
-            relation.display_name if relation else link.relation
-        ),
-        created_at=link.created_at.isoformat(),
-    )
-
-
-def _links_of(db: Session, site_id: int) -> OrgUnitLinksOut:
-    """Return every link the site is either end of, oldest first."""
-    links = list(
-        db.execute(
-            select(OrgUnitLink)
-            .where(
-                (OrgUnitLink.source_id == site_id)
-                | (OrgUnitLink.target_id == site_id)
-            )
-            .order_by(OrgUnitLink.id)
-        )
-        .scalars()
-        .all()
-    )
-
-    wanted = {link.source_id for link in links} | {
-        link.target_id for link in links
-    }
-    names: dict[int, str] = {}
-    if wanted:
-        names = {
-            row.id: row.name
-            for row in db.execute(
-                select(OrgUnit.id, OrgUnit.name).where(OrgUnit.id.in_(wanted))
-            ).all()
-        }
-
-    return OrgUnitLinksOut(links=[_link_item(link, names) for link in links])
+    _gone()
 
 
 @router.get(
     "/sites/{site_id}/links",
     response_model=OrgUnitLinksOut,
-    dependencies=[DEP_REQUIRE_MANAGE_USERS],
 )
 def list_site_links(
     site_id: int,
-    current_user: User = DEP_CURRENT_USER,
-    db: Session = DEP_GET_SESSION,
 ) -> OrgUnitLinksOut:
-    """List the relationships this place is either end of.
+    """Retired. Places live at ``/api/org-units``.
 
-    Both directions are returned. ``teaches_at`` from a school to a trust
-    is one fact and the reverse is another, so a place has to be able to
-    see the links pointing at it as well as the ones it made.
-
-    Requires ``manage_users``, and the place must be one of the caller's.
+    Answers 410 to anybody who asks, without a permission check:
+    a retired address holds nothing to protect, and saying that it
+    has gone discloses nothing a reader of these notes cannot see.
     """
-    _require_site_in_own_org(db, current_user, site_id)
-
-    site = db.get(OrgUnit, site_id)
-    if not site:
-        raise HTTPException(status_code=404, detail="Site not found")
-
-    return _links_of(db, site_id)
+    _gone()
 
 
 @router.post(
     "/sites/{site_id}/links",
     response_model=OrgUnitLinksOut,
-    dependencies=[
-        DEP_REQUIRE_CSRF,
-        DEP_REQUIRE_MANAGE_USERS,
-    ],
 )
 def create_site_link(
     site_id: int,
     body: CreateOrgUnitLinkIn,
-    current_user: User = DEP_CURRENT_USER,
-    db: Session = DEP_GET_SESSION,
 ) -> OrgUnitLinksOut:
-    """Record a relationship from this place to another.
+    """Retired. Places live at ``/api/org-units``.
 
-    **The place at the other end is not checked for ownership**, and that
-    is the point: the relationships worth recording are the ones that
-    cross between organisations, and requiring both ends would make the
-    table useless for exactly those. Recording one confers nothing — no
-    membership, no admin rights — so naming somebody else's place here
-    gives the caller nothing they did not already have.
-
-    Requires ``manage_users``, and the place the link is *from* must be
-    one of the caller's.
+    Answers 410 to anybody who asks, without a permission check:
+    a retired address holds nothing to protect, and saying that it
+    has gone discloses nothing a reader of these notes cannot see.
     """
-    _require_site_in_own_org(db, current_user, site_id)
-
-    source = db.get(OrgUnit, site_id)
-    if not source:
-        raise HTTPException(status_code=404, detail="Site not found")
-
-    if body.target_id == site_id:
-        raise HTTPException(
-            status_code=400,
-            detail="A place cannot be linked to itself",
-        )
-
-    target = db.get(OrgUnit, body.target_id)
-    if not target:
-        raise HTTPException(status_code=404, detail="Target site not found")
-
-    try:
-        relation = validate_org_unit_relation(body.relation)
-    except ValueError:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "Invalid relation. Must be one of: "
-                + ", ".join(ORG_UNIT_RELATION_IDS)
-            ),
-        ) from None
-
-    existing = db.scalar(
-        select(OrgUnitLink).where(
-            OrgUnitLink.source_id == site_id,
-            OrgUnitLink.target_id == body.target_id,
-            OrgUnitLink.relation == relation,
-        )
-    )
-    if existing is None:
-        db.add(
-            OrgUnitLink(
-                source_id=site_id,
-                target_id=body.target_id,
-                relation=relation,
-                created_by=current_user.id,
-            )
-        )
-        db.flush()
-
-    return _links_of(db, site_id)
+    _gone()
 
 
 @router.delete(
     "/sites/{site_id}/links/{link_id}",
     response_model=OrgUnitLinksOut,
-    dependencies=[
-        DEP_REQUIRE_CSRF,
-        DEP_REQUIRE_MANAGE_USERS,
-    ],
 )
 def delete_site_link(
     site_id: int,
     link_id: int,
-    current_user: User = DEP_CURRENT_USER,
-    db: Session = DEP_GET_SESSION,
 ) -> OrgUnitLinksOut:
-    """Remove a relationship this place is either end of.
+    """Retired. Places live at ``/api/org-units``.
 
-    Either end may remove it. A relationship somebody else recorded about
-    your place is still a claim about your place, and you should not have
-    to ask them to withdraw it.
-
-    Requires ``manage_users``, and the place must be one of the caller's.
+    Answers 410 to anybody who asks, without a permission check:
+    a retired address holds nothing to protect, and saying that it
+    has gone discloses nothing a reader of these notes cannot see.
     """
-    _require_site_in_own_org(db, current_user, site_id)
-
-    link = db.get(OrgUnitLink, link_id)
-    if link is None or site_id not in (link.source_id, link.target_id):
-        raise HTTPException(status_code=404, detail="Link not found")
-
-    db.delete(link)
-    db.flush()
-
-    return _links_of(db, site_id)
-
-
-def _mirror_clinical_lead(
-    db: Session,
-    site_id: int,
-    user_id: int,
-    role: str,
-    actor: User,
-) -> None:
-    """Keep the clinical lead position in step with the role column.
-
-    Expand step of moving clinical lead onto positions: both are written,
-    and reads have already moved across. The column and its place in the
-    API response stay until the contract step, which is a breaking change
-    and needs its own deploy.
-
-    Args:
-        db: Database session.
-        site_id: The site being changed.
-        user_id: The staff member.
-        role: The role just written to ``site_member``.
-        actor: Who made the change.
-    """
-    site = db.get(OrgUnit, site_id)
-    if site is None:
-        return
-
-    if role == "clinical_lead":
-        person = db.get(User, user_id)
-        if person is not None:
-            set_clinical_lead(db, site, person, appointed_by=actor)
-        return
-
-        # Demoted out of the post, so the post falls vacant.
-    if clinical_leads_of(db, [site_id]).get(site_id) == user_id:
-        set_clinical_lead(db, site, None)
+    _gone()
 
 
 @router.post(
     "/sites/{site_id}/staff",
     response_model=AddSiteStaffResponse,
-    dependencies=[
-        DEP_REQUIRE_CSRF,
-        DEP_REQUIRE_MANAGE_STAFF_MEMBERSHIP,
-    ],
 )
 def add_site_staff(
     site_id: int,
     body: AddSiteStaffIn,
-    current_user: User = DEP_CURRENT_USER,
-    db: Session = DEP_GET_SESSION,
 ) -> AddSiteStaffResponse:
-    """Add a staff member to a site. Requires ``manage_users``.
+    """Retired. Places live at ``/api/org-units``.
 
-    Role must be one of: clinical_lead, staff, trainee.
+    Answers 410 to anybody who asks, without a permission check:
+    a retired address holds nothing to protect, and saying that it
+    has gone discloses nothing a reader of these notes cannot see.
     """
-    _require_site_in_own_org(db, current_user, site_id)
-
-    site = db.get(OrgUnit, site_id)
-    if not site:
-        raise HTTPException(status_code=404, detail="Site not found")
-
-    user_id = body.user_id
-    role = body.role
-
-    valid_roles = {"clinical_lead", "staff", "trainee"}
-    if role not in valid_roles:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Invalid role. Must be one of: "
-            f"{', '.join(sorted(valid_roles))}",
-        )
-
-        # The request still names a role, because "make this person the clinical
-        # lead" is what the interface is asking for. What gets stored is a
-        # capacity, and clinical lead is not one of those — it is a post, filled
-        # below by _mirror_clinical_lead. Someone appointed to it is a member of
-        # the site in the ordinary way.
-    capacity = "staff" if role == "clinical_lead" else role
-
-    # One lead per site is enforced by max_holders on the post, not by a
-    # uniqueness rule on this table, so the post can also be vacant and can
-    # record acting cover.
-    if role == "clinical_lead":
-        existing_lead_id = clinical_leads_of(db, [site_id]).get(site_id)
-        if existing_lead_id is not None and existing_lead_id != user_id:
-            raise HTTPException(
-                status_code=409,
-                detail="Site already has a clinical lead",
-            )
-
-    target_user = db.get(User, user_id)
-    if not target_user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-        # Check if already assigned
-    existing = db.execute(
-        select(org_unit_member).where(
-            org_unit_member.c.org_unit_id == site_id,
-            org_unit_member.c.user_id == user_id,
-        )
-    ).first()
-    # The grant, in the same act as the membership — see
-    # `grant_staff_competencies`. A site is where somebody works, so the
-    # person becoming staff here is as likely to hold nothing staff-like
-    # as one joining an organisation, and the interface asks the same
-    # question. Applied before the early return below so it reaches a
-    # role change too: appointing an existing member clinical lead is
-    # exactly when a missing competency would be noticed.
-    grant_staff_competencies(
-        target_user, body.base_profession, body.additional_competencies
-    )
-
-    if existing:
-        # Update role
-        db.execute(
-            org_unit_member.update()
-            .where(
-                org_unit_member.c.org_unit_id == site_id,
-                org_unit_member.c.user_id == user_id,
-            )
-            .values(capacity=capacity)
-        )
-        _mirror_clinical_lead(db, site_id, user_id, role, current_user)
-        return AddSiteStaffResponse(status="updated")
-
-    db.execute(
-        org_unit_member.insert().values(
-            org_unit_id=site_id,
-            user_id=user_id,
-            capacity=capacity,
-        )
-    )
-    _mirror_clinical_lead(db, site_id, user_id, role, current_user)
-    return AddSiteStaffResponse(status="added")
+    _gone()
 
 
 @router.delete(
     "/sites/{site_id}/staff/{user_id}",
     response_model=StatusResponse,
-    dependencies=[
-        DEP_REQUIRE_CSRF,
-        DEP_REQUIRE_MANAGE_STAFF_MEMBERSHIP,
-    ],
 )
 def remove_site_staff(
     site_id: int,
     user_id: int,
-    current_user: User = DEP_CURRENT_USER,
-    db: Session = DEP_GET_SESSION,
 ) -> StatusResponse:
-    """Remove a staff member from a site. Requires ``manage_users``."""
-    _require_site_in_own_org(db, current_user, site_id)
+    """Retired. Places live at ``/api/org-units``.
 
-    # Vacate the post before the row goes, so the handover is recorded
-    # rather than the holder simply disappearing.
-    site = db.get(OrgUnit, site_id)
-    if (
-        site is not None
-        and clinical_leads_of(db, [site_id]).get(site_id) == user_id
-    ):
-        set_clinical_lead(db, site, None)
-
-    result = db.execute(
-        org_unit_member.delete().where(
-            org_unit_member.c.org_unit_id == site_id,
-            org_unit_member.c.user_id == user_id,
-        )
-    )
-
-    if result.rowcount == 0:  # type: ignore[attr-defined]
-        raise HTTPException(status_code=404, detail="Staff member not found")
-
-    return StatusResponse(status="removed")
+    Answers 410 to anybody who asks, without a permission check:
+    a retired address holds nothing to protect, and saying that it
+    has gone discloses nothing a reader of these notes cannot see.
+    """
+    _gone()
 
 
 @router.patch(
