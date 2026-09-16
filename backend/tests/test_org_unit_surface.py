@@ -927,3 +927,155 @@ class TestMovingAPlace:
         assert resp.status_code == 200
         db_session.refresh(first)
         assert first.parent_id == second.id
+
+
+class TestWhatTheAnswerLeavesOut:
+    """The list fails closed, and the gate is a competency.
+
+    These were asked of `/api/sites`, which is being retired. They are
+    rules about who may read the estate, not about that address.
+    """
+
+    def test_an_admin_in_no_organisation_sees_nothing(
+        self, authenticated_admin_client, db_session
+    ):
+        """An empty list of organisations must not invert into "all".
+
+        ``IN ()`` is the classic way a filter turns into its opposite.
+        """
+        org = _org(db_session, "Some Trust")
+        _ward(db_session, org.org_unit_id, "Unreachable Ward")
+
+        resp = authenticated_admin_client.get("/api/org-units")
+
+        assert resp.status_code == 200
+        assert resp.json()["org_units"] == []
+
+    def test_a_place_that_belongs_nowhere_is_not_shared(
+        self, authenticated_admin_client, db_session, test_admin
+    ):
+        """A place under nothing is an anomaly, not a commons."""
+        mine = _org(db_session, "My Trust")
+        add_organisation_member(db_session, mine.id, test_admin.id, "staff")
+        db_session.commit()
+        orphan = OrgUnit(name="Orphan Ward", type="ward")
+        db_session.add(orphan)
+        db_session.commit()
+
+        resp = authenticated_admin_client.get("/api/org-units")
+
+        names = {unit["name"] for unit in resp.json()["org_units"]}
+        assert "Orphan Ward" not in names
+
+    def test_the_rank_alone_is_not_enough(
+        self, authenticated_client, db_session, test_user
+    ):
+        """Promoted by rank, in the right organisation, no competency.
+
+        A consultant holds clinical competencies and not ``manage_users``,
+        which is the distinction the gate exists to make.
+        """
+        org = _org(db_session, "My Trust")
+        test_user.base_profession = "consultant"
+        add_organisation_member(db_session, org.id, test_user.id, "staff")
+        db_session.commit()
+
+        resp = authenticated_client.get("/api/org-units")
+
+        assert resp.status_code == 403
+
+    def test_a_superadmin_sees_every_trusts_places(
+        self, authenticated_superadmin_client, db_session
+    ):
+        first = _org(db_session, "First Trust")
+        second = _org(db_session, "Second Trust")
+        mine = _ward(db_session, first.org_unit_id, "First Ward")
+        theirs = _ward(db_session, second.org_unit_id, "Second Ward")
+
+        resp = authenticated_superadmin_client.get("/api/org-units")
+
+        ids = {unit["id"] for unit in resp.json()["org_units"]}
+        assert {mine.id, theirs.id} <= ids
+
+
+class TestNestingStaysInsideOneOrganisation:
+    """A place cannot be moved into somebody else's tree.
+
+    Creating inside another organisation is already refused. Moving is
+    the same rule applied later, and only `/api/sites` asked it.
+    """
+
+    def test_moving_under_another_organisations_place_is_refused(
+        self, authenticated_admin_client, db_session, test_admin
+    ):
+        mine = _org(db_session, "My Trust")
+        theirs = _org(db_session, "Their Trust")
+        add_organisation_member(db_session, mine.id, test_admin.id, "staff")
+        db_session.commit()
+        my_ward = _ward(db_session, mine.org_unit_id, "My Ward")
+        their_ward = _ward(db_session, theirs.org_unit_id, "Their Ward")
+
+        resp = authenticated_admin_client.put(
+            f"/api/org-units/{my_ward.id}",
+            json={"parent_id": their_ward.id},
+        )
+
+        assert resp.status_code == 404
+        db_session.refresh(my_ward)
+        assert my_ward.parent_id == mine.org_unit_id
+
+    def test_creating_under_another_organisations_place_is_refused(
+        self, authenticated_admin_client, db_session, test_admin
+    ):
+        """Not only their organisation: anything in their tree."""
+        mine = _org(db_session, "My Trust")
+        theirs = _org(db_session, "Their Trust")
+        add_organisation_member(db_session, mine.id, test_admin.id, "staff")
+        db_session.commit()
+        their_ward = _ward(db_session, theirs.org_unit_id, "Their Ward")
+
+        resp = authenticated_admin_client.post(
+            "/api/org-units",
+            json={
+                "name": "My Room",
+                "type": "room",
+                "parent_id": their_ward.id,
+            },
+        )
+
+        assert resp.status_code == 404
+
+    def test_a_place_that_belongs_nowhere_cannot_be_the_parent(
+        self, authenticated_admin_client, db_session, test_admin
+    ):
+        """An orphan is not a shared place to hang things off."""
+        mine = _org(db_session, "My Trust")
+        add_organisation_member(db_session, mine.id, test_admin.id, "staff")
+        db_session.commit()
+        orphan = OrgUnit(name="Orphan Ward", type="ward")
+        db_session.add(orphan)
+        db_session.commit()
+
+        resp = authenticated_admin_client.post(
+            "/api/org-units",
+            json={"name": "My Room", "type": "room", "parent_id": orphan.id},
+        )
+
+        assert resp.status_code == 404
+
+    def test_moving_under_a_sibling_still_works(
+        self, authenticated_admin_client, db_session, test_admin
+    ):
+        mine = _org(db_session, "My Trust")
+        add_organisation_member(db_session, mine.id, test_admin.id, "staff")
+        db_session.commit()
+        first = _ward(db_session, mine.org_unit_id, "Ward 1")
+        second = _ward(db_session, mine.org_unit_id, "Ward 2")
+
+        resp = authenticated_admin_client.put(
+            f"/api/org-units/{first.id}", json={"parent_id": second.id}
+        )
+
+        assert resp.status_code == 200
+        db_session.refresh(first)
+        assert first.parent_id == second.id
