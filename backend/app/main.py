@@ -104,6 +104,7 @@ from app.models import (
     ExternalPatientAccess,
     Organisation,
     OrganisationFeature,
+    OrgUnitLink,
     PatientMetadata,
     Site,
     User,
@@ -112,6 +113,11 @@ from app.models import (
     site_member,
     validate_member_capacity,
     validate_platform_role,
+)
+from app.org_units import (
+    ORG_UNIT_RELATION_IDS,
+    get_org_unit_relation,
+    validate_org_unit_relation,
 )
 from app.organisations import (
     get_accessible_patient_ids,
@@ -179,6 +185,7 @@ from app.schemas.organisations import (
     AddSiteStaffResponse,
     AddStaffIn,
     CreateOrganisationIn,
+    CreateOrgUnitLinkIn,
     CreateSiteIn,
     FeaturesListOut,
     FeatureToggleResponse,
@@ -187,6 +194,8 @@ from app.schemas.organisations import (
     OrganisationsListOut,
     OrgPatientAddResponse,
     OrgStaffAddResponse,
+    OrgUnitLinkItem,
+    OrgUnitLinksOut,
     SiteDetailOut,
     SiteOut,
     SitesListOut,
@@ -5081,6 +5090,202 @@ def unlink_site_from_org(
     db.flush()
 
     return StatusResponse(status="unlinked")
+
+
+# ==========================================================================
+# LINKS BETWEEN PLACES
+# ==========================================================================
+#
+# Ownership is the parent column and nothing else. Everything that is not
+# ownership — a school teaching on a trust's wards, two trusts sharing a
+# laboratory — is a row here, so that a second relationship never becomes a
+# second parent and splits "who is accountable for this place" into two
+# answers.
+#
+# A link confers nothing on its own. What a relation is expected to confer
+# is declared beside it in ``app/org_units/relations.py``.
+
+
+def _link_item(link: OrgUnitLink, names: dict[int, str]) -> OrgUnitLinkItem:
+    """Build the response for one link, naming both of its ends."""
+    relation = get_org_unit_relation(link.relation)
+    return OrgUnitLinkItem(
+        id=link.id,
+        source_id=link.source_id,
+        source_name=names.get(link.source_id, ""),
+        target_id=link.target_id,
+        target_name=names.get(link.target_id, ""),
+        relation=link.relation,
+        relation_display_name=(
+            relation.display_name if relation else link.relation
+        ),
+        created_at=link.created_at.isoformat(),
+    )
+
+
+def _links_of(db: Session, site_id: int) -> OrgUnitLinksOut:
+    """Return every link the site is either end of, oldest first."""
+    links = list(
+        db.execute(
+            select(OrgUnitLink)
+            .where(
+                (OrgUnitLink.source_id == site_id)
+                | (OrgUnitLink.target_id == site_id)
+            )
+            .order_by(OrgUnitLink.id)
+        )
+        .scalars()
+        .all()
+    )
+
+    wanted = {link.source_id for link in links} | {
+        link.target_id for link in links
+    }
+    names: dict[int, str] = {}
+    if wanted:
+        names = {
+            row.id: row.name
+            for row in db.execute(
+                select(Site.id, Site.name).where(Site.id.in_(wanted))
+            ).all()
+        }
+
+    return OrgUnitLinksOut(links=[_link_item(link, names) for link in links])
+
+
+@router.get(
+    "/sites/{site_id}/links",
+    response_model=OrgUnitLinksOut,
+    dependencies=[DEP_REQUIRE_MANAGE_USERS],
+)
+def list_site_links(
+    site_id: int,
+    current_user: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> OrgUnitLinksOut:
+    """List the relationships this place is either end of.
+
+    Both directions are returned. ``teaches_at`` from a school to a trust
+    is one fact and the reverse is another, so a place has to be able to
+    see the links pointing at it as well as the ones it made.
+
+    Requires ``manage_users``, and the place must be one of the caller's.
+    """
+    _require_site_in_own_org(db, current_user, site_id)
+
+    site = db.get(Site, site_id)
+    if not site:
+        raise HTTPException(status_code=404, detail="Site not found")
+
+    return _links_of(db, site_id)
+
+
+@router.post(
+    "/sites/{site_id}/links",
+    response_model=OrgUnitLinksOut,
+    dependencies=[
+        DEP_REQUIRE_CSRF,
+        DEP_REQUIRE_MANAGE_USERS,
+    ],
+)
+def create_site_link(
+    site_id: int,
+    body: CreateOrgUnitLinkIn,
+    current_user: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> OrgUnitLinksOut:
+    """Record a relationship from this place to another.
+
+    **The place at the other end is not checked for ownership**, and that
+    is the point: the relationships worth recording are the ones that
+    cross between organisations, and requiring both ends would make the
+    table useless for exactly those. Recording one confers nothing — no
+    membership, no admin rights — so naming somebody else's place here
+    gives the caller nothing they did not already have.
+
+    Requires ``manage_users``, and the place the link is *from* must be
+    one of the caller's.
+    """
+    _require_site_in_own_org(db, current_user, site_id)
+
+    source = db.get(Site, site_id)
+    if not source:
+        raise HTTPException(status_code=404, detail="Site not found")
+
+    if body.target_id == site_id:
+        raise HTTPException(
+            status_code=400,
+            detail="A place cannot be linked to itself",
+        )
+
+    target = db.get(Site, body.target_id)
+    if not target:
+        raise HTTPException(status_code=404, detail="Target site not found")
+
+    try:
+        relation = validate_org_unit_relation(body.relation)
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Invalid relation. Must be one of: "
+                + ", ".join(ORG_UNIT_RELATION_IDS)
+            ),
+        ) from None
+
+    existing = db.scalar(
+        select(OrgUnitLink).where(
+            OrgUnitLink.source_id == site_id,
+            OrgUnitLink.target_id == body.target_id,
+            OrgUnitLink.relation == relation,
+        )
+    )
+    if existing is None:
+        db.add(
+            OrgUnitLink(
+                source_id=site_id,
+                target_id=body.target_id,
+                relation=relation,
+                created_by=current_user.id,
+            )
+        )
+        db.flush()
+
+    return _links_of(db, site_id)
+
+
+@router.delete(
+    "/sites/{site_id}/links/{link_id}",
+    response_model=OrgUnitLinksOut,
+    dependencies=[
+        DEP_REQUIRE_CSRF,
+        DEP_REQUIRE_MANAGE_USERS,
+    ],
+)
+def delete_site_link(
+    site_id: int,
+    link_id: int,
+    current_user: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> OrgUnitLinksOut:
+    """Remove a relationship this place is either end of.
+
+    Either end may remove it. A relationship somebody else recorded about
+    your place is still a claim about your place, and you should not have
+    to ask them to withdraw it.
+
+    Requires ``manage_users``, and the place must be one of the caller's.
+    """
+    _require_site_in_own_org(db, current_user, site_id)
+
+    link = db.get(OrgUnitLink, link_id)
+    if link is None or site_id not in (link.source_id, link.target_id):
+        raise HTTPException(status_code=404, detail="Link not found")
+
+    db.delete(link)
+    db.flush()
+
+    return _links_of(db, site_id)
 
 
 def _mirror_clinical_lead(

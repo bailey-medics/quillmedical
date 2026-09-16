@@ -44,6 +44,7 @@ from sqlalchemy.orm import (
 
 from app.cbac.base_professions import resolve_user_competencies
 from app.cbac.competencies import validate_competency_ids
+from app.org_units.relations import validate_org_unit_relation
 
 
 class Base(DeclarativeBase):
@@ -878,6 +879,90 @@ class Site(Base):
         secondary=site_member,
         backref="sites",
     )
+
+
+class OrgUnitLink(Base):
+    """A relationship between two places that is not ownership.
+
+    Ownership is the parent column: one parent each, no cycles, and one
+    answer to who is accountable. A medical school teaching on a trust's
+    wards is a real relationship and not ownership, so it lives here
+    rather than becoming a second parent and splitting every governance
+    question into two answers.
+
+    Plays the part ``OrganizationAffiliation`` plays in FHIR and the
+    relationship codes play in NHS ODS. **A link confers no membership and
+    no admin rights.** What a relation may confer is declared beside it in
+    ``app/org_units/relations.py``, so a route asks the relation rather
+    than matching on its name.
+
+    Both ends point at ``sites``, which is the table the org_unit tree is
+    being built in: organisations become rows there in a later step, at
+    which point a school-to-trust link becomes expressible without this
+    table changing.
+
+    **Direction matters.** ``teaches_at`` from a school to a trust is not
+    the same fact as the reverse, so the pair is ordered and the same two
+    places may hold a link each way.
+
+    Attributes:
+        id: Primary key.
+        source_id: The place the relationship is *from*.
+        target_id: The place the relationship is *to*.
+        relation: A relation id from ``app/org_units/relations.py``.
+        created_by: Who recorded the link. Null once that user is deleted,
+            so the fact that somebody recorded it outlives the person.
+        created_at: When the link was recorded.
+    """
+
+    __tablename__ = "org_unit_link"
+    __table_args__ = (
+        UniqueConstraint(
+            "source_id",
+            "target_id",
+            "relation",
+            name="uq_org_unit_link_triple",
+        ),
+        CheckConstraint(
+            "source_id <> target_id",
+            name="ck_org_unit_link_not_self",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    source_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("sites.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    target_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("sites.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    relation: Mapped[str] = mapped_column(String(50), nullable=False)
+    created_by: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+
+    @validates("relation")
+    def _relation_known(self, _key: str, value: str) -> str:
+        """Refuse a relation the code does not define.
+
+        The list is in code rather than a database enum so it can grow
+        without a migration, which means the model is the only place that
+        can refuse an unknown value before it is stored.
+        """
+        return validate_org_unit_relation(value)
 
 
 class PractisingCompetency(Base):
