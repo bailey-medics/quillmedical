@@ -882,7 +882,9 @@ So the remaining steps land as:
 - [x] 11b-iii — the place screens onto it, and the edit page tested
 - [x] 11b-iv — a list page and a create page for places
 - [x] 11b-v — the last readers of the old surfaces, bar one
-- [ ] 12a — retire the old API surfaces
+- [x] 12a-i — the rules the old surfaces prove, proved on the new one
+- [ ] 12a-ii — the rest of those rules: scoping, and one place per site
+- [ ] 12a-iii — retire `/api/sites`
 - [ ] 12b — drop the `organisations` table, and enforce the type flags
 
 #### 10a — write both names for the place column
@@ -1136,6 +1138,38 @@ and `site_ids` to the users API, and those are organisation ids, not
 place ids. Moving the screen means moving what the API accepts, so it
 goes with **12b**, where the table folds — and until it does, `/api/organisations`
 cannot be retired, which 12a has to respect.
+
+#### 12a — retiring the old surfaces, in three
+
+About ninety tests exercise `/api/sites` and `/api/organisations`, and
+most of them are proving rules about places rather than about those two
+addresses. Deleting them with the routes would lose the rules, so the
+retirement is split: move what is worth keeping first, then retire.
+
+**12a-i** moved the first group and found a gap while doing it.
+
+- **Taking somebody off a place did not vacate what they held there.**
+  Naming a clinical lead requires the person to be at the place, so
+  leaving them holding the post after taking them off it left the place
+  in a state the same surface refuses to create. The old surface got this
+  right; the new one did not, and nothing noticed because no test asked.
+  The post is vacated rather than deleted, so the handover is recorded.
+- **The cycle guard walks the whole chain.** One level up was already
+  refused. Moving a hospital under a room three levels below it is the
+  case the walk exists for, and only the old surface asked it.
+- **The membership competency is about the competency, not the address.**
+  Holding `manage_users` alone still does not put somebody at a place,
+  and `manage_staff_membership` alone still does, now asked of
+  `/api/org-units` as well.
+
+**12a-ii** is the rest: who may see and create what (`test_create_site_scoping`,
+`test_list_sites_scoping`), and a site belonging to exactly one
+organisation.
+
+**12a-iii** retires `/api/sites` — the routes answer 410, the tests that
+only exercised that address go, and the breaking-change gate is signed.
+`/api/organisations` cannot follow until the user form moves, which is
+12b.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to
