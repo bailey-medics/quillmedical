@@ -180,3 +180,66 @@ def organisation_ids_of_sites(
         if org_id is not None:
             resolved[site_id] = org_id
     return resolved
+
+
+def ancestor_ids(db: Session, unit_id: int) -> list[int]:
+    """Return every place above *unit_id*, nearest first.
+
+    The upward walk that root resolution already performs, exposed on its
+    own so the cycle guard and the root lookup cannot disagree about what
+    "above" means.
+
+    A chain that does not end — which is what a cycle in the parent column
+    looks like from below — stops at the depth cap and returns what it
+    found. The caller gets a wrong answer rather than a request that never
+    finishes, which is the easier failure to notice.
+
+    Args:
+        db: Core database session.
+        unit_id: The place to walk up from. Not included in the result.
+
+    Returns:
+        The ids of its ancestors, closest first.
+    """
+    found: list[int] = []
+    seen: set[int] = {unit_id}
+    current = db.execute(
+        select(Site.parent_id).where(Site.id == unit_id)
+    ).scalar_one_or_none()
+
+    for _ in range(MAX_TREE_DEPTH):
+        if current is None or current in seen:
+            break
+        seen.add(current)
+        found.append(current)
+        current = db.execute(
+            select(Site.parent_id).where(Site.id == current)
+        ).scalar_one_or_none()
+
+    return found
+
+
+def would_make_a_cycle(db: Session, unit_id: int, parent_id: int) -> bool:
+    """Whether making *parent_id* the parent of *unit_id* closes a loop.
+
+    A tree is one parent each *and* no cycles. One column gives the first
+    for nothing, because one column cannot hold two parents; the second
+    has to be checked on every re-parent or the tree quietly stops being
+    one. Until scoping walked the column nothing noticed, so A under B
+    then B under A was accepted — harmless only because nothing ever
+    followed the chain.
+
+    The check is the same upward walk root resolution performs, which is
+    why it lives beside it rather than being a query of its own.
+
+    Args:
+        db: Core database session.
+        unit_id: The place being moved.
+        parent_id: Where it is being moved to.
+
+    Returns:
+        True if the move would put a place inside itself.
+    """
+    if unit_id == parent_id:
+        return True
+    return unit_id in ancestor_ids(db, parent_id)

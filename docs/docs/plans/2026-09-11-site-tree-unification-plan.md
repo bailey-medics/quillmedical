@@ -799,9 +799,20 @@ Two deletes are therefore written out in `models.py` rather than left to
 the database. Worth closing properly in a plan of its own, because the
 next person to rely on a cascade will have the same surprise.
 
-8. [ ] **Add the cycle guard and index the parent column**, with a shared upward
+8. [x] **Add the cycle guard and index the parent column**, with a shared upward
    walk helper. Do this before step 9, so no recursive query is ever written
    against a table that can hold a cycle.
+
+   Two readings the plan left open were settled while building:
+
+   - **Departed from what the code did: the self-parent refusal is now a
+     400, not a 422.** The plan asks for 400, and one rule refusing the
+     same thing with two different codes depending on how far up the chain
+     the loop closes would be worse than either.
+   - **The tree walks are imported from their own module, not the package.**
+     They read the models and the models read the vocabulary, so
+     re-exporting them from `app/org_units/__init__.py` made importing
+     either one depend on the other being finished.
 
 9. [ ] **Switch scoping and reach to subtree queries**, with a depth cap and
    distinct ids. Write them as subtree queries even though the tree is only

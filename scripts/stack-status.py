@@ -484,6 +484,12 @@ def draw(
                 label = text
             cells.append(palette.link(url, label))
             cells.append(summarise_checks(branch.pr, palette))
+        elif show_prs and branch.is_merged:
+            # A merged branch has no *open* pull request, which is what the
+            # listing asks for — but "no pull request" then reads as "you
+            # never opened one", the opposite of what happened. The stack
+            # data still knows it merged, so say that.
+            cells.append(palette.green("merged"))
         elif show_prs:
             cells.append(palette.dim("no pull request"))
 
