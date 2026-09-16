@@ -3319,7 +3319,7 @@ not deferred items: deferring is for what nobody should build yet.
       holder-only rule.
 - [ ] Enable the `passport` feature for the first South West
       organisation and onboard a small assessor group.
-- [ ] Document the module under `docs/docs/backend/passport/index.md`
+- [x] Document the module under `docs/docs/backend/passport/index.md`
       and add a concepts page `docs/docs/concepts/clinician-passport.md`
       explaining the CBAC relationship.
 
