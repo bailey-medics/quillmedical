@@ -877,7 +877,9 @@ So the remaining steps land as:
 - [x] 10d — rename the tables and the model
 - [x] 10e — reach through a teaching link (the module move goes with 12b)
 - [x] 11a — the `/api/org-units` surface, alongside the old ones
-- [ ] 11b — the frontend onto it, and the thin-pages gap closed
+- [x] 11b-i — one place client and type for the screens to use
+- [ ] 11b-ii — the organisation screens onto it
+- [ ] 11b-iii — the place screens onto it, and the thin-pages gap closed
 - [ ] 12a — retire the old API surfaces
 - [ ] 12b — drop the `organisations` table, and enforce the type flags
 
@@ -1009,6 +1011,20 @@ Four readings the plan left open were settled while building:
 could depend on the *same* callable. A wrapper would have been a different
 object, and the tests switch that gate off by overriding the object — so
 the wrapper would have quietly stayed on.
+
+#### 11b — the frontend, in three
+
+The admin screens are about 2,700 lines of page code and 2,900 of tests.
+Moving all of them in one pull request would be far past what anybody can
+read at a sitting, so it is split: the client and type first, then the
+organisation screens, then the place screens together with the thin-pages
+gap.
+
+**11b-i** adds `frontend/src/domains/orgUnit.ts`: the `OrgUnit` type and
+every call the screens make, gathered so the addresses appear once. The
+rename just done showed why that matters — the same path was written out
+in a dozen files, and moving it meant finding all of them. No screen
+changes yet.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to
