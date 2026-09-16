@@ -162,6 +162,9 @@ class OrgUnitChildItem(BaseModel):
         is_active: Whether it is in use.
         clinical_lead_id: Who holds its clinical lead post, or None when
             the post is vacant.
+        clinical_lead_name: That person's name, so a list of places can be
+            read without a second request per row. Empty when the post is
+            vacant, which is a real state and not a missing value.
     """
 
     id: int
@@ -169,6 +172,7 @@ class OrgUnitChildItem(BaseModel):
     type: str
     is_active: bool
     clinical_lead_id: int | None = None
+    clinical_lead_name: str = ""
 
 
 class OrgUnitDetailOut(BaseModel):
@@ -270,3 +274,17 @@ class OrgUnitStatusOut(BaseModel):
     """
 
     status: str
+
+
+class SetClinicalLeadIn(BaseModel):
+    """Request to name a place's clinical lead, or leave the post vacant.
+
+    Attributes:
+        user_id: Who holds the post, or None to vacate it. A vacancy is a
+            real state and an actionable one — somebody has to be found —
+            so it is said out loud rather than expressed by an absence.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    user_id: int | None = None

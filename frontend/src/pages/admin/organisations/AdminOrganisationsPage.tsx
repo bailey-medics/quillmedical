@@ -17,21 +17,8 @@ import { ConfirmModal } from "@/components/confirm-modal";
 import { IconTrash } from "@/components/icons/appIcons";
 import type { Column } from "@/components/tables/DataTable";
 import DataTableControlled from "@/components/tables/DataTableControlled";
-import { api } from "@/lib/api";
+import { orgUnits, type OrgUnit } from "@/domains/orgUnit";
 import { useAuth } from "@/auth/AuthContext";
-
-interface Organisation {
-  id: number;
-  name: string;
-  type: string;
-  location: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-interface OrganisationsApiResponse {
-  organisations: Organisation[];
-}
 
 /**
  * Admin Organisations Page
@@ -45,15 +32,17 @@ export default function AdminOrganisationsPage() {
   const navigate = useNavigate();
   const { state } = useAuth();
   const isSuperadmin = state.user?.platform_role === "superadmin";
-  const [organisations, setOrganisations] = useState<Organisation[]>([]);
+  const [organisations, setOrganisations] = useState<OrgUnit[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchOrganisations() {
       try {
-        const data = await api.get<OrganisationsApiResponse>("/organisations");
-        setOrganisations(data.organisations || []);
+        // The organisations are the places at the top of a tree. Which
+        // places those are comes from their type, never from having
+        // nothing above them.
+        setOrganisations(await orgUnits.list({ roots: true }));
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
@@ -64,16 +53,23 @@ export default function AdminOrganisationsPage() {
     fetchOrganisations();
   }, []);
 
-  const formatType = (type: string): string => {
-    // Convert snake_case to Title Case
-    return type
-      .split("_")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ");
-  };
+  // The backend names the type for a person, so the screen no longer
+  // has to guess at it from the stored value.
+  const typeLabels = useMemo(() => {
+    const labels = new Map<string, string>();
+    for (const org of organisations) {
+      labels.set(org.type, org.type_display_name);
+    }
+    return labels;
+  }, [organisations]);
+
+  const formatType = useCallback(
+    (type: string): string => typeLabels.get(type) ?? type,
+    [typeLabels],
+  );
 
   const searchFields = useCallback(
-    (org: Organisation) => [org.name, org.type, org.location],
+    (org: OrgUnit) => [org.name, org.type_display_name, org.location],
     [],
   );
 
@@ -84,18 +80,18 @@ export default function AdminOrganisationsPage() {
         group: "Type",
         items: types.map((t) => ({
           value: `type:${t}`,
-          label: formatType(t),
+          label: typeLabels.get(t) ?? t,
         })),
       },
     ];
-  }, [organisations]);
+  }, [organisations, typeLabels]);
 
   const filterPredicate = useCallback((filters: string[]) => {
     const typeFilters = filters
       .filter((f) => f.startsWith("type:"))
       .map((f) => f.slice(5));
 
-    return (org: Organisation) => {
+    return (org: OrgUnit) => {
       if (typeFilters.length > 0 && !typeFilters.includes(org.type)) {
         return false;
       }
@@ -103,13 +99,13 @@ export default function AdminOrganisationsPage() {
     };
   }, []);
 
-  const [removingOrg, setRemovingOrg] = useState<Organisation | null>(null);
+  const [removingOrg, setRemovingOrg] = useState<OrgUnit | null>(null);
   const { showMessage } = usePageMessage();
 
   async function confirmRemoveOrg() {
     if (!removingOrg) return;
     try {
-      await api.del(`/organisations/${removingOrg.id}`);
+      await orgUnits.remove(removingOrg.id);
       setOrganisations((prev) => prev.filter((o) => o.id !== removingOrg.id));
       showMessage({
         variant: "success",
@@ -128,7 +124,7 @@ export default function AdminOrganisationsPage() {
     }
   }
 
-  const columns: Column<Organisation>[] = [
+  const columns: Column<OrgUnit>[] = [
     {
       header: "Name",
       render: (org) => org.name,
@@ -142,14 +138,14 @@ export default function AdminOrganisationsPage() {
     {
       header: "Location",
       render: (org) => org.location || "N/A",
-      accessor: (org) => org.location ?? "",
+      accessor: (org) => org.location,
     },
     ...(isSuperadmin
       ? [
           {
             header: "",
             width: "50px",
-            render: (org: Organisation) => (
+            render: (org: OrgUnit) => (
               <EllipsisMenu
                 aria-label={`Actions for ${org.name}`}
                 items={[
