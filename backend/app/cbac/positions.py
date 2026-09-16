@@ -135,7 +135,6 @@ def appoint(
             db,
             user,
             position.requires_competency,
-            organisation_id=position.organisation_id,
             site_id=position.site_id,
         )
         if not allowed:

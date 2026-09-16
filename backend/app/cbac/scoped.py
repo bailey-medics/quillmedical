@@ -16,29 +16,41 @@ site. What they may actually do here is the intersection of the two.
 - A ceiling with no row behind it does nothing, so being qualified is not the
   same as being authorised to practise here.
 
-Every read of a place goes through this module. That is deliberate: the place
-is two nullable columns rather than one, and confining the branch here means
-the storage can change later without touching call sites. See
+Every read of a place goes through this module. That is deliberate, and it
+paid for itself: the place used to be two nullable columns and is now one,
+and confining the branch here meant the storage could change without
+touching a single call site. See
 ``docs/docs/plans/2026-09-06-org-scoped-access-findings.md``.
 """
 
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import false, select
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import ColumnElement
 
 from app.models import PractisingCompetency, User
+from app.org_units.tree import root_ids_of_organisations
 
 
 def _place_clause(
-    organisation_id: int | None, site_id: int | None
+    db: Session, organisation_id: int | None, site_id: int | None
 ) -> ColumnElement[bool]:
-    """Build the where-clause for exactly one kind of place.
+    """Build the where-clause for one place, named either way.
+
+    There is one place column on the row now. An organisation is named by
+    its own row in the tree, so naming an organisation is translated into
+    the id of that row; callers keep saying which kind of place they mean,
+    which is what stops one being mistaken for the other.
+
+    An organisation with no row in the tree matches nothing rather than
+    everything. Failing closed: a place the tree does not know about
+    cannot authorise anybody.
 
     Args:
+        db: Database session.
         organisation_id: The organisation, or None.
-        site_id: The site, or None.
+        site_id: The place inside one, or None.
 
     Returns:
         The matching column comparison.
@@ -51,7 +63,10 @@ def _place_clause(
     if (organisation_id is None) == (site_id is None):
         raise ValueError("Name exactly one place: organisation_id or site_id")
     if organisation_id is not None:
-        return PractisingCompetency.organisation_id == organisation_id
+        roots = root_ids_of_organisations(db, [organisation_id])
+        if not roots:
+            return false()
+        return PractisingCompetency.site_id == roots[0]
     return PractisingCompetency.site_id == site_id
 
 
@@ -81,7 +96,7 @@ def competencies_at(
         db.execute(
             select(PractisingCompetency.competency).where(
                 PractisingCompetency.user_id == user.id,
-                _place_clause(organisation_id, site_id),
+                _place_clause(db, organisation_id, site_id),
             )
         )
         .scalars()
@@ -121,7 +136,7 @@ def can_practise_at(
         select(PractisingCompetency.id).where(
             PractisingCompetency.user_id == user.id,
             PractisingCompetency.competency == competency,
-            _place_clause(organisation_id, site_id),
+            _place_clause(db, organisation_id, site_id),
         )
     ).first()
     return row is not None
@@ -161,7 +176,7 @@ def who_can_practise_at(
         for uid in db.execute(
             select(PractisingCompetency.user_id).where(
                 PractisingCompetency.competency == competency,
-                _place_clause(organisation_id, site_id),
+                _place_clause(db, organisation_id, site_id),
             )
         )
         .scalars()
