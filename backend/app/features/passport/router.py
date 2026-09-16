@@ -198,6 +198,65 @@ ALLOWED_EVIDENCE_TYPES: frozenset[str] = frozenset(
     }
 )
 
+#: The most evidence may be, enforced by reading rather than by trusting
+#: a header. `limit_request_body_size` in ``app.main`` applies
+#: ``MAX_REQUEST_BODY_BYTES`` from ``Content-Length``, but skips the
+#: check when the header is absent — so a chunked request would
+#: otherwise be unbounded, and reading it whole would put it all in
+#: memory.
+#:
+#: Deliberately below the middleware's ceiling. At the same 10 MB the
+#: route's limit could never be reached: multipart framing adds the
+#: boundaries, the headers and the filename on top of the file itself,
+#: so a 10 MB file always makes an 11 MB body and dies at the
+#: middleware with its plain-text refusal. The gap leaves room for that
+#: overhead, so a file between the two is answered here, by the handler
+#: that knows it is evidence.
+MAX_EVIDENCE_BYTES = 8 * 1024 * 1024  # 8 MB
+
+#: How much to read at a time while enforcing that ceiling.
+_UPLOAD_CHUNK = 64 * 1024
+
+
+def _looks_like(data: bytes, media_type: str) -> bool:
+    """Whether the bytes begin the way *media_type* says they should.
+
+    A caller sets ``Content-Type``, so the allow-list alone checks a
+    claim rather than a file: anything at all can be uploaded as a PDF.
+    This checks the magic bytes instead.
+
+    Deliberately a short table rather than a dependency. Five formats,
+    all with fixed signatures that have not changed in decades, and a
+    library would be a supply-chain surface for something this small.
+    It is a sanity check and not a parser: a well-formed header on
+    malformed content still passes, which is the right depth here
+    because nothing executes or serves these bytes by path — a blob is
+    addressed by its own hash and handed back only as a download.
+    """
+    if media_type == "application/pdf":
+        return data.startswith(b"%PDF-")
+
+    if media_type == "image/png":
+        return data.startswith(b"\x89PNG\r\n\x1a\n")
+
+    if media_type == "image/jpeg":
+        return data.startswith(b"\xff\xd8\xff")
+
+    if media_type == "image/webp":
+        return data[:4] == b"RIFF" and data[8:12] == b"WEBP"
+
+    if media_type == "image/heic":
+        # ISO base media format: a four-byte length, then `ftyp`, then a
+        # brand. `heic` and `heix` are the still-image brands; `mif1`
+        # appears on images written by some phones.
+        return data[4:8] == b"ftyp" and data[8:12] in (
+            b"heic",
+            b"heix",
+            b"mif1",
+        )
+
+    return False
+
 
 def _actor(user: User) -> Actor:
     """Describe a user as the commit trailers will record them.
@@ -923,6 +982,15 @@ def _attachments(
     dangling reference in a document whose whole claim is that it can be
     checked years later; naming one stored against somebody else's
     passport would attach evidence the holder has never seen.
+
+    The media type is verified too, against the stored bytes. Upload
+    sniffs what it is given, but that guards only the moment of upload:
+    this is a second call, and until this check it took the caller's
+    word. A PNG uploaded honestly could be named here as
+    ``application/pdf`` and the record would say so permanently, which
+    is the same lie the sniff at upload exists to refuse — just told one
+    step later. The record outlives the request, so it is the record
+    that has to be true.
     """
     found: list[Attachment] = []
 
@@ -937,6 +1005,23 @@ def _attachments(
                 400,
                 "That evidence is not stored against this passport. "
                 "Upload it before naming it.",
+            )
+
+        if item.media_type not in ALLOWED_EVIDENCE_TYPES:
+            allowed = ", ".join(sorted(ALLOWED_EVIDENCE_TYPES))
+            raise HTTPException(
+                400, f"Unsupported evidence type (allowed: {allowed})"
+            )
+
+        # Only the first bytes decide the signature, but the stores hand
+        # back whole blobs. Bounded above by the upload ceiling, so this
+        # reads at most one already-admitted file.
+        stored = blobs.get(passport_id, item.hash)
+
+        if not _looks_like(stored, item.media_type):
+            raise HTTPException(
+                400,
+                f"That evidence is not {item.media_type}",
             )
 
         found.append(
@@ -990,10 +1075,47 @@ async def upload_evidence(
             400, f"Unsupported evidence type (allowed: {allowed})"
         )
 
-    data = await file.read()
+    # Read in bounded chunks so an oversize upload is stopped partway
+    # rather than after. The middleware's ceiling comes from
+    # `Content-Length` and is skipped when that header is absent, so a
+    # chunked upload reaches here undeclared and nothing above has
+    # bounded it.
+    #
+    # This is not a memory optimisation, and an earlier comment here
+    # wrongly claimed it was: the join below materialises the whole file
+    # anyway, and Starlette has already spooled any part over 1 MB to
+    # disk. What it buys is a ceiling that holds when the header is
+    # missing, and a refusal that arrives without reading the rest.
+    # Hashing and storing need every byte together, so the join stays.
+    limit_mb = MAX_EVIDENCE_BYTES // (1024 * 1024)
+    chunks: list[bytes] = []
+    total = 0
+
+    while chunk := await file.read(_UPLOAD_CHUNK):
+        total += len(chunk)
+
+        if total > MAX_EVIDENCE_BYTES:
+            raise HTTPException(
+                413,
+                f"That file is larger than {limit_mb} MB",
+            )
+
+        chunks.append(chunk)
+
+    data = b"".join(chunks)
 
     if not data:
         raise HTTPException(400, "That file is empty")
+
+    # The allow-list above checks what the caller said; this checks what
+    # they sent. A mismatch is refused rather than corrected: guessing
+    # the real type and storing it under that would mean recording
+    # something the holder never claimed.
+    if not _looks_like(data, media_type):
+        raise HTTPException(
+            400,
+            f"That file does not look like {media_type}",
+        )
 
     try:
         attachment = blobs.put(
