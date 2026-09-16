@@ -34,6 +34,7 @@ nav:
       - Overview: concepts/index.md
       - Organisation: concepts/organisation.md
       - CBAC (Competency-Based Access Control): concepts/cbac.md
+      - Clinician passport and CBAC: concepts/clinician-passport.md
   - Engineering conventions: conventions/index.md
   - Backend:
       - Overview: backend/index.md
@@ -54,6 +55,8 @@ nav:
           - Overview: backend/files/index.md
       - Payments:
           - Overview: backend/payments/index.md
+      - Clinician passport:
+          - Overview: backend/passport/index.md
   - Frontend:
       - Overview: frontend/index.md
       - Design System: frontend/design-system/index.md

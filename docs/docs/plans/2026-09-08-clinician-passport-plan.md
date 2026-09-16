@@ -2776,7 +2776,7 @@ explicitly deferred here.
         routes have no caller yet to notice.
       - Thirty-six tests in `src/lib/passport/api.test.ts`;
         `just uf src/lib/passport/api.test.ts` green.
-- [ ] Build the components listed above in
+- [x] Build the components listed above in
       `frontend/src/components/passport/` with stories and tests; present
       any genuinely new component for review before implementing, per
       the component reuse hierarchy.
@@ -3032,7 +3032,8 @@ explicitly deferred here.
         `ErrorMessage` — its icon box wants to be a `<span>` — and
         affects every field, so it is its own change rather than
         something to slip into a passport commit.
-      - [ ] **The evidence uploaders need a backend route, and should
+      - [x] **Moved to phase 7 as its own checkbox.** Left here as the
+        note that found it. **The evidence uploaders need a backend route, and should
         follow the video upload pattern rather than inventing one.**
         `2026-08-31-gcp-video-auth-gate-plan.md` established it: the
         browser asks for a signed URL, PUTs straight to GCS with progress
@@ -3163,18 +3164,53 @@ form fields, nine lazily-loaded pages with tests, and the navigation
 entry. The suite stands at 38 page tests, 159 component tests and 586
 Storybook tests.
 
-**Three components could not be built**, because the routes they need
-were never written despite having schemas: `EvidenceUploader` and
-`CertificateUploader` want a signed-URL endpoint (the video pattern in
-`use-module-media.ts` is the model), and `PassportExportButtons` wants
-the export routes. `CertificateCard` is unblocked but was left with
-them. These are listed under deferred items.
+**The three blocked components are unblocked, and two of them are
+built.** The export routes now exist, so does evidence upload, and
+`CertificateForm` and `CertificateUploader` sit beside the other
+passport components. `MediaDropzone` was generalised rather than
+duplicated: `accept` and `label` default to the teaching video
+behaviour, so its existing caller is untouched.
 
-**One page is knowingly incomplete.** `PassportSignOffPage` resolves
-its record from the assessor's inbox, but the inbox carries no passport
-id, so the page renders the record and refuses to submit. The fix is a
-backend change — either the inbox returns the passport id, or sign-off
-is addressed by request id alone.
+**They are rendered now.** `PassportExportButtons` sits on the passport
+page once a passport exists, and `PassportCertificatesPage` composes the
+uploader above the form so an upload that fails cannot cost a filled-in
+form. `CertificateCard` was never built: the page renders a certificate
+inline, as the reflections page does, and a component earns its place
+when a second caller wants one.
+
+**Four passport pages have no link anywhere, which nothing had noticed.**
+`/passport/logbook`, `/passport/cpd`, `/passport/reflections` and now
+`/passport/certificates` are reachable only by typing the URL. The side
+navigation has a single passport entry pointing at `/passport`, and that
+page lists competencies and offers the exports — nothing on it leads to
+the other four. This predates the certificates page rather than being
+caused by it, and it is the reason a holder could not reach their own
+logbook or CPD record either. Whoever picks it up should decide whether
+these belong in the side navigation, as links on the passport page, or
+both; the answer is a design judgement rather than an oversight to
+patch, which is why it is recorded here rather than fixed in passing.
+
+The components were commentary buried in finished phase 6 steps until
+somebody asked why uploads and export were not on the list, which is a
+fair question to have had to ask: a holder expects to take their record
+away and to attach their evidence, and neither was written down as
+work.
+
+**The assessor sign-off flow now works.** `PassportSignOffPage` used to
+render a request and refuse to submit, because the inbox carried no
+passport id while the sign-off endpoint is addressed by one. The inbox
+now returns `InboxItemOut` — the passport id paired with the sign-off —
+rather than a bare `SignOffOut`. It was not added to `SignOffOut`
+because the other five sign-off routes take the passport in their path,
+so a response should carry only what its reader cannot already know.
+The id was on `passport_signoff_request` all along and the route read
+it to fetch each record, then dropped it. Six compatibility decisions
+cover the move, one per required field that nesting pushed a level
+down.
+
+The two options weighed at the time were the one taken — the inbox
+returns the passport id — and addressing sign-off by request id alone,
+which would have meant a second way to reach the same operation.
 
 **Things a fresh session will otherwise rediscover the hard way:**
 
@@ -3225,6 +3261,56 @@ deferred items above as something to stop doing eventually.
 
 ## Phase 7: hardening and launch
 
+The first three were written up as commentary inside finished phase 6
+steps rather than as work, which left three things a holder would
+reasonably expect — take my record away, attach my certificate, attach
+my evidence — recorded nowhere anybody would look for them. They are
+not deferred items: deferring is for what nobody should build yet.
+
+- [x] Wire the export routes: `GET /api/passport/{id}/export.md`,
+      `export.pdf` and `export.zip`. The work behind them is already
+      built and tested — `export.py` renders the Markdown, the PDF and
+      the zip bundle with a `git bundle` inside it — but no route was
+      ever added, so the module is imported only by its own two test
+      files. Smallest of the three, and the end-to-end test below
+      cannot run until it is done. Then build `PassportExportButtons`.
+- [x] Add a file to a certificate. The four certificate routes exist
+      and are full CRUD, but `CertificateIn` carries metadata alone, so
+      a holder can record "ALS course, March 2026" and cannot attach
+      the certificate. Needs the upload route below, then
+      `CertificateUploader` and `CertificateCard`.
+- [x] Add evidence upload, the one genuinely unbuilt piece.
+      `EvidenceUploadOut` is a schema with nothing behind it. One route
+      taking the file, hashing it, storing it through `BlobStore` or
+      `GcsBlobStore`, and returning the hash for a record to name in
+      its `attachment_hashes`. Cap the size and check the media type at
+      the route, since `blobs.py` deliberately decides neither —
+      storing is separate from admitting. Then build `EvidenceUploader`
+      and give `MediaDropzone` an `accept` prop, since it hardcodes
+      video MIME types.
+
+  - **Not the video pattern, and this plan said otherwise until
+    somebody tried to build it.** The earlier wording said to follow
+    `2026-08-31-gcp-video-auth-gate-plan.md`: the browser asks for a
+    signed URL, PUTs straight to GCS, and the backend never sees the
+    bytes. That cannot work here. Evidence is content-addressed — a
+    blob's name _is_ the SHA-256 of its contents, which is what lets
+    `VERIFY.md` offer a check a holder can run in ten years with no
+    software and no trust in Quill. Computing that address requires
+    reading every byte, so the bytes must pass through the backend.
+    Both `BlobStore.put` and `GcsBlobStore.put` already take
+    `data: bytes` for exactly this reason. A video is addressed by a
+    generated `asset_id` instead, so nobody has to look inside it, and
+    that is the whole difference between the two features.
+  - **The ceiling is Quill's own 10 MB, not Cloud Run's 32.**
+    `MAX_REQUEST_BODY_BYTES` in `main.py` rejects any body over 10 MB
+    before a route sees it, and the one exemption is the teaching local
+    media PUT. A scanned certificate sits well inside that, so the
+    evidence route should live within the general limit rather than
+    claim a second exemption. If evidence ever genuinely needs to be
+    large, the answer is a deliberate design change — the browser
+    hashing the file itself and the backend verifying by reading the
+    object back — not a signed URL that skips the hash.
 - [ ] End-to-end test: holder requests, assessor signs, holder exports
       PDF, hash on PDF matches repository.
 - [ ] Security review of upload handling (type sniffing, size limits,
@@ -3233,7 +3319,7 @@ deferred items above as something to stop doing eventually.
       holder-only rule.
 - [ ] Enable the `passport` feature for the first South West
       organisation and onboard a small assessor group.
-- [ ] Document the module under `docs/docs/backend/passport/index.md`
+- [x] Document the module under `docs/docs/backend/passport/index.md`
       and add a concepts page `docs/docs/concepts/clinician-passport.md`
       explaining the CBAC relationship.
 

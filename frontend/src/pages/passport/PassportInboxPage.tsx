@@ -19,11 +19,11 @@ import StateMessage from "@/components/message-cards/StateMessage";
 import { IconFileText } from "@/components/icons/appIcons";
 import { UnstyledButton } from "@mantine/core";
 import { fetchInbox } from "@lib/passport";
-import type { SignOff } from "@lib/passport";
+import type { InboxItem } from "@lib/passport";
 
 export function Component() {
   const navigate = useNavigate();
-  const [requests, setRequests] = useState<SignOff[]>([]);
+  const [requests, setRequests] = useState<InboxItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,13 +62,13 @@ export function Component() {
         />
       )}
 
-      {requests.map((signOff) => (
+      {requests.map((item) => (
         <UnstyledButton
-          key={signOff.id}
-          onClick={() => navigate(`/passport/sign-off/${signOff.id}`)}
-          aria-label={signOff.competency.name}
+          key={item.sign_off.id}
+          onClick={() => navigate(`/passport/sign-off/${item.sign_off.id}`)}
+          aria-label={item.sign_off.competency.name}
         >
-          <SignOffCard signOff={signOff} />
+          <SignOffCard signOff={item.sign_off} />
         </UnstyledButton>
       ))}
     </Stack>
