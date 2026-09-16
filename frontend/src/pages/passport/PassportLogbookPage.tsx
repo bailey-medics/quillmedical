@@ -76,6 +76,18 @@ export function Component() {
 
       {error && <ErrorState message={error} />}
 
+      {/* Above the picker rather than below it, so the instruction is
+          read before the control it refers to — hence "below" rather
+          than the "above" it said while it sat underneath. */}
+      {!(competencyId && logbook) && (
+        <StateMessage
+          colour="update"
+          icon={<IconFileText />}
+          title="Choose a competency"
+          description="Pick one below to see the procedures you have logged against it."
+        />
+      )}
+
       <CompetencyPicker
         value={competencyId}
         onChange={setCompetencyId}
@@ -83,16 +95,10 @@ export function Component() {
         description="Your entries are grouped by the competency they count towards."
       />
 
-      {competencyId && logbook ? (
+      {competencyId && logbook && (
         <LogbookTable
           logbook={logbook}
           isLoading={loadedFor !== competencyId}
-        />
-      ) : (
-        <StateMessage
-          icon={<IconFileText />}
-          title="Choose a competency"
-          description="Pick one above to see the procedures you have logged against it."
         />
       )}
     </Stack>

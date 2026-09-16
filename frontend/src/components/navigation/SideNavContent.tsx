@@ -18,6 +18,7 @@ import { useHasCompetency } from "@/lib/cbac/hooks";
 import { api } from "@/lib/api";
 import NavIcon from "../icons/NavIcon";
 import NestedNavLink, { type NavItem } from "./NestedNavLink";
+import { useFeatureNavItems } from "./featureNavItems";
 import { navLinkStyles } from "./navStyles";
 
 /**
@@ -58,24 +59,19 @@ export default function SideNavContent({
   );
   const [bankTitle, setBankTitle] = useState<string | null>(null);
 
-  // The admin link should advertise exactly what `/admin` requires, or
-  // it offers a route that answers 404.
-  const hasAdminAccess = useHasCompetency("manage_users");
+  // Teaching, Passport, Settings and Admin, with their gates. Shared
+  // with the teaching sidebar so the two cannot disagree about which
+  // features exist — see `featureNavItems.ts`.
+  const featureItems = useFeatureNavItems();
 
-  // Check if teaching feature is enabled for this user's organisation
+  // Still needed here: the admin section has its own teaching sub-nav,
+  // which is about administering the feature rather than using it.
   const hasTeaching = useHasFeature("teaching");
-  const canManageContent = useHasCompetency("manage_teaching_content");
 
-  // The passport link asks both questions the route asks, unlike
-  // teaching, which gates its entry on the feature alone. The passport
-  // routes carry RequireFeature *and* RequireCompetency, so an entry
-  // shown on the feature alone would lead some users to a 404.
-  // Both hooks are called unconditionally and combined afterwards: `&&`
-  // between them short-circuits the second, so the hook order changes
-  // with the feature flag.
-  const passportEnabled = useHasFeature("passport");
-  const canUsePassport = useHasCompetency("access_clinician_passport");
-  const hasPassport = passportEnabled && canUsePassport;
+  // What hangs under Teaching belongs to the sidebar rather than to the
+  // shared list: here an educator gets the teaching pages, whereas the
+  // teaching sidebar hangs the current module there instead.
+  const canManageContent = useHasCompetency("manage_teaching_content");
 
   // Check if clinical services (FHIR/EHRbase) are available
   const hasClinicalServices =
@@ -398,24 +394,6 @@ export default function SideNavContent({
     ],
   };
 
-  // Teaching navigation structure — only built when feature is enabled
-  // Educators get nested nav with manage/results sub-pages
-  const teachingNavItem: NavItem = canManageContent
-    ? {
-        label: "Teaching",
-        href: "/teaching",
-        icon: showIcons ? "teaching" : undefined,
-        children: [
-          { label: "Assessments", href: "/teaching" },
-          { label: "Manage items", href: "/teaching/manage" },
-        ],
-      }
-    : {
-        label: "Teaching",
-        href: "/teaching",
-        icon: showIcons ? "teaching" : undefined,
-      };
-
   // Build nested patient nav item from flat patientNav array
   // [a, b, c] → a { children: [b { children: [c] }] }
   let patientNavItem: NavItem | null = null;
@@ -472,42 +450,31 @@ export default function SideNavContent({
           leftSection={showIcons ? <NavIcon name="message" /> : undefined}
         />
       )}
-      {hasTeaching && (
+      {/* The cross-feature entries, from the one module that owns them.
+          Two get their children here rather than there, because what
+          hangs under them depends on this sidebar: Admin grows a
+          breadcrumb for whichever record is open, and Teaching offers
+          an educator the teaching pages. */}
+      {featureItems.map((item) => (
         <NestedNavLink
-          item={teachingNavItem}
+          key={item.label}
+          item={
+            item.href === "/admin"
+              ? adminNavItem
+              : item.href === "/teaching" && canManageContent
+                ? {
+                    ...item,
+                    children: [
+                      { label: "Assessments", href: "/teaching" },
+                      { label: "Manage items", href: "/teaching/manage" },
+                    ],
+                  }
+                : item
+          }
           onNavigate={onNavigate}
           showIcons={showIcons}
         />
-      )}
-      {hasPassport && (
-        <NavLink
-          label="Passport"
-          styles={navLinkStyles}
-          active={location.pathname.startsWith("/passport")}
-          onClick={() => {
-            navigate("/passport");
-            if (onNavigate) onNavigate();
-          }}
-          leftSection={showIcons ? <NavIcon name="passport" /> : undefined}
-        />
-      )}
-      <NavLink
-        label="Settings"
-        styles={navLinkStyles}
-        active={location.pathname.startsWith("/settings")}
-        onClick={() => {
-          navigate("/settings");
-          if (onNavigate) onNavigate();
-        }}
-        leftSection={showIcons ? <NavIcon name="settings" /> : undefined}
-      />
-      {hasAdminAccess && (
-        <NestedNavLink
-          item={adminNavItem}
-          onNavigate={onNavigate}
-          showIcons={showIcons}
-        />
-      )}
+      ))}
       <NavLink
         label="Logout"
         styles={navLinkStyles}

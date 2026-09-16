@@ -126,6 +126,7 @@ export function Component() {
         />
       ) : (
         <StateMessage
+          colour="update"
           icon={<IconFileText />}
           title="Nothing recorded yet"
           description="This competency has no sign-offs, logbook entries or certificates."
