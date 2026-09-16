@@ -24,7 +24,10 @@ from app.models import (
     User,
     site_member,
 )
-from app.org_units.tree import organisation_ids_of_sites
+from app.org_units.tree import (
+    organisation_ids_of_sites,
+    root_ids_of_organisations,
+)
 from app.organisations import organisation_member
 
 
@@ -86,7 +89,9 @@ def requires_feature(feature_key: str) -> Callable[..., User]:
 
         enabled = db.scalar(
             select(OrganisationFeature.id).where(
-                OrganisationFeature.organisation_id.in_(user_org_ids),
+                OrganisationFeature.org_unit_id.in_(
+                    root_ids_of_organisations(db, list(user_org_ids))
+                ),
                 OrganisationFeature.feature_key == feature_key,
             )
         )

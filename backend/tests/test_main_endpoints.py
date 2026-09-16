@@ -1270,7 +1270,7 @@ class TestOrganisationEndpoints:
         )
         db_session.execute(
             insert(organisation_patient_member).values(
-                organisation_id=org.id,
+                org_unit_id=org.org_unit_id,
                 patient_id="fhir-789",
             )
         )

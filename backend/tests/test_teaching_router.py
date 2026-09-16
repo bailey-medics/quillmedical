@@ -47,7 +47,7 @@ def _make_teaching_org(db: Session) -> Organisation:
     db.flush()
 
     feature = OrganisationFeature(
-        organisation_id=org.id,
+        org_unit_id=org.org_unit_id,
         feature_key="teaching",
         enabled_by=1,
     )

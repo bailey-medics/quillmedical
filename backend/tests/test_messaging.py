@@ -44,7 +44,7 @@ def _setup_org_context(
     add_organisation_member(db_session, test_org.id, test_user.id, "staff")
     db_session.execute(
         organisation_patient_member.insert().values(
-            organisation_id=test_org.id,
+            org_unit_id=test_org.org_unit_id,
             patient_id=PATIENT_ID,
         )
     )

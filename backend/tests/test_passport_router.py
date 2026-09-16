@@ -120,7 +120,11 @@ def _enable_passport(db: Session, *users: User) -> Organisation:
     db.commit()
     db.refresh(org)
 
-    db.add(OrganisationFeature(organisation_id=org.id, feature_key="passport"))
+    db.add(
+        OrganisationFeature(
+            org_unit_id=org.org_unit_id, feature_key="passport"
+        )
+    )
 
     for user in users:
         add_organisation_member(db, org.id, user.id, "trainee")
@@ -1531,7 +1535,7 @@ class TestAdminVerifyAndRevoke:
 
         db_session.add(
             OrganisationFeature(
-                organisation_id=other.id, feature_key="passport"
+                org_unit_id=other.org_unit_id, feature_key="passport"
             )
         )
         add_organisation_member(db_session, other.id, user.id, "staff")

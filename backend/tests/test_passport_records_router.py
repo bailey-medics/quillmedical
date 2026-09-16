@@ -104,7 +104,9 @@ def org(db_session: Session, holder: User, assessor: User) -> Organisation:
     db_session.refresh(org)
 
     db_session.add(
-        OrganisationFeature(organisation_id=org.id, feature_key="passport")
+        OrganisationFeature(
+            org_unit_id=org.org_unit_id, feature_key="passport"
+        )
     )
 
     for user in (holder, assessor):

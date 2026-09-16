@@ -767,7 +767,37 @@ to 9 perform the merge; steps 10 to 12 perform the rename.
    confining the place branch to one function means the storage can change
    without touching call sites, and not one call site changed.
 
-7. [ ] **Move features, patient membership and conversation links** the same way.
+7. [x] **Move features, patient membership and conversation links** the same way.
+
+   Three readings the plan left open were settled while building:
+
+   - **The columns are renamed, not quietly repointed.** They hold a
+     different number than they used to, so a call site that had not been
+     moved across would have matched a different place and said nothing.
+     Renaming makes a missed one fail loudly.
+   - **Deleting an organisation is written out rather than left to the
+     foreign keys.** Everything at its place goes with it — members,
+     features, patient list, conversations, authorisations, posts, links.
+   - **A conversation's `organisations` became `places`**, for the same
+     reason the columns were renamed.
+
+   Worth confirming before step 7 was whether feature resolution changed
+   meaning: it does not. No site was ever linked to two organisations, so
+   no place ever received two feature sets, and a place now takes its
+   root's.
+
+### Discovered while building: the unit-test database ignores foreign keys
+
+SQLite does not enforce foreign keys unless asked, so `ON DELETE CASCADE`
+does nothing in the unit tests and a row left behind by a delete goes
+unnoticed until production. Turning the pragma on was tried and reverted:
+a dozen existing fixtures insert rows pointing at organisations that do
+not exist, and fixing those is its own piece of work rather than something
+to bury inside this merge.
+
+Two deletes are therefore written out in `models.py` rather than left to
+the database. Worth closing properly in a plan of its own, because the
+next person to rely on a cascade will have the same surprise.
 
 8. [ ] **Add the cycle guard and index the parent column**, with a shared upward
    walk helper. Do this before step 9, so no recursive query is ever written

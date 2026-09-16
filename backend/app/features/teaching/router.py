@@ -3035,7 +3035,7 @@ def list_bank_organisations(
             select(Organisation)
             .join(
                 OrganisationFeature,
-                OrganisationFeature.organisation_id == Organisation.id,
+                OrganisationFeature.org_unit_id == Organisation.org_unit_id,
             )
             .where(OrganisationFeature.feature_key == "teaching")
             .order_by(Organisation.name)
