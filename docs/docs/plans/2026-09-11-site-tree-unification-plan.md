@@ -873,7 +873,7 @@ So the remaining steps land as:
 
 - [x] 10a — write both names for the place column
 - [x] 10b — read the new name
-- [ ] 10c — stop writing the old name, and drop it
+- [x] 10c — stop writing the old name, and drop it
 - [ ] 10d — rename the tables and the model
 - [ ] 10e — the org_units module, and reach through a teaching link
 - [ ] 11a — the `/api/org-units` surface, alongside the old ones
@@ -908,6 +908,27 @@ recording:
   A row carrying only the old name is simply not found once the reads
   move, which is what makes the backfill in 10a load-bearing; there is a
   test saying so.
+
+#### 10c — stop writing the old name, and drop it
+
+Three readings the plan left open were settled while building:
+
+- **The membership table's key moved with the column.** It keys on the
+  place, so the old key had to go before the column under it could.
+  Postgres marks a new key's columns as required by itself, which is how
+  the place stays mandatory without a default that would make no sense
+  for an id.
+- **Two indexes became one.** The old name carried a pair — place, and
+  place with competency — and the new name gained a single-column one
+  while both were live. One index answering "who here may practise this"
+  is enough.
+- **`test_the_place_column_is_being_renamed.py` was deleted.** Its whole
+  subject was the period when both names existed, and that period is over.
+
+The keyword arguments on `cbac/scoped.py` still read `site_id`, meaning "a
+place inside an organisation" as opposed to `organisation_id`. They
+collapse into one when `organisations` folds away in 12b; renaming them
+now would leave two words for one idea sitting next to each other.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to

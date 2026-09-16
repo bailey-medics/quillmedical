@@ -59,7 +59,7 @@ def _authorise(
 ) -> PractisingCompetency:
     row = PractisingCompetency(
         user_id=user.id,
-        site_id=org.org_unit_id if org else (site.id if site else None),
+        org_unit_id=org.org_unit_id if org else (site.id if site else None),
         competency=competency,
     )
     db.add(row)
@@ -263,7 +263,7 @@ class TestTheDatabaseKeepsAGrantToOnePlace:
         db_session.add(
             PractisingCompetency(
                 user_id=doctor.id,
-                site_id=org.org_unit_id,
+                org_unit_id=org.org_unit_id,
                 competency="access_patient_records",
             )
         )

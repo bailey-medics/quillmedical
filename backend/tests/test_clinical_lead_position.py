@@ -93,7 +93,7 @@ class TestAppointingThroughTheApi:
 
         row = db_session.execute(
             select(site_member.c.capacity).where(
-                site_member.c.site_id == site.id,
+                site_member.c.org_unit_id == site.id,
                 site_member.c.user_id == lead.id,
             )
         ).first()
@@ -210,7 +210,6 @@ class TestTheReadsAnswerFromThePost:
         impostor = _user(db_session, "dr_column_only")
         db_session.execute(
             insert(site_member).values(
-                site_id=site.id,
                 org_unit_id=site.id,
                 user_id=impostor.id,
                 capacity="staff",
@@ -235,7 +234,7 @@ class TestThePostIsCreatedOnDemand:
 
         assert (
             db_session.execute(
-                select(Position).where(Position.site_id == site.id)
+                select(Position).where(Position.org_unit_id == site.id)
             ).first()
             is None
         )
@@ -304,7 +303,6 @@ class TestTheSiteResponseNamesTheLead:
         impostor = _user(db_session, "dr_column_only")
         db_session.execute(
             insert(site_member).values(
-                site_id=site.id,
                 org_unit_id=site.id,
                 user_id=impostor.id,
                 capacity="staff",

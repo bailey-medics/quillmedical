@@ -61,7 +61,7 @@ def _doctor(db: Session, username: str = "doc") -> User:
 def _authorise(db: Session, user: User, site_id: int) -> None:
     db.add(
         PractisingCompetency(
-            user_id=user.id, site_id=site_id, competency=COMPETENCY
+            user_id=user.id, org_unit_id=site_id, competency=COMPETENCY
         )
     )
     db.commit()
@@ -86,7 +86,7 @@ class TestBothSpellingsFindTheSameRow:
         _authorise(db_session, doctor, org.org_unit_id)
 
         stored = db_session.scalar(
-            select(PractisingCompetency.site_id).where(
+            select(PractisingCompetency.org_unit_id).where(
                 PractisingCompetency.user_id == doctor.id
             )
         )
@@ -131,7 +131,7 @@ class TestTheRulesThatSurvived:
         db_session.add(
             PractisingCompetency(
                 user_id=doctor.id,
-                site_id=org.org_unit_id,
+                org_unit_id=org.org_unit_id,
                 competency=COMPETENCY,
             )
         )

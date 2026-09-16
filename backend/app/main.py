@@ -1193,7 +1193,6 @@ def register(
             raise HTTPException(status_code=400, detail="Site not found")
         db.execute(
             site_member.insert().values(
-                site_id=payload.site_id,
                 org_unit_id=payload.site_id,
                 user_id=user.id,
                 capacity="trainee",
@@ -1636,7 +1635,6 @@ def create_user_with_cbac(
     for s_id in payload.site_ids:
         db.execute(
             site_member.insert().values(
-                site_id=s_id,
                 org_unit_id=s_id,
                 user_id=user.id,
                 capacity="trainee",
@@ -1902,7 +1900,6 @@ def update_user(
             db.execute(
                 site_member.insert().values(
                     user_id=user_id,
-                    site_id=s_id,
                     org_unit_id=s_id,
                     capacity="trainee",
                 )
@@ -5452,7 +5449,6 @@ def add_site_staff(
 
     db.execute(
         site_member.insert().values(
-            site_id=site_id,
             org_unit_id=site_id,
             user_id=user_id,
             capacity=capacity,

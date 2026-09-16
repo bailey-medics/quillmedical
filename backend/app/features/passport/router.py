@@ -2179,7 +2179,6 @@ def accept_assessor_invite(
         if already is None:
             db.execute(
                 site_member.insert().values(
-                    site_id=place_id,
                     org_unit_id=place_id,
                     user_id=user.id,
                     capacity="external",

@@ -307,7 +307,7 @@ class TestOrganisationModel:
 
         rows = db_session.execute(
             select(site_member.c.user_id, site_member.c.capacity).where(
-                site_member.c.site_id == org.org_unit_id
+                site_member.c.org_unit_id == org.org_unit_id
             )
         ).all()
 
