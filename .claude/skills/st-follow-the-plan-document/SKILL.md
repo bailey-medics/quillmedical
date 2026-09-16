@@ -7,18 +7,19 @@ disallowed-tools: Bash(gh pr merge:*), Bash(gh stack merge:*), Bash(git rebase:*
 disable-model-invocation: true
 ---
 
-# Build a plan document as a stack
+# Build using stacked branches
 
-Works a plan document from top to bottom, landing each unit on its own
+Works a plan document from top to bottom, landing each unit (unit quantity is
+discussed below) on its own
 stacked branch and its own draft pull request. Built to run unattended for a
 long stretch, so that the next morning there is a chain of small pull
-requests to read rather than one large one.
+requests for a human to read rather than one large one.
 
 The plan document is: `$ARGUMENTS`
 
-## What is different from `/follow-the-plan-document`
+## What is different from the standard `/follow-the-plan-document`
 
-That command gates every unit on a human reading the diff before anything is
+The old standard command gates every unit on a human reading the diff before anything is
 committed. This one does not, and the difference is deliberate rather than a
 relaxation:
 
@@ -32,7 +33,7 @@ relaxation:
   harder. Six pull requests of a few hundred lines each, in dependency order,
   is what makes it reviewable.
 
-One narrow exception: if a unit would do something **irreversible** — a
+One narrow exception: if a unit would do something truly **irreversible** — a
 destructive migration, a change to who can log in — stop and ask before
 committing it.
 
@@ -41,7 +42,12 @@ cover work that looks unfinished, a file in a directory you did not
 expect, a plan you would have written differently, or a unit you are
 unsure about. Build those and land them; the pull request is where they
 get questioned. Stopping on a hunch is how an unattended run becomes an
-attended one.
+attended one. There is power in being able to build something
+that is close to the right solution. So, when you are unsure about a decision,
+undertake online research of current best practices and relevant guidelines before
+making a decision. Write up this research in the plan document. Also, log these
+decisions in the PR description, when you commit, rebase and push using `st-crpd`,
+using the format stated in the latter mentioned agent.
 
 ## Never
 
@@ -63,19 +69,7 @@ attended one.
 
 ## Finding the plan document
 
-Resolve it in this order, stopping at the first that yields one:
-
-1. The path given as an argument.
-2. The plan document already in use in this session.
-3. An `@`-mentioned plan document earlier in the conversation.
-4. Neither — ask. Do not guess.
-
-**A file merely open in the editor is not the plan.** It arrives as an
-`<ide_opened_file>` notice explicitly marked as possibly unrelated. Naming it
-as a suggestion is fine; adopting it silently is not.
-
-State which plan document you resolved to, and how, in your first line of
-output.
+Only use the `@`-mentioned plan document argument.
 
 ## Sizing a unit
 
@@ -87,19 +81,35 @@ is usually about right.
   branch below". That belongs folded into the branch below with
   `just stack-update`, not stacked on top of it. This is the single most
   common way a stack becomes twice as long as it should be.
-- **Too big** is a pull request whose description needs more than about six
-  bullets, or which a reviewer cannot hold in their head at once.
+- **Too big** is a pull request whose description cannot be written inside
+  `/st-crpd`'s three sections and 200-word ceiling, or which a reviewer
+  cannot hold in their head at once. Needing a fourth section, or running
+  past the ceiling to say what changed, means the unit is really two.
 - **A unit must stand on its own.** Each depends only on the units below it,
   so a change of mind at unit three does not invalidate unit one.
+  - **Units must be built to pass all tests.** But don't run all tests locally, only run tests relevant to the current unit locally, and rely on the CI to catch any regressions outside the scope of the current unit.
 
-Two constraints on ordering, from the plan:
+One constraint on ordering, from the plan:
 
 - **The bottom unit must be safe to deploy on its own.** Merging to `main`
   deploys to teaching with no further gate. "Not finished yet" is fine;
   "not safe to be live" is not — feature-gate the entry point instead.
-- **At most one migration per stack, in the bottom unit.** Stacked branches
-  each adding a migration share one `down_revision` chain that is rewritten
-  on every restack, and a broken chain fails silently.
+
+**Several migrations in one stack are fine**, as are several API changes.
+Neither caps the size of a stack. Two things make that safe:
+
+- **A broken migration chain cannot pass unnoticed.**
+  `backend/scripts/check_migrations.py` runs in the pre-commit hook and
+  requires exactly one base and one head, with no reused `down_revision` and
+  no cycles. A restack that damages the chain fails the next commit, loudly
+  and locally.
+- **Breaking API changes have their own human gate.** The `oasdiff` check
+  reports them on the pull request, where a human decides. That gate does
+  not care how many branches the stack holds.
+
+What still matters is that each unit's migration belongs to that unit. A
+migration sitting on a branch whose code is two units higher is the thing
+that makes a stack hard to read, not the number of migrations in it.
 
 ## The loop
 
@@ -138,16 +148,61 @@ Then, for each unit in the plan:
 
 Stop and report — do not carry on to the next unit — when:
 
-- A test fails, or a unit cannot be built as the plan describes.
+- A test still fails after a genuine attempt to fix it, or a unit cannot be
+  built as the plan describes. **A failing test is not itself a reason to
+  stop** — see below.
 - The plan is unclear, or your approach has diverged from it. Reconcile with
   the human rather than improvising.
-- A unit would need a second migration in the same stack.
+- A migration check fails — `check_migrations.py` reports a broken chain, a
+  destructive operation without its marker, or an empty `downgrade()`. A
+  second migration in the same stack is not itself a reason to stop.
 - The stack spans worktrees (`just stack-log` says so). A stack lives in one
   worktree.
 - You reach the end of the plan.
 
 If you discover something important while building, add it to the plan
 document. A plan is a living record.
+
+### A failing test
+
+Fix it. A test that fails because the unit changed the behaviour underneath
+it is ordinary work, not a reason to end the run — stopping on the first red
+test wastes the night this command exists to use.
+
+Two attempts, then stop and report. If the same test is still red after two
+real attempts, something is wrong that reading the plan again will not solve,
+and a third guess is less useful than a human reading the failure.
+
+**Fix the code, not the test.** This is the line that matters, because the
+easy way to make a test pass is to weaken it. The change is there in the
+diff, and a reviewer may well catch it — but it is the easiest thing to skim
+past on a pull request where everything is green. So:
+
+- **Change the test only when the unit deliberately changed what is
+  correct.** Then the test is out of date and updating it *is* the fix. Say
+  so in the pull request description, under `## LLM decisions`, naming the
+  old behaviour and the new one.
+- **Never weaken a test to get green.** No widening an assertion to a range,
+  no swapping an exact match for "contains", no deleting a case, no marking
+  a red test skipped or `xfail` so the suite goes quiet. If that is the only
+  way to pass, stop — it is a genuine disagreement between the plan and the
+  test suite, and a human's to settle.
+
+  **That is not a ban on `xfail` and `skip`**, which this repository uses
+  appropriately. `backend/tests/test_org_scoped_access_criteria.py` is the pattern:
+  twelve cases written from a plan, marked `xfail(strict=True)` because the
+  design they describe is not built yet. They run on every suite, and the
+  moment one passes, pytest reports it as unexpectedly passing and fails the
+  build. Cases that cannot even be set up with today's tables are `skip`
+  with a reason naming what is missing.
+
+  The difference is direction. Marking a test `xfail` to silence a failure
+  hides it. Writing a test `xfail(strict=True)` for behaviour not yet built
+  asserts the gap and makes CI tell you when it closes. The first is
+  forbidden; the second is welcome, and belongs in the pull request
+  description.
+- **Never touch a test in another unit's territory.** A red test in code this
+  unit did not change is a regression, not a stale test. Stop and report it.
 
 ## Report
 
