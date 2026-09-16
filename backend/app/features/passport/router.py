@@ -59,7 +59,7 @@ from app.models import (
     org_unit_member,
 )
 from app.org_units.tree import site_ids_of_organisations
-from app.org_units.types import ORGANISATION_TYPE
+from app.org_units.types import ROOT_TYPE_IDS
 from app.organisations import (
     add_organisation_member,
     get_member_org_ids,
@@ -2032,7 +2032,7 @@ def _holder_place(db: Session, passport_id: str) -> tuple[str, int]:
         select(org_unit_member.c.org_unit_id).where(
             org_unit_member.c.user_id == passport.user_id,
             org_unit_member.c.org_unit_id.in_(
-                select(OrgUnit.id).where(OrgUnit.type != ORGANISATION_TYPE)
+                select(OrgUnit.id).where(OrgUnit.type.notin_(ROOT_TYPE_IDS))
             ),
         )
     )

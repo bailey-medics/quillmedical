@@ -885,7 +885,9 @@ So the remaining steps land as:
 - [x] 12a-i — the rules the old surfaces prove, proved on the new one
 - [x] 12a-ii — the rest of those rules: scoping, and one place per site
 - [x] 12a-iii — retire `/api/sites`
-- [ ] 12b — drop the `organisations` table, and enforce the type flags
+- [x] 12b-i — the kinds of organisation become kinds of place
+- [ ] 12b-ii — the user form off the organisations surface
+- [ ] 12b-iii — drop the `organisations` table, and enforce the type flags
 
 #### 10a — write both names for the place column
 
@@ -1207,6 +1209,38 @@ about 1,100 lines of routes and 1,300 lines of tests went with them.
 
 `/api/organisations` cannot follow until the user form moves, which is
 12b.
+
+#### 12b-i — the kinds of organisation become kinds of place
+
+The plan left open what happens to `organisations.type`, whose values —
+hospital team, GP practice, private clinic, teaching establishment — say
+what kind of organisation something is. Moving the screens onto the place
+surface without settling it had already broken something: the create
+screen offered those kinds, the tree knew only `organisation`, and every
+attempt to create one answered "unknown kind of place". The screen's own
+test mocked the request, so nothing caught it.
+
+- **They become types of place**, alongside `organisation` itself, which
+  stays as the plain answer for a body that is none of the others. One
+  vocabulary for one question, and a root in the tree that can say which
+  kind of organisation it is.
+- **What makes something a root is the flag, not the name.** Three
+  queries asked `type != "organisation"` to mean "the places inside
+  organisations", which would have quietly lost a practice the day the
+  kinds arrived. They ask the flag now.
+- **`department` stays a place inside an organisation**, and is no longer
+  offered as a kind of organisation. It was in both lists meaning two
+  different things, and the nested meaning is the one the tree uses.
+  Nothing is live yet, so nothing has to be reclassified.
+- **The screens read the kinds from the shared file**, as the place
+  screens now do, so the list on screen cannot drift from the list the
+  server accepts. That drift is what broke it.
+
+Still open, and what 12b-ii and 12b-iii are for: the user form sends
+organisation ids to the users API, so `/api/organisations` still has one
+reader; and creating an organisation through the place surface writes no
+`organisations` row at all, which is fine only because that table is on
+its way out.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to

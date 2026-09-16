@@ -115,7 +115,7 @@ from app.models import (
     validate_platform_role,
 )
 from app.org_units import (
-    ORGANISATION_TYPE,
+    ROOT_TYPE_IDS,
 )
 from app.org_units.router import router as org_units_router
 from app.org_units.tree import (
@@ -1171,7 +1171,10 @@ def register(
             )
             # Verify the place exists AND sits beneath the organisation given
         site = db.get(OrgUnit, payload.site_id)
-        if site is None or site.type == ORGANISATION_TYPE:
+        # There is more than one kind of organisation — a practice and a
+        # teaching establishment are both tops of trees — so the test is
+        # the flag, not one name.
+        if site is None or site.type in ROOT_TYPE_IDS:
             raise HTTPException(status_code=400, detail="Site not found")
         if (
             organisation_id_of_site(db, payload.site_id)
@@ -1862,7 +1865,7 @@ def update_user(
                     org_unit_member.c.user_id == user_id,
                     org_unit_member.c.org_unit_id.in_(
                         select(OrgUnit.id).where(
-                            OrgUnit.type != ORGANISATION_TYPE
+                            OrgUnit.type.notin_(ROOT_TYPE_IDS)
                         )
                     ),
                 )
