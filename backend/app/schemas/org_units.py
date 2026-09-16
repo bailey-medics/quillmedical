@@ -185,6 +185,9 @@ class OrgUnitDetailOut(BaseModel):
         type_display_name: What a person is shown for the type.
         is_root: Whether it is the top of a tree.
         parent_id: The place it sits inside, or None.
+        parent_name: What that place is called, so a page can say where
+            this one sits without a second request. Empty at the top of a
+            tree.
         location: Free text, possibly empty.
         is_active: Whether it is in use.
         created_at: ISO timestamp when created.
@@ -207,6 +210,7 @@ class OrgUnitDetailOut(BaseModel):
     type_display_name: str
     is_root: bool
     parent_id: int | None
+    parent_name: str
     location: str
     is_active: bool
     created_at: str

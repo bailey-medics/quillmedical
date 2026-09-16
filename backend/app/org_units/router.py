@@ -413,6 +413,11 @@ def get_org_unit(
             .all()
         )
 
+    parent_name = ""
+    if unit.parent_id is not None:
+        parent = db.get(OrgUnit, unit.parent_id)
+        parent_name = parent.name if parent else ""
+
     definition = get_org_unit_type(unit.type)
     return OrgUnitDetailOut(
         id=unit.id,
@@ -423,6 +428,7 @@ def get_org_unit(
         ),
         is_root=_is_root(unit),
         parent_id=unit.parent_id,
+        parent_name=parent_name,
         location=unit.location or "",
         is_active=unit.is_active,
         created_at=unit.created_at.isoformat(),
