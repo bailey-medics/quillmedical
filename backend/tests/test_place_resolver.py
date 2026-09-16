@@ -63,7 +63,7 @@ def _site(db: Session, name: str, org: Organisation | None = None) -> Site:
         db.execute(
             update(Site)
             .where(Site.id == site.id)
-            .values(organisation_id=org.id)
+            .values(parent_id=org.org_unit_id)
         )
         db.commit()
     return site

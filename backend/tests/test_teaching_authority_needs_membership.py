@@ -93,7 +93,9 @@ def _join_linked_site(db: Session, org: Organisation, user: User) -> Site:
     db.add(site)
     db.flush()
     db.execute(
-        update(Site).where(Site.id == site.id).values(organisation_id=org.id)
+        update(Site)
+        .where(Site.id == site.id)
+        .values(parent_id=org.org_unit_id)
     )
     db.execute(
         site_member.insert().values(

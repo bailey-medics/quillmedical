@@ -1,9 +1,9 @@
 """A site belongs to exactly one organisation.
 
-Ownership moved off the many-to-many link table and onto
-``sites.organisation_id``. These tests pin the behaviour that change is
-for: one owner, a refusal rather than a silent second owner, and a
-re-parent that cannot cross from one organisation into another.
+Ownership is the parent column: a place hangs beneath its organisation's
+own row in the tree. These tests pin the behaviour that is for: one
+owner, a refusal rather than a silent second owner, and a re-parent that
+cannot cross from one organisation into another.
 
 Covers:
 - Creating a site records its owner on the site row
@@ -16,10 +16,11 @@ Covers:
 from __future__ import annotations
 
 import pytest
-from sqlalchemy import insert, select
+from sqlalchemy import insert
 from sqlalchemy.orm import Session
 
 from app.models import Organisation, Site, User, organisation_member
+from app.org_units.tree import organisation_id_of_site
 
 
 @pytest.fixture
@@ -50,7 +51,7 @@ def _site_of(db: Session, org: Organisation | None, name: str) -> Site:
     site = Site(
         name=name,
         type="ward",
-        organisation_id=org.id if org else None,
+        parent_id=org.org_unit_id if org else None,
     )
     db.add(site)
     db.commit()
@@ -59,9 +60,8 @@ def _site_of(db: Session, org: Organisation | None, name: str) -> Site:
 
 
 def _owner_of(db: Session, site_id: int) -> int | None:
-    return db.execute(
-        select(Site.organisation_id).where(Site.id == site_id)
-    ).scalar_one()
+    """The organisation accountable for a place, by walking up the tree."""
+    return organisation_id_of_site(db, site_id)
 
 
 class TestCreating:
@@ -196,7 +196,8 @@ class TestNestingStaysInsideOneOrganisation:
 
         assert resp.status_code == 404
         db_session.refresh(mine)
-        assert mine.parent_id is None
+        # Left where it was: directly inside its own organisation.
+        assert mine.parent_id == own_org.org_unit_id
 
     def test_moving_under_a_sibling_still_works(
         self, authenticated_superadmin_client, db_session, own_org

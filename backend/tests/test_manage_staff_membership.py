@@ -80,7 +80,9 @@ def site(db_session: Session, org: Organisation) -> Site:
     db_session.commit()
     db_session.refresh(site)
     db_session.execute(
-        update(Site).where(Site.id == site.id).values(organisation_id=org.id)
+        update(Site)
+        .where(Site.id == site.id)
+        .values(parent_id=org.org_unit_id)
     )
     db_session.commit()
     return site
