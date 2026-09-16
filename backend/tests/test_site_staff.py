@@ -58,6 +58,7 @@ class TestSiteStaffClinicalLeadConstraint:
         db_session.execute(
             insert(site_member).values(
                 site_id=site.id,
+                org_unit_id=site.id,
                 user_id=existing_lead.id,
                 capacity="staff",
             )
@@ -101,7 +102,10 @@ class TestSiteStaffClinicalLeadConstraint:
 
         db_session.execute(
             insert(site_member).values(
-                site_id=site.id, user_id=lead.id, capacity="staff"
+                site_id=site.id,
+                org_unit_id=site.id,
+                user_id=lead.id,
+                capacity="staff",
             )
         )
         # Leading is the post. A member row alone no longer makes anyone
@@ -121,7 +125,10 @@ class TestSiteStaffClinicalLeadConstraint:
 
         db_session.execute(
             insert(site_member).values(
-                site_id=site.id, user_id=staff.id, capacity="staff"
+                site_id=site.id,
+                org_unit_id=site.id,
+                user_id=staff.id,
+                capacity="staff",
             )
         )
         db_session.commit()
@@ -153,7 +160,10 @@ class TestSiteStaffClinicalLeadConstraint:
 
         db_session.execute(
             insert(site_member).values(
-                site_id=site.id, user_id=lead.id, capacity="staff"
+                site_id=site.id,
+                org_unit_id=site.id,
+                user_id=lead.id,
+                capacity="staff",
             )
         )
         # Leading is the post. A member row alone no longer makes anyone
@@ -189,7 +199,10 @@ class TestSiteStaffClinicalLeadConstraint:
 
         db_session.execute(
             insert(site_member).values(
-                site_id=site.id, user_id=lead.id, capacity="staff"
+                site_id=site.id,
+                org_unit_id=site.id,
+                user_id=lead.id,
+                capacity="staff",
             )
         )
         # Leading is the post. A member row alone no longer makes anyone

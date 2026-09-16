@@ -174,7 +174,10 @@ class TestRemovingMembership:
         add_organisation_member(db_session, org.id, person.id, "staff")
         db_session.execute(
             insert(site_member).values(
-                site_id=ward.id, user_id=person.id, capacity="trainee"
+                site_id=ward.id,
+                org_unit_id=ward.id,
+                user_id=person.id,
+                capacity="trainee",
             )
         )
         db_session.commit()
@@ -203,7 +206,9 @@ class TestTheNarrowerDefault:
         person = _person(db_session, "alice")
 
         db_session.execute(
-            insert(site_member).values(site_id=ward.id, user_id=person.id)
+            insert(site_member).values(
+                site_id=ward.id, org_unit_id=ward.id, user_id=person.id
+            )
         )
         db_session.commit()
 
@@ -293,6 +298,7 @@ class TestMembershipWrittenStraightToAPlace:
         db_session.execute(
             insert(site_member).values(
                 site_id=org.org_unit_id,
+                org_unit_id=org.org_unit_id,
                 user_id=person.id,
                 capacity="staff",
             )
@@ -311,7 +317,10 @@ class TestMembershipWrittenStraightToAPlace:
 
         db_session.execute(
             insert(site_member).values(
-                site_id=ward.id, user_id=person.id, capacity="trainee"
+                site_id=ward.id,
+                org_unit_id=ward.id,
+                user_id=person.id,
+                capacity="trainee",
             )
         )
         db_session.commit()

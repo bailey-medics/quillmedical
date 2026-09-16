@@ -2350,10 +2350,10 @@ def revoke_assessor_membership(
     # A site membership first: the accept endpoint prefers the narrowest
     # place, so that is where an invited assessor usually sits.
     site_id = db.scalar(
-        select(site_member.c.site_id).where(
+        select(site_member.c.org_unit_id).where(
             site_member.c.user_id == assessor_user_id,
             site_member.c.capacity == "external",
-            site_member.c.site_id.in_(
+            site_member.c.org_unit_id.in_(
                 site_ids_of_organisations(db, [organisation_id])
             ),
         )
@@ -2362,7 +2362,7 @@ def revoke_assessor_membership(
     if site_id is not None:
         db.execute(
             site_member.delete().where(
-                site_member.c.site_id == site_id,
+                site_member.c.org_unit_id == site_id,
                 site_member.c.user_id == assessor_user_id,
             )
         )
@@ -2493,9 +2493,9 @@ def _holder_place(db: Session, passport_id: str) -> tuple[str, int]:
     # without this every holder would look as though they had a site and
     # the organisation branch below would never be reached.
     site_id = db.scalar(
-        select(site_member.c.site_id).where(
+        select(site_member.c.org_unit_id).where(
             site_member.c.user_id == passport.user_id,
-            site_member.c.site_id.in_(
+            site_member.c.org_unit_id.in_(
                 select(Site.id).where(Site.type != ORGANISATION_TYPE)
             ),
         )
@@ -2663,7 +2663,7 @@ def accept_assessor_invite(
     if place == "site":
         already = db.scalar(
             select(site_member.c.user_id).where(
-                site_member.c.site_id == place_id,
+                site_member.c.org_unit_id == place_id,
                 site_member.c.user_id == user.id,
             )
         )

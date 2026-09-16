@@ -1291,7 +1291,10 @@ class TestAcceptingAnInvitation:
         )
         db_session.execute(
             site_member.insert().values(
-                site_id=site.id, user_id=holder.id, capacity="trainee"
+                site_id=site.id,
+                org_unit_id=site.id,
+                user_id=holder.id,
+                capacity="trainee",
             )
         )
         db_session.commit()
@@ -1334,7 +1337,10 @@ class TestAcceptingAnInvitation:
         db_session.refresh(own_site)
         db_session.execute(
             site_member.insert().values(
-                site_id=own_site.id, user_id=assessor.id, capacity="staff"
+                site_id=own_site.id,
+                org_unit_id=own_site.id,
+                user_id=assessor.id,
+                capacity="staff",
             )
         )
         db_session.commit()
@@ -1511,7 +1517,10 @@ class TestTheGateResolvesForAnAcceptedAssessor:
         )
         db_session.execute(
             site_member.insert().values(
-                site_id=site.id, user_id=holder.id, capacity="trainee"
+                site_id=site.id,
+                org_unit_id=site.id,
+                user_id=holder.id,
+                capacity="trainee",
             )
         )
         db_session.commit()

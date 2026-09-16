@@ -1875,7 +1875,7 @@ def update_user(
             db.execute(
                 site_member.delete().where(
                     site_member.c.user_id == user_id,
-                    site_member.c.site_id.in_(
+                    site_member.c.org_unit_id.in_(
                         select(Site.id).where(Site.type != ORGANISATION_TYPE)
                     ),
                 )
@@ -1888,7 +1888,7 @@ def update_user(
                 db.execute(
                     site_member.delete().where(
                         site_member.c.user_id == user_id,
-                        site_member.c.site_id.in_(admin_site_ids),
+                        site_member.c.org_unit_id.in_(admin_site_ids),
                     )
                 )
         # Add new site memberships
@@ -2391,7 +2391,7 @@ def me(
     # Indirect: the organisation accountable for a place they belong to
     member_site_ids = list(
         db.execute(
-            select(site_member.c.site_id).where(
+            select(site_member.c.org_unit_id).where(
                 site_member.c.user_id == current_user.id
             )
         )
@@ -2579,7 +2579,7 @@ def list_users(
                 row[0]
                 for row in db.execute(
                     select(site_member.c.user_id).where(
-                        site_member.c.site_id.in_(site_ids_for_orgs)
+                        site_member.c.org_unit_id.in_(site_ids_for_orgs)
                     )
                 ).all()
             }
@@ -2619,7 +2619,7 @@ def list_users(
             )
             .join(
                 Site,
-                Site.id == site_member.c.site_id,
+                Site.id == site_member.c.org_unit_id,
             )
             .where(site_member.c.user_id.in_(user_ids))
         ).all()
@@ -2719,7 +2719,7 @@ def get_user(
     user_site_ids = [
         row[0]
         for row in db.execute(
-            select(site_member.c.site_id).where(
+            select(site_member.c.org_unit_id).where(
                 site_member.c.user_id == user_id
             )
         ).all()
@@ -4859,7 +4859,7 @@ def get_site(
             User.full_name,
         )
         .join(site_member, site_member.c.user_id == User.id)
-        .where(site_member.c.site_id == site_id)
+        .where(site_member.c.org_unit_id == site_id)
     )
 
     # Operators are hidden from everyone but another operator
@@ -5422,7 +5422,7 @@ def add_site_staff(
     # Check if already assigned
     existing = db.execute(
         select(site_member).where(
-            site_member.c.site_id == site_id,
+            site_member.c.org_unit_id == site_id,
             site_member.c.user_id == user_id,
         )
     ).first()
@@ -5442,7 +5442,7 @@ def add_site_staff(
         db.execute(
             site_member.update()
             .where(
-                site_member.c.site_id == site_id,
+                site_member.c.org_unit_id == site_id,
                 site_member.c.user_id == user_id,
             )
             .values(capacity=capacity)
@@ -5490,7 +5490,7 @@ def remove_site_staff(
 
     result = db.execute(
         site_member.delete().where(
-            site_member.c.site_id == site_id,
+            site_member.c.org_unit_id == site_id,
             site_member.c.user_id == user_id,
         )
     )

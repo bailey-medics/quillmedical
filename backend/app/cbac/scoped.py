@@ -66,8 +66,8 @@ def _place_clause(
         roots = root_ids_of_organisations(db, [organisation_id])
         if not roots:
             return false()
-        return PractisingCompetency.site_id == roots[0]
-    return PractisingCompetency.site_id == site_id
+        return PractisingCompetency.org_unit_id == roots[0]
+    return PractisingCompetency.org_unit_id == site_id
 
 
 def competencies_at(

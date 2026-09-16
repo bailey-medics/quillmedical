@@ -2553,7 +2553,7 @@ def list_delegates(
         row[0]
         for row in db.execute(
             select(site_member.c.user_id).where(
-                site_member.c.site_id.in_(caller_site_ids)
+                site_member.c.org_unit_id.in_(caller_site_ids)
             )
         ).all()
     )
@@ -2613,7 +2613,7 @@ def list_delegates(
             select(Site.id, Site.name)
             .join(
                 site_member,
-                site_member.c.site_id == Site.id,
+                site_member.c.org_unit_id == Site.id,
             )
             .where(
                 site_member.c.user_id == uid,

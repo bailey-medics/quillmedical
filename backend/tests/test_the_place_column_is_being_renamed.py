@@ -13,6 +13,7 @@ Covers:
 - Writing either name fills in the other, on insert and on update
 - Every route that records a place writes both
 - Both unique rules are in force, so neither can be slipped past
+- A row carrying only the old name is not found, so the backfill matters
 """
 
 from __future__ import annotations
@@ -212,9 +213,16 @@ class TestMembership:
         assert all(row.org_unit_id == row.site_id for row in rows)
 
 
-class TestRowsWrittenStraightToTheTable:
-    def test_a_row_with_only_the_old_name_is_still_readable(self, db_session):
-        """What the database holds from before the new column existed."""
+class TestARowCarryingOnlyTheOldName:
+    def test_it_is_not_found_by_the_reads(self, db_session):
+        """Which is why the database change fills the new column in.
+
+        Nothing writes a row like this any more — every write sets both —
+        but rows written before the new column existed would look like
+        this if they had not been backfilled, and they would simply stop
+        being found. The check is here so that the backfill is understood
+        as load-bearing rather than tidy.
+        """
         org = _org(db_session)
         ward = _ward(db_session, org)
         person = _person(db_session)
@@ -226,9 +234,9 @@ class TestRowsWrittenStraightToTheTable:
         )
         db_session.commit()
 
-        stored = db_session.execute(
-            select(site_member.c.org_unit_id).where(
-                site_member.c.user_id == person.id
+        found = db_session.execute(
+            select(site_member.c.user_id).where(
+                site_member.c.org_unit_id == ward.id
             )
-        ).scalar_one()
-        assert stored is None
+        ).first()
+        assert found is None
