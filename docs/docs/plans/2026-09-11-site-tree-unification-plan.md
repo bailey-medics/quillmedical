@@ -881,6 +881,7 @@ So the remaining steps land as:
 - [x] 11b-ii — the organisation screens onto it
 - [x] 11b-iii — the place screens onto it, and the edit page tested
 - [x] 11b-iv — a list page and a create page for places
+- [x] 11b-v — the last readers of the old surfaces, bar one
 - [ ] 12a — retire the old API surfaces
 - [ ] 12b — drop the `organisations` table, and enforce the type flags
 
@@ -1106,6 +1107,35 @@ reached through the organisation that owns it.
   generated into the frontend like the professions and competencies
   already are, and `requires_parent` is what separates a ward from a
   trust.
+
+#### 11b-v — the last readers of the old surfaces
+
+Three screens outside `pages/admin/` were still reading the old
+addresses, and one of them had gone quietly wrong when the admin screens
+moved.
+
+- **The breadcrumb was naming the wrong organisation.** It asked
+  `/organisations/{id}` with what is now a place id, so it named
+  whichever organisation happened to hold that number, or nothing at all.
+  Both kinds of place come from one address now, which is the whole point
+  of there being one.
+- **The place above is not always an organisation.** A ward can sit
+  inside a building, so a link upwards has to know which of the two pages
+  to go to. The detail answer carries `parent_is_root` for that, rather
+  than the screen fetching the parent to find out.
+- **"new" is a page, not a place.** Visiting the create form used to send
+  a request asking about a place called "new" and log the failure. Ids
+  that are not numbers are left alone now.
+- **Sub-pages are named rather than capitalised from the address.** The
+  navigation read "Add-staff".
+- **The count of organisations comes from the places at the top of a
+  tree**, which is what every other admin screen already counts.
+
+One reader is deliberately left: the user form sends `organisation_ids`
+and `site_ids` to the users API, and those are organisation ids, not
+place ids. Moving the screen means moving what the API accepts, so it
+goes with **12b**, where the table folds — and until it does, `/api/organisations`
+cannot be retired, which 12a has to respect.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to

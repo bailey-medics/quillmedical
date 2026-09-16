@@ -188,6 +188,10 @@ class OrgUnitDetailOut(BaseModel):
         parent_name: What that place is called, so a page can say where
             this one sits without a second request. Empty at the top of a
             tree.
+        parent_is_root: Whether the place above is an organisation. A
+            screen that links to it has to know which of the two pages to
+            send somebody to, and asking the server is cheaper than
+            fetching the parent to find out.
         location: Free text, possibly empty.
         is_active: Whether it is in use.
         created_at: ISO timestamp when created.
@@ -211,6 +215,7 @@ class OrgUnitDetailOut(BaseModel):
     is_root: bool
     parent_id: int | None
     parent_name: str
+    parent_is_root: bool
     location: str
     is_active: bool
     created_at: str
