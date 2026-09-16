@@ -92,6 +92,11 @@ export type OrgUnitDetail = OrgUnit & {
    * sits without a second request. Empty at the top of a tree.
    */
   parent_name: string;
+  /**
+   * Whether the place above is an organisation, which decides which of
+   * the two pages a link upwards should go to.
+   */
+  parent_is_root: boolean;
   /** Who is here. */
   members: OrgUnitMember[];
   /** The places directly inside this one. */
