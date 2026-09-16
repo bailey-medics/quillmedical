@@ -21,6 +21,7 @@ import {
 } from "@/components/form/Form";
 import type { FormSubmitResult } from "@/components/form/Form";
 import { api } from "@/lib/api";
+import { orgUnits } from "@/domains/orgUnit";
 import ErrorState from "@/components/error-state/ErrorState";
 
 interface ApiUser {
@@ -170,19 +171,23 @@ export default function AddSiteToOrgPage() {
       // Create the site inside this organisation. The link is written
       // in the same transaction, so there is no window where the site
       // belongs nowhere — which is what the second call used to leave.
-      const site = await api.post<{ id: number }>("/sites", {
+      const site = await orgUnits.create({
         name: data.name,
-        type: data.type,
-        organisation_id: Number(id),
+        type: data.type as string,
+        parent_id: Number(id),
         location: data.location || null,
       });
 
-      // Assign clinical lead if selected
+      // Naming a clinical lead is two acts now: the person is at the
+      // place, and the person holds the post. They used to be one, which
+      // meant a post could not be vacant without also removing the
+      // person — and a vacancy is a real state worth being able to say.
       if (data.clinicalLeadId) {
-        await api.post(`/sites/${site.id}/staff`, {
+        await orgUnits.addMember(site.id, {
           user_id: Number(data.clinicalLeadId),
-          role: "clinical_lead",
+          capacity: "staff",
         });
+        await orgUnits.setClinicalLead(site.id, Number(data.clinicalLeadId));
       }
 
       navigate(`/admin/organisations/${id}`, {

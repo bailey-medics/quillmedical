@@ -61,6 +61,12 @@ export type OrgUnitChild = {
   is_active: boolean;
   /** Who holds its clinical lead post, or null when it is vacant. */
   clinical_lead_id: number | null;
+  /**
+   * That person's name, so a list of places reads without a request per
+   * row. Empty when the post is vacant, which is a real state rather
+   * than a missing value.
+   */
+  clinical_lead_name: string;
 };
 
 /** One place and everything hanging off it. */
@@ -190,6 +196,18 @@ export const orgUnits = {
   /** Take somebody off a place. */
   removeMember: (id: number, userId: number) =>
     api.del<StatusResponse>(`/org-units/${id}/members/${userId}`),
+
+  /**
+   * Name the clinical lead of a place, or leave the post vacant.
+   *
+   * One call rather than an add and a remove, because a vacancy is a
+   * real state: "this ward has no clinical lead" is something somebody
+   * has to act on, not the absence of a fact.
+   */
+  setClinicalLead: (id: number, userId: number | null) =>
+    api.put<StatusResponse>(`/org-units/${id}/clinical-lead`, {
+      user_id: userId,
+    }),
 
   /** Which features are on at a place. */
   features: async (id: number): Promise<OrgUnitFeature[]> => {

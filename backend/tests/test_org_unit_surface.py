@@ -619,3 +619,107 @@ class TestTheOldSurfacesStillWork:
 
         assert resp.status_code == 200
         assert resp.json()["id"] == ward.id
+
+
+class TestTheClinicalLead:
+    def test_naming_one(self, authenticated_superadmin_client, db_session):
+        org = _org(db_session)
+        ward = _ward(db_session, org.org_unit_id)
+        person = _person(db_session)
+        authenticated_superadmin_client.post(
+            f"/api/org-units/{ward.id}/members",
+            json={"user_id": person.id, "capacity": "staff"},
+        )
+
+        resp = authenticated_superadmin_client.put(
+            f"/api/org-units/{ward.id}/clinical-lead",
+            json={"user_id": person.id},
+        )
+
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "set"
+        detail = authenticated_superadmin_client.get(
+            f"/api/org-units/{ward.id}"
+        )
+        assert detail.json()["clinical_lead_id"] == person.id
+
+    def test_leaving_the_post_vacant(
+        self, authenticated_superadmin_client, db_session
+    ):
+        """A vacancy is a real state, so it is said rather than implied."""
+        org = _org(db_session)
+        ward = _ward(db_session, org.org_unit_id)
+        person = _person(db_session)
+        authenticated_superadmin_client.post(
+            f"/api/org-units/{ward.id}/members",
+            json={"user_id": person.id, "capacity": "staff"},
+        )
+        authenticated_superadmin_client.put(
+            f"/api/org-units/{ward.id}/clinical-lead",
+            json={"user_id": person.id},
+        )
+
+        resp = authenticated_superadmin_client.put(
+            f"/api/org-units/{ward.id}/clinical-lead", json={}
+        )
+
+        assert resp.json()["status"] == "vacant"
+        detail = authenticated_superadmin_client.get(
+            f"/api/org-units/{ward.id}"
+        )
+        assert detail.json()["clinical_lead_id"] is None
+
+    def test_somebody_not_at_the_place_is_refused(
+        self, authenticated_superadmin_client, db_session
+    ):
+        org = _org(db_session)
+        ward = _ward(db_session, org.org_unit_id)
+        stranger = _person(db_session, "stranger")
+
+        resp = authenticated_superadmin_client.put(
+            f"/api/org-units/{ward.id}/clinical-lead",
+            json={"user_id": stranger.id},
+        )
+
+        assert resp.status_code == 422
+
+    def test_a_room_has_no_clinical_lead(
+        self, authenticated_superadmin_client, db_session
+    ):
+        org = _org(db_session)
+        ward = _ward(db_session, org.org_unit_id)
+        room = OrgUnit(name="Room 4", type="room", parent_id=ward.id)
+        db_session.add(room)
+        db_session.commit()
+        person = _person(db_session)
+
+        resp = authenticated_superadmin_client.put(
+            f"/api/org-units/{room.id}/clinical-lead",
+            json={"user_id": person.id},
+        )
+
+        assert resp.status_code == 422
+
+    def test_the_list_of_places_names_the_lead(
+        self, authenticated_superadmin_client, db_session
+    ):
+        """So a list reads without a request per row."""
+        org = _org(db_session)
+        ward = _ward(db_session, org.org_unit_id)
+        person = _person(db_session)
+        authenticated_superadmin_client.post(
+            f"/api/org-units/{ward.id}/members",
+            json={"user_id": person.id, "capacity": "staff"},
+        )
+        authenticated_superadmin_client.put(
+            f"/api/org-units/{ward.id}/clinical-lead",
+            json={"user_id": person.id},
+        )
+
+        detail = authenticated_superadmin_client.get(
+            f"/api/org-units/{org.org_unit_id}"
+        )
+
+        child = detail.json()["children"][0]
+        assert child["clinical_lead_id"] == person.id
+        assert child["clinical_lead_name"] == "alice"

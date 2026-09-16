@@ -878,7 +878,7 @@ So the remaining steps land as:
 - [x] 10e — reach through a teaching link (the module move goes with 12b)
 - [x] 11a — the `/api/org-units` surface, alongside the old ones
 - [x] 11b-i — one place client and type for the screens to use
-- [ ] 11b-ii — the organisation screens onto it
+- [x] 11b-ii — the organisation screens onto it
 - [ ] 11b-iii — the place screens onto it, and the thin-pages gap closed
 - [ ] 12a — retire the old API surfaces
 - [ ] 12b — drop the `organisations` table, and enforce the type flags
@@ -1025,6 +1025,32 @@ every call the screens make, gathered so the addresses appear once. The
 rename just done showed why that matters — the same path was written out
 in a dozen files, and moving it meant finding all of them. No screen
 changes yet.
+
+**11b-ii** moves the eight organisation screens across. Five readings the
+plan left open were settled while building:
+
+- **The organisation page now makes one request instead of two.** A place
+  carries its own people, the places inside it, the features switched on
+  there and its patient list, so there is nothing to fetch separately.
+- **The type's name comes from the server.** The pages used to title-case
+  the stored value, which meant two places could disagree about what a
+  kind of place is called.
+- **Taking a place out of an organisation is deleting it.** A place that
+  belongs nowhere is invisible to every list and reachable by nobody,
+  which is worse than saying it has gone. The old "unlink" wording
+  promised something the tree cannot do.
+- **Adding somebody now says what they are.** The old address assumed
+  staff; a place takes trainees and external assessors too.
+- **Naming a clinical lead is two acts.** The person is at the place, and
+  the person holds the post. They used to be one, which meant a post could
+  not be made vacant without also removing the person — and a vacancy is a
+  real, actionable state.
+
+Two things were added to the surface from 11a while moving the screens,
+because moving them is what showed they were missing: a place's children
+carry their clinical lead's *name* as well as their id, so a list reads
+without a request per row; and there is a route for naming or vacating a
+clinical lead.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to

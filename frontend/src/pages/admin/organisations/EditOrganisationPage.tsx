@@ -21,7 +21,7 @@ import {
   useFormContext,
 } from "@/components/form/Form";
 import type { FormSubmitResult } from "@/components/form/Form";
-import { api } from "@/lib/api";
+import { orgUnits, type OrgUnitDetail } from "@/domains/orgUnit";
 import ErrorState from "@/components/error-state/ErrorState";
 
 /** Organisation type options for the select input */
@@ -32,13 +32,6 @@ const ORGANISATION_TYPE_OPTIONS = [
   { value: "department", label: "Department" },
   { value: "teaching_establishment", label: "Teaching establishment" },
 ];
-
-interface OrganisationData {
-  id: number;
-  name: string;
-  type: string;
-  location: string | null;
-}
 
 interface EditFormValues {
   name: string;
@@ -103,7 +96,7 @@ export default function EditOrganisationPage() {
   const { id } = useParams<{ id: string }>();
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [orgData, setOrgData] = useState<OrganisationData | null>(null);
+  const [orgData, setOrgData] = useState<OrgUnitDetail | null>(null);
 
   useEffect(() => {
     async function fetchOrganisation() {
@@ -113,8 +106,7 @@ export default function EditOrganisationPage() {
         return;
       }
       try {
-        const data = await api.get<OrganisationData>(`/organisations/${id}`);
-        setOrgData(data);
+        setOrgData(await orgUnits.get(Number(id)));
       } catch (err) {
         setLoadError(
           err instanceof Error ? err.message : "Failed to load organisation",
@@ -129,10 +121,10 @@ export default function EditOrganisationPage() {
 
   async function handleSubmit(data: EditFormValues): Promise<FormSubmitResult> {
     try {
-      await api.put(`/organisations/${id}`, {
+      await orgUnits.update(Number(id), {
         name: data.name.trim(),
-        type: data.type,
-        location: data.location.trim() || null,
+        type: data.type as string,
+        location: data.location.trim(),
       });
       const changes: string[] = [];
       if (orgData && data.name.trim() !== orgData.name) {
