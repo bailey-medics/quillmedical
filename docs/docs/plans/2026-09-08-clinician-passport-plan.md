@@ -3519,14 +3519,38 @@ not deferred items: deferring is for what nobody should build yet.
     permission. Worth knowing that a dev database can sit far enough
     behind that the feature under test cannot run at all.
 
-- [ ] Give the dev stack somewhere to put passports. Found by the
-      real-stack test above: `compose.dev.yml` has no `/data` mount, so
-      `PASSPORT_LOCAL_ROOT` points at a directory the backend container
-      cannot create, and creating a passport 500s. Needs a named volume
-      mounted at `/data` and writable by uid 10001. Touches the shared
-      dev stack, so it is its own change rather than part of the
-      security work — but until it lands, nobody can try the passport
-      locally without the manual `mkdir` workaround.
+- [x] Give the dev stack somewhere to put passports. Found by the
+      real-stack test above: `compose.dev.yml` had no `/data` mount, so
+      `PASSPORT_LOCAL_ROOT` pointed at a directory the backend
+      container could not create, and creating a passport 500d.
+
+  - **A named volume, not a bind mount.** These are git repositories
+    with evidence blobs beside them, not source. A bind mount would put
+    them in the worktree, where `git status` would report them and a
+    stray `git add` could commit somebody's evidence. The named volume
+    `passport_data` mounts at `/data` and survives rebuilds.
+  - **Ownership is fixed in the image, which is the part that is easy
+    to get wrong.** The container runs as uid 10001, and an empty named
+    volume arrives owned by root — so mounting one alone would have
+    reproduced the same `Permission denied`. Docker copies the mount
+    point's ownership onto an empty volume the first time it mounts it,
+    so the dev stage now creates `/data/passports` owned by `appuser`
+    beforehand. The volume inherits that and is writable.
+  - **The unit tests needed no change.** Every test overrides
+    `PASSPORT_LOCAL_ROOT` with `tmp_path`, so nothing under `/data` is
+    touched by `just ub`; `compose.unit-tests.yml` is untouched.
+  - **Verified from a clean slate, which is the only way this one
+    means anything.** The earlier manual `mkdir` was still in the
+    container and the volume had already been created, so testing
+    against those would have passed regardless of the change. The
+    container and the volume were both destroyed, the image rebuilt,
+    and the checks run in order: the image alone carries
+    `/data/passports` as `appuser` with no volume mounted; a freshly
+    created volume inherits that ownership; `/data/passports` is
+    writable as uid 10001; and `POST /api/passport` — the call that
+    returned 500 — returns 201, leaving a real git repository sharded
+    under `/data/passports/d9/08/…`. Probe user and files removed
+    afterwards.
 - [ ] Enable the `passport` feature for the first South West
       organisation and onboard a small assessor group.
 - [x] Document the module under `docs/docs/backend/passport/index.md`
