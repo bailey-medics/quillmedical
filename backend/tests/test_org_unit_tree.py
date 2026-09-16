@@ -5,6 +5,7 @@ parent, and every place beneath it walks up to that row to find out who
 is accountable for it.
 
 Covers:
+- Each walk is one recursive query, whatever the depth
 - Every organisation gets a row in the tree, and keeps it in step
 - Walking up: the root, and the organisation it stands for
 - Walking down: a whole subtree, three levels deep, with no leak into a
@@ -262,3 +263,81 @@ class TestDeletingAnOrganisation:
         db_session.refresh(ward)
         assert ward.parent_id is None
         assert organisation_id_of_site(db_session, ward.id) is None
+
+
+class TestEachWalkIsOneQuery:
+    """Scoping runs on every admin request, so depth must not cost trips.
+
+    A walk that asks the database once per level is fine on a two-level
+    tree and quietly gets worse as the tree grows — which is exactly the
+    kind of cost nobody notices until the day a third level is added.
+    """
+
+    @staticmethod
+    def _count_queries(db_session, work) -> int:
+        from sqlalchemy import event
+
+        connection = db_session.connection()
+        counted: list[str] = []
+
+        def record(_conn, _cursor, statement, *_args):
+            counted.append(statement)
+
+        event.listen(connection.engine, "before_cursor_execute", record)
+        try:
+            work()
+        finally:
+            event.remove(connection.engine, "before_cursor_execute", record)
+        return len(counted)
+
+    def _four_levels(self, db_session) -> tuple[int, int]:
+        """Build a four-level tree and return the root and leaf ids.
+
+        Ids rather than rows: reading an attribute off a row that was
+        committed reloads it, and that query would be counted as though
+        the walk had made it.
+        """
+        org = _org(db_session, "Trust")
+        assert org.org_unit_id is not None
+        root_id = org.org_unit_id
+        hospital = _under(db_session, root_id, "Hospital", "hospital")
+        ward = _under(db_session, hospital.id, "Ward", "ward")
+        room = _under(db_session, ward.id, "Room", "room")
+        return root_id, room.id
+
+    def test_walking_down_asks_once(self, db_session):
+        root_id, _room_id = self._four_levels(db_session)
+
+        asked = self._count_queries(
+            db_session, lambda: descendant_ids(db_session, [root_id])
+        )
+
+        assert asked == 1
+
+    def test_walking_up_asks_once(self, db_session):
+        _root_id, room_id = self._four_levels(db_session)
+
+        asked = self._count_queries(
+            db_session, lambda: root_id_of(db_session, room_id)
+        )
+
+        assert asked == 1
+
+    def test_naming_the_organisation_for_many_places_asks_twice(
+        self, db_session
+    ):
+        """One walk up for the whole list, then one lookup of the roots."""
+        _root_id, room_id = self._four_levels(db_session)
+        other = _org(db_session, "Other Trust")
+        their_ward_id = _under(
+            db_session, other.org_unit_id, "Ward", "ward"
+        ).id
+
+        asked = self._count_queries(
+            db_session,
+            lambda: organisation_ids_of_sites(
+                db_session, [room_id, their_ward_id]
+            ),
+        )
+
+        assert asked == 2
