@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from app.models import (
@@ -38,7 +39,6 @@ from app.models import (
     Site,
     User,
     organisation_member,
-    organisation_site,
     site_member,
 )
 from app.security import hash_password
@@ -92,9 +92,7 @@ def _join_linked_site(db: Session, org: Organisation, user: User) -> None:
     db.add(site)
     db.flush()
     db.execute(
-        organisation_site.insert().values(
-            organisation_id=org.id, site_id=site.id
-        )
+        update(Site).where(Site.id == site.id).values(organisation_id=org.id)
     )
     db.execute(
         site_member.insert().values(

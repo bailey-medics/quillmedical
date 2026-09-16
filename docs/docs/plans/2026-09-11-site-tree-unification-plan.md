@@ -621,11 +621,31 @@ to 9 perform the merge; steps 10 to 12 perform the rename.
      is meant to change no behaviour and step 12 is where the flags are
      enforced.
 
-2. [ ] **Make the organisation link one-to-many.** Add a nullable organisation
+2. [x] **Make the organisation link one-to-many.** Add a nullable organisation
    column to sites, backfill it from the link table wherever a site has
    exactly one organisation, and report any site with more than one for a
    human to resolve. Stop writing the link table. This step removes most of
    the referee helpers before any tables merge.
+
+   Three readings the plan left open were settled while building:
+
+   - **The migration refuses outright rather than reporting.** A site with
+     two organisations raises and names the site ids, so the deploy stops
+     and nothing half-migrated is left behind. A report that let the
+     migration succeed would leave those sites owned by nobody and
+     invisible to every admin list.
+   - **The link route now refuses a second owner with a 409.** It used to
+     add another organisation; it now takes on a site that has no owner,
+     and says so rather than silently moving one that belongs to somebody
+     else. Unlink still leaves the site owned by nobody, which is what it
+     always did.
+   - **`GET /api/sites/{id}` still returns a list of organisations**, now
+     always of length one. The shape is kept so the frontend does not have
+     to change in this step; it narrows when the frontend migrates.
+
+   The old link table is left in place, read and written by nothing, so the
+   step that adds the typed link table can carry any surviving rows across
+   before it is dropped.
 
 3. [ ] **Add the link table** and its routes, migrating any multi-organisation
    cases from step 2 into links.

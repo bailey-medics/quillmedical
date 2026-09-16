@@ -1634,18 +1634,17 @@ def _maybe_enqueue_certificate_emails(
     if email_coordinator:
         coord_template = extract_email_template(config, "coordinator_email")
         if coord_template:
-            from app.models import organisation_site
+            from app.models import Site
 
-            # Whoever holds the clinical lead post at a site linked to this
-            # organisation. Read from the post rather than a role on a
-            # staff row: a post can be vacant, and a vacancy must mean
+            # Whoever holds the clinical lead post at a site belonging to
+            # this organisation. Read from the post rather than a role on
+            # a staff row: a post can be vacant, and a vacancy must mean
             # nobody is emailed rather than the wrong person.
             org_site_ids = [
                 int(site_id)
                 for site_id in db.execute(
-                    select(organisation_site.c.site_id).where(
-                        organisation_site.c.organisation_id
-                        == assessment.organisation_id
+                    select(Site.id).where(
+                        Site.organisation_id == assessment.organisation_id
                     )
                 )
                 .scalars()
@@ -2528,12 +2527,7 @@ def list_delegates(
     (either direct org staff or site staff), with their latest
     assessment result if they have one.
     """
-    from app.models import (
-        Site,
-        organisation_member,
-        organisation_site,
-        site_member,
-    )
+    from app.models import Site, organisation_member, site_member
 
     # Which organisations the caller is a member of. Direct membership,
     # not reach: this route lists the people *below* the caller, so a
@@ -2556,13 +2550,8 @@ def list_delegates(
         row[0]
         for row in db.execute(
             select(site_member.c.user_id)
-            .join(
-                organisation_site,
-                organisation_site.c.site_id == site_member.c.site_id,
-            )
-            .where(
-                organisation_site.c.organisation_id.in_(caller_org_ids),
-            )
+            .join(Site, Site.id == site_member.c.site_id)
+            .where(Site.organisation_id.in_(caller_org_ids))
         ).all()
     )
 
@@ -2623,14 +2612,10 @@ def list_delegates(
                 site_member,
                 site_member.c.site_id == Site.id,
             )
-            .join(
-                organisation_site,
-                organisation_site.c.site_id == Site.id,
-            )
             .where(
                 site_member.c.user_id == uid,
                 site_member.c.capacity == "trainee",
-                organisation_site.c.organisation_id.in_(caller_org_ids),
+                Site.organisation_id.in_(caller_org_ids),
             )
         ).first()
 

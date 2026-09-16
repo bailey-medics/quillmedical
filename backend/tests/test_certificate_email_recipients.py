@@ -17,7 +17,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import BackgroundTasks
-from sqlalchemy import insert
+from sqlalchemy import insert, update
 from sqlalchemy.orm import Session
 
 from app.cbac.positions import set_clinical_lead
@@ -31,7 +31,6 @@ from app.models import (
     Organisation,
     Site,
     User,
-    organisation_site,
     site_member,
 )
 from app.security import hash_password
@@ -89,9 +88,7 @@ def _site_of(db: Session, org: Organisation, name: str) -> Site:
     db.add(site)
     db.commit()
     db.execute(
-        insert(organisation_site).values(
-            organisation_id=org.id, site_id=site.id
-        )
+        update(Site).where(Site.id == site.id).values(organisation_id=org.id)
     )
     db.commit()
     return site

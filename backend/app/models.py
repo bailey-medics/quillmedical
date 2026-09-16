@@ -659,7 +659,16 @@ organisation_site = Table(
         primary_key=True,
     ),
 )
-"""Association table: many-to-many between organisations and sites."""
+"""Association table: many-to-many between organisations and sites.
+
+**Nothing reads or writes this any more.** Ownership moved to
+``Site.organisation_id``, which is one organisation per site, because a
+site owned by two of them has no single answer to who its clinical lead
+is or whose features apply. The table is left in place only so that the
+step which introduces the typed link table can carry any surviving
+many-to-one-too-many rows across before it is dropped. See
+docs/docs/plans/2026-09-11-site-tree-unification-plan.md.
+"""
 
 
 # In what capacity someone is at a place, whether that place is an
@@ -802,8 +811,15 @@ class Site(Base):
     """Physical or virtual location within the healthcare system.
 
     Sites form a self-referential hierarchy (hospital > building > ward > room).
-    They link to organisations via a many-to-many relationship and can serve
-    both teaching (clinical lead governance) and clinical (EPR/trust) use cases.
+    Each belongs to exactly one organisation, and can serve both teaching
+    (clinical lead governance) and clinical (EPR/trust) use cases.
+
+    **One owner, not many.** A site used to be linked to any number of
+    organisations, which left three questions with no single answer: whose
+    features apply here, who the clinical lead is, and which admins may edit
+    it. Ownership is now the ``organisation_id`` column, and a relationship
+    that is not ownership — a medical school teaching on a trust's wards —
+    becomes a typed link rather than a second owner.
 
     Attributes:
         id: Primary key.
@@ -811,6 +827,10 @@ class Site(Base):
         type: Site type (hospital, building, ward, room, clinic,
             department, virtual).
         parent_id: FK to parent site (nullable for top-level sites).
+        organisation_id: FK to the one organisation that owns this site.
+            Nullable only while the rows written before ownership moved
+            off the link table are backfilled; every site the
+            application creates sets it.
         location: Optional free-text address or description.
         created_at: Timestamp when site was created.
         updated_at: Timestamp when site was last updated.
@@ -823,6 +843,12 @@ class Site(Base):
     type: Mapped[str] = mapped_column(String(50), nullable=False)
     parent_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("sites.id", ondelete="SET NULL"), nullable=True
+    )
+    organisation_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("organisations.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
     )
     location: Mapped[str | None] = mapped_column(String(500), nullable=True)
     is_active: Mapped[bool] = mapped_column(
@@ -844,8 +870,8 @@ class Site(Base):
         remote_side="Site.id",
         foreign_keys=[parent_id],
     )
-    organisations: Mapped[list[Organisation]] = relationship(
-        secondary=organisation_site,
+    organisation: Mapped[Organisation | None] = relationship(
+        foreign_keys=[organisation_id],
         backref="sites",
     )
     staff: Mapped[list[User]] = relationship(
