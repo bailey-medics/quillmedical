@@ -328,3 +328,128 @@ class TestTheGrantStillWorksThroughTheNewGate:
         assert response.status_code == 200, response.text
         db_session.refresh(colleague)
         assert "perform_venepuncture" in colleague.get_final_competencies()
+
+
+class TestThePlaceSurfaceSaysTheSame:
+    """The same separation, asked of `/api/org-units`.
+
+    The four routes above belong to two addresses that are being retired.
+    The rule is about the competency, not the address, so it is asked of
+    the surface that stays before the others go.
+    """
+
+    @pytest.fixture
+    def account_admin(self, db_session: Session, org: Organisation) -> User:
+        user = _user(
+            db_session, "place_account_admin", competencies=["manage_users"]
+        )
+        _place(db_session, org, user)
+        return user
+
+    @pytest.fixture
+    def membership_admin(self, db_session: Session, org: Organisation) -> User:
+        user = _user(
+            db_session,
+            "place_membership_admin",
+            competencies=["manage_staff_membership"],
+        )
+        _place(db_session, org, user)
+        return user
+
+    def test_managing_accounts_does_not_put_somebody_at_a_place(
+        self,
+        test_client: TestClient,
+        org: Organisation,
+        site: OrgUnit,
+        account_admin: User,
+        colleague: User,
+    ) -> None:
+        client = _login(test_client, "place_account_admin")
+        response = client.post(
+            f"/api/org-units/{site.id}/members",
+            json={"user_id": colleague.id, "capacity": "staff"},
+            headers=_csrf(client),
+        )
+
+        assert response.status_code == 403, response.text
+
+    def test_managing_accounts_does_not_take_somebody_off_one(
+        self,
+        test_client: TestClient,
+        org: Organisation,
+        site: OrgUnit,
+        account_admin: User,
+        colleague: User,
+    ) -> None:
+        client = _login(test_client, "place_account_admin")
+        response = client.delete(
+            f"/api/org-units/{site.id}/members/{colleague.id}",
+            headers=_csrf(client),
+        )
+
+        assert response.status_code == 403, response.text
+
+    def test_managing_membership_puts_somebody_at_a_place(
+        self,
+        test_client: TestClient,
+        org: Organisation,
+        site: OrgUnit,
+        membership_admin: User,
+        colleague: User,
+    ) -> None:
+        client = _login(test_client, "place_membership_admin")
+        response = client.post(
+            f"/api/org-units/{site.id}/members",
+            json={"user_id": colleague.id, "capacity": "staff"},
+            headers=_csrf(client),
+        )
+
+        assert response.status_code == 200, response.text
+
+    def test_managing_membership_takes_somebody_off_one(
+        self,
+        test_client: TestClient,
+        org: Organisation,
+        site: OrgUnit,
+        membership_admin: User,
+        colleague: User,
+    ) -> None:
+        """Added first, so the removal has something to remove."""
+        client = _login(test_client, "place_membership_admin")
+        added = client.post(
+            f"/api/org-units/{site.id}/members",
+            json={"user_id": colleague.id, "capacity": "staff"},
+            headers=_csrf(client),
+        )
+        assert added.status_code == 200, added.text
+
+        response = client.delete(
+            f"/api/org-units/{site.id}/members/{colleague.id}",
+            headers=_csrf(client),
+        )
+
+        assert response.status_code == 200, response.text
+
+    def test_the_grant_comes_with_the_membership_here_too(
+        self,
+        test_client: TestClient,
+        db_session: Session,
+        org: Organisation,
+        membership_admin: User,
+        colleague: User,
+    ) -> None:
+        """Granting competencies without ``manage_users`` is deliberate."""
+        client = _login(test_client, "place_membership_admin")
+        response = client.post(
+            f"/api/org-units/{org.org_unit_id}/members",
+            json={
+                "user_id": colleague.id,
+                "capacity": "staff",
+                "base_profession": "healthcare_assistant",
+            },
+            headers=_csrf(client),
+        )
+
+        assert response.status_code == 200, response.text
+        db_session.refresh(colleague)
+        assert "perform_venepuncture" in colleague.get_final_competencies()
