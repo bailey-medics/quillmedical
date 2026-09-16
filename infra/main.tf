@@ -514,13 +514,29 @@ module "cloud_run_transcode_job" {
 # Without this, `start_transcode` raises inside its own try/except, logs,
 # and returns None. The upload still succeeds and the module stays
 # hidden, which is the safe direction but an entirely silent failure.
+#
+# **`jobsExecutorWithOverrides`, not `invoker`.** Starting a job as
+# configured is `run.jobs.run`, which `roles/run.invoker` confers.
+# Starting one with container overrides — which is how the three ids
+# reach the job, and the only way they can, since each execution needs
+# different ones — is `run.jobs.runWithOverrides`, a separate permission
+# that `run.invoker` does not include. Granting the narrower role first
+# produced exactly the silent failure described above, with the
+# distinction visible only in the traceback:
+#
+#   PERMISSION_DENIED: Permission 'run.jobs.runWithOverrides' denied on
+#   resource '.../jobs/quill-transcode-teaching'
+#
+# `roles/run.developer` and `roles/run.admin` also carry it, and both
+# carry a great deal else besides. This role is the two permissions and
+# nothing more, which is what a serving application should hold.
 resource "google_cloud_run_v2_job_iam_member" "backend_invokes_transcode" {
   count = var.environment == "teaching" ? 1 : 0
 
   project  = var.project_id
   location = var.region
   name     = module.cloud_run_transcode_job[0].job_name
-  role     = "roles/run.invoker"
+  role     = "roles/run.jobsExecutorWithOverrides"
   member   = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
 }
 
@@ -534,7 +550,7 @@ resource "google_cloud_run_v2_job_iam_member" "backend_invokes_caption" {
   project  = var.project_id
   location = var.region
   name     = module.cloud_run_caption_job[0].job_name
-  role     = "roles/run.invoker"
+  role     = "roles/run.jobsExecutorWithOverrides"
   member   = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
 }
 
