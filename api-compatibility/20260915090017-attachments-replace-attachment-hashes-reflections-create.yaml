@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "request-property-removed POST /api/passport/{passport_id}/reflections removed the request property `attachment_hashes`"
+reason: "`attachment_hashes` is replaced by `attachments`, which carries the filename and media type alongside the hash. The record has always stored all four fields per attachment and the API asked for one, so the filename had nowhere to survive between the upload that knows it and the record that names it — a blob is bytes at a path named by their hash, and nothing beside it records what the file was called. The upload route returns exactly the shape this field now accepts. No open tab needs reloading and nothing can break: the passport feature is off for every organisation, no released bundle sends this request, evidence upload did not exist until this branch so no caller could ever have set the old field, and every named hash is checked against the passport before anything is written."

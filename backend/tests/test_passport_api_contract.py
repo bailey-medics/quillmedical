@@ -49,6 +49,20 @@ LEVEL = "review_and_authorise"
 #: Every passport path, as the router declares them. Listed so a new
 #: route is a deliberate addition here too — a route that nobody thought
 #: to add to this list is a route whose response typing nothing checks.
+#: What a passport route may return instead of a diffable JSON schema.
+#: A download has no fields, so the field check does not apply to it —
+#: but it must say which of these it hands back. Declaring nothing is
+#: the case this set exists to refuse: FastAPI then advertises
+#: ``application/json`` with an empty schema, which passes for a
+#: download and diffs like nothing.
+DOWNLOAD_MEDIA_TYPES = frozenset(
+    {
+        "text/markdown",
+        "application/pdf",
+        "application/zip",
+    }
+)
+
 EXPECTED_PATHS = {
     "/api/passport",
     "/api/passport/me",
@@ -64,6 +78,10 @@ EXPECTED_PATHS = {
     "/api/passport/{passport_id}/competencies/{competency_id}",
     "/api/passport/{passport_id}/competencies/{competency_id}/requests",
     "/api/passport/{passport_id}/cpd",
+    "/api/passport/{passport_id}/evidence",
+    "/api/passport/{passport_id}/export.md",
+    "/api/passport/{passport_id}/export.pdf",
+    "/api/passport/{passport_id}/export.zip",
     "/api/passport/{passport_id}/cpd/{year}",
     "/api/passport/{passport_id}/cpd/{year}/{stem}",
     "/api/passport/{passport_id}/logbook/{competency_id}",
@@ -285,6 +303,16 @@ class TestTheSpecIsAdditiveAndDiffable:
         prompted the API schema coverage work. Checked here for the
         passport specifically, so its compliance is a test rather than
         something noticed in CI.
+
+        **Every route declares something checkable.** A JSON route
+        declares its fields. A download declares the media type it
+        returns, from the set below — it has no fields to diff, so
+        listing them is not the check that applies to it. What is not
+        allowed is declaring nothing: an undeclared response is
+        advertised as ``application/json`` with an empty schema, which
+        looks like a download and diffs like nothing. That is the exact
+        shape this test exists to catch, and it is what the export
+        routes produced before their media types were declared.
         """
         spec = _spec()
         components = spec.get("components", {}).get("schemas", {})
@@ -295,16 +323,25 @@ class TestTheSpecIsAdditiveAndDiffable:
                 continue
 
             for method, operation in operations.items():
+                where = f"{method.upper()} {path}"
                 schema = _success_schema(operation)
 
                 if schema is None:
-                    opaque.append(f"{method.upper()} {path}: no 200/201")
+                    media_type = _success_media_type(operation)
+
+                    if media_type is None:
+                        opaque.append(f"{where}: no 200/201")
+                    elif media_type not in DOWNLOAD_MEDIA_TYPES:
+                        opaque.append(
+                            f"{where}: returns {media_type}, which is "
+                            "neither a diffable JSON schema nor one of "
+                            f"{sorted(DOWNLOAD_MEDIA_TYPES)}"
+                        )
+
                     continue
 
                 if not _has_named_fields(schema, components):
-                    opaque.append(
-                        f"{method.upper()} {path}: opaque response schema"
-                    )
+                    opaque.append(f"{where}: opaque response schema")
 
         assert not opaque, (
             "These responses cannot be diffed field by field, so a field "
@@ -337,6 +374,26 @@ def _success_schema(operation: dict[str, Any]) -> dict[str, Any] | None:
 
         if schema is not None:
             return dict(schema)
+
+    return None
+
+
+def _success_media_type(operation: dict[str, Any]) -> str | None:
+    """The media type of a 200 or 201 that is not JSON, if there is one.
+
+    A download says what it hands back. Returning the declared type
+    rather than a boolean lets the caller check it is a real one: a
+    route that declares nothing is the case worth catching, and it is
+    indistinguishable from a download unless the type itself is read.
+    """
+    responses = operation.get("responses", {})
+
+    for code in ("200", "201"):
+        content = responses.get(code, {}).get("content", {})
+
+        for media_type in content:
+            if media_type != "application/json":
+                return str(media_type)
 
     return None
 
