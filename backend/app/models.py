@@ -216,12 +216,15 @@ class PatientMetadata(Base):
 organisation_patient_member = Table(
     "organisation_patient_member",
     Base.metadata,
-    Column(
-        "organisation_id", ForeignKey("organisations.id"), primary_key=True
-    ),
+    Column("org_unit_id", ForeignKey("sites.id"), primary_key=True),
     Column("patient_id", String(255), primary_key=True),
 )
-"""Association table for many-to-many relationship between organisations and patients."""
+"""Association table: which patients a place is responsible for.
+
+The place is an organisation's own row in the tree. Whether a patient
+list may ever hang below a root is a product decision rather than a
+schema one; nothing stops it here.
+"""
 
 
 class Organisation(Base):
@@ -270,10 +273,15 @@ class Organisation(Base):
         nullable=False,
     )
 
-    # One-to-many relationship to enabled features
+    # One-to-many relationship to enabled features, reached through the
+    # organisation's own row in the tree. Read-only: writes go through the
+    # feature rows themselves, which name the place.
     features: Mapped[list[OrganisationFeature]] = relationship(
-        back_populates="organisation",
-        cascade="all, delete-orphan",
+        primaryjoin=(
+            "foreign(OrganisationFeature.org_unit_id)"
+            " == Organisation.org_unit_id"
+        ),
+        viewonly=True,
     )
 
 
@@ -286,7 +294,11 @@ class OrganisationFeature(Base):
 
     Attributes:
         id: Primary key.
-        organisation_id: FK to the owning organisation.
+        org_unit_id: FK to the place the feature is enabled at, which is
+            an organisation's own row in the tree. Nullable in the column
+            type only: the check constraint requires it, which is how a
+            required column is added to a populated table without a
+            server default that would make no sense for an id.
         feature_key: Feature identifier (e.g. "epr", "teaching").
         enabled_at: When the feature was enabled.
         enabled_by: FK to the user who enabled it.
@@ -295,17 +307,21 @@ class OrganisationFeature(Base):
     __tablename__ = "organisation_features"
     __table_args__ = (
         UniqueConstraint(
-            "organisation_id",
+            "org_unit_id",
             "feature_key",
-            name="uq_org_feature",
+            name="uq_org_unit_feature",
+        ),
+        CheckConstraint(
+            "org_unit_id IS NOT NULL",
+            name="ck_organisation_features_place_required",
         ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    organisation_id: Mapped[int] = mapped_column(
+    org_unit_id: Mapped[int | None] = mapped_column(
         Integer,
-        ForeignKey("organisations.id", ondelete="CASCADE"),
-        nullable=False,
+        ForeignKey("sites.id", ondelete="CASCADE"),
+        nullable=True,
         index=True,
     )
     feature_key: Mapped[str] = mapped_column(
@@ -322,9 +338,7 @@ class OrganisationFeature(Base):
         nullable=True,
     )
 
-    organisation: Mapped[Organisation] = relationship(
-        back_populates="features",
-    )
+    org_unit: Mapped[Site | None] = relationship()
     enabled_by_user: Mapped[User | None] = relationship(
         foreign_keys=[enabled_by],
         lazy="joined",
@@ -340,12 +354,18 @@ message_organisation = Table(
         primary_key=True,
     ),
     Column(
-        "organisation_id",
-        ForeignKey("organisations.id", ondelete="CASCADE"),
+        "org_unit_id",
+        ForeignKey("sites.id", ondelete="CASCADE"),
         primary_key=True,
     ),
 )
-"""Association table linking conversations to organisations."""
+"""Association table linking conversations to places.
+
+The place is an organisation's own row in the tree. The column was
+renamed rather than repointed in silence: it holds a different number
+than it used to, and a call site that had not been moved across would
+otherwise have matched a different place without saying so.
+"""
 
 
 class ExternalPatientAccess(Base):
@@ -463,7 +483,11 @@ class Conversation(Base):
         back_populates="conversation",
         cascade="all, delete-orphan",
     )
-    organisations: Mapped[list[Organisation]] = relationship(
+    # The places a conversation belongs to: an organisation's own row in
+    # the tree. Named ``places`` rather than ``organisations`` because the
+    # rows hold a place id now, and a name that still said organisation
+    # would be a set of numbers that do not mean what the name says.
+    places: Mapped[list[Site]] = relationship(
         secondary=message_organisation,
     )
 
@@ -1038,20 +1062,49 @@ def _remove_the_root_with_it(
     place that exists, has members, and is accountable to nothing.
 
     The places beneath it are detached rather than deleted, which matches
-    what deleting an organisation did before the tree existed. Detaching
-    them here rather than relying on the foreign key to release them: the
-    unit-test database does not enforce foreign keys, so leaving it to the
-    database would mean the behaviour is only true in production.
+    what deleting an organisation did before the tree existed. Whatever
+    hung off the organisation's own place — its members, its features, its
+    patient list, its conversations, who may practise there and the posts
+    it holds — goes with it.
+
+    All of it is written out rather than left to the foreign keys, which
+    would do the same job in Postgres. The unit-test database does not
+    enforce foreign keys, so leaving it to the database would make the
+    behaviour true only in production, which is the half of a delete
+    nobody notices is missing.
     """
     if target.org_unit_id is None:
         return
 
+    place_id = target.org_unit_id
+
     connection.execute(
-        update(Site)
-        .where(Site.parent_id == target.org_unit_id)
-        .values(parent_id=None)
+        update(Site).where(Site.parent_id == place_id).values(parent_id=None)
     )
-    connection.execute(delete(Site).where(Site.id == target.org_unit_id))
+    for table, column in (
+        (site_member, "site_id"),
+        (organisation_patient_member, "org_unit_id"),
+        (message_organisation, "org_unit_id"),
+    ):
+        connection.execute(table.delete().where(table.c[column] == place_id))
+    connection.execute(
+        delete(OrganisationFeature).where(
+            OrganisationFeature.org_unit_id == place_id
+        )
+    )
+    connection.execute(
+        delete(PractisingCompetency).where(
+            PractisingCompetency.site_id == place_id
+        )
+    )
+    connection.execute(delete(Position).where(Position.site_id == place_id))
+    connection.execute(
+        delete(OrgUnitLink).where(
+            (OrgUnitLink.source_id == place_id)
+            | (OrgUnitLink.target_id == place_id)
+        )
+    )
+    connection.execute(delete(Site).where(Site.id == place_id))
 
 
 class PractisingCompetency(Base):

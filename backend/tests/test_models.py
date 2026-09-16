@@ -325,11 +325,11 @@ class TestOrganisationModel:
 
         # Add patient IDs directly to the association table
         stmt1 = insert(organisation_patient_member).values(
-            organisation_id=org.id,
+            org_unit_id=org.org_unit_id,
             patient_id="patient-123",
         )
         stmt2 = insert(organisation_patient_member).values(
-            organisation_id=org.id,
+            org_unit_id=org.org_unit_id,
             patient_id="patient-456",
         )
         db_session.execute(stmt1)
@@ -340,7 +340,9 @@ class TestOrganisationModel:
         patient_count = db_session.scalar(
             select(func.count())
             .select_from(organisation_patient_member)
-            .where(organisation_patient_member.c.organisation_id == org.id)
+            .where(
+                organisation_patient_member.c.org_unit_id == org.org_unit_id
+            )
         )
         assert patient_count == 2
 

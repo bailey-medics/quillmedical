@@ -158,12 +158,26 @@ def get_user_org_ids(db: Session, user_id: int) -> list[int]:
 
 def get_patient_org_ids(db: Session, patient_id: str) -> list[int]:
     """Return organisation IDs the patient belongs to."""
-    rows = db.execute(
-        select(organisation_patient_member.c.organisation_id).where(
-            organisation_patient_member.c.patient_id == patient_id
+    place_ids = [
+        int(r[0])
+        for r in db.execute(
+            select(organisation_patient_member.c.org_unit_id).where(
+                organisation_patient_member.c.patient_id == patient_id
+            )
+        ).all()
+    ]
+    if not place_ids:
+        return []
+    return sorted(
+        int(org_id)
+        for org_id in db.execute(
+            select(Organisation.id).where(
+                Organisation.org_unit_id.in_(place_ids)
+            )
         )
-    ).all()
-    return [r[0] for r in rows]
+        .scalars()
+        .all()
+    )
 
 
 def get_shared_org_ids(
@@ -250,7 +264,9 @@ def get_org_patient_ids(db: Session, org_ids: list[int]) -> set[str]:
         return set()
     rows = db.execute(
         select(organisation_patient_member.c.patient_id).where(
-            organisation_patient_member.c.organisation_id.in_(org_ids)
+            organisation_patient_member.c.org_unit_id.in_(
+                root_ids_of_organisations(db, org_ids)
+            )
         )
     ).all()
     return {r[0] for r in rows}
