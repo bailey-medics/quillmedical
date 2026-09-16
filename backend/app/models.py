@@ -214,33 +214,6 @@ class PatientMetadata(Base):
     )
 
 
-organisation_member = Table(
-    "organisation_member",
-    Base.metadata,
-    Column(
-        "organisation_id", ForeignKey("organisations.id"), primary_key=True
-    ),
-    Column("user_id", ForeignKey("users.id"), primary_key=True),
-    # Least privilege: an insert that forgets to say gets the narrower
-    # capacity, not the wider one. A row wrongly marked trainee loses access
-    # and someone complains; a row wrongly marked staff keeps access nobody
-    # notices, which is the failure that does not announce itself.
-    Column("capacity", String(50), nullable=False, server_default="trainee"),
-)
-"""Association table: who is at an organisation, and in what capacity.
-
-Named ``organisation_member`` rather than ``organisation_member``
-because not everyone in it is staff. Registration put teaching delegates
-here so that anything outside teaching could find them, and with only two
-columns nothing could tell a student from a consultant — so the admin page
-listed them together and the messaging self-join check had to fall back on
-asking what platform level someone held.
-
-Membership answers *where is this person*. What they may do there is a
-practising competency, and who holds a post is a ``Position``.
-"""
-
-
 organisation_patient_member = Table(
     "organisation_patient_member",
     Base.metadata,
@@ -270,7 +243,6 @@ class Organisation(Base):
             given every organisation one.
         created_at: Timestamp when organisation was created.
         updated_at: Timestamp when organisation was last updated.
-        staff_members: List of users (staff) who belong to this organisation.
     """
 
     __tablename__ = "organisations"
@@ -297,12 +269,6 @@ class Organisation(Base):
         default=lambda: datetime.now(UTC),
         onupdate=lambda: datetime.now(UTC),
         nullable=False,
-    )
-
-    # Many-to-many relationship to users (staff members)
-    staff_members: Mapped[list[User]] = relationship(
-        secondary=organisation_member,
-        backref="organisations",
     )
 
     # One-to-many relationship to enabled features
@@ -811,8 +777,8 @@ site_member = Table(
         ForeignKey("users.id", ondelete="CASCADE"),
         primary_key=True,
     ),
-    # Least privilege, carried across from ``organisation_member`` as the
-    # two tables merge. An insert that forgets to say gets the narrower
+    # Least privilege, carried across from the organisation membership
+    # table as the two merged. An insert that forgets to say gets the narrower
     # capacity, not the wider one: a row wrongly marked trainee loses
     # access and someone complains; a row wrongly marked staff keeps
     # access nobody notices, which is the failure that does not announce

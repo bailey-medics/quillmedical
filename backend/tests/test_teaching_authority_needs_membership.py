@@ -39,9 +39,9 @@ from app.models import (
     OrganisationFeature,
     Site,
     User,
-    organisation_member,
     site_member,
 )
+from app.organisations import add_organisation_member
 from app.security import hash_password
 
 
@@ -76,11 +76,7 @@ def _teaching_admin(db: Session, username: str) -> User:
 
 
 def _join_org(db: Session, org: Organisation, user: User) -> None:
-    db.execute(
-        organisation_member.insert().values(
-            organisation_id=org.id, user_id=user.id, capacity="staff"
-        )
-    )
+    add_organisation_member(db, org.id, user.id, "staff")
     db.commit()
 
 

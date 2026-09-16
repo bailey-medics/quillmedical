@@ -108,7 +108,6 @@ from app.models import (
     PatientMetadata,
     Site,
     User,
-    organisation_member,
     organisation_patient_member,
     site_member,
     validate_member_capacity,
@@ -134,6 +133,7 @@ from app.organisations import (
     get_org_staff_ids,
     get_patient_org_ids,
     get_shared_org_ids,
+    organisation_member,
     remove_organisation_member,
     remove_organisation_memberships,
 )

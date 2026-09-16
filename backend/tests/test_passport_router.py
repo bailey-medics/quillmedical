@@ -55,9 +55,9 @@ from app.models import (
     OrganisationFeature,
     Site,
     User,
-    organisation_member,
     site_member,
 )
+from app.organisations import add_organisation_member, organisation_member
 from app.passport_storage import get_passport_store
 from app.security import PASSPORT_INVITE_TYPE, hash_password
 
@@ -123,11 +123,7 @@ def _enable_passport(db: Session, *users: User) -> Organisation:
     db.add(OrganisationFeature(organisation_id=org.id, feature_key="passport"))
 
     for user in users:
-        db.execute(
-            organisation_member.insert().values(
-                organisation_id=org.id, user_id=user.id
-            )
-        )
+        add_organisation_member(db, org.id, user.id, "trainee")
 
     db.commit()
     return org
@@ -1514,11 +1510,7 @@ class TestAdminVerifyAndRevoke:
         """An admin of the holder's organisation."""
         user = _make_user(db_session, "orgadmin", profession="consultant")
         user.additional_competencies = ["manage_users"]
-        db_session.execute(
-            organisation_member.insert().values(
-                organisation_id=org.id, user_id=user.id, capacity="staff"
-            )
-        )
+        add_organisation_member(db_session, org.id, user.id, "staff")
         db_session.commit()
         db_session.refresh(user)
         return user
@@ -1542,11 +1534,7 @@ class TestAdminVerifyAndRevoke:
                 organisation_id=other.id, feature_key="passport"
             )
         )
-        db_session.execute(
-            organisation_member.insert().values(
-                organisation_id=other.id, user_id=user.id, capacity="staff"
-            )
-        )
+        add_organisation_member(db_session, other.id, user.id, "staff")
         db_session.commit()
         db_session.refresh(user)
         return user
@@ -2223,10 +2211,8 @@ class TestFeatureGate:
         db_session.add(organisation)
         db_session.commit()
         db_session.refresh(organisation)
-        db_session.execute(
-            organisation_member.insert().values(
-                organisation_id=organisation.id, user_id=user.id
-            )
+        add_organisation_member(
+            db_session, organisation.id, user.id, "trainee"
         )
         db_session.commit()
 

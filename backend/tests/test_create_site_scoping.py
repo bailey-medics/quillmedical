@@ -24,16 +24,16 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 from httpx import Response
-from sqlalchemy import insert, select, update
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.models import (
     Organisation,
     Site,
     User,
-    organisation_member,
 )
 from app.org_units.tree import organisation_id_of_site
+from app.organisations import add_organisation_member
 
 
 def _org(db: Session, name: str) -> Organisation:
@@ -62,11 +62,7 @@ def _site_in(db: Session, name: str, org: Organisation) -> Site:
 def own_org(db_session: Session, test_admin: User) -> Organisation:
     """An organisation the admin belongs to."""
     org = _org(db_session, "Own Trust")
-    db_session.execute(
-        insert(organisation_member).values(
-            organisation_id=org.id, user_id=test_admin.id, capacity="staff"
-        )
-    )
+    add_organisation_member(db_session, org.id, test_admin.id, "staff")
     db_session.commit()
     return org
 
