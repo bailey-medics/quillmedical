@@ -1,0 +1,140 @@
+# shared/org-unit-types.yaml
+#
+# ORG UNIT TYPE DEFINITIONS
+#
+# An org_unit is one node of the governance tree: a trust, a site, a ward.
+# Its `type` is the only thing that says what it is — never its position in
+# the tree. An organisation is an org_unit whose type says "organisation",
+# not an org_unit that happens to have no parent above it. See
+# docs/docs/plans/2026-09-11-site-tree-unification-plan.md.
+#
+# WHY THE FLAGS ARE HERE RATHER THAN IN THE CODE
+#
+# The rules do not care whether a node is a ward or a clinic; they care what
+# sort of question it can answer. Without these flags every rule becomes its
+# own hardcoded list of type names, and adding a type means hunting all of
+# them down. A rule asks "can this type hold positions?" instead.
+#
+# Three groups, cutting across the names:
+#
+#   * Nodes that hold governance — a trust, carrying features, patient lists
+#     and a Caldicott Guardian.
+#   * Nodes that hold clinical roles — a ward or a clinic, where naming a
+#     clinical lead means something.
+#   * Nodes that are only an address — a room. Nobody is clinical lead of
+#     room four.
+#
+# THE LIST LIVES HERE, NOT IN A DATABASE ENUM
+#
+# So it can grow without a migration. Unknown values are refused in code by
+# `validate_org_unit_type`, which is the same choice `MEMBER_CAPACITIES` made
+# and for the same reason.
+#
+# requires_parent is a flag on the type, not a rule about roots in general.
+# Today `organisation` is the only type that sets it false, which produces
+# the two-level shape the application has. Should a body ever have to sit
+# above the organisations, `organisation` flips this one flag and the tree
+# grows a level with no schema change.
+#
+org_unit_types:
+  # ==========================================================================
+  # GOVERNANCE
+  # ==========================================================================
+
+  - id: organisation
+    display_name: "Organisation"
+    description: >-
+      The top of a tree: a trust, a GP practice, a teaching establishment.
+      The only type that carries features and a patient list.
+    requires_parent: false
+    can_hold_features: true
+    can_hold_positions: true
+    can_hold_competencies: true
+    can_have_members: true
+
+  # ==========================================================================
+  # CLINICAL ROLES
+  # ==========================================================================
+
+  - id: site
+    display_name: "Site"
+    description: >-
+      The level below an organisation, and what teaching uses today. A site
+      names a clinical lead; it does not carry its own feature set.
+    requires_parent: true
+    can_hold_features: false
+    can_hold_positions: true
+    can_hold_competencies: true
+    can_have_members: true
+
+  - id: hospital
+    display_name: "Hospital"
+    description: "A hospital within an organisation."
+    requires_parent: true
+    can_hold_features: false
+    can_hold_positions: true
+    can_hold_competencies: true
+    can_have_members: true
+
+  - id: building
+    display_name: "Building"
+    description: "A building on a hospital site."
+    requires_parent: true
+    can_hold_features: false
+    can_hold_positions: true
+    can_hold_competencies: true
+    can_have_members: true
+
+  - id: ward
+    display_name: "Ward"
+    description: "A ward, which names a clinical lead of its own."
+    requires_parent: true
+    can_hold_features: false
+    can_hold_positions: true
+    can_hold_competencies: true
+    can_have_members: true
+
+  - id: clinic
+    display_name: "Clinic"
+    description: "A clinic, which names a clinical lead of its own."
+    requires_parent: true
+    can_hold_features: false
+    can_hold_positions: true
+    can_hold_competencies: true
+    can_have_members: true
+
+  - id: department
+    display_name: "Department"
+    description: "A department within an organisation."
+    requires_parent: true
+    can_hold_features: false
+    can_hold_positions: true
+    can_hold_competencies: true
+    can_have_members: true
+
+  - id: virtual
+    display_name: "Virtual"
+    description: >-
+      A place with no address — a remote clinic, or a team that meets
+      nowhere in particular.
+    requires_parent: true
+    can_hold_features: false
+    can_hold_positions: true
+    can_hold_competencies: true
+    can_have_members: true
+
+  # ==========================================================================
+  # ADDRESSES ONLY
+  # ==========================================================================
+
+  - id: room
+    display_name: "Room"
+    description: >-
+      Where something is, and nothing more. Nobody is clinical lead of a
+      room, nobody is a member of one, and no competency is authorised at
+      one — the ward above it answers all three.
+    requires_parent: true
+    can_hold_features: false
+    can_hold_positions: false
+    can_hold_competencies: false
+    can_have_members: false
