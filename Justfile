@@ -1128,6 +1128,14 @@ stack-sync:
     # merged branch's commits are on main and its pull request is on GitHub,
     # so there is nothing in one to lose.
     gh stack sync --prune
+    # `--prune` deletes the local branch of a merged pull request, which is
+    # the half that frees the name — but it leaves the branch's entry in the
+    # stack. Those entries are not only clutter: an entry whose branch is
+    # gone costs `gh stack rebase` the base it should be rebasing onto, and
+    # it replays the trunk's own history instead. So the record is tidied
+    # here, where the branches were just deleted, rather than left to
+    # surprise the next rebase.
+    python3 scripts/stack-forget-merged.py
     # Exit 1 means "no stack here". That is the ordinary ending for a sync —
     # the last branch merging deletes the stack, so the run that tidies it up
     # is the one guaranteed to find nothing left to draw. The script's own
@@ -1241,9 +1249,12 @@ stack-watch:
         # and the loop should keep drawing it rather than dying on it.
         drawn=$(python3 scripts/stack-status.py --prs --colour 2>&1 || true)
 
-        # \033[H homes the cursor, \033[2J clears — together they replace
-        # the previous draw rather than scrolling.
-        printf '\033[H\033[2J'
+        # \033[H homes the cursor, \033[2J clears the screen and \033[3J the
+        # scrollback. The third matters: without it the previous draw is
+        # only pushed up rather than thrown away, so a stack taller than
+        # the window leaves the older copy above the new one and the
+        # status line scrolls out of sight with it.
+        printf '\033[H\033[2J\033[3J'
         echo "  updated $(date '+%H:%M:%S') · every 60s · ctrl-c to stop"
         printf '%s\n' "${drawn}"
         sleep 60
