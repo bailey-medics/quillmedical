@@ -37,10 +37,12 @@ from app.models import (
     ExternalPatientAccess,
     Organisation,
     User,
-    organisation_member,
     organisation_patient_member,
 )
-from app.organisations import check_user_patient_access
+from app.organisations import (
+    add_organisation_member,
+    check_user_patient_access,
+)
 from app.security import hash_password
 
 SHARED_PATIENT = "fhir-patient-shared"
@@ -92,11 +94,7 @@ def org_with_patient(db_session: Session) -> Organisation:
 
 
 def _place(db: Session, org: Organisation, user: User) -> None:
-    db.execute(
-        insert(organisation_member).values(
-            organisation_id=org.id, user_id=user.id, capacity="staff"
-        )
-    )
+    add_organisation_member(db, org.id, user.id, "staff")
     db.commit()
 
 

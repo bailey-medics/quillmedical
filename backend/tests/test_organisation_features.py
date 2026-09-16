@@ -6,8 +6,8 @@ from app.models import (
     Organisation,
     OrganisationFeature,
     User,
-    organisation_member,
 )
+from app.organisations import add_organisation_member
 from app.security import hash_password
 
 # ---------------------------------------------------------------------------
@@ -169,12 +169,7 @@ def _make_admin(db_session, org: Organisation | None = None) -> User:
     db_session.add(user)
     db_session.flush()
     if org:
-        db_session.execute(
-            organisation_member.insert().values(
-                organisation_id=org.id,
-                user_id=user.id,
-            )
-        )
+        add_organisation_member(db_session, org.id, user.id, "trainee")
     db_session.commit()
     db_session.refresh(user)
     return user
@@ -388,8 +383,6 @@ class TestMeEnabledFeatures:
 
     def test_me_includes_enabled_features(self, test_client, db_session):
         """enabled_features reflects the user's primary org."""
-        from app.models import organisation_member
-
         org = _make_org(db_session)
         user = User(
             username="featureuser",
@@ -402,12 +395,7 @@ class TestMeEnabledFeatures:
         db_session.flush()
 
         # Link user to org
-        db_session.execute(
-            organisation_member.insert().values(
-                organisation_id=org.id,
-                user_id=user.id,
-            )
-        )
+        add_organisation_member(db_session, org.id, user.id, "trainee")
         # Enable teaching on the org
         db_session.add(
             OrganisationFeature(

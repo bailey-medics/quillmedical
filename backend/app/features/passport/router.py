@@ -62,15 +62,17 @@ from app.deps import has_competency
 from app.email_send import EmailRateLimitError, send_email
 from app.features.gating import requires_feature
 from app.models import (
+    Site,
     User,
-    organisation_member,
     site_member,
 )
 from app.org_units.tree import site_ids_of_organisations
+from app.org_units.types import ORGANISATION_TYPE
 from app.organisations import (
     add_organisation_member,
     get_member_org_ids,
     get_reachable_org_ids,
+    organisation_member,
     remove_organisation_member,
 )
 from app.passport_storage import get_blob_store, get_passport_store
@@ -2486,9 +2488,16 @@ def _holder_place(db: Session, passport_id: str) -> tuple[str, int]:
     if passport is None:
         raise HTTPException(400, "This invitation is no longer valid.")
 
+    # A place *inside* an organisation. Organisations are rows in the
+    # same table now, and a membership of one is a row here too, so
+    # without this every holder would look as though they had a site and
+    # the organisation branch below would never be reached.
     site_id = db.scalar(
         select(site_member.c.site_id).where(
-            site_member.c.user_id == passport.user_id
+            site_member.c.user_id == passport.user_id,
+            site_member.c.site_id.in_(
+                select(Site.id).where(Site.type != ORGANISATION_TYPE)
+            ),
         )
     )
 

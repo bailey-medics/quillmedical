@@ -22,10 +22,10 @@ from app.db import get_core_db
 from app.models import (
     OrganisationFeature,
     User,
-    organisation_member,
     site_member,
 )
 from app.org_units.tree import organisation_ids_of_sites
+from app.organisations import organisation_member
 
 
 def requires_feature(feature_key: str) -> Callable[..., User]:

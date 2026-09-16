@@ -14,10 +14,10 @@ from app.models import (
     Organisation,
     Site,
     User,
-    organisation_member,
     site_member,
 )
 from app.org_units.tree import organisation_id_of_site
+from app.organisations import add_organisation_member
 from app.security import hash_password
 
 
@@ -192,11 +192,7 @@ class TestSiteRoutesAreScopedToYourOrganisations:
         site = Site(name="My Ward", type="ward")
         db_session.add_all([org, site])
         db_session.commit()
-        db_session.execute(
-            insert(organisation_member).values(
-                organisation_id=org.id, user_id=admin.id
-            )
-        )
+        add_organisation_member(db_session, org.id, admin.id, "trainee")
         db_session.execute(
             update(Site)
             .where(Site.id == site.id)

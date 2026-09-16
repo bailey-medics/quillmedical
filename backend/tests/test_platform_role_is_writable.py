@@ -23,10 +23,11 @@ from __future__ import annotations
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import insert, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Organisation, User, organisation_member
+from app.models import Organisation, User
+from app.organisations import add_organisation_member
 from app.security import hash_password
 
 
@@ -62,11 +63,7 @@ def org(db_session: Session) -> Organisation:
 
 
 def _place(db: Session, org: Organisation, user: User) -> None:
-    db.execute(
-        insert(organisation_member).values(
-            organisation_id=org.id, user_id=user.id, capacity="staff"
-        )
-    )
+    add_organisation_member(db, org.id, user.id, "staff")
     db.commit()
 
 

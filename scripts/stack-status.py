@@ -191,6 +191,35 @@ def read_pull_requests(branches: list[str]) -> dict[str, dict[str, object]]:
     # as "no pull request" against every branch — a wrong answer that looked
     # like an answer. A stack's branches are open by definition; a merged one
     # is reported by `isMerged` in the stack data itself.
+    # Ask for every open pull request, not a guessed ceiling. At a flat 30,
+    # a repository with 69 open returned only the newest; a stack's branches
+    # are all older than those, so every branch drew as "no pull request" —
+    # which reads as "none opened yet" rather than "the list was cut short",
+    # and the CI columns went blank with it, statusCheckRollup riding in the
+    # same response. Sizing it from the stack was no better: 15 branches
+    # asked for 60 and still missed the oldest nine.
+    #
+    # `--limit` needs a number, so the count comes first, in a cheap call
+    # that asks for one field and no check state. Falling back to a large
+    # constant keeps the drawing working if that call fails.
+    counted = run(
+        [
+            "gh",
+            "pr",
+            "list",
+            "--state",
+            "open",
+            "--limit",
+            "500",
+            "--json",
+            "number",
+        ],
+        check=False,
+    )
+    try:
+        limit = max(len(json.loads(counted)), 30)
+    except (json.JSONDecodeError, TypeError):
+        limit = 200
     raw = run(
         [
             "gh",
@@ -199,7 +228,7 @@ def read_pull_requests(branches: list[str]) -> dict[str, dict[str, object]]:
             "--state",
             "open",
             "--limit",
-            "30",
+            str(limit),
             "--json",
             "number,headRefName,isDraft,state,statusCheckRollup,url",
         ],

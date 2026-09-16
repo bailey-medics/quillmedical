@@ -719,7 +719,19 @@ to 9 perform the merge; steps 10 to 12 perform the rename.
      functions in `organisations.py` are the only code that knows there are
      two tables, so switching the readers is a change there rather than a
      hunt through the routes.
-   - [ ] **5b — read the new one, stop writing the old one, drop it.**
+   - [x] **5b — read the new one, stop writing the old one, drop it.**
+
+   Two readings the plan left open were settled while building 5b:
+
+   - **The old table's name survives as a query.** `organisation_member`
+     is now a select over the merged table joined through each
+     organisation's own row, exported from `organisations.py` under the
+     name the sixty-odd call sites already used. They ask the same
+     question; only where the answer comes from changed.
+   - **Asking for "a place" now has to say "not an organisation".** Two
+     reads assumed every row in the membership table was a place inside an
+     organisation. The clinician passport's "narrowest place" lookup would
+     otherwise have called every trust a site.
 
    Two readings the plan left open were settled while building 5a:
 
