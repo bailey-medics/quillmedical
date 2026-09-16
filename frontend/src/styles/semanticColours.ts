@@ -42,7 +42,8 @@ export type StatusColourName =
   | "info"
   | "neutral"
   | "accent"
-  | "alert";
+  | "alert"
+  | "update";
 
 export const statusColours: Record<StatusColourName, StatusColourConfig> = {
   success: {
@@ -80,7 +81,32 @@ export const statusColours: Record<StatusColourName, StatusColourConfig> = {
     text: "white",
     usage: "No-show, patient, attention needed",
   },
+  update: {
+    bg: "var(--update-color)",
+    text: "dark",
+    usage: "Nothing recorded yet, and gentle prompts to act",
+  },
 };
+
+/**
+ * The CSS colour to paint text in, on a given status colour's fill.
+ *
+ * `text` above says "white" or "dark", and "dark" needs resolving to an
+ * actual colour. Doing that at each call site is how a swatch and the
+ * card beside it came to disagree: one passed "dark" to Mantine and got
+ * its near-black, the other resolved it to the app's navy body colour.
+ * One function, so they cannot drift again.
+ *
+ * It resolves to near-black rather than the navy: on the yellow
+ * `neutral` fill the navy is a markedly weaker contrast, and a status
+ * fill exists to be read at a glance. The navy remains the body text
+ * colour everywhere off a coloured fill.
+ */
+export function statusTextColour(name: StatusColourName): string {
+  return statusColours[name].text === "dark"
+    ? "var(--status-text-dark)"
+    : "white";
+}
 
 /* ------------------------------------------------------------------ */
 /*  Text colours                                                       */

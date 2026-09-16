@@ -67,6 +67,7 @@ export default function CompetencySummary({
   if (competencies.length === 0) {
     return (
       <StateMessage
+        colour="update"
         icon={<IconFileText />}
         title="No competencies yet"
         description="Competencies appear here once you have a sign-off, a logbook entry or a certificate against one."

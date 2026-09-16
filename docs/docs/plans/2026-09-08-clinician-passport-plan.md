@@ -3661,6 +3661,26 @@ close them off, and so nobody builds them before there is a need.
 
 ## Decisions
 
+- **A passport is created on demand, by the holder pressing a button**
+  — not automatically when the page is first opened, and not in bulk
+  when the competency is granted. Creation is the passport's first
+  commit, and the record's worth rests on every commit being traceable
+  to somebody who meant to make it; creating one as a side effect of
+  looking at a page would make the commit the whole chain hangs from
+  the one nobody consciously made. It also means nobody acquires a
+  career record they never asked for, and the empty state has
+  somewhere to explain what a passport is before a clinician starts
+  putting their career into it.
+
+  The cost is borne by administrators rather than holders: a rollout
+  is "granted and waiting" rather than "done", and a user list does
+  not say who has actually started. That is recoverable — bulk
+  provisioning can be added later for anyone holding the competency.
+  The reverse is not: provisioning everyone up front and then
+  discovering thousands of empty repositories cannot be undone
+  quietly, because deleting a passport is not a thing this system
+  should make easy.
+
 - **Files are canonical and git is the audit log** — because the
   passport must be portable across trusts and readable in twenty years
   without Quill. A database row cannot be handed to a registrar; a
