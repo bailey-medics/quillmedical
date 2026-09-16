@@ -125,6 +125,7 @@ from app.org_units.tree import (
     organisation_ids_of_sites,
     root_ids_of_organisations,
     site_ids_of_organisations,
+    would_make_a_cycle,
 )
 from app.organisations import (
     add_organisation_member,
@@ -4933,10 +4934,16 @@ def update_site(
     if body.name is not None:
         site.name = body.name
     if body.parent_id is not None:
-        if body.parent_id == site_id:
+        # A tree is one parent each *and* no cycles. The column gives the
+        # first for nothing; the second has to be checked here, or the
+        # tree quietly stops being one and every walk up it hits the
+        # depth cap instead of a root. Only the obvious case — a place
+        # inside itself — was checked before, so a place could be moved
+        # inside its own ward.
+        if would_make_a_cycle(db, site_id, body.parent_id):
             raise HTTPException(
-                status_code=422,
-                detail="Site cannot be its own parent",
+                status_code=400,
+                detail="A place cannot sit inside itself",
             )
         parent = db.get(Site, body.parent_id)
         if not parent:

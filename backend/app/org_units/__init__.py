@@ -4,6 +4,11 @@
 One node of organisational structure, whatever its size. A trust is an
 org_unit and so is a ward; what tells them apart is the ``type`` column,
 never the node's position in the tree.
+
+**Only the vocabulary is re-exported here.** The tree walks live in
+``app.org_units.tree`` and are imported from there directly, because they
+read the models and the models read this package — re-exporting them
+would make importing either one depend on the other being finished.
 """
 
 from app.org_units.relations import (
