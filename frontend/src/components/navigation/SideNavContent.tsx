@@ -352,6 +352,14 @@ export default function SideNavContent({
         icon: showIcons ? "building-community" : undefined,
         children: orgNavEffective,
       } satisfies NavItem,
+      // The sites of one organisation already hang under it above. This
+      // is the way in for somebody who knows the site but not which
+      // organisation owns it, which until now was no way in at all.
+      {
+        label: "Sites",
+        href: "/admin/sites",
+        icon: showIcons ? "building-hospital" : undefined,
+      } satisfies NavItem,
       ...(hasTeaching
         ? [
             {

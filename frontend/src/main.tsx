@@ -74,6 +74,8 @@ import CreateOrganisationPage from "./pages/admin/organisations/CreateOrganisati
 import AddStaffToOrgPage from "./pages/admin/organisations/AddStaffToOrgPage";
 import AddPatientToOrgPage from "./pages/admin/organisations/AddPatientToOrgPage";
 import AddSiteToOrgPage from "./pages/admin/organisations/AddSiteToOrgPage";
+import AdminSitesPage from "./pages/admin/sites/AdminSitesPage";
+import CreateSitePage from "./pages/admin/sites/CreateSitePage";
 import SiteAdminPage from "./pages/admin/sites/SiteAdminPage";
 import EditSitePage from "./pages/admin/sites/EditSitePage";
 import AddStaffToSitePage from "./pages/admin/sites/AddStaffToSitePage";
@@ -418,6 +420,12 @@ const routes: RouteObject[] = [
             path: "organisations/:id/add-site",
             element: <AddSiteToOrgPage />,
           },
+          {
+            path: "sites",
+            element: <AdminSitesPage />,
+            handle: { safeForReload: true },
+          },
+          { path: "sites/new", element: <CreateSitePage /> },
           {
             path: "sites/:id",
             element: <SiteAdminPage />,
