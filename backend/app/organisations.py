@@ -394,7 +394,10 @@ def add_organisation_member(
     if existing is None:
         db.execute(
             site_member.insert().values(
-                site_id=root_id, user_id=user_id, capacity=capacity
+                site_id=root_id,
+                org_unit_id=root_id,
+                user_id=user_id,
+                capacity=capacity,
             )
         )
     else:

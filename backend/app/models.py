@@ -795,6 +795,15 @@ site_member = Table(
         ForeignKey("sites.id", ondelete="CASCADE"),
         primary_key=True,
     ),
+    # The same place, under the name the tree uses. Both columns are
+    # written while the rename is in flight; the old one goes once
+    # nothing reads it. See the expand-contract rule in
+    # .claude/rules/backend.md.
+    Column(
+        "org_unit_id",
+        ForeignKey("sites.id", ondelete="CASCADE"),
+        nullable=True,
+    ),
     Column(
         "user_id",
         ForeignKey("users.id", ondelete="CASCADE"),
@@ -893,10 +902,6 @@ class Site(Base):
     parent: Mapped[Site | None] = relationship(
         remote_side="Site.id",
         foreign_keys=[parent_id],
-    )
-    staff: Mapped[list[User]] = relationship(
-        secondary=site_member,
-        backref="sites",
     )
 
 
@@ -1181,6 +1186,12 @@ class PractisingCompetency(Base):
             "competency",
             name="uq_practising_competency_place",
         ),
+        UniqueConstraint(
+            "user_id",
+            "org_unit_id",
+            "competency",
+            name="uq_practising_competency_org_unit",
+        ),
         # Both directions the resolver asks: what may this person practise
         # here, and who here may practise this.
         Index(
@@ -1197,6 +1208,11 @@ class PractisingCompetency(Base):
     )
     site_id: Mapped[int | None] = mapped_column(
         ForeignKey("sites.id", ondelete="CASCADE"), nullable=True
+    )
+    org_unit_id: Mapped[int | None] = mapped_column(
+        ForeignKey("sites.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
     )
     competency: Mapped[str] = mapped_column(String(100), nullable=False)
     authorised_by: Mapped[int | None] = mapped_column(
@@ -1287,11 +1303,21 @@ class Position(Base):
             "kind",
             name="uq_position_place_kind",
         ),
+        UniqueConstraint(
+            "org_unit_id",
+            "kind",
+            name="uq_position_org_unit_kind",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     site_id: Mapped[int | None] = mapped_column(
         ForeignKey("sites.id", ondelete="CASCADE"), nullable=True
+    )
+    org_unit_id: Mapped[int | None] = mapped_column(
+        ForeignKey("sites.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
     )
     kind: Mapped[str] = mapped_column(String(50), nullable=False)
     title: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -1317,6 +1343,54 @@ class Position(Base):
         if value is not None:
             validate_competency_ids([value])
         return value
+
+
+# ------------------------------------------------------------------
+# The place column is being renamed, so both names are kept in step
+# ------------------------------------------------------------------
+#
+# ``site_id`` is becoming ``org_unit_id``, because the table it points at
+# is becoming ``org_unit`` and a column named after a site would then name
+# nothing. A column rename here is a copy-and-retire across deploys (see
+# .claude/rules/backend.md): the old revision and the new one run side by
+# side against one schema, so for a while both columns have to hold the
+# same place.
+#
+# Mirroring in the mapper rather than at every write, because there are
+# dozens of writes and one of them being missed is a row whose place is
+# known under one name and not the other — which is the failure this whole
+# plan exists to remove, reintroduced by accident. Both listeners go when
+# the old column does.
+
+
+def _mirror_the_place(target: Any) -> None:
+    """Copy whichever place column is set into the other."""
+    if target.org_unit_id is None and target.site_id is not None:
+        target.org_unit_id = target.site_id
+    elif target.site_id is None and target.org_unit_id is not None:
+        target.site_id = target.org_unit_id
+
+
+@event.listens_for(PractisingCompetency, "before_insert")
+@event.listens_for(PractisingCompetency, "before_update")
+def _keep_the_authorised_place_in_step(
+    _mapper: Mapper[PractisingCompetency],
+    _connection: Connection,
+    target: PractisingCompetency,
+) -> None:
+    """Hold both names for the place an authorisation is at."""
+    _mirror_the_place(target)
+
+
+@event.listens_for(Position, "before_insert")
+@event.listens_for(Position, "before_update")
+def _keep_the_posts_place_in_step(
+    _mapper: Mapper[Position],
+    _connection: Connection,
+    target: Position,
+) -> None:
+    """Hold both names for the place a post belongs to."""
+    _mirror_the_place(target)
 
 
 class PositionHolding(Base):
