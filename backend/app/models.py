@@ -811,9 +811,22 @@ site_member = Table(
         ForeignKey("users.id", ondelete="CASCADE"),
         primary_key=True,
     ),
-    Column("capacity", String(50), nullable=False),
+    # Least privilege, carried across from ``organisation_member`` as the
+    # two tables merge. An insert that forgets to say gets the narrower
+    # capacity, not the wider one: a row wrongly marked trainee loses
+    # access and someone complains; a row wrongly marked staff keeps
+    # access nobody notices, which is the failure that does not announce
+    # itself. This table had no default at all, so the merge would have
+    # quietly lost that behaviour.
+    Column("capacity", String(50), nullable=False, server_default="trainee"),
 )
-"""Association table: who is at a site, and in what capacity.
+"""Association table: who is at a place, and in what capacity.
+
+Keyed on a place in the tree, so a membership at an organisation is a row
+against that organisation's own row — the root — and a membership at a
+ward is a row against the ward. One table for both, because a trainee is
+the same kind of member at either, and two tables were two meanings of
+one word waiting to drift apart.
 
 Named ``site_member`` rather than ``site_staff_member`` because a third of
 its rows were never staff: ``register``, the public self-registration route,

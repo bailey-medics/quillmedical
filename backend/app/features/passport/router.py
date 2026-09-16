@@ -59,7 +59,12 @@ from app.models import (
     site_member,
 )
 from app.org_units.tree import site_ids_of_organisations
-from app.organisations import get_member_org_ids, get_reachable_org_ids
+from app.organisations import (
+    add_organisation_member,
+    get_member_org_ids,
+    get_reachable_org_ids,
+    remove_organisation_member,
+)
 from app.passport_storage import get_passport_store
 from app.schemas.passport import (
     AssessorInviteAcceptIn,
@@ -1926,13 +1931,7 @@ def revoke_assessor_membership(
             404, "That person has no external assessor access here."
         )
 
-    db.execute(
-        organisation_member.delete().where(
-            organisation_member.c.organisation_id == organisation_id,
-            organisation_member.c.user_id == assessor_user_id,
-            organisation_member.c.capacity == "external",
-        )
-    )
+    remove_organisation_member(db, organisation_id, assessor_user_id)
     db.flush()
 
     return AssessorRevokeOut(
@@ -2184,13 +2183,7 @@ def accept_assessor_invite(
             )
         )
         if already is None:
-            db.execute(
-                organisation_member.insert().values(
-                    organisation_id=place_id,
-                    user_id=user.id,
-                    capacity="external",
-                )
-            )
+            add_organisation_member(db, place_id, user.id, "external")
 
     invite.accepted_at = _now()
     invite.accepted_user_id = user.id

@@ -23,13 +23,17 @@ from sqlalchemy.orm import Session
 
 from app.models import (
     ExternalPatientAccess,
+    Organisation,
     User,
     organisation_member,
     organisation_patient_member,
     site_member,
     validate_member_capacity,
 )
-from app.org_units.tree import organisation_ids_of_sites
+from app.org_units.tree import (
+    organisation_ids_of_sites,
+    root_ids_of_organisations,
+)
 
 
 def get_member_org_ids(
@@ -295,3 +299,164 @@ def get_accessible_patient_ids(db: Session, user: User) -> set[str]:
     result |= {r[0] for r in rows}
 
     return result
+
+
+# ------------------------------------------------------------------
+# Writing membership while the two tables merge
+# ------------------------------------------------------------------
+#
+# Membership at an organisation and membership at a ward are the same
+# fact about the same person, so they are becoming one table keyed on a
+# place in the tree. An organisation's place is its own row — its root.
+#
+# Until the old table goes, every write lands in both: the readers still
+# ask the old one, and a row written to only one of them would be a
+# membership that exists or does not depending on who asks. These three
+# functions are the only place that knows there are two, so switching the
+# readers over is a change here rather than a hunt through the routes.
+
+
+def add_organisation_member(
+    db: Session,
+    organisation_id: int,
+    user_id: int,
+    capacity: str,
+) -> None:
+    """Record that somebody is at an organisation, in a given capacity.
+
+    Writing the same membership twice changes the capacity rather than
+    failing, so a caller that has already checked and one that has not
+    both end up with one row saying the same thing.
+
+    Args:
+        db: Core database session. The caller commits.
+        organisation_id: The organisation they are at.
+        user_id: The person.
+        capacity: One of ``MEMBER_CAPACITIES``.
+    """
+    capacity = validate_member_capacity(capacity)
+
+    existing = db.scalar(
+        select(organisation_member.c.user_id).where(
+            organisation_member.c.organisation_id == organisation_id,
+            organisation_member.c.user_id == user_id,
+        )
+    )
+    if existing is None:
+        db.execute(
+            organisation_member.insert().values(
+                organisation_id=organisation_id,
+                user_id=user_id,
+                capacity=capacity,
+            )
+        )
+    else:
+        db.execute(
+            organisation_member.update()
+            .where(
+                organisation_member.c.organisation_id == organisation_id,
+                organisation_member.c.user_id == user_id,
+            )
+            .values(capacity=capacity)
+        )
+
+    root_ids = root_ids_of_organisations(db, [organisation_id])
+    if not root_ids:
+        return
+    root_id = root_ids[0]
+
+    at_root = db.scalar(
+        select(site_member.c.user_id).where(
+            site_member.c.site_id == root_id,
+            site_member.c.user_id == user_id,
+        )
+    )
+    if at_root is None:
+        db.execute(
+            site_member.insert().values(
+                site_id=root_id, user_id=user_id, capacity=capacity
+            )
+        )
+    else:
+        db.execute(
+            site_member.update()
+            .where(
+                site_member.c.site_id == root_id,
+                site_member.c.user_id == user_id,
+            )
+            .values(capacity=capacity)
+        )
+
+
+def remove_organisation_member(
+    db: Session, organisation_id: int, user_id: int
+) -> None:
+    """Remove one person's membership of one organisation.
+
+    Args:
+        db: Core database session. The caller commits.
+        organisation_id: The organisation.
+        user_id: The person.
+    """
+    db.execute(
+        organisation_member.delete().where(
+            organisation_member.c.organisation_id == organisation_id,
+            organisation_member.c.user_id == user_id,
+        )
+    )
+    for root_id in root_ids_of_organisations(db, [organisation_id]):
+        db.execute(
+            site_member.delete().where(
+                site_member.c.site_id == root_id,
+                site_member.c.user_id == user_id,
+            )
+        )
+
+
+def remove_organisation_memberships(
+    db: Session,
+    user_id: int,
+    organisation_ids: list[int] | None = None,
+) -> None:
+    """Remove a person's organisation memberships.
+
+    Removes every one of them when *organisation_ids* is None, which is
+    what a superadmin replacing somebody's memberships wants. An admin
+    passes the organisations they are entitled to act on, so the edit
+    cannot reach a membership they cannot see.
+
+    Only memberships *of organisations* go: a membership of a ward is a
+    different fact about a different place, and an admin editing which
+    trusts somebody belongs to should not silently take them off a ward.
+
+    Args:
+        db: Core database session. The caller commits.
+        user_id: The person.
+        organisation_ids: Which organisations to clear, or None for all.
+    """
+    old = organisation_member.delete().where(
+        organisation_member.c.user_id == user_id
+    )
+    if organisation_ids is not None:
+        old = old.where(
+            organisation_member.c.organisation_id.in_(organisation_ids)
+        )
+    db.execute(old)
+
+    if organisation_ids is None:
+        roots = db.execute(
+            select(Organisation.org_unit_id).where(
+                Organisation.org_unit_id.is_not(None)
+            )
+        ).scalars()
+        root_ids = [r for r in roots if r is not None]
+    else:
+        root_ids = root_ids_of_organisations(db, organisation_ids)
+
+    if root_ids:
+        db.execute(
+            site_member.delete().where(
+                site_member.c.user_id == user_id,
+                site_member.c.site_id.in_(root_ids),
+            )
+        )
