@@ -231,7 +231,13 @@ Two things to check rather than assume:
    tiers" in `CLAUDE.md`.
 
    If a test fails, stop and report it. Fixing it is a code change nobody has
-   reviewed.
+   reviewed, and by this point the unit is being landed rather than built.
+
+   This is narrower than it sounds, and it does not contradict
+   `/st-follow-the-plan-document`, which says to fix a failing test. That is
+   the build phase, where fixing it is the work. This is the landing phase,
+   reached because a human ran this command — so a test failing *here* means
+   the work was finished with a red test, which a human should see.
 
 5. **Push the whole stack and open or update its pull requests.**
 
