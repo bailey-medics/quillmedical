@@ -883,7 +883,7 @@ So the remaining steps land as:
 - [x] 11b-iv — a list page and a create page for places
 - [x] 11b-v — the last readers of the old surfaces, bar one
 - [x] 12a-i — the rules the old surfaces prove, proved on the new one
-- [ ] 12a-ii — the rest of those rules: scoping, and one place per site
+- [x] 12a-ii — the rest of those rules: scoping, and one place per site
 - [ ] 12a-iii — retire `/api/sites`
 - [ ] 12b — drop the `organisations` table, and enforce the type flags
 
@@ -1162,9 +1162,23 @@ retirement is split: move what is worth keeping first, then retire.
   and `manage_staff_membership` alone still does, now asked of
   `/api/org-units` as well.
 
-**12a-ii** is the rest: who may see and create what (`test_create_site_scoping`,
-`test_list_sites_scoping`), and a site belonging to exactly one
-organisation.
+**12a-ii** moved the rest: who may see what, and whose tree a place can
+be put into.
+
+- **The list fails closed.** An admin belonging to no organisation sees
+  nothing, because `IN ()` is the classic way a filter turns into its
+  opposite. A place hanging off nothing is not shared either.
+- **The gate is a competency, not a rank.** A consultant in the right
+  organisation still cannot read the estate.
+- **Whose tree a place goes into is checked on the move as well as on the
+  create.** Only `/api/sites` asked that, and it is the same rule applied
+  later. Somebody else's ward cannot be the parent, and neither can a
+  place that belongs nowhere.
+
+A site belonging to exactly one organisation needed nothing moved: a
+place has one parent column, so a second owner is not a rule to enforce
+but a state that cannot be written down. The link and unlink routes that
+rule existed for go with the surface.
 
 **12a-iii** retires `/api/sites` — the routes answer 410, the tests that
 only exercised that address go, and the breaking-change gate is signed.
