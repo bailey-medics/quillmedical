@@ -814,9 +814,69 @@ next person to rely on a cascade will have the same surprise.
      re-exporting them from `app/org_units/__init__.py` made importing
      either one depend on the other being finished.
 
-9. [ ] **Switch scoping and reach to subtree queries**, with a depth cap and
+9. [x] **Switch scoping and reach to subtree queries**, with a depth cap and
    distinct ids. Write them as subtree queries even though the tree is only
    two levels deep, so a third level needs no rewrite.
+
+   Every walk was already a subtree walk from step 4, level by level. This
+   step makes each of them one recursive query instead, which is what
+   stops depth costing round trips the day a third level appears.
+
+   Three readings the plan left open were settled while building:
+
+   - **`UNION`, not `UNION ALL`.** Both databases drop duplicate rows in a
+     recursive query, which stops a cycle looping on its own; the depth cap
+     is the second line of defence rather than the only one.
+   - **Naming the organisation for a list of places is two queries, not
+     one per place.** One walk up for the whole list, then one lookup of
+     which organisation each root stands for. There are tests counting the
+     queries, because "one query" is the point and nothing else would
+     notice it quietly becoming four.
+   - **Checked against both databases.** These are the first recursive
+     queries in the repository, so they were run against a real Postgres
+     as well as the unit tests' SQLite, cycles included.
+
+   No measurement suggested a materialised path column is needed, so none
+   was added. See **Risks**.
+
+### Still unassigned: reach through a teaching link
+
+The plan says reach is "walking up to the root and adding anything reached
+through a teaching link", and the testing list asks for "a teaching link
+grants reach without admin rights". No numbered step builds it, and step 9
+is only about the shape of the queries, so it is deliberately not built
+here.
+
+`relation_grants_reach` in `app/org_units/relations.py` already declares
+which relation confers it — `teaches_at` and nothing else. What remains is
+one clause in `get_reachable_org_ids`, and it belongs with the org_units
+module in step 10, where the plan describes reach.
+
+### Steps 10 to 12 wait on two human decisions
+
+Steps 1 to 9 are built. The merge is done: one table of places, one
+membership table, one place column on competencies and posts, features and
+patient lists hanging off a place, a cycle guard, and every walk of the
+tree a single recursive query. Steps 10 to 12 are the rename, and two
+questions have to be settled before they can be:
+
+- **A column rename is four deploys here, not one.** The backend rules
+  make renaming a column a copy-and-retire spread across separate
+  deploys, because the old and new revisions run side by side against one
+  schema. Step 10 renames `site_id` on three tables. Either each takes the
+  full four steps, or somebody decides this stack lands as one deploy and
+  a direct rename is acceptable. The same rules bless a single-step *table*
+  rename, so only the columns are in question.
+
+- **Folding `organisations` into `org_unit` changes every organisation id
+  in the API.** It is the largest breaking change in the plan, and the
+  only way to declare a breaking change intentional here is a required
+  reviewer approving the `api-breaking-change-review` environment, with a
+  decision file per flagged change. That approval is a human action by
+  design and nothing in a diff can stand in for it.
+
+Neither is a reason to change the plan. Both are reasons for the person
+reading this to say which way, before the rename starts.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to
