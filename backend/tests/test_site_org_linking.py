@@ -8,7 +8,7 @@ Covers:
 
 from __future__ import annotations
 
-from sqlalchemy import insert, select, update
+from sqlalchemy import insert, update
 
 from app.models import (
     Organisation,
@@ -17,6 +17,7 @@ from app.models import (
     organisation_member,
     site_member,
 )
+from app.org_units.tree import organisation_id_of_site
 from app.security import hash_password
 
 
@@ -180,7 +181,7 @@ class TestSiteRoutesAreScopedToYourOrganisations:
         db_session.execute(
             update(Site)
             .where(Site.id == site.id)
-            .values(organisation_id=org.id)
+            .values(parent_id=org.org_unit_id)
         )
         db_session.commit()
         return site
@@ -199,7 +200,7 @@ class TestSiteRoutesAreScopedToYourOrganisations:
         db_session.execute(
             update(Site)
             .where(Site.id == site.id)
-            .values(organisation_id=org.id)
+            .values(parent_id=org.org_unit_id)
         )
         db_session.commit()
         return site
@@ -308,17 +309,13 @@ class TestSiteRoutesAreScopedToYourOrganisations:
         self, authenticated_admin_client, db_session
     ):
         site = self._foreign_site(db_session)
-        org_id = db_session.execute(
-            select(Site.organisation_id).where(Site.id == site.id)
-        ).scalar_one()
+        org_id = organisation_id_of_site(db_session, site.id)
 
         resp = authenticated_admin_client.delete(
             f"/api/organisations/{org_id}/sites/{site.id}"
         )
         assert resp.status_code == 404
-        still_owned = db_session.execute(
-            select(Site.organisation_id).where(Site.id == site.id)
-        ).scalar_one()
+        still_owned = organisation_id_of_site(db_session, site.id)
         assert still_owned == org_id
 
     def test_your_own_site_is_still_reachable(

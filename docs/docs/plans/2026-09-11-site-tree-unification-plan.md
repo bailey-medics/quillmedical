@@ -674,11 +674,37 @@ to 9 perform the merge; steps 10 to 12 perform the rename.
    - **Either end may remove a link.** A relationship somebody else
      recorded about your place is still a claim about your place.
 
-4. [ ] **Insert a root row for every organisation**, carrying its name, location
+4. [x] **Insert a root row for every organisation**, carrying its name, location
    and `type = "organisation"`, and point each organisation's sites at that
    root. Drop the temporary organisation column. Because the data is flat
    today this is a single update statement, with no existing depth to
    preserve.
+
+   Five readings the plan left open were settled while building:
+
+   - **`organisations.org_unit_id` is the bridge.** The organisation-only
+     tables still key on the organisation, so something has to say which
+     tree row stands for it. The column goes with the rename in step 10.
+   - **The mapper creates the root, not the route.** An organisation with no
+     root is invisible to the whole permission system — its places reach no
+     root, so nobody can administer them. Holding that by remembering to
+     call a helper would eventually fail, so it is a `before_insert`
+     listener; renames and deletions follow the same way. It disappears
+     when the two tables become one.
+   - **The drop of the temporary column is its own migration.** The
+     backend rules keep destructive operations out of additive migrations,
+     so the tree is built by one and the column removed by the next.
+   - **A site already nested inside another keeps its parent.** Only the
+     ones with no parent are hung off the root, so existing depth survives
+     even though the plan expects none.
+   - **The site routes refuse a root.** Organisations are rows in the same
+     table now; without the guard a trust could be renamed, deactivated or
+     deleted from a screen built for wards.
+
+   The subtree walks are written in `backend/app/org_units/tree.py` with a
+   depth cap and a set of seen ids, so a cycle degrades to a wrong answer
+   rather than a hung request. Step 9 replaces the level-by-level walk with
+   one recursive query behind the same functions.
 
 5. [ ] **Move membership.** Copy organisation member rows across against the root
    rows, carrying the `trainee` default. Switch readers, then writers, then

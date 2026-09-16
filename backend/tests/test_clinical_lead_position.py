@@ -48,7 +48,9 @@ def _org_with_site(db: Session, admin: User) -> tuple[Organisation, Site]:
     db.add_all([org, site])
     db.commit()
     db.execute(
-        update(Site).where(Site.id == site.id).values(organisation_id=org.id)
+        update(Site)
+        .where(Site.id == site.id)
+        .values(parent_id=org.org_unit_id)
     )
     db.execute(
         insert(organisation_member).values(

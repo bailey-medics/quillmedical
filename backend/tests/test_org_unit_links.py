@@ -55,7 +55,7 @@ def other_org(db_session: Session) -> Organisation:
 
 
 def _site_of(db: Session, org: Organisation, name: str) -> Site:
-    site = Site(name=name, type="ward", organisation_id=org.id)
+    site = Site(name=name, type="ward", parent_id=org.org_unit_id)
     db.add(site)
     db.commit()
     db.refresh(site)

@@ -32,11 +32,17 @@ from sqlalchemy import (
     String,
     Table,
     UniqueConstraint,
+    delete,
+    event,
+    insert,
     text,
+    update,
 )
+from sqlalchemy.engine import Connection
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
+    Mapper,
     mapped_column,
     relationship,
     validates,
@@ -45,6 +51,7 @@ from sqlalchemy.orm import (
 from app.cbac.base_professions import resolve_user_competencies
 from app.cbac.competencies import validate_competency_ids
 from app.org_units.relations import validate_org_unit_relation
+from app.org_units.types import ORGANISATION_TYPE
 
 
 class Base(DeclarativeBase):
@@ -257,6 +264,10 @@ class Organisation(Base):
         type: Organisation type (hospital_team, gp_practice, private_clinic,
             department, teaching_establishment).
         location: Optional location/address information.
+        org_unit_id: The row in the org_unit tree that stands for this
+            organisation — its root. Every site it is accountable for
+            hangs beneath that row. Nullable only until the backfill has
+            given every organisation one.
         created_at: Timestamp when organisation was created.
         updated_at: Timestamp when organisation was last updated.
         staff_members: List of users (staff) who belong to this organisation.
@@ -270,6 +281,12 @@ class Organisation(Base):
         String(50), nullable=False, default="hospital_team"
     )
     location: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    org_unit_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("sites.id", ondelete="SET NULL"),
+        nullable=True,
+        unique=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
@@ -662,12 +679,12 @@ organisation_site = Table(
 )
 """Association table: many-to-many between organisations and sites.
 
-**Nothing reads or writes this any more.** Ownership moved to
-``Site.organisation_id``, which is one organisation per site, because a
-site owned by two of them has no single answer to who its clinical lead
-is or whose features apply. The table is left in place only so that the
-step which introduces the typed link table can carry any surviving
-many-to-one-too-many rows across before it is dropped. See
+**Nothing reads or writes this any more, and it holds nothing.**
+Ownership is the parent column of ``Site``: one parent each, so that who
+is accountable for a place, whose features apply and which admins may
+edit it each have one answer. A relationship that is not ownership is an
+``OrgUnitLink``. The table is dropped with the rest of the old shape when
+the tables are renamed. See
 docs/docs/plans/2026-09-11-site-tree-unification-plan.md.
 """
 
@@ -811,16 +828,24 @@ lead among them, which is why ``clinical_lead`` is no longer a capacity.
 class Site(Base):
     """Physical or virtual location within the healthcare system.
 
-    Sites form a self-referential hierarchy (hospital > building > ward > room).
-    Each belongs to exactly one organisation, and can serve both teaching
-    (clinical lead governance) and clinical (EPR/trust) use cases.
+    Sites form a self-referential hierarchy (organisation > hospital >
+    building > ward > room). Each sits beneath exactly one parent, and can
+    serve both teaching (clinical lead governance) and clinical (EPR/trust)
+    use cases.
 
     **One owner, not many.** A site used to be linked to any number of
     organisations, which left three questions with no single answer: whose
     features apply here, who the clinical lead is, and which admins may edit
-    it. Ownership is now the ``organisation_id`` column, and a relationship
-    that is not ownership — a medical school teaching on a trust's wards —
-    becomes a typed link rather than a second owner.
+    it. Ownership is now the parent column alone, and a relationship that is
+    not ownership — a medical school teaching on a trust's wards — becomes a
+    typed link rather than a second owner.
+
+    **Organisations are rows in this table too**, carrying
+    ``type = "organisation"`` and no parent. What a row is comes from its
+    type and never from its position, so a body sitting above today's
+    organisations would need no schema change. The accountable organisation
+    for any place is found by walking up to the root; see
+    ``app/org_units/tree.py``.
 
     Attributes:
         id: Primary key.
@@ -828,10 +853,6 @@ class Site(Base):
         type: Site type (hospital, building, ward, room, clinic,
             department, virtual).
         parent_id: FK to parent site (nullable for top-level sites).
-        organisation_id: FK to the one organisation that owns this site.
-            Nullable only while the rows written before ownership moved
-            off the link table are backfilled; every site the
-            application creates sets it.
         location: Optional free-text address or description.
         created_at: Timestamp when site was created.
         updated_at: Timestamp when site was last updated.
@@ -844,12 +865,6 @@ class Site(Base):
     type: Mapped[str] = mapped_column(String(50), nullable=False)
     parent_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("sites.id", ondelete="SET NULL"), nullable=True
-    )
-    organisation_id: Mapped[int | None] = mapped_column(
-        Integer,
-        ForeignKey("organisations.id", ondelete="CASCADE"),
-        nullable=True,
-        index=True,
     )
     location: Mapped[str | None] = mapped_column(String(500), nullable=True)
     is_active: Mapped[bool] = mapped_column(
@@ -870,10 +885,6 @@ class Site(Base):
     parent: Mapped[Site | None] = relationship(
         remote_side="Site.id",
         foreign_keys=[parent_id],
-    )
-    organisation: Mapped[Organisation | None] = relationship(
-        foreign_keys=[organisation_id],
-        backref="sites",
     )
     staff: Mapped[list[User]] = relationship(
         secondary=site_member,
@@ -963,6 +974,106 @@ class OrgUnitLink(Base):
         can refuse an unknown value before it is stored.
         """
         return validate_org_unit_relation(value)
+
+
+# ------------------------------------------------------------------
+# Every organisation is a row in the tree as well
+# ------------------------------------------------------------------
+#
+# An organisation is the root of its own tree: the row every place beneath
+# it walks up to, and the thing that answers "who is accountable here". An
+# organisation without one is invisible to the whole permission system —
+# its sites reach no root, so nobody can administer them and nothing can be
+# scoped to them.
+#
+# That is exactly the failure the plan warns about, so the invariant is
+# held by the mapper rather than by remembering to call something. The two
+# tables become one when the merge finishes, at which point this goes: a
+# row cannot fail to be itself.
+
+
+@event.listens_for(Organisation, "before_insert")
+def _give_every_organisation_a_root(
+    _mapper: Mapper[Organisation],
+    connection: Connection,
+    target: Organisation,
+) -> None:
+    """Create the tree row a new organisation stands for.
+
+    Writes through the connection rather than the session, so the row
+    exists before the organisation that points at it.
+    """
+    if target.org_unit_id is not None:
+        return
+
+    now = datetime.now(UTC)
+    target.org_unit_id = connection.execute(
+        insert(Site)
+        .values(
+            name=target.name,
+            type=ORGANISATION_TYPE,
+            location=target.location,
+            is_active=True,
+            created_at=now,
+            updated_at=now,
+        )
+        .returning(Site.id)
+    ).scalar_one()
+
+
+@event.listens_for(Organisation, "before_update")
+def _keep_the_root_in_step(
+    _mapper: Mapper[Organisation],
+    connection: Connection,
+    target: Organisation,
+) -> None:
+    """Carry a renamed or moved organisation through to its tree row.
+
+    The tree row carries its own name and location so that the tree reads
+    correctly on its own. Two copies of a name drift apart unless one
+    follows the other, and the organisation is the one people edit.
+    """
+    if target.org_unit_id is None:
+        return
+
+    connection.execute(
+        update(Site)
+        .where(Site.id == target.org_unit_id)
+        .values(
+            name=target.name,
+            location=target.location,
+            updated_at=datetime.now(UTC),
+        )
+    )
+
+
+@event.listens_for(Organisation, "after_delete")
+def _remove_the_root_with_it(
+    _mapper: Mapper[Organisation],
+    connection: Connection,
+    target: Organisation,
+) -> None:
+    """Take the organisation's tree row away when the organisation goes.
+
+    Leaving it behind would leave a root standing for nobody, which every
+    walk up the tree would then resolve to no organisation at all — a
+    place that exists, has members, and is accountable to nothing.
+
+    The places beneath it are detached rather than deleted, which matches
+    what deleting an organisation did before the tree existed. Detaching
+    them here rather than relying on the foreign key to release them: the
+    unit-test database does not enforce foreign keys, so leaving it to the
+    database would mean the behaviour is only true in production.
+    """
+    if target.org_unit_id is None:
+        return
+
+    connection.execute(
+        update(Site)
+        .where(Site.parent_id == target.org_unit_id)
+        .values(parent_id=None)
+    )
+    connection.execute(delete(Site).where(Site.id == target.org_unit_id))
 
 
 class PractisingCompetency(Base):

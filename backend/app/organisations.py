@@ -23,13 +23,13 @@ from sqlalchemy.orm import Session
 
 from app.models import (
     ExternalPatientAccess,
-    Site,
     User,
     organisation_member,
     organisation_patient_member,
     site_member,
     validate_member_capacity,
 )
+from app.org_units.tree import organisation_ids_of_sites
 
 
 def get_member_org_ids(
@@ -88,21 +88,22 @@ def get_reachable_org_ids(
     Returns:
         Organisation IDs, ascending.
     """
-    via_site = (
-        select(Site.organisation_id)
-        .join(site_member, site_member.c.site_id == Site.id)
-        .where(
-            site_member.c.user_id == user_id,
-            Site.organisation_id.is_not(None),
-        )
+    # Which places the user belongs to, then which organisation is
+    # accountable for each. Resolved by walking the tree up rather than by
+    # joining on a column, because a place several levels down still
+    # reaches its organisation and a join on the parent would not see it.
+    member_sites = select(site_member.c.site_id).where(
+        site_member.c.user_id == user_id
     )
     if capacity is not None:
-        via_site = via_site.where(
+        member_sites = member_sites.where(
             site_member.c.capacity == validate_member_capacity(capacity)
         )
 
+    site_ids = [int(r[0]) for r in db.execute(member_sites).all()]
+
     direct = get_member_org_ids(db, user_id, capacity=capacity)
-    reached = {int(r[0]) for r in db.execute(via_site).all()}
+    reached = set(organisation_ids_of_sites(db, site_ids).values())
     return sorted(set(direct) | reached)
 
 
