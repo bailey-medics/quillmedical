@@ -886,8 +886,9 @@ So the remaining steps land as:
 - [x] 12a-ii — the rest of those rules: scoping, and one place per site
 - [x] 12a-iii — retire `/api/sites`
 - [x] 12b-i — the kinds of organisation become kinds of place
-- [ ] 12b-ii — the user form off the organisations surface
-- [ ] 12b-iii — drop the `organisations` table, and enforce the type flags
+- [x] 12b-ii — an organisation created as a place is still an organisation
+- [ ] 12b-iii — the user form off the organisations surface
+- [ ] 12b-iv — drop the `organisations` table, and enforce the type flags
 
 #### 10a — write both names for the place column
 
@@ -1241,6 +1242,24 @@ organisation ids to the users API, so `/api/organisations` still has one
 reader; and creating an organisation through the place surface writes no
 `organisations` row at all, which is fine only because that table is on
 its way out.
+
+#### 12b-ii — an organisation created as a place is still an organisation
+
+Creating a root through the place surface wrote no row in the
+organisations table, and that table is still what answers in organisation
+ids: who may administer what, and which organisations the user form
+offers. So a trust created on the new screens was a place only a
+superadmin could see, with nobody able to belong to it — the first thing
+anybody would try after creating it.
+
+- **The row is written beside the place**, and kept in step when the
+  place is renamed or retyped. It names its place on the way in, which is
+  what stops the model listener creating a *second* root for it.
+- **Deleting the place deletes the organisation**, through the same
+  listener that already clears everything hanging off a root.
+- **This is scaffolding with a known end.** The whole point of 12b-iv is
+  that one of the two tables goes; until it does, the honest thing is for
+  both to describe the same world rather than half of one.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to
