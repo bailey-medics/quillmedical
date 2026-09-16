@@ -6,6 +6,14 @@ org_unit and so is a ward; what tells them apart is the ``type`` column,
 never the node's position in the tree.
 """
 
+from app.org_units.relations import (
+    ORG_UNIT_RELATION_IDS,
+    ORG_UNIT_RELATIONS,
+    OrgUnitRelation,
+    get_org_unit_relation,
+    relation_grants_reach,
+    validate_org_unit_relation,
+)
 from app.org_units.types import (
     ORG_UNIT_TYPE_IDS,
     ORG_UNIT_TYPES,
@@ -22,14 +30,20 @@ from app.org_units.types import (
 
 __all__ = [
     "ORGANISATION_TYPE",
+    "ORG_UNIT_RELATIONS",
+    "ORG_UNIT_RELATION_IDS",
     "ORG_UNIT_TYPES",
     "ORG_UNIT_TYPE_IDS",
+    "OrgUnitRelation",
     "OrgUnitTypeEntry",
+    "get_org_unit_relation",
     "get_org_unit_type",
+    "relation_grants_reach",
     "type_can_have_members",
     "type_can_hold_competencies",
     "type_can_hold_features",
     "type_can_hold_positions",
     "type_requires_parent",
+    "validate_org_unit_relation",
     "validate_org_unit_type",
 ]

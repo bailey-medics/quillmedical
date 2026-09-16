@@ -647,8 +647,32 @@ to 9 perform the merge; steps 10 to 12 perform the rename.
    step that adds the typed link table can carry any surviving rows across
    before it is dropped.
 
-3. [ ] **Add the link table** and its routes, migrating any multi-organisation
+3. [x] **Add the link table** and its routes, migrating any multi-organisation
    cases from step 2 into links.
+
+   Three readings the plan left open were settled while building:
+
+   - **There was nothing to migrate.** Step 2's migration refuses to run at
+     all while any site belongs to two organisations, so by the time this
+     arrives none are left. The plan predicted this; it is now true rather
+     than expected.
+   - **Both ends of a link point at `sites`.** That is the table the tree is
+     being built in, so when organisations become rows there a
+     school-to-trust link becomes expressible with no change to this table.
+   - **The routes live under `/api/sites/{id}/links`**, because
+     `/api/org-units` does not exist until step 11. They move with the rest
+     of the surface then.
+
+   Two rules the plan did not spell out, both recorded in the route
+   docstrings:
+
+   - **Only the place a link is *from* has to be the caller's.** The
+     relationships worth recording cross between organisations, so
+     requiring both ends would make the table useless for exactly those.
+     Recording one confers nothing, so naming someone else's place gives
+     the caller nothing.
+   - **Either end may remove a link.** A relationship somebody else
+     recorded about your place is still a claim about your place.
 
 4. [ ] **Insert a root row for every organisation**, carrying its name, location
    and `type = "organisation"`, and point each organisation's sites at that
