@@ -10,7 +10,7 @@ from app.models import (
     Message,
     Organisation,
     User,
-    organisation_patient_member,
+    org_unit_patient_member,
 )
 from app.organisations import add_organisation_member
 from app.security import hash_password
@@ -43,7 +43,7 @@ def _setup_org_context(
 
     add_organisation_member(db_session, test_org.id, test_user.id, "staff")
     db_session.execute(
-        organisation_patient_member.insert().values(
+        org_unit_patient_member.insert().values(
             org_unit_id=test_org.org_unit_id,
             patient_id=PATIENT_ID,
         )
@@ -128,10 +128,9 @@ def _fhir_response(comm_id: str = "fhir-comm-1") -> dict:
     """Build a minimal FHIR Communication response."""
     return {"resourceType": "Communication", "id": comm_id}
 
-
-# ---------------------------------------------------------------------------
-# Conversation creation
-# ---------------------------------------------------------------------------
+    # ---------------------------------------------------------------------------
+    # Conversation creation
+    # ---------------------------------------------------------------------------
 
 
 class TestCreateConversation:
@@ -214,10 +213,9 @@ class TestCreateConversation:
         )
         assert resp.status_code == 403
 
-
-# ---------------------------------------------------------------------------
-# List conversations
-# ---------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------
+        # List conversations
+        # ---------------------------------------------------------------------------
 
 
 class TestListConversations:
@@ -276,10 +274,9 @@ class TestListConversations:
         )
         assert len(resp.json()["conversations"]) == 0
 
-
-# ---------------------------------------------------------------------------
-# Get conversation detail
-# ---------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------
+        # Get conversation detail
+        # ---------------------------------------------------------------------------
 
 
 class TestGetConversation:
@@ -314,10 +311,9 @@ class TestGetConversation:
         resp = authenticated_client.get("/api/conversations/99999")
         assert resp.status_code == 404
 
-
-# ---------------------------------------------------------------------------
-# Send message
-# ---------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------
+        # Send message
+        # ---------------------------------------------------------------------------
 
 
 class TestSendMessage:
@@ -402,10 +398,9 @@ class TestSendMessage:
         )
         assert resp.status_code == 404
 
-
-# ---------------------------------------------------------------------------
-# Update conversation status
-# ---------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------
+        # Update conversation status
+        # ---------------------------------------------------------------------------
 
 
 class TestUpdateConversationStatus:
@@ -448,10 +443,9 @@ class TestUpdateConversationStatus:
         )
         assert resp.status_code == 404
 
-
-# ---------------------------------------------------------------------------
-# Participants
-# ---------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------
+        # Participants
+        # ---------------------------------------------------------------------------
 
 
 class TestParticipants:
@@ -522,10 +516,9 @@ class TestParticipants:
         )
         assert resp.status_code == 404
 
-
-# ---------------------------------------------------------------------------
-# Mark as read
-# ---------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------
+        # Mark as read
+        # ---------------------------------------------------------------------------
 
 
 class TestMarkRead:
@@ -566,10 +559,9 @@ class TestMarkRead:
         )
         assert resp.status_code == 404
 
-
-# ---------------------------------------------------------------------------
-# Unread count
-# ---------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------
+        # Unread count
+        # ---------------------------------------------------------------------------
 
 
 class TestUnreadCount:
@@ -615,10 +607,9 @@ class TestUnreadCount:
         assert len(convs) == 1
         assert convs[0]["unread_count"] == 1
 
-
-# ---------------------------------------------------------------------------
-# Include patient as participant flag
-# ---------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------
+        # Include patient as participant flag
+        # ---------------------------------------------------------------------------
 
 
 class TestIncludePatientAsParticipant:
@@ -686,10 +677,9 @@ class TestIncludePatientAsParticipant:
         assert detail.status_code == 200
         assert detail.json()["include_patient_as_participant"] is True
 
-
-# ---------------------------------------------------------------------------
-# Access control: non-participant reads
-# ---------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------
+        # Access control: non-participant reads
+        # ---------------------------------------------------------------------------
 
 
 class TestNonParticipantAccess:
@@ -755,10 +745,9 @@ class TestNonParticipantAccess:
         assert data["is_participant"] is True
         assert data["can_write"] is True
 
-
-# ---------------------------------------------------------------------------
-# Patient conversations list
-# ---------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------
+        # Patient conversations list
+        # ---------------------------------------------------------------------------
 
 
 class TestPatientConversations:
@@ -842,10 +831,9 @@ class TestPatientConversations:
         resp = test_client.get(f"/api/patients/{PATIENT_ID}/conversations")
         assert resp.status_code == 401
 
-
-# ---------------------------------------------------------------------------
-# Join conversation
-# ---------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------
+        # Join conversation
+        # ---------------------------------------------------------------------------
 
 
 class TestJoinConversation:
@@ -1061,10 +1049,9 @@ class TestJoinConversation:
             == "not_in_message_organisation"
         )
 
-
-# ---------------------------------------------------------------------------
-# Org-scoped access
-# ---------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------
+        # Org-scoped access
+        # ---------------------------------------------------------------------------
 
 
 class TestOrgScopedAccess:
@@ -1151,10 +1138,9 @@ class TestOrgScopedAccess:
         resp = authenticated_client.get(f"/api/conversations/{conv_id}")
         assert resp.status_code == 404
 
-
-# ---------------------------------------------------------------------------
-# Shared organisations endpoint
-# ---------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------
+        # Shared organisations endpoint
+        # ---------------------------------------------------------------------------
 
 
 class TestSharedOrganisations:
@@ -1183,10 +1169,9 @@ class TestSharedOrganisations:
         assert resp.status_code == 200
         assert resp.json()["organisations"] == []
 
-
-# ---------------------------------------------------------------------------
-# External access: invite / accept / revoke
-# ---------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------
+        # External access: invite / accept / revoke
+        # ---------------------------------------------------------------------------
 
 
 class TestInviteExternal:
@@ -1358,10 +1343,9 @@ class TestRevokeExternalAccess:
         )
         assert resp.status_code == 403
 
-
-# ---------------------------------------------------------------------------
-# Organisation management: remove staff / patients, link patient
-# ---------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------
+        # Organisation management: remove staff / patients, link patient
+        # ---------------------------------------------------------------------------
 
 
 class TestRemoveStaffFromOrg:

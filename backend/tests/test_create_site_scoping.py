@@ -29,7 +29,7 @@ from sqlalchemy.orm import Session
 
 from app.models import (
     Organisation,
-    Site,
+    OrgUnit,
     User,
 )
 from app.org_units.tree import organisation_id_of_site
@@ -44,13 +44,13 @@ def _org(db: Session, name: str) -> Organisation:
     return org
 
 
-def _site_in(db: Session, name: str, org: Organisation) -> Site:
-    site = Site(name=name, type="building")
+def _site_in(db: Session, name: str, org: Organisation) -> OrgUnit:
+    site = OrgUnit(name=name, type="building")
     db.add(site)
     db.commit()
     db.execute(
-        update(Site)
-        .where(Site.id == site.id)
+        update(OrgUnit)
+        .where(OrgUnit.id == site.id)
         .values(parent_id=org.org_unit_id)
     )
     db.commit()
@@ -139,7 +139,9 @@ class TestASiteIsAlwaysOwned:
 
         assert resp.status_code == 404
         assert (
-            db_session.scalar(select(Site).where(Site.name == "Smuggled Ward"))
+            db_session.scalar(
+                select(OrgUnit).where(OrgUnit.name == "Smuggled Ward")
+            )
             is None
         )
 
@@ -232,7 +234,7 @@ class TestTheParentMustBeInTheSameOrganisation:
         assert resp.status_code == 404
         assert (
             db_session.scalar(
-                select(Site).where(Site.name == "Trespassing Ward")
+                select(OrgUnit).where(OrgUnit.name == "Trespassing Ward")
             )
             is None
         )
@@ -244,7 +246,7 @@ class TestTheParentMustBeInTheSameOrganisation:
         db_session: Session,
     ):
         """A site owned by nobody is not a parent anyone may claim."""
-        orphan = Site(name="Orphan Building", type="building")
+        orphan = OrgUnit(name="Orphan Building", type="building")
         db_session.add(orphan)
         db_session.commit()
 

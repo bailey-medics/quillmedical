@@ -874,7 +874,7 @@ So the remaining steps land as:
 - [x] 10a — write both names for the place column
 - [x] 10b — read the new name
 - [x] 10c — stop writing the old name, and drop it
-- [ ] 10d — rename the tables and the model
+- [x] 10d — rename the tables and the model
 - [ ] 10e — the org_units module, and reach through a teaching link
 - [ ] 11a — the `/api/org-units` surface, alongside the old ones
 - [ ] 11b — the frontend onto it, and the thin-pages gap closed
@@ -929,6 +929,34 @@ The keyword arguments on `cbac/scoped.py` still read `site_id`, meaning "a
 place inside an organisation" as opposed to `organisation_id`. They
 collapse into one when `organisations` folds away in 12b; renaming them
 now would leave two words for one idea sitting next to each other.
+
+#### 10d — rename the tables and the model
+
+`sites` becomes `org_unit` and `Site` becomes `OrgUnit`, with the tables
+that hang off a place renamed to match. Three readings the plan left open
+were settled while building:
+
+- **The rename was done by token, not by text.** A search-and-replace on
+  the word would have rewritten the API path `/api/sites`, which is still
+  live, and the messages a user reads. Only names in code moved.
+- **Every index was renamed by hand.** Postgres leaves a renamed table's
+  auto-named indexes alone, so autogenerate would flag them against the
+  model's expected names forever.
+- **The dead many-to-many table went with it.** Nothing had read or
+  written it since ownership moved onto the parent column, and it held no
+  rows.
+
+### Discovered while building: a third table still has the pair of place columns
+
+`site_common_competency`, in the clinician passport, carries the same
+either/or `site_id` and `organisation_id` pair that step 6 removed from
+practising competencies and positions — with a check constraint policing
+it, and a comment saying it follows that pattern deliberately. The plan
+does not mention it.
+
+It only needed repointing at the renamed table here. The pair itself
+collapses in 12b, where `organisations` goes and one of the two columns
+stops meaning anything.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to

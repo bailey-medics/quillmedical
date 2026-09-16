@@ -36,7 +36,7 @@ from app.features.passport.store import LocalPassportStore
 from app.main import app
 from app.models import (
     Organisation,
-    OrganisationFeature,
+    OrgUnitFeature,
     User,
 )
 from app.organisations import add_organisation_member
@@ -155,9 +155,7 @@ def org(db_session: Session, holder: User, org_admin: User) -> Organisation:
     db_session.refresh(org)
 
     db_session.add(
-        OrganisationFeature(
-            org_unit_id=org.org_unit_id, feature_key="passport"
-        )
+        OrgUnitFeature(org_unit_id=org.org_unit_id, feature_key="passport")
     )
 
     for user in (holder, org_admin):

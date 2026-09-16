@@ -387,7 +387,9 @@ class SiteCommonCompetency(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
 
     site_id: Mapped[int | None] = mapped_column(
-        ForeignKey("sites.id", ondelete="CASCADE"), nullable=True, index=True
+        ForeignKey("org_unit.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
     )
 
     organisation_id: Mapped[int | None] = mapped_column(

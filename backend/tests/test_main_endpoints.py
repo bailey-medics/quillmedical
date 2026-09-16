@@ -1258,7 +1258,7 @@ class TestOrganisationEndpoints:
 
         from app.models import (
             Organisation,
-            organisation_patient_member,
+            org_unit_patient_member,
         )
 
         org = Organisation(name="Dup Patient Org", type="hospital_team")
@@ -1269,7 +1269,7 @@ class TestOrganisationEndpoints:
             db_session, org.id, test_patient_manager.id, "staff"
         )
         db_session.execute(
-            insert(organisation_patient_member).values(
+            insert(org_unit_patient_member).values(
                 org_unit_id=org.org_unit_id,
                 patient_id="fhir-789",
             )

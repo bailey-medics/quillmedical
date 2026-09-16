@@ -52,10 +52,10 @@ from app.features.passport.store import LocalPassportStore
 from app.main import app
 from app.models import (
     Organisation,
-    OrganisationFeature,
-    Site,
+    OrgUnit,
+    OrgUnitFeature,
     User,
-    site_member,
+    org_unit_member,
 )
 from app.organisations import add_organisation_member, organisation_member
 from app.passport_storage import get_passport_store
@@ -120,11 +120,7 @@ def _enable_passport(db: Session, *users: User) -> Organisation:
     db.commit()
     db.refresh(org)
 
-    db.add(
-        OrganisationFeature(
-            org_unit_id=org.org_unit_id, feature_key="passport"
-        )
-    )
+    db.add(OrgUnitFeature(org_unit_id=org.org_unit_id, feature_key="passport"))
 
     for user in users:
         add_organisation_member(db, org.id, user.id, "trainee")
@@ -1178,17 +1174,17 @@ class TestAcceptingAnInvitation:
         sent: list[dict[str, str]],
     ) -> None:
         """The narrowest place the holder holds, so a site over its org."""
-        site = Site(name="Ward 9", type="ward")
+        site = OrgUnit(name="Ward 9", type="ward")
         db_session.add(site)
         db_session.commit()
         db_session.refresh(site)
         db_session.execute(
-            update(Site)
-            .where(Site.id == site.id)
+            update(OrgUnit)
+            .where(OrgUnit.id == site.id)
             .values(parent_id=org.org_unit_id)
         )
         db_session.execute(
-            site_member.insert().values(
+            org_unit_member.insert().values(
                 org_unit_id=site.id,
                 user_id=holder.id,
                 capacity="trainee",
@@ -1206,9 +1202,9 @@ class TestAcceptingAnInvitation:
         assert body["place_id"] == site.id
 
         capacity = db_session.scalar(
-            select(site_member.c.capacity).where(
-                site_member.c.org_unit_id == site.id,
-                site_member.c.user_id == body["user_id"],
+            select(org_unit_member.c.capacity).where(
+                org_unit_member.c.org_unit_id == site.id,
+                org_unit_member.c.user_id == body["user_id"],
             )
         )
         assert capacity == "external"
@@ -1228,12 +1224,12 @@ class TestAcceptingAnInvitation:
         the registrar's, holding nothing more there. What they may do at
         their own site is untouched.
         """
-        own_site = Site(name="Their Own Ward", type="ward")
+        own_site = OrgUnit(name="Their Own Ward", type="ward")
         db_session.add(own_site)
         db_session.commit()
         db_session.refresh(own_site)
         db_session.execute(
-            site_member.insert().values(
+            org_unit_member.insert().values(
                 org_unit_id=own_site.id,
                 user_id=assessor.id,
                 capacity="staff",
@@ -1256,9 +1252,9 @@ class TestAcceptingAnInvitation:
         assert assessor.base_profession == "consultant"
 
         kept = db_session.scalar(
-            select(site_member.c.capacity).where(
-                site_member.c.org_unit_id == own_site.id,
-                site_member.c.user_id == assessor.id,
+            select(org_unit_member.c.capacity).where(
+                org_unit_member.c.org_unit_id == own_site.id,
+                org_unit_member.c.user_id == assessor.id,
             )
         )
         assert kept == "staff"
@@ -1395,17 +1391,17 @@ class TestTheGateResolvesForAnAcceptedAssessor:
         the site's own organisation column. A site
         membership alone would otherwise resolve to nothing.
         """
-        site = Site(name="Ward 11", type="ward")
+        site = OrgUnit(name="Ward 11", type="ward")
         db_session.add(site)
         db_session.commit()
         db_session.refresh(site)
         db_session.execute(
-            update(Site)
-            .where(Site.id == site.id)
+            update(OrgUnit)
+            .where(OrgUnit.id == site.id)
             .values(parent_id=org.org_unit_id)
         )
         db_session.execute(
-            site_member.insert().values(
+            org_unit_member.insert().values(
                 org_unit_id=site.id,
                 user_id=holder.id,
                 capacity="trainee",
@@ -1420,9 +1416,9 @@ class TestTheGateResolvesForAnAcceptedAssessor:
 
         # The membership written was a site one, not an organisation one.
         at_site = db_session.scalar(
-            select(site_member.c.capacity).where(
-                site_member.c.org_unit_id == site.id,
-                site_member.c.user_id == assessor_id,
+            select(org_unit_member.c.capacity).where(
+                org_unit_member.c.org_unit_id == site.id,
+                org_unit_member.c.user_id == assessor_id,
             )
         )
         at_org = db_session.scalar(
@@ -1540,7 +1536,7 @@ class TestAdminVerifyAndRevoke:
         db_session.refresh(other)
 
         db_session.add(
-            OrganisationFeature(
+            OrgUnitFeature(
                 org_unit_id=other.org_unit_id, feature_key="passport"
             )
         )

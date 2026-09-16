@@ -24,9 +24,9 @@ from app.cbac.positions import (
 )
 from app.models import (
     Organisation,
+    OrgUnit,
     Position,
     PractisingCompetency,
-    Site,
     User,
 )
 from app.security import hash_password
@@ -55,8 +55,8 @@ def _org(db: Session, name: str = "Trust") -> Organisation:
     return org
 
 
-def _site(db: Session, name: str = "Ward 1") -> Site:
-    site = Site(name=name, type="ward")
+def _site(db: Session, name: str = "Ward 1") -> OrgUnit:
+    site = OrgUnit(name=name, type="ward")
     db.add(site)
     db.commit()
     return site
@@ -68,7 +68,7 @@ def _authorise(
     competency: str = LEAD_COMPETENCY,
     *,
     org: Organisation | None = None,
-    site: Site | None = None,
+    site: OrgUnit | None = None,
 ) -> None:
     db.add(
         PractisingCompetency(
@@ -86,7 +86,7 @@ def _post(
     db: Session,
     *,
     org: Organisation | None = None,
-    site: Site | None = None,
+    site: OrgUnit | None = None,
     requires: str | None = LEAD_COMPETENCY,
     max_holders: int | None = 1,
     kind: str = "clinical_lead",

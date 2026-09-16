@@ -29,7 +29,7 @@ from sqlalchemy.orm import Session
 
 from app.models import (
     Organisation,
-    Site,
+    OrgUnit,
     User,
 )
 from app.organisations import add_organisation_member
@@ -74,14 +74,14 @@ def org(db_session: Session) -> Organisation:
 
 
 @pytest.fixture
-def site(db_session: Session, org: Organisation) -> Site:
-    site = Site(name="Ward 9", type="ward")
+def site(db_session: Session, org: Organisation) -> OrgUnit:
+    site = OrgUnit(name="Ward 9", type="ward")
     db_session.add(site)
     db_session.commit()
     db_session.refresh(site)
     db_session.execute(
-        update(Site)
-        .where(Site.id == site.id)
+        update(OrgUnit)
+        .where(OrgUnit.id == site.id)
         .values(parent_id=org.org_unit_id)
     )
     db_session.commit()
@@ -166,7 +166,7 @@ class TestManageUsersAloneIsNotEnough:
         self,
         test_client: TestClient,
         org: Organisation,
-        site: Site,
+        site: OrgUnit,
         account_admin: User,
         colleague: User,
     ) -> None:
@@ -183,7 +183,7 @@ class TestManageUsersAloneIsNotEnough:
         self,
         test_client: TestClient,
         org: Organisation,
-        site: Site,
+        site: OrgUnit,
         account_admin: User,
         colleague: User,
     ) -> None:
@@ -252,7 +252,7 @@ class TestTheNewCompetencyOpensThem:
         self,
         test_client: TestClient,
         org: Organisation,
-        site: Site,
+        site: OrgUnit,
         membership_admin: User,
         colleague: User,
     ) -> None:
@@ -269,7 +269,7 @@ class TestTheNewCompetencyOpensThem:
         self,
         test_client: TestClient,
         org: Organisation,
-        site: Site,
+        site: OrgUnit,
         membership_admin: User,
         colleague: User,
     ) -> None:

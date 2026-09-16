@@ -22,7 +22,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.cbac.scoped import can_practise_at
-from app.models import Position, PositionHolding, Site, User
+from app.models import OrgUnit, Position, PositionHolding, User
 
 
 def _today() -> date:
@@ -219,7 +219,7 @@ def holders_of(
 CLINICAL_LEAD = "clinical_lead"
 
 
-def clinical_lead_post(db: Session, site: Site) -> Position:
+def clinical_lead_post(db: Session, site: OrgUnit) -> Position:
     """Return a site's clinical lead post, creating it if absent.
 
     Created on demand rather than with every site, because a post nobody
@@ -259,7 +259,7 @@ def clinical_lead_post(db: Session, site: Site) -> Position:
 
 def set_clinical_lead(
     db: Session,
-    site: Site,
+    site: OrgUnit,
     user: User | None,
     *,
     appointed_by: User | None = None,

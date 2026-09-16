@@ -18,7 +18,7 @@ from __future__ import annotations
 import pytest
 from sqlalchemy.orm import Session
 
-from app.models import Organisation, Site, User
+from app.models import Organisation, OrgUnit, User
 from app.org_units.tree import organisation_id_of_site
 from app.organisations import add_organisation_member
 
@@ -43,8 +43,8 @@ def other_org(db_session: Session) -> Organisation:
     return org
 
 
-def _site_of(db: Session, org: Organisation | None, name: str) -> Site:
-    site = Site(
+def _site_of(db: Session, org: Organisation | None, name: str) -> OrgUnit:
+    site = OrgUnit(
         name=name,
         type="ward",
         parent_id=org.org_unit_id if org else None,

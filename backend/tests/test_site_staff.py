@@ -5,7 +5,7 @@ from __future__ import annotations
 from sqlalchemy import insert
 
 from app.cbac.positions import set_clinical_lead
-from app.models import Site, User, site_member
+from app.models import OrgUnit, User, org_unit_member
 from app.security import hash_password
 
 
@@ -16,7 +16,7 @@ class TestSiteStaffClinicalLeadConstraint:
         self, authenticated_superadmin_client, db_session, test_admin: User
     ):
         """Can add a clinical lead when none exists."""
-        site = Site(name="Test Site", type="hospital")
+        site = OrgUnit(name="Test Site", type="hospital")
         db_session.add(site)
         db_session.flush()
 
@@ -41,7 +41,7 @@ class TestSiteStaffClinicalLeadConstraint:
         self, authenticated_superadmin_client, db_session, test_admin: User
     ):
         """Adding a second clinical lead returns 409."""
-        site = Site(name="Lead Site", type="hospital")
+        site = OrgUnit(name="Lead Site", type="hospital")
         db_session.add(site)
         db_session.flush()
 
@@ -56,7 +56,7 @@ class TestSiteStaffClinicalLeadConstraint:
         db_session.flush()
 
         db_session.execute(
-            insert(site_member).values(
+            insert(org_unit_member).values(
                 org_unit_id=site.id,
                 user_id=existing_lead.id,
                 capacity="staff",
@@ -85,7 +85,7 @@ class TestSiteStaffClinicalLeadConstraint:
         self, authenticated_superadmin_client, db_session, test_admin: User
     ):
         """Updating a staff member to clinical_lead fails if one exists."""
-        site = Site(name="Update Site", type="hospital")
+        site = OrgUnit(name="Update Site", type="hospital")
         db_session.add(site)
         db_session.flush()
 
@@ -100,7 +100,7 @@ class TestSiteStaffClinicalLeadConstraint:
         db_session.flush()
 
         db_session.execute(
-            insert(site_member).values(
+            insert(org_unit_member).values(
                 org_unit_id=site.id,
                 user_id=lead.id,
                 capacity="staff",
@@ -122,7 +122,7 @@ class TestSiteStaffClinicalLeadConstraint:
         db_session.flush()
 
         db_session.execute(
-            insert(site_member).values(
+            insert(org_unit_member).values(
                 org_unit_id=site.id,
                 user_id=staff.id,
                 capacity="staff",
@@ -141,7 +141,7 @@ class TestSiteStaffClinicalLeadConstraint:
         self, authenticated_superadmin_client, db_session, test_admin: User
     ):
         """Re-posting the same user as clinical_lead is idempotent."""
-        site = Site(name="Same Lead Site", type="hospital")
+        site = OrgUnit(name="Same Lead Site", type="hospital")
         db_session.add(site)
         db_session.flush()
 
@@ -156,7 +156,7 @@ class TestSiteStaffClinicalLeadConstraint:
         db_session.flush()
 
         db_session.execute(
-            insert(site_member).values(
+            insert(org_unit_member).values(
                 org_unit_id=site.id,
                 user_id=lead.id,
                 capacity="staff",
@@ -179,7 +179,7 @@ class TestSiteStaffClinicalLeadConstraint:
         self, authenticated_superadmin_client, db_session, test_admin: User
     ):
         """Adding a staff/trainee role succeeds even with a lead."""
-        site = Site(name="Mixed Site", type="hospital")
+        site = OrgUnit(name="Mixed Site", type="hospital")
         db_session.add(site)
         db_session.flush()
 
@@ -194,7 +194,7 @@ class TestSiteStaffClinicalLeadConstraint:
         db_session.flush()
 
         db_session.execute(
-            insert(site_member).values(
+            insert(org_unit_member).values(
                 org_unit_id=site.id,
                 user_id=lead.id,
                 capacity="staff",
@@ -229,7 +229,7 @@ class TestAddSiteStaffValidation:
     def test_missing_user_id_rejected(
         self, authenticated_superadmin_client, db_session
     ):
-        site = Site(name="Validation Site", type="hospital")
+        site = OrgUnit(name="Validation Site", type="hospital")
         db_session.add(site)
         db_session.commit()
 
@@ -242,7 +242,7 @@ class TestAddSiteStaffValidation:
     def test_missing_role_rejected(
         self, authenticated_superadmin_client, db_session, test_admin: User
     ):
-        site = Site(name="Validation Site", type="hospital")
+        site = OrgUnit(name="Validation Site", type="hospital")
         db_session.add(site)
         db_session.commit()
 
@@ -255,7 +255,7 @@ class TestAddSiteStaffValidation:
     def test_invalid_role_rejected(
         self, authenticated_superadmin_client, db_session, test_admin: User
     ):
-        site = Site(name="Validation Site", type="hospital")
+        site = OrgUnit(name="Validation Site", type="hospital")
         db_session.add(site)
         db_session.commit()
 
@@ -269,7 +269,7 @@ class TestAddSiteStaffValidation:
         self, authenticated_superadmin_client, db_session, test_admin: User
     ):
         """extra='forbid' on AddSiteStaffIn rejects unrecognised fields."""
-        site = Site(name="Validation Site", type="hospital")
+        site = OrgUnit(name="Validation Site", type="hospital")
         db_session.add(site)
         db_session.commit()
 

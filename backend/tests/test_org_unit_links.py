@@ -19,8 +19,8 @@ from sqlalchemy.orm import Session
 
 from app.models import (
     Organisation,
+    OrgUnit,
     OrgUnitLink,
-    Site,
     User,
 )
 from app.org_units.relations import (
@@ -50,8 +50,8 @@ def other_org(db_session: Session) -> Organisation:
     return org
 
 
-def _site_of(db: Session, org: Organisation, name: str) -> Site:
-    site = Site(name=name, type="ward", parent_id=org.org_unit_id)
+def _site_of(db: Session, org: Organisation, name: str) -> OrgUnit:
+    site = OrgUnit(name=name, type="ward", parent_id=org.org_unit_id)
     db.add(site)
     db.commit()
     db.refresh(site)

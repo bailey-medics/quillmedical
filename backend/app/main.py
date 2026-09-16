@@ -103,13 +103,13 @@ from app.models import (
     Conversation,
     ExternalPatientAccess,
     Organisation,
-    OrganisationFeature,
+    OrgUnit,
+    OrgUnitFeature,
     OrgUnitLink,
     PatientMetadata,
-    Site,
     User,
-    organisation_patient_member,
-    site_member,
+    org_unit_member,
+    org_unit_patient_member,
     validate_member_capacity,
     validate_platform_role,
 )
@@ -345,11 +345,12 @@ async def add_compat_generation_header(
     response.headers["Compat-Generation"] = str(REQUIRED_CLIENT_GENERATION)
     return response
 
+    # --- Rate limiting (slowapi) ---
+    # Created in app.rate_limit so routers in their own modules can decorate with
+    # it without importing main. Re-exported here by the import above, so
+    # `from app.main import limiter` keeps working.
 
-# --- Rate limiting (slowapi) ---
-# Created in app.rate_limit so routers in their own modules can decorate with
-# it without importing main. Re-exported here by the import above, so
-# `from app.main import limiter` keeps working.
+
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
@@ -367,8 +368,9 @@ async def fhir_client_error_handler(
         content={"detail": str(exc)},
     )
 
+    # --- EHRbase client error handler ---
 
-# --- EHRbase client error handler ---
+
 @app.exception_handler(EhrbaseClientError)
 async def ehrbase_client_error_handler(
     request: Request, exc: EhrbaseClientError
@@ -381,8 +383,9 @@ async def ehrbase_client_error_handler(
         content={"detail": str(exc)},
     )
 
+    # --- Request logging middleware ---
 
-# --- Request logging middleware ---
+
 @app.middleware("http")
 async def log_requests(
     request: Request,
@@ -677,7 +680,7 @@ def get_current_user(request: Request, db: Session = DEP_GET_SESSION) -> User:
     user = db.scalar(select(User).where(User.username == sub))
     if not user or not user.is_active:
         raise HTTPException(401, "Inactive user")
-    # Reject tokens minted before a password change
+        # Reject tokens minted before a password change
     if payload.get("tv", 0) != user.token_version:
         raise HTTPException(401, "Session invalidated")
     request.state.roles = [r.name for r in user.roles]
@@ -1019,7 +1022,7 @@ def validate_clinical_lead(
     if not user:
         return ValidateClinicalLeadOut(valid=False)
 
-    # Get org IDs that have this bank with site_registration enabled
+        # Get org IDs that have this bank with site_registration enabled
     org_ids = (
         db.execute(
             select(QuestionBankOrgStatus.organisation_id).where(
@@ -1033,15 +1036,15 @@ def validate_clinical_lead(
     if not org_ids:
         return ValidateClinicalLeadOut(valid=False)
 
-    # Every place beneath those organisations, at any depth
+        # Every place beneath those organisations, at any depth
     site_ids = site_ids_of_organisations(db, list(org_ids))
     if not site_ids:
         return ValidateClinicalLeadOut(valid=False)
 
-    # Which of those sites this user holds the clinical lead post at.
-    # Read from positions rather than site_member.role: the post is
-    # the thing being asked about, and a post can be vacant, which a role
-    # column cannot express.
+        # Which of those sites this user holds the clinical lead post at.
+        # Read from positions rather than site_member.role: the post is
+        # the thing being asked about, and a post can be vacant, which a role
+        # column cannot express.
     leads = clinical_leads_of(db, list(site_ids))
     held_at = [site_id for site_id, lead in leads.items() if lead == user.id]
     if not held_at:
@@ -1051,7 +1054,7 @@ def validate_clinical_lead(
 
     # Look up the site name for display
     site = (
-        db.execute(select(Site).where(Site.id == matched_site_id))
+        db.execute(select(OrgUnit).where(OrgUnit.id == matched_site_id))
         .scalars()
         .first()
     )
@@ -1123,7 +1126,7 @@ def register(
             detail="Password must be at least 8 characters",
         )
 
-    # Use generic message to prevent account enumeration
+        # Use generic message to prevent account enumeration
     existing = db.scalar(select(User).where(User.username == username))
     if existing:
         raise HTTPException(
@@ -1169,21 +1172,21 @@ def register(
             raise HTTPException(
                 status_code=400, detail="Organisation not found"
             )
-        # Public registration is how teaching delegates arrive, and they
-        # are not staff. Recording that here is what lets the admin page
-        # and the messaging self-join check tell them apart; previously
-        # nothing could.
+            # Public registration is how teaching delegates arrive, and they
+            # are not staff. Recording that here is what lets the admin page
+            # and the messaging self-join check tell them apart; previously
+            # nothing could.
         add_organisation_member(db, org.id, user.id, "trainee")
 
-    # Add the user to the selected site as a trainee
+        # Add the user to the selected site as a trainee
     if payload.site_id is not None:
         if payload.organisation_id is None:
             raise HTTPException(
                 status_code=400,
                 detail="organisation_id required when site_id is provided",
             )
-        # Verify the place exists AND sits beneath the organisation given
-        site = db.get(Site, payload.site_id)
+            # Verify the place exists AND sits beneath the organisation given
+        site = db.get(OrgUnit, payload.site_id)
         if site is None or site.type == ORGANISATION_TYPE:
             raise HTTPException(status_code=400, detail="Site not found")
         if (
@@ -1192,7 +1195,7 @@ def register(
         ):
             raise HTTPException(status_code=400, detail="Site not found")
         db.execute(
-            site_member.insert().values(
+            org_unit_member.insert().values(
                 org_unit_id=payload.site_id,
                 user_id=user.id,
                 capacity="trainee",
@@ -1291,7 +1294,7 @@ def resend_verification(
                 f"{settings.EMAIL_VERIFY_TTL_MIN} minutes.</p>"
             ),
         )
-    # Always return ok to prevent account enumeration
+        # Always return ok to prevent account enumeration
     return DetailResponse(detail="ok")
 
 
@@ -1332,7 +1335,7 @@ def forgot_password(
                 f" minutes. If you did not request this, ignore this email.</p>"
             ),
         )
-    # Always return ok to prevent account enumeration
+        # Always return ok to prevent account enumeration
     return DetailResponse(detail="ok")
 
 
@@ -1580,7 +1583,7 @@ def create_user_with_cbac(
             status_code=400, detail="Password must be at least 8 characters"
         )
 
-    # Check uniqueness
+        # Check uniqueness
     existing = db.scalar(select(User).where(User.username == username))
     if existing:
         raise HTTPException(status_code=400, detail="Username already exists")
@@ -1589,7 +1592,7 @@ def create_user_with_cbac(
     if existing:
         raise HTTPException(status_code=400, detail="Email already exists")
 
-    # Validate organisation access for non-superadmins
+        # Validate organisation access for non-superadmins
     for org_id in payload.organisation_ids:
         org = db.scalar(select(Organisation).where(Organisation.id == org_id))
         if not org:
@@ -1605,14 +1608,14 @@ def create_user_with_cbac(
                 )
 
     for s_id in payload.site_ids:
-        site = db.get(Site, s_id)
+        site = db.get(OrgUnit, s_id)
         if not site:
             raise HTTPException(
                 status_code=404,
                 detail=f"Site {s_id} not found",
             )
 
-    # Create user
+            # Create user
     user = User(
         username=username,
         full_name=payload.name.strip(),
@@ -1631,10 +1634,10 @@ def create_user_with_cbac(
     for org_id in payload.organisation_ids:
         add_organisation_member(db, org_id, user.id, "staff")
 
-    # Assign to sites as trainee
+        # Assign to sites as trainee
     for s_id in payload.site_ids:
         db.execute(
-            site_member.insert().values(
+            org_unit_member.insert().values(
                 org_unit_id=s_id,
                 user_id=user.id,
                 capacity="trainee",
@@ -1698,7 +1701,7 @@ def update_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Only an operator may modify another operator
+        # Only an operator may modify another operator
     if (
         current_user.platform_role != "superadmin"
         and user.platform_role == "superadmin"
@@ -1741,7 +1744,7 @@ def update_user(
                 ),
             )
 
-    # Validate and update username
+            # Validate and update username
     if payload.username is not None:
         username = payload.username.strip()
         if username != user.username:
@@ -1752,11 +1755,11 @@ def update_user(
                 )
             user.username = username
 
-    # Update full name
+            # Update full name
     if payload.name is not None:
         user.full_name = payload.name.strip() or None
 
-    # Validate and update email
+        # Validate and update email
     if payload.email is not None:
         email = payload.email.strip()
         if email != user.email:
@@ -1771,7 +1774,7 @@ def update_user(
                 )
             user.email = email
 
-    # Update password if provided
+            # Update password if provided
     if payload.password is not None and payload.password:
         if len(payload.password) < 8:
             raise HTTPException(
@@ -1780,7 +1783,7 @@ def update_user(
             )
         user.password_hash = hash_password(payload.password)
 
-    # Update CBAC fields if provided
+        # Update CBAC fields if provided
     if payload.base_profession is not None:
         # A profession is a template, not state: `additional` and
         # `removed` exist precisely so reality can diverge from it. So
@@ -1841,7 +1844,7 @@ def update_user(
             )
             user.additional_competencies = sorted(granted)
 
-    # Update organisation memberships if provided
+            # Update organisation memberships if provided
     if payload.organisation_ids is not None:
         if current_user.platform_role == "superadmin":
             # Superadmin: replace all memberships
@@ -1850,7 +1853,7 @@ def update_user(
             # Admin: only remove memberships within admin's own orgs
             admin_org_ids = get_member_org_ids(db, current_user.id)
             remove_organisation_memberships(db, user_id, admin_org_ids)
-        # Add new org memberships
+            # Add new org memberships
         for org_id in payload.organisation_ids:
             org = db.scalar(
                 select(Organisation).where(Organisation.id == org_id)
@@ -1862,7 +1865,7 @@ def update_user(
                 )
             add_organisation_member(db, org_id, user_id, "staff")
 
-    # Update site memberships if provided
+            # Update site memberships if provided
     if payload.site_ids is not None:
         if current_user.platform_role == "superadmin":
             # Superadmin: replace every membership of a place inside an
@@ -1871,10 +1874,12 @@ def update_user(
             # settled by the organisation block above — clearing those
             # here would undo it.
             db.execute(
-                site_member.delete().where(
-                    site_member.c.user_id == user_id,
-                    site_member.c.org_unit_id.in_(
-                        select(Site.id).where(Site.type != ORGANISATION_TYPE)
+                org_unit_member.delete().where(
+                    org_unit_member.c.user_id == user_id,
+                    org_unit_member.c.org_unit_id.in_(
+                        select(OrgUnit.id).where(
+                            OrgUnit.type != ORGANISATION_TYPE
+                        )
                     ),
                 )
             )
@@ -1884,32 +1889,32 @@ def update_user(
             admin_site_ids = site_ids_of_organisations(db, admin_org_ids)
             if admin_site_ids:
                 db.execute(
-                    site_member.delete().where(
-                        site_member.c.user_id == user_id,
-                        site_member.c.org_unit_id.in_(admin_site_ids),
+                    org_unit_member.delete().where(
+                        org_unit_member.c.user_id == user_id,
+                        org_unit_member.c.org_unit_id.in_(admin_site_ids),
                     )
                 )
-        # Add new site memberships
+                # Add new site memberships
         for s_id in payload.site_ids:
-            site = db.scalar(select(Site).where(Site.id == s_id))
+            site = db.scalar(select(OrgUnit).where(OrgUnit.id == s_id))
             if not site:
                 raise HTTPException(
                     status_code=400,
                     detail=f"Site {s_id} not found",
                 )
             db.execute(
-                site_member.insert().values(
+                org_unit_member.insert().values(
                     user_id=user_id,
                     org_unit_id=s_id,
                     capacity="trainee",
                 )
             )
 
-    # Flush before refreshing: refresh reloads the row from the database,
-    # so pending in-memory changes are discarded unless they have been
-    # written first. The payload assignments above happen to survive
-    # because the session flushes automatically on the queries between
-    # them; an assignment after the last query would not.
+            # Flush before refreshing: refresh reloads the row from the database,
+            # so pending in-memory changes are discarded unless they have been
+            # written first. The payload assignments above happen to survive
+            # because the session flushes automatically on the queries between
+            # them; an assignment after the last query would not.
     db.flush()
     db.refresh(user)
 
@@ -1956,7 +1961,7 @@ def deactivate_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Only an operator may deactivate another operator
+        # Only an operator may deactivate another operator
     if (
         current_user.platform_role != "superadmin"
         and user.platform_role == "superadmin"
@@ -2019,7 +2024,7 @@ def reactivate_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Only an operator may reactivate another operator
+        # Only an operator may reactivate another operator
     if (
         current_user.platform_role != "superadmin"
         and user.platform_role == "superadmin"
@@ -2388,8 +2393,8 @@ def me(
     # Indirect: the organisation accountable for a place they belong to
     member_site_ids = list(
         db.execute(
-            select(site_member.c.org_unit_id).where(
-                site_member.c.user_id == current_user.id
+            select(org_unit_member.c.org_unit_id).where(
+                org_unit_member.c.user_id == current_user.id
             )
         )
         .scalars()
@@ -2401,9 +2406,9 @@ def me(
     if user_org_ids:
         features = (
             db.execute(
-                select(OrganisationFeature.feature_key)
+                select(OrgUnitFeature.feature_key)
                 .where(
-                    OrganisationFeature.org_unit_id.in_(
+                    OrgUnitFeature.org_unit_id.in_(
                         root_ids_of_organisations(db, user_org_ids)
                     ),
                 )
@@ -2550,7 +2555,7 @@ def list_users(
             ]
         )
 
-    # Unfiltered mode: admin/superadmin only
+        # Unfiltered mode: admin/superadmin only
     stmt = select(User)
 
     # Exclude users who are already staff of the given organisation
@@ -2560,8 +2565,8 @@ def list_users(
         )
         stmt = stmt.where(User.id.notin_(existing_staff_ids))
 
-    # Anyone but an operator sees only users at their own places;
-    # operators see everyone.
+        # Anyone but an operator sees only users at their own places;
+        # operators see everyone.
     if current_user.platform_role != "superadmin":
         admin_orgs = get_member_org_ids(db, current_user.id)
         org_scoped_ids = get_org_staff_ids(db, admin_orgs)
@@ -2575,8 +2580,8 @@ def list_users(
             site_scoped_ids = {
                 row[0]
                 for row in db.execute(
-                    select(site_member.c.user_id).where(
-                        site_member.c.org_unit_id.in_(site_ids_for_orgs)
+                    select(org_unit_member.c.user_id).where(
+                        org_unit_member.c.org_unit_id.in_(site_ids_for_orgs)
                     )
                 ).all()
             }
@@ -2611,14 +2616,14 @@ def list_users(
 
         site_rows = db.execute(
             select(
-                site_member.c.user_id,
-                Site.name,
+                org_unit_member.c.user_id,
+                OrgUnit.name,
             )
             .join(
-                Site,
-                Site.id == site_member.c.org_unit_id,
+                OrgUnit,
+                OrgUnit.id == org_unit_member.c.org_unit_id,
             )
-            .where(site_member.c.user_id.in_(user_ids))
+            .where(org_unit_member.c.user_id.in_(user_ids))
         ).all()
         user_sites: dict[int, list[str]] = {}
         for row in site_rows:
@@ -2695,7 +2700,7 @@ def get_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Only an operator may view another operator
+        # Only an operator may view another operator
     if (
         current_user.platform_role != "superadmin"
         and user.platform_role == "superadmin"
@@ -2716,8 +2721,8 @@ def get_user(
     user_site_ids = [
         row[0]
         for row in db.execute(
-            select(site_member.c.org_unit_id).where(
-                site_member.c.user_id == user_id
+            select(org_unit_member.c.org_unit_id).where(
+                org_unit_member.c.user_id == user_id
             )
         ).all()
     ]
@@ -2790,7 +2795,7 @@ def refresh(
     user = db.scalar(select(User).where(User.username == sub))
     if not user or not user.is_active:
         raise HTTPException(401, "Inactive user")
-    # Reject refresh tokens minted before a password change
+        # Reject refresh tokens minted before a password change
     if payload.get("tv", 0) != user.token_version:
         raise HTTPException(401, "Session invalidated")
     roles = [r.name for r in user.roles]
@@ -2917,14 +2922,14 @@ def list_patients(
         else:
             accessible_ids = get_accessible_patient_ids(db, current_user)
 
-        # Enrich patients with activation status and filter
+            # Enrich patients with activation status and filter
         enriched_patients: list[PatientListItem] = []
         for patient in patients:
             patient_id = patient.get("id")
             if patient_id is None:
                 continue
 
-            # Org-based filtering (skip for admin scope)
+                # Org-based filtering (skip for admin scope)
             if accessible_ids is not None and patient_id not in accessible_ids:
                 continue
 
@@ -3204,8 +3209,7 @@ def list_letters(
             },
         ) from e
 
-
-# --- FHIR Endpoints ---
+        # --- FHIR Endpoints ---
 
 
 class FHIRPatientCreateIn(BaseModel):
@@ -3360,7 +3364,7 @@ def update_patient(
         if not existing:
             raise HTTPException(status_code=404, detail="Patient not found")
 
-        # Build update dict in the format update_fhir_patient expects
+            # Build update dict in the format update_fhir_patient expects
         updates: dict[str, Any] = {}
 
         if data.given_name:
@@ -3372,7 +3376,7 @@ def update_patient(
         if data.gender:
             updates["sex"] = data.gender
 
-        # Perform update
+            # Perform update
         updated_patient = update_fhir_patient(patient_id, updates)
         if not updated_patient:
             raise HTTPException(
@@ -3608,10 +3612,9 @@ def shared_organisations_endpoint(
         ]
     )
 
-
-# ==========================================================================
-# CBAC (Competency-Based Access Control) Routes
-# ==========================================================================
+    # ==========================================================================
+    # CBAC (Competency-Based Access Control) Routes
+    # ==========================================================================
 
 
 @router.get(
@@ -3735,7 +3738,7 @@ async def update_my_competencies(
                 "manage_users"
             ),
         )
-    # Update user's competencies
+        # Update user's competencies
     if data.additional_competencies is not None:
         user.additional_competencies = data.additional_competencies
     if data.removed_competencies is not None:
@@ -3753,10 +3756,9 @@ async def update_my_competencies(
         final_competencies=user.get_final_competencies(),
     )
 
-
-# ==========================================================================
-# ORGANISATION ENDPOINTS
-# ==========================================================================
+    # ==========================================================================
+    # ORGANISATION ENDPOINTS
+    # ==========================================================================
 
 
 @router.get(
@@ -3863,7 +3865,7 @@ def get_organisation(
     if not org:
         raise HTTPException(status_code=404, detail="Organisation not found")
 
-    # Anyone but an operator is confined to their own organisations
+        # Anyone but an operator is confined to their own organisations
     if current_user.platform_role != "superadmin":
         user_org_ids = get_member_org_ids(db, current_user.id)
         if org_id not in user_org_ids:
@@ -3872,7 +3874,7 @@ def get_organisation(
                 detail="Organisation not found",
             )
 
-    # Get staff members
+            # Get staff members
     staff_query = (
         select(
             User.id,
@@ -3908,16 +3910,22 @@ def get_organisation(
 
     # Get patient members
     patient_query = select(
-        organisation_patient_member.c.patient_id,
-    ).where(organisation_patient_member.c.org_unit_id == org.org_unit_id)
+        org_unit_patient_member.c.patient_id,
+    ).where(org_unit_patient_member.c.org_unit_id == org.org_unit_id)
 
     patient_members = db.execute(patient_query).all()
 
     # Every place beneath this organisation, at any depth
     site_query = (
-        select(Site.id, Site.name, Site.type, Site.location, Site.is_active)
-        .where(Site.id.in_(site_ids_of_organisations(db, [org_id])))
-        .order_by(Site.name)
+        select(
+            OrgUnit.id,
+            OrgUnit.name,
+            OrgUnit.type,
+            OrgUnit.location,
+            OrgUnit.is_active,
+        )
+        .where(OrgUnit.id.in_(site_ids_of_organisations(db, [org_id])))
+        .order_by(OrgUnit.name)
     )
     sites = db.execute(site_query).all()
 
@@ -4015,7 +4023,7 @@ def update_organisation(
     if not org:
         raise HTTPException(status_code=404, detail="Organisation not found")
 
-    # Anyone but an operator is confined to their own organisations
+        # Anyone but an operator is confined to their own organisations
     if current_user.platform_role != "superadmin":
         if org_id not in get_member_org_ids(db, current_user.id):
             raise HTTPException(
@@ -4191,7 +4199,7 @@ def add_staff_to_organisation(
     if not org:
         raise HTTPException(status_code=404, detail="Organisation not found")
 
-    # Anyone but an operator is confined to their own organisations
+        # Anyone but an operator is confined to their own organisations
     if current_user.platform_role != "superadmin":
         if org_id not in get_member_org_ids(db, current_user.id):
             raise HTTPException(
@@ -4202,12 +4210,12 @@ def add_staff_to_organisation(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Eligibility to be staff here is the membership row itself, which is
-    # written below with ``capacity="staff"``. Requiring a staff rank
-    # elsewhere first was the old hierarchy answering a question that
-    # membership now answers — see the platform role plan.
+        # Eligibility to be staff here is the membership row itself, which is
+        # written below with ``capacity="staff"``. Requiring a staff rank
+        # elsewhere first was the old hierarchy answering a question that
+        # membership now answers — see the platform role plan.
 
-    # Check if already a member
+        # Check if already a member
     existing = db.scalar(
         select(organisation_member).where(
             organisation_member.c.organisation_id == org_id,
@@ -4282,20 +4290,20 @@ def add_patient_to_organisation(
     if not org:
         raise HTTPException(status_code=404, detail="Organisation not found")
 
-    # Anyone but an operator is confined to their own organisations
+        # Anyone but an operator is confined to their own organisations
     if current_user.platform_role != "superadmin":
         if org_id not in get_member_org_ids(db, current_user.id):
             raise HTTPException(
                 status_code=404, detail="Organisation not found"
             )
 
-    # Check if already a member
+            # Check if already a member
     place_id = _place_of_organisation(db, org_id)
 
     existing = db.scalar(
-        select(organisation_patient_member).where(
-            organisation_patient_member.c.org_unit_id == place_id,
-            organisation_patient_member.c.patient_id == body.patient_id,
+        select(org_unit_patient_member).where(
+            org_unit_patient_member.c.org_unit_id == place_id,
+            org_unit_patient_member.c.patient_id == body.patient_id,
         )
     )
     if existing:
@@ -4305,7 +4313,7 @@ def add_patient_to_organisation(
         )
 
     db.execute(
-        organisation_patient_member.insert().values(
+        org_unit_patient_member.insert().values(
             org_unit_id=place_id,
             patient_id=body.patient_id,
         )
@@ -4401,26 +4409,25 @@ def remove_patient_from_organisation(
     place_id = _place_of_organisation(db, org_id)
 
     existing = db.scalar(
-        select(organisation_patient_member).where(
-            organisation_patient_member.c.org_unit_id == place_id,
-            organisation_patient_member.c.patient_id == patient_id,
+        select(org_unit_patient_member).where(
+            org_unit_patient_member.c.org_unit_id == place_id,
+            org_unit_patient_member.c.patient_id == patient_id,
         )
     )
     if not existing:
         raise HTTPException(status_code=404, detail="Membership not found")
 
     db.execute(
-        organisation_patient_member.delete().where(
-            organisation_patient_member.c.org_unit_id == place_id,
-            organisation_patient_member.c.patient_id == patient_id,
+        org_unit_patient_member.delete().where(
+            org_unit_patient_member.c.org_unit_id == place_id,
+            org_unit_patient_member.c.patient_id == patient_id,
         )
     )
     return StatusResponse(status="removed")
 
-
-# ==========================================================================
-# ORGANISATION FEATURE ENDPOINTS
-# ==========================================================================
+    # ==========================================================================
+    # ORGANISATION FEATURE ENDPOINTS
+    # ==========================================================================
 
 
 @router.get(
@@ -4441,7 +4448,7 @@ def list_org_features(
     if not org:
         raise HTTPException(status_code=404, detail="Organisation not found")
 
-    # Anyone but an operator is confined to their own organisations
+        # Anyone but an operator is confined to their own organisations
     if current_user.platform_role != "superadmin":
         if org_id not in get_member_org_ids(db, current_user.id):
             raise HTTPException(
@@ -4486,7 +4493,7 @@ def toggle_org_feature(
     if not org:
         raise HTTPException(status_code=404, detail="Organisation not found")
 
-    # Anyone but an operator is confined to their own organisations
+        # Anyone but an operator is confined to their own organisations
     if current_user.platform_role != "superadmin":
         if org_id not in get_member_org_ids(db, current_user.id):
             raise HTTPException(
@@ -4496,16 +4503,16 @@ def toggle_org_feature(
     place_id = _place_of_organisation(db, org_id)
 
     existing = db.scalar(
-        select(OrganisationFeature).where(
-            OrganisationFeature.org_unit_id == place_id,
-            OrganisationFeature.feature_key == feature_key,
+        select(OrgUnitFeature).where(
+            OrgUnitFeature.org_unit_id == place_id,
+            OrgUnitFeature.feature_key == feature_key,
         )
     )
 
     if body.enabled:
         if existing:
             return FeatureToggleResponse(status="already_enabled")
-        feature = OrganisationFeature(
+        feature = OrgUnitFeature(
             org_unit_id=place_id,
             feature_key=feature_key,
             enabled_by=current_user.id,
@@ -4518,10 +4525,9 @@ def toggle_org_feature(
         db.delete(existing)
         return FeatureToggleResponse(status="disabled")
 
-
-# ==========================================================================
-# SITES
-# ==========================================================================
+        # ==========================================================================
+        # SITES
+        # ==========================================================================
 
 
 VALID_SITE_TYPES = {
@@ -4561,12 +4567,14 @@ def list_sites(
     # Roots are organisations, and have their own list. This one shows
     # the places inside them.
     stmt = (
-        select(Site).where(Site.type != ORGANISATION_TYPE).order_by(Site.name)
+        select(OrgUnit)
+        .where(OrgUnit.type != ORGANISATION_TYPE)
+        .order_by(OrgUnit.name)
     )
     if current_user.platform_role != "superadmin":
         own_org_ids = get_member_org_ids(db, current_user.id)
         stmt = stmt.where(
-            Site.id.in_(site_ids_of_organisations(db, own_org_ids))
+            OrgUnit.id.in_(site_ids_of_organisations(db, own_org_ids))
         )
 
     rows = db.execute(stmt).scalars().all()
@@ -4626,7 +4634,7 @@ def create_site(
         raise HTTPException(status_code=404, detail="Organisation not found")
 
     if body.parent_id is not None:
-        parent = db.get(Site, body.parent_id)
+        parent = db.get(OrgUnit, body.parent_id)
         if not parent:
             raise HTTPException(
                 status_code=404, detail="Parent site not found"
@@ -4638,7 +4646,7 @@ def create_site(
         # is the organisation's own row in the tree.
         parent_id = org.org_unit_id
 
-    site = Site(
+    site = OrgUnit(
         name=body.name,
         type=body.type,
         parent_id=parent_id,
@@ -4741,7 +4749,7 @@ def _place_of_organisation(db: Session, org_id: int) -> int:
     return roots[0]
 
 
-def _require_not_a_root(site: Site) -> None:
+def _require_not_a_root(site: OrgUnit) -> None:
     """Refuse a row that is an organisation rather than a place inside one.
 
     Organisations are rows in the same table now, carrying no parent, and
@@ -4842,7 +4850,7 @@ def get_site(
     """Get site details including staff. Requires ``manage_users``."""
     _require_site_in_own_org(db, current_user, site_id)
 
-    site = db.get(Site, site_id)
+    site = db.get(OrgUnit, site_id)
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
     _require_not_a_root(site)
@@ -4855,8 +4863,8 @@ def get_site(
             User.email,
             User.full_name,
         )
-        .join(site_member, site_member.c.user_id == User.id)
-        .where(site_member.c.org_unit_id == site_id)
+        .join(org_unit_member, org_unit_member.c.user_id == User.id)
+        .where(org_unit_member.c.org_unit_id == site_id)
     )
 
     # Operators are hidden from everyone but another operator
@@ -4917,7 +4925,7 @@ def update_site(
     """Update a site. Requires ``manage_users``."""
     _require_site_in_own_org(db, current_user, site_id)
 
-    site = db.get(Site, site_id)
+    site = db.get(OrgUnit, site_id)
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
     _require_not_a_root(site)
@@ -4945,15 +4953,15 @@ def update_site(
                 status_code=400,
                 detail="A place cannot sit inside itself",
             )
-        parent = db.get(Site, body.parent_id)
+        parent = db.get(OrgUnit, body.parent_id)
         if not parent:
             raise HTTPException(
                 status_code=404, detail="Parent site not found"
             )
-        # Same fault as create_site had: existence was checked, ownership
-        # was not, so a site could be re-parented under another trust's.
-        # Compared against this site's own organisation rather than the
-        # caller's, which differ when an admin belongs to several.
+            # Same fault as create_site had: existence was checked, ownership
+            # was not, so a site could be re-parented under another trust's.
+            # Compared against this site's own organisation rather than the
+            # caller's, which differ when an admin belongs to several.
         accountable = organisation_id_of_site(db, site_id)
         if accountable is None:
             raise HTTPException(
@@ -4996,7 +5004,7 @@ def toggle_site_active(
     """Toggle a site's active status. Requires ``manage_users``."""
     _require_site_in_own_org(db, current_user, site_id)
 
-    site = db.get(Site, site_id)
+    site = db.get(OrgUnit, site_id)
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
     _require_not_a_root(site)
@@ -5033,7 +5041,7 @@ def delete_site(
     """Delete a site. Requires ``manage_users``."""
     _require_site_in_own_org(db, current_user, site_id)
 
-    site = db.get(Site, site_id)
+    site = db.get(OrgUnit, site_id)
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
     _require_not_a_root(site)
@@ -5070,7 +5078,7 @@ def link_site_to_org(
     if not org:
         raise HTTPException(status_code=404, detail="Organisation not found")
 
-    site = db.get(Site, site_id)
+    site = db.get(OrgUnit, site_id)
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
 
@@ -5117,7 +5125,7 @@ def unlink_site_from_org(
     _require_own_org(db, current_user, org_id)
 
     org = db.get(Organisation, org_id)
-    site = db.get(Site, site_id)
+    site = db.get(OrgUnit, site_id)
     if org is None or site is None or site.parent_id != org.org_unit_id:
         raise HTTPException(status_code=404, detail="Link not found")
 
@@ -5126,19 +5134,18 @@ def unlink_site_from_org(
 
     return StatusResponse(status="unlinked")
 
-
-# ==========================================================================
-# LINKS BETWEEN PLACES
-# ==========================================================================
-#
-# Ownership is the parent column and nothing else. Everything that is not
-# ownership — a school teaching on a trust's wards, two trusts sharing a
-# laboratory — is a row here, so that a second relationship never becomes a
-# second parent and splits "who is accountable for this place" into two
-# answers.
-#
-# A link confers nothing on its own. What a relation is expected to confer
-# is declared beside it in ``app/org_units/relations.py``.
+    # ==========================================================================
+    # LINKS BETWEEN PLACES
+    # ==========================================================================
+    #
+    # Ownership is the parent column and nothing else. Everything that is not
+    # ownership — a school teaching on a trust's wards, two trusts sharing a
+    # laboratory — is a row here, so that a second relationship never becomes a
+    # second parent and splits "who is accountable for this place" into two
+    # answers.
+    #
+    # A link confers nothing on its own. What a relation is expected to confer
+    # is declared beside it in ``app/org_units/relations.py``.
 
 
 def _link_item(link: OrgUnitLink, names: dict[int, str]) -> OrgUnitLinkItem:
@@ -5181,7 +5188,7 @@ def _links_of(db: Session, site_id: int) -> OrgUnitLinksOut:
         names = {
             row.id: row.name
             for row in db.execute(
-                select(Site.id, Site.name).where(Site.id.in_(wanted))
+                select(OrgUnit.id, OrgUnit.name).where(OrgUnit.id.in_(wanted))
             ).all()
         }
 
@@ -5208,7 +5215,7 @@ def list_site_links(
     """
     _require_site_in_own_org(db, current_user, site_id)
 
-    site = db.get(Site, site_id)
+    site = db.get(OrgUnit, site_id)
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
 
@@ -5243,7 +5250,7 @@ def create_site_link(
     """
     _require_site_in_own_org(db, current_user, site_id)
 
-    source = db.get(Site, site_id)
+    source = db.get(OrgUnit, site_id)
     if not source:
         raise HTTPException(status_code=404, detail="Site not found")
 
@@ -5253,7 +5260,7 @@ def create_site_link(
             detail="A place cannot be linked to itself",
         )
 
-    target = db.get(Site, body.target_id)
+    target = db.get(OrgUnit, body.target_id)
     if not target:
         raise HTTPException(status_code=404, detail="Target site not found")
 
@@ -5344,7 +5351,7 @@ def _mirror_clinical_lead(
         role: The role just written to ``site_member``.
         actor: Who made the change.
     """
-    site = db.get(Site, site_id)
+    site = db.get(OrgUnit, site_id)
     if site is None:
         return
 
@@ -5354,7 +5361,7 @@ def _mirror_clinical_lead(
             set_clinical_lead(db, site, person, appointed_by=actor)
         return
 
-    # Demoted out of the post, so the post falls vacant.
+        # Demoted out of the post, so the post falls vacant.
     if clinical_leads_of(db, [site_id]).get(site_id) == user_id:
         set_clinical_lead(db, site, None)
 
@@ -5379,7 +5386,7 @@ def add_site_staff(
     """
     _require_site_in_own_org(db, current_user, site_id)
 
-    site = db.get(Site, site_id)
+    site = db.get(OrgUnit, site_id)
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
 
@@ -5394,11 +5401,11 @@ def add_site_staff(
             f"{', '.join(sorted(valid_roles))}",
         )
 
-    # The request still names a role, because "make this person the clinical
-    # lead" is what the interface is asking for. What gets stored is a
-    # capacity, and clinical lead is not one of those — it is a post, filled
-    # below by _mirror_clinical_lead. Someone appointed to it is a member of
-    # the site in the ordinary way.
+        # The request still names a role, because "make this person the clinical
+        # lead" is what the interface is asking for. What gets stored is a
+        # capacity, and clinical lead is not one of those — it is a post, filled
+        # below by _mirror_clinical_lead. Someone appointed to it is a member of
+        # the site in the ordinary way.
     capacity = "staff" if role == "clinical_lead" else role
 
     # One lead per site is enforced by max_holders on the post, not by a
@@ -5416,11 +5423,11 @@ def add_site_staff(
     if not target_user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Check if already assigned
+        # Check if already assigned
     existing = db.execute(
-        select(site_member).where(
-            site_member.c.org_unit_id == site_id,
-            site_member.c.user_id == user_id,
+        select(org_unit_member).where(
+            org_unit_member.c.org_unit_id == site_id,
+            org_unit_member.c.user_id == user_id,
         )
     ).first()
     # The grant, in the same act as the membership — see
@@ -5437,10 +5444,10 @@ def add_site_staff(
     if existing:
         # Update role
         db.execute(
-            site_member.update()
+            org_unit_member.update()
             .where(
-                site_member.c.org_unit_id == site_id,
-                site_member.c.user_id == user_id,
+                org_unit_member.c.org_unit_id == site_id,
+                org_unit_member.c.user_id == user_id,
             )
             .values(capacity=capacity)
         )
@@ -5448,7 +5455,7 @@ def add_site_staff(
         return AddSiteStaffResponse(status="updated")
 
     db.execute(
-        site_member.insert().values(
+        org_unit_member.insert().values(
             org_unit_id=site_id,
             user_id=user_id,
             capacity=capacity,
@@ -5477,7 +5484,7 @@ def remove_site_staff(
 
     # Vacate the post before the row goes, so the handover is recorded
     # rather than the holder simply disappearing.
-    site = db.get(Site, site_id)
+    site = db.get(OrgUnit, site_id)
     if (
         site is not None
         and clinical_leads_of(db, [site_id]).get(site_id) == user_id
@@ -5485,9 +5492,9 @@ def remove_site_staff(
         set_clinical_lead(db, site, None)
 
     result = db.execute(
-        site_member.delete().where(
-            site_member.c.org_unit_id == site_id,
-            site_member.c.user_id == user_id,
+        org_unit_member.delete().where(
+            org_unit_member.c.org_unit_id == site_id,
+            org_unit_member.c.user_id == user_id,
         )
     )
 
@@ -5556,10 +5563,9 @@ def link_patient_to_user(
         fhir_patient_id=fhir_patient_id,
     )
 
-
-# ==========================================================================
-# EXTERNAL ACCESS (invite / accept / revoke)
-# ==========================================================================
+    # ==========================================================================
+    # EXTERNAL ACCESS (invite / accept / revoke)
+    # ==========================================================================
 
 
 @router.post(
@@ -5673,14 +5679,14 @@ def accept_invite(
             grant.revoked_at = None
         return AcceptInviteOut(status="access_granted", user_id=existing.id)
 
-    # New user registration
+        # New user registration
     if not body.username or not body.password:
         raise HTTPException(
             status_code=422,
             detail="username and password required for new registration",
         )
 
-    # Validate uniqueness
+        # Validate uniqueness
     if db.scalar(select(User).where(User.username == body.username)):
         raise HTTPException(status_code=409, detail="Username already taken")
 
@@ -5810,10 +5816,9 @@ def list_external_access(
         ]
     )
 
-
-# ---------------------------------------------------------------------------
-# Messaging
-# ---------------------------------------------------------------------------
+    # ---------------------------------------------------------------------------
+    # Messaging
+    # ---------------------------------------------------------------------------
 
 
 @router.post(
@@ -6335,7 +6340,7 @@ def ci_teaching_sync(
     if not hmac.compare_digest(provided, token.get_secret_value()):
         raise HTTPException(401, "Invalid token")
 
-    # Discover banks
+        # Discover banks
     bucket = settings.TEACHING_GCS_BUCKET
     base_path = settings.TEACHING_QUESTION_BANK_PATH
     bank_ids: list[str] = []
@@ -6353,8 +6358,8 @@ def ci_teaching_sync(
             synced=[], errors=[], message="No banks found"
         )
 
-    # Resolve the organisation — use the first org that has
-    # a teaching bank configured, or the first org in the system
+        # Resolve the organisation — use the first org that has
+        # a teaching bank configured, or the first org in the system
     from app.features.teaching.models import QuestionBankConfig
 
     existing_config = db.execute(
@@ -6454,21 +6459,22 @@ def ci_teaching_sync(
 
     return CiTeachingSyncOut(synced=synced, errors=errors)
 
+    # --- Transcode completion callback (service token auth) ---
+    #
+    # Beside the sync endpoint rather than on `teaching_router`, and for the
+    # same reason the passport's public router sits apart: that router carries
+    # `requires_feature("teaching")`, which resolves a feature flag through the
+    # caller's organisation membership. A Cloud Run Job has no user, no
+    # organisation and nothing for that gate to resolve through.
+    #
+    # This closes the one gap that kept the pipeline from working end to end.
+    # The backend fires the transcode job and deliberately does not wait —
+    # encoding takes minutes and an admin's request cannot hold open for it —
+    # so without this report nothing ever learns the job finished,
+    # `transcoded_at` stays null, and the availability gate hides a module
+    # whose renditions are sitting in the bucket.
 
-# --- Transcode completion callback (service token auth) ---
-#
-# Beside the sync endpoint rather than on `teaching_router`, and for the
-# same reason the passport's public router sits apart: that router carries
-# `requires_feature("teaching")`, which resolves a feature flag through the
-# caller's organisation membership. A Cloud Run Job has no user, no
-# organisation and nothing for that gate to resolve through.
-#
-# This closes the one gap that kept the pipeline from working end to end.
-# The backend fires the transcode job and deliberately does not wait —
-# encoding takes minutes and an admin's request cannot hold open for it —
-# so without this report nothing ever learns the job finished,
-# `transcoded_at` stays null, and the availability gate hides a module
-# whose renditions are sitting in the bucket.
+
 @router.post(
     "/ci/teaching/transcode-complete",
     response_model=TranscodeCompleteOut,
@@ -6516,9 +6522,9 @@ def ci_transcode_complete(
         # orphaned and the lifecycle rule will sweep them.
         raise HTTPException(404, "No such media asset")
 
-    # The job reports filenames; the suffix-to-column mapping lives here,
-    # in the one place that already owns it. A job that knew column names
-    # would need redeploying whenever one was renamed.
+        # The job reports filenames; the suffix-to-column mapping lives here,
+        # in the one place that already owns it. A job that knew column names
+        # would need redeploying whenever one was renamed.
     names = set(body.outputs)
     set_flags: list[str] = []
     for field, suffix in RENDITION_FLAGS:
@@ -6527,9 +6533,9 @@ def ci_transcode_complete(
         if present:
             set_flags.append(field)
 
-    # Last, and only once the flags are right: this is what the
-    # availability gate reads, so setting it before them would open a
-    # window where a module is servable and its renditions unrecorded.
+            # Last, and only once the flags are right: this is what the
+            # availability gate reads, so setting it before them would open a
+            # window where a module is servable and its renditions unrecorded.
     link.transcoded_at = datetime.now(UTC)
     db.flush()
 
@@ -6555,13 +6561,14 @@ def ci_transcode_complete(
 
     return TranscodeCompleteOut(recorded=True, flags=set_flags)
 
+    # --- Caption completion callback (service token auth) ---
+    #
+    # Its own endpoint rather than a mode of the one above. The transcode
+    # callback rewrites every rendition flag from the list it is given, so a
+    # report naming only a `.vtt` would clear `has_1080p` and `has_poster`
+    # and stamp a `transcoded_at` for a transcode that never ran.
 
-# --- Caption completion callback (service token auth) ---
-#
-# Its own endpoint rather than a mode of the one above. The transcode
-# callback rewrites every rendition flag from the list it is given, so a
-# report naming only a `.vtt` would clear `has_1080p` and `has_poster`
-# and stamp a `transcoded_at` for a transcode that never ran.
+
 @router.post(
     "/ci/teaching/caption-complete",
     response_model=CaptionCompleteOut,
@@ -6602,9 +6609,9 @@ def ci_caption_complete(
     if link is None:
         raise HTTPException(404, "No such media asset")
 
-    # This column only. `captions_reviewed_at` is a human's statement
-    # that they read the text, and a job re-running must not erase it —
-    # nor claim it, which is why this never sets it either.
+        # This column only. `captions_reviewed_at` is a human's statement
+        # that they read the text, and a job re-running must not erase it —
+        # nor claim it, which is why this never sets it either.
     link.has_captions = True
     db.flush()
 
@@ -6650,7 +6657,7 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
             if ".." in part or "/" in part:
                 raise HTTPException(400, "Invalid path")
 
-        # Restrict to allowed image extensions
+                # Restrict to allowed image extensions
         ext = Path(filename).suffix.lower()
         if ext not in _ALLOWED_IMAGE_EXTENSIONS:
             raise HTTPException(400, "Invalid file type")
@@ -6668,7 +6675,8 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
         )
         return FileResponse(file_path, media_type=content_type)
 
-    # api-schema-check: allow-opaque-permanent
+        # api-schema-check: allow-opaque-permanent
+
     @app.get("/api/teaching/images/cover/{module_id}/{filename}")
     async def _serve_cover_image(
         module_id: str,
@@ -6684,7 +6692,7 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
             if ".." in part or "/" in part:
                 raise HTTPException(400, "Invalid path")
 
-        # Restrict to allowed image extensions
+                # Restrict to allowed image extensions
         ext = Path(filename).suffix.lower()
         if ext not in _ALLOWED_IMAGE_EXTENSIONS:
             raise HTTPException(400, "Invalid file type")
@@ -6702,7 +6710,8 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
         )
         return FileResponse(file_path, media_type=content_type)
 
-    # api-schema-check: allow-opaque-permanent
+        # api-schema-check: allow-opaque-permanent
+
     @app.get("/api/teaching/images/learning/{module_id}/{filename}")
     async def _serve_learning_image(
         module_id: str,
@@ -6718,7 +6727,7 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
             if ".." in part or "/" in part:
                 raise HTTPException(400, "Invalid path")
 
-        # Restrict to allowed image extensions
+                # Restrict to allowed image extensions
         ext = Path(filename).suffix.lower()
         if ext not in _ALLOWED_IMAGE_EXTENSIONS:
             raise HTTPException(400, "Invalid file type")
@@ -6736,7 +6745,8 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
         )
         return FileResponse(file_path, media_type=content_type)
 
-    # api-schema-check: allow-opaque-permanent
+        # api-schema-check: allow-opaque-permanent
+
     @app.get("/api/teaching/videos/{module_id}/{filename}")
     async def _serve_learning_video(
         module_id: str,

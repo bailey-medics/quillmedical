@@ -35,11 +35,11 @@ from app.cbac.positions import appoint, holders_of, is_vacant
 from app.cbac.scoped import can_practise_at
 from app.models import (
     Organisation,
+    OrgUnit,
     Position,
     PractisingCompetency,
-    Site,
     User,
-    site_member,
+    org_unit_member,
 )
 from app.organisations import add_organisation_member
 from app.security import hash_password
@@ -63,7 +63,7 @@ def _authorise(
     competency: str,
     *,
     org: Organisation | None = None,
-    site: Site | None = None,
+    site: OrgUnit | None = None,
 ) -> None:
     """Enable one competency for one person at one place."""
     db.add(
@@ -106,13 +106,13 @@ def _org(db: Session, name: str) -> Organisation:
     return org
 
 
-def _site(db: Session, name: str, org: Organisation) -> Site:
-    site = Site(name=name, type="ward")
+def _site(db: Session, name: str, org: Organisation) -> OrgUnit:
+    site = OrgUnit(name=name, type="ward")
     db.add(site)
     db.commit()
     db.execute(
-        update(Site)
-        .where(Site.id == site.id)
+        update(OrgUnit)
+        .where(OrgUnit.id == site.id)
         .values(parent_id=org.org_unit_id)
     )
     db.commit()
@@ -197,7 +197,7 @@ class TestOneSiteWithinAnOrganisation:
         )
         _staff(db_session, manager, trust)
         db_session.execute(
-            insert(site_member).values(
+            insert(org_unit_member).values(
                 org_unit_id=ward.id,
                 user_id=manager.id,
                 capacity="staff",
@@ -273,7 +273,7 @@ class TestOneSiteWithinAnOrganisation:
 class TestPositionsAsOpposedToCompetencies:
     """A position can be vacant. A competency cannot."""
 
-    def _lead_post(self, db_session, site: Site) -> Position:
+    def _lead_post(self, db_session, site: OrgUnit) -> Position:
         post = Position(
             org_unit_id=site.id,
             kind="clinical_lead",

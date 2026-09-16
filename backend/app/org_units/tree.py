@@ -21,7 +21,7 @@ broken, and the guard in the write path exists to stop that happening.
 from sqlalchemy import literal, select
 from sqlalchemy.orm import Session, aliased
 
-from app.models import Organisation, Site
+from app.models import Organisation, OrgUnit
 
 #: How far a walk goes before it gives up. Ten is far past anything the
 #: application builds — trust, hospital, building, ward, room is five —
@@ -48,14 +48,14 @@ def root_ids_of(db: Session, unit_ids: list[int]) -> dict[int, int]:
         return {}
 
     base = select(
-        Site.id.label("origin"),
-        Site.id.label("id"),
-        Site.parent_id.label("parent_id"),
+        OrgUnit.id.label("origin"),
+        OrgUnit.id.label("id"),
+        OrgUnit.parent_id.label("parent_id"),
         literal(0).label("depth"),
-    ).where(Site.id.in_(unit_ids))
+    ).where(OrgUnit.id.in_(unit_ids))
 
     walk = base.cte("upwards", recursive=True)
-    above = aliased(Site)
+    above = aliased(OrgUnit)
     walk = walk.union(
         select(
             walk.c.origin,
@@ -110,12 +110,12 @@ def ancestor_ids(db: Session, unit_id: int) -> list[int]:
         The ids of its ancestors, closest first.
     """
     base = select(
-        Site.parent_id.label("id"),
+        OrgUnit.parent_id.label("id"),
         literal(1).label("depth"),
-    ).where(Site.id == unit_id, Site.parent_id.is_not(None))
+    ).where(OrgUnit.id == unit_id, OrgUnit.parent_id.is_not(None))
 
     walk = base.cte("ancestors", recursive=True)
-    above = aliased(Site)
+    above = aliased(OrgUnit)
     walk = walk.union(
         select(above.parent_id, walk.c.depth + 1).where(
             above.id == walk.c.id,
@@ -185,12 +185,12 @@ def descendant_ids(db: Session, root_ids: list[int]) -> set[int]:
     if not root_ids:
         return set()
 
-    base = select(Site.id.label("id"), literal(0).label("depth")).where(
-        Site.parent_id.in_(root_ids)
+    base = select(OrgUnit.id.label("id"), literal(0).label("depth")).where(
+        OrgUnit.parent_id.in_(root_ids)
     )
 
     walk = base.cte("subtree", recursive=True)
-    below = aliased(Site)
+    below = aliased(OrgUnit)
     walk = walk.union(
         select(below.id, walk.c.depth + 1).where(
             below.parent_id == walk.c.id,
