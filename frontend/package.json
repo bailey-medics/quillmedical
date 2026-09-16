@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "private": true,
-  "packageManager": "yarn@4.14.1",
+  "packageManager": "yarn@4.18.0",
   "workspaces": [
     "public_pages"
   ],
@@ -40,7 +40,7 @@
     "@fontsource-variable/cormorant-garamond": "^5.3.0",
     "@mantine/core": "^9.0.0",
     "@mantine/dates": "^9.0.0",
-    "@mantine/dropzone": "9.6.0",
+    "@mantine/dropzone": "9.6.1",
     "@mantine/hooks": "^9.0.0",
     "@mantine/notifications": "^9.0.0",
     "@tabler/icons-react": "^3.34.1",
