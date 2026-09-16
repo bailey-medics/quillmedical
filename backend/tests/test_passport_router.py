@@ -42,6 +42,7 @@ from jose import jwt
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app import main
 from app.config import settings
 from app.features.passport import router
 from app.features.passport.blobs import BlobStore
@@ -1936,6 +1937,80 @@ class TestEvidence:
 
         assert response.status_code == 400
 
+    def test_bytes_that_do_not_match_the_claimed_type_are_refused(
+        self, holder_client: TestClient
+    ) -> None:
+        """A caller sets `Content-Type`, so the allow-list checks a claim.
+
+        Without reading the bytes, anything at all uploads as a PDF —
+        the allow-list would be satisfied by the header alone.
+        """
+        passport_id = _create_passport(holder_client)
+
+        response = self._upload(
+            holder_client,
+            passport_id,
+            content=b"#!/bin/sh\necho not a pdf",
+            filename="pretending.pdf",
+            media_type="application/pdf",
+        )
+
+        assert response.status_code == 400
+        assert "does not look like" in response.text
+
+    def test_a_real_png_is_accepted(self, holder_client: TestClient) -> None:
+        """The sniff must admit genuine files, not merely refuse fakes.
+
+        A check that rejected everything would pass the test above and
+        make evidence upload useless.
+        """
+        passport_id = _create_passport(holder_client)
+
+        response = self._upload(
+            holder_client,
+            passport_id,
+            content=b"\x89PNG\r\n\x1a\n" + b"\x00" * 64,
+            filename="scan.png",
+            media_type="image/png",
+        )
+
+        assert response.status_code == 201, response.text
+
+    def test_a_file_over_the_ceiling_is_refused(
+        self, holder_client: TestClient
+    ) -> None:
+        """Enforced by reading, not by trusting `Content-Length`.
+
+        The middleware's limit reads that header and skips the check
+        when it is absent, so the route counts the bytes it actually
+        receives.
+
+        The size is chosen to land between the two ceilings, which is
+        the only band where this proves anything. An earlier version of
+        this test used ``MAX_EVIDENCE_BYTES + 1`` while the two limits
+        were equal, so the multipart envelope pushed every case past the
+        middleware and it answered first: deleting the route's check
+        outright left the test green. Here the body stays under
+        ``MAX_REQUEST_BODY_BYTES``, so a 413 can only have come from the
+        route.
+        """
+        passport_id = _create_passport(holder_client)
+        assert router.MAX_EVIDENCE_BYTES < main.MAX_REQUEST_BODY_BYTES, (
+            "The route's ceiling must sit below the middleware's, or "
+            "the middleware answers first and this test proves nothing"
+        )
+
+        oversized = b"%PDF-" + b"\x00" * (router.MAX_EVIDENCE_BYTES)
+        assert len(oversized) > router.MAX_EVIDENCE_BYTES
+        assert len(oversized) < main.MAX_REQUEST_BODY_BYTES
+
+        response = self._upload(holder_client, passport_id, content=oversized)
+
+        assert response.status_code == 413
+        # The middleware's refusal is plain text; the route's is JSON
+        # with a detail. Distinguishing them is the point of the test.
+        assert "8 MB" in response.text
+
     def test_an_empty_file_is_refused(self, holder_client: TestClient) -> None:
         passport_id = _create_passport(holder_client)
 
@@ -1969,6 +2044,68 @@ class TestEvidence:
         """
         passport_id = _create_passport(holder_client)
         uploaded = self._upload(holder_client, passport_id).json()
+
+        response = holder_client.post(
+            f"/api/passport/{passport_id}/certificates",
+            json={
+                "title": "Advanced life support",
+                "issuer": "Resuscitation Council UK",
+                "awarded_on": "2026-03-14",
+                "attachments": [uploaded],
+            },
+        )
+
+        assert response.status_code == 201, response.text
+
+    def test_a_record_cannot_relabel_evidence_as_another_type(
+        self, holder_client: TestClient
+    ) -> None:
+        """The sniff at upload is not the only place it must hold.
+
+        Uploading is one call and naming the blob in a record is
+        another, so guarding only the first leaves the second taking the
+        caller's word. A genuine PNG, uploaded honestly, was then
+        nameable as `application/pdf` and the record said so
+        permanently — the same claim the upload sniff refuses, made one
+        step later against bytes already in the store.
+        """
+        passport_id = _create_passport(holder_client)
+        uploaded = self._upload(
+            holder_client,
+            passport_id,
+            content=b"\x89PNG\r\n\x1a\n" + b"\x00" * 64,
+            filename="scan.png",
+            media_type="image/png",
+        ).json()
+
+        response = holder_client.post(
+            f"/api/passport/{passport_id}/certificates",
+            json={
+                "title": "Advanced life support",
+                "issuer": "Resuscitation Council UK",
+                "awarded_on": "2026-03-14",
+                "attachments": [{**uploaded, "media_type": "application/pdf"}],
+            },
+        )
+
+        assert response.status_code == 400, response.text
+
+    def test_a_record_can_name_evidence_as_what_it_is(
+        self, holder_client: TestClient
+    ) -> None:
+        """The counterpart: the check must not refuse honest records.
+
+        A check that rejected every media type would pass the test
+        above and make attachments unusable.
+        """
+        passport_id = _create_passport(holder_client)
+        uploaded = self._upload(
+            holder_client,
+            passport_id,
+            content=b"\x89PNG\r\n\x1a\n" + b"\x00" * 64,
+            filename="scan.png",
+            media_type="image/png",
+        ).json()
 
         response = holder_client.post(
             f"/api/passport/{passport_id}/certificates",

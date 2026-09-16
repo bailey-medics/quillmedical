@@ -3335,6 +3335,198 @@ not deferred items: deferring is for what nobody should build yet.
       path containment, symlink refusal) and of the authorisation
       matrix, including external assessors and the reflections
       holder-only rule.
+
+  - **A first pass was done by whoever wrote the upload route, which
+    is the weakest possible reviewer for it.** Treat the findings below
+    as a starting list, not a clearance. Four of the six concerns hold
+    up; two do not.
+  - **A second, independent pass then found five more, and two of them
+    undid claims the first pass had made.** This is the entry worth
+    reading twice: the self-review above did not merely miss things, it
+    asserted two fixes that did not work. The author of a fix is the
+    worst judge of whether it holds, because the same wrong assumption
+    writes both the code and the test that is supposed to catch it.
+    What follows is what the independent pass found, and what was done
+    about it. The box stays unticked until somebody who did not write
+    any of this agrees it holds.
+  - **Path containment holds.** `paths.shard` and `paths.blob` both
+    regex-validate before building anything — 32 lower-case hex for a
+    passport id, 64 for a digest — so `../` cannot survive into a path.
+    A filename never reaches a path or an object key at all: it is
+    stored as data beside the hash. `test_a_filename_never_reaches_an_object_key`
+    pins that with an NHS-number-shaped filename.
+  - **Authorisation holds.** `upload_evidence`, all three export routes
+    and both reflection routes use `_require_holder`, not
+    `_require_reader`. Seven tests in
+    `TestWhatAnExternalAssessorCannotReach` pin what an invited outsider
+    cannot reach, and an accepted assessor passing the feature gate
+    still gets a 404 on the passport itself.
+  - **No content sniffing — found, fixed, then found to be only half
+    fixed.** The route read `file.content_type`, which the client sets,
+    so anything at all uploaded as `application/pdf`. `_looks_like` now
+    checks the magic bytes of all five accepted formats. A short table
+    rather than a dependency: five fixed signatures that have not
+    changed in decades, against a supply-chain surface for something
+    this small. It is a sanity check and not a parser — a well-formed
+    header on malformed content still passes, which is the right depth,
+    because nothing executes or serves these bytes by path. A mismatch
+    is refused rather than corrected: storing the sniffed type would
+    record something the holder never claimed.
+
+    The half that was missed: **uploading and naming are two separate
+    calls, and only the first was guarded.** `_attachments` copied the
+    caller's `media_type` straight into the permanent record, so a PNG
+    uploaded honestly could be filed as `application/pdf` by the
+    `/certificates` call that followed — the same lie the sniff exists
+    to refuse, told one step later. `_attachments` now re-reads the
+    stored bytes and checks them against the claimed type, because the
+    record outlives the request and it is the record that has to be
+    true. Pinned by
+    `test_a_record_cannot_relabel_evidence_as_another_type`, with
+    `test_a_record_can_name_evidence_as_what_it_is` as the counterpart
+    so the check cannot pass by refusing everything.
+
+  - **The size limit trusted a header — fixed, but the fix was
+    unreachable.** `limit_request_body_size` in `main.py` reads
+    `Content-Length` and skips the check when it is absent, so a
+    chunked request was unbounded and `await file.read()` would have
+    put all of it in memory. The route now reads in 64 KB chunks and
+    answers 413 the moment the ceiling is passed.
+
+    What the independent pass caught: **`MAX_EVIDENCE_BYTES` was set to
+    exactly `MAX_REQUEST_BODY_BYTES`, so the route's own limit could
+    never fire.** Multipart framing adds boundaries, headers and the
+    filename on top of the file, so a 10 MB file always makes an 11 MB
+    body, and the middleware killed it first with a plain-text refusal.
+    The route's ceiling is now 8 MB, leaving room for the envelope, so
+    a file between the two is answered by the handler that knows it is
+    evidence.
+
+  - **The size test was passing for the wrong reason, which is worse
+    than failing.** It asserted a 413 on a file just over the ceiling,
+    and got one — from the middleware, not from the route it was
+    written to cover. Deleting the route's size check entirely left it
+    green. It now picks a size between the two limits, asserts that the
+    limits are ordered so such a band exists, and matches on the
+    route's own message. Proved by disabling the route's check and
+    watching the upload return 201 rather than 413.
+
+    **This is the general lesson, not a detail about one test.** The
+    earlier session proved that test ran by deliberately breaking its
+    assertion and watching it fail. That shows a test executes; it says
+    nothing about whether it exercises the code it names. The check
+    that matters is breaking **the code under test** and watching the
+    test fail — which is what both new tests were held to.
+
+  - **A comment claimed a memory benefit the code did not deliver.**
+    The chunked read was justified as avoiding holding the file in
+    memory, but `b"".join(chunks)` materialises it anyway, and
+    Starlette has already spooled any part over 1 MB to disk. The real
+    benefit is a ceiling that holds when `Content-Length` is absent,
+    and a refusal that arrives without reading the rest. The comment
+    now says that instead. Hashing and storing need every byte
+    together, so the join stays.
+  - **Symlink refusal is untested and probably unneeded here.** Nothing
+    in the module mentions symlinks. The upload path never creates one:
+    `BlobStore.put` writes bytes to a hash-derived path. The risk would
+    be on _import_ of a bundle from elsewhere, which is a deferred item
+    and where the check belongs.
+- [x] Act on the independent review's five findings. All five are done
+      and each is covered above: the route ceiling dropped to 8 MB so
+      it is reachable; the size test rewritten to fail when the route's
+      check is removed; `_attachments` re-sniffing stored bytes against
+      the claimed media type; the misleading memory comment corrected;
+      and the over-long line wrapped. `ftyp` and `heix` added to
+      `cspell.config.json` — real ISO base-media and HEIC brand
+      identifiers, not invented words. The stray `evil.pdf` left at the
+      repository root by a manual probe was deleted.
+
+  - **Verified by breaking each fix rather than by running the
+    suite.** Disabling the media-type re-check turned the relabel test
+    from 400 to 201; disabling the route's size check turned the
+    oversize test from 413 to 201, which also proves the middleware is
+    no longer the thing answering. Both restored, then
+    `just ub -k passport` run clean at 677 tests, up from 675.
+    `pre-commit run --files ...` passes every hook, mypy and bandit
+    included.
+
+- [x] Retest against the real local stack, not just the unit suite.
+      Everything above was proved with `TestClient`, which builds the
+      ASGI request in-process — so the middleware ordering, the
+      multipart envelope and the real `Content-Length` are all
+      approximated rather than exercised. The 8 MB ceiling in
+      particular is a claim about how two limits interact across a real
+      HTTP boundary, and that is exactly the kind of thing `TestClient`
+      is entitled to get wrong.
+
+  - **What to run.** Bring up the dev stack, sign in as a holder in a
+    passport-enabled organisation, and through the browser: upload a
+    genuine PDF and a genuine PNG, attach each to a certificate, and
+    export the passport. Then the refusals, by `curl` against the
+    running backend so the framing is real — a file renamed `.pdf` that
+    is not one, a file between 8 MB and 10 MB, and a file over 10 MB.
+    Expect the route's JSON detail for the first two and the
+    middleware's plain-text refusal only for the third.
+  - **What would falsify the fix.** A file in the 8–10 MB band coming
+    back as the middleware's plain-text 413 rather than the route's
+    JSON one. That would mean the envelope is larger than the 2 MB gap
+    allows and the ceiling needs to drop further.
+  - **Run on 16 September against the dev stack through Caddy on port
+    80, so the proxy, the middleware ordering and the real multipart
+    framing were all exercised.** A throwaway holder was created, used
+    and deleted; the dev database is back to the single user and two
+    organisations it started with, and `/data/passports` was emptied.
+  - **The size fix holds, and the falsification test is the one that
+    proves it.** A 9 MB file came back as
+    `{"detail":"That file is larger than 8 MB"}` with content type
+    `application/json` — the route. An 11 MB file came back as
+    `Request body too large` as `text/plain` — the middleware. Two
+    different handlers, told apart by content type rather than by the
+    status code they share, which is what makes the result meaningful.
+  - **The relabel bypass is closed on the real stack.** A genuine PNG
+    uploaded honestly, then named `application/pdf` on the certificate
+    call, was refused with `That evidence is not application/pdf`. The
+    same attachment named `image/png` was accepted, and the stored
+    `certificate.yaml` records `media_type: image/png` — the truth
+    rather than the caller's claim.
+  - **Sniffing and export both hold.** A shell script sent as
+    `application/pdf` was refused; genuine PDF and PNG were accepted.
+    All three export routes returned real files — `file(1)` reports a
+    2-page PDF and a zip, not an error page under a content type.
+  - **The integrity claim was checked end to end, not assumed.**
+    `git bundle verify` passes, the bundle clones, its history
+    contains both commits, and the head commit matches the one the API
+    returned. The recorded evidence hash equals `shasum -a 256` of the
+    uploaded file byte for byte — the verification `VERIFY.md` promises
+    a holder can run in ten years, run here with ordinary tools.
+
+  - **Found while testing: the dev stack cannot store passports at
+    all.** `PASSPORT_LOCAL_ROOT` defaults to `/data/passports` and
+    `compose.dev.yml` neither creates nor mounts it, so the first
+    create returned a 500 — `Permission denied: '/data'`, wrapped in a
+    `CleanupFailedError` because the rollback then could not find the
+    directory it was trying to remove. It was worked around for this
+    run with `mkdir` inside the container, which is container-local and
+    will vanish on the next rebuild. **This is a real gap and is not
+    fixed.** The feature has evidently never been exercised on the dev
+    stack. It needs a named volume in `compose.dev.yml` mounted at
+    `/data` and owned by uid 10001, which is a change to the shared dev
+    stack and so is left for a deliberate decision rather than folded
+    into a security fix.
+  - **Also found: the dev database was six migrations behind**,
+    including the destructive `drop system permissions column`, so
+    `passport_assessor_invite` did not exist. Upgraded to head with
+    permission. Worth knowing that a dev database can sit far enough
+    behind that the feature under test cannot run at all.
+
+- [ ] Give the dev stack somewhere to put passports. Found by the
+      real-stack test above: `compose.dev.yml` has no `/data` mount, so
+      `PASSPORT_LOCAL_ROOT` points at a directory the backend container
+      cannot create, and creating a passport 500s. Needs a named volume
+      mounted at `/data` and writable by uid 10001. Touches the shared
+      dev stack, so it is its own change rather than part of the
+      security work — but until it lands, nobody can try the passport
+      locally without the manual `mkdir` workaround.
 - [ ] Enable the `passport` feature for the first South West
       organisation and onboard a small assessor group.
 - [x] Document the module under `docs/docs/backend/passport/index.md`
