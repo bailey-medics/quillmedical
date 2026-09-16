@@ -21,9 +21,9 @@ from sqlalchemy.orm import Session
 from app.db import get_core_db
 from app.models import (
     OrganisationFeature,
+    Site,
     User,
     organisation_member,
-    organisation_site,
     site_member,
 )
 
@@ -61,18 +61,17 @@ def requires_feature(feature_key: str) -> Callable[..., User]:
                 .scalars()
                 .all()
             )
-            | set(
-                db.execute(
-                    select(organisation_site.c.organisation_id)
-                    .join(
-                        site_member,
-                        site_member.c.site_id == organisation_site.c.site_id,
-                    )
+            | {
+                org_id
+                for org_id in db.execute(
+                    select(Site.organisation_id)
+                    .join(site_member, site_member.c.site_id == Site.id)
                     .where(site_member.c.user_id == user.id)
                 )
                 .scalars()
                 .all()
-            )
+                if org_id is not None
+            }
         )
 
         if not user_org_ids:

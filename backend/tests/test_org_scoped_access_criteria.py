@@ -28,7 +28,7 @@ that the answer differs by place, not which competency it is.
 from __future__ import annotations
 
 import pytest
-from sqlalchemy import insert
+from sqlalchemy import insert, update
 from sqlalchemy.orm import Session
 
 from app.cbac.positions import appoint, holders_of, is_vacant
@@ -40,7 +40,6 @@ from app.models import (
     Site,
     User,
     organisation_member,
-    organisation_site,
     site_member,
 )
 from app.security import hash_password
@@ -111,9 +110,7 @@ def _site(db: Session, name: str, org: Organisation) -> Site:
     db.add(site)
     db.commit()
     db.execute(
-        insert(organisation_site).values(
-            organisation_id=org.id, site_id=site.id
-        )
+        update(Site).where(Site.id == site.id).values(organisation_id=org.id)
     )
     db.commit()
     return site

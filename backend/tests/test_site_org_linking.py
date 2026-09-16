@@ -8,14 +8,13 @@ Covers:
 
 from __future__ import annotations
 
-from sqlalchemy import insert, select
+from sqlalchemy import insert, select, update
 
 from app.models import (
     Organisation,
     Site,
     User,
     organisation_member,
-    organisation_site,
     site_member,
 )
 from app.security import hash_password
@@ -179,9 +178,9 @@ class TestSiteRoutesAreScopedToYourOrganisations:
         db_session.add_all([org, site])
         db_session.commit()
         db_session.execute(
-            insert(organisation_site).values(
-                organisation_id=org.id, site_id=site.id
-            )
+            update(Site)
+            .where(Site.id == site.id)
+            .values(organisation_id=org.id)
         )
         db_session.commit()
         return site
@@ -198,9 +197,9 @@ class TestSiteRoutesAreScopedToYourOrganisations:
             )
         )
         db_session.execute(
-            insert(organisation_site).values(
-                organisation_id=org.id, site_id=site.id
-            )
+            update(Site)
+            .where(Site.id == site.id)
+            .values(organisation_id=org.id)
         )
         db_session.commit()
         return site
@@ -310,21 +309,17 @@ class TestSiteRoutesAreScopedToYourOrganisations:
     ):
         site = self._foreign_site(db_session)
         org_id = db_session.execute(
-            select(organisation_site.c.organisation_id).where(
-                organisation_site.c.site_id == site.id
-            )
+            select(Site.organisation_id).where(Site.id == site.id)
         ).scalar_one()
 
         resp = authenticated_admin_client.delete(
             f"/api/organisations/{org_id}/sites/{site.id}"
         )
         assert resp.status_code == 404
-        still_linked = db_session.execute(
-            select(organisation_site).where(
-                organisation_site.c.site_id == site.id
-            )
-        ).first()
-        assert still_linked is not None
+        still_owned = db_session.execute(
+            select(Site.organisation_id).where(Site.id == site.id)
+        ).scalar_one()
+        assert still_owned == org_id
 
     def test_your_own_site_is_still_reachable(
         self, authenticated_admin_client, db_session, test_admin

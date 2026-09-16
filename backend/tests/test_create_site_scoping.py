@@ -24,7 +24,7 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 from httpx import Response
-from sqlalchemy import insert, select
+from sqlalchemy import insert, select, update
 from sqlalchemy.orm import Session
 
 from app.models import (
@@ -32,7 +32,6 @@ from app.models import (
     Site,
     User,
     organisation_member,
-    organisation_site,
 )
 
 
@@ -49,9 +48,7 @@ def _site_in(db: Session, name: str, org: Organisation) -> Site:
     db.add(site)
     db.commit()
     db.execute(
-        insert(organisation_site).values(
-            organisation_id=org.id, site_id=site.id
-        )
+        update(Site).where(Site.id == site.id).values(organisation_id=org.id)
     )
     db.commit()
     db.refresh(site)
@@ -108,16 +105,10 @@ class TestASiteIsAlwaysOwned:
         assert resp.status_code == 200
         site_id = resp.json()["id"]
 
-        linked = (
-            db_session.execute(
-                select(organisation_site.c.organisation_id).where(
-                    organisation_site.c.site_id == site_id
-                )
-            )
-            .scalars()
-            .all()
-        )
-        assert list(linked) == [own_org.id]
+        owner = db_session.execute(
+            select(Site.organisation_id).where(Site.id == site_id)
+        ).scalar_one()
+        assert owner == own_org.id
 
     def test_omitting_the_organisation_is_refused(
         self, authenticated_admin_client: TestClient, own_org: Organisation
