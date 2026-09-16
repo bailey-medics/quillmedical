@@ -29,6 +29,8 @@ the caller was told.
 from __future__ import annotations
 
 import hashlib
+import io
+import zipfile
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -42,6 +44,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.features.passport import router
+from app.features.passport.blobs import BlobStore
 from app.features.passport.models import (
     AssessorRegistrationVerification,
     Passport,
@@ -59,7 +62,7 @@ from app.models import (
     organisation_site,
     site_member,
 )
-from app.passport_storage import get_passport_store
+from app.passport_storage import get_blob_store, get_passport_store
 from app.security import PASSPORT_INVITE_TYPE, hash_password
 
 #: From the oncology set drafted in Phase 0. Chosen because it declares
@@ -79,10 +82,21 @@ def passport_store(tmp_path: Path) -> Iterator[LocalPassportStore]:
     location even if settings are wrong. Cleared afterwards so one test
     cannot leak a store into the next.
     """
-    store = LocalPassportStore(tmp_path / "passports")
+    root = tmp_path / "passports"
+    store = LocalPassportStore(root)
+    blobs = BlobStore(root)
+
+    # Both, rooted together. Evidence lives beside the repository it
+    # belongs to, so overriding only the passport store would leave the
+    # blob store resolving the real configured location — which is the
+    # one thing this fixture exists to make impossible.
     app.dependency_overrides[get_passport_store] = lambda: store
+    app.dependency_overrides[get_blob_store] = lambda: blobs
+
     yield store
+
     app.dependency_overrides.pop(get_passport_store, None)
+    app.dependency_overrides.pop(get_blob_store, None)
 
 
 def _make_user(
@@ -571,7 +585,12 @@ class TestInbox:
 
         assert response.status_code == 200, response.text
         assert len(response.json()) == 1
-        assert response.json()[0]["competency"]["id"] == COMPETENCY
+        assert response.json()[0]["sign_off"]["competency"]["id"] == COMPETENCY
+
+        # The passport the request belongs to, which the assessor cannot
+        # work out for themselves: this is the only sign-off response
+        # that names it, and without it they cannot act on the request.
+        assert response.json()[0]["passport_id"] == passport_id
 
     def test_an_unrelated_assessor_sees_nothing(
         self,
@@ -1829,6 +1848,320 @@ class TestAdminVerifyAndRevoke:
         admin_client = _login(test_client, "otheradmin")
         response = admin_client.delete(
             f"/api/passport/assessors/{assessor_id}/membership"
+        )
+
+        assert response.status_code == 404
+
+
+class TestEvidence:
+    """Uploading a file, and naming it in a record.
+
+    The bytes come through this application deliberately: a blob is
+    addressed by the SHA-256 of its own contents, so the address cannot
+    be computed without reading every byte. That is the whole reason the
+    signed-URL pattern used for teaching videos does not apply, and the
+    reason the size and type checks live at this boundary — `blobs.py`
+    decides neither, because storing is separate from admitting.
+    """
+
+    def _upload(
+        self,
+        client: TestClient,
+        passport_id: str,
+        *,
+        content: bytes = b"%PDF-1.4 a scanned certificate",
+        filename: str = "certificate.pdf",
+        media_type: str = "application/pdf",
+    ) -> Response:
+        return client.post(
+            f"/api/passport/{passport_id}/evidence",
+            files={"file": (filename, content, media_type)},
+        )
+
+    def test_a_holder_can_upload_evidence(
+        self, holder_client: TestClient
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+
+        response = self._upload(holder_client, passport_id)
+
+        assert response.status_code == 201, response.text
+        body = response.json()
+        assert body["filename"] == "certificate.pdf"
+        assert body["media_type"] == "application/pdf"
+        assert body["size_bytes"] > 0
+
+    def test_the_hash_is_of_the_bytes(self, holder_client: TestClient) -> None:
+        """The address is the content, which is the whole integrity claim.
+
+        Asserted against a hash computed here rather than merely checking
+        the shape: a route returning a plausible-looking digest of
+        something else would satisfy a format check and break every
+        verification a holder could run.
+        """
+        passport_id = _create_passport(holder_client)
+        content = b"%PDF-1.4 a scanned certificate"
+
+        response = self._upload(holder_client, passport_id, content=content)
+
+        expected = hashlib.sha256(content).hexdigest()
+        assert response.json()["hash"] == f"sha256:{expected}"
+
+    def test_the_same_file_twice_is_one_blob(
+        self, holder_client: TestClient
+    ) -> None:
+        """So an interrupted upload is retried rather than reconciled."""
+        passport_id = _create_passport(holder_client)
+
+        first = self._upload(holder_client, passport_id)
+        second = self._upload(holder_client, passport_id)
+
+        assert first.status_code == 201
+        assert second.status_code == 201
+        assert first.json()["hash"] == second.json()["hash"]
+
+    def test_an_unsupported_type_is_refused(
+        self, holder_client: TestClient
+    ) -> None:
+        """Storing is separate from admitting, and this is admitting."""
+        passport_id = _create_passport(holder_client)
+
+        response = self._upload(
+            holder_client,
+            passport_id,
+            content=b"#!/bin/sh\necho hello",
+            filename="script.sh",
+            media_type="application/x-sh",
+        )
+
+        assert response.status_code == 400
+
+    def test_an_empty_file_is_refused(self, holder_client: TestClient) -> None:
+        passport_id = _create_passport(holder_client)
+
+        response = self._upload(holder_client, passport_id, content=b"")
+
+        assert response.status_code == 400
+
+    def test_an_unrelated_user_cannot_upload(
+        self,
+        test_client: TestClient,
+        passport_store: LocalPassportStore,
+        org: Organisation,
+    ) -> None:
+        """404 rather than 403, as everywhere else."""
+        holder_client = _login(test_client, "holder")
+        passport_id = _create_passport(holder_client)
+
+        bystander_client = _login(test_client, "bystander")
+        response = self._upload(bystander_client, passport_id)
+
+        assert response.status_code == 404
+
+    def test_a_record_can_name_uploaded_evidence(
+        self, holder_client: TestClient
+    ) -> None:
+        """The upload response goes straight back into the record.
+
+        It is the only place the filename and media type exist: the blob
+        store keeps bytes at a path named by their hash and nothing
+        beside it says what the file was called.
+        """
+        passport_id = _create_passport(holder_client)
+        uploaded = self._upload(holder_client, passport_id).json()
+
+        response = holder_client.post(
+            f"/api/passport/{passport_id}/certificates",
+            json={
+                "title": "Advanced life support",
+                "issuer": "Resuscitation Council UK",
+                "awarded_on": "2026-03-14",
+                "attachments": [uploaded],
+            },
+        )
+
+        assert response.status_code == 201, response.text
+
+    def test_a_record_cannot_name_evidence_that_is_not_there(
+        self, holder_client: TestClient
+    ) -> None:
+        """A dangling reference in a record that claims to be checkable.
+
+        Refused rather than recorded and hoped for: the passport's whole
+        claim is that somebody can verify it years later, and a hash
+        resolving to nothing defeats that quietly.
+        """
+        passport_id = _create_passport(holder_client)
+
+        response = holder_client.post(
+            f"/api/passport/{passport_id}/certificates",
+            json={
+                "title": "Advanced life support",
+                "issuer": "Resuscitation Council UK",
+                "awarded_on": "2026-03-14",
+                "attachments": [
+                    {
+                        "hash": "sha256:" + "ab" * 32,
+                        "filename": "invented.pdf",
+                        "size_bytes": 1,
+                        "media_type": "application/pdf",
+                    }
+                ],
+            },
+        )
+
+        assert response.status_code == 400
+
+
+class TestExport:
+    """Taking the record away.
+
+    All three are holder-only. The zip is the one that could never be
+    anything else — it copies the canonical files byte for byte, so it
+    carries the holder's reflections whatever the caller asked for — but
+    an export hands over a whole passport in one call, and that is not
+    something to offer a named assessor for the sake of symmetry with
+    the per-record reads.
+
+    The content checks are deliberately about the bytes rather than the
+    status code. A route that returned an empty body, or JSON, or an
+    error page with a 200 on it, would satisfy a status assertion and
+    hand the holder a file that is not what it claims to be.
+    """
+
+    def test_the_holder_can_export_markdown(
+        self, holder_client: TestClient
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+
+        response = holder_client.get(f"/api/passport/{passport_id}/export.md")
+
+        assert response.status_code == 200, response.text
+        assert response.headers["content-type"].startswith("text/markdown")
+        assert passport_id in response.headers["content-disposition"]
+
+    def test_the_holder_can_export_a_pdf(
+        self, holder_client: TestClient
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+
+        response = holder_client.get(f"/api/passport/{passport_id}/export.pdf")
+
+        assert response.status_code == 200, response.text
+        assert response.headers["content-type"] == "application/pdf"
+        # A PDF says so in its first bytes. Without this the test would
+        # pass on an empty body or an error page served with a 200.
+        assert response.content.startswith(b"%PDF")
+
+    def test_the_holder_can_export_the_bundle(
+        self, holder_client: TestClient
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+
+        response = holder_client.get(f"/api/passport/{passport_id}/export.zip")
+
+        assert response.status_code == 200, response.text
+        assert response.headers["content-type"] == "application/zip"
+        assert response.content.startswith(b"PK")
+
+    def test_the_bundle_holds_what_a_holder_needs(
+        self, holder_client: TestClient
+    ) -> None:
+        """The README and the git bundle above all.
+
+        The zip is the artefact a registrar carries between trusts, and
+        it is worth nothing if it arrives without the explanation or the
+        history.
+        """
+        passport_id = _create_passport(holder_client)
+
+        response = holder_client.get(f"/api/passport/{passport_id}/export.zip")
+
+        with zipfile.ZipFile(io.BytesIO(response.content)) as archive:
+            names = set(archive.namelist())
+
+        assert "README.md" in names
+        assert "VERIFY.md" in names
+        assert "passport.bundle" in names
+
+    def test_reflections_are_left_out_unless_asked_for(
+        self, holder_client: TestClient
+    ) -> None:
+        """The default is the narrow one.
+
+        A rendering handed to a panel or an employer must not carry a
+        reflection by accident: written reflection can be disclosed in
+        legal proceedings, so forgetting the parameter has to fail
+        safe rather than fail open.
+        """
+        passport_id = _create_passport(holder_client)
+        holder_client.post(
+            f"/api/passport/{passport_id}/reflections",
+            json={
+                "title": "A difficult airway",
+                "written_on": "2026-03-14",
+                "body": "What I would do differently next time.",
+                "anonymised_confirmed": True,
+            },
+        )
+
+        default = holder_client.get(f"/api/passport/{passport_id}/export.md")
+        asked = holder_client.get(
+            f"/api/passport/{passport_id}/export.md?reflections=true"
+        )
+
+        assert "What I would do differently" not in default.text
+        assert "What I would do differently" in asked.text
+
+    @pytest.mark.parametrize("suffix", ["md", "pdf", "zip"])
+    def test_an_unrelated_user_cannot_export(
+        self,
+        test_client: TestClient,
+        passport_store: LocalPassportStore,
+        org: Organisation,
+        suffix: str,
+    ) -> None:
+        """404 rather than 403, as everywhere else."""
+        holder_client = _login(test_client, "holder")
+        passport_id = _create_passport(holder_client)
+
+        bystander_client = _login(test_client, "bystander")
+        response = bystander_client.get(
+            f"/api/passport/{passport_id}/export.{suffix}"
+        )
+
+        assert response.status_code == 404
+
+    @pytest.mark.parametrize("suffix", ["md", "pdf", "zip"])
+    def test_a_named_assessor_cannot_export_either(
+        self,
+        test_client: TestClient,
+        passport_store: LocalPassportStore,
+        org: Organisation,
+        assessor: User,
+        suffix: str,
+    ) -> None:
+        """Being asked to sign one competency is not being handed the lot.
+
+        An assessor may read the sign-off they were named on. An export
+        is every record in the passport, reflections included in the
+        zip's case, which is a different thing entirely.
+        """
+        holder_client = _login(test_client, "holder")
+        passport_id = _create_passport(holder_client)
+        holder_client.post(
+            f"/api/passport/{passport_id}/competencies/{COMPETENCY}"
+            "/requests",
+            json={
+                "assessor_user_id": assessor.id,
+                "observed_on": "2026-03-14",
+                "level_id": LEVEL,
+            },
+        )
+
+        assessor_client = _login(test_client, "assessor")
+        response = assessor_client.get(
+            f"/api/passport/{passport_id}/export.{suffix}"
         )
 
         assert response.status_code == 404
