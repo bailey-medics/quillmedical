@@ -341,6 +341,28 @@ module "cloud_run_backend" {
         "jobs", "quill-transcode-${var.environment}",
       ])
 
+      # The caption job, fired from the transcode completion report once a
+      # 720p rendition exists for Whisper to read.
+      #
+      # Every other half of the caption wiring shipped without this one:
+      # the setting in `config.py`, `start_caption` reading it, the
+      # invoker grant below, the deploy step pointing the job at its
+      # image, and the job's own callback URL and token. Only the line
+      # naming the job to the backend was missing, so the first real
+      # transcode completed, called `start_caption`, found nothing
+      # configured and returned — leaving "No captions" on the admin card
+      # with no job ever having run.
+      #
+      # It failed exactly as designed: `start_caption` treats an unset
+      # job as development rather than as an error. That is right for a
+      # laptop and invisible in production, which is the trade this
+      # comment exists to flag.
+      TEACHING_CAPTION_JOB = join("/", [
+        "projects", var.project_id,
+        "locations", var.region,
+        "jobs", "quill-caption-${var.environment}",
+      ])
+
       # Same host as the app, deliberately: the load balancer routes
       # /videos/* to the backend bucket, so the signed cookie is same-origin
       # and the browser sends it on media requests with no cross-site

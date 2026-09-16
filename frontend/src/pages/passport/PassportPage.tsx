@@ -16,6 +16,7 @@ import { Stack } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
 import PageHeader from "@/components/page-header";
 import CompetencySummary from "@/components/passport/CompetencySummary";
+import PassportExportButtons from "@/components/passport/PassportExportButtons";
 import ErrorState from "@/components/error-state/ErrorState";
 import { fetchMyPassport } from "@lib/passport";
 import type { PassportDetail } from "@lib/passport";
@@ -66,6 +67,13 @@ export function Component() {
           navigate(`/passport/competency/${competencyId}`)
         }
       />
+
+      {/* Only once there is a passport to export. Offering a download
+          before one exists would hand somebody an empty file and call it
+          their record. */}
+      {passport && (
+        <PassportExportButtons passportId={passport.passport.passport_id} />
+      )}
     </Stack>
   );
 }
