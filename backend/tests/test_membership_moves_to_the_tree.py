@@ -85,7 +85,7 @@ def _by_place(db: Session, org: Organisation, user: User) -> str | None:
     """Read the same row directly, as a row against the organisation's place."""
     return db.scalar(
         select(site_member.c.capacity).where(
-            site_member.c.site_id == org.org_unit_id,
+            site_member.c.org_unit_id == org.org_unit_id,
             site_member.c.user_id == user.id,
         )
     )
@@ -174,7 +174,6 @@ class TestRemovingMembership:
         add_organisation_member(db_session, org.id, person.id, "staff")
         db_session.execute(
             insert(site_member).values(
-                site_id=ward.id,
                 org_unit_id=ward.id,
                 user_id=person.id,
                 capacity="trainee",
@@ -187,7 +186,7 @@ class TestRemovingMembership:
 
         still_on_ward = db_session.scalar(
             select(site_member.c.capacity).where(
-                site_member.c.site_id == ward.id,
+                site_member.c.org_unit_id == ward.id,
                 site_member.c.user_id == person.id,
             )
         )
@@ -206,16 +205,14 @@ class TestTheNarrowerDefault:
         person = _person(db_session, "alice")
 
         db_session.execute(
-            insert(site_member).values(
-                site_id=ward.id, org_unit_id=ward.id, user_id=person.id
-            )
+            insert(site_member).values(org_unit_id=ward.id, user_id=person.id)
         )
         db_session.commit()
 
         assert (
             db_session.scalar(
                 select(site_member.c.capacity).where(
-                    site_member.c.site_id == ward.id,
+                    site_member.c.org_unit_id == ward.id,
                     site_member.c.user_id == person.id,
                 )
             )
@@ -297,7 +294,6 @@ class TestMembershipWrittenStraightToAPlace:
 
         db_session.execute(
             insert(site_member).values(
-                site_id=org.org_unit_id,
                 org_unit_id=org.org_unit_id,
                 user_id=person.id,
                 capacity="staff",
@@ -317,7 +313,6 @@ class TestMembershipWrittenStraightToAPlace:
 
         db_session.execute(
             insert(site_member).values(
-                site_id=ward.id,
                 org_unit_id=ward.id,
                 user_id=person.id,
                 capacity="trainee",

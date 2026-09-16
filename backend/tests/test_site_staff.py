@@ -57,7 +57,6 @@ class TestSiteStaffClinicalLeadConstraint:
 
         db_session.execute(
             insert(site_member).values(
-                site_id=site.id,
                 org_unit_id=site.id,
                 user_id=existing_lead.id,
                 capacity="staff",
@@ -102,7 +101,6 @@ class TestSiteStaffClinicalLeadConstraint:
 
         db_session.execute(
             insert(site_member).values(
-                site_id=site.id,
                 org_unit_id=site.id,
                 user_id=lead.id,
                 capacity="staff",
@@ -125,7 +123,6 @@ class TestSiteStaffClinicalLeadConstraint:
 
         db_session.execute(
             insert(site_member).values(
-                site_id=site.id,
                 org_unit_id=site.id,
                 user_id=staff.id,
                 capacity="staff",
@@ -160,7 +157,6 @@ class TestSiteStaffClinicalLeadConstraint:
 
         db_session.execute(
             insert(site_member).values(
-                site_id=site.id,
                 org_unit_id=site.id,
                 user_id=lead.id,
                 capacity="staff",
@@ -199,7 +195,6 @@ class TestSiteStaffClinicalLeadConstraint:
 
         db_session.execute(
             insert(site_member).values(
-                site_id=site.id,
                 org_unit_id=site.id,
                 user_id=lead.id,
                 capacity="staff",

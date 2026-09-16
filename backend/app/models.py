@@ -791,18 +791,9 @@ site_member = Table(
     "site_member",
     Base.metadata,
     Column(
-        "site_id",
-        ForeignKey("sites.id", ondelete="CASCADE"),
-        primary_key=True,
-    ),
-    # The same place, under the name the tree uses. Both columns are
-    # written while the rename is in flight; the old one goes once
-    # nothing reads it. See the expand-contract rule in
-    # .claude/rules/backend.md.
-    Column(
         "org_unit_id",
         ForeignKey("sites.id", ondelete="CASCADE"),
-        nullable=True,
+        primary_key=True,
     ),
     Column(
         "user_id",
@@ -1092,12 +1083,14 @@ def _remove_the_root_with_it(
     connection.execute(
         update(Site).where(Site.parent_id == place_id).values(parent_id=None)
     )
-    for table, column in (
-        (site_member, "site_id"),
-        (organisation_patient_member, "org_unit_id"),
-        (message_organisation, "org_unit_id"),
+    for table in (
+        site_member,
+        organisation_patient_member,
+        message_organisation,
     ):
-        connection.execute(table.delete().where(table.c[column] == place_id))
+        connection.execute(
+            table.delete().where(table.c.org_unit_id == place_id)
+        )
     connection.execute(
         delete(OrganisationFeature).where(
             OrganisationFeature.org_unit_id == place_id
@@ -1160,11 +1153,11 @@ class PractisingCompetency(Base):
     Attributes:
         id: Primary key.
         user_id: The person.
-        site_id: The place. An organisation's place is its own row in the
-            tree. Nullable in the column type only: the check constraint
-            requires it, which is how a required column is added to a
-            populated table without a server default that would make no
-            sense for an id.
+        org_unit_id: The place. An organisation's place is its own row in
+            the tree. Nullable in the column type only: the check
+            constraint requires it, which is how a required column is
+            added to a populated table without a server default that would
+            make no sense for an id.
         competency: A competency id from ``shared/competency-definitions/``.
         authorised_by: Who authorised practice here. Null once that user is
             deleted, so the fact it was authorised outlives the person who
@@ -1175,19 +1168,13 @@ class PractisingCompetency(Base):
     __tablename__ = "practising_competency"
     __table_args__ = (
         CheckConstraint(
-            "site_id IS NOT NULL",
+            "org_unit_id IS NOT NULL",
             name="ck_practising_competency_place_required",
         ),
         # One ordinary unique constraint now that there is one place
         # column. It used to be two partial unique indexes, because one of
         # the two place columns was always NULL and SQL treats NULLs as
         # distinct, so a constraint over all of them never fired.
-        UniqueConstraint(
-            "user_id",
-            "site_id",
-            "competency",
-            name="uq_practising_competency_place",
-        ),
         UniqueConstraint(
             "user_id",
             "org_unit_id",
@@ -1197,8 +1184,8 @@ class PractisingCompetency(Base):
         # Both directions the resolver asks: what may this person practise
         # here, and who here may practise this.
         Index(
-            "ix_practising_competency_site",
-            "site_id",
+            "ix_practising_competency_org_unit",
+            "org_unit_id",
             "competency",
         ),
         Index("ix_practising_competency_user", "user_id"),
@@ -1208,13 +1195,8 @@ class PractisingCompetency(Base):
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
-    site_id: Mapped[int | None] = mapped_column(
-        ForeignKey("sites.id", ondelete="CASCADE"), nullable=True
-    )
     org_unit_id: Mapped[int | None] = mapped_column(
-        ForeignKey("sites.id", ondelete="CASCADE"),
-        nullable=True,
-        index=True,
+        ForeignKey("sites.id", ondelete="CASCADE"), nullable=True
     )
     competency: Mapped[str] = mapped_column(String(100), nullable=False)
     authorised_by: Mapped[int | None] = mapped_column(
@@ -1278,8 +1260,8 @@ class Position(Base):
 
     Attributes:
         id: Primary key.
-        site_id: The place. An organisation's place is its own row in the
-            tree.
+        org_unit_id: The place. An organisation's place is its own row in
+            the tree.
         kind: One of ``POSITION_KINDS``.
         title: What this organisation calls it, for display.
         requires_competency: A competency the holder must have authorised at
@@ -1293,17 +1275,12 @@ class Position(Base):
     __tablename__ = "position"
     __table_args__ = (
         CheckConstraint(
-            "site_id IS NOT NULL",
+            "org_unit_id IS NOT NULL",
             name="ck_position_place_required",
         ),
         CheckConstraint(
             "max_holders IS NULL OR max_holders > 0",
             name="ck_position_max_holders_positive",
-        ),
-        UniqueConstraint(
-            "site_id",
-            "kind",
-            name="uq_position_place_kind",
         ),
         UniqueConstraint(
             "org_unit_id",
@@ -1313,9 +1290,6 @@ class Position(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    site_id: Mapped[int | None] = mapped_column(
-        ForeignKey("sites.id", ondelete="CASCADE"), nullable=True
-    )
     org_unit_id: Mapped[int | None] = mapped_column(
         ForeignKey("sites.id", ondelete="CASCADE"),
         nullable=True,
@@ -1345,54 +1319,6 @@ class Position(Base):
         if value is not None:
             validate_competency_ids([value])
         return value
-
-
-# ------------------------------------------------------------------
-# The place column is being renamed, so both names are kept in step
-# ------------------------------------------------------------------
-#
-# ``site_id`` is becoming ``org_unit_id``, because the table it points at
-# is becoming ``org_unit`` and a column named after a site would then name
-# nothing. A column rename here is a copy-and-retire across deploys (see
-# .claude/rules/backend.md): the old revision and the new one run side by
-# side against one schema, so for a while both columns have to hold the
-# same place.
-#
-# Mirroring in the mapper rather than at every write, because there are
-# dozens of writes and one of them being missed is a row whose place is
-# known under one name and not the other — which is the failure this whole
-# plan exists to remove, reintroduced by accident. Both listeners go when
-# the old column does.
-
-
-def _mirror_the_place(target: Any) -> None:
-    """Copy whichever place column is set into the other."""
-    if target.org_unit_id is None and target.site_id is not None:
-        target.org_unit_id = target.site_id
-    elif target.site_id is None and target.org_unit_id is not None:
-        target.site_id = target.org_unit_id
-
-
-@event.listens_for(PractisingCompetency, "before_insert")
-@event.listens_for(PractisingCompetency, "before_update")
-def _keep_the_authorised_place_in_step(
-    _mapper: Mapper[PractisingCompetency],
-    _connection: Connection,
-    target: PractisingCompetency,
-) -> None:
-    """Hold both names for the place an authorisation is at."""
-    _mirror_the_place(target)
-
-
-@event.listens_for(Position, "before_insert")
-@event.listens_for(Position, "before_update")
-def _keep_the_posts_place_in_step(
-    _mapper: Mapper[Position],
-    _connection: Connection,
-    target: Position,
-) -> None:
-    """Hold both names for the place a post belongs to."""
-    _mirror_the_place(target)
 
 
 class PositionHolding(Base):

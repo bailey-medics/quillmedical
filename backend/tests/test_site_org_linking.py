@@ -128,7 +128,6 @@ class TestRemoveSiteStaff:
 
         db_session.execute(
             insert(site_member).values(
-                site_id=site.id,
                 org_unit_id=site.id,
                 user_id=member.id,
                 capacity="staff",
@@ -276,7 +275,6 @@ class TestSiteRoutesAreScopedToYourOrganisations:
         db_session.commit()
         db_session.execute(
             insert(site_member).values(
-                site_id=site.id,
                 org_unit_id=site.id,
                 user_id=member.id,
                 capacity="staff",

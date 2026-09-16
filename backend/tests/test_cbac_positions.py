@@ -73,7 +73,9 @@ def _authorise(
     db.add(
         PractisingCompetency(
             user_id=user.id,
-            site_id=org.org_unit_id if org else (site.id if site else None),
+            org_unit_id=(
+                org.org_unit_id if org else (site.id if site else None)
+            ),
             competency=competency,
         )
     )
@@ -90,7 +92,7 @@ def _post(
     kind: str = "clinical_lead",
 ) -> Position:
     post = Position(
-        site_id=org.org_unit_id if org else (site.id if site else None),
+        org_unit_id=org.org_unit_id if org else (site.id if site else None),
         kind=kind,
         title="Clinical lead",
         requires_competency=requires,
@@ -225,7 +227,7 @@ class TestHowManyMayHoldIt:
         site = _site(db_session)
         db_session.add(
             Position(
-                site_id=site.id,
+                org_unit_id=site.id,
                 kind="clinical_lead",
                 title="Clinical lead",
                 max_holders=0,
@@ -364,7 +366,7 @@ class TestThePostBelongsToOnePlace:
         _post(db_session, site=site)
         db_session.add(
             Position(
-                site_id=site.id,
+                org_unit_id=site.id,
                 kind="clinical_lead",
                 title="Another clinical lead",
             )
@@ -377,7 +379,7 @@ class TestThePostBelongsToOnePlace:
         site = _site(db_session)
         with pytest.raises(ValueError, match="Unknown position kind"):
             Position(
-                site_id=site.id,
+                org_unit_id=site.id,
                 kind="chief_wizard",
                 title="Chief wizard",
             )
@@ -386,7 +388,7 @@ class TestThePostBelongsToOnePlace:
         site = _site(db_session)
         with pytest.raises(ValueError, match="Unknown competency"):
             Position(
-                site_id=site.id,
+                org_unit_id=site.id,
                 kind="clinical_lead",
                 title="Clinical lead",
                 requires_competency="prescribe_moonbeams",

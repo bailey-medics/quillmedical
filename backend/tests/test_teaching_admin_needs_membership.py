@@ -94,7 +94,6 @@ def _join_linked_site(db: Session, org: Organisation, user: User) -> None:
     )
     db.execute(
         site_member.insert().values(
-            site_id=site.id,
             org_unit_id=site.id,
             user_id=user.id,
             capacity="staff",
