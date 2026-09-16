@@ -290,7 +290,7 @@ class TestOrganisationModel:
         membership table: the two tables merged into one keyed on a place
         in the tree, and an organisation's place is its own row.
         """
-        from app.models import Organisation, site_member
+        from app.models import Organisation, org_unit_member
 
         org = Organisation(name="Test Clinic", type="clinic")
         user = User(
@@ -306,9 +306,9 @@ class TestOrganisationModel:
         db_session.commit()
 
         rows = db_session.execute(
-            select(site_member.c.user_id, site_member.c.capacity).where(
-                site_member.c.org_unit_id == org.org_unit_id
-            )
+            select(
+                org_unit_member.c.user_id, org_unit_member.c.capacity
+            ).where(org_unit_member.c.org_unit_id == org.org_unit_id)
         ).all()
 
         assert [(user.id, "trainee")] == [tuple(row) for row in rows]
@@ -317,18 +317,18 @@ class TestOrganisationModel:
         """Test organisation patient member association table."""
         from sqlalchemy import func, insert, select
 
-        from app.models import Organisation, organisation_patient_member
+        from app.models import Organisation, org_unit_patient_member
 
         org = Organisation(name="Test Practice", type="general_practice")
         db_session.add(org)
         db_session.commit()
 
         # Add patient IDs directly to the association table
-        stmt1 = insert(organisation_patient_member).values(
+        stmt1 = insert(org_unit_patient_member).values(
             org_unit_id=org.org_unit_id,
             patient_id="patient-123",
         )
-        stmt2 = insert(organisation_patient_member).values(
+        stmt2 = insert(org_unit_patient_member).values(
             org_unit_id=org.org_unit_id,
             patient_id="patient-456",
         )
@@ -339,10 +339,8 @@ class TestOrganisationModel:
         # Count patients in organisation
         patient_count = db_session.scalar(
             select(func.count())
-            .select_from(organisation_patient_member)
-            .where(
-                organisation_patient_member.c.org_unit_id == org.org_unit_id
-            )
+            .select_from(org_unit_patient_member)
+            .where(org_unit_patient_member.c.org_unit_id == org.org_unit_id)
         )
         assert patient_count == 2
 

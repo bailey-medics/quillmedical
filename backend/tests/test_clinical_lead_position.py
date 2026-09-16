@@ -18,11 +18,11 @@ from sqlalchemy.orm import Session
 from app.cbac.positions import clinical_lead_post, clinical_leads_of
 from app.models import (
     Organisation,
+    OrgUnit,
     Position,
     PositionHolding,
-    Site,
     User,
-    site_member,
+    org_unit_member,
 )
 from app.organisations import add_organisation_member
 from app.security import hash_password
@@ -42,14 +42,14 @@ def _user(db: Session, username: str) -> User:
     return user
 
 
-def _org_with_site(db: Session, admin: User) -> tuple[Organisation, Site]:
+def _org_with_site(db: Session, admin: User) -> tuple[Organisation, OrgUnit]:
     org = Organisation(name="Trust", type="hospital")
-    site = Site(name="Ward 1", type="ward")
+    site = OrgUnit(name="Ward 1", type="ward")
     db.add_all([org, site])
     db.commit()
     db.execute(
-        update(Site)
-        .where(Site.id == site.id)
+        update(OrgUnit)
+        .where(OrgUnit.id == site.id)
         .values(parent_id=org.org_unit_id)
     )
     add_organisation_member(db, org.id, admin.id, "trainee")
@@ -92,9 +92,9 @@ class TestAppointingThroughTheApi:
         )
 
         row = db_session.execute(
-            select(site_member.c.capacity).where(
-                site_member.c.org_unit_id == site.id,
-                site_member.c.user_id == lead.id,
+            select(org_unit_member.c.capacity).where(
+                org_unit_member.c.org_unit_id == site.id,
+                org_unit_member.c.user_id == lead.id,
             )
         ).first()
         assert row is not None and row[0] == "staff"
@@ -209,7 +209,7 @@ class TestTheReadsAnswerFromThePost:
         org, site = _org_with_site(db_session, test_superadmin)
         impostor = _user(db_session, "dr_column_only")
         db_session.execute(
-            insert(site_member).values(
+            insert(org_unit_member).values(
                 org_unit_id=site.id,
                 user_id=impostor.id,
                 capacity="staff",
@@ -228,7 +228,7 @@ class TestThePostIsCreatedOnDemand:
     """A post nobody has tried to fill is not a vacancy anyone is chasing."""
 
     def test_a_new_site_has_no_clinical_lead_post(self, db_session):
-        site = Site(name="Fresh Ward", type="ward")
+        site = OrgUnit(name="Fresh Ward", type="ward")
         db_session.add(site)
         db_session.commit()
 
@@ -240,7 +240,7 @@ class TestThePostIsCreatedOnDemand:
         )
 
     def test_asking_for_it_creates_it_vacant(self, db_session):
-        site = Site(name="Fresh Ward", type="ward")
+        site = OrgUnit(name="Fresh Ward", type="ward")
         db_session.add(site)
         db_session.commit()
 
@@ -252,7 +252,7 @@ class TestThePostIsCreatedOnDemand:
         assert clinical_leads_of(db_session, [site.id]) == {}
 
     def test_asking_twice_returns_the_same_post(self, db_session):
-        site = Site(name="Fresh Ward", type="ward")
+        site = OrgUnit(name="Fresh Ward", type="ward")
         db_session.add(site)
         db_session.commit()
 
@@ -302,7 +302,7 @@ class TestTheSiteResponseNamesTheLead:
         _org, site = _org_with_site(db_session, test_superadmin)
         impostor = _user(db_session, "dr_column_only")
         db_session.execute(
-            insert(site_member).values(
+            insert(org_unit_member).values(
                 org_unit_id=site.id,
                 user_id=impostor.id,
                 capacity="staff",

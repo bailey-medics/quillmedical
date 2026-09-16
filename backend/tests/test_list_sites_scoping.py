@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session
 
 from app.models import (
     Organisation,
-    Site,
+    OrgUnit,
     User,
 )
 from app.organisations import add_organisation_member
@@ -36,14 +36,14 @@ def _org(db: Session, name: str) -> Organisation:
     return org
 
 
-def _site(db: Session, name: str, org: Organisation | None = None) -> Site:
-    site = Site(name=name, type="ward")
+def _site(db: Session, name: str, org: Organisation | None = None) -> OrgUnit:
+    site = OrgUnit(name=name, type="ward")
     db.add(site)
     db.commit()
     if org is not None:
         db.execute(
-            update(Site)
-            .where(Site.id == site.id)
+            update(OrgUnit)
+            .where(OrgUnit.id == site.id)
             .values(parent_id=org.org_unit_id)
         )
         db.commit()

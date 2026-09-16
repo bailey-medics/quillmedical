@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
-from app.models import Organisation, Site
+from app.models import Organisation, OrgUnit
 from app.org_units.tree import (
     MAX_TREE_DEPTH,
     ancestor_ids,
@@ -34,8 +34,8 @@ def _org(db: Session, name: str = "Trust") -> Organisation:
     return org
 
 
-def _under(db: Session, parent_id: int | None, name: str) -> Site:
-    site = Site(name=name, type="ward", parent_id=parent_id)
+def _under(db: Session, parent_id: int | None, name: str) -> OrgUnit:
+    site = OrgUnit(name=name, type="ward", parent_id=parent_id)
     db.add(site)
     db.commit()
     db.refresh(site)

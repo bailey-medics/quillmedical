@@ -12,9 +12,9 @@ from sqlalchemy import insert, update
 
 from app.models import (
     Organisation,
-    Site,
+    OrgUnit,
     User,
-    site_member,
+    org_unit_member,
 )
 from app.org_units.tree import organisation_id_of_site
 from app.organisations import add_organisation_member
@@ -24,7 +24,7 @@ from app.security import hash_password
 class TestLinkSiteToOrg:
     def test_link_success(self, authenticated_superadmin_client, db_session):
         org = Organisation(name="Link Org", type="hospital")
-        site = Site(name="Link Site", type="hospital")
+        site = OrgUnit(name="Link Site", type="hospital")
         db_session.add_all([org, site])
         db_session.commit()
 
@@ -38,7 +38,7 @@ class TestLinkSiteToOrg:
         self, authenticated_superadmin_client, db_session
     ):
         org = Organisation(name="Link Org", type="hospital")
-        site = Site(name="Link Site", type="hospital")
+        site = OrgUnit(name="Link Site", type="hospital")
         db_session.add_all([org, site])
         db_session.commit()
 
@@ -56,7 +56,7 @@ class TestLinkSiteToOrg:
     def test_link_organisation_not_found(
         self, authenticated_superadmin_client, db_session
     ):
-        site = Site(name="Link Site", type="hospital")
+        site = OrgUnit(name="Link Site", type="hospital")
         db_session.add(site)
         db_session.commit()
 
@@ -81,7 +81,7 @@ class TestLinkSiteToOrg:
 class TestUnlinkSiteFromOrg:
     def test_unlink_success(self, authenticated_superadmin_client, db_session):
         org = Organisation(name="Unlink Org", type="hospital")
-        site = Site(name="Unlink Site", type="hospital")
+        site = OrgUnit(name="Unlink Site", type="hospital")
         db_session.add_all([org, site])
         db_session.commit()
 
@@ -100,7 +100,7 @@ class TestUnlinkSiteFromOrg:
         self, authenticated_superadmin_client, db_session
     ):
         org = Organisation(name="Unlink Org", type="hospital")
-        site = Site(name="Unlink Site", type="hospital")
+        site = OrgUnit(name="Unlink Site", type="hospital")
         db_session.add_all([org, site])
         db_session.commit()
 
@@ -112,7 +112,7 @@ class TestUnlinkSiteFromOrg:
 
 class TestRemoveSiteStaff:
     def test_remove_success(self, authenticated_superadmin_client, db_session):
-        site = Site(name="Remove Staff Site", type="hospital")
+        site = OrgUnit(name="Remove Staff Site", type="hospital")
         db_session.add(site)
         db_session.flush()
 
@@ -127,7 +127,7 @@ class TestRemoveSiteStaff:
         db_session.flush()
 
         db_session.execute(
-            insert(site_member).values(
+            insert(org_unit_member).values(
                 org_unit_id=site.id,
                 user_id=member.id,
                 capacity="staff",
@@ -144,7 +144,7 @@ class TestRemoveSiteStaff:
     def test_remove_not_found(
         self, authenticated_superadmin_client, db_session
     ):
-        site = Site(name="Remove Staff Site", type="hospital")
+        site = OrgUnit(name="Remove Staff Site", type="hospital")
         member = User(
             username="notassigned",
             email="notassigned@test.local",
@@ -174,30 +174,30 @@ class TestSiteRoutesAreScopedToYourOrganisations:
     response must not confirm a site exists to someone who cannot see it.
     """
 
-    def _foreign_site(self, db_session) -> Site:
+    def _foreign_site(self, db_session) -> OrgUnit:
         """A site belonging to an organisation the test admin is not in."""
         org = Organisation(name="Someone Else's Trust", type="hospital")
-        site = Site(name="Their Ward", type="ward")
+        site = OrgUnit(name="Their Ward", type="ward")
         db_session.add_all([org, site])
         db_session.commit()
         db_session.execute(
-            update(Site)
-            .where(Site.id == site.id)
+            update(OrgUnit)
+            .where(OrgUnit.id == site.id)
             .values(parent_id=org.org_unit_id)
         )
         db_session.commit()
         return site
 
-    def _own_site(self, db_session, admin: User) -> Site:
+    def _own_site(self, db_session, admin: User) -> OrgUnit:
         """A site belonging to an organisation the admin does belong to."""
         org = Organisation(name="My Trust", type="hospital")
-        site = Site(name="My Ward", type="ward")
+        site = OrgUnit(name="My Ward", type="ward")
         db_session.add_all([org, site])
         db_session.commit()
         add_organisation_member(db_session, org.id, admin.id, "trainee")
         db_session.execute(
-            update(Site)
-            .where(Site.id == site.id)
+            update(OrgUnit)
+            .where(OrgUnit.id == site.id)
             .values(parent_id=org.org_unit_id)
         )
         db_session.commit()
@@ -238,7 +238,7 @@ class TestSiteRoutesAreScopedToYourOrganisations:
         site = self._foreign_site(db_session)
         resp = authenticated_admin_client.delete(f"/api/sites/{site.id}")
         assert resp.status_code == 404
-        assert db_session.get(Site, site.id) is not None
+        assert db_session.get(OrgUnit, site.id) is not None
 
     def test_adding_staff_to_a_foreign_site_is_refused(
         self, authenticated_admin_client, db_session
@@ -274,7 +274,7 @@ class TestSiteRoutesAreScopedToYourOrganisations:
         db_session.add(member)
         db_session.commit()
         db_session.execute(
-            insert(site_member).values(
+            insert(org_unit_member).values(
                 org_unit_id=site.id,
                 user_id=member.id,
                 capacity="staff",
@@ -296,7 +296,7 @@ class TestSiteRoutesAreScopedToYourOrganisations:
         of it, via the site-to-organisation join in ``get_user_org_ids``.
         """
         other = Organisation(name="Not Mine", type="hospital")
-        site = Site(name="Loose Site", type="ward")
+        site = OrgUnit(name="Loose Site", type="ward")
         db_session.add_all([other, site])
         db_session.commit()
 

@@ -21,7 +21,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.cbac.scoped import can_practise_at, competencies_at
-from app.models import Organisation, PractisingCompetency, Site, User
+from app.models import Organisation, OrgUnit, PractisingCompetency, User
 from app.security import hash_password
 
 COMPETENCY = "access_patient_records"
@@ -35,8 +35,8 @@ def _org(db: Session, name: str = "Trust") -> Organisation:
     return org
 
 
-def _ward(db: Session, org: Organisation, name: str = "Ward 1") -> Site:
-    site = Site(name=name, type="ward", parent_id=org.org_unit_id)
+def _ward(db: Session, org: Organisation, name: str = "Ward 1") -> OrgUnit:
+    site = OrgUnit(name=name, type="ward", parent_id=org.org_unit_id)
     db.add(site)
     db.commit()
     db.refresh(site)

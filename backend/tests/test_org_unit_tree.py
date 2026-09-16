@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
-from app.models import Organisation, Site
+from app.models import Organisation, OrgUnit
 from app.org_units.tree import (
     MAX_TREE_DEPTH,
     descendant_ids,
@@ -38,8 +38,10 @@ def _org(db: Session, name: str) -> Organisation:
     return org
 
 
-def _under(db: Session, parent_id: int | None, name: str, type_: str) -> Site:
-    site = Site(name=name, type=type_, parent_id=parent_id)
+def _under(
+    db: Session, parent_id: int | None, name: str, type_: str
+) -> OrgUnit:
+    site = OrgUnit(name=name, type=type_, parent_id=parent_id)
     db.add(site)
     db.commit()
     db.refresh(site)
@@ -51,7 +53,7 @@ class TestEveryOrganisationIsInTheTree:
         org = _org(db_session, "Trust")
 
         assert org.org_unit_id is not None
-        root = db_session.get(Site, org.org_unit_id)
+        root = db_session.get(OrgUnit, org.org_unit_id)
         assert root.name == "Trust"
         assert root.type == ORGANISATION_TYPE
         assert root.parent_id is None
@@ -63,7 +65,7 @@ class TestEveryOrganisationIsInTheTree:
         org.location = "Elsewhere"
         db_session.commit()
 
-        root = db_session.get(Site, org.org_unit_id)
+        root = db_session.get(OrgUnit, org.org_unit_id)
         db_session.refresh(root)
         assert root.name == "New Name"
         assert root.location == "Elsewhere"
@@ -240,7 +242,7 @@ class TestAnOrganisationIsNotASite:
         )
 
         assert resp.status_code == 404
-        assert db_session.get(Site, org.org_unit_id) is not None
+        assert db_session.get(OrgUnit, org.org_unit_id) is not None
 
 
 class TestDeletingAnOrganisation:
@@ -251,7 +253,7 @@ class TestDeletingAnOrganisation:
         db_session.delete(org)
         db_session.commit()
 
-        assert db_session.get(Site, root_id) is None
+        assert db_session.get(OrgUnit, root_id) is None
 
     def test_its_places_are_detached_rather_than_deleted(self, db_session):
         org = _org(db_session, "Trust")

@@ -20,9 +20,9 @@ from sqlalchemy.orm import Session
 
 from app.db import get_core_db
 from app.models import (
-    OrganisationFeature,
+    OrgUnitFeature,
     User,
-    site_member,
+    org_unit_member,
 )
 from app.org_units.tree import (
     organisation_ids_of_sites,
@@ -70,8 +70,8 @@ def requires_feature(feature_key: str) -> Callable[..., User]:
                     [
                         int(site_id)
                         for site_id in db.execute(
-                            select(site_member.c.org_unit_id).where(
-                                site_member.c.user_id == user.id
+                            select(org_unit_member.c.org_unit_id).where(
+                                org_unit_member.c.user_id == user.id
                             )
                         )
                         .scalars()
@@ -88,11 +88,11 @@ def requires_feature(feature_key: str) -> Callable[..., User]:
             )
 
         enabled = db.scalar(
-            select(OrganisationFeature.id).where(
-                OrganisationFeature.org_unit_id.in_(
+            select(OrgUnitFeature.id).where(
+                OrgUnitFeature.org_unit_id.in_(
                     root_ids_of_organisations(db, list(user_org_ids))
                 ),
-                OrganisationFeature.feature_key == feature_key,
+                OrgUnitFeature.feature_key == feature_key,
             )
         )
         if enabled is None:
