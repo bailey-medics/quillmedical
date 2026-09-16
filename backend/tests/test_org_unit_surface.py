@@ -32,6 +32,7 @@ from app.models import (
     org_unit_member,
     org_unit_patient_member,
 )
+from app.org_units.tree import root_ids_of_organisations
 from app.organisations import add_organisation_member
 from app.security import hash_password
 
@@ -1101,3 +1102,111 @@ class TestNestingStaysInsideOneOrganisation:
         assert resp.status_code == 200
         db_session.refresh(first)
         assert first.parent_id == second.id
+
+
+class TestAnOrganisationCreatedAsAPlace:
+    """A root created here is an organisation in every sense.
+
+    Two tables still describe one thing: the places, and the
+    organisations that answer in organisation ids. Creating a root
+    without the second one produced a place only a superadmin could see,
+    with nobody able to belong to it — the first thing anybody would try.
+    """
+
+    def test_it_gets_its_organisation_row(
+        self, authenticated_superadmin_client, db_session
+    ):
+        resp = authenticated_superadmin_client.post(
+            "/api/org-units",
+            json={"name": "New Trust", "type": "gp_practice"},
+        )
+
+        place_id = resp.json()["id"]
+        organisation = db_session.scalar(
+            select(Organisation).where(Organisation.org_unit_id == place_id)
+        )
+        assert organisation is not None
+        assert organisation.name == "New Trust"
+        assert organisation.type == "gp_practice"
+
+    def test_only_one_place_is_created(
+        self, authenticated_superadmin_client, db_session
+    ):
+        """The listener on the model makes a root for a new organisation.
+
+        Writing the organisation with its place already named is what
+        stops it making a second one.
+        """
+        resp = authenticated_superadmin_client.post(
+            "/api/org-units",
+            json={"name": "New Trust", "type": "organisation"},
+        )
+
+        roots = (
+            db_session.execute(
+                select(OrgUnit).where(OrgUnit.parent_id.is_(None))
+            )
+            .scalars()
+            .all()
+        )
+        assert [root.id for root in roots] == [resp.json()["id"]]
+
+    def test_somebody_can_then_be_made_a_member_and_see_it(
+        self, authenticated_superadmin_client, db_session, test_admin
+    ):
+        resp = authenticated_superadmin_client.post(
+            "/api/org-units",
+            json={"name": "New Trust", "type": "organisation"},
+        )
+        place_id = resp.json()["id"]
+        organisation = db_session.scalar(
+            select(Organisation).where(Organisation.org_unit_id == place_id)
+        )
+
+        add_organisation_member(
+            db_session, organisation.id, test_admin.id, "staff"
+        )
+        db_session.commit()
+
+        assert root_ids_of_organisations(db_session, [organisation.id]) == [
+            place_id
+        ]
+
+    def test_renaming_it_renames_the_organisation(
+        self, authenticated_superadmin_client, db_session
+    ):
+        created = authenticated_superadmin_client.post(
+            "/api/org-units",
+            json={"name": "Old Name", "type": "organisation"},
+        )
+        place_id = created.json()["id"]
+
+        authenticated_superadmin_client.put(
+            f"/api/org-units/{place_id}", json={"name": "New Name"}
+        )
+
+        organisation = db_session.scalar(
+            select(Organisation).where(Organisation.org_unit_id == place_id)
+        )
+        assert organisation.name == "New Name"
+
+    def test_deleting_it_deletes_the_organisation(
+        self, authenticated_superadmin_client, db_session
+    ):
+        created = authenticated_superadmin_client.post(
+            "/api/org-units",
+            json={"name": "Doomed Trust", "type": "organisation"},
+        )
+        place_id = created.json()["id"]
+
+        authenticated_superadmin_client.delete(f"/api/org-units/{place_id}")
+
+        assert (
+            db_session.scalar(
+                select(Organisation).where(
+                    Organisation.org_unit_id == place_id
+                )
+            )
+            is None
+        )
+        assert db_session.get(OrgUnit, place_id) is None
