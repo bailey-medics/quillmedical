@@ -24,11 +24,13 @@ from sqlalchemy.orm import Session
 from app.models import (
     ExternalPatientAccess,
     Organisation,
+    OrgUnitLink,
     User,
     org_unit_member,
     org_unit_patient_member,
     validate_member_capacity,
 )
+from app.org_units.relations import relation_grants_reach
 from app.org_units.tree import (
     organisation_ids_of_sites,
     root_ids_of_organisations,
@@ -100,22 +102,32 @@ def get_reachable_org_ids(
 ) -> list[int]:
     """Return organisation IDs the user can reach, by any membership.
 
-    One resolver, replacing two that disagreed. Membership of an
-    organisation reaches that organisation; membership of a site reaches
-    the organisations that site is linked to, because content is delivered
-    downward and a trainee at a site receives what the organisation made
-    available there.
+    One resolver, replacing two that disagreed. Membership of a place
+    reaches the organisation accountable for it, because content is
+    delivered downward and a trainee on a ward receives what the trust
+    made available there.
+
+    **A teaching link reaches further.** A medical school teaching on a
+    trust's wards is a relationship and not ownership, so it is a link
+    rather than a parent — and the point of recording it is that people at
+    the school can then reach the trust's teaching content. Which
+    relations do that is declared beside them in
+    ``app/org_units/relations.py``; today only ``teaches_at`` does.
+
+    **Reach is not membership and is not authority.** Nothing here makes
+    anybody a member of anything, and nothing here lets them administer
+    it: the admin checks ask :func:`get_member_org_ids`, which does not
+    follow links. That separation is the whole reason the two functions
+    exist rather than one.
 
     Prefer :func:`get_member_org_ids` where the question is *is this person
-    a member of this organisation* rather than *can they reach it*. The
-    difference matters: reach is why a site trainee sees teaching content,
-    and membership is why they are not thereby staff of the trust.
+    a member of this organisation* rather than *can they reach it*.
 
     Args:
         db: Core database session.
         user_id: The user to resolve.
         capacity: When given, only memberships of that capacity count, at
-            the site and the organisation alike.
+            every kind of place alike.
 
     Returns:
         Organisation IDs, ascending.
@@ -124,19 +136,68 @@ def get_reachable_org_ids(
     # accountable for each. Resolved by walking the tree up rather than by
     # joining on a column, because a place several levels down still
     # reaches its organisation and a join on the parent would not see it.
-    member_sites = select(org_unit_member.c.org_unit_id).where(
+    member_places = select(org_unit_member.c.org_unit_id).where(
         org_unit_member.c.user_id == user_id
     )
     if capacity is not None:
-        member_sites = member_sites.where(
+        member_places = member_places.where(
             org_unit_member.c.capacity == validate_member_capacity(capacity)
         )
 
-    site_ids = [int(r[0]) for r in db.execute(member_sites).all()]
+    place_ids = [int(r[0]) for r in db.execute(member_places).all()]
 
-    direct = get_member_org_ids(db, user_id, capacity=capacity)
-    reached = set(organisation_ids_of_sites(db, site_ids).values())
-    return sorted(set(direct) | reached)
+    direct = set(get_member_org_ids(db, user_id, capacity=capacity))
+    reached = set(organisation_ids_of_sites(db, place_ids).values())
+
+    own_places = set(place_ids) | set(
+        root_ids_of_organisations(db, sorted(direct | reached))
+    )
+    return sorted(direct | reached | _reached_through_links(db, own_places))
+
+
+def _reached_through_links(db: Session, place_ids: set[int]) -> set[int]:
+    """Return organisations reached from *place_ids* by a link.
+
+    Only links pointing *away* from a place the person is actually at,
+    and only relations that say they grant reach. Two limits, both
+    deliberate:
+
+    - **A link is a claim its source makes about itself** — "we teach
+      there" — so following it the other way would let anybody name a
+      school and be let into it.
+    - **A link belongs to the place that made it**, not to everything
+      above it. One ward recording a relationship must not quietly open it
+      to everybody at the trust, which is a wider promise than the ward
+      made. An organisation that means it for all of its people records
+      the link on itself.
+
+    One hop, too. Reach that chained would make "who can see this" depend
+    on a path nobody drew, which is the ambiguity the single parent exists
+    to remove.
+
+    Args:
+        db: Core database session.
+        place_ids: Places the person is at, and the roots they reach.
+
+    Returns:
+        The ids of organisations reached through a link, if any.
+    """
+    if not place_ids:
+        return set()
+
+    targets = {
+        int(target_id)
+        for target_id, relation in db.execute(
+            select(OrgUnitLink.target_id, OrgUnitLink.relation).where(
+                OrgUnitLink.source_id.in_(place_ids)
+            )
+        ).all()
+        if relation_grants_reach(str(relation))
+    }
+    if not targets:
+        return set()
+
+    return set(organisation_ids_of_sites(db, sorted(targets)).values())
 
 
 def get_user_org_ids(db: Session, user_id: int) -> list[int]:
