@@ -2205,7 +2205,10 @@ class TestLearningContentGate:
         )
         db_session.execute(
             site_member.insert().values(
-                site_id=site.id, user_id=learner.id, capacity="staff"
+                site_id=site.id,
+                org_unit_id=site.id,
+                user_id=learner.id,
+                capacity="staff",
             )
         )
         db_session.commit()

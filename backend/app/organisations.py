@@ -56,7 +56,7 @@ organisation_member = (
         site_member.c.user_id.label("user_id"),
         site_member.c.capacity.label("capacity"),
     )
-    .join(site_member, site_member.c.site_id == Organisation.org_unit_id)
+    .join(site_member, site_member.c.org_unit_id == Organisation.org_unit_id)
     .subquery("organisation_member")
 )
 
@@ -121,7 +121,7 @@ def get_reachable_org_ids(
     # accountable for each. Resolved by walking the tree up rather than by
     # joining on a column, because a place several levels down still
     # reaches its organisation and a join on the parent would not see it.
-    member_sites = select(site_member.c.site_id).where(
+    member_sites = select(site_member.c.org_unit_id).where(
         site_member.c.user_id == user_id
     )
     if capacity is not None:
@@ -387,7 +387,7 @@ def add_organisation_member(
 
     existing = db.scalar(
         select(site_member.c.user_id).where(
-            site_member.c.site_id == root_id,
+            site_member.c.org_unit_id == root_id,
             site_member.c.user_id == user_id,
         )
     )
@@ -404,7 +404,7 @@ def add_organisation_member(
         db.execute(
             site_member.update()
             .where(
-                site_member.c.site_id == root_id,
+                site_member.c.org_unit_id == root_id,
                 site_member.c.user_id == user_id,
             )
             .values(capacity=capacity)
@@ -426,7 +426,7 @@ def remove_organisation_member(
         return
     db.execute(
         site_member.delete().where(
-            site_member.c.site_id == root_id,
+            site_member.c.org_unit_id == root_id,
             site_member.c.user_id == user_id,
         )
     )
@@ -472,6 +472,6 @@ def remove_organisation_memberships(
         db.execute(
             site_member.delete().where(
                 site_member.c.user_id == user_id,
-                site_member.c.site_id.in_(root_ids),
+                site_member.c.org_unit_id.in_(root_ids),
             )
         )

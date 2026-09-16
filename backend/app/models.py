@@ -1105,10 +1105,12 @@ def _remove_the_root_with_it(
     )
     connection.execute(
         delete(PractisingCompetency).where(
-            PractisingCompetency.site_id == place_id
+            PractisingCompetency.org_unit_id == place_id
         )
     )
-    connection.execute(delete(Position).where(Position.site_id == place_id))
+    connection.execute(
+        delete(Position).where(Position.org_unit_id == place_id)
+    )
     connection.execute(
         delete(OrgUnitLink).where(
             (OrgUnitLink.source_id == place_id)

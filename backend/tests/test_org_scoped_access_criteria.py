@@ -196,7 +196,10 @@ class TestOneSiteWithinAnOrganisation:
         _staff(db_session, manager, trust)
         db_session.execute(
             insert(site_member).values(
-                site_id=ward.id, user_id=manager.id, capacity="staff"
+                site_id=ward.id,
+                org_unit_id=ward.id,
+                user_id=manager.id,
+                capacity="staff",
             )
         )
         db_session.commit()
