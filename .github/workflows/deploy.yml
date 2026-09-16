@@ -65,9 +65,18 @@ jobs:
             backend:
               - "backend/**"
               - "shared/**"
+            # `caddy/` sits outside `frontend/` but is built into its
+            # image: the prod stage copies `caddy/prod/Caddyfile`, which
+            # is why this Dockerfile takes the repository root as its
+            # build context. Without it listed here a Caddy-only change
+            # skips the build, deploys nothing, and reports success —
+            # which is how a CSP fix reached `main` and never reached
+            # production. Every security header the app serves lives in
+            # that file, so the failure is silent and security-shaped.
             frontend:
               - "frontend/**"
               - "shared/**"
+              - "caddy/**"
 
   # ---------- Build and push Docker images ----------
   build:
