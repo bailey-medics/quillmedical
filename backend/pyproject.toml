@@ -44,7 +44,7 @@ google-cloud-storage = ">=3.14.1,<3.15.0"
 # Invoking the transcode Cloud Run Job when an upload is linked. The
 # backend is the trigger rather than Eventarc, so this is what fires the
 # job — see the trigger decision in the video auth gate plan.
-google-cloud-run = ">=0.10.0,<0.11.0"
+google-cloud-run = ">=0.16.1,<0.17.0"
 reportlab = ">=4.2.0,<5.0.0"
 resend = ">=2.0.0,<3.0.0"
 markdown = ">=3.7,<4.0"
