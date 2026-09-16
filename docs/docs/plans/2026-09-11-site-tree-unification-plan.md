@@ -1,205 +1,765 @@
 # Site tree unification plan
 
-**Date:** 2026-09-11
-**Status:** Proposed
 **Supersedes:** the "Site vs Organisation" and "Org-Site link" decisions in
 [Organisation and Site](2026-05-20-organisation-site-plan.md)
 
 ## Summary
 
-Organisations and sites become one thing: a **site**. An organisation is a
-site with no parent. Ownership is a tree with exactly one parent per site.
-Anything that is not ownership, such as a medical school teaching on a
-trust's wards, becomes a typed link between two sites rather than a second
-parent.
+Organisations and sites become a single concept, the **org_unit**, whose
+`type` says what it is: `organisation` at the top, `site` for the level
+below, and `ward`, `bed` and the rest added if and when they are needed.
+
+Ownership is modelled as a tree: every org_unit has exactly one parent,
+apart from the roots, which have none. Any relationship that is not ownership becomes a typed
+link between two org_units rather than a second parent, so a medical school
+teaching on a trust's wards is a link, not a parent.
+
+**What an org_unit is comes from its `type`, never from its position.** An
+organisation is an org_unit of type `organisation`, not an org_unit that
+happens to have no parent. The difference matters the day something has to
+sit above today's top level.
+
+The tree exists to answer governance questions — who is accountable for this
+place, whose rules apply here, and who may administer it.
+
+**Two levels only, for now.** The schema permits any depth, but this plan
+builds no interface for deeper trees, because nothing yet requires one.
 
 ## Why
 
-The two models have drifted into being the same shape. Both have members
-with a capacity, both can hold positions, both can have practising
-competencies, both have a name, type and location. The only thing an
-organisation has that a site does not is "no parent".
+The two models have drifted into the same shape. Both have members with a
+capacity, both can hold positions and practising competencies, and both have
+a name, a type and a location. The only remaining difference is that an
+organisation has no parent.
 
-The split is already costing the codebase:
+Keeping them separate now costs us:
 
-- `PractisingCompetency` and `Position` each carry an either/or pair of
-  place columns, a check constraint and two partial unique indexes purely to
-  point at "a place".
-- `organisation_member` and `site_member` are two tables with one shared
-  capacity vocabulary. The comment on `MEMBER_CAPACITIES` argues "one list,
-  not one per table, or two meanings of one word drift apart". The same
-  argument applies to two tables of places.
-- The type vocabularies overlap: `department` and `clinic` exist in both.
-- `_require_parent_in_org`, `_require_parent_shares_org_with` and
-  `_require_site_in_own_org` exist only to reconcile the site tree with the
-  many-to-many organisation link.
-- The many-to-many link conflates "governed by" with "physically located
-  at", so a site linked to two organisations gets a union of both feature
-  sets and has no single answer to "who is the clinical lead here".
+- **Two columns for a single idea.** Practising competencies and positions
+  each carry a pair of columns to point at a place, one for an organisation
+  and one for a site, of which exactly one may be populated. Enforcing that
+  takes a check constraint and two partial unique indexes.
 
-The docstring on `PractisingCompetency` rejects a shared "places" table.
-That rejection was of a separate supertype table needing a matching row for
-every organisation and site, where a missed row goes invisible. Merging
-organisations into `sites` has no such gap: every place is a row by
-construction.
+- **Two membership tables sharing one vocabulary.** Organisation members and
+  site members draw on the same list of capacities, and the comment on that
+  list argues for one shared list rather than one per table, so that two
+  meanings of a word cannot drift apart. The same argument applies just as
+  well to two tables of places.
+
+- **Two overlapping type vocabularies.** Both `department` and `clinic`
+  appear in each of them.
+
+- **Three helper functions whose only job is to referee.** They reconcile the
+  site tree against the many-to-many organisation link, so removing that link
+  removes all three.
+
+- **A site can belong to two organisations**, which means it inherits both
+  their feature sets and has no single answer to the question of who the
+  clinical lead is.
+
+A comment in the code rejects the idea of a shared table of places. It is
+worth reading, because the objection it raises does not apply to this plan:
+
+> A shared "places" table was considered and rejected: it would need a row
+> for every organisation and site forever, and a missed one makes that place
+> invisible to the whole permission system.
+
+That warns against a separate supertype table sitting above both, where a
+missing row silently hides a place. Merging the two tables into one leaves no
+such gap, because every place is a row by construction — there is nowhere
+else for it to be.
+
+### What the code does today
+
+The argument above is considerably stronger with evidence, so we checked it
+against the working tree.
+
+**The tree is vestigial.** The parent column exists, and is written by the
+two site write routes and read back as a plain number, but it is never
+traversed. No endpoint returns children, and there is no recursive query
+anywhere in the backend. The model declares a `parent` relationship but no
+`children` backref, which is itself the tell that nothing ever needed to
+descend.
+
+**The frontend cannot create a nested site at all.** The create form submits
+four fields and offers no parent picker, while the edit form declares the
+parent column and then omits it from both the form values and the save. Every
+org_unit created through the application therefore sits exactly one level
+down.
+
+```text
+Create site form sends:
+  name, type, location, organisation_id
+
+It does not send:
+  parent_id
+```
+
+**The data is flat everywhere.** The CI seed script creates no sites at all,
+and every populated parent across the entire repository lives in eight
+assertions inside a single test file — all of them two-node cases written to
+exercise the ownership guard itself. Teaching's own tests build flat sites
+throughout.
+
+The many-to-many link is therefore doing all the real hierarchy work, which
+is precisely the drift this plan sets out to correct.
+
+**The type field is currently decorative.** A user can select `room` and
+receive a room hanging directly off a trust, because nothing in the model can
+express that a room belongs inside a ward. That argues for the type
+capabilities described below rather than against them.
+
+The useful consequence is that no tree data exists to preserve, so the
+migration is substantially cheaper than a first reading suggests.
+
+## Precedent
+
+One tree for ownership, plus a separate table of typed relationships for
+everything else: nearly every serious system that models this problem
+converged on that shape, largely without copying one another. It is worth
+recording, because it means the design here is conventional rather than
+clever.
+
+### FHIR matches this plan almost exactly
+
+FHIR permits an organisation only one parent, and a location only one parent,
+then provides a separate resource for relationships that are not parenthood.
+
+> The Organization.partOf is used to form a hierarchical relationship within
+> an organization which eventually resolves to a single organization. Each
+> child in the tree is a subdivision of the parent.
+
+And on the separate resource for other relationships:
+
+> [OrganizationAffiliation] does not require a hierarchical relationship.
+> This resource should not be used when the affiliates are part of a single
+> organization.
+
+That is our tree plus our link table, arrived at separately.
+
+- <https://hl7.org/fhir/R4/organization.html>
+- <https://hl7.org/fhir/R4/organizationaffiliation.html>
+
+### Our many-to-many is the odd one out
+
+FHIR allows a location to name one managing organisation rather than several,
+so our many-to-many link is exactly where this codebase departs from the
+standard. Merging the tables moves us towards FHIR rather than away from it.
+
+- <https://hl7.org/fhir/R4/location.html>
+
+### NHS ODS looks like the exception and is not
+
+ODS is a typed directed graph rather than a tree, with nine relationship
+codes covering "is a sub-division of", "is commissioned by", "is located in
+the geography of", "is operated by" and "is partner to". Its rules are
+deliberately open:
+
+> Any organisation or site record can be linked to one or more others via
+> relationships.
+>
+> There is no restriction on the number of times a record may be referenced
+> as a Target from other Source records.
+
+Follow any single code in isolation, however, and a tree comes back. ODS has
+not built one graph with many parents so much as declined to privilege any
+one hierarchy, which is the right choice for a national directory whose job
+is to describe every relationship neutrally. We are an application that must
+name one accountable body per place, so we do privilege one.
+
+- <https://www.odsdatasearchandexport.nhs.uk/referenceDataCatalogue/Relationships_571324965.html>
+
+### Directory systems are strict trees, for our reason
+
+Keycloak puts it in one line:
+
+> A group can have multiple subgroups but a group can have only one parent.
+> [...] Users can be members of any number of groups.
+
+In LDAP the tree is load-bearing because a record's distinguished name _is_
+its path through the tree, so a second parent would render names ambiguous.
+Active Directory treats its containment tree primarily as an authority
+structure and uses groups as the orthogonal many-to-many layer, which is the
+same split as our tree plus our membership table.
+
+- <https://www.rfc-editor.org/rfc/rfc4512.html>
+
+### Business systems add another tree, never another parent
+
+Workday states that an organisation may "Exist in a single hierarchy only"
+and that a hierarchy may not mix types, so a worker sits in several parallel
+trees rather than one forked one. SAP pairs a single compulsory hierarchy
+holding every entity exactly once with as many optional hierarchies as
+reporting requires.
+
+- <https://doc.workday.com/admin-guide/en-us/manage-workday/organizations/manage-organization-concepts/concept--superior-and-subordinate-organizations.html>
+
+### Many parents belong in reporting, if anywhere
+
+Kimball is the one authority treating many parents as a goal, and even there it
+needs a derived table holding one row per ancestor-to-descendant path, and
+concludes there is "no universally great solution". Working systems keep the
+single tree and build other views downstream from it.
+
+- <https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/ragged-variable-depth-hierarchy/>
+
+### FHIR also flags our naming problem
+
+FHIR splits the idea of an organisation from the idea of a physical place,
+and admits the two get muddled:
+
+> Locations and Organizations are very closely related resources and can
+> often be mixed/matched/confused.
+
+It then puts _ward_ on the organisation side as a conceptual unit, while also
+listing `ward` as a physical code on the location side. Our own list of
+hospital, ward and room sits on that same fault line. See **Naming**.
+
+## Naming
+
+The tree is about governance rather than geography. Everything hanging off a
+node is a governance fact — members and their capacity, positions such as
+clinical lead and Caldicott Guardian, features, admin scope — whereas a
+vocabulary of hospital, building, ward and room reads as physical. Calling a
+teaching establishment a "site type" is where the strain shows.
+
+**The node is an `org_unit`, and this plan performs the rename.** It is the
+standard term in LDAP, Active Directory, Workday and SAP for a node that has
+members, authority and a single parent.
+
+The important half of the word is _unit_, not _org_. A unit of organisational
+structure can be a whole division or a single team, and in those systems
+nobody reads it as meaning "a company". A ward is genuinely a unit of
+organisation, as is a trust, and as an ICB would be.
+
+Names we turned down:
+
+- **`site`** implies geography, which is the fault line FHIR itself warns
+  about. It is also what the codebase says today, which is how the confusion
+  arose in the first place.
+- **`locale`** is unusable, because anywhere near internationalisation
+  `locale` already means language and region formatting.
+- **`node`** and **`entity`** tell a reader nothing at all.
+- **`governance_unit`** is more precise, but nobody says it, and precision
+  that has to be explained is not precision.
+
+**The column is `type`**, matching the name already used on both tables it
+replaces, so the vocabulary a reader knows carries straight over.
+
+It is never called `level`, because the tree has no fixed depth. A ward might
+sit directly under a trust in one organisation and under trust, hospital,
+building in another. If `level` meant depth it would duplicate what the tree
+already records and eventually contradict it; if it did not mean depth, the
+name misleads. FHIR calls the equivalent field `form`, ODS uses a record
+class alongside roles, and Workday uses organisation type — none of them call
+it level.
+
+**Splitting physical from governance is out of scope.** There is no
+geographic requirement today: no room booking, no travel, no estates. Should
+one arrive it is a genuinely separate tree with different edges, and forcing
+it into this one would recreate the many-parents problem somewhere new.
+Naming this tree for governance is what keeps that eventual split cheap.
+
+## Depth
+
+**The frontend builds two levels: roots and their children.** No parent
+picker, no nested display, no expanding rows — which matches both what the
+application does today and what teaching actually needs.
+
+- **The schema keeps `parent_id` and enforces no depth limit.** Any depth
+  remains valid in the table and the API, exactly as now, so deeper trees are
+  an interface we have not built rather than a migration.
+
+- **Why not constrain it to two levels.** A constraint refusing a grandchild
+  would be honest about current capability, but it would need a second
+  migration to lift, and the backend already validates parents correctly at
+  any depth.
+
+- **Why not drop `parent_id` altogether.** Reinstating the tree later would
+  mean a new column, a new migration and reworking every scoping query,
+  whereas keeping the column costs nothing.
+
+- **Scoping is still written as a subtree query**, not a two-level join. On a
+  two-level tree both return the same rows, so the day a third level appears
+  nothing needs rewriting.
+
+- **The organisations page lists roots; the org_units page lists
+  descendants.** The latter is written to show an entire subtree rather than
+  a single layer, even though today those amount to the same thing.
 
 ## Design principles
 
-- **One governance parent per site.** Ownership is a tree. A site with two
-  organisations "above" it is either a joint entity that deserves to be its
-  own root, or a second relationship that is not governance and belongs in
-  a typed link.
-- **The test for a niche case.** Ask whether the second organisation needs
+- **One governance parent per org_unit.** Ownership is a tree, so an org_unit
+  with two organisations above it is either a joint body deserving to be its
+  own root, or a relationship that is not governance and belongs in a link.
+
+- **A graph with many parents was considered and rejected.** Permitting many
+  parents while guarding against cycles is a well-understood design, and the
+  cycle guard is not the difficult part. The cost is that questions with a
+  single answer today acquire a set of answers instead: which root's features
+  apply, who the clinical lead is, why a given admin can edit a given ward.
+  Each would then need a rule for merging those answers, which reinstates
+  precisely the ambiguity listed under **Why** as something this plan
+  removes. Clinical accountability requires one answer, so ownership stays a
+  tree and the additional relationships live in the link table.
+
+- **How to judge an awkward case.** Ask whether the second organisation needs
   to be the answer to a governance question about that place: who is admin,
-  who is clinical lead, whose features apply, whose patient list is it in.
-  If yes, it is a joint entity and should be a root. If no, it is a typed
+  who is clinical lead, whose features apply, whose patient list it appears
+  on. If it does, it is a joint body and should be a root; if not, it is a
   link.
-- **Membership and authorisation still do not inherit.** A row at a trust
-  says nothing about its wards. Only admin scoping and reach walk the tree,
-  exactly as the existing docstrings intend.
-- **Kind is explicit, not derived.** "Is an organisation" is never inferred
-  from a null parent alone.
+
+- **Membership and permissions still do not descend the tree.** A membership
+  row at a trust says nothing whatever about its wards, and only admin scope
+  and reach traverse the hierarchy, exactly as the existing code comments
+  intend.
+
+- **Clinical lead resolution stays an exact match on one org_unit.** This is
+  the single place where quietly introducing inheritance would break live
+  teaching features. See **Risks**.
+
+- **Type is declared, never inferred.** Whether something is an organisation
+  comes from its `type`, never from having no parent. This keeps the door
+  open for a body above today's organisations without a schema change, which
+  is the one piece of future-proofing the plan deliberately pays for.
+
+- **Ownership is acyclic, and we enforce that rather than assume it.** A tree
+  means one parent each _and_ no cycles. A single parent column gives us the
+  first for nothing, since one column cannot hold two parents, but the second
+  has to be checked on every re-parent or the tree quietly stops being one.
+
+- **This tree is not how cross-organisation care works.** See **Non-goals**.
+
+## Non-goals
+
+Two things this tree deliberately does not do. Both will return as feature
+requests, and both would be implemented as a second parent by anyone who has
+not read this section.
+
+### It does not decide whether a patient's care can continue elsewhere
+
+A patient may be cared for at two organisations that share no parent and have
+no link between them. What spans the two is the patient's own record — one
+person, one FHIR patient, one EHR, belonging to no org_unit — alongside a care
+relationship at each place recording who is properly involved and when.
+
+Modelling the patient as a _member_ of both organisations would turn
+membership into a governance fact and pull the two organisations into each
+other's admin scope, which is exactly what this tree exists to prevent.
+Widening the tree so that cross-organisation access falls out automatically is
+how an admin at a national root ends up governing every patient in the
+country.
+
+Where the tree can legitimately help is **reach without authority**: a
+`shares_care_with` link can make cross-organisation access expected rather
+than anomalous, without granting anything by itself.
+
+### It does not model authority over another person
+
+"Read my father's notes" and "administer my mother's chemotherapy" are real
+competencies held by people with no profession, and they are scoped to a
+_person_ rather than a place. Such a grant must record who holds it, who it
+concerns, what it rests on, who verified it and when it expires. The basis
+might be a lasting power of attorney, parental responsibility, next-of-kin
+status, or a child judged competent to decide for themselves.
+
+The practising competency table has no column for who a grant concerns, and
+should not acquire one, because that table answers the question of what I may
+do here. A patient reading their own notes at an org_unit they belong to fits
+it unchanged, whereas authority over another person needs its own model in its
+own plan. This tree's only part is recording who authorised it.
 
 ## End product
 
 ### Schema
 
-- **One table, `sites`, for every place.** Organisations become rows with no
-  parent.
-- **`kind` column.** A validated list in code, not a database enum, so it can
-  grow without a migration. Organisational kinds (`hospital_trust`,
-  `gp_practice`, `private_clinic`, `teaching_establishment`) require
-  `parent_id IS NULL`; every other kind (`hospital`, `building`, `ward`,
-  `room`, `clinic`, `department`, `virtual`) requires `parent_id IS NOT
-  NULL`. A check constraint enforces the pairing, and a `@validates` hook
-  rejects unknown kinds.
-- **`parent_id` is the only ownership link.** `ondelete` changes from
-  `SET NULL` to `RESTRICT`: deleting a parent is refused while it has
-  children, rather than silently promoting a ward to an organisation.
-- **`organisation_site` is removed.**
-- **One membership table.** `organisation_member` and `site_member` merge
-  into `site_member`, keeping the `capacity` column and its
-  `server_default="trainee"` least-privilege default.
-- **One place column everywhere.** `PractisingCompetency` and `Position`
-  drop the either/or pair, `ck_*_one_place` and the duplicate partial
-  indexes. Each holds a single non-null `site_id` with one ordinary unique
-  constraint.
-- **Organisation-only tables key on `site_id` unchanged in shape.**
-  `organisation_features` becomes `site_features`,
-  `organisation_patient_member` becomes `site_patient_member`,
-  `message_organisation` becomes `message_site`. Whether they may later
-  attach below the root is a product choice, not a schema change.
-- **`site_link` for everything that is not ownership.** Columns: `site_id`,
-  `other_site_id`, `relation`, `created_at`, `created_by`. `relation` is a
-  validated list: `hosts`, `teaches_at`, `partners_with`, `shares_service`.
-  Unique on the triple. This replaces the old many-to-many for the niche
-  cases.
+**One table for every place**, named `org_unit`, replacing both
+`organisations` and `sites`. Organisations become rows of type
+`organisation`, which today have no parent.
+
+**A `type` column, and it is the only thing that says what an org_unit is.**
+The list of valid types lives in code rather than as a database enum, so it
+can grow without a migration, and a validation hook rejects unknown types.
+
+The starting vocabulary is deliberately small, because only two values are
+needed today:
+
+```text
+organisation   the top of a tree: a trust, a GP practice,
+               a teaching establishment
+site           the level below, which is what teaching uses now
+
+later, if needed:
+hospital, building, ward, room, bed, clinic, department, virtual
+```
+
+**Nothing is inferred from an empty parent.** A root is an org_unit whose
+type says it is one, not an org_unit that happens to have no parent above it.
+This is the single most future-proofing decision in the plan, and it is worth
+being explicit about why.
+
+Suppose an ICB, a region or some successor body eventually has to sit above
+today's organisations. If root-ness were derived from an empty parent, that
+day would bring a schema change: the constraint saying organisations have no
+parent would start refusing the truth, and every query distinguishing an
+organisation from a site by testing the parent column would quietly mean
+something else. Because the type is declared instead, the trust keeps
+`type = "organisation"`, gains a parent, and one capability flag changes in a
+configuration file. No migration, and no query rewritten.
+
+We cannot currently name the body that would sit there, which is precisely
+the argument for not encoding the assumption that none ever will.
+
+**Each type declares what it can hold.** The rules this tree has to answer do
+not care whether a node is a ward or a clinic; they care what sort of question
+it can answer. There are three groups, and they cut across type:
+
+- **Nodes that hold governance.** A trust, carrying features, patient lists
+  and a Caldicott Guardian.
+- **Nodes that hold clinical roles.** A ward or a clinic, where naming a
+  clinical lead means something.
+- **Nodes that are only an address.** A bed — nobody is clinical lead of bed
+  four.
+
+Without this, every rule becomes a hardcoded list of types scattered across
+the backend, and adding a type means hunting all of them down. That is the
+same duplication this plan already complains about, where one type list
+appears twice in a single file. So each type carries explicit capability
+flags:
+
+```yaml
+- id: ward
+  display_name: Ward
+  requires_parent: true
+  can_hold_features: false
+  can_hold_positions: true
+  can_hold_competencies: true
+  can_have_members: true
+```
+
+A rule then asks whether this type can hold positions, rather than checking
+its name against a list.
+
+Note that `requires_parent` is a flag on the type rather than a rule about
+roots in general. Today `organisation` sets it to false and everything else
+sets it to true, which produces exactly the two-level shape we want. Should
+an ICB ever appear above the organisations, `organisation` flips that one
+flag and the tree grows a level without a schema change.
+
+**The parent column is the only ownership link.** Deleting a parent is refused
+while it still has children, rather than quietly promoting a ward to an
+organisation.
+
+**The parent column gets an index.** It has none today — only the name column
+is indexed — and every traversal up or down the tree goes through it, so
+scoping would otherwise scan the whole table.
+
+**No depth limit.** Any depth is valid here; see **Depth**.
+
+**The many-to-many link table is removed.**
+
+**One membership table**, formed by merging the organisation and site
+membership tables. The capacity column keeps its `trainee` default, which is
+the least-privilege value. One asymmetry to watch:
+
+```text
+organisation_member.capacity — has a server default of "trainee"
+site_member.capacity        — has NO server default
+```
+
+The merge must carry the organisation side's default across, or the
+least-privilege behaviour is silently lost.
+
+**One place column everywhere.** Practising competencies and positions drop
+the either/or pair of columns, along with the check constraint and the two
+partial unique indexes that policed it, keeping a single mandatory place
+column with one ordinary uniqueness constraint.
+
+**Organisation-only tables keep their shape** and point at the new table
+instead. Features, patient membership and the conversation link all follow the
+same rename, and whether they may later attach below a root is a product
+decision rather than a schema change.
+
+**A link table for everything that is not ownership**, holding the two
+org_units, the relation, and who created it when. Valid relations are `hosts`,
+`teaches_at`, `partners_with` and `shares_service`, with one row per distinct
+triple.
+
+This is a first-class typed relationship table, not a repository for awkward
+cases, playing the same part as the affiliation resource in FHIR and the
+relationship codes in ODS. Each relation can carry its own rule about what it
+confers: `teaches_at` grants reach but no admin rights, and nothing grants
+membership. Our relations align with ODS closely enough to be worth
+preserving:
+
+```text
+hosts          ~ RE6  is operated by
+teaches_at     ~ RE2  is a sub-division of
+partners_with  ~ RE8  is partner to
+```
+
+**The tree maps onto FHIR cleanly.** HAPI FHIR is already in the stack, so the
+export is worth recording even though this plan does not build it:
+
+```text
+root org_unit    -> Organization, no partOf
+child org_unit   -> Organization.partOf
+link table row   -> OrganizationAffiliation, one per relationship
+```
+
+The single parent is what makes that a mapping rather than a reconciliation.
 
 ### Backend
 
-- **Scoping becomes subtree scoping.** "Admin of my organisations" becomes
-  "admin at a place governs that place and everything under it", resolved
-  with a recursive CTE. Both PostgreSQL and the SQLite test database
-  support this.
-- **`organisations.py` becomes `sites.py`** with the same two questions:
-  `get_member_site_ids` (direct membership) and `get_reachable_site_ids`
-  (walk up the tree to the root, plus any `teaches_at` links). Reach still
-  flows downward and still does not confer membership.
-- **The three parent-reconciliation helpers go.** `_require_parent_in_org`
-  and `_require_parent_shares_org_with` collapse into "the parent must be
-  in the caller's subtree". `_require_site_in_own_org` becomes "the site
-  must be in the caller's subtree".
-- **Root resolution is one query.** `get_root(site_id)` walks `parent_id`
-  to the row with `parent_id IS NULL`. Features and patient membership are
-  read from the root until a product decision says otherwise.
+**The two models become one.** Organisation and Site both go, replaced by
+`OrgUnit`.
+
+**Scoping becomes subtree scoping.** "Admin of my organisations" becomes
+"admin at a place governs that place and everything beneath it", which needs
+a recursive query. Both PostgreSQL and the SQLite test database support one,
+but it would be the first in this repository, so there is no local pattern to
+copy.
+
+**The organisations module becomes an org_units module**, answering the same
+two questions: who is a direct member, and what a user can reach by walking
+up to the root and adding anything reached through a teaching link. Reach
+still flows downwards and still confers no membership.
+
+**The three referee helpers go.** Two of them validate a proposed parent
+against the organisation link and collapse into "the parent must be in the
+caller's subtree", while the third becomes "the org_unit must be in the
+caller's subtree". All three live in the main routes file rather than the
+organisations module, so deleting that module does not remove them.
+
+**Resolving the root is one query**, walking the parent column up to the row
+with no parent. Features and patient membership are read from the root until
+a product decision says otherwise.
+
+**A cycle guard on every re-parent.** Before setting X's parent to Y, walk up
+from Y and refuse with a 400 if X appears; Y may not be X either. This is the
+same upward walk that root resolution already performs, so it is one shared
+helper rather than a new query shape.
+
+No such guard exists today beyond the obvious case:
+
+```text
+Checked today:      a site cannot be its own parent
+Not checked today:  whether the proposed parent is already a descendant
+
+So A -> B, then B -> A, is accepted right now.
+```
+
+That is harmless only because nothing traverses the chain, so the guard
+becomes load-bearing the moment scoping walks the tree.
+
+The guard belongs in the write path rather than in a database constraint,
+because no portable constraint can express whether Y already sits below X.
+Belt and braces for the queries themselves: cap the recursion depth and
+select distinct ids, so a cycle that somehow reaches the table degrades to a
+wrong answer rather than a hung request.
 
 ### API
 
-- **Additive during the move**, per the expand-contract rule in
-  `.claude/rules/backend.md`.
-- `/api/sites` grows to cover both: `GET /api/sites?roots=true` lists
-  organisations, `POST /api/sites` accepts a null `parent_id` for an
-  organisational kind.
-- `/api/organisations` keeps working as a filtered view of root sites, and
-  `/api/organisations/{org_id}/sites/{site_id}` link and unlink routes
-  return 410 once the frontend has switched.
-- `/api/sites/{site_id}/links` for the typed links.
-- The old routes are retired only after the frontend has switched and the
-  `oasdiff` breaking-change gate has been approved by a human.
+**Add before removing**, following the expand-contract rule in the backend
+rules file. The rename makes this the largest compatibility surface in the
+plan, so it gets its own steps.
+
+- **The new surface is `/api/org-units`.** Listing with a roots filter returns
+  the organisations, creating with an empty parent produces a root, and a
+  sub-path handles the typed links.
+- **Both old surfaces keep working** as views over the same table for a full
+  deploy cycle, then return 410, then go. They are retired only once the
+  frontend has migrated and a human has approved the breaking-change gate.
+- **The link and unlink routes** return 410 once the frontend has migrated.
 
 ### Frontend
 
-- **Two admin pages, one model.** "Organisations" lists root sites, "Sites"
-  shows the tree under one. Both use one `Site` type with `kind` and
-  `parentId`, so the split is presentational only.
-- `pages/admin/organisations/` and `pages/admin/sites/` share the same
-  components and hooks. `AddSiteToOrgPage` becomes "add child site".
-- A "Links" tab on a site shows and edits its `site_link` rows.
+**Two page sets, one model, two levels.** The organisations pages list roots
+and the org_units page lists the children of one root, both using a single
+type, so the split is purely presentational.
+
+**No tree interface.** No parent picker, no nested rows, no expanding.
+Creating an org_unit under a root sets its parent to that root and nothing
+else, which is what the application does today and what this plan keeps.
+
+**The sites pages are thinner than the organisations pages**, so the plan
+should not assume they can simply share components:
+
+```text
+pages/admin/organisations/   13 files
+pages/admin/sites/            5 files, no list page, no create page
+
+Site creation lives on the organisations side.
+The site edit page has no test.
+```
+
+Closing that gap is part of the work, not a free consequence of merging.
+
+**A links tab** on an org_unit displays and edits its link rows.
 
 ## Migration steps
 
-Each step is a separate pull request and leaves the app working.
+Each step is its own pull request and leaves the application working. Steps 1
+to 9 perform the merge; steps 10 to 12 perform the rename.
 
-1. **Add `kind` to `sites` and backfill** from `type`. No behaviour change.
-2. **Make the organisation link one-to-many.** Add `sites.organisation_id`
-   (nullable), backfill from `organisation_site` where a site has exactly
-   one organisation, and report any site with more than one for a human to
-   resolve into a root plus links. Stop writing `organisation_site`. This
-   is the step that removes most of the reconciliation helpers before any
-   table merge.
-3. **Add `site_link`** and its routes. Migrate any multi-organisation cases
-   from step 2 into links.
-4. **Insert a root site row for every organisation** with the organisation's
-   name, kind and location. Point `sites.parent_id` of each organisation's
-   top-level sites at that root. Drop `sites.organisation_id`.
-5. **Move membership.** Copy `organisation_member` rows into `site_member`
-   against the root sites. Switch readers, then writers, then drop the
-   table.
-6. **Move `PractisingCompetency` and `Position`.** Backfill `site_id` from
-   `organisation_id` via the root rows. Drop the organisation columns, the
-   check constraints and the partial indexes.
-7. **Move features, patient membership and conversation links** the same
-   way.
-8. **Switch scoping and reach** to subtree queries. Delete
-   `organisations.py`.
-9. **Retire `/api/organisations`** once the frontend reads root sites from
-   `/api/sites`. Drop the `organisations` table.
-10. **Change `parent_id` to `ondelete=RESTRICT`** and add the kind-to-parent
-    check constraint. Done last so the backfill steps are not blocked by it.
+1. **Add the capability flags file** and the code that reads it, listing
+   `organisation` and `site` plus whichever descriptive types the existing
+   site vocabulary still needs. The `type` column already exists on both
+   tables, so this step adds validation and flags rather than a column. No
+   behaviour change.
+
+2. **Make the organisation link one-to-many.** Add a nullable organisation
+   column to sites, backfill it from the link table wherever a site has
+   exactly one organisation, and report any site with more than one for a
+   human to resolve. Stop writing the link table. This step removes most of
+   the referee helpers before any tables merge.
+
+3. **Add the link table** and its routes, migrating any multi-organisation
+   cases from step 2 into links.
+
+4. **Insert a root row for every organisation**, carrying its name, location
+   and `type = "organisation"`, and point each organisation's sites at that
+   root. Drop the temporary organisation column. Because the data is flat
+   today this is a single update statement, with no existing depth to
+   preserve.
+
+5. **Move membership.** Copy organisation member rows across against the root
+   rows, carrying the `trainee` default. Switch readers, then writers, then
+   drop the old table.
+
+6. **Move practising competencies and positions.** Backfill the single place
+   column from the organisation column via the root rows, then drop the
+   organisation columns, the check constraints and the partial indexes.
+
+7. **Move features, patient membership and conversation links** the same way.
+
+8. **Add the cycle guard and index the parent column**, with a shared upward
+   walk helper. Do this before step 9, so no recursive query is ever written
+   against a table that can hold a cycle.
+
+9. **Switch scoping and reach to subtree queries**, with a depth cap and
+   distinct ids. Write them as subtree queries even though the tree is only
+   two levels deep, so a third level needs no rewrite.
+
+10. **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
+    membership, features, patient membership, conversation and link tables to
+    match, and delete the old organisations module.
+
+11. **Add the new API surface** alongside the old one, migrate the frontend
+    onto it, and rename the frontend type. Close the thin-pages gap in the
+    same pass.
+
+12. **Retire both old API surfaces** once nothing reads them, then refuse to
+    delete a parent that still has children and enforce each type's
+    `requires_parent` flag.
+    Last, so the earlier steps are not blocked by it.
 
 ## Risks
 
-- **A site with more than one organisation today.** Step 2 must refuse to
-  guess. Each such site is either promoted to a root or given links, by a
-  human.
-- **Recursive queries in hot paths.** Every admin route currently does one
-  join through `organisation_site`. Measure the CTE on the admin list pages
-  before step 8 and add a materialised `path` column only if it is needed.
-- **Feature resolution changes meaning.** Today a user at a site linked to
-  two organisations gets both feature sets. After the merge they get the
-  root's. Anyone relying on the union is relying on the ambiguity this plan
-  removes; confirm there is nobody before step 7.
-- **Registration.** The public `register` route inserts teaching delegates
-  into `site_member`. It must keep working at every step, and its tests
-  must run at every step.
+### Clinical lead lookup would break silently if inheritance crept in
+
+This is the sharpest risk in the plan. Four live teaching features resolve the
+clinical lead by matching positions against a list of site ids, with no
+ancestor walk whatsoever:
+
+```text
+registration clinical-lead validation
+delegate enrolment
+the delegate list's site and lead columns
+the certificate coordinator email
+```
+
+If the merge ever implies that a ward inherits its hospital's lead, all four
+fail without raising an error: registration turns away a legitimate lead, the
+delegate table shows a dash, and the coordinator email goes to nobody.
+
+Keep the lookup an exact match on one org_unit, and test all four at every
+step.
+
+### The rename touches those same teaching paths
+
+The same four features traverse the organisation-to-site link, so steps 10
+and 11 must move them together with their tests rather than leaving one of
+them reading an old name.
+
+### An org_unit with two organisations
+
+Step 2 must refuse to guess. In practice there are none — every link row in
+every test and seed points at exactly one organisation — so this should be a
+no-op that proves itself rather than a resolution exercise.
+
+### A cycle is already reachable through the API
+
+Today's parent check only prevents a site being its own parent, so A to B to A
+can be created right now. Step 8 adds the guard, but the backfill steps should
+also assert that every row reaches a root, so any pre-existing cycle is caught
+by a migration that refuses rather than by a hung request later.
+
+### Recursive queries in hot paths
+
+Every admin route currently performs one join through the link table. Measure
+the recursive version on the admin list pages before step 9, and add a
+materialised path column only if it proves necessary.
+
+### Feature resolution changes meaning
+
+Today a site linked to two organisations would receive both feature sets,
+whereas after the merge it receives the root's. No data relies on this,
+because no such sites exist, but confirm that again before step 7.
+
+### Registration must never break
+
+The public registration route inserts teaching delegates into the membership
+table. It has to keep working at every step, and its tests have to run at
+every step.
 
 ## Testing
 
-- Backend: `just ub -k "site or organisation or position or practising"`
-  at each step, and the full `just ub` before each pull request is marked
-  ready.
-- Add tests for: a root cannot have a parent, a non-root must have one,
-  deleting a parent with children is refused, subtree scoping does not leak
-  a sibling trust's sites, reach does not confer membership, and a
-  `teaches_at` link grants reach without admin rights.
-- Frontend: `just uf src/pages/admin` and the Storybook suite, since the
-  admin pages and their components change shape.
-- E2E: the existing organisation and site admin journeys must pass
-  unchanged until step 9, then be updated together with the route
-  retirement.
+- **Backend, at each step:** the site, organisation, org_unit, position and
+  practising competency tests, plus the four teaching flows named under
+  **Risks**. Run the full backend suite before marking a pull request ready.
+
+- **Add tests for the tree rules:** a root cannot have a parent, a non-root
+  must have one, deleting a parent with children is refused, subtree scoping
+  does not leak a neighbouring trust's org_units, reach confers no
+  membership, and a teaching link grants reach without admin rights.
+
+- **Add cycle tests:** an org_unit cannot be its own parent, cannot be
+  re-parented under its own child, and cannot be re-parented under a deeper
+  descendant, so the guard is known to walk the whole way up rather than a
+  single level. A legitimate move to a sibling subtree must still succeed.
+  Each test asserts a 400 and an unchanged row.
+
+- **Add one test per capability flag:** a type that cannot hold positions
+  refuses a position, and a type that cannot hold features refuses a feature
+  row.
+
+- **Add a three-level test at the query layer**, even though the interface
+  builds only two, so subtree scoping is known to work before anyone adds a
+  parent picker.
+
+- **Frontend:** the admin page tests and the Storybook suite, since these
+  pages and their components change shape.
+
+- **End to end:** the existing organisation and site admin journeys must pass
+  unchanged until step 11, then be updated alongside the route retirement.
 
 ## Out of scope
 
-- Attaching features or patient membership below the root.
-- Replacing `kind` and `relation` string lists with YAML catalogues.
-- Any change to CBAC resolution or to system permission levels.
+- **A tree interface:** parent picker, nested rows, more than two levels. See
+  **Depth**.
+- **Attaching features or patient membership below a root.**
+- **Any change to competency resolution** or to the system permission levels.
+- **A separate physical or estates tree** alongside the governance one.
+- **Authority over another person**, such as reading a relative's notes,
+  which needs its own model and its own plan. See **Non-goals**.
+- **Care relationships and cross-organisation patient access.** See
+  **Non-goals**.
+- **Exporting to FHIR.** The mapping is recorded under **Schema** so the
+  design does not foreclose it.
+- **Anything above the accountable provider**, such as an ICB, a region or a
+  national body. Because `requires_parent` belongs to the type, adding one
+  later is a configuration change rather than a schema migration, but nothing
+  here builds for it. Note that oversight bodies commission and inspect
+  rather than administer, so they are probably links rather than parents,
+  which is the distinction ODS draws between being commissioned by and being
+  a sub-division of.
