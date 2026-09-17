@@ -13,7 +13,7 @@ from app.models import (
     User,
     org_unit_member,
 )
-from app.organisations import organisation_member
+from app.organisations import organisation_place_member
 from app.security import hash_password
 
 
@@ -253,9 +253,9 @@ class TestRegisterWithSiteMembership:
         assert new_user is not None
 
         org_row = db_session.execute(
-            select(organisation_member).where(
-                organisation_member.c.user_id == new_user.id,
-                organisation_member.c.organisation_id == org.id,
+            select(organisation_place_member).where(
+                organisation_place_member.c.user_id == new_user.id,
+                organisation_place_member.c.org_unit_id == org.org_unit_id,
             )
         ).first()
         assert org_row is not None

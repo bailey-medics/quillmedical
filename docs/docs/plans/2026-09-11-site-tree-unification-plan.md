@@ -904,8 +904,7 @@ So the remaining steps land as:
 - [x] 12c-ii-a — an organisation's place is required
 - [x] 12c-ii-b — the membership writers take a place
 - [x] 12c-ii-c — the users list excludes members of a place
-- [ ] 12c-ii-d — membership answers in place ids
-- [ ] 12c-ii-e — reach answers in place ids
+- [x] 12c-ii-d — membership and reach answer in place ids
 - [ ] 12c-iii — drop the `organisations` table
 - [x] 12c-iv — refuse deleting a parent with children, and enforce `requires_parent`
 
@@ -1768,6 +1767,41 @@ There was no test of the parameter at all, which is how it survived.
   `exclude_org` excludes nobody, and an organisation id handed to
   `exclude_place` excludes nobody. Either is somebody already a member
   being offered again.
+
+#### 12c-ii-d — membership and reach answer in place ids
+
+Folded back into one unit, because splitting membership from reach would
+have left reach converting places back into organisation ids for a
+release — more code than doing both at once, and none of it the shape
+either function ends up.
+
+- **`organisation_member` becomes `organisation_place_member`**, a
+  narrowing of the membership table to rows naming an organisation's own
+  place rather than a join through `organisations`. A ward membership is
+  still not in it: that distinction is what every admin check rests on.
+- **`organisation_places_of` replaces two hand-rolled copies.** The "which
+  organisation is accountable here" walk lived inline in `/me` and in the
+  feature gate, each spelling it differently. A place with no
+  organisation above it contributes nothing rather than itself, which is
+  what stops a member of a detached place — the test fixtures make one on
+  purpose — having the run of somewhere nobody is accountable for.
+- **Teaching's `_places_of` scaffold is gone**, as its docstring said it
+  would be, and with it the translation in the bank settings and
+  active-version handlers.
+- **`_require_org_admin_over` returns a place**, so the passport's revoke
+  route drops its lookup. `AssessorRevokeOut.place_id` now holds a place
+  id whichever kind `place` says — it held the organisation's own id for
+  `organisation`, which the name never said.
+- **`RegistrationVerificationOut.organisation_id` became
+  `org_unit_id`** — renamed, not reinterpreted, so it takes a decision
+  file.
+- **`/patients/{id}/shared-organisations` still answers organisation
+  ids.** Nothing reads it, and changing what its `id` means is 12c-iii's
+  to do along with the table.
+- **A place that is not an organisation is now refused, not "not
+  found".** Setting a bank live at one used to 404 because the
+  translation failed; it is a 403 now, the same answer as naming
+  somebody else's trust, which is what it is.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to
