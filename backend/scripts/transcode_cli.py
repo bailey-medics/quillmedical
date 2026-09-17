@@ -236,7 +236,11 @@ def transcode() -> int:
 
     from google.cloud import storage  # type: ignore[import-untyped]
 
-    from app.features.teaching.storage import media_object_path
+    # `object_paths`, not `storage`: the latter imports `settings` at
+    # module scope, which requires JWT_SECRET and CORE_DB_PASSWORD — and
+    # a video encoder should hold neither. Importing it here crashed
+    # this job on startup before it read a byte.
+    from app.features.teaching.object_paths import media_object_path
 
     try:
         org_id = int(env["TRANSCODE_ORG_ID"])

@@ -222,7 +222,10 @@ def caption() -> int:
 
     from google.cloud import storage  # type: ignore[import-untyped]
 
-    from app.features.teaching.storage import media_object_path
+    # `object_paths`, not `storage`: the latter imports `settings` at
+    # module scope, which requires JWT_SECRET and CORE_DB_PASSWORD —
+    # credentials a transcription job has no use for.
+    from app.features.teaching.object_paths import media_object_path
 
     try:
         org_id = int(env["CAPTION_ORG_ID"])
