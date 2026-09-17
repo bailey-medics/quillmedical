@@ -40,6 +40,18 @@ from app.security import hash_password
 # ------------------------------------------------------------------
 
 
+def _place_of(org: Organisation) -> int:
+    """The organisation's own row in the tree.
+
+    The admin paths name a place now. An organisation always has one —
+    the model writes it — so the check is for the type checker rather
+    than for a state that happens.
+    """
+    place_id = org.org_unit_id
+    assert place_id is not None
+    return place_id
+
+
 def _make_teaching_org(db: Session) -> Organisation:
     """Create an org with the teaching feature enabled."""
     org = Organisation(name="Teaching Org")
@@ -1079,10 +1091,10 @@ class TestPromotingAVersion:
     revision can be imported but never reach anyone.
     """
 
-    def _url(self, org_id: int) -> str:
+    def _url(self, org: Organisation) -> str:
         return (
             f"/api/teaching/admin/banks/test-bank"
-            f"/organisations/{org_id}/active-version"
+            f"/places/{_place_of(org)}/active-version"
         )
 
     def _with_two_versions(self, db_session, org, educator) -> None:
@@ -1115,7 +1127,7 @@ class TestPromotingAVersion:
 
         headers = _login(test_client, "testeducator", "Educator123!")
         resp = test_client.put(
-            self._url(org.id), headers=headers, json={"version": 2}
+            self._url(org), headers=headers, json={"version": 2}
         )
 
         assert resp.status_code == 200
@@ -1130,11 +1142,9 @@ class TestPromotingAVersion:
         self._with_two_versions(db_session, org, educator)
 
         headers = _login(test_client, "testeducator", "Educator123!")
-        test_client.put(
-            self._url(org.id), headers=headers, json={"version": 2}
-        )
+        test_client.put(self._url(org), headers=headers, json={"version": 2})
         resp = test_client.put(
-            self._url(org.id), headers=headers, json={"version": 1}
+            self._url(org), headers=headers, json={"version": 1}
         )
 
         assert resp.status_code == 200
@@ -1146,9 +1156,7 @@ class TestPromotingAVersion:
         self._with_two_versions(db_session, org, educator)
 
         headers = _login(test_client, "testeducator", "Educator123!")
-        test_client.put(
-            self._url(org.id), headers=headers, json={"version": 2}
-        )
+        test_client.put(self._url(org), headers=headers, json={"version": 2})
 
         row = self._status(db_session, org)
         assert row.active_version_set_by == educator.id
@@ -1163,7 +1171,7 @@ class TestPromotingAVersion:
 
         headers = _login(test_client, "testeducator", "Educator123!")
         resp = test_client.put(
-            self._url(org.id), headers=headers, json={"version": 9}
+            self._url(org), headers=headers, json={"version": 9}
         )
 
         assert resp.status_code == 404
@@ -1196,7 +1204,7 @@ class TestPromotingAVersion:
 
         headers = _login(test_client, "testeducator", "Educator123!")
         resp = test_client.put(
-            self._url(org.id), headers=headers, json={"version": 5}
+            self._url(org), headers=headers, json={"version": 5}
         )
 
         assert resp.status_code == 404
@@ -1210,7 +1218,7 @@ class TestPromotingAVersion:
 
         headers = _login(test_client, "testeducator", "Educator123!")
         resp = test_client.put(
-            self._url(org.id), headers=headers, json={"version": 1}
+            self._url(org), headers=headers, json={"version": 1}
         )
 
         assert resp.status_code == 404
@@ -1224,7 +1232,7 @@ class TestPromotingAVersion:
 
         headers = _login(test_client, "testeducator", "Educator123!")
         resp = test_client.put(
-            self._url(org.id), headers=headers, json={"version": 0}
+            self._url(org), headers=headers, json={"version": 0}
         )
 
         assert resp.status_code == 422
@@ -1247,7 +1255,7 @@ class TestPromotingAVersion:
 
         headers = _login(test_client, "testeducator", "Educator123!")
         resp = test_client.put(
-            self._url(other.id), headers=headers, json={"version": 2}
+            self._url(other), headers=headers, json={"version": 2}
         )
 
         assert resp.status_code == 403
@@ -1263,7 +1271,7 @@ class TestPromotingAVersion:
 
         headers = _login(test_client, "testlearner", "Learner123!")
         resp = test_client.put(
-            self._url(org.id), headers=headers, json={"version": 2}
+            self._url(org), headers=headers, json={"version": 2}
         )
 
         assert resp.status_code == 403
@@ -1277,9 +1285,7 @@ class TestPromotingAVersion:
         self._with_two_versions(db_session, org, educator)
 
         headers = _login(test_client, "testeducator", "Educator123!")
-        test_client.put(
-            self._url(org.id), headers=headers, json={"version": 2}
-        )
+        test_client.put(self._url(org), headers=headers, json={"version": 2})
         resp = test_client.get(
             "/api/teaching/question-banks/test-bank", headers=headers
         )
@@ -1540,10 +1546,10 @@ class TestBankOrgSettingsSetTheActiveVersion:
     serve nothing once the candidate queries follow it.
     """
 
-    def _settings_url(self, org_id: int) -> str:
+    def _settings_url(self, org: Organisation) -> str:
         return (
             f"/api/teaching/admin/banks/test-bank"
-            f"/organisations/{org_id}/settings"
+            f"/places/{_place_of(org)}/settings"
         )
 
     def test_creating_the_row_pins_the_current_version(
@@ -1557,7 +1563,7 @@ class TestBankOrgSettingsSetTheActiveVersion:
 
         headers = _login(test_client, "testeducator", "Educator123!")
         resp = test_client.put(
-            self._settings_url(org.id),
+            self._settings_url(org),
             headers=headers,
             json={"is_live": True, "site_registration": False},
         )
@@ -1603,7 +1609,7 @@ class TestBankOrgSettingsSetTheActiveVersion:
 
         headers = _login(test_client, "testeducator", "Educator123!")
         resp = test_client.put(
-            self._settings_url(org.id),
+            self._settings_url(org),
             headers=headers,
             json={"is_live": False, "site_registration": False},
         )
@@ -1637,7 +1643,7 @@ class TestBankOrgSettingsSetTheActiveVersion:
 
         headers = _login(test_client, "testeducator", "Educator123!")
         test_client.put(
-            self._settings_url(org.id),
+            self._settings_url(org),
             headers=headers,
             json={"is_live": True, "site_registration": False},
         )
@@ -1659,10 +1665,10 @@ class TestBankOrgSettingsAreScopedToYourOrganisations:
     locks its candidates out of an assessment.
     """
 
-    def _settings_url(self, org_id: int) -> str:
+    def _settings_url(self, org: Organisation) -> str:
         return (
             f"/api/teaching/admin/banks/test-bank"
-            f"/organisations/{org_id}/settings"
+            f"/places/{_place_of(org)}/settings"
         )
 
     def test_settings_for_an_organisation_you_are_not_in_are_refused(
@@ -1677,7 +1683,7 @@ class TestBankOrgSettingsAreScopedToYourOrganisations:
 
         headers = _login(test_client, "testeducator", "Educator123!")
         resp = test_client.put(
-            self._settings_url(other.id),
+            self._settings_url(other),
             headers=headers,
             json={"is_live": True, "site_registration": False},
         )
@@ -1716,7 +1722,7 @@ class TestBankOrgSettingsAreScopedToYourOrganisations:
 
         headers = _login(test_client, "testeducator", "Educator123!")
         resp = test_client.put(
-            self._settings_url(second.id),
+            self._settings_url(second),
             headers=headers,
             json={"is_live": True, "site_registration": False},
         )

@@ -897,7 +897,7 @@ So the remaining steps land as:
 - [x] 12c-i-a — a place column beside every organisation column, and both written
 - [x] 12c-i-b — those tables read the place column, translating at the edges
 - [x] 12c-i-b2 — teaching's surface answers in place ids, beside the old one
-- [ ] 12c-i-b3 — retire teaching's organisation-keyed fields and paths
+- [x] 12c-i-b3 — retire teaching's organisation-keyed fields and paths
 - [ ] 12c-i-c — stop writing the organisation column, and drop it
 - [ ] 12c-i-d — `site_common_competency`'s two place columns collapse into one
 - [ ] 12c-ii — membership and reach answer in place ids
@@ -1593,6 +1593,29 @@ anything is taken away.
 
 The organisation-keyed fields and paths go in 12c-i-b3, which is a
 breaking change and needs its decision files.
+
+#### 12c-i-b3 — teaching answers only in places
+
+The contract step for the same surface, one release after the expand.
+
+- **`organisation_id` leaves four answers**: the teaching settings row on
+  both its GET and its PUT, each row of a bank's organisation list, and
+  the clinical-lead validation. Four `oasdiff` findings, four decision
+  files, none forcing a reload — the screens moved in 12c-i-b2, so
+  nothing open is still reading the field.
+- **The organisation-keyed paths answer 410, not 404.** The two id
+  sequences overlap for a small installation, so an organisation id
+  would often name a real place: quietly doing the work under the old
+  address is how a caller would go on believing the number means an
+  organisation. The 410 names the place-keyed replacement instead. This
+  is the same choice the retired sites and organisations addresses made.
+- **The handlers behind them stayed, privately.** `_promote_bank_version`
+  and `_update_bank_org_settings` still take an organisation id, because
+  membership still counts in organisation ids; the place-keyed routes
+  translate once and call them. 12c-ii is where that step goes.
+- **Registration stops accepting `organisation_id`.** It is an optional
+  request property, so removing it cannot break a caller that has
+  stopped sending one — and both forms send `org_unit_id`.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to

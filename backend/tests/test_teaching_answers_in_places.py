@@ -1,12 +1,11 @@
-"""Teaching's surface learns place ids beside its organisation ids.
+"""Teaching's surface answers only in place ids.
 
-The expand step for the API itself. Teaching publishes organisation ids
-— in responses, and in paths shaped
-``/admin/banks/{bank}/organisations/{org}/settings`` — and the screens
-put them straight back into URLs. Changing what that number means while
-keeping its name is the silent break this plan refuses everywhere else,
-so a place-shaped answer arrives beside the older one and the screens
-move across before it goes.
+The contract step for the API itself. The place-shaped answer and the
+place-keyed paths arrived first and the screens moved across, so the
+organisation-shaped ones go here: ``organisation_id`` leaves the
+responses, and the organisation-keyed addresses answer 410 naming their
+replacement rather than quietly doing the work under an id that no
+longer means what it says.
 """
 
 from __future__ import annotations
@@ -80,7 +79,7 @@ def _seed_bank(db: Session, org: Organisation, educator: User) -> None:
 
 
 class TestTheSettingsAnswer:
-    def test_it_carries_both_ids(
+    def test_it_carries_only_the_place_id(
         self,
         test_client: TestClient,
         org: Organisation,
@@ -99,8 +98,8 @@ class TestTheSettingsAnswer:
 
         assert resp.status_code == 200, resp.text
         body = resp.json()
-        assert body["organisation_id"] == org.id
         assert body["org_unit_id"] == org.org_unit_id
+        assert "organisation_id" not in body
 
 
 class TestThePlaceKeyedPaths:
@@ -124,14 +123,20 @@ class TestThePlaceKeyedPaths:
         assert resp.status_code == 200, resp.text
         assert resp.json()["is_live"] is True
 
-    def test_the_older_path_still_works(
+    def test_the_older_path_says_it_has_gone(
         self,
         test_client: TestClient,
         db_session: Session,
         org: Organisation,
         educator: User,
     ) -> None:
-        """A tab left open across the deploy keeps working."""
+        """410, not 404, and not silently doing the work either.
+
+        The two id spaces overlap for small installations, so an
+        organisation id would often name a real place. Answering the
+        request under the old address is how a caller would go on
+        believing the number means an organisation.
+        """
         _seed_bank(db_session, org, educator)
         headers = _login(test_client)
 
@@ -142,7 +147,27 @@ class TestThePlaceKeyedPaths:
             headers=headers,
         )
 
-        assert resp.status_code == 200, resp.text
+        assert resp.status_code == 410, resp.text
+        assert "places" in resp.json()["detail"]
+
+    def test_the_older_promote_path_says_it_has_gone(
+        self,
+        test_client: TestClient,
+        db_session: Session,
+        org: Organisation,
+        educator: User,
+    ) -> None:
+        _seed_bank(db_session, org, educator)
+        headers = _login(test_client)
+
+        resp = test_client.put(
+            f"/api/teaching/admin/banks/test-bank"
+            f"/organisations/{org.id}/active-version",
+            json={"version": 1},
+            headers=headers,
+        )
+
+        assert resp.status_code == 410, resp.text
 
     def test_a_place_that_is_not_an_organisation_is_not_found(
         self,
