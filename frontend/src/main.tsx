@@ -251,6 +251,11 @@ const routes: RouteObject[] = [
             handle: { safeForReload: true },
           },
           {
+            path: "/passport/cpd/:year/:stem",
+            lazy: () => import("./pages/passport/PassportCpdEntryPage"),
+            handle: { safeForReload: true },
+          },
+          {
             path: "/passport/reflections",
             lazy: () => import("./pages/passport/PassportReflectionsPage"),
             handle: { safeForReload: true },
