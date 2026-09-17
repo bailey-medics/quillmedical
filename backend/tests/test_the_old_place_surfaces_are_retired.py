@@ -1,8 +1,8 @@
-"""The old sites surface answers 410, not data.
+"""The old place surfaces answer 410, not data.
 
-Every place lives at ``/api/org-units`` now. The sites addresses stayed
-for a deploy cycle so nothing broke mid-rollout; this is the step where
-they stop answering.
+Every place lives at ``/api/org-units`` now. The sites and organisations
+addresses each stayed for a deploy cycle so nothing broke mid-rollout;
+this is where they stop answering.
 
 410 rather than 404, so a caller can tell "this never existed" from
 "this used to be here and has gone" — the second is worth saying,
@@ -38,6 +38,17 @@ RETIRED: list[tuple[str, str, dict[str, object] | None]] = [
     ("delete", "/api/sites/1/links/2", None),
     ("post", "/api/sites/1/staff", {"user_id": 2, "role": "staff"}),
     ("delete", "/api/sites/1/staff/2", None),
+    ("get", "/api/organisations", None),
+    ("post", "/api/organisations", {"name": "A Trust", "type": "hospital"}),
+    ("get", "/api/organisations/1", None),
+    ("put", "/api/organisations/1", {"name": "Renamed"}),
+    ("delete", "/api/organisations/1", None),
+    ("post", "/api/organisations/1/staff", {"user_id": 2}),
+    ("delete", "/api/organisations/1/staff/2", None),
+    ("post", "/api/organisations/1/patients", {"patient_id": "p1"}),
+    ("delete", "/api/organisations/1/patients/p1", None),
+    ("get", "/api/organisations/1/features", None),
+    ("put", "/api/organisations/1/features/teaching", {"enabled": True}),
 ]
 
 
@@ -55,7 +66,7 @@ def test_it_says_it_has_gone(
 
 
 def test_it_says_where_to_go_instead(authenticated_superadmin_client) -> None:
-    resp = authenticated_superadmin_client.get("/api/sites")
+    resp = authenticated_superadmin_client.get("/api/organisations")
 
     assert "/api/org-units" in resp.json()["detail"]
 

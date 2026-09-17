@@ -1982,7 +1982,7 @@ class TestWhatAnExternalAssessorCannotReach:
 
         assert assessor_client.get("/api/users").status_code == 403
 
-    def test_they_cannot_list_organisations(
+    def test_they_cannot_list_places(
         self,
         holder_client: TestClient,
         test_client: TestClient,
@@ -1993,7 +1993,7 @@ class TestWhatAnExternalAssessorCannotReach:
 
         assessor_client = _login(test_client, "okafor")
 
-        assert assessor_client.get("/api/organisations").status_code == 403
+        assert assessor_client.get("/api/org-units").status_code == 403
 
     def test_they_cannot_verify_or_revoke_anybody(
         self,
@@ -2177,7 +2177,7 @@ class TestWhatAnExternalAssessorCannotReach:
         They hold a membership at the holder's organisation and the
         passport competency as a ceiling, and still reach nothing there:
         not the passport that invited them, not the people, not the
-        organisation itself. What they may act on comes from the request
+        place itself. What they may act on comes from the request
         rows naming them, and they are named on none.
         """
         passport_id = _create_passport(holder_client)
@@ -2200,7 +2200,7 @@ class TestWhatAnExternalAssessorCannotReach:
             == 404
         )
         assert assessor_client.get("/api/users").status_code == 403
-        assert assessor_client.get("/api/organisations").status_code == 403
+        assert assessor_client.get("/api/org-units").status_code == 403
         assert assessor_client.get("/api/passport/requests/inbox").json() == []
 
 
