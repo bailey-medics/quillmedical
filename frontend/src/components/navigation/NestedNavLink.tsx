@@ -11,27 +11,13 @@
 import { NavLink } from "@mantine/core";
 import { useLocation, useNavigate } from "react-router-dom";
 import NavIcon from "../icons/NavIcon";
+// Taken from `NavIcon` rather than restated. This was a copy of that
+// list and had fallen a name behind: `passport` was missing, so a
+// passport entry could not be a `NavItem` at all and had to be
+// hand-rolled as a bare `NavLink` in the sidebar. Importing the real
+// type means the next icon added there works here unremarked.
+import type { IconName } from "../icons/NavIcon";
 import { navLinkStyles } from "./navStyles";
-
-/**
- * Icon name type (from NavIcon component)
- */
-type IconName =
-  | "home"
-  | "settings"
-  | "logout"
-  | "user"
-  | "bell"
-  | "message"
-  | "file"
-  | "adjustments"
-  | "building-community"
-  | "building-hospital"
-  | "teaching"
-  | "book"
-  | "pricing"
-  | "database"
-  | "mail";
 
 /**
  * Navigation item configuration

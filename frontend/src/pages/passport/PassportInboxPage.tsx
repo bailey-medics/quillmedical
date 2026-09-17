@@ -56,6 +56,7 @@ export function Component() {
 
       {!loading && requests.length === 0 && (
         <StateMessage
+          colour="update"
           icon={<IconFileText />}
           title="Nothing waiting"
           description="Requests appear here when somebody asks you to assess them."
