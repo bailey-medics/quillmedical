@@ -25,6 +25,7 @@ import { StateMessage } from "@/components/message-cards";
 import IconTextButton from "@/components/button/IconTextButton";
 import { IconAlertTriangle } from "@/components/icons/appIcons";
 import { BodyText, BodyTextInline, Heading } from "@/components/typography";
+import { TeachingProgressBar } from "@/components/teaching/teaching-progress-bar";
 import type { MediaAsset, ModuleMedia } from "@/features/teaching/types";
 import MediaDropzone from "./MediaDropzone";
 import { formatSize } from "./mediaFormat";
@@ -190,8 +191,27 @@ export default function ModuleMediaCard({
                       onClick={() => onEditCaptions?.(row.asset as MediaAsset)}
                     />
                   </Stack>
-                ) : row.asset ? (
-                  <BodyTextInline>No captions</BodyTextInline>
+                ) : row.asset?.progress ? (
+                  /* Not "No captions". That stated absence where the
+                     truth was "not yet", and had someone re-upload a
+                     video that was processing perfectly well. The bar
+                     says how far along it is; the line beneath says
+                     what is happening, including when nothing is. */
+                  <Stack gap={4}>
+                    <TeachingProgressBar
+                      current={row.asset.progress.stage}
+                      total={row.asset.progress.total_stages}
+                    />
+                    <BodyTextInline
+                      c={
+                        row.asset.progress.stalled
+                          ? "var(--alert-color)"
+                          : undefined
+                      }
+                    >
+                      {row.asset.progress.label}
+                    </BodyTextInline>
+                  </Stack>
                 ) : null,
             },
             {
