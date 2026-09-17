@@ -44,8 +44,8 @@ from app.models import (
 from app.org_units.relations import relation_grants_reach
 from app.org_units.tree import (
     descendant_ids,
+    organisation_place_ids,
     root_ids_of,
-    root_ids_of_organisations,
 )
 
 # ------------------------------------------------------------------
@@ -103,9 +103,7 @@ def organisation_places_of(db: Session, place_ids: list[int]) -> set[int]:
     return {
         int(place_id)
         for place_id in db.execute(
-            select(Organisation.org_unit_id).where(
-                Organisation.org_unit_id.in_(roots)
-            )
+            organisation_place_ids().where(OrgUnit.id.in_(roots))
         )
         .scalars()
         .all()
@@ -281,7 +279,7 @@ def get_patient_place_ids(db: Session, patient_id: str) -> list[int]:
             select(org_unit_patient_member.c.org_unit_id).where(
                 org_unit_patient_member.c.patient_id == patient_id,
                 org_unit_patient_member.c.org_unit_id.in_(
-                    select(Organisation.org_unit_id)
+                    organisation_place_ids()
                 ),
             )
         )
@@ -472,8 +470,11 @@ def place_of_organisation(db: Session, organisation_id: int) -> int | None:
     tree, which nothing creates any more and which the fold removes the
     possibility of.
     """
-    roots = root_ids_of_organisations(db, [organisation_id])
-    return roots[0] if roots else None
+    return db.scalar(
+        select(Organisation.org_unit_id).where(
+            Organisation.id == organisation_id
+        )
+    )
 
 
 def media_prefix_of(db: Session, place_id: int) -> int | None:
@@ -610,9 +611,9 @@ def remove_place_memberships(
         user_id: The person.
         place_ids: Which places to clear, or None for every organisation.
     """
-    roots = select(Organisation.org_unit_id)
+    roots = organisation_place_ids()
     if place_ids is not None:
-        roots = roots.where(Organisation.org_unit_id.in_(place_ids))
+        roots = roots.where(OrgUnit.id.in_(place_ids))
     root_ids = list(db.execute(roots).scalars().all())
 
     if root_ids:
