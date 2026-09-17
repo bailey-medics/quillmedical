@@ -113,28 +113,17 @@ def _login(client: TestClient, username: str) -> dict[str, str]:
     return {"X-CSRF-Token": client.cookies.get("XSRF-TOKEN", "")}
 
 
-def _place(org: Organisation) -> int:
-    """The organisation's own row in the tree.
-
-    The paths name a place now. An organisation always has one — the
-    model writes it — so the check is for the type checker rather than
-    for a state that happens.
-    """
-    place_id = org.org_unit_id
-    assert place_id is not None
-    return place_id
-
-
 def _promote_url(org: Organisation) -> str:
     return (
         "/api/teaching/admin/banks/test-bank"
-        f"/places/{_place(org)}/active-version"
+        f"/places/{org.org_unit_id}/active-version"
     )
 
 
 def _settings_url(org: Organisation) -> str:
     return (
-        "/api/teaching/admin/banks/test-bank" f"/places/{_place(org)}/settings"
+        "/api/teaching/admin/banks/test-bank"
+        f"/places/{org.org_unit_id}/settings"
     )
 
 

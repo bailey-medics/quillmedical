@@ -10,7 +10,13 @@ Covers:
 - Nothing is inherited, in either direction
 - The same authorisation twice is still refused
 - A row with no place is still refused
-- An organisation the tree does not know about authorises nobody
+
+``TestAnOrganisationOutsideTheTree`` used to sit here, checking that an
+organisation whose ``org_unit_id`` was null authorised nobody. That
+column is required now, so the state it guarded against cannot be
+written — the test could only reach it by setting the column to null
+itself, which is the database refusing rather than the code failing
+closed.
 """
 
 from __future__ import annotations
@@ -161,23 +167,3 @@ class TestTheRulesThatSurvived:
         with pytest.raises(IntegrityError):
             db_session.commit()
         db_session.rollback()
-
-
-class TestAnOrganisationOutsideTheTree:
-    def test_it_authorises_nobody(self, db_session):
-        """Failing closed: a place the tree has never heard of is not a
-        place everybody can practise at."""
-        org = _org(db_session)
-        doctor = _doctor(db_session)
-        _authorise(db_session, doctor, org.org_unit_id)
-
-        org.org_unit_id = None
-        db_session.commit()
-
-        assert not can_practise_at(
-            db_session, doctor, COMPETENCY, organisation_id=org.id
-        )
-        assert (
-            competencies_at(db_session, doctor, organisation_id=org.id)
-            == set()
-        )
