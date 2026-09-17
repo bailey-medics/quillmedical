@@ -186,12 +186,56 @@ Two things to check rather than assume:
    - **The name** describes the unit, not the session: `pr-description-join`,
      not `fixes` or `part-2`. Lower case, hyphenated, no `feature/` prefix —
      `stack-add` adds it. Keep it short enough to read in a stack diagram.
+   - **The name opens with the stack key**, so every branch in the stack
+     sorts and reads together: `passport-record-and-review`,
+     `passport-sign-off-page`. See "The stack key" below. On a stack that
+     already has branches, take the key from them rather than choosing
+     again.
    - **The message** is conventional-commit style, matching the branch's own
      history: `fix(tooling): stack-log-long could not read pull requests`.
      Describe what the change does, not what you did.
    - **Read the diff before naming either.** `git diff --stat` and the diff
      itself; the name and message should come from the code, not from what
      the conversation was about.
+
+   ### The stack key
+
+   Every branch in one stack opens its name with the same single word,
+   so the pull requests read as a set rather than as unrelated work.
+   `passport-record-and-review` and `passport-sign-off-page` sit
+   together in a list; `make-the-passport-usable` and
+   `stop-a-hook-failure` do not, even when they are the same stack.
+
+   **One word, lower case**, naming the area the stack is about:
+   `passport`, `teaching`, `billing`. Not the change — the area. The
+   rest of the branch name says what this unit does.
+
+   **Choose it once, when the stack is started** — the `stack-new` run,
+   or the first `stack-add` onto a bare branch. Every later branch takes
+   the key from the branches already in the stack, read from
+   `just stack-log`. It does not change while the stack lives, even as
+   the work drifts: a stack whose PRs share a word and then stop sharing
+   it is worse than one that never had a key.
+
+   **Check the key is free before adopting it.** Another open stack using
+   the same word would leave two unrelated sets of pull requests looking
+   like one:
+
+   ```bash
+   gh pr list --state open --json number,title,headRefName \
+     --limit 100
+   ```
+
+   If any open pull request's branch already opens with the word, choose
+   another. Prefer a narrower one — `passport-evidence` over `passport`
+   — rather than a vaguer one. Closed and merged pull requests do not
+   count: a key is reusable once its stack is finished.
+
+   **The key reaches the pull request title through the branch name.**
+   `auto-pr.yml` builds titles as `Feature: <the branch words>`, and
+   `gh stack submit` falls back to the commit subject, so the title is
+   not something this command sets — see "Never change the pull request
+   title". Naming the branch well is the whole of the influence there is.
 
    ### When `stack-add` fails on a hook
 
