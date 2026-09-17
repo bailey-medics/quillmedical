@@ -133,7 +133,10 @@ describe("sign-offs", () => {
   });
 
   it("requests a sign-off against a competency", async () => {
-    const body = { assessor_user_id: 7, observed_on: "2026-03-14" };
+    const body = {
+      assessor_email: "amara.okonkwo@example.nhs.uk",
+      observed_on: "2026-03-14",
+    };
     await requestSignOff(PASSPORT_ID, COMPETENCY, body);
     expect(api.post).toHaveBeenCalledWith(
       `/passport/${PASSPORT_ID}/competencies/${COMPETENCY}/requests`,
