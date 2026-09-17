@@ -47,9 +47,11 @@ returns when the link records ``has_captions``.
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 import tempfile
+import urllib.request
 from pathlib import Path
 from typing import Any, NoReturn
 
@@ -94,26 +96,43 @@ def _report_captions(org_id: int, module_id: str, asset_id: str) -> None:
         )
         return
 
+    # `urllib`, not `httpx`. This image carries its own three pinned
+    # packages rather than `poetry.lock` — Whisper pulls torch, which has
+    # no business in the API image — and `httpx` was not among them. The
+    # captions were written, verified and then never recorded:
+    #
+    #   ERROR: caption callback failed (No module named 'httpx')
+    #
+    # which reached the admin as "No captions" and the learner as a video
+    # with no subtitle track, neither of them mentioning an import.
+    #
+    # The request is one small JSON POST, so the standard library does it
+    # and the dependency cannot go missing again.
+    payload = json.dumps(
+        {
+            "org_id": org_id,
+            "module_id": module_id,
+            "asset_id": asset_id,
+        }
+    ).encode("utf-8")
+    request = urllib.request.Request(
+        url,
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
     try:
-        import httpx
-
-        response = httpx.post(
-            url,
-            json={
-                "org_id": org_id,
-                "module_id": module_id,
-                "asset_id": asset_id,
-            },
-            headers={"Authorization": f"Bearer {token}"},
-            timeout=30.0,
-        )
-        if response.status_code >= 400:
-            print(
-                f"ERROR: caption callback refused "
-                f"({response.status_code}); track not offered",
-                file=sys.stderr,
-            )
-            return
+        with urllib.request.urlopen(request, timeout=30) as response:
+            if response.status >= 400:
+                print(
+                    f"ERROR: caption callback refused "
+                    f"({response.status}); track not offered",
+                    file=sys.stderr,
+                )
+                return
     except Exception as exc:  # noqa: BLE001
         print(
             f"ERROR: caption callback failed ({exc}); track not offered",
