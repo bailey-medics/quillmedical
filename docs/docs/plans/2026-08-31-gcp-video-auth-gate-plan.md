@@ -1425,6 +1425,28 @@ proved the load balancer does not strip the URL prefix: a request for
 `{org}/{module}/x.mp4`. The path and the key must agree, and a mismatch
 presents as a 404 on a file that is plainly in the bucket.
 
+**[corrected 2026-09-17] The paragraph above contradicts itself, and the
+contradiction cost an afternoon.** If the prefix is _not_ stripped, then
+`/videos/{org}/{module}/x.mp4` asks for the key `videos/{org}/{module}/x.mp4`
+— with `videos/` included. The sentence states the rule correctly and then
+writes down a key that breaks it.
+
+The transcode job followed the key as written, so every rendition landed at
+`{org}/{module}/…` while the CDN asked for `videos/{org}/{module}/…`. The
+learner saw a black player with a disabled play button; the load balancer
+logged a 404 against a file sitting plainly in the bucket, exactly as
+predicted.
+
+**Now resolved by stripping the prefix at the edge.** The `/videos/*` path
+rule carries `routeAction.urlRewrite.pathPrefixRewrite = "/"`, so the key is
+the path after `/videos/` and the object layout is unchanged. The signed
+cookie is unaffected: its `URLPrefix` covers the request URL and Cloud CDN
+checks it before the rewrite, so the module boundary is exactly where it was.
+
+Chosen over moving the objects under `videos/`, which would have touched five
+call sites in `storage.py`, both job CLIs, the cookie prefix and the source
+bucket — for a property that reads more neatly and changes nothing.
+
 - **Source** objects are `{org_id}/{module_id}/{asset_id}` with **no
   extension** — `storage.media_object_path()`.
 - **Processed** objects must therefore live under the same
@@ -1846,6 +1868,103 @@ violates the following Content Security Policy directive:
       30 is not done either: the hosted path was added _alongside_ YouTube
       rather than swapping it — `react-player` is still imported and
       `youtubeId` is still a live branch in `VideoPlayer.tsx`.
+      **[superseded 2026-09-17] 27 and 28 are now done.** The deploy points
+      both jobs at the images CI builds, and a real lecture has been through
+      the whole chain: transcode at 15:11, renditions written and the master
+      deleted at 15:15, completion reported, the caption job fired from that
+      report, and Whisper finished at 15:18. Both now report executions
+      rather than zero. The paragraph above is kept because the gap it names
+      was real and took four separate fixes to close — the placeholder
+      images, the unset job names, the wrong invoker role, and an import
+      that pulled the application config into a job holding no credentials.
+
+### The cookie was sent wrapped in quote marks
+
+**[found 2026-09-17]** Every video failed to play, with a black player and a
+disabled play button, long after the object keys, the signing key, the IAM
+grants and the path rewrite had each been checked and found correct.
+
+The load balancer log named it once anyone looked at the right line:
+
+```
+17:26:51  403  signed_request_invalid_encoding  | Mozilla/5.0 (Macintosh…)
+17:27:57  206  response_sent_by_backend         | Python-urllib  (a hand test)
+```
+
+- **Starlette quotes a cookie value it thinks needs quoting.** `set_cookie`
+  goes through Python's `SimpleCookie`, which wraps any value containing
+  characters outside its safe set in double quotes — and a Cloud CDN policy
+  is almost entirely `:` and `=`:
+
+  ```
+  Cloud-CDN-Cookie="URLPrefix=…:Signature=…"; Path=/videos/
+  ```
+
+  The browser stores the quotes and returns them, so the edge sees a policy
+  beginning with `"` and refuses it.
+
+- **A hand-built test cookie always worked**, which is why this survived so
+  long. Every check made from a terminal set the header directly and passed;
+  only a browser reproduced it. The lesson generalises: a test that
+  constructs the credential itself cannot detect a fault in how the
+  credential is _written_.
+
+- **Fixed by appending the `Set-Cookie` header directly** in
+  `grant_video_access`, with a comment saying why it must not be tidied back
+  to `set_cookie`. Two tests pin it: one asserts no quotes appear, the other
+  asserts `set_cookie` _would_ quote it — so if Starlette ever changes, the
+  guard rail tells the next reader they may simplify it rather than leaving
+  them to wonder.
+
+### A stale CDN cache made a correct fix look broken
+
+**[found 2026-09-17]** Worth recording as a method failure rather than a
+code one. After the path rewrite was applied, a probe object keyed
+`videos/1/…` was still being served — apparently proving the rewrite inert.
+On that reading the rewrite was declared a failure, an explanation was
+constructed for why (`urlRewrite` supposedly working only in `route_rules`),
+and a reversal to the rejected option was recommended. All of it was wrong.
+
+- **The probe had been fetched and cached before the rewrite applied.** Cloud
+  CDN served it from cache without asking the bucket, so the response
+  described the world as it had been minutes earlier.
+
+- **The test that settled it could not be confounded.** The same filename was
+  placed at _both_ candidate keys with different contents; whichever came
+  back named the key actually requested. A cached copy of one key cannot
+  return the other's bytes. It returned the root-keyed content — the rewrite
+  worked all along, and `invalidateCache` on `/videos/*` cleared the poisoned
+  entries.
+
+- **The general lesson**: behind a CDN, a single probe proves nothing about
+  the present. Either invalidate first, or design the probe so that a stale
+  answer is distinguishable from a fresh one.
+
+### Progress is now shown, rather than absence asserted
+
+**[done 2026-09-17]** The admin card said "No captions" from the moment a
+file landed until Whisper finished — true, useless, and indistinguishable
+from "no captions are coming". It sent someone re-uploading a video that was
+processing perfectly, twice.
+
+- **Two columns record when each job was invoked**, not merely when it
+  finished: `transcode_started_at` and `caption_started_at`. Without them,
+  "running" and "never started" are the same state, and the caption job sat
+  unconfigured for two days looking exactly like one in flight.
+
+- **The wording is derived server-side** in `media.describe_progress`, so the
+  card cannot form a second opinion. Four stages — uploaded, video ready,
+  captions written, captions checked — drive `TeachingProgressBar`, with a
+  line beneath saying what is happening or that nothing is.
+
+- **A job past its patience is called failed**, at 25 minutes for transcode
+  and 70 for captions, both beyond the jobs' own timeouts. Deliberately
+  generous: telling someone their upload failed when it was merely slow is
+  the mistake this feature exists to prevent.
+
+- **The card polls every ten seconds while work is outstanding** and stops
+  when none is. A bar that cannot advance is no better than the line it
+  replaced.
 
 ## Local development
 

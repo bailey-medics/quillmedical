@@ -40,10 +40,12 @@ covers. A mismatch presents as a 404 on a file plainly in the bucket.
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
 import tempfile
+import urllib.request
 from pathlib import Path
 from typing import NoReturn
 
@@ -131,26 +133,31 @@ def _report_complete(
     names = [dest.rsplit("/", 1)[-1] for dest in written]
 
     try:
-        import httpx
-
-        response = httpx.post(
-            url,
-            json={
+        payload = json.dumps(
+            {
                 "org_id": org_id,
                 "module_id": module_id,
                 "asset_id": asset_id,
                 "outputs": names,
+            }
+        ).encode("utf-8")
+        request = urllib.request.Request(
+            url,
+            data=payload,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
             },
-            headers={"Authorization": f"Bearer {token}"},
-            timeout=30.0,
+            method="POST",
         )
-        if response.status_code >= 400:
-            print(
-                f"ERROR: completion callback refused "
-                f"({response.status_code}); module stays hidden",
-                file=sys.stderr,
-            )
-            return
+        with urllib.request.urlopen(request, timeout=30) as response:
+            if response.status >= 400:
+                print(
+                    f"ERROR: completion callback refused "
+                    f"({response.status}); module stays hidden",
+                    file=sys.stderr,
+                )
+                return
     except Exception as exc:  # noqa: BLE001
         print(
             f"ERROR: completion callback failed ({exc}); "
