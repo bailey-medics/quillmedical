@@ -29,7 +29,7 @@ from app.org_units.relations import (
     relation_grants_reach,
     validate_org_unit_relation,
 )
-from app.organisations import add_organisation_member
+from app.organisations import add_place_member
 
 
 @pytest.fixture
@@ -37,7 +37,7 @@ def own_org(db_session: Session, test_admin: User) -> Organisation:
     org = Organisation(name="Own Trust", type="hospital_team")
     db_session.add(org)
     db_session.commit()
-    add_organisation_member(db_session, org.id, test_admin.id, "staff")
+    add_place_member(db_session, org.org_unit_id, test_admin.id, "staff")
     db_session.commit()
     return org
 

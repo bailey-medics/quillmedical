@@ -25,7 +25,7 @@ from app.models import (
     org_unit_member,
 )
 from app.organisations import (
-    add_organisation_member,
+    add_place_member,
     get_member_org_ids,
     get_org_member_ids,
     get_org_staff_ids,
@@ -72,7 +72,7 @@ def _site(db: Session, name: str, org: Organisation | None = None) -> OrgUnit:
 def _join_org(
     db: Session, org: Organisation, user: User, capacity: str
 ) -> None:
-    add_organisation_member(db, org.id, user.id, capacity)
+    add_place_member(db, org.org_unit_id, user.id, capacity)
     db.commit()
 
 

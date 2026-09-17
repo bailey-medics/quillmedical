@@ -25,7 +25,7 @@ from app.models import (
     org_unit_member,
 )
 from app.organisations import (
-    add_organisation_member,
+    add_place_member,
     get_member_org_ids,
     get_reachable_org_ids,
 )
@@ -75,7 +75,7 @@ class TestATeachingLinkGrantsReach:
         school = _org(db_session, "Medical School")
         trust = _org(db_session, "Trust")
         student = _person(db_session, "student")
-        add_organisation_member(db_session, school.id, student.id, "trainee")
+        add_place_member(db_session, school.org_unit_id, student.id, "trainee")
         _link(db_session, school.org_unit_id, trust.org_unit_id, "teaches_at")
 
         assert get_reachable_org_ids(db_session, student.id) == sorted(
@@ -115,7 +115,7 @@ class TestATeachingLinkGrantsReach:
         trust = _org(db_session, "Trust")
         classroom = _ward(db_session, school, "Classroom")
         student = _person(db_session, "student")
-        add_organisation_member(db_session, school.id, student.id, "trainee")
+        add_place_member(db_session, school.org_unit_id, student.id, "trainee")
         _link(db_session, classroom.id, trust.org_unit_id, "teaches_at")
 
         assert get_reachable_org_ids(db_session, student.id) == [school.id]
@@ -124,7 +124,7 @@ class TestATeachingLinkGrantsReach:
         school = _org(db_session, "Medical School")
         trust = _org(db_session, "Trust")
         student = _person(db_session, "student")
-        add_organisation_member(db_session, school.id, student.id, "trainee")
+        add_place_member(db_session, school.org_unit_id, student.id, "trainee")
         _link(db_session, school.org_unit_id, trust.org_unit_id, "hosts")
 
         assert get_reachable_org_ids(db_session, student.id) == [school.id]
@@ -140,7 +140,7 @@ class TestATeachingLinkGrantsReach:
         school = _org(db_session, "Medical School")
         trust = _org(db_session, "Trust")
         consultant = _person(db_session, "consultant")
-        add_organisation_member(db_session, trust.id, consultant.id, "staff")
+        add_place_member(db_session, trust.org_unit_id, consultant.id, "staff")
         _link(db_session, school.org_unit_id, trust.org_unit_id, "teaches_at")
 
         assert get_reachable_org_ids(db_session, consultant.id) == [trust.id]
@@ -151,7 +151,7 @@ class TestATeachingLinkGrantsReach:
         trust = _org(db_session, "Trust")
         further = _org(db_session, "Another Trust")
         student = _person(db_session, "student")
-        add_organisation_member(db_session, school.id, student.id, "trainee")
+        add_place_member(db_session, school.org_unit_id, student.id, "trainee")
         _link(db_session, school.org_unit_id, trust.org_unit_id, "teaches_at")
         _link(db_session, trust.org_unit_id, further.org_unit_id, "teaches_at")
 
@@ -165,7 +165,7 @@ class TestALinkConfersNothingElse:
         school = _org(db_session, "Medical School")
         trust = _org(db_session, "Trust")
         student = _person(db_session, "student")
-        add_organisation_member(db_session, school.id, student.id, "trainee")
+        add_place_member(db_session, school.org_unit_id, student.id, "trainee")
         _link(db_session, school.org_unit_id, trust.org_unit_id, "teaches_at")
 
         assert get_member_org_ids(db_session, student.id) == [school.id]
@@ -177,7 +177,9 @@ class TestALinkConfersNothingElse:
         links. That separation is why the two lookups exist."""
         school = _org(db_session, "Medical School")
         trust = _org(db_session, "Trust")
-        add_organisation_member(db_session, school.id, test_admin.id, "staff")
+        add_place_member(
+            db_session, school.org_unit_id, test_admin.id, "staff"
+        )
         _link(db_session, school.org_unit_id, trust.org_unit_id, "teaches_at")
 
         resp = authenticated_admin_client.get(
@@ -190,6 +192,6 @@ class TestALinkConfersNothingElse:
         school = _org(db_session, "Medical School")
         _org(db_session, "Trust")
         student = _person(db_session, "student")
-        add_organisation_member(db_session, school.id, student.id, "trainee")
+        add_place_member(db_session, school.org_unit_id, student.id, "trainee")
 
         assert get_reachable_org_ids(db_session, student.id) == [school.id]
