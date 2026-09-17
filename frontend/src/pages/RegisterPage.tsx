@@ -106,6 +106,7 @@ function TeachingRegisterPage() {
         valid: boolean;
         site_name: string | null;
         organisation_id: number | null;
+        org_unit_id: number | null;
         site_id: number | null;
       }>("/teaching/public/validate-clinical-lead", {
         email: data.clinicalLeadEmail,
@@ -125,7 +126,9 @@ function TeachingRegisterPage() {
 
       navigate(`/teaching/register/${data.module}`, {
         state: {
-          organisationId: result.organisation_id,
+          // The place the organisation is, which is what registration
+          // sends back. The organisation id beside it is on its way out.
+          organisationId: result.org_unit_id,
           siteId: result.site_id,
         },
       });
