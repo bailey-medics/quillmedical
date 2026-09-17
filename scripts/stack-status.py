@@ -423,18 +423,19 @@ def draw(
             # one.
             url = str(branch.pr.get("url", ""))
 
-            # An ordinary open pull request is just its number. It used
-            # to read "ready", meaning out of draft — but bare "ready"
-            # sounds like a verdict on the code, which this cannot know:
-            # a pull request is "ready" here with CI red and nobody
-            # having looked. The states worth naming are the ones that
-            # stop you: merged, closed, still a draft.
+            # An open pull request is just its number, draft or not. It
+            # used to read "ready", meaning out of draft — but bare
+            # "ready" sounds like a verdict on the code, which this
+            # cannot know. "draft" went the same way for a different
+            # reason: the heavy-tier mark on the same row is a dash
+            # exactly when nothing has run, which is what being a draft
+            # amounts to, so the word repeated what the row already
+            # said. Merged and closed stay, because no mark carries
+            # those.
             if state == "MERGED":
                 text = f"#{number} merged"
             elif state == "CLOSED":
                 text = f"#{number} closed"
-            elif branch.pr.get("isDraft"):
-                text = f"#{number} draft"
             else:
                 text = f"#{number}"
 
