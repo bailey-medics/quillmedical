@@ -344,6 +344,19 @@ class AssessorRegistrationVerification(Base):
         index=True,
     )
 
+    #: The same place, counted the way every other table counts one.
+    #:
+    #: ``organisation_id`` above points at the organisations table, which
+    #: is going: an organisation is a place at the top of a tree, and a
+    #: place id is the only id there will be. Both are written while the
+    #: two exist, this one is read from the next step onwards, and the
+    #: older column goes last.
+    org_unit_id: Mapped[int | None] = mapped_column(
+        ForeignKey("org_unit.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+
     verified_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

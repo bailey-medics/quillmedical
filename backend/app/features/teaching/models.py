@@ -67,6 +67,23 @@ class QuestionBankConfig(Base):
         nullable=False,
         index=True,
     )
+    #: The same place, counted the way every other table counts one.
+    #:
+    #: ``organisation_id`` above points at the organisations table, which
+    #: is going: an organisation is a place at the top of a tree, and a
+    #: place id is the only id there will be. Both are written while the
+    #: two exist, this one is read from the next step onwards, and the
+    #: older column goes last.
+    #:
+    #: Nullable only for as long as that takes. Every row is backfilled by
+    #: the migration that adds it, so a null here means a writer that has
+    #: not been moved across.
+    org_unit_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("org_unit.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
     question_bank_id: Mapped[str] = mapped_column(
         String(255), nullable=False, index=True
     )
@@ -118,6 +135,23 @@ class QuestionBankItem(Base):
         Integer,
         ForeignKey("organisations.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
+    )
+    #: The same place, counted the way every other table counts one.
+    #:
+    #: ``organisation_id`` above points at the organisations table, which
+    #: is going: an organisation is a place at the top of a tree, and a
+    #: place id is the only id there will be. Both are written while the
+    #: two exist, this one is read from the next step onwards, and the
+    #: older column goes last.
+    #:
+    #: Nullable only for as long as that takes. Every row is backfilled by
+    #: the migration that adds it, so a null here means a writer that has
+    #: not been moved across.
+    org_unit_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("org_unit.id", ondelete="CASCADE"),
+        nullable=True,
         index=True,
     )
     question_bank_id: Mapped[str] = mapped_column(
@@ -173,6 +207,23 @@ class Assessment(Base):
         Integer,
         ForeignKey("organisations.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
+    )
+    #: The same place, counted the way every other table counts one.
+    #:
+    #: ``organisation_id`` above points at the organisations table, which
+    #: is going: an organisation is a place at the top of a tree, and a
+    #: place id is the only id there will be. Both are written while the
+    #: two exist, this one is read from the next step onwards, and the
+    #: older column goes last.
+    #:
+    #: Nullable only for as long as that takes. Every row is backfilled by
+    #: the migration that adds it, so a null here means a writer that has
+    #: not been moved across.
+    org_unit_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("org_unit.id", ondelete="CASCADE"),
+        nullable=True,
         index=True,
     )
     question_bank_id: Mapped[str] = mapped_column(
@@ -267,6 +318,23 @@ class TeachingOrgSettings(Base):
         nullable=False,
         index=True,
     )
+    #: The same place, counted the way every other table counts one.
+    #:
+    #: ``organisation_id`` above points at the organisations table, which
+    #: is going: an organisation is a place at the top of a tree, and a
+    #: place id is the only id there will be. Both are written while the
+    #: two exist, this one is read from the next step onwards, and the
+    #: older column goes last.
+    #:
+    #: Nullable only for as long as that takes. Every row is backfilled by
+    #: the migration that adds it, so a null here means a writer that has
+    #: not been moved across.
+    org_unit_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("org_unit.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
     coordinator_email: Mapped[str] = mapped_column(String(255), nullable=False)
     institution_name: Mapped[str] = mapped_column(String(500), nullable=False)
 
@@ -304,6 +372,23 @@ class QuestionBankOrgStatus(Base):
         Integer,
         ForeignKey("organisations.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
+    )
+    #: The same place, counted the way every other table counts one.
+    #:
+    #: ``organisation_id`` above points at the organisations table, which
+    #: is going: an organisation is a place at the top of a tree, and a
+    #: place id is the only id there will be. Both are written while the
+    #: two exist, this one is read from the next step onwards, and the
+    #: older column goes last.
+    #:
+    #: Nullable only for as long as that takes. Every row is backfilled by
+    #: the migration that adds it, so a null here means a writer that has
+    #: not been moved across.
+    org_unit_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("org_unit.id", ondelete="CASCADE"),
+        nullable=True,
         index=True,
     )
     question_bank_id: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -347,6 +432,23 @@ class QuestionBankSync(Base):
         Integer,
         ForeignKey("organisations.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
+    )
+    #: The same place, counted the way every other table counts one.
+    #:
+    #: ``organisation_id`` above points at the organisations table, which
+    #: is going: an organisation is a place at the top of a tree, and a
+    #: place id is the only id there will be. Both are written while the
+    #: two exist, this one is read from the next step onwards, and the
+    #: older column goes last.
+    #:
+    #: Nullable only for as long as that takes. Every row is backfilled by
+    #: the migration that adds it, so a null here means a writer that has
+    #: not been moved across.
+    org_unit_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("org_unit.id", ondelete="CASCADE"),
+        nullable=True,
         index=True,
     )
     question_bank_id: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -430,6 +532,23 @@ class ModuleMediaLink(Base):
         Integer,
         ForeignKey("organisations.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
+    )
+    #: The same place, counted the way every other table counts one.
+    #:
+    #: ``organisation_id`` above points at the organisations table, which
+    #: is going: an organisation is a place at the top of a tree, and a
+    #: place id is the only id there will be. Both are written while the
+    #: two exist, this one is read from the next step onwards, and the
+    #: older column goes last.
+    #:
+    #: Nullable only for as long as that takes. Every row is backfilled by
+    #: the migration that adds it, so a null here means a writer that has
+    #: not been moved across.
+    org_unit_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("org_unit.id", ondelete="CASCADE"),
+        nullable=True,
         index=True,
     )
     question_bank_id: Mapped[str] = mapped_column(String(255), nullable=False)
