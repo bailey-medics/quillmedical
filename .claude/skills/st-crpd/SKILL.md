@@ -57,9 +57,6 @@ These hold on every run.
   cause and re-run the recipe. Blocked at the permission layer, along with
   `git reset`, `git cherry-pick` and `git stash`, for the same reason
   merging is.
-- **Never change the pull request title.** It is derived from the branch name
-  by `auto-pr.yml`, or set by hand. Either way it is not yours to rewrite —
-  the description is the only field this command edits.
 - **Never change labels, reviewers, milestones, or the base branch.** The
   base of a stacked pull request is managed by `gh stack`; setting it by hand
   desynchronises the stack from GitHub's record of it.
@@ -206,9 +203,15 @@ Two things to check rather than assume:
    together in a list; `make-the-passport-usable` and
    `stop-a-hook-failure` do not, even when they are the same stack.
 
-   **One word, lower case**, naming the area the stack is about:
-   `passport`, `teaching`, `billing`. Not the change — the area. The
-   rest of the branch name says what this unit does.
+   **One word, naming the area the stack is about**: `Passport`,
+   `Teaching`, `Billing`. Not the change — the area. The rest of the name
+   says what this unit does.
+
+   **Capitalised in a title, lower case in a branch name.**
+   `Passport: record and review` is what a reader sees;
+   `passport-record-and-review` is what git holds, because branch names
+   here are lower case throughout. Same word, written the way each
+   place writes words.
 
    **Choose it once, when the stack is started** — the `stack-new` run,
    or the first `stack-add` onto a bare branch. Every later branch takes
@@ -231,11 +234,25 @@ Two things to check rather than assume:
    — rather than a vaguer one. Closed and merged pull requests do not
    count: a key is reusable once its stack is finished.
 
-   **The key reaches the pull request title through the branch name.**
-   `auto-pr.yml` builds titles as `Feature: <the branch words>`, and
-   `gh stack submit` falls back to the commit subject, so the title is
-   not something this command sets — see "Never change the pull request
-   title". Naming the branch well is the whole of the influence there is.
+   **The title reads `Passport: what this branch does`** — the key, a
+   colon, then a plain description of the unit. The colon is what makes
+   the key scannable: `Passport: record and review` reads as a set,
+   `Passport record and review` reads as a sentence that happens to
+   start with a word.
+
+   **Set the title, because nothing else will get it right.**
+   `auto-pr.yml` builds titles as `Feature: <the branch words>` and
+   `gh stack submit` falls back to the commit subject, so whichever
+   opens the pull request produces something close but not this. Set it
+   alongside the description in step 9:
+
+   ```bash
+   gh pr edit <number> --title "Passport: what this branch does"
+   ```
+
+   Leave every other field alone — labels, reviewers, milestones and
+   the base branch are still not this command's to change, and the base
+   in particular belongs to `gh stack`.
 
    ### When `stack-add` fails on a hook
 
@@ -388,9 +405,11 @@ Two things to check rather than assume:
    `<!-- crp:pr-summary -->` marker meaning it was generated here before.
    Anything else is someone's writing: show it, and ask before replacing it.
 
-9. **Write the body.** The reader reads every line of the diff, so never
-   describe the diff. Write only what reading the code cannot tell them:
-   what you chose, what might be risky, and what is different now.
+9. **Write the title and the body.** The title takes the stack key form
+   — `Passport: what this branch does`, as "The stack key" sets out. The
+   reader reads every line of the diff, so the body never describes it:
+   write only what reading the code cannot tell them, which is what you
+   chose, what might be risky, and what is different now.
 
    Three sections, in this order, each a level-two heading. **No summary
    line above them** — the pull request title already says what the branch
@@ -452,8 +471,13 @@ Two things to check rather than assume:
    "What has changed" section has drifted into describing the diff.
 
    ```bash
-   gh pr edit <number> --body "..."
+   gh pr edit <number> \
+     --title "Passport: what this branch does" \
+     --body-file <path to the body>
    ```
+
+   `--body-file` rather than `--body`: the body holds backticks, quotes
+   and newlines, and passing it inline leaves them at the shell's mercy.
 
 10. **Mark it ready only if `ready` was given**, and only if step 6 reported
    `isDraft: true`:
@@ -473,7 +497,8 @@ One short block:
 - The branch created, and its position in the stack (`just stack-log`).
 - The pull request URL, and one line on what the description now says.
 - Whether it was left a draft or marked ready.
-- The commit message used, since the name and message were chosen for you.
+- The commit message and the title used, since the name, the message and
+  the title were all chosen for you.
 - **Any decision or risk written into the description**, repeated here in
   one line each. After an unattended run the terminal is read before the
   pull requests are, and a decision nobody sees is a decision nobody
