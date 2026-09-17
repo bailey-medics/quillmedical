@@ -893,7 +893,10 @@ So the remaining steps land as:
 - [x] 12b-vi — the remaining organisation-surface tests onto places
 - [x] 12b-vii — retire `/api/organisations`
 - [x] 12b-viii — retire the organisation and site lists on the users API
-- [ ] 12b-ix — drop the `organisations` table, and enforce the type flags
+- [ ] 12c-i — the teaching and passport tables onto place ids, a column at a time
+- [ ] 12c-ii — membership and reach answer in place ids
+- [ ] 12c-iii — drop the `organisations` table
+- [ ] 12c-iv — refuse deleting a parent with children, and enforce `requires_parent`
 
 #### 10a — write both names for the place column
 
@@ -1399,6 +1402,43 @@ that counted in organisation ids.
   response is the bundle that writes it, and the two dropdowns render
   from an empty list the same way they already do for an admin who can
   see no organisations.
+
+#### 12c — what dropping the table actually needs
+
+Attempted as one unit and abandoned, because it is not one. The refactor
+itself is straightforward and was written: `organisation_member` becomes
+the membership table filtered to root types, `_root_of` becomes a check
+rather than a lookup, and the four translating walks in
+`app/org_units/tree.py` collapse into `root_ids_of` and `descendant_ids`.
+Every test passed.
+
+**And it would still have been wrong.** Nine columns in two features are
+foreign keys to `organisations.id`:
+
+- **Teaching** — `question_bank_configs`, `question_bank_items`,
+  `assessments`, `teaching_org_settings`, `question_bank_org_status`,
+  `question_bank_syncs`, `module_media_link`.
+- **The passport** — `passport_signoff_request`, and
+  `site_common_competency`, which carries the pair of place columns this
+  plan already noted, with a check constraint saying exactly one is set.
+
+Those tables keep counting in organisation ids. Change what
+`get_member_org_ids` answers without moving them, and teaching looks up
+its rows by a number that means something else — silently, and only in
+production: the two id spaces coincide in the unit tests, because each
+fixture creates one organisation and it takes the same id as its place.
+The suite went green on a coincidence, which is the sharpest reason this
+plan exists at all.
+
+So the order is: the columns first, each one expand-contract as the
+backend rules require; then membership and reach; then the table. Some
+of that work can borrow the refactor that was written here — it is
+recorded in the pull request thread rather than the repository, since
+code nothing calls is worse than code that does not exist.
+
+The last unit is unblocked by none of it: refusing to delete a parent
+that still has children, and enforcing each type's `requires_parent`
+flag, need nothing from the fold.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to
