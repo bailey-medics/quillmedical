@@ -61,6 +61,15 @@ class Palette:
     def yellow(self, text: str) -> str:
         return self._wrap("33", text)
 
+    def bold_yellow(self, text: str) -> str:
+        """Bold and yellow together, as one code.
+
+        Not `bold(yellow(text))`: the inner reset ends every attribute
+        rather than just the colour, so the bold stopped where the
+        colour did and the text came out yellow but light.
+        """
+        return self._wrap("1;33", text)
+
     def blue(self, text: str) -> str:
         return self._wrap("34", text)
 
@@ -395,7 +404,12 @@ def draw(
         else:
             glyph = GLYPH_OPEN
 
-        name = palette.bold(branch.name) if branch.is_current else branch.name
+        # The branch you are on is bold and yellow, and so is the rest
+        # of its row. It used to be bold with "← you are here" after it,
+        # which was the longest thing on the line for the least in it —
+        # the colour says the same and says it at a glance.
+        current = branch.is_current
+        name = palette.bold_yellow(branch.name) if current else branch.name
 
         cells: list[str] = []
         if show_prs and branch.pr:
@@ -408,14 +422,36 @@ def draw(
             # the whole cell is one target rather than a two-character
             # one.
             url = str(branch.pr.get("url", ""))
+
+            # An ordinary open pull request is just its number. It used
+            # to read "ready", meaning out of draft — but bare "ready"
+            # sounds like a verdict on the code, which this cannot know:
+            # a pull request is "ready" here with CI red and nobody
+            # having looked. The states worth naming are the ones that
+            # stop you: merged, closed, still a draft.
             if state == "MERGED":
-                label = palette.green(f"#{number} merged")
+                text = f"#{number} merged"
             elif state == "CLOSED":
-                label = palette.red(f"#{number} closed")
+                text = f"#{number} closed"
             elif branch.pr.get("isDraft"):
-                label = palette.dim(f"#{number} draft")
+                text = f"#{number} draft"
             else:
-                label = f"#{number} ready"
+                text = f"#{number}"
+
+            # On the current row the state colour gives way to the
+            # yellow: two colours in one cell would make one row look
+            # like two things. The words are the same either way — the
+            # colour says where you are, not what the state is.
+            if current:
+                label = palette.bold_yellow(text)
+            elif state == "MERGED":
+                label = palette.green(text)
+            elif state == "CLOSED":
+                label = palette.red(text)
+            elif branch.pr.get("isDraft"):
+                label = palette.dim(text)
+            else:
+                label = text
             cells.append(palette.link(url, label))
             cells.append(summarise_checks(branch.pr, palette))
         elif show_prs:
@@ -428,8 +464,6 @@ def draw(
         line = f"  {glyph} {name}"
         if suffix:
             line = f"{line}   {suffix}"
-        if branch.is_current:
-            line = f"{line}   {palette.dim('← you are here')}"
         print(line)
 
         notes: list[str] = []
