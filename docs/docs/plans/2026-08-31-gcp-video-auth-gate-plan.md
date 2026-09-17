@@ -1966,6 +1966,90 @@ processing perfectly, twice.
   when none is. A bar that cannot advance is no better than the line it
   replaced.
 
+### A fix that merges is not a fix that ships
+
+**[found 2026-09-16]** The Content Security Policy correction merged, the
+deploy reported success, and production kept serving the old header. It took
+a second round trip to notice.
+
+`deploy.yml` decides what to rebuild from a paths filter that watched
+`frontend/**` and `shared/**`. `caddy/prod/Caddyfile` is copied into the
+frontend image — which is why that Dockerfile takes the repository root as
+its build context — but matched neither pattern, so the build was skipped and
+the deploy went green. **Skipping is success**, as far as a workflow is
+concerned.
+
+- **Every security header the application serves lives in that file** — the
+  CSP, HSTS, `X-Frame-Options`, `Referrer-Policy`. A change to any of them
+  would have failed to ship the same silent way.
+- **The five earlier Caddyfile changes reached production by luck**, each
+  sharing a commit with a genuine frontend change.
+- **Fixed by adding `caddy/**` to the filter.** Worth checking the same
+  question of any build context wider than its own directory: the backend
+  image copies `.poetry-version` and `api-compatibility/`, neither watched.
+
+### The caption job could not report what it had written
+
+**[found 2026-09-17]** Whisper transcribed a lecture into twenty-one
+segments, wrote the WebVTT, verified it, and then:
+
+```
+ERROR: caption callback failed (No module named 'httpx')
+```
+
+- **One missing import produced two unrelated-looking symptoms.** The admin
+  card said "No captions" because it reads `has_captions`; the player offered
+  no subtitle track because the backend only sends a captions filename when
+  that flag is true. Both traced to a report that never arrived.
+- **The caption image carries its own three pinned packages**, deliberately
+  separate from `poetry.lock` because Whisper pulls torch. `httpx` was not
+  among them. The transcode job worked only because it shares the backend
+  image — the same fault was latent there.
+- **Fixed with `urllib` in both CLIs** rather than by adding a fourth pin.
+  The call is one small JSON POST, so the standard library serves and the
+  dependency cannot go missing again.
+
+### What this phase should teach the next one
+
+**[added 2026-09-17]** Nine faults stood between a working upload and a
+playing video, each hidden behind the one before it. Recorded together
+because the individual findings above do not show the pattern.
+
+- **Every fault was invisible locally and obvious in production.** Not one
+  was caught by the test suite, a type check, a lint rule or a review. Each
+  surfaced within seconds of a real upload, in a log nobody was reading.
+  Between them they cost two days; a deliberate end-to-end attempt on day
+  one would have cost an hour.
+
+- **Green does not mean working, at three separate layers.** A deploy that
+  skips a build reports success. A Terraform apply that configures something
+  inert reports success. A job that writes its output and fails to report it
+  exits zero. Each needs a check of the _outcome_, not of the step.
+
+- **Errors that are swallowed by design go unseen for days.**
+  `start_transcode` and `start_caption` catch everything and return `None`,
+  which is right — an admin's upload must not fail because a follow-on job
+  is unreachable. The cost is that three of the nine faults sat in caught
+  exceptions, and the admin card said nothing was wrong. That is why the
+  start-time columns and the "seems to have failed" wording exist.
+
+- **A test that constructs the credential cannot test how it is written.**
+  Every terminal check of the signed cookie passed, because each built the
+  header by hand. Only a browser reproduced the quoting fault. The general
+  form: where a value crosses a boundary your test also controls, the test
+  proves the value and not the crossing.
+
+- **Behind a CDN, one probe proves nothing about now.** A stale cached
+  response was read as live behaviour, a correct fix declared broken, and a
+  rewrite of seven files nearly undertaken to solve a problem that did not
+  exist. The probe that settled it placed the same filename at both
+  candidate keys with different contents, so a cached answer could not
+  masquerade as a fresh one.
+
+- **The human testing found all nine.** Each round began with "it still does
+  not work", against server-side evidence that looked healthy. Confidence in
+  a diagnosis was, twice, worth less than one more attempt at the real thing.
+
 ## Local development
 
 Video files never enter this repository. They live in the gitignored
