@@ -132,6 +132,7 @@ from app.organisations import (
     get_patient_org_ids,
     get_shared_org_ids,
     organisation_member,
+    places_administered_by,
     remove_organisation_member,
     remove_organisation_memberships,
 )
@@ -1389,7 +1390,12 @@ class AdminUserCreateIn(BaseModel):
         removed_competencies: Competencies to remove from base profession.
         platform_role: Whether this person operates Quill itself.
         organisation_ids: Organisations to assign user to (optional).
+            Retired once nothing sends it.
         site_ids: Sites to assign user to as trainee (optional).
+            Retired alongside ``organisation_ids``.
+        place_ids: Every place the person belongs to, in place ids,
+            organisations included. Replaces the two lists above, which
+            answer in two different kinds of id.
     """
 
     model_config = {"extra": "forbid"}
@@ -1406,6 +1412,7 @@ class AdminUserCreateIn(BaseModel):
     platform_role: str = "standard"
     organisation_ids: list[int] = []
     site_ids: list[int] = []
+    place_ids: list[int] = []
 
     @field_validator("platform_role")
     @classmethod
@@ -1476,6 +1483,7 @@ class AdminUserUpdateIn(BaseModel):
     platform_role: str | None = None
     organisation_ids: list[int] | None = None
     site_ids: list[int] | None = None
+    place_ids: list[int] | None = None
 
     @field_validator("platform_role")
     @classmethod
@@ -1517,6 +1525,63 @@ class AdminUserUpdateIn(BaseModel):
                 "defined in shared/base-professions.yaml."
             )
         return value
+
+
+def _refuse_two_vocabularies(
+    organisation_ids: list[int] | None,
+    site_ids: list[int] | None,
+    place_ids: list[int] | None,
+) -> None:
+    """Refuse a request that names places in both vocabularies.
+
+    ``organisation_ids`` counts in organisation ids and ``place_ids`` in
+    place ids, and the same number means a different thing in each.
+    Applying both would make the answer depend on which was applied last,
+    so the request is refused instead of guessed at.
+    """
+    older = bool(organisation_ids) or bool(site_ids)
+    if older and place_ids:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Send place_ids, or organisation_ids and site_ids, not "
+                "both: they count in different kinds of id."
+            ),
+        )
+
+
+def _capacity_at(place: OrgUnit) -> str:
+    """What a person added through the user form is at a place.
+
+    Staff at an organisation and a trainee at a place inside one, which
+    is what the two older lists each did. Keeping the difference means
+    this step widens the request without changing who counts as staff
+    anywhere; settling on one answer is a separate decision from
+    replacing two lists with one.
+    """
+    return "staff" if place.type in ROOT_TYPE_IDS else "trainee"
+
+
+def _require_places_the_caller_administers(
+    db: Session, current_user: User, place_ids: list[int]
+) -> list[OrgUnit]:
+    """Load the places named, refusing any the caller may not administer.
+
+    404 rather than 403 for a place outside their organisations, matching
+    the place surface: the answer must not confirm that a place exists to
+    somebody who cannot see it.
+    """
+    allowed = places_administered_by(db, current_user)
+
+    places: list[OrgUnit] = []
+    for place_id in place_ids:
+        place = db.get(OrgUnit, place_id)
+        if place is None or (allowed is not None and place_id not in allowed):
+            raise HTTPException(
+                status_code=404, detail=f"Place {place_id} not found"
+            )
+        places.append(place)
+    return places
 
 
 @router.post(
@@ -1602,7 +1667,14 @@ def create_user_with_cbac(
                 detail=f"Site {s_id} not found",
             )
 
-            # Create user
+    _refuse_two_vocabularies(
+        payload.organisation_ids, payload.site_ids, payload.place_ids
+    )
+    places = _require_places_the_caller_administers(
+        db, current_user, payload.place_ids
+    )
+
+    # Create user
     user = User(
         username=username,
         full_name=payload.name.strip(),
@@ -1628,6 +1700,17 @@ def create_user_with_cbac(
                 org_unit_id=s_id,
                 user_id=user.id,
                 capacity="trainee",
+            )
+        )
+
+    # The one list, in place ids. Organisations and the places inside
+    # them are rows in the same table, so there is nothing to split.
+    for place in places:
+        db.execute(
+            org_unit_member.insert().values(
+                org_unit_id=place.id,
+                user_id=user.id,
+                capacity=_capacity_at(place),
             )
         )
 
@@ -1851,6 +1934,37 @@ def update_user(
                     detail=f"Organisation {org_id} not found",
                 )
             add_organisation_member(db, org_id, user_id, "staff")
+
+    _refuse_two_vocabularies(
+        payload.organisation_ids, payload.site_ids, payload.place_ids
+    )
+
+    # The one list, in place ids. It settles membership of every place
+    # the caller may administer: the places named are kept, the rest of
+    # theirs are cleared. Places outside their organisations are left
+    # alone, because somebody else's tree is not theirs to empty.
+    if payload.place_ids is not None:
+        places = _require_places_the_caller_administers(
+            db, current_user, payload.place_ids
+        )
+        theirs = places_administered_by(db, current_user)
+        clearing = org_unit_member.delete().where(
+            org_unit_member.c.user_id == user_id
+        )
+        if theirs is not None:
+            clearing = clearing.where(
+                org_unit_member.c.org_unit_id.in_(theirs)
+            )
+        db.execute(clearing)
+
+        for place in places:
+            db.execute(
+                org_unit_member.insert().values(
+                    user_id=user_id,
+                    org_unit_id=place.id,
+                    capacity=_capacity_at(place),
+                )
+            )
 
             # Update site memberships if provided
     if payload.site_ids is not None:
@@ -2726,6 +2840,10 @@ def get_user(
         is_active=user.is_active,
         organisation_ids=user_org_ids,
         site_ids=user_site_ids,
+        # The same memberships said once, in the ids the places
+        # themselves answer in. `site_ids` happens to hold these already,
+        # under a name that says something narrower than it means.
+        place_ids=user_site_ids,
     )
 
 
