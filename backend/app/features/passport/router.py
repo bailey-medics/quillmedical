@@ -65,6 +65,7 @@ from app.organisations import (
     get_member_org_ids,
     get_reachable_org_ids,
     organisation_member,
+    place_of_organisation,
     remove_organisation_member,
 )
 from app.passport_storage import get_passport_store
@@ -1831,6 +1832,7 @@ def verify_assessor_registration(
             registration_number=number,
             verified_by_user_id=user.id,
             organisation_id=organisation_id,
+            org_unit_id=place_of_organisation(db, organisation_id),
         )
         db.add(row)
 

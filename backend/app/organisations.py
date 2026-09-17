@@ -446,10 +446,23 @@ def get_accessible_patient_ids(db: Session, user: User) -> set[str]:
     # one file rather than a hunt through the routes.
 
 
-def _root_of(db: Session, organisation_id: int) -> int | None:
-    """Return the tree row an organisation stands for, if it has one."""
+def place_of_organisation(db: Session, organisation_id: int) -> int | None:
+    """Return the place an organisation stands for, if it has one.
+
+    The translation every table still keyed by an organisation id needs
+    while it is being moved across: a row is written with both, read by
+    the place id from the next deploy onwards, and the organisation
+    column goes last. None means an organisation with no row in the
+    tree, which nothing creates any more and which the fold removes the
+    possibility of.
+    """
     roots = root_ids_of_organisations(db, [organisation_id])
     return roots[0] if roots else None
+
+
+def _root_of(db: Session, organisation_id: int) -> int | None:
+    """Return the tree row an organisation stands for, if it has one."""
+    return place_of_organisation(db, organisation_id)
 
 
 def add_organisation_member(

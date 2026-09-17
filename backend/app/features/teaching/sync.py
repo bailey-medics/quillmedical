@@ -30,6 +30,7 @@ from app.features.teaching.tooling.validate import (
     ValidationResult,
     validate_assessment_dir,
 )
+from app.organisations import place_of_organisation
 
 logger = logging.getLogger(__name__)
 
@@ -279,6 +280,7 @@ def sync_question_bank(
     # Create sync record
     sync_record = QuestionBankSync(
         organisation_id=organisation_id,
+        org_unit_id=place_of_organisation(db, organisation_id),
         question_bank_id=bank_id,
         version=version,
         status="in_progress",
@@ -327,6 +329,7 @@ def sync_question_bank(
         db.add(
             QuestionBankConfig(
                 organisation_id=organisation_id,
+                org_unit_id=place_of_organisation(db, organisation_id),
                 question_bank_id=bank_id,
                 version=version,
                 title=card_title,
@@ -407,6 +410,7 @@ def sync_question_bank(
             db.add(
                 QuestionBankItem(
                     organisation_id=organisation_id,
+                    org_unit_id=place_of_organisation(db, organisation_id),
                     question_bank_id=bank_id,
                     bank_version=version,
                     created_by=user_id,
