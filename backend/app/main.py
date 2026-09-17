@@ -130,7 +130,6 @@ from app.organisations import (
     get_shared_org_ids,
     organisation_member,
     places_administered_by,
-    remove_organisation_memberships,
 )
 from app.push import router as push_router
 from app.push_send import router as push_send_router
@@ -1385,13 +1384,9 @@ class AdminUserCreateIn(BaseModel):
         additional_competencies: Extra competencies beyond base profession.
         removed_competencies: Competencies to remove from base profession.
         platform_role: Whether this person operates Quill itself.
-        organisation_ids: Organisations to assign user to (optional).
-            Retired once nothing sends it.
-        site_ids: Sites to assign user to as trainee (optional).
-            Retired alongside ``organisation_ids``.
         place_ids: Every place the person belongs to, in place ids,
-            organisations included. Replaces the two lists above, which
-            answer in two different kinds of id.
+            organisations included. It replaced two lists that answered
+            in two different kinds of id.
     """
 
     model_config = {"extra": "forbid"}
@@ -1406,8 +1401,6 @@ class AdminUserCreateIn(BaseModel):
     # Defaults to a standard account: an operator is made deliberately,
     # never by omitting a field.
     platform_role: str = "standard"
-    organisation_ids: list[int] = []
-    site_ids: list[int] = []
     place_ids: list[int] = []
 
     @field_validator("platform_role")
@@ -1477,8 +1470,6 @@ class AdminUserUpdateIn(BaseModel):
     additional_competencies: list[str] | None = None
     removed_competencies: list[str] | None = None
     platform_role: str | None = None
-    organisation_ids: list[int] | None = None
-    site_ids: list[int] | None = None
     place_ids: list[int] | None = None
 
     @field_validator("platform_role")
@@ -1521,29 +1512,6 @@ class AdminUserUpdateIn(BaseModel):
                 "defined in shared/base-professions.yaml."
             )
         return value
-
-
-def _refuse_two_vocabularies(
-    organisation_ids: list[int] | None,
-    site_ids: list[int] | None,
-    place_ids: list[int] | None,
-) -> None:
-    """Refuse a request that names places in both vocabularies.
-
-    ``organisation_ids`` counts in organisation ids and ``place_ids`` in
-    place ids, and the same number means a different thing in each.
-    Applying both would make the answer depend on which was applied last,
-    so the request is refused instead of guessed at.
-    """
-    older = bool(organisation_ids) or bool(site_ids)
-    if older and place_ids:
-        raise HTTPException(
-            status_code=422,
-            detail=(
-                "Send place_ids, or organisation_ids and site_ids, not "
-                "both: they count in different kinds of id."
-            ),
-        )
 
 
 def _capacity_at(place: OrgUnit) -> str:
@@ -1640,32 +1608,6 @@ def create_user_with_cbac(
     if existing:
         raise HTTPException(status_code=400, detail="Email already exists")
 
-        # Validate organisation access for non-superadmins
-    for org_id in payload.organisation_ids:
-        org = db.scalar(select(Organisation).where(Organisation.id == org_id))
-        if not org:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Organisation {org_id} not found",
-            )
-        if current_user.platform_role != "superadmin":
-            if org_id not in get_member_org_ids(db, current_user.id):
-                raise HTTPException(
-                    status_code=403,
-                    detail="You do not have access to this organisation",
-                )
-
-    for s_id in payload.site_ids:
-        site = db.get(OrgUnit, s_id)
-        if not site:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Site {s_id} not found",
-            )
-
-    _refuse_two_vocabularies(
-        payload.organisation_ids, payload.site_ids, payload.place_ids
-    )
     places = _require_places_the_caller_administers(
         db, current_user, payload.place_ids
     )
@@ -1684,20 +1626,6 @@ def create_user_with_cbac(
     )
     db.add(user)
     db.flush()
-
-    # Assign to organisations
-    for org_id in payload.organisation_ids:
-        add_organisation_member(db, org_id, user.id, "staff")
-
-        # Assign to sites as trainee
-    for s_id in payload.site_ids:
-        db.execute(
-            org_unit_member.insert().values(
-                org_unit_id=s_id,
-                user_id=user.id,
-                capacity="trainee",
-            )
-        )
 
     # The one list, in place ids. Organisations and the places inside
     # them are rows in the same table, so there is nothing to split.
@@ -1910,31 +1838,6 @@ def update_user(
             )
             user.additional_competencies = sorted(granted)
 
-            # Update organisation memberships if provided
-    if payload.organisation_ids is not None:
-        if current_user.platform_role == "superadmin":
-            # Superadmin: replace all memberships
-            remove_organisation_memberships(db, user_id)
-        else:
-            # Admin: only remove memberships within admin's own orgs
-            admin_org_ids = get_member_org_ids(db, current_user.id)
-            remove_organisation_memberships(db, user_id, admin_org_ids)
-            # Add new org memberships
-        for org_id in payload.organisation_ids:
-            org = db.scalar(
-                select(Organisation).where(Organisation.id == org_id)
-            )
-            if not org:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Organisation {org_id} not found",
-                )
-            add_organisation_member(db, org_id, user_id, "staff")
-
-    _refuse_two_vocabularies(
-        payload.organisation_ids, payload.site_ids, payload.place_ids
-    )
-
     # The one list, in place ids. It settles membership of every place
     # the caller may administer: the places named are kept, the rest of
     # theirs are cleared. Places outside their organisations are left
@@ -1959,51 +1862,6 @@ def update_user(
                     user_id=user_id,
                     org_unit_id=place.id,
                     capacity=_capacity_at(place),
-                )
-            )
-
-            # Update site memberships if provided
-    if payload.site_ids is not None:
-        if current_user.platform_role == "superadmin":
-            # Superadmin: replace every membership of a place inside an
-            # organisation. Not the memberships of the organisations
-            # themselves, which are rows in the same table now and are
-            # settled by the organisation block above — clearing those
-            # here would undo it.
-            db.execute(
-                org_unit_member.delete().where(
-                    org_unit_member.c.user_id == user_id,
-                    org_unit_member.c.org_unit_id.in_(
-                        select(OrgUnit.id).where(
-                            OrgUnit.type.notin_(ROOT_TYPE_IDS)
-                        )
-                    ),
-                )
-            )
-        else:
-            # Admin: only remove memberships for sites within admin's orgs
-            admin_org_ids = get_member_org_ids(db, current_user.id)
-            admin_site_ids = site_ids_of_organisations(db, admin_org_ids)
-            if admin_site_ids:
-                db.execute(
-                    org_unit_member.delete().where(
-                        org_unit_member.c.user_id == user_id,
-                        org_unit_member.c.org_unit_id.in_(admin_site_ids),
-                    )
-                )
-                # Add new site memberships
-        for s_id in payload.site_ids:
-            site = db.scalar(select(OrgUnit).where(OrgUnit.id == s_id))
-            if not site:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Site {s_id} not found",
-                )
-            db.execute(
-                org_unit_member.insert().values(
-                    user_id=user_id,
-                    org_unit_id=s_id,
-                    capacity="trainee",
                 )
             )
 
@@ -2806,16 +2664,7 @@ def get_user(
 
     _require_shared_org_with_user(db, current_user, user)
 
-    # Get user's org and site memberships
-    user_org_ids = [
-        row[0]
-        for row in db.execute(
-            select(organisation_member.c.organisation_id).where(
-                organisation_member.c.user_id == user_id
-            )
-        ).all()
-    ]
-    user_site_ids = [
+    user_place_ids = [
         row[0]
         for row in db.execute(
             select(org_unit_member.c.org_unit_id).where(
@@ -2834,12 +2683,9 @@ def get_user(
         removed_competencies=user.removed_competencies or [],
         platform_role=user.platform_role,
         is_active=user.is_active,
-        organisation_ids=user_org_ids,
-        site_ids=user_site_ids,
-        # The same memberships said once, in the ids the places
-        # themselves answer in. `site_ids` happens to hold these already,
-        # under a name that says something narrower than it means.
-        place_ids=user_site_ids,
+        # Every place they belong to, organisations included, in the
+        # ids the places themselves answer in.
+        place_ids=user_place_ids,
     )
 
 

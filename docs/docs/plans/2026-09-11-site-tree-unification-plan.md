@@ -892,9 +892,8 @@ So the remaining steps land as:
 - [x] 12b-v — the features, patients and staff rules onto the place surface
 - [x] 12b-vi — the remaining organisation-surface tests onto places
 - [x] 12b-vii — retire `/api/organisations`
-- [ ] 12b-viii — drop the `organisations` table, and enforce the type flags
-- [ ] 12b-ix — retire the organisation and site lists on the users API,
-      a release after 12b-iii expanded them
+- [x] 12b-viii — retire the organisation and site lists on the users API
+- [ ] 12b-ix — drop the `organisations` table, and enforce the type flags
 
 #### 10a — write both names for the place column
 
@@ -1379,6 +1378,27 @@ exercised that address.
 
 The `organisations` table is still there, still written beside each root
 place and still what membership counts against. Dropping it is 12b-viii.
+
+#### 12b-viii — the users API speaks only in places
+
+The contract step for 12b-iii, and the last thing outside the database
+that counted in organisation ids.
+
+- **Removed rather than ignored.** Silently accepting a field that no
+  longer does anything is how a caller comes to believe a membership was
+  recorded when it was not.
+- **Both went together**, because keeping either would mean keeping the
+  organisations table they count against, which is the point of the next
+  unit.
+- **`site_ids` was the more misleading of the two.** It already answered
+  in place ids and already carried places that were not sites, so its
+  name said something narrower than it meant.
+- **This is the first real breaking change in the stack.** Six decision
+  files record it, and the `api-breaking-change-review` gate is the
+  human half. Nothing on a stale tab breaks: the bundle that reads this
+  response is the bundle that writes it, and the two dropdowns render
+  from an empty list the same way they already do for an admin who can
+  see no organisations.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to
