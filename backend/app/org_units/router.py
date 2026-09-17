@@ -16,7 +16,7 @@ scoping walks the tree, which is what decides who may see and edit what.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy import delete, insert, select
+from sqlalchemy import delete, func, insert, select
 from sqlalchemy.orm import Session
 
 from app.cbac.base_professions import grant_staff_competencies
@@ -528,6 +528,18 @@ def update_org_unit(
         unit.location = body.location.strip() or None
 
     if body.parent_id is not None:
+        # The type says whether a place sits inside another. An
+        # organisation given a parent would be a top of tree with
+        # something above it: `is_root` would keep saying yes while
+        # every walk up found somebody else's trust.
+        if not type_requires_parent(unit.type):
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"A {unit.type} is the top of a tree and does not sit "
+                    "inside anything."
+                ),
+            )
         if would_make_a_cycle(db, unit_id, body.parent_id):
             raise HTTPException(
                 status_code=400,
@@ -583,6 +595,26 @@ def delete_org_unit(
     if _is_root(unit) and current_user.platform_role != "superadmin":
         raise HTTPException(
             status_code=403, detail="Requires superadmin permissions"
+        )
+
+    # A place with something inside it is refused rather than emptied.
+    # The column says ``SET NULL``, so deleting a ward would leave its
+    # rooms belonging nowhere: invisible to every list, reachable by
+    # nobody, and impossible to tell from rooms that were always loose.
+    # Saying so is the kinder answer, and it is reversible — move them or
+    # delete them first.
+    children = db.scalar(
+        select(func.count())
+        .select_from(OrgUnit)
+        .where(OrgUnit.parent_id == unit_id)
+    )
+    if children:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"This place still has {children} inside it. Move them or "
+                "delete them first."
+            ),
         )
 
     if _is_root(unit):
