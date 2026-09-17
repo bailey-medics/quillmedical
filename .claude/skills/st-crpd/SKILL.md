@@ -183,6 +183,9 @@ Two things to check rather than assume:
    - **The name** describes the unit, not the session: `pr-description-join`,
      not `fixes` or `part-2`. Lower case, hyphenated, no `feature/` prefix —
      `stack-add` adds it. Keep it short enough to read in a stack diagram.
+     Name it for what the change does, never for the files it touches — the
+     pull request title is this same name read back as a sentence, so a
+     name that describes the files produces a title that says nothing.
    - **The name opens with the stack key**, so every branch in the stack
      sorts and reads together: `passport-record-and-review`,
      `passport-sign-off-page`. See "The stack key" below. On a stack that
@@ -239,6 +242,22 @@ Two things to check rather than assume:
    the key scannable: `Passport: record and review` reads as a set,
    `Passport record and review` reads as a sentence that happens to
    start with a word.
+
+   **The title and the branch name say the same thing.** Not only the
+   key — the words after it too. `passport-record-and-review` becomes
+   `Passport: record and review`: hyphens to spaces, nothing added and
+   nothing dropped. Write the branch name first, then read it back as a
+   title; if that does not produce a title worth reading, the branch
+   name was the problem and it is still cheap to change.
+
+   The two are read side by side all the time — in `just stack-log`
+   against the pull request list, in a notification naming a branch, in
+   a review that mentions one and links the other. A reader should not
+   have to work out that they are the same unit. When they drift, it is
+   usually because the branch was named from the files touched and the
+   title from what the change does: `stack-tidier-sync-and-help` beside
+   `Stack: prune on sync, and line up the short names` shares a key and
+   nothing else, and the branch name is the weaker half.
 
    **Set the title, because nothing else will get it right.**
    `auto-pr.yml` builds titles as `Feature: <the branch words>` and
