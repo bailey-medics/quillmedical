@@ -412,6 +412,23 @@ class LogbookOut(BaseModel):
     entries: list[LogbookEntryOut] = Field(default_factory=list)
 
 
+class WholeLogbookOut(BaseModel):
+    """Every logged procedure, whatever competency it counts towards.
+
+    The same entries the per-competency response carries, kept in their
+    groups rather than merged into one list: an entry is about one
+    procedure and the competency it counts towards is part of what it
+    says. A reader wanting the flat view can concatenate; a reader
+    handed a flat list cannot get the grouping back.
+
+    A count and no target here too, for the reason ``LogbookOut``
+    gives: activity is not competence.
+    """
+
+    competencies: list[LogbookOut] = Field(default_factory=list)
+    count: int = Field(ge=0)
+
+
 class ReflectionIn(_In):
     """A reflection on a case, a complaint or a significant event.
 

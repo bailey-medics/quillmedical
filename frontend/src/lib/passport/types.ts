@@ -379,6 +379,12 @@ export interface LogbookEntry {
  * A count and no target, deliberately. Two hundred bronchoscopies prove
  * activity, not competence.
  */
+/** Every logged procedure, grouped by the competency it counts towards. */
+export interface WholeLogbook {
+  competencies: Logbook[];
+  count: number;
+}
+
 export interface Logbook {
   competency: string;
   count: number;

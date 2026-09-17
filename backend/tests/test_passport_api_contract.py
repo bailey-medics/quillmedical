@@ -84,6 +84,7 @@ EXPECTED_PATHS = {
     "/api/passport/{passport_id}/export.zip",
     "/api/passport/{passport_id}/cpd/{year}",
     "/api/passport/{passport_id}/cpd/{year}/{stem}",
+    "/api/passport/{passport_id}/logbook",
     "/api/passport/{passport_id}/logbook/{competency_id}",
     "/api/passport/{passport_id}/logbook/{competency_id}/{stem}",
     "/api/passport/{passport_id}/reflections",
