@@ -64,6 +64,26 @@ class Palette:
     def blue(self, text: str) -> str:
         return self._wrap("34", text)
 
+    def link(self, url: str, text: str) -> str:
+        """Make *text* clickable, with *url* hidden behind it.
+
+        OSC 8, which most terminals since about 2017 understand: the
+        URL travels in an escape sequence and only the label is drawn,
+        so a row keeps its width whatever the address behind it.
+
+        Gated on the same flag as the colours, and for the same
+        reason. A terminal that does not know the sequence prints it
+        as rubbish, and piped output would carry escapes into whatever
+        reads it next — so when stdout is not a terminal, or
+        `--no-colour` was passed, this hands back the plain text.
+        """
+        if not self.enabled or not url:
+            return text
+
+        start = f"\033]8;;{url}\033\\"
+        end = "\033]8;;\033\\"
+        return f"{start}{text}{end}"
+
 
 @dataclass
 class Branch:
@@ -381,14 +401,22 @@ def draw(
         if show_prs and branch.pr:
             number = branch.pr.get("number")
             state = str(branch.pr.get("state", ""))
+            # The number carries the link rather than the branch name:
+            # it is already a reference to the pull request, and it is
+            # short enough that a reader can tell what they are about
+            # to open. The state word rides along inside the link so
+            # the whole cell is one target rather than a two-character
+            # one.
+            url = str(branch.pr.get("url", ""))
             if state == "MERGED":
-                cells.append(palette.green(f"#{number} merged"))
+                label = palette.green(f"#{number} merged")
             elif state == "CLOSED":
-                cells.append(palette.red(f"#{number} closed"))
+                label = palette.red(f"#{number} closed")
             elif branch.pr.get("isDraft"):
-                cells.append(palette.dim(f"#{number} draft"))
+                label = palette.dim(f"#{number} draft")
             else:
-                cells.append(f"#{number} ready")
+                label = f"#{number} ready"
+            cells.append(palette.link(url, label))
             cells.append(summarise_checks(branch.pr, palette))
         elif show_prs:
             cells.append(palette.dim("no pull request"))
