@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models import Role, User
-from app.organisations import add_organisation_member
+from app.organisations import add_place_member
 from app.security import hash_password
 
 
@@ -302,7 +302,7 @@ class TestOrganisationModel:
         db_session.add_all([org, user])
         db_session.commit()
 
-        add_organisation_member(db_session, org.id, user.id, "trainee")
+        add_place_member(db_session, org.org_unit_id, user.id, "trainee")
         db_session.commit()
 
         rows = db_session.execute(

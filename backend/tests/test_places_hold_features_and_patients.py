@@ -23,7 +23,7 @@ from app.models import (
     OrgUnitFeature,
     org_unit_patient_member,
 )
-from app.organisations import add_organisation_member
+from app.organisations import add_place_member
 
 PATIENT = "patient-abc"
 
@@ -108,8 +108,8 @@ class TestPatientLists:
         test_patient_manager,
     ):
         org = _org(db_session)
-        add_organisation_member(
-            db_session, org.id, test_patient_manager.id, "staff"
+        add_place_member(
+            db_session, org.org_unit_id, test_patient_manager.id, "staff"
         )
         db_session.commit()
 
@@ -133,8 +133,8 @@ class TestPatientLists:
         test_patient_manager,
     ):
         org = _org(db_session)
-        add_organisation_member(
-            db_session, org.id, test_patient_manager.id, "staff"
+        add_place_member(
+            db_session, org.org_unit_id, test_patient_manager.id, "staff"
         )
         db_session.commit()
         authenticated_patient_manager_client.post(

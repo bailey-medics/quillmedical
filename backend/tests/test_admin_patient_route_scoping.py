@@ -33,7 +33,7 @@ from app.models import (
     User,
     org_unit_patient_member,
 )
-from app.organisations import add_organisation_member
+from app.organisations import add_place_member
 from app.security import hash_password
 
 OUTSIDE_PATIENT = "fhir-patient-other-trust"
@@ -53,7 +53,7 @@ def admin_org(db_session: Session, test_admin: User) -> Organisation:
     org = Organisation(name="Own Trust", type="hospital")
     db_session.add(org)
     db_session.commit()
-    add_organisation_member(db_session, org.id, test_admin.id, "staff")
+    add_place_member(db_session, org.org_unit_id, test_admin.id, "staff")
     db_session.execute(
         insert(org_unit_patient_member).values(
             org_unit_id=org.org_unit_id, patient_id=OWN_PATIENT
@@ -188,8 +188,8 @@ class TestTheGateIsACompetencyNotARank:
         old string comparison this would have succeeded.
         """
         test_user.base_profession = "consultant"
-        add_organisation_member(
-            db_session, admin_org.id, test_user.id, "staff"
+        add_place_member(
+            db_session, admin_org.org_unit_id, test_user.id, "staff"
         )
         db_session.commit()
 
@@ -217,8 +217,8 @@ class TestTheGateIsACompetencyNotARank:
         that check and this test fails while the one above still passes.
         """
         test_user.base_profession = "system_administrator"
-        add_organisation_member(
-            db_session, admin_org.id, test_user.id, "staff"
+        add_place_member(
+            db_session, admin_org.org_unit_id, test_user.id, "staff"
         )
         db_session.commit()
 

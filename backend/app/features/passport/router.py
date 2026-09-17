@@ -61,12 +61,12 @@ from app.models import (
 from app.org_units.tree import site_ids_of_organisations
 from app.org_units.types import ROOT_TYPE_IDS
 from app.organisations import (
-    add_organisation_member,
+    add_place_member,
     get_member_org_ids,
     get_reachable_org_ids,
     organisation_member,
     place_of_organisation,
-    remove_organisation_member,
+    remove_place_member,
 )
 from app.passport_storage import get_passport_store
 from app.schemas.passport import (
@@ -1937,7 +1937,9 @@ def revoke_assessor_membership(
             404, "That person has no external assessor access here."
         )
 
-    remove_organisation_member(db, organisation_id, assessor_user_id)
+    place_id = place_of_organisation(db, organisation_id)
+    if place_id is not None:
+        remove_place_member(db, place_id, assessor_user_id)
     db.flush()
 
     return AssessorRevokeOut(
@@ -2196,7 +2198,12 @@ def accept_assessor_invite(
             )
         )
         if already is None:
-            add_organisation_member(db, place_id, user.id, "external")
+            # ``place_id`` is an organisation id on this branch — see
+            # ``_holder_place``, which returns one or the other — so it
+            # is translated before it reaches a place-keyed writer.
+            organisation_place = place_of_organisation(db, place_id)
+            if organisation_place is not None:
+                add_place_member(db, organisation_place, user.id, "external")
 
     invite.accepted_at = _now()
     invite.accepted_user_id = user.id
