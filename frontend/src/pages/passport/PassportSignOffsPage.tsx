@@ -262,6 +262,10 @@ export function Component() {
               key={group.status}
               title={group.title}
               competencies={inGroup}
+              // A logbook entry is evidence towards a competency, not
+              // something an assessor signs. Counting them here, beside
+              // a sign-off status, read as though they were part of it.
+              showLogbookCount={false}
               onSelect={(competencyId) =>
                 navigate(`/passport/competency/${competencyId}`)
               }

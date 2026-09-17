@@ -164,6 +164,25 @@ describe("PassportSignOffsPage", () => {
     expect(screen.queryByText(/Request sign-off for/)).not.toBeInTheDocument();
   });
 
+  it("does not count logbook entries beside a sign-off", async () => {
+    // A logbook entry is evidence towards a competency, not something
+    // an assessor signs. Counting them here read as though they were
+    // part of the sign-off.
+    fetchMyPassport.mockResolvedValue(
+      detailWith([
+        {
+          ...competency("a", "Assess toxicity", "requested"),
+          logbook_entries: 1,
+        },
+      ]),
+    );
+    renderWithRouter(<PassportSignOffsPage />);
+
+    await screen.findByText("Assess toxicity");
+
+    expect(screen.queryByText(/logbook/)).not.toBeInTheDocument();
+  });
+
   it("explains a failed load rather than showing an empty record", async () => {
     // An empty passport and an unreachable one look identical without
     // this, and they mean very different things to a holder.

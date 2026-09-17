@@ -34,6 +34,11 @@ export interface CompetencySummaryProps {
   onSelect?: (competencyId: string) => void;
   /** Optional card heading */
   title?: string;
+  /**
+   * Whether each row reports its logbook entry count. Off where the
+   * list is about sign-offs — see `CompetencyRow`.
+   */
+  showLogbookCount?: boolean;
 }
 
 /**
@@ -46,6 +51,7 @@ export default function CompetencySummary({
   competencies,
   onSelect,
   title = "Competencies",
+  showLogbookCount = true,
 }: CompetencySummaryProps) {
   // No loading state, deliberately. Skeletons stood here until the
   // fetch returned and were then replaced by one of two things: the
@@ -76,7 +82,11 @@ export default function CompetencySummary({
         {competencies.map((competency, index) => (
           <Stack key={competency.id} gap="xs">
             {index > 0 && <Divider />}
-            <CompetencyRow competency={competency} onSelect={onSelect} />
+            <CompetencyRow
+              competency={competency}
+              onSelect={onSelect}
+              showLogbookCount={showLogbookCount}
+            />
           </Stack>
         ))}
       </Stack>
