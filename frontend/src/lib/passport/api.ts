@@ -61,6 +61,7 @@ import type {
   SignOffDeclineInput,
   SignOffInput,
   SignOffRequestInput,
+  WholeLogbook,
   SignOffResult,
   Verification,
 } from "./types";
@@ -94,6 +95,7 @@ export const PASSPORT_PATHS = [
   "/passport/{passport_id}/export.md",
   "/passport/{passport_id}/export.pdf",
   "/passport/{passport_id}/export.zip",
+  "/passport/{passport_id}/logbook",
   "/passport/{passport_id}/logbook/{competency_id}",
   "/passport/{passport_id}/logbook/{competency_id}/{stem}",
   "/passport/{passport_id}/reflections",
@@ -359,6 +361,11 @@ export function addLogbookEntry(
     `/passport/${segment(passportId)}/logbook/${segment(competencyId)}`,
     data,
   );
+}
+
+/** Every logged procedure, grouped by the competency it counts towards. */
+export function fetchWholeLogbook(passportId: string): Promise<WholeLogbook> {
+  return api.get<WholeLogbook>(`/passport/${segment(passportId)}/logbook`);
 }
 
 /** A competency's logbook: its entries and how many there are, with no target. */

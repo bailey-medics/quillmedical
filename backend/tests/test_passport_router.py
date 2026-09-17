@@ -1854,6 +1854,79 @@ class TestAdminVerifyAndRevoke:
         assert response.status_code == 404
 
 
+class TestTheWholeLogbook:
+    """Every logged procedure, whatever competency it counts towards."""
+
+    def test_entries_come_back_grouped_by_competency(
+        self, holder_client: TestClient
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+
+        for competency, day in (
+            ("perform_venepuncture", "2026-03-01"),
+            ("perform_venepuncture", "2026-03-02"),
+            ("certify_death", "2026-03-03"),
+        ):
+            holder_client.post(
+                f"/api/passport/{passport_id}/logbook/{competency}",
+                json={"performed_on": day},
+            )
+
+        response = holder_client.get(f"/api/passport/{passport_id}/logbook")
+
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["count"] == 3
+        groups = {g["competency"]: g["count"] for g in body["competencies"]}
+        assert groups == {
+            "perform_venepuncture": 2,
+            "certify_death": 1,
+        }
+
+    def test_an_empty_logbook_is_not_an_error(
+        self, holder_client: TestClient
+    ) -> None:
+        """A holder who has logged nothing is the ordinary first case."""
+        passport_id = _create_passport(holder_client)
+
+        response = holder_client.get(f"/api/passport/{passport_id}/logbook")
+
+        assert response.status_code == 200
+        assert response.json() == {"competencies": [], "count": 0}
+
+    def test_entries_sort_by_the_date_they_record(
+        self, holder_client: TestClient
+    ) -> None:
+        """Not by filename, which is when Quill wrote the file."""
+        passport_id = _create_passport(holder_client)
+
+        for day in ("2026-03-09", "2026-03-02", "2026-03-05"):
+            holder_client.post(
+                f"/api/passport/{passport_id}/logbook/perform_venepuncture",
+                json={"performed_on": day},
+            )
+
+        body = holder_client.get(f"/api/passport/{passport_id}/logbook").json()
+
+        dates = [e["performed_on"] for e in body["competencies"][0]["entries"]]
+        assert dates == ["2026-03-02", "2026-03-05", "2026-03-09"]
+
+    def test_an_unrelated_user_cannot_read_it(
+        self,
+        test_client: TestClient,
+        passport_store: LocalPassportStore,
+        org: Organisation,
+    ) -> None:
+        """404 rather than 403, as everywhere else."""
+        holder_client = _login(test_client, "holder")
+        passport_id = _create_passport(holder_client)
+
+        bystander_client = _login(test_client, "bystander")
+        response = bystander_client.get(f"/api/passport/{passport_id}/logbook")
+
+        assert response.status_code == 404
+
+
 class TestEvidence:
     """Uploading a file, and naming it in a record.
 

@@ -19,11 +19,16 @@ import ErrorState from "@/components/error-state/ErrorState";
 import StateMessage from "@/components/message-cards/StateMessage";
 import { IconFileText } from "@/components/icons/appIcons";
 import competenciesData from "@/generated/competencies.json";
-import { addLogbookEntry, fetchLogbook, fetchMyPassport } from "@lib/passport";
+import {
+  addLogbookEntry,
+  fetchMyPassport,
+  fetchWholeLogbook,
+} from "@lib/passport";
 import type {
   CompetencyState,
   Logbook,
   LogbookEntryInput,
+  WholeLogbook,
 } from "@lib/passport";
 
 /**
@@ -67,11 +72,10 @@ function competencyForForm(
 export function Component() {
   const [passportId, setPassportId] = useState<string | null>(null);
   const [competencyId, setCompetencyId] = useState<string | null>(null);
-  const [logbook, setLogbook] = useState<Logbook | null>(null);
-  // Which competency the current logbook belongs to. Loading is then
-  // derived rather than set in the effect body: a chosen competency with
-  // no logbook loaded for it yet is exactly what "loading" means.
-  const [loadedFor, setLoaded] = useState<string | null>(null);
+  const [whole, setWhole] = useState<WholeLogbook>({
+    competencies: [],
+    count: 0,
+  });
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -81,11 +85,17 @@ export function Component() {
 
     fetchMyPassport()
       .then((detail) => {
-        if (!cancelled) setPassportId(detail.passport.passport_id);
+        const id = detail.passport.passport_id;
+        if (cancelled) return;
+        setPassportId(id);
+        return fetchWholeLogbook(id);
+      })
+      .then((result) => {
+        if (!cancelled && result) setWhole(result);
       })
       .catch(() => {
         if (!cancelled) {
-          setError("Your passport could not be loaded. Please try again.");
+          setError("Your logbook could not be loaded. Please try again.");
         }
       });
 
@@ -94,36 +104,13 @@ export function Component() {
     };
   }, []);
 
-  useEffect(() => {
-    if (passportId === null || competencyId === null) return;
-
-    let cancelled = false;
-
-    fetchLogbook(passportId, competencyId)
-      .then((result) => {
-        if (!cancelled) setLogbook(result);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setError("That logbook could not be loaded. Please try again.");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoaded(competencyId);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [passportId, competencyId]);
-
   async function handleSubmit(data: LogbookEntryInput) {
     if (passportId === null || competencyId === null) return;
 
     setSubmitting(true);
     try {
       await addLogbookEntry(passportId, competencyId, data);
-      setLogbook(await fetchLogbook(passportId, competencyId));
+      setWhole(await fetchWholeLogbook(passportId));
       setAdding(false);
       setError(null);
     } catch {
@@ -133,21 +120,26 @@ export function Component() {
     }
   }
 
+  // Everything logged, narrowed by the picker rather than chosen by
+  // it. A holder opening their logbook wants to see what is in it; the
+  // picker says which part to look at, and says nothing when left
+  // alone.
+  const groups = competencyId
+    ? whole.competencies.filter((group) => group.competency === competencyId)
+    : whole.competencies;
+
   return (
     <Stack gap="lg">
       <PageHeader title="Logbook" />
 
       {error && <ErrorState message={error} />}
 
-      {/* Above the picker rather than below it, so the instruction is
-          read before the control it refers to — hence "below" rather
-          than the "above" it said while it sat underneath. */}
-      {!(competencyId && logbook) && (
+      {whole.count === 0 && (
         <StateMessage
           colour="update"
           icon={<IconFileText />}
-          title="Choose a competency"
-          description="Pick one below to see the procedures you have logged against it."
+          title="Nothing logged yet"
+          description="Procedures you record appear here, grouped by the competency they count towards."
         />
       )}
 
@@ -155,7 +147,7 @@ export function Component() {
         value={competencyId}
         onChange={setCompetencyId}
         label="Which competency?"
-        description="Your entries are grouped by the competency they count towards."
+        description="Choose one to add an entry, or to see only its own."
       />
 
       {/* Only once a competency is chosen: an entry counts towards one,
@@ -163,7 +155,7 @@ export function Component() {
       {competencyId &&
         (adding ? (
           <LogbookEntryForm
-            competency={competencyForForm(competencyId, logbook)}
+            competency={competencyForForm(competencyId, groups[0] ?? null)}
             onSubmit={handleSubmit}
             onCancel={() => setAdding(false)}
             isSubmitting={submitting}
@@ -174,12 +166,9 @@ export function Component() {
           </Group>
         ))}
 
-      {competencyId && logbook && (
-        <LogbookTable
-          logbook={logbook}
-          isLoading={loadedFor !== competencyId}
-        />
-      )}
+      {groups.map((group) => (
+        <LogbookTable key={group.competency} logbook={group} />
+      ))}
     </Stack>
   );
 }

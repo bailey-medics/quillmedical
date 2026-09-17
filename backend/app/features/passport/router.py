@@ -101,6 +101,7 @@ from app.schemas.passport import (
     SignOffRequestIn,
     SignOffResultOut,
     VerificationOut,
+    WholeLogbookOut,
 )
 from app.security import (
     PASSPORT_INVITE_TTL_DAYS,
@@ -1356,6 +1357,72 @@ def add_logbook_entry(
     db.flush()
 
     return RecordResultOut(name=stem, commit=commit)
+
+
+@passport_router.get(
+    "/{passport_id}/logbook",
+    response_model=WholeLogbookOut,
+    dependencies=[_DEP_PASSPORT],
+)
+def get_whole_logbook(
+    passport_id: str,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+    store: PassportStore = _DEP_STORE,
+) -> WholeLogbookOut:
+    """Every logged procedure, grouped by the competency it counts to.
+
+    Declared before ``/{passport_id}/logbook/{competency_id}`` so the
+    literal path wins over the parameterised one.
+
+    Which competencies appear is read from the directories on disk
+    rather than from the passport index: a competency with logbook
+    entries and nothing else is exactly the case this answers, and it
+    is the one the index describes least well.
+
+    Groups rather than one flat list, because an entry is about one
+    procedure and the competency it counts towards is part of what it
+    says. Sorted within each group by the clinical date recorded, as
+    the per-competency response is.
+    """
+    row = _require_reader(db, passport_id, user)
+
+    groups: list[LogbookOut] = []
+    total = 0
+
+    for directory in store.list_dir(row.id, paths.LOGBOOK):
+        competency_id = directory.name
+        entries: list[LogbookEntryOut] = []
+
+        for path in store.list_dir(row.id, directory):
+            raw = store.read(row.id, path)
+            entry = from_yaml(LogbookEntry, raw)
+            entries.append(
+                LogbookEntryOut.model_validate(
+                    {
+                        "filename": path.stem,
+                        "competency": competency_id,
+                        **entry.model_dump(mode="json"),
+                    }
+                )
+            )
+
+        if not entries:
+            continue
+
+        entries.sort(key=lambda item: item.performed_on)
+        total += len(entries)
+        groups.append(
+            LogbookOut(
+                competency=competency_id,
+                count=len(entries),
+                entries=entries,
+            )
+        )
+
+    groups.sort(key=lambda group: group.competency)
+
+    return WholeLogbookOut(competencies=groups, count=total)
 
 
 @passport_router.get(
