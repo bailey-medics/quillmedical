@@ -117,7 +117,7 @@ from app.org_units import (
 from app.org_units.router import router as org_units_router
 from app.org_units.tree import (
     descendant_ids,
-    organisation_id_of_site,
+    organisation_place_of_site,
     root_ids_of,
 )
 from app.organisations import (
@@ -127,7 +127,6 @@ from app.organisations import (
     get_patient_place_ids,
     get_place_staff_ids,
     get_shared_place_ids,
-    organisation_of_place,
     organisation_place_member,
     organisation_places_of,
     place_of_organisation,
@@ -1147,13 +1146,13 @@ def register(
     db.add(user)
     db.flush()  # Assigns user.id so we can create memberships
 
-    # Add the user to the place they named. The organisation it stands
-    # for is still resolved, because the site check below asks which
-    # organisation a site sits under.
-    organisation_id = None
+    # Add the user to the place they named. It has to be an
+    # organisation: registration offers the tops of trees, and a
+    # membership of a ward is what the site branch below writes.
     if payload.org_unit_id is not None:
-        organisation_id = organisation_of_place(db, payload.org_unit_id)
-        if organisation_id is None:
+        if payload.org_unit_id not in organisation_places_of(
+            db, [payload.org_unit_id]
+        ):
             raise HTTPException(
                 status_code=400, detail="Organisation not found"
             )
@@ -1165,7 +1164,7 @@ def register(
 
     # Add the user to the selected site as a trainee
     if payload.site_id is not None:
-        if organisation_id is None:
+        if payload.org_unit_id is None:
             raise HTTPException(
                 status_code=400,
                 detail="org_unit_id required when site_id is provided",
@@ -1177,7 +1176,10 @@ def register(
         # the flag, not one name.
         if site is None or site.type in ROOT_TYPE_IDS:
             raise HTTPException(status_code=400, detail="Site not found")
-        if organisation_id_of_site(db, payload.site_id) != organisation_id:
+        if (
+            organisation_place_of_site(db, payload.site_id)
+            != payload.org_unit_id
+        ):
             raise HTTPException(status_code=400, detail="Site not found")
         db.execute(
             org_unit_member.insert().values(
