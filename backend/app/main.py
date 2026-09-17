@@ -2448,6 +2448,7 @@ def update_profile(
 def list_users(
     patient_id: str | None = None,
     exclude_org: int | None = None,
+    exclude_place: int | None = None,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> UsersListOut:
@@ -2458,12 +2459,23 @@ def list_users(
     used by the message participant picker.
 
     Without ``patient_id``, returns all users the caller may administer.
-    Use ``exclude_org`` to exclude users who are already staff members
-    of the given organisation.
+    Use ``exclude_place`` to exclude people who are already members of
+    the place being added to.
+
+    ``exclude_org`` is the older spelling and still counts in
+    organisation ids. The screen that asks this question holds a place
+    id — the route it sits on is keyed by one, and the membership it
+    creates names one — so it was handing a place id to a parameter that
+    read it as an organisation. The two id sequences agree on a small
+    installation and diverge as soon as a ward is created between two
+    organisations, at which point the filter silently excluded the
+    members of a different organisation, or of none.
 
     Args:
         patient_id: Optional FHIR patient ID to filter by shared org.
-        exclude_org: Optional organisation ID to exclude existing members.
+        exclude_org: Optional organisation ID to exclude members of.
+            Superseded by ``exclude_place``.
+        exclude_place: Optional place ID to exclude members of.
         current_user: Currently authenticated user.
         db: Database session.
 
@@ -2516,8 +2528,18 @@ def list_users(
         # Unfiltered mode: admin/superadmin only
     stmt = select(User)
 
-    # Exclude users who are already staff of the given organisation
-    if exclude_org is not None:
+    # Exclude people who are already members of the place being added
+    # to. Both spellings are honoured while the older one is still
+    # served; a caller sending neither excludes nobody.
+    if exclude_place is not None:
+        stmt = stmt.where(
+            User.id.notin_(
+                select(org_unit_member.c.user_id).where(
+                    org_unit_member.c.org_unit_id == exclude_place
+                )
+            )
+        )
+    elif exclude_org is not None:
         existing_staff_ids = select(organisation_member.c.user_id).where(
             organisation_member.c.organisation_id == exclude_org
         )

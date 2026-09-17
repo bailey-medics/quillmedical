@@ -92,7 +92,7 @@ describe("AddStaffToOrgPage", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(apiLib.api.get).toHaveBeenCalledWith("/users?exclude_org=1");
+      expect(apiLib.api.get).toHaveBeenCalledWith("/users?exclude_place=1");
     });
   });
 
