@@ -180,7 +180,9 @@ class TestALinkConfersNothingElse:
         add_organisation_member(db_session, school.id, test_admin.id, "staff")
         _link(db_session, school.org_unit_id, trust.org_unit_id, "teaches_at")
 
-        resp = authenticated_admin_client.get(f"/api/organisations/{trust.id}")
+        resp = authenticated_admin_client.get(
+            f"/api/org-units/{trust.org_unit_id}"
+        )
 
         assert resp.status_code == 404
 

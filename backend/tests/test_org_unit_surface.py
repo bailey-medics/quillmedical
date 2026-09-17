@@ -1247,3 +1247,79 @@ class TestAnOrganisationCreatedAsAPlace:
             is None
         )
         assert db_session.get(OrgUnit, place_id) is None
+
+
+class TestWhoMayAskAtAll:
+    """Before any of the rules above: authentication, then competency.
+
+    These were asked of `/api/organisations`, which is being retired.
+    They are not about organisations; they are about a surface that
+    administers places.
+    """
+
+    def test_nobody_gets_an_answer_without_signing_in(self, test_client):
+        resp = test_client.get("/api/org-units")
+
+        assert resp.status_code == 401
+
+    def test_signing_in_is_not_the_same_as_being_allowed(
+        self, authenticated_client
+    ):
+        """A signed-in person with no competency for this is refused."""
+        resp = authenticated_client.get("/api/org-units")
+
+        assert resp.status_code == 403
+
+
+class TestWhatCreatingRefuses:
+    """The small ways a create request can be wrong."""
+
+    def test_a_name_of_spaces_is_refused(
+        self, authenticated_superadmin_client
+    ):
+        resp = authenticated_superadmin_client.post(
+            "/api/org-units", json={"name": "   ", "type": "organisation"}
+        )
+
+        assert resp.status_code == 422
+
+    def test_no_name_at_all_is_refused(self, authenticated_superadmin_client):
+        resp = authenticated_superadmin_client.post(
+            "/api/org-units", json={"type": "organisation"}
+        )
+
+        assert resp.status_code == 422
+
+    def test_the_name_is_stored_without_its_spaces(
+        self, authenticated_superadmin_client
+    ):
+        resp = authenticated_superadmin_client.post(
+            "/api/org-units",
+            json={"name": "  Test Trust  ", "type": "organisation"},
+        )
+
+        assert resp.json()["name"] == "Test Trust"
+
+
+class TestMembersThatCannotBeAdded:
+    def test_somebody_who_does_not_exist(
+        self, authenticated_superadmin_client, db_session
+    ):
+        org = _org(db_session)
+
+        resp = authenticated_superadmin_client.post(
+            f"/api/org-units/{org.org_unit_id}/members",
+            json={"user_id": 999999, "capacity": "staff"},
+        )
+
+        assert resp.status_code == 404
+
+    def test_at_a_place_that_does_not_exist(
+        self, authenticated_superadmin_client
+    ):
+        resp = authenticated_superadmin_client.post(
+            "/api/org-units/999999/members",
+            json={"user_id": 1, "capacity": "staff"},
+        )
+
+        assert resp.status_code == 404
