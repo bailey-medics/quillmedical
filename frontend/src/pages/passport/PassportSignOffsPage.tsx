@@ -19,15 +19,68 @@
  */
 
 import { useEffect, useState } from "react";
-import { Stack } from "@mantine/core";
+import { Group, Stack } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
 import PageHeader from "@/components/page-header";
+import AddButton from "@/components/button/AddButton";
+import CompetencyPicker from "@/components/passport/CompetencyPicker";
 import CompetencySummary from "@/components/passport/CompetencySummary";
+import SignOffRequestForm from "@/components/passport/SignOffRequestForm";
 import ErrorState from "@/components/error-state/ErrorState";
 import StateMessage from "@/components/message-cards/StateMessage";
 import { IconFileText } from "@/components/icons/appIcons";
-import { fetchMyPassport } from "@lib/passport";
-import type { CompetencyState, SignOffStatus } from "@lib/passport";
+import { api } from "@/lib/api";
+import competenciesData from "@/generated/competencies.json";
+import { fetchMyPassport, requestSignOff } from "@lib/passport";
+import type {
+  CompetencyState,
+  SignOffRequestInput,
+  SignOffStatus,
+} from "@lib/passport";
+
+/** Shape of the user records the assessor list is built from. */
+interface ApiUser {
+  id: number;
+  username: string;
+}
+
+/**
+ * A competency as the request form wants it, built from the catalogue.
+ *
+ * The form shows the competency's name while asking about it, but a
+ * holder may be requesting a sign-off for something with nothing
+ * recorded against it yet — which is how a competency first reaches a
+ * passport at all. So where the passport already knows it, that entry is
+ * used; otherwise the name comes from the shared catalogue, the same
+ * source the picker reads, and the rest describes an empty history.
+ */
+function competencyForForm(
+  competencyId: string,
+  known: CompetencyState[],
+): CompetencyState {
+  const existing = known.find((entry) => entry.id === competencyId);
+  if (existing) return existing;
+
+  const catalogue = competenciesData.competencies as {
+    id: string;
+    display_name: string;
+  }[];
+  const entry = catalogue.find((item) => item.id === competencyId);
+
+  return {
+    id: competencyId,
+    name: entry?.display_name ?? competencyId,
+    status: "requested",
+    level: null,
+    signed_on: null,
+    signed_off_by: null,
+    expires_on: null,
+    sign_off: null,
+    previous_sign_offs: [],
+    logbook_entries: 0,
+    certificates: [],
+  };
+}
 
 /**
  * The groups, in the order a holder cares about them.
@@ -51,14 +104,23 @@ const GROUPS: { status: SignOffStatus; title: string }[] = [
 export function Component() {
   const navigate = useNavigate();
   const [competencies, setCompetencies] = useState<CompetencyState[]>([]);
+  const [passportId, setPassportId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [assessors, setAssessors] = useState<
+    { value: string; label: string }[]
+  >([]);
+  const [asking, setAsking] = useState(false);
+  const [chosen, setChosen] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
     fetchMyPassport()
       .then((detail) => {
-        if (!cancelled) setCompetencies(detail.competencies);
+        if (cancelled) return;
+        setCompetencies(detail.competencies);
+        setPassportId(detail.passport.passport_id);
       })
       .catch(() => {
         if (!cancelled) {
@@ -66,10 +128,46 @@ export function Component() {
         }
       });
 
+    // There is no passport endpoint listing assessors, so the page asks
+    // for users directly and the form stays presentational — the same
+    // arrangement the competency page uses.
+    api
+      .get<{ users: ApiUser[] }>("/users")
+      .then(({ users }) => {
+        if (cancelled) return;
+        setAssessors(
+          users.map((user) => ({
+            value: String(user.id),
+            label: user.username,
+          })),
+        );
+      })
+      .catch(() => {
+        // Not fatal: the rest of the page still reads, and the form
+        // simply has nobody to offer.
+      });
+
     return () => {
       cancelled = true;
     };
   }, []);
+
+  async function handleRequest(data: SignOffRequestInput) {
+    if (passportId === null || chosen === null) return;
+
+    setSubmitting(true);
+    try {
+      await requestSignOff(passportId, chosen, data);
+      setCompetencies((await fetchMyPassport()).competencies);
+      setAsking(false);
+      setChosen(null);
+      setError(null);
+    } catch {
+      setError("The request could not be sent. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   if (error) {
     return (
@@ -104,6 +202,46 @@ export function Component() {
           title="Nothing recorded yet"
           description="A competency appears here once you have recorded something against it — a logbook entry, a certificate or a CPD activity — and asked an assessor to sign it off."
         />
+      )}
+
+      {/* Above the groups, because asking is what a holder came here to
+          do. The picker offers the whole catalogue rather than only
+          what is listed below: a sign-off can be asked for against a
+          competency with nothing recorded yet, and that is often how
+          one first reaches a passport. */}
+      {asking ? (
+        <Stack gap="lg">
+          <CompetencyPicker
+            value={chosen}
+            onChange={setChosen}
+            label="Which competency?"
+            description="What you are asking to be signed off for."
+          />
+
+          {/* Only once a competency is chosen: the form names it in its
+              heading and cannot be filled in without it. Until then the
+              picker stands alone, with the same button that opened it
+              offering the way back out. */}
+          {chosen && (
+            <SignOffRequestForm
+              competency={competencyForForm(chosen, competencies)}
+              assessors={assessors}
+              onSubmit={handleRequest}
+              onCancel={() => {
+                setAsking(false);
+                setChosen(null);
+              }}
+              isSubmitting={submitting}
+            />
+          )}
+        </Stack>
+      ) : (
+        <Group justify="flex-end">
+          <AddButton
+            label="Ask for a sign-off"
+            onClick={() => setAsking(true)}
+          />
+        </Group>
       )}
 
       {hasAny &&
