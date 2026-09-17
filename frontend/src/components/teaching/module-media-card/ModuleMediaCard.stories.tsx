@@ -206,3 +206,104 @@ export const UploadFailedOnACompleteModule: Story = {
 export const Loading: Story = {
   args: { media: complete, loading: true },
 };
+
+// ------------------------------------------------------------------
+// Processing states
+//
+// The card used to say "No captions" for every one of these, which
+// states absence where the truth was usually "not yet" — and had
+// someone re-upload a video that was working perfectly.
+// ------------------------------------------------------------------
+
+const processing = (
+  key: string,
+  progress: MediaAsset["progress"],
+): ModuleMedia => ({
+  module_id: "colonoscopy-optical-diagnosis",
+  references: [{ key, asset: { ...lecture, progress } }],
+  unattached: [],
+  is_complete: true,
+});
+
+export const PreparingTheVideo: Story = {
+  args: {
+    media: processing("lecture-01", {
+      stage: 1,
+      total_stages: 4,
+      label: "Preparing the video",
+      in_progress: true,
+    }),
+  },
+  render: (args) => (
+    <Stack gap="sm">
+      <ModuleMediaCard {...args} />
+      <StoryNote>
+        Straight after upload, while the video is being converted. The bar says
+        how far along it is and the line says what is happening, so nobody has
+        to guess whether anything is running.
+      </StoryNote>
+    </Stack>
+  ),
+};
+
+export const WritingCaptions: Story = {
+  args: {
+    media: processing("lecture-01", {
+      stage: 2,
+      total_stages: 4,
+      label: "Writing captions",
+      in_progress: true,
+    }),
+  },
+  render: (args) => (
+    <Stack gap="sm">
+      <ModuleMediaCard {...args} />
+      <StoryNote>
+        The video already plays; only the captions are outstanding. This is the
+        state that used to read "No captions", which is true and useless.
+      </StoryNote>
+    </Stack>
+  ),
+};
+
+export const CaptionsNeverStarted: Story = {
+  args: {
+    media: processing("lecture-01", {
+      stage: 2,
+      total_stages: 4,
+      label: "Video ready — captions have not started",
+      in_progress: false,
+    }),
+  },
+  render: (args) => (
+    <Stack gap="sm">
+      <ModuleMediaCard {...args} />
+      <StoryNote>
+        Nothing is coming. This lasted two days once, while the captioning was
+        switched off, and looked exactly like the state above. Saying so is the
+        whole reason the start times are recorded.
+      </StoryNote>
+    </Stack>
+  ),
+};
+
+export const ProcessingStalled: Story = {
+  args: {
+    media: processing("lecture-01", {
+      stage: 1,
+      total_stages: 4,
+      label: "Processing seems to have failed",
+      in_progress: false,
+      stalled: true,
+    }),
+  },
+  render: (args) => (
+    <Stack gap="sm">
+      <ModuleMediaCard {...args} />
+      <StoryNote>
+        Started, and running far longer than it plausibly needs. Coloured as an
+        alert, because waiting will not fix it.
+      </StoryNote>
+    </Stack>
+  ),
+};

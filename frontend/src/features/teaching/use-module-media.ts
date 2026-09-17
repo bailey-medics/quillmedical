@@ -175,7 +175,24 @@ async function putToBucket(
   return sendToSession(session, file, onProgress);
 }
 
-export function useModuleMedia(moduleId: string | null): ModuleMediaState {
+/**
+ * How often to re-ask while a job is running.
+ *
+ * Ten seconds: a transcode takes minutes and captions longer, so this
+ * is far finer than the work it watches, and the request is one small
+ * read of rows the page already holds.
+ *
+ * Overridable so a test can prove the polling without waiting ten real
+ * seconds. Swapping the clock for fake timers was tried first and
+ * proved unreliable — the interval is registered inside an effect that
+ * runs after an awaited fetch, and the two did not line up.
+ */
+export const MEDIA_POLL_INTERVAL_MS = 10_000;
+
+export function useModuleMedia(
+  moduleId: string | null,
+  pollIntervalMs: number = MEDIA_POLL_INTERVAL_MS,
+): ModuleMediaState {
   const [media, setMedia] = useState<ModuleMedia | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -224,6 +241,31 @@ export function useModuleMedia(moduleId: string | null): ModuleMediaState {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void refresh();
   }, [moduleId, refresh]);
+
+  // Whether any row is waiting on a job. Derived from what the backend
+  // says rather than guessed here: it owns the rules, and a second
+  // opinion in the card would be the one that drifts.
+  const anyInProgress = Boolean(
+    media?.references?.some((ref) => ref.asset?.progress?.in_progress),
+  );
+
+  useEffect(() => {
+    // Polled only while something is actually running. The card was
+    // fetched once and never again, so a progress bar would have sat at
+    // the same figure until someone reloaded — which is no better than
+    // the "No captions" line it replaces.
+    //
+    // Stops the moment nothing is in progress, including when a job has
+    // stalled: there is no point asking every ten seconds about work
+    // that has already failed.
+    if (!moduleId || !anyInProgress) return;
+
+    const timer = setInterval(() => {
+      void refresh();
+    }, pollIntervalMs);
+
+    return () => clearInterval(timer);
+  }, [moduleId, anyInProgress, refresh, pollIntervalMs]);
 
   const upload = useCallback(
     async (key: string, file: File) => {

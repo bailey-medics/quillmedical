@@ -53,6 +53,7 @@ from app.features.teaching.schemas import (
     LearningModuleOut,
     MediaAssetOut,
     MediaLinkIn,
+    MediaProgressOut,
     MediaReferenceOut,
     MediaUploadUrlIn,
     MediaUploadUrlOut,
@@ -957,17 +958,34 @@ def grant_video_access(
         key.get_secret_value(),
     )
 
-    response.set_cookie(
-        "Cloud-CDN-Cookie",
-        cookie,
-        max_age=settings.TEACHING_VIDEO_COOKIE_TTL_MINUTES * 60,
-        # Scoped to the media path, so it is not sent on ordinary API
-        # or page requests. Host-only — no Domain attribute — so it
-        # cannot leak to a sibling subdomain.
-        path="/videos/",
-        secure=True,
-        httponly=True,
-        samesite="lax",
+    # The header is built by hand rather than with `set_cookie`, and
+    # that is load-bearing. Starlette sets cookies through Python's
+    # `SimpleCookie`, which wraps any value containing characters
+    # outside its safe set in double quotes — and this value is full of
+    # `:` and `=`:
+    #
+    #   Cloud-CDN-Cookie="URLPrefix=…:Signature=…"; Path=/videos/
+    #
+    # The browser stores the quotes and sends them back, so Cloud CDN
+    # sees a policy beginning with `"` and refuses it. It presents as a
+    # 403 with `signed_request_invalid_encoding` in the load balancer
+    # log and a black player with a dead play button in the page, which
+    # is indistinguishable from every other reason a video might not
+    # load. Signing, key names and object keys were all checked before
+    # the quotes were noticed.
+    #
+    # Scoped to the media path, so it is not sent on ordinary API or
+    # page requests. Host-only — no Domain attribute — so it cannot
+    # leak to a sibling subdomain.
+    max_age = settings.TEACHING_VIDEO_COOKIE_TTL_MINUTES * 60
+    response.raw_headers.append(
+        (
+            b"set-cookie",
+            (
+                f"Cloud-CDN-Cookie={cookie}; Max-Age={max_age}; "
+                f"Path=/videos/; Secure; HttpOnly; SameSite=Lax"
+            ).encode("latin-1"),
+        )
     )
 
     # The grant, not the credential. Never the cookie value or the key,
@@ -2269,6 +2287,7 @@ def get_module_media(
     trust's file must never make another's module look complete.
     """
     from app.features.teaching.media import (
+        describe_progress,
         get_media_inventory,
         get_referenced_media_keys,
     )
@@ -2278,7 +2297,19 @@ def get_module_media(
     inventory = get_media_inventory(db, org_id, module_id, keys)
 
     def _asset(link: ModuleMediaLink) -> MediaAssetOut:
-        return MediaAssetOut.model_validate(link)
+        # Attached to every asset the card shows, through the one helper
+        # that builds them, so no row can be rendered without the state
+        # that says whether it is still being worked on.
+        out = MediaAssetOut.model_validate(link)
+        progress = describe_progress(link)
+        out.progress = MediaProgressOut(
+            stage=progress.stage,
+            total_stages=progress.total_stages,
+            label=progress.label,
+            in_progress=progress.in_progress,
+            stalled=progress.stalled,
+        )
+        return out
 
     return ModuleMediaOut(
         module_id=module_id,
@@ -2370,6 +2401,10 @@ def link_module_media(
     link.has_1080p = False
     link.has_poster = False
     link.has_captions = False
+    # The timings go too. A previous asset's start times would have the
+    # card report progress for work that is not happening on this file.
+    link.transcode_started_at = None
+    link.caption_started_at = None
 
     db.flush()
     db.refresh(link)
@@ -2388,6 +2423,14 @@ def link_module_media(
     # admin asked for has already succeeded, and failing the request now
     # would report that as a failure. A job that never runs leaves the
     # module incomplete and hidden, which is the safe direction.
+    # Recorded before firing, not after: if the invocation raises inside
+    # its own try/except the job may still have started, and a card
+    # saying "nothing is running" over a job that is would be the worse
+    # of the two errors. An overstated start shows as "running a long
+    # time", which prompts a look; an understated one shows as nothing.
+    link.transcode_started_at = datetime.now(UTC)
+    db.flush()
+
     start_transcode(org_id, module_id, body.asset_id)
 
     return MediaAssetOut.model_validate(link)
