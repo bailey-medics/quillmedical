@@ -18,18 +18,20 @@ import { useNavigate } from "react-router-dom";
 import PageHeader from "@/components/page-header";
 import ActionCard from "@/components/action-card";
 import AddButton from "@/components/button/AddButton";
+import InboxButton from "@/components/passport/InboxButton";
 import CompetencySummary from "@/components/passport/CompetencySummary";
-import PassportExportButtons from "@/components/passport/PassportExportButtons";
 import StateMessage from "@/components/message-cards/StateMessage";
 import ErrorState from "@/components/error-state/ErrorState";
 import {
   IconBook,
+  IconCheck,
+  IconDownload,
   IconFileText,
   IconPencil,
   IconPresentation,
 } from "@/components/icons/appIcons";
 import { layoutTokens } from "@/theme";
-import { createPassport, fetchMyPassport } from "@lib/passport";
+import { createPassport, fetchInbox, fetchMyPassport } from "@lib/passport";
 import type { PassportDetail } from "@lib/passport";
 
 /**
@@ -41,6 +43,16 @@ import type { PassportDetail } from "@lib/passport";
  * the URL.
  */
 const SECTIONS = [
+  {
+    // First, because it is the answer to the question the passport
+    // exists for: what has somebody been signed off to do. The others
+    // are the evidence that leads to it.
+    icon: <IconCheck />,
+    title: "Sign-offs",
+    subtitle: "What an assessor has signed, and what is still waiting.",
+    label: "Open sign-offs",
+    to: "/passport/sign-offs",
+  },
   {
     icon: <IconBook />,
     title: "Logbook",
@@ -69,7 +81,45 @@ const SECTIONS = [
     label: "Open reflections",
     to: "/passport/reflections",
   },
+  {
+    icon: <IconDownload />,
+    title: "Download",
+    subtitle: "Take your record with you. It does not depend on Quill.",
+    label: "Open download",
+    to: "/passport/download",
+  },
 ];
+
+/**
+ * The page title, with the way into the assessor's queue beside it.
+ *
+ * Beside the title rather than among the cards below, because those are
+ * the holder's own record and this is not part of it: it is other
+ * people's records waiting on this person's judgement. An external
+ * assessor may have a queue and no passport at all.
+ *
+ * Drawn on every state of the page — error, no passport yet, and the
+ * ordinary one — since somebody can be asked to assess a colleague
+ * whether or not they have started a passport themselves.
+ *
+ * The plan records that "inbox" is the wrong name for the destination
+ * and that the right one is still to be chosen; the label here will
+ * change with it.
+ */
+function PassportHeader({
+  waiting,
+  onInbox,
+}: {
+  waiting: number;
+  onInbox: () => void;
+}) {
+  return (
+    <Group justify="space-between" align="center">
+      <PageHeader title="My passport" />
+      <InboxButton count={waiting} onClick={onInbox} />
+    </Group>
+  );
+}
 
 export function Component() {
   const navigate = useNavigate();
@@ -85,6 +135,11 @@ export function Component() {
   // fresh account and was told to try again, which could never work.
   const [absent, setAbsent] = useState(false);
   const [creating, setCreating] = useState(false);
+  // How many sign-off requests name this person as assessor. Fetched
+  // separately from the passport because it is separate: an external
+  // assessor has a queue and may have no passport at all, so a failed
+  // passport load must not take the count with it.
+  const [waiting, setWaiting] = useState(0);
 
   /**
    * Apply one fetch's outcome to state.
@@ -134,6 +189,26 @@ export function Component() {
     };
   }, [applyResult]);
 
+  // A failure here is silent on purpose. The count is a convenience
+  // beside the title, and an error banner about it would sit above the
+  // holder's own record complaining about somebody else's queue. The
+  // button still works; it simply shows no number.
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchInbox()
+      .then((items) => {
+        if (!cancelled) setWaiting(items.length);
+      })
+      .catch(() => {
+        /* no number rather than a wrong one */
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const handleCreate = () => {
     setCreating(true);
     setError(null);
@@ -152,7 +227,10 @@ export function Component() {
   if (error) {
     return (
       <Stack gap="lg">
-        <PageHeader title="My passport" />
+        <PassportHeader
+          waiting={waiting}
+          onInbox={() => navigate("/passport/inbox")}
+        />
         <ErrorState message={error} />
       </Stack>
     );
@@ -164,7 +242,10 @@ export function Component() {
   if (absent) {
     return (
       <Stack gap="lg">
-        <PageHeader title="My passport" />
+        <PassportHeader
+          waiting={waiting}
+          onInbox={() => navigate("/passport/inbox")}
+        />
         <StateMessage
           colour="update"
           icon={<IconFileText />}
@@ -189,7 +270,10 @@ export function Component() {
 
   return (
     <Stack gap="lg">
-      <PageHeader title="My passport" />
+      <PassportHeader
+        waiting={waiting}
+        onInbox={() => navigate("/passport/inbox")}
+      />
       <CompetencySummary
         competencies={passport?.competencies ?? []}
         isLoading={loading}
@@ -210,13 +294,6 @@ export function Component() {
           />
         ))}
       </SimpleGrid>
-
-      {/* Only once there is a passport to export. Offering a download
-          before one exists would hand somebody an empty file and call it
-          their record. */}
-      {passport && (
-        <PassportExportButtons passportId={passport.passport.passport_id} />
-      )}
     </Stack>
   );
 }

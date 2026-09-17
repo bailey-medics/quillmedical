@@ -12,10 +12,12 @@ import { Component as PassportLogbookPage } from "./PassportLogbookPage";
 
 const fetchMyPassport = vi.fn();
 const fetchLogbook = vi.fn();
+const addLogbookEntry = vi.fn();
 
 vi.mock("@lib/passport", () => ({
   fetchMyPassport: (...args: unknown[]) => fetchMyPassport(...args),
   fetchLogbook: (...args: unknown[]) => fetchLogbook(...args),
+  addLogbookEntry: (...args: unknown[]) => addLogbookEntry(...args),
 }));
 
 const detail = {
@@ -48,6 +50,18 @@ describe("PassportLogbookPage", () => {
     await screen.findByText("Choose a competency");
 
     expect(fetchLogbook).not.toHaveBeenCalled();
+  });
+
+  it("offers no way to add an entry before a competency is chosen", async () => {
+    // An entry counts towards a competency, so there is nothing to
+    // record until the page knows which one.
+    renderWithRouter(<PassportLogbookPage />);
+
+    await screen.findByText("Choose a competency");
+
+    expect(
+      screen.queryByRole("button", { name: "Add an entry" }),
+    ).not.toBeInTheDocument();
   });
 
   it("offers the picker", async () => {
