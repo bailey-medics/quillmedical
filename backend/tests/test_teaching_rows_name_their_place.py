@@ -142,10 +142,14 @@ class TestTheOrganisationColumnIsGone:
 class TestTheMediaLinkKeepsItsAddress:
     """The one column of this group that is still filled.
 
-    Media objects live at ``{organisation_id}/{module}/{asset}``, and
-    the signed cookie's prefix covers that path, so the number addresses
-    a file rather than filtering a table. A row written without it would
-    point nowhere.
+    Media objects live at ``{prefix}/{module}/{asset}``, and the signed
+    cookie covers that path, so the number addresses a file rather than
+    filtering a table. A row written without it would point nowhere.
+
+    Which number that is belongs to the place —
+    ``org_unit.media_prefix_id``, falling back to its own id — and
+    ``test_the_media_prefix_survives_the_table`` covers the choice. Here
+    it is only that the column is filled at all.
     """
 
     def test_naming_the_place_fills_the_bucket_prefix(
@@ -164,4 +168,4 @@ class TestTheMediaLinkKeepsItsAddress:
         db_session.add(link)
         db_session.commit()
 
-        assert link.organisation_id == org.id
+        assert link.organisation_id == org.org_unit_id
