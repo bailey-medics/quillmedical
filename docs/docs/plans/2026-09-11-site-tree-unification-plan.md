@@ -896,7 +896,7 @@ So the remaining steps land as:
 - [ ] 12c-i — the teaching and passport tables onto place ids, a column at a time
 - [ ] 12c-ii — membership and reach answer in place ids
 - [ ] 12c-iii — drop the `organisations` table
-- [ ] 12c-iv — refuse deleting a parent with children, and enforce `requires_parent`
+- [x] 12c-iv — refuse deleting a parent with children, and enforce `requires_parent`
 
 #### 10a — write both names for the place column
 
@@ -1439,6 +1439,23 @@ code nothing calls is worse than code that does not exist.
 The last unit is unblocked by none of it: refusing to delete a parent
 that still has children, and enforcing each type's `requires_parent`
 flag, need nothing from the fold.
+
+#### 12c-iv — the two rules the fold never blocked
+
+Both were listed last in the plan as though they waited on the table
+going. Neither does.
+
+- **A place with something inside it is refused rather than emptied.**
+  The parent column says `SET NULL`, so deleting a ward left its rooms
+  belonging nowhere: invisible to every list, reachable by nobody, and
+  impossible to tell from a room that was always loose. The refusal is
+  reversible — move them or delete them first — which is what makes it
+  the kinder answer.
+- **An organisation may not be given a parent.** This was possible until
+  now, and produced a place whose type said "top of a tree" while every
+  walk upwards landed in somebody else's trust. `is_root` would have gone
+  on saying yes. Creating one that way was already refused; moving one
+  was not.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to
