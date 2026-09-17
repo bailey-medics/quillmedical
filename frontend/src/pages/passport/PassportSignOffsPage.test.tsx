@@ -9,14 +9,23 @@
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import { Component as PassportSignOffsPage } from "./PassportSignOffsPage";
 import type { CompetencyState, SignOffStatus } from "@lib/passport";
 
 const fetchMyPassport = vi.fn();
+const requestSignOff = vi.fn();
 
 vi.mock("@lib/passport", () => ({
   fetchMyPassport: (...args: unknown[]) => fetchMyPassport(...args),
+  requestSignOff: (...args: unknown[]) => requestSignOff(...args),
+}));
+
+// The page asks for users directly to fill the assessor list, since
+// there is no passport endpoint that lists them.
+vi.mock("@/lib/api", () => ({
+  api: { get: () => Promise.resolve({ users: [] }) },
 }));
 
 function competency(
@@ -127,6 +136,32 @@ describe("PassportSignOffsPage", () => {
 
     expect(await screen.findByText(/Nothing recorded yet/)).toBeInTheDocument();
     expect(screen.getByText(/asked an assessor/)).toBeInTheDocument();
+  });
+
+  it("offers a way to ask for a sign-off", async () => {
+    // The page listed what had been signed and gave no way to ask for
+    // anything, which is most of why somebody opens it.
+    fetchMyPassport.mockResolvedValue(detailWith([]));
+    renderWithRouter(<PassportSignOffsPage />);
+
+    expect(
+      await screen.findByRole("button", { name: "Ask for a sign-off" }),
+    ).toBeInTheDocument();
+  });
+
+  it("asks which competency before showing the form", async () => {
+    // The form names the competency in its heading and cannot be
+    // filled in without one, so the picker comes first.
+    const user = userEvent.setup();
+    fetchMyPassport.mockResolvedValue(detailWith([]));
+    renderWithRouter(<PassportSignOffsPage />);
+
+    await user.click(
+      await screen.findByRole("button", { name: "Ask for a sign-off" }),
+    );
+
+    expect(await screen.findByText("Which competency?")).toBeInTheDocument();
+    expect(screen.queryByText(/Request sign-off for/)).not.toBeInTheDocument();
   });
 
   it("explains a failed load rather than showing an empty record", async () => {
