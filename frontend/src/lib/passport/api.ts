@@ -293,10 +293,11 @@ export function uploadEvidence(
   const form = new FormData();
   form.append("file", file);
 
+  // No content-type header: `api.post` leaves it off for a FormData
+  // body so the browser can set one naming its own multipart boundary.
   return api.post<EvidenceUpload>(
     `/passport/${segment(passportId)}/evidence`,
     form,
-    { headers: { "Content-Type": "" } },
   );
 }
 
