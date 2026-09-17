@@ -833,7 +833,7 @@ def list_org_unit_features(
 @router.put(
     "/{unit_id}/features/{feature_key}",
     response_model=OrgUnitStatusOut,
-    dependencies=[DEP_REQUIRE_CSRF],
+    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_USERS],
 )
 def set_org_unit_feature(
     unit_id: int,
@@ -848,13 +848,11 @@ def set_org_unit_feature(
     writing a row nothing would ever read: a feature quietly enabled on a
     ward that does nothing is worse than being told it cannot be.
 
-    Requires superadmin permissions, as switching a feature on always has.
+    Requires ``manage_users`` at a place the caller may administer, which
+    is what the organisations surface has always asked. An operator-only
+    gate here would have taken a working thing away from every admin the
+    day that surface was retired.
     """
-    if current_user.platform_role != "superadmin":
-        raise HTTPException(
-            status_code=403, detail="Requires superadmin permissions"
-        )
-
     unit = _require_visible(db, current_user, unit_id)
 
     if not type_can_hold_features(unit.type):
