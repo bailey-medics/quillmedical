@@ -68,8 +68,14 @@ describe("PassportSignOffsPage", () => {
     );
     renderWithRouter(<PassportSignOffsPage />);
 
+    // Wait on a competency name, not a heading. Every heading is drawn
+    // during the loading render too, so waiting on one can return while
+    // the page is still skeletons. A name only ever appears once the
+    // passport has arrived.
+    expect(await screen.findByText("Perform bronchoscopy")).toBeInTheDocument();
+
     expect(
-      await screen.findByRole("heading", { name: "Awaiting sign-off" }),
+      screen.getByRole("heading", { name: "Awaiting sign-off" }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Signed off" }),
@@ -77,7 +83,6 @@ describe("PassportSignOffsPage", () => {
     expect(
       screen.getByRole("heading", { name: "Declined" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Perform bronchoscopy")).toBeInTheDocument();
     expect(screen.getByText("Insert a chest drain")).toBeInTheDocument();
   });
 
@@ -89,7 +94,11 @@ describe("PassportSignOffsPage", () => {
     );
     renderWithRouter(<PassportSignOffsPage />);
 
-    await screen.findByRole("heading", { name: "Signed off" });
+    // The loading render draws all three headings, so waiting on
+    // "Signed off" can return before the passport has arrived and leave
+    // the other two still on the page. A competency name only shows once
+    // it has.
+    await screen.findByText("Perform bronchoscopy");
 
     expect(
       screen.queryByRole("heading", { name: "Declined" }),
