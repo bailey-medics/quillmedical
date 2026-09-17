@@ -3092,6 +3092,7 @@ def list_bank_organisations(
         rows.append(
             BankOrgRow(
                 organisation_id=org.id,
+                org_unit_id=org.org_unit_id,
                 organisation_name=org.name,
                 is_live=status.is_live if status else False,
                 site_registration=(
@@ -3101,6 +3102,30 @@ def list_bank_organisations(
         )
 
     return rows
+
+
+@teaching_router.put(
+    "/admin/banks/{bank_id}/places/{place_id}/active-version",
+    response_model=PromoteBankVersionOut,
+    dependencies=[_DEP_MANAGE],
+)
+def promote_bank_version_at_place(
+    bank_id: str,
+    place_id: int,
+    body: PromoteBankVersionIn,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+) -> PromoteBankVersionOut:
+    """Move which version a place's candidates receive.
+
+    The same operation as the organisation-keyed path beside it, named
+    the way everything else now names a place. That one is retired once
+    nothing calls it.
+    """
+    organisation_id = organisation_of_place(db, place_id)
+    if organisation_id is None:
+        raise HTTPException(404, "Organisation not found")
+    return promote_bank_version(bank_id, organisation_id, body, user, db)
 
 
 @teaching_router.put(
@@ -3198,6 +3223,29 @@ def promote_bank_version(
         active_version=body.version,
         previous_version=previous,
     )
+
+
+@teaching_router.put(
+    "/admin/banks/{bank_id}/places/{place_id}/settings",
+    response_model=QuestionBankOrgSettingsOut,
+    dependencies=[_DEP_MANAGE],
+)
+def update_bank_place_settings(
+    bank_id: str,
+    place_id: int,
+    body: QuestionBankOrgSettingsIn,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+) -> QuestionBankOrgSettingsOut:
+    """Set a bank live or closed for a place.
+
+    The same operation as the organisation-keyed path beside it, named
+    the way everything else now names a place.
+    """
+    organisation_id = organisation_of_place(db, place_id)
+    if organisation_id is None:
+        raise HTTPException(404, "Organisation not found")
+    return update_bank_org_settings(bank_id, organisation_id, body, user, db)
 
 
 @teaching_router.put(

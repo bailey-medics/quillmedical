@@ -108,7 +108,9 @@ export default function AdminBankOrgSettingsPage() {
       ]);
       setBank(bankData);
 
-      const thisOrg = orgsData.find((o) => o.organisation_id === Number(orgId));
+      // The URL carries a place id now, so the row is matched on the
+      // same thing rather than on the organisation id beside it.
+      const thisOrg = orgsData.find((o) => o.org_unit_id === Number(orgId));
       if (!thisOrg) {
         setError("Organisation not found");
         return;
@@ -138,7 +140,7 @@ export default function AdminBankOrgSettingsPage() {
   ): Promise<FormSubmitResult> {
     try {
       await api.put(
-        `/teaching/admin/banks/${bankId}/organisations/${orgId}/settings`,
+        `/teaching/admin/banks/${bankId}/places/${orgId}/settings`,
         {
           is_live: data.isLive,
           site_registration: data.siteRegistration,
