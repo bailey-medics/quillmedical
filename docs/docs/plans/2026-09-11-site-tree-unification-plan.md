@@ -903,7 +903,9 @@ So the remaining steps land as:
 - [x] 12c-i-d — `site_common_competency`'s two place columns collapse into one
 - [x] 12c-ii-a — an organisation's place is required
 - [x] 12c-ii-b — the membership writers take a place
-- [ ] 12c-ii-c — membership and reach answer in place ids
+- [x] 12c-ii-c — the users list excludes members of a place
+- [ ] 12c-ii-d — membership answers in place ids
+- [ ] 12c-ii-e — reach answers in place ids
 - [ ] 12c-iii — drop the `organisations` table
 - [x] 12c-iv — refuse deleting a parent with children, and enforce `requires_parent`
 
@@ -1737,6 +1739,35 @@ translating.
 - **Three call sites in the application still hold organisation ids**
   and translate at the call. They stop needing to in 12c-ii-c, when the
   membership reads answer in places.
+
+### Discovered while building: the users list excluded the wrong organisation
+
+`GET /users?exclude_org=` powers "add a staff member" — everybody who is
+not already here. The screen that asks holds a **place** id: its route is
+keyed by one, and the membership it creates names one. The parameter read
+that number as an **organisation** id.
+
+The two id sequences agree on a small installation, because an
+organisation and its own row in the tree are created together and come
+out with the same number. They diverge the moment a ward is created
+between two organisations, and from then on the filter excluded the
+members of a different organisation, or of none, and the screen offered
+somebody who was already a member.
+
+There was no test of the parameter at all, which is how it survived.
+
+#### 12c-ii-c — the users list excludes members of a place
+
+- **`exclude_place` arrives beside `exclude_org`**, rather than
+  `exclude_org` quietly starting to mean a place. Adding an optional
+  query parameter is not a breaking change, and reinterpreting a number
+  while keeping its name is the thing this plan refuses everywhere.
+- **`exclude_org` keeps meaning an organisation id**, and a test says
+  so. It goes when the organisations table does.
+- **The tests state the failure both ways round**: a place id handed to
+  `exclude_org` excludes nobody, and an organisation id handed to
+  `exclude_place` excludes nobody. Either is somebody already a member
+  being offered again.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to
