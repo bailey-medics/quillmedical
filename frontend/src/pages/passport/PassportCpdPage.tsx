@@ -10,6 +10,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Group, Stack } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import AddButton from "@/components/button/AddButton";
@@ -30,6 +31,7 @@ function recentYears(): { value: string; label: string }[] {
 }
 
 export function Component() {
+  const navigate = useNavigate();
   const [passportId, setPassportId] = useState<string | null>(null);
   const [year, setYear] = useState<string>(String(new Date().getFullYear()));
   const [entries, setEntries] = useState<CpdEntry[]>([]);
@@ -132,7 +134,16 @@ export function Component() {
         </Group>
       )}
 
-      <CpdTable entries={entries} isLoading={loading} />
+      {/* Clicking an activity opens it in full. The year is in the
+          URL alongside the filename, so the link can be followed cold
+          rather than only from this table. */}
+      <CpdTable
+        entries={entries}
+        isLoading={loading}
+        onSelect={(entry) =>
+          navigate(`/passport/cpd/${entry.year}/${entry.filename}`)
+        }
+      />
     </Stack>
   );
 }
