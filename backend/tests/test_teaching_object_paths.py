@@ -16,8 +16,10 @@ whatever it drags in.
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -26,6 +28,12 @@ from app.features.teaching.object_paths import (
     caption_object_path,
     media_object_path,
 )
+
+#: Derived, never hardcoded. The suite runs both in a container at
+#: ``/app`` and on a bare CI runner under a workspace path, and a
+#: literal ``/app`` passes locally while failing everywhere else —
+#: which is exactly how this test first went red.
+_BACKEND_ROOT = Path(__file__).resolve().parent.parent
 
 
 class TestImportsWithoutConfiguration:
@@ -47,12 +55,23 @@ class TestImportsWithoutConfiguration:
             "assert 'app.config' not in sys.modules, 'app.config loaded'\n"
             "print(media_object_path(7, 'mod', 'abc'))\n"
         )
+        # PATH only — deliberately no JWT_SECRET or CORE_DB_PASSWORD, so
+        # a chain that reaches `app.config` fails loudly rather than
+        # passing on the runner's own environment. The same shape as
+        # `test_features_import_boundary.py`, which guards the sibling
+        # property for `app.features`.
+        env = {
+            "PATH": os.environ.get("PATH", ""),
+            "PYTHONPATH": str(_BACKEND_ROOT),
+            "PYTHONDONTWRITEBYTECODE": "1",
+        }
         result = subprocess.run(  # noqa: S603
             [sys.executable, "-c", script],
             capture_output=True,
             text=True,
-            cwd="/app",
-            env={"PATH": "/usr/local/bin:/usr/bin:/bin"},
+            cwd=str(_BACKEND_ROOT),
+            env=env,
+            timeout=60,
         )
 
         assert result.returncode == 0, (
