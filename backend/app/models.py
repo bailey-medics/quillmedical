@@ -854,6 +854,21 @@ class OrgUnit(Base):
         index=True,
     )
     location: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    #: The number this place's media objects are filed under in the
+    #: bucket, when it is not the place's own id.
+    #:
+    #: Media lives at ``{prefix}/{module}/{asset}`` and the signed
+    #: cookie covers that path, so every object of one module at one
+    #: organisation has to share a prefix — a second number for the same
+    #: organisation would need a second cookie nobody issues. The prefix
+    #: in use was the organisation's own id, which is going, so it is
+    #: recorded here instead of being derived from a table that will not
+    #: be there.
+    #:
+    #: Null for a place created since, which files under its own id.
+    #: Read through :func:`app.organisations.media_prefix_of` rather than
+    #: directly, so the fallback is in one place.
+    media_prefix_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_active: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default="true", nullable=False
     )
