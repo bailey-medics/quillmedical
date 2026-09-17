@@ -63,7 +63,7 @@ def _setup_org_with_site_and_lead(
 
     # Enable bank for this org with site_registration
     status = QuestionBankOrgStatus(
-        organisation_id=org.id,
+        org_unit_id=org.org_unit_id,
         question_bank_id="test-bank",
         is_live=True,
         site_registration=True,
@@ -161,7 +161,7 @@ class TestValidateClinicalLead:
 
         # Disable site registration
         db_session.query(QuestionBankOrgStatus).filter_by(
-            organisation_id=org.id, question_bank_id="test-bank"
+            org_unit_id=org.org_unit_id, question_bank_id="test-bank"
         ).update({"site_registration": False})
         db_session.flush()
 
@@ -220,7 +220,7 @@ class TestValidateClinicalLead:
 
 
 class TestRegisterWithSiteMembership:
-    """POST /api/auth/register with organisation_id and site_id."""
+    """POST /api/auth/register with org_unit_id and site_id."""
 
     def test_register_adds_org_and_site_membership(
         self, test_client, db_session
