@@ -16,14 +16,17 @@
  */
 
 import { useState } from "react";
-import { Progress, Stack } from "@mantine/core";
+import { Stack } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
-import { CaptionStatusBadge } from "@/components/badge";
 import ConfirmModal from "@/components/confirm-modal/ConfirmModal";
 import DataTable from "@/components/tables/DataTable";
+import EllipsisMenu from "@/components/ellipsis-menu/EllipsisMenu";
 import { StateMessage } from "@/components/message-cards";
-import IconTextButton from "@/components/button/IconTextButton";
-import { IconAlertTriangle } from "@/components/icons/appIcons";
+import {
+  IconAlertTriangle,
+  IconPencil,
+  IconTrash,
+} from "@/components/icons/appIcons";
 import { BodyText, BodyTextInline, Heading } from "@/components/typography";
 import { TeachingProgressBar } from "@/components/teaching/teaching-progress-bar";
 import type { MediaAsset, ModuleMedia } from "@/features/teaching/types";
@@ -148,83 +151,136 @@ export default function ModuleMediaCard({
               render: (row) => (row.unattached ? "Not referenced" : row.key),
             },
             {
+              // The file and what is happening to it, in one cell: the
+              // bar sits directly under the name of the thing it is
+              // working on, so there is nothing to read across to.
               header: "File",
-              render: (row) =>
-                row.asset ? (
-                  <Stack gap={2}>
-                    <BodyTextInline>
-                      {row.asset.original_filename}
-                    </BodyTextInline>
-                    <BodyTextInline>
-                      {formatSize(row.asset.size_bytes)}
-                    </BodyTextInline>
-                  </Stack>
-                ) : uploadProgress[row.key] !== undefined ? (
-                  <Progress
-                    value={uploadProgress[row.key]}
-                    aria-label={`Uploading ${row.key}`}
-                  />
-                ) : (
-                  <MediaDropzone onDrop={(file) => onUpload?.(row.key, file)} />
-                ),
-            },
-            {
-              header: "Captions",
-              render: (row) =>
-                row.asset?.has_captions ? (
-                  <Stack gap={4} align="flex-start">
-                    {/* Whisper mishears clinical terminology, so the
-                        state is worth showing without opening the
-                        editor: an unreviewed track is machine output a
-                        learner is relying on. */}
-                    <CaptionStatusBadge
-                      status={
-                        row.asset.captions_reviewed_at
-                          ? "reviewed"
-                          : "unreviewed"
-                      }
+              render: (row) => {
+                const percent = uploadProgress[row.key];
+
+                // Nothing uploaded and nothing on its way.
+                if (!row.asset && percent === undefined) {
+                  return (
+                    <MediaDropzone
+                      onDrop={(file) => onUpload?.(row.key, file)}
                     />
-                    <IconTextButton
-                      icon="pencil"
-                      label="Edit captions"
-                      variant="light"
-                      onClick={() => onEditCaptions?.(row.asset as MediaAsset)}
-                    />
-                  </Stack>
-                ) : row.asset?.progress ? (
-                  /* Not "No captions". That stated absence where the
-                     truth was "not yet", and had someone re-upload a
-                     video that was processing perfectly well. The bar
-                     says how far along it is; the line beneath says
-                     what is happening, including when nothing is. */
+                  );
+                }
+
+                // The bar goes once the captions are signed off: that
+                // is the end of the job, and a full bar left on a
+                // finished row reads as something still running. It is
+                // the row an admin sees for the rest of the video's
+                // life, so only the transient states earn a bar.
+                //
+                // The label stays, because it is the only thing left
+                // saying the video has captions and that someone has
+                // read them. Whisper mishears clinical terminology, so
+                // that is worth knowing without opening the editor.
+                //
+                // Keyed on the review timestamp rather than on the
+                // stage reaching the total, so adding a fifth stage
+                // later cannot quietly bring the bar back.
+                const done = row.asset?.captions_reviewed_at != null;
+                const progress = row.asset?.progress;
+
+                return (
                   <Stack gap={4}>
-                    <TeachingProgressBar
-                      current={row.asset.progress.stage}
-                      total={row.asset.progress.total_stages}
-                    />
-                    <BodyTextInline
-                      c={
-                        row.asset.progress.stalled
-                          ? "var(--alert-color)"
-                          : undefined
-                      }
-                    >
-                      {row.asset.progress.label}
-                    </BodyTextInline>
+                    {row.asset ? (
+                      <>
+                        <BodyTextInline>
+                          {row.asset.original_filename}
+                        </BodyTextInline>
+                        <BodyTextInline>
+                          {formatSize(row.asset.size_bytes)}
+                        </BodyTextInline>
+                      </>
+                    ) : (
+                      <BodyTextInline>Sending the file…</BodyTextInline>
+                    )}
+
+                    {percent !== undefined ? (
+                      <>
+                        {/* The bar creeps across the first of the four
+                            stages as the bytes go up rather than
+                            sitting at zero until the upload finishes:
+                            a 900MB lecture holds this stage for
+                            minutes, and a bar that does not move in
+                            that time is indistinguishable from one
+                            that has stopped. */}
+                        <TeachingProgressBar
+                          current={0}
+                          total={4}
+                          fill={Math.min(percent, 100) / 100}
+                          showCount={false}
+                        />
+                        <BodyTextInline>Uploading</BodyTextInline>
+                      </>
+                    ) : progress && done ? (
+                      /* Finished: the line alone, dimmed. Nothing is
+                         happening and nothing is owed, so it reads as
+                         settled rather than as something to attend
+                         to. */
+                      <BodyTextInline c="gray.6">
+                        {progress.label}
+                      </BodyTextInline>
+                    ) : progress ? (
+                      <>
+                        {/* No "X of 4": the stages are our own
+                            machinery, not something the admin is
+                            working through, and the line underneath
+                            says what is happening in words they can
+                            act on. */}
+                        <TeachingProgressBar
+                          current={progress.stage}
+                          total={progress.total_stages}
+                          showCount={false}
+                        />
+                        <BodyTextInline
+                          c={
+                            progress.stalled ? "var(--alert-color)" : undefined
+                          }
+                        >
+                          {progress.label}
+                        </BodyTextInline>
+                      </>
+                    ) : null}
                   </Stack>
-                ) : null,
+                );
+              },
             },
             {
               header: "",
-              render: (row) =>
-                row.asset ? (
-                  <IconTextButton
-                    icon="trash"
-                    label="Delete"
-                    variant="outline"
-                    onClick={() => setPendingDelete(row.asset)}
+              render: (row) => {
+                // One ellipsis rather than buttons in two columns,
+                // matching the site and organisation tables. Editing
+                // captions only appears where there are captions to
+                // edit, so the menu never offers a dead action.
+                if (!row.asset) return null;
+                const asset = row.asset;
+                return (
+                  <EllipsisMenu
+                    aria-label={`Actions for ${asset.original_filename}`}
+                    items={[
+                      ...(asset.has_captions
+                        ? [
+                            {
+                              label: "Edit captions",
+                              icon: <IconPencil />,
+                              onClick: () => onEditCaptions?.(asset),
+                            },
+                          ]
+                        : []),
+                      {
+                        label: "Delete",
+                        icon: <IconTrash />,
+                        color: "var(--alert-color)",
+                        onClick: () => setPendingDelete(asset),
+                      },
+                    ]}
                   />
-                ) : null,
+                );
+              },
             },
           ]}
         />
