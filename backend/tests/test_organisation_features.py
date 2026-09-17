@@ -197,7 +197,7 @@ class TestFeatureEndpoints:
             },
         )
 
-        resp = test_client.get(f"/api/organisations/{org.id}/features")
+        resp = test_client.get(f"/api/org-units/{org.org_unit_id}/features")
         assert resp.status_code == 200
         assert resp.json()["features"] == []
 
@@ -217,7 +217,7 @@ class TestFeatureEndpoints:
         csrf = test_client.cookies.get("XSRF-TOKEN", "")
 
         resp = test_client.put(
-            f"/api/organisations/{org.id}/features/teaching",
+            f"/api/org-units/{org.org_unit_id}/features/teaching",
             json={"enabled": True},
             headers={"X-CSRF-Token": csrf},
         )
@@ -225,7 +225,7 @@ class TestFeatureEndpoints:
         assert resp.json()["status"] == "enabled"
 
         # Verify via list
-        resp = test_client.get(f"/api/organisations/{org.id}/features")
+        resp = test_client.get(f"/api/org-units/{org.org_unit_id}/features")
         features = resp.json()["features"]
         assert len(features) == 1
         assert features[0]["feature_key"] == "teaching"
@@ -244,12 +244,12 @@ class TestFeatureEndpoints:
         csrf = test_client.cookies.get("XSRF-TOKEN", "")
 
         test_client.put(
-            f"/api/organisations/{org.id}/features/teaching",
+            f"/api/org-units/{org.org_unit_id}/features/teaching",
             json={"enabled": True},
             headers={"X-CSRF-Token": csrf},
         )
         resp = test_client.put(
-            f"/api/organisations/{org.id}/features/teaching",
+            f"/api/org-units/{org.org_unit_id}/features/teaching",
             json={"enabled": True},
             headers={"X-CSRF-Token": csrf},
         )
@@ -270,19 +270,19 @@ class TestFeatureEndpoints:
 
         # Enable then disable
         test_client.put(
-            f"/api/organisations/{org.id}/features/teaching",
+            f"/api/org-units/{org.org_unit_id}/features/teaching",
             json={"enabled": True},
             headers={"X-CSRF-Token": csrf},
         )
         resp = test_client.put(
-            f"/api/organisations/{org.id}/features/teaching",
+            f"/api/org-units/{org.org_unit_id}/features/teaching",
             json={"enabled": False},
             headers={"X-CSRF-Token": csrf},
         )
         assert resp.json()["status"] == "disabled"
 
         # Verify removed
-        resp = test_client.get(f"/api/organisations/{org.id}/features")
+        resp = test_client.get(f"/api/org-units/{org.org_unit_id}/features")
         assert resp.json()["features"] == []
 
     def test_disable_nonexistent_feature(self, test_client, db_session):
@@ -299,7 +299,7 @@ class TestFeatureEndpoints:
         csrf = test_client.cookies.get("XSRF-TOKEN", "")
 
         resp = test_client.put(
-            f"/api/organisations/{org.id}/features/teaching",
+            f"/api/org-units/{org.org_unit_id}/features/teaching",
             json={"enabled": False},
             headers={"X-CSRF-Token": csrf},
         )
@@ -323,7 +323,7 @@ class TestFeatureEndpoints:
             json={"username": "regularuser", "password": "Password123!"},
         )
 
-        resp = test_client.get(f"/api/organisations/{org.id}/features")
+        resp = test_client.get(f"/api/org-units/{org.org_unit_id}/features")
         assert resp.status_code == 403
 
     def test_non_admin_cannot_toggle_feature(self, test_client, db_session):
@@ -346,7 +346,7 @@ class TestFeatureEndpoints:
         csrf = test_client.cookies.get("XSRF-TOKEN", "")
 
         resp = test_client.put(
-            f"/api/organisations/{org.id}/features/teaching",
+            f"/api/org-units/{org.org_unit_id}/features/teaching",
             json={"enabled": True},
             headers={"X-CSRF-Token": csrf},
         )
@@ -365,7 +365,7 @@ class TestFeatureEndpoints:
         csrf = test_client.cookies.get("XSRF-TOKEN", "")
 
         resp = test_client.put(
-            "/api/organisations/99999/features/teaching",
+            "/api/org-units/99999/features/teaching",
             json={"enabled": True},
             headers={"X-CSRF-Token": csrf},
         )

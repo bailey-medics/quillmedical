@@ -200,12 +200,14 @@ describe("OrganisationAdminPage", () => {
             username: "doctor1",
             full_name: "Dr One",
             email: "doctor1@test.com",
+            capacity: "staff",
           },
           {
             id: "2",
             username: "nurse1",
             full_name: "Nurse One",
             email: "nurse1@test.com",
+            capacity: "staff",
           },
         ],
         staff_count: 2,
@@ -649,6 +651,46 @@ describe("OrganisationAdminPage", () => {
     });
   });
 
+  describe("Who counts as staff", () => {
+    // The heading says staff members, so the list has to be staff. A
+    // place answers with everybody who is there and what each of them
+    // is, which is the right answer to a different question: a teaching
+    // delegate under this heading is how the page came to be wrong
+    // about who worked there.
+    it("leaves out somebody who is here as a trainee", async () => {
+      mockOrgApi({
+        id: 1,
+        name: "Test Hospital",
+        members: [
+          {
+            id: 1,
+            username: "a_nurse",
+            full_name: "A Nurse",
+            email: "nurse@example.com",
+            capacity: "staff",
+          },
+          {
+            id: 2,
+            username: "a_delegate",
+            full_name: "A Delegate",
+            email: "delegate@example.com",
+            capacity: "trainee",
+          },
+        ],
+      });
+
+      renderWithRouter(<OrganisationAdminPage />, {
+        routePath: "/admin/organisations/:id",
+        initialRoute: "/admin/organisations/1",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("A Nurse")).toBeInTheDocument();
+      });
+      expect(screen.queryByText("A Delegate")).not.toBeInTheDocument();
+    });
+  });
+
   describe("Remove staff member", () => {
     const orgWithStaff = {
       id: 3,
@@ -664,12 +706,14 @@ describe("OrganisationAdminPage", () => {
           username: "alice",
           full_name: "Alice Smith",
           email: "alice@example.com",
+          capacity: "staff",
         },
         {
           id: 20,
           username: "bob",
           full_name: "Bob Jones",
           email: "bob@example.com",
+          capacity: "staff",
         },
       ],
       patient_ids: [],

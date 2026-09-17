@@ -51,7 +51,7 @@ class TestFeatures:
         org = _org(db_session)
 
         resp = authenticated_superadmin_client.put(
-            f"/api/organisations/{org.id}/features/teaching",
+            f"/api/org-units/{org.org_unit_id}/features/teaching",
             json={"enabled": True},
         )
 
@@ -68,12 +68,12 @@ class TestFeatures:
     ):
         org = _org(db_session)
         authenticated_superadmin_client.put(
-            f"/api/organisations/{org.id}/features/teaching",
+            f"/api/org-units/{org.org_unit_id}/features/teaching",
             json={"enabled": True},
         )
 
         listed = authenticated_superadmin_client.get(
-            f"/api/organisations/{org.id}/features"
+            f"/api/org-units/{org.org_unit_id}/features"
         )
 
         assert listed.status_code == 200
@@ -114,7 +114,7 @@ class TestPatientLists:
         db_session.commit()
 
         resp = authenticated_patient_manager_client.post(
-            f"/api/organisations/{org.id}/patients",
+            f"/api/org-units/{org.org_unit_id}/patients",
             json={"patient_id": PATIENT},
         )
 
@@ -138,12 +138,12 @@ class TestPatientLists:
         )
         db_session.commit()
         authenticated_patient_manager_client.post(
-            f"/api/organisations/{org.id}/patients",
+            f"/api/org-units/{org.org_unit_id}/patients",
             json={"patient_id": PATIENT},
         )
 
         resp = authenticated_patient_manager_client.delete(
-            f"/api/organisations/{org.id}/patients/{PATIENT}"
+            f"/api/org-units/{org.org_unit_id}/patients/{PATIENT}"
         )
 
         assert resp.status_code == 200
@@ -151,7 +151,7 @@ class TestPatientLists:
             db_session.execute(select(org_unit_patient_member)).first() is None
         )
 
-    def test_the_organisation_page_lists_them(
+    def test_the_places_page_lists_them(
         self, authenticated_superadmin_client, db_session
     ):
         org = _org(db_session)
@@ -163,13 +163,11 @@ class TestPatientLists:
         db_session.commit()
 
         resp = authenticated_superadmin_client.get(
-            f"/api/organisations/{org.id}"
+            f"/api/org-units/{org.org_unit_id}"
         )
 
         assert resp.status_code == 200
-        assert [p["patient_id"] for p in resp.json()["patient_members"]] == [
-            PATIENT
-        ]
+        assert resp.json()["patient_ids"] == [PATIENT]
 
 
 class TestDeletingAnOrganisation:

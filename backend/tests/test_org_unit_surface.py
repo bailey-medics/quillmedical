@@ -542,6 +542,43 @@ class TestFeatures:
         )
         assert off.json()["status"] == "disabled"
 
+    def test_an_admin_of_the_place_may_switch_one(
+        self, authenticated_admin_client, db_session, test_admin
+    ):
+        """What the organisations surface has always allowed.
+
+        Features are how an organisation says what it does, and its own
+        administrators settle that. An operator-only gate here would have
+        taken a working thing away from every admin the day the older
+        surface was retired.
+        """
+        mine = _org(db_session, "My Trust")
+        add_organisation_member(db_session, mine.id, test_admin.id, "staff")
+        db_session.commit()
+
+        resp = authenticated_admin_client.put(
+            f"/api/org-units/{mine.org_unit_id}/features/teaching",
+            json={"enabled": True},
+        )
+
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["status"] == "enabled"
+
+    def test_another_organisations_features_are_not_theirs_to_set(
+        self, authenticated_admin_client, db_session, test_admin
+    ):
+        mine = _org(db_session, "My Trust")
+        theirs = _org(db_session, "Their Trust")
+        add_organisation_member(db_session, mine.id, test_admin.id, "staff")
+        db_session.commit()
+
+        resp = authenticated_admin_client.put(
+            f"/api/org-units/{theirs.org_unit_id}/features/teaching",
+            json={"enabled": True},
+        )
+
+        assert resp.status_code == 404
+
     def test_a_ward_carries_none(
         self, authenticated_superadmin_client, db_session
     ):
