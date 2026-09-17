@@ -703,27 +703,6 @@ class TestLinks:
         assert resp.status_code == 400
 
 
-class TestTheOrganisationsSurfaceStillWorks:
-    """The sites surface has gone; this one has not.
-
-    It answers in organisation ids rather than place ids, which is what
-    makes them two surfaces rather than one with two names. It stays
-    until the user form stops sending organisation ids to the users API.
-    """
-
-    def test_it_still_answers_in_organisation_ids(
-        self, authenticated_superadmin_client, db_session
-    ):
-        org = _org(db_session)
-
-        resp = authenticated_superadmin_client.get(
-            f"/api/organisations/{org.id}"
-        )
-
-        assert resp.status_code == 200
-        assert resp.json()["id"] == org.id
-
-
 class TestTheClinicalLead:
     def test_naming_one(self, authenticated_superadmin_client, db_session):
         org = _org(db_session)
