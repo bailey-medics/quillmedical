@@ -115,16 +115,19 @@ class TestTheTranslation:
         assert place_of_organisation(db_session, 999999) is None
 
 
-class TestTheBackfilledColumnIsNullableForNow:
-    def test_a_row_written_the_old_way_is_still_accepted(
+class TestEitherIdAloneIsEnough:
+    """A writer may name either, and the row carries both.
+
+    Eight tables and more writers than the eight places the application
+    creates these rows — fixtures, scripts, and whatever is written
+    next. A row carrying only one of the two is invisible to half the
+    code and nothing says so, so the pair is kept in step by a listener
+    rather than by remembering.
+    """
+
+    def test_naming_the_organisation_fills_the_place(
         self, db_session: Session, org: Organisation
     ) -> None:
-        """The column is nullable until the older one goes.
-
-        A writer that has not been moved across yet still works; it is
-        its rows that the next step's reads would miss, which is why
-        every writer moves in this step rather than the next.
-        """
         row = QuestionBankOrgStatus(
             organisation_id=org.id,
             question_bank_id="a-bank",
@@ -133,4 +136,17 @@ class TestTheBackfilledColumnIsNullableForNow:
         db_session.add(row)
         db_session.commit()
 
-        assert row.org_unit_id is None
+        assert row.org_unit_id == org.org_unit_id
+
+    def test_naming_the_place_fills_the_organisation(
+        self, db_session: Session, org: Organisation
+    ) -> None:
+        row = QuestionBankOrgStatus(
+            org_unit_id=org.org_unit_id,
+            question_bank_id="another-bank",
+            is_live=True,
+        )
+        db_session.add(row)
+        db_session.commit()
+
+        assert row.organisation_id == org.id
