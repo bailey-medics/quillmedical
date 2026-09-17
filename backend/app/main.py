@@ -5040,14 +5040,34 @@ def ci_teaching_sync(
             synced=[], errors=[], message="No banks found"
         )
 
-        # Resolve the organisation — use the first org that has
-        # a teaching bank configured, or the first org in the system
+        # Resolve the place to sync into — the one an existing bank is
+        # already held by, or the first organisation in the system.
+        #
+        # It used to fall back to the literal 1, which was a guess that
+        # happened to be right while organisations were numbered from one
+        # and nothing else shared their numbering. Teaching answers in
+        # place ids now, where 1 may well be a ward.
     from app.features.teaching.models import QuestionBankConfig
 
     existing_config = db.execute(
         select(QuestionBankConfig).limit(1)
     ).scalar_one_or_none()
-    org_id = existing_config.organisation_id if existing_config else 1
+    org_id = (
+        existing_config.org_unit_id
+        if existing_config
+        else db.scalar(
+            select(OrgUnit.id)
+            .where(OrgUnit.type.in_(ROOT_TYPE_IDS))
+            .order_by(OrgUnit.id)
+            .limit(1)
+        )
+    )
+    if org_id is None:
+        return CiTeachingSyncOut(
+            synced=[],
+            errors=[],
+            message="No organisation to sync into",
+        )
 
     synced: list[CiSyncBankResult] = []
     errors: list[CiSyncErrorItem] = []

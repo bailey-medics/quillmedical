@@ -23,6 +23,18 @@ def _org(db: Session, name: str) -> Organisation:
     return org
 
 
+def _place(org: Organisation) -> int:
+    """The organisation's own row in the tree.
+
+    Media is counted per place now, and an organisation always has one —
+    the model writes it — so the check is for the type checker rather
+    than for a state that happens.
+    """
+    place_id = org.org_unit_id
+    assert place_id is not None
+    return place_id
+
+
 def _upload(
     db: Session,
     org_id: int,
@@ -39,7 +51,7 @@ def _upload(
     not yet playable.
     """
     link = ModuleMediaLink(
-        organisation_id=org_id,
+        org_unit_id=org_id,
         question_bank_id="test-bank",
         media_key=key,
         asset_id=asset,
@@ -57,10 +69,10 @@ def _upload(
 class TestMediaInventory:
     def test_a_reference_with_an_upload_is_present(self, db_session: Session):
         org = _org(db_session, "Trust A")
-        _upload(db_session, org.id, "lecture-01", "asset-1")
+        _upload(db_session, _place(org), "lecture-01", "asset-1")
 
         inv = get_media_inventory(
-            db_session, org.id, "test-bank", ["lecture-01"]
+            db_session, _place(org), "test-bank", ["lecture-01"]
         )
 
         assert inv.is_complete
@@ -73,7 +85,7 @@ class TestMediaInventory:
         org = _org(db_session, "Trust B")
 
         inv = get_media_inventory(
-            db_session, org.id, "test-bank", ["lecture-01"]
+            db_session, _place(org), "test-bank", ["lecture-01"]
         )
 
         assert not inv.is_complete
@@ -89,10 +101,10 @@ class TestMediaInventory:
         nobody can reach or remove.
         """
         org = _org(db_session, "Trust C")
-        _upload(db_session, org.id, "old-name", "asset-1")
+        _upload(db_session, _place(org), "old-name", "asset-1")
 
         inv = get_media_inventory(
-            db_session, org.id, "test-bank", ["new-name"]
+            db_session, _place(org), "test-bank", ["new-name"]
         )
 
         assert [u.media_key for u in inv.unattached] == ["old-name"]
@@ -103,10 +115,10 @@ class TestMediaInventory:
     def test_references_keep_their_order(self, db_session: Session):
         """The card's rows follow the content, not the database."""
         org = _org(db_session, "Trust D")
-        _upload(db_session, org.id, "b", "asset-b")
+        _upload(db_session, _place(org), "b", "asset-b")
 
         inv = get_media_inventory(
-            db_session, org.id, "test-bank", ["a", "b", "c"]
+            db_session, _place(org), "test-bank", ["a", "b", "c"]
         )
 
         assert [r.key for r in inv.references] == ["a", "b", "c"]
@@ -123,10 +135,10 @@ class TestMediaInventory:
         """
         a = _org(db_session, "Trust E")
         b = _org(db_session, "Trust F")
-        _upload(db_session, b.id, "lecture-01", "asset-b")
+        _upload(db_session, _place(b), "lecture-01", "asset-b")
 
         inv = get_media_inventory(
-            db_session, a.id, "test-bank", ["lecture-01"]
+            db_session, _place(a), "test-bank", ["lecture-01"]
         )
 
         assert not inv.is_complete
@@ -140,7 +152,7 @@ class TestMediaInventory:
         """
         org = _org(db_session, "Trust G")
 
-        inv = get_media_inventory(db_session, org.id, "test-bank", [])
+        inv = get_media_inventory(db_session, _place(org), "test-bank", [])
 
         assert inv.is_complete
         assert inv.references == []
@@ -159,10 +171,16 @@ class TestServableVersusComplete:
         self, db_session: Session
     ):
         org = _org(db_session, "Trust Waiting")
-        _upload(db_session, org.id, "lecture-01", "asset-1", transcoded=False)
+        _upload(
+            db_session,
+            _place(org),
+            "lecture-01",
+            "asset-1",
+            transcoded=False,
+        )
 
         inv = get_media_inventory(
-            db_session, org.id, "test-bank", ["lecture-01"]
+            db_session, _place(org), "test-bank", ["lecture-01"]
         )
 
         # The admin uploaded it, so nothing is missing from their side.
@@ -174,10 +192,10 @@ class TestServableVersusComplete:
 
     def test_a_transcoded_upload_is_both(self, db_session: Session):
         org = _org(db_session, "Trust Ready")
-        _upload(db_session, org.id, "lecture-01", "asset-1")
+        _upload(db_session, _place(org), "lecture-01", "asset-1")
 
         inv = get_media_inventory(
-            db_session, org.id, "test-bank", ["lecture-01"]
+            db_session, _place(org), "test-bank", ["lecture-01"]
         )
 
         assert inv.is_complete
@@ -193,7 +211,7 @@ class TestServableVersusComplete:
         org = _org(db_session, "Trust Empty")
 
         inv = get_media_inventory(
-            db_session, org.id, "test-bank", ["lecture-01"]
+            db_session, _place(org), "test-bank", ["lecture-01"]
         )
 
         assert not inv.is_complete
@@ -206,11 +224,20 @@ class TestServableVersusComplete:
     ):
         """Every reference, not any: a half-ready module is not served."""
         org = _org(db_session, "Trust Partial")
-        _upload(db_session, org.id, "lecture-01", "asset-1")
-        _upload(db_session, org.id, "lecture-02", "asset-2", transcoded=False)
+        _upload(db_session, _place(org), "lecture-01", "asset-1")
+        _upload(
+            db_session,
+            _place(org),
+            "lecture-02",
+            "asset-2",
+            transcoded=False,
+        )
 
         inv = get_media_inventory(
-            db_session, org.id, "test-bank", ["lecture-01", "lecture-02"]
+            db_session,
+            _place(org),
+            "test-bank",
+            ["lecture-01", "lecture-02"],
         )
 
         assert inv.is_complete
@@ -237,7 +264,9 @@ class TestModuleMediaIsComplete:
             media, "get_referenced_media_keys", lambda _module_id: []
         )
 
-        assert media.module_media_is_complete(db_session, org.id, "test-bank")
+        assert media.module_media_is_complete(
+            db_session, _place(org), "test-bank"
+        )
 
     def test_a_reference_without_an_upload_makes_it_incomplete(
         self, db_session: Session, monkeypatch
@@ -252,7 +281,7 @@ class TestModuleMediaIsComplete:
         )
 
         assert not media.module_media_is_complete(
-            db_session, org.id, "test-bank"
+            db_session, _place(org), "test-bank"
         )
 
     def test_every_reference_uploaded_makes_it_complete(
@@ -261,15 +290,17 @@ class TestModuleMediaIsComplete:
         from app.features.teaching import media
 
         org = _org(db_session, "Trust Complete")
-        _upload(db_session, org.id, "lecture-01", "asset-1")
-        _upload(db_session, org.id, "lecture-02", "asset-2")
+        _upload(db_session, _place(org), "lecture-01", "asset-1")
+        _upload(db_session, _place(org), "lecture-02", "asset-2")
         monkeypatch.setattr(
             media,
             "get_referenced_media_keys",
             lambda _module_id: ["lecture-01", "lecture-02"],
         )
 
-        assert media.module_media_is_complete(db_session, org.id, "test-bank")
+        assert media.module_media_is_complete(
+            db_session, _place(org), "test-bank"
+        )
 
     def test_one_missing_of_two_is_incomplete(
         self, db_session: Session, monkeypatch
@@ -278,7 +309,7 @@ class TestModuleMediaIsComplete:
         from app.features.teaching import media
 
         org = _org(db_session, "Trust Half")
-        _upload(db_session, org.id, "lecture-01", "asset-1")
+        _upload(db_session, _place(org), "lecture-01", "asset-1")
         monkeypatch.setattr(
             media,
             "get_referenced_media_keys",
@@ -286,7 +317,7 @@ class TestModuleMediaIsComplete:
         )
 
         assert not media.module_media_is_complete(
-            db_session, org.id, "test-bank"
+            db_session, _place(org), "test-bank"
         )
 
     def test_completeness_is_per_organisation(
@@ -302,14 +333,16 @@ class TestModuleMediaIsComplete:
 
         has = _org(db_session, "Trust With Upload")
         lacks = _org(db_session, "Trust Without")
-        _upload(db_session, has.id, "lecture-01", "asset-1")
+        _upload(db_session, _place(has), "lecture-01", "asset-1")
         monkeypatch.setattr(
             media,
             "get_referenced_media_keys",
             lambda _module_id: ["lecture-01"],
         )
 
-        assert media.module_media_is_complete(db_session, has.id, "test-bank")
+        assert media.module_media_is_complete(
+            db_session, _place(has), "test-bank"
+        )
         assert not media.module_media_is_complete(
-            db_session, lacks.id, "test-bank"
+            db_session, _place(lacks), "test-bank"
         )

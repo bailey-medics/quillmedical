@@ -2084,8 +2084,11 @@ class TestLearningContentGate:
         learner = _make_learner(db_session, org)
         db_session.commit()
 
+        # A place id: teaching's own tables answer in those now, and
+        # this helper answers with what they are keyed by.
         assert (
-            resolve_visible_module(learner, db_session, "test-bank") == org.id
+            resolve_visible_module(learner, db_session, "test-bank")
+            == org.org_unit_id
         )
 
     def test_helper_refuses_a_module_no_org_has_live(self, db_session):
@@ -2119,7 +2122,7 @@ class TestLearningContentGate:
 
         assert (
             resolve_visible_module(learner, db_session, "test-bank")
-            == with_live.id
+            == with_live.org_unit_id
         )
 
     def test_other_orgs_module_is_404(self, test_client, db_session):
@@ -2203,8 +2206,11 @@ class TestLearningContentGate:
         )
         db_session.commit()
 
+        # A place id: teaching's own tables answer in those now, and
+        # this helper answers with what they are keyed by.
         assert (
-            resolve_visible_module(learner, db_session, "test-bank") == org.id
+            resolve_visible_module(learner, db_session, "test-bank")
+            == org.org_unit_id
         )
 
     def test_module_list_excludes_other_orgs(self, test_client, db_session):

@@ -29,6 +29,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models import Base
+from app.org_units.mirroring import mirror_the_organisations_place
 
 #: A sync performed by a signed-in person, through the admin UI.
 SYNC_ACTOR_USER = "user"
@@ -624,3 +625,17 @@ class ModuleMediaLink(Base):
     captions_reviewed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+
+
+# Every table above answers "which organisation?" twice while the
+# organisations table is being retired. One listener keeps the two in
+# step for every writer, rather than a line at each place a row is made.
+mirror_the_organisations_place(
+    QuestionBankConfig,
+    QuestionBankItem,
+    Assessment,
+    TeachingOrgSettings,
+    QuestionBankOrgStatus,
+    QuestionBankSync,
+    ModuleMediaLink,
+)

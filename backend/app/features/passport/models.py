@@ -44,6 +44,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models import Base
+from app.org_units.mirroring import mirror_the_organisations_place
 
 #: What a request can be. Mirrors the sign-off file's own vocabulary for
 #: the states a *request* can reach — a file may also be ``superseded``,
@@ -436,3 +437,8 @@ class SiteCommonCompetency(Base):
             name="uq_site_common_competency_org",
         ),
     )
+
+
+# The same two columns, kept in step the same way — see
+# ``app/org_units/mirroring.py`` for why it is a listener.
+mirror_the_organisations_place(AssessorRegistrationVerification)
