@@ -898,7 +898,8 @@ So the remaining steps land as:
 - [x] 12c-i-b — those tables read the place column, translating at the edges
 - [x] 12c-i-b2 — teaching's surface answers in place ids, beside the old one
 - [x] 12c-i-b3 — retire teaching's organisation-keyed fields and paths
-- [ ] 12c-i-c — stop writing the organisation column, and drop it
+- [x] 12c-i-c1 — stop writing the organisation column
+- [ ] 12c-i-c2 — drop the organisation column
 - [ ] 12c-i-d — `site_common_competency`'s two place columns collapse into one
 - [ ] 12c-ii — membership and reach answer in place ids
 - [ ] 12c-iii — drop the `organisations` table
@@ -1616,6 +1617,35 @@ The contract step for the same surface, one release after the expand.
 - **Registration stops accepting `organisation_id`.** It is an optional
   request property, so removing it cannot break a caller that has
   stopped sending one — and both forms send `org_unit_id`.
+
+#### 12c-i-c1 — stop writing the organisation column
+
+Split from the drop, which follows as `12c-i-c2`. The migrations run as
+a pre-deploy job, so dropping the column in the same deploy as the code
+that stops writing it would pull the floor out from under the revision
+still serving.
+
+- **The unique rules are restated in place ids first.** Once
+  `organisation_id` goes unwritten the constraints carrying it see a
+  null on every new row and stop rejecting anything, because Postgres
+  treats nulls as distinct. Both exist at once for one release, so
+  uniqueness is never unenforced.
+- **`module_media_link.organisation_id` is not one of them.** It is
+  where the object sits in the bucket, not who owns the row: the signed
+  cookie's prefix covers `{organisation_id}/{module}/{asset}`. It stays
+  required, and a listener fills it from the place — moving it means
+  moving objects and reissuing cookies.
+- **The mirroring listener went with the writes.** Its job was to keep
+  the pair in step; with one column written there is no pair. What
+  replaced it is the narrower listener above, in teaching's own models
+  rather than in `org_units`.
+- **Two readers of the old column were still there**, and would have
+  quietly found nothing: the passport's re-check lookup, and
+  `validate-clinical-lead`, which asked `QuestionBankOrgStatus` which
+  organisations offer a bank. Both now count in places.
+- **`sync_question_bank`'s parameter was renamed to `place_id`.** It had
+  held a place id under the name `organisation_id` since 12c-i-b, which
+  is the confusion this whole step exists to remove.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to

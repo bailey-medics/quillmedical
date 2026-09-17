@@ -163,7 +163,7 @@ def _actor_for(user_id: int | None) -> str:
 
 def sync_question_bank(
     bank_dir: Path,
-    organisation_id: int,
+    place_id: int,
     user_id: int | None,
     db: Session,
     *,
@@ -177,10 +177,9 @@ def sync_question_bank(
     ----------
     bank_dir:
         Path to the question bank directory.
-    organisation_id:
+    place_id:
         The place that owns the bank — the organisation's own row in the
-        tree. Named for the older column it used to be, until the
-        surface above stops speaking in organisation ids.
+        tree.
     user_id:
         User triggering the sync (for audit).
     db:
@@ -237,7 +236,7 @@ def sync_question_bank(
         stored = db.execute(
             select(QuestionBankConfig.version)
             .where(
-                QuestionBankConfig.org_unit_id == organisation_id,
+                QuestionBankConfig.org_unit_id == place_id,
                 QuestionBankConfig.question_bank_id == bank_id,
             )
             .order_by(QuestionBankConfig.version.desc())
@@ -250,7 +249,7 @@ def sync_question_bank(
             module_meta = _load_module_metadata(bank_dir)
             existing_config = db.execute(
                 select(QuestionBankConfig).where(
-                    QuestionBankConfig.org_unit_id == organisation_id,
+                    QuestionBankConfig.org_unit_id == place_id,
                     QuestionBankConfig.question_bank_id == bank_id,
                     QuestionBankConfig.version == stored,
                 )
@@ -280,7 +279,7 @@ def sync_question_bank(
 
     # Create sync record
     sync_record = QuestionBankSync(
-        org_unit_id=organisation_id,
+        org_unit_id=place_id,
         question_bank_id=bank_id,
         version=version,
         status="in_progress",
@@ -309,7 +308,7 @@ def sync_question_bank(
 
     existing_config = db.execute(
         select(QuestionBankConfig).where(
-            QuestionBankConfig.org_unit_id == organisation_id,
+            QuestionBankConfig.org_unit_id == place_id,
             QuestionBankConfig.question_bank_id == bank_id,
             QuestionBankConfig.version == version,
         )
@@ -328,7 +327,7 @@ def sync_question_bank(
     else:
         db.add(
             QuestionBankConfig(
-                org_unit_id=organisation_id,
+                org_unit_id=place_id,
                 question_bank_id=bank_id,
                 version=version,
                 title=card_title,
@@ -359,7 +358,7 @@ def sync_question_bank(
     existing_items = (
         db.execute(
             select(QuestionBankItem).where(
-                QuestionBankItem.org_unit_id == organisation_id,
+                QuestionBankItem.org_unit_id == place_id,
                 QuestionBankItem.question_bank_id == bank_id,
                 QuestionBankItem.bank_version == version,
             )
@@ -408,7 +407,7 @@ def sync_question_bank(
             # Create
             db.add(
                 QuestionBankItem(
-                    org_unit_id=organisation_id,
+                    org_unit_id=place_id,
                     question_bank_id=bank_id,
                     bank_version=version,
                     created_by=user_id,

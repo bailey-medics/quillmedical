@@ -24,12 +24,14 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    event,
     false,
+    select,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.engine import Connection
+from sqlalchemy.orm import Mapped, Mapper, mapped_column, relationship
 
 from app.models import Base
-from app.org_units.mirroring import mirror_the_organisations_place
 
 #: A sync performed by a signed-in person, through the admin UI.
 SYNC_ACTOR_USER = "user"
@@ -59,26 +61,35 @@ class QuestionBankConfig(Base):
             "version",
             name="uq_qb_config_org_bank_ver",
         ),
+        # The same rule counted in places. Added while the older one is
+        # still here so uniqueness is never unenforced: once
+        # ``organisation_id`` stops being written the constraint above
+        # sees a null and stops rejecting anything.
+        UniqueConstraint(
+            "org_unit_id",
+            "question_bank_id",
+            "version",
+            name="uq_qb_config_place_bank_ver",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    organisation_id: Mapped[int] = mapped_column(
+    organisation_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey("organisations.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
-    #: The same place, counted the way every other table counts one.
+    #: Which place this row belongs to, and the only id anything writes
+    #: or reads.
     #:
-    #: ``organisation_id`` above points at the organisations table, which
-    #: is going: an organisation is a place at the top of a tree, and a
-    #: place id is the only id there will be. Both are written while the
-    #: two exist, this one is read from the next step onwards, and the
-    #: older column goes last.
+    #: ``organisation_id`` above is no longer written. It is kept
+    #: nullable for one release so a rollback to the revision before this
+    #: one still finds it, and dropped in the step after.
     #:
-    #: Nullable only for as long as that takes. Every row is backfilled by
-    #: the migration that adds it, so a null here means a writer that has
-    #: not been moved across.
+    #: Still nullable itself for the same reason: tightening it while the
+    #: previous revision may still insert without it would reject that
+    #: revision's writes.
     org_unit_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey("org_unit.id", ondelete="CASCADE"),
@@ -132,23 +143,22 @@ class QuestionBankItem(Base):
     __tablename__ = "question_bank_items"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    organisation_id: Mapped[int] = mapped_column(
+    organisation_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey("organisations.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
-    #: The same place, counted the way every other table counts one.
+    #: Which place this row belongs to, and the only id anything writes
+    #: or reads.
     #:
-    #: ``organisation_id`` above points at the organisations table, which
-    #: is going: an organisation is a place at the top of a tree, and a
-    #: place id is the only id there will be. Both are written while the
-    #: two exist, this one is read from the next step onwards, and the
-    #: older column goes last.
+    #: ``organisation_id`` above is no longer written. It is kept
+    #: nullable for one release so a rollback to the revision before this
+    #: one still finds it, and dropped in the step after.
     #:
-    #: Nullable only for as long as that takes. Every row is backfilled by
-    #: the migration that adds it, so a null here means a writer that has
-    #: not been moved across.
+    #: Still nullable itself for the same reason: tightening it while the
+    #: previous revision may still insert without it would reject that
+    #: revision's writes.
     org_unit_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey("org_unit.id", ondelete="CASCADE"),
@@ -204,23 +214,22 @@ class Assessment(Base):
         nullable=False,
         index=True,
     )
-    organisation_id: Mapped[int] = mapped_column(
+    organisation_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey("organisations.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
-    #: The same place, counted the way every other table counts one.
+    #: Which place this row belongs to, and the only id anything writes
+    #: or reads.
     #:
-    #: ``organisation_id`` above points at the organisations table, which
-    #: is going: an organisation is a place at the top of a tree, and a
-    #: place id is the only id there will be. Both are written while the
-    #: two exist, this one is read from the next step onwards, and the
-    #: older column goes last.
+    #: ``organisation_id`` above is no longer written. It is kept
+    #: nullable for one release so a rollback to the revision before this
+    #: one still finds it, and dropped in the step after.
     #:
-    #: Nullable only for as long as that takes. Every row is backfilled by
-    #: the migration that adds it, so a null here means a writer that has
-    #: not been moved across.
+    #: Still nullable itself for the same reason: tightening it while the
+    #: previous revision may still insert without it would reject that
+    #: revision's writes.
     org_unit_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey("org_unit.id", ondelete="CASCADE"),
@@ -310,26 +319,31 @@ class TeachingOrgSettings(Base):
             "organisation_id",
             name="uq_teaching_org_settings_org",
         ),
+        # The same rule counted in places — see ``QuestionBankConfig``
+        # for why both are here at once.
+        UniqueConstraint(
+            "org_unit_id",
+            name="uq_teaching_org_settings_place",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    organisation_id: Mapped[int] = mapped_column(
+    organisation_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey("organisations.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
-    #: The same place, counted the way every other table counts one.
+    #: Which place this row belongs to, and the only id anything writes
+    #: or reads.
     #:
-    #: ``organisation_id`` above points at the organisations table, which
-    #: is going: an organisation is a place at the top of a tree, and a
-    #: place id is the only id there will be. Both are written while the
-    #: two exist, this one is read from the next step onwards, and the
-    #: older column goes last.
+    #: ``organisation_id`` above is no longer written. It is kept
+    #: nullable for one release so a rollback to the revision before this
+    #: one still finds it, and dropped in the step after.
     #:
-    #: Nullable only for as long as that takes. Every row is backfilled by
-    #: the migration that adds it, so a null here means a writer that has
-    #: not been moved across.
+    #: Still nullable itself for the same reason: tightening it while the
+    #: previous revision may still insert without it would reject that
+    #: revision's writes.
     org_unit_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey("org_unit.id", ondelete="CASCADE"),
@@ -366,26 +380,32 @@ class QuestionBankOrgStatus(Base):
             "question_bank_id",
             name="uq_qb_org_status_org_bank",
         ),
+        # The same rule counted in places — see ``QuestionBankConfig``
+        # for why both are here at once.
+        UniqueConstraint(
+            "org_unit_id",
+            "question_bank_id",
+            name="uq_qb_org_status_place_bank",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    organisation_id: Mapped[int] = mapped_column(
+    organisation_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey("organisations.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
-    #: The same place, counted the way every other table counts one.
+    #: Which place this row belongs to, and the only id anything writes
+    #: or reads.
     #:
-    #: ``organisation_id`` above points at the organisations table, which
-    #: is going: an organisation is a place at the top of a tree, and a
-    #: place id is the only id there will be. Both are written while the
-    #: two exist, this one is read from the next step onwards, and the
-    #: older column goes last.
+    #: ``organisation_id`` above is no longer written. It is kept
+    #: nullable for one release so a rollback to the revision before this
+    #: one still finds it, and dropped in the step after.
     #:
-    #: Nullable only for as long as that takes. Every row is backfilled by
-    #: the migration that adds it, so a null here means a writer that has
-    #: not been moved across.
+    #: Still nullable itself for the same reason: tightening it while the
+    #: previous revision may still insert without it would reject that
+    #: revision's writes.
     org_unit_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey("org_unit.id", ondelete="CASCADE"),
@@ -429,23 +449,22 @@ class QuestionBankSync(Base):
     __tablename__ = "question_bank_syncs"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    organisation_id: Mapped[int] = mapped_column(
+    organisation_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey("organisations.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
-    #: The same place, counted the way every other table counts one.
+    #: Which place this row belongs to, and the only id anything writes
+    #: or reads.
     #:
-    #: ``organisation_id`` above points at the organisations table, which
-    #: is going: an organisation is a place at the top of a tree, and a
-    #: place id is the only id there will be. Both are written while the
-    #: two exist, this one is read from the next step onwards, and the
-    #: older column goes last.
+    #: ``organisation_id`` above is no longer written. It is kept
+    #: nullable for one release so a rollback to the revision before this
+    #: one still finds it, and dropped in the step after.
     #:
-    #: Nullable only for as long as that takes. Every row is backfilled by
-    #: the migration that adds it, so a null here means a writer that has
-    #: not been moved across.
+    #: Still nullable itself for the same reason: tightening it while the
+    #: previous revision may still insert without it would reject that
+    #: revision's writes.
     org_unit_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey("org_unit.id", ondelete="CASCADE"),
@@ -526,26 +545,43 @@ class ModuleMediaLink(Base):
             "media_key",
             name="uq_module_media_link_org_bank_key",
         ),
+        # The same rule counted in places. Here the older constraint
+        # keeps working, because this table's ``organisation_id`` stays —
+        # but the queries read the place, so the place is what must be
+        # unique.
+        UniqueConstraint(
+            "org_unit_id",
+            "question_bank_id",
+            "media_key",
+            name="uq_module_media_link_place_bank_key",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    #: Where the object sits in the bucket, and nothing else.
+    #:
+    #: Media lives at ``{organisation_id}/{module}/{asset}``, and the
+    #: signed cookie's prefix covers that path, so this number addresses
+    #: a real file rather than filtering a table. It is the one column in
+    #: this group that survives the organisations table: moving it means
+    #: moving objects and reissuing cookies, which is storage work rather
+    #: than a column switch. The foreign key goes with the table; the
+    #: number stays.
     organisation_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("organisations.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
-    #: The same place, counted the way every other table counts one.
+    #: Which place this row belongs to, and what every query here uses.
     #:
-    #: ``organisation_id`` above points at the organisations table, which
-    #: is going: an organisation is a place at the top of a tree, and a
-    #: place id is the only id there will be. Both are written while the
-    #: two exist, this one is read from the next step onwards, and the
-    #: older column goes last.
+    #: ``organisation_id`` above is an address, not an owner: every
+    #: question this table is asked — is this module complete, whose
+    #: upload is this — is answered by the place.
     #:
-    #: Nullable only for as long as that takes. Every row is backfilled by
-    #: the migration that adds it, so a null here means a writer that has
-    #: not been moved across.
+    #: Nullable until the step that drops the organisation columns
+    #: elsewhere: tightening it while the previous revision may still
+    #: insert without it would reject that revision's writes.
     org_unit_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey("org_unit.id", ondelete="CASCADE"),
@@ -627,15 +663,32 @@ class ModuleMediaLink(Base):
     )
 
 
-# Every table above answers "which organisation?" twice while the
-# organisations table is being retired. One listener keeps the two in
-# step for every writer, rather than a line at each place a row is made.
-mirror_the_organisations_place(
-    QuestionBankConfig,
-    QuestionBankItem,
-    Assessment,
-    TeachingOrgSettings,
-    QuestionBankOrgStatus,
-    QuestionBankSync,
-    ModuleMediaLink,
-)
+def _fill_the_storage_address(
+    _mapper: Mapper[Any], connection: Connection, target: ModuleMediaLink
+) -> None:
+    """Derive a media link's bucket prefix from the place it belongs to.
+
+    The one column of this group that outlives the organisations table
+    is ``ModuleMediaLink.organisation_id``, because it is where the
+    object sits rather than who owns it. A writer names the place, as
+    everything else here does, and the address follows from it.
+
+    A listener rather than a line at each write for the same reason the
+    pair of ids had one: the writers are not only the places the
+    application creates these rows, and a row with the wrong prefix
+    points at a file that is not there.
+    """
+    if target.organisation_id is not None or target.org_unit_id is None:
+        return
+
+    from app.models import Organisation
+
+    target.organisation_id = connection.scalar(
+        select(Organisation.id).where(
+            Organisation.org_unit_id == target.org_unit_id
+        )
+    )
+
+
+event.listen(ModuleMediaLink, "before_insert", _fill_the_storage_address)
+event.listen(ModuleMediaLink, "before_update", _fill_the_storage_address)

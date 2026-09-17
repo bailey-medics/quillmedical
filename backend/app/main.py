@@ -116,8 +116,10 @@ from app.org_units import (
 )
 from app.org_units.router import router as org_units_router
 from app.org_units.tree import (
+    descendant_ids,
     organisation_id_of_site,
     organisation_ids_of_sites,
+    root_ids_of,
     root_ids_of_organisations,
     site_ids_of_organisations,
 )
@@ -130,7 +132,6 @@ from app.organisations import (
     get_shared_org_ids,
     organisation_member,
     organisation_of_place,
-    place_of_organisation,
     places_administered_by,
 )
 from app.push import router as push_router
@@ -1004,10 +1005,11 @@ def validate_clinical_lead(
     if not user:
         return ValidateClinicalLeadOut(valid=False)
 
-        # Get org IDs that have this bank with site_registration enabled
-    org_ids = (
+    # The places offering this bank for site registration. Counted in
+    # place ids, which is what the table holds.
+    place_ids = (
         db.execute(
-            select(QuestionBankOrgStatus.organisation_id).where(
+            select(QuestionBankOrgStatus.org_unit_id).where(
                 QuestionBankOrgStatus.question_bank_id == payload.bank_id,
                 QuestionBankOrgStatus.site_registration.is_(True),
             )
@@ -1015,11 +1017,14 @@ def validate_clinical_lead(
         .scalars()
         .all()
     )
-    if not org_ids:
+    offering = [p for p in place_ids if p is not None]
+    if not offering:
         return ValidateClinicalLeadOut(valid=False)
 
-        # Every place beneath those organisations, at any depth
-    site_ids = site_ids_of_organisations(db, list(org_ids))
+    # Every place beneath them, at any depth. The offering places are
+    # organisations' own rows, so they are roots and excluded — a lead
+    # holds their post at a ward, not at the trust.
+    site_ids = sorted(descendant_ids(db, offering))
     if not site_ids:
         return ValidateClinicalLeadOut(valid=False)
 
@@ -1041,18 +1046,14 @@ def validate_clinical_lead(
         .first()
     )
 
-    # The organisation accountable for this place, if it offers the bank
-    accountable = organisation_id_of_site(db, matched_site_id)
-    org_id_for_site = accountable if accountable in org_ids else None
+    # The place accountable for this one, if it offers the bank
+    accountable = root_ids_of(db, [matched_site_id]).get(matched_site_id)
+    place_for_site = accountable if accountable in offering else None
 
     return ValidateClinicalLeadOut(
         valid=True,
         site_name=site.name if site else None,
-        org_unit_id=(
-            place_of_organisation(db, org_id_for_site)
-            if org_id_for_site is not None
-            else None
-        ),
+        org_unit_id=place_for_site,
         site_id=matched_site_id,
     )
 

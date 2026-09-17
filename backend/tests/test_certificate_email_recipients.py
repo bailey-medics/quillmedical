@@ -83,6 +83,17 @@ def _org(db: Session, name: str) -> Organisation:
     return org
 
 
+def _place(org: Organisation) -> int:
+    """The organisation's own row in the tree.
+
+    An organisation always has one — the model writes it — so the check
+    is for the type checker rather than for a state that happens.
+    """
+    place_id = org.org_unit_id
+    assert place_id is not None
+    return place_id
+
+
 def _site_of(db: Session, org: Organisation, name: str) -> OrgUnit:
     site = OrgUnit(name=name, type="ward")
     db.add(site)
@@ -125,7 +136,7 @@ def _setup(
     candidate = _user(db, "candidate", "candidate@example.test")
 
     config_row = QuestionBankConfig(
-        organisation_id=org.id,
+        org_unit_id=_place(org),
         question_bank_id=BANK_ID,
         version=1,
         title="Test Bank",
@@ -137,7 +148,7 @@ def _setup(
     db.add(config_row)
     db.add(
         QuestionBankOrgStatus(
-            organisation_id=org.id,
+            org_unit_id=_place(org),
             question_bank_id=BANK_ID,
             is_live=is_live,
             active_version=1,
@@ -147,7 +158,7 @@ def _setup(
 
     assessment = Assessment(
         user_id=candidate.id,
-        organisation_id=org.id,
+        org_unit_id=_place(org),
         question_bank_id=BANK_ID,
         bank_version=1,
         time_limit_minutes=60,
