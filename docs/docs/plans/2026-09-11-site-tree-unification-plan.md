@@ -900,7 +900,7 @@ So the remaining steps land as:
 - [x] 12c-i-b3 — retire teaching's organisation-keyed fields and paths
 - [x] 12c-i-c1 — stop writing the organisation column
 - [x] 12c-i-c2 — drop the organisation column
-- [ ] 12c-i-d — `site_common_competency`'s two place columns collapse into one
+- [x] 12c-i-d — `site_common_competency`'s two place columns collapse into one
 - [ ] 12c-ii — membership and reach answer in place ids
 - [ ] 12c-iii — drop the `organisations` table
 - [x] 12c-iv — refuse deleting a parent with children, and enforce `requires_parent`
@@ -1669,6 +1669,22 @@ Seven columns, their indexes, their foreign keys and four unique rules.
 - **The downgrade refills the column from the place** before restoring
   its unique rule, so a rollback finds the table as the revision before
   this one left it rather than empty.
+
+#### 12c-i-d — one place column for the common competency shortlist
+
+- **The check constraint goes with the pair.** `(site_id IS NULL) <>
+  (organisation_id IS NULL)` existed to say "exactly one place", which
+  one column says by existing. A trust-wide list is the organisation's
+  own row in the tree; a ward's is the ward's.
+- **One migration, not expand-contract.** Nothing reads or writes this
+  table — the picker it feeds is unbuilt — so no serving revision
+  depends on either column. The rows are still carried across, in case
+  a deployment has any.
+- **Alembic does not autodetect a dropped check constraint**, so that
+  one is dropped by hand. Worth remembering: autogenerate would have
+  left it in place, silently rejecting every row the new column allows.
+- **The class is still `SiteCommonCompetency`.** Renaming it and its
+  table is a separate move and not what this step is about.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to
