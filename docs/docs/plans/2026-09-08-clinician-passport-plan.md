@@ -3551,6 +3551,25 @@ not deferred items: deferring is for what nobody should build yet.
     returned 500 — returns 201, leaving a real git repository sharded
     under `/data/passports/d9/08/…`. Probe user and files removed
     afterwards.
+- [ ] Give the assessor's queue a name and a way in. `/passport/inbox`
+      is built and tested, and nothing links to it: a request to assess
+      somebody sits where only a typed URL reaches it, and the person
+      who asked cannot tell. It was missed when the other four sections
+      were linked from the passport page.
+
+  - **"Inbox" is the wrong name and so is "sign-offs".** Inbox promises
+    a general queue and will only ever hold one kind of thing. Sign-offs
+    is already taken by the holder's own card, which answers a different
+    question: that one is _my_ record, this one is _other people's_
+    records awaiting my judgement. An external assessor has this and may
+    have no passport at all.
+  - **A mail icon at the top right of `/passport`, not a fifth card.**
+    The cards are the holder's own record and this is not part of it.
+    Carry a count, so a waiting request is seen rather than sought.
+  - **The name is still open.** Whatever is chosen should say whose work
+    it is and that it is waiting: what a named assessor has been asked
+    to judge, not what the holder has collected.
+
 - [ ] Enable the `passport` feature for the first South West
       organisation and onboard a small assessor group.
 - [x] Document the module under `docs/docs/backend/passport/index.md`

@@ -10,10 +10,12 @@ import { cpdEntries } from "@/components/passport/fixtures";
 
 const fetchMyPassport = vi.fn();
 const fetchCpdYear = vi.fn();
+const addCpdEntry = vi.fn();
 
 vi.mock("@lib/passport", () => ({
   fetchMyPassport: (...args: unknown[]) => fetchMyPassport(...args),
   fetchCpdYear: (...args: unknown[]) => fetchCpdYear(...args),
+  addCpdEntry: (...args: unknown[]) => addCpdEntry(...args),
 }));
 
 const detail = {
@@ -32,6 +34,18 @@ describe("PassportCpdPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     fetchMyPassport.mockResolvedValue(detail);
+  });
+
+  it("offers a way to record an activity", async () => {
+    // The page could read but not write: `CpdEntryForm` was built and
+    // tested and the page never imported it, so a holder had no way to
+    // record anything from the interface at all.
+    fetchCpdYear.mockResolvedValue([]);
+    renderWithRouter(<PassportCpdPage />);
+
+    expect(
+      await screen.findByRole("button", { name: "Add an activity" }),
+    ).toBeInTheDocument();
   });
 
   it("renders the year's activities", async () => {

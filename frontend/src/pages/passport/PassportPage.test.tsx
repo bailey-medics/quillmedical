@@ -14,10 +14,12 @@ import { competencies } from "@/components/passport/fixtures";
 
 const fetchMyPassport = vi.fn();
 const createPassport = vi.fn();
+const fetchInbox = vi.fn();
 
 vi.mock("@lib/passport", () => ({
   fetchMyPassport: (...args: unknown[]) => fetchMyPassport(...args),
   createPassport: (...args: unknown[]) => createPassport(...args),
+  fetchInbox: (...args: unknown[]) => fetchInbox(...args),
 }));
 
 /** The shape `api.ts` throws: an Error carrying the HTTP status. */
@@ -42,6 +44,7 @@ const detail = {
 describe("PassportPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    fetchInbox.mockResolvedValue([]);
   });
 
   it("renders the holder's competencies once loaded", async () => {
@@ -71,13 +74,20 @@ describe("PassportPage", () => {
 
   it("leads to the rest of the passport", async () => {
     // The side navigation has one Passport entry and it points here, so
-    // these cards are the only route to the logbook, CPD, certificates
-    // and reflections. Without them those pages are addressable only by
-    // typing the URL, which is how they sat for a fortnight.
+    // these cards are the only route to every other passport page.
+    // Without them those pages are addressable only by typing the URL,
+    // which is how they sat for a fortnight.
     fetchMyPassport.mockResolvedValue(detail);
     renderWithRouter(<PassportPage />);
 
-    for (const name of ["Logbook", "CPD", "Certificates", "Reflections"]) {
+    for (const name of [
+      "Sign-offs",
+      "Logbook",
+      "CPD",
+      "Certificates",
+      "Reflections",
+      "Download",
+    ]) {
       expect(await screen.findByText(name)).toBeInTheDocument();
     }
   });
@@ -87,15 +97,72 @@ describe("PassportPage", () => {
     renderWithRouter(<PassportPage />);
 
     for (const label of [
+      "Open sign-offs",
       "Open logbook",
       "Open CPD",
       "Open certificates",
       "Open reflections",
+      "Open download",
     ]) {
       expect(
         await screen.findByRole("button", { name: label }),
       ).toBeInTheDocument();
     }
+  });
+
+  it("offers a way into the assessor's queue", async () => {
+    // `/passport/inbox` was built and tested and nothing linked to it,
+    // so a request to assess somebody sat where only a typed URL
+    // reached it — and the person who asked could not tell.
+    fetchMyPassport.mockResolvedValue(detail);
+    renderWithRouter(<PassportPage />);
+
+    expect(
+      await screen.findByRole("button", {
+        name: "Sign-off requests for me to assess",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps that queue reachable without a passport of your own", async () => {
+    // Being asked to assess a colleague does not depend on having
+    // started a passport, so the way in survives the empty state.
+    fetchMyPassport.mockRejectedValue(httpError(404));
+    renderWithRouter(<PassportPage />);
+
+    await screen.findByText("You do not have a passport yet");
+
+    expect(
+      screen.getByRole("button", {
+        name: "Sign-off requests for me to assess",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows how many sign-off requests are waiting", async () => {
+    // A bare icon says nothing about whether anybody is waiting, so a
+    // holder would have to click to find out and would soon stop.
+    fetchMyPassport.mockResolvedValue(detail);
+    fetchInbox.mockResolvedValue([{}, {}, {}]);
+    renderWithRouter(<PassportPage />);
+
+    expect(
+      await screen.findByRole("button", {
+        name: "Sign-off requests for me to assess (3 waiting)",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the passport readable when the count cannot be fetched", async () => {
+    // The count is a convenience beside the title. An error banner
+    // about somebody else's queue has no business sitting above the
+    // holder's own record.
+    fetchMyPassport.mockResolvedValue(detail);
+    fetchInbox.mockRejectedValue(new Error("network"));
+    renderWithRouter(<PassportPage />);
+
+    expect(await screen.findByText("Perform bronchoscopy")).toBeInTheDocument();
+    expect(screen.queryByTestId("inbox-count")).not.toBeInTheDocument();
   });
 
   it("says reflections are private on the card itself", async () => {
