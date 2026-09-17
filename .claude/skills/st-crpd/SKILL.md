@@ -3,7 +3,7 @@ name: st-crpd
 description: Commit, rebase, push and describe one stacked branch
 argument-hint: "[ready]"
 allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git fetch:*), Bash(git push:*), Bash(just stack-log:*), Bash(just stack-log-long:*), Bash(just stack-files:*), Bash(git switch:*), Bash(just stack-add:*), Bash(just stack-new:*), Bash(just stack-sync:*), Bash(just stack-rebase:*), Bash(just stack-submit:*), Bash(just stack-move:*), Bash(gh stack view:*), Bash(gh pr list:*), Bash(gh pr view:*), Bash(gh pr edit:*), Bash(gh pr ready:*), Bash(python3 scripts/stack-status.py:*)
-disallowed-tools: Bash(gh pr merge:*), Bash(gh stack merge:*), Bash(git rebase:*), mcp__github__merge_pull_request, mcp__github__enable_pr_auto_merge
+disallowed-tools: Bash(gh pr merge:*), Bash(gh stack merge:*), Bash(git rebase:*), Bash(git commit:*), Bash(git reset:*), Bash(git cherry-pick:*), Bash(git stash:*), mcp__github__merge_pull_request, mcp__github__enable_pr_auto_merge
 disable-model-invocation: true
 ---
 
@@ -46,6 +46,17 @@ These hold on every run.
   guard, and verifies afterwards that no branch was silently skipped
   (`gh stack rebase` exits 0 even when it does nothing). It is blocked at the
   permission layer for the same reason merging is.
+- **Never commit with `git commit`, and never undo one with `git reset`.**
+  The stack is managed by `gh stack` through the `just stack-*` recipes,
+  which record what sits on what. `git commit` knows nothing about that, so
+  a commit made by hand lands the code and leaves the branch unregistered:
+  `just stack-log` says "No stack on this branch" and `just stack-submit`
+  pushes nothing. It looks like success, which is what makes it dangerous.
+  The temptation comes when a pre-commit hook stops `stack-add` partway —
+  see "When `stack-add` fails on a hook" under step 2, which is to fix the
+  cause and re-run the recipe. Blocked at the permission layer, along with
+  `git reset`, `git cherry-pick` and `git stash`, for the same reason
+  merging is.
 - **Never change the pull request title.** It is derived from the branch name
   by `auto-pr.yml`, or set by hand. Either way it is not yours to rewrite —
   the description is the only field this command edits.
@@ -181,6 +192,50 @@ Two things to check rather than assume:
    - **Read the diff before naming either.** `git diff --stat` and the diff
      itself; the name and message should come from the code, not from what
      the conversation was about.
+
+   ### When `stack-add` fails on a hook
+
+   A pre-commit hook will sooner or later stop the commit — a spelling
+   word it does not know, a formatter that rewrote a file, a linter with
+   a finding. The recipe then exits non-zero **having already created
+   and checked out the branch**, because making the branch comes before
+   committing onto it. The stack has no record of that branch: writing
+   it into the stack is the last thing the recipe does, and it never got
+   there.
+
+   **Fix the cause, then run the same recipe again.** It is safe to
+   re-run: the branch already exists and it simply commits onto it and
+   completes the registration.
+
+   - **The branch is already checked out**, so run `just stack-add`
+     again exactly as before — same name, same message. Do not switch
+     branches first, and do not create a second one.
+   - **Fix the cause the same way `/crp` does.** A hook that rewrote
+     files, or a spelling fix, is mechanical: apply it and re-run
+     without pausing. Anything needing you to write or change code —
+     mypy, a lint finding a formatter would not fix, bandit — is a
+     change nobody has reviewed: stop, show the diff and the reason, and
+     wait.
+
+   **Never finish the job with `git commit`.** This is the failure this
+   section exists for, and it looks exactly like success: the code is
+   committed, the tree is clean, and the branch carries the right
+   commit. What is missing is invisible — `git commit` knows nothing
+   about stacks, so the branch is never registered, `just stack-log`
+   reports "No stack on this branch", and `just stack-submit` pushes
+   nothing and opens no pull request. The work looks landed and is not.
+
+   `git commit`, `git rebase`, `git cherry-pick` and `git reset` are all
+   outside this command for the same reason: the stack is managed by
+   `gh stack` through the `just stack-*` recipes, and any git command
+   that writes history behind its back leaves the two disagreeing. If a
+   recipe cannot be made to work, stop and report it — that is a
+   mechanical failure of the first kind, and repairing a stack by hand
+   is not this command's job.
+
+   **Check the registration, not just the commit.** After `stack-add` or
+   `stack-new` returns, `just stack-log` must draw the new branch in the
+   stack. A clean tree and a good commit prove only that git is happy.
 
    **Do not judge the work. Commit it.** Whatever is uncommitted becomes
    one branch and one pull request. Running this command *is* the decision
