@@ -376,25 +376,23 @@ class SiteCommonCompetency(Base):
     It lives outside the passport for the same reason: an exported record
     must not carry one trust's opinion of what matters into another.
 
-    Exactly one of ``site_id`` and ``organisation_id`` is set — a site
-    list with the organisation as fallback — enforced by a constraint
-    rather than by convention, after the pattern
-    ``practising_competency`` already uses for the same question.
+    **One place column, not a pair.** This carried ``site_id`` and
+    ``organisation_id`` with a check constraint saying exactly one was
+    set — a ward list, with the trust's as a fallback. A trust is a
+    place now, so the two collapse: the fallback is the parent's row in
+    the same tree, and "exactly one" is what a single column says by
+    existing.
     """
 
     __tablename__ = "site_common_competency"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
 
-    site_id: Mapped[int | None] = mapped_column(
+    #: Whose shortlist this is — a ward, or an organisation's own row in
+    #: the tree for a list that covers the whole trust.
+    org_unit_id: Mapped[int] = mapped_column(
         ForeignKey("org_unit.id", ondelete="CASCADE"),
-        nullable=True,
-        index=True,
-    )
-
-    organisation_id: Mapped[int | None] = mapped_column(
-        ForeignKey("organisations.id", ondelete="CASCADE"),
-        nullable=True,
+        nullable=False,
         index=True,
     )
 
@@ -408,18 +406,9 @@ class SiteCommonCompetency(Base):
     )
 
     __table_args__ = (
-        CheckConstraint(
-            "(site_id IS NULL) <> (organisation_id IS NULL)",
-            name="ck_site_common_competency_one_place",
-        ),
         UniqueConstraint(
-            "site_id",
+            "org_unit_id",
             "competency_id",
-            name="uq_site_common_competency_site",
-        ),
-        UniqueConstraint(
-            "organisation_id",
-            "competency_id",
-            name="uq_site_common_competency_org",
+            name="uq_site_common_competency_place",
         ),
     )
