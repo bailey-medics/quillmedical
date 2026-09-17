@@ -380,8 +380,14 @@ class UserOut(BaseModel):
         removed_competencies: User's removed competencies.
         platform_role: Whether this person operates Quill itself.
         is_active: Whether user is active.
-        organisation_ids: Organisations the user belongs to.
-        site_ids: Sites the user belongs to.
+        organisation_ids: Organisations the user belongs to, in
+            organisation ids. Retired once nothing reads it.
+        site_ids: Places inside organisations that the user belongs to,
+            in place ids. Retired alongside ``organisation_ids``.
+        place_ids: Every place the user belongs to, organisations
+            included, all in place ids. One list because there is one
+            table of places, and one kind of id because two kinds is how
+            a number gets read against the wrong table.
     """
 
     id: int
@@ -395,6 +401,7 @@ class UserOut(BaseModel):
     is_active: bool
     organisation_ids: list[int]
     site_ids: list[int]
+    place_ids: list[int] = []
 
 
 class LinkPatientIn(BaseModel):
