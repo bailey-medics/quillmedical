@@ -127,7 +127,6 @@ export function Component() {
     `(min-width: ${layoutTokens.actionCardTwoColumnMinWidth})`,
   );
   const [passport, setPassport] = useState<PassportDetail | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // Distinct from `error`: the holder has no passport yet, which is the
   // ordinary state of everybody who has never pressed the button. It
@@ -168,17 +167,14 @@ export function Component() {
           }
 
           setError("Your passport could not be loaded. Please try again.");
-        })
-        .finally(() => {
-          if (!isCancelled()) setLoading(false);
         }),
     [],
   );
 
-  // No setState in the effect body: the initial `loading` is already
-  // true and there is no error to clear, so resetting either here would
-  // only cascade a render. `handleCreate` does need the reset, and is
-  // an event handler where that is fine.
+  // No setState in the effect body: there is no error to clear before
+  // the first fetch, and resetting one here would only cascade a
+  // render. `handleCreate` does clear the error, and is an event
+  // handler where that is fine.
   useEffect(() => {
     let cancelled = false;
 
@@ -214,10 +210,7 @@ export function Component() {
     setError(null);
 
     createPassport()
-      .then(() => {
-        setLoading(true);
-        return applyResult(fetchMyPassport(), () => false);
-      })
+      .then(() => applyResult(fetchMyPassport(), () => false))
       .catch(() => {
         setError("Your passport could not be created. Please try again.");
       })
@@ -236,9 +229,8 @@ export function Component() {
     );
   }
 
-  // Deliberately before the loading check has anything to show: a
-  // holder without a passport should be told what one is before being
-  // asked to start it, not shown an empty record.
+  // A holder without a passport is told what one is before being asked
+  // to start it, rather than shown an empty record.
   if (absent) {
     return (
       <Stack gap="lg">
@@ -274,14 +266,12 @@ export function Component() {
         waiting={waiting}
         onInbox={() => navigate("/passport/inbox")}
       />
-      <CompetencySummary
-        competencies={passport?.competencies ?? []}
-        isLoading={loading}
-        onSelect={(competencyId) =>
-          navigate(`/passport/competency/${competencyId}`)
-        }
-      />
-
+      {/* The ways in come first, and the list of competencies after.
+          Somebody opening their passport has come to record something
+          or to chase a sign-off; what they are already competent at is
+          something they know from their own practice and rarely need
+          to look up. Putting the list on top made them scroll past
+          what they know to reach what they came for. */}
       <SimpleGrid cols={twoColumns ? 2 : 1}>
         {SECTIONS.map((section) => (
           <ActionCard
@@ -294,6 +284,13 @@ export function Component() {
           />
         ))}
       </SimpleGrid>
+
+      <CompetencySummary
+        competencies={passport?.competencies ?? []}
+        onSelect={(competencyId) =>
+          navigate(`/passport/competency/${competencyId}`)
+        }
+      />
     </Stack>
   );
 }
