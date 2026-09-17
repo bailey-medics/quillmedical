@@ -51,7 +51,6 @@ const GROUPS: { status: SignOffStatus; title: string }[] = [
 export function Component() {
   const navigate = useNavigate();
   const [competencies, setCompetencies] = useState<CompetencyState[]>([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -65,9 +64,6 @@ export function Component() {
         if (!cancelled) {
           setError("Your sign-offs could not be loaded. Please try again.");
         }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
       });
 
     return () => {
@@ -98,8 +94,10 @@ export function Component() {
       <PageHeader title="Sign-offs" />
 
       {/* Before the groups, so a holder with nothing yet is told how a
-          sign-off comes about rather than reading three empty lists. */}
-      {!loading && !hasAny && (
+          sign-off comes about rather than reading three empty lists.
+          Not held back until the fetch returns: the words are the same
+          either way, so waiting only made the panel appear late. */}
+      {!hasAny && (
         <StateMessage
           colour="update"
           icon={<IconFileText />}
@@ -108,35 +106,18 @@ export function Component() {
         />
       )}
 
-      {(loading || hasAny) &&
+      {hasAny &&
         GROUPS.map((group) => {
           const inGroup = competencies.filter(
             (competency) => competency.status === group.status,
           );
 
-          // Every group is drawn as skeletons while loading, since
-          // there is nothing yet to group by. Once loaded, an empty
-          // group is left out rather than shown as a heading over
-          // nothing.
-          //
-          // The two branches below look like one expression with
-          // `isLoading={loading}` would do, and it does not: a caller
-          // that finds a heading during the loading render then reads
-          // the rest of the page in that same frame, and sees every
-          // group still drawn. Returning early keeps the loaded page
-          // free of empty headings whatever moment it is inspected.
-          if (!loading && inGroup.length === 0) return null;
-
-          if (loading) {
-            return (
-              <CompetencySummary
-                key={group.status}
-                title={group.title}
-                competencies={[]}
-                isLoading
-              />
-            );
-          }
+          // An empty group is left out rather than shown as a heading
+          // over nothing. While loading every group is empty, so the
+          // page draws no groups at all until the answer arrives —
+          // which is right: a heading with nothing under it says less
+          // than no heading.
+          if (inGroup.length === 0) return null;
 
           return (
             <CompetencySummary
