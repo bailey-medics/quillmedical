@@ -1,12 +1,11 @@
 """Teaching and passport rows name their place, and nothing else.
 
-The contract step of moving these tables off ``organisations.id``. The
-place id has been written and read for two deploys; here the older
-column stops being written, so a row carries the place alone.
+The organisation column is gone from these tables: written for one
+deploy, read for another, then unwritten, then dropped.
 
 The one exception is ``ModuleMediaLink.organisation_id``, which is where
-the object sits in the bucket rather than who owns the row. It is still
-filled, from the place, and the last test says so.
+the object sits in the bucket rather than who owns the row. It survives,
+filled from the place, and the last test says so.
 """
 
 from __future__ import annotations
@@ -101,7 +100,6 @@ class TestTheRowsNameTheirPlace:
         assert resp.status_code == 200, resp.text
         row = db_session.query(TeachingOrgSettings).one()
         assert row.org_unit_id == org.org_unit_id
-        assert row.organisation_id is None
 
 
 class TestTheTranslation:
@@ -116,16 +114,18 @@ class TestTheTranslation:
         assert place_of_organisation(db_session, 999999) is None
 
 
-class TestTheOrganisationColumnIsNotWritten:
-    """A writer names the place, and the older column stays empty.
+class TestTheOrganisationColumnIsGone:
+    """The tables have one id for one idea.
 
-    It still exists, nullable, so that a rollback to the revision before
-    this one finds it. Filling it would be worse than leaving it: a half
-    of the rows carrying a stale number is how a reader comes to trust
-    one.
+    Asserted on the mapped class rather than by writing a row: a stray
+    keyword would be a ``TypeError`` either way, and this says what is
+    being claimed.
     """
 
-    def test_a_row_named_by_place_leaves_the_organisation_empty(
+    def test_the_status_table_has_no_organisation_column(self) -> None:
+        assert "organisation_id" not in QuestionBankOrgStatus.__table__.c
+
+    def test_a_row_is_written_by_place_alone(
         self, db_session: Session, org: Organisation
     ) -> None:
         row = QuestionBankOrgStatus(
@@ -137,7 +137,6 @@ class TestTheOrganisationColumnIsNotWritten:
         db_session.commit()
 
         assert row.org_unit_id == org.org_unit_id
-        assert row.organisation_id is None
 
 
 class TestTheMediaLinkKeepsItsAddress:

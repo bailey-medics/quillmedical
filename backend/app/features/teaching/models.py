@@ -56,16 +56,6 @@ class QuestionBankConfig(Base):
     __tablename__ = "question_bank_configs"
     __table_args__ = (
         UniqueConstraint(
-            "organisation_id",
-            "question_bank_id",
-            "version",
-            name="uq_qb_config_org_bank_ver",
-        ),
-        # The same rule counted in places. Added while the older one is
-        # still here so uniqueness is never unenforced: once
-        # ``organisation_id`` stops being written the constraint above
-        # sees a null and stops rejecting anything.
-        UniqueConstraint(
             "org_unit_id",
             "question_bank_id",
             "version",
@@ -74,26 +64,11 @@ class QuestionBankConfig(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    organisation_id: Mapped[int | None] = mapped_column(
-        Integer,
-        ForeignKey("organisations.id", ondelete="CASCADE"),
-        nullable=True,
-        index=True,
-    )
-    #: Which place this row belongs to, and the only id anything writes
-    #: or reads.
-    #:
-    #: ``organisation_id`` above is no longer written. It is kept
-    #: nullable for one release so a rollback to the revision before this
-    #: one still finds it, and dropped in the step after.
-    #:
-    #: Still nullable itself for the same reason: tightening it while the
-    #: previous revision may still insert without it would reject that
-    #: revision's writes.
-    org_unit_id: Mapped[int | None] = mapped_column(
+    #: Which place this row belongs to. The only id it has.
+    org_unit_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("org_unit.id", ondelete="CASCADE"),
-        nullable=True,
+        nullable=False,
         index=True,
     )
     question_bank_id: Mapped[str] = mapped_column(
@@ -143,26 +118,11 @@ class QuestionBankItem(Base):
     __tablename__ = "question_bank_items"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    organisation_id: Mapped[int | None] = mapped_column(
-        Integer,
-        ForeignKey("organisations.id", ondelete="CASCADE"),
-        nullable=True,
-        index=True,
-    )
-    #: Which place this row belongs to, and the only id anything writes
-    #: or reads.
-    #:
-    #: ``organisation_id`` above is no longer written. It is kept
-    #: nullable for one release so a rollback to the revision before this
-    #: one still finds it, and dropped in the step after.
-    #:
-    #: Still nullable itself for the same reason: tightening it while the
-    #: previous revision may still insert without it would reject that
-    #: revision's writes.
-    org_unit_id: Mapped[int | None] = mapped_column(
+    #: Which place this row belongs to. The only id it has.
+    org_unit_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("org_unit.id", ondelete="CASCADE"),
-        nullable=True,
+        nullable=False,
         index=True,
     )
     question_bank_id: Mapped[str] = mapped_column(
@@ -214,26 +174,11 @@ class Assessment(Base):
         nullable=False,
         index=True,
     )
-    organisation_id: Mapped[int | None] = mapped_column(
-        Integer,
-        ForeignKey("organisations.id", ondelete="CASCADE"),
-        nullable=True,
-        index=True,
-    )
-    #: Which place this row belongs to, and the only id anything writes
-    #: or reads.
-    #:
-    #: ``organisation_id`` above is no longer written. It is kept
-    #: nullable for one release so a rollback to the revision before this
-    #: one still finds it, and dropped in the step after.
-    #:
-    #: Still nullable itself for the same reason: tightening it while the
-    #: previous revision may still insert without it would reject that
-    #: revision's writes.
-    org_unit_id: Mapped[int | None] = mapped_column(
+    #: Which place this row belongs to. The only id it has.
+    org_unit_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("org_unit.id", ondelete="CASCADE"),
-        nullable=True,
+        nullable=False,
         index=True,
     )
     question_bank_id: Mapped[str] = mapped_column(
@@ -316,38 +261,17 @@ class TeachingOrgSettings(Base):
     __tablename__ = "teaching_org_settings"
     __table_args__ = (
         UniqueConstraint(
-            "organisation_id",
-            name="uq_teaching_org_settings_org",
-        ),
-        # The same rule counted in places — see ``QuestionBankConfig``
-        # for why both are here at once.
-        UniqueConstraint(
             "org_unit_id",
             name="uq_teaching_org_settings_place",
         ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    organisation_id: Mapped[int | None] = mapped_column(
-        Integer,
-        ForeignKey("organisations.id", ondelete="CASCADE"),
-        nullable=True,
-        index=True,
-    )
-    #: Which place this row belongs to, and the only id anything writes
-    #: or reads.
-    #:
-    #: ``organisation_id`` above is no longer written. It is kept
-    #: nullable for one release so a rollback to the revision before this
-    #: one still finds it, and dropped in the step after.
-    #:
-    #: Still nullable itself for the same reason: tightening it while the
-    #: previous revision may still insert without it would reject that
-    #: revision's writes.
-    org_unit_id: Mapped[int | None] = mapped_column(
+    #: Which place this row belongs to. The only id it has.
+    org_unit_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("org_unit.id", ondelete="CASCADE"),
-        nullable=True,
+        nullable=False,
         index=True,
     )
     coordinator_email: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -376,13 +300,6 @@ class QuestionBankOrgStatus(Base):
     __tablename__ = "question_bank_org_status"
     __table_args__ = (
         UniqueConstraint(
-            "organisation_id",
-            "question_bank_id",
-            name="uq_qb_org_status_org_bank",
-        ),
-        # The same rule counted in places — see ``QuestionBankConfig``
-        # for why both are here at once.
-        UniqueConstraint(
             "org_unit_id",
             "question_bank_id",
             name="uq_qb_org_status_place_bank",
@@ -390,26 +307,11 @@ class QuestionBankOrgStatus(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    organisation_id: Mapped[int | None] = mapped_column(
-        Integer,
-        ForeignKey("organisations.id", ondelete="CASCADE"),
-        nullable=True,
-        index=True,
-    )
-    #: Which place this row belongs to, and the only id anything writes
-    #: or reads.
-    #:
-    #: ``organisation_id`` above is no longer written. It is kept
-    #: nullable for one release so a rollback to the revision before this
-    #: one still finds it, and dropped in the step after.
-    #:
-    #: Still nullable itself for the same reason: tightening it while the
-    #: previous revision may still insert without it would reject that
-    #: revision's writes.
-    org_unit_id: Mapped[int | None] = mapped_column(
+    #: Which place this row belongs to. The only id it has.
+    org_unit_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("org_unit.id", ondelete="CASCADE"),
-        nullable=True,
+        nullable=False,
         index=True,
     )
     question_bank_id: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -449,26 +351,11 @@ class QuestionBankSync(Base):
     __tablename__ = "question_bank_syncs"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    organisation_id: Mapped[int | None] = mapped_column(
-        Integer,
-        ForeignKey("organisations.id", ondelete="CASCADE"),
-        nullable=True,
-        index=True,
-    )
-    #: Which place this row belongs to, and the only id anything writes
-    #: or reads.
-    #:
-    #: ``organisation_id`` above is no longer written. It is kept
-    #: nullable for one release so a rollback to the revision before this
-    #: one still finds it, and dropped in the step after.
-    #:
-    #: Still nullable itself for the same reason: tightening it while the
-    #: previous revision may still insert without it would reject that
-    #: revision's writes.
-    org_unit_id: Mapped[int | None] = mapped_column(
+    #: Which place this row belongs to. The only id it has.
+    org_unit_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("org_unit.id", ondelete="CASCADE"),
-        nullable=True,
+        nullable=False,
         index=True,
     )
     question_bank_id: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -539,16 +426,9 @@ class ModuleMediaLink(Base):
 
     __tablename__ = "module_media_link"
     __table_args__ = (
-        UniqueConstraint(
-            "organisation_id",
-            "question_bank_id",
-            "media_key",
-            name="uq_module_media_link_org_bank_key",
-        ),
-        # The same rule counted in places. Here the older constraint
-        # keeps working, because this table's ``organisation_id`` stays —
-        # but the queries read the place, so the place is what must be
-        # unique.
+        # One video per reference, per place. Not per
+        # ``organisation_id``: that column is the object's address in the
+        # bucket, and the place is what every query here reads.
         UniqueConstraint(
             "org_unit_id",
             "question_bank_id",
@@ -578,14 +458,10 @@ class ModuleMediaLink(Base):
     #: ``organisation_id`` above is an address, not an owner: every
     #: question this table is asked — is this module complete, whose
     #: upload is this — is answered by the place.
-    #:
-    #: Nullable until the step that drops the organisation columns
-    #: elsewhere: tightening it while the previous revision may still
-    #: insert without it would reject that revision's writes.
-    org_unit_id: Mapped[int | None] = mapped_column(
+    org_unit_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("org_unit.id", ondelete="CASCADE"),
-        nullable=True,
+        nullable=False,
         index=True,
     )
     question_bank_id: Mapped[str] = mapped_column(String(255), nullable=False)
