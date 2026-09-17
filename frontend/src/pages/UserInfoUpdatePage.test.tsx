@@ -14,20 +14,58 @@ import { renderWithRouter } from "@/test/test-utils";
 import * as apiModule from "@/lib/api";
 import UserInfoUpdatePage from "./UserInfoUpdatePage";
 
+/**
+ * A trust, a building inside it, and a ward inside the building.
+ *
+ * The ward is two levels down on purpose: it is still that trust's ward,
+ * and the form has to say so without being told.
+ */
+const PLACES = [
+  {
+    id: 1,
+    name: "Test Org",
+    type: "hospital_team",
+    type_display_name: "Hospital team",
+    is_root: true,
+    parent_id: null,
+    location: "",
+    is_active: true,
+    created_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-01T00:00:00Z",
+  },
+  {
+    id: 9,
+    name: "Main building",
+    type: "building",
+    type_display_name: "Building",
+    is_root: false,
+    parent_id: 1,
+    location: "",
+    is_active: true,
+    created_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-01T00:00:00Z",
+  },
+  {
+    id: 10,
+    name: "Test Site",
+    type: "ward",
+    type_display_name: "Ward",
+    is_root: false,
+    parent_id: 9,
+    location: "",
+    is_active: true,
+    created_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-01T00:00:00Z",
+  },
+];
+
 // Mock the API
 vi.mock("@/lib/api", () => ({
   api: {
     post: vi.fn(),
     get: vi.fn().mockImplementation((url: string) => {
-      if (url === "/organisations") {
-        return Promise.resolve({
-          organisations: [{ id: 1, name: "Test Org" }],
-        });
-      }
-      if (url.startsWith("/organisations/")) {
-        return Promise.resolve({
-          sites: [{ id: 10, name: "Test Site" }],
-        });
+      if (url === "/org-units") {
+        return Promise.resolve({ org_units: PLACES });
       }
       return Promise.resolve({});
     }),
@@ -262,6 +300,104 @@ describe("UserInfoUpdatePage", () => {
           screen.getByRole("heading", { name: "Platform role" }),
         ).toBeInTheDocument();
       });
+    }, 30000);
+  });
+
+  describe("Where the person belongs", () => {
+    /** Walk to step 2, where the two place controls are. */
+    async function toThePlacesStep(user: ReturnType<typeof userEvent.setup>) {
+      await user.type(screen.getByLabelText(/full name/i), "Dr Jane Smith");
+      await user.type(
+        screen.getByLabelText(/email/i),
+        "jane.smith@example.com",
+      );
+      await user.type(screen.getByLabelText(/username/i), "janesmith");
+      await user.type(
+        screen.getByLabelText(/initial password/i),
+        "password123",
+      );
+      await user.click(
+        screen.getByRole("combobox", { name: /base profession/i }),
+      );
+      await user.keyboard("{ArrowDown}");
+      await user.keyboard("{Enter}");
+
+      await user.click(screen.getByRole("button", { name: /next/i }));
+      await waitFor(() => {
+        expect(
+          screen.getByRole("heading", { name: "Organisation/site" }),
+        ).toBeInTheDocument();
+      });
+    }
+
+    it("offers the organisations it was given", async () => {
+      const user = userEvent.setup();
+      renderWithRouter(<UserInfoUpdatePage />);
+      await toThePlacesStep(user);
+
+      await user.click(
+        screen.getByRole("combobox", { name: /^organisation/i }),
+      );
+
+      expect(
+        await screen.findByRole("option", { name: "Test Org" }),
+      ).toBeInTheDocument();
+    }, 30000);
+
+    it("sends the places chosen, in place ids", async () => {
+      // One list, whichever control they came from: an organisation and
+      // the places inside it are rows in the same table.
+      const user = userEvent.setup();
+      const mockPost = vi.fn().mockResolvedValue({ data: { id: 1 } });
+      (apiModule.api.post as ReturnType<typeof vi.fn>) = mockPost;
+
+      renderWithRouter(<UserInfoUpdatePage />);
+      await toThePlacesStep(user);
+
+      await user.click(
+        screen.getByRole("combobox", { name: /^organisation/i }),
+      );
+      await user.click(await screen.findByRole("option", { name: "Test Org" }));
+      await user.click(screen.getByRole("combobox", { name: /^site/i }));
+      await user.click(
+        await screen.findByRole("option", { name: "Test Org - Test Site" }),
+      );
+
+      // Step 2 → 3 → 4 → review
+      for (let step = 0; step < 3; step += 1) {
+        await user.click(screen.getByRole("button", { name: /next/i }));
+      }
+      await waitFor(() => {
+        expect(
+          screen.getByRole("heading", { name: "Review" }),
+        ).toBeInTheDocument();
+      });
+      await user.click(screen.getByRole("button", { name: /create user/i }));
+
+      await waitFor(() => {
+        expect(mockPost).toHaveBeenCalledWith(
+          "/users",
+          expect.objectContaining({ place_ids: [1, 10] }),
+        );
+      });
+    }, 30000);
+
+    it("lists a ward under the trust it is inside, however deep", async () => {
+      // The ward sits in a building, which sits in the trust. It is
+      // still the trust's ward, and the form works that out by walking
+      // rather than by reading the parent and hoping.
+      const user = userEvent.setup();
+      renderWithRouter(<UserInfoUpdatePage />);
+      await toThePlacesStep(user);
+
+      await user.click(screen.getByRole("combobox", { name: /^site/i }));
+
+      expect(
+        await screen.findByRole("option", { name: "Test Org - Test Site" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("option", { name: "Test Org - Main building" }),
+      ).toBeInTheDocument();
     }, 30000);
   });
 
