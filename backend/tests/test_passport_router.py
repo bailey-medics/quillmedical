@@ -302,7 +302,7 @@ class TestRequestSignOff:
         response = holder_client.post(
             f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
             json={
-                "assessor_user_id": assessor.id,
+                "assessor_email": assessor.email,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },
@@ -320,7 +320,7 @@ class TestRequestSignOff:
         response = holder_client.post(
             f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
             json={
-                "assessor_user_id": holder.id,
+                "assessor_email": holder.email,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },
@@ -337,7 +337,7 @@ class TestRequestSignOff:
             f"/api/passport/{passport_id}/competencies/not_a_competency"
             "/requests",
             json={
-                "assessor_user_id": assessor.id,
+                "assessor_email": assessor.email,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },
@@ -359,7 +359,7 @@ class TestRequestSignOff:
         response = bystander_client.post(
             f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
             json={
-                "assessor_user_id": assessor.id,
+                "assessor_email": assessor.email,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },
@@ -384,7 +384,7 @@ class TestSignOff:
         response = holder_client.post(
             f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
             json={
-                "assessor_user_id": assessor.id,
+                "assessor_email": assessor.email,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },
@@ -512,7 +512,7 @@ class TestDeclineAndWithdraw:
         response = holder_client.post(
             f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
             json={
-                "assessor_user_id": assessor.id,
+                "assessor_email": assessor.email,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },
@@ -575,7 +575,7 @@ class TestInbox:
         holder_client.post(
             f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
             json={
-                "assessor_user_id": assessor.id,
+                "assessor_email": assessor.email,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },
@@ -605,7 +605,7 @@ class TestInbox:
         holder_client.post(
             f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
             json={
-                "assessor_user_id": assessor.id,
+                "assessor_email": assessor.email,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },
@@ -631,7 +631,7 @@ class TestVerify:
         created = holder_client.post(
             f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
             json={
-                "assessor_user_id": assessor.id,
+                "assessor_email": assessor.email,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },
@@ -670,7 +670,7 @@ class TestVerify:
         created = holder_client.post(
             f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
             json={
-                "assessor_user_id": assessor.id,
+                "assessor_email": assessor.email,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },
@@ -1787,6 +1787,7 @@ class TestAdminVerifyAndRevoke:
                 passport_id=passport_id,
                 signoff_id="2026-03-14-a-thing",
                 competency_id=COMPETENCY,
+                assessor_email="assessor@example.nhs.uk",
                 assessor_user_id=assessor_id,
                 status="signed_off",
             )
@@ -2363,7 +2364,7 @@ class TestExport:
             f"/api/passport/{passport_id}/competencies/{COMPETENCY}"
             "/requests",
             json={
-                "assessor_user_id": assessor.id,
+                "assessor_email": assessor.email,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },
@@ -2501,7 +2502,7 @@ class TestWhatAnExternalAssessorCannotReach:
         holder_client.post(
             f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
             json={
-                "assessor_user_id": assessor.id,
+                "assessor_email": assessor.email,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },
