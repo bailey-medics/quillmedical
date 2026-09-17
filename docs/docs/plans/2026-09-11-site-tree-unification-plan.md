@@ -899,7 +899,7 @@ So the remaining steps land as:
 - [x] 12c-i-b2 — teaching's surface answers in place ids, beside the old one
 - [x] 12c-i-b3 — retire teaching's organisation-keyed fields and paths
 - [x] 12c-i-c1 — stop writing the organisation column
-- [ ] 12c-i-c2 — drop the organisation column
+- [x] 12c-i-c2 — drop the organisation column
 - [ ] 12c-i-d — `site_common_competency`'s two place columns collapse into one
 - [ ] 12c-ii — membership and reach answer in place ids
 - [ ] 12c-iii — drop the `organisations` table
@@ -1646,6 +1646,29 @@ still serving.
 - **`sync_question_bank`'s parameter was renamed to `place_id`.** It had
   held a place id under the name `organisation_id` since 12c-i-b, which
   is the confusion this whole step exists to remove.
+
+#### 12c-i-c2 — drop the organisation column
+
+Seven columns, their indexes, their foreign keys and four unique rules.
+
+- **`module_media_link.organisation_id` stays**, and only its unique
+  rule moves. It is the object's address in the bucket, not the row's
+  owner, so dropping it would orphan every uploaded file. Moving it
+  means moving objects and reissuing signed cookies, which is storage
+  work and belongs in its own piece.
+- **`org_unit_id` becomes required here, not earlier.** The revision
+  serving alongside the previous migration still inserted rows without
+  it.
+- **`server_default=None` where those columns are tightened.** `check_migrations.py`
+  asks every `nullable=False` to name a server default, to stop a NOT
+  NULL column being added to a populated table. This is a tightening of
+  a column backfilled two revisions ago, which the rule cannot express;
+  `None` says truthfully that there is no default, where an actual
+  default would be a nonsense value for a foreign key. Worth a look
+  when the check is next touched.
+- **The downgrade refills the column from the place** before restoring
+  its unique rule, so a rollback finds the table as the revision before
+  this one left it rather than empty.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to

@@ -335,24 +335,12 @@ class AssessorRegistrationVerification(Base):
         nullable=False,
     )
 
-    #: No longer written. Kept nullable for one release so a rollback to
-    #: the revision before this one still finds it, and dropped in the
-    #: step after.
-    organisation_id: Mapped[int | None] = mapped_column(
-        ForeignKey("organisations.id", ondelete="CASCADE"),
-        nullable=True,
-        index=True,
-    )
-
     #: Whose admin checked it, so a reader can tell whose assurance this
     #: is. Two trusts may each check the same number, and one may be more
     #: diligent than the other.
-    #:
-    #: Still nullable itself because the previous revision may still
-    #: insert without it.
-    org_unit_id: Mapped[int | None] = mapped_column(
+    org_unit_id: Mapped[int] = mapped_column(
         ForeignKey("org_unit.id", ondelete="CASCADE"),
-        nullable=True,
+        nullable=False,
         index=True,
     )
 
@@ -366,17 +354,6 @@ class AssessorRegistrationVerification(Base):
         # One standing check per number per organisation. A second would
         # make "is this verified" ambiguous, and re-checking is an update
         # of when it was last confirmed rather than a new fact.
-        UniqueConstraint(
-            "user_id",
-            "registration_authority",
-            "registration_number",
-            "organisation_id",
-            name="uq_assessor_registration_verified_here",
-        ),
-        # The same rule counted in places. Added while the older one is
-        # still here so uniqueness is never unenforced: once
-        # ``organisation_id`` stops being written the constraint above
-        # sees a null and stops rejecting anything.
         UniqueConstraint(
             "user_id",
             "registration_authority",
