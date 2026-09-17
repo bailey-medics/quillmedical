@@ -893,6 +893,7 @@ So the remaining steps land as:
 - [x] 12b-vi — the remaining organisation-surface tests onto places
 - [x] 12b-vii — retire `/api/organisations`
 - [x] 12b-viii — retire the organisation and site lists on the users API
+- [x] 12c-0 — make the two id sequences disagree in the tests
 - [ ] 12c-i — the teaching and passport tables onto place ids, a column at a time
 - [ ] 12c-ii — membership and reach answer in place ids
 - [ ] 12c-iii — drop the `organisations` table
@@ -1456,6 +1457,38 @@ going. Neither does.
   walk upwards landed in somebody else's trust. `is_root` would have gone
   on saying yes. Creating one that way was already refused; moving one
   was not.
+
+#### 12c-0 — make the two id sequences disagree in the tests
+
+The unit that makes the rest of 12c safe to attempt, and it had to come
+first: without it the suite cannot tell a place id from an organisation
+id, so every step of the fold would be marked correct by a test run that
+proves nothing.
+
+Every test now starts with one place that belongs to no organisation, so
+each organisation created afterwards has a place id one higher than its
+own. It is a ward rather than a top-level type, so no question the
+application asks counts it as an organisation: it is not in a list of
+roots, and nobody can see it, because nobody is a member of anything
+above it.
+
+**Measured rather than asserted.** The refactor that 12c-ii will need —
+membership and reach answering in place ids, with the teaching and
+passport columns left where they are — was applied to both:
+
+- **Without the spacer: nothing failed.** The whole suite, green, on a
+  change that would have matched teaching rows by the wrong number in
+  production and written place ids into columns meaning organisation
+  ids.
+- **With the spacer: eighty-five failures**, in the teaching banks and
+  assessments, the passport memberships, and scoped access — which is
+  exactly where the confusion lives.
+
+Two tests had to change, and both were wrong before. One asserted an
+exact list of places where it meant "the organisation is not among
+them". The other asked which places had nothing above them, when what it
+meant was which places are organisations — the difference this whole
+plan exists to draw, written in a test of the plan's own work.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to
