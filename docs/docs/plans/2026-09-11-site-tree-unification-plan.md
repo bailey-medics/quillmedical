@@ -907,7 +907,8 @@ So the remaining steps land as:
 - [x] 12c-ii-d — membership and reach answer in place ids
 - [x] 12c-iii-a — a place remembers the prefix its media is filed under
 - [x] 12c-iii-b — the place surfaces stop translating organisation ids
-- [ ] 12c-iii-c — drop the `organisations` table
+- [x] 12c-iii-c — the user listing names the right place
+- [ ] 12c-iii-d — drop the `organisations` table
 - [x] 12c-iv — refuse deleting a parent with children, and enforce `requires_parent`
 
 #### 10a — write both names for the place column
@@ -1860,6 +1861,63 @@ it removes every remaining reason to consult it.
 - **Three tree helpers went**: `root_ids_of_organisations`,
   `site_ids_of_organisations` and `organisation_ids_of_sites`. The
   callers either had the place already or wanted `descendant_ids`.
+
+### Discovered while building: the user listing joined two id spaces
+
+`GET /users` carries each person's organisations by name, for the admin
+table. When the membership reads moved to place ids in 12c-ii-d, the
+join under those names was left comparing an **organisation** id against
+a **place** id.
+
+It matches on a small installation, because an organisation and its own
+row in the tree are created together and come out with the same number,
+and stops matching the moment a ward is created between two
+organisations. From then on an admin sees a user with no organisations
+at all, or with somebody else's.
+
+Nothing tested the names, which is how it got through the unit that
+introduced it and the two after.
+
+#### 12c-iii-c — the user listing names the right place
+
+- **The join reads `OrgUnit` now**, which is what the membership row
+  holds.
+- **Three tests**, checked to fail against the broken join: a member's
+  organisation is named, somebody in none gets an empty list — which
+  the broken join also produced, so it is the half that pins the
+  failure — and a ward membership shows as a site rather than an
+  organisation.
+
+#### 12c-iii-d — drop the `organisations` table (not started)
+
+The application side is ready: nothing reads the table for its own id
+any more. What remains was attempted and backed out, and is written
+down here rather than half-landed.
+
+- **The drop itself is small**: delete the model and its three
+  listeners, move the delete cascade onto `OrgUnit` (it already works
+  through the place), stop `org_units/router.py` writing the paired row,
+  drop the last foreign key — `module_media_link.organisation_id`, which
+  keeps its value as an address — and drop the table.
+- **Two response fields have to be renamed, not reinterpreted**:
+  `OrganisationListItem.id` on `/auth/organisations` and
+  `SharedOrganisationSummary.id` on
+  `/patients/{id}/shared-organisations` both publish an organisation id
+  and would have to publish a place id. Neither is read by any screen.
+  Two `oasdiff` findings, two decision files.
+- **`exclude_org` goes with the table**, since it counts in ids that no
+  longer exist. A third decision file.
+- **The fixture migration is the real work, and the trap.** Fifty test
+  files build an `Organisation`; the mechanical rewrite is
+  `Organisation(...)` to `OrgUnit(...)` with the type mapped the way
+  `_kind_of` maps it — a root type kept, anything else becoming
+  `organisation`, a missing one becoming `hospital_team` — and
+  `X.org_unit_id` becoming `X.id` for the twenty-odd names that hold an
+  organisation. Applied blindly it is **not** meaning-preserving: the
+  tests whose subject is the two id spaces, `test_the_two_id_sequences_stay_apart`
+  and `test_the_media_prefix_survives_the_table` among them, assert
+  that two numbers differ, and the rewrite turns those into `x != x`.
+  Those files need reading, not rewriting.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to

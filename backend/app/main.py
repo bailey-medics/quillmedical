@@ -2573,14 +2573,21 @@ def list_users(
 
         # Batch-load organisation and site memberships
         user_ids = [user.id for user in users]
+        # Joined on the place, which is what the membership row holds.
+        # This read ``Organisation.id == ...org_unit_id`` for a release:
+        # an organisation id compared against a place id, which matches
+        # on a small installation because the two sequences agree, and
+        # stops matching the moment a ward is created between two
+        # organisations. A user's organisations then came back empty, or
+        # named somebody else's.
         org_rows = db.execute(
             select(
                 organisation_place_member.c.user_id,
-                Organisation.name,
+                OrgUnit.name,
             )
             .join(
-                Organisation,
-                Organisation.id == organisation_place_member.c.org_unit_id,
+                OrgUnit,
+                OrgUnit.id == organisation_place_member.c.org_unit_id,
             )
             .where(organisation_place_member.c.user_id.in_(user_ids))
         ).all()
