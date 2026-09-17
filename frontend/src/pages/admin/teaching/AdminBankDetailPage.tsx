@@ -182,7 +182,7 @@ export default function AdminBankDetailPage() {
                   `/admin/teaching/modules/${bankId}/org/${org.org_unit_id}`,
                 )
               }
-              getRowKey={(org) => org.org_unit_id ?? org.organisation_id}
+              getRowKey={(org) => org.org_unit_id}
               emptyMessage="No organisations have the teaching feature enabled"
             />
           )}

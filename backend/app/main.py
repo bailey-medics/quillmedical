@@ -1048,7 +1048,6 @@ def validate_clinical_lead(
     return ValidateClinicalLeadOut(
         valid=True,
         site_name=site.name if site else None,
-        organisation_id=org_id_for_site,
         org_unit_id=(
             place_of_organisation(db, org_id_for_site)
             if org_id_for_site is not None
@@ -1148,39 +1147,30 @@ def register(
     db.add(user)
     db.flush()  # Assigns user.id so we can create memberships
 
-    # Add the user to the selected organisation. Either id names it: the
-    # place is what registration sends now, and the organisation id is
-    # kept until nothing does.
-    organisation_id = payload.organisation_id
-    if organisation_id is None and payload.org_unit_id is not None:
+    # Add the user to the selected organisation, which registration now
+    # names by its place. Membership is still recorded against the
+    # organisation, so the place is translated here.
+    organisation_id = None
+    if payload.org_unit_id is not None:
         organisation_id = organisation_of_place(db, payload.org_unit_id)
         if organisation_id is None:
             raise HTTPException(
                 status_code=400, detail="Organisation not found"
             )
+        # Public registration is how teaching delegates arrive, and they
+        # are not staff. Recording that here is what lets the admin page
+        # and the messaging self-join check tell them apart; previously
+        # nothing could.
+        add_organisation_member(db, organisation_id, user.id, "trainee")
 
-    if organisation_id is not None:
-        org = db.scalar(
-            select(Organisation).where(Organisation.id == organisation_id)
-        )
-        if org is None:
-            raise HTTPException(
-                status_code=400, detail="Organisation not found"
-            )
-            # Public registration is how teaching delegates arrive, and they
-            # are not staff. Recording that here is what lets the admin page
-            # and the messaging self-join check tell them apart; previously
-            # nothing could.
-        add_organisation_member(db, org.id, user.id, "trainee")
-
-        # Add the user to the selected site as a trainee
+    # Add the user to the selected site as a trainee
     if payload.site_id is not None:
         if organisation_id is None:
             raise HTTPException(
                 status_code=400,
-                detail="organisation_id required when site_id is provided",
+                detail="org_unit_id required when site_id is provided",
             )
-            # Verify the place exists AND sits beneath the organisation given
+        # Verify the place exists AND sits beneath the organisation given
         site = db.get(OrgUnit, payload.site_id)
         # There is more than one kind of organisation — a practice and a
         # teaching establishment are both tops of trees — so the test is

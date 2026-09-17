@@ -113,17 +113,28 @@ def _login(client: TestClient, username: str) -> dict[str, str]:
     return {"X-CSRF-Token": client.cookies.get("XSRF-TOKEN", "")}
 
 
-def _promote_url(org_id: int) -> str:
+def _place(org: Organisation) -> int:
+    """The organisation's own row in the tree.
+
+    The paths name a place now. An organisation always has one — the
+    model writes it — so the check is for the type checker rather than
+    for a state that happens.
+    """
+    place_id = org.org_unit_id
+    assert place_id is not None
+    return place_id
+
+
+def _promote_url(org: Organisation) -> str:
     return (
         "/api/teaching/admin/banks/test-bank"
-        f"/organisations/{org_id}/active-version"
+        f"/places/{_place(org)}/active-version"
     )
 
 
-def _settings_url(org_id: int) -> str:
+def _settings_url(org: Organisation) -> str:
     return (
-        "/api/teaching/admin/banks/test-bank"
-        f"/organisations/{org_id}/settings"
+        "/api/teaching/admin/banks/test-bank" f"/places/{_place(org)}/settings"
     )
 
 
@@ -153,7 +164,7 @@ class TestReachingATrustIsNotAuthorityOverIt:
     ) -> None:
         headers = _login(test_client, "ward_admin")
         response = test_client.put(
-            _promote_url(org.id), headers=headers, json={"version": 2}
+            _promote_url(org), headers=headers, json={"version": 2}
         )
 
         assert response.status_code == 403, response.text
@@ -167,7 +178,7 @@ class TestReachingATrustIsNotAuthorityOverIt:
         """Closing mid-cohort locks candidates out part-way through."""
         headers = _login(test_client, "ward_admin")
         response = test_client.put(
-            _settings_url(org.id),
+            _settings_url(org),
             headers=headers,
             json={"is_live": False},
         )
@@ -198,7 +209,7 @@ class TestAnOrganisationMemberIsUnaffected:
     ) -> None:
         headers = _login(test_client, "trust_admin")
         response = test_client.put(
-            _promote_url(org.id), headers=headers, json={"version": 2}
+            _promote_url(org), headers=headers, json={"version": 2}
         )
 
         assert response.status_code != 403, response.text
@@ -211,7 +222,7 @@ class TestAnOrganisationMemberIsUnaffected:
     ) -> None:
         headers = _login(test_client, "trust_admin")
         response = test_client.put(
-            _settings_url(org.id),
+            _settings_url(org),
             headers=headers,
             json={"is_live": False},
         )

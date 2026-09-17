@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "response-required-property-removed GET /api/teaching/admin/banks/{bank_id}/organisations removed the required property `items/organisation_id` from the response with the `200` status"
+reason: "The row already carries `org_unit_id`, which is what the bank detail screen keys its table by and what the settings path now names. Keeping `organisation_id` beside it meant publishing two numbers for one row from two independent id sequences, which is exactly the ambiguity this work exists to remove. Served alongside the place id for a release; the screen moved then. No open tab needs reloading."
