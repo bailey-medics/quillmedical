@@ -271,7 +271,6 @@ class TestScopingAsksTheNewColumn:
             add_organisation_member(db, org.id, person.id, "staff")
         db.commit()
         place_id = org.org_unit_id
-        assert place_id is not None
         return int(place_id)
 
     def test_an_operator_is_not_confined_to_their_organisations(

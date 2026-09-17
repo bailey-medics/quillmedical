@@ -41,18 +41,6 @@ from app.security import hash_password
 # ------------------------------------------------------------------
 
 
-def _place_of(org: Organisation) -> int:
-    """The organisation's own row in the tree.
-
-    The admin paths name a place now. An organisation always has one —
-    the model writes it — so the check is for the type checker rather
-    than for a state that happens.
-    """
-    place_id = org.org_unit_id
-    assert place_id is not None
-    return place_id
-
-
 def _place_of_id(db: Session, org_id: int) -> int:
     """The place an organisation id names.
 
@@ -408,7 +396,7 @@ class TestQuestionBanks:
         _make_learner(db_session, org)
         db_session.add(
             ModuleMediaLink(
-                org_unit_id=_place_of(org),
+                org_unit_id=org.org_unit_id,
                 question_bank_id="test-bank",
                 media_key="lecture-01",
                 asset_id="asset-1",
@@ -454,7 +442,7 @@ class TestQuestionBanks:
         _make_learner(db_session, org)
         db_session.add(
             ModuleMediaLink(
-                org_unit_id=_place_of(org),
+                org_unit_id=org.org_unit_id,
                 question_bank_id="test-bank",
                 media_key="lecture-01",
                 asset_id="asset-1",
@@ -1111,14 +1099,14 @@ class TestPromotingAVersion:
     def _url(self, org: Organisation) -> str:
         return (
             f"/api/teaching/admin/banks/test-bank"
-            f"/places/{_place_of(org)}/active-version"
+            f"/places/{org.org_unit_id}/active-version"
         )
 
     def _with_two_versions(self, db_session, org, educator) -> None:
         _seed_bank(db_session, org.id, educator.id)
         db_session.add(
             QuestionBankConfig(
-                org_unit_id=_place_of(org),
+                org_unit_id=org.org_unit_id,
                 question_bank_id="test-bank",
                 version=2,
                 title="Test Bank",
@@ -1134,7 +1122,7 @@ class TestPromotingAVersion:
         return (
             db_session.query(QuestionBankOrgStatus)
             .filter_by(
-                org_unit_id=_place_of(org), question_bank_id="test-bank"
+                org_unit_id=org.org_unit_id, question_bank_id="test-bank"
             )
             .one()
         )
@@ -1209,7 +1197,7 @@ class TestPromotingAVersion:
         db_session.flush()
         db_session.add(
             QuestionBankConfig(
-                org_unit_id=_place_of(other),
+                org_unit_id=other.org_unit_id,
                 question_bank_id="test-bank",
                 version=5,
                 title="Test Bank",
@@ -1326,7 +1314,7 @@ class TestAdminViewsShowBothVersions:
         _seed_bank(db_session, org.id, educator.id)
         db_session.add(
             QuestionBankConfig(
-                org_unit_id=_place_of(org),
+                org_unit_id=org.org_unit_id,
                 question_bank_id="test-bank",
                 version=2,
                 title="Test Bank",
@@ -1352,7 +1340,7 @@ class TestAdminViewsShowBothVersions:
         _seed_bank(db_session, org.id, educator.id)
         db_session.add(
             QuestionBankConfig(
-                org_unit_id=_place_of(org),
+                org_unit_id=org.org_unit_id,
                 question_bank_id="test-bank",
                 version=2,
                 title="Test Bank",
@@ -1384,7 +1372,7 @@ class TestAdminViewsShowBothVersions:
         status = (
             db_session.query(QuestionBankOrgStatus)
             .filter_by(
-                org_unit_id=_place_of(org), question_bank_id="test-bank"
+                org_unit_id=org.org_unit_id, question_bank_id="test-bank"
             )
             .one()
         )
@@ -1407,7 +1395,7 @@ class TestAdminViewsShowBothVersions:
         status = (
             db_session.query(QuestionBankOrgStatus)
             .filter_by(
-                org_unit_id=_place_of(org), question_bank_id="test-bank"
+                org_unit_id=org.org_unit_id, question_bank_id="test-bank"
             )
             .one()
         )
@@ -1431,7 +1419,7 @@ class TestCandidateQueriesFollowThePointer:
     def _add_version(self, db_session, org, educator, version: int) -> None:
         db_session.add(
             QuestionBankConfig(
-                org_unit_id=_place_of(org),
+                org_unit_id=org.org_unit_id,
                 question_bank_id="test-bank",
                 version=version,
                 title=f"Test Bank v{version}",
@@ -1485,7 +1473,7 @@ class TestCandidateQueriesFollowThePointer:
         status = (
             db_session.query(QuestionBankOrgStatus)
             .filter_by(
-                org_unit_id=_place_of(org), question_bank_id="test-bank"
+                org_unit_id=org.org_unit_id, question_bank_id="test-bank"
             )
             .one()
         )
@@ -1510,7 +1498,7 @@ class TestCandidateQueriesFollowThePointer:
         for i in range(3):
             db_session.add(
                 QuestionBankItem(
-                    org_unit_id=_place_of(org),
+                    org_unit_id=org.org_unit_id,
                     question_bank_id="test-bank",
                     bank_version=2,
                     status="published",
@@ -1548,7 +1536,7 @@ class TestCandidateQueriesFollowThePointer:
         status = (
             db_session.query(QuestionBankOrgStatus)
             .filter_by(
-                org_unit_id=_place_of(org), question_bank_id="test-bank"
+                org_unit_id=org.org_unit_id, question_bank_id="test-bank"
             )
             .one()
         )
@@ -1576,7 +1564,7 @@ class TestBankOrgSettingsSetTheActiveVersion:
     def _settings_url(self, org: Organisation) -> str:
         return (
             f"/api/teaching/admin/banks/test-bank"
-            f"/places/{_place_of(org)}/settings"
+            f"/places/{org.org_unit_id}/settings"
         )
 
     def test_creating_the_row_pins_the_current_version(
@@ -1599,7 +1587,7 @@ class TestBankOrgSettingsSetTheActiveVersion:
         row = (
             db_session.query(QuestionBankOrgStatus)
             .filter_by(
-                org_unit_id=_place_of(org), question_bank_id="test-bank"
+                org_unit_id=org.org_unit_id, question_bank_id="test-bank"
             )
             .one()
         )
@@ -1619,14 +1607,14 @@ class TestBankOrgSettingsSetTheActiveVersion:
         row = (
             db_session.query(QuestionBankOrgStatus)
             .filter_by(
-                org_unit_id=_place_of(org), question_bank_id="test-bank"
+                org_unit_id=org.org_unit_id, question_bank_id="test-bank"
             )
             .one()
         )
         row.active_version = 1
         db_session.add(
             QuestionBankConfig(
-                org_unit_id=_place_of(org),
+                org_unit_id=org.org_unit_id,
                 question_bank_id="test-bank",
                 version=2,
                 title="Test Bank",
@@ -1660,7 +1648,7 @@ class TestBankOrgSettingsSetTheActiveVersion:
         for version in (2, 3):
             db_session.add(
                 QuestionBankConfig(
-                    org_unit_id=_place_of(org),
+                    org_unit_id=org.org_unit_id,
                     question_bank_id="test-bank",
                     version=version,
                     title="Test Bank",
@@ -1682,7 +1670,7 @@ class TestBankOrgSettingsSetTheActiveVersion:
         row = (
             db_session.query(QuestionBankOrgStatus)
             .filter_by(
-                org_unit_id=_place_of(org), question_bank_id="test-bank"
+                org_unit_id=org.org_unit_id, question_bank_id="test-bank"
             )
             .one()
         )
@@ -1701,7 +1689,7 @@ class TestBankOrgSettingsAreScopedToYourOrganisations:
     def _settings_url(self, org: Organisation) -> str:
         return (
             f"/api/teaching/admin/banks/test-bank"
-            f"/places/{_place_of(org)}/settings"
+            f"/places/{org.org_unit_id}/settings"
         )
 
     def test_settings_for_an_organisation_you_are_not_in_are_refused(
@@ -1726,7 +1714,7 @@ class TestBankOrgSettingsAreScopedToYourOrganisations:
         # belong to — a 403 that still wrote would be no fix at all.
         assert (
             db_session.query(QuestionBankOrgStatus)
-            .filter_by(org_unit_id=_place_of(other))
+            .filter_by(org_unit_id=other.org_unit_id)
             .count()
             == 0
         )
@@ -1764,7 +1752,7 @@ class TestBankOrgSettingsAreScopedToYourOrganisations:
         row = (
             db_session.query(QuestionBankOrgStatus)
             .filter_by(
-                org_unit_id=_place_of(second), question_bank_id="test-bank"
+                org_unit_id=second.org_unit_id, question_bank_id="test-bank"
             )
             .one()
         )
@@ -1832,7 +1820,7 @@ class TestAdminBanks:
         }
 
         config = QuestionBankConfig(
-            org_unit_id=_place_of(org),
+            org_unit_id=org.org_unit_id,
             question_bank_id="test-bank",
             version=1,
             title="Test Bank",
@@ -1845,7 +1833,7 @@ class TestAdminBanks:
         db_session.flush()
         db_session.add(
             QuestionBankOrgStatus(
-                org_unit_id=_place_of(org),
+                org_unit_id=org.org_unit_id,
                 question_bank_id="test-bank",
                 is_live=True,
             )
@@ -1914,7 +1902,7 @@ def _slides_for_linked_video(
     _make_learner(db_session, org)
     db_session.add(
         ModuleMediaLink(
-            org_unit_id=_place_of(org),
+            org_unit_id=org.org_unit_id,
             question_bank_id="test-bank",
             media_key="lecture-01",
             asset_id="asset1",
@@ -3445,7 +3433,7 @@ class TestIncompleteModulesAreNotServed:
         lacks = _make_teaching_org(db_session)
         db_session.add(
             QuestionBankOrgStatus(
-                org_unit_id=_place_of(lacks),
+                org_unit_id=lacks.org_unit_id,
                 question_bank_id="test-bank",
                 is_live=True,
                 active_version=1,
@@ -3709,7 +3697,7 @@ class TestVideoResolutionOnTheGcsPath:
         _make_learner(db_session, org)
         db_session.add(
             ModuleMediaLink(
-                org_unit_id=_place_of(org),
+                org_unit_id=org.org_unit_id,
                 question_bank_id="test-bank",
                 media_key="lecture-01",
                 asset_id="asset1",
