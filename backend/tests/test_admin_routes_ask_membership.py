@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import insert
+from sqlalchemy import insert, update
 from sqlalchemy.orm import Session
 
 from app.models import (
@@ -33,7 +33,6 @@ from app.models import (
     Site,
     User,
     organisation_member,
-    organisation_site,
     site_member,
 )
 from app.security import hash_password
@@ -72,9 +71,7 @@ def site(db_session: Session, org: Organisation) -> Site:
     db_session.commit()
     db_session.refresh(site)
     db_session.execute(
-        insert(organisation_site).values(
-            organisation_id=org.id, site_id=site.id
-        )
+        update(Site).where(Site.id == site.id).values(organisation_id=org.id)
     )
     db_session.commit()
     return site

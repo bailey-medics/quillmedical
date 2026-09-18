@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.cbac.positions import set_clinical_lead
@@ -12,7 +12,6 @@ from app.models import (
     Site,
     User,
     organisation_member,
-    organisation_site,
     site_member,
 )
 from app.security import hash_password
@@ -32,9 +31,7 @@ def _setup_org_with_site_and_lead(
 
     # Link site to org
     db.execute(
-        organisation_site.insert().values(
-            organisation_id=org.id, site_id=site.id
-        )
+        update(Site).where(Site.id == site.id).values(organisation_id=org.id)
     )
     db.flush()
 
@@ -180,9 +177,9 @@ class TestValidateClinicalLead:
         db_session.add(other_site)
         db_session.flush()
         db_session.execute(
-            organisation_site.insert().values(
-                organisation_id=other_org.id, site_id=other_site.id
-            )
+            update(Site)
+            .where(Site.id == other_site.id)
+            .values(organisation_id=other_org.id)
         )
 
         other_lead = User(

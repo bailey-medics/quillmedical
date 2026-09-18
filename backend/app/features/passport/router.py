@@ -62,9 +62,9 @@ from app.deps import has_competency
 from app.email_send import EmailRateLimitError, send_email
 from app.features.gating import requires_feature
 from app.models import (
+    Site,
     User,
     organisation_member,
-    organisation_site,
     site_member,
 )
 from app.organisations import get_member_org_ids, get_reachable_org_ids
@@ -2388,14 +2388,11 @@ def revoke_assessor_membership(
     # place, so that is where an invited assessor usually sits.
     site_id = db.scalar(
         select(site_member.c.site_id)
-        .join(
-            organisation_site,
-            organisation_site.c.site_id == site_member.c.site_id,
-        )
+        .join(Site, Site.id == site_member.c.site_id)
         .where(
             site_member.c.user_id == assessor_user_id,
             site_member.c.capacity == "external",
-            organisation_site.c.organisation_id == organisation_id,
+            Site.organisation_id == organisation_id,
         )
     )
 

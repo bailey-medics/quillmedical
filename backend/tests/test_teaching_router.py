@@ -10,6 +10,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi import HTTPException
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from app.features.teaching.models import (
@@ -27,7 +28,6 @@ from app.models import (
     Site,
     User,
     organisation_member,
-    organisation_site,
     site_member,
 )
 from app.security import hash_password
@@ -2219,9 +2219,9 @@ class TestLearningContentGate:
         db_session.add(site)
         db_session.flush()
         db_session.execute(
-            organisation_site.insert().values(
-                organisation_id=org.id, site_id=site.id
-            )
+            update(Site)
+            .where(Site.id == site.id)
+            .values(organisation_id=org.id)
         )
         db_session.execute(
             site_member.insert().values(

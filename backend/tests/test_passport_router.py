@@ -39,7 +39,7 @@ import pytest
 from fastapi.testclient import TestClient
 from httpx import Response
 from jose import jwt
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app import main
@@ -60,7 +60,6 @@ from app.models import (
     Site,
     User,
     organisation_member,
-    organisation_site,
     site_member,
 )
 from app.passport_storage import get_blob_store, get_passport_store
@@ -1204,9 +1203,9 @@ class TestAcceptingAnInvitation:
         db_session.commit()
         db_session.refresh(site)
         db_session.execute(
-            organisation_site.insert().values(
-                organisation_id=org.id, site_id=site.id
-            )
+            update(Site)
+            .where(Site.id == site.id)
+            .values(organisation_id=org.id)
         )
         db_session.execute(
             site_member.insert().values(
@@ -1320,7 +1319,7 @@ class TestTheGateResolvesForAnAcceptedAssessor:
     """The membership the accept endpoint writes is what lets them in.
 
     ``requires_feature`` unions organisation membership with site
-    membership resolved through ``organisation_site``, and reads no
+    membership resolved through the site's organisation, and reads no
     capacity at all — so an ``external`` member passes exactly as a
     ``staff`` one does. That is the whole reason no sibling gate is
     needed, and it is pinned here rather than reasoned about, because
@@ -1409,7 +1408,7 @@ class TestTheGateResolvesForAnAcceptedAssessor:
         """The feature is enabled on the organisation, not the site.
 
         So this only works because ``requires_feature`` joins
-        ``organisation_site`` back up to the organisation. A site
+        the site's own organisation column. A site
         membership alone would otherwise resolve to nothing.
         """
         site = Site(name="Ward 11", type="ward")
@@ -1417,9 +1416,9 @@ class TestTheGateResolvesForAnAcceptedAssessor:
         db_session.commit()
         db_session.refresh(site)
         db_session.execute(
-            organisation_site.insert().values(
-                organisation_id=org.id, site_id=site.id
-            )
+            update(Site)
+            .where(Site.id == site.id)
+            .values(organisation_id=org.id)
         )
         db_session.execute(
             site_member.insert().values(

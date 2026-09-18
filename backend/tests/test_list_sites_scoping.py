@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import insert
+from sqlalchemy import insert, update
 from sqlalchemy.orm import Session
 
 from app.models import (
@@ -25,7 +25,6 @@ from app.models import (
     Site,
     User,
     organisation_member,
-    organisation_site,
 )
 
 
@@ -43,9 +42,9 @@ def _site(db: Session, name: str, org: Organisation | None = None) -> Site:
     db.commit()
     if org is not None:
         db.execute(
-            insert(organisation_site).values(
-                organisation_id=org.id, site_id=site.id
-            )
+            update(Site)
+            .where(Site.id == site.id)
+            .values(organisation_id=org.id)
         )
         db.commit()
     db.refresh(site)

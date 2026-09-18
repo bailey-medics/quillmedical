@@ -23,10 +23,10 @@ from sqlalchemy.orm import Session
 
 from app.models import (
     ExternalPatientAccess,
+    Site,
     User,
     organisation_member,
     organisation_patient_member,
-    organisation_site,
     site_member,
     validate_member_capacity,
 )
@@ -89,12 +89,12 @@ def get_reachable_org_ids(
         Organisation IDs, ascending.
     """
     via_site = (
-        select(organisation_site.c.organisation_id)
-        .join(
-            site_member,
-            site_member.c.site_id == organisation_site.c.site_id,
+        select(Site.organisation_id)
+        .join(site_member, site_member.c.site_id == Site.id)
+        .where(
+            site_member.c.user_id == user_id,
+            Site.organisation_id.is_not(None),
         )
-        .where(site_member.c.user_id == user_id)
     )
     if capacity is not None:
         via_site = via_site.where(
