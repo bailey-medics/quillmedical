@@ -31,7 +31,6 @@ import { BodyText, BodyTextInline, Heading } from "@/components/typography";
 import { TeachingProgressBar } from "@/components/teaching/teaching-progress-bar";
 import type { MediaAsset, ModuleMedia } from "@/features/teaching/types";
 import MediaDropzone from "./MediaDropzone";
-import { formatSize } from "./mediaFormat";
 
 export interface ModuleMediaCardProps {
   /** References and uploads for one module, from the media endpoint. */
@@ -46,6 +45,14 @@ export interface ModuleMediaCardProps {
   liveOrganisations?: string[];
   /** Upload progress 0–100 for one reference key, while in flight. */
   uploadProgress?: Record<string, number>;
+  /**
+   * Name of the file being uploaded, per reference key.
+   *
+   * Comes from the dropped file, because the asset it will become does
+   * not exist until the upload finishes. Without it the row can only
+   * say something is on its way, not what.
+   */
+  uploadNames?: Record<string, string>;
   /** Called with the file dropped against a reference key. */
   onUpload?: (key: string, file: File) => void;
   /** Called once the admin has confirmed removing an asset. */
@@ -81,6 +88,7 @@ export default function ModuleMediaCard({
   media,
   liveOrganisations = [],
   uploadProgress = {},
+  uploadNames = {},
   onUpload,
   onDelete,
   onEditCaptions,
@@ -186,18 +194,25 @@ export default function ModuleMediaCard({
 
                 return (
                   <Stack gap={4}>
-                    {row.asset ? (
-                      <>
-                        <BodyTextInline>
-                          {row.asset.original_filename}
-                        </BodyTextInline>
-                        <BodyTextInline>
-                          {formatSize(row.asset.size_bytes)}
-                        </BodyTextInline>
-                      </>
-                    ) : (
-                      <BodyTextInline>Sending the file…</BodyTextInline>
-                    )}
+                    {/* The name only, and the same name throughout: an
+                        upload in flight shows the dropped file's name
+                        rather than "Sending the file…", so the row does
+                        not rename itself the moment the upload lands.
+                        The fallback covers a caller that gives progress
+                        without a name.
+
+                        The size is deliberately absent. It answered a
+                        question nobody asks here: it cannot be acted
+                        on, it does not tell two videos apart the way
+                        the name does, and it competed with the status
+                        line beneath it. Size still appears where it
+                        decides something — the message refusing a file
+                        too large to upload. */}
+                    <BodyTextInline>
+                      {row.asset?.original_filename ??
+                        uploadNames[row.key] ??
+                        "Sending the file…"}
+                    </BodyTextInline>
 
                     {percent !== undefined ? (
                       <>

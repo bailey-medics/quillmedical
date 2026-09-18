@@ -8,6 +8,7 @@
 
 import { Group, Progress } from "@mantine/core";
 import { BodyText } from "@/components/typography";
+import classes from "./TeachingProgressBar.module.css";
 
 interface TeachingProgressBarProps {
   /** Current position (1-based) */
@@ -53,8 +54,13 @@ export function TeachingProgressBar({
     total > 0 ? Math.min(100, Math.max(0, (position / total) * 100)) : 0;
 
   return (
-    <Group gap="sm" align="center">
-      <Progress value={percentage} size="xl" radius="xl" style={{ flex: 1 }} />
+    <Group gap="sm" align="center" className={classes.root} wrap="nowrap">
+      <Progress
+        value={percentage}
+        size="xl"
+        radius="xl"
+        className={classes.bar}
+      />
       {showCount && (
         <BodyText>
           {current} of {total}

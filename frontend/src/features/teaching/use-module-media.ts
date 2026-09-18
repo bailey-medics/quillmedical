@@ -26,6 +26,14 @@ export interface ModuleMediaState {
   error: string | null;
   /** Percent complete per reference key, while an upload is in flight. */
   uploadProgress: Record<string, number>;
+  /**
+   * Name of the file being uploaded, per reference key.
+   *
+   * Taken from the dropped file rather than the asset, which does not
+   * exist until the upload finishes and the link is recorded. Without
+   * it the row can only say that something is on its way, not what.
+   */
+  uploadNames: Record<string, string>;
   upload: (key: string, file: File) => Promise<void>;
   remove: (assetId: string) => Promise<void>;
   /**
@@ -199,6 +207,7 @@ export function useModuleMedia(
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>(
     {},
   );
+  const [uploadNames, setUploadNames] = useState<Record<string, string>>({});
 
   const refresh = useCallback(async () => {
     if (!moduleId) return;
@@ -272,6 +281,7 @@ export function useModuleMedia(
       if (!moduleId) return;
       setError(null);
       setUploadProgress((p) => ({ ...p, [key]: 0 }));
+      setUploadNames((n) => ({ ...n, [key]: file.name }));
 
       try {
         const grant = await api.post<MediaUploadUrl>(
@@ -309,6 +319,11 @@ export function useModuleMedia(
         // the row to a dropzone rather than a bar stuck at 60%.
         setUploadProgress((p) => {
           const next = { ...p };
+          delete next[key];
+          return next;
+        });
+        setUploadNames((n) => {
+          const next = { ...n };
           delete next[key];
           return next;
         });
@@ -384,6 +399,7 @@ export function useModuleMedia(
       loading: false,
       error: null,
       uploadProgress: {},
+      uploadNames: {},
       upload,
       remove,
       loadCaptions,
@@ -396,6 +412,7 @@ export function useModuleMedia(
     loading,
     error,
     uploadProgress,
+    uploadNames,
     upload,
     remove,
     loadCaptions,

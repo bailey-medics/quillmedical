@@ -52,6 +52,16 @@ describe("ModuleMediaCard", () => {
     ).toBeInTheDocument();
   });
 
+  it("does not show the file size", () => {
+    // It cannot be acted on, it does not tell two videos apart the way
+    // the name does, and it competed with the status line beneath it.
+    // Size still appears where it decides something: the message
+    // refusing a file too large to upload.
+    renderWithMantine(<ModuleMediaCard media={complete} />);
+
+    expect(screen.queryByText("900 MB")).toBeNull();
+  });
+
   it("shows no warning when every reference is linked", () => {
     renderWithMantine(<ModuleMediaCard media={complete} />);
 
@@ -317,12 +327,52 @@ describe("ModuleMediaCard", () => {
           is_complete: false,
         }}
         uploadProgress={{ "lecture-01": 42 }}
+        uploadNames={{ "lecture-01": "EoEETA_Colonoscopy_FINAL_v3.mp4" }}
       />,
     );
 
     expect(screen.getByText("Uploading")).toBeInTheDocument();
-    expect(screen.getByText("Sending the file…")).toBeInTheDocument();
     expect(screen.queryByText(/\d+ of \d+/)).toBeNull();
+  });
+
+  it("names the file while it is still uploading", async () => {
+    // The row shows the same name throughout rather than renaming
+    // itself from "Sending the file…" the moment the upload lands.
+    renderWithMantine(
+      <ModuleMediaCard
+        media={{
+          module_id: "mod-1",
+          references: [{ key: "lecture-01", asset: null }],
+          unattached: [],
+          is_complete: false,
+        }}
+        uploadProgress={{ "lecture-01": 42 }}
+        uploadNames={{ "lecture-01": "EoEETA_Colonoscopy_FINAL_v3.mp4" }}
+      />,
+    );
+
+    expect(
+      screen.getByText("EoEETA_Colonoscopy_FINAL_v3.mp4"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Sending the file…")).toBeNull();
+  });
+
+  it("still says something when the name is unknown", async () => {
+    // A caller giving progress without a name should not leave the row
+    // blank where the file should be.
+    renderWithMantine(
+      <ModuleMediaCard
+        media={{
+          module_id: "mod-1",
+          references: [{ key: "lecture-01", asset: null }],
+          unattached: [],
+          is_complete: false,
+        }}
+        uploadProgress={{ "lecture-01": 42 }}
+      />,
+    );
+
+    expect(screen.getByText("Sending the file…")).toBeInTheDocument();
   });
 
   it("shows what went wrong", () => {

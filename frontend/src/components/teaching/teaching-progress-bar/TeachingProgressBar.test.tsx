@@ -23,6 +23,24 @@ describe("TeachingProgressBar", () => {
     );
   });
 
+  it("carries the classes that make it fill its container", () => {
+    // Without these the row shrinks to its widest neighbour, so in a
+    // narrow table cell the same bar was full width beside a long file
+    // name and half width beside a short line of text.
+    //
+    // Only the classes are checked: jsdom does not lay anything out,
+    // so an assertion about actual width here would pass whatever the
+    // stylesheet said. The widths themselves are a Storybook check.
+    renderWithMantine(<TeachingProgressBar current={1} total={4} />);
+
+    // The bar's own element, then the row holding it. Walked from the
+    // bar rather than from the container, whose first child is the
+    // style tag Mantine injects.
+    const bar = screen.getByRole("progressbar");
+    expect(bar.parentElement?.className).toMatch(/bar/);
+    expect(bar.parentElement?.parentElement?.className).toMatch(/root/);
+  });
+
   it("hides the count when asked", () => {
     // The video card's stages are internal machinery, not something a
     // person works through, so "0 of 4" only invites the question of
