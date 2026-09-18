@@ -73,8 +73,7 @@ def _authorise(
     db.add(
         PractisingCompetency(
             user_id=user.id,
-            organisation_id=org.id if org else None,
-            site_id=site.id if site else None,
+            site_id=org.org_unit_id if org else (site.id if site else None),
             competency=competency,
         )
     )
@@ -91,8 +90,7 @@ def _post(
     kind: str = "clinical_lead",
 ) -> Position:
     post = Position(
-        organisation_id=org.id if org else None,
-        site_id=site.id if site else None,
+        site_id=org.org_unit_id if org else (site.id if site else None),
         kind=kind,
         title="Clinical lead",
         requires_competency=requires,
@@ -341,20 +339,19 @@ class TestThePostOutlivesItsHolders:
 class TestThePostBelongsToOnePlace:
     """The same constraint as a practising competency, for the same reason."""
 
-    def test_naming_both_places_is_refused(self, db_session):
+    def test_there_is_only_one_place_column(self, db_session):
+        """Two columns became one when the two tables of places merged.
+
+        Naming an organisation now means naming its own row in the tree,
+        so a post cannot be at two places by writing to two columns.
+        """
         org = _org(db_session)
-        site = _site(db_session)
-        db_session.add(
+        with pytest.raises(TypeError):
             Position(
                 organisation_id=org.id,
-                site_id=site.id,
                 kind="clinical_lead",
                 title="Clinical lead",
             )
-        )
-        with pytest.raises(IntegrityError):
-            db_session.commit()
-        db_session.rollback()
 
     def test_naming_no_place_is_refused(self, db_session):
         db_session.add(Position(kind="clinical_lead", title="Clinical lead"))

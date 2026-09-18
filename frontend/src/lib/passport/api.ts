@@ -36,6 +36,7 @@
 
 import { api } from "@lib/api";
 import type {
+  AssessorSearch,
   AssessorInvite,
   AssessorInviteAccept,
   AssessorInviteAcceptInput,
@@ -154,6 +155,21 @@ export function fetchPassport(passportId: string): Promise<PassportDetail> {
  */
 export function fetchInbox(): Promise<InboxItem[]> {
   return api.get<InboxItem[]>("/passport/requests/inbox");
+}
+
+/**
+ * Find somebody on Quill who might be the assessor being named.
+ *
+ * Matches an email address, a username or a full name, because a holder
+ * knows the person rather than which identifier Quill files them under.
+ * Finding nobody is an ordinary answer: the assessor who observed the
+ * work is often at another trust and has never used Quill, which is the
+ * case the whole flow exists for.
+ */
+export function searchAssessors(term: string): Promise<AssessorSearch> {
+  return api.get<AssessorSearch>(
+    `/passport/assessors/search?q=${encodeURIComponent(term)}`,
+  );
 }
 
 /**

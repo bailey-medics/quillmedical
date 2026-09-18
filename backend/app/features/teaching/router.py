@@ -99,7 +99,11 @@ from app.models import (
     OrganisationFeature,
     User,
 )
-from app.organisations import get_member_org_ids, get_reachable_org_ids
+from app.organisations import (
+    get_member_org_ids,
+    get_reachable_org_ids,
+    organisation_member,
+)
 from app.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
@@ -1634,22 +1638,19 @@ def _maybe_enqueue_certificate_emails(
     if email_coordinator:
         coord_template = extract_email_template(config, "coordinator_email")
         if coord_template:
-            from app.models import Site
+            from app.org_units.tree import site_ids_of_organisations
 
-            # Whoever holds the clinical lead post at a site belonging to
-            # this organisation. Read from the post rather than a role on
-            # a staff row: a post can be vacant, and a vacancy must mean
+            # Whoever holds the clinical lead post at a place beneath this
+            # organisation. Read from the post rather than a role on a
+            # staff row: a post can be vacant, and a vacancy must mean
             # nobody is emailed rather than the wrong person.
-            org_site_ids = [
-                int(site_id)
-                for site_id in db.execute(
-                    select(Site.id).where(
-                        Site.organisation_id == assessment.organisation_id
-                    )
-                )
-                .scalars()
-                .all()
-            ]
+            #
+            # An exact match on one place, with no walk up the tree: a
+            # ward does not inherit its hospital's lead, and implying it
+            # did would email the wrong person without raising anything.
+            org_site_ids = site_ids_of_organisations(
+                db, [assessment.organisation_id]
+            )
             lead_ids = set(clinical_leads_of(db, org_site_ids).values())
             clinical_leads = (
                 list(
@@ -2527,7 +2528,8 @@ def list_delegates(
     (either direct org staff or site staff), with their latest
     assessment result if they have one.
     """
-    from app.models import Site, organisation_member, site_member
+    from app.models import Site, site_member
+    from app.org_units.tree import site_ids_of_organisations
 
     # Which organisations the caller is a member of. Direct membership,
     # not reach: this route lists the people *below* the caller, so a
@@ -2546,12 +2548,13 @@ def list_delegates(
         ).all()
     )
 
+    caller_site_ids = site_ids_of_organisations(db, caller_org_ids)
     site_member_ids = set(
         row[0]
         for row in db.execute(
-            select(site_member.c.user_id)
-            .join(Site, Site.id == site_member.c.site_id)
-            .where(Site.organisation_id.in_(caller_org_ids))
+            select(site_member.c.user_id).where(
+                site_member.c.site_id.in_(caller_site_ids)
+            )
         ).all()
     )
 
@@ -2615,7 +2618,7 @@ def list_delegates(
             .where(
                 site_member.c.user_id == uid,
                 site_member.c.capacity == "trainee",
-                Site.organisation_id.in_(caller_org_ids),
+                Site.id.in_(caller_site_ids),
             )
         ).first()
 
@@ -3075,7 +3078,7 @@ def list_bank_organisations(
             select(Organisation)
             .join(
                 OrganisationFeature,
-                OrganisationFeature.organisation_id == Organisation.id,
+                OrganisationFeature.org_unit_id == Organisation.org_unit_id,
             )
             .where(OrganisationFeature.feature_key == "teaching")
             .order_by(Organisation.name)

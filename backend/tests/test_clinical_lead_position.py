@@ -22,9 +22,9 @@ from app.models import (
     PositionHolding,
     Site,
     User,
-    organisation_member,
     site_member,
 )
+from app.organisations import add_organisation_member
 from app.security import hash_password
 
 
@@ -48,13 +48,11 @@ def _org_with_site(db: Session, admin: User) -> tuple[Organisation, Site]:
     db.add_all([org, site])
     db.commit()
     db.execute(
-        update(Site).where(Site.id == site.id).values(organisation_id=org.id)
+        update(Site)
+        .where(Site.id == site.id)
+        .values(parent_id=org.org_unit_id)
     )
-    db.execute(
-        insert(organisation_member).values(
-            organisation_id=org.id, user_id=admin.id
-        )
-    )
+    add_organisation_member(db, org.id, admin.id, "trainee")
     db.commit()
     return org, site
 

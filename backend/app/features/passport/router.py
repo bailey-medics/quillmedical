@@ -53,7 +53,7 @@ from fastapi import (
     Response,
     UploadFile,
 )
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -64,17 +64,24 @@ from app.features.gating import requires_feature
 from app.models import (
     Site,
     User,
-    organisation_member,
     site_member,
 )
-from app.organisations import get_member_org_ids, get_reachable_org_ids
+from app.org_units.tree import site_ids_of_organisations
+from app.org_units.types import ORGANISATION_TYPE
+from app.organisations import (
+    add_organisation_member,
+    get_member_org_ids,
+    get_reachable_org_ids,
+    organisation_member,
+    remove_organisation_member,
+)
 from app.passport_storage import get_blob_store, get_passport_store
 from app.schemas.passport import (
     AssessorInviteAcceptIn,
     AssessorInviteAcceptOut,
-    AssessorInviteIn,
-    AssessorInviteOut,
+    AssessorMatchOut,
     AssessorRevokeOut,
+    AssessorSearchOut,
     AttachmentIn,
     CertificateIn,
     CertificateOut,
@@ -375,20 +382,48 @@ def _require_holder(db: Session, passport_id: str, user: User) -> Passport:
 
 
 def _require_reader(db: Session, passport_id: str, user: User) -> Passport:
-    """Require that the caller may read this passport.
+    """Require that the caller may read this passport as a whole.
 
-    The holder, or somebody named on a request against it. Organisation
-    admins are deliberately not included yet: how "admin of the holder's
-    organisation" is evaluated is being settled by the org-scoped access
-    plan, and inventing a scope here that that plan then changes would be
-    worse than leaving the narrower rule in place.
+    **The holder alone.** An assessor is named on one request and may
+    read that sign-off, which :func:`_require_signoff_reader` allows —
+    but the whole record is a different thing. Somebody asked to judge a
+    bronchoscopy has no business reading a year of CPD, a logbook of
+    every procedure, or the sign-offs another assessor declined.
+
+    This used to admit any named assessor, and the gap was invisible
+    while an assessor arrived by invitation and was named on nothing.
+    Asking for a sign-off is now what brings them in, so every assessor
+    is named on a request and the whole passport was open to them.
+
+    Organisation admins are deliberately not included: how "admin of the
+    holder's organisation" is evaluated is being settled by the
+    org-scoped access plan, and the wider reading role that plan
+    describes is Phase 10 of the passport plan, not something to invent
+    here.
     """
     row = _passport_row(db, passport_id)
 
     if row.user_id == user.id:
         return row
 
-    if _is_named_assessor(db, passport_id, user):
+    raise HTTPException(404, "Passport not found")
+
+
+def _require_signoff_reader(
+    db: Session, passport_id: str, signoff_id: str, user: User
+) -> Passport:
+    """Require that the caller may read *this* sign-off.
+
+    The holder, or the assessor named on this particular request. The
+    ``signoff_id`` is what keeps it narrow: being asked about one
+    competency does not open the others.
+    """
+    row = _passport_row(db, passport_id)
+
+    if row.user_id == user.id:
+        return row
+
+    if _is_named_assessor(db, passport_id, user, signoff_id=signoff_id):
         return row
 
     raise HTTPException(404, "Passport not found")
@@ -599,8 +634,8 @@ def _requests_today(db: Session, passport_id: str) -> int:
     Counted for the same reason invitations are, and alongside them:
     asking now sends mail to an address somebody typed, so a limit on
     one and not the other is no limit at all. A rolling twenty-four
-    hours, matching :func:`_invites_today` — a calendar day would let
-    twice the limit go out either side of midnight.
+    hours rather than a calendar day, which would let twice the limit
+    go out either side of midnight.
     """
     since = _now() - timedelta(days=1)
 
@@ -707,6 +742,92 @@ def _email_sign_off_request(
         )
 
 
+#: How many people a search will name at once. A trainee looking for
+#: their consultant needs a handful; anything longer is a directory, and
+#: a directory is not what this route is for.
+ASSESSOR_SEARCH_LIMIT = 10
+
+#: Below this, a search is refused rather than answered. Two characters
+#: would match a large share of any staff list, which turns a field for
+#: finding one known person into a way of reading the whole of it.
+ASSESSOR_SEARCH_MIN = 3
+
+
+@passport_router.get(
+    "/assessors/search",
+    response_model=AssessorSearchOut,
+    dependencies=[_DEP_PASSPORT],
+)
+def search_assessors(
+    q: str,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+) -> AssessorSearchOut:
+    """Find somebody who might be the assessor being named.
+
+    Matches an email address, a username or a full name, because a
+    trainee knows the person rather than which identifier Quill files
+    them under.
+
+    **Finding nobody is an ordinary answer.** The assessor who observed
+    the work is often at another trust or has never used Quill, and that
+    is the case this flow exists for — so an empty list is success, and
+    the caller goes on to ask by the address they typed.
+
+    **This is not a directory.** It answers a search somebody already
+    knows the answer to, and the guards say so: a minimum length, a hard
+    limit on how many come back, and the caller's own account excluded
+    because nobody assesses themselves.
+    """
+    term = q.strip()
+
+    if len(term) < ASSESSOR_SEARCH_MIN:
+        raise HTTPException(
+            400,
+            (
+                f"Type at least {ASSESSOR_SEARCH_MIN} characters to "
+                "search for an assessor."
+            ),
+        )
+
+    like = f"%{term}%"
+
+    rows = (
+        db.execute(
+            select(User)
+            .where(
+                User.is_active.is_(True),
+                User.id != user.id,
+                or_(
+                    User.email.ilike(like),
+                    User.username.ilike(like),
+                    User.full_name.ilike(like),
+                ),
+            )
+            .order_by(User.username)
+            .limit(ASSESSOR_SEARCH_LIMIT)
+        )
+        .unique()
+        .scalars()
+        .all()
+    )
+
+    return AssessorSearchOut(
+        matches=[
+            AssessorMatchOut(
+                user_id=row.id,
+                username=row.username,
+                full_name=row.full_name,
+                email=row.email,
+                registrations=[
+                    RegistrationOut(**reg) for reg in _registration_dicts(row)
+                ],
+            )
+            for row in rows
+        ]
+    )
+
+
 @passport_router.post(
     "/{passport_id}/competencies/{competency_id}/requests",
     response_model=SignOffResultOut,
@@ -746,12 +867,12 @@ def request_sign_off(
 
     # The same backstop the invite route carries, for the same reason:
     # this route now sends mail to an address somebody typed, so without
-    # it the invite limit is bypassed by asking for sign-offs instead of
-    # inviting. Counted together, because to a recipient they are the
-    # same unsolicited mail from the same holder.
-    if _requests_today(db, row.id) + _invites_today(db, row.id) >= (
-        INVITES_PER_DAY
-    ):
+    # it a holder could mail an unbounded number of strangers in Quill's
+    # name. Requests alone are the whole count: asking is now the only
+    # thing that sends this mail, and an invitation is minted by an ask
+    # rather than beside one — so adding the two together would charge a
+    # single ask twice and halve the limit without saying so.
+    if _requests_today(db, row.id) >= INVITES_PER_DAY:
         raise HTTPException(
             429,
             (
@@ -826,8 +947,8 @@ def get_sign_off(
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
 ) -> SignOffOut:
-    """One sign-off in full, for anyone who may read it."""
-    row = _require_reader(db, passport_id, user)
+    """One sign-off in full, for the holder or the assessor asked."""
+    row = _require_signoff_reader(db, passport_id, signoff_id, user)
 
     try:
         record = service.read_sign_off(store, row.id, signoff_id)
@@ -1044,7 +1165,7 @@ def verify_sign_off(
     nothing to a reader who distrusts Quill, since the same system
     computed and stored the hash.
     """
-    row = _require_reader(db, passport_id, user)
+    row = _require_signoff_reader(db, passport_id, signoff_id, user)
 
     try:
         record = service.read_sign_off(store, row.id, signoff_id)
@@ -2046,164 +2167,6 @@ def remove_cpd_entry(
 INVITES_PER_DAY = 100
 
 
-def _invites_today(db: Session, passport_id: str) -> int:
-    """How many invitations this passport has issued in the last day.
-
-    A rolling twenty-four hours rather than a calendar day: a midnight
-    reset would let twice the limit go out either side of it.
-    """
-    since = _now() - timedelta(days=1)
-
-    return (
-        db.scalar(
-            select(func.count())
-            .select_from(PassportAssessorInvite)
-            .where(
-                PassportAssessorInvite.passport_id == passport_id,
-                PassportAssessorInvite.created_at >= since,
-            )
-        )
-        or 0
-    )
-
-
-@passport_router.post(
-    "/{passport_id}/assessor-invites",
-    response_model=AssessorInviteOut,
-    status_code=201,
-    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
-)
-def invite_assessor(
-    passport_id: str,
-    body: AssessorInviteIn,
-    user: User = _DEP_USER,
-    db: Session = _DEP_SESSION,
-) -> AssessorInviteOut:
-    """Invite somebody outside to assess a competency.
-
-    The holder chooses, for the same reason they choose an assessor
-    already on Quill: who is appropriate is their judgement and their
-    supervisor's. What the route enforces is that it is somebody else,
-    and that a holder cannot use Quill to mail an unbounded number of
-    strangers.
-    """
-    row = _require_holder(db, passport_id, user)
-
-    if body.email.strip().lower() == user.email.strip().lower():
-        raise HTTPException(
-            400,
-            "You cannot invite yourself to assess your own competency.",
-        )
-
-    competency_name: str | None = None
-    if body.competency_id is not None:
-        try:
-            competency_name = definitions.competency_ref(
-                body.competency_id
-            ).name
-        except definitions.UnknownCompetencyError:
-            raise HTTPException(404, "Unknown competency") from None
-
-    if _invites_today(db, row.id) >= INVITES_PER_DAY:
-        raise HTTPException(
-            429,
-            (
-                f"You can invite up to {INVITES_PER_DAY} assessors a day. "
-                "Try again tomorrow."
-            ),
-        )
-
-    invite = PassportAssessorInvite(
-        id=str(uuid.uuid4()),
-        passport_id=row.id,
-        invited_by_user_id=user.id,
-        email=body.email.strip().lower(),
-        name=body.name.strip(),
-        registration_authority=body.registration_authority.strip(),
-        registration_number=body.registration_number.strip(),
-        token_hash="",
-        expires_at=_now() + timedelta(days=PASSPORT_INVITE_TTL_DAYS),
-    )
-
-    token = create_passport_invite_token(
-        invite_id=invite.id,
-        email=invite.email,
-    )
-    invite.token_hash = hashlib.sha256(token.encode()).hexdigest()
-
-    db.add(invite)
-    db.flush()
-
-    message = email_templates.render_invite(
-        assessor_name=invite.name,
-        holder_name=user.full_name or user.username,
-        competency_name=competency_name,
-        url=email_templates.accept_url(settings.FRONTEND_URL, token),
-        expires_in_days=PASSPORT_INVITE_TTL_DAYS,
-    )
-
-    try:
-        send_email(
-            to=invite.email,
-            subject=message["subject"],
-            html_body=message["html_body"],
-        )
-    except EmailRateLimitError:
-        # The row is not written: an invitation whose email never left
-        # would sit there looking issued, and spend one of the holder's
-        # ten for the day.
-        db.rollback()
-        raise HTTPException(
-            429, "That address has been emailed too often. Try again later."
-        ) from None
-
-    return AssessorInviteOut(
-        id=invite.id,
-        email=invite.email,
-        name=invite.name,
-        created_at=invite.created_at,
-        expires_at=invite.expires_at,
-        accepted_at=None,
-    )
-
-
-@passport_router.get(
-    "/{passport_id}/assessor-invites",
-    response_model=list[AssessorInviteOut],
-    dependencies=[_DEP_PASSPORT],
-)
-def list_assessor_invites(
-    passport_id: str,
-    user: User = _DEP_USER,
-    db: Session = _DEP_SESSION,
-) -> list[AssessorInviteOut]:
-    """The invitations this holder has issued, newest first.
-
-    Holder-only. An invitation names somebody's email address and the
-    registration they declared, which is nobody else's business — not
-    another assessor's, and not a bystander's.
-    """
-    row = _require_holder(db, passport_id, user)
-
-    invites = db.scalars(
-        select(PassportAssessorInvite)
-        .where(PassportAssessorInvite.passport_id == row.id)
-        .order_by(PassportAssessorInvite.created_at.desc())
-    ).all()
-
-    return [
-        AssessorInviteOut(
-            id=invite.id,
-            email=invite.email,
-            name=invite.name,
-            created_at=invite.created_at,
-            expires_at=invite.expires_at,
-            accepted_at=invite.accepted_at,
-        )
-        for invite in invites
-    ]
-
-
 # --------------------------------------------------------------------
 # Organisation admins: verifying a registration, and revoking access
 # --------------------------------------------------------------------
@@ -2387,12 +2350,12 @@ def revoke_assessor_membership(
     # A site membership first: the accept endpoint prefers the narrowest
     # place, so that is where an invited assessor usually sits.
     site_id = db.scalar(
-        select(site_member.c.site_id)
-        .join(Site, Site.id == site_member.c.site_id)
-        .where(
+        select(site_member.c.site_id).where(
             site_member.c.user_id == assessor_user_id,
             site_member.c.capacity == "external",
-            Site.organisation_id == organisation_id,
+            site_member.c.site_id.in_(
+                site_ids_of_organisations(db, [organisation_id])
+            ),
         )
     )
 
@@ -2433,13 +2396,7 @@ def revoke_assessor_membership(
             404, "That person has no external assessor access here."
         )
 
-    db.execute(
-        organisation_member.delete().where(
-            organisation_member.c.organisation_id == organisation_id,
-            organisation_member.c.user_id == assessor_user_id,
-            organisation_member.c.capacity == "external",
-        )
-    )
+    remove_organisation_member(db, organisation_id, assessor_user_id)
     db.flush()
 
     return AssessorRevokeOut(
@@ -2531,9 +2488,16 @@ def _holder_place(db: Session, passport_id: str) -> tuple[str, int]:
     if passport is None:
         raise HTTPException(400, "This invitation is no longer valid.")
 
+    # A place *inside* an organisation. Organisations are rows in the
+    # same table now, and a membership of one is a row here too, so
+    # without this every holder would look as though they had a site and
+    # the organisation branch below would never be reached.
     site_id = db.scalar(
         select(site_member.c.site_id).where(
-            site_member.c.user_id == passport.user_id
+            site_member.c.user_id == passport.user_id,
+            site_member.c.site_id.in_(
+                select(Site.id).where(Site.type != ORGANISATION_TYPE)
+            ),
         )
     )
 
@@ -2587,7 +2551,14 @@ def preview_assessor_invite(
             if holder_user
             else "A clinician"
         ),
-        assessor_name=invite.name,
+        # Their account name where they have one, and otherwise the
+        # address the invitation went to. The invitation itself carries
+        # no name: a trainee asking for a sign-off gives an address and
+        # nothing more, so there is nothing to greet them by until they
+        # say who they are.
+        assessor_name=(
+            (existing.full_name or existing.username) if existing else email
+        ),
         email=email,
         expires_at=invite.expires_at,
         needs_account=existing is None,
@@ -2639,6 +2610,29 @@ def accept_assessor_invite(
         if len(body.password) < 8:
             raise HTTPException(400, "Password must be at least 8 characters")
 
+        # Stated here rather than taken from the invitation. A trainee
+        # asking for a sign-off gives an address and nothing else, so
+        # the invitation carries no name or registration to copy — and
+        # a number typed by its holder is worth more than one typed by
+        # somebody who half-remembered it.
+        full_name = (body.full_name or "").strip()
+        authority = (body.registration_authority or "").strip()
+        number = (body.registration_number or "").strip()
+
+        if not full_name:
+            raise HTTPException(
+                422, "Your full name is needed to create your account."
+            )
+
+        if not authority or not number:
+            raise HTTPException(
+                422,
+                (
+                    "Your registering body and registration number are "
+                    "needed to create your account."
+                ),
+            )
+
         if db.scalar(
             select(User).where(User.username == body.username.strip())
         ):
@@ -2647,7 +2641,7 @@ def accept_assessor_invite(
         user = User(
             username=body.username.strip(),
             email=email,
-            full_name=invite.name,
+            full_name=full_name,
             password_hash=hash_password(body.password),
             # The profession is the whole grant: access to the passport
             # and nothing else. No PractisingCompetency row is written,
@@ -2658,9 +2652,7 @@ def accept_assessor_invite(
             # The invitation went to this address and the token proves
             # they read it, which is the same thing verification asks.
             email_verified=True,
-            professional_registrations={
-                invite.registration_authority: invite.registration_number
-            },
+            professional_registrations={authority: number},
         )
         db.add(user)
         db.flush()
@@ -2691,13 +2683,7 @@ def accept_assessor_invite(
             )
         )
         if already is None:
-            db.execute(
-                organisation_member.insert().values(
-                    organisation_id=place_id,
-                    user_id=user.id,
-                    capacity="external",
-                )
-            )
+            add_organisation_member(db, place_id, user.id, "external")
 
     invite.accepted_at = _now()
     invite.accepted_user_id = user.id

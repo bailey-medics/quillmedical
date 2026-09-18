@@ -7,7 +7,7 @@ belongs to none. The link was a second request, so a failure between the
 two left a permanently ownerless record — and the admin page really did
 call them separately.
 
-`organisation_id` is now required and the link is written in the same
+`organisation_id` is now required and the place is hung in the tree in the same
 transaction. `_require_site_in_own_org` already assumed this was
 impossible when it called a site's organisation "the site's owner"; now
 it is true.
@@ -24,15 +24,16 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 from httpx import Response
-from sqlalchemy import insert, select, update
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.models import (
     Organisation,
     Site,
     User,
-    organisation_member,
 )
+from app.org_units.tree import organisation_id_of_site
+from app.organisations import add_organisation_member
 
 
 def _org(db: Session, name: str) -> Organisation:
@@ -48,7 +49,9 @@ def _site_in(db: Session, name: str, org: Organisation) -> Site:
     db.add(site)
     db.commit()
     db.execute(
-        update(Site).where(Site.id == site.id).values(organisation_id=org.id)
+        update(Site)
+        .where(Site.id == site.id)
+        .values(parent_id=org.org_unit_id)
     )
     db.commit()
     db.refresh(site)
@@ -59,11 +62,7 @@ def _site_in(db: Session, name: str, org: Organisation) -> Site:
 def own_org(db_session: Session, test_admin: User) -> Organisation:
     """An organisation the admin belongs to."""
     org = _org(db_session, "Own Trust")
-    db_session.execute(
-        insert(organisation_member).values(
-            organisation_id=org.id, user_id=test_admin.id, capacity="staff"
-        )
-    )
+    add_organisation_member(db_session, org.id, test_admin.id, "staff")
     db_session.commit()
     return org
 
@@ -105,9 +104,7 @@ class TestASiteIsAlwaysOwned:
         assert resp.status_code == 200
         site_id = resp.json()["id"]
 
-        owner = db_session.execute(
-            select(Site.organisation_id).where(Site.id == site_id)
-        ).scalar_one()
+        owner = organisation_id_of_site(db_session, site_id)
         assert owner == own_org.id
 
     def test_omitting_the_organisation_is_refused(
@@ -283,7 +280,9 @@ class TestReParentingIsScopedToo:
 
         assert resp.status_code == 404
         db_session.refresh(mine)
-        assert mine.parent_id is None
+        # Still inside its own organisation, which is what its parent is
+        # now that ownership is the tree.
+        assert mine.parent_id == own_org.org_unit_id
 
     def test_a_site_can_be_moved_within_its_own_organisation(
         self,

@@ -21,11 +21,14 @@ from sqlalchemy.orm import Session
 from app.db import get_core_db
 from app.models import (
     OrganisationFeature,
-    Site,
     User,
-    organisation_member,
     site_member,
 )
+from app.org_units.tree import (
+    organisation_ids_of_sites,
+    root_ids_of_organisations,
+)
+from app.organisations import organisation_member
 
 
 def requires_feature(feature_key: str) -> Callable[..., User]:
@@ -61,17 +64,21 @@ def requires_feature(feature_key: str) -> Callable[..., User]:
                 .scalars()
                 .all()
             )
-            | {
-                org_id
-                for org_id in db.execute(
-                    select(Site.organisation_id)
-                    .join(site_member, site_member.c.site_id == Site.id)
-                    .where(site_member.c.user_id == user.id)
-                )
-                .scalars()
-                .all()
-                if org_id is not None
-            }
+            | set(
+                organisation_ids_of_sites(
+                    db,
+                    [
+                        int(site_id)
+                        for site_id in db.execute(
+                            select(site_member.c.site_id).where(
+                                site_member.c.user_id == user.id
+                            )
+                        )
+                        .scalars()
+                        .all()
+                    ],
+                ).values()
+            )
         )
 
         if not user_org_ids:
@@ -82,7 +89,9 @@ def requires_feature(feature_key: str) -> Callable[..., User]:
 
         enabled = db.scalar(
             select(OrganisationFeature.id).where(
-                OrganisationFeature.organisation_id.in_(user_org_ids),
+                OrganisationFeature.org_unit_id.in_(
+                    root_ids_of_organisations(db, list(user_org_ids))
+                ),
                 OrganisationFeature.feature_key == feature_key,
             )
         )

@@ -27,8 +27,11 @@ from app.models import (
     OrganisationFeature,
     Site,
     User,
-    organisation_member,
     site_member,
+)
+from app.organisations import (
+    add_organisation_member,
+    remove_organisation_memberships,
 )
 from app.security import hash_password
 
@@ -44,7 +47,7 @@ def _make_teaching_org(db: Session) -> Organisation:
     db.flush()
 
     feature = OrganisationFeature(
-        organisation_id=org.id,
+        org_unit_id=org.org_unit_id,
         feature_key="teaching",
         enabled_by=1,
     )
@@ -65,11 +68,7 @@ def _make_educator(db: Session, org: Organisation) -> User:
     )
     db.add(user)
     db.flush()
-    db.execute(
-        organisation_member.insert().values(
-            organisation_id=org.id, user_id=user.id
-        )
-    )
+    add_organisation_member(db, org.id, user.id, "trainee")
     db.flush()
     return user
 
@@ -86,11 +85,7 @@ def _make_learner(db: Session, org: Organisation) -> User:
     )
     db.add(user)
     db.flush()
-    db.execute(
-        organisation_member.insert().values(
-            organisation_id=org.id, user_id=user.id
-        )
-    )
+    add_organisation_member(db, org.id, user.id, "trainee")
     db.flush()
     return user
 
@@ -246,12 +241,7 @@ class TestFeatureGating:
         )
         db_session.add(user)
         db_session.flush()
-        db_session.execute(
-            organisation_member.insert().values(
-                organisation_id=org.id,
-                user_id=user.id,
-            )
-        )
+        add_organisation_member(db_session, org.id, user.id, "trainee")
         db_session.commit()
 
         test_client.post(
@@ -1727,11 +1717,7 @@ class TestBankOrgSettingsAreScopedToYourOrganisations:
         second = Organisation(name="Second Org")
         db_session.add(second)
         db_session.flush()
-        db_session.execute(
-            organisation_member.insert().values(
-                organisation_id=second.id, user_id=educator.id
-            )
-        )
+        add_organisation_member(db_session, second.id, educator.id, "trainee")
         db_session.commit()
         _seed_bank(db_session, second.id, educator.id)
         db_session.query(QuestionBankOrgStatus).delete()
@@ -2135,10 +2121,8 @@ class TestLearningContentGate:
         _seed_bank(db_session, with_live.id, educator.id)
 
         learner = _make_learner(db_session, without)
-        db_session.execute(
-            organisation_member.insert().values(
-                organisation_id=with_live.id, user_id=learner.id
-            )
+        add_organisation_member(
+            db_session, with_live.id, learner.id, "trainee"
         )
         db_session.commit()
 
@@ -2210,18 +2194,14 @@ class TestLearningContentGate:
 
         # The learner belongs to the site, and to no organisation.
         learner = _make_learner(db_session, org)
-        db_session.execute(
-            organisation_member.delete().where(
-                organisation_member.c.user_id == learner.id
-            )
-        )
+        remove_organisation_memberships(db_session, learner.id)
         site = Site(name="Ward 9", type="ward")
         db_session.add(site)
         db_session.flush()
         db_session.execute(
             update(Site)
             .where(Site.id == site.id)
-            .values(organisation_id=org.id)
+            .values(parent_id=org.org_unit_id)
         )
         db_session.execute(
             site_member.insert().values(
@@ -2276,11 +2256,7 @@ class TestLearningRoutesRequireTheViewCompetency:
         )
         db.add(user)
         db.flush()
-        db.execute(
-            organisation_member.insert().values(
-                organisation_id=org.id, user_id=user.id
-            )
-        )
+        add_organisation_member(db, org.id, user.id, "trainee")
         db.flush()
         return user
 

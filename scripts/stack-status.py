@@ -191,6 +191,35 @@ def read_pull_requests(branches: list[str]) -> dict[str, dict[str, object]]:
     # as "no pull request" against every branch — a wrong answer that looked
     # like an answer. A stack's branches are open by definition; a merged one
     # is reported by `isMerged` in the stack data itself.
+    # Ask for every open pull request, not a guessed ceiling. At a flat 30,
+    # a repository with 69 open returned only the newest; a stack's branches
+    # are all older than those, so every branch drew as "no pull request" —
+    # which reads as "none opened yet" rather than "the list was cut short",
+    # and the CI columns went blank with it, statusCheckRollup riding in the
+    # same response. Sizing it from the stack was no better: 15 branches
+    # asked for 60 and still missed the oldest nine.
+    #
+    # `--limit` needs a number, so the count comes first, in a cheap call
+    # that asks for one field and no check state. Falling back to a large
+    # constant keeps the drawing working if that call fails.
+    counted = run(
+        [
+            "gh",
+            "pr",
+            "list",
+            "--state",
+            "open",
+            "--limit",
+            "500",
+            "--json",
+            "number",
+        ],
+        check=False,
+    )
+    try:
+        limit = max(len(json.loads(counted)), 30)
+    except (json.JSONDecodeError, TypeError):
+        limit = 200
     raw = run(
         [
             "gh",
@@ -199,7 +228,7 @@ def read_pull_requests(branches: list[str]) -> dict[str, dict[str, object]]:
             "--state",
             "open",
             "--limit",
-            "30",
+            str(limit),
             "--json",
             "number,headRefName,isDraft,state,statusCheckRollup,url",
         ],
@@ -528,6 +557,53 @@ def draw_files(
     print()
 
 
+def draw_no_stack(palette: Palette) -> None:
+    """Say what to run when the branch checked out is in no stack.
+
+    Bare `gh stack init`, which this used to suggest, is the one command
+    here that should not be run by hand: it skips the `feature/` prefix
+    branch protection requires, the worktree guard, and the redraw that
+    makes the result legible. So the advice is this repository's own
+    recipes and the skill that wraps them, in the order someone reading
+    this message needs them — check out a stack that already exists
+    before starting a second one for the same work.
+    """
+    branch = run(["git", "branch", "--show-current"], check=False).strip()
+    where = f" ({branch})" if branch else ""
+
+    # Command, alias, what it does. Aligned on the widest command, which
+    # is not known until the list is read — hence the two passes.
+    recipes = [
+        ("just stack-checkout", "stc", "check out an existing stack"),
+        ('just stack-new <name> "<message>"', "stn", "start one, from main"),
+        ("just stack-help", "sth", "list every stack recipe"),
+    ]
+    widest = max(len(command) for command, _, _ in recipes)
+
+    print(file=sys.stderr)
+    print(f"  No stack on this branch{where}.", file=sys.stderr)
+    print(file=sys.stderr)
+    for command, alias, description in recipes:
+        # Padded on the command's own length, never on the coloured
+        # version: the escape sequences take width in the string and none
+        # on the screen, so padding that would leave every line short by
+        # a different amount.
+        padding = " " * (widest - len(command))
+        print(
+            f"    {palette.bold(command)}{padding}   "
+            f"{palette.dim('j ' + alias)}   {description}",
+            file=sys.stderr,
+        )
+    print(file=sys.stderr)
+    print(
+        "  /st-crpd does a whole unit in one step: new branch, commit,\n"
+        "  rebase, push and a described draft pull request. /crp is the\n"
+        "  same act on an ordinary branch, without a stack.",
+        file=sys.stderr,
+    )
+    print(file=sys.stderr)
+
+
 def report_blockers(branches: list[Branch], palette: Palette) -> bool:
     """Name branches held by another worktree. True when any were found."""
     blocked = [b for b in branches if b.worktree]
@@ -599,12 +675,7 @@ def main() -> int:
 
     stack = read_stack()
     if stack is None:
-        print(
-            "  No stack on this branch.\n"
-            "    start one:      gh stack init <branch>\n"
-            "    or check one out: gh stack checkout",
-            file=sys.stderr,
-        )
+        draw_no_stack(palette)
         return 1
 
     occupied = read_worktrees()

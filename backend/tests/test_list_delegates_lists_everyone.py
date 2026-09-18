@@ -24,15 +24,14 @@ from __future__ import annotations
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import insert
 from sqlalchemy.orm import Session
 
 from app.models import (
     Organisation,
     OrganisationFeature,
     User,
-    organisation_member,
 )
+from app.organisations import add_organisation_member
 from app.security import hash_password
 
 
@@ -66,7 +65,7 @@ def org(db_session: Session) -> Organisation:
     db_session.flush()
     db_session.add(
         OrganisationFeature(
-            organisation_id=organisation.id,
+            org_unit_id=organisation.org_unit_id,
             feature_key="teaching",
             enabled_by=1,
         )
@@ -77,11 +76,7 @@ def org(db_session: Session) -> Organisation:
 
 
 def _place(db: Session, org: Organisation, user: User) -> None:
-    db.execute(
-        insert(organisation_member).values(
-            organisation_id=org.id, user_id=user.id, capacity="staff"
-        )
-    )
+    add_organisation_member(db, org.id, user.id, "staff")
     db.commit()
 
 

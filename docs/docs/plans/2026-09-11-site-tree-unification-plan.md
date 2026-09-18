@@ -674,21 +674,130 @@ to 9 perform the merge; steps 10 to 12 perform the rename.
    - **Either end may remove a link.** A relationship somebody else
      recorded about your place is still a claim about your place.
 
-4. [ ] **Insert a root row for every organisation**, carrying its name, location
+4. [x] **Insert a root row for every organisation**, carrying its name, location
    and `type = "organisation"`, and point each organisation's sites at that
    root. Drop the temporary organisation column. Because the data is flat
    today this is a single update statement, with no existing depth to
    preserve.
 
-5. [ ] **Move membership.** Copy organisation member rows across against the root
+   Five readings the plan left open were settled while building:
+
+   - **`organisations.org_unit_id` is the bridge.** The organisation-only
+     tables still key on the organisation, so something has to say which
+     tree row stands for it. The column goes with the rename in step 10.
+   - **The mapper creates the root, not the route.** An organisation with no
+     root is invisible to the whole permission system — its places reach no
+     root, so nobody can administer them. Holding that by remembering to
+     call a helper would eventually fail, so it is a `before_insert`
+     listener; renames and deletions follow the same way. It disappears
+     when the two tables become one.
+   - **The drop of the temporary column is its own migration.** The
+     backend rules keep destructive operations out of additive migrations,
+     so the tree is built by one and the column removed by the next.
+   - **A site already nested inside another keeps its parent.** Only the
+     ones with no parent are hung off the root, so existing depth survives
+     even though the plan expects none.
+   - **The site routes refuse a root.** Organisations are rows in the same
+     table now; without the guard a trust could be renamed, deactivated or
+     deleted from a screen built for wards.
+
+   The subtree walks are written in `backend/app/org_units/tree.py` with a
+   depth cap and a set of seen ids, so a cycle degrades to a wrong answer
+   rather than a hung request. Step 9 replaces the level-by-level walk with
+   one recursive query behind the same functions.
+
+5. **Move membership.** Copy organisation member rows across against the root
    rows, carrying the `trainee` default. Switch readers, then writers, then
    drop the old table.
 
-6. [ ] **Move practising competencies and positions.** Backfill the single place
+   Split into two pull requests along the seam the step itself names, because
+   one of them is more than a reviewer can hold in their head at once:
+   membership is read in sixty-odd places.
+
+   - [x] **5a — write both, read the old one.** The copy, the `trainee`
+     default on the merged table, and every route writing both. Three
+     functions in `organisations.py` are the only code that knows there are
+     two tables, so switching the readers is a change there rather than a
+     hunt through the routes.
+   - [x] **5b — read the new one, stop writing the old one, drop it.**
+
+   Two readings the plan left open were settled while building 5b:
+
+   - **The old table's name survives as a query.** `organisation_member`
+     is now a select over the merged table joined through each
+     organisation's own row, exported from `organisations.py` under the
+     name the sixty-odd call sites already used. They ask the same
+     question; only where the answer comes from changed.
+   - **Asking for "a place" now has to say "not an organisation".** Two
+     reads assumed every row in the membership table was a place inside an
+     organisation. The clinician passport's "narrowest place" lookup would
+     otherwise have called every trust a site.
+
+   Two readings the plan left open were settled while building 5a:
+
+   - **A repeat membership changes the capacity rather than failing.** A
+     caller that has already checked and one that has not both end up with
+     one row saying the same thing, which is what makes writing two tables
+     safe to retry.
+   - **Clearing somebody's organisations leaves their ward memberships.**
+     Both are rows in the merged table now, so the superadmin path that
+     replaced every row would have undone the organisation edit made
+     moments earlier. It is narrowed to places inside an organisation.
+
+6. [x] **Move practising competencies and positions.** Backfill the single place
    column from the organisation column via the root rows, then drop the
    organisation columns, the check constraints and the partial indexes.
 
-7. [ ] **Move features, patient membership and conversation links** the same way.
+   Three readings the plan left open were settled while building:
+
+   - **"Required" is a check constraint, not a NOT NULL column.** The
+     backend rules refuse a NOT NULL column added to a populated table
+     without a server default, and there is no sensible default for the id
+     of a place. A check saying the column may not be null says the same
+     thing and needs no default.
+   - **It took three migrations, in that order.** The old check refuses a
+     row with both columns set, and the backfill has to set both for a
+     moment, so the check comes off first; then the backfill and the new
+     rules; then the column.
+   - **An organisation the tree has never heard of authorises nobody.**
+     The one branch that translates an organisation into its row fails
+     closed rather than matching every place.
+
+   `cbac/scoped.py` paid for itself here: it says in its own docstring that
+   confining the place branch to one function means the storage can change
+   without touching call sites, and not one call site changed.
+
+7. [x] **Move features, patient membership and conversation links** the same way.
+
+   Three readings the plan left open were settled while building:
+
+   - **The columns are renamed, not quietly repointed.** They hold a
+     different number than they used to, so a call site that had not been
+     moved across would have matched a different place and said nothing.
+     Renaming makes a missed one fail loudly.
+   - **Deleting an organisation is written out rather than left to the
+     foreign keys.** Everything at its place goes with it — members,
+     features, patient list, conversations, authorisations, posts, links.
+   - **A conversation's `organisations` became `places`**, for the same
+     reason the columns were renamed.
+
+   Worth confirming before step 7 was whether feature resolution changed
+   meaning: it does not. No site was ever linked to two organisations, so
+   no place ever received two feature sets, and a place now takes its
+   root's.
+
+### Discovered while building: the unit-test database ignores foreign keys
+
+SQLite does not enforce foreign keys unless asked, so `ON DELETE CASCADE`
+does nothing in the unit tests and a row left behind by a delete goes
+unnoticed until production. Turning the pragma on was tried and reverted:
+a dozen existing fixtures insert rows pointing at organisations that do
+not exist, and fixing those is its own piece of work rather than something
+to bury inside this merge.
+
+Two deletes are therefore written out in `models.py` rather than left to
+the database. Worth closing properly in a plan of its own, because the
+next person to rely on a cascade will have the same surprise.
 
 8. [ ] **Add the cycle guard and index the parent column**, with a shared upward
    walk helper. Do this before step 9, so no recursive query is ever written

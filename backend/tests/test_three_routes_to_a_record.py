@@ -33,10 +33,12 @@ from app.models import (
     ExternalPatientAccess,
     Organisation,
     User,
-    organisation_member,
     organisation_patient_member,
 )
-from app.organisations import check_user_patient_access
+from app.organisations import (
+    add_organisation_member,
+    check_user_patient_access,
+)
 from app.security import hash_password
 
 THEIR_OWN = "fhir-patient-themselves"
@@ -75,7 +77,7 @@ def org(db_session: Session) -> Organisation:
     db_session.commit()
     db_session.execute(
         insert(organisation_patient_member).values(
-            organisation_id=organisation.id, patient_id=A_PATIENT_HERE
+            org_unit_id=organisation.org_unit_id, patient_id=A_PATIENT_HERE
         )
     )
     db_session.commit()
@@ -84,11 +86,7 @@ def org(db_session: Session) -> Organisation:
 
 
 def _place(db: Session, org: Organisation, user: User) -> None:
-    db.execute(
-        insert(organisation_member).values(
-            organisation_id=org.id, user_id=user.id, capacity="staff"
-        )
-    )
+    add_organisation_member(db, org.id, user.id, "staff")
     db.commit()
 
 

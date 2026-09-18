@@ -1427,6 +1427,14 @@ assumption runs the other way.
 
 #### Asking by email, not by picking a user — revision, 17 September
 
+> **Superseded in part by "Phase 9: the sign-off journey, end to end".**
+> This section explains why the request names an assessor by address
+> rather than by account, which still holds. Phase 9 sets out the flow
+> around it — a search field taking a name or username as well, a
+> confirmation step before anything is sent, and a link that lands the
+> assessor in their inbox rather than on a sign-off. Where the two
+> disagree, Phase 9 wins.
+
 The design above splits one act across two tables, and using it
 revealed why that does not hold. Asking for a sign-off is one thing a
 holder does; who the assessor turns out to be is a detail of it.
@@ -3657,37 +3665,37 @@ The order below is deliberate. The backend carries the meaning, so it
 goes first and the form follows; the destructive step is last, and on
 its own.
 
-- [ ] Add `assessor_email` to `passport_signoff_request`, non-null,
+- [x] Add `assessor_email` to `passport_signoff_request`, non-null,
       in `backend/app/features/passport/models.py`. Index it with
       `status`, mirroring the existing inbox index, because that is
       how an assessor's inbox will be read.
-- [ ] Make `assessor_user_id` nullable in the same model, and rewrite
+- [x] Make `assessor_user_id` nullable in the same model, and rewrite
       its docstring: it records who signed, not who was asked, and is
       null while the request is open.
-- [ ] Generate the additive migration with `just migrate`, and read
+- [x] Generate the additive migration with `just migrate`, and read
       the generated `upgrade()` and `downgrade()` before committing.
-- [ ] Change `SignOffRequestIn` in `backend/app/schemas/passport.py`
+- [x] Change `SignOffRequestIn` in `backend/app/schemas/passport.py`
       to take `assessor_email: EmailStr` in place of
       `assessor_user_id: int`. Breaking: needs a decision file from
       `python backend/scripts/new_compat_decision.py` and approval on
       `api-breaking-change-review`.
-- [ ] Rewrite the request route so it stores the email, looks up a
+- [x] Rewrite the request route so it stores the email, looks up a
       matching user without requiring one, refuses the holder's own
       address as the invite route already does, and sends the mail.
-- [ ] Move the daily cap onto the request route. Without it the
+- [x] Move the daily cap onto the request route. Without it the
       `INVITES_PER_DAY` limit is bypassed by asking for sign-offs
       instead of inviting, which is the same mail to the same
       stranger.
-- [ ] Set `assessor_user_id` from the authenticated signer when a
+- [x] Set `assessor_user_id` from the authenticated signer when a
       sign-off is signed, never from the request row, so the column
       records who actually signed.
-- [ ] Change the signing route's guard from
+- [x] Change the signing route's guard from
       `request_row.assessor_user_id != user.id` to a comparison of
       `assessor_email` against the caller's address, folded and
       trimmed the same way the invite route compares addresses.
-- [ ] Point the inbox query at `assessor_email` so a request is
+- [x] Point the inbox query at `assessor_email` so a request is
       visible to an assessor who had no account when it was written.
-- [ ] Replace the assessor dropdown in
+- [x] Replace the assessor dropdown in
       `frontend/src/components/passport/SignOffRequestForm.tsx` with
       an email field, and update its stories and tests.
 - [ ] Say what happens next on the form: whether the address belongs
@@ -3700,6 +3708,252 @@ its own.
       needing approval on `db-destructive-migration-review`, in its
       own contract migration a deploy later — never bundled with the
       additive work above.
+
+## Phase 9: the sign-off journey, end to end
+
+The seven steps below are the agreed flow, stated by the product owner
+on 18 September. Where anything earlier in this plan disagrees, this
+section wins.
+
+**Both sides register with Quill.** A trainee and an assessor are both
+account holders; the difference is what they came to do, not whether
+they have an account. Nothing about a sign-off is done by somebody
+anonymous holding a link.
+
+1. **The trainee picks a competency** to be signed off.
+
+2. **The trainee names an assessor** in one search field that accepts
+   an email address, a full name or a username. One field, not three:
+   the trainee knows the person, not which identifier Quill files them
+   under.
+
+3. **A confirmation appears before anything is sent.** For somebody
+   already on Quill it shows their full name, email and registration
+   number, so the trainee can see they picked the right person. For an
+   address Quill does not know, it shows only what was typed. The
+   trainee accepts, and only then is the request sent.
+
+   **Showing the registration number is deliberate.** It is hard
+   evidence: two consultants may share a name, and an email address
+   says only that somebody controls a mailbox. A GMC number is the one
+   identifier that says which registered professional this is, checked
+   against a public register, so a trainee confirming it is confirming
+   the person rather than a label. Decided by the product owner on
+   18 September, weighed against the alternative — a trainee asking
+   the wrong person, and finding out only when the sign-off is
+   worthless. The number is already visible to the assessor's own
+   organisation admins and appears on the sign-offs they make; showing
+   it to the trainee who is about to name them widens that a little,
+   and the record it protects is a clinical one. The trainee ends up
+   holding the number regardless: every sign-off writes the assessor's
+   registrations into the passport, so showing it beforehand only
+   brings it forward to the moment it can still prevent a mistake.
+
+   **The modal must not imply Quill checked it.** Registrations are
+   self-declared and stored `verified: false` until an organisation
+   admin checks a register by hand. Showing a number beside a name
+   reads as confirmation unless the wording says otherwise, so it says
+   what it is: what this person states, not what Quill has verified.
+
+4. **The request is stored.** Already built: a row naming the
+   passport, the competency, the assessor's address and the state.
+
+5. **The assessor is emailed**, told which trainee asked and for what,
+   with a link. Already built.
+
+6. **The link lands them where they need to be** — the registration
+   page if they have no account, the login page if they are signed
+   out, and otherwise their passport inbox. **Not** the individual
+   sign-off: an assessor arriving should see everything waiting for
+   them, not one item in isolation.
+
+7. **They work from the inbox**, signing off whatever is outstanding.
+
+### What this changes from what is built
+
+- [x] **The search endpoint takes a name or username, not only an
+      email.** `GET /api/passport/assessors/search` matches an address,
+      a username or a full name, returns at most ten, refuses a term
+      under three characters, and leaves out the caller's own account.
+      Finding nobody is a 200 with an empty list, because asking
+      somebody new is the case the flow exists for. The form still
+      needs wiring to it — that is the unit below.
+
+- [ ] **The confirmation step does not exist.** Submitting sends the
+      request immediately. Step 3 wants a modal showing who was
+      matched, and for a known assessor it needs their name, email and
+      registration number — which no endpoint returns today.
+
+- [ ] **The invite link goes to an accept page, not the inbox.**
+      `ACCEPT_PATH` points at `/passport/assessors/accept`. Step 6
+      wants registration or login, then the inbox.
+
+- [x] **Fix the blank name and registration on a new account.** The
+      accept flow reads `name`, `registration_authority` and
+      `registration_number` off the invite row, which the request
+      route now writes as empty strings — so an assessor registering
+      today gets `full_name=""` and a `{"": ""}` registration entry.
+      The assessor must state their own details when they register,
+      which is the better source anyway. **This is a live defect, not
+      a gap**, and it blocks retiring those three columns.
+
+- [x] **An assessor reads the sign-off, not the passport.** Found
+      while building: ``_require_reader`` admitted anybody named on any
+      request against a passport, and then served the whole record —
+      contradicting its own docstring, which says an assessor sees "the
+      sign-offs they were asked about and nothing else". The gap was
+      invisible while an assessor arrived by invitation and was named
+      on nothing. Asking is now what brings them in, so every assessor
+      was named on a request and the whole passport was open to them:
+      a year of CPD, every logged procedure, and what other assessors
+      declined. Split into two guards — the holder alone for the record,
+      the holder or the named assessor for one sign-off.
+
+- [x] **Remove the two unused invite endpoints.** `POST` and `GET
+      /{passport_id}/assessor-invites` are superseded by the request
+      route and called by no screen.
+
+- [ ] **Then drop the three dead columns**, once the accept flow no
+      longer reads them. Destructive migration, in its own contract
+      migration, needing approval on
+      `db-destructive-migration-review`.
+
+## Phase 10: who else may read a passport
+
+Settled in discussion on 18 September. Nothing here is built.
+
+### The problem this answers
+
+A departmental lead, an educational supervisor or a deanery training
+lead has a real operational need: which registrars arriving in August
+can run a clinic, plan radiotherapy or supervise a list, and who is
+missing a competency the department depends on. That is workforce
+planning, and it is the argument that justifies the access.
+
+It is a different question from an assessor's, which Phase 9 covers.
+An assessor reads one sign-off they were asked about. This is somebody
+reading a record in full, because they are accountable for training.
+
+### Two competencies, not one
+
+- **`passport_under_supervision`**, held by the person being
+  supervised. It grants them nothing — a holder can always read their
+  own passport — and says only that their record is open to their
+  supervisors. Named for what it opens to others so that a missing row
+  can never lock somebody out of their own record.
+
+- **`read_trainee_passports`**, held by the supervisor, departmental
+  lead or deanery lead.
+
+Both are required, and reach must overlap as well. The pair is
+necessary, never sufficient.
+
+**Why a competency rather than a grade.** Registrars are `staff`, the
+same capacity as consultants, so capacity cannot separate them. Base
+profession could — the training grades are distinguishable — but a
+consultant doing a fellowship or working towards a CESR is supervised
+and signed off while holding `consultant`, so a grade filter makes
+them invisible to the very supervisor assessing them. It also puts the
+rule in a list that grows: a new training grade silently drops out of
+every check. Holding a competency makes being under supervision
+something a person carries, granted and removed deliberately.
+
+**Consultants are excluded twice over**, which is the property worth
+keeping: they hold no supervision competency, and a peer is not below
+them in the tree. Two independent reasons, so neither is a rule
+somebody can forget to apply.
+
+### Reach is downward only
+
+A lead reaches their own org unit and everything beneath it. Never
+upward, and never across an affiliate link.
+
+This matches what `organisations.py` already documents — "a site member
+does not reach up into the organisation" — stated for competencies
+rather than for content.
+
+**The affiliate exclusion is the sharpest part.** An affiliate link
+joins two organisations for a purpose: sharing content, a rotation
+arrangement. If competency reach crossed it, then linking two trusts
+for any reason would quietly make each trust's leads readers of the
+other's supervised doctors. Nobody creating the link would expect it
+and nobody would notice. Blocking it at the model level lets a link be
+created for what it is for, without carrying authority as a side
+effect.
+
+**A deanery only works if it is a genuine parent.** Severn sits above
+its trusts, so deanery-wide oversight needs the deanery to be a real
+place with the trusts beneath it — not an affiliate of each. Under
+downward reach that works exactly as wanted; as an affiliate it does
+not work at all.
+
+### What is visible
+
+Everything except reflections.
+
+- **Sign-offs, certificates, CPD and the logbook** are all visible. The
+  logbook is included deliberately: it evidences progress towards a
+  competency, which is what a supervisor is there to judge.
+
+- **Reflections are never visible to a supervisor.** `ReflectionEditor`
+  already tells the holder they are "not shown to assessors,
+  organisation admins or anyone else", and that promise is what makes
+  honest reflection possible. A trainee who suspects a supervisor reads
+  them writes for the reader instead, which destroys the thing's value.
+  If reflections are ever shared it is the holder's act, never a role
+  acquiring the right.
+
+### Scoping within a department: accountability, not prevention
+
+A department may have fifty registrars while local governance says an
+educational supervisor should see only their own five.
+
+**Access is department-wide, and every read is recorded.** Not a
+per-supervisor allow-list. Three reasons:
+
+- **An explicit supervisor-to-registrar list must be maintained**, and
+  the moment it is wrong is the August changeover — when a supervisor
+  with a missing row is locked out and people route around the system.
+
+- **Supervisory groups are not places.** They overlap, a registrar has
+  an educational supervisor and clinical supervisors at once, and they
+  change yearly. Expressing them in the org tree would put registrars
+  in places that are not places, and the tree would stop being
+  trustworthy for the things it is for.
+
+- **It is what NHS record systems do.** Legitimate-relationship models
+  leak; the working control is that access is attributable, not that it
+  is prevented.
+
+### The holder is told when access changes
+
+**Once, when a new deanery, department or supervisor gains access —
+never per read.** A message per read would train people to ignore all
+of them, destroying the signal this exists to give.
+
+The tone is informational, not a security alert. Somebody starting a
+post should not be made anxious by the ordinary fact that their
+educational supervisor can see their record. It says who now has
+access and why, in the way a new starter would be told in person.
+
+### Open questions
+
+- [ ] **A lawful basis needs stating, by a human.** A passport holds no
+      patient data but is professional performance data about an
+      identifiable person, so UK GDPR applies. An employer processing it
+      for workforce planning is defensible; a deanery reading individual
+      records across trusts needs a clearer basis. Worth a DPO view
+      rather than a guess.
+
+- [ ] **Do declined sign-offs follow somebody unfairly?** They are
+      visible under "everything except reflections". A pattern of
+      declines is exactly what a supervisor needs to see, and exactly
+      what could follow a struggling trainee between posts. Not an
+      argument against, but it deserves a deliberate answer.
+
+- [ ] **Is the fifty-versus-five rule local or national?** If it varies
+      by department, strictness belongs as a setting on the place rather
+      than hard-coded.
 
 ## Future items, deliberately deferred
 

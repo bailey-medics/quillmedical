@@ -22,10 +22,10 @@ from app.models import (
     Organisation,
     Site,
     User,
-    organisation_member,
     site_member,
 )
 from app.organisations import (
+    add_organisation_member,
     get_member_org_ids,
     get_org_member_ids,
     get_org_staff_ids,
@@ -63,7 +63,7 @@ def _site(db: Session, name: str, org: Organisation | None = None) -> Site:
         db.execute(
             update(Site)
             .where(Site.id == site.id)
-            .values(organisation_id=org.id)
+            .values(parent_id=org.org_unit_id)
         )
         db.commit()
     return site
@@ -72,11 +72,7 @@ def _site(db: Session, name: str, org: Organisation | None = None) -> Site:
 def _join_org(
     db: Session, org: Organisation, user: User, capacity: str
 ) -> None:
-    db.execute(
-        insert(organisation_member).values(
-            organisation_id=org.id, user_id=user.id, capacity=capacity
-        )
-    )
+    add_organisation_member(db, org.id, user.id, capacity)
     db.commit()
 
 
