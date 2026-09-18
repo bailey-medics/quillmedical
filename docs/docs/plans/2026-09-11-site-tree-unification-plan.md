@@ -601,54 +601,68 @@ Closing that gap is part of the work, not a free consequence of merging.
 Each step is its own pull request and leaves the application working. Steps 1
 to 9 perform the merge; steps 10 to 12 perform the rename.
 
-1. **Add the capability flags file** and the code that reads it, listing
+1. [x] **Add the capability flags file** and the code that reads it, listing
    `organisation` and `site` plus whichever descriptive types the existing
    site vocabulary still needs. The `type` column already exists on both
    tables, so this step adds validation and flags rather than a column. No
    behaviour change.
 
-2. **Make the organisation link one-to-many.** Add a nullable organisation
+   Built as `shared/org-unit-types.yaml` and `backend/app/org_units/types.py`.
+   Two readings the plan left open were settled while building:
+
+   - **`room` is the address-only type, and `bed` was not added.** The plan
+     names a bed as the example of a node that is only an address, but `bed`
+     is not in today's site vocabulary and adding it would widen what the
+     API accepts. `room` carries the same argument — nobody is clinical lead
+     of room four — so it takes all four capability flags as false and gives
+     the address-only group a real member without widening anything.
+   - **Nothing is wired into the routes yet.** The loader validates a type
+     and answers capability questions, but no route calls it, because step 1
+     is meant to change no behaviour and step 12 is where the flags are
+     enforced.
+
+2. [ ] **Make the organisation link one-to-many.** Add a nullable organisation
    column to sites, backfill it from the link table wherever a site has
    exactly one organisation, and report any site with more than one for a
    human to resolve. Stop writing the link table. This step removes most of
    the referee helpers before any tables merge.
 
-3. **Add the link table** and its routes, migrating any multi-organisation
+3. [ ] **Add the link table** and its routes, migrating any multi-organisation
    cases from step 2 into links.
 
-4. **Insert a root row for every organisation**, carrying its name, location
+4. [ ] **Insert a root row for every organisation**, carrying its name, location
    and `type = "organisation"`, and point each organisation's sites at that
    root. Drop the temporary organisation column. Because the data is flat
    today this is a single update statement, with no existing depth to
    preserve.
 
-5. **Move membership.** Copy organisation member rows across against the root
+5. [ ] **Move membership.** Copy organisation member rows across against the root
    rows, carrying the `trainee` default. Switch readers, then writers, then
    drop the old table.
 
-6. **Move practising competencies and positions.** Backfill the single place
+6. [ ] **Move practising competencies and positions.** Backfill the single place
    column from the organisation column via the root rows, then drop the
    organisation columns, the check constraints and the partial indexes.
 
-7. **Move features, patient membership and conversation links** the same way.
+7. [ ] **Move features, patient membership and conversation links** the same way.
 
-8. **Add the cycle guard and index the parent column**, with a shared upward
+8. [ ] **Add the cycle guard and index the parent column**, with a shared upward
    walk helper. Do this before step 9, so no recursive query is ever written
    against a table that can hold a cycle.
 
-9. **Switch scoping and reach to subtree queries**, with a depth cap and
+9. [ ] **Switch scoping and reach to subtree queries**, with a depth cap and
    distinct ids. Write them as subtree queries even though the tree is only
    two levels deep, so a third level needs no rewrite.
 
-10. **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
+10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to
     match, and delete the old organisations module.
 
-11. **Add the new API surface** alongside the old one, migrate the frontend
+11. [ ] **Add the new API surface** alongside the old one, migrate the frontend
     onto it, and rename the frontend type. Close the thin-pages gap in the
     same pass.
 
-12. **Retire both old API surfaces** once nothing reads them, then refuse to
+12. [ ] **Retire both old API surfaces** once nothing reads them, then refuse to
     delete a parent that still has children and enforce each type's
     `requires_parent` flag.
     Last, so the earlier steps are not blocked by it.
