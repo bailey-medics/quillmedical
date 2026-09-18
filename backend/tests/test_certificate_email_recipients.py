@@ -29,9 +29,9 @@ from app.features.teaching.models import (
 from app.features.teaching.router import _maybe_enqueue_certificate_emails
 from app.models import (
     Organisation,
-    Site,
+    OrgUnit,
     User,
-    site_member,
+    org_unit_member,
 )
 from app.security import hash_password
 
@@ -83,20 +83,20 @@ def _org(db: Session, name: str) -> Organisation:
     return org
 
 
-def _site_of(db: Session, org: Organisation, name: str) -> Site:
-    site = Site(name=name, type="ward")
+def _site_of(db: Session, org: Organisation, name: str) -> OrgUnit:
+    site = OrgUnit(name=name, type="ward")
     db.add(site)
     db.commit()
     db.execute(
-        update(Site)
-        .where(Site.id == site.id)
+        update(OrgUnit)
+        .where(OrgUnit.id == site.id)
         .values(parent_id=org.org_unit_id)
     )
     db.commit()
     return site
 
 
-def _make_lead(db: Session, site: Site, user: User) -> None:
+def _make_lead(db: Session, site: OrgUnit, user: User) -> None:
     """Make someone the clinical lead, the way the API does.
 
     Both the post and the role column are written while the column still
@@ -104,8 +104,10 @@ def _make_lead(db: Session, site: Site, user: User) -> None:
     the contract step removes it.
     """
     db.execute(
-        insert(site_member).values(
-            site_id=site.id, user_id=user.id, capacity="staff"
+        insert(org_unit_member).values(
+            org_unit_id=site.id,
+            user_id=user.id,
+            capacity="staff",
         )
     )
     set_clinical_lead(db, site, user)
@@ -123,7 +125,7 @@ def _setup(
     candidate = _user(db, "candidate", "candidate@example.test")
 
     config_row = QuestionBankConfig(
-        organisation_id=org.id,
+        org_unit_id=org.org_unit_id,
         question_bank_id=BANK_ID,
         version=1,
         title="Test Bank",
@@ -135,7 +137,7 @@ def _setup(
     db.add(config_row)
     db.add(
         QuestionBankOrgStatus(
-            organisation_id=org.id,
+            org_unit_id=org.org_unit_id,
             question_bank_id=BANK_ID,
             is_live=is_live,
             active_version=1,
@@ -145,7 +147,7 @@ def _setup(
 
     assessment = Assessment(
         user_id=candidate.id,
-        organisation_id=org.id,
+        org_unit_id=org.org_unit_id,
         question_bank_id=BANK_ID,
         bank_version=1,
         time_limit_minutes=60,
@@ -275,8 +277,8 @@ class TestTheClinicalLead:
         site = _site_of(db_session, org, "Ward 1")
         impostor = _user(db_session, "dr_column_only", "column@example.test")
         db_session.execute(
-            insert(site_member).values(
-                site_id=site.id,
+            insert(org_unit_member).values(
+                org_unit_id=site.id,
                 user_id=impostor.id,
                 capacity="staff",
             )

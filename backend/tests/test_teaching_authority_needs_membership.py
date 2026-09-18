@@ -13,7 +13,7 @@ Both authority routes asked reach, through ``_get_user_org_ids``. So a
 ``teaching_admin`` whose only membership was a site linked to the trust
 passed the ``org_id not in ...`` check and could promote a version, or
 close a bank, for the whole organisation above them. They now ask
-``get_member_org_ids``.
+``get_member_place_ids``.
 
 **This narrows, which is the opposite direction to the rest of the
 walk.** The plan names the walk's risk as widening — reach adds
@@ -36,12 +36,12 @@ from sqlalchemy.orm import Session
 
 from app.models import (
     Organisation,
-    OrganisationFeature,
-    Site,
+    OrgUnit,
+    OrgUnitFeature,
     User,
-    organisation_member,
-    site_member,
+    org_unit_member,
 )
+from app.organisations import add_place_member
 from app.security import hash_password
 
 
@@ -50,8 +50,8 @@ def _teaching_org(db: Session, name: str = "Trust") -> Organisation:
     db.add(org)
     db.flush()
     db.add(
-        OrganisationFeature(
-            organisation_id=org.id, feature_key="teaching", enabled_by=1
+        OrgUnitFeature(
+            org_unit_id=org.org_unit_id, feature_key="teaching", enabled_by=1
         )
     )
     db.commit()
@@ -76,30 +76,28 @@ def _teaching_admin(db: Session, username: str) -> User:
 
 
 def _join_org(db: Session, org: Organisation, user: User) -> None:
-    db.execute(
-        organisation_member.insert().values(
-            organisation_id=org.id, user_id=user.id, capacity="staff"
-        )
-    )
+    add_place_member(db, org.org_unit_id, user.id, "staff")
     db.commit()
 
 
-def _join_linked_site(db: Session, org: Organisation, user: User) -> Site:
+def _join_linked_site(db: Session, org: Organisation, user: User) -> OrgUnit:
     """Put the user on a ward of the trust, and in no organisation.
 
     This is the shape that reach admits and membership does not.
     """
-    site = Site(name="Ward 9", type="ward")
+    site = OrgUnit(name="Ward 9", type="ward")
     db.add(site)
     db.flush()
     db.execute(
-        update(Site)
-        .where(Site.id == site.id)
+        update(OrgUnit)
+        .where(OrgUnit.id == site.id)
         .values(parent_id=org.org_unit_id)
     )
     db.execute(
-        site_member.insert().values(
-            site_id=site.id, user_id=user.id, capacity="staff"
+        org_unit_member.insert().values(
+            org_unit_id=site.id,
+            user_id=user.id,
+            capacity="staff",
         )
     )
     db.commit()
@@ -115,17 +113,17 @@ def _login(client: TestClient, username: str) -> dict[str, str]:
     return {"X-CSRF-Token": client.cookies.get("XSRF-TOKEN", "")}
 
 
-def _promote_url(org_id: int) -> str:
+def _promote_url(org: Organisation) -> str:
     return (
         "/api/teaching/admin/banks/test-bank"
-        f"/organisations/{org_id}/active-version"
+        f"/places/{org.org_unit_id}/active-version"
     )
 
 
-def _settings_url(org_id: int) -> str:
+def _settings_url(org: Organisation) -> str:
     return (
         "/api/teaching/admin/banks/test-bank"
-        f"/organisations/{org_id}/settings"
+        f"/places/{org.org_unit_id}/settings"
     )
 
 
@@ -155,7 +153,7 @@ class TestReachingATrustIsNotAuthorityOverIt:
     ) -> None:
         headers = _login(test_client, "ward_admin")
         response = test_client.put(
-            _promote_url(org.id), headers=headers, json={"version": 2}
+            _promote_url(org), headers=headers, json={"version": 2}
         )
 
         assert response.status_code == 403, response.text
@@ -169,7 +167,7 @@ class TestReachingATrustIsNotAuthorityOverIt:
         """Closing mid-cohort locks candidates out part-way through."""
         headers = _login(test_client, "ward_admin")
         response = test_client.put(
-            _settings_url(org.id),
+            _settings_url(org),
             headers=headers,
             json={"is_live": False},
         )
@@ -200,7 +198,7 @@ class TestAnOrganisationMemberIsUnaffected:
     ) -> None:
         headers = _login(test_client, "trust_admin")
         response = test_client.put(
-            _promote_url(org.id), headers=headers, json={"version": 2}
+            _promote_url(org), headers=headers, json={"version": 2}
         )
 
         assert response.status_code != 403, response.text
@@ -213,7 +211,7 @@ class TestAnOrganisationMemberIsUnaffected:
     ) -> None:
         headers = _login(test_client, "trust_admin")
         response = test_client.put(
-            _settings_url(org.id),
+            _settings_url(org),
             headers=headers,
             json={"is_live": False},
         )

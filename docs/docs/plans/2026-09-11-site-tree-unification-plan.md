@@ -719,7 +719,19 @@ to 9 perform the merge; steps 10 to 12 perform the rename.
      functions in `organisations.py` are the only code that knows there are
      two tables, so switching the readers is a change there rather than a
      hunt through the routes.
-   - [ ] **5b — read the new one, stop writing the old one, drop it.**
+   - [x] **5b — read the new one, stop writing the old one, drop it.**
+
+   Two readings the plan left open were settled while building 5b:
+
+   - **The old table's name survives as a query.** `organisation_member`
+     is now a select over the merged table joined through each
+     organisation's own row, exported from `organisations.py` under the
+     name the sixty-odd call sites already used. They ask the same
+     question; only where the answer comes from changed.
+   - **Asking for "a place" now has to say "not an organisation".** Two
+     reads assumed every row in the membership table was a place inside an
+     organisation. The clinician passport's "narrowest place" lookup would
+     otherwise have called every trust a site.
 
    Two readings the plan left open were settled while building 5a:
 
@@ -732,19 +744,1094 @@ to 9 perform the merge; steps 10 to 12 perform the rename.
      replaced every row would have undone the organisation edit made
      moments earlier. It is narrowed to places inside an organisation.
 
-6. [ ] **Move practising competencies and positions.** Backfill the single place
+6. [x] **Move practising competencies and positions.** Backfill the single place
    column from the organisation column via the root rows, then drop the
    organisation columns, the check constraints and the partial indexes.
 
-7. [ ] **Move features, patient membership and conversation links** the same way.
+   Three readings the plan left open were settled while building:
 
-8. [ ] **Add the cycle guard and index the parent column**, with a shared upward
+   - **"Required" is a check constraint, not a NOT NULL column.** The
+     backend rules refuse a NOT NULL column added to a populated table
+     without a server default, and there is no sensible default for the id
+     of a place. A check saying the column may not be null says the same
+     thing and needs no default.
+   - **It took three migrations, in that order.** The old check refuses a
+     row with both columns set, and the backfill has to set both for a
+     moment, so the check comes off first; then the backfill and the new
+     rules; then the column.
+   - **An organisation the tree has never heard of authorises nobody.**
+     The one branch that translates an organisation into its row fails
+     closed rather than matching every place.
+
+   `cbac/scoped.py` paid for itself here: it says in its own docstring that
+   confining the place branch to one function means the storage can change
+   without touching call sites, and not one call site changed.
+
+7. [x] **Move features, patient membership and conversation links** the same way.
+
+   Three readings the plan left open were settled while building:
+
+   - **The columns are renamed, not quietly repointed.** They hold a
+     different number than they used to, so a call site that had not been
+     moved across would have matched a different place and said nothing.
+     Renaming makes a missed one fail loudly.
+   - **Deleting an organisation is written out rather than left to the
+     foreign keys.** Everything at its place goes with it — members,
+     features, patient list, conversations, authorisations, posts, links.
+   - **A conversation's `organisations` became `places`**, for the same
+     reason the columns were renamed.
+
+   Worth confirming before step 7 was whether feature resolution changed
+   meaning: it does not. No site was ever linked to two organisations, so
+   no place ever received two feature sets, and a place now takes its
+   root's.
+
+### Discovered while building: the unit-test database ignores foreign keys
+
+SQLite does not enforce foreign keys unless asked, so `ON DELETE CASCADE`
+does nothing in the unit tests and a row left behind by a delete goes
+unnoticed until production. Turning the pragma on was tried and reverted:
+a dozen existing fixtures insert rows pointing at organisations that do
+not exist, and fixing those is its own piece of work rather than something
+to bury inside this merge.
+
+Two deletes are therefore written out in `models.py` rather than left to
+the database. Worth closing properly in a plan of its own, because the
+next person to rely on a cascade will have the same surprise.
+
+8. [x] **Add the cycle guard and index the parent column**, with a shared upward
    walk helper. Do this before step 9, so no recursive query is ever written
    against a table that can hold a cycle.
 
-9. [ ] **Switch scoping and reach to subtree queries**, with a depth cap and
+   Two readings the plan left open were settled while building:
+
+   - **Departed from what the code did: the self-parent refusal is now a
+     400, not a 422.** The plan asks for 400, and one rule refusing the
+     same thing with two different codes depending on how far up the chain
+     the loop closes would be worse than either.
+   - **The tree walks are imported from their own module, not the package.**
+     They read the models and the models read the vocabulary, so
+     re-exporting them from `app/org_units/__init__.py` made importing
+     either one depend on the other being finished.
+
+9. [x] **Switch scoping and reach to subtree queries**, with a depth cap and
    distinct ids. Write them as subtree queries even though the tree is only
    two levels deep, so a third level needs no rewrite.
+
+   Every walk was already a subtree walk from step 4, level by level. This
+   step makes each of them one recursive query instead, which is what
+   stops depth costing round trips the day a third level appears.
+
+   Three readings the plan left open were settled while building:
+
+   - **`UNION`, not `UNION ALL`.** Both databases drop duplicate rows in a
+     recursive query, which stops a cycle looping on its own; the depth cap
+     is the second line of defence rather than the only one.
+   - **Naming the organisation for a list of places is two queries, not
+     one per place.** One walk up for the whole list, then one lookup of
+     which organisation each root stands for. There are tests counting the
+     queries, because "one query" is the point and nothing else would
+     notice it quietly becoming four.
+   - **Checked against both databases.** These are the first recursive
+     queries in the repository, so they were run against a real Postgres
+     as well as the unit tests' SQLite, cycles included.
+
+   No measurement suggested a materialised path column is needed, so none
+   was added. See **Risks**.
+
+### Still unassigned: reach through a teaching link
+
+The plan says reach is "walking up to the root and adding anything reached
+through a teaching link", and the testing list asks for "a teaching link
+grants reach without admin rights". No numbered step builds it, and step 9
+is only about the shape of the queries, so it is deliberately not built
+here.
+
+`relation_grants_reach` in `app/org_units/relations.py` already declares
+which relation confers it — `teaches_at` and nothing else. What remains is
+one clause in `get_reachable_org_ids`, and it belongs with the org_units
+module in step 10, where the plan describes reach.
+
+### How steps 10 to 12 are sequenced
+
+Two questions were put to the person the plan is for, and both are
+settled:
+
+- **The column renames take the full expand-contract, inside this stack.**
+  `site_id` becoming `org_unit_id` is three units, not one: write both
+  names, then read the new one, then drop the old. A *table* rename stays
+  a single step, which the backend rules already bless.
+
+- **`organisations` folds into `org_unit`, breaking changes and all.** The
+  gates will be signed off. Even so the fold is staged rather than
+  dropped in: the new `/api/org-units` surface arrives alongside the old
+  one, the frontend moves across, the old surfaces are retired, and only
+  then does the `organisations` table go. Nothing is broken at any point
+  a reviewer stops at.
+
+So the remaining steps land as:
+
+- [x] 10a — write both names for the place column
+- [x] 10b — read the new name
+- [x] 10c — stop writing the old name, and drop it
+- [x] 10d — rename the tables and the model
+- [x] 10e — reach through a teaching link (the module move goes with 12b)
+- [x] 11a — the `/api/org-units` surface, alongside the old ones
+- [x] 11b-i — one place client and type for the screens to use
+- [x] 11b-ii — the organisation screens onto it
+- [x] 11b-iii — the place screens onto it, and the edit page tested
+- [x] 11b-iv — a list page and a create page for places
+- [x] 11b-v — the last readers of the old surfaces, bar one
+- [x] 12a-i — the rules the old surfaces prove, proved on the new one
+- [x] 12a-ii — the rest of those rules: scoping, and one place per site
+- [x] 12a-iii — retire `/api/sites`
+- [x] 12b-i — the kinds of organisation become kinds of place
+- [x] 12b-ii — an organisation created as a place is still an organisation
+- [x] 12b-iii — the users API learns place ids, beside the old ones
+- [x] 12b-iv — the user form onto place ids
+- [x] 12b-v — the features, patients and staff rules onto the place surface
+- [x] 12b-vi — the remaining organisation-surface tests onto places
+- [x] 12b-vii — retire `/api/organisations`
+- [x] 12b-viii — retire the organisation and site lists on the users API
+- [x] 12c-0 — make the two id sequences disagree in the tests
+- [x] 12c-i-a — a place column beside every organisation column, and both written
+- [x] 12c-i-b — those tables read the place column, translating at the edges
+- [x] 12c-i-b2 — teaching's surface answers in place ids, beside the old one
+- [x] 12c-i-b3 — retire teaching's organisation-keyed fields and paths
+- [x] 12c-i-c1 — stop writing the organisation column
+- [x] 12c-i-c2 — drop the organisation column
+- [x] 12c-i-d — `site_common_competency`'s two place columns collapse into one
+- [x] 12c-ii-a — an organisation's place is required
+- [x] 12c-ii-b — the membership writers take a place
+- [x] 12c-ii-c — the users list excludes members of a place
+- [x] 12c-ii-d — membership and reach answer in place ids
+- [x] 12c-iii-a — a place remembers the prefix its media is filed under
+- [ ] 12c-iii-b — drop the `organisations` table
+- [x] 12c-iv — refuse deleting a parent with children, and enforce `requires_parent`
+
+#### 10a — write both names for the place column
+
+Two readings the plan left open were settled while building:
+
+- **The mirror lives in the mapper, not at every write.** There are dozens
+  of places that record a place, and one of them being missed is a row
+  whose place is known under one name and not the other — the very failure
+  this plan exists to remove, reintroduced by accident.
+- **Both unique rules are in force meanwhile.** While both columns hold
+  the place, both have to refuse the same duplicates, or a row the old
+  rule would have stopped slips in under the new one.
+
+`Site.staff` was removed on the way: two foreign keys to the same table
+made it ambiguous, and nothing used it.
+
+#### 10b — read the new name
+
+Every read moved across; every write still sets both. One thing worth
+recording:
+
+- **The test fixtures that write a membership row directly had to start
+  writing both names too.** They stand in for the old revision, which in
+  production writes both from 10a onwards — so this is the fixtures
+  catching up with the application rather than a change in behaviour.
+  A row carrying only the old name is simply not found once the reads
+  move, which is what makes the backfill in 10a load-bearing; there is a
+  test saying so.
+
+#### 10c — stop writing the old name, and drop it
+
+Three readings the plan left open were settled while building:
+
+- **The membership table's key moved with the column.** It keys on the
+  place, so the old key had to go before the column under it could.
+  Postgres marks a new key's columns as required by itself, which is how
+  the place stays mandatory without a default that would make no sense
+  for an id.
+- **Two indexes became one.** The old name carried a pair — place, and
+  place with competency — and the new name gained a single-column one
+  while both were live. One index answering "who here may practise this"
+  is enough.
+- **`test_the_place_column_is_being_renamed.py` was deleted.** Its whole
+  subject was the period when both names existed, and that period is over.
+
+The keyword arguments on `cbac/scoped.py` still read `site_id`, meaning "a
+place inside an organisation" as opposed to `organisation_id`. They
+collapse into one when `organisations` folds away in 12b; renaming them
+now would leave two words for one idea sitting next to each other.
+
+#### 10d — rename the tables and the model
+
+`sites` becomes `org_unit` and `Site` becomes `OrgUnit`, with the tables
+that hang off a place renamed to match. Three readings the plan left open
+were settled while building:
+
+- **The rename was done by token, not by text.** A search-and-replace on
+  the word would have rewritten the API path `/api/sites`, which is still
+  live, and the messages a user reads. Only names in code moved.
+- **Every index was renamed by hand.** Postgres leaves a renamed table's
+  auto-named indexes alone, so autogenerate would flag them against the
+  model's expected names forever.
+- **The dead many-to-many table went with it.** Nothing had read or
+  written it since ownership moved onto the parent column, and it held no
+  rows.
+
+### Discovered while building: a third table still has the pair of place columns
+
+`site_common_competency`, in the clinician passport, carries the same
+either/or `site_id` and `organisation_id` pair that step 6 removed from
+practising competencies and positions — with a check constraint policing
+it, and a comment saying it follows that pattern deliberately. The plan
+does not mention it.
+
+It only needed repointing at the renamed table here. The pair itself
+collapses in 12b, where `organisations` goes and one of the two columns
+stops meaning anything.
+
+#### 10e — reach through a teaching link
+
+The item left unassigned at step 9 is built: a `teaches_at` link makes the
+place it points at reachable. Nothing else about it changes — not
+membership, not admin rights.
+
+**Departed from the plan on the module rename.** The plan pairs this with
+turning the organisations module into an org_units module. Its two
+functions still answer in *organisation* ids, because organisations still
+exist; renaming them now would be a large diff that says nothing true
+yet. The move goes with 12b, where the functions genuinely change meaning.
+
+Three rules the plan did not spell out, all written into the code:
+
+- **A link is followed away from its source, never back.** A link is a
+  claim its source makes about itself, so following it backwards would let
+  anybody name a school and be let into it.
+- **A link belongs to the place that made it.** One ward recording a
+  relationship must not quietly open it to everybody at the trust. An
+  organisation that means it for all its people records the link on
+  itself.
+- **One hop.** Reach that chained would make "who can see this" depend on
+  a path nobody drew.
+
+#### 11a — the `/api/org-units` surface
+
+Eleven paths, covering everything the two older surfaces do, all keyed on
+a place id. The old pair is untouched and still answers in organisation
+ids and site ids, which is why both run side by side rather than one being
+a view over the other.
+
+Four readings the plan left open were settled while building:
+
+- **The type decides whether a place may be a root**, so neither a
+  ward with no parent nor a nested organisation can be created by accident.
+  Creating a root stays an operator's job, as creating an organisation
+  always was.
+- **Changing a type across that line is refused.** Turning a ward into an
+  organisation is not a rename; it would move the place out of its tree
+  without saying so.
+- **Features and patient lists are refused on a place that cannot carry
+  them**, rather than written and never read. A feature quietly enabled on
+  a ward that does nothing is worse than being told it cannot be.
+- **Scoping here is membership, not reach.** Reach is why somebody sees
+  teaching content at a place they visit; it is not authority to
+  administer it, and these are the administration routes.
+
+`require_clinical_services` moved from `main` to `deps` so the new router
+could depend on the *same* callable. A wrapper would have been a different
+object, and the tests switch that gate off by overriding the object — so
+the wrapper would have quietly stayed on.
+
+#### 11b — the frontend, in three
+
+The admin screens are about 2,700 lines of page code and 2,900 of tests.
+Moving all of them in one pull request would be far past what anybody can
+read at a sitting, so it is split: the client and type first, then the
+organisation screens, then the place screens together with the thin-pages
+gap.
+
+**11b-i** adds `frontend/src/domains/orgUnit.ts`: the `OrgUnit` type and
+every call the screens make, gathered so the addresses appear once. The
+rename just done showed why that matters — the same path was written out
+in a dozen files, and moving it meant finding all of them. No screen
+changes yet.
+
+**11b-ii** moves the eight organisation screens across. Five readings the
+plan left open were settled while building:
+
+- **The organisation page now makes one request instead of two.** A place
+  carries its own people, the places inside it, the features switched on
+  there and its patient list, so there is nothing to fetch separately.
+- **The type's name comes from the server.** The pages used to title-case
+  the stored value, which meant two places could disagree about what a
+  kind of place is called.
+- **Taking a place out of an organisation is deleting it.** A place that
+  belongs nowhere is invisible to every list and reachable by nobody,
+  which is worse than saying it has gone. The old "unlink" wording
+  promised something the tree cannot do.
+- **Adding somebody now says what they are.** The old address assumed
+  staff; a place takes trainees and external assessors too.
+- **Naming a clinical lead is two acts.** The person is at the place, and
+  the person holds the post. They used to be one, which meant a post could
+  not be made vacant without also removing the person — and a vacancy is a
+  real, actionable state.
+
+Two things were added to the surface from 11a while moving the screens,
+because moving them is what showed they were missing: a place's children
+carry their clinical lead's *name* as well as their id, so a list reads
+without a request per row; and there is a route for naming or vacating a
+clinical lead.
+
+#### 11b-iii — the place screens onto it
+
+The three screens under `pages/admin/sites/` now speak in places: the
+place page, the edit page and the staff picker. Nothing on them fetches an
+organisation any more.
+
+- **A place says where it sits.** The detail answer now carries
+  `parent_name` beside `parent_id`, so the page can print "inside Test
+  Trust" without a second request for a single word. Empty at the top of a
+  tree, which is a fact about the place rather than a missing value.
+- **The staff picker separates what somebody is from what they hold.** The
+  old form had one "role" field where clinical lead sat alongside staff
+  and trainee, as if they were three of a kind. They are not: the first is
+  a post, the other two are what a person is. Picking clinical lead now
+  adds the person as staff and then names them to the post.
+- **The edit page has a test at last.** It covers loading, renaming,
+  naming a lead, leaving an unchanged lead alone, and the confirmation
+  before a place is taken out of use. This was the gap the plan named, and
+  the page that most needed it — it is the one screen that can rename a
+  place, put it out of use, and change who leads it.
+
+The gap the plan named has three parts, and this unit closes one of them.
+The list page and the create page are the other two, and they are new
+screens rather than moved ones, so they land as **11b-iv** rather than
+swelling this unit past what anybody can read at a sitting. Creating a
+place still works today, from the organisation side.
+
+#### 11b-iv — a list page and a create page for places
+
+The rest of the thin-pages gap. Both screens existed for organisations and
+neither for the places inside them, which is why a site could only be
+reached through the organisation that owns it.
+
+- **One request builds the list.** Every place the person may administer
+  comes back at once; the organisations among them name each site's owner
+  rather than appearing as rows. Asking twice would cost a round trip to
+  say the same thing.
+- **A site whose owner is not in the answer is still listed.** Somebody
+  may administer a ward without administering the trust above it, so the
+  owner column reads "not known" rather than the row disappearing.
+- **The create page asks what the old flow assumed.** Creating from the
+  organisation side decided the parent before the question was put, so a
+  ward could not be placed inside a building. The place above is now a
+  field like any other.
+- **Who leads a site is not asked while creating one.** The person has to
+  be at the place before they can hold the post there, and both are one
+  act on the site's own pages once it exists.
+- **The list of kinds of place now comes from the shared file.** Three
+  screens carried their own copy of it, which is how a screen comes to
+  offer something the server will refuse. `shared/org-unit-types.yaml` is
+  generated into the frontend like the professions and competencies
+  already are, and `requires_parent` is what separates a ward from a
+  trust.
+
+#### 11b-v — the last readers of the old surfaces
+
+Three screens outside `pages/admin/` were still reading the old
+addresses, and one of them had gone quietly wrong when the admin screens
+moved.
+
+- **The breadcrumb was naming the wrong organisation.** It asked
+  `/organisations/{id}` with what is now a place id, so it named
+  whichever organisation happened to hold that number, or nothing at all.
+  Both kinds of place come from one address now, which is the whole point
+  of there being one.
+- **The place above is not always an organisation.** A ward can sit
+  inside a building, so a link upwards has to know which of the two pages
+  to go to. The detail answer carries `parent_is_root` for that, rather
+  than the screen fetching the parent to find out.
+- **"new" is a page, not a place.** Visiting the create form used to send
+  a request asking about a place called "new" and log the failure. Ids
+  that are not numbers are left alone now.
+- **Sub-pages are named rather than capitalised from the address.** The
+  navigation read "Add-staff".
+- **The count of organisations comes from the places at the top of a
+  tree**, which is what every other admin screen already counts.
+
+One reader is deliberately left: the user form sends `organisation_ids`
+and `site_ids` to the users API, and those are organisation ids, not
+place ids. Moving the screen means moving what the API accepts, so it
+goes with **12b**, where the table folds — and until it does, `/api/organisations`
+cannot be retired, which 12a has to respect.
+
+#### 12a — retiring the old surfaces, in three
+
+About ninety tests exercise `/api/sites` and `/api/organisations`, and
+most of them are proving rules about places rather than about those two
+addresses. Deleting them with the routes would lose the rules, so the
+retirement is split: move what is worth keeping first, then retire.
+
+**12a-i** moved the first group and found a gap while doing it.
+
+- **Taking somebody off a place did not vacate what they held there.**
+  Naming a clinical lead requires the person to be at the place, so
+  leaving them holding the post after taking them off it left the place
+  in a state the same surface refuses to create. The old surface got this
+  right; the new one did not, and nothing noticed because no test asked.
+  The post is vacated rather than deleted, so the handover is recorded.
+- **The cycle guard walks the whole chain.** One level up was already
+  refused. Moving a hospital under a room three levels below it is the
+  case the walk exists for, and only the old surface asked it.
+- **The membership competency is about the competency, not the address.**
+  Holding `manage_users` alone still does not put somebody at a place,
+  and `manage_staff_membership` alone still does, now asked of
+  `/api/org-units` as well.
+
+**12a-ii** moved the rest: who may see what, and whose tree a place can
+be put into.
+
+- **The list fails closed.** An admin belonging to no organisation sees
+  nothing, because `IN ()` is the classic way a filter turns into its
+  opposite. A place hanging off nothing is not shared either.
+- **The gate is a competency, not a rank.** A consultant in the right
+  organisation still cannot read the estate.
+- **Whose tree a place goes into is checked on the move as well as on the
+  create.** Only `/api/sites` asked that, and it is the same rule applied
+  later. Somebody else's ward cannot be the parent, and neither can a
+  place that belongs nowhere.
+
+A site belonging to exactly one organisation needed nothing moved: a
+place has one parent column, so a second owner is not a rule to enforce
+but a state that cannot be written down. The link and unlink routes that
+rule existed for go with the surface.
+
+**12a-iii** retired `/api/sites`. Thirteen addresses answer 410, and
+about 1,100 lines of routes and 1,300 lines of tests went with them.
+
+- **The shapes stay, the answers stop.** Each retired route still
+  declares the request it always took, so a stale client sending what it
+  always sent is told the address has gone rather than that its request
+  is malformed. Deleting the paths outright is a later step, and a
+  visible one.
+- **410 rather than 404**, so a caller can tell "this never existed" from
+  "this used to be here": the second says there is somewhere else to
+  look, and the answer names `/api/org-units`.
+- **Same answer to everybody.** A retired address holds nothing to
+  protect, so it answers without a permission check. Replying 403 to one
+  caller and 410 to another would only tell them apart.
+- **`oasdiff` sees no breaking change**, because the schema did not
+  change — the behaviour did. So the gate is not raised by this step, and
+  the deliberateness lives here and in the pull request instead. The one
+  client that used these addresses is this repository's own frontend, and
+  it moved in 11b.
+- **Two gaps surfaced while moving the tests.** The new surface accepted
+  a misspelt base profession where the old one refused it, which would
+  have written a profession nobody holds onto a person's record; and an
+  organisation could be read through the sites addresses, which is now
+  moot.
+
+`/api/organisations` cannot follow until the user form moves, which is
+12b.
+
+#### 12b-i — the kinds of organisation become kinds of place
+
+The plan left open what happens to `organisations.type`, whose values —
+hospital team, GP practice, private clinic, teaching establishment — say
+what kind of organisation something is. Moving the screens onto the place
+surface without settling it had already broken something: the create
+screen offered those kinds, the tree knew only `organisation`, and every
+attempt to create one answered "unknown kind of place". The screen's own
+test mocked the request, so nothing caught it.
+
+- **They become types of place**, alongside `organisation` itself, which
+  stays as the plain answer for a body that is none of the others. One
+  vocabulary for one question, and a root in the tree that can say which
+  kind of organisation it is.
+- **What makes something a root is the flag, not the name.** Three
+  queries asked `type != "organisation"` to mean "the places inside
+  organisations", which would have quietly lost a practice the day the
+  kinds arrived. They ask the flag now.
+- **`department` stays a place inside an organisation**, and is no longer
+  offered as a kind of organisation. It was in both lists meaning two
+  different things, and the nested meaning is the one the tree uses.
+  Nothing is live yet, so nothing has to be reclassified.
+- **The screens read the kinds from the shared file**, as the place
+  screens now do, so the list on screen cannot drift from the list the
+  server accepts. That drift is what broke it.
+
+Still open, and what 12b-ii and 12b-iii are for: the user form sends
+organisation ids to the users API, so `/api/organisations` still has one
+reader; and creating an organisation through the place surface writes no
+`organisations` row at all, which is fine only because that table is on
+its way out.
+
+#### 12b-ii — an organisation created as a place is still an organisation
+
+Creating a root through the place surface wrote no row in the
+organisations table, and that table is still what answers in organisation
+ids: who may administer what, and which organisations the user form
+offers. So a trust created on the new screens was a place only a
+superadmin could see, with nobody able to belong to it — the first thing
+anybody would try after creating it.
+
+- **The row is written beside the place**, and kept in step when the
+  place is renamed or retyped. It names its place on the way in, which is
+  what stops the model listener creating a *second* root for it.
+- **Deleting the place deletes the organisation**, through the same
+  listener that already clears everything hanging off a root.
+- **This is scaffolding with a known end.** The whole point of 12b-iv is
+  that one of the two tables goes; until it does, the honest thing is for
+  both to describe the same world rather than half of one.
+
+#### 12b-iii — the users API learns place ids
+
+The user form is the last reader of `/api/organisations`, because the
+ids it sends to the users API are organisation ids. Changing what those
+numbers mean in one step would be a breaking change no schema check can
+see: a tab left open across the deploy would write place ids into fields
+counted against another table, and nothing would notice. So it expands
+first — the decision recorded is to expand and contract rather than
+reinterpret.
+
+- **`place_ids` is the one list**, counting in place ids, organisations
+  included. There is one table of places, so there is nothing to split
+  into two fields.
+- **A request may use one vocabulary or the other, never both.** The same
+  number means different things in each, so applying both would make the
+  answer depend on which was applied last. Sending both is refused.
+- **What somebody is at a place is unchanged**: staff at an organisation,
+  a trainee at a place inside one, exactly as the two older lists each
+  did. Widening the request must not quietly change who counts as staff;
+  settling on one answer is a separate decision.
+- **An admin settles their own places and leaves the rest.** Saving the
+  form clears the memberships they can administer and keeps the others,
+  so an admin at one trust cannot empty somebody's memberships at
+  another by saving a form they could not even read. The old `site_ids`
+  path checked only that a place existed, which is the hole this closes
+  on the way past.
+
+`oasdiff` reports no breaking change, as an expand step should.
+
+#### 12b-iv — the user form onto place ids
+
+The last screen reading `/api/organisations`. Nothing in the frontend
+asks either old surface anything now.
+
+- **One request instead of one per organisation.** It used to fetch the
+  organisations and then a detail request for each one's sites, so an
+  estate of thirty trusts meant thirty-one requests to fill two dropdowns.
+- **The form keeps its two controls over one list.** Which control a
+  place appears in is decided by what it is, not by where somebody put
+  it, so the two cannot disagree about a place.
+- **A ward is listed under the trust it is inside, however deep.** The
+  walk goes up to the root rather than reading the immediate parent, so a
+  ward inside a building inside a trust is still that trust's ward. The
+  walk is bounded by the number of places, so a chain that somehow loops
+  cannot hang the page.
+- **A place whose organisation is not in the answer is left out.**
+  Somebody may administer a ward without administering the tree above it;
+  showing it under a name we do not have would be worse than not showing
+  it, and the place's own screens can still put people there.
+
+#### 12b-v — features, patients and staff, on the place surface
+
+The first group of organisation-surface tests moved across, and moving
+them turned up two more places where the new surface had quietly drifted
+from the old.
+
+- **Switching a feature on was operator-only on the place surface.** The
+  organisations surface asks for `manage_users` at an organisation the
+  caller administers, and the teaching plan says the same: features are
+  how an organisation says what it does, and its own administrators
+  settle that. Retiring the older surface would have taken a working
+  thing away from every admin. The competency gate was missing from the
+  route as well, so it now asks for both.
+- **The organisation page listed trainees as staff again.** The old
+  response had a filtered `staff_members` list; a place answers with
+  everybody who is there and what each of them is, which is right for the
+  answer and wrong for a heading promising staff. The page filters now,
+  and the rule is tested where it lives — on the screen.
+- **Patients and features moved without incident**, the shapes being the
+  same either side.
+
+#### 12b-vi — the rest of the organisation-surface tests
+
+Seven more files now ask `/api/org-units`: membership through the
+routes, reach through a link, what a site-only admin may not administer,
+the platform-role column, messaging's removals, the grant that rides with
+a membership, and the unauthenticated sweep.
+
+- **What was only asked of the organisations surface is asked here now**:
+  that an unauthenticated caller gets 401 and a signed-in one without the
+  competency gets 403, that a member who does not exist and a place that
+  does not exist are both 404, and that a name is stored without its
+  surrounding spaces.
+- **A place must have a name.** The routes strip a name before storing
+  it, so a name of spaces became a place called nothing — a row nobody
+  can search for, pick out of a list, or ask about. Both surfaces
+  accepted it; this one refuses, which is a deliberate improvement rather
+  than a port.
+
+What is left on the old surface is its own CRUD tests, which the place
+surface now covers rule for rule. They go with it in 12b-vii.
+
+#### 12b-vii — retire `/api/organisations`
+
+The second of the two old surfaces. Eleven addresses answer 410, and
+about 670 lines of routes went with them, along with the tests that only
+exercised that address.
+
+- **Same shape as the sites retirement**: the request each route always
+  took is still declared, so a stale caller is told the address has gone
+  rather than that its request is malformed; 410 rather than 404; the
+  same answer to everybody, because a retired address has nothing left
+  to protect.
+- **What the organisation detail said about its sites** — each one's
+  clinical lead — the place detail says about its children, and the test
+  for it moved there in 11b.
+- **`oasdiff` sees no breaking change again**, because the schema has
+  not changed, only the behaviour. The one client of these addresses was
+  this repository's frontend, which moved earlier in the stack.
+
+The `organisations` table is still there, still written beside each root
+place and still what membership counts against. Dropping it is 12b-viii.
+
+#### 12b-viii — the users API speaks only in places
+
+The contract step for 12b-iii, and the last thing outside the database
+that counted in organisation ids.
+
+- **Removed rather than ignored.** Silently accepting a field that no
+  longer does anything is how a caller comes to believe a membership was
+  recorded when it was not.
+- **Both went together**, because keeping either would mean keeping the
+  organisations table they count against, which is the point of the next
+  unit.
+- **`site_ids` was the more misleading of the two.** It already answered
+  in place ids and already carried places that were not sites, so its
+  name said something narrower than it meant.
+- **This is the first real breaking change in the stack.** Six decision
+  files record it, and the `api-breaking-change-review` gate is the
+  human half. Nothing on a stale tab breaks: the bundle that reads this
+  response is the bundle that writes it, and the two dropdowns render
+  from an empty list the same way they already do for an admin who can
+  see no organisations.
+
+#### 12c — what dropping the table actually needs
+
+Attempted as one unit and abandoned, because it is not one. The refactor
+itself is straightforward and was written: `organisation_member` becomes
+the membership table filtered to root types, `_root_of` becomes a check
+rather than a lookup, and the four translating walks in
+`app/org_units/tree.py` collapse into `root_ids_of` and `descendant_ids`.
+Every test passed.
+
+**And it would still have been wrong.** Nine columns in two features are
+foreign keys to `organisations.id`:
+
+- **Teaching** — `question_bank_configs`, `question_bank_items`,
+  `assessments`, `teaching_org_settings`, `question_bank_org_status`,
+  `question_bank_syncs`, `module_media_link`.
+- **The passport** — `passport_signoff_request`, and
+  `site_common_competency`, which carries the pair of place columns this
+  plan already noted, with a check constraint saying exactly one is set.
+
+Those tables keep counting in organisation ids. Change what
+`get_member_org_ids` answers without moving them, and teaching looks up
+its rows by a number that means something else — silently, and only in
+production: the two id spaces coincide in the unit tests, because each
+fixture creates one organisation and it takes the same id as its place.
+The suite went green on a coincidence, which is the sharpest reason this
+plan exists at all.
+
+So the order is: the columns first, each one expand-contract as the
+backend rules require; then membership and reach; then the table. Some
+of that work can borrow the refactor that was written here — it is
+recorded in the pull request thread rather than the repository, since
+code nothing calls is worse than code that does not exist.
+
+The last unit is unblocked by none of it: refusing to delete a parent
+that still has children, and enforcing each type's `requires_parent`
+flag, need nothing from the fold.
+
+#### 12c-iv — the two rules the fold never blocked
+
+Both were listed last in the plan as though they waited on the table
+going. Neither does.
+
+- **A place with something inside it is refused rather than emptied.**
+  The parent column says `SET NULL`, so deleting a ward left its rooms
+  belonging nowhere: invisible to every list, reachable by nobody, and
+  impossible to tell from a room that was always loose. The refusal is
+  reversible — move them or delete them first — which is what makes it
+  the kinder answer.
+- **An organisation may not be given a parent.** This was possible until
+  now, and produced a place whose type said "top of a tree" while every
+  walk upwards landed in somebody else's trust. `is_root` would have gone
+  on saying yes. Creating one that way was already refused; moving one
+  was not.
+
+#### 12c-0 — make the two id sequences disagree in the tests
+
+The unit that makes the rest of 12c safe to attempt, and it had to come
+first: without it the suite cannot tell a place id from an organisation
+id, so every step of the fold would be marked correct by a test run that
+proves nothing.
+
+Every test now starts with one place that belongs to no organisation, so
+each organisation created afterwards has a place id one higher than its
+own. It is a ward rather than a top-level type, so no question the
+application asks counts it as an organisation: it is not in a list of
+roots, and nobody can see it, because nobody is a member of anything
+above it.
+
+**Measured rather than asserted.** The refactor that 12c-ii will need —
+membership and reach answering in place ids, with the teaching and
+passport columns left where they are — was applied to both:
+
+- **Without the spacer: nothing failed.** The whole suite, green, on a
+  change that would have matched teaching rows by the wrong number in
+  production and written place ids into columns meaning organisation
+  ids.
+- **With the spacer: eighty-five failures**, in the teaching banks and
+  assessments, the passport memberships, and scoped access — which is
+  exactly where the confusion lives.
+
+Two tests had to change, and both were wrong before. One asserted an
+exact list of places where it meant "the organisation is not among
+them". The other asked which places had nothing above them, when what it
+meant was which places are organisations — the difference this whole
+plan exists to draw, written in a test of the plan's own work.
+
+#### 12c-i-a — a place column beside every organisation column
+
+The expand step, taken for all eight tables at once because it is one
+idea eight times: seven in teaching and one in the passport each gain an
+`org_unit_id` beside their `organisation_id`.
+
+- **The backfill is a join, not a guess.** Every organisation already
+  names its own place, so the migration fills the new column for every
+  existing row from `organisations.org_unit_id`.
+- **Both columns are written from this deploy.** There is exactly one
+  place each of these rows is created, which is what makes the step
+  small; a row written with only the old column would be invisible to
+  the reads that switch next, and nothing would say so — the reader
+  would simply find less than there is.
+- **Nullable for as long as the move takes.** A null means a writer that
+  has not been moved across, which is a state the next step's tests can
+  see rather than one the database forbids.
+- **`site_common_competency` is not in this batch.** It carries a pair of
+  place columns with a check constraint saying exactly one is set, so it
+  collapses rather than gains a column, and that deserves its own review.
+
+Round-tripped against a real Postgres — upgrade, downgrade, upgrade —
+with `alembic check` reporting no drift afterwards.
+
+#### What 12c-i-b has to be careful about
+
+Switching these tables' reads is sixty-three query sites, which is
+tedious but not interesting. What is interesting is where the ids come
+from and where they go.
+
+- **They come from membership**, which still answers in organisation ids
+  until 12c-ii. So the read switch translates once, where teaching
+  resolves the caller's organisations, rather than at each query.
+- **They go out of the API.** Teaching and the passport both put
+  `organisation_id` in responses, and teaching has paths of the shape
+  `/admin/banks/{bank_id}/organisations/{org_id}/settings`. The frontend
+  reads those ids and puts them back in URLs. Changing what the number
+  means without changing its name is the silent break this plan refuses
+  everywhere else, so the surface moves the way the users API did:
+  a place id alongside, the screens across, then the old field out.
+- **Which is why the two are separate steps.** The reads can move now
+  with the boundary translating back, and the surface can move after,
+  each one small enough to check.
+
+#### 12c-i-b — teaching and the passport read the place column
+
+The switch itself was sixty-three query sites and mechanical. Four
+things around it were not.
+
+- **One listener replaced eight hand-written dual-writes.** The writers
+  are not only the eight places the application creates these rows —
+  fixtures, scripts and whatever is written next also write them, and a
+  row carrying one id and not the other is invisible to half the code
+  with nothing to say so. The pair is now kept in step on insert and
+  update, in either direction, which is what let the code move a writer
+  at a time.
+- **Media objects are addressed by organisation id, not merely filtered
+  by it.** They live at `{organisation_id}/{module}/{asset}` in a
+  bucket, and the signed-cookie prefix covers that path. Following the
+  column there would have moved every future upload and left everything
+  already uploaded unreachable — an object-store migration rather than a
+  column switch. Those three call sites translate back, and the deletion
+  reads the prefix from the row that remembers it.
+- **The continuous-integration sync fell back to the literal
+  organisation 1.** A guess that held while organisations were numbered
+  from one and nothing shared their numbering. It resolves the first
+  organisation in the tree now, and says so plainly when there is none
+  rather than writing rows that point at nothing.
+- **The tests found each of these**, because the id spacer from 12c-0
+  made a place id and an organisation id different numbers. Without it
+  every one of them would have passed.
+
+The surface is untouched: teaching and the passport still answer in
+organisation ids, translated at the edge. Moving that is 12c-i-b2.
+
+#### 12c-i-b2 — teaching's surface learns place ids
+
+The expand step for the API itself, so the screens can move before
+anything is taken away.
+
+- **Both ids in the answers.** The settings response and each row of the
+  bank's organisation list carry `org_unit_id` beside `organisation_id`.
+  Named for the column rather than prettily, because that is what every
+  other place-shaped answer is named.
+- **A second path beside each organisation-keyed one.**
+  `/admin/banks/{bank}/places/{place}/settings` and its active-version
+  twin, each translating once and calling the same handler, so the two
+  cannot drift.
+- **The screens moved across in the same unit**, because the ids they
+  hold are ids they put straight back into URLs: the bank detail page
+  links by place, the settings page matches its row by place, and
+  registration sends the place the validation handed it.
+- **Registration takes either.** `org_unit_id` is what the form sends
+  now; `organisation_id` still works for a tab left open across the
+  deploy.
+
+The organisation-keyed fields and paths go in 12c-i-b3, which is a
+breaking change and needs its decision files.
+
+#### 12c-i-b3 — teaching answers only in places
+
+The contract step for the same surface, one release after the expand.
+
+- **`organisation_id` leaves four answers**: the teaching settings row on
+  both its GET and its PUT, each row of a bank's organisation list, and
+  the clinical-lead validation. Four `oasdiff` findings, four decision
+  files, none forcing a reload — the screens moved in 12c-i-b2, so
+  nothing open is still reading the field.
+- **The organisation-keyed paths answer 410, not 404.** The two id
+  sequences overlap for a small installation, so an organisation id
+  would often name a real place: quietly doing the work under the old
+  address is how a caller would go on believing the number means an
+  organisation. The 410 names the place-keyed replacement instead. This
+  is the same choice the retired sites and organisations addresses made.
+- **The handlers behind them stayed, privately.** `_promote_bank_version`
+  and `_update_bank_org_settings` still take an organisation id, because
+  membership still counts in organisation ids; the place-keyed routes
+  translate once and call them. 12c-ii is where that step goes.
+- **Registration stops accepting `organisation_id`.** It is an optional
+  request property, so removing it cannot break a caller that has
+  stopped sending one — and both forms send `org_unit_id`.
+
+#### 12c-i-c1 — stop writing the organisation column
+
+Split from the drop, which follows as `12c-i-c2`. The migrations run as
+a pre-deploy job, so dropping the column in the same deploy as the code
+that stops writing it would pull the floor out from under the revision
+still serving.
+
+- **The unique rules are restated in place ids first.** Once
+  `organisation_id` goes unwritten the constraints carrying it see a
+  null on every new row and stop rejecting anything, because Postgres
+  treats nulls as distinct. Both exist at once for one release, so
+  uniqueness is never unenforced.
+- **`module_media_link.organisation_id` is not one of them.** It is
+  where the object sits in the bucket, not who owns the row: the signed
+  cookie's prefix covers `{organisation_id}/{module}/{asset}`. It stays
+  required, and a listener fills it from the place — moving it means
+  moving objects and reissuing cookies.
+- **The mirroring listener went with the writes.** Its job was to keep
+  the pair in step; with one column written there is no pair. What
+  replaced it is the narrower listener above, in teaching's own models
+  rather than in `org_units`.
+- **Two readers of the old column were still there**, and would have
+  quietly found nothing: the passport's re-check lookup, and
+  `validate-clinical-lead`, which asked `QuestionBankOrgStatus` which
+  organisations offer a bank. Both now count in places.
+- **`sync_question_bank`'s parameter was renamed to `place_id`.** It had
+  held a place id under the name `organisation_id` since 12c-i-b, which
+  is the confusion this whole step exists to remove.
+
+#### 12c-i-c2 — drop the organisation column
+
+Seven columns, their indexes, their foreign keys and four unique rules.
+
+- **`module_media_link.organisation_id` stays**, and only its unique
+  rule moves. It is the object's address in the bucket, not the row's
+  owner, so dropping it would orphan every uploaded file. Moving it
+  means moving objects and reissuing signed cookies, which is storage
+  work and belongs in its own piece.
+- **`org_unit_id` becomes required here, not earlier.** The revision
+  serving alongside the previous migration still inserted rows without
+  it.
+- **`server_default=None` where those columns are tightened.** `check_migrations.py`
+  asks every `nullable=False` to name a server default, to stop a NOT
+  NULL column being added to a populated table. This is a tightening of
+  a column backfilled two revisions ago, which the rule cannot express;
+  `None` says truthfully that there is no default, where an actual
+  default would be a nonsense value for a foreign key. Worth a look
+  when the check is next touched.
+- **The downgrade refills the column from the place** before restoring
+  its unique rule, so a rollback finds the table as the revision before
+  this one left it rather than empty.
+
+#### 12c-i-d — one place column for the common competency shortlist
+
+- **The check constraint goes with the pair.** `(site_id IS NULL) <>
+  (organisation_id IS NULL)` existed to say "exactly one place", which
+  one column says by existing. A trust-wide list is the organisation's
+  own row in the tree; a ward's is the ward's.
+- **One migration, not expand-contract.** Nothing reads or writes this
+  table — the picker it feeds is unbuilt — so no serving revision
+  depends on either column. The rows are still carried across, in case
+  a deployment has any.
+- **Alembic does not autodetect a dropped check constraint**, so that
+  one is dropped by hand. Worth remembering: autogenerate would have
+  left it in place, silently rejecting every row the new column allows.
+- **The class is still `SiteCommonCompetency`.** Renaming it and its
+  table is a separate move and not what this step is about.
+
+#### 12c-ii-a — an organisation's place is required
+
+Split out of 12c-ii, which was going to be one unit and is three: the
+membership helpers alone have well over a hundred call sites.
+
+`Organisation.org_unit_id` was nullable "only until the backfill has
+given every organisation one", and that was two steps ago. Making it
+required is what takes `int | None` out of everything downstream — the
+assertions the test helpers were carrying purely to satisfy the type
+checker go with it.
+
+- **The foreign key becomes `CASCADE`.** `SET NULL` is what a nullable
+  column allowed. Deleting the place an organisation *is* deletes the
+  organisation, because there is nothing left for it to be.
+- **The migration creates a place for any organisation still without
+  one**, row by row, so the tightening cannot fail on live data. The
+  mapper has made one for every organisation since the tree arrived, so
+  this should find nothing; it is there because "should" is not a
+  guarantee about somebody else's database.
+- **`TestAnOrganisationOutsideTheTree` was deleted.** It set the column
+  to null to check that such an organisation authorised nobody. That
+  state cannot be written now, so the test could only have proved the
+  database was refusing it.
+- **The `before_insert` guard stays.** It reads a column typed as
+  required, which is not a contradiction: before the insert the
+  attribute is unset, and a caller that has chosen a place keeps it.
+
+#### 12c-ii-b — the membership writers take a place
+
+`add_organisation_member`, `remove_organisation_member` and
+`remove_organisation_memberships` become `add_place_member`,
+`remove_place_member` and `remove_place_memberships`, and stop
+translating.
+
+- **The translation was the only thing making them look
+  organisation-shaped.** `org_unit_member` has always been keyed on a
+  place; each of these took an organisation id and resolved it to that
+  organisation's row before touching the table.
+- **It was also a quiet failure.** Handed a ward id, the old writer
+  looked for an organisation with that id: it found none and did
+  nothing, or — where the two id sequences overlap, which they do on a
+  small installation — found a different organisation and wrote the
+  membership there. Two new tests pin the ward case.
+- **`remove_place_memberships` still clears only organisations**, even
+  when a ward is named. An admin editing which trusts somebody belongs
+  to should not silently take them off a ward.
+- **Three call sites in the application still hold organisation ids**
+  and translate at the call. They stop needing to in 12c-ii-c, when the
+  membership reads answer in places.
+
+### Discovered while building: the users list excluded the wrong organisation
+
+`GET /users?exclude_org=` powers "add a staff member" — everybody who is
+not already here. The screen that asks holds a **place** id: its route is
+keyed by one, and the membership it creates names one. The parameter read
+that number as an **organisation** id.
+
+The two id sequences agree on a small installation, because an
+organisation and its own row in the tree are created together and come
+out with the same number. They diverge the moment a ward is created
+between two organisations, and from then on the filter excluded the
+members of a different organisation, or of none, and the screen offered
+somebody who was already a member.
+
+There was no test of the parameter at all, which is how it survived.
+
+#### 12c-ii-c — the users list excludes members of a place
+
+- **`exclude_place` arrives beside `exclude_org`**, rather than
+  `exclude_org` quietly starting to mean a place. Adding an optional
+  query parameter is not a breaking change, and reinterpreting a number
+  while keeping its name is the thing this plan refuses everywhere.
+- **`exclude_org` keeps meaning an organisation id**, and a test says
+  so. It goes when the organisations table does.
+- **The tests state the failure both ways round**: a place id handed to
+  `exclude_org` excludes nobody, and an organisation id handed to
+  `exclude_place` excludes nobody. Either is somebody already a member
+  being offered again.
+
+#### 12c-ii-d — membership and reach answer in place ids
+
+Folded back into one unit, because splitting membership from reach would
+have left reach converting places back into organisation ids for a
+release — more code than doing both at once, and none of it the shape
+either function ends up.
+
+- **`organisation_member` becomes `organisation_place_member`**, a
+  narrowing of the membership table to rows naming an organisation's own
+  place rather than a join through `organisations`. A ward membership is
+  still not in it: that distinction is what every admin check rests on.
+- **`organisation_places_of` replaces two hand-rolled copies.** The "which
+  organisation is accountable here" walk lived inline in `/me` and in the
+  feature gate, each spelling it differently. A place with no
+  organisation above it contributes nothing rather than itself, which is
+  what stops a member of a detached place — the test fixtures make one on
+  purpose — having the run of somewhere nobody is accountable for.
+- **Teaching's `_places_of` scaffold is gone**, as its docstring said it
+  would be, and with it the translation in the bank settings and
+  active-version handlers.
+- **`_require_org_admin_over` returns a place**, so the passport's revoke
+  route drops its lookup. `AssessorRevokeOut.place_id` now holds a place
+  id whichever kind `place` says — it held the organisation's own id for
+  `organisation`, which the name never said.
+- **`RegistrationVerificationOut.organisation_id` became
+  `org_unit_id`** — renamed, not reinterpreted, so it takes a decision
+  file.
+- **`/patients/{id}/shared-organisations` still answers organisation
+  ids.** Nothing reads it, and changing what its `id` means is 12c-iii's
+  to do along with the table.
+- **A place that is not an organisation is now refused, not "not
+  found".** Setting a bank live at one used to 404 because the
+  translation failed; it is a 403 now, the same answer as naming
+  somebody else's trust, which is what it is.
+
+### Discovered while building: the media prefix was blocking the table's removal
+
+Everything else the organisations table answered is a property of a
+place — its name, its type, that it is a root. One thing was not: media
+lives at `{prefix}/{module}/{asset}` in a bucket, the signed cookie
+covers exactly that path, and the prefix is the organisation's own id.
+
+That number cannot simply become the place id. Every object already in
+the bucket is under the old one, and one module at one place has to have
+a single prefix — a second number would need a second cookie, and
+nothing issues one. So "drop the table" was, without noticing, "move
+every video and reissue every cookie".
+
+#### 12c-iii-a — a place remembers the prefix its media is filed under
+
+- **`org_unit.media_prefix_id` records the number**, backfilled from
+  `organisations.id`. Nothing in the bucket moves, and the table becomes
+  droppable.
+- **Null means "my own id"**, so a place created afterwards needs no
+  value, and the column is left null where the two numbers already agree
+  — which is the common case on a small installation. A stored number
+  repeating the id is one more thing that can drift from it.
+- **Read through `media_prefix_of`**, never directly, so the fallback is
+  in one place. The media-link listener reads it too, which is what
+  makes a new upload land where the cookie will look.
+- **A place that does not exist has no prefix**, rather than a number.
+  Otherwise a caller could sign a cookie for a path nothing is filed
+  under.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to

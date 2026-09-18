@@ -50,6 +50,7 @@ def link(db_session: Session) -> ModuleMediaLink:
     """An uploaded asset whose job has not yet reported."""
     row = ModuleMediaLink(
         organisation_id=1,
+        org_unit_id=1,
         question_bank_id="test-bank",
         media_key="lecture-01",
         asset_id="asset-1",

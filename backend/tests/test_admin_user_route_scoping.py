@@ -20,10 +20,10 @@ from __future__ import annotations
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import insert
 from sqlalchemy.orm import Session
 
-from app.models import Organisation, User, organisation_member
+from app.models import Organisation, User
+from app.organisations import add_place_member
 from app.security import hash_password
 
 
@@ -43,13 +43,7 @@ def admin_org(db_session: Session, test_admin: User) -> Organisation:
     org = Organisation(name="Own Trust", type="hospital")
     db_session.add(org)
     db_session.commit()
-    db_session.execute(
-        insert(organisation_member).values(
-            organisation_id=org.id,
-            user_id=test_admin.id,
-            capacity="staff",
-        )
-    )
+    add_place_member(db_session, org.org_unit_id, test_admin.id, "staff")
     db_session.commit()
     db_session.refresh(org)
     return org
@@ -68,13 +62,7 @@ def outsider(db_session: Session, other_org: Organisation) -> User:
     )
     db_session.add(user)
     db_session.flush()
-    db_session.execute(
-        insert(organisation_member).values(
-            organisation_id=other_org.id,
-            user_id=user.id,
-            capacity="staff",
-        )
-    )
+    add_place_member(db_session, other_org.org_unit_id, user.id, "staff")
     db_session.commit()
     db_session.refresh(user)
     return user
@@ -93,13 +81,7 @@ def insider(db_session: Session, admin_org: Organisation) -> User:
     )
     db_session.add(user)
     db_session.flush()
-    db_session.execute(
-        insert(organisation_member).values(
-            organisation_id=admin_org.id,
-            user_id=user.id,
-            capacity="staff",
-        )
-    )
+    add_place_member(db_session, admin_org.org_unit_id, user.id, "staff")
     db_session.commit()
     db_session.refresh(user)
     return user
@@ -223,12 +205,8 @@ class TestTheGateIsACompetencyNotARank:
         distinction the swap exists to make.
         """
         test_user.base_profession = "consultant"
-        db_session.execute(
-            insert(organisation_member).values(
-                organisation_id=admin_org.id,
-                user_id=test_user.id,
-                capacity="staff",
-            )
+        add_place_member(
+            db_session, admin_org.org_unit_id, test_user.id, "staff"
         )
         db_session.commit()
 
@@ -265,12 +243,8 @@ class TestSuperadminsAreGlobal:
         in no organisation would pass the test above and fail here, since
         this one puts them in an organisation the target is not in.
         """
-        db_session.execute(
-            insert(organisation_member).values(
-                organisation_id=admin_org.id,
-                user_id=test_superadmin.id,
-                capacity="staff",
-            )
+        add_place_member(
+            db_session, admin_org.org_unit_id, test_superadmin.id, "staff"
         )
         db_session.commit()
 
