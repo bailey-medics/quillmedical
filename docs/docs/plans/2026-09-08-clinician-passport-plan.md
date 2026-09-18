@@ -1425,6 +1425,82 @@ assumption runs the other way.
   list; and whether a holder inviting an assessor may create a
   membership without an administrator confirming it.
 
+#### Asking by email, not by picking a user — revision, 17 September
+
+> **Superseded in part by "Phase 9: the sign-off journey, end to end".**
+> This section explains why the request names an assessor by address
+> rather than by account, which still holds. Phase 9 sets out the flow
+> around it — a search field taking a name or username as well, a
+> confirmation step before anything is sent, and a link that lands the
+> assessor in their inbox rather than on a sign-off. Where the two
+> disagree, Phase 9 wins.
+
+The design above splits one act across two tables, and using it
+revealed why that does not hold. Asking for a sign-off is one thing a
+holder does; who the assessor turns out to be is a detail of it.
+
+- **What the screen showed** — the request form offered a dropdown of
+  existing Quill users. A holder whose assessor is not on Quill, which
+  is the whole case phase 5 exists for, had no way through. The invite
+  endpoints that would have served them were built, tested, and never
+  called by any screen.
+
+- **The split was the cause, not an oversight.** `AssessorInviteIn`
+  deliberately does not store the competency, and says so at length:
+  an invite brings a _person_ onto the platform, and one assessor
+  signs many competencies over months. That is sound reasoning about
+  invitations, but it means "please sign off my bronchoscopy" cannot
+  be recorded at all until the assessor has an account. The thing the
+  holder actually asked for had nowhere to live.
+
+- **The record already works the way we want.** `service.request_sign_off`
+  takes no assessor argument, and its docstring says the record exists
+  "from the moment of asking, not from the moment of signing". Only
+  the Postgres row disagreed, by making `assessor_user_id` non-null.
+
+- **The assessor is named by email address.** That is what a holder knows when
+  they ask, whether or not it belongs to an account. `assessor_email`
+  is non-null from creation and is the identity of the person being
+  asked; matching it to a `users` row is a lookup, not a precondition.
+
+- **`assessor_user_id` stays, nullable, and means "who signed".** Not
+  "who we expect to sign" — it is null while `status` is `open`, and
+  set from the authenticated signer at the moment of signing. A null
+  here records that the act has not happened, which is the same thing
+  `accepted_at` records on an invite. It is never copied from the
+  request, so the column always names whoever truly signed.
+
+- **The four things a request must know are known at creation** —
+  the passport, the competency, the assessor's email, and the state.
+  All non-null from the first write. Nothing about the row means
+  "not determined yet".
+
+- **`passport_assessor_invite` mostly dissolves.** Nothing outside its
+  own routes reads it: it serves a rate-limit count, an invite list
+  and token redemption. Naming the assessor, recording the competency
+  and sending the mail all move onto the request. What does not
+  dissolve is the single-use link — a token carries no record of
+  having been spent, so a row must. That row is a credential, not an
+  assessor, and should say so.
+
+- **The daily cap follows the mail.** Invites are capped at
+  `INVITES_PER_DAY` so Quill cannot be used to mail strangers in bulk.
+  Once creating a request can send mail to an arbitrary address, the
+  cap belongs there too, or it is bypassed by asking for sign-offs
+  instead of inviting.
+
+- **Two human gates apply to landing this.** Removing the non-null
+  constraint and reshaping the column is a destructive migration and
+  needs approval on the `db-destructive-migration-review` environment;
+  changing `SignOffRequestIn` from `assessor_user_id` to an email is a
+  breaking API change and needs a decision file plus approval on
+  `api-breaking-change-review`. Neither can be satisfied from inside a
+  coding session.
+
+- **Now is the cheapest moment.** Both tables are empty, no screen
+  calls the invite routes, and there are no real users, so the change
+  costs a migration chain rather than a data migration.
+
 ### What lives in Postgres
 
 The core database holds coordination state and an index of existence,
@@ -3178,17 +3254,24 @@ form. `CertificateCard` was never built: the page renders a certificate
 inline, as the reflections page does, and a component earns its place
 when a second caller wants one.
 
-**Four passport pages have no link anywhere, which nothing had noticed.**
-`/passport/logbook`, `/passport/cpd`, `/passport/reflections` and now
-`/passport/certificates` are reachable only by typing the URL. The side
-navigation has a single passport entry pointing at `/passport`, and that
-page lists competencies and offers the exports — nothing on it leads to
-the other four. This predates the certificates page rather than being
-caused by it, and it is the reason a holder could not reach their own
-logbook or CPD record either. Whoever picks it up should decide whether
-these belong in the side navigation, as links on the passport page, or
-both; the answer is a design judgement rather than an oversight to
-patch, which is why it is recorded here rather than fixed in passing.
+**Four passport pages had no link anywhere, and now the passport page
+carries them.** `/passport/logbook`, `/passport/cpd`,
+`/passport/reflections` and `/passport/certificates` were reachable only
+by typing the URL: the side navigation has a single passport entry
+pointing at `/passport`, and that page led to none of them. A holder
+could not reach their own logbook or CPD record.
+
+`PassportPage` now renders an `ActionCard` for each, in the two-column
+grid `Settings` uses. The side navigation keeps its single entry: the
+passport page was already the hub it looked like, and a collapsible
+section listing five children would make the sidebar mostly passport
+whenever it was open. The reflections card says on its face that nobody
+else can read them — before a holder clicks in, not after, because
+somebody deciding how frankly to write deserves to know beforehand.
+
+Adding a fifth page means adding a card here, which is the one place to
+remember. A test asserts all four are present and reachable, so removing
+one silently is not possible.
 
 The components were commentary buried in finished phase 6 steps until
 somebody asked why uploads and export were not on the list, which is a
@@ -3312,16 +3395,565 @@ not deferred items: deferring is for what nobody should build yet.
     hashing the file itself and the backend verifying by reading the
     object back — not a signed URL that skips the hash.
 - [ ] End-to-end test: holder requests, assessor signs, holder exports
-      PDF, hash on PDF matches repository.
+      PDF, hash on PDF matches repository. **Deferred deliberately, and
+      it is larger than a spec file.** `seed_ci.py` knows nothing about
+      the passport — two users, one teaching organisation, no feature
+      flag and no `access_clinician_passport` — so the test would stop
+      at the feature gate. And every existing spec runs as the single
+      session `auth.setup.ts` stores, whereas this one needs two people
+      in sequence. So the work is: seed a holder and an assessor with
+      the competency in a passport-enabled organisation, add a second
+      stored session, then write the spec. A holder-only spec — create
+      a passport, record a certificate, download the export, check the
+      hash — would get the assertion that matters most under test for a
+      fraction of that, and leave the assessor half clearly scoped.
 - [ ] Security review of upload handling (type sniffing, size limits,
       path containment, symlink refusal) and of the authorisation
       matrix, including external assessors and the reflections
       holder-only rule.
+
+  - **A first pass was done by whoever wrote the upload route, which
+    is the weakest possible reviewer for it.** Treat the findings below
+    as a starting list, not a clearance. Four of the six concerns hold
+    up; two do not.
+  - **A second, independent pass then found five more, and two of them
+    undid claims the first pass had made.** This is the entry worth
+    reading twice: the self-review above did not merely miss things, it
+    asserted two fixes that did not work. The author of a fix is the
+    worst judge of whether it holds, because the same wrong assumption
+    writes both the code and the test that is supposed to catch it.
+    What follows is what the independent pass found, and what was done
+    about it. The box stays unticked until somebody who did not write
+    any of this agrees it holds.
+  - **Path containment holds.** `paths.shard` and `paths.blob` both
+    regex-validate before building anything — 32 lower-case hex for a
+    passport id, 64 for a digest — so `../` cannot survive into a path.
+    A filename never reaches a path or an object key at all: it is
+    stored as data beside the hash. `test_a_filename_never_reaches_an_object_key`
+    pins that with an NHS-number-shaped filename.
+  - **Authorisation holds.** `upload_evidence`, all three export routes
+    and both reflection routes use `_require_holder`, not
+    `_require_reader`. Seven tests in
+    `TestWhatAnExternalAssessorCannotReach` pin what an invited outsider
+    cannot reach, and an accepted assessor passing the feature gate
+    still gets a 404 on the passport itself.
+  - **No content sniffing — found, fixed, then found to be only half
+    fixed.** The route read `file.content_type`, which the client sets,
+    so anything at all uploaded as `application/pdf`. `_looks_like` now
+    checks the magic bytes of all five accepted formats. A short table
+    rather than a dependency: five fixed signatures that have not
+    changed in decades, against a supply-chain surface for something
+    this small. It is a sanity check and not a parser — a well-formed
+    header on malformed content still passes, which is the right depth,
+    because nothing executes or serves these bytes by path. A mismatch
+    is refused rather than corrected: storing the sniffed type would
+    record something the holder never claimed.
+
+    The half that was missed: **uploading and naming are two separate
+    calls, and only the first was guarded.** `_attachments` copied the
+    caller's `media_type` straight into the permanent record, so a PNG
+    uploaded honestly could be filed as `application/pdf` by the
+    `/certificates` call that followed — the same lie the sniff exists
+    to refuse, told one step later. `_attachments` now re-reads the
+    stored bytes and checks them against the claimed type, because the
+    record outlives the request and it is the record that has to be
+    true. Pinned by
+    `test_a_record_cannot_relabel_evidence_as_another_type`, with
+    `test_a_record_can_name_evidence_as_what_it_is` as the counterpart
+    so the check cannot pass by refusing everything.
+
+  - **The size limit trusted a header — fixed, but the fix was
+    unreachable.** `limit_request_body_size` in `main.py` reads
+    `Content-Length` and skips the check when it is absent, so a
+    chunked request was unbounded and `await file.read()` would have
+    put all of it in memory. The route now reads in 64 KB chunks and
+    answers 413 the moment the ceiling is passed.
+
+    What the independent pass caught: **`MAX_EVIDENCE_BYTES` was set to
+    exactly `MAX_REQUEST_BODY_BYTES`, so the route's own limit could
+    never fire.** Multipart framing adds boundaries, headers and the
+    filename on top of the file, so a 10 MB file always makes an 11 MB
+    body, and the middleware killed it first with a plain-text refusal.
+    The route's ceiling is now 8 MB, leaving room for the envelope, so
+    a file between the two is answered by the handler that knows it is
+    evidence.
+
+  - **The size test was passing for the wrong reason, which is worse
+    than failing.** It asserted a 413 on a file just over the ceiling,
+    and got one — from the middleware, not from the route it was
+    written to cover. Deleting the route's size check entirely left it
+    green. It now picks a size between the two limits, asserts that the
+    limits are ordered so such a band exists, and matches on the
+    route's own message. Proved by disabling the route's check and
+    watching the upload return 201 rather than 413.
+
+    **This is the general lesson, not a detail about one test.** The
+    earlier session proved that test ran by deliberately breaking its
+    assertion and watching it fail. That shows a test executes; it says
+    nothing about whether it exercises the code it names. The check
+    that matters is breaking **the code under test** and watching the
+    test fail — which is what both new tests were held to.
+
+  - **A comment claimed a memory benefit the code did not deliver.**
+    The chunked read was justified as avoiding holding the file in
+    memory, but `b"".join(chunks)` materialises it anyway, and
+    Starlette has already spooled any part over 1 MB to disk. The real
+    benefit is a ceiling that holds when `Content-Length` is absent,
+    and a refusal that arrives without reading the rest. The comment
+    now says that instead. Hashing and storing need every byte
+    together, so the join stays.
+  - **Symlink refusal is untested and probably unneeded here.** Nothing
+    in the module mentions symlinks. The upload path never creates one:
+    `BlobStore.put` writes bytes to a hash-derived path. The risk would
+    be on _import_ of a bundle from elsewhere, which is a deferred item
+    and where the check belongs.
+- [x] Act on the independent review's five findings. All five are done
+      and each is covered above: the route ceiling dropped to 8 MB so
+      it is reachable; the size test rewritten to fail when the route's
+      check is removed; `_attachments` re-sniffing stored bytes against
+      the claimed media type; the misleading memory comment corrected;
+      and the over-long line wrapped. `ftyp` and `heix` added to
+      `cspell.config.json` — real ISO base-media and HEIC brand
+      identifiers, not invented words. The stray `evil.pdf` left at the
+      repository root by a manual probe was deleted.
+
+  - **Verified by breaking each fix rather than by running the
+    suite.** Disabling the media-type re-check turned the relabel test
+    from 400 to 201; disabling the route's size check turned the
+    oversize test from 413 to 201, which also proves the middleware is
+    no longer the thing answering. Both restored, then
+    `just ub -k passport` run clean at 677 tests, up from 675.
+    `pre-commit run --files ...` passes every hook, mypy and bandit
+    included.
+
+- [x] Retest against the real local stack, not just the unit suite.
+      Everything above was proved with `TestClient`, which builds the
+      ASGI request in-process — so the middleware ordering, the
+      multipart envelope and the real `Content-Length` are all
+      approximated rather than exercised. The 8 MB ceiling in
+      particular is a claim about how two limits interact across a real
+      HTTP boundary, and that is exactly the kind of thing `TestClient`
+      is entitled to get wrong.
+
+  - **What to run.** Bring up the dev stack, sign in as a holder in a
+    passport-enabled organisation, and through the browser: upload a
+    genuine PDF and a genuine PNG, attach each to a certificate, and
+    export the passport. Then the refusals, by `curl` against the
+    running backend so the framing is real — a file renamed `.pdf` that
+    is not one, a file between 8 MB and 10 MB, and a file over 10 MB.
+    Expect the route's JSON detail for the first two and the
+    middleware's plain-text refusal only for the third.
+  - **What would falsify the fix.** A file in the 8–10 MB band coming
+    back as the middleware's plain-text 413 rather than the route's
+    JSON one. That would mean the envelope is larger than the 2 MB gap
+    allows and the ceiling needs to drop further.
+  - **Run on 16 September against the dev stack through Caddy on port
+    80, so the proxy, the middleware ordering and the real multipart
+    framing were all exercised.** A throwaway holder was created, used
+    and deleted; the dev database is back to the single user and two
+    organisations it started with, and `/data/passports` was emptied.
+  - **The size fix holds, and the falsification test is the one that
+    proves it.** A 9 MB file came back as
+    `{"detail":"That file is larger than 8 MB"}` with content type
+    `application/json` — the route. An 11 MB file came back as
+    `Request body too large` as `text/plain` — the middleware. Two
+    different handlers, told apart by content type rather than by the
+    status code they share, which is what makes the result meaningful.
+  - **The relabel bypass is closed on the real stack.** A genuine PNG
+    uploaded honestly, then named `application/pdf` on the certificate
+    call, was refused with `That evidence is not application/pdf`. The
+    same attachment named `image/png` was accepted, and the stored
+    `certificate.yaml` records `media_type: image/png` — the truth
+    rather than the caller's claim.
+  - **Sniffing and export both hold.** A shell script sent as
+    `application/pdf` was refused; genuine PDF and PNG were accepted.
+    All three export routes returned real files — `file(1)` reports a
+    2-page PDF and a zip, not an error page under a content type.
+  - **The integrity claim was checked end to end, not assumed.**
+    `git bundle verify` passes, the bundle clones, its history
+    contains both commits, and the head commit matches the one the API
+    returned. The recorded evidence hash equals `shasum -a 256` of the
+    uploaded file byte for byte — the verification `VERIFY.md` promises
+    a holder can run in ten years, run here with ordinary tools.
+
+  - **Found while testing: the dev stack cannot store passports at
+    all.** `PASSPORT_LOCAL_ROOT` defaults to `/data/passports` and
+    `compose.dev.yml` neither creates nor mounts it, so the first
+    create returned a 500 — `Permission denied: '/data'`, wrapped in a
+    `CleanupFailedError` because the rollback then could not find the
+    directory it was trying to remove. It was worked around for this
+    run with `mkdir` inside the container, which is container-local and
+    will vanish on the next rebuild. **This is a real gap and is not
+    fixed.** The feature has evidently never been exercised on the dev
+    stack. It needs a named volume in `compose.dev.yml` mounted at
+    `/data` and owned by uid 10001, which is a change to the shared dev
+    stack and so is left for a deliberate decision rather than folded
+    into a security fix.
+  - **Also found: the dev database was six migrations behind**,
+    including the destructive `drop system permissions column`, so
+    `passport_assessor_invite` did not exist. Upgraded to head with
+    permission. Worth knowing that a dev database can sit far enough
+    behind that the feature under test cannot run at all.
+
+- [x] Give the dev stack somewhere to put passports. Found by the
+      real-stack test above: `compose.dev.yml` had no `/data` mount, so
+      `PASSPORT_LOCAL_ROOT` pointed at a directory the backend
+      container could not create, and creating a passport 500d.
+
+  - **A named volume, not a bind mount.** These are git repositories
+    with evidence blobs beside them, not source. A bind mount would put
+    them in the worktree, where `git status` would report them and a
+    stray `git add` could commit somebody's evidence. The named volume
+    `passport_data` mounts at `/data` and survives rebuilds.
+  - **Ownership is fixed in the image, which is the part that is easy
+    to get wrong.** The container runs as uid 10001, and an empty named
+    volume arrives owned by root — so mounting one alone would have
+    reproduced the same `Permission denied`. Docker copies the mount
+    point's ownership onto an empty volume the first time it mounts it,
+    so the dev stage now creates `/data/passports` owned by `appuser`
+    beforehand. The volume inherits that and is writable.
+  - **The unit tests needed no change.** Every test overrides
+    `PASSPORT_LOCAL_ROOT` with `tmp_path`, so nothing under `/data` is
+    touched by `just ub`; `compose.unit-tests.yml` is untouched.
+  - **Verified from a clean slate, which is the only way this one
+    means anything.** The earlier manual `mkdir` was still in the
+    container and the volume had already been created, so testing
+    against those would have passed regardless of the change. The
+    container and the volume were both destroyed, the image rebuilt,
+    and the checks run in order: the image alone carries
+    `/data/passports` as `appuser` with no volume mounted; a freshly
+    created volume inherits that ownership; `/data/passports` is
+    writable as uid 10001; and `POST /api/passport` — the call that
+    returned 500 — returns 201, leaving a real git repository sharded
+    under `/data/passports/d9/08/…`. Probe user and files removed
+    afterwards.
+- [ ] Give the assessor's queue a name and a way in. `/passport/inbox`
+      is built and tested, and nothing links to it: a request to assess
+      somebody sits where only a typed URL reaches it, and the person
+      who asked cannot tell. It was missed when the other four sections
+      were linked from the passport page.
+
+  - **"Inbox" is the wrong name and so is "sign-offs".** Inbox promises
+    a general queue and will only ever hold one kind of thing. Sign-offs
+    is already taken by the holder's own card, which answers a different
+    question: that one is _my_ record, this one is _other people's_
+    records awaiting my judgement. An external assessor has this and may
+    have no passport at all.
+  - **A mail icon at the top right of `/passport`, not a fifth card.**
+    The cards are the holder's own record and this is not part of it.
+    Carry a count, so a waiting request is seen rather than sought.
+  - **The name is still open.** Whatever is chosen should say whose work
+    it is and that it is waiting: what a named assessor has been asked
+    to judge, not what the holder has collected.
+
 - [ ] Enable the `passport` feature for the first South West
       organisation and onboard a small assessor group.
 - [x] Document the module under `docs/docs/backend/passport/index.md`
       and add a concepts page `docs/docs/concepts/clinician-passport.md`
       explaining the CBAC relationship.
+
+## Phase 8: ask for a sign-off by email
+
+Why this phase exists is set out under "Asking by email, not by
+picking a user" above. In short: the request form can only name an
+existing Quill user, so a holder whose assessor is not on Quill cannot
+ask at all — which is the case phase 5 was built for. The invite
+endpoints that would serve them are built, tested and called by no
+screen.
+
+The order below is deliberate. The backend carries the meaning, so it
+goes first and the form follows; the destructive step is last, and on
+its own.
+
+- [x] Add `assessor_email` to `passport_signoff_request`, non-null,
+      in `backend/app/features/passport/models.py`. Index it with
+      `status`, mirroring the existing inbox index, because that is
+      how an assessor's inbox will be read.
+- [x] Make `assessor_user_id` nullable in the same model, and rewrite
+      its docstring: it records who signed, not who was asked, and is
+      null while the request is open.
+- [x] Generate the additive migration with `just migrate`, and read
+      the generated `upgrade()` and `downgrade()` before committing.
+- [x] Change `SignOffRequestIn` in `backend/app/schemas/passport.py`
+      to take `assessor_email: EmailStr` in place of
+      `assessor_user_id: int`. Breaking: needs a decision file from
+      `python backend/scripts/new_compat_decision.py` and approval on
+      `api-breaking-change-review`.
+- [x] Rewrite the request route so it stores the email, looks up a
+      matching user without requiring one, refuses the holder's own
+      address as the invite route already does, and sends the mail.
+- [x] Move the daily cap onto the request route. Without it the
+      `INVITES_PER_DAY` limit is bypassed by asking for sign-offs
+      instead of inviting, which is the same mail to the same
+      stranger.
+- [x] Set `assessor_user_id` from the authenticated signer when a
+      sign-off is signed, never from the request row, so the column
+      records who actually signed.
+- [x] Change the signing route's guard from
+      `request_row.assessor_user_id != user.id` to a comparison of
+      `assessor_email` against the caller's address, folded and
+      trimmed the same way the invite route compares addresses.
+- [x] Point the inbox query at `assessor_email` so a request is
+      visible to an assessor who had no account when it was written.
+- [x] Replace the assessor dropdown in
+      `frontend/src/components/passport/SignOffRequestForm.tsx` with
+      an email field, and update its stories and tests.
+- [ ] Say what happens next on the form: whether the address belongs
+      to a Quill account decides whether they sign in or register, and
+      a holder should not have to guess which.
+- [ ] Decide what becomes of `passport_assessor_invite`. Its routes
+      serve a rate-limit count, an invite list and token redemption;
+      only the single-use link has to survive, and it is a credential
+      rather than an assessor. Retiring it is a destructive migration
+      needing approval on `db-destructive-migration-review`, in its
+      own contract migration a deploy later — never bundled with the
+      additive work above.
+
+## Phase 9: the sign-off journey, end to end
+
+The seven steps below are the agreed flow, stated by the product owner
+on 18 September. Where anything earlier in this plan disagrees, this
+section wins.
+
+**Both sides register with Quill.** A trainee and an assessor are both
+account holders; the difference is what they came to do, not whether
+they have an account. Nothing about a sign-off is done by somebody
+anonymous holding a link.
+
+1. **The trainee picks a competency** to be signed off.
+
+2. **The trainee names an assessor** in one search field that accepts
+   an email address, a full name or a username. One field, not three:
+   the trainee knows the person, not which identifier Quill files them
+   under.
+
+3. **A confirmation appears before anything is sent.** For somebody
+   already on Quill it shows their full name, email and registration
+   number, so the trainee can see they picked the right person. For an
+   address Quill does not know, it shows only what was typed. The
+   trainee accepts, and only then is the request sent.
+
+   **Showing the registration number is deliberate.** It is hard
+   evidence: two consultants may share a name, and an email address
+   says only that somebody controls a mailbox. A GMC number is the one
+   identifier that says which registered professional this is, checked
+   against a public register, so a trainee confirming it is confirming
+   the person rather than a label. Decided by the product owner on
+   18 September, weighed against the alternative — a trainee asking
+   the wrong person, and finding out only when the sign-off is
+   worthless. The number is already visible to the assessor's own
+   organisation admins and appears on the sign-offs they make; showing
+   it to the trainee who is about to name them widens that a little,
+   and the record it protects is a clinical one. The trainee ends up
+   holding the number regardless: every sign-off writes the assessor's
+   registrations into the passport, so showing it beforehand only
+   brings it forward to the moment it can still prevent a mistake.
+
+   **The modal must not imply Quill checked it.** Registrations are
+   self-declared and stored `verified: false` until an organisation
+   admin checks a register by hand. Showing a number beside a name
+   reads as confirmation unless the wording says otherwise, so it says
+   what it is: what this person states, not what Quill has verified.
+
+4. **The request is stored.** Already built: a row naming the
+   passport, the competency, the assessor's address and the state.
+
+5. **The assessor is emailed**, told which trainee asked and for what,
+   with a link. Already built.
+
+6. **The link lands them where they need to be** — the registration
+   page if they have no account, the login page if they are signed
+   out, and otherwise their passport inbox. **Not** the individual
+   sign-off: an assessor arriving should see everything waiting for
+   them, not one item in isolation.
+
+7. **They work from the inbox**, signing off whatever is outstanding.
+
+### What this changes from what is built
+
+- [x] **The search endpoint takes a name or username, not only an
+      email.** `GET /api/passport/assessors/search` matches an address,
+      a username or a full name, returns at most ten, refuses a term
+      under three characters, and leaves out the caller's own account.
+      Finding nobody is a 200 with an empty list, because asking
+      somebody new is the case the flow exists for. The form still
+      needs wiring to it — that is the unit below.
+
+- [ ] **The confirmation step does not exist.** Submitting sends the
+      request immediately. Step 3 wants a modal showing who was
+      matched, and for a known assessor it needs their name, email and
+      registration number — which no endpoint returns today.
+
+- [ ] **The invite link goes to an accept page, not the inbox.**
+      `ACCEPT_PATH` points at `/passport/assessors/accept`. Step 6
+      wants registration or login, then the inbox.
+
+- [x] **Fix the blank name and registration on a new account.** The
+      accept flow reads `name`, `registration_authority` and
+      `registration_number` off the invite row, which the request
+      route now writes as empty strings — so an assessor registering
+      today gets `full_name=""` and a `{"": ""}` registration entry.
+      The assessor must state their own details when they register,
+      which is the better source anyway. **This is a live defect, not
+      a gap**, and it blocks retiring those three columns.
+
+- [x] **An assessor reads the sign-off, not the passport.** Found
+      while building: ``_require_reader`` admitted anybody named on any
+      request against a passport, and then served the whole record —
+      contradicting its own docstring, which says an assessor sees "the
+      sign-offs they were asked about and nothing else". The gap was
+      invisible while an assessor arrived by invitation and was named
+      on nothing. Asking is now what brings them in, so every assessor
+      was named on a request and the whole passport was open to them:
+      a year of CPD, every logged procedure, and what other assessors
+      declined. Split into two guards — the holder alone for the record,
+      the holder or the named assessor for one sign-off.
+
+- [x] **Remove the two unused invite endpoints.** `POST` and `GET
+      /{passport_id}/assessor-invites` are superseded by the request
+      route and called by no screen.
+
+- [ ] **Then drop the three dead columns**, once the accept flow no
+      longer reads them. Destructive migration, in its own contract
+      migration, needing approval on
+      `db-destructive-migration-review`.
+
+## Phase 10: who else may read a passport
+
+Settled in discussion on 18 September. Nothing here is built.
+
+### The problem this answers
+
+A departmental lead, an educational supervisor or a deanery training
+lead has a real operational need: which registrars arriving in August
+can run a clinic, plan radiotherapy or supervise a list, and who is
+missing a competency the department depends on. That is workforce
+planning, and it is the argument that justifies the access.
+
+It is a different question from an assessor's, which Phase 9 covers.
+An assessor reads one sign-off they were asked about. This is somebody
+reading a record in full, because they are accountable for training.
+
+### Two competencies, not one
+
+- **`passport_under_supervision`**, held by the person being
+  supervised. It grants them nothing — a holder can always read their
+  own passport — and says only that their record is open to their
+  supervisors. Named for what it opens to others so that a missing row
+  can never lock somebody out of their own record.
+
+- **`read_trainee_passports`**, held by the supervisor, departmental
+  lead or deanery lead.
+
+Both are required, and reach must overlap as well. The pair is
+necessary, never sufficient.
+
+**Why a competency rather than a grade.** Registrars are `staff`, the
+same capacity as consultants, so capacity cannot separate them. Base
+profession could — the training grades are distinguishable — but a
+consultant doing a fellowship or working towards a CESR is supervised
+and signed off while holding `consultant`, so a grade filter makes
+them invisible to the very supervisor assessing them. It also puts the
+rule in a list that grows: a new training grade silently drops out of
+every check. Holding a competency makes being under supervision
+something a person carries, granted and removed deliberately.
+
+**Consultants are excluded twice over**, which is the property worth
+keeping: they hold no supervision competency, and a peer is not below
+them in the tree. Two independent reasons, so neither is a rule
+somebody can forget to apply.
+
+### Reach is downward only
+
+A lead reaches their own org unit and everything beneath it. Never
+upward, and never across an affiliate link.
+
+This matches what `organisations.py` already documents — "a site member
+does not reach up into the organisation" — stated for competencies
+rather than for content.
+
+**The affiliate exclusion is the sharpest part.** An affiliate link
+joins two organisations for a purpose: sharing content, a rotation
+arrangement. If competency reach crossed it, then linking two trusts
+for any reason would quietly make each trust's leads readers of the
+other's supervised doctors. Nobody creating the link would expect it
+and nobody would notice. Blocking it at the model level lets a link be
+created for what it is for, without carrying authority as a side
+effect.
+
+**A deanery only works if it is a genuine parent.** Severn sits above
+its trusts, so deanery-wide oversight needs the deanery to be a real
+place with the trusts beneath it — not an affiliate of each. Under
+downward reach that works exactly as wanted; as an affiliate it does
+not work at all.
+
+### What is visible
+
+Everything except reflections.
+
+- **Sign-offs, certificates, CPD and the logbook** are all visible. The
+  logbook is included deliberately: it evidences progress towards a
+  competency, which is what a supervisor is there to judge.
+
+- **Reflections are never visible to a supervisor.** `ReflectionEditor`
+  already tells the holder they are "not shown to assessors,
+  organisation admins or anyone else", and that promise is what makes
+  honest reflection possible. A trainee who suspects a supervisor reads
+  them writes for the reader instead, which destroys the thing's value.
+  If reflections are ever shared it is the holder's act, never a role
+  acquiring the right.
+
+### Scoping within a department: accountability, not prevention
+
+A department may have fifty registrars while local governance says an
+educational supervisor should see only their own five.
+
+**Access is department-wide, and every read is recorded.** Not a
+per-supervisor allow-list. Three reasons:
+
+- **An explicit supervisor-to-registrar list must be maintained**, and
+  the moment it is wrong is the August changeover — when a supervisor
+  with a missing row is locked out and people route around the system.
+
+- **Supervisory groups are not places.** They overlap, a registrar has
+  an educational supervisor and clinical supervisors at once, and they
+  change yearly. Expressing them in the org tree would put registrars
+  in places that are not places, and the tree would stop being
+  trustworthy for the things it is for.
+
+- **It is what NHS record systems do.** Legitimate-relationship models
+  leak; the working control is that access is attributable, not that it
+  is prevented.
+
+### The holder is told when access changes
+
+**Once, when a new deanery, department or supervisor gains access —
+never per read.** A message per read would train people to ignore all
+of them, destroying the signal this exists to give.
+
+The tone is informational, not a security alert. Somebody starting a
+post should not be made anxious by the ordinary fact that their
+educational supervisor can see their record. It says who now has
+access and why, in the way a new starter would be told in person.
+
+### Open questions
+
+- [ ] **A lawful basis needs stating, by a human.** A passport holds no
+      patient data but is professional performance data about an
+      identifiable person, so UK GDPR applies. An employer processing it
+      for workforce planning is defensible; a deanery reading individual
+      records across trusts needs a clearer basis. Worth a DPO view
+      rather than a guess.
+
+- [ ] **Do declined sign-offs follow somebody unfairly?** They are
+      visible under "everything except reflections". A pattern of
+      declines is exactly what a supervisor needs to see, and exactly
+      what could follow a struggling trainee between posts. Not an
+      argument against, but it deserves a deliberate answer.
+
+- [ ] **Is the fifty-versus-five rule local or national?** If it varies
+      by department, strictness belongs as a setting on the place rather
+      than hard-coded.
 
 ## Future items, deliberately deferred
 
@@ -3426,6 +4058,26 @@ close them off, and so nobody builds them before there is a need.
   cost, mount the bucket and let the store use plain filesystem git.
 
 ## Decisions
+
+- **A passport is created on demand, by the holder pressing a button**
+  — not automatically when the page is first opened, and not in bulk
+  when the competency is granted. Creation is the passport's first
+  commit, and the record's worth rests on every commit being traceable
+  to somebody who meant to make it; creating one as a side effect of
+  looking at a page would make the commit the whole chain hangs from
+  the one nobody consciously made. It also means nobody acquires a
+  career record they never asked for, and the empty state has
+  somewhere to explain what a passport is before a clinician starts
+  putting their career into it.
+
+  The cost is borne by administrators rather than holders: a rollout
+  is "granted and waiting" rather than "done", and a user list does
+  not say who has actually started. That is recoverable — bulk
+  provisioning can be added later for anyone holding the competency.
+  The reverse is not: provisioning everyone up front and then
+  discovering thousands of empty repositories cannot be undone
+  quietly, because deleting a passport is not a thing this system
+  should make easy.
 
 - **Files are canonical and git is the audit log** — because the
   passport must be portable across trusts and readable in twenty years

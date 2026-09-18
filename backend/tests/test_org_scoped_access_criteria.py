@@ -28,7 +28,7 @@ that the answer differs by place, not which competency it is.
 from __future__ import annotations
 
 import pytest
-from sqlalchemy import insert
+from sqlalchemy import insert, update
 from sqlalchemy.orm import Session
 
 from app.cbac.positions import appoint, holders_of, is_vacant
@@ -39,10 +39,9 @@ from app.models import (
     PractisingCompetency,
     Site,
     User,
-    organisation_member,
-    organisation_site,
     site_member,
 )
+from app.organisations import add_organisation_member
 from app.security import hash_password
 
 
@@ -70,8 +69,7 @@ def _authorise(
     db.add(
         PractisingCompetency(
             user_id=user.id,
-            organisation_id=org.id if org else None,
-            site_id=site.id if site else None,
+            site_id=org.org_unit_id if org else (site.id if site else None),
             competency=competency,
         )
     )
@@ -111,20 +109,16 @@ def _site(db: Session, name: str, org: Organisation) -> Site:
     db.add(site)
     db.commit()
     db.execute(
-        insert(organisation_site).values(
-            organisation_id=org.id, site_id=site.id
-        )
+        update(Site)
+        .where(Site.id == site.id)
+        .values(parent_id=org.org_unit_id)
     )
     db.commit()
     return site
 
 
 def _staff(db: Session, user: User, org: Organisation) -> None:
-    db.execute(
-        insert(organisation_member).values(
-            organisation_id=org.id, user_id=user.id
-        )
-    )
+    add_organisation_member(db, org.id, user.id, "trainee")
     db.commit()
 
 

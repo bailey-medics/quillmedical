@@ -1,10 +1,12 @@
 """Tests for database models."""
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models import Role, User
+from app.organisations import add_organisation_member
 from app.security import hash_password
 
 
@@ -282,8 +284,13 @@ class TestOrganisationModel:
         assert org.updated_at is not None
 
     def test_organisation_staff_relationship(self, db_session: Session):
-        """Test organisation staff member relationship."""
-        from app.models import Organisation, organisation_member
+        """Membership of an organisation is a row against its own place.
+
+        The ``staff_members`` relationship went with the separate
+        membership table: the two tables merged into one keyed on a place
+        in the tree, and an organisation's place is its own row.
+        """
+        from app.models import Organisation, site_member
 
         org = Organisation(name="Test Clinic", type="clinic")
         user = User(
@@ -295,18 +302,16 @@ class TestOrganisationModel:
         db_session.add_all([org, user])
         db_session.commit()
 
-        # Add user as staff member
-        from sqlalchemy import insert
-
-        stmt = insert(organisation_member).values(
-            organisation_id=org.id, user_id=user.id
-        )
-        db_session.execute(stmt)
+        add_organisation_member(db_session, org.id, user.id, "trainee")
         db_session.commit()
-        db_session.refresh(org)
 
-        assert len(org.staff_members) == 1
-        assert org.staff_members[0].username == "doctor1"
+        rows = db_session.execute(
+            select(site_member.c.user_id, site_member.c.capacity).where(
+                site_member.c.site_id == org.org_unit_id
+            )
+        ).all()
+
+        assert [(user.id, "trainee")] == [tuple(row) for row in rows]
 
     def test_organisation_patient_relationship(self, db_session: Session):
         """Test organisation patient member association table."""
@@ -320,11 +325,11 @@ class TestOrganisationModel:
 
         # Add patient IDs directly to the association table
         stmt1 = insert(organisation_patient_member).values(
-            organisation_id=org.id,
+            org_unit_id=org.org_unit_id,
             patient_id="patient-123",
         )
         stmt2 = insert(organisation_patient_member).values(
-            organisation_id=org.id,
+            org_unit_id=org.org_unit_id,
             patient_id="patient-456",
         )
         db_session.execute(stmt1)
@@ -335,7 +340,9 @@ class TestOrganisationModel:
         patient_count = db_session.scalar(
             select(func.count())
             .select_from(organisation_patient_member)
-            .where(organisation_patient_member.c.organisation_id == org.id)
+            .where(
+                organisation_patient_member.c.org_unit_id == org.org_unit_id
+            )
         )
         assert patient_count == 2
 

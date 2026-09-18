@@ -12,7 +12,7 @@ from the post rather than the column.
 
 from __future__ import annotations
 
-from sqlalchemy import insert, select
+from sqlalchemy import insert, select, update
 from sqlalchemy.orm import Session
 
 from app.cbac.positions import clinical_lead_post, clinical_leads_of
@@ -22,10 +22,9 @@ from app.models import (
     PositionHolding,
     Site,
     User,
-    organisation_member,
-    organisation_site,
     site_member,
 )
+from app.organisations import add_organisation_member
 from app.security import hash_password
 
 
@@ -49,15 +48,11 @@ def _org_with_site(db: Session, admin: User) -> tuple[Organisation, Site]:
     db.add_all([org, site])
     db.commit()
     db.execute(
-        insert(organisation_site).values(
-            organisation_id=org.id, site_id=site.id
-        )
+        update(Site)
+        .where(Site.id == site.id)
+        .values(parent_id=org.org_unit_id)
     )
-    db.execute(
-        insert(organisation_member).values(
-            organisation_id=org.id, user_id=admin.id
-        )
-    )
+    add_organisation_member(db, org.id, admin.id, "trainee")
     db.commit()
     return org, site
 

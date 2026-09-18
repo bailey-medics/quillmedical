@@ -808,7 +808,14 @@ _stack-guard:
     set -uo pipefail
     python3 scripts/stack-status.py --check
     status=$?
-    # 1 is "no stack here", which the calling recipe reports for itself.
+    # 1 is "no stack here". The script has already named the recipes and
+    # the skill that start or check out one, so stopping here is what makes
+    # that the last thing on the screen: without it the recipe carried on
+    # into `gh stack rebase`, which answered the same question again in its
+    # own words and buried the useful half under the useless one.
+    if [ "${status}" -eq 1 ]; then
+        exit 1
+    fi
     if [ "${status}" -eq 2 ]; then
         echo "✗ Refusing to run: this stack spans more than one worktree." >&2
         echo "  Free the branches above, or run this from the worktree" >&2
@@ -892,7 +899,9 @@ stack-help:
     # theme, so it could not. A terminal with only 256 colours degrades this
     # to the nearest entry, 179, which is close enough not to detect.
     # The arguments are coloured separately from the name, so the shape of a
-    # command — what it is, and what it wants — reads at a glance.
+    # command — what it is, and what it wants — reads at a glance. The alias
+    # takes the recipe colour, because it is the same thing said shorter:
+    # colouring it differently would suggest a difference that is not there.
     if [ -t 1 ]; then
         recipe_colour=$'\033[38;2;206;166;87m'
         argument_colour=$'\033[38;2;159;206;253m'
@@ -902,28 +911,70 @@ stack-help:
         argument_colour=""
         reset=""
     fi
+
+    # Collected into arrays rather than printed as they are read, because the
+    # alias column is aligned on the widest signature and that is not known
+    # until every line has been seen. A `while read` on the end of a pipe
+    # would not do: it runs in a subshell, so the width would not survive.
+    signatures=()
+    aliases=()
+    widest=0
+    while IFS= read -r line; do
+        # `--list` prints "  name args   # description [alias: x]". The alias
+        # lives inside the comment, so it has to be lifted out before the
+        # comment is stripped.
+        alias_name=""
+        case "${line}" in
+            *"[alias: "*)
+                alias_name="${line##*\[alias: }"
+                alias_name="${alias_name%%]*}"
+                ;;
+        esac
+        signature="${line%%#*}"
+        signature="${signature%"${signature##*[![:space:]]}"}"
+
+        signatures+=("${signature}")
+        aliases+=("${alias_name}")
+        [ "${#signature}" -gt "${widest}" ] && widest="${#signature}"
+    done < <(
+        just --list 2>/dev/null \
+            | grep -E '^\s+stack(-[a-z-]+)?( |$)' \
+            | sed -E 's/^[[:space:]]+//'
+    )
+
     echo ""
     echo "  Prefix any of these with 'just' or 'j' to run it:"
     echo ""
-    just --list 2>/dev/null \
-        | grep -E '^\s+stack(-[a-z-]+)?( |$)' \
-        | sed -E 's/[[:space:]]*#.*$//; s/^[[:space:]]+//' \
-        | while IFS= read -r signature; do
-            # Everything up to the first space is the recipe name; the rest,
-            # if there is any, is its arguments. A recipe that takes none
-            # leaves `arguments` empty and prints as just the name.
-            name="${signature%% *}"
-            arguments="${signature#"${name}"}"
-            arguments="${arguments# }"
+    for index in "${!signatures[@]}"; do
+        signature="${signatures[${index}]}"
+        alias_name="${aliases[${index}]}"
 
-            if [ -n "${arguments}" ]; then
-                printf '  %s%s%s %s%s%s\n' \
-                    "${recipe_colour}" "${name}" "${reset}" \
-                    "${argument_colour}" "${arguments}" "${reset}"
-            else
-                printf '  %s%s%s\n' "${recipe_colour}" "${name}" "${reset}"
-            fi
-        done
+        # Everything up to the first space is the recipe name; the rest, if
+        # there is any, is its arguments. A recipe that takes none leaves
+        # `arguments` empty and prints as just the name.
+        name="${signature%% *}"
+        arguments="${signature#"${name}"}"
+        arguments="${arguments# }"
+
+        if [ -n "${arguments}" ]; then
+            rendered="${recipe_colour}${name}${reset} ${argument_colour}${arguments}${reset}"
+        else
+            rendered="${recipe_colour}${name}${reset}"
+        fi
+
+        # Padded on the signature's own length, never on `rendered`: that one
+        # carries escape sequences, which take width in the string and none on
+        # the screen, so padding it would leave every line short by a
+        # different amount.
+        padding=$((widest - ${#signature}))
+        if [ -n "${alias_name}" ]; then
+            printf '  %s%*s   %s%s%s\n' \
+                "${rendered}" "${padding}" "" \
+                "${recipe_colour}" "${alias_name}" "${reset}"
+        else
+            printf '  %s\n' "${rendered}"
+        fi
+    done
     echo ""
 
 
@@ -1036,7 +1087,7 @@ stack-rebase:
     python3 scripts/stack-status.py
 
 
-alias sts := stack-submit
+alias stsu := stack-submit
 # Rebase onto the latest trunk, then push and open or update the drafts
 stack-submit:
     #!/usr/bin/env bash
@@ -1071,8 +1122,29 @@ stack-sync:
     just _stack-guard
     # Run this after a pull request merges: it notices the merge, deletes the
     # branch, cascade-rebases what sat above it and pushes the result.
-    gh stack sync
-    python3 scripts/stack-status.py --prs
+    #
+    # --prune answers the "delete N merged branches?" prompt in advance.
+    # Tidying up after a merge is the whole reason this recipe exists, and a
+    # merged branch's commits are on main and its pull request is on GitHub,
+    # so there is nothing in one to lose.
+    gh stack sync --prune
+    # Exit 1 means "no stack here". That is the ordinary ending for a sync —
+    # the last branch merging deletes the stack, so the run that tidies it up
+    # is the one guaranteed to find nothing left to draw. The script's own
+    # message advises starting a new stack, which is not the point here, so
+    # its output is held back and the outcome is reported instead. Any other
+    # exit code is a real fault and is left to fail the recipe.
+    drawn=""
+    status=0
+    drawn=$(python3 scripts/stack-status.py --prs --colour 2>&1) || status=$?
+    if [ "${status}" -eq 0 ]; then
+        printf '%s\n' "${drawn}"
+    elif [ "${status}" -eq 1 ]; then
+        echo "  Stack fully merged — nothing left to draw."
+    else
+        printf '%s\n' "${drawn}" >&2
+        exit "${status}"
+    fi
 
 
 alias stu := stack-update

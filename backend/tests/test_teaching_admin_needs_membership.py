@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from app.models import (
@@ -37,10 +38,9 @@ from app.models import (
     OrganisationFeature,
     Site,
     User,
-    organisation_member,
-    organisation_site,
     site_member,
 )
+from app.organisations import add_organisation_member
 from app.security import hash_password
 
 
@@ -50,7 +50,7 @@ def _teaching_org(db: Session, name: str = "Trust") -> Organisation:
     db.flush()
     db.add(
         OrganisationFeature(
-            organisation_id=org.id, feature_key="teaching", enabled_by=1
+            org_unit_id=org.org_unit_id, feature_key="teaching", enabled_by=1
         )
     )
     db.commit()
@@ -75,11 +75,7 @@ def _teaching_admin(db: Session, username: str) -> User:
 
 
 def _join_org(db: Session, org: Organisation, user: User) -> None:
-    db.execute(
-        organisation_member.insert().values(
-            organisation_id=org.id, user_id=user.id, capacity="staff"
-        )
-    )
+    add_organisation_member(db, org.id, user.id, "staff")
     db.commit()
 
 
@@ -92,9 +88,9 @@ def _join_linked_site(db: Session, org: Organisation, user: User) -> None:
     db.add(site)
     db.flush()
     db.execute(
-        organisation_site.insert().values(
-            organisation_id=org.id, site_id=site.id
-        )
+        update(Site)
+        .where(Site.id == site.id)
+        .values(parent_id=org.org_unit_id)
     )
     db.execute(
         site_member.insert().values(

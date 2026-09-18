@@ -24,16 +24,15 @@ from __future__ import annotations
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import insert
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from app.models import (
     Organisation,
     Site,
     User,
-    organisation_member,
-    organisation_site,
 )
+from app.organisations import add_organisation_member
 from app.security import hash_password
 
 
@@ -81,20 +80,16 @@ def site(db_session: Session, org: Organisation) -> Site:
     db_session.commit()
     db_session.refresh(site)
     db_session.execute(
-        insert(organisation_site).values(
-            organisation_id=org.id, site_id=site.id
-        )
+        update(Site)
+        .where(Site.id == site.id)
+        .values(parent_id=org.org_unit_id)
     )
     db_session.commit()
     return site
 
 
 def _place(db: Session, org: Organisation, user: User) -> None:
-    db.execute(
-        insert(organisation_member).values(
-            organisation_id=org.id, user_id=user.id, capacity="staff"
-        )
-    )
+    add_organisation_member(db, org.id, user.id, "staff")
     db.commit()
 
 

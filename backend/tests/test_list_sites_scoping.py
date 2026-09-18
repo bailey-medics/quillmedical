@@ -17,16 +17,15 @@ from __future__ import annotations
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import insert
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from app.models import (
     Organisation,
     Site,
     User,
-    organisation_member,
-    organisation_site,
 )
+from app.organisations import add_organisation_member
 
 
 def _org(db: Session, name: str) -> Organisation:
@@ -43,9 +42,9 @@ def _site(db: Session, name: str, org: Organisation | None = None) -> Site:
     db.commit()
     if org is not None:
         db.execute(
-            insert(organisation_site).values(
-                organisation_id=org.id, site_id=site.id
-            )
+            update(Site)
+            .where(Site.id == site.id)
+            .values(parent_id=org.org_unit_id)
         )
         db.commit()
     db.refresh(site)
@@ -53,11 +52,7 @@ def _site(db: Session, name: str, org: Organisation | None = None) -> Site:
 
 
 def _join(db: Session, org: Organisation, user: User) -> None:
-    db.execute(
-        insert(organisation_member).values(
-            organisation_id=org.id, user_id=user.id, capacity="staff"
-        )
-    )
+    add_organisation_member(db, org.id, user.id, "staff")
     db.commit()
 
 

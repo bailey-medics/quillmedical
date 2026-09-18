@@ -222,10 +222,12 @@ export interface InboxItem {
 /**
  * The holder asking for a sign-off.
  *
- * `assessor_user_id` names who is being asked. The holder chooses,
- * because the judgement about who is appropriate belongs to them and
- * their supervisor. The one rule the API enforces is that it may not be
- * the holder themselves.
+ * `assessor_email` names who is being asked. An address rather than an
+ * account, because the assessor who observed the work may have no Quill
+ * account yet — they are emailed, and sign in or register to sign. The
+ * holder chooses, because the judgement about who is appropriate
+ * belongs to them and their supervisor. The one rule the API enforces
+ * is that it may not be the holder themselves.
  */
 /**
  * Evidence a record is about to name.
@@ -242,8 +244,34 @@ export interface AttachmentInput {
   media_type: string;
 }
 
+/**
+ * Somebody on Quill who might be the assessor being named.
+ *
+ * `registrations` is what the person states, never what Quill checked —
+ * `verified` says whether an organisation admin has looked at a
+ * register. A screen showing a number beside a name must say which it
+ * is, or it reads as confirmation nobody gave.
+ */
+export interface AssessorMatch {
+  user_id: number;
+  username: string;
+  full_name: string | null;
+  email: string;
+  registrations: Registration[];
+}
+
+/**
+ * What a search for an assessor found.
+ *
+ * Empty is an ordinary answer, not an error: asking somebody who has
+ * never used Quill is the case the flow exists for.
+ */
+export interface AssessorSearch {
+  matches: AssessorMatch[];
+}
+
 export interface SignOffRequestInput {
-  assessor_user_id: number;
+  assessor_email: string;
   observed_on: IsoDate;
   level_id?: string | null;
   comments?: string | null;
@@ -379,6 +407,12 @@ export interface LogbookEntry {
  * A count and no target, deliberately. Two hundred bronchoscopies prove
  * activity, not competence.
  */
+/** Every logged procedure, grouped by the competency it counts towards. */
+export interface WholeLogbook {
+  competencies: Logbook[];
+  count: number;
+}
+
 export interface Logbook {
   competency: string;
   count: number;

@@ -104,22 +104,38 @@ from app.models import (
     ExternalPatientAccess,
     Organisation,
     OrganisationFeature,
+    OrgUnitLink,
     PatientMetadata,
     Site,
     User,
-    organisation_member,
     organisation_patient_member,
-    organisation_site,
     site_member,
     validate_member_capacity,
     validate_platform_role,
 )
+from app.org_units import (
+    ORG_UNIT_RELATION_IDS,
+    ORGANISATION_TYPE,
+    get_org_unit_relation,
+    validate_org_unit_relation,
+)
+from app.org_units.tree import (
+    descendant_ids,
+    organisation_id_of_site,
+    organisation_ids_of_sites,
+    root_ids_of_organisations,
+    site_ids_of_organisations,
+)
 from app.organisations import (
+    add_organisation_member,
     get_accessible_patient_ids,
     get_member_org_ids,
     get_org_staff_ids,
     get_patient_org_ids,
     get_shared_org_ids,
+    organisation_member,
+    remove_organisation_member,
+    remove_organisation_memberships,
 )
 from app.push import router as push_router
 from app.push_send import router as push_send_router
@@ -180,6 +196,7 @@ from app.schemas.organisations import (
     AddSiteStaffResponse,
     AddStaffIn,
     CreateOrganisationIn,
+    CreateOrgUnitLinkIn,
     CreateSiteIn,
     FeaturesListOut,
     FeatureToggleResponse,
@@ -188,6 +205,8 @@ from app.schemas.organisations import (
     OrganisationsListOut,
     OrgPatientAddResponse,
     OrgStaffAddResponse,
+    OrgUnitLinkItem,
+    OrgUnitLinksOut,
     SiteDetailOut,
     SiteOut,
     SitesListOut,
@@ -1013,16 +1032,8 @@ def validate_clinical_lead(
     if not org_ids:
         return ValidateClinicalLeadOut(valid=False)
 
-    # Get site IDs linked to those organisations
-    site_ids = (
-        db.execute(
-            select(organisation_site.c.site_id).where(
-                organisation_site.c.organisation_id.in_(org_ids)
-            )
-        )
-        .scalars()
-        .all()
-    )
+    # Every place beneath those organisations, at any depth
+    site_ids = site_ids_of_organisations(db, list(org_ids))
     if not site_ids:
         return ValidateClinicalLeadOut(valid=False)
 
@@ -1044,17 +1055,9 @@ def validate_clinical_lead(
         .first()
     )
 
-    # Find the organisation linked to this site that has the bank
-    org_id_for_site = (
-        db.execute(
-            select(organisation_site.c.organisation_id).where(
-                organisation_site.c.site_id == matched_site_id,
-                organisation_site.c.organisation_id.in_(org_ids),
-            )
-        )
-        .scalars()
-        .first()
-    )
+    # The organisation accountable for this place, if it offers the bank
+    accountable = organisation_id_of_site(db, matched_site_id)
+    org_id_for_site = accountable if accountable in org_ids else None
 
     return ValidateClinicalLeadOut(
         valid=True,
@@ -1165,17 +1168,11 @@ def register(
             raise HTTPException(
                 status_code=400, detail="Organisation not found"
             )
-        db.execute(
-            organisation_member.insert().values(
-                organisation_id=org.id,
-                user_id=user.id,
-                # Public registration is how teaching delegates arrive, and
-                # they are not staff. Recording that here is what lets the
-                # admin page and the messaging self-join check tell them
-                # apart; previously nothing could.
-                capacity="trainee",
-            )
-        )
+        # Public registration is how teaching delegates arrive, and they
+        # are not staff. Recording that here is what lets the admin page
+        # and the messaging self-join check tell them apart; previously
+        # nothing could.
+        add_organisation_member(db, org.id, user.id, "trainee")
 
     # Add the user to the selected site as a trainee
     if payload.site_id is not None:
@@ -1184,19 +1181,14 @@ def register(
                 status_code=400,
                 detail="organisation_id required when site_id is provided",
             )
-        # Verify site exists AND is linked to the provided organisation
-        site = db.scalar(
-            select(Site)
-            .join(
-                organisation_site,
-                organisation_site.c.site_id == Site.id,
-            )
-            .where(
-                Site.id == payload.site_id,
-                organisation_site.c.organisation_id == payload.organisation_id,
-            )
-        )
-        if site is None:
+        # Verify the place exists AND sits beneath the organisation given
+        site = db.get(Site, payload.site_id)
+        if site is None or site.type == ORGANISATION_TYPE:
+            raise HTTPException(status_code=400, detail="Site not found")
+        if (
+            organisation_id_of_site(db, payload.site_id)
+            != payload.organisation_id
+        ):
             raise HTTPException(status_code=400, detail="Site not found")
         db.execute(
             site_member.insert().values(
@@ -1636,13 +1628,7 @@ def create_user_with_cbac(
 
     # Assign to organisations
     for org_id in payload.organisation_ids:
-        db.execute(
-            organisation_member.insert().values(
-                organisation_id=org_id,
-                user_id=user.id,
-                capacity="staff",
-            )
-        )
+        add_organisation_member(db, org_id, user.id, "staff")
 
     # Assign to sites as trainee
     for s_id in payload.site_ids:
@@ -1858,20 +1844,11 @@ def update_user(
     if payload.organisation_ids is not None:
         if current_user.platform_role == "superadmin":
             # Superadmin: replace all memberships
-            db.execute(
-                organisation_member.delete().where(
-                    organisation_member.c.user_id == user_id
-                )
-            )
+            remove_organisation_memberships(db, user_id)
         else:
             # Admin: only remove memberships within admin's own orgs
             admin_org_ids = get_member_org_ids(db, current_user.id)
-            db.execute(
-                organisation_member.delete().where(
-                    organisation_member.c.user_id == user_id,
-                    organisation_member.c.organisation_id.in_(admin_org_ids),
-                )
-            )
+            remove_organisation_memberships(db, user_id, admin_org_ids)
         # Add new org memberships
         for org_id in payload.organisation_ids:
             org = db.scalar(
@@ -1882,32 +1859,28 @@ def update_user(
                     status_code=400,
                     detail=f"Organisation {org_id} not found",
                 )
-            db.execute(
-                organisation_member.insert().values(
-                    user_id=user_id,
-                    organisation_id=org_id,
-                    capacity="staff",
-                )
-            )
+            add_organisation_member(db, org_id, user_id, "staff")
 
     # Update site memberships if provided
     if payload.site_ids is not None:
         if current_user.platform_role == "superadmin":
-            # Superadmin: replace all site memberships
+            # Superadmin: replace every membership of a place inside an
+            # organisation. Not the memberships of the organisations
+            # themselves, which are rows in the same table now and are
+            # settled by the organisation block above — clearing those
+            # here would undo it.
             db.execute(
-                site_member.delete().where(site_member.c.user_id == user_id)
+                site_member.delete().where(
+                    site_member.c.user_id == user_id,
+                    site_member.c.site_id.in_(
+                        select(Site.id).where(Site.type != ORGANISATION_TYPE)
+                    ),
+                )
             )
         else:
             # Admin: only remove memberships for sites within admin's orgs
             admin_org_ids = get_member_org_ids(db, current_user.id)
-            admin_site_ids = [
-                row[0]
-                for row in db.execute(
-                    select(organisation_site.c.site_id).where(
-                        organisation_site.c.organisation_id.in_(admin_org_ids)
-                    )
-                ).all()
-            ]
+            admin_site_ids = site_ids_of_organisations(db, admin_org_ids)
             if admin_site_ids:
                 db.execute(
                     site_member.delete().where(
@@ -2411,19 +2384,17 @@ def me(
         .scalars()
         .all()
     )
-    # Indirect via site → org linkage
-    site_org_ids = set(
+    # Indirect: the organisation accountable for a place they belong to
+    member_site_ids = list(
         db.execute(
-            select(organisation_site.c.organisation_id)
-            .join(
-                site_member,
-                site_member.c.site_id == organisation_site.c.site_id,
+            select(site_member.c.site_id).where(
+                site_member.c.user_id == current_user.id
             )
-            .where(site_member.c.user_id == current_user.id)
         )
         .scalars()
         .all()
     )
+    site_org_ids = set(organisation_ids_of_sites(db, member_site_ids).values())
     user_org_ids = list(direct_org_ids | site_org_ids)
     enabled_features: list[str] = []
     if user_org_ids:
@@ -2431,7 +2402,9 @@ def me(
             db.execute(
                 select(OrganisationFeature.feature_key)
                 .where(
-                    OrganisationFeature.organisation_id.in_(user_org_ids),
+                    OrganisationFeature.org_unit_id.in_(
+                        root_ids_of_organisations(db, user_org_ids)
+                    ),
                 )
                 .distinct()
             )
@@ -2592,15 +2565,10 @@ def list_users(
         admin_orgs = get_member_org_ids(db, current_user.id)
         org_scoped_ids = get_org_staff_ids(db, admin_orgs)
 
-        # Also include site-only members for sites linked to admin's orgs
-        site_ids_for_orgs = {
-            row[0]
-            for row in db.execute(
-                select(organisation_site.c.site_id).where(
-                    organisation_site.c.organisation_id.in_(admin_orgs)
-                )
-            ).all()
-        }
+        # Also include site-only members beneath the admin's orgs
+        site_ids_for_orgs = set(
+            site_ids_of_organisations(db, list(admin_orgs))
+        )
         site_scoped_ids: set[int] = set()
         if site_ids_for_orgs:
             site_scoped_ids = {
@@ -3940,15 +3908,14 @@ def get_organisation(
     # Get patient members
     patient_query = select(
         organisation_patient_member.c.patient_id,
-    ).where(organisation_patient_member.c.organisation_id == org_id)
+    ).where(organisation_patient_member.c.org_unit_id == org.org_unit_id)
 
     patient_members = db.execute(patient_query).all()
 
-    # Get linked sites
+    # Every place beneath this organisation, at any depth
     site_query = (
         select(Site.id, Site.name, Site.type, Site.location, Site.is_active)
-        .join(organisation_site, organisation_site.c.site_id == Site.id)
-        .where(organisation_site.c.organisation_id == org_id)
+        .where(Site.id.in_(site_ids_of_organisations(db, [org_id])))
         .order_by(Site.name)
     )
     sites = db.execute(site_query).all()
@@ -4252,13 +4219,7 @@ def add_staff_to_organisation(
             detail="User is already a staff member of this organisation",
         )
 
-    db.execute(
-        organisation_member.insert().values(
-            organisation_id=org_id,
-            user_id=body.user_id,
-            capacity="staff",
-        )
-    )
+    add_organisation_member(db, org_id, body.user_id, "staff")
 
     # The grant, in the same act as the membership. Adding somebody as
     # staff and then separately remembering to give them competencies is
@@ -4328,9 +4289,11 @@ def add_patient_to_organisation(
             )
 
     # Check if already a member
+    place_id = _place_of_organisation(db, org_id)
+
     existing = db.scalar(
         select(organisation_patient_member).where(
-            organisation_patient_member.c.organisation_id == org_id,
+            organisation_patient_member.c.org_unit_id == place_id,
             organisation_patient_member.c.patient_id == body.patient_id,
         )
     )
@@ -4342,7 +4305,7 @@ def add_patient_to_organisation(
 
     db.execute(
         organisation_patient_member.insert().values(
-            organisation_id=org_id,
+            org_unit_id=place_id,
             patient_id=body.patient_id,
         )
     )
@@ -4396,12 +4359,7 @@ def remove_staff_from_organisation(
     if not existing:
         raise HTTPException(status_code=404, detail="Membership not found")
 
-    db.execute(
-        organisation_member.delete().where(
-            organisation_member.c.organisation_id == org_id,
-            organisation_member.c.user_id == user_id,
-        )
-    )
+    remove_organisation_member(db, org_id, user_id)
     return StatusResponse(status="removed")
 
 
@@ -4439,9 +4397,11 @@ def remove_patient_from_organisation(
                 status_code=404, detail="Organisation not found"
             )
 
+    place_id = _place_of_organisation(db, org_id)
+
     existing = db.scalar(
         select(organisation_patient_member).where(
-            organisation_patient_member.c.organisation_id == org_id,
+            organisation_patient_member.c.org_unit_id == place_id,
             organisation_patient_member.c.patient_id == patient_id,
         )
     )
@@ -4450,7 +4410,7 @@ def remove_patient_from_organisation(
 
     db.execute(
         organisation_patient_member.delete().where(
-            organisation_patient_member.c.organisation_id == org_id,
+            organisation_patient_member.c.org_unit_id == place_id,
             organisation_patient_member.c.patient_id == patient_id,
         )
     )
@@ -4532,9 +4492,11 @@ def toggle_org_feature(
                 status_code=404, detail="Organisation not found"
             )
 
+    place_id = _place_of_organisation(db, org_id)
+
     existing = db.scalar(
         select(OrganisationFeature).where(
-            OrganisationFeature.organisation_id == org_id,
+            OrganisationFeature.org_unit_id == place_id,
             OrganisationFeature.feature_key == feature_key,
         )
     )
@@ -4543,7 +4505,7 @@ def toggle_org_feature(
         if existing:
             return FeatureToggleResponse(status="already_enabled")
         feature = OrganisationFeature(
-            organisation_id=org_id,
+            org_unit_id=place_id,
             feature_key=feature_key,
             enabled_by=current_user.id,
         )
@@ -4595,15 +4557,15 @@ def list_sites(
     site is an anomaly rather than a shared resource, and failing closed
     is the right way round to be wrong about one.
     """
-    stmt = select(Site).order_by(Site.name)
+    # Roots are organisations, and have their own list. This one shows
+    # the places inside them.
+    stmt = (
+        select(Site).where(Site.type != ORGANISATION_TYPE).order_by(Site.name)
+    )
     if current_user.platform_role != "superadmin":
         own_org_ids = get_member_org_ids(db, current_user.id)
         stmt = stmt.where(
-            Site.id.in_(
-                select(organisation_site.c.site_id).where(
-                    organisation_site.c.organisation_id.in_(own_org_ids)
-                )
-            )
+            Site.id.in_(site_ids_of_organisations(db, own_org_ids))
         )
 
     rows = db.execute(stmt).scalars().all()
@@ -4640,10 +4602,10 @@ def create_site(
 ) -> SiteOut:
     """Create a site inside an organisation. Requires ``manage_users``.
 
-    The organisation is required and the link is written in the same
-    transaction, so a site is never ownerless. It used to be created bare
-    and linked by a second request, which left a window where the record
-    belonged nowhere — permanently, if that second call never came.
+    The organisation is required and written on the row itself, so a site
+    is never ownerless. It used to be created bare and linked by a second
+    request, which left a window where the record belonged nowhere —
+    permanently, if that second call never came.
     ``_require_site_in_own_org`` already assumed this was impossible when
     it called a site's organisation "the site's owner"; now it is.
     """
@@ -4659,6 +4621,9 @@ def create_site(
         raise HTTPException(status_code=404, detail="Organisation not found")
     _require_own_org(db, current_user, body.organisation_id)
 
+    if org.org_unit_id is None:
+        raise HTTPException(status_code=404, detail="Organisation not found")
+
     if body.parent_id is not None:
         parent = db.get(Site, body.parent_id)
         if not parent:
@@ -4666,21 +4631,20 @@ def create_site(
                 status_code=404, detail="Parent site not found"
             )
         _require_parent_in_org(db, body.parent_id, body.organisation_id)
+        parent_id = body.parent_id
+    else:
+        # Naming no parent means "directly inside the organisation", which
+        # is the organisation's own row in the tree.
+        parent_id = org.org_unit_id
 
     site = Site(
         name=body.name,
         type=body.type,
-        parent_id=body.parent_id,
+        parent_id=parent_id,
         location=body.location,
     )
     db.add(site)
     db.flush()
-
-    db.execute(
-        organisation_site.insert().values(
-            organisation_id=body.organisation_id, site_id=site.id
-        )
-    )
     db.refresh(site)
 
     return SiteOut(
@@ -4708,6 +4672,11 @@ def _require_parent_in_org(db: Session, parent_id: int, org_id: int) -> None:
     which differ when an admin belongs to several. A ward in Trust A's
     building is Trust A's ward, whoever created it.
 
+    This used to be two functions, one for creating and one for moving,
+    because a site could have several organisations and they had to
+    referee between the two sets. A site now has one owner, so both
+    questions are the same comparison.
+
     404 rather than 403, matching the other site checks, so the response
     does not confirm that a site exists to someone who may not see it.
 
@@ -4719,56 +4688,9 @@ def _require_parent_in_org(db: Session, parent_id: int, org_id: int) -> None:
     Raises:
         HTTPException: 404 if the parent is not in that organisation.
     """
-    parent_org_ids = set(
-        db.execute(
-            select(organisation_site.c.organisation_id).where(
-                organisation_site.c.site_id == parent_id
-            )
-        )
-        .scalars()
-        .all()
-    )
-    if org_id not in parent_org_ids:
-        raise HTTPException(status_code=404, detail="Parent site not found")
-
-
-def _require_parent_shares_org_with(
-    db: Session, parent_id: int, site_id: int
-) -> None:
-    """Refuse a parent that shares no organisation with the site.
-
-    The re-parenting form of :func:`_require_parent_in_org`, for when the
-    site already exists and its organisations are what the parent must
-    match. One shared organisation is enough: requiring every one of them
-    would refuse a legitimate parent whenever a site is linked to two.
-
-    Args:
-        db: Core database session.
-        parent_id: The site being nested under.
-        site_id: The site being moved.
-
-    Raises:
-        HTTPException: 404 if they share no organisation.
-    """
-    own_org_ids = set(
-        db.execute(
-            select(organisation_site.c.organisation_id).where(
-                organisation_site.c.site_id == site_id
-            )
-        )
-        .scalars()
-        .all()
-    )
-    parent_org_ids = set(
-        db.execute(
-            select(organisation_site.c.organisation_id).where(
-                organisation_site.c.site_id == parent_id
-            )
-        )
-        .scalars()
-        .all()
-    )
-    if not (own_org_ids & parent_org_ids):
+    roots = root_ids_of_organisations(db, [org_id])
+    allowed = set(roots) | descendant_ids(db, roots)
+    if parent_id not in allowed:
         raise HTTPException(status_code=404, detail="Parent site not found")
 
 
@@ -4787,16 +4709,48 @@ def _require_site_in_own_org(
     if current_user.platform_role == "superadmin":
         return
 
-    site_org_ids = set(
-        db.execute(
-            select(organisation_site.c.organisation_id).where(
-                organisation_site.c.site_id == site_id
-            )
-        )
-        .scalars()
-        .all()
-    )
-    if not site_org_ids & set(get_member_org_ids(db, current_user.id)):
+    accountable = organisation_id_of_site(db, site_id)
+    if accountable is None:
+        raise HTTPException(status_code=404, detail="Site not found")
+    if accountable not in get_member_org_ids(db, current_user.id):
+        raise HTTPException(status_code=404, detail="Site not found")
+
+
+def _place_of_organisation(db: Session, org_id: int) -> int:
+    """Return the tree row an organisation stands for.
+
+    Features, patient lists and conversation links hang off a place now,
+    and an organisation's place is its own row. An organisation without
+    one cannot hold any of them, and saying so is better than writing a
+    row against a place that does not exist.
+
+    Args:
+        db: Core database session.
+        org_id: The organisation.
+
+    Returns:
+        The id of its row in the tree.
+
+    Raises:
+        HTTPException: 404 if the organisation has no row in the tree.
+    """
+    roots = root_ids_of_organisations(db, [org_id])
+    if not roots:
+        raise HTTPException(status_code=404, detail="Organisation not found")
+    return roots[0]
+
+
+def _require_not_a_root(site: Site) -> None:
+    """Refuse a row that is an organisation rather than a place inside one.
+
+    Organisations are rows in the same table now, carrying no parent, and
+    they have their own routes. Letting the site routes reach them would
+    mean a trust could be renamed, deactivated or deleted from a screen
+    built for wards, and shown in a list of them.
+
+    404 rather than 403, matching the other site checks.
+    """
+    if site.type == ORGANISATION_TYPE:
         raise HTTPException(status_code=404, detail="Site not found")
 
 
@@ -4890,6 +4844,7 @@ def get_site(
     site = db.get(Site, site_id)
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
+    _require_not_a_root(site)
 
     # Get staff
     staff_query = (
@@ -4909,18 +4864,14 @@ def get_site(
 
     staff = db.execute(staff_query).all()
 
-    # Get linked organisations. `type` is selected because
-    # LinkedOrganisationItem requires it: without it this endpoint raises a
-    # validation error for any site that has an organisation, which is every
-    # site the product can actually create.
-    org_query = (
-        select(Organisation.id, Organisation.name, Organisation.type)
-        .join(
-            organisation_site,
-            organisation_site.c.organisation_id == Organisation.id,
-        )
-        .where(organisation_site.c.site_id == site_id)
-    )
+    # The owning organisation, returned as a list of one so the response
+    # shape does not change while the frontend still reads a list. `type`
+    # is selected because LinkedOrganisationItem requires it: without it
+    # this endpoint raises a validation error for any site that has an
+    # organisation, which is every site the product can actually create.
+    org_query = select(
+        Organisation.id, Organisation.name, Organisation.type
+    ).where(Organisation.id == organisation_id_of_site(db, site_id))
     orgs = db.execute(org_query).all()
 
     return SiteDetailOut(
@@ -4968,6 +4919,7 @@ def update_site(
     site = db.get(Site, site_id)
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
+    _require_not_a_root(site)
 
     if body.type is not None:
         if body.type not in VALID_SITE_TYPES:
@@ -4993,11 +4945,14 @@ def update_site(
             )
         # Same fault as create_site had: existence was checked, ownership
         # was not, so a site could be re-parented under another trust's.
-        # Compared against this site's own organisations rather than the
-        # caller's, which differ when an admin belongs to several. One
-        # shared organisation is enough — requiring all of them would
-        # refuse a legitimate parent whenever a site is linked to two.
-        _require_parent_shares_org_with(db, body.parent_id, site_id)
+        # Compared against this site's own organisation rather than the
+        # caller's, which differ when an admin belongs to several.
+        accountable = organisation_id_of_site(db, site_id)
+        if accountable is None:
+            raise HTTPException(
+                status_code=404, detail="Parent site not found"
+            )
+        _require_parent_in_org(db, body.parent_id, accountable)
         site.parent_id = body.parent_id
     if body.location is not None:
         site.location = body.location
@@ -5037,6 +4992,7 @@ def toggle_site_active(
     site = db.get(Site, site_id)
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
+    _require_not_a_root(site)
 
     site.is_active = body.is_active
     db.flush()
@@ -5073,6 +5029,7 @@ def delete_site(
     site = db.get(Site, site_id)
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
+    _require_not_a_root(site)
 
     db.delete(site)
     return StatusResponse(status="deleted")
@@ -5092,7 +5049,14 @@ def link_site_to_org(
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> StatusResponse:
-    """Link a site to an organisation. Requires ``manage_users``."""
+    """Give a site to an organisation. Requires ``manage_users``.
+
+    A site now has one owner rather than a set of them, so this moves the
+    site rather than adding a second organisation to it. Moving a site
+    that already belongs to somebody else is refused: it would take the
+    site out of the reach of the admins who have it today, and doing that
+    from a route named "link" would be a surprise.
+    """
     _require_own_org(db, current_user, org_id)
 
     org = db.get(Organisation, org_id)
@@ -5103,21 +5067,23 @@ def link_site_to_org(
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
 
-    # Check if already linked
-    existing = db.execute(
-        select(organisation_site).where(
-            organisation_site.c.organisation_id == org_id,
-            organisation_site.c.site_id == site_id,
-        )
-    ).first()
-    if existing:
+    if org.org_unit_id is None:
+        raise HTTPException(status_code=404, detail="Organisation not found")
+
+    if site.parent_id == org.org_unit_id:
         return StatusResponse(status="already_linked")
 
-    db.execute(
-        organisation_site.insert().values(
-            organisation_id=org_id, site_id=site_id
+    if site.parent_id is not None:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Site already belongs to another organisation. Remove it "
+                "from that organisation first."
+            ),
         )
-    )
+
+    site.parent_id = org.org_unit_id
+    db.flush()
     return StatusResponse(status="linked")
 
 
@@ -5135,20 +5101,219 @@ def unlink_site_from_org(
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> StatusResponse:
-    """Unlink a site from an organisation. Requires ``manage_users``."""
+    """Take a site away from an organisation. Requires ``manage_users``.
+
+    The site is left owned by nobody, which is what this route has always
+    done — it is the second half of moving one, and the site is invisible
+    to every admin list until it is given a new owner.
+    """
     _require_own_org(db, current_user, org_id)
 
-    result = db.execute(
-        organisation_site.delete().where(
-            organisation_site.c.organisation_id == org_id,
-            organisation_site.c.site_id == site_id,
-        )
-    )
-
-    if result.rowcount == 0:  # type: ignore[attr-defined]
+    org = db.get(Organisation, org_id)
+    site = db.get(Site, site_id)
+    if org is None or site is None or site.parent_id != org.org_unit_id:
         raise HTTPException(status_code=404, detail="Link not found")
 
+    site.parent_id = None
+    db.flush()
+
     return StatusResponse(status="unlinked")
+
+
+# ==========================================================================
+# LINKS BETWEEN PLACES
+# ==========================================================================
+#
+# Ownership is the parent column and nothing else. Everything that is not
+# ownership — a school teaching on a trust's wards, two trusts sharing a
+# laboratory — is a row here, so that a second relationship never becomes a
+# second parent and splits "who is accountable for this place" into two
+# answers.
+#
+# A link confers nothing on its own. What a relation is expected to confer
+# is declared beside it in ``app/org_units/relations.py``.
+
+
+def _link_item(link: OrgUnitLink, names: dict[int, str]) -> OrgUnitLinkItem:
+    """Build the response for one link, naming both of its ends."""
+    relation = get_org_unit_relation(link.relation)
+    return OrgUnitLinkItem(
+        id=link.id,
+        source_id=link.source_id,
+        source_name=names.get(link.source_id, ""),
+        target_id=link.target_id,
+        target_name=names.get(link.target_id, ""),
+        relation=link.relation,
+        relation_display_name=(
+            relation.display_name if relation else link.relation
+        ),
+        created_at=link.created_at.isoformat(),
+    )
+
+
+def _links_of(db: Session, site_id: int) -> OrgUnitLinksOut:
+    """Return every link the site is either end of, oldest first."""
+    links = list(
+        db.execute(
+            select(OrgUnitLink)
+            .where(
+                (OrgUnitLink.source_id == site_id)
+                | (OrgUnitLink.target_id == site_id)
+            )
+            .order_by(OrgUnitLink.id)
+        )
+        .scalars()
+        .all()
+    )
+
+    wanted = {link.source_id for link in links} | {
+        link.target_id for link in links
+    }
+    names: dict[int, str] = {}
+    if wanted:
+        names = {
+            row.id: row.name
+            for row in db.execute(
+                select(Site.id, Site.name).where(Site.id.in_(wanted))
+            ).all()
+        }
+
+    return OrgUnitLinksOut(links=[_link_item(link, names) for link in links])
+
+
+@router.get(
+    "/sites/{site_id}/links",
+    response_model=OrgUnitLinksOut,
+    dependencies=[DEP_REQUIRE_MANAGE_USERS],
+)
+def list_site_links(
+    site_id: int,
+    current_user: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> OrgUnitLinksOut:
+    """List the relationships this place is either end of.
+
+    Both directions are returned. ``teaches_at`` from a school to a trust
+    is one fact and the reverse is another, so a place has to be able to
+    see the links pointing at it as well as the ones it made.
+
+    Requires ``manage_users``, and the place must be one of the caller's.
+    """
+    _require_site_in_own_org(db, current_user, site_id)
+
+    site = db.get(Site, site_id)
+    if not site:
+        raise HTTPException(status_code=404, detail="Site not found")
+
+    return _links_of(db, site_id)
+
+
+@router.post(
+    "/sites/{site_id}/links",
+    response_model=OrgUnitLinksOut,
+    dependencies=[
+        DEP_REQUIRE_CSRF,
+        DEP_REQUIRE_MANAGE_USERS,
+    ],
+)
+def create_site_link(
+    site_id: int,
+    body: CreateOrgUnitLinkIn,
+    current_user: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> OrgUnitLinksOut:
+    """Record a relationship from this place to another.
+
+    **The place at the other end is not checked for ownership**, and that
+    is the point: the relationships worth recording are the ones that
+    cross between organisations, and requiring both ends would make the
+    table useless for exactly those. Recording one confers nothing — no
+    membership, no admin rights — so naming somebody else's place here
+    gives the caller nothing they did not already have.
+
+    Requires ``manage_users``, and the place the link is *from* must be
+    one of the caller's.
+    """
+    _require_site_in_own_org(db, current_user, site_id)
+
+    source = db.get(Site, site_id)
+    if not source:
+        raise HTTPException(status_code=404, detail="Site not found")
+
+    if body.target_id == site_id:
+        raise HTTPException(
+            status_code=400,
+            detail="A place cannot be linked to itself",
+        )
+
+    target = db.get(Site, body.target_id)
+    if not target:
+        raise HTTPException(status_code=404, detail="Target site not found")
+
+    try:
+        relation = validate_org_unit_relation(body.relation)
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Invalid relation. Must be one of: "
+                + ", ".join(ORG_UNIT_RELATION_IDS)
+            ),
+        ) from None
+
+    existing = db.scalar(
+        select(OrgUnitLink).where(
+            OrgUnitLink.source_id == site_id,
+            OrgUnitLink.target_id == body.target_id,
+            OrgUnitLink.relation == relation,
+        )
+    )
+    if existing is None:
+        db.add(
+            OrgUnitLink(
+                source_id=site_id,
+                target_id=body.target_id,
+                relation=relation,
+                created_by=current_user.id,
+            )
+        )
+        db.flush()
+
+    return _links_of(db, site_id)
+
+
+@router.delete(
+    "/sites/{site_id}/links/{link_id}",
+    response_model=OrgUnitLinksOut,
+    dependencies=[
+        DEP_REQUIRE_CSRF,
+        DEP_REQUIRE_MANAGE_USERS,
+    ],
+)
+def delete_site_link(
+    site_id: int,
+    link_id: int,
+    current_user: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> OrgUnitLinksOut:
+    """Remove a relationship this place is either end of.
+
+    Either end may remove it. A relationship somebody else recorded about
+    your place is still a claim about your place, and you should not have
+    to ask them to withdraw it.
+
+    Requires ``manage_users``, and the place must be one of the caller's.
+    """
+    _require_site_in_own_org(db, current_user, site_id)
+
+    link = db.get(OrgUnitLink, link_id)
+    if link is None or site_id not in (link.source_id, link.target_id):
+        raise HTTPException(status_code=404, detail="Link not found")
+
+    db.delete(link)
+    db.flush()
+
+    return _links_of(db, site_id)
 
 
 def _mirror_clinical_lead(
@@ -6377,6 +6542,11 @@ def ci_transcode_complete(
     # unreachable caption job would keep the module hidden — a missing
     # subtitle track is a smaller fault than a video nobody can watch.
     if any(name.endswith("-720p.mp4") for name in names):
+        # Recorded before firing, as the transcode invocation is: a card
+        # that says nothing is running over a job that is would be the
+        # worse mistake of the two.
+        link.caption_started_at = datetime.now(UTC)
+        db.flush()
         start_caption(body.org_id, body.module_id, body.asset_id)
 
     return TranscodeCompleteOut(recorded=True, flags=set_flags)

@@ -13,7 +13,7 @@ cross-matched.
 
 from __future__ import annotations
 
-from sqlalchemy import insert
+from sqlalchemy import insert, update
 from sqlalchemy.orm import Session
 
 from app.cbac.positions import set_clinical_lead
@@ -22,10 +22,9 @@ from app.models import (
     OrganisationFeature,
     Site,
     User,
-    organisation_member,
-    organisation_site,
     site_member,
 )
+from app.organisations import add_organisation_member
 from app.security import hash_password
 
 
@@ -51,7 +50,7 @@ def _org(db: Session, name: str) -> Organisation:
     db.flush()
     db.add(
         OrganisationFeature(
-            organisation_id=org.id, feature_key="teaching", enabled_by=1
+            org_unit_id=org.org_unit_id, feature_key="teaching", enabled_by=1
         )
     )
     db.commit()
@@ -63,9 +62,9 @@ def _site_of(db: Session, org: Organisation, name: str) -> Site:
     db.add(site)
     db.commit()
     db.execute(
-        insert(organisation_site).values(
-            organisation_id=org.id, site_id=site.id
-        )
+        update(Site)
+        .where(Site.id == site.id)
+        .values(parent_id=org.org_unit_id)
     )
     db.commit()
     return site
@@ -82,11 +81,7 @@ def _member(db: Session, site: Site, user: User, capacity: str) -> None:
 
 def _in_org(db: Session, org: Organisation, user: User) -> None:
     """Put the caller in the organisation, with the gate the route needs."""
-    db.execute(
-        insert(organisation_member).values(
-            organisation_id=org.id, user_id=user.id
-        )
-    )
+    add_organisation_member(db, org.id, user.id, "trainee")
     user.additional_competencies = ["manage_teaching_content"]
     db.commit()
 
