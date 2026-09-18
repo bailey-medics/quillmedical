@@ -2221,7 +2221,7 @@ class TestLearningContentGate:
         db_session.execute(
             update(Site)
             .where(Site.id == site.id)
-            .values(organisation_id=org.id)
+            .values(parent_id=org.org_unit_id)
         )
         db_session.execute(
             site_member.insert().values(

@@ -62,11 +62,11 @@ from app.deps import has_competency
 from app.email_send import EmailRateLimitError, send_email
 from app.features.gating import requires_feature
 from app.models import (
-    Site,
     User,
     organisation_member,
     site_member,
 )
+from app.org_units.tree import site_ids_of_organisations
 from app.organisations import get_member_org_ids, get_reachable_org_ids
 from app.passport_storage import get_blob_store, get_passport_store
 from app.schemas.passport import (
@@ -2387,12 +2387,12 @@ def revoke_assessor_membership(
     # A site membership first: the accept endpoint prefers the narrowest
     # place, so that is where an invited assessor usually sits.
     site_id = db.scalar(
-        select(site_member.c.site_id)
-        .join(Site, Site.id == site_member.c.site_id)
-        .where(
+        select(site_member.c.site_id).where(
             site_member.c.user_id == assessor_user_id,
             site_member.c.capacity == "external",
-            Site.organisation_id == organisation_id,
+            site_member.c.site_id.in_(
+                site_ids_of_organisations(db, [organisation_id])
+            ),
         )
     )
 

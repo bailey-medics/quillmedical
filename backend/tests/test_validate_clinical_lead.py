@@ -31,7 +31,9 @@ def _setup_org_with_site_and_lead(
 
     # Link site to org
     db.execute(
-        update(Site).where(Site.id == site.id).values(organisation_id=org.id)
+        update(Site)
+        .where(Site.id == site.id)
+        .values(parent_id=org.org_unit_id)
     )
     db.flush()
 
@@ -179,7 +181,7 @@ class TestValidateClinicalLead:
         db_session.execute(
             update(Site)
             .where(Site.id == other_site.id)
-            .values(organisation_id=other_org.id)
+            .values(parent_id=other_org.org_unit_id)
         )
 
         other_lead = User(
