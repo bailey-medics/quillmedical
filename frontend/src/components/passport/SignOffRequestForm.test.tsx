@@ -9,11 +9,6 @@ import { renderWithMantine } from "@test/test-utils";
 import SignOffRequestForm from "./SignOffRequestForm";
 import { requestedCompetency } from "./fixtures";
 
-const assessors = [
-  { value: "42", label: "Dr Amara Okonkwo" },
-  { value: "43", label: "Dr Ravi Patel" },
-];
-
 const levels = [
   { id: "supervised", name: "Can perform with supervision available" },
   { id: "unsupervised", name: "Can perform independently" },
@@ -25,17 +20,21 @@ function renderForm(
   return renderWithMantine(
     <SignOffRequestForm
       competency={requestedCompetency}
-      assessors={assessors}
       onSubmit={vi.fn()}
       {...props}
     />,
   );
 }
 
-/** Names an assessor, which is required before the form will submit. */
-async function chooseAssessor(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getAllByRole("combobox")[0]);
-  await user.click(await screen.findByText("Dr Amara Okonkwo"));
+/** The assessor's address, which is required before the form submits. */
+async function typeAssessorEmail(
+  user: ReturnType<typeof userEvent.setup>,
+  address = "amara.okonkwo@example.nhs.uk",
+) {
+  await user.type(
+    screen.getByRole("textbox", { name: /Who should assess this/ }),
+    address,
+  );
 }
 
 describe("SignOffRequestForm", () => {
@@ -53,17 +52,60 @@ describe("SignOffRequestForm", () => {
     ).toBeInTheDocument();
   });
 
-  describe("Choosing an assessor", () => {
-    it("offers every assessor given, filtering nobody out", async () => {
-      // Who is fit to assess whom is a clinical judgement, not a rule
-      // table. The form presents the list it is handed.
+  describe("Naming an assessor", () => {
+    it("asks for an email address, not a name from a list", async () => {
+      // The assessor who observed the work is often at another trust,
+      // or not on Quill at all. A list of existing users had no row for
+      // them, so the holder could not ask.
+      renderForm();
+
+      expect(
+        screen.getByRole("textbox", { name: /Who should assess this/ }),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+    });
+
+    it("says an account is not needed, so a holder does not assume one is", () => {
+      renderForm();
+
+      expect(
+        screen.getByText(/They do not need a Quill account/),
+      ).toBeInTheDocument();
+    });
+
+    it("sends the address, folded to lower case and trimmed", async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn();
+      renderForm({ onSubmit });
+
+      await typeAssessorEmail(user, "  Amara.Okonkwo@Example.NHS.uk  ");
+      await user.type(
+        screen.getByRole("textbox", { name: /Observed on/ }),
+        "14/03/2026",
+      );
+      await user.click(
+        screen.getByRole("button", { name: "Request sign-off" }),
+      );
+
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          assessor_email: "amara.okonkwo@example.nhs.uk",
+        }),
+      );
+    });
+
+    it("complains about a malformed address, but not about an empty one", async () => {
+      // An empty field is a form not filled in yet, not a mistake.
       const user = userEvent.setup();
       renderForm();
 
-      await user.click(screen.getAllByRole("combobox")[0]);
+      expect(screen.queryByText(/valid email address/)).not.toBeInTheDocument();
 
-      expect(await screen.findByText("Dr Amara Okonkwo")).toBeInTheDocument();
-      expect(screen.getByText("Dr Ravi Patel")).toBeInTheDocument();
+      await typeAssessorEmail(user, "not-an-address");
+
+      expect(
+        await screen.findByText(/valid email address/),
+      ).toBeInTheDocument();
     });
   });
 
@@ -79,7 +121,7 @@ describe("SignOffRequestForm", () => {
       const user = userEvent.setup();
       renderForm();
 
-      await chooseAssessor(user);
+      await typeAssessorEmail(user);
 
       expect(
         screen.getByRole("button", { name: "Request sign-off" }),
@@ -90,12 +132,14 @@ describe("SignOffRequestForm", () => {
   describe("Levels", () => {
     it("offers a level picker only when the competency declares levels", () => {
       renderForm({ levels });
-      expect(screen.getAllByRole("combobox")).toHaveLength(2);
+      expect(screen.getAllByRole("combobox")).toHaveLength(1);
     });
 
-    it("shows only the assessor picker when there are no levels", () => {
+    it("shows no picker at all when there are no levels", () => {
+      // The assessor is a plain email field now, so a combobox on this
+      // form can only be the level picker.
       renderForm();
-      expect(screen.getAllByRole("combobox")).toHaveLength(1);
+      expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
     });
   });
 

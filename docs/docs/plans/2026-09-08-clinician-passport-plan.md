@@ -1425,6 +1425,74 @@ assumption runs the other way.
   list; and whether a holder inviting an assessor may create a
   membership without an administrator confirming it.
 
+#### Asking by email, not by picking a user — revision, 17 September
+
+The design above splits one act across two tables, and using it
+revealed why that does not hold. Asking for a sign-off is one thing a
+holder does; who the assessor turns out to be is a detail of it.
+
+- **What the screen showed** — the request form offered a dropdown of
+  existing Quill users. A holder whose assessor is not on Quill, which
+  is the whole case phase 5 exists for, had no way through. The invite
+  endpoints that would have served them were built, tested, and never
+  called by any screen.
+
+- **The split was the cause, not an oversight.** `AssessorInviteIn`
+  deliberately does not store the competency, and says so at length:
+  an invite brings a _person_ onto the platform, and one assessor
+  signs many competencies over months. That is sound reasoning about
+  invitations, but it means "please sign off my bronchoscopy" cannot
+  be recorded at all until the assessor has an account. The thing the
+  holder actually asked for had nowhere to live.
+
+- **The record already works the way we want.** `service.request_sign_off`
+  takes no assessor argument, and its docstring says the record exists
+  "from the moment of asking, not from the moment of signing". Only
+  the Postgres row disagreed, by making `assessor_user_id` non-null.
+
+- **The assessor is named by email address.** That is what a holder knows when
+  they ask, whether or not it belongs to an account. `assessor_email`
+  is non-null from creation and is the identity of the person being
+  asked; matching it to a `users` row is a lookup, not a precondition.
+
+- **`assessor_user_id` stays, nullable, and means "who signed".** Not
+  "who we expect to sign" — it is null while `status` is `open`, and
+  set from the authenticated signer at the moment of signing. A null
+  here records that the act has not happened, which is the same thing
+  `accepted_at` records on an invite. It is never copied from the
+  request, so the column always names whoever truly signed.
+
+- **The four things a request must know are known at creation** —
+  the passport, the competency, the assessor's email, and the state.
+  All non-null from the first write. Nothing about the row means
+  "not determined yet".
+
+- **`passport_assessor_invite` mostly dissolves.** Nothing outside its
+  own routes reads it: it serves a rate-limit count, an invite list
+  and token redemption. Naming the assessor, recording the competency
+  and sending the mail all move onto the request. What does not
+  dissolve is the single-use link — a token carries no record of
+  having been spent, so a row must. That row is a credential, not an
+  assessor, and should say so.
+
+- **The daily cap follows the mail.** Invites are capped at
+  `INVITES_PER_DAY` so Quill cannot be used to mail strangers in bulk.
+  Once creating a request can send mail to an arbitrary address, the
+  cap belongs there too, or it is bypassed by asking for sign-offs
+  instead of inviting.
+
+- **Two human gates apply to landing this.** Removing the non-null
+  constraint and reshaping the column is a destructive migration and
+  needs approval on the `db-destructive-migration-review` environment;
+  changing `SignOffRequestIn` from `assessor_user_id` to an email is a
+  breaking API change and needs a decision file plus approval on
+  `api-breaking-change-review`. Neither can be satisfied from inside a
+  coding session.
+
+- **Now is the cheapest moment.** Both tables are empty, no screen
+  calls the invite routes, and there are no real users, so the change
+  costs a migration chain rather than a data migration.
+
 ### What lives in Postgres
 
 The core database holds coordination state and an index of existence,
@@ -3575,6 +3643,63 @@ not deferred items: deferring is for what nobody should build yet.
 - [x] Document the module under `docs/docs/backend/passport/index.md`
       and add a concepts page `docs/docs/concepts/clinician-passport.md`
       explaining the CBAC relationship.
+
+## Phase 8: ask for a sign-off by email
+
+Why this phase exists is set out under "Asking by email, not by
+picking a user" above. In short: the request form can only name an
+existing Quill user, so a holder whose assessor is not on Quill cannot
+ask at all — which is the case phase 5 was built for. The invite
+endpoints that would serve them are built, tested and called by no
+screen.
+
+The order below is deliberate. The backend carries the meaning, so it
+goes first and the form follows; the destructive step is last, and on
+its own.
+
+- [ ] Add `assessor_email` to `passport_signoff_request`, non-null,
+      in `backend/app/features/passport/models.py`. Index it with
+      `status`, mirroring the existing inbox index, because that is
+      how an assessor's inbox will be read.
+- [ ] Make `assessor_user_id` nullable in the same model, and rewrite
+      its docstring: it records who signed, not who was asked, and is
+      null while the request is open.
+- [ ] Generate the additive migration with `just migrate`, and read
+      the generated `upgrade()` and `downgrade()` before committing.
+- [ ] Change `SignOffRequestIn` in `backend/app/schemas/passport.py`
+      to take `assessor_email: EmailStr` in place of
+      `assessor_user_id: int`. Breaking: needs a decision file from
+      `python backend/scripts/new_compat_decision.py` and approval on
+      `api-breaking-change-review`.
+- [ ] Rewrite the request route so it stores the email, looks up a
+      matching user without requiring one, refuses the holder's own
+      address as the invite route already does, and sends the mail.
+- [ ] Move the daily cap onto the request route. Without it the
+      `INVITES_PER_DAY` limit is bypassed by asking for sign-offs
+      instead of inviting, which is the same mail to the same
+      stranger.
+- [ ] Set `assessor_user_id` from the authenticated signer when a
+      sign-off is signed, never from the request row, so the column
+      records who actually signed.
+- [ ] Change the signing route's guard from
+      `request_row.assessor_user_id != user.id` to a comparison of
+      `assessor_email` against the caller's address, folded and
+      trimmed the same way the invite route compares addresses.
+- [ ] Point the inbox query at `assessor_email` so a request is
+      visible to an assessor who had no account when it was written.
+- [ ] Replace the assessor dropdown in
+      `frontend/src/components/passport/SignOffRequestForm.tsx` with
+      an email field, and update its stories and tests.
+- [ ] Say what happens next on the form: whether the address belongs
+      to a Quill account decides whether they sign in or register, and
+      a holder should not have to guess which.
+- [ ] Decide what becomes of `passport_assessor_invite`. Its routes
+      serve a rate-limit count, an invite list and token redemption;
+      only the single-use link has to survive, and it is a credential
+      rather than an assessor. Retiring it is a destructive migration
+      needing approval on `db-destructive-migration-review`, in its
+      own contract migration a deploy later — never bundled with the
+      additive work above.
 
 ## Future items, deliberately deferred
 

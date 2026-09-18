@@ -264,13 +264,19 @@ class InboxItemOut(BaseModel):
 class SignOffRequestIn(_In):
     """The holder asking for a sign-off.
 
-    ``assessor_user_id`` names who is being asked. The holder chooses,
-    because the judgement about who is appropriate belongs to them and
-    their supervisor. The one rule the API enforces is that it may not
-    be the holder themselves.
+    ``assessor_email`` names who is being asked. An address rather than
+    a user id, because the consultant who observed the work is often at
+    another trust or not on Quill at all, and requiring an account first
+    made this unreachable for the case it exists to serve. Matching the
+    address to an account is a lookup afterwards, never a condition of
+    asking.
+
+    The holder chooses, because the judgement about who is appropriate
+    belongs to them and their supervisor. The one rule the API enforces
+    is that it may not be the holder themselves.
     """
 
-    assessor_user_id: int
+    assessor_email: EmailStr
     observed_on: date
     level_id: str | None = None
     comments: str | None = None

@@ -29,7 +29,6 @@ import SignOffRequestForm from "@/components/passport/SignOffRequestForm";
 import ErrorState from "@/components/error-state/ErrorState";
 import StateMessage from "@/components/message-cards/StateMessage";
 import { IconFileText } from "@/components/icons/appIcons";
-import { api } from "@/lib/api";
 import competenciesData from "@/generated/competencies.json";
 import { fetchMyPassport, requestSignOff } from "@lib/passport";
 import type {
@@ -37,12 +36,6 @@ import type {
   SignOffRequestInput,
   SignOffStatus,
 } from "@lib/passport";
-
-/** Shape of the user records the assessor list is built from. */
-interface ApiUser {
-  id: number;
-  username: string;
-}
 
 /**
  * A competency as the request form wants it, built from the catalogue.
@@ -106,9 +99,6 @@ export function Component() {
   const [competencies, setCompetencies] = useState<CompetencyState[]>([]);
   const [passportId, setPassportId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [assessors, setAssessors] = useState<
-    { value: string; label: string }[]
-  >([]);
   const [asking, setAsking] = useState(false);
   const [chosen, setChosen] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -128,24 +118,10 @@ export function Component() {
         }
       });
 
-    // There is no passport endpoint listing assessors, so the page asks
-    // for users directly and the form stays presentational — the same
-    // arrangement the competency page uses.
-    api
-      .get<{ users: ApiUser[] }>("/users")
-      .then(({ users }) => {
-        if (cancelled) return;
-        setAssessors(
-          users.map((user) => ({
-            value: String(user.id),
-            label: user.username,
-          })),
-        );
-      })
-      .catch(() => {
-        // Not fatal: the rest of the page still reads, and the form
-        // simply has nobody to offer.
-      });
+    // The page no longer reads the user list. An assessor is named by
+    // email, so there is nothing to offer and nothing to look up —
+    // which also means asking for a sign-off no longer requires the
+    // holder to fetch every user on the platform.
 
     return () => {
       cancelled = true;
@@ -199,8 +175,8 @@ export function Component() {
         <StateMessage
           colour="update"
           icon={<IconFileText />}
-          title="Nothing recorded yet"
-          description="A competency appears here once you have recorded something against it — a logbook entry, a certificate or a CPD activity — and asked an assessor to sign it off."
+          title="No sign-offs yet"
+          description="Start a sign-off request to have an assessor review a competency."
         />
       )}
 
@@ -225,7 +201,6 @@ export function Component() {
           {chosen && (
             <SignOffRequestForm
               competency={competencyForForm(chosen, competencies)}
-              assessors={assessors}
               onSubmit={handleRequest}
               onCancel={() => {
                 setAsking(false);

@@ -222,10 +222,12 @@ export interface InboxItem {
 /**
  * The holder asking for a sign-off.
  *
- * `assessor_user_id` names who is being asked. The holder chooses,
- * because the judgement about who is appropriate belongs to them and
- * their supervisor. The one rule the API enforces is that it may not be
- * the holder themselves.
+ * `assessor_email` names who is being asked. An address rather than an
+ * account, because the assessor who observed the work may have no Quill
+ * account yet — they are emailed, and sign in or register to sign. The
+ * holder chooses, because the judgement about who is appropriate
+ * belongs to them and their supervisor. The one rule the API enforces
+ * is that it may not be the holder themselves.
  */
 /**
  * Evidence a record is about to name.
@@ -243,7 +245,7 @@ export interface AttachmentInput {
 }
 
 export interface SignOffRequestInput {
-  assessor_user_id: number;
+  assessor_email: string;
   observed_on: IsoDate;
   level_id?: string | null;
   comments?: string | null;
