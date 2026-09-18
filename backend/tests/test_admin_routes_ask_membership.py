@@ -32,9 +32,9 @@ from app.models import (
     Organisation,
     Site,
     User,
-    organisation_member,
     site_member,
 )
+from app.organisations import add_organisation_member
 from app.security import hash_password
 
 
@@ -163,11 +163,7 @@ class TestOrganisationMembershipStillWorks:
         user = _user(
             db_session, "trust_admin", profession="system_administrator"
         )
-        db_session.execute(
-            insert(organisation_member).values(
-                organisation_id=org.id, user_id=user.id, capacity="staff"
-            )
-        )
+        add_organisation_member(db_session, org.id, user.id, "staff")
         db_session.commit()
         return user
 

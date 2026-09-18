@@ -59,9 +59,9 @@ from app.models import (
     OrganisationFeature,
     Site,
     User,
-    organisation_member,
     site_member,
 )
+from app.organisations import add_organisation_member, organisation_member
 from app.passport_storage import get_blob_store, get_passport_store
 from app.security import PASSPORT_INVITE_TYPE, hash_password
 
@@ -135,14 +135,14 @@ def _enable_passport(db: Session, *users: User) -> Organisation:
     db.commit()
     db.refresh(org)
 
-    db.add(OrganisationFeature(organisation_id=org.id, feature_key="passport"))
+    db.add(
+        OrganisationFeature(
+            org_unit_id=org.org_unit_id, feature_key="passport"
+        )
+    )
 
     for user in users:
-        db.execute(
-            organisation_member.insert().values(
-                organisation_id=org.id, user_id=user.id
-            )
-        )
+        add_organisation_member(db, org.id, user.id, "trainee")
 
     db.commit()
     return org
@@ -292,6 +292,108 @@ class TestReadAuthorisation:
         assert response.status_code == 404
 
 
+class TestSearchingForAnAssessor:
+    """Finding somebody a trainee already knows, not browsing a list."""
+
+    def test_an_email_a_username_or_a_name_all_find_them(
+        self, holder_client: TestClient, assessor: User
+    ) -> None:
+        """A trainee knows the person, not how Quill files them."""
+        for term in (assessor.email, assessor.username, "Assessor"):
+            response = holder_client.get(
+                "/api/passport/assessors/search", params={"q": term}
+            )
+
+            assert response.status_code == 200, response.text
+            found = [m["user_id"] for m in response.json()["matches"]]
+            assert assessor.id in found, f"{term!r} found nobody"
+
+    def test_the_registration_number_comes_back(
+        self, holder_client: TestClient, assessor: User
+    ) -> None:
+        """Hard evidence that this is the right person.
+
+        Two consultants may share a name and an address says only that
+        somebody controls a mailbox. The number says which registered
+        professional this is.
+        """
+        response = holder_client.get(
+            "/api/passport/assessors/search",
+            params={"q": assessor.email},
+        )
+
+        match = response.json()["matches"][0]
+        assert match["registrations"], response.text
+        assert match["registrations"][0]["number"] == "1234567"
+        # Declared, never checked by Quill. A screen that implied
+        # otherwise would be claiming something nobody did.
+        assert match["registrations"][0]["verified"] is False
+
+    def test_finding_nobody_is_not_an_error(
+        self, holder_client: TestClient
+    ) -> None:
+        """The case the whole flow exists for.
+
+        The consultant who observed the work is often at another trust
+        and has never used Quill. An empty answer is success: the
+        trainee goes on to ask by the address they typed.
+        """
+        response = holder_client.get(
+            "/api/passport/assessors/search",
+            params={"q": "nobody-here@other-trust.nhs.uk"},
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json()["matches"] == []
+
+    def test_a_very_short_search_is_refused(
+        self, holder_client: TestClient
+    ) -> None:
+        """Two characters would match a large share of a staff list,
+        which turns finding one person into reading all of them."""
+        response = holder_client.get(
+            "/api/passport/assessors/search", params={"q": "a"}
+        )
+
+        assert response.status_code == 400, response.text
+
+    def test_you_do_not_find_yourself(
+        self, holder_client: TestClient, holder: User
+    ) -> None:
+        """Nobody assesses their own competency, so nobody offers to."""
+        response = holder_client.get(
+            "/api/passport/assessors/search",
+            params={"q": holder.email},
+        )
+
+        assert response.status_code == 200, response.text
+        found = [m["user_id"] for m in response.json()["matches"]]
+        assert holder.id not in found
+
+    def test_somebody_without_the_passport_competency_cannot_search(
+        self,
+        test_client: TestClient,
+        db_session: Session,
+        org: Organisation,
+    ) -> None:
+        """The passport competency is the door, as on every other route.
+
+        Without it this would be a staff directory readable by anyone
+        with an account, which is not what a search for one known
+        assessor needs to be.
+        """
+        user = _make_user(db_session, "reception", profession="receptionist")
+        add_organisation_member(db_session, org.id, user.id, "staff")
+        db_session.commit()
+
+        client = _login(test_client, "reception")
+        response = client.get(
+            "/api/passport/assessors/search", params={"q": "assessor"}
+        )
+
+        assert response.status_code == 403, response.text
+
+
 class TestRequestSignOff:
     def test_a_holder_can_request_one(
         self, holder_client: TestClient, assessor: User
@@ -415,10 +517,14 @@ class TestSignOff:
     ) -> None:
         """And nothing is written when it is refused."""
         passport_id, name = requested
+
+        # The commit is read as the holder: an assessor may read the
+        # sign-off they were asked about and not the passport around it,
+        # so the record's own state is the holder's to see.
+        holder_client = _login(test_client, "holder")
+        before = holder_client.get(f"/api/passport/{passport_id}").json()
+
         client = _login(test_client, "assessor")
-
-        before = client.get(f"/api/passport/{passport_id}").json()
-
         response = client.post(
             f"/api/passport/{passport_id}/sign-offs/{name}/sign-off",
             json={
@@ -429,7 +535,8 @@ class TestSignOff:
 
         assert response.status_code == 400
 
-        after = client.get(f"/api/passport/{passport_id}").json()
+        holder_client = _login(test_client, "holder")
+        after = holder_client.get(f"/api/passport/{passport_id}").json()
         assert (
             after["passport"]["head_commit"]
             == before["passport"]["head_commit"]
@@ -467,6 +574,33 @@ class TestSignOff:
         )
 
         assert response.status_code == 403
+
+    def test_an_assessor_reads_the_sign_off_but_not_the_passport(
+        self, test_client: TestClient, requested: tuple[str, str]
+    ) -> None:
+        """Being asked to judge one thing opens that thing only.
+
+        An assessor asked about a bronchoscopy has no business reading a
+        year of CPD, a logbook of every procedure, or what another
+        assessor declined. The whole passport, its logbook, its
+        certificates and its CPD are the holder's.
+        """
+        passport_id, name = requested
+        client = _login(test_client, "assessor")
+
+        allowed = client.get(f"/api/passport/{passport_id}/sign-offs/{name}")
+        assert allowed.status_code == 200, allowed.text
+
+        for path in (
+            "",
+            "/certificates",
+            "/logbook",
+            "/cpd/2026",
+        ):
+            refused = client.get(f"/api/passport/{passport_id}{path}")
+            assert (
+                refused.status_code == 404
+            ), f"{path or '/'} was readable: {refused.text}"
 
     def test_signing_twice_is_refused(
         self, test_client: TestClient, requested: tuple[str, str]
@@ -685,13 +819,15 @@ class TestVerify:
         assert "distrusts Quill" in body["does_not_prove"]
 
 
-class TestAssessorInvites:
-    """Bringing somebody in from outside, and the limits on doing so.
+class TestTheInvitationAnAskSends:
+    """The credential minted when an assessor has no account yet.
 
-    The invitation is about a *person*, not a competency: one assessor
-    goes on to sign off many things over months, and what they were
-    asked for is a sign-off request naming their user id — which cannot
-    exist until they have accepted and have an account at all.
+    The route that invited somebody by hand is gone: asking for a
+    sign-off is what sends the invitation now. What it mints is a
+    single-use link, and the properties that matter are the same ones
+    that mattered before — the token reaches the address and nobody
+    else, only its hash is kept, and a holder cannot mail an unbounded
+    number of strangers.
     """
 
     @pytest.fixture
@@ -715,53 +851,25 @@ class TestAssessorInvites:
         monkeypatch.setattr(router, "send_email", capture)
         return outbox
 
-    def _invite(
+    def _ask(
         self,
         client: TestClient,
         passport_id: str,
         *,
         email: str = "okafor@other-trust.nhs.uk",
-        name: str = "Dr Amara Okafor",
-        competency_id: str | None = None,
     ) -> Response:
-        body: dict[str, object] = {
-            "email": email,
-            "name": name,
-            "registration_authority": "GMC",
-            "registration_number": "7654321",
-        }
-        if competency_id is not None:
-            body["competency_id"] = competency_id
-
         return client.post(
-            f"/api/passport/{passport_id}/assessor-invites", json=body
+            f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
+            json={
+                "assessor_email": email,
+                "observed_on": "2026-03-14",
+                "level_id": LEVEL,
+            },
         )
-
-    def test_the_holder_can_invite_an_outside_assessor(
-        self,
-        holder_client: TestClient,
-        db_session: Session,
-        sent: list[dict[str, str]],
-    ) -> None:
-        passport_id = _create_passport(holder_client)
-
-        response = self._invite(holder_client, passport_id)
-
-        assert response.status_code == 201, response.text
-        payload = response.json()
-        assert payload["email"] == "okafor@other-trust.nhs.uk"
-        assert payload["name"] == "Dr Amara Okafor"
-        assert payload["accepted_at"] is None
-
-        row = db_session.get(PassportAssessorInvite, payload["id"])
-        assert row is not None
-        assert row.passport_id == passport_id
-        assert row.registration_number == "7654321"
 
     def test_the_token_is_emailed_and_never_returned(
         self,
         holder_client: TestClient,
-        db_session: Session,
         sent: list[dict[str, str]],
     ) -> None:
         """The credential goes to the address, not to the caller.
@@ -772,17 +880,16 @@ class TestAssessorInvites:
         """
         passport_id = _create_passport(holder_client)
 
-        response = self._invite(holder_client, passport_id)
-        body = response.text
+        response = self._ask(holder_client, passport_id)
+        assert response.status_code == 201, response.text
 
         assert "token" not in response.json()
         assert len(sent) == 1
         assert sent[0]["to"] == "okafor@other-trust.nhs.uk"
-        assert "/passport/assessors/accept?token=" in sent[0]["html_body"]
+        assert "token=" in sent[0]["html_body"]
 
-        # The emailed token must not appear in the response anywhere.
         link = sent[0]["html_body"].split("token=")[1].split('"')[0]
-        assert link not in body
+        assert link not in response.text
 
     def test_only_the_hash_of_the_token_is_stored(
         self,
@@ -793,182 +900,71 @@ class TestAssessorInvites:
         """A readable copy would let anyone with a row redeem it."""
         passport_id = _create_passport(holder_client)
 
-        response = self._invite(holder_client, passport_id)
-        row = db_session.get(PassportAssessorInvite, response.json()["id"])
-        assert row is not None
+        assert self._ask(holder_client, passport_id).status_code == 201
 
         token = sent[0]["html_body"].split("token=")[1].split('"')[0]
+        row = db_session.scalar(select(PassportAssessorInvite))
+        assert row is not None
 
         assert row.token_hash != token
         assert row.token_hash == hashlib.sha256(token.encode()).hexdigest()
 
-    def test_a_competency_makes_the_email_specific_but_is_not_stored(
+    def test_an_assessor_already_on_quill_gets_no_token(
         self,
         holder_client: TestClient,
+        assessor: User,
         db_session: Session,
         sent: list[dict[str, str]],
     ) -> None:
-        """The invitation is about a person.
+        """There is no account to create, so nothing is minted.
 
-        Naming a competency helps a cold recipient decide whether to act,
-        so it shapes the email. Storing it would either force a second
-        invitation for somebody who already has an account, or describe
-        only the first of the things they were eventually asked to
-        assess.
+        They are sent to their inbox instead, where the request is
+        waiting. Minting a registration link for somebody who can
+        already sign in would be a credential nobody needs.
         """
         passport_id = _create_passport(holder_client)
 
-        response = self._invite(
-            holder_client, passport_id, competency_id=COMPETENCY
+        assert (
+            self._ask(
+                holder_client, passport_id, email=assessor.email
+            ).status_code
+            == 201
         )
 
-        assert response.status_code == 201, response.text
-        assert "competency_id" not in response.json()
-
-        row = db_session.get(PassportAssessorInvite, response.json()["id"])
-        assert not hasattr(row, "competency_id")
-
-        assert "assess" in sent[0]["html_body"].lower()
-
-    def test_an_unknown_competency_is_refused(
-        self,
-        holder_client: TestClient,
-        sent: list[dict[str, str]],
-    ) -> None:
-        passport_id = _create_passport(holder_client)
-
-        response = self._invite(
-            holder_client, passport_id, competency_id="not_a_competency"
-        )
-
-        assert response.status_code in (404, 422)
-        assert sent == []
-
-    def test_you_cannot_invite_yourself(
-        self,
-        holder_client: TestClient,
-        holder: User,
-        sent: list[dict[str, str]],
-    ) -> None:
-        """The whole value of the record is a second named person."""
-        passport_id = _create_passport(holder_client)
-
-        response = self._invite(
-            holder_client, passport_id, email=holder.email.upper()
-        )
-
-        assert response.status_code == 400
-        assert sent == []
-
-    def test_a_bystander_cannot_invite_on_somebody_else_s_passport(
-        self,
-        holder_client: TestClient,
-        test_client: TestClient,
-        passport_store: LocalPassportStore,
-        org: Organisation,
-        sent: list[dict[str, str]],
-    ) -> None:
-        """A 404, not a 403: an unrelated passport is invisible."""
-        passport_id = _create_passport(holder_client)
-
-        bystander_client = _login(test_client, "bystander")
-        response = self._invite(bystander_client, passport_id)
-
-        assert response.status_code == 404
-        assert sent == []
+        assert len(sent) == 1
+        assert "token=" not in sent[0]["html_body"]
+        assert db_session.scalar(select(PassportAssessorInvite)) is None
 
     def test_the_daily_limit_is_per_holder(
         self,
         holder_client: TestClient,
-        db_session: Session,
-        monkeypatch: pytest.MonkeyPatch,
         sent: list[dict[str, str]],
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Counted per passport, not per address.
+        """A backstop against a compromised account mailing strangers.
 
-        A limiter keyed on the remote address would throttle a hospital's
-        whole NAT and leave a holder free to invite from anywhere else.
-
-        The ceiling is lowered for the test. What is under test is that
-        a limit exists and is counted per passport; driving the real
-        hundred through HTTP would prove the same thing a hundred times
-        more slowly, and would then have to be rewritten every time
-        somebody tuned the number.
+        Counted per passport rather than per address, because keying on
+        the remote address would throttle a whole hospital's outbound
+        network and leave a holder free to ask from anywhere else.
         """
-        monkeypatch.setattr(router, "INVITES_PER_DAY", 3)
+        monkeypatch.setattr(router, "INVITES_PER_DAY", 2)
         passport_id = _create_passport(holder_client)
 
-        for index in range(3):
-            response = self._invite(
-                holder_client,
-                passport_id,
-                email=f"assessor{index}@other-trust.nhs.uk",
+        for index in range(2):
+            response = self._ask(
+                holder_client, passport_id, email=f"a{index}@other.nhs.uk"
             )
             assert response.status_code == 201, response.text
 
-        response = self._invite(
-            holder_client, passport_id, email="one-too-many@example.nhs.uk"
+        refused = self._ask(
+            holder_client, passport_id, email="one-too-many@other.nhs.uk"
         )
 
-        assert response.status_code == 429
-        assert len(sent) == 3
+        assert refused.status_code == 429, refused.text
 
     def test_the_cap_is_a_backstop_not_a_quota(self) -> None:
-        """High enough that a rotation's worth of sign-offs never meets it.
-
-        Pinned because the number is a judgement, and a later edit that
-        dropped it to something a busy trainee could hit would look
-        like tightening security while quietly breaking the feature.
-        """
-        assert router.INVITES_PER_DAY >= 50
-
-    def test_the_holder_sees_their_invitations_newest_first(
-        self,
-        holder_client: TestClient,
-        sent: list[dict[str, str]],
-    ) -> None:
-        passport_id = _create_passport(holder_client)
-
-        self._invite(
-            holder_client, passport_id, email="first@other-trust.nhs.uk"
-        )
-        self._invite(
-            holder_client, passport_id, email="second@other-trust.nhs.uk"
-        )
-
-        response = holder_client.get(
-            f"/api/passport/{passport_id}/assessor-invites"
-        )
-
-        assert response.status_code == 200, response.text
-        listed = response.json()
-        assert len(listed) == 2
-        assert {row["email"] for row in listed} == {
-            "first@other-trust.nhs.uk",
-            "second@other-trust.nhs.uk",
-        }
-        for row in listed:
-            assert "token" not in row
-            assert "token_hash" not in row
-
-    def test_a_bystander_cannot_list_them(
-        self,
-        holder_client: TestClient,
-        test_client: TestClient,
-        passport_store: LocalPassportStore,
-        org: Organisation,
-        sent: list[dict[str, str]],
-    ) -> None:
-        """An invitation names an address and a declared registration."""
-        passport_id = _create_passport(holder_client)
-        self._invite(holder_client, passport_id)
-
-        bystander_client = _login(test_client, "bystander")
-        response = bystander_client.get(
-            f"/api/passport/{passport_id}/assessor-invites"
-        )
-
-        assert response.status_code == 404
+        """Low enough to matter, high enough nobody legitimate meets it."""
+        assert router.INVITES_PER_DAY >= 20
 
 
 class TestAcceptingAnInvitation:
@@ -1003,13 +999,18 @@ class TestAcceptingAnInvitation:
         *,
         email: str = "okafor@other-trust.nhs.uk",
     ) -> None:
+        """Bring an assessor in the way a holder actually does.
+
+        Asking for a sign-off is what sends the invitation now; the
+        route that invited somebody by hand is gone, and with it the
+        name and registration a holder used to type on their behalf.
+        """
         response = client.post(
-            f"/api/passport/{passport_id}/assessor-invites",
+            f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
             json={
-                "email": email,
-                "name": "Dr Amara Okafor",
-                "registration_authority": "GMC",
-                "registration_number": "7654321",
+                "assessor_email": email,
+                "observed_on": "2026-03-14",
+                "level_id": LEVEL,
             },
         )
         assert response.status_code == 201, response.text
@@ -1021,12 +1022,21 @@ class TestAcceptingAnInvitation:
         *,
         username: str | None = "okafor",
         password: str | None = "AssessorPassword123!",
+        full_name: str | None = "Dr Amara Okafor",
+        registration_authority: str | None = "GMC",
+        registration_number: str | None = "7654321",
     ) -> Response:
         body: dict[str, object] = {"token": token}
         if username is not None:
             body["username"] = username
         if password is not None:
             body["password"] = password
+        if full_name is not None:
+            body["full_name"] = full_name
+        if registration_authority is not None:
+            body["registration_authority"] = registration_authority
+        if registration_number is not None:
+            body["registration_number"] = registration_number
         return client.post("/api/passport/assessor-invites/accept", json=body)
 
     def test_the_link_can_be_opened_repeatedly(
@@ -1047,7 +1057,10 @@ class TestAcceptingAnInvitation:
             )
             assert response.status_code == 200, response.text
             body = response.json()
-            assert body["assessor_name"] == "Dr Amara Okafor"
+            # The address, not a name: nobody has told Quill their name
+            # yet. The holder gave an address, and the assessor says who
+            # they are when they register.
+            assert body["assessor_name"] == "okafor@other-trust.nhs.uk"
             assert body["needs_account"] is True
             assert body["already_accepted"] is False
 
@@ -1162,6 +1175,75 @@ class TestAcceptingAnInvitation:
         assert "access_clinician_passport" in user.get_final_competencies()
         assert "access_patient_records" not in user.get_final_competencies()
 
+    def test_the_assessor_states_their_own_name_and_registration(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        db_session: Session,
+        sent: list[dict[str, str]],
+    ) -> None:
+        """The holder gives an address and nothing else.
+
+        Before this, the account was built from the invitation's own
+        name and registration columns — which the holder used to fill
+        in. Asking for a sign-off does not collect them, so a new
+        assessor was registered with an empty name and a registration
+        of ``{"": ""}``: a meaningless entry in a clinical field.
+        """
+        passport_id = _create_passport(holder_client)
+        self._invite(holder_client, passport_id)
+
+        response = self._accept(
+            test_client,
+            self._token(sent),
+            full_name="Dr Winifred Achebe",
+            registration_authority="NMC",
+            registration_number="99AB1234",
+        )
+        assert response.status_code == 200, response.text
+
+        user = db_session.get(User, response.json()["user_id"])
+        assert user is not None
+        assert user.full_name == "Dr Winifred Achebe"
+        assert user.professional_registrations == {"NMC": "99AB1234"}
+
+    def test_registering_without_a_name_is_refused(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        sent: list[dict[str, str]],
+    ) -> None:
+        """An empty name is what the defect produced, so it is refused."""
+        passport_id = _create_passport(holder_client)
+        self._invite(holder_client, passport_id)
+
+        response = self._accept(test_client, self._token(sent), full_name=None)
+
+        assert response.status_code == 422, response.text
+
+    def test_registering_without_a_registration_is_refused(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        sent: list[dict[str, str]],
+    ) -> None:
+        """A sign-off records who signed and on what standing.
+
+        An assessor with no registration recorded could sign one, and
+        the record would say nothing about their authority to do so.
+        """
+        passport_id = _create_passport(holder_client)
+        self._invite(holder_client, passport_id)
+
+        response = self._accept(
+            test_client,
+            self._token(sent),
+            registration_authority=None,
+            registration_number=None,
+        )
+
+        assert response.status_code == 422, response.text
+
     def test_the_membership_is_external_at_the_holder_s_organisation(
         self,
         holder_client: TestClient,
@@ -1260,13 +1342,11 @@ class TestAcceptingAnInvitation:
         passport_id = _create_passport(holder_client)
         self._invite(holder_client, passport_id, email=assessor.email)
 
-        response = self._accept(
-            test_client, self._token(sent), username=None, password=None
-        )
-
-        assert response.status_code == 200, response.text
-        assert response.json()["status"] == "linked"
-        assert response.json()["user_id"] == assessor.id
+        # Somebody who already uses Quill is sent to their inbox rather
+        # than through registration: there is no account to create, so
+        # no invitation is minted and no token is emailed. Their right
+        # to read and sign comes from the request naming their address.
+        assert "token=" not in sent[-1]["html_body"]
 
         db_session.refresh(assessor)
         assert assessor.base_profession == "consultant"
@@ -1353,12 +1433,12 @@ class TestTheGateResolvesForAnAcceptedAssessor:
     ) -> int:
         """Run the real flow, and return the new assessor's user id."""
         invited = holder_client.post(
-            f"/api/passport/{passport_id}/assessor-invites",
+            f"/api/passport/{passport_id}/competencies/"
+            f"{COMPETENCY}/requests",
             json={
-                "email": "okafor@other-trust.nhs.uk",
-                "name": "Dr Amara Okafor",
-                "registration_authority": "GMC",
-                "registration_number": "7654321",
+                "assessor_email": "okafor@other-trust.nhs.uk",
+                "observed_on": "2026-03-14",
+                "level_id": LEVEL,
             },
         )
         assert invited.status_code == 201, invited.text
@@ -1373,6 +1453,9 @@ class TestTheGateResolvesForAnAcceptedAssessor:
                 # The password ``_login`` uses, so the assessor can then
                 # sign in through the ordinary route like anybody else.
                 "password": "PassportPassword123!",
+                "full_name": "Dr Amara Okafor",
+                "registration_authority": "GMC",
+                "registration_number": "7654321",
             },
         )
         assert accepted.status_code == 200, accepted.text
@@ -1393,8 +1476,14 @@ class TestTheGateResolvesForAnAcceptedAssessor:
         assessor_client = _login(test_client, "okafor")
         response = assessor_client.get("/api/passport/requests/inbox")
 
+        # Reaching the route at all is what this pins: 200 rather than
+        # the 403 an account without the gate would get. The inbox is no
+        # longer empty, because asking for a sign-off is what brings an
+        # assessor in — so the request that invited them is waiting,
+        # which is the arrangement the whole flow exists to produce.
         assert response.status_code == 200, response.text
-        assert response.json() == []
+        assert len(response.json()) == 1
+        assert response.json()[0]["passport_id"] == passport_id
 
     def test_a_site_membership_opens_it_through_its_organisation(
         self,
@@ -1494,8 +1583,9 @@ class TestTheGateResolvesForAnAcceptedAssessor:
         """The gate is not authorisation, and must not be mistaken for it.
 
         Passing ``requires_feature`` says only that the passport feature
-        is on where they are. What they may see is still resolved from
-        the request rows naming them, and they are named on none.
+        is on where they are. What they may see is resolved separately,
+        and a named assessor may read the sign-off they were asked about
+        — never the holder's passport as a whole.
         """
         passport_id = _create_passport(holder_client)
         self._invite_and_accept(holder_client, test_client, passport_id, sent)
@@ -1534,11 +1624,7 @@ class TestAdminVerifyAndRevoke:
         """An admin of the holder's organisation."""
         user = _make_user(db_session, "orgadmin", profession="consultant")
         user.additional_competencies = ["manage_users"]
-        db_session.execute(
-            organisation_member.insert().values(
-                organisation_id=org.id, user_id=user.id, capacity="staff"
-            )
-        )
+        add_organisation_member(db_session, org.id, user.id, "staff")
         db_session.commit()
         db_session.refresh(user)
         return user
@@ -1559,14 +1645,10 @@ class TestAdminVerifyAndRevoke:
 
         db_session.add(
             OrganisationFeature(
-                organisation_id=other.id, feature_key="passport"
+                org_unit_id=other.org_unit_id, feature_key="passport"
             )
         )
-        db_session.execute(
-            organisation_member.insert().values(
-                organisation_id=other.id, user_id=user.id, capacity="staff"
-            )
-        )
+        add_organisation_member(db_session, other.id, user.id, "staff")
         db_session.commit()
         db_session.refresh(user)
         return user
@@ -1580,12 +1662,12 @@ class TestAdminVerifyAndRevoke:
         """Run the real invite and accept flow; return the assessor's id."""
         passport_id = _create_passport(holder_client)
         holder_client.post(
-            f"/api/passport/{passport_id}/assessor-invites",
+            f"/api/passport/{passport_id}/competencies/"
+            f"{COMPETENCY}/requests",
             json={
-                "email": "okafor@other-trust.nhs.uk",
-                "name": "Dr Amara Okafor",
-                "registration_authority": "GMC",
-                "registration_number": "7654321",
+                "assessor_email": "okafor@other-trust.nhs.uk",
+                "observed_on": "2026-03-14",
+                "level_id": LEVEL,
             },
         )
         token = sent[-1]["html_body"].split("token=")[1].split('"')[0]
@@ -1596,6 +1678,9 @@ class TestAdminVerifyAndRevoke:
                 "token": token,
                 "username": "okafor",
                 "password": "PassportPassword123!",
+                "full_name": "Dr Amara Okafor",
+                "registration_authority": "GMC",
+                "registration_number": "7654321",
             },
         )
         assert accepted.status_code == 200, accepted.text
@@ -2416,12 +2501,12 @@ class TestWhatAnExternalAssessorCannotReach:
     ) -> int:
         """Invite and accept for real; return the new assessor's id."""
         invited = holder_client.post(
-            f"/api/passport/{passport_id}/assessor-invites",
+            f"/api/passport/{passport_id}/competencies/"
+            f"{COMPETENCY}/requests",
             json={
-                "email": email,
-                "name": "Dr Amara Okafor",
-                "registration_authority": "GMC",
-                "registration_number": "7654321",
+                "assessor_email": email,
+                "observed_on": "2026-03-14",
+                "level_id": LEVEL,
             },
         )
         assert invited.status_code == 201, invited.text
@@ -2434,6 +2519,9 @@ class TestWhatAnExternalAssessorCannotReach:
                 "token": token,
                 "username": username,
                 "password": "PassportPassword123!",
+                "full_name": "Dr Amara Okafor",
+                "registration_authority": "GMC",
+                "registration_number": "7654321",
             },
         )
         assert accepted.status_code == 200, accepted.text
@@ -2511,7 +2599,19 @@ class TestWhatAnExternalAssessorCannotReach:
         response = assessor_client.get("/api/passport/requests/inbox")
 
         assert response.status_code == 200, response.text
-        assert response.json() == []
+
+        # Their own is there — asking is what brought them in, so an
+        # empty inbox would no longer prove anything. What matters is
+        # that the other assessor's request is not, which is the leak
+        # this guards: one query spanning every passport.
+        names = [row["sign_off"]["name"] for row in response.json()]
+        assert len(names) == 1, response.text
+
+        inbox_of_the_other = _login(test_client, "assessor").get(
+            "/api/passport/requests/inbox"
+        )
+        theirs = [row["sign_off"]["name"] for row in inbox_of_the_other.json()]
+        assert set(names).isdisjoint(theirs)
         assert external_id != assessor.id
 
     def test_they_cannot_list_users(
@@ -2583,12 +2683,12 @@ class TestWhatAnExternalAssessorCannotReach:
     ) -> PassportAssessorInvite:
         """An invitation whose fortnight has already run out."""
         holder_client.post(
-            f"/api/passport/{passport_id}/assessor-invites",
+            f"/api/passport/{passport_id}/competencies/"
+            f"{COMPETENCY}/requests",
             json={
-                "email": "late@other-trust.nhs.uk",
-                "name": "Dr Late Arrival",
-                "registration_authority": "GMC",
-                "registration_number": "1112223",
+                "assessor_email": "late@other-trust.nhs.uk",
+                "observed_on": "2026-03-14",
+                "level_id": LEVEL,
             },
         )
 
@@ -2656,12 +2756,12 @@ class TestWhatAnExternalAssessorCannotReach:
         """
         passport_id = _create_passport(holder_client)
         holder_client.post(
-            f"/api/passport/{passport_id}/assessor-invites",
+            f"/api/passport/{passport_id}/competencies/"
+            f"{COMPETENCY}/requests",
             json={
-                "email": "stale@other-trust.nhs.uk",
-                "name": "Dr Stale Link",
-                "registration_authority": "GMC",
-                "registration_number": "4445556",
+                "assessor_email": "stale@other-trust.nhs.uk",
+                "observed_on": "2026-03-14",
+                "level_id": LEVEL,
             },
         )
 
@@ -2728,7 +2828,8 @@ class TestWhatAnExternalAssessorCannotReach:
         passport competency as a ceiling, and still reach nothing there:
         not the passport that invited them, not the people, not the
         organisation itself. What they may act on comes from the request
-        rows naming them, and they are named on none.
+        rows naming them, and nothing else: the one request that brought
+        them in, and no more.
         """
         passport_id = _create_passport(holder_client)
         assessor_id = self._accept(
@@ -2751,7 +2852,13 @@ class TestWhatAnExternalAssessorCannotReach:
         )
         assert assessor_client.get("/api/users").status_code == 403
         assert assessor_client.get("/api/organisations").status_code == 403
-        assert assessor_client.get("/api/passport/requests/inbox").json() == []
+
+        # The ask that brought them in, and nothing beyond it. The
+        # membership added nothing: it is the request row that names
+        # them, not the place they now belong to.
+        inbox = assessor_client.get("/api/passport/requests/inbox").json()
+        assert len(inbox) == 1
+        assert inbox[0]["passport_id"] == passport_id
 
 
 class TestFeatureGate:
@@ -2767,10 +2874,8 @@ class TestFeatureGate:
         db_session.add(organisation)
         db_session.commit()
         db_session.refresh(organisation)
-        db_session.execute(
-            organisation_member.insert().values(
-                organisation_id=organisation.id, user_id=user.id
-            )
+        add_organisation_member(
+            db_session, organisation.id, user.id, "trainee"
         )
         db_session.commit()
 

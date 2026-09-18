@@ -11,9 +11,9 @@ from app.models import (
     Organisation,
     Site,
     User,
-    organisation_member,
     site_member,
 )
+from app.organisations import organisation_member
 from app.security import hash_password
 
 

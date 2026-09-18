@@ -244,6 +244,32 @@ export interface AttachmentInput {
   media_type: string;
 }
 
+/**
+ * Somebody on Quill who might be the assessor being named.
+ *
+ * `registrations` is what the person states, never what Quill checked —
+ * `verified` says whether an organisation admin has looked at a
+ * register. A screen showing a number beside a name must say which it
+ * is, or it reads as confirmation nobody gave.
+ */
+export interface AssessorMatch {
+  user_id: number;
+  username: string;
+  full_name: string | null;
+  email: string;
+  registrations: Registration[];
+}
+
+/**
+ * What a search for an assessor found.
+ *
+ * Empty is an ordinary answer, not an error: asking somebody who has
+ * never used Quill is the case the flow exists for.
+ */
+export interface AssessorSearch {
+  matches: AssessorMatch[];
+}
+
 export interface SignOffRequestInput {
   assessor_email: string;
   observed_on: IsoDate;

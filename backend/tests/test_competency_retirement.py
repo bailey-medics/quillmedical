@@ -245,7 +245,7 @@ class TestTheCleanupQueue:
         person = self._user(db_session, "long_server")
         row = PractisingCompetency(
             user_id=person.id,
-            organisation_id=org.id,
+            site_id=org.org_unit_id,
             competency=RETIRABLE,
         )
         db_session.add(row)

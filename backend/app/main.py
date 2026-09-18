@@ -108,7 +108,6 @@ from app.models import (
     PatientMetadata,
     Site,
     User,
-    organisation_member,
     organisation_patient_member,
     site_member,
     validate_member_capacity,
@@ -134,6 +133,7 @@ from app.organisations import (
     get_org_staff_ids,
     get_patient_org_ids,
     get_shared_org_ids,
+    organisation_member,
     remove_organisation_member,
     remove_organisation_memberships,
 )
@@ -2402,7 +2402,9 @@ def me(
             db.execute(
                 select(OrganisationFeature.feature_key)
                 .where(
-                    OrganisationFeature.organisation_id.in_(user_org_ids),
+                    OrganisationFeature.org_unit_id.in_(
+                        root_ids_of_organisations(db, user_org_ids)
+                    ),
                 )
                 .distinct()
             )
@@ -3906,7 +3908,7 @@ def get_organisation(
     # Get patient members
     patient_query = select(
         organisation_patient_member.c.patient_id,
-    ).where(organisation_patient_member.c.organisation_id == org_id)
+    ).where(organisation_patient_member.c.org_unit_id == org.org_unit_id)
 
     patient_members = db.execute(patient_query).all()
 
@@ -4287,9 +4289,11 @@ def add_patient_to_organisation(
             )
 
     # Check if already a member
+    place_id = _place_of_organisation(db, org_id)
+
     existing = db.scalar(
         select(organisation_patient_member).where(
-            organisation_patient_member.c.organisation_id == org_id,
+            organisation_patient_member.c.org_unit_id == place_id,
             organisation_patient_member.c.patient_id == body.patient_id,
         )
     )
@@ -4301,7 +4305,7 @@ def add_patient_to_organisation(
 
     db.execute(
         organisation_patient_member.insert().values(
-            organisation_id=org_id,
+            org_unit_id=place_id,
             patient_id=body.patient_id,
         )
     )
@@ -4393,9 +4397,11 @@ def remove_patient_from_organisation(
                 status_code=404, detail="Organisation not found"
             )
 
+    place_id = _place_of_organisation(db, org_id)
+
     existing = db.scalar(
         select(organisation_patient_member).where(
-            organisation_patient_member.c.organisation_id == org_id,
+            organisation_patient_member.c.org_unit_id == place_id,
             organisation_patient_member.c.patient_id == patient_id,
         )
     )
@@ -4404,7 +4410,7 @@ def remove_patient_from_organisation(
 
     db.execute(
         organisation_patient_member.delete().where(
-            organisation_patient_member.c.organisation_id == org_id,
+            organisation_patient_member.c.org_unit_id == place_id,
             organisation_patient_member.c.patient_id == patient_id,
         )
     )
@@ -4486,9 +4492,11 @@ def toggle_org_feature(
                 status_code=404, detail="Organisation not found"
             )
 
+    place_id = _place_of_organisation(db, org_id)
+
     existing = db.scalar(
         select(OrganisationFeature).where(
-            OrganisationFeature.organisation_id == org_id,
+            OrganisationFeature.org_unit_id == place_id,
             OrganisationFeature.feature_key == feature_key,
         )
     )
@@ -4497,7 +4505,7 @@ def toggle_org_feature(
         if existing:
             return FeatureToggleResponse(status="already_enabled")
         feature = OrganisationFeature(
-            organisation_id=org_id,
+            org_unit_id=place_id,
             feature_key=feature_key,
             enabled_by=current_user.id,
         )
@@ -4706,6 +4714,30 @@ def _require_site_in_own_org(
         raise HTTPException(status_code=404, detail="Site not found")
     if accountable not in get_member_org_ids(db, current_user.id):
         raise HTTPException(status_code=404, detail="Site not found")
+
+
+def _place_of_organisation(db: Session, org_id: int) -> int:
+    """Return the tree row an organisation stands for.
+
+    Features, patient lists and conversation links hang off a place now,
+    and an organisation's place is its own row. An organisation without
+    one cannot hold any of them, and saying so is better than writing a
+    row against a place that does not exist.
+
+    Args:
+        db: Core database session.
+        org_id: The organisation.
+
+    Returns:
+        The id of its row in the tree.
+
+    Raises:
+        HTTPException: 404 if the organisation has no row in the tree.
+    """
+    roots = root_ids_of_organisations(db, [org_id])
+    if not roots:
+        raise HTTPException(status_code=404, detail="Organisation not found")
+    return roots[0]
 
 
 def _require_not_a_root(site: Site) -> None:

@@ -808,7 +808,14 @@ _stack-guard:
     set -uo pipefail
     python3 scripts/stack-status.py --check
     status=$?
-    # 1 is "no stack here", which the calling recipe reports for itself.
+    # 1 is "no stack here". The script has already named the recipes and
+    # the skill that start or check out one, so stopping here is what makes
+    # that the last thing on the screen: without it the recipe carried on
+    # into `gh stack rebase`, which answered the same question again in its
+    # own words and buried the useful half under the useless one.
+    if [ "${status}" -eq 1 ]; then
+        exit 1
+    fi
     if [ "${status}" -eq 2 ]; then
         echo "✗ Refusing to run: this stack spans more than one worktree." >&2
         echo "  Free the branches above, or run this from the worktree" >&2
@@ -1080,7 +1087,7 @@ stack-rebase:
     python3 scripts/stack-status.py
 
 
-alias sts := stack-submit
+alias stsu := stack-submit
 # Rebase onto the latest trunk, then push and open or update the drafts
 stack-submit:
     #!/usr/bin/env bash

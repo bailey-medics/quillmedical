@@ -1,17 +1,20 @@
-"""Membership of an organisation is also membership of its place.
+"""Membership of an organisation is membership of its place.
 
-The two membership tables are merging into one, keyed on a place in the
-tree. Until the old one goes, every write lands in both, because the
-readers still ask the old one and a row in only one of them would be a
-membership that exists or does not depending on who asks.
+There is one membership table now, keyed on a place in the tree. An
+organisation's place is its own row, so "who is at this trust" and "who
+is at this ward" are the same question asked of two rows.
+
+Both spellings are checked throughout — the query that answers by
+organisation, and the row itself — because they have to agree: they are
+the same row read two ways.
 
 Covers:
-- Both tables are written by every route that records membership
-- The capacity is the same in both, and a repeat changes it rather than
-  failing
-- Removing a membership removes it from both
+- Recording membership writes one row against the organisation's place
+- A repeat changes the capacity rather than failing
+- Removing a membership removes the row
 - An edit to somebody's organisations leaves their ward memberships alone
-- ``site_member.capacity`` defaults to the narrower value
+- Membership written straight to a place is read as organisation membership
+- The capacity defaults to the narrower value
 """
 
 from __future__ import annotations
@@ -24,11 +27,13 @@ from app.models import (
     Organisation,
     Site,
     User,
-    organisation_member,
     site_member,
 )
 from app.organisations import (
     add_organisation_member,
+    get_member_org_ids,
+    get_org_member_ids,
+    organisation_member,
     remove_organisation_member,
     remove_organisation_memberships,
 )
@@ -66,7 +71,8 @@ def _person(db: Session, username: str) -> User:
     return user
 
 
-def _old_capacity(db: Session, org: Organisation, user: User) -> str | None:
+def _by_organisation(db: Session, org: Organisation, user: User) -> str | None:
+    """Read the membership the way a route asking about an organisation does."""
     return db.scalar(
         select(organisation_member.c.capacity).where(
             organisation_member.c.organisation_id == org.id,
@@ -75,7 +81,8 @@ def _old_capacity(db: Session, org: Organisation, user: User) -> str | None:
     )
 
 
-def _tree_capacity(db: Session, org: Organisation, user: User) -> str | None:
+def _by_place(db: Session, org: Organisation, user: User) -> str | None:
+    """Read the same row directly, as a row against the organisation's place."""
     return db.scalar(
         select(site_member.c.capacity).where(
             site_member.c.site_id == org.org_unit_id,
@@ -85,15 +92,15 @@ def _tree_capacity(db: Session, org: Organisation, user: User) -> str | None:
 
 
 class TestRecordingMembership:
-    def test_both_tables_are_written(self, db_session):
+    def test_one_row_answers_both_questions(self, db_session):
         org = _org(db_session, "Trust")
         person = _person(db_session, "alice")
 
         add_organisation_member(db_session, org.id, person.id, "staff")
         db_session.commit()
 
-        assert _old_capacity(db_session, org, person) == "staff"
-        assert _tree_capacity(db_session, org, person) == "staff"
+        assert _by_organisation(db_session, org, person) == "staff"
+        assert _by_place(db_session, org, person) == "staff"
 
     def test_recording_it_twice_changes_the_capacity(self, db_session):
         org = _org(db_session, "Trust")
@@ -103,8 +110,8 @@ class TestRecordingMembership:
         add_organisation_member(db_session, org.id, person.id, "staff")
         db_session.commit()
 
-        assert _old_capacity(db_session, org, person) == "staff"
-        assert _tree_capacity(db_session, org, person) == "staff"
+        assert _by_organisation(db_session, org, person) == "staff"
+        assert _by_place(db_session, org, person) == "staff"
 
     def test_an_unknown_capacity_is_refused(self, db_session):
         org = _org(db_session, "Trust")
@@ -117,7 +124,7 @@ class TestRecordingMembership:
 
 
 class TestRemovingMembership:
-    def test_both_tables_are_cleared(self, db_session):
+    def test_the_row_goes(self, db_session):
         org = _org(db_session, "Trust")
         person = _person(db_session, "alice")
         add_organisation_member(db_session, org.id, person.id, "staff")
@@ -126,10 +133,10 @@ class TestRemovingMembership:
         remove_organisation_member(db_session, org.id, person.id)
         db_session.commit()
 
-        assert _old_capacity(db_session, org, person) is None
-        assert _tree_capacity(db_session, org, person) is None
+        assert _by_organisation(db_session, org, person) is None
+        assert _by_place(db_session, org, person) is None
 
-    def test_clearing_everything_clears_both(self, db_session):
+    def test_clearing_everything_clears_them_all(self, db_session):
         a = _org(db_session, "A")
         b = _org(db_session, "B")
         person = _person(db_session, "alice")
@@ -141,8 +148,8 @@ class TestRemovingMembership:
         db_session.commit()
 
         for org in (a, b):
-            assert _old_capacity(db_session, org, person) is None
-            assert _tree_capacity(db_session, org, person) is None
+            assert _by_organisation(db_session, org, person) is None
+            assert _by_place(db_session, org, person) is None
 
     def test_clearing_some_leaves_the_others(self, db_session):
         mine = _org(db_session, "Mine")
@@ -155,8 +162,8 @@ class TestRemovingMembership:
         remove_organisation_memberships(db_session, person.id, [mine.id])
         db_session.commit()
 
-        assert _tree_capacity(db_session, mine, person) is None
-        assert _tree_capacity(db_session, theirs, person) == "staff"
+        assert _by_place(db_session, mine, person) is None
+        assert _by_place(db_session, theirs, person) == "staff"
 
     def test_a_ward_membership_is_left_alone(self, db_session):
         """An edit to which trusts somebody belongs to is not an edit to
@@ -212,7 +219,7 @@ class TestTheNarrowerDefault:
 
 
 class TestThroughTheRoutes:
-    def test_adding_staff_writes_both(
+    def test_adding_staff_records_it(
         self, authenticated_superadmin_client, db_session
     ):
         org = _org(db_session, "Trust")
@@ -223,9 +230,9 @@ class TestThroughTheRoutes:
         )
 
         assert resp.status_code == 200
-        assert _tree_capacity(db_session, org, person) == "staff"
+        assert _by_place(db_session, org, person) == "staff"
 
-    def test_removing_staff_clears_both(
+    def test_removing_staff_clears_it(
         self, authenticated_superadmin_client, db_session
     ):
         org = _org(db_session, "Trust")
@@ -239,10 +246,10 @@ class TestThroughTheRoutes:
         )
 
         assert resp.status_code == 200
-        assert _old_capacity(db_session, org, person) is None
-        assert _tree_capacity(db_session, org, person) is None
+        assert _by_organisation(db_session, org, person) is None
+        assert _by_place(db_session, org, person) is None
 
-    def test_editing_a_persons_organisations_writes_both(
+    def test_editing_a_persons_organisations_records_it(
         self, authenticated_superadmin_client, db_session
     ):
         org = _org(db_session, "Trust")
@@ -254,7 +261,7 @@ class TestThroughTheRoutes:
         )
 
         assert resp.status_code == 200
-        assert _tree_capacity(db_session, org, person) == "staff"
+        assert _by_place(db_session, org, person) == "staff"
 
     def test_editing_a_persons_wards_leaves_their_organisations(
         self, authenticated_superadmin_client, db_session
@@ -272,4 +279,55 @@ class TestThroughTheRoutes:
         )
 
         assert resp.status_code == 200
-        assert _tree_capacity(db_session, org, person) == "staff"
+        assert _by_place(db_session, org, person) == "staff"
+
+
+class TestMembershipWrittenStraightToAPlace:
+    def test_a_row_against_the_root_is_organisation_membership(
+        self, db_session
+    ):
+        """One table, so there is no second place to forget to write."""
+        org = _org(db_session, "Trust")
+        person = _person(db_session, "alice")
+
+        db_session.execute(
+            insert(site_member).values(
+                site_id=org.org_unit_id,
+                user_id=person.id,
+                capacity="staff",
+            )
+        )
+        db_session.commit()
+
+        assert get_member_org_ids(db_session, person.id) == [org.id]
+        assert get_org_member_ids(db_session, [org.id]) == {person.id}
+
+    def test_a_row_against_a_ward_is_not(self, db_session):
+        """Membership does not climb: being on a ward is not being at the
+        trust."""
+        org = _org(db_session, "Trust")
+        ward = _ward(db_session, org, "Ward 1")
+        person = _person(db_session, "alice")
+
+        db_session.execute(
+            insert(site_member).values(
+                site_id=ward.id, user_id=person.id, capacity="trainee"
+            )
+        )
+        db_session.commit()
+
+        assert get_member_org_ids(db_session, person.id) == []
+        assert get_org_member_ids(db_session, [org.id]) == set()
+
+    def test_the_capacity_filter_still_bites(self, db_session):
+        org = _org(db_session, "Trust")
+        person = _person(db_session, "alice")
+        add_organisation_member(db_session, org.id, person.id, "trainee")
+        db_session.commit()
+
+        assert (
+            get_member_org_ids(db_session, person.id, capacity="staff") == []
+        )
+        assert get_member_org_ids(
+            db_session, person.id, capacity="trainee"
+        ) == [org.id]

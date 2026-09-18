@@ -99,7 +99,11 @@ from app.models import (
     OrganisationFeature,
     User,
 )
-from app.organisations import get_member_org_ids, get_reachable_org_ids
+from app.organisations import (
+    get_member_org_ids,
+    get_reachable_org_ids,
+    organisation_member,
+)
 from app.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
@@ -2524,7 +2528,7 @@ def list_delegates(
     (either direct org staff or site staff), with their latest
     assessment result if they have one.
     """
-    from app.models import Site, organisation_member, site_member
+    from app.models import Site, site_member
     from app.org_units.tree import site_ids_of_organisations
 
     # Which organisations the caller is a member of. Direct membership,
@@ -3074,7 +3078,7 @@ def list_bank_organisations(
             select(Organisation)
             .join(
                 OrganisationFeature,
-                OrganisationFeature.organisation_id == Organisation.id,
+                OrganisationFeature.org_unit_id == Organisation.org_unit_id,
             )
             .where(OrganisationFeature.feature_key == "teaching")
             .order_by(Organisation.name)
