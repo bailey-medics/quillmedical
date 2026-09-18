@@ -3627,11 +3627,19 @@ not deferred items: deferring is for what nobody should build yet.
     returned 500 — returns 201, leaving a real git repository sharded
     under `/data/passports/d9/08/…`. Probe user and files removed
     afterwards.
-- [ ] Give the assessor's queue a name and a way in. `/passport/inbox`
-      is built and tested, and nothing links to it: a request to assess
-      somebody sits where only a typed URL reaches it, and the person
-      who asked cannot tell. It was missed when the other four sections
-      were linked from the passport page.
+- [x] Give the assessor's queue a name and a way in. **Done, and this
+      checkbox was stale** — found on 18 September while picking the
+      item up. `InboxButton` sits beside the header on `/passport`
+      carrying a count from `fetchInbox`, and navigates to
+      `/passport/inbox`. It renders in every state of that page,
+      including the error state and the one shown to somebody with no
+      passport at all — which matters, because an external assessor
+      has no passport and would otherwise have no way through.
+
+      **The name is settled too:** the page is titled "Sign-off
+      requests", which says whose work it is and that it is waiting,
+      without "inbox" promising a general queue or "sign-offs"
+      colliding with the holder's own card.
 
   - **"Inbox" is the wrong name and so is "sign-offs".** Inbox promises
     a general queue and will only ever hold one kind of thing. Sign-offs
@@ -3784,9 +3792,17 @@ anonymous holding a link.
       matched, and for a known assessor it needs their name, email and
       registration number — which no endpoint returns today.
 
-- [ ] **The invite link goes to an accept page, not the inbox.**
-      `ACCEPT_PATH` points at `/passport/assessors/accept`. Step 6
-      wants registration or login, then the inbox.
+- [x] **The invite link lands them at the requests.** The accept page
+      stays — it is what a signed token in a URL opens, and the person
+      may have no account — but it now collects the assessor's own
+      name and registration, and moves on to `/passport/inbox` once
+      accepted rather than telling them to go and find it. A button
+      sits beside the confirmation for anyone who looked away.
+
+      **It also fixed a break.** The page still sent only a username
+      and password, which the accept route began refusing when the
+      assessor started stating their own details, so registering
+      through the link would have failed with a 422.
 
 - [x] **Fix the blank name and registration on a new account.** The
       accept flow reads `name`, `registration_authority` and
