@@ -659,11 +659,22 @@ class AssessorInviteAcceptIn(_In):
     resolves to somebody without an account. An assessor who already
     uses Quill sends the token alone and signs in normally; nothing
     about their existing account is changed.
+
+    **The assessor states their own name and registration**, for the
+    same reason. A trainee asking for a sign-off gives an email address
+    and nothing else — they may not know their consultant's GMC number,
+    and a number typed by somebody else is worth less than one typed by
+    its holder. Required alongside ``username`` and ``password``, and
+    ignored for an assessor who already has an account, whose details
+    are already on it.
     """
 
     token: NonEmptyText
     username: str | None = None
     password: str | None = None
+    full_name: str | None = None
+    registration_authority: str | None = None
+    registration_number: str | None = None
 
 
 class RegistrationVerifyIn(_In):
