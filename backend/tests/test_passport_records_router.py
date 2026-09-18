@@ -484,7 +484,7 @@ class TestReflections:
         client.post(
             f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
             json={
-                "assessor_user_id": assessor.id,
+                "assessor_email": assessor.email,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },

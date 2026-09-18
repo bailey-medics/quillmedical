@@ -349,7 +349,8 @@ def _is_named_assessor(
     """
     query = select(PassportSignOffRequest.id).where(
         PassportSignOffRequest.passport_id == passport_id,
-        PassportSignOffRequest.assessor_user_id == user.id,
+        func.lower(PassportSignOffRequest.assessor_email)
+        == user.email.strip().lower(),
     )
 
     if signoff_id is not None:
@@ -532,7 +533,8 @@ def get_inbox(
     rows = (
         db.execute(
             select(PassportSignOffRequest).where(
-                PassportSignOffRequest.assessor_user_id == user.id,
+                func.lower(PassportSignOffRequest.assessor_email)
+                == user.email.strip().lower(),
                 PassportSignOffRequest.status == "open",
             )
         )
@@ -591,6 +593,120 @@ def get_passport(
     return _detail(row, store)
 
 
+def _requests_today(db: Session, passport_id: str) -> int:
+    """How many sign-offs this passport has asked for in the last day.
+
+    Counted for the same reason invitations are, and alongside them:
+    asking now sends mail to an address somebody typed, so a limit on
+    one and not the other is no limit at all. A rolling twenty-four
+    hours, matching :func:`_invites_today` — a calendar day would let
+    twice the limit go out either side of midnight.
+    """
+    since = _now() - timedelta(days=1)
+
+    return (
+        db.scalar(
+            select(func.count())
+            .select_from(PassportSignOffRequest)
+            .where(
+                PassportSignOffRequest.passport_id == passport_id,
+                PassportSignOffRequest.created_at >= since,
+            )
+        )
+        or 0
+    )
+
+
+def _email_sign_off_request(
+    *,
+    holder: User,
+    assessor_email: str,
+    assessor: User | None,
+    competency_id: str,
+    passport_id: str,
+    invited_by_user_id: int,
+    db: Session,
+) -> None:
+    """Tell the assessor they have been asked, whoever they are.
+
+    Two cases, one email. Somebody with an account is told to sign in;
+    somebody without gets a single-use link to register behind. The link
+    is what an invitation row exists for — a token carries no record of
+    having been spent, so the row is what makes it single-use.
+
+    **A failure here does not undo the request.** The record is written
+    and the row committed before this runs: the holder has asked, and
+    that stands whether or not the mail got out. Losing the ask because
+    a mail server was briefly unreachable would be worse than an
+    assessor who has to be told by other means.
+    """
+    try:
+        competency_name: str | None = definitions.competency_ref(
+            competency_id
+        ).name
+    except definitions.UnknownCompetencyError:
+        competency_name = None
+
+    if assessor is not None:
+        # They can already sign in, so no invitation and no token: the
+        # request is waiting in their inbox when they arrive.
+        url = f"{settings.FRONTEND_URL.rstrip('/')}/passport/requests"
+        expires_in_days = PASSPORT_INVITE_TTL_DAYS
+    else:
+        invite = PassportAssessorInvite(
+            id=str(uuid.uuid4()),
+            passport_id=passport_id,
+            invited_by_user_id=invited_by_user_id,
+            email=assessor_email,
+            # The holder gave an address and nothing else. The assessor
+            # states their own name and registration when they accept,
+            # which is the more trustworthy source for both.
+            name="",
+            registration_authority="",
+            registration_number="",
+            token_hash="",
+            expires_at=_now() + timedelta(days=PASSPORT_INVITE_TTL_DAYS),
+        )
+        token = create_passport_invite_token(
+            invite_id=invite.id,
+            email=invite.email,
+        )
+        invite.token_hash = hashlib.sha256(token.encode()).hexdigest()
+        db.add(invite)
+        db.flush()
+
+        url = email_templates.accept_url(settings.FRONTEND_URL, token)
+        expires_in_days = PASSPORT_INVITE_TTL_DAYS
+
+    message = email_templates.render_invite(
+        # No name was collected, so the greeting uses the address. Better
+        # than a blank "Dear ," and honest about what the holder gave.
+        assessor_name=(
+            assessor.full_name or assessor.username
+            if assessor is not None
+            else assessor_email
+        ),
+        holder_name=holder.full_name or holder.username,
+        competency_name=competency_name,
+        url=url,
+        expires_in_days=expires_in_days,
+    )
+
+    try:
+        send_email(
+            to=assessor_email,
+            subject=message["subject"],
+            html_body=message["html_body"],
+        )
+    except EmailRateLimitError:
+        # Deliberately swallowed. See the docstring: the ask is already
+        # recorded, and throwing here would roll it back over a mail
+        # problem the holder cannot do anything about.
+        logger.warning(
+            "sign-off request mail not sent: address rate limited",
+        )
+
+
 @passport_router.post(
     "/{passport_id}/competencies/{competency_id}/requests",
     response_model=SignOffResultOut,
@@ -605,25 +721,44 @@ def request_sign_off(
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
 ) -> SignOffResultOut:
-    """Ask a named assessor to sign off a competency.
+    """Ask an assessor, by email, to sign off a competency.
 
     The holder chooses their assessor, because the judgement about who is
     appropriate sits with them and their supervisor. The one rule is that
     it may not be the holder — the whole value of the record is a second
     named person accepting accountability.
+
+    **The address need not belong to a Quill account.** That is the
+    point: the consultant who observed the work is often at another
+    trust, or not on Quill at all. The request is written either way and
+    the assessor is emailed; they sign in or register, and the account
+    is joined to the request when they sign.
     """
     row = _require_holder(db, passport_id, user)
 
-    if body.assessor_user_id == user.id:
+    assessor_email = body.assessor_email.strip().lower()
+
+    if assessor_email == user.email.strip().lower():
         raise HTTPException(
             400,
             "You cannot ask yourself to sign off your own competency.",
         )
 
-    assessor = db.get(User, body.assessor_user_id)
-
-    if assessor is None or not assessor.is_active:
-        raise HTTPException(404, "Assessor not found")
+    # The same backstop the invite route carries, for the same reason:
+    # this route now sends mail to an address somebody typed, so without
+    # it the invite limit is bypassed by asking for sign-offs instead of
+    # inviting. Counted together, because to a recipient they are the
+    # same unsolicited mail from the same holder.
+    if _requests_today(db, row.id) + _invites_today(db, row.id) >= (
+        INVITES_PER_DAY
+    ):
+        raise HTTPException(
+            429,
+            (
+                f"You can ask up to {INVITES_PER_DAY} assessors a day. "
+                "Try again tomorrow."
+            ),
+        )
 
     try:
         name, commit = service.request_sign_off(
@@ -648,12 +783,33 @@ def request_sign_off(
             passport_id=row.id,
             signoff_id=name,
             competency_id=competency_id,
-            assessor_user_id=assessor.id,
+            assessor_email=assessor_email,
+            # Null until somebody signs. Who was asked is the address
+            # above; this records who actually signed, taken from the
+            # signer rather than from here.
+            assessor_user_id=None,
             status="open",
         )
     )
     row.head_commit = commit
     db.flush()
+
+    # Whether they already have an account decides what the email asks
+    # them to do, so it is looked up here — but a missing account is not
+    # an error, and the request stands either way.
+    assessor = db.scalar(
+        select(User).where(func.lower(User.email) == assessor_email)
+    )
+
+    _email_sign_off_request(
+        holder=user,
+        assessor_email=assessor_email,
+        assessor=assessor,
+        competency_id=competency_id,
+        passport_id=row.id,
+        invited_by_user_id=user.id,
+        db=db,
+    )
 
     return SignOffResultOut(name=name, status="requested", commit=commit)
 
@@ -712,7 +868,10 @@ def sign_off(
     if request_row is None:
         raise HTTPException(404, "Sign-off not found")
 
-    if request_row.assessor_user_id != user.id:
+    if (
+        request_row.assessor_email.strip().lower()
+        != user.email.strip().lower()
+    ):
         raise HTTPException(403, "You were not asked to sign this")
 
     if request_row.status != "open":
@@ -750,6 +909,9 @@ def sign_off(
 
     request_row.status = "signed_off"
     request_row.resolved_at = _now()
+    # Taken from the caller, never from the row: the column records who
+    # actually signed, and the address only says who was asked.
+    request_row.assessor_user_id = user.id
     passport.head_commit = commit
     db.flush()
 
@@ -787,7 +949,10 @@ def decline_sign_off(
     if request_row is None:
         raise HTTPException(404, "Sign-off not found")
 
-    if request_row.assessor_user_id != user.id:
+    if (
+        request_row.assessor_email.strip().lower()
+        != user.email.strip().lower()
+    ):
         raise HTTPException(403, "You were not asked to sign this")
 
     if request_row.status != "open":
@@ -808,6 +973,9 @@ def decline_sign_off(
 
     request_row.status = "declined"
     request_row.resolved_at = _now()
+    # Recorded on a decline too: somebody answered, and who they were is
+    # part of that answer.
+    request_row.assessor_user_id = user.id
     passport.head_commit = commit
     db.flush()
 
