@@ -128,6 +128,7 @@ export const UploadInProgress: Story = {
   args: {
     media: incomplete,
     uploadProgress: { debrief: 42 },
+    uploadNames: { debrief: "Panel_debrief_take4.mp4" },
   },
   render: (args) => (
     <Stack gap="sm">
@@ -411,6 +412,11 @@ export const EveryProgressState: Story = {
       "uploading-42": 42,
       "uploading-88": 88,
     },
+    uploadNames: {
+      "uploading-4": "Session_one_intro.mp4",
+      "uploading-42": "EoEETA_Colonoscopy_FINAL_v3.mp4",
+      "uploading-88": "Panel_debrief_take4.mp4",
+    },
   },
   render: (args) => (
     <Stack gap="sm">
@@ -451,6 +457,30 @@ export const EveryProgressState: Story = {
         until a person has read it and a learner relying on it cannot tell the
         difference. "Ready — captions need checking" says so in words, which is
         why there is no separate badge for it.
+      </StoryNote>
+    </Stack>
+  ),
+};
+
+/**
+ * The same states in a narrow viewport.
+ *
+ * The bar used to size itself to whatever else was in the cell, so a
+ * long file name gave a full-width bar and a short one a half-width
+ * bar — two lengths in one column, neither meaning anything.
+ */
+export const NarrowScreen: Story = {
+  ...EveryProgressState,
+  render: (args) => (
+    /* Constrained here rather than through a viewport setting: this
+       Storybook has no viewport addon configured, so one would type
+       check, run, and change nothing at all. */
+    <Stack gap="sm" maw="30rem">
+      <ModuleMediaCard {...args} />
+      <StoryNote>
+        Every bar is the same width, whatever sits above it. The bars should all
+        start and end in line, whether the row holds a long file name or a short
+        one.
       </StoryNote>
     </Stack>
   ),
