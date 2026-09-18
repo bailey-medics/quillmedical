@@ -29,7 +29,7 @@ type Story = StoryObj<typeof ModuleMediaCard>;
 
 const lecture: MediaAsset = {
   asset_id: "a1b2c3",
-  original_filename: "EoEETA_Colonoscopy_FINAL_v3.mp4",
+  original_filename: "Echocardiogram_overview.mp4",
   content_type: "video/mp4",
   size_bytes: 943718400,
   uploaded_at: "2026-09-02T09:14:00Z",
@@ -37,7 +37,7 @@ const lecture: MediaAsset = {
 
 const debrief: MediaAsset = {
   asset_id: "d4e5f6",
-  original_filename: "Panel_debrief.mp4",
+  original_filename: "Echocardiogram_panel_debrief.mp4",
   content_type: "video/mp4",
   size_bytes: 412876800,
   uploaded_at: "2026-09-02T10:02:00Z",
@@ -45,14 +45,14 @@ const debrief: MediaAsset = {
 
 const orphan: MediaAsset = {
   asset_id: "z9y8x7",
-  original_filename: "old_intro_take2.mov",
+  original_filename: "Echocardiogram_old_intro_take2.mov",
   content_type: "video/quicktime",
   size_bytes: 88080384,
   uploaded_at: "2026-08-19T16:40:00Z",
 };
 
 const complete: ModuleMedia = {
-  module_id: "colonoscopy-optical-diagnosis",
+  module_id: "echocardiography-interpretation",
   references: [
     { key: "lecture-01", asset: lecture },
     { key: "debrief", asset: debrief },
@@ -62,7 +62,7 @@ const complete: ModuleMedia = {
 };
 
 const incomplete: ModuleMedia = {
-  module_id: "colonoscopy-optical-diagnosis",
+  module_id: "echocardiography-interpretation",
   references: [
     { key: "lecture-01", asset: lecture },
     { key: "debrief", asset: null },
@@ -98,7 +98,7 @@ export const SomethingMissing: Story = {
 export const NothingUploadedYet: Story = {
   args: {
     media: {
-      module_id: "colonoscopy-optical-diagnosis",
+      module_id: "echocardiography-interpretation",
       references: [
         { key: "lecture-01", asset: null },
         { key: "debrief", asset: null },
@@ -128,7 +128,7 @@ export const UploadInProgress: Story = {
   args: {
     media: incomplete,
     uploadProgress: { debrief: 42 },
-    uploadNames: { debrief: "Panel_debrief_take4.mp4" },
+    uploadNames: { debrief: "Echocardiogram_panel_debrief_take4.mp4" },
   },
   render: (args) => (
     <Stack gap="sm">
@@ -153,7 +153,7 @@ export const UploadInProgress: Story = {
 export const RowActions: Story = {
   args: {
     media: {
-      module_id: "colonoscopy-optical-diagnosis",
+      module_id: "echocardiography-interpretation",
       references: [
         { key: "lecture-01", asset: { ...lecture, has_captions: true } },
       ],
@@ -261,7 +261,7 @@ const processing = (
   key: string,
   progress: MediaAsset["progress"],
 ): ModuleMedia => ({
-  module_id: "colonoscopy-optical-diagnosis",
+  module_id: "echocardiography-interpretation",
   references: [{ key, asset: { ...lecture, progress } }],
   unattached: [],
   is_complete: true,
@@ -282,7 +282,7 @@ const processing = (
 export const EveryProgressState: Story = {
   args: {
     media: {
-      module_id: "colonoscopy-optical-diagnosis",
+      module_id: "echocardiography-interpretation",
       references: [
         { key: "uploading-4", asset: null },
         { key: "uploading-42", asset: null },
@@ -412,54 +412,17 @@ export const EveryProgressState: Story = {
       "uploading-42": 42,
       "uploading-88": 88,
     },
+    /* The same name on every row, so nothing but the bar and the line
+       beneath it differs down the column. This story exists to compare
+       the states against each other, and varying the file names made
+       the rows look like different videos rather than one video's
+       progress shown eleven ways. */
     uploadNames: {
-      "uploading-4": "Session_one_intro.mp4",
-      "uploading-42": "EoEETA_Colonoscopy_FINAL_v3.mp4",
-      "uploading-88": "Panel_debrief_take4.mp4",
+      "uploading-4": "Echocardiogram_overview.mp4",
+      "uploading-42": "Echocardiogram_overview.mp4",
+      "uploading-88": "Echocardiogram_overview.mp4",
     },
   },
-  render: (args) => (
-    <Stack gap="sm">
-      <ModuleMediaCard {...args} />
-      <StoryNote>
-        Read down the File column. The bar sits directly under the name of the
-        file it is working on, so there is nothing to read across to. One bar of
-        the same shape in the same place for every row that is still going, from
-        uploading through to captions awaiting a read — eleven rows, of which
-        only the last is finished and so has no bar.
-      </StoryNote>
-      <StoryNote>
-        The first three rows are uploads in flight, a twentieth, two fifths and
-        seven eighths of the way through the file. The bar creeps across the
-        first of the four stages as the bytes go up, because a 900MB lecture
-        holds that stage for minutes and a bar that does not move in that time
-        looks like one that has stopped. No numbers either way — neither a
-        percentage nor an "X of 4" — because the bar's length and the words
-        beneath it are the whole story, and counting stages invites the question
-        of what the four are.
-      </StoryNote>
-      <StoryNote>
-        The two red lines are the states where waiting will not help: something
-        started and has overrun what it plausibly needs. The two plain ones
-        reading "has not started" mean nothing is coming at all, which looked
-        identical to the working states before the start times were recorded.
-      </StoryNote>
-      <StoryNote>
-        The last row has no bar, only a grey line reading "Ready — captions
-        checked". That is the end of the job, and it is the row an admin sees
-        for the rest of the video's life, so it reads as settled rather than as
-        something to attend to. A full bar left on a finished row would read as
-        something still running.
-      </StoryNote>
-      <StoryNote>
-        The row above it keeps its bar, because stage three is not the end:
-        Whisper mishears clinical terminology, so machine output is a draft
-        until a person has read it and a learner relying on it cannot tell the
-        difference. "Ready — captions need checking" says so in words, which is
-        why there is no separate badge for it.
-      </StoryNote>
-    </Stack>
-  ),
 };
 
 /**

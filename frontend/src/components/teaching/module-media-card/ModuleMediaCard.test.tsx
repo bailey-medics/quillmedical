@@ -11,7 +11,7 @@ import type { MediaAsset, ModuleMedia } from "@/features/teaching/types";
 
 const lecture: MediaAsset = {
   asset_id: "a1b2c3",
-  original_filename: "EoEETA_Colonoscopy_FINAL_v3.mp4",
+  original_filename: "Echocardiogram_overview.mp4",
   content_type: "video/mp4",
   size_bytes: 943718400,
   uploaded_at: "2026-09-02T09:14:00Z",
@@ -19,7 +19,7 @@ const lecture: MediaAsset = {
 
 const orphan: MediaAsset = {
   asset_id: "z9y8x7",
-  original_filename: "old_intro_take2.mov",
+  original_filename: "Echocardiogram_old_intro_take2.mov",
   content_type: "video/quicktime",
   size_bytes: 88080384,
   uploaded_at: "2026-08-19T16:40:00Z",
@@ -47,9 +47,7 @@ describe("ModuleMediaCard", () => {
     renderWithMantine(<ModuleMediaCard media={complete} />);
 
     expect(screen.getByText("lecture-01")).toBeInTheDocument();
-    expect(
-      screen.getByText("EoEETA_Colonoscopy_FINAL_v3.mp4"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Echocardiogram_overview.mp4")).toBeInTheDocument();
   });
 
   it("does not show the file size", () => {
@@ -99,7 +97,9 @@ describe("ModuleMediaCard", () => {
       <ModuleMediaCard media={{ ...complete, unattached: [orphan] }} />,
     );
 
-    expect(screen.getByText("old_intro_take2.mov")).toBeInTheDocument();
+    expect(
+      screen.getByText("Echocardiogram_old_intro_take2.mov"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Not referenced")).toBeInTheDocument();
   });
 
@@ -327,7 +327,7 @@ describe("ModuleMediaCard", () => {
           is_complete: false,
         }}
         uploadProgress={{ "lecture-01": 42 }}
-        uploadNames={{ "lecture-01": "EoEETA_Colonoscopy_FINAL_v3.mp4" }}
+        uploadNames={{ "lecture-01": "Echocardiogram_overview.mp4" }}
       />,
     );
 
@@ -347,13 +347,11 @@ describe("ModuleMediaCard", () => {
           is_complete: false,
         }}
         uploadProgress={{ "lecture-01": 42 }}
-        uploadNames={{ "lecture-01": "EoEETA_Colonoscopy_FINAL_v3.mp4" }}
+        uploadNames={{ "lecture-01": "Echocardiogram_overview.mp4" }}
       />,
     );
 
-    expect(
-      screen.getByText("EoEETA_Colonoscopy_FINAL_v3.mp4"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Echocardiogram_overview.mp4")).toBeInTheDocument();
     expect(screen.queryByText("Sending the file…")).toBeNull();
   });
 
