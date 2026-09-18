@@ -1,9 +1,6 @@
 # Disaster recovery plan
 
-## Summary
-
-Quill can rebuild its infrastructure but cannot yet restore its data. This
-plan closes that gap.
+Quill can rebuild its infrastructure but cannot yet restore its data.
 
 Terraform recreates every environment from nothing, and the procedure has
 been run for real — production was hibernated by `terraform destroy` and the
@@ -16,21 +13,16 @@ Three things are therefore true at once: backups exist, nobody has ever
 restored one, and the retention actually configured is about thirty days
 against a stated policy of ten years.
 
-The work divides into four parts, in the order they should be done:
-
-1. **Make the backups match the claim** — retention, point-in-time recovery,
-   and the environments currently protected least.
-2. **Write the restore procedures** — one per class of data, because a
-   Cloud SQL restore and a GCS object restore share nothing but the word.
-3. **Prove they work** — a drill, with a written result. An untested backup
-   is a hypothesis.
-4. **Close the single points of failure** — the things whose loss would make
-   the rebuild itself impossible, rather than merely the data.
+The intended outcome is a written, rehearsed restore procedure covering every
+store that holds state, with backup settings that match what has been claimed
+in writing, and the live teaching environment protected at least as well as
+the empty hibernated one.
 
 ## Why this matters now
 
-**Not because of patient data.** There is none, and by the time there is, the
-answer needs to already exist rather than be commissioned.
+**Not because of patient data.** There is none, FHIR and EHRbase are not in
+live use, and by the time they are the answer needs to already exist rather
+than be commissioned.
 
 The live teaching deployment is the immediate concern. It holds lecture
 content, video, images and user accounts representing real authored work, and
@@ -39,14 +31,20 @@ because `pitr_enabled` is set from `var.environment == "prod"`, and teaching
 is not prod. The environment that is hibernated and empty is the one
 configured most carefully.
 
-That inversion is the plan's starting point.
+The clinician passport raises the stakes. A passport records competencies
+signed off by other clinicians, which is a professional record about a real
+person that no amount of re-authoring can reconstruct. Losing a lecture
+costs an evening. Losing a sign-off means asking an assessor to re-attest to
+something they observed months ago, which they may reasonably decline.
+
+Roughly a thousand users are expected initially, growing.
 
 ## What exists today
 
 ### Cloud SQL
 
-Configured in [`infra/main.tf`](https://github.com/bailey-medics/quillmedical/blob/main/infra/main.tf)
-at the three `cloud-sql` module calls, all three identical:
+Configured in `infra/main.tf` at the three `cloud-sql` module calls, all
+three identical:
 
 ```hcl
 backup_retained_count = var.environment == "prod" ? 30 : 7
@@ -54,14 +52,13 @@ pitr_enabled          = var.environment == "prod"
 pitr_days             = var.environment == "prod" ? 7 : 3
 ```
 
-The module writes those into a `backup_configuration` block with a 03:00 UTC
-start time and `retention_unit = "COUNT"`.
-
-So, in practice:
+In practice:
 
 - **Production** — 30 daily backups, PITR on, 7 days of transaction logs.
   Currently hibernated and holding no data.
-- **Staging** — 7 daily backups, no PITR.
+
+- **Staging** — 7 daily backups, no PITR. Also removed for cost.
+
 - **Teaching** — 7 daily backups, no PITR. This is the live one.
 
 `retention_unit` is `COUNT`, not days. Thirty retained backups means thirty
@@ -69,65 +66,80 @@ days only while backups succeed daily; a run of failures silently lengthens
 the window each backup covers rather than shortening the history. Nothing
 currently alerts on a failed backup.
 
+**`deletion_protection` is also gated on prod** — `infra/modules/cloud-sql/main.tf`
+line 10 sets it from `var.environment == "prod"`. The live teaching database
+can therefore be destroyed by a `terraform destroy` or an errant apply
+without GCP objecting, and with no PITR to recover to. These two settings
+compound: the environment easiest to delete is the one least able to come
+back.
+
 ### What the policy says instead
 
 [GCP Launch-Ready](2026-03-16-gcp-launch-ready.md) sets out a different
-retention regime for clinical data in production:
+retention regime for clinical data in production: daily backups at 30 days,
+weekly at 12 months, monthly snapshots at 10 years as an NHS compliance
+baseline, and PITR at 7 days.
 
-- Daily backups, 30-day retention
-- Weekly backups, 12-month retention
-- Monthly snapshots, 10-year retention, named as an NHS compliance baseline
-- PITR enabled, 7-day window
+Only the first and last are implemented. Cloud SQL automated backups have no
+weekly or monthly tier, so the others need either on-demand backups on a
+schedule or exports to GCS with a lifecycle policy. Neither exists.
 
-Only the first and last of those are implemented. Cloud SQL automated backups
-have no weekly or monthly tier, so the other two need either on-demand
-backups on a schedule, or exports to GCS with a lifecycle policy. Neither
-exists.
-
-This plan does not assume the ten-year figure is right — see
-[Decisions needed](#decisions-needed). It does assume the gap between a
-written policy and the running configuration should be closed in one
-direction or the other, because a policy nobody implements is worse than no
-policy: it produces false confidence in an audit.
+This plan does not assume ten years is right — see [Decisions needed](#decisions-needed).
+It does assume the gap between a written policy and the running configuration
+should be closed in one direction or the other, because a policy nobody
+implements is worse than no policy: it produces false confidence in an audit,
+and this one is cited against DCB 0129.
 
 ### Object storage
 
-Four bucket families, with materially different protection:
+Five buckets, with materially different protection:
 
-- **Teaching images** (`quill-images-teaching`) — versioned, with a
-  lifecycle rule deleting `ARCHIVED` versions after 365 days. Well
-  configured, and the comment in
-  [`modules/cloud-storage/main.tf`](https://github.com/bailey-medics/quillmedical/blob/main/infra/modules/cloud-storage/main.tf)
-  records a real bug that was fixed there. `force_destroy` is true for every
-  environment except prod.
+- **Clinician passports** (`quill-passports-<env>`) — versioned,
+  `force_destroy = false` in every environment, `public_access_prevention`
+  enforced, and deliberately no lifecycle rule at all. The module comment in
+  `infra/modules/passport-storage/main.tf` explains why it is a separate
+  module rather than a flag on the shared one. This is the best-protected
+  store in the estate and needs no change.
+
+- **Teaching images** (`quill-images-teaching`) — versioned, with a lifecycle
+  rule deleting `ARCHIVED` versions after 365 days. `force_destroy` is true
+  outside prod.
+
 - **Processed video** (`quill-teaching-videos-processed-teaching`) —
   versioned, no lifecycle rule.
+
 - **Source video** (`quill-teaching-videos-source-teaching`) — deliberately
-  *not* versioned, with a retention-age deletion rule. The reasoning is sound
-  for raw uploads, but it means a source video deleted in error is gone.
-- **Clinician passports** — provisioned in all three environments. Needs
-  checking against the same questions; the module was added later than the
-  others.
+  *not* versioned, with a retention-age deletion rule. Sound for raw uploads,
+  but a source video deleted in error is gone.
+
+- **Landing site** (in the load-balancer module) — rebuilt by CI from the
+  repository, so it needs no backup.
 
 Versioning is not backup. It protects against overwrite and deletion within
 one bucket, in one region, under one set of credentials. It does not protect
 against the bucket being deleted, the project being deleted, or a credential
 compromise that deletes versions too.
 
+**Passport history lives in these buckets, not in git as a working tree.**
+Each passport is a `git bundle` object with evidence blobs beside it under
+`files/sha256/…`, per the passport plan's "Where the repository lives". There
+is no clone on a disk anywhere and nothing is pushed to GitHub, so the bucket
+is the only copy. Certificates are generated on demand from a background
+image rather than stored, so they need no backup of their own.
+
 ### The FHIR and EHRbase VM
 
-`enable_fhir` is true for prod and staging. Both run HAPI FHIR and EHRbase in
-containers on a single Compute Engine VM with a 30 GB `pd-standard` boot
-disk.
+`enable_fhir` is true for prod and staging, both currently torn down. Both
+would run HAPI FHIR and EHRbase in containers on a single Compute Engine VM
+with a 30 GB `pd-standard` boot disk.
 
-**That disk has no snapshot schedule.** Whatever those containers persist to
-local disk is unprotected. The clinical databases themselves are separate
-Cloud SQL instances and are backed up — but any state on the VM is not, and
-this needs establishing precisely rather than assumed. It matters because
-this is the clinical data path, the one that will hold patient records.
+**That disk has no snapshot schedule.** Whatever those containers persist
+locally is unprotected. The clinical databases are separate Cloud SQL
+instances and are backed up, but any state on the VM is not, and this needs
+establishing precisely rather than assumed.
 
-This is the largest unknown in the current picture and the first thing to
-investigate.
+Lower priority than it first appears, since neither environment is running —
+but it must be settled before clinical data arrives, not after.
 
 ### The rebuild path
 
@@ -137,174 +149,230 @@ enabled by hand at creation, per the comment in `backend.tf`, and is not
 enforced by code.
 
 **The state bucket sits in the production project.** All three environments'
-state is in there. Losing that project therefore does not cost you production
-alone — it costs the ability to cleanly manage staging and teaching too. They
-would keep running, since Terraform state is not in the serving path, but
-every subsequent change would need a state rebuild by import.
+state is in there. Losing that project therefore costs the ability to cleanly
+manage staging and teaching too. They would keep running, since state is not
+in the serving path, but every later change would need a state rebuild by
+import.
 
 Secret *containers* are Terraform-managed; secret *values* are set manually
-via `gcloud secrets versions add` or by CI, and the module comment notes they
-are "never in Terraform state". Correct for security, and it means **no copy
-of any secret value exists outside GCP Secret Manager**. Losing the project
-loses the JWT signing key, the video signing key and every database password
-simultaneously.
+or by CI and the module comment notes they are "never in Terraform state".
+Correct for security, and it means **no copy of any secret value exists
+outside GCP Secret Manager**. Some regenerate harmlessly; others do not.
+Rotating the JWT secret invalidates every session, and rotating the video
+signing key invalidates every issued CDN cookie. Both are recoverable
+inconveniences, but they belong in a runbook rather than being discovered
+mid-incident.
 
-Some of those regenerate harmlessly. Others do not: rotating the JWT secret
-invalidates every session, and rotating the video signing key invalidates
-every issued CDN cookie. Both are recoverable inconveniences rather than data
-loss, but they belong in the runbook rather than being discovered mid-incident.
+## Phase 1: Look before changing anything
 
-## What this plan adds
+Establish the live position from GCP itself rather than from Terraform. The
+code says what was intended; only the console says what is true. Mark runs
+these and reads the output himself — the point is that he has seen it, not
+that it has been reported to him.
 
-### Part 1 — Make the configuration match the intent
+- [ ] Confirm automated backups exist on the teaching core database, with
+      timestamps and retention — `gcloud sql backups list --instance=<core>`
+      and the Cloud SQL Backups tab
 
-- **Enable PITR on teaching.** One-line change to the conditional in
-  `main.tf`. Teaching is live and holds authored work; a seven-backup window
-  with no PITR means a mistake noticed on a Monday may be unrecoverable to
-  any point other than 03:00 that morning.
-- **Raise teaching's retained backup count.** Seven is a staging number.
-- **Alert on backup failure.** The `monitoring` module already sends email
-  and Slack; a failed or missing backup should reach the same place. Without
-  this, `COUNT` retention degrades invisibly.
-- **Decide and implement the long-retention tier**, or amend the stated
-  policy to match reality. See [Decisions needed](#decisions-needed).
-- **Establish what the FHIR VM persists**, then either add a snapshot
-  schedule or document why none is needed.
-- **Review the passport bucket** against the versioning and lifecycle
-  questions answered for the others.
+- [ ] Confirm whether PITR is on for teaching and, if so, its window length
+      (expected off, per `infra/main.tf` line 143)
 
-### Part 2 — Write the restore procedures
+- [ ] Confirm object versioning is live on every bucket, especially
+      `quill-passports-teaching` — `gsutil versioning get gs://<bucket>`
+
+- [ ] List lifecycle rules on every bucket and confirm none deletes live
+      objects — `gsutil lifecycle get gs://<bucket>`
+
+- [ ] Confirm the Terraform state bucket has versioning enabled
+
+- [ ] Capture the output of each as evidence for the DCB 0129 safety case
+
+- [ ] Establish what, if anything, the FHIR VM persists to its boot disk
+
+## Phase 2: Close the gaps the lookups confirm
+
+- [ ] Enable PITR for teaching — change the conditional in `infra/main.tf`
+      line 143 so teaching is included
+
+- [ ] Raise teaching's `backup_retained_count` above the staging default of 7
+
+- [ ] Enable `deletion_protection` for teaching in
+      `infra/modules/cloud-sql/main.tf` line 10
+
+- [ ] Alert on backup failure through the existing `monitoring` module, so
+      `COUNT` retention cannot degrade invisibly
+
+- [ ] Enforce Terraform state bucket versioning in code rather than relying
+      on a manual `gsutil` command run once
+
+- [ ] Decide and implement the long-retention tier, or amend the stated
+      policy to match reality
+
+- [ ] Add a snapshot schedule to the FHIR VM, or record why none is needed
+
+## Phase 3: Write the restore procedures
 
 One document, `docs/docs/infrastructure/disaster-recovery.md`, holding a
-procedure per scenario. Each is written to be followed by someone under
-pressure who did not write it, which means exact commands, expected output,
-and a stated way to tell success from failure.
+procedure per scenario, written to be followed by someone under pressure who
+did not write it: exact commands, expected output, and a stated way to tell
+success from failure. Each states its expected duration, because the
+difference between ten minutes and six hours changes what you tell people.
 
-The scenarios, roughly in ascending order of severity:
+- [ ] A bad migration or bad deploy — restore to a point in time or to the
+      most recent daily backup, including how to choose and what is lost
 
-- **A bad migration or bad deploy.** By far the most likely. Restore to a
-  point in time, or to the most recent daily backup. Includes how to decide
-  which, and what is lost either way.
-- **One table or one row.** Restoring an entire instance to fix one mistake
-  is usually wrong. Restore to a clone, extract, reimport.
-- **A deleted or corrupted object.** Per bucket, because the versioned ones
-  and the unversioned one need different answers, and the unversioned one may
-  have no answer at all.
-- **A lost Cloud SQL instance.** Restore from backup into a new instance,
-  then repoint the application.
-- **A lost project.** The full rebuild: what survives, what does not, and in
-  what order. The hibernation runbook is most of this already and should be
-  folded in rather than duplicated.
-- **A lost region.** Everything is single-region `europe-west2` with
-  `enable_ha = false`. This scenario currently has no answer beyond "restore
-  into another region and accept the data loss". Say so plainly rather than
-  leave it unaddressed.
+- [ ] One table or one row — restore to a clone, extract, reimport, rather
+      than restoring a whole instance to fix one mistake
 
-Each procedure states its expected duration, because the difference between
-ten minutes and six hours changes what you tell people.
+- [ ] A deleted or overwritten object, per bucket, since the versioned ones
+      and the unversioned one need different answers
 
-### Part 3 — Prove it works
+- [ ] A corrupted or lost passport bundle — recover the prior generation and
+      verify with `git fsck` before putting it back
 
-A drill, run against **staging**, which is the environment that exists for
-exactly this purpose and where nothing is lost by being wrong.
+- [ ] A lost Cloud SQL instance — restore into a new one and repoint the
+      application
 
-The first drill should be the full rebuild, because it subsumes the smaller
-ones and because the hibernation exercise showed the value of doing this for
-real rather than on paper. Write down what actually happened, including what
-the runbook got wrong — that record is more valuable than the runbook itself.
+- [ ] A lost project — the full rebuild, folding in the hibernation runbook
+      rather than duplicating it
 
-Thereafter a lighter drill on a schedule, restoring teaching's database to a
-clone and verifying the data is intact. Quarterly is the figure named in
-`todo.md`; the honest test of that interval is whether it survives contact
-with a real quarter.
+- [ ] A lost region, stated plainly as having no answer today beyond
+      restoring elsewhere and accepting the loss
 
-Two drills are worth running once each regardless of schedule, because both
-have caught real problems elsewhere: restoring a backup taken *before* a
-schema migration and confirming the application still starts, and confirming
-that a restored database's secrets still match what Cloud Run expects.
+- [ ] A note in each procedure marking where user communication belongs
 
-### Part 4 — Close the single points of failure
+## Phase 4: Build the restore tool
 
-- **Enforce state bucket versioning in code**, rather than relying on a
-  manual `gsutil` command run once in the past. It can be verified but not
-  currently guaranteed.
-- **Consider moving Terraform state out of the production project**, so that
-  losing one environment does not degrade management of the others. This may
-  be more disruption than it is worth; it should be a recorded decision
-  either way.
-- **Decide what happens to secret values.** The current position — no copy
-  outside Secret Manager — is defensible and secure. It is also a total loss
-  on project deletion. The alternatives all involve a second custodian, which
-  the repository's own security rules are rightly sceptical of. At minimum,
-  document which secrets regenerate freely and which have consequences, so
-  the incident is not the first time anyone thinks about it.
-- **Note that Secret Manager has a deletion delay** and that this is part of
-  the recovery story for an accidental `terraform destroy`.
+A single documented command, because a procedure followed by hand at three in
+the morning is a procedure followed wrongly.
+
+- [ ] Dry run by default; a real run needs an explicit flag *and* a typed
+      confirmation phrase
+
+- [ ] A banner at start and end stating DRY RUN or LIVE RUN, and every output
+      line prefixed with the mode so it is unambiguous mid-scroll
+
+- [ ] The target project ID stated explicitly, never defaulted, so restoring
+      into the wrong project takes deliberate effort
+
+- [ ] Refuse to run against the live project unless separately confirmed
+
+- [ ] Verbose throughout — say what is about to happen before doing it
+
+- [ ] Human-triggered only. No automation restores anything unsupervised
+
+## Phase 5: Rehearse
+
+Against a throwaway project spun up by Terraform, since there is no staging
+environment any more. **This rehearsal is the only place the procedure is
+ever tested before it matters.**
+
+- [ ] Stand up a scratch project, restore into it, point a test deployment at
+      it, verify the data is present and sane, record elapsed time, tear it
+      down
+
+- [ ] Set the recovery time objective from what the first rehearsal actually
+      took, rather than guessing it beforehand
+
+- [ ] Write down what the runbook got wrong. That record is worth more than
+      the runbook
+
+- [ ] Restore a backup taken *before* a schema migration and confirm the
+      application still starts
+
+- [ ] Confirm a restored database's secrets still match what Cloud Run expects
+
+- [ ] Repeat quarterly, and treat the interval as provisional until it has
+      survived contact with a real quarter
+
+## Phase 6: Reduce the single-person dependency
+
+Mark is currently the only person who could perform a restore. That is
+tolerable at this size and a genuine risk as it grows.
+
+- [ ] Write the procedures so someone else could follow them cold — the test
+      is whether a competent person unfamiliar with Quill could
+
+- [ ] Record what access a second person would need, without granting it yet
+
+- [ ] Revisit when the team grows past one, or when clinical data arrives
 
 ## Scope
 
-**In scope:** everything above — Cloud SQL, object storage, the FHIR VM,
-Terraform state and secrets, across all three environments.
+**In scope:** Cloud SQL, object storage, the FHIR VM, Terraform state and
+secrets, across all environments.
 
 **Out of scope, deliberately:**
 
-- **High availability.** HA is about staying up; this plan is about coming
-  back. They are different problems and HA is already deferred with a
-  recorded trigger in [GCP Launch-Ready](2026-03-16-gcp-launch-ready.md).
-- **Multi-region.** Same reasoning, larger price tag. The single-region
-  exposure gets documented here, not fixed here.
-- **Migration validation against production-shaped data.** Related, and
-  already a separate `todo.md` item.
+- **High availability** — about staying up, not coming back. Already deferred
+  with a recorded trigger in [GCP Launch-Ready](2026-03-16-gcp-launch-ready.md).
+
+- **Multi-region** — same reasoning, larger price tag. The single-region
+  exposure is documented here, not fixed here.
+
+- **FHIR and EHRbase content** — not in live use. The VM disk question is in
+  scope because it must be settled before that changes.
+
+- **Migration validation against production-shaped data** — related, already
+  a separate `todo.md` item.
+
 - **Business continuity in the wider sense** — who tells users, contractual
-  obligations, regulatory notification. Real, but not this document. The
-  restore procedures should leave a hook where comms belongs.
+  and regulatory notification. Real, but not this document.
 
 ## Decisions needed
 
-These need answering before the work starts, and two of them are properly
-yours rather than technical.
+Two of these are properly yours rather than technical.
 
 - **Is ten-year retention actually required?** It appears in the launch-ready
-  plan as an NHS compliance baseline. Retention obligations for clinical
-  records are real and long, but they attach to *records*, which may be
-  better served by an export and archive strategy than by hoarding database
-  backups. Ten years of monthly snapshots is also a meaningful running cost
-  for data nobody will read. The alternative is to state a shorter operational
-  retention now and handle long-term archival separately when clinical data
-  actually arrives.
-- **What is the acceptable data loss for teaching?** PITR gives minutes;
-  daily backups alone give up to 24 hours. This is a judgement about how much
-  re-authoring is tolerable, not a technical question.
+  plan as an NHS compliance baseline. Retention obligations attach to
+  *records*, which may be better served by export and archive than by
+  hoarding database backups — and ten years of monthly snapshots is a real
+  running cost for data nobody will read. The alternative is a shorter
+  operational retention now, with long-term archival handled separately when
+  clinical data arrives.
+
+- **What is the acceptable data loss?** The draft's answer is that minutes are
+  tolerable and a day of lost sign-offs is not, which argues for PITR on
+  teaching and settles Phase 2's first item. Worth confirming, since it is the
+  judgement the whole plan rests on.
+
 - **How much is this worth spending?** Longer retention, snapshot schedules
-  and cross-region copies all cost money continuously, against a risk that
-  may never materialise. A deliberate "we accept 24 hours of loss and
-  single-region exposure" is a perfectly respectable answer, and is much
-  better than an undeclared one.
-- **Does the FHIR VM hold state that matters?** Technical, and blocking —
-  the answer determines whether Part 1 includes snapshot work.
+  and cross-region copies all cost money continuously against a risk that may
+  never materialise. A deliberate "we accept 24 hours of loss and
+  single-region exposure" is respectable, and far better than an undeclared one.
 
-## Sequencing
+## Decisions
 
-Part 1's teaching PITR change is small, cheap and independent — it should go
-first and separately, because the live environment is currently the least
-protected and that is worth fixing before anything else is designed.
+- **Look before changing** — Phase 1 changes nothing. Terraform says what was
+  intended and the console says what is true, and on a live system holding
+  other people's sign-offs the difference should be established first.
 
-The FHIR VM investigation should also happen early, since it is the one place
-where the answer might change the shape of the plan.
+- **Teaching before everything else** — it is live, it is least protected, and
+  it is the only environment currently holding data. Prod and staging are
+  torn down, so work on them is theoretical.
 
-Parts 2 and 3 belong together: writing a procedure without running it
-produces a document that is wrong in ways nobody knows. Expect the first
-drill to invalidate parts of what was written, and treat that as the drill
-working.
+- **A tool, not just a document** — restores happen rarely, under stress, by
+  one person. A dry-run-by-default command with a typed confirmation is worth
+  more than a longer runbook.
 
-Part 4 is the least urgent and the easiest to defer, which is exactly why it
-should be given a date rather than left to "later".
+- **Rehearse in a throwaway project** — there is no staging environment to
+  rehearse in, and rehearsing against teaching would risk the thing being
+  protected.
+
+- **The passport bucket needs no change** — it is already versioned,
+  undeletable and free of lifecycle rules, and its module comment explains
+  why. Recorded so a later reader does not "improve" it.
 
 ## Open questions
 
 - Does Cloud SQL's PITR survive an instance restore, or does the window
-  restart? This affects how the procedures chain.
+  restart? This affects how procedures chain.
+
 - What does the video pipeline do if the processed bucket is restored to an
-  earlier state — does it reconcile, or does it need re-triggering?
-- Is there any state in Cloud Run itself worth capturing, or is it genuinely
-  stateless? Believed stateless; worth confirming rather than assuming.
+  earlier state — reconcile, or need re-triggering?
+
+- Is there state in Cloud Run itself worth capturing? Believed stateless;
+  worth confirming rather than assuming.
+
+- Does a restored passport bundle verify under `git fsck` after a GCS
+  generation rollback, or can a torn write leave it subtly broken?
