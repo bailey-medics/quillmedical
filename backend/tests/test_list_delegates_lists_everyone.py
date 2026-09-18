@@ -65,7 +65,7 @@ def org(db_session: Session) -> Organisation:
     db_session.flush()
     db_session.add(
         OrganisationFeature(
-            organisation_id=organisation.id,
+            org_unit_id=organisation.org_unit_id,
             feature_key="teaching",
             enabled_by=1,
         )

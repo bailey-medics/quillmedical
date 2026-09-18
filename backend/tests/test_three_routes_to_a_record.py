@@ -77,7 +77,7 @@ def org(db_session: Session) -> Organisation:
     db_session.commit()
     db_session.execute(
         insert(organisation_patient_member).values(
-            organisation_id=organisation.id, patient_id=A_PATIENT_HERE
+            org_unit_id=organisation.org_unit_id, patient_id=A_PATIENT_HERE
         )
     )
     db_session.commit()

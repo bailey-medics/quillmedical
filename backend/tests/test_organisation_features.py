@@ -25,7 +25,7 @@ class TestOrganisationFeatureModel:
         db_session.flush()
 
         feature = OrganisationFeature(
-            organisation_id=org.id,
+            org_unit_id=org.org_unit_id,
             feature_key="teaching",
         )
         db_session.add(feature)
@@ -33,7 +33,7 @@ class TestOrganisationFeatureModel:
 
         result = db_session.scalar(
             select(OrganisationFeature).where(
-                OrganisationFeature.organisation_id == org.id,
+                OrganisationFeature.org_unit_id == org.org_unit_id,
             )
         )
         assert result is not None
@@ -50,10 +50,10 @@ class TestOrganisationFeatureModel:
         db_session.flush()
 
         f1 = OrganisationFeature(
-            organisation_id=org.id, feature_key="teaching"
+            org_unit_id=org.org_unit_id, feature_key="teaching"
         )
         f2 = OrganisationFeature(
-            organisation_id=org.id, feature_key="teaching"
+            org_unit_id=org.org_unit_id, feature_key="teaching"
         )
         db_session.add(f1)
         db_session.flush()
@@ -69,9 +69,11 @@ class TestOrganisationFeatureModel:
 
         db_session.add_all(
             [
-                OrganisationFeature(organisation_id=org.id, feature_key="epr"),
                 OrganisationFeature(
-                    organisation_id=org.id, feature_key="teaching"
+                    org_unit_id=org.org_unit_id, feature_key="epr"
+                ),
+                OrganisationFeature(
+                    org_unit_id=org.org_unit_id, feature_key="teaching"
                 ),
             ]
         )
@@ -80,7 +82,7 @@ class TestOrganisationFeatureModel:
         features = (
             db_session.execute(
                 select(OrganisationFeature).where(
-                    OrganisationFeature.organisation_id == org.id,
+                    OrganisationFeature.org_unit_id == org.org_unit_id,
                 )
             )
             .unique()
@@ -96,7 +98,7 @@ class TestOrganisationFeatureModel:
         db_session.flush()
 
         feature = OrganisationFeature(
-            organisation_id=org.id, feature_key="teaching"
+            org_unit_id=org.org_unit_id, feature_key="teaching"
         )
         db_session.add(feature)
         db_session.commit()
@@ -106,7 +108,7 @@ class TestOrganisationFeatureModel:
 
         remaining = db_session.scalar(
             select(OrganisationFeature).where(
-                OrganisationFeature.organisation_id == org.id,
+                OrganisationFeature.org_unit_id == org.org_unit_id,
             )
         )
         assert remaining is None
@@ -118,7 +120,7 @@ class TestOrganisationFeatureModel:
         db_session.flush()
 
         db_session.add(
-            OrganisationFeature(organisation_id=org.id, feature_key="epr")
+            OrganisationFeature(org_unit_id=org.org_unit_id, feature_key="epr")
         )
         db_session.commit()
 
@@ -139,7 +141,9 @@ class TestOrganisationFeatureModel:
         db_session.flush()
 
         db_session.add(
-            OrganisationFeature(organisation_id=org.id, feature_key="teaching")
+            OrganisationFeature(
+                org_unit_id=org.org_unit_id, feature_key="teaching"
+            )
         )
         db_session.commit()
         db_session.refresh(org)
@@ -399,7 +403,7 @@ class TestMeEnabledFeatures:
         # Enable teaching on the org
         db_session.add(
             OrganisationFeature(
-                organisation_id=org.id,
+                org_unit_id=org.org_unit_id,
                 feature_key="teaching",
             )
         )

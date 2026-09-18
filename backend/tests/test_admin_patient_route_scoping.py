@@ -56,7 +56,7 @@ def admin_org(db_session: Session, test_admin: User) -> Organisation:
     add_organisation_member(db_session, org.id, test_admin.id, "staff")
     db_session.execute(
         insert(organisation_patient_member).values(
-            organisation_id=org.id, patient_id=OWN_PATIENT
+            org_unit_id=org.org_unit_id, patient_id=OWN_PATIENT
         )
     )
     db_session.commit()
@@ -72,7 +72,7 @@ def other_org(db_session: Session) -> Organisation:
     db_session.commit()
     db_session.execute(
         insert(organisation_patient_member).values(
-            organisation_id=org.id, patient_id=OUTSIDE_PATIENT
+            org_unit_id=org.org_unit_id, patient_id=OUTSIDE_PATIENT
         )
     )
     db_session.commit()

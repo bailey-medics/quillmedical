@@ -50,7 +50,7 @@ def _org(db: Session, name: str) -> Organisation:
     db.flush()
     db.add(
         OrganisationFeature(
-            organisation_id=org.id, feature_key="teaching", enabled_by=1
+            org_unit_id=org.org_unit_id, feature_key="teaching", enabled_by=1
         )
     )
     db.commit()

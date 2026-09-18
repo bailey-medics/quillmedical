@@ -82,14 +82,14 @@ def seed() -> None:
         feat = (
             db.query(OrganisationFeature)
             .filter(
-                OrganisationFeature.organisation_id == org.id,
+                OrganisationFeature.org_unit_id == org.org_unit_id,
                 OrganisationFeature.feature_key == "teaching",
             )
             .first()
         )
         if not feat:
             feat = OrganisationFeature(
-                organisation_id=org.id,
+                org_unit_id=org.org_unit_id,
                 feature_key="teaching",
                 enabled_by=admin.id,
             )
