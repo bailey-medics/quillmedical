@@ -25,7 +25,6 @@ from sqlalchemy import insert, select
 from sqlalchemy.orm import Session
 
 from app.models import (
-    Organisation,
     OrgUnit,
     User,
     org_unit_member,
@@ -41,16 +40,16 @@ from app.organisations import (
 from app.security import hash_password
 
 
-def _org(db: Session, name: str) -> Organisation:
-    org = Organisation(name=name, type="hospital_team")
+def _org(db: Session, name: str) -> OrgUnit:
+    org = OrgUnit(name=name, type="hospital_team")
     db.add(org)
     db.commit()
     db.refresh(org)
     return org
 
 
-def _ward(db: Session, org: Organisation, name: str) -> OrgUnit:
-    site = OrgUnit(name=name, type="ward", parent_id=org.org_unit_id)
+def _ward(db: Session, org: OrgUnit, name: str) -> OrgUnit:
+    site = OrgUnit(name=name, type="ward", parent_id=org.id)
     db.add(site)
     db.commit()
     db.refresh(site)
@@ -72,21 +71,21 @@ def _person(db: Session, username: str) -> User:
     return user
 
 
-def _by_organisation(db: Session, org: Organisation, user: User) -> str | None:
+def _by_organisation(db: Session, org: OrgUnit, user: User) -> str | None:
     """Read the membership the way a route asking about an organisation does."""
     return db.scalar(
         select(organisation_place_member.c.capacity).where(
-            organisation_place_member.c.org_unit_id == org.org_unit_id,
+            organisation_place_member.c.org_unit_id == org.id,
             organisation_place_member.c.user_id == user.id,
         )
     )
 
 
-def _by_place(db: Session, org: Organisation, user: User) -> str | None:
+def _by_place(db: Session, org: OrgUnit, user: User) -> str | None:
     """Read the same row directly, as a row against the organisation's place."""
     return db.scalar(
         select(org_unit_member.c.capacity).where(
-            org_unit_member.c.org_unit_id == org.org_unit_id,
+            org_unit_member.c.org_unit_id == org.id,
             org_unit_member.c.user_id == user.id,
         )
     )
@@ -97,7 +96,7 @@ class TestRecordingMembership:
         org = _org(db_session, "Trust")
         person = _person(db_session, "alice")
 
-        add_place_member(db_session, org.org_unit_id, person.id, "staff")
+        add_place_member(db_session, org.id, person.id, "staff")
         db_session.commit()
 
         assert _by_organisation(db_session, org, person) == "staff"
@@ -107,8 +106,8 @@ class TestRecordingMembership:
         org = _org(db_session, "Trust")
         person = _person(db_session, "alice")
 
-        add_place_member(db_session, org.org_unit_id, person.id, "trainee")
-        add_place_member(db_session, org.org_unit_id, person.id, "staff")
+        add_place_member(db_session, org.id, person.id, "trainee")
+        add_place_member(db_session, org.id, person.id, "staff")
         db_session.commit()
 
         assert _by_organisation(db_session, org, person) == "staff"
@@ -119,9 +118,7 @@ class TestRecordingMembership:
         person = _person(db_session, "alice")
 
         with pytest.raises(ValueError):
-            add_place_member(
-                db_session, org.org_unit_id, person.id, "chief_wizard"
-            )
+            add_place_member(db_session, org.id, person.id, "chief_wizard")
 
 
 class TestAWardIsAPlaceToo:
@@ -167,10 +164,10 @@ class TestRemovingMembership:
     def test_the_row_goes(self, db_session):
         org = _org(db_session, "Trust")
         person = _person(db_session, "alice")
-        add_place_member(db_session, org.org_unit_id, person.id, "staff")
+        add_place_member(db_session, org.id, person.id, "staff")
         db_session.commit()
 
-        remove_place_member(db_session, org.org_unit_id, person.id)
+        remove_place_member(db_session, org.id, person.id)
         db_session.commit()
 
         assert _by_organisation(db_session, org, person) is None
@@ -180,8 +177,8 @@ class TestRemovingMembership:
         a = _org(db_session, "A")
         b = _org(db_session, "B")
         person = _person(db_session, "alice")
-        add_place_member(db_session, a.org_unit_id, person.id, "staff")
-        add_place_member(db_session, b.org_unit_id, person.id, "staff")
+        add_place_member(db_session, a.id, person.id, "staff")
+        add_place_member(db_session, b.id, person.id, "staff")
         db_session.commit()
 
         remove_place_memberships(db_session, person.id)
@@ -195,11 +192,11 @@ class TestRemovingMembership:
         mine = _org(db_session, "Mine")
         theirs = _org(db_session, "Theirs")
         person = _person(db_session, "alice")
-        add_place_member(db_session, mine.org_unit_id, person.id, "staff")
-        add_place_member(db_session, theirs.org_unit_id, person.id, "staff")
+        add_place_member(db_session, mine.id, person.id, "staff")
+        add_place_member(db_session, theirs.id, person.id, "staff")
         db_session.commit()
 
-        remove_place_memberships(db_session, person.id, [mine.org_unit_id])
+        remove_place_memberships(db_session, person.id, [mine.id])
         db_session.commit()
 
         assert _by_place(db_session, mine, person) is None
@@ -211,7 +208,7 @@ class TestRemovingMembership:
         org = _org(db_session, "Trust")
         ward = _ward(db_session, org, "Ward 1")
         person = _person(db_session, "alice")
-        add_place_member(db_session, org.org_unit_id, person.id, "staff")
+        add_place_member(db_session, org.id, person.id, "staff")
         db_session.execute(
             insert(org_unit_member).values(
                 org_unit_id=ward.id,
@@ -270,7 +267,7 @@ class TestThroughTheRoutes:
         person = _person(db_session, "alice")
 
         resp = authenticated_superadmin_client.post(
-            f"/api/org-units/{org.org_unit_id}/members",
+            f"/api/org-units/{org.id}/members",
             json={"user_id": person.id, "capacity": "staff"},
         )
 
@@ -283,12 +280,12 @@ class TestThroughTheRoutes:
         org = _org(db_session, "Trust")
         person = _person(db_session, "alice")
         authenticated_superadmin_client.post(
-            f"/api/org-units/{org.org_unit_id}/members",
+            f"/api/org-units/{org.id}/members",
             json={"user_id": person.id, "capacity": "staff"},
         )
 
         resp = authenticated_superadmin_client.delete(
-            f"/api/org-units/{org.org_unit_id}/members/{person.id}"
+            f"/api/org-units/{org.id}/members/{person.id}"
         )
 
         assert resp.status_code == 200
@@ -303,7 +300,7 @@ class TestThroughTheRoutes:
 
         resp = authenticated_superadmin_client.patch(
             f"/api/users/{person.id}",
-            json={"place_ids": [org.org_unit_id]},
+            json={"place_ids": [org.id]},
         )
 
         assert resp.status_code == 200
@@ -323,7 +320,7 @@ class TestThroughTheRoutes:
         person = _person(db_session, "alice")
         authenticated_superadmin_client.patch(
             f"/api/users/{person.id}",
-            json={"place_ids": [org.org_unit_id, ward.id]},
+            json={"place_ids": [org.id, ward.id]},
         )
 
         resp = authenticated_superadmin_client.patch(
@@ -344,17 +341,15 @@ class TestMembershipWrittenStraightToAPlace:
 
         db_session.execute(
             insert(org_unit_member).values(
-                org_unit_id=org.org_unit_id,
+                org_unit_id=org.id,
                 user_id=person.id,
                 capacity="staff",
             )
         )
         db_session.commit()
 
-        assert get_member_place_ids(db_session, person.id) == [org.org_unit_id]
-        assert get_place_member_ids(db_session, [org.org_unit_id]) == {
-            person.id
-        }
+        assert get_member_place_ids(db_session, person.id) == [org.id]
+        assert get_place_member_ids(db_session, [org.id]) == {person.id}
 
     def test_a_row_against_a_ward_is_not(self, db_session):
         """Membership does not climb: being on a ward is not being at the
@@ -373,12 +368,12 @@ class TestMembershipWrittenStraightToAPlace:
         db_session.commit()
 
         assert get_member_place_ids(db_session, person.id) == []
-        assert get_place_member_ids(db_session, [org.org_unit_id]) == set()
+        assert get_place_member_ids(db_session, [org.id]) == set()
 
     def test_the_capacity_filter_still_bites(self, db_session):
         org = _org(db_session, "Trust")
         person = _person(db_session, "alice")
-        add_place_member(db_session, org.org_unit_id, person.id, "trainee")
+        add_place_member(db_session, org.id, person.id, "trainee")
         db_session.commit()
 
         assert (
@@ -386,4 +381,4 @@ class TestMembershipWrittenStraightToAPlace:
         )
         assert get_member_place_ids(
             db_session, person.id, capacity="trainee"
-        ) == [org.org_unit_id]
+        ) == [org.id]

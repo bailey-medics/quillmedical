@@ -27,22 +27,22 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.cbac.scoped import can_practise_at, competencies_at
-from app.models import Organisation, OrgUnit, PractisingCompetency, User
+from app.models import OrgUnit, PractisingCompetency, User
 from app.security import hash_password
 
 COMPETENCY = "access_patient_records"
 
 
-def _org(db: Session, name: str = "Trust") -> Organisation:
-    org = Organisation(name=name, type="hospital_team")
+def _org(db: Session, name: str = "Trust") -> OrgUnit:
+    org = OrgUnit(name=name, type="hospital_team")
     db.add(org)
     db.commit()
     db.refresh(org)
     return org
 
 
-def _ward(db: Session, org: Organisation, name: str = "Ward 1") -> OrgUnit:
-    site = OrgUnit(name=name, type="ward", parent_id=org.org_unit_id)
+def _ward(db: Session, org: OrgUnit, name: str = "Ward 1") -> OrgUnit:
+    site = OrgUnit(name=name, type="ward", parent_id=org.id)
     db.add(site)
     db.commit()
     db.refresh(site)
@@ -77,26 +77,22 @@ class TestBothSpellingsFindTheSameRow:
     def test_naming_the_organisation_or_its_row_agree(self, db_session):
         org = _org(db_session)
         doctor = _doctor(db_session)
-        _authorise(db_session, doctor, org.org_unit_id)
+        _authorise(db_session, doctor, org.id)
 
-        assert can_practise_at(
-            db_session, doctor, COMPETENCY, place_id=org.org_unit_id
-        )
-        assert can_practise_at(
-            db_session, doctor, COMPETENCY, place_id=org.org_unit_id
-        )
+        assert can_practise_at(db_session, doctor, COMPETENCY, place_id=org.id)
+        assert can_practise_at(db_session, doctor, COMPETENCY, place_id=org.id)
 
     def test_the_row_is_stored_against_the_place(self, db_session):
         org = _org(db_session)
         doctor = _doctor(db_session)
-        _authorise(db_session, doctor, org.org_unit_id)
+        _authorise(db_session, doctor, org.id)
 
         stored = db_session.scalar(
             select(PractisingCompetency.org_unit_id).where(
                 PractisingCompetency.user_id == doctor.id
             )
         )
-        assert stored == org.org_unit_id
+        assert stored == org.id
 
 
 class TestNothingIsInherited:
@@ -107,7 +103,7 @@ class TestNothingIsInherited:
         org = _org(db_session)
         ward = _ward(db_session, org)
         doctor = _doctor(db_session)
-        _authorise(db_session, doctor, org.org_unit_id)
+        _authorise(db_session, doctor, org.id)
 
         assert not can_practise_at(
             db_session, doctor, COMPETENCY, place_id=ward.id
@@ -120,24 +116,21 @@ class TestNothingIsInherited:
         _authorise(db_session, doctor, ward.id)
 
         assert not can_practise_at(
-            db_session, doctor, COMPETENCY, place_id=org.org_unit_id
+            db_session, doctor, COMPETENCY, place_id=org.id
         )
-        assert (
-            competencies_at(db_session, doctor, place_id=org.org_unit_id)
-            == set()
-        )
+        assert competencies_at(db_session, doctor, place_id=org.id) == set()
 
 
 class TestTheRulesThatSurvived:
     def test_the_same_authorisation_twice_is_refused(self, db_session):
         org = _org(db_session)
         doctor = _doctor(db_session)
-        _authorise(db_session, doctor, org.org_unit_id)
+        _authorise(db_session, doctor, org.id)
 
         db_session.add(
             PractisingCompetency(
                 user_id=doctor.id,
-                org_unit_id=org.org_unit_id,
+                org_unit_id=org.id,
                 competency=COMPETENCY,
             )
         )
@@ -150,12 +143,10 @@ class TestTheRulesThatSurvived:
         ward = _ward(db_session, org)
         doctor = _doctor(db_session)
 
-        _authorise(db_session, doctor, org.org_unit_id)
+        _authorise(db_session, doctor, org.id)
         _authorise(db_session, doctor, ward.id)
 
-        assert can_practise_at(
-            db_session, doctor, COMPETENCY, place_id=org.org_unit_id
-        )
+        assert can_practise_at(db_session, doctor, COMPETENCY, place_id=org.id)
         assert can_practise_at(
             db_session, doctor, COMPETENCY, place_id=ward.id
         )

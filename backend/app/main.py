@@ -103,7 +103,6 @@ from app.messaging import (
 from app.models import (
     Conversation,
     ExternalPatientAccess,
-    Organisation,
     OrgUnit,
     OrgUnitFeature,
     PatientMetadata,
@@ -117,6 +116,7 @@ from app.org_units import (
 from app.org_units.router import router as org_units_router
 from app.org_units.tree import (
     descendant_ids,
+    organisation_place_ids,
     organisation_place_of_site,
     root_ids_of,
 )
@@ -129,7 +129,6 @@ from app.organisations import (
     get_shared_place_ids,
     organisation_place_member,
     organisation_places_of,
-    place_of_organisation,
     places_administered_by,
 )
 from app.push import router as push_router
@@ -888,19 +887,30 @@ def list_organisations_public(
 ) -> OrganisationsOut:
     """List organisations for registration.
 
-    Public endpoint that returns organisation names and IDs for the
-    registration form dropdown. No authentication required. Only exposes
-    the minimum fields needed (id and name).
+    Public endpoint that returns organisation names and place ids for
+    the registration form dropdown. No authentication required. Only
+    exposes the minimum fields needed.
+
+    An organisation is a place at the top of a tree, so the id is a
+    place id — the same number the registration this feeds sends back.
 
     Returns:
         dict with key ``organisations`` containing a list of
-        ``{id, name}`` objects.
+        ``{org_unit_id, name}`` objects.
     """
-    organisations = db.execute(select(Organisation)).scalars().all()
+    organisations = (
+        db.execute(
+            select(OrgUnit)
+            .where(OrgUnit.id.in_(organisation_place_ids()))
+            .order_by(OrgUnit.name)
+        )
+        .scalars()
+        .all()
+    )
     return OrganisationsOut(
         organisations=[
-            OrganisationListItem(id=org.id, name=org.name)
-            for org in organisations
+            OrganisationListItem(org_unit_id=place.id, name=place.name)
+            for place in organisations
         ]
     )
 
@@ -2435,7 +2445,6 @@ def update_profile(
 )
 def list_users(
     patient_id: str | None = None,
-    exclude_org: int | None = None,
     exclude_place: int | None = None,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
@@ -2450,19 +2459,12 @@ def list_users(
     Use ``exclude_place`` to exclude people who are already members of
     the place being added to.
 
-    ``exclude_org`` is the older spelling and still counts in
-    organisation ids. The screen that asks this question holds a place
-    id — the route it sits on is keyed by one, and the membership it
-    creates names one — so it was handing a place id to a parameter that
-    read it as an organisation. The two id sequences agree on a small
-    installation and diverge as soon as a ward is created between two
-    organisations, at which point the filter silently excluded the
-    members of a different organisation, or of none.
+    ``exclude_org`` was the older spelling and counted in organisation
+    ids. It went with the table those ids belonged to; a caller still
+    sending it now excludes nobody rather than being quietly misread.
 
     Args:
         patient_id: Optional FHIR patient ID to filter by shared org.
-        exclude_org: Optional organisation ID to exclude members of.
-            Superseded by ``exclude_place``.
         exclude_place: Optional place ID to exclude members of.
         current_user: Currently authenticated user.
         db: Database session.
@@ -2517,8 +2519,7 @@ def list_users(
     stmt = select(User)
 
     # Exclude people who are already members of the place being added
-    # to. Both spellings are honoured while the older one is still
-    # served; a caller sending neither excludes nobody.
+    # to. A caller sending nothing excludes nobody.
     if exclude_place is not None:
         stmt = stmt.where(
             User.id.notin_(
@@ -2527,19 +2528,6 @@ def list_users(
                 )
             )
         )
-    elif exclude_org is not None:
-        # Still an organisation id, translated here. Reading it as a
-        # place id would be the silent reinterpretation this parameter
-        # was split in two to avoid.
-        excluded_place = place_of_organisation(db, exclude_org)
-        if excluded_place is not None:
-            stmt = stmt.where(
-                User.id.notin_(
-                    select(org_unit_member.c.user_id).where(
-                        org_unit_member.c.org_unit_id == excluded_place
-                    )
-                )
-            )
 
         # Anyone but an operator sees only users at their own places;
         # operators see everyone.
@@ -3573,22 +3561,17 @@ def shared_organisations_endpoint(
     if not shared_places:
         return SharedOrganisationsOut(organisations=[])
 
-    # Looked up by place, answered in organisation ids: this response's
-    # ``id`` still means one, and reinterpreting it silently is what the
-    # rest of this work refuses. It moves when the table goes.
     orgs = (
-        db.execute(
-            select(Organisation).where(
-                Organisation.org_unit_id.in_(shared_places)
-            )
-        )
+        db.execute(select(OrgUnit).where(OrgUnit.id.in_(shared_places)))
         .scalars()
         .all()
     )
     return SharedOrganisationsOut(
         organisations=[
-            SharedOrganisationSummary(id=o.id, name=o.name, type=o.type)
-            for o in orgs
+            SharedOrganisationSummary(
+                org_unit_id=place.id, name=place.name, type=place.type
+            )
+            for place in orgs
         ]
     )
 

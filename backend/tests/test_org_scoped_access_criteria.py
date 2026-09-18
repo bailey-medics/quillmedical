@@ -34,7 +34,6 @@ from sqlalchemy.orm import Session
 from app.cbac.positions import appoint, holders_of, is_vacant
 from app.cbac.scoped import can_practise_at
 from app.models import (
-    Organisation,
     OrgUnit,
     Position,
     PractisingCompetency,
@@ -64,16 +63,14 @@ def _authorise(
     user: User,
     competency: str,
     *,
-    org: Organisation | None = None,
+    org: OrgUnit | None = None,
     site: OrgUnit | None = None,
 ) -> None:
     """Enable one competency for one person at one place."""
     db.add(
         PractisingCompetency(
             user_id=user.id,
-            org_unit_id=(
-                org.org_unit_id if org else (site.id if site else None)
-            ),
+            org_unit_id=(org.id if org else (site.id if site else None)),
             competency=competency,
         )
     )
@@ -101,28 +98,26 @@ def _user(
     return user
 
 
-def _org(db: Session, name: str) -> Organisation:
-    org = Organisation(name=name, type="hospital")
+def _org(db: Session, name: str) -> OrgUnit:
+    org = OrgUnit(name=name, type="organisation")
     db.add(org)
     db.commit()
     return org
 
 
-def _site(db: Session, name: str, org: Organisation) -> OrgUnit:
+def _site(db: Session, name: str, org: OrgUnit) -> OrgUnit:
     site = OrgUnit(name=name, type="ward")
     db.add(site)
     db.commit()
     db.execute(
-        update(OrgUnit)
-        .where(OrgUnit.id == site.id)
-        .values(parent_id=org.org_unit_id)
+        update(OrgUnit).where(OrgUnit.id == site.id).values(parent_id=org.id)
     )
     db.commit()
     return site
 
 
-def _staff(db: Session, user: User, org: Organisation) -> None:
-    add_place_member(db, org.org_unit_id, user.id, "trainee")
+def _staff(db: Session, user: User, org: OrgUnit) -> None:
+    add_place_member(db, org.id, user.id, "trainee")
     db.commit()
 
 
@@ -138,10 +133,10 @@ class TestTwoPlacesOnePerson:
         _authorise(db_session, doctor, "access_patient_records", org=trust_a)
 
         assert _can_at_org(
-            db_session, doctor, trust_a.org_unit_id, "access_patient_records"
+            db_session, doctor, trust_a.id, "access_patient_records"
         )
         assert not _can_at_org(
-            db_session, doctor, trust_b.org_unit_id, "access_patient_records"
+            db_session, doctor, trust_b.id, "access_patient_records"
         )
 
     def test_a_locum_is_narrower_than_their_ceiling(self, db_session):
@@ -160,13 +155,13 @@ class TestTwoPlacesOnePerson:
         assert _can_at_org(
             db_session,
             locum,
-            home.org_unit_id,
+            home.id,
             "prescribe_controlled_schedule_2",
         )
         assert not _can_at_org(
             db_session,
             locum,
-            locum_at.org_unit_id,
+            locum_at.id,
             "prescribe_controlled_schedule_2",
         )
 
@@ -180,10 +175,10 @@ class TestTwoPlacesOnePerson:
         _authorise(db_session, student, "view_teaching_cases", org=teaching)
 
         assert _can_at_org(
-            db_session, student, teaching.org_unit_id, "view_teaching_cases"
+            db_session, student, teaching.id, "view_teaching_cases"
         )
         assert not _can_at_org(
-            db_session, student, elsewhere.org_unit_id, "view_teaching_cases"
+            db_session, student, elsewhere.id, "view_teaching_cases"
         )
 
 
@@ -215,9 +210,7 @@ class TestOneSiteWithinAnOrganisation:
         _authorise(db_session, manager, "manage_users", site=ward)
 
         assert _can_at_site(db_session, manager, ward.id, "manage_users")
-        assert not _can_at_org(
-            db_session, manager, trust.org_unit_id, "manage_users"
-        )
+        assert not _can_at_org(db_session, manager, trust.id, "manage_users")
 
     def test_an_educator_delivers_where_they_hold_no_admin_job(
         self, db_session
@@ -253,10 +246,10 @@ class TestOneSiteWithinAnOrganisation:
         _authorise(db_session, manager, "access_patient_records", org=trust)
 
         assert _can_at_org(
-            db_session, manager, trust.org_unit_id, "access_clinic_admin"
+            db_session, manager, trust.id, "access_clinic_admin"
         )
         assert not _can_at_org(
-            db_session, manager, trust.org_unit_id, "access_patient_records"
+            db_session, manager, trust.id, "access_patient_records"
         )
 
     def test_a_clinical_safety_officer_for_one_project_only(self, db_session):
@@ -276,7 +269,7 @@ class TestOneSiteWithinAnOrganisation:
             db_session, officer, project.id, "view_teaching_analytics"
         )
         assert not _can_at_org(
-            db_session, officer, trust.org_unit_id, "view_teaching_analytics"
+            db_session, officer, trust.id, "view_teaching_analytics"
         )
 
 

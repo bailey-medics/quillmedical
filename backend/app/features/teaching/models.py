@@ -445,11 +445,15 @@ class ModuleMediaLink(Base):
     #: a real file rather than filtering a table. It is the one column in
     #: this group that survives the organisations table: moving it means
     #: moving objects and reissuing cookies, which is storage work rather
-    #: than a column switch. The foreign key goes with the table; the
-    #: number stays.
+    #: than a column switch.
+    #:
+    #: No foreign key, because there is no longer a table to point at.
+    #: It is an address, and an address is not a reference — the number
+    #: stays valid whether or not anything else still knows it. Which
+    #: number a place uses is ``org_unit.media_prefix_id``, read through
+    #: ``app.organisations.media_prefix_of``.
     organisation_id: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey("organisations.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )

@@ -6,6 +6,11 @@ deploy, read for another, then unwritten, then dropped.
 The one exception is ``ModuleMediaLink.organisation_id``, which is where
 the object sits in the bucket rather than who owns the row. It survives,
 filled from the place, and the last test says so.
+
+A test that the two ids were different numbers used to open this file,
+so that nothing confusing them could pass, and a ``TestTheTranslation``
+class checked the function that turned one into the other. There is one
+sequence now, and nothing to translate.
 """
 
 from __future__ import annotations
@@ -21,28 +26,26 @@ from app.features.teaching.models import (
     QuestionBankOrgStatus,
     TeachingOrgSettings,
 )
-from app.models import Organisation, OrgUnitFeature, User
-from app.organisations import add_place_member, place_of_organisation
+from app.models import OrgUnit, OrgUnitFeature, User
+from app.organisations import add_place_member
 from app.security import hash_password
 
 
 @pytest.fixture
-def org(db_session: Session) -> Organisation:
-    organisation = Organisation(name="Teaching Trust", type="hospital_team")
+def org(db_session: Session) -> OrgUnit:
+    organisation = OrgUnit(name="Teaching Trust", type="hospital_team")
     db_session.add(organisation)
     db_session.commit()
     db_session.refresh(organisation)
     db_session.add(
-        OrgUnitFeature(
-            org_unit_id=organisation.org_unit_id, feature_key="teaching"
-        )
+        OrgUnitFeature(org_unit_id=organisation.id, feature_key="teaching")
     )
     db_session.commit()
     return organisation
 
 
 @pytest.fixture
-def educator(db_session: Session, org: Organisation) -> User:
+def educator(db_session: Session, org: OrgUnit) -> User:
     user = User(
         username="an_educator",
         email="educator@example.com",
@@ -53,7 +56,7 @@ def educator(db_session: Session, org: Organisation) -> User:
     )
     db_session.add(user)
     db_session.commit()
-    add_place_member(db_session, org.org_unit_id, user.id, "staff")
+    add_place_member(db_session, org.id, user.id, "staff")
     db_session.commit()
     db_session.refresh(user)
     return user
@@ -69,21 +72,11 @@ def _login(client: TestClient) -> dict[str, str]:
 
 
 class TestTheRowsNameTheirPlace:
-    def test_the_two_ids_are_not_the_same_number(
-        self, db_session: Session, org: Organisation
-    ) -> None:
-        """Otherwise the tests below would pass whichever was written.
-
-        The fixture in ``conftest`` keeps the two sequences apart for
-        exactly this reason.
-        """
-        assert org.id != org.org_unit_id
-
     def test_teaching_settings_name_the_place(
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         educator: User,
     ) -> None:
         headers = _login(test_client)
@@ -99,19 +92,7 @@ class TestTheRowsNameTheirPlace:
 
         assert resp.status_code == 200, resp.text
         row = db_session.query(TeachingOrgSettings).one()
-        assert row.org_unit_id == org.org_unit_id
-
-
-class TestTheTranslation:
-    def test_it_names_the_place_an_organisation_stands_for(
-        self, db_session: Session, org: Organisation
-    ) -> None:
-        assert place_of_organisation(db_session, org.id) == org.org_unit_id
-
-    def test_an_organisation_that_does_not_exist_names_nothing(
-        self, db_session: Session
-    ) -> None:
-        assert place_of_organisation(db_session, 999999) is None
+        assert row.org_unit_id == org.id
 
 
 class TestTheOrganisationColumnIsGone:
@@ -126,17 +107,17 @@ class TestTheOrganisationColumnIsGone:
         assert "organisation_id" not in QuestionBankOrgStatus.__table__.c
 
     def test_a_row_is_written_by_place_alone(
-        self, db_session: Session, org: Organisation
+        self, db_session: Session, org: OrgUnit
     ) -> None:
         row = QuestionBankOrgStatus(
-            org_unit_id=org.org_unit_id,
+            org_unit_id=org.id,
             question_bank_id="a-bank",
             is_live=True,
         )
         db_session.add(row)
         db_session.commit()
 
-        assert row.org_unit_id == org.org_unit_id
+        assert row.org_unit_id == org.id
 
 
 class TestTheMediaLinkKeepsItsAddress:
@@ -153,10 +134,10 @@ class TestTheMediaLinkKeepsItsAddress:
     """
 
     def test_naming_the_place_fills_the_bucket_prefix(
-        self, db_session: Session, org: Organisation
+        self, db_session: Session, org: OrgUnit
     ) -> None:
         link = ModuleMediaLink(
-            org_unit_id=org.org_unit_id,
+            org_unit_id=org.id,
             question_bank_id="a-bank",
             media_key="lecture-01",
             asset_id="asset-1",
@@ -168,4 +149,4 @@ class TestTheMediaLinkKeepsItsAddress:
         db_session.add(link)
         db_session.commit()
 
-        assert link.organisation_id == org.org_unit_id
+        assert link.organisation_id == org.id

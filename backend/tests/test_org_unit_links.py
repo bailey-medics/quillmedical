@@ -18,7 +18,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import (
-    Organisation,
     OrgUnit,
     OrgUnitLink,
     User,
@@ -33,25 +32,25 @@ from app.organisations import add_place_member
 
 
 @pytest.fixture
-def own_org(db_session: Session, test_admin: User) -> Organisation:
-    org = Organisation(name="Own Trust", type="hospital_team")
+def own_org(db_session: Session, test_admin: User) -> OrgUnit:
+    org = OrgUnit(name="Own Trust", type="hospital_team")
     db_session.add(org)
     db_session.commit()
-    add_place_member(db_session, org.org_unit_id, test_admin.id, "staff")
+    add_place_member(db_session, org.id, test_admin.id, "staff")
     db_session.commit()
     return org
 
 
 @pytest.fixture
-def other_org(db_session: Session) -> Organisation:
-    org = Organisation(name="Other Trust", type="hospital_team")
+def other_org(db_session: Session) -> OrgUnit:
+    org = OrgUnit(name="Other Trust", type="hospital_team")
     db_session.add(org)
     db_session.commit()
     return org
 
 
-def _site_of(db: Session, org: Organisation, name: str) -> OrgUnit:
-    site = OrgUnit(name=name, type="ward", parent_id=org.org_unit_id)
+def _site_of(db: Session, org: OrgUnit, name: str) -> OrgUnit:
+    site = OrgUnit(name=name, type="ward", parent_id=org.id)
     db.add(site)
     db.commit()
     db.refresh(site)

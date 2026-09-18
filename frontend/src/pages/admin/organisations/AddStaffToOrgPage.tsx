@@ -198,7 +198,8 @@ export default function AddStaffToOrgPage() {
           // membership added below names one too. The older
           // `exclude_org` parameter read the same number as an
           // organisation id, so it excluded the members of a different
-          // organisation once the two id sequences diverged.
+          // organisation once the two id sequences diverged. It has
+          // since gone with the organisations table.
           `/users?exclude_place=${id}`,
         );
         setUsers(response.users);

@@ -51,7 +51,6 @@ from app.features.passport.models import (
 from app.features.passport.store import LocalPassportStore
 from app.main import app
 from app.models import (
-    Organisation,
     OrgUnit,
     OrgUnitFeature,
     User,
@@ -111,22 +110,22 @@ def _make_user(
     return user
 
 
-def _enable_passport(db: Session, *users: User) -> Organisation:
+def _enable_passport(db: Session, *users: User) -> OrgUnit:
     """One organisation with the feature on, and everyone in it.
 
     ``requires_feature`` resolves through organisation membership, so
     without this every route answers 403 before any of the authorisation
     logic under test runs.
     """
-    org = Organisation(name="Test Trust")
+    org = OrgUnit(name="Test Trust", type="hospital_team")
     db.add(org)
     db.commit()
     db.refresh(org)
 
-    db.add(OrgUnitFeature(org_unit_id=org.org_unit_id, feature_key="passport"))
+    db.add(OrgUnitFeature(org_unit_id=org.id, feature_key="passport"))
 
     for user in users:
-        add_place_member(db, org.org_unit_id, user.id, "trainee")
+        add_place_member(db, org.id, user.id, "trainee")
 
     db.commit()
     return org
@@ -172,7 +171,7 @@ def bystander(db_session: Session) -> User:
 @pytest.fixture
 def org(
     db_session: Session, holder: User, assessor: User, bystander: User
-) -> Organisation:
+) -> OrgUnit:
     return _enable_passport(db_session, holder, assessor, bystander)
 
 
@@ -180,7 +179,7 @@ def org(
 def holder_client(
     test_client: TestClient,
     passport_store: LocalPassportStore,
-    org: Organisation,
+    org: OrgUnit,
 ) -> TestClient:
     return _login(test_client, "holder")
 
@@ -238,7 +237,7 @@ class TestReadAuthorisation:
         self,
         test_client: TestClient,
         passport_store: LocalPassportStore,
-        org: Organisation,
+        org: OrgUnit,
     ) -> None:
         """404 rather than 403: whether a passport exists is not theirs."""
         holder_client = _login(test_client, "holder")
@@ -332,7 +331,7 @@ class TestRequestSignOff:
         self,
         test_client: TestClient,
         passport_store: LocalPassportStore,
-        org: Organisation,
+        org: OrgUnit,
         assessor: User,
     ) -> None:
         holder_client = _login(test_client, "holder")
@@ -357,7 +356,7 @@ class TestSignOff:
         self,
         test_client: TestClient,
         passport_store: LocalPassportStore,
-        org: Organisation,
+        org: OrgUnit,
         assessor: User,
     ) -> tuple[str, str]:
         """A passport with one open request, ready to be signed."""
@@ -486,7 +485,7 @@ class TestDeclineAndWithdraw:
         self,
         test_client: TestClient,
         passport_store: LocalPassportStore,
-        org: Organisation,
+        org: OrgUnit,
         assessor: User,
     ) -> tuple[str, str]:
         holder_client = _login(test_client, "holder")
@@ -550,7 +549,7 @@ class TestInbox:
         self,
         test_client: TestClient,
         passport_store: LocalPassportStore,
-        org: Organisation,
+        org: OrgUnit,
         assessor: User,
     ) -> None:
         holder_client = _login(test_client, "holder")
@@ -575,7 +574,7 @@ class TestInbox:
         self,
         test_client: TestClient,
         passport_store: LocalPassportStore,
-        org: Organisation,
+        org: OrgUnit,
         assessor: User,
     ) -> None:
         holder_client = _login(test_client, "holder")
@@ -601,7 +600,7 @@ class TestVerify:
         self,
         test_client: TestClient,
         passport_store: LocalPassportStore,
-        org: Organisation,
+        org: OrgUnit,
         assessor: User,
     ) -> None:
         holder_client = _login(test_client, "holder")
@@ -639,7 +638,7 @@ class TestVerify:
         self,
         test_client: TestClient,
         passport_store: LocalPassportStore,
-        org: Organisation,
+        org: OrgUnit,
         assessor: User,
     ) -> None:
         """The limits matter as much as the result."""
@@ -844,7 +843,7 @@ class TestAssessorInvites:
         holder_client: TestClient,
         test_client: TestClient,
         passport_store: LocalPassportStore,
-        org: Organisation,
+        org: OrgUnit,
         sent: list[dict[str, str]],
     ) -> None:
         """A 404, not a 403: an unrelated passport is invisible."""
@@ -935,7 +934,7 @@ class TestAssessorInvites:
         holder_client: TestClient,
         test_client: TestClient,
         passport_store: LocalPassportStore,
-        org: Organisation,
+        org: OrgUnit,
         sent: list[dict[str, str]],
     ) -> None:
         """An invitation names an address and a declared registration."""
@@ -1146,7 +1145,7 @@ class TestAcceptingAnInvitation:
         holder_client: TestClient,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         sent: list[dict[str, str]],
     ) -> None:
         """A holder at organisation level only yields an org membership."""
@@ -1159,11 +1158,11 @@ class TestAcceptingAnInvitation:
         assert body["place"] == "organisation"
         # A place id whichever kind ``place`` says, now that membership
         # counts in places. It used to be the organisation's own id.
-        assert body["place_id"] == org.org_unit_id
+        assert body["place_id"] == org.id
 
         capacity = db_session.scalar(
             select(organisation_place_member.c.capacity).where(
-                organisation_place_member.c.org_unit_id == org.org_unit_id,
+                organisation_place_member.c.org_unit_id == org.id,
                 organisation_place_member.c.user_id == body["user_id"],
             )
         )
@@ -1175,7 +1174,7 @@ class TestAcceptingAnInvitation:
         test_client: TestClient,
         db_session: Session,
         holder: User,
-        org: Organisation,
+        org: OrgUnit,
         sent: list[dict[str, str]],
     ) -> None:
         """The narrowest place the holder holds, so a site over its org."""
@@ -1186,7 +1185,7 @@ class TestAcceptingAnInvitation:
         db_session.execute(
             update(OrgUnit)
             .where(OrgUnit.id == site.id)
-            .values(parent_id=org.org_unit_id)
+            .values(parent_id=org.id)
         )
         db_session.execute(
             org_unit_member.insert().values(
@@ -1220,7 +1219,7 @@ class TestAcceptingAnInvitation:
         test_client: TestClient,
         db_session: Session,
         assessor: User,
-        org: Organisation,
+        org: OrgUnit,
         sent: list[dict[str, str]],
     ) -> None:
         """Memberships are per place and independent.
@@ -1387,7 +1386,7 @@ class TestTheGateResolvesForAnAcceptedAssessor:
         test_client: TestClient,
         db_session: Session,
         holder: User,
-        org: Organisation,
+        org: OrgUnit,
         sent: list[dict[str, str]],
     ) -> None:
         """The feature is enabled on the organisation, not the site.
@@ -1403,7 +1402,7 @@ class TestTheGateResolvesForAnAcceptedAssessor:
         db_session.execute(
             update(OrgUnit)
             .where(OrgUnit.id == site.id)
-            .values(parent_id=org.org_unit_id)
+            .values(parent_id=org.id)
         )
         db_session.execute(
             org_unit_member.insert().values(
@@ -1428,7 +1427,7 @@ class TestTheGateResolvesForAnAcceptedAssessor:
         )
         at_org = db_session.scalar(
             select(organisation_place_member.c.user_id).where(
-                organisation_place_member.c.org_unit_id == org.org_unit_id,
+                organisation_place_member.c.org_unit_id == org.id,
                 organisation_place_member.c.user_id == assessor_id,
             )
         )
@@ -1517,11 +1516,11 @@ class TestAdminVerifyAndRevoke:
         return outbox
 
     @pytest.fixture
-    def admin(self, db_session: Session, org: Organisation) -> User:
+    def admin(self, db_session: Session, org: OrgUnit) -> User:
         """An admin of the holder's organisation."""
         user = _make_user(db_session, "orgadmin", profession="consultant")
         user.additional_competencies = ["manage_users"]
-        add_place_member(db_session, org.org_unit_id, user.id, "staff")
+        add_place_member(db_session, org.id, user.id, "staff")
         db_session.commit()
         db_session.refresh(user)
         return user
@@ -1535,17 +1534,15 @@ class TestAdminVerifyAndRevoke:
         user = _make_user(db_session, "otheradmin", profession="consultant")
         user.additional_competencies = ["manage_users"]
 
-        other = Organisation(name="Unrelated Trust")
+        other = OrgUnit(name="Unrelated Trust", type="hospital_team")
         db_session.add(other)
         db_session.commit()
         db_session.refresh(other)
 
         db_session.add(
-            OrgUnitFeature(
-                org_unit_id=other.org_unit_id, feature_key="passport"
-            )
+            OrgUnitFeature(org_unit_id=other.id, feature_key="passport")
         )
-        add_place_member(db_session, other.org_unit_id, user.id, "staff")
+        add_place_member(db_session, other.id, user.id, "staff")
         db_session.commit()
         db_session.refresh(user)
         return user
@@ -1722,7 +1719,7 @@ class TestAdminVerifyAndRevoke:
         test_client: TestClient,
         db_session: Session,
         admin: User,
-        org: Organisation,
+        org: OrgUnit,
         sent: list[dict[str, str]],
     ) -> None:
         assessor_id = self._accept_an_assessor(
@@ -1738,7 +1735,7 @@ class TestAdminVerifyAndRevoke:
 
         remaining = db_session.scalar(
             select(organisation_place_member.c.user_id).where(
-                organisation_place_member.c.org_unit_id == org.org_unit_id,
+                organisation_place_member.c.org_unit_id == org.id,
                 organisation_place_member.c.user_id == assessor_id,
             )
         )
@@ -1793,7 +1790,7 @@ class TestAdminVerifyAndRevoke:
         db_session: Session,
         admin: User,
         assessor: User,
-        org: Organisation,
+        org: OrgUnit,
         passport_store: LocalPassportStore,
     ) -> None:
         """Otherwise a passport route could quietly sack somebody from
@@ -1807,7 +1804,7 @@ class TestAdminVerifyAndRevoke:
 
         still_staff = db_session.scalar(
             select(organisation_place_member.c.user_id).where(
-                organisation_place_member.c.org_unit_id == org.org_unit_id,
+                organisation_place_member.c.org_unit_id == org.id,
                 organisation_place_member.c.user_id == assessor.id,
             )
         )
@@ -2174,7 +2171,7 @@ class TestWhatAnExternalAssessorCannotReach:
         holder_client: TestClient,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         sent: list[dict[str, str]],
     ) -> None:
         """The summary of the whole matrix.
@@ -2192,7 +2189,7 @@ class TestWhatAnExternalAssessorCannotReach:
 
         member = db_session.scalar(
             select(organisation_place_member.c.capacity).where(
-                organisation_place_member.c.org_unit_id == org.org_unit_id,
+                organisation_place_member.c.org_unit_id == org.id,
                 organisation_place_member.c.user_id == assessor_id,
             )
         )
@@ -2218,13 +2215,11 @@ class TestFeatureGate:
     ) -> None:
         """Without the organisation feature, every route refuses."""
         user = _make_user(db_session, "ungated")
-        organisation = Organisation(name="No Feature Trust")
+        organisation = OrgUnit(name="No Feature Trust", type="hospital_team")
         db_session.add(organisation)
         db_session.commit()
         db_session.refresh(organisation)
-        add_place_member(
-            db_session, organisation.org_unit_id, user.id, "trainee"
-        )
+        add_place_member(db_session, organisation.id, user.id, "trainee")
         db_session.commit()
 
         client = _login(test_client, "ungated")

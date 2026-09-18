@@ -17,7 +17,7 @@ from app.cbac.scoped import (
     competencies_at,
     who_can_practise_at,
 )
-from app.models import Organisation, OrgUnit, PractisingCompetency, User
+from app.models import OrgUnit, PractisingCompetency, User
 from app.security import hash_password
 
 
@@ -35,8 +35,8 @@ def _user(db: Session, username: str, profession: str = "consultant") -> User:
     return user
 
 
-def _org(db: Session, name: str) -> Organisation:
-    org = Organisation(name=name, type="hospital")
+def _org(db: Session, name: str) -> OrgUnit:
+    org = OrgUnit(name=name, type="organisation")
     db.add(org)
     db.commit()
     return org
@@ -54,12 +54,12 @@ def _authorise(
     user: User,
     competency: str,
     *,
-    org: Organisation | None = None,
+    org: OrgUnit | None = None,
     site: OrgUnit | None = None,
 ) -> PractisingCompetency:
     row = PractisingCompetency(
         user_id=user.id,
-        org_unit_id=org.org_unit_id if org else (site.id if site else None),
+        org_unit_id=org.id if org else (site.id if site else None),
         competency=competency,
     )
     db.add(row)
@@ -81,11 +81,10 @@ class TestTheCeilingNarrowsEveryPlace:
             db_session,
             receptionist,
             "access_patient_records",
-            place_id=org.org_unit_id,
+            place_id=org.id,
         )
         assert (
-            competencies_at(db_session, receptionist, place_id=org.org_unit_id)
-            == set()
+            competencies_at(db_session, receptionist, place_id=org.id) == set()
         )
 
     def test_the_ceiling_alone_authorises_nothing(self, db_session):
@@ -98,7 +97,7 @@ class TestTheCeilingNarrowsEveryPlace:
             db_session,
             doctor,
             "access_patient_records",
-            place_id=org.org_unit_id,
+            place_id=org.id,
         )
 
 
@@ -115,7 +114,7 @@ class TestNothingIsInherited:
             db_session,
             doctor,
             "access_patient_records",
-            place_id=org.org_unit_id,
+            place_id=org.id,
         )
         assert not can_practise_at(
             db_session, doctor, "access_patient_records", place_id=site.id
@@ -134,7 +133,7 @@ class TestNothingIsInherited:
             db_session,
             doctor,
             "access_patient_records",
-            place_id=org.org_unit_id,
+            place_id=org.id,
         )
 
 
@@ -150,9 +149,9 @@ class TestBothDirections:
             db_session, doctor, "prescribe_controlled_schedule_2", org=there
         )
 
-        assert competencies_at(
-            db_session, doctor, place_id=here.org_unit_id
-        ) == {"access_patient_records"}
+        assert competencies_at(db_session, doctor, place_id=here.id) == {
+            "access_patient_records"
+        }
 
     def test_who_can_practise_at_finds_everyone_authorised_here(
         self, db_session
@@ -167,7 +166,7 @@ class TestBothDirections:
         _authorise(db_session, cara, "access_patient_records", org=there)
 
         found = who_can_practise_at(
-            db_session, "access_patient_records", place_id=here.org_unit_id
+            db_session, "access_patient_records", place_id=here.id
         )
         assert sorted(found) == sorted([anna.id, ben.id])
 
@@ -186,13 +185,13 @@ class TestBothDirections:
         )
 
         assert who_can_practise_at(
-            db_session, "access_patient_records", place_id=here.org_unit_id
+            db_session, "access_patient_records", place_id=here.id
         ) == [receptionist.id]
         assert not can_practise_at(
             db_session,
             receptionist,
             "access_patient_records",
-            place_id=here.org_unit_id,
+            place_id=here.id,
         )
 
 
@@ -230,7 +229,7 @@ class TestTheResolverAsksForOnePlace:
             db_session,
             doctor,
             "access_patient_records",
-            place_id=org.org_unit_id,
+            place_id=org.id,
         )
         assert can_practise_at(
             db_session, doctor, "access_patient_records", place_id=site.id
@@ -277,7 +276,7 @@ class TestTheDatabaseKeepsAGrantToOnePlace:
         db_session.add(
             PractisingCompetency(
                 user_id=doctor.id,
-                org_unit_id=org.org_unit_id,
+                org_unit_id=org.id,
                 competency="access_patient_records",
             )
         )

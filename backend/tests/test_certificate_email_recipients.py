@@ -28,7 +28,6 @@ from app.features.teaching.models import (
 )
 from app.features.teaching.router import _maybe_enqueue_certificate_emails
 from app.models import (
-    Organisation,
     OrgUnit,
     User,
     org_unit_member,
@@ -76,21 +75,19 @@ def _user(db: Session, username: str, email: str) -> User:
     return user
 
 
-def _org(db: Session, name: str) -> Organisation:
-    org = Organisation(name=name, type="hospital")
+def _org(db: Session, name: str) -> OrgUnit:
+    org = OrgUnit(name=name, type="organisation")
     db.add(org)
     db.commit()
     return org
 
 
-def _site_of(db: Session, org: Organisation, name: str) -> OrgUnit:
+def _site_of(db: Session, org: OrgUnit, name: str) -> OrgUnit:
     site = OrgUnit(name=name, type="ward")
     db.add(site)
     db.commit()
     db.execute(
-        update(OrgUnit)
-        .where(OrgUnit.id == site.id)
-        .values(parent_id=org.org_unit_id)
+        update(OrgUnit).where(OrgUnit.id == site.id).values(parent_id=org.id)
     )
     db.commit()
     return site
@@ -120,12 +117,12 @@ def _setup(
     student: bool = False,
     coordinator: bool = False,
     is_live: bool = True,
-) -> tuple[Organisation, User, Assessment, QuestionBankConfig]:
+) -> tuple[OrgUnit, User, Assessment, QuestionBankConfig]:
     org = _org(db, "Trust")
     candidate = _user(db, "candidate", "candidate@example.test")
 
     config_row = QuestionBankConfig(
-        org_unit_id=org.org_unit_id,
+        org_unit_id=org.id,
         question_bank_id=BANK_ID,
         version=1,
         title="Test Bank",
@@ -137,7 +134,7 @@ def _setup(
     db.add(config_row)
     db.add(
         QuestionBankOrgStatus(
-            org_unit_id=org.org_unit_id,
+            org_unit_id=org.id,
             question_bank_id=BANK_ID,
             is_live=is_live,
             active_version=1,
@@ -147,7 +144,7 @@ def _setup(
 
     assessment = Assessment(
         user_id=candidate.id,
-        org_unit_id=org.org_unit_id,
+        org_unit_id=org.id,
         question_bank_id=BANK_ID,
         bank_version=1,
         time_limit_minutes=60,

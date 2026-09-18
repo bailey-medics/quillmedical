@@ -27,7 +27,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.models import (
-    Organisation,
+    OrgUnit,
     OrgUnitFeature,
     User,
 )
@@ -58,14 +58,14 @@ def _user(
 
 
 @pytest.fixture
-def org(db_session: Session) -> Organisation:
+def org(db_session: Session) -> OrgUnit:
     """An organisation with teaching enabled."""
-    organisation = Organisation(name="Teaching Trust", type="hospital")
+    organisation = OrgUnit(name="Teaching Trust", type="organisation")
     db_session.add(organisation)
     db_session.flush()
     db_session.add(
         OrgUnitFeature(
-            org_unit_id=organisation.org_unit_id,
+            org_unit_id=organisation.id,
             feature_key="teaching",
             enabled_by=1,
         )
@@ -75,8 +75,8 @@ def org(db_session: Session) -> Organisation:
     return organisation
 
 
-def _place(db: Session, org: Organisation, user: User) -> None:
-    add_place_member(db, org.org_unit_id, user.id, "staff")
+def _place(db: Session, org: OrgUnit, user: User) -> None:
+    add_place_member(db, org.id, user.id, "staff")
     db.commit()
 
 
@@ -96,7 +96,7 @@ class TestAdminsAreListed:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
     ) -> None:
         """Fails while the ``notin_`` filter stands."""
         caller = _user(db_session, "coordinator", profession="teaching_admin")
@@ -119,7 +119,7 @@ class TestAdminsAreListed:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
     ) -> None:
         """A superadmin who is genuinely a member is a member.
 
@@ -152,13 +152,13 @@ class TestTheScopingIsUntouched:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
     ) -> None:
         """The check that actually matters, asserted beside the change."""
         caller = _user(db_session, "coordinator", profession="teaching_admin")
         _place(db_session, org, caller)
 
-        other = Organisation(name="Other Trust", type="hospital")
+        other = OrgUnit(name="Other Trust", type="organisation")
         db_session.add(other)
         db_session.commit()
         stranger = _user(db_session, "stranger")
@@ -175,7 +175,7 @@ class TestTheScopingIsUntouched:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
     ) -> None:
         """Unchanged, and worth keeping covered while the query moves."""
         caller = _user(db_session, "coordinator", profession="teaching_admin")
