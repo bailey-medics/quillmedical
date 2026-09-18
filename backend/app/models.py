@@ -866,7 +866,13 @@ class Site(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     type: Mapped[str] = mapped_column(String(50), nullable=False)
     parent_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("sites.id", ondelete="SET NULL"), nullable=True
+        Integer,
+        ForeignKey("sites.id", ondelete="SET NULL"),
+        nullable=True,
+        # Every walk up or down the tree goes through this column, and
+        # scoping now walks it on every admin request. Only the name
+        # column was indexed, so a walk scanned the whole table.
+        index=True,
     )
     location: Mapped[str | None] = mapped_column(String(500), nullable=True)
     is_active: Mapped[bool] = mapped_column(
