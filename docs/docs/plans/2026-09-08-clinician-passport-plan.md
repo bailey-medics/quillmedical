@@ -3771,11 +3771,13 @@ anonymous holding a link.
 
 ### What this changes from what is built
 
-- [ ] **The search field takes a name or username, not only an
-      email.** `SignOffRequestForm` currently takes an address alone.
-      Needs a search endpoint that matches all three, and the field
-      must still accept an address that matches nobody — that is the
-      whole point of asking somebody new.
+- [x] **The search endpoint takes a name or username, not only an
+      email.** `GET /api/passport/assessors/search` matches an address,
+      a username or a full name, returns at most ten, refuses a term
+      under three characters, and leaves out the caller's own account.
+      Finding nobody is a 200 with an empty list, because asking
+      somebody new is the case the flow exists for. The form still
+      needs wiring to it — that is the unit below.
 
 - [ ] **The confirmation step does not exist.** Submitting sends the
       request immediately. Step 3 wants a modal showing who was
