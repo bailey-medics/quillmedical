@@ -16,11 +16,11 @@ Covers:
 from __future__ import annotations
 
 import pytest
-from sqlalchemy import insert
 from sqlalchemy.orm import Session
 
-from app.models import Organisation, Site, User, organisation_member
+from app.models import Organisation, Site, User
 from app.org_units.tree import organisation_id_of_site
+from app.organisations import add_organisation_member
 
 
 @pytest.fixture
@@ -29,11 +29,7 @@ def own_org(db_session: Session, test_admin: User) -> Organisation:
     org = Organisation(name="Own Trust", type="hospital_team")
     db_session.add(org)
     db_session.commit()
-    db_session.execute(
-        insert(organisation_member).values(
-            organisation_id=org.id, user_id=test_admin.id, capacity="staff"
-        )
-    )
+    add_organisation_member(db_session, org.id, test_admin.id, "staff")
     db_session.commit()
     return org
 

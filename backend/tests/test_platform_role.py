@@ -21,16 +21,15 @@ levels, which move with the `admin` work.
 from __future__ import annotations
 
 import pytest
-from sqlalchemy import insert
 from sqlalchemy.orm import Session
 
 from app.models import (
     PLATFORM_ROLES,
     Organisation,
     User,
-    organisation_member,
     validate_platform_role,
 )
+from app.organisations import add_organisation_member
 from app.security import hash_password
 
 
@@ -205,13 +204,7 @@ class TestTheListingsHideOperatorsByTheNewColumn:
             base_profession="superadmin_profession",
         )
         for person in (test_admin, operator):
-            db_session.execute(
-                insert(organisation_member).values(
-                    organisation_id=org.id,
-                    user_id=person.id,
-                    capacity="staff",
-                )
-            )
+            add_organisation_member(db_session, org.id, person.id, "staff")
         db_session.commit()
 
         resp = authenticated_admin_client.get("/api/users")
@@ -238,13 +231,7 @@ class TestTheListingsHideOperatorsByTheNewColumn:
             platform_role="standard",
         )
         for person in (test_admin, colleague):
-            db_session.execute(
-                insert(organisation_member).values(
-                    organisation_id=org.id,
-                    user_id=person.id,
-                    capacity="staff",
-                )
-            )
+            add_organisation_member(db_session, org.id, person.id, "staff")
         db_session.commit()
 
         resp = authenticated_admin_client.get("/api/users")
@@ -275,13 +262,7 @@ class TestScopingAsksTheNewColumn:
         db.commit()
         db.refresh(org)
         for person in members:
-            db.execute(
-                insert(organisation_member).values(
-                    organisation_id=org.id,
-                    user_id=person.id,
-                    capacity="staff",
-                )
-            )
+            add_organisation_member(db, org.id, person.id, "staff")
         db.commit()
         return int(org.id)
 
@@ -460,13 +441,7 @@ class TestOperatorsAreProtectedByTheNewColumn:
             platform_role="standard",
         )
         for person in (test_admin, colleague):
-            db_session.execute(
-                insert(organisation_member).values(
-                    organisation_id=org.id,
-                    user_id=person.id,
-                    capacity="staff",
-                )
-            )
+            add_organisation_member(db_session, org.id, person.id, "staff")
         db_session.commit()
 
         resp = authenticated_admin_client.get(f"/api/users/{colleague.id}")

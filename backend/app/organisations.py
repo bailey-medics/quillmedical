@@ -25,7 +25,6 @@ from app.models import (
     ExternalPatientAccess,
     Organisation,
     User,
-    organisation_member,
     organisation_patient_member,
     site_member,
     validate_member_capacity,
@@ -33,6 +32,32 @@ from app.models import (
 from app.org_units.tree import (
     organisation_ids_of_sites,
     root_ids_of_organisations,
+)
+
+# ------------------------------------------------------------------
+# Organisation membership, read from the merged table
+# ------------------------------------------------------------------
+
+#: Who is at an organisation, and in what capacity — the same three
+#: columns the separate table used to hold, now read from the one
+#: membership table by way of each organisation's own row in the tree.
+#:
+#: Kept under the name the call sites already used, because what they ask
+#: has not changed: only where the answer comes from. A membership of a
+#: ward is not in here; that is a membership of the ward, and asking for
+#: it means asking about the ward.
+#:
+#: It is a query rather than a table, so nothing can insert into it. Every
+#: write goes through the three functions above, which is what made
+#: switching the reads a change in one file.
+organisation_member = (
+    select(
+        Organisation.id.label("organisation_id"),
+        site_member.c.user_id.label("user_id"),
+        site_member.c.capacity.label("capacity"),
+    )
+    .join(site_member, site_member.c.site_id == Organisation.org_unit_id)
+    .subquery("organisation_member")
 )
 
 
@@ -302,18 +327,22 @@ def get_accessible_patient_ids(db: Session, user: User) -> set[str]:
 
 
 # ------------------------------------------------------------------
-# Writing membership while the two tables merge
+# Writing membership
 # ------------------------------------------------------------------
 #
 # Membership at an organisation and membership at a ward are the same
-# fact about the same person, so they are becoming one table keyed on a
-# place in the tree. An organisation's place is its own row — its root.
+# fact about the same person, and are now one table keyed on a place in
+# the tree. An organisation's place is its own row — its root.
 #
-# Until the old table goes, every write lands in both: the readers still
-# ask the old one, and a row written to only one of them would be a
-# membership that exists or does not depending on who asks. These three
-# functions are the only place that knows there are two, so switching the
-# readers over is a change here rather than a hunt through the routes.
+# These three functions are the only code that writes an organisation
+# membership. They were what made switching every reader over a change in
+# one file rather than a hunt through the routes.
+
+
+def _root_of(db: Session, organisation_id: int) -> int | None:
+    """Return the tree row an organisation stands for, if it has one."""
+    roots = root_ids_of_organisations(db, [organisation_id])
+    return roots[0] if roots else None
 
 
 def add_organisation_member(
@@ -336,42 +365,17 @@ def add_organisation_member(
     """
     capacity = validate_member_capacity(capacity)
 
-    existing = db.scalar(
-        select(organisation_member.c.user_id).where(
-            organisation_member.c.organisation_id == organisation_id,
-            organisation_member.c.user_id == user_id,
-        )
-    )
-    if existing is None:
-        db.execute(
-            organisation_member.insert().values(
-                organisation_id=organisation_id,
-                user_id=user_id,
-                capacity=capacity,
-            )
-        )
-    else:
-        db.execute(
-            organisation_member.update()
-            .where(
-                organisation_member.c.organisation_id == organisation_id,
-                organisation_member.c.user_id == user_id,
-            )
-            .values(capacity=capacity)
-        )
-
-    root_ids = root_ids_of_organisations(db, [organisation_id])
-    if not root_ids:
+    root_id = _root_of(db, organisation_id)
+    if root_id is None:
         return
-    root_id = root_ids[0]
 
-    at_root = db.scalar(
+    existing = db.scalar(
         select(site_member.c.user_id).where(
             site_member.c.site_id == root_id,
             site_member.c.user_id == user_id,
         )
     )
-    if at_root is None:
+    if existing is None:
         db.execute(
             site_member.insert().values(
                 site_id=root_id, user_id=user_id, capacity=capacity
@@ -398,19 +402,15 @@ def remove_organisation_member(
         organisation_id: The organisation.
         user_id: The person.
     """
+    root_id = _root_of(db, organisation_id)
+    if root_id is None:
+        return
     db.execute(
-        organisation_member.delete().where(
-            organisation_member.c.organisation_id == organisation_id,
-            organisation_member.c.user_id == user_id,
+        site_member.delete().where(
+            site_member.c.site_id == root_id,
+            site_member.c.user_id == user_id,
         )
     )
-    for root_id in root_ids_of_organisations(db, [organisation_id]):
-        db.execute(
-            site_member.delete().where(
-                site_member.c.site_id == root_id,
-                site_member.c.user_id == user_id,
-            )
-        )
 
 
 def remove_organisation_memberships(
@@ -434,22 +434,18 @@ def remove_organisation_memberships(
         user_id: The person.
         organisation_ids: Which organisations to clear, or None for all.
     """
-    old = organisation_member.delete().where(
-        organisation_member.c.user_id == user_id
-    )
-    if organisation_ids is not None:
-        old = old.where(
-            organisation_member.c.organisation_id.in_(organisation_ids)
-        )
-    db.execute(old)
-
     if organisation_ids is None:
-        roots = db.execute(
-            select(Organisation.org_unit_id).where(
-                Organisation.org_unit_id.is_not(None)
+        root_ids = [
+            root_id
+            for root_id in db.execute(
+                select(Organisation.org_unit_id).where(
+                    Organisation.org_unit_id.is_not(None)
+                )
             )
-        ).scalars()
-        root_ids = [r for r in roots if r is not None]
+            .scalars()
+            .all()
+            if root_id is not None
+        ]
     else:
         root_ids = root_ids_of_organisations(db, organisation_ids)
 

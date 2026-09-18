@@ -1087,7 +1087,7 @@ stack-rebase:
     python3 scripts/stack-status.py
 
 
-alias sts := stack-submit
+alias stsu := stack-submit
 # Rebase onto the latest trunk, then push and open or update the drafts
 stack-submit:
     #!/usr/bin/env bash

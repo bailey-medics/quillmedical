@@ -38,8 +38,8 @@ from app.models import (
     Organisation,
     OrganisationFeature,
     User,
-    organisation_member,
 )
+from app.organisations import add_organisation_member
 from app.passport_storage import get_passport_store
 from app.security import hash_password
 
@@ -178,11 +178,7 @@ def org(db_session: Session, holder: User, org_admin: User) -> Organisation:
     )
 
     for user in (holder, org_admin):
-        db_session.execute(
-            organisation_member.insert().values(
-                organisation_id=org.id, user_id=user.id
-            )
-        )
+        add_organisation_member(db_session, org.id, user.id, "trainee")
 
     db_session.commit()
     return org
