@@ -243,10 +243,8 @@ export function Component() {
           icon={<IconFileText />}
           title="You do not have a passport yet"
           description={
-            "A passport is your own record of what you have been signed " +
-            "off to do, who assessed you, and the evidence behind it. It " +
-            "travels with you between employers, and only you can add to " +
-            "it."
+            "You can create your Clinician Passport to manage your competencies" +
+            " and track your progress over time."
           }
         />
         <Group justify="flex-end">

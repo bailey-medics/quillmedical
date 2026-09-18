@@ -199,8 +199,8 @@ export function Component() {
         <StateMessage
           colour="update"
           icon={<IconFileText />}
-          title="Nothing recorded yet"
-          description="A competency appears here once you have recorded something against it — a logbook entry, a certificate or a CPD activity — and asked an assessor to sign it off."
+          title="No sign-offs yet"
+          description="Start a sign-off request to have an assessor review a competency."
         />
       )}
 

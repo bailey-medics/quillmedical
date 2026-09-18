@@ -125,7 +125,7 @@ describe("PassportSignOffsPage", () => {
     );
     renderWithRouter(<PassportSignOffsPage />);
 
-    await screen.findByText(/Nothing recorded yet/);
+    await screen.findByText(/No sign-offs yet/);
 
     expect(screen.queryByText("Perform bronchoscopy")).not.toBeInTheDocument();
   });
@@ -134,8 +134,8 @@ describe("PassportSignOffsPage", () => {
     fetchMyPassport.mockResolvedValue(detailWith([]));
     renderWithRouter(<PassportSignOffsPage />);
 
-    expect(await screen.findByText(/Nothing recorded yet/)).toBeInTheDocument();
-    expect(screen.getByText(/asked an assessor/)).toBeInTheDocument();
+    expect(await screen.findByText(/No sign-offs yet/)).toBeInTheDocument();
+    expect(screen.getByText(/Start a sign-off request/)).toBeInTheDocument();
   });
 
   it("offers a way to ask for a sign-off", async () => {
