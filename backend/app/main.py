@@ -128,11 +128,14 @@ from app.org_units.tree import (
     site_ids_of_organisations,
 )
 from app.organisations import (
+    add_organisation_member,
     get_accessible_patient_ids,
     get_member_org_ids,
     get_org_staff_ids,
     get_patient_org_ids,
     get_shared_org_ids,
+    remove_organisation_member,
+    remove_organisation_memberships,
 )
 from app.push import router as push_router
 from app.push_send import router as push_send_router
@@ -1165,17 +1168,11 @@ def register(
             raise HTTPException(
                 status_code=400, detail="Organisation not found"
             )
-        db.execute(
-            organisation_member.insert().values(
-                organisation_id=org.id,
-                user_id=user.id,
-                # Public registration is how teaching delegates arrive, and
-                # they are not staff. Recording that here is what lets the
-                # admin page and the messaging self-join check tell them
-                # apart; previously nothing could.
-                capacity="trainee",
-            )
-        )
+        # Public registration is how teaching delegates arrive, and they
+        # are not staff. Recording that here is what lets the admin page
+        # and the messaging self-join check tell them apart; previously
+        # nothing could.
+        add_organisation_member(db, org.id, user.id, "trainee")
 
     # Add the user to the selected site as a trainee
     if payload.site_id is not None:
@@ -1631,13 +1628,7 @@ def create_user_with_cbac(
 
     # Assign to organisations
     for org_id in payload.organisation_ids:
-        db.execute(
-            organisation_member.insert().values(
-                organisation_id=org_id,
-                user_id=user.id,
-                capacity="staff",
-            )
-        )
+        add_organisation_member(db, org_id, user.id, "staff")
 
     # Assign to sites as trainee
     for s_id in payload.site_ids:
@@ -1853,20 +1844,11 @@ def update_user(
     if payload.organisation_ids is not None:
         if current_user.platform_role == "superadmin":
             # Superadmin: replace all memberships
-            db.execute(
-                organisation_member.delete().where(
-                    organisation_member.c.user_id == user_id
-                )
-            )
+            remove_organisation_memberships(db, user_id)
         else:
             # Admin: only remove memberships within admin's own orgs
             admin_org_ids = get_member_org_ids(db, current_user.id)
-            db.execute(
-                organisation_member.delete().where(
-                    organisation_member.c.user_id == user_id,
-                    organisation_member.c.organisation_id.in_(admin_org_ids),
-                )
-            )
+            remove_organisation_memberships(db, user_id, admin_org_ids)
         # Add new org memberships
         for org_id in payload.organisation_ids:
             org = db.scalar(
@@ -1877,20 +1859,23 @@ def update_user(
                     status_code=400,
                     detail=f"Organisation {org_id} not found",
                 )
-            db.execute(
-                organisation_member.insert().values(
-                    user_id=user_id,
-                    organisation_id=org_id,
-                    capacity="staff",
-                )
-            )
+            add_organisation_member(db, org_id, user_id, "staff")
 
     # Update site memberships if provided
     if payload.site_ids is not None:
         if current_user.platform_role == "superadmin":
-            # Superadmin: replace all site memberships
+            # Superadmin: replace every membership of a place inside an
+            # organisation. Not the memberships of the organisations
+            # themselves, which are rows in the same table now and are
+            # settled by the organisation block above — clearing those
+            # here would undo it.
             db.execute(
-                site_member.delete().where(site_member.c.user_id == user_id)
+                site_member.delete().where(
+                    site_member.c.user_id == user_id,
+                    site_member.c.site_id.in_(
+                        select(Site.id).where(Site.type != ORGANISATION_TYPE)
+                    ),
+                )
             )
         else:
             # Admin: only remove memberships for sites within admin's orgs
@@ -4232,13 +4217,7 @@ def add_staff_to_organisation(
             detail="User is already a staff member of this organisation",
         )
 
-    db.execute(
-        organisation_member.insert().values(
-            organisation_id=org_id,
-            user_id=body.user_id,
-            capacity="staff",
-        )
-    )
+    add_organisation_member(db, org_id, body.user_id, "staff")
 
     # The grant, in the same act as the membership. Adding somebody as
     # staff and then separately remembering to give them competencies is
@@ -4376,12 +4355,7 @@ def remove_staff_from_organisation(
     if not existing:
         raise HTTPException(status_code=404, detail="Membership not found")
 
-    db.execute(
-        organisation_member.delete().where(
-            organisation_member.c.organisation_id == org_id,
-            organisation_member.c.user_id == user_id,
-        )
-    )
+    remove_organisation_member(db, org_id, user_id)
     return StatusResponse(status="removed")
 
 

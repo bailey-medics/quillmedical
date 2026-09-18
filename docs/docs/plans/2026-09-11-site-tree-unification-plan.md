@@ -706,9 +706,31 @@ to 9 perform the merge; steps 10 to 12 perform the rename.
    rather than a hung request. Step 9 replaces the level-by-level walk with
    one recursive query behind the same functions.
 
-5. [ ] **Move membership.** Copy organisation member rows across against the root
+5. **Move membership.** Copy organisation member rows across against the root
    rows, carrying the `trainee` default. Switch readers, then writers, then
    drop the old table.
+
+   Split into two pull requests along the seam the step itself names, because
+   one of them is more than a reviewer can hold in their head at once:
+   membership is read in sixty-odd places.
+
+   - [x] **5a — write both, read the old one.** The copy, the `trainee`
+     default on the merged table, and every route writing both. Three
+     functions in `organisations.py` are the only code that knows there are
+     two tables, so switching the readers is a change there rather than a
+     hunt through the routes.
+   - [ ] **5b — read the new one, stop writing the old one, drop it.**
+
+   Two readings the plan left open were settled while building 5a:
+
+   - **A repeat membership changes the capacity rather than failing.** A
+     caller that has already checked and one that has not both end up with
+     one row saying the same thing, which is what makes writing two tables
+     safe to retry.
+   - **Clearing somebody's organisations leaves their ward memberships.**
+     Both are rows in the merged table now, so the superadmin path that
+     replaced every row would have undone the organisation edit made
+     moments earlier. It is narrowed to places inside an organisation.
 
 6. [ ] **Move practising competencies and positions.** Backfill the single place
    column from the organisation column via the root rows, then drop the
