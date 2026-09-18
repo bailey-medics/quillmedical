@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "request-parameter-removed GET /api/users deleted the `query` request parameter `exclude_org`"
+reason: "It counted in organisation ids, and the table those belonged to is gone, so there is nothing left for it to name. `exclude_place` replaced it a release ago and the one screen that asked this question moved then — it had in fact been sending a place id to `exclude_org` all along, which is the bug that prompted the split. A caller still sending the old parameter now excludes nobody rather than being quietly misread, which is the safer of the two failures: the list is longer than it should be, not shorter."

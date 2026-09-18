@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from pydantic import SecretStr
 
 from app.config import settings
-from app.models import Organisation
+from app.models import OrgUnit
 
 _VALID_MODULE = (
     Path(__file__).parent / "fixtures" / "teaching_tooling" / ".valid-module"
@@ -103,7 +103,7 @@ class TestRejectedBanksFailTheDeploy:
         nothing — which SQLite allowed and Postgres would not.
         """
         if db is not None:
-            db.add(Organisation(name="Teaching Trust", type="hospital_team"))
+            db.add(OrgUnit(name="Teaching Trust", type="hospital_team"))
             db.commit()
         monkeypatch.setattr(
             settings, "TEACHING_SYNC_TOKEN", SecretStr("test-token")

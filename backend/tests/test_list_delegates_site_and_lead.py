@@ -18,7 +18,6 @@ from sqlalchemy.orm import Session
 
 from app.cbac.positions import set_clinical_lead
 from app.models import (
-    Organisation,
     OrgUnit,
     OrgUnitFeature,
     User,
@@ -44,27 +43,25 @@ def _user(
     return user
 
 
-def _org(db: Session, name: str) -> Organisation:
-    org = Organisation(name=name, type="hospital")
+def _org(db: Session, name: str) -> OrgUnit:
+    org = OrgUnit(name=name, type="organisation")
     db.add(org)
     db.flush()
     db.add(
         OrgUnitFeature(
-            org_unit_id=org.org_unit_id, feature_key="teaching", enabled_by=1
+            org_unit_id=org.id, feature_key="teaching", enabled_by=1
         )
     )
     db.commit()
     return org
 
 
-def _site_of(db: Session, org: Organisation, name: str) -> OrgUnit:
+def _site_of(db: Session, org: OrgUnit, name: str) -> OrgUnit:
     site = OrgUnit(name=name, type="ward")
     db.add(site)
     db.commit()
     db.execute(
-        update(OrgUnit)
-        .where(OrgUnit.id == site.id)
-        .values(parent_id=org.org_unit_id)
+        update(OrgUnit).where(OrgUnit.id == site.id).values(parent_id=org.id)
     )
     db.commit()
     return site
@@ -81,9 +78,9 @@ def _member(db: Session, site: OrgUnit, user: User, capacity: str) -> None:
     db.commit()
 
 
-def _in_org(db: Session, org: Organisation, user: User) -> None:
+def _in_org(db: Session, org: OrgUnit, user: User) -> None:
     """Put the caller in the organisation, with the gate the route needs."""
-    add_place_member(db, org.org_unit_id, user.id, "trainee")
+    add_place_member(db, org.id, user.id, "trainee")
     user.additional_competencies = ["manage_teaching_content"]
     db.commit()
 

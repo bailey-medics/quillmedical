@@ -33,7 +33,6 @@ from sqlalchemy.orm import Session
 
 from app.models import (
     ExternalPatientAccess,
-    Organisation,
     OrgUnit,
     OrgUnitLink,
     User,
@@ -69,7 +68,7 @@ organisation_place_member = (
         org_unit_member.c.user_id.label("user_id"),
         org_unit_member.c.capacity.label("capacity"),
     )
-    .where(org_unit_member.c.org_unit_id.in_(select(Organisation.org_unit_id)))
+    .where(org_unit_member.c.org_unit_id.in_(organisation_place_ids()))
     .subquery("organisation_place_member")
 )
 
@@ -460,23 +459,6 @@ def get_accessible_patient_ids(db: Session, user: User) -> set[str]:
     # one file rather than a hunt through the routes.
 
 
-def place_of_organisation(db: Session, organisation_id: int) -> int | None:
-    """Return the place an organisation stands for, if it has one.
-
-    The translation every table still keyed by an organisation id needs
-    while it is being moved across: a row is written with both, read by
-    the place id from the next deploy onwards, and the organisation
-    column goes last. None means an organisation with no row in the
-    tree, which nothing creates any more and which the fold removes the
-    possibility of.
-    """
-    return db.scalar(
-        select(Organisation.org_unit_id).where(
-            Organisation.id == organisation_id
-        )
-    )
-
-
 def media_prefix_of(db: Session, place_id: int) -> int | None:
     """Return the number this place's media objects are filed under.
 
@@ -506,22 +488,6 @@ def media_prefix_of(db: Session, place_id: int) -> int | None:
         return None
     own_id, recorded = row
     return int(recorded) if recorded is not None else int(own_id)
-
-
-def organisation_of_place(db: Session, place_id: int) -> int | None:
-    """Return the organisation id a place stands for, if any.
-
-    The translation back, for the few things that are addressed by an
-    organisation id rather than merely filtered by one. Media objects are
-    the case that matters: they are stored at
-    ``{organisation_id}/{module}/{asset}`` in a bucket, so that number is
-    the address of a real file. Changing which number it is would move
-    every future upload and leave everything already there unreachable —
-    an object-store migration, not a column switch.
-    """
-    return db.scalar(
-        select(Organisation.id).where(Organisation.org_unit_id == place_id)
-    )
 
 
 def add_place_member(
