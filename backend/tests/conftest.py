@@ -24,8 +24,9 @@ os.environ.setdefault("CLINICAL_SERVICES_ENABLED", "false")
 os.environ["EMAIL_DRY_RUN"] = "true"
 
 from app.db import get_core_db
-from app.main import app, limiter, require_clinical_services
-from app.models import Base, Role, User
+from app.deps import require_clinical_services
+from app.main import app, limiter
+from app.models import Base, OrgUnit, Role, User
 from app.security import hash_password
 
 # Use in-memory SQLite database for unit tests
@@ -48,11 +49,40 @@ TestingSessionLocal = sessionmaker(
 )
 
 
+#: A place created before anything else, to push two id sequences apart.
+#:
+#: ``organisations`` and ``org_unit`` number their rows independently, and
+#: an organisation writes exactly one place, so a database holding only
+#: organisations gives the two tables the same ids: organisation 3 is
+#: place 3. Then any code that hands a place id to something expecting an
+#: organisation id — or the reverse — works perfectly, in tests, and only
+#: in tests. A real database has had places and organisations created
+#: interleaved for months and the numbers stopped agreeing long ago.
+#:
+#: A place that belongs to no organisation, and is not one itself.
+#:
+#: It was put here to keep two id sequences apart: ``organisations`` and
+#: ``org_unit`` numbered their rows independently, and a database
+#: holding nothing else gave the two tables matching ids, so anything
+#: confusing one for the other worked perfectly in the tests and nowhere
+#: else. That table is gone and there is one sequence, so the spacing is
+#: no longer the point.
+#:
+#: It stays because what it is still matters. A ward with no parent is
+#: not an organisation by any question the application asks — it is not
+#: in a list of roots, and no admin can see it, because nobody is a
+#: member of anything above it — and several tests need exactly such a
+#: place to point at.
+DETACHED_PLACE_NAME = "Unattached ward (belongs to no organisation)"
+
+
 @pytest.fixture(scope="function")
 def db_session() -> Generator[Session]:
     """Create a fresh database session for each test."""
     Base.metadata.create_all(bind=engine)
     session = TestingSessionLocal()
+    session.add(OrgUnit(name=DETACHED_PLACE_NAME, type="ward"))
+    session.commit()
     try:
         yield session
     finally:

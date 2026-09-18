@@ -21,16 +21,15 @@ levels, which move with the `admin` work.
 from __future__ import annotations
 
 import pytest
-from sqlalchemy import insert
 from sqlalchemy.orm import Session
 
 from app.models import (
     PLATFORM_ROLES,
-    Organisation,
+    OrgUnit,
     User,
-    organisation_member,
     validate_platform_role,
 )
+from app.organisations import add_place_member
 from app.security import hash_password
 
 
@@ -117,7 +116,7 @@ class TestTheRoutesReadTheNewColumn:
     user below says one thing in `system_permissions` and another in
     `platform_role`, so they fail the moment a check reads the old one.
 
-    `POST /api/organisations` is the subject because it is the plainest
+    `POST /api/org-units` creating a root is the subject: it is the plainest
     superadmin gate in `main.py` — no place check beside it, no
     competency, just the platform question.
     """
@@ -145,7 +144,7 @@ class TestTheRoutesReadTheNewColumn:
         self._login(test_client, "stale")
 
         resp = test_client.post(
-            "/api/organisations",
+            "/api/org-units",
             json={"name": "Nowhere Trust", "type": "hospital_team"},
         )
 
@@ -167,7 +166,7 @@ class TestTheRoutesReadTheNewColumn:
         self._login(test_client, "operator2")
 
         resp = test_client.post(
-            "/api/organisations",
+            "/api/org-units",
             json={"name": "Somewhere Trust", "type": "hospital_team"},
         )
 
@@ -193,7 +192,7 @@ class TestTheListingsHideOperatorsByTheNewColumn:
         test_admin: User,
         db_session: Session,
     ):
-        org = Organisation(name="Shared Trust", type="hospital")
+        org = OrgUnit(name="Shared Trust", type="organisation")
         db_session.add(org)
         db_session.commit()
         db_session.refresh(org)
@@ -205,13 +204,7 @@ class TestTheListingsHideOperatorsByTheNewColumn:
             base_profession="superadmin_profession",
         )
         for person in (test_admin, operator):
-            db_session.execute(
-                insert(organisation_member).values(
-                    organisation_id=org.id,
-                    user_id=person.id,
-                    capacity="staff",
-                )
-            )
+            add_place_member(db_session, org.id, person.id, "staff")
         db_session.commit()
 
         resp = authenticated_admin_client.get("/api/users")
@@ -227,7 +220,7 @@ class TestTheListingsHideOperatorsByTheNewColumn:
         db_session: Session,
     ):
         """The mirror, so the test above cannot pass by listing nobody."""
-        org = Organisation(name="Shared Trust", type="hospital")
+        org = OrgUnit(name="Shared Trust", type="organisation")
         db_session.add(org)
         db_session.commit()
         db_session.refresh(org)
@@ -238,13 +231,7 @@ class TestTheListingsHideOperatorsByTheNewColumn:
             platform_role="standard",
         )
         for person in (test_admin, colleague):
-            db_session.execute(
-                insert(organisation_member).values(
-                    organisation_id=org.id,
-                    user_id=person.id,
-                    capacity="staff",
-                )
-            )
+            add_place_member(db_session, org.id, person.id, "staff")
         db_session.commit()
 
         resp = authenticated_admin_client.get("/api/users")
@@ -270,20 +257,21 @@ class TestScopingAsksTheNewColumn:
     """
 
     def _org_with(self, db: Session, name: str, *members: User) -> int:
-        org = Organisation(name=name, type="hospital")
+        """Create an organisation and return its place id.
+
+        A place id, because the routes these tests exercise answer in
+        those now. The organisation row behind it is still written, and
+        still what membership counts against.
+        """
+        org = OrgUnit(name=name, type="hospital_team")
         db.add(org)
         db.commit()
         db.refresh(org)
         for person in members:
-            db.execute(
-                insert(organisation_member).values(
-                    organisation_id=org.id,
-                    user_id=person.id,
-                    capacity="staff",
-                )
-            )
+            add_place_member(db, org.id, person.id, "staff")
         db.commit()
-        return int(org.id)
+        place_id = org.id
+        return int(place_id)
 
     def test_an_operator_is_not_confined_to_their_organisations(
         self,
@@ -311,9 +299,9 @@ class TestScopingAsksTheNewColumn:
         )
         assert resp.status_code == 200
 
-        # `GET /organisations/{id}` carries one of the migrated branches:
+        # `GET /org-units/{id}` carries one of the migrated branches:
         # a non-operator is refused an organisation they do not belong to.
-        fetched = test_client.get(f"/api/organisations/{other}")
+        fetched = test_client.get(f"/api/org-units/{other}")
         assert fetched.status_code == 200
 
     def test_a_non_operator_is_confined_to_their_organisations(
@@ -326,12 +314,10 @@ class TestScopingAsksTheNewColumn:
         unrelated = self._org_with(db_session, "Unrelated Trust")
         own = self._org_with(db_session, "Admin's Own Trust", test_admin)
 
-        mine = authenticated_admin_client.get(f"/api/organisations/{own}")
+        mine = authenticated_admin_client.get(f"/api/org-units/{own}")
         assert mine.status_code == 200
 
-        theirs = authenticated_admin_client.get(
-            f"/api/organisations/{unrelated}"
-        )
+        theirs = authenticated_admin_client.get(f"/api/org-units/{unrelated}")
         assert theirs.status_code == 404
 
     def test_a_competency_holder_below_admin_is_still_scoped(
@@ -361,10 +347,10 @@ class TestScopingAsksTheNewColumn:
         )
         assert resp.status_code == 200
 
-        own = test_client.get(f"/api/organisations/{theirs}")
+        own = test_client.get(f"/api/org-units/{theirs}")
         assert own.status_code == 200
 
-        other = test_client.get(f"/api/organisations/{not_theirs}")
+        other = test_client.get(f"/api/org-units/{not_theirs}")
         assert other.status_code == 404
 
 
@@ -449,7 +435,7 @@ class TestOperatorsAreProtectedByTheNewColumn:
         Shares an organisation with the admin, since the place check runs
         immediately after the operator check.
         """
-        org = Organisation(name="Shared Trust", type="hospital")
+        org = OrgUnit(name="Shared Trust", type="organisation")
         db_session.add(org)
         db_session.commit()
         db_session.refresh(org)
@@ -460,13 +446,7 @@ class TestOperatorsAreProtectedByTheNewColumn:
             platform_role="standard",
         )
         for person in (test_admin, colleague):
-            db_session.execute(
-                insert(organisation_member).values(
-                    organisation_id=org.id,
-                    user_id=person.id,
-                    capacity="staff",
-                )
-            )
+            add_place_member(db_session, org.id, person.id, "staff")
         db_session.commit()
 
         resp = authenticated_admin_client.get(f"/api/users/{colleague.id}")

@@ -37,6 +37,7 @@ import type {
   FormSubmitResult,
 } from "@/components/form/Form";
 import { api } from "@/lib/api";
+import { orgUnits } from "@/domains/orgUnit";
 import { useAuth } from "@/auth/AuthContext";
 import ErrorState from "@/components/error-state/ErrorState";
 import { holdsStaffLikeCompetency } from "@/lib/cbac/staffLike";
@@ -193,7 +194,13 @@ export default function AddStaffToOrgPage() {
     async function fetchUsers() {
       try {
         const response = await api.get<{ users: ApiUser[] }>(
-          `/users?exclude_org=${id}`,
+          // A place id, which is what this route's `id` is: the
+          // membership added below names one too. The older
+          // `exclude_org` parameter read the same number as an
+          // organisation id, so it excluded the members of a different
+          // organisation once the two id sequences diverged. It has
+          // since gone with the organisations table.
+          `/users?exclude_place=${id}`,
         );
         setUsers(response.users);
       } catch (err) {
@@ -231,8 +238,11 @@ export default function AddStaffToOrgPage() {
     data: AddStaffFormValues,
   ): Promise<FormSubmitResult> {
     try {
-      await api.post(`/organisations/${id}/staff`, {
+      await orgUnits.addMember(Number(id), {
         user_id: Number(data.userId),
+        // The old route assumed this; the new one asks, because a place
+        // takes trainees and external assessors too.
+        capacity: "staff",
         // Omitted rather than sent as null, so the request says nothing
         // about a grant where none was asked for.
         ...(data.baseProfession

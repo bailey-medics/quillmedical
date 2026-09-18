@@ -26,7 +26,7 @@ from app.cbac.competencies import (
     unknown_competency_ids,
     validate_competency_ids,
 )
-from app.models import Organisation, PractisingCompetency, User
+from app.models import OrgUnit, PractisingCompetency, User
 from app.security import hash_password
 
 REAL = "access_patient_records"
@@ -132,7 +132,7 @@ class TestThePractisingRowRefusesBadIds:
     """Guarded on the attribute, so every write path is covered."""
 
     def test_an_unknown_competency_cannot_be_stored(self, db_session):
-        org = Organisation(name="Trust", type="hospital")
+        org = OrgUnit(name="Trust", type="organisation")
         db_session.add(org)
         db_session.commit()
         person = _user(db_session, "practitioner")
@@ -140,12 +140,12 @@ class TestThePractisingRowRefusesBadIds:
         with pytest.raises(ValueError, match=MADE_UP):
             PractisingCompetency(
                 user_id=person.id,
-                organisation_id=org.id,
+                org_unit_id=org.id,
                 competency=MADE_UP,
             )
 
     def test_a_real_competency_is_stored(self, db_session):
-        org = Organisation(name="Trust", type="hospital")
+        org = OrgUnit(name="Trust", type="organisation")
         db_session.add(org)
         db_session.commit()
         person = _user(db_session, "practitioner")
@@ -153,7 +153,7 @@ class TestThePractisingRowRefusesBadIds:
         db_session.add(
             PractisingCompetency(
                 user_id=person.id,
-                organisation_id=org.id,
+                org_unit_id=org.id,
                 competency=REAL,
             )
         )

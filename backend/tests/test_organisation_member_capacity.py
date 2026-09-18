@@ -6,22 +6,24 @@ students among the staff, and why the messaging self-join check had to fall
 back on asking what platform level someone held: the membership check below
 it could not tell them apart.
 
-`organisation_member` carries a capacity, so it can.
+The merged membership table carries a capacity, so it can.
 """
 
 from __future__ import annotations
 
 import pytest
-from sqlalchemy import insert, select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import (
     MEMBER_CAPACITIES,
-    Organisation,
+    OrgUnit,
     User,
-    organisation_member,
     validate_member_capacity,
+)
+from app.organisations import (
+    add_place_member,
+    organisation_place_member,
 )
 from app.security import hash_password
 
@@ -40,18 +42,18 @@ def _user(db: Session, username: str) -> User:
     return user
 
 
-def _org(db: Session, name: str = "Trust") -> Organisation:
-    org = Organisation(name=name, type="hospital")
+def _org(db: Session, name: str = "Trust") -> OrgUnit:
+    org = OrgUnit(name=name, type="organisation")
     db.add(org)
     db.commit()
     return org
 
 
-def _capacity_of(db: Session, org: Organisation, user: User) -> str | None:
+def _capacity_of(db: Session, org: OrgUnit, user: User) -> str | None:
     row = db.execute(
-        select(organisation_member.c.capacity).where(
-            organisation_member.c.organisation_id == org.id,
-            organisation_member.c.user_id == user.id,
+        select(organisation_place_member.c.capacity).where(
+            organisation_place_member.c.org_unit_id == org.id,
+            organisation_place_member.c.user_id == user.id,
         )
     ).first()
     return row[0] if row else None
@@ -65,20 +67,8 @@ class TestTheCapacityDistinguishesMembers:
         consultant = _user(db_session, "consultant")
         delegate = _user(db_session, "delegate")
 
-        db_session.execute(
-            insert(organisation_member).values(
-                organisation_id=org.id,
-                user_id=consultant.id,
-                capacity="staff",
-            )
-        )
-        db_session.execute(
-            insert(organisation_member).values(
-                organisation_id=org.id,
-                user_id=delegate.id,
-                capacity="trainee",
-            )
-        )
+        add_place_member(db_session, org.id, consultant.id, "staff")
+        add_place_member(db_session, org.id, delegate.id, "trainee")
         db_session.commit()
 
         assert _capacity_of(db_session, org, consultant) == "staff"
@@ -93,11 +83,7 @@ class TestTheCapacityDistinguishesMembers:
         """
         org = _org(db_session)
         person = _user(db_session, "someone")
-        db_session.execute(
-            insert(organisation_member).values(
-                organisation_id=org.id, user_id=person.id
-            )
-        )
+        add_place_member(db_session, org.id, person.id, "trainee")
         db_session.commit()
 
         assert _capacity_of(db_session, org, person) == "trainee"
@@ -151,27 +137,27 @@ class TestOnePlaceVocabulary:
 
 
 class TestOneRowPerPersonPerOrganisation:
-    """The primary key still holds after the rename."""
+    """One row per person per place, still.
 
-    def test_the_same_person_twice_is_refused(self, db_session):
+    Recording the same membership twice used to raise. It now settles on
+    the capacity given last instead, because membership is written by one
+    function that a caller may reach having already checked or not, and
+    both have to end with one row saying the same thing.
+    """
+
+    def test_the_same_person_twice_leaves_one_row(self, db_session):
         org = _org(db_session)
         person = _user(db_session, "someone")
-        db_session.execute(
-            insert(organisation_member).values(
-                organisation_id=org.id,
-                user_id=person.id,
-                capacity="staff",
-            )
-        )
+        add_place_member(db_session, org.id, person.id, "staff")
         db_session.commit()
 
-        # The constraint fires on execute, not on commit.
-        with pytest.raises(IntegrityError):
-            db_session.execute(
-                insert(organisation_member).values(
-                    organisation_id=org.id,
-                    user_id=person.id,
-                    capacity="trainee",
-                )
+        add_place_member(db_session, org.id, person.id, "trainee")
+        db_session.commit()
+
+        rows = db_session.execute(
+            select(organisation_place_member.c.capacity).where(
+                organisation_place_member.c.org_unit_id == org.id,
+                organisation_place_member.c.user_id == person.id,
             )
-        db_session.rollback()
+        ).all()
+        assert [("trainee",)] == [tuple(row) for row in rows]

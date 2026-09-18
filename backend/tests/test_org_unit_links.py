@@ -5,24 +5,22 @@ not ownership, so it is a link rather than a second parent. These tests
 pin what a link is, what it is not, and who may record or remove one.
 
 Covers:
-- GET    /api/sites/{site_id}/links
-- POST   /api/sites/{site_id}/links
-- DELETE /api/sites/{site_id}/links/{link_id}
+- GET    /api/org-units/{unit_id}/links
+- POST   /api/org-units/{unit_id}/links
+- DELETE /api/org-units/{unit_id}/links/{link_id}
 - The relation vocabulary, and what the model refuses
 """
 
 from __future__ import annotations
 
 import pytest
-from sqlalchemy import insert, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import (
-    Organisation,
+    OrgUnit,
     OrgUnitLink,
-    Site,
     User,
-    organisation_member,
 )
 from app.org_units.relations import (
     ORG_UNIT_RELATION_IDS,
@@ -30,32 +28,29 @@ from app.org_units.relations import (
     relation_grants_reach,
     validate_org_unit_relation,
 )
+from app.organisations import add_place_member
 
 
 @pytest.fixture
-def own_org(db_session: Session, test_admin: User) -> Organisation:
-    org = Organisation(name="Own Trust", type="hospital_team")
+def own_org(db_session: Session, test_admin: User) -> OrgUnit:
+    org = OrgUnit(name="Own Trust", type="hospital_team")
     db_session.add(org)
     db_session.commit()
-    db_session.execute(
-        insert(organisation_member).values(
-            organisation_id=org.id, user_id=test_admin.id, capacity="staff"
-        )
-    )
+    add_place_member(db_session, org.id, test_admin.id, "staff")
     db_session.commit()
     return org
 
 
 @pytest.fixture
-def other_org(db_session: Session) -> Organisation:
-    org = Organisation(name="Other Trust", type="hospital_team")
+def other_org(db_session: Session) -> OrgUnit:
+    org = OrgUnit(name="Other Trust", type="hospital_team")
     db_session.add(org)
     db_session.commit()
     return org
 
 
-def _site_of(db: Session, org: Organisation, name: str) -> Site:
-    site = Site(name=name, type="ward", parent_id=org.org_unit_id)
+def _site_of(db: Session, org: OrgUnit, name: str) -> OrgUnit:
+    site = OrgUnit(name=name, type="ward", parent_id=org.id)
     db.add(site)
     db.commit()
     db.refresh(site)
@@ -117,7 +112,7 @@ class TestRecordingALink:
         theirs = _site_of(db_session, other_org, "Their Ward")
 
         resp = authenticated_admin_client.post(
-            f"/api/sites/{mine.id}/links",
+            f"/api/org-units/{mine.id}/links",
             json={"target_id": theirs.id, "relation": "teaches_at"},
         )
 
@@ -141,7 +136,7 @@ class TestRecordingALink:
         theirs = _site_of(db_session, other_org, "Their Ward")
 
         authenticated_admin_client.post(
-            f"/api/sites/{mine.id}/links",
+            f"/api/org-units/{mine.id}/links",
             json={"target_id": theirs.id, "relation": "hosts"},
         )
 
@@ -160,10 +155,10 @@ class TestRecordingALink:
         body = {"target_id": theirs.id, "relation": "partners_with"}
 
         authenticated_admin_client.post(
-            f"/api/sites/{mine.id}/links", json=body
+            f"/api/org-units/{mine.id}/links", json=body
         )
         second = authenticated_admin_client.post(
-            f"/api/sites/{mine.id}/links", json=body
+            f"/api/org-units/{mine.id}/links", json=body
         )
 
         assert second.status_code == 200
@@ -177,11 +172,11 @@ class TestRecordingALink:
         theirs = _site_of(db_session, other_org, "Their Ward")
 
         authenticated_superadmin_client.post(
-            f"/api/sites/{mine.id}/links",
+            f"/api/org-units/{mine.id}/links",
             json={"target_id": theirs.id, "relation": "teaches_at"},
         )
         resp = authenticated_superadmin_client.post(
-            f"/api/sites/{theirs.id}/links",
+            f"/api/org-units/{theirs.id}/links",
             json={"target_id": mine.id, "relation": "teaches_at"},
         )
 
@@ -194,7 +189,7 @@ class TestRecordingALink:
         mine = _site_of(db_session, own_org, "My Ward")
 
         resp = authenticated_admin_client.post(
-            f"/api/sites/{mine.id}/links",
+            f"/api/org-units/{mine.id}/links",
             json={"target_id": mine.id, "relation": "hosts"},
         )
 
@@ -207,7 +202,7 @@ class TestRecordingALink:
         theirs = _site_of(db_session, other_org, "Their Ward")
 
         resp = authenticated_admin_client.post(
-            f"/api/sites/{mine.id}/links",
+            f"/api/org-units/{mine.id}/links",
             json={"target_id": theirs.id, "relation": "owns"},
         )
 
@@ -220,7 +215,7 @@ class TestRecordingALink:
         mine = _site_of(db_session, own_org, "My Ward")
 
         resp = authenticated_admin_client.post(
-            f"/api/sites/{mine.id}/links",
+            f"/api/org-units/{mine.id}/links",
             json={"target_id": 999999, "relation": "hosts"},
         )
 
@@ -233,7 +228,7 @@ class TestRecordingALink:
         theirs = _site_of(db_session, other_org, "Their Ward")
 
         resp = authenticated_admin_client.post(
-            f"/api/sites/{theirs.id}/links",
+            f"/api/org-units/{theirs.id}/links",
             json={"target_id": mine.id, "relation": "hosts"},
         )
 
@@ -248,12 +243,12 @@ class TestReadingLinks:
         mine = _site_of(db_session, own_org, "My Ward")
         theirs = _site_of(db_session, other_org, "Their Ward")
         authenticated_superadmin_client.post(
-            f"/api/sites/{theirs.id}/links",
+            f"/api/org-units/{theirs.id}/links",
             json={"target_id": mine.id, "relation": "teaches_at"},
         )
 
         resp = authenticated_superadmin_client.get(
-            f"/api/sites/{mine.id}/links"
+            f"/api/org-units/{mine.id}/links"
         )
 
         assert resp.status_code == 200
@@ -267,7 +262,9 @@ class TestReadingLinks:
     ):
         mine = _site_of(db_session, own_org, "My Ward")
 
-        resp = authenticated_admin_client.get(f"/api/sites/{mine.id}/links")
+        resp = authenticated_admin_client.get(
+            f"/api/org-units/{mine.id}/links"
+        )
 
         assert resp.status_code == 200
         assert resp.json()["links"] == []
@@ -277,7 +274,9 @@ class TestReadingLinks:
     ):
         theirs = _site_of(db_session, other_org, "Their Ward")
 
-        resp = authenticated_admin_client.get(f"/api/sites/{theirs.id}/links")
+        resp = authenticated_admin_client.get(
+            f"/api/org-units/{theirs.id}/links"
+        )
 
         assert resp.status_code == 404
 
@@ -289,12 +288,12 @@ class TestRemovingALink:
         mine = _site_of(db_session, own_org, "My Ward")
         theirs = _site_of(db_session, other_org, "Their Ward")
         created = authenticated_admin_client.post(
-            f"/api/sites/{mine.id}/links",
+            f"/api/org-units/{mine.id}/links",
             json={"target_id": theirs.id, "relation": "hosts"},
         ).json()["links"][0]
 
         resp = authenticated_admin_client.delete(
-            f"/api/sites/{mine.id}/links/{created['id']}"
+            f"/api/org-units/{mine.id}/links/{created['id']}"
         )
 
         assert resp.status_code == 200
@@ -307,12 +306,12 @@ class TestRemovingALink:
         mine = _site_of(db_session, own_org, "My Ward")
         theirs = _site_of(db_session, other_org, "Their Ward")
         created = authenticated_superadmin_client.post(
-            f"/api/sites/{theirs.id}/links",
+            f"/api/org-units/{theirs.id}/links",
             json={"target_id": mine.id, "relation": "teaches_at"},
         ).json()["links"][0]
 
         resp = authenticated_superadmin_client.delete(
-            f"/api/sites/{mine.id}/links/{created['id']}"
+            f"/api/org-units/{mine.id}/links/{created['id']}"
         )
 
         assert resp.status_code == 200
@@ -325,12 +324,12 @@ class TestRemovingALink:
         b = _site_of(db_session, other_org, "B")
         unrelated = _site_of(db_session, own_org, "Unrelated")
         created = authenticated_superadmin_client.post(
-            f"/api/sites/{a.id}/links",
+            f"/api/org-units/{a.id}/links",
             json={"target_id": b.id, "relation": "hosts"},
         ).json()["links"][0]
 
         resp = authenticated_superadmin_client.delete(
-            f"/api/sites/{unrelated.id}/links/{created['id']}"
+            f"/api/org-units/{unrelated.id}/links/{created['id']}"
         )
 
         assert resp.status_code == 404
@@ -345,13 +344,15 @@ class TestALinkConfersNothing:
         mine = _site_of(db_session, own_org, "My Ward")
         theirs = _site_of(db_session, other_org, "Their Ward")
         authenticated_admin_client.post(
-            f"/api/sites/{mine.id}/links",
+            f"/api/org-units/{mine.id}/links",
             json={"target_id": theirs.id, "relation": "teaches_at"},
         )
 
         assert (
-            authenticated_admin_client.get(f"/api/sites/{theirs.id}")
+            authenticated_admin_client.get(f"/api/org-units/{theirs.id}")
         ).status_code == 404
 
-        listed = authenticated_admin_client.get("/api/sites").json()["sites"]
+        listed = authenticated_admin_client.get("/api/org-units").json()[
+            "org_units"
+        ]
         assert theirs.id not in [s["id"] for s in listed]

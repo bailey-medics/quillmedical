@@ -23,10 +23,9 @@ from app.cbac.positions import (
     vacate,
 )
 from app.models import (
-    Organisation,
+    OrgUnit,
     Position,
     PractisingCompetency,
-    Site,
     User,
 )
 from app.security import hash_password
@@ -48,15 +47,15 @@ def _user(db: Session, username: str) -> User:
     return user
 
 
-def _org(db: Session, name: str = "Trust") -> Organisation:
-    org = Organisation(name=name, type="hospital")
+def _org(db: Session, name: str = "Trust") -> OrgUnit:
+    org = OrgUnit(name=name, type="organisation")
     db.add(org)
     db.commit()
     return org
 
 
-def _site(db: Session, name: str = "Ward 1") -> Site:
-    site = Site(name=name, type="ward")
+def _site(db: Session, name: str = "Ward 1") -> OrgUnit:
+    site = OrgUnit(name=name, type="ward")
     db.add(site)
     db.commit()
     return site
@@ -67,14 +66,13 @@ def _authorise(
     user: User,
     competency: str = LEAD_COMPETENCY,
     *,
-    org: Organisation | None = None,
-    site: Site | None = None,
+    org: OrgUnit | None = None,
+    site: OrgUnit | None = None,
 ) -> None:
     db.add(
         PractisingCompetency(
             user_id=user.id,
-            organisation_id=org.id if org else None,
-            site_id=site.id if site else None,
+            org_unit_id=(org.id if org else (site.id if site else None)),
             competency=competency,
         )
     )
@@ -84,15 +82,14 @@ def _authorise(
 def _post(
     db: Session,
     *,
-    org: Organisation | None = None,
-    site: Site | None = None,
+    org: OrgUnit | None = None,
+    site: OrgUnit | None = None,
     requires: str | None = LEAD_COMPETENCY,
     max_holders: int | None = 1,
     kind: str = "clinical_lead",
 ) -> Position:
     post = Position(
-        organisation_id=org.id if org else None,
-        site_id=site.id if site else None,
+        org_unit_id=org.id if org else (site.id if site else None),
         kind=kind,
         title="Clinical lead",
         requires_competency=requires,
@@ -227,7 +224,7 @@ class TestHowManyMayHoldIt:
         site = _site(db_session)
         db_session.add(
             Position(
-                site_id=site.id,
+                org_unit_id=site.id,
                 kind="clinical_lead",
                 title="Clinical lead",
                 max_holders=0,
@@ -341,20 +338,19 @@ class TestThePostOutlivesItsHolders:
 class TestThePostBelongsToOnePlace:
     """The same constraint as a practising competency, for the same reason."""
 
-    def test_naming_both_places_is_refused(self, db_session):
+    def test_there_is_only_one_place_column(self, db_session):
+        """Two columns became one when the two tables of places merged.
+
+        Naming an organisation now means naming its own row in the tree,
+        so a post cannot be at two places by writing to two columns.
+        """
         org = _org(db_session)
-        site = _site(db_session)
-        db_session.add(
+        with pytest.raises(TypeError):
             Position(
                 organisation_id=org.id,
-                site_id=site.id,
                 kind="clinical_lead",
                 title="Clinical lead",
             )
-        )
-        with pytest.raises(IntegrityError):
-            db_session.commit()
-        db_session.rollback()
 
     def test_naming_no_place_is_refused(self, db_session):
         db_session.add(Position(kind="clinical_lead", title="Clinical lead"))
@@ -367,7 +363,7 @@ class TestThePostBelongsToOnePlace:
         _post(db_session, site=site)
         db_session.add(
             Position(
-                site_id=site.id,
+                org_unit_id=site.id,
                 kind="clinical_lead",
                 title="Another clinical lead",
             )
@@ -380,7 +376,7 @@ class TestThePostBelongsToOnePlace:
         site = _site(db_session)
         with pytest.raises(ValueError, match="Unknown position kind"):
             Position(
-                site_id=site.id,
+                org_unit_id=site.id,
                 kind="chief_wizard",
                 title="Chief wizard",
             )
@@ -389,7 +385,7 @@ class TestThePostBelongsToOnePlace:
         site = _site(db_session)
         with pytest.raises(ValueError, match="Unknown competency"):
             Position(
-                site_id=site.id,
+                org_unit_id=site.id,
                 kind="clinical_lead",
                 title="Clinical lead",
                 requires_competency="prescribe_moonbeams",

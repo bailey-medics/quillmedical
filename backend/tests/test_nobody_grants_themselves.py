@@ -26,10 +26,10 @@ from __future__ import annotations
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import insert
 from sqlalchemy.orm import Session
 
-from app.models import Organisation, User, organisation_member
+from app.models import OrgUnit, User
+from app.organisations import add_place_member
 from app.security import hash_password
 
 
@@ -56,25 +56,21 @@ def _user(
 
 
 @pytest.fixture
-def org(db_session: Session) -> Organisation:
-    organisation = Organisation(name="Trust", type="hospital")
+def org(db_session: Session) -> OrgUnit:
+    organisation = OrgUnit(name="Trust", type="organisation")
     db_session.add(organisation)
     db_session.commit()
     db_session.refresh(organisation)
     return organisation
 
 
-def _place(db: Session, org: Organisation, user: User) -> None:
-    db.execute(
-        insert(organisation_member).values(
-            organisation_id=org.id, user_id=user.id, capacity="staff"
-        )
-    )
+def _place(db: Session, org: OrgUnit, user: User) -> None:
+    add_place_member(db, org.id, user.id, "staff")
     db.commit()
 
 
 @pytest.fixture
-def admin(db_session: Session, org: Organisation) -> User:
+def admin(db_session: Session, org: OrgUnit) -> User:
     """Holds ``manage_users`` and is not an operator."""
     user = _user(db_session, "the_admin", profession="system_administrator")
     _place(db_session, org, user)
@@ -82,7 +78,7 @@ def admin(db_session: Session, org: Organisation) -> User:
 
 
 @pytest.fixture
-def operator(db_session: Session, org: Organisation) -> User:
+def operator(db_session: Session, org: OrgUnit) -> User:
     user = _user(
         db_session,
         "the_operator",
@@ -188,7 +184,7 @@ class TestSomebodyElseStillCan:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         admin: User,
     ) -> None:
         """The ordinary case, and the one the rule directs people to."""
@@ -258,7 +254,7 @@ class TestTheSelfRouteRefusesEveryoneButOperators:
         assert "view_teaching_cases" in operator.get_final_competencies()
 
     def test_a_user_without_manage_users_is_refused(
-        self, test_client: TestClient, db_session: Session, org: Organisation
+        self, test_client: TestClient, db_session: Session, org: OrgUnit
     ) -> None:
         """Unchanged: they could never use this route."""
         receptionist = _user(

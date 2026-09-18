@@ -13,7 +13,7 @@ Both authority routes asked reach, through ``_get_user_org_ids``. So a
 ``teaching_admin`` whose only membership was a site linked to the trust
 passed the ``org_id not in ...`` check and could promote a version, or
 close a bank, for the whole organisation above them. They now ask
-``get_member_org_ids``.
+``get_member_place_ids``.
 
 **This narrows, which is the opposite direction to the rest of the
 walk.** The plan names the walk's risk as widening — reach adds
@@ -35,23 +35,22 @@ from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from app.models import (
-    Organisation,
-    OrganisationFeature,
-    Site,
+    OrgUnit,
+    OrgUnitFeature,
     User,
-    organisation_member,
-    site_member,
+    org_unit_member,
 )
+from app.organisations import add_place_member
 from app.security import hash_password
 
 
-def _teaching_org(db: Session, name: str = "Trust") -> Organisation:
-    org = Organisation(name=name)
+def _teaching_org(db: Session, name: str = "Trust") -> OrgUnit:
+    org = OrgUnit(name=name, type="hospital_team")
     db.add(org)
     db.flush()
     db.add(
-        OrganisationFeature(
-            organisation_id=org.id, feature_key="teaching", enabled_by=1
+        OrgUnitFeature(
+            org_unit_id=org.id, feature_key="teaching", enabled_by=1
         )
     )
     db.commit()
@@ -75,31 +74,27 @@ def _teaching_admin(db: Session, username: str) -> User:
     return user
 
 
-def _join_org(db: Session, org: Organisation, user: User) -> None:
-    db.execute(
-        organisation_member.insert().values(
-            organisation_id=org.id, user_id=user.id, capacity="staff"
-        )
-    )
+def _join_org(db: Session, org: OrgUnit, user: User) -> None:
+    add_place_member(db, org.id, user.id, "staff")
     db.commit()
 
 
-def _join_linked_site(db: Session, org: Organisation, user: User) -> Site:
+def _join_linked_site(db: Session, org: OrgUnit, user: User) -> OrgUnit:
     """Put the user on a ward of the trust, and in no organisation.
 
     This is the shape that reach admits and membership does not.
     """
-    site = Site(name="Ward 9", type="ward")
+    site = OrgUnit(name="Ward 9", type="ward")
     db.add(site)
     db.flush()
     db.execute(
-        update(Site)
-        .where(Site.id == site.id)
-        .values(parent_id=org.org_unit_id)
+        update(OrgUnit).where(OrgUnit.id == site.id).values(parent_id=org.id)
     )
     db.execute(
-        site_member.insert().values(
-            site_id=site.id, user_id=user.id, capacity="staff"
+        org_unit_member.insert().values(
+            org_unit_id=site.id,
+            user_id=user.id,
+            capacity="staff",
         )
     )
     db.commit()
@@ -115,22 +110,19 @@ def _login(client: TestClient, username: str) -> dict[str, str]:
     return {"X-CSRF-Token": client.cookies.get("XSRF-TOKEN", "")}
 
 
-def _promote_url(org_id: int) -> str:
+def _promote_url(org: OrgUnit) -> str:
     return (
         "/api/teaching/admin/banks/test-bank"
-        f"/organisations/{org_id}/active-version"
+        f"/places/{org.id}/active-version"
     )
 
 
-def _settings_url(org_id: int) -> str:
-    return (
-        "/api/teaching/admin/banks/test-bank"
-        f"/organisations/{org_id}/settings"
-    )
+def _settings_url(org: OrgUnit) -> str:
+    return "/api/teaching/admin/banks/test-bank" f"/places/{org.id}/settings"
 
 
 @pytest.fixture
-def org(db_session: Session) -> Organisation:
+def org(db_session: Session) -> OrgUnit:
     return _teaching_org(db_session)
 
 
@@ -142,7 +134,7 @@ class TestReachingATrustIsNotAuthorityOverIt:
     """
 
     @pytest.fixture
-    def ward_admin(self, db_session: Session, org: Organisation) -> User:
+    def ward_admin(self, db_session: Session, org: OrgUnit) -> User:
         user = _teaching_admin(db_session, "ward_admin")
         _join_linked_site(db_session, org, user)
         return user
@@ -150,12 +142,12 @@ class TestReachingATrustIsNotAuthorityOverIt:
     def test_they_cannot_promote_a_version_for_the_trust(
         self,
         test_client: TestClient,
-        org: Organisation,
+        org: OrgUnit,
         ward_admin: User,
     ) -> None:
         headers = _login(test_client, "ward_admin")
         response = test_client.put(
-            _promote_url(org.id), headers=headers, json={"version": 2}
+            _promote_url(org), headers=headers, json={"version": 2}
         )
 
         assert response.status_code == 403, response.text
@@ -163,13 +155,13 @@ class TestReachingATrustIsNotAuthorityOverIt:
     def test_they_cannot_close_a_bank_for_the_trust(
         self,
         test_client: TestClient,
-        org: Organisation,
+        org: OrgUnit,
         ward_admin: User,
     ) -> None:
         """Closing mid-cohort locks candidates out part-way through."""
         headers = _login(test_client, "ward_admin")
         response = test_client.put(
-            _settings_url(org.id),
+            _settings_url(org),
             headers=headers,
             json={"is_live": False},
         )
@@ -187,7 +179,7 @@ class TestAnOrganisationMemberIsUnaffected:
     """
 
     @pytest.fixture
-    def trust_admin(self, db_session: Session, org: Organisation) -> User:
+    def trust_admin(self, db_session: Session, org: OrgUnit) -> User:
         user = _teaching_admin(db_session, "trust_admin")
         _join_org(db_session, org, user)
         return user
@@ -195,12 +187,12 @@ class TestAnOrganisationMemberIsUnaffected:
     def test_the_place_check_admits_them_to_promote(
         self,
         test_client: TestClient,
-        org: Organisation,
+        org: OrgUnit,
         trust_admin: User,
     ) -> None:
         headers = _login(test_client, "trust_admin")
         response = test_client.put(
-            _promote_url(org.id), headers=headers, json={"version": 2}
+            _promote_url(org), headers=headers, json={"version": 2}
         )
 
         assert response.status_code != 403, response.text
@@ -208,12 +200,12 @@ class TestAnOrganisationMemberIsUnaffected:
     def test_the_place_check_admits_them_to_settings(
         self,
         test_client: TestClient,
-        org: Organisation,
+        org: OrgUnit,
         trust_admin: User,
     ) -> None:
         headers = _login(test_client, "trust_admin")
         response = test_client.put(
-            _settings_url(org.id),
+            _settings_url(org),
             headers=headers,
             json={"is_live": False},
         )

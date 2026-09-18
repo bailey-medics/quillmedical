@@ -71,12 +71,12 @@ function routeGets(media: unknown = mockMedia) {
 
 const mockOrgs = [
   {
-    organisation_id: 1,
+    org_unit_id: 11,
     organisation_name: "Test Hospital",
     is_live: true,
   },
   {
-    organisation_id: 2,
+    org_unit_id: 12,
     organisation_name: "Another Clinic",
     is_live: false,
   },

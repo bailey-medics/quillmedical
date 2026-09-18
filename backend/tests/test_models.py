@@ -1,10 +1,12 @@
 """Tests for database models."""
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models import Role, User
+from app.organisations import add_place_member
 from app.security import hash_password
 
 
@@ -259,15 +261,19 @@ class TestUserRoleRelationship:
 
 
 class TestOrganisationModel:
-    """Test Organisation model."""
+    """An organisation is a place at the top of a tree.
+
+    These were written against a separate ``Organisation`` model. That
+    table is gone, so they ask the same things of ``OrgUnit``.
+    """
 
     def test_create_organisation(self, db_session: Session):
         """Test creating an organisation."""
-        from app.models import Organisation
+        from app.models import OrgUnit
 
-        org = Organisation(
+        org = OrgUnit(
             name="Test Hospital",
-            type="hospital",
+            type="organisation",
             location="London, UK",
         )
         db_session.add(org)
@@ -276,16 +282,21 @@ class TestOrganisationModel:
 
         assert org.id is not None
         assert org.name == "Test Hospital"
-        assert org.type == "hospital"
+        assert org.type == "organisation"
         assert org.location == "London, UK"
         assert org.created_at is not None
         assert org.updated_at is not None
 
     def test_organisation_staff_relationship(self, db_session: Session):
-        """Test organisation staff member relationship."""
-        from app.models import Organisation, organisation_member
+        """Membership of an organisation is a row against its own place.
 
-        org = Organisation(name="Test Clinic", type="clinic")
+        The ``staff_members`` relationship went with the separate
+        membership table: the two tables merged into one keyed on a place
+        in the tree, and an organisation's place is its own row.
+        """
+        from app.models import OrgUnit, org_unit_member
+
+        org = OrgUnit(name="Test Clinic", type="organisation")
         user = User(
             username="doctor1",
             email="doctor1@example.com",
@@ -295,36 +306,34 @@ class TestOrganisationModel:
         db_session.add_all([org, user])
         db_session.commit()
 
-        # Add user as staff member
-        from sqlalchemy import insert
-
-        stmt = insert(organisation_member).values(
-            organisation_id=org.id, user_id=user.id
-        )
-        db_session.execute(stmt)
+        add_place_member(db_session, org.id, user.id, "trainee")
         db_session.commit()
-        db_session.refresh(org)
 
-        assert len(org.staff_members) == 1
-        assert org.staff_members[0].username == "doctor1"
+        rows = db_session.execute(
+            select(
+                org_unit_member.c.user_id, org_unit_member.c.capacity
+            ).where(org_unit_member.c.org_unit_id == org.id)
+        ).all()
+
+        assert [(user.id, "trainee")] == [tuple(row) for row in rows]
 
     def test_organisation_patient_relationship(self, db_session: Session):
         """Test organisation patient member association table."""
         from sqlalchemy import func, insert, select
 
-        from app.models import Organisation, organisation_patient_member
+        from app.models import OrgUnit, org_unit_patient_member
 
-        org = Organisation(name="Test Practice", type="general_practice")
+        org = OrgUnit(name="Test Practice", type="organisation")
         db_session.add(org)
         db_session.commit()
 
         # Add patient IDs directly to the association table
-        stmt1 = insert(organisation_patient_member).values(
-            organisation_id=org.id,
+        stmt1 = insert(org_unit_patient_member).values(
+            org_unit_id=org.id,
             patient_id="patient-123",
         )
-        stmt2 = insert(organisation_patient_member).values(
-            organisation_id=org.id,
+        stmt2 = insert(org_unit_patient_member).values(
+            org_unit_id=org.id,
             patient_id="patient-456",
         )
         db_session.execute(stmt1)
@@ -334,8 +343,8 @@ class TestOrganisationModel:
         # Count patients in organisation
         patient_count = db_session.scalar(
             select(func.count())
-            .select_from(organisation_patient_member)
-            .where(organisation_patient_member.c.organisation_id == org.id)
+            .select_from(org_unit_patient_member)
+            .where(org_unit_patient_member.c.org_unit_id == org.id)
         )
         assert patient_count == 2
 
@@ -349,20 +358,26 @@ class TestModuleMediaLink:
     """
 
     def _org(self, db: Session, name: str):
-        from app.models import Organisation
+        from app.models import OrgUnit
 
-        org = Organisation(name=name)
+        org = OrgUnit(name=name, type="hospital_team")
         db.add(org)
         db.flush()
         return org
 
-    def _link(self, db: Session, org_id: int, key: str, asset: str):
+    def _link(self, db: Session, org, key: str, asset: str):
+        """A link named by place.
+
+        ``organisation_id`` is filled from it, because that column is
+        where the object sits in the bucket rather than who owns the
+        row.
+        """
         from datetime import UTC, datetime
 
         from app.features.teaching.models import ModuleMediaLink
 
         link = ModuleMediaLink(
-            organisation_id=org_id,
+            org_unit_id=org.id,
             question_bank_id="test-bank",
             media_key=key,
             asset_id=asset,
@@ -376,7 +391,7 @@ class TestModuleMediaLink:
 
     def test_a_link_records_the_uploaded_file(self, db_session: Session):
         org = self._org(db_session, "Trust A")
-        link = self._link(db_session, org.id, "lecture-01", "abc123")
+        link = self._link(db_session, org, "lecture-01", "abc123")
         db_session.commit()
 
         assert link.id is not None
@@ -388,10 +403,10 @@ class TestModuleMediaLink:
     def test_one_video_per_reference(self, db_session: Session):
         """Two files cannot claim the same key in one module."""
         org = self._org(db_session, "Trust B")
-        self._link(db_session, org.id, "lecture-01", "abc123")
+        self._link(db_session, org, "lecture-01", "abc123")
         db_session.commit()
 
-        self._link(db_session, org.id, "lecture-01", "def456")
+        self._link(db_session, org, "lecture-01", "def456")
         with pytest.raises(IntegrityError):
             db_session.commit()
         db_session.rollback()
@@ -405,8 +420,8 @@ class TestModuleMediaLink:
         """
         a = self._org(db_session, "Trust C")
         b = self._org(db_session, "Trust D")
-        self._link(db_session, a.id, "lecture-01", "asset-a")
-        self._link(db_session, b.id, "lecture-01", "asset-b")
+        self._link(db_session, a, "lecture-01", "asset-a")
+        self._link(db_session, b, "lecture-01", "asset-b")
         db_session.commit()
 
         from app.features.teaching.models import ModuleMediaLink
@@ -423,7 +438,7 @@ class TestModuleMediaLink:
     ):
         """Lectures are large; size_bytes is a BigInteger for that reason."""
         org = self._org(db_session, "Trust E")
-        link = self._link(db_session, org.id, "lecture-01", "big")
+        link = self._link(db_session, org, "lecture-01", "big")
         link.size_bytes = 5_000_000_000
         db_session.commit()
 

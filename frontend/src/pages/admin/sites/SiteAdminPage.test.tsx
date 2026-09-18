@@ -37,20 +37,25 @@ const lead = {
   username: "dr.lead",
   email: "lead@example.com",
   full_name: "Dr Ada Lead",
-  role: "staff",
+  capacity: "staff",
 };
 
 const site = (clinicalLeadId: number | null) => ({
   id: 1,
   name: "Ward 1",
   type: "ward",
+  type_display_name: "Ward",
+  is_root: false,
   parent_id: null,
+  parent_name: "",
   location: "",
   is_active: true,
   created_at: "2026-01-01T00:00:00Z",
   updated_at: "2026-01-01T00:00:00Z",
-  staff: [lead],
-  organisations: [],
+  members: [lead],
+  children: [],
+  features: [],
+  patient_ids: [],
   clinical_lead_id: clinicalLeadId,
 });
 

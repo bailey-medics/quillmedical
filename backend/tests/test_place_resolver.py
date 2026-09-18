@@ -19,17 +19,16 @@ from sqlalchemy import insert, update
 from sqlalchemy.orm import Session
 
 from app.models import (
-    Organisation,
-    Site,
+    OrgUnit,
     User,
-    organisation_member,
-    site_member,
+    org_unit_member,
 )
 from app.organisations import (
-    get_member_org_ids,
-    get_org_member_ids,
-    get_org_staff_ids,
-    get_reachable_org_ids,
+    add_place_member,
+    get_member_place_ids,
+    get_place_member_ids,
+    get_place_staff_ids,
+    get_reachable_place_ids,
 )
 from app.security import hash_password
 
@@ -48,49 +47,45 @@ def _user(db: Session, username: str) -> User:
     return user
 
 
-def _org(db: Session, name: str) -> Organisation:
-    org = Organisation(name=name, type="hospital")
+def _org(db: Session, name: str) -> OrgUnit:
+    org = OrgUnit(name=name, type="organisation")
     db.add(org)
     db.commit()
     return org
 
 
-def _site(db: Session, name: str, org: Organisation | None = None) -> Site:
-    site = Site(name=name, type="ward")
+def _site(db: Session, name: str, org: OrgUnit | None = None) -> OrgUnit:
+    site = OrgUnit(name=name, type="ward")
     db.add(site)
     db.commit()
     if org is not None:
         db.execute(
-            update(Site)
-            .where(Site.id == site.id)
-            .values(parent_id=org.org_unit_id)
+            update(OrgUnit)
+            .where(OrgUnit.id == site.id)
+            .values(parent_id=org.id)
         )
         db.commit()
     return site
 
 
-def _join_org(
-    db: Session, org: Organisation, user: User, capacity: str
-) -> None:
-    db.execute(
-        insert(organisation_member).values(
-            organisation_id=org.id, user_id=user.id, capacity=capacity
-        )
-    )
+def _join_org(db: Session, org: OrgUnit, user: User, capacity: str) -> None:
+    add_place_member(db, org.id, user.id, capacity)
     db.commit()
 
 
-def _join_site(db: Session, site: Site, user: User, capacity: str) -> None:
+def _join_site(db: Session, site: OrgUnit, user: User, capacity: str) -> None:
     db.execute(
-        insert(site_member).values(
-            site_id=site.id, user_id=user.id, capacity=capacity
+        insert(org_unit_member).values(
+            org_unit_id=site.id,
+            user_id=user.id,
+            capacity=capacity,
         )
     )
     db.commit()
 
 
 class TestReachFlowsDownwardOnly:
-    """Organisation membership reaches its sites. Sites do not reach up."""
+    """OrgUnit membership reaches its sites. Sites do not reach up."""
 
     def test_a_site_member_reaches_the_linked_organisation(self, db_session):
         """This is why teaching's roll-up existed, now expressed once.
@@ -104,7 +99,7 @@ class TestReachFlowsDownwardOnly:
         trainee = _user(db_session, "trainee")
         _join_site(db_session, site, trainee, "trainee")
 
-        assert get_reachable_org_ids(db_session, trainee.id) == [org.id]
+        assert get_reachable_place_ids(db_session, trainee.id) == [org.id]
 
     def test_a_site_member_is_not_a_member_of_the_organisation(
         self, db_session
@@ -119,7 +114,7 @@ class TestReachFlowsDownwardOnly:
         trainee = _user(db_session, "trainee")
         _join_site(db_session, site, trainee, "trainee")
 
-        assert get_member_org_ids(db_session, trainee.id) == []
+        assert get_member_place_ids(db_session, trainee.id) == []
 
     def test_an_unlinked_site_reaches_nothing(self, db_session):
         org = _org(db_session, "Trust")
@@ -127,7 +122,7 @@ class TestReachFlowsDownwardOnly:
         person = _user(db_session, "person")
         _join_site(db_session, site, person, "staff")
 
-        assert get_reachable_org_ids(db_session, person.id) == []
+        assert get_reachable_place_ids(db_session, person.id) == []
         assert org.id is not None
 
     def test_direct_membership_reaches_the_organisation(self, db_session):
@@ -135,7 +130,7 @@ class TestReachFlowsDownwardOnly:
         consultant = _user(db_session, "consultant")
         _join_org(db_session, org, consultant, "staff")
 
-        assert get_reachable_org_ids(db_session, consultant.id) == [org.id]
+        assert get_reachable_place_ids(db_session, consultant.id) == [org.id]
 
     def test_both_routes_are_merged_without_duplicates(self, db_session):
         """Reachable by two paths is still one organisation."""
@@ -145,13 +140,13 @@ class TestReachFlowsDownwardOnly:
         _join_org(db_session, org, person, "staff")
         _join_site(db_session, site, person, "staff")
 
-        assert get_reachable_org_ids(db_session, person.id) == [org.id]
+        assert get_reachable_place_ids(db_session, person.id) == [org.id]
 
     def test_someone_at_nowhere_reaches_nothing(self, db_session):
         stranger = _user(db_session, "stranger")
 
-        assert get_reachable_org_ids(db_session, stranger.id) == []
-        assert get_member_org_ids(db_session, stranger.id) == []
+        assert get_reachable_place_ids(db_session, stranger.id) == []
+        assert get_member_place_ids(db_session, stranger.id) == []
 
 
 class TestCapacityNarrowsTheAnswer:
@@ -169,11 +164,12 @@ class TestCapacityNarrowsTheAnswer:
         _join_org(db_session, org, consultant, "staff")
         _join_org(db_session, org, delegate, "trainee")
 
-        assert get_member_org_ids(
+        assert get_member_place_ids(
             db_session, consultant.id, capacity="staff"
         ) == [org.id]
         assert (
-            get_member_org_ids(db_session, delegate.id, capacity="staff") == []
+            get_member_place_ids(db_session, delegate.id, capacity="staff")
+            == []
         )
 
     def test_membership_without_a_capacity_counts_everyone(self, db_session):
@@ -181,7 +177,7 @@ class TestCapacityNarrowsTheAnswer:
         delegate = _user(db_session, "delegate")
         _join_org(db_session, org, delegate, "trainee")
 
-        assert get_member_org_ids(db_session, delegate.id) == [org.id]
+        assert get_member_place_ids(db_session, delegate.id) == [org.id]
 
     def test_reach_can_be_narrowed_at_the_site_too(self, db_session):
         org = _org(db_session, "Trust")
@@ -189,9 +185,9 @@ class TestCapacityNarrowsTheAnswer:
         trainee = _user(db_session, "trainee")
         _join_site(db_session, site, trainee, "trainee")
 
-        assert get_reachable_org_ids(db_session, trainee.id) == [org.id]
+        assert get_reachable_place_ids(db_session, trainee.id) == [org.id]
         assert (
-            get_reachable_org_ids(db_session, trainee.id, capacity="staff")
+            get_reachable_place_ids(db_session, trainee.id, capacity="staff")
             == []
         )
 
@@ -200,14 +196,16 @@ class TestCapacityNarrowsTheAnswer:
         person = _user(db_session, "person")
 
         with pytest.raises(ValueError, match="Unknown member capacity"):
-            get_member_org_ids(db_session, person.id, capacity="chief_wizard")
+            get_member_place_ids(
+                db_session, person.id, capacity="chief_wizard"
+            )
 
 
 class TestListingMembersOfAnOrganisation:
     """Who is at these organisations, and how a caller asks for staff."""
 
     def test_the_staff_helper_still_returns_everyone(self, db_session):
-        """`get_org_staff_ids` says staff and returns every member.
+        """`get_place_staff_ids` says staff and returns every member.
 
         Left that way on purpose. Narrowing it would change what every
         existing caller means in a single edit, and the admin user
@@ -222,7 +220,7 @@ class TestListingMembersOfAnOrganisation:
         _join_org(db_session, org, consultant, "staff")
         _join_org(db_session, org, delegate, "trainee")
 
-        assert get_org_staff_ids(db_session, [org.id]) == {
+        assert get_place_staff_ids(db_session, [org.id]) == {
             consultant.id,
             delegate.id,
         }
@@ -235,9 +233,9 @@ class TestListingMembersOfAnOrganisation:
         _join_org(db_session, org, consultant, "staff")
         _join_org(db_session, org, delegate, "trainee")
 
-        assert get_org_member_ids(db_session, [org.id], capacity="staff") == {
-            consultant.id
-        }
+        assert get_place_member_ids(
+            db_session, [org.id], capacity="staff"
+        ) == {consultant.id}
 
     def test_no_organisations_returns_nobody(self, db_session):
         """Not everybody. A caller who resolved to nothing sees nothing."""
@@ -245,5 +243,5 @@ class TestListingMembersOfAnOrganisation:
         consultant = _user(db_session, "consultant")
         _join_org(db_session, org, consultant, "staff")
 
-        assert get_org_member_ids(db_session, []) == set()
-        assert get_org_staff_ids(db_session, []) == set()
+        assert get_place_member_ids(db_session, []) == set()
+        assert get_place_staff_ids(db_session, []) == set()

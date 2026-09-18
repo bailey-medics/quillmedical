@@ -316,12 +316,13 @@ class SharedOrganisationSummary(BaseModel):
     """Organisation summary for the shared-organisations endpoint.
 
     Attributes:
-        id: Organisation ID.
+        org_unit_id: The organisation's own row in the tree. Replaces
+            ``id``, which counted in the organisations table's own ids.
         name: Organisation name.
-        type: Organisation type.
+        type: The kind of place it is.
     """
 
-    id: int
+    org_unit_id: int
     name: str
     type: str
 

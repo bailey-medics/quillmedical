@@ -28,10 +28,10 @@ from __future__ import annotations
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import insert
 from sqlalchemy.orm import Session
 
-from app.models import Organisation, User, organisation_member
+from app.models import OrgUnit, User
+from app.organisations import add_place_member
 from app.security import hash_password
 
 
@@ -59,25 +59,21 @@ def _user(
 
 
 @pytest.fixture
-def org(db_session: Session) -> Organisation:
-    organisation = Organisation(name="Trust", type="hospital")
+def org(db_session: Session) -> OrgUnit:
+    organisation = OrgUnit(name="Trust", type="organisation")
     db_session.add(organisation)
     db_session.commit()
     db_session.refresh(organisation)
     return organisation
 
 
-def _place(db: Session, org: Organisation, user: User) -> None:
-    db.execute(
-        insert(organisation_member).values(
-            organisation_id=org.id, user_id=user.id, capacity="staff"
-        )
-    )
+def _place(db: Session, org: OrgUnit, user: User) -> None:
+    add_place_member(db, org.id, user.id, "staff")
     db.commit()
 
 
 @pytest.fixture
-def admin(db_session: Session, org: Organisation) -> User:
+def admin(db_session: Session, org: OrgUnit) -> User:
     """Holds ``manage_users`` and shares the organisation with targets."""
     user = _user(db_session, "the_admin", profession="system_administrator")
     _place(db_session, org, user)
@@ -104,7 +100,7 @@ class TestTheOldCompetenciesSurvive:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         admin: User,
     ) -> None:
         """Fails on a bare assignment.
@@ -134,7 +130,7 @@ class TestTheOldCompetenciesSurvive:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         admin: User,
     ) -> None:
         """Additive means both, not merely the old set kept."""
@@ -161,7 +157,7 @@ class TestTheOldCompetenciesSurvive:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         admin: User,
     ) -> None:
         """``additional_competencies`` is not disturbed by the merge."""
@@ -195,7 +191,7 @@ class TestWhatTheMergeDoesNotDo:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         admin: User,
     ) -> None:
         """``removed_competencies`` is applied after the merge.
@@ -227,7 +223,7 @@ class TestWhatTheMergeDoesNotDo:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         admin: User,
     ) -> None:
         """Idempotent, so a no-op edit does not accumulate entries."""

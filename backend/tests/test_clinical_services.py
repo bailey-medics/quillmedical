@@ -3,8 +3,10 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from app.main import app, require_clinical_services
-from app.models import Organisation, User, organisation_member
+from app.deps import require_clinical_services
+from app.main import app
+from app.models import OrgUnit, User
+from app.organisations import add_place_member
 from app.security import hash_password
 
 
@@ -112,7 +114,7 @@ class TestRequireFeatureDependency:
 
     def test_feature_disabled_returns_403(self, test_client, db_session):
         """User whose org does NOT have the feature gets 403."""
-        org = Organisation(name="No Feature Org")
+        org = OrgUnit(name="No Feature Org", type="hospital_team")
         db_session.add(org)
         db_session.flush()
 
@@ -125,12 +127,7 @@ class TestRequireFeatureDependency:
         db_session.add(user)
         db_session.flush()
 
-        db_session.execute(
-            organisation_member.insert().values(
-                organisation_id=org.id,
-                user_id=user.id,
-            )
-        )
+        add_place_member(db_session, org.id, user.id, "trainee")
         db_session.commit()
 
         # No features enabled on the org — the guard should reject

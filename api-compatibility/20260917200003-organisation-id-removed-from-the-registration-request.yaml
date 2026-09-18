@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "request-property-removed POST /api/auth/register removed the request property `organisation_id`"
+reason: "Registration names the place a person is joining, and has accepted `org_unit_id` for a release; both registration screens send it. Accepting `organisation_id` as well meant a caller could send either number for the same organisation, and the two id sequences make those different numbers. Removing an optional request property cannot break a tab that has stopped sending it, so no reload is forced."

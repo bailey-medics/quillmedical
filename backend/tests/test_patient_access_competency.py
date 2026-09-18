@@ -35,12 +35,14 @@ from sqlalchemy.orm import Session
 
 from app.models import (
     ExternalPatientAccess,
-    Organisation,
+    OrgUnit,
     User,
-    organisation_member,
-    organisation_patient_member,
+    org_unit_patient_member,
 )
-from app.organisations import check_user_patient_access
+from app.organisations import (
+    add_place_member,
+    check_user_patient_access,
+)
 from app.security import hash_password
 
 SHARED_PATIENT = "fhir-patient-shared"
@@ -76,14 +78,14 @@ def _user(
 
 
 @pytest.fixture
-def org_with_patient(db_session: Session) -> Organisation:
+def org_with_patient(db_session: Session) -> OrgUnit:
     """An organisation holding ``SHARED_PATIENT``."""
-    org = Organisation(name="Shared Trust", type="hospital")
+    org = OrgUnit(name="Shared Trust", type="organisation")
     db_session.add(org)
     db_session.commit()
     db_session.execute(
-        insert(organisation_patient_member).values(
-            organisation_id=org.id, patient_id=SHARED_PATIENT
+        insert(org_unit_patient_member).values(
+            org_unit_id=org.id, patient_id=SHARED_PATIENT
         )
     )
     db_session.commit()
@@ -91,12 +93,8 @@ def org_with_patient(db_session: Session) -> Organisation:
     return org
 
 
-def _place(db: Session, org: Organisation, user: User) -> None:
-    db.execute(
-        insert(organisation_member).values(
-            organisation_id=org.id, user_id=user.id, capacity="staff"
-        )
-    )
+def _place(db: Session, org: OrgUnit, user: User) -> None:
+    add_place_member(db, org.id, user.id, "staff")
     db.commit()
 
 
@@ -104,7 +102,7 @@ class TestBothHalvesAreRequired:
     """Neither the competency nor the place is sufficient alone."""
 
     def test_competency_and_shared_org_is_granted(
-        self, db_session: Session, org_with_patient: Organisation
+        self, db_session: Session, org_with_patient: OrgUnit
     ) -> None:
         """The ordinary case: a clinician at the patient's organisation."""
         clinician = _user(
@@ -118,7 +116,7 @@ class TestBothHalvesAreRequired:
         )
 
     def test_competency_without_shared_org(
-        self, db_session: Session, org_with_patient: Organisation
+        self, db_session: Session, org_with_patient: OrgUnit
     ) -> None:
         """A clinician elsewhere is refused, competency notwithstanding.
 
@@ -135,7 +133,7 @@ class TestBothHalvesAreRequired:
         )
 
     def test_shared_org_without_competency(
-        self, db_session: Session, org_with_patient: Organisation
+        self, db_session: Session, org_with_patient: OrgUnit
     ) -> None:
         """Sharing an organisation is not itself permission to read.
 
@@ -163,7 +161,7 @@ class TestTheRankHatchIsGone:
     """The cases the old first line got wrong."""
 
     def test_an_admin_elsewhere_cannot_reach_a_patient(
-        self, db_session: Session, org_with_patient: Organisation
+        self, db_session: Session, org_with_patient: OrgUnit
     ) -> None:
         """The hole the hatch opened, closed.
 
@@ -182,7 +180,7 @@ class TestTheRankHatchIsGone:
         )
 
     def test_an_operator_is_not_thereby_a_clinician(
-        self, db_session: Session, org_with_patient: Organisation
+        self, db_session: Session, org_with_patient: OrgUnit
     ) -> None:
         """Operating Quill confers no access to a record.
 
