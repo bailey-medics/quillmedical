@@ -15,6 +15,7 @@ import { ResultMessage } from "@/components/message-cards";
 import SelectField from "@/components/form/SelectField";
 import PageHeader from "@/components/page-header";
 import { api } from "@/lib/api";
+import { orgUnits } from "@/domains/orgUnit";
 import ErrorState from "@/components/error-state/ErrorState";
 
 interface FhirPatient {
@@ -84,9 +85,7 @@ export default function AddPatientToOrgPage() {
     setError(null);
 
     try {
-      await api.post(`/organisations/${id}/patients`, {
-        patient_id: selectedPatientId,
-      });
+      await orgUnits.addPatient(Number(id), selectedPatientId);
       setSuccess(true);
       setTimeout(() => navigate(`/admin/organisations/${id}`), 1500);
     } catch (err) {

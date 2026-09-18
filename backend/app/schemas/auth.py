@@ -31,8 +31,10 @@ class RegisterIn(BaseModel):
         full_name: User's full display name (optional).
         email: Email address (must be unique).
         password: Desired password (min 8 characters).
-        organisation_id: ID of the organisation to join (optional).
-        site_id: ID of the site to join as trainee (optional).
+        org_unit_id: The place to join, which for a registration is the
+            organisation's own row in the tree (optional).
+        site_id: ID of the site to join as trainee (optional). Already a
+            place id: a site is a place.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -41,7 +43,7 @@ class RegisterIn(BaseModel):
     full_name: str | None = None
     email: EmailStr
     password: str
-    organisation_id: int | None = None
+    org_unit_id: int | None = None
     site_id: int | None = None
 
 
@@ -286,13 +288,15 @@ class ValidateClinicalLeadOut(BaseModel):
     Attributes:
         valid: Whether the email is a clinical lead for the bank.
         site_name: Name of the site if valid, else None.
-        organisation_id: ID of the organisation if valid, else None.
-        site_id: ID of the site if valid, else None.
+        org_unit_id: The organisation, as a place id — what the
+            registration that follows sends back.
+        site_id: ID of the site if valid, else None. Already a place id:
+            a site is a place.
     """
 
     valid: bool
     site_name: str | None = None
-    organisation_id: int | None = None
+    org_unit_id: int | None = None
     site_id: int | None = None
 
 
@@ -380,8 +384,10 @@ class UserOut(BaseModel):
         removed_competencies: User's removed competencies.
         platform_role: Whether this person operates Quill itself.
         is_active: Whether user is active.
-        organisation_ids: Organisations the user belongs to.
-        site_ids: Sites the user belongs to.
+        place_ids: Every place the user belongs to, organisations
+            included, all in place ids. One list because there is one
+            table of places, and one kind of id because two kinds is how
+            a number gets read against the wrong table.
     """
 
     id: int
@@ -393,8 +399,7 @@ class UserOut(BaseModel):
     removed_competencies: list[str]
     platform_role: str
     is_active: bool
-    organisation_ids: list[int]
-    site_ids: list[int]
+    place_ids: list[int] = []
 
 
 class LinkPatientIn(BaseModel):

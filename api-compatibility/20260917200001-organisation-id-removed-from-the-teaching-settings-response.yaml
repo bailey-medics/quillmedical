@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "response-required-property-removed GET /api/teaching/settings removed the required property `organisation_id` from the response with the `200` status"
+reason: "The settings row is stored against a place now, so answering with an organisation id as well meant reporting a number the row does not hold. `org_unit_id` has been served beside it for a release and is what the screens read. No open tab needs reloading."

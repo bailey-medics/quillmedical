@@ -7,7 +7,7 @@ media, writing captions, reading results — so a ``teaching_admin`` whose
 only membership was a ward linked to the trust resolved to the trust and
 administered it.
 
-It now asks ``get_member_org_ids``. The plural helper keeps reach,
+It now asks ``get_member_place_ids``. The plural helper keeps reach,
 because content visibility is a different question: a ward trainee
 receives what the trust made available there, which
 ``TestLearningContentGate`` pins.
@@ -35,12 +35,12 @@ from sqlalchemy.orm import Session
 
 from app.models import (
     Organisation,
-    OrganisationFeature,
-    Site,
+    OrgUnit,
+    OrgUnitFeature,
     User,
-    organisation_member,
-    site_member,
+    org_unit_member,
 )
+from app.organisations import add_place_member
 from app.security import hash_password
 
 
@@ -49,8 +49,8 @@ def _teaching_org(db: Session, name: str = "Trust") -> Organisation:
     db.add(org)
     db.flush()
     db.add(
-        OrganisationFeature(
-            organisation_id=org.id, feature_key="teaching", enabled_by=1
+        OrgUnitFeature(
+            org_unit_id=org.org_unit_id, feature_key="teaching", enabled_by=1
         )
     )
     db.commit()
@@ -75,11 +75,7 @@ def _teaching_admin(db: Session, username: str) -> User:
 
 
 def _join_org(db: Session, org: Organisation, user: User) -> None:
-    db.execute(
-        organisation_member.insert().values(
-            organisation_id=org.id, user_id=user.id, capacity="staff"
-        )
-    )
+    add_place_member(db, org.org_unit_id, user.id, "staff")
     db.commit()
 
 
@@ -88,17 +84,19 @@ def _join_linked_site(db: Session, org: Organisation, user: User) -> None:
 
     The shape reach admits and membership does not.
     """
-    site = Site(name="Ward 9", type="ward")
+    site = OrgUnit(name="Ward 9", type="ward")
     db.add(site)
     db.flush()
     db.execute(
-        update(Site)
-        .where(Site.id == site.id)
+        update(OrgUnit)
+        .where(OrgUnit.id == site.id)
         .values(parent_id=org.org_unit_id)
     )
     db.execute(
-        site_member.insert().values(
-            site_id=site.id, user_id=user.id, capacity="staff"
+        org_unit_member.insert().values(
+            org_unit_id=site.id,
+            user_id=user.id,
+            capacity="staff",
         )
     )
     db.commit()

@@ -1,6 +1,6 @@
 """Administrative routes ask membership, not reach.
 
-`get_reachable_org_ids` answers *can this person get here*, and a site
+`get_reachable_place_ids` answers *can this person get here*, and a site
 trainee reaches the organisations their site is linked to — that is why a
 delegate sees the trust's teaching content. Administrative routes must
 ask the narrower question: *is this person a member of this
@@ -8,7 +8,7 @@ organisation*.
 
 The two were one function until recently, and the call sites all said
 `get_user_org_ids`, a name that answers neither question out loud. They
-now say `get_member_org_ids`. That rename is behaviour-preserving, so
+now say `get_member_place_ids`. That rename is behaviour-preserving, so
 these tests do not pin the rename — they pin the thing the rename exists
 to protect, which no test covered: that a site trainee cannot administer
 the trust above their site.
@@ -30,11 +30,11 @@ from sqlalchemy.orm import Session
 
 from app.models import (
     Organisation,
-    Site,
+    OrgUnit,
     User,
-    organisation_member,
-    site_member,
+    org_unit_member,
 )
+from app.organisations import add_place_member
 from app.security import hash_password
 
 
@@ -64,15 +64,15 @@ def org(db_session: Session) -> Organisation:
 
 
 @pytest.fixture
-def site(db_session: Session, org: Organisation) -> Site:
+def site(db_session: Session, org: Organisation) -> OrgUnit:
     """A ward of the trust, linked to it the ordinary way."""
-    site = Site(name="Ward 9", type="ward")
+    site = OrgUnit(name="Ward 9", type="ward")
     db_session.add(site)
     db_session.commit()
     db_session.refresh(site)
     db_session.execute(
-        update(Site)
-        .where(Site.id == site.id)
+        update(OrgUnit)
+        .where(OrgUnit.id == site.id)
         .values(parent_id=org.org_unit_id)
     )
     db_session.commit()
@@ -80,7 +80,7 @@ def site(db_session: Session, org: Organisation) -> Site:
 
 
 @pytest.fixture
-def site_only_admin(db_session: Session, site: Site) -> User:
+def site_only_admin(db_session: Session, site: OrgUnit) -> User:
     """Holds ``manage_users`` at a site, and no organisation row.
 
     They reach the trust — the site is linked to it — so a route asking
@@ -89,8 +89,10 @@ def site_only_admin(db_session: Session, site: Site) -> User:
     """
     user = _user(db_session, "ward_admin", profession="system_administrator")
     db_session.execute(
-        insert(site_member).values(
-            site_id=site.id, user_id=user.id, capacity="staff"
+        insert(org_unit_member).values(
+            org_unit_id=site.id,
+            user_id=user.id,
+            capacity="staff",
         )
     )
     db_session.commit()
@@ -121,7 +123,7 @@ class TestSiteMembershipDoesNotAdministerTheTrust:
     ) -> None:
         """404, because the route asks membership and finds none."""
         client = _login(test_client, "ward_admin")
-        response = client.get(f"/api/organisations/{org.id}")
+        response = client.get(f"/api/org-units/{org.org_unit_id}")
 
         assert response.status_code == 404, response.text
 
@@ -133,7 +135,7 @@ class TestSiteMembershipDoesNotAdministerTheTrust:
     ) -> None:
         client = _login(test_client, "ward_admin")
         response = client.put(
-            f"/api/organisations/{org.id}",
+            f"/api/org-units/{org.org_unit_id}",
             json={"name": "Renamed By Someone Downstairs"},
             headers=_csrf(client),
         )
@@ -148,10 +150,10 @@ class TestSiteMembershipDoesNotAdministerTheTrust:
     ) -> None:
         """The listing is built from the same question."""
         client = _login(test_client, "ward_admin")
-        response = client.get("/api/organisations")
+        response = client.get("/api/org-units?roots=true")
 
         assert response.status_code == 200, response.text
-        names = [o["name"] for o in response.json()["organisations"]]
+        names = [o["name"] for o in response.json()["org_units"]]
         assert "Trust" not in names
 
 
@@ -163,11 +165,7 @@ class TestOrganisationMembershipStillWorks:
         user = _user(
             db_session, "trust_admin", profession="system_administrator"
         )
-        db_session.execute(
-            insert(organisation_member).values(
-                organisation_id=org.id, user_id=user.id, capacity="staff"
-            )
-        )
+        add_place_member(db_session, org.org_unit_id, user.id, "staff")
         db_session.commit()
         return user
 
@@ -178,7 +176,7 @@ class TestOrganisationMembershipStillWorks:
         org_admin: User,
     ) -> None:
         client = _login(test_client, "trust_admin")
-        response = client.get(f"/api/organisations/{org.id}")
+        response = client.get(f"/api/org-units/{org.org_unit_id}")
 
         assert response.status_code == 200, response.text
         assert response.json()["name"] == "Trust"
@@ -190,8 +188,8 @@ class TestOrganisationMembershipStillWorks:
         org_admin: User,
     ) -> None:
         client = _login(test_client, "trust_admin")
-        response = client.get("/api/organisations")
+        response = client.get("/api/org-units?roots=true")
 
         assert response.status_code == 200, response.text
-        names = [o["name"] for o in response.json()["organisations"]]
+        names = [o["name"] for o in response.json()["org_units"]]
         assert "Trust" in names

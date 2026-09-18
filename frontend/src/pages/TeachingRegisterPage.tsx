@@ -34,7 +34,7 @@ export default function TeachingRegisterPage() {
         full_name: data.fullName || undefined,
         email: data.email,
         password: data.password,
-        organisation_id: state.organisationId ?? undefined,
+        org_unit_id: state.organisationId ?? undefined,
         site_id: state.siteId ?? undefined,
       });
 

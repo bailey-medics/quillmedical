@@ -35,13 +35,13 @@ from app.cbac.positions import appoint, holders_of, is_vacant
 from app.cbac.scoped import can_practise_at
 from app.models import (
     Organisation,
+    OrgUnit,
     Position,
     PractisingCompetency,
-    Site,
     User,
-    organisation_member,
-    site_member,
+    org_unit_member,
 )
+from app.organisations import add_place_member
 from app.security import hash_password
 
 
@@ -63,14 +63,15 @@ def _authorise(
     competency: str,
     *,
     org: Organisation | None = None,
-    site: Site | None = None,
+    site: OrgUnit | None = None,
 ) -> None:
     """Enable one competency for one person at one place."""
     db.add(
         PractisingCompetency(
             user_id=user.id,
-            organisation_id=org.id if org else None,
-            site_id=site.id if site else None,
+            org_unit_id=(
+                org.org_unit_id if org else (site.id if site else None)
+            ),
             competency=competency,
         )
     )
@@ -105,13 +106,13 @@ def _org(db: Session, name: str) -> Organisation:
     return org
 
 
-def _site(db: Session, name: str, org: Organisation) -> Site:
-    site = Site(name=name, type="ward")
+def _site(db: Session, name: str, org: Organisation) -> OrgUnit:
+    site = OrgUnit(name=name, type="ward")
     db.add(site)
     db.commit()
     db.execute(
-        update(Site)
-        .where(Site.id == site.id)
+        update(OrgUnit)
+        .where(OrgUnit.id == site.id)
         .values(parent_id=org.org_unit_id)
     )
     db.commit()
@@ -119,11 +120,7 @@ def _site(db: Session, name: str, org: Organisation) -> Site:
 
 
 def _staff(db: Session, user: User, org: Organisation) -> None:
-    db.execute(
-        insert(organisation_member).values(
-            organisation_id=org.id, user_id=user.id
-        )
-    )
+    add_place_member(db, org.org_unit_id, user.id, "trainee")
     db.commit()
 
 
@@ -200,8 +197,10 @@ class TestOneSiteWithinAnOrganisation:
         )
         _staff(db_session, manager, trust)
         db_session.execute(
-            insert(site_member).values(
-                site_id=ward.id, user_id=manager.id, capacity="staff"
+            insert(org_unit_member).values(
+                org_unit_id=ward.id,
+                user_id=manager.id,
+                capacity="staff",
             )
         )
         db_session.commit()
@@ -274,9 +273,9 @@ class TestOneSiteWithinAnOrganisation:
 class TestPositionsAsOpposedToCompetencies:
     """A position can be vacant. A competency cannot."""
 
-    def _lead_post(self, db_session, site: Site) -> Position:
+    def _lead_post(self, db_session, site: OrgUnit) -> Position:
         post = Position(
-            site_id=site.id,
+            org_unit_id=site.id,
             kind="clinical_lead",
             title="Clinical lead",
             requires_competency="access_patient_records",

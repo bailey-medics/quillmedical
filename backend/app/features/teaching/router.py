@@ -11,7 +11,7 @@ import random
 import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, NoReturn
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.responses import Response
@@ -96,10 +96,15 @@ from app.features.teaching.video_access import (
 )
 from app.models import (
     Organisation,
-    OrganisationFeature,
+    OrgUnitFeature,
     User,
 )
-from app.organisations import get_member_org_ids, get_reachable_org_ids
+from app.organisations import (
+    get_member_place_ids,
+    get_reachable_place_ids,
+    organisation_of_place,
+    organisation_place_member,
+)
 from app.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
@@ -138,7 +143,7 @@ _DEP_VIEW_CASES = Depends(has_competency("view_teaching_cases"))
 
 
 def _get_user_org_ids(user: User, db: Session) -> list[int]:
-    """Return the organisations the user can reach, or raise 403.
+    """Return the places the user can reach, or raise 403.
 
     Teaching used to carry its own copy of this, walking site membership
     up into organisation membership because that was the available fudge
@@ -146,10 +151,10 @@ def _get_user_org_ids(user: User, db: Session) -> list[int]:
     shared resolver now expresses the same thing as downward reach, so
     this is a thin wrapper that adds only teaching's 403.
     """
-    org_ids = get_reachable_org_ids(db, user.id)
-    if not org_ids:
+    place_ids = get_reachable_place_ids(db, user.id)
+    if not place_ids:
         raise HTTPException(403, "User has no organisation")
-    return org_ids
+    return place_ids
 
 
 def _get_user_org_id(user: User, db: Session) -> int:
@@ -171,23 +176,23 @@ def _get_user_org_id(user: User, db: Session) -> int:
     **Which organisation it returns is still arbitrary**, and that is a
     separate, known bug rather than something this fixes. With two
     memberships it picks whichever comes back first — see
-    ``promote_bank_version``, which takes ``org_id`` in the path for that
-    reason, and the test named
+    ``promote_bank_version_at_place``, which takes ``place_id`` in the
+    path for that reason, and the test named
     ``test_a_bank_held_only_by_your_second_organisation_is_found``.
     Narrowing to membership shrinks the set it chooses from without
     making the choice correct.
     """
-    org_ids = get_member_org_ids(db, user.id)
-    if not org_ids:
+    place_ids = get_member_place_ids(db, user.id)
+    if not place_ids:
         # Deliberately not "no organisation": somebody at a ward of the
         # trust has a place, and saying otherwise would send them looking
         # for the wrong fix.
         raise HTTPException(403, "User is not a member of any organisation")
-    return org_ids[0]
+    return place_ids[0]
 
 
 def resolve_visible_module(user: User, db: Session, module_id: str) -> int:
-    """Return an organisation ID that makes ``module_id`` visible to ``user``.
+    """Return a place id that makes ``module_id`` visible to ``user``.
 
     A module is visible when any of the user's organisations — reached
     directly or through a site — has a ``QuestionBankOrgStatus`` row for
@@ -217,7 +222,7 @@ def resolve_visible_module(user: User, db: Session, module_id: str) -> int:
     statuses = (
         db.execute(
             select(QuestionBankOrgStatus).where(
-                QuestionBankOrgStatus.organisation_id.in_(org_ids),
+                QuestionBankOrgStatus.org_unit_id.in_(org_ids),
                 QuestionBankOrgStatus.question_bank_id == module_id,
             )
         )
@@ -226,8 +231,11 @@ def resolve_visible_module(user: User, db: Session, module_id: str) -> int:
     )
 
     for status in statuses:
-        if status.is_live:
-            return int(status.organisation_id)
+        # A null place means a row written before the column existed and
+        # not touched since; the migration backfilled every one, so this
+        # is belt and braces rather than an expected state.
+        if status.is_live and status.org_unit_id is not None:
+            return int(status.org_unit_id)
 
     raise HTTPException(404, "Module not found")
 
@@ -256,13 +264,13 @@ def _build_candidate_item(
         url = storage.get_image_url(item.question_bank_id, item_folder, key)
         images.append(ItemImageOut(key=key, label=label, url=url))
 
-    # Resolve options
+        # Resolve options
     if bank_type == "uniform":
         options = config.get("options", [])
     else:
         options = item.options or []
 
-    # Strip tags and correct answer info from options for candidate view
+        # Strip tags and correct answer info from options for candidate view
     safe_options = [
         {"id": o.get("id"), "label": o.get("label")} for o in options
     ]
@@ -280,10 +288,9 @@ def _build_candidate_item(
         selected_option=answer.selected_option,
     )
 
-
-# ------------------------------------------------------------------
-# Question banks (read — all teaching users)
-# ------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Question banks (read — all teaching users)
+    # ------------------------------------------------------------------
 
 
 def _module_is_servable(
@@ -336,7 +343,7 @@ def list_question_banks(
     statuses = (
         db.execute(
             select(QuestionBankOrgStatus).where(
-                QuestionBankOrgStatus.organisation_id.in_(org_ids),
+                QuestionBankOrgStatus.org_unit_id.in_(org_ids),
             )
         )
         .scalars()
@@ -359,15 +366,16 @@ def list_question_banks(
         )
         if s.is_live:
             live_map[s.question_bank_id] = True
-        # Which organisation makes this bank visible, for the media
-        # gate below. Media links are per organisation, so completeness
-        # has no global answer — only one per organisation.
-        org_by_bank.setdefault(s.question_bank_id, int(s.organisation_id))
+            # Which organisation makes this bank visible, for the media
+            # gate below. Media links are per organisation, so completeness
+            # has no global answer — only one per organisation.
+        if s.org_unit_id is not None:
+            org_by_bank.setdefault(s.question_bank_id, int(s.org_unit_id))
 
     if not visible_bank_ids:
         return []
 
-    # Fetch configs for visible banks (may be owned by a different org)
+        # Fetch configs for visible banks (may be owned by a different org)
     configs = (
         db.execute(
             select(QuestionBankConfig)
@@ -391,15 +399,15 @@ def list_question_banks(
     for c in configs:
         if c.question_bank_id in seen:
             continue
-        # A module missing any of its media is not offered at all —
-        # hidden rather than shown disabled, because a learner who can
-        # see a module they cannot open raises a support question the
-        # admin cannot answer from the learner's side.
+            # A module missing any of its media is not offered at all —
+            # hidden rather than shown disabled, because a learner who can
+            # see a module they cannot open raises a support question the
+            # admin cannot answer from the learner's side.
         if not _module_is_servable(
             db, org_by_bank.get(c.question_bank_id), c.question_bank_id
         ):
             continue
-        # Only the promoted version, not whichever happens to be newest.
+            # Only the promoted version, not whichever happens to be newest.
         if c.version != active_map.get(c.question_bank_id):
             continue
         seen.add(c.question_bank_id)
@@ -463,7 +471,7 @@ def get_question_bank(
     status_row = (
         db.execute(
             select(QuestionBankOrgStatus).where(
-                QuestionBankOrgStatus.organisation_id.in_(org_ids),
+                QuestionBankOrgStatus.org_unit_id.in_(org_ids),
                 QuestionBankOrgStatus.question_bank_id == bank_id,
             )
         )
@@ -473,13 +481,13 @@ def get_question_bank(
     if not status_row:
         raise HTTPException(404, "Question bank not found")
 
-    # A bank with nothing promoted has nothing to show: describing a version
-    # this organisation does not serve would be worse than saying it is not
-    # there.
+        # A bank with nothing promoted has nothing to show: describing a version
+        # this organisation does not serve would be worse than saying it is not
+        # there.
     if status_row.active_version is None:
         raise HTTPException(404, "Question bank not found")
 
-    # Fetch the promoted version from whichever org owns the content.
+        # Fetch the promoted version from whichever org owns the content.
     config = (
         db.execute(
             select(QuestionBankConfig).where(
@@ -493,10 +501,10 @@ def get_question_bank(
     if not config:
         raise HTTPException(404, "Question bank not found")
 
-    # Missing media hides the whole module, assessment included. Same
-    # 404 as every other refusal here, so "incomplete" is
-    # indistinguishable from "not yours" and "no such bank".
-    if not _module_is_servable(db, int(status_row.organisation_id), bank_id):
+        # Missing media hides the whole module, assessment included. Same
+        # 404 as every other refusal here, so "incomplete" is
+        # indistinguishable from "not yours" and "no such bank".
+    if not _module_is_servable(db, status_row.org_unit_id, bank_id):
         raise HTTPException(404, "Question bank not found")
 
     return {
@@ -515,10 +523,9 @@ def get_question_bank(
         ),
     }
 
-
-# ------------------------------------------------------------------
-# Learning modules (read — all teaching users)
-# ------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Learning modules (read — all teaching users)
+    # ------------------------------------------------------------------
 
 
 @teaching_router.get(
@@ -606,13 +613,14 @@ def get_learning_content(
             return get_learning_image_url_gcs(bucket, module_id, filename)
         return f"/api/teaching/images/learning/{module_id}/{filename}"
 
-    # Every link this module has, so resolving a ref below is a dict
-    # lookup rather than a query per slide.
+        # Every link this module has, so resolving a ref below is a dict
+        # lookup rather than a query per slide.
+
     _links = {
         row.media_key: row
         for row in db.execute(
             select(ModuleMediaLink).where(
-                ModuleMediaLink.organisation_id == org_id,
+                ModuleMediaLink.org_unit_id == org_id,
                 ModuleMediaLink.question_bank_id == module_id,
             )
         )
@@ -673,10 +681,10 @@ def get_learning_content(
                 )
                 return {**empty, "src": f"{asset}{suffix}"}
 
-            # Deterministic names, matching what the job writes. The
-            # flags say which of them exist; the cookie covers the
-            # prefix rather than each file, so nothing has to ask the
-            # bucket what is there.
+                # Deterministic names, matching what the job writes. The
+                # flags say which of them exist; the cookie covers the
+                # prefix rather than each file, so nothing has to ask the
+                # bucket what is there.
             return {
                 "src": f"{asset}-720p.mp4",
                 "src_1080p": (
@@ -686,9 +694,9 @@ def get_learning_content(
                 "captions": f"{asset}.vtt" if link.has_captions else None,
             }
 
-        # Hand-placed file, the convention from before uploads existed.
-        # Guarded before use rather than after: module_dir is None on
-        # the GCS branch, where this fallback does not apply at all.
+            # Hand-placed file, the convention from before uploads existed.
+            # Guarded before use rather than after: module_dir is None on
+            # the GCS branch, where this fallback does not apply at all.
         if base_path and module_dir:
             candidate = module_dir / "learning" / f"{video_ref}.mp4"
             if candidate.is_file():
@@ -791,23 +799,24 @@ def list_learning_modules(
         # No organisation, nothing visible. Not an error for a list.
         return []
 
-    # Which organisation makes each bank visible, not merely whether one
-    # does. Completeness is per organisation, so the media check below
-    # has to be asked of the same organisation that grants the view.
+        # Which organisation makes each bank visible, not merely whether one
+        # does. Completeness is per organisation, so the media check below
+        # has to be asked of the same organisation that grants the view.
     visible_org_by_bank: dict[str, int] = {}
     for status in (
         db.execute(
             select(QuestionBankOrgStatus).where(
-                QuestionBankOrgStatus.organisation_id.in_(org_ids),
+                QuestionBankOrgStatus.org_unit_id.in_(org_ids),
             )
         )
         .scalars()
         .all()
     ):
         if status.is_live:
-            visible_org_by_bank.setdefault(
-                status.question_bank_id, int(status.organisation_id)
-            )
+            if status.org_unit_id is not None:
+                visible_org_by_bank.setdefault(
+                    status.question_bank_id, int(status.org_unit_id)
+                )
 
     visible_bank_ids = set(visible_org_by_bank)
     if not visible_bank_ids:
@@ -829,9 +838,9 @@ def list_learning_modules(
     for bank_id in bank_ids:
         if bank_id not in visible_bank_ids:
             continue
-        # Hidden, not shown disabled. A learner who can see a module
-        # they cannot open raises a support question the admin cannot
-        # answer from the learner's side.
+            # Hidden, not shown disabled. A learner who can see a module
+            # they cannot open raises a support question the admin cannot
+            # answer from the learner's side.
         if not module_media_is_complete(
             db, visible_org_by_bank[bank_id], bank_id
         ):
@@ -943,7 +952,10 @@ def grant_video_access(
         )
 
     try:
-        url_prefix = build_url_prefix(base_url, org_id, module_id)
+        storage_org_id = organisation_of_place(db, org_id)
+        if storage_org_id is None:
+            raise HTTPException(404, "Module not found")
+        url_prefix = build_url_prefix(base_url, storage_org_id, module_id)
     except ValueError:
         # An unsafe module_id reached the prefix builder. Refuse rather
         # than sign anything: the prefix is the entire authorisation
@@ -1002,10 +1014,9 @@ def grant_video_access(
         base_url=url_prefix.rstrip("/"), expires_at=expires_at
     )
 
-
-# ------------------------------------------------------------------
-# Assessments (candidate endpoints)
-# ------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Assessments (candidate endpoints)
+    # ------------------------------------------------------------------
 
 
 @teaching_router.post(
@@ -1024,7 +1035,7 @@ def start_assessment(
     status_row = (
         db.execute(
             select(QuestionBankOrgStatus).where(
-                QuestionBankOrgStatus.organisation_id.in_(org_ids),
+                QuestionBankOrgStatus.org_unit_id.in_(org_ids),
                 QuestionBankOrgStatus.question_bank_id
                 == body.question_bank_id,
                 QuestionBankOrgStatus.is_live.is_(True),
@@ -1036,13 +1047,13 @@ def start_assessment(
     if not status_row:
         raise HTTPException(403, "This assessment is not currently open")
 
-    # The version this organisation has promoted, not the newest imported.
-    # Syncing a revision must not change what a candidate sits mid-cohort;
-    # advancing the pointer is a deliberate act by a staff org admin.
+        # The version this organisation has promoted, not the newest imported.
+        # Syncing a revision must not change what a candidate sits mid-cohort;
+        # advancing the pointer is a deliberate act by a staff org admin.
     if status_row.active_version is None:
         raise HTTPException(403, "This assessment is not currently open")
 
-    # May be owned by a different org — content is shared, the pointer is not.
+        # May be owned by a different org — content is shared, the pointer is not.
     config_row = (
         db.execute(
             select(QuestionBankConfig).where(
@@ -1066,7 +1077,7 @@ def start_assessment(
     published_items = (
         db.execute(
             select(QuestionBankItem).where(
-                QuestionBankItem.organisation_id == config_row.organisation_id,
+                QuestionBankItem.org_unit_id == config_row.org_unit_id,
                 QuestionBankItem.question_bank_id == body.question_bank_id,
                 QuestionBankItem.bank_version == config_row.version,
                 QuestionBankItem.status == "published",
@@ -1083,7 +1094,7 @@ def start_assessment(
             f"need {min_pool}",
         )
 
-    # Randomly select and order items
+        # Randomly select and order items
     selected = random.sample(
         list(published_items),
         min(items_per_attempt, len(published_items)),
@@ -1091,10 +1102,10 @@ def start_assessment(
     if assessment_cfg.get("randomise_order", True):
         random.shuffle(selected)
 
-    # Create assessment
+        # Create assessment
     assessment = Assessment(
         user_id=user.id,
-        organisation_id=status_row.organisation_id,
+        org_unit_id=status_row.org_unit_id,
         question_bank_id=body.question_bank_id,
         bank_version=config_row.version,
         time_limit_minutes=time_limit,
@@ -1159,10 +1170,7 @@ def assessment_history(
                 == Assessment.question_bank_id
             )
             & (QuestionBankConfig.version == Assessment.bank_version)
-            & (
-                QuestionBankConfig.organisation_id
-                == Assessment.organisation_id
-            ),
+            & (QuestionBankConfig.org_unit_id == Assessment.org_unit_id),
         )
         .where(Assessment.user_id == user.id)
         .order_by(Assessment.started_at.desc())
@@ -1235,8 +1243,7 @@ def get_current_item(
     config_row = (
         db.execute(
             select(QuestionBankConfig).where(
-                QuestionBankConfig.organisation_id
-                == assessment.organisation_id,
+                QuestionBankConfig.org_unit_id == assessment.org_unit_id,
                 QuestionBankConfig.question_bank_id
                 == assessment.question_bank_id,
                 QuestionBankConfig.version == assessment.bank_version,
@@ -1286,8 +1293,7 @@ def get_item_by_order(
     config_row = (
         db.execute(
             select(QuestionBankConfig).where(
-                QuestionBankConfig.organisation_id
-                == assessment.organisation_id,
+                QuestionBankConfig.org_unit_id == assessment.org_unit_id,
                 QuestionBankConfig.question_bank_id
                 == assessment.question_bank_id,
                 QuestionBankConfig.version == assessment.bank_version,
@@ -1321,7 +1327,7 @@ def submit_answer(
     if assessment.completed_at:
         raise HTTPException(409, "Assessment already completed")
 
-    # Time limit check
+        # Time limit check
     now = datetime.now(UTC)
     deadline = assessment.started_at.replace(tzinfo=UTC) + timedelta(
         minutes=assessment.time_limit_minutes
@@ -1329,7 +1335,7 @@ def submit_answer(
     if now > deadline:
         raise HTTPException(409, "Time limit exceeded")
 
-    # Find current unanswered item
+        # Find current unanswered item
     current = (
         db.execute(
             select(AssessmentAnswer)
@@ -1345,12 +1351,11 @@ def submit_answer(
     if not current:
         raise HTTPException(409, "All items already answered")
 
-    # Load config
+        # Load config
     config_row = (
         db.execute(
             select(QuestionBankConfig).where(
-                QuestionBankConfig.organisation_id
-                == assessment.organisation_id,
+                QuestionBankConfig.org_unit_id == assessment.org_unit_id,
                 QuestionBankConfig.question_bank_id
                 == assessment.question_bank_id,
                 QuestionBankConfig.version == assessment.bank_version,
@@ -1377,7 +1382,7 @@ def submit_answer(
             item.correct_option_id or "",
         )
 
-    # Persist
+        # Persist
     current.selected_option = body.selected_option
     current.is_correct = is_correct
     current.resolved_tags = resolved_tags
@@ -1451,8 +1456,7 @@ def update_answer(
     config_row = (
         db.execute(
             select(QuestionBankConfig).where(
-                QuestionBankConfig.organisation_id
-                == assessment.organisation_id,
+                QuestionBankConfig.org_unit_id == assessment.org_unit_id,
                 QuestionBankConfig.question_bank_id
                 == assessment.question_bank_id,
                 QuestionBankConfig.version == assessment.bank_version,
@@ -1485,10 +1489,9 @@ def update_answer(
 
     return _build_candidate_item(answer, config, config_row.type)
 
-
-# ------------------------------------------------------------------
-# Certificate email helper
-# ------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Certificate email helper
+    # ------------------------------------------------------------------
 
 
 def _maybe_enqueue_certificate_emails(
@@ -1521,11 +1524,10 @@ def _maybe_enqueue_certificate_emails(
     if not email_student and not email_coordinator:
         return
 
-    # Only send for live exams
+        # Only send for live exams
     status_row = db.execute(
         select(QuestionBankOrgStatus).where(
-            QuestionBankOrgStatus.organisation_id
-            == assessment.organisation_id,
+            QuestionBankOrgStatus.org_unit_id == assessment.org_unit_id,
             QuestionBankOrgStatus.question_bank_id
             == assessment.question_bank_id,
         )
@@ -1546,10 +1548,10 @@ def _maybe_enqueue_certificate_emails(
     if assessment.completed_at:
         completion_date = assessment.completed_at.strftime("%-d %B %Y")
 
-    # Look up org settings for institution name
+        # Look up org settings for institution name
     org_settings = db.execute(
         select(TeachingOrgSettings).where(
-            TeachingOrgSettings.organisation_id == assessment.organisation_id
+            TeachingOrgSettings.org_unit_id == assessment.org_unit_id
         )
     ).scalar_one_or_none()
 
@@ -1611,11 +1613,11 @@ def _maybe_enqueue_certificate_emails(
                 )
             )
 
-    # Clean up temp file downloaded from GCS
+            # Clean up temp file downloaded from GCS
     if tmp_bg:
         tmp_bg.unlink(missing_ok=True)
 
-    # Student email
+        # Student email
     if email_student:
         student_template = extract_email_template(config, "student_email")
         if student_template and user.email:
@@ -1630,11 +1632,11 @@ def _maybe_enqueue_certificate_emails(
                 attachments=att,
             )
 
-    # Coordinator (clinical lead) email — look up from site staff
+            # Coordinator (clinical lead) email — look up from site staff
     if email_coordinator:
         coord_template = extract_email_template(config, "coordinator_email")
         if coord_template:
-            from app.org_units.tree import site_ids_of_organisations
+            from app.org_units.tree import descendant_ids
 
             # Whoever holds the clinical lead post at a place beneath this
             # organisation. Read from the post rather than a role on a
@@ -1644,8 +1646,11 @@ def _maybe_enqueue_certificate_emails(
             # An exact match on one place, with no walk up the tree: a
             # ward does not inherit its hospital's lead, and implying it
             # did would email the wrong person without raising anything.
-            org_site_ids = site_ids_of_organisations(
-                db, [assessment.organisation_id]
+            org_place_id = assessment.org_unit_id
+            org_site_ids = (
+                sorted(descendant_ids(db, [org_place_id]))
+                if org_place_id is not None
+                else []
             )
             lead_ids = set(clinical_leads_of(db, org_site_ids).values())
             clinical_leads = (
@@ -1698,12 +1703,11 @@ def complete_assessment(
     if assessment.completed_at:
         raise HTTPException(409, "Assessment already completed")
 
-    # Load config
+        # Load config
     config_row = (
         db.execute(
             select(QuestionBankConfig).where(
-                QuestionBankConfig.organisation_id
-                == assessment.organisation_id,
+                QuestionBankConfig.org_unit_id == assessment.org_unit_id,
                 QuestionBankConfig.question_bank_id
                 == assessment.question_bank_id,
                 QuestionBankConfig.version == assessment.bank_version,
@@ -1785,13 +1789,13 @@ def complete_assessment(
         "score_breakdown": score_breakdown,
     }
 
+    # ------------------------------------------------------------------
+    # Certificate
+    # ------------------------------------------------------------------
 
-# ------------------------------------------------------------------
-# Certificate
-# ------------------------------------------------------------------
+    # api-schema-check: allow-opaque-permanent
 
 
-# api-schema-check: allow-opaque-permanent
 @teaching_router.get(
     "/assessments/{assessment_id}/certificate",
 )
@@ -1817,12 +1821,11 @@ def download_certificate(
             400, "Certificate only available for passed assessments"
         )
 
-    # Load config to check certificate_download is enabled
+        # Load config to check certificate_download is enabled
     config_row = (
         db.execute(
             select(QuestionBankConfig).where(
-                QuestionBankConfig.organisation_id
-                == assessment.organisation_id,
+                QuestionBankConfig.org_unit_id == assessment.org_unit_id,
                 QuestionBankConfig.question_bank_id
                 == assessment.question_bank_id,
                 QuestionBankConfig.version == assessment.bank_version,
@@ -1838,7 +1841,7 @@ def download_certificate(
     if not config.get("results", {}).get("certificate_download"):
         raise HTTPException(404, "Certificates not enabled for this bank")
 
-    # Find background image (local path or GCS)
+        # Find background image (local path or GCS)
     bg: Path | None = None
     tmp_bg: Path | None = None
     bank_path_str = settings.TEACHING_QUESTION_BANK_PATH
@@ -1865,7 +1868,7 @@ def download_certificate(
             404, "No certificate background found for this bank"
         )
 
-    # Build pass summary from score breakdown
+        # Build pass summary from score breakdown
     criteria = (assessment.score_breakdown or {}).get("criteria", [])
     summary_parts: list[str] = []
     for c in criteria:
@@ -1890,7 +1893,7 @@ def download_certificate(
             assessment.exam_ref = exam_ref
             db.commit()
 
-    # Parse certificate style from config
+            # Parse certificate style from config
     style = parse_certificate_style(config.get("certificate"))
 
     pdf_bytes = generate_certificate_pdf(
@@ -1916,10 +1919,10 @@ def download_certificate(
         },
     )
 
+    # ------------------------------------------------------------------
+    # Educator endpoints
+    # ------------------------------------------------------------------
 
-# ------------------------------------------------------------------
-# Educator endpoints
-# ------------------------------------------------------------------
 
 _DEP_MANAGE = Depends(has_competency("manage_teaching_content"))
 
@@ -1945,7 +1948,7 @@ def list_items(
     """List items in the org's question bank (educator only)."""
     org_id = _get_user_org_id(user, db)
     stmt = select(QuestionBankItem).where(
-        QuestionBankItem.organisation_id == org_id
+        QuestionBankItem.org_unit_id == org_id
     )
     if question_bank_id:
         stmt = stmt.where(
@@ -1995,14 +1998,14 @@ def _resolve_bank_path_or_gcs(bank_id: str) -> tuple[Path, bool]:
     if not bank_id or "/" in bank_id or ".." in bank_id:
         raise HTTPException(400, "Invalid bank_id")
 
-    # Try local path first
+        # Try local path first
     base = settings.TEACHING_QUESTION_BANK_PATH
     if base:
         resolved = resolve_local_bank(base, bank_id)
         if resolved:
             return resolved, False
 
-    # Fall back to GCS
+            # Fall back to GCS
     bucket = settings.TEACHING_GCS_BUCKET
     if bucket:
         try:
@@ -2151,7 +2154,7 @@ def list_results(
     """List all assessment results for the educator's org."""
     org_id = _get_user_org_id(user, db)
     stmt = select(Assessment).where(
-        Assessment.organisation_id == org_id,
+        Assessment.org_unit_id == org_id,
         Assessment.completed_at.isnot(None),
     )
     if question_bank_id:
@@ -2200,15 +2203,23 @@ def create_media_upload_url(
     if expected is None:
         allowed = ", ".join(sorted(ALLOWED_MEDIA_TYPES))
         raise HTTPException(400, f"Unsupported file type (allowed: {allowed})")
-    # Both are checked rather than either: a caller controls both, and
-    # trusting one to vouch for the other is how an allow-list is walked
-    # around.
+        # Both are checked rather than either: a caller controls both, and
+        # trusting one to vouch for the other is how an allow-list is walked
+        # around.
     if body.content_type != expected:
         raise HTTPException(
             400, f"Content type does not match {ext} (expected {expected})"
         )
 
     org_id = _get_user_org_id(user, db)
+    # Media objects live at {organisation_id}/{module}/{asset} in the
+    # bucket, so that number addresses a real file rather than filtering
+    # a table. It keeps counting in organisation ids until the objects
+    # themselves are moved, which is storage work rather than a column
+    # switch.
+    storage_org_id = organisation_of_place(db, org_id)
+    if storage_org_id is None:
+        raise HTTPException(404, "Module not found")
     asset_id = uuid.uuid4().hex
 
     bucket = settings.TEACHING_VIDEOS_SOURCE_BUCKET
@@ -2243,7 +2254,7 @@ def create_media_upload_url(
 
     try:
         url = create_resumable_upload_url(
-            bucket, org_id, module_id, asset_id, body.content_type
+            bucket, storage_org_id, module_id, asset_id, body.content_type
         )
     except ValueError:
         # An unsafe module_id reached the path builder. The path is what
@@ -2361,7 +2372,7 @@ def link_module_media(
 
     existing = db.execute(
         select(ModuleMediaLink).where(
-            ModuleMediaLink.organisation_id == org_id,
+            ModuleMediaLink.org_unit_id == org_id,
             ModuleMediaLink.question_bank_id == module_id,
             ModuleMediaLink.media_key == media_key,
         )
@@ -2377,7 +2388,7 @@ def link_module_media(
         link = existing
     else:
         link = ModuleMediaLink(
-            organisation_id=org_id,
+            org_unit_id=org_id,
             question_bank_id=module_id,
             media_key=media_key,
             asset_id=body.asset_id,
@@ -2389,10 +2400,10 @@ def link_module_media(
         )
         db.add(link)
 
-    # Re-linking points the key at different bytes, so whatever the old
-    # asset's job produced says nothing about this one. Cleared rather
-    # than left behind: a stale `has_1080p` would have the player ask
-    # for a rendition of a file that no longer backs this reference.
+        # Re-linking points the key at different bytes, so whatever the old
+        # asset's job produced says nothing about this one. Cleared rather
+        # than left behind: a stale `has_1080p` would have the player ask
+        # for a rendition of a file that no longer backs this reference.
     link.transcoded_at = None
     link.has_1080p = False
     link.has_poster = False
@@ -2431,10 +2442,11 @@ def link_module_media(
 
     return MediaAssetOut.model_validate(link)
 
+    # A 204 carries no body at all, so there is no schema for oasdiff to
+    # diff. Same shape as the analytics 204s, which carry this marker too.
+    # api-schema-check: allow-opaque-permanent
 
-# A 204 carries no body at all, so there is no schema for oasdiff to
-# diff. Same shape as the analytics 204s, which carry this marker too.
-# api-schema-check: allow-opaque-permanent
+
 @teaching_router.delete(
     "/admin/modules/{module_id}/media/{media_key}/link",
     status_code=204,
@@ -2457,7 +2469,7 @@ def unlink_module_media(
 
     link = db.execute(
         select(ModuleMediaLink).where(
-            ModuleMediaLink.organisation_id == org_id,
+            ModuleMediaLink.org_unit_id == org_id,
             ModuleMediaLink.question_bank_id == module_id,
             ModuleMediaLink.media_key == media_key,
         )
@@ -2496,17 +2508,16 @@ def list_syncs(
     return list(
         db.execute(
             select(QuestionBankSync)
-            .where(QuestionBankSync.organisation_id == org_id)
+            .where(QuestionBankSync.org_unit_id == org_id)
             .order_by(QuestionBankSync.started_at.desc())
         )
         .scalars()
         .all()
     )
 
-
-# ------------------------------------------------------------------
-# Admin endpoints — delegates
-# ------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Admin endpoints — delegates
+    # ------------------------------------------------------------------
 
 
 @teaching_router.get(
@@ -2524,32 +2535,32 @@ def list_delegates(
     (either direct org staff or site staff), with their latest
     assessment result if they have one.
     """
-    from app.models import Site, organisation_member, site_member
-    from app.org_units.tree import site_ids_of_organisations
+    from app.models import OrgUnit, org_unit_member
+    from app.org_units.tree import descendant_ids
 
     # Which organisations the caller is a member of. Direct membership,
     # not reach: this route lists the people *below* the caller, so a
     # trainee reaching up via a site link must not thereby list its staff.
-    caller_org_ids = get_member_org_ids(db, user.id)
+    caller_org_ids = get_member_place_ids(db, user.id)
     if not caller_org_ids:
         return []
 
-    # Get all members: org staff + site staff for linked sites
+        # Get all members: org staff + site staff for linked sites
     org_member_ids = set(
         row[0]
         for row in db.execute(
-            select(organisation_member.c.user_id).where(
-                organisation_member.c.organisation_id.in_(caller_org_ids),
+            select(organisation_place_member.c.user_id).where(
+                organisation_place_member.c.org_unit_id.in_(caller_org_ids),
             )
         ).all()
     )
 
-    caller_site_ids = site_ids_of_organisations(db, caller_org_ids)
+    caller_site_ids = descendant_ids(db, caller_org_ids)
     site_member_ids = set(
         row[0]
         for row in db.execute(
-            select(site_member.c.user_id).where(
-                site_member.c.site_id.in_(caller_site_ids)
+            select(org_unit_member.c.user_id).where(
+                org_unit_member.c.org_unit_id.in_(caller_site_ids)
             )
         ).all()
     )
@@ -2561,13 +2572,13 @@ def list_delegates(
     if not member_ids:
         return []
 
-    # Fetch user details. Every member of the caller's organisations is
-    # listed: this used to exclude anyone whose rank said "admin" or
-    # "superadmin", which was a display preference rather than a check —
-    # the route is already gated by ``_DEP_MANAGE`` and scoped to the
-    # caller's own organisations. It also read the column being retired,
-    # and an administrator who is also a trainee is an ordinary case
-    # rather than one worth hiding.
+        # Fetch user details. Every member of the caller's organisations is
+        # listed: this used to exclude anyone whose rank said "admin" or
+        # "superadmin", which was a display preference rather than a check —
+        # the route is already gated by ``_DEP_MANAGE`` and scoped to the
+        # caller's own organisations. It also read the column being retired,
+        # and an administrator who is also a trainee is an ordinary case
+        # rather than one worth hiding.
     user_ids = list(member_ids)
     users_map: dict[int, User] = {
         u.id: u
@@ -2581,12 +2592,12 @@ def list_delegates(
     if not user_ids:
         return []
 
-    # Get assessments for these users in caller's orgs
+        # Get assessments for these users in caller's orgs
     assessments = (
         db.execute(
             select(Assessment)
             .where(
-                Assessment.organisation_id.in_(caller_org_ids),
+                Assessment.org_unit_id.in_(caller_org_ids),
                 Assessment.user_id.in_(user_ids),
             )
             .order_by(Assessment.started_at.desc())
@@ -2602,19 +2613,19 @@ def list_delegates(
         if a.user_id not in latest_by_user:
             latest_by_user[a.user_id] = a
 
-    # Get site and clinical lead info for each delegate
+            # Get site and clinical lead info for each delegate
     site_info: dict[int, tuple[str | None, str | None]] = {}
     for uid in user_ids:
         site_row = db.execute(
-            select(Site.id, Site.name)
+            select(OrgUnit.id, OrgUnit.name)
             .join(
-                site_member,
-                site_member.c.site_id == Site.id,
+                org_unit_member,
+                org_unit_member.c.org_unit_id == OrgUnit.id,
             )
             .where(
-                site_member.c.user_id == uid,
-                site_member.c.capacity == "trainee",
-                Site.id.in_(caller_site_ids),
+                org_unit_member.c.user_id == uid,
+                org_unit_member.c.capacity == "trainee",
+                OrgUnit.id.in_(caller_site_ids),
             )
         ).first()
 
@@ -2638,7 +2649,7 @@ def list_delegates(
 
         site_info[uid] = (site_name, lead_name)
 
-    # Build response
+        # Build response
     delegates: list[DelegateOut] = []
     for uid in user_ids:
         u = users_map.get(uid)
@@ -2688,10 +2699,9 @@ def list_delegates(
 
     return delegates
 
-
-# ------------------------------------------------------------------
-# Admin endpoints — teaching modules overview
-# ------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Admin endpoints — teaching modules overview
+    # ------------------------------------------------------------------
 
 
 @teaching_router.get(
@@ -2712,7 +2722,7 @@ def list_admin_banks(
     db_configs = (
         db.execute(
             select(QuestionBankConfig)
-            .where(QuestionBankConfig.organisation_id == org_id)
+            .where(QuestionBankConfig.org_unit_id == org_id)
             .order_by(
                 QuestionBankConfig.question_bank_id,
                 QuestionBankConfig.version.desc(),
@@ -2728,26 +2738,26 @@ def list_admin_banks(
         if c.question_bank_id not in seen:
             seen[c.question_bank_id] = c
 
-    # Count items per bank
+            # Count items per bank
     item_counts: dict[str, int] = {}
     for bank_id, cfg in seen.items():
         count = db.execute(
             select(QuestionBankItem.id).where(
-                QuestionBankItem.organisation_id == org_id,
+                QuestionBankItem.org_unit_id == org_id,
                 QuestionBankItem.question_bank_id == bank_id,
                 QuestionBankItem.bank_version == cfg.version,
             )
         ).all()
         item_counts[bank_id] = len(count)
 
-    # What this organisation actually serves, which is not necessarily the
-    # newest imported. Showing both is the point: "version 3 active, version
-    # 4 available" is the state an admin needs to notice.
+        # What this organisation actually serves, which is not necessarily the
+        # newest imported. Showing both is the point: "version 3 active, version
+        # 4 available" is the state an admin needs to notice.
     active_versions: dict[str, int | None] = {
         row.question_bank_id: row.active_version
         for row in db.execute(
             select(QuestionBankOrgStatus).where(
-                QuestionBankOrgStatus.organisation_id == org_id,
+                QuestionBankOrgStatus.org_unit_id == org_id,
             )
         )
         .scalars()
@@ -2763,7 +2773,7 @@ def list_admin_banks(
         except Exception:
             logger.exception("Failed to list GCS banks")
 
-    # Merge
+            # Merge
     all_bank_ids = set(seen.keys()) | gcs_bank_ids
     result: list[AdminBankOut] = []
 
@@ -2910,7 +2920,7 @@ def update_settings(
     org_id = _get_user_org_id(user, db)
     settings_row = db.execute(
         select(TeachingOrgSettings).where(
-            TeachingOrgSettings.organisation_id == org_id
+            TeachingOrgSettings.org_unit_id == org_id
         )
     ).scalar_one_or_none()
 
@@ -2919,7 +2929,7 @@ def update_settings(
         settings_row.institution_name = body.institution_name
     else:
         settings_row = TeachingOrgSettings(
-            organisation_id=org_id,
+            org_unit_id=org_id,
             coordinator_email=body.coordinator_email,
             institution_name=body.institution_name,
         )
@@ -2943,17 +2953,16 @@ def get_settings(
     org_id = _get_user_org_id(user, db)
     settings_row = db.execute(
         select(TeachingOrgSettings).where(
-            TeachingOrgSettings.organisation_id == org_id
+            TeachingOrgSettings.org_unit_id == org_id
         )
     ).scalar_one_or_none()
     if not settings_row:
         raise HTTPException(404, "Teaching settings not found")
     return settings_row
 
-
-# ------------------------------------------------------------------
-# Admin — bank detail & status
-# ------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Admin — bank detail & status
+    # ------------------------------------------------------------------
 
 
 @teaching_router.get(
@@ -2974,7 +2983,7 @@ def get_admin_bank_detail(
         db.execute(
             select(QuestionBankConfig)
             .where(
-                QuestionBankConfig.organisation_id == org_id,
+                QuestionBankConfig.org_unit_id == org_id,
                 QuestionBankConfig.question_bank_id == bank_id,
             )
             .order_by(QuestionBankConfig.version.desc())
@@ -2985,11 +2994,11 @@ def get_admin_bank_detail(
     if not config_row:
         raise HTTPException(404, "Question bank not found")
 
-    # Item count
+        # Item count
     item_count = (
         db.execute(
             select(QuestionBankItem.id).where(
-                QuestionBankItem.organisation_id == org_id,
+                QuestionBankItem.org_unit_id == org_id,
                 QuestionBankItem.question_bank_id == bank_id,
             )
         )
@@ -3028,11 +3037,11 @@ def get_admin_bank_detail(
                 attach_certificate=st.get("attach_certificate", True),
             )
 
-    # The pointer for this organisation, which may lag the newest import.
+            # The pointer for this organisation, which may lag the newest import.
     status_row = (
         db.execute(
             select(QuestionBankOrgStatus).where(
-                QuestionBankOrgStatus.organisation_id == org_id,
+                QuestionBankOrgStatus.org_unit_id == org_id,
                 QuestionBankOrgStatus.question_bank_id == bank_id,
             )
         )
@@ -3073,25 +3082,27 @@ def list_bank_organisations(
         db.execute(
             select(Organisation)
             .join(
-                OrganisationFeature,
-                OrganisationFeature.organisation_id == Organisation.id,
+                OrgUnitFeature,
+                OrgUnitFeature.org_unit_id == Organisation.org_unit_id,
             )
-            .where(OrganisationFeature.feature_key == "teaching")
+            .where(OrgUnitFeature.feature_key == "teaching")
             .order_by(Organisation.name)
         )
         .scalars()
         .all()
     )
 
-    org_ids = [o.id for o in orgs]
+    # The status rows answer in place ids; the response still answers in
+    # organisation ids, which is why both are carried here.
+    place_ids = [o.org_unit_id for o in orgs]
 
     # Get bank status rows for these orgs
     statuses = {
-        row.organisation_id: row
+        row.org_unit_id: row
         for row in db.execute(
             select(QuestionBankOrgStatus).where(
                 QuestionBankOrgStatus.question_bank_id == bank_id,
-                QuestionBankOrgStatus.organisation_id.in_(org_ids),
+                QuestionBankOrgStatus.org_unit_id.in_(place_ids),
             )
         )
         .scalars()
@@ -3100,10 +3111,10 @@ def list_bank_organisations(
 
     rows: list[BankOrgRow] = []
     for org in orgs:
-        status = statuses.get(org.id)
+        status = statuses.get(org.org_unit_id)
         rows.append(
             BankOrgRow(
-                organisation_id=org.id,
+                org_unit_id=org.org_unit_id,
                 organisation_name=org.name,
                 is_live=status.is_live if status else False,
                 site_registration=(
@@ -3115,24 +3126,19 @@ def list_bank_organisations(
     return rows
 
 
-@teaching_router.put(
-    "/admin/banks/{bank_id}/organisations/{org_id}/active-version",
-    response_model=PromoteBankVersionOut,
-    dependencies=[_DEP_MANAGE],
-)
-def promote_bank_version(
+def _promote_bank_version(
     bank_id: str,
-    org_id: int,
+    place_id: int,
     body: PromoteBankVersionIn,
-    user: User = _DEP_USER,
-    db: Session = _DEP_SESSION,
+    user: User,
+    db: Session,
 ) -> PromoteBankVersionOut:
-    """Move which version of a bank an organisation's candidates receive.
+    """Move which version of a bank a place's candidates receive.
 
-    The organisation is named in the path and the caller must belong to it.
-    Not inferred from the caller: ``_get_user_org_id`` returns whichever
-    organisation happens to come back first, so a person teaching for two
-    would silently promote for the wrong one.
+    The place is the one the caller named, and they must be a member of
+    it. Not inferred from the caller: ``_get_user_org_id`` returns
+    whichever membership happens to come back first, so a person
+    teaching for two would silently promote for the wrong one.
 
     Restricted to the caller's own organisations because nothing models which
     organisations one may promote on behalf of. That question belongs to
@@ -3145,17 +3151,17 @@ def promote_bank_version(
     # trust serves. `_get_user_org_ids` answers reach, so a teaching admin
     # whose only membership is a linked site passed this check and could
     # promote for the whole organisation above them.
-    if org_id not in get_member_org_ids(db, user.id):
+    if place_id not in get_member_place_ids(db, user.id):
         raise HTTPException(
             403, "You cannot promote a version for that organisation"
         )
 
-    # The version must exist for this organisation. Content is shared, but a
-    # version another organisation has synced is not one this one can serve.
+        # The version must exist for this organisation. Content is shared, but a
+        # version another organisation has synced is not one this one can serve.
     target = (
         db.execute(
             select(QuestionBankConfig).where(
-                QuestionBankConfig.organisation_id == org_id,
+                QuestionBankConfig.org_unit_id == place_id,
                 QuestionBankConfig.question_bank_id == bank_id,
                 QuestionBankConfig.version == body.version,
             )
@@ -3171,7 +3177,7 @@ def promote_bank_version(
     status_row = (
         db.execute(
             select(QuestionBankOrgStatus).where(
-                QuestionBankOrgStatus.organisation_id == org_id,
+                QuestionBankOrgStatus.org_unit_id == place_id,
                 QuestionBankOrgStatus.question_bank_id == bank_id,
             )
         )
@@ -3190,11 +3196,11 @@ def promote_bank_version(
     db.flush()
 
     logger.info(
-        "Bank '%s' promoted from v%s to v%d for org %d by user %d",
+        "Bank '%s' promoted from v%s to v%d at place %d by user %d",
         bank_id,
         previous,
         body.version,
-        org_id,
+        place_id,
         user.id,
     )
 
@@ -3206,37 +3212,119 @@ def promote_bank_version(
 
 
 @teaching_router.put(
-    "/admin/banks/{bank_id}/organisations/{org_id}/settings",
+    "/admin/banks/{bank_id}/places/{place_id}/settings",
     response_model=QuestionBankOrgSettingsOut,
     dependencies=[_DEP_MANAGE],
 )
-def update_bank_org_settings(
+def update_bank_place_settings(
     bank_id: str,
-    org_id: int,
+    place_id: int,
     body: QuestionBankOrgSettingsIn,
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
 ) -> QuestionBankOrgSettingsOut:
-    """Update settings (status) for a bank-org pair.
+    """Set a bank live or closed for a place.
 
-    The caller must belong to the organisation named in the path. Without
-    that, anyone holding ``manage_teaching_content`` could set a bank live
-    or closed for any organisation at all — and closing one mid-cohort
-    locks its candidates out of an assessment they are part-way through.
+    The only path for this now, and no translation left in it:
+    membership answers in place ids too.
     """
-    # Membership, not reach — the docstring above already says *belong*,
+    return _update_bank_org_settings(bank_id, place_id, body, user, db)
+
+
+@teaching_router.put(
+    "/admin/banks/{bank_id}/places/{place_id}/active-version",
+    response_model=PromoteBankVersionOut,
+    dependencies=[_DEP_MANAGE],
+)
+def promote_bank_version_at_place(
+    bank_id: str,
+    place_id: int,
+    body: PromoteBankVersionIn,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+) -> PromoteBankVersionOut:
+    """Move which version a place's candidates receive.
+
+    The only path for this now, and no translation left in it, as with
+    the settings route beside it.
+    """
+    return _promote_bank_version(bank_id, place_id, body, user, db)
+
+
+def _retired(place_path: str) -> NoReturn:
+    """Say that an organisation-keyed address has been retired.
+
+    410 rather than 404, for the same reason the retired sites and
+    organisations addresses answer 410: a caller can tell "this never
+    existed" from "this used to be here". The replacement is named, so a
+    stale tab's error reaches somebody who can act on it.
+    """
+    raise HTTPException(
+        status_code=410,
+        detail=(
+            "This address has been retired. Name the place instead: "
+            f"{place_path}."
+        ),
+    )
+
+
+@teaching_router.put(
+    "/admin/banks/{bank_id}/organisations/{org_id}/settings",
+    response_model=QuestionBankOrgSettingsOut,
+)
+def update_bank_org_settings_retired(
+    bank_id: str,
+    org_id: int,
+    body: QuestionBankOrgSettingsIn,
+) -> QuestionBankOrgSettingsOut:
+    """Retired. Settings are set at ``/places/{place_id}/settings``.
+
+    No permission check, as with the other retired addresses: there is
+    nothing behind it to protect, and saying it has gone discloses
+    nothing.
+    """
+    _retired("/api/teaching/admin/banks/{bank_id}/places/{place_id}/settings")
+
+
+@teaching_router.put(
+    "/admin/banks/{bank_id}/organisations/{org_id}/active-version",
+    response_model=PromoteBankVersionOut,
+)
+def promote_bank_version_retired(
+    bank_id: str,
+    org_id: int,
+    body: PromoteBankVersionIn,
+) -> PromoteBankVersionOut:
+    """Retired. Versions are promoted at ``/places/{place_id}``."""
+    _retired(
+        "/api/teaching/admin/banks/{bank_id}/places/{place_id}"
+        "/active-version"
+    )
+
+
+def _update_bank_org_settings(
+    bank_id: str,
+    place_id: int,
+    body: QuestionBankOrgSettingsIn,
+    user: User,
+    db: Session,
+) -> QuestionBankOrgSettingsOut:
+    """Update settings (status) for a bank at a place.
+
+    The caller must be a member of the place named. Without that, anyone
+    holding ``manage_teaching_content`` could set a bank live or closed
+    anywhere at all — and closing one mid-cohort locks its candidates
+    out of an assessment they are part-way through.
+    """
+    # Membership, not reach — the docstring above already says *member*,
     # and reaching a trust from a ward is not belonging to it. Closing a
     # bank is the operation this protects: it locks candidates out of an
     # assessment they are part-way through.
-    org_ids = get_member_org_ids(db, user.id)
-    if org_id not in org_ids:
+    org_place_ids = get_member_place_ids(db, user.id)
+    if place_id not in org_place_ids:
         raise HTTPException(
             403, "You cannot change settings for that organisation"
         )
-
-    org = db.get(Organisation, org_id)
-    if not org:
-        raise HTTPException(404, "Organisation not found")
 
     # The bank must be one the caller can see, which is not the same as one
     # the target organisation has already synced: setting a bank live for an
@@ -3249,7 +3337,7 @@ def update_bank_org_settings(
     config_row = (
         db.execute(
             select(QuestionBankConfig).where(
-                QuestionBankConfig.organisation_id.in_(org_ids),
+                QuestionBankConfig.org_unit_id.in_(org_place_ids),
                 QuestionBankConfig.question_bank_id == bank_id,
             )
         )
@@ -3259,10 +3347,10 @@ def update_bank_org_settings(
     if not config_row:
         raise HTTPException(404, "Question bank not found")
 
-    # Upsert status row
+        # Upsert status row
     status_row = db.execute(
         select(QuestionBankOrgStatus).where(
-            QuestionBankOrgStatus.organisation_id == org_id,
+            QuestionBankOrgStatus.org_unit_id == place_id,
             QuestionBankOrgStatus.question_bank_id == bank_id,
         )
     ).scalar_one_or_none()
@@ -3286,13 +3374,13 @@ def update_bank_org_settings(
         # which is honest — there is no version to serve.
         active_version = db.execute(
             select(func.max(QuestionBankConfig.version)).where(
-                QuestionBankConfig.organisation_id == org_id,
+                QuestionBankConfig.org_unit_id == place_id,
                 QuestionBankConfig.question_bank_id == bank_id,
             )
         ).scalar_one_or_none()
 
         status_row = QuestionBankOrgStatus(
-            organisation_id=org_id,
+            org_unit_id=place_id,
             question_bank_id=bank_id,
             is_live=body.is_live,
             site_registration=body.site_registration,
@@ -3308,10 +3396,11 @@ def update_bank_org_settings(
         site_registration=status_row.site_registration,
     )
 
+    # A 204 carries no body at all, so there is no schema for oasdiff to
+    # diff. Same shape as the unlink 204 above.
+    # api-schema-check: allow-opaque-permanent
 
-# A 204 carries no body at all, so there is no schema for oasdiff to
-# diff. Same shape as the unlink 204 above.
-# api-schema-check: allow-opaque-permanent
+
 @teaching_router.put(
     "/admin/modules/{module_id}/media/{asset_id}/content",
     status_code=204,
@@ -3363,9 +3452,9 @@ async def upload_media_content_locally(
         allowed = ", ".join(sorted(set(ALLOWED_MEDIA_TYPES.values())))
         raise HTTPException(400, f"Unsupported type (allowed: {allowed})")
 
-    # The asset id is generated server-side and lands in a filename, so
-    # it is held to the same shape as every other path component rather
-    # than trusted because we made it.
+        # The asset id is generated server-side and lands in a filename, so
+        # it is held to the same shape as every other path component rather
+        # than trusted because we made it.
     if not _SAFE_ASSET_ID.fullmatch(asset_id):
         raise HTTPException(400, "Invalid asset id")
 
@@ -3443,10 +3532,11 @@ def _delete_local_media_object(
     )
     (module_dir / "learning" / f"{asset_id}{suffix}").unlink(missing_ok=True)
 
+    # A 204 carries no body at all, so there is no schema for oasdiff to
+    # diff. Same shape as the unlink 204 above.
+    # api-schema-check: allow-opaque-permanent
 
-# A 204 carries no body at all, so there is no schema for oasdiff to
-# diff. Same shape as the unlink 204 above.
-# api-schema-check: allow-opaque-permanent
+
 @teaching_router.delete(
     "/admin/modules/{module_id}/media/{asset_id}",
     status_code=204,
@@ -3477,7 +3567,7 @@ def delete_media_asset(
 
     link = db.execute(
         select(ModuleMediaLink).where(
-            ModuleMediaLink.organisation_id == org_id,
+            ModuleMediaLink.org_unit_id == org_id,
             ModuleMediaLink.question_bank_id == module_id,
             ModuleMediaLink.asset_id == asset_id,
         )
@@ -3494,7 +3584,10 @@ def delete_media_asset(
 
     bucket = settings.TEACHING_VIDEOS_SOURCE_BUCKET
     if bucket:
-        delete_media_object(bucket, org_id, module_id, asset_id)
+        # The row remembers which organisation's prefix its object was
+        # written under, which is the only thing that can say where the
+        # file is.
+        delete_media_object(bucket, link.organisation_id, module_id, asset_id)
     else:
         # Development, where the upload landed on disk rather than in a
         # bucket. Refusing here would leave the admin unable to undo the
@@ -3502,8 +3595,8 @@ def delete_media_asset(
         # every attempt to clear it.
         _delete_local_media_object(module_id, asset_id, link.content_type)
 
-    # Destructive, so the actor and the module are recorded. No
-    # filename: this line goes to a log that is not PHI-safe.
+        # Destructive, so the actor and the module are recorded. No
+        # filename: this line goes to a log that is not PHI-safe.
     logger.info(
         "media asset deleted user=%s org=%s module=%s asset=%s",
         user.id,
@@ -3525,7 +3618,7 @@ def _caption_link_or_404(
     """
     link = db.execute(
         select(ModuleMediaLink).where(
-            ModuleMediaLink.organisation_id == org_id,
+            ModuleMediaLink.org_unit_id == org_id,
             ModuleMediaLink.question_bank_id == module_id,
             ModuleMediaLink.asset_id == asset_id,
         )

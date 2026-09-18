@@ -393,7 +393,8 @@ class TeachingOrgSettingsOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    organisation_id: int
+    #: The organisation, as a place id.
+    org_unit_id: int | None = None
     coordinator_email: str
     institution_name: str
 
@@ -531,7 +532,8 @@ class AdminBankDetailOut(BaseModel):
 class BankOrgRow(BaseModel):
     """One organisation's status for a question bank."""
 
-    organisation_id: int
+    #: The organisation, as a place id.
+    org_unit_id: int | None = None
     organisation_name: str
     is_live: bool = False
     site_registration: bool = False

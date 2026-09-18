@@ -31,7 +31,7 @@ from app.features.passport.models import (
     PassportSignOffRequest,
     SiteCommonCompetency,
 )
-from app.models import Base, Organisation, User
+from app.models import Base, Organisation, OrgUnit, User
 
 PASSPORT_ID = "3f2a8c1e4b7d49f0a6c2e8b1d5a7f309"
 OTHER_ID = "a1b2c3d4e5f60718293a4b5c6d7e8f90"
@@ -173,16 +173,21 @@ class TestSignOffRequest:
 
 
 class TestSiteCommonCompetency:
-    def test_exactly_one_place(self, db_session: Session) -> None:
-        """A shortlist belongs to a site or an organisation, not both and
-        not neither."""
+    def test_a_shortlist_belongs_to_a_place(self, db_session: Session) -> None:
+        """One column, so "exactly one place" needs no constraint.
+
+        This carried ``site_id`` and ``organisation_id`` with a check
+        constraint policing the pair. A trust is a place, so a
+        trust-wide list is the organisation's own row in the tree and a
+        ward's is the ward's — the same column either way.
+        """
         organisation = Organisation(name="A trust")
         db_session.add(organisation)
         db_session.flush()
 
         db_session.add(
             SiteCommonCompetency(
-                organisation_id=organisation.id,
+                org_unit_id=organisation.org_unit_id,
                 competency_id="prescribe_sact",
             )
         )
@@ -205,13 +210,45 @@ class TestSiteCommonCompetency:
         for _ in range(2):
             db_session.add(
                 SiteCommonCompetency(
-                    organisation_id=organisation.id,
+                    org_unit_id=organisation.org_unit_id,
                     competency_id="prescribe_sact",
                 )
             )
 
         with pytest.raises(IntegrityError):
             db_session.flush()
+
+    def test_a_ward_and_its_trust_keep_separate_lists(
+        self, db_session: Session
+    ) -> None:
+        """The property the old pair existed for, in one column.
+
+        A ward's shortlist and the trust's are two rows naming two
+        places, rather than two columns on rows of one table.
+        """
+        organisation = Organisation(name="A third trust")
+        db_session.add(organisation)
+        db_session.flush()
+        ward = OrgUnit(
+            name="Ward 9", type="ward", parent_id=organisation.org_unit_id
+        )
+        db_session.add(ward)
+        db_session.flush()
+
+        db_session.add(
+            SiteCommonCompetency(
+                org_unit_id=organisation.org_unit_id,
+                competency_id="prescribe_sact",
+            )
+        )
+        db_session.add(
+            SiteCommonCompetency(
+                org_unit_id=ward.id,
+                competency_id="prescribe_sact",
+            )
+        )
+
+        db_session.flush()
 
     def test_it_gates_nothing(self) -> None:
         """Interface furniture. Nothing reads it when deciding what a
@@ -394,7 +431,7 @@ class TestRegistrationVerification:
             registration_authority=authority,
             registration_number=number,
             verified_by_user_id=admin.id,
-            organisation_id=organisation.id,
+            org_unit_id=organisation.org_unit_id,
         )
 
     def test_it_records_who_checked_and_when(
