@@ -16,6 +16,7 @@ import { useAuth } from "../../auth/AuthContext";
 import { useHasFeature } from "@lib/features";
 import { useHasCompetency } from "@/lib/cbac/hooks";
 import { api } from "@/lib/api";
+import { orgUnits } from "@/domains/orgUnit";
 import NavIcon from "../icons/NavIcon";
 import NestedNavLink, { type NavItem } from "./NestedNavLink";
 import { useFeatureNavItems } from "./featureNavItems";
@@ -187,69 +188,65 @@ export default function SideNavContent({
     let cancelled = false;
 
     async function fetchOrgNav() {
-      if (orgId) {
-        try {
-          const org = await api.get<{ name: string }>(
-            `/organisations/${orgId}`,
-          );
-          if (cancelled) return;
-          const orgItem: NavItem = {
-            label: org.name || "Unknown Organisation",
-            href: `/admin/organisations/${orgId}`,
-            children:
-              orgSubPage === "features"
-                ? [
-                    {
-                      label: "Features",
-                      href: `/admin/organisations/${orgId}/features`,
-                    },
-                  ]
-                : undefined,
-          };
-          setOrgNavChildren([orgItem]);
-        } catch (error) {
-          console.error("Failed to fetch organisation name:", error);
-          if (!cancelled) setOrgNavChildren(undefined);
-        }
-      } else if (siteId) {
-        try {
-          const site = await api.get<{
-            name: string;
-            organisations: Array<{ id: number; name: string }>;
-          }>(`/sites/${siteId}`);
-          if (cancelled) return;
-          const firstOrg = site.organisations?.[0];
-          const siteChild: NavItem = {
-            label: site.name || "Unknown Site",
-            href: `/admin/sites/${siteId}`,
-            children: siteSubPage
-              ? [
-                  {
-                    label:
-                      siteSubPage.charAt(0).toUpperCase() +
-                      siteSubPage.slice(1),
-                    href: `/admin/sites/${siteId}/${siteSubPage}`,
-                  },
-                ]
-              : undefined,
-          };
-          if (firstOrg) {
-            setOrgNavChildren([
-              {
-                label: firstOrg.name,
-                href: `/admin/organisations/${firstOrg.id}`,
-                children: [siteChild],
-              },
-            ]);
-          } else {
-            setOrgNavChildren([siteChild]);
-          }
-        } catch (error) {
-          console.error("Failed to fetch site name:", error);
-          if (!cancelled) setOrgNavChildren(undefined);
-        }
-      } else {
+      // Sentence case, and named here rather than capitalised from the
+      // address — "add-staff" became "Add-staff" on screen.
+      const subPageLabels: Record<string, string> = {
+        features: "Features",
+        edit: "Edit",
+        "add-staff": "Add staff",
+        "add-patient": "Add patient",
+        "add-site": "Add site",
+      };
+
+      // Both branches read the same address, because an organisation and
+      // a site are the same kind of thing now. The old code asked
+      // `/organisations/{id}` with what is a place id, which answered
+      // about whichever organisation happened to hold that number.
+      const placeId = orgId ?? siteId;
+      // "new" is a page, not a place. Asking about it used to produce a
+      // failed request on every visit to the create form.
+      if (!placeId || !/^\d+$/.test(placeId)) {
         setOrgNavChildren(undefined);
+        return;
+      }
+
+      try {
+        const place = await orgUnits.get(Number(placeId));
+        if (cancelled) return;
+
+        const subPage = orgId ? orgSubPage : siteSubPage;
+        const subPageLabel = subPage ? subPageLabels[subPage] : undefined;
+        const base = orgId
+          ? `/admin/organisations/${placeId}`
+          : `/admin/sites/${placeId}`;
+
+        const placeItem: NavItem = {
+          label: place.name || "Unknown place",
+          href: base,
+          children: subPageLabel
+            ? [{ label: subPageLabel, href: `${base}/${subPage}` }]
+            : undefined,
+        };
+
+        // The place above may be a building rather than the trust, so
+        // which page to link to comes from the server rather than from
+        // assuming everything hangs straight off an organisation.
+        if (place.parent_id !== null && place.parent_name) {
+          setOrgNavChildren([
+            {
+              label: place.parent_name,
+              href: place.parent_is_root
+                ? `/admin/organisations/${place.parent_id}`
+                : `/admin/sites/${place.parent_id}`,
+              children: [placeItem],
+            },
+          ]);
+        } else {
+          setOrgNavChildren([placeItem]);
+        }
+      } catch (error) {
+        console.error("Failed to fetch place name:", error);
+        if (!cancelled) setOrgNavChildren(undefined);
       }
     }
 
@@ -347,6 +344,14 @@ export default function SideNavContent({
         href: "/admin/organisations",
         icon: showIcons ? "building-community" : undefined,
         children: orgNavEffective,
+      } satisfies NavItem,
+      // The sites of one organisation already hang under it above. This
+      // is the way in for somebody who knows the site but not which
+      // organisation owns it, which until now was no way in at all.
+      {
+        label: "Sites",
+        href: "/admin/sites",
+        icon: showIcons ? "building-hospital" : undefined,
       } satisfies NavItem,
       ...(hasTeaching
         ? [

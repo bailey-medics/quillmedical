@@ -41,11 +41,58 @@ org_unit_types:
   # GOVERNANCE
   # ==========================================================================
 
+  # The kinds of thing that can stand at the top of a tree. They used to
+  # be a separate `type` column on the organisations table, which meant
+  # two vocabularies for one question — what is this place? — and a root
+  # in the tree that could not say which kind of organisation it was.
+  #
+  # `organisation` stays as the plain answer for a body that is none of
+  # the others, so nothing has to be reclassified to be created.
+
   - id: organisation
     display_name: "Organisation"
     description: >-
       The top of a tree: a trust, a GP practice, a teaching establishment.
-      The only type that carries features and a patient list.
+      Use it where none of the more particular kinds below fits.
+    requires_parent: false
+    can_hold_features: true
+    can_hold_positions: true
+    can_hold_competencies: true
+    can_have_members: true
+
+  - id: hospital_team
+    display_name: "Hospital team"
+    description: "A team within a hospital, standing on its own."
+    requires_parent: false
+    can_hold_features: true
+    can_hold_positions: true
+    can_hold_competencies: true
+    can_have_members: true
+
+  - id: gp_practice
+    display_name: "GP practice"
+    description: "A general practice."
+    requires_parent: false
+    can_hold_features: true
+    can_hold_positions: true
+    can_hold_competencies: true
+    can_have_members: true
+
+  - id: private_clinic
+    display_name: "Private clinic"
+    description: "A clinic outside the health service."
+    requires_parent: false
+    can_hold_features: true
+    can_hold_positions: true
+    can_hold_competencies: true
+    can_have_members: true
+
+  - id: teaching_establishment
+    display_name: "Teaching establishment"
+    description: >-
+      A medical school or other body whose business is teaching. It
+      teaches at places it does not own, which is a link rather than a
+      parent.
     requires_parent: false
     can_hold_features: true
     can_hold_positions: true

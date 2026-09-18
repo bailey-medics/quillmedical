@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "request-property-removed PATCH /api/users/{user_id} removed the request property `organisation_ids`"
+reason: "As for the create request. On an update the field also decided which memberships were cleared, and having two fields each clearing its own half is what made the rules hard to state: naming a ward and not the trust used to leave the trust membership standing. One list settles the lot."

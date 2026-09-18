@@ -10,9 +10,9 @@ from app.models import (
     Message,
     Organisation,
     User,
-    organisation_member,
-    organisation_patient_member,
+    org_unit_patient_member,
 )
+from app.organisations import add_place_member
 from app.security import hash_password
 
 # ---------------------------------------------------------------------------
@@ -41,16 +41,10 @@ def _setup_org_context(
     """
     db_session.flush()
 
+    add_place_member(db_session, test_org.org_unit_id, test_user.id, "staff")
     db_session.execute(
-        organisation_member.insert().values(
-            organisation_id=test_org.id,
-            user_id=test_user.id,
-            capacity="staff",
-        )
-    )
-    db_session.execute(
-        organisation_patient_member.insert().values(
-            organisation_id=test_org.id,
+        org_unit_patient_member.insert().values(
+            org_unit_id=test_org.org_unit_id,
             patient_id=PATIENT_ID,
         )
     )
@@ -78,13 +72,7 @@ def second_user(db_session: Session, test_org: Organisation) -> User:
     db_session.add(user)
     db_session.flush()
 
-    db_session.execute(
-        organisation_member.insert().values(
-            organisation_id=test_org.id,
-            user_id=user.id,
-            capacity="staff",
-        )
-    )
+    add_place_member(db_session, test_org.org_unit_id, user.id, "staff")
     db_session.commit()
     db_session.refresh(user)
     return user
@@ -96,11 +84,7 @@ def _place_admin_in(db: Session, org: Organisation, admin: User) -> None:
     An admin may act on a user only where they share an organisation, so a
     test that acts on someone must say where both of them are.
     """
-    db.execute(
-        organisation_member.insert().values(
-            organisation_id=org.id, user_id=admin.id, capacity="staff"
-        )
-    )
+    add_place_member(db, org.org_unit_id, admin.id, "staff")
     db.commit()
 
 
@@ -121,13 +105,7 @@ def patient_user(db_session: Session, test_org: Organisation) -> User:
     )
     db_session.add(user)
     db_session.flush()
-    db_session.execute(
-        organisation_member.insert().values(
-            organisation_id=test_org.id,
-            user_id=user.id,
-            capacity="trainee",
-        )
-    )
+    add_place_member(db_session, test_org.org_unit_id, user.id, "trainee")
     db_session.commit()
     db_session.refresh(user)
     return user
@@ -150,10 +128,9 @@ def _fhir_response(comm_id: str = "fhir-comm-1") -> dict:
     """Build a minimal FHIR Communication response."""
     return {"resourceType": "Communication", "id": comm_id}
 
-
-# ---------------------------------------------------------------------------
-# Conversation creation
-# ---------------------------------------------------------------------------
+    # ---------------------------------------------------------------------------
+    # Conversation creation
+    # ---------------------------------------------------------------------------
 
 
 class TestCreateConversation:
@@ -236,10 +213,9 @@ class TestCreateConversation:
         )
         assert resp.status_code == 403
 
-
-# ---------------------------------------------------------------------------
-# List conversations
-# ---------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------
+        # List conversations
+        # ---------------------------------------------------------------------------
 
 
 class TestListConversations:
@@ -298,10 +274,9 @@ class TestListConversations:
         )
         assert len(resp.json()["conversations"]) == 0
 
-
-# ---------------------------------------------------------------------------
-# Get conversation detail
-# ---------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------
+        # Get conversation detail
+        # ---------------------------------------------------------------------------
 
 
 class TestGetConversation:
@@ -336,10 +311,9 @@ class TestGetConversation:
         resp = authenticated_client.get("/api/conversations/99999")
         assert resp.status_code == 404
 
-
-# ---------------------------------------------------------------------------
-# Send message
-# ---------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------
+        # Send message
+        # ---------------------------------------------------------------------------
 
 
 class TestSendMessage:
@@ -424,10 +398,9 @@ class TestSendMessage:
         )
         assert resp.status_code == 404
 
-
-# ---------------------------------------------------------------------------
-# Update conversation status
-# ---------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------
+        # Update conversation status
+        # ---------------------------------------------------------------------------
 
 
 class TestUpdateConversationStatus:
@@ -470,10 +443,9 @@ class TestUpdateConversationStatus:
         )
         assert resp.status_code == 404
 
-
-# ---------------------------------------------------------------------------
-# Participants
-# ---------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------
+        # Participants
+        # ---------------------------------------------------------------------------
 
 
 class TestParticipants:
@@ -544,10 +516,9 @@ class TestParticipants:
         )
         assert resp.status_code == 404
 
-
-# ---------------------------------------------------------------------------
-# Mark as read
-# ---------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------
+        # Mark as read
+        # ---------------------------------------------------------------------------
 
 
 class TestMarkRead:
@@ -588,10 +559,9 @@ class TestMarkRead:
         )
         assert resp.status_code == 404
 
-
-# ---------------------------------------------------------------------------
-# Unread count
-# ---------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------
+        # Unread count
+        # ---------------------------------------------------------------------------
 
 
 class TestUnreadCount:
@@ -637,10 +607,9 @@ class TestUnreadCount:
         assert len(convs) == 1
         assert convs[0]["unread_count"] == 1
 
-
-# ---------------------------------------------------------------------------
-# Include patient as participant flag
-# ---------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------
+        # Include patient as participant flag
+        # ---------------------------------------------------------------------------
 
 
 class TestIncludePatientAsParticipant:
@@ -708,10 +677,9 @@ class TestIncludePatientAsParticipant:
         assert detail.status_code == 200
         assert detail.json()["include_patient_as_participant"] is True
 
-
-# ---------------------------------------------------------------------------
-# Access control: non-participant reads
-# ---------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------
+        # Access control: non-participant reads
+        # ---------------------------------------------------------------------------
 
 
 class TestNonParticipantAccess:
@@ -777,10 +745,9 @@ class TestNonParticipantAccess:
         assert data["is_participant"] is True
         assert data["can_write"] is True
 
-
-# ---------------------------------------------------------------------------
-# Patient conversations list
-# ---------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------
+        # Patient conversations list
+        # ---------------------------------------------------------------------------
 
 
 class TestPatientConversations:
@@ -864,10 +831,9 @@ class TestPatientConversations:
         resp = test_client.get(f"/api/patients/{PATIENT_ID}/conversations")
         assert resp.status_code == 401
 
-
-# ---------------------------------------------------------------------------
-# Join conversation
-# ---------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------
+        # Join conversation
+        # ---------------------------------------------------------------------------
 
 
 class TestJoinConversation:
@@ -1058,12 +1024,8 @@ class TestJoinConversation:
         )
         db_session.add(delegate)
         db_session.flush()
-        db_session.execute(
-            organisation_member.insert().values(
-                organisation_id=test_org.id,
-                user_id=delegate.id,
-                capacity="trainee",
-            )
+        add_place_member(
+            db_session, test_org.org_unit_id, delegate.id, "trainee"
         )
         db_session.commit()
 
@@ -1087,10 +1049,9 @@ class TestJoinConversation:
             == "not_in_message_organisation"
         )
 
-
-# ---------------------------------------------------------------------------
-# Org-scoped access
-# ---------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------
+        # Org-scoped access
+        # ---------------------------------------------------------------------------
 
 
 class TestOrgScopedAccess:
@@ -1165,12 +1126,8 @@ class TestOrgScopedAccess:
         other_org = Organisation(name="Other Hospital", type="hospital_team")
         db_session.add(other_org)
         db_session.flush()
-        db_session.execute(
-            organisation_member.insert().values(
-                organisation_id=other_org.id,
-                user_id=outsider.id,
-                capacity="staff",
-            )
+        add_place_member(
+            db_session, other_org.org_unit_id, outsider.id, "staff"
         )
         db_session.commit()
 
@@ -1183,10 +1140,9 @@ class TestOrgScopedAccess:
         resp = authenticated_client.get(f"/api/conversations/{conv_id}")
         assert resp.status_code == 404
 
-
-# ---------------------------------------------------------------------------
-# Shared organisations endpoint
-# ---------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------
+        # Shared organisations endpoint
+        # ---------------------------------------------------------------------------
 
 
 class TestSharedOrganisations:
@@ -1215,10 +1171,9 @@ class TestSharedOrganisations:
         assert resp.status_code == 200
         assert resp.json()["organisations"] == []
 
-
-# ---------------------------------------------------------------------------
-# External access: invite / accept / revoke
-# ---------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------
+        # External access: invite / accept / revoke
+        # ---------------------------------------------------------------------------
 
 
 class TestInviteExternal:
@@ -1390,14 +1345,13 @@ class TestRevokeExternalAccess:
         )
         assert resp.status_code == 403
 
-
-# ---------------------------------------------------------------------------
-# Organisation management: remove staff / patients, link patient
-# ---------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------
+        # Organisation management: remove staff / patients, link patient
+        # ---------------------------------------------------------------------------
 
 
 class TestRemoveStaffFromOrg:
-    """Test DELETE /api/organisations/{org_id}/staff/{user_id}."""
+    """Test DELETE /api/org-units/{unit_id}/members/{user_id}."""
 
     def test_admin_can_remove_staff(
         self,
@@ -1409,12 +1363,8 @@ class TestRemoveStaffFromOrg:
     ):
         """Admin can remove a staff member from an org."""
         # Add admin to org so they pass the membership check
-        db_session.execute(
-            organisation_member.insert().values(
-                organisation_id=test_org.id,
-                user_id=test_admin.id,
-                capacity="staff",
-            )
+        add_place_member(
+            db_session, test_org.org_unit_id, test_admin.id, "staff"
         )
         db_session.commit()
 
@@ -1426,7 +1376,7 @@ class TestRemoveStaffFromOrg:
         token = authenticated_client.cookies.get("XSRF-TOKEN")
 
         resp = authenticated_client.delete(
-            f"/api/organisations/{test_org.id}/staff/{second_user.id}",
+            f"/api/org-units/{test_org.org_unit_id}/members/{second_user.id}",
             headers={"X-CSRF-Token": token},
         )
         assert resp.status_code == 200
@@ -1440,14 +1390,14 @@ class TestRemoveStaffFromOrg:
     ):
         """Non-admin cannot remove staff."""
         resp = authenticated_client.delete(
-            f"/api/organisations/{test_org.id}/staff/{second_user.id}",
+            f"/api/org-units/{test_org.org_unit_id}/members/{second_user.id}",
             headers={"X-CSRF-Token": csrf_token},
         )
         assert resp.status_code == 403
 
 
 class TestRemovePatientFromOrg:
-    """Test DELETE /api/organisations/{org_id}/patients/{patient_id}."""
+    """Test DELETE /api/org-units/{unit_id}/patients/{patient_id}."""
 
     def test_patient_manager_can_remove_patient(
         self,
@@ -1463,12 +1413,8 @@ class TestRemovePatientFromOrg:
         which patients a place cares for.
         """
         # Add them to the org so they pass the membership check
-        db_session.execute(
-            organisation_member.insert().values(
-                organisation_id=test_org.id,
-                user_id=test_patient_manager.id,
-                capacity="staff",
-            )
+        add_place_member(
+            db_session, test_org.org_unit_id, test_patient_manager.id, "staff"
         )
         db_session.commit()
 
@@ -1483,7 +1429,7 @@ class TestRemovePatientFromOrg:
         token = authenticated_client.cookies.get("XSRF-TOKEN")
 
         resp = authenticated_client.delete(
-            f"/api/organisations/{test_org.id}/patients/{PATIENT_ID}",
+            f"/api/org-units/{test_org.org_unit_id}/patients/{PATIENT_ID}",
             headers={"X-CSRF-Token": token},
         )
         assert resp.status_code == 200
@@ -1542,13 +1488,7 @@ class TestLinkPatient:
         )
         db_session.add(other)
         db_session.flush()
-        db_session.execute(
-            organisation_member.insert().values(
-                organisation_id=test_org.id,
-                user_id=other.id,
-                capacity="trainee",
-            )
-        )
+        add_place_member(db_session, test_org.org_unit_id, other.id, "trainee")
         db_session.commit()
 
         authenticated_client.post(

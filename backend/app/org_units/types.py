@@ -108,6 +108,17 @@ ORG_UNIT_TYPES: list[OrgUnitTypeEntry] = _load_org_unit_types(
 #: Every known type id, in declaration order.
 ORG_UNIT_TYPE_IDS: tuple[str, ...] = tuple(t.id for t in ORG_UNIT_TYPES)
 
+#: The kinds that stand at the top of a tree — the organisations.
+#:
+#: Read from the flag rather than compared against one name, because
+#: there is more than one kind of organisation: a GP practice and a
+#: teaching establishment are both tops of trees. A query asking for the
+#: places *inside* organisations excludes all of these, and asking it any
+#: other way quietly loses a kind the day another is added.
+ROOT_TYPE_IDS: frozenset[str] = frozenset(
+    t.id for t in ORG_UNIT_TYPES if not t.requires_parent
+)
+
 _BY_ID: dict[str, OrgUnitTypeEntry] = {t.id: t for t in ORG_UNIT_TYPES}
 
 

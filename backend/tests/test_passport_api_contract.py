@@ -36,10 +36,10 @@ from app.features.passport.store import LocalPassportStore
 from app.main import app
 from app.models import (
     Organisation,
-    OrganisationFeature,
+    OrgUnitFeature,
     User,
-    organisation_member,
 )
+from app.organisations import add_place_member
 from app.passport_storage import get_passport_store
 from app.security import hash_password
 
@@ -174,15 +174,11 @@ def org(db_session: Session, holder: User, org_admin: User) -> Organisation:
     db_session.refresh(org)
 
     db_session.add(
-        OrganisationFeature(organisation_id=org.id, feature_key="passport")
+        OrgUnitFeature(org_unit_id=org.org_unit_id, feature_key="passport")
     )
 
     for user in (holder, org_admin):
-        db_session.execute(
-            organisation_member.insert().values(
-                organisation_id=org.id, user_id=user.id
-            )
-        )
+        add_place_member(db_session, org.org_unit_id, user.id, "trainee")
 
     db_session.commit()
     return org

@@ -23,43 +23,17 @@ import {
 } from "@/components/form/Form";
 import type { FormSubmitResult } from "@/components/form/Form";
 import { api } from "@/lib/api";
+import {
+  orgUnits,
+  placeTypeOptions,
+  type OrgUnitDetail,
+} from "@/domains/orgUnit";
 import ErrorState from "@/components/error-state/ErrorState";
-
-const SITE_TYPE_OPTIONS = [
-  { value: "hospital", label: "Hospital" },
-  { value: "building", label: "Building" },
-  { value: "ward", label: "Ward" },
-  { value: "room", label: "Room" },
-  { value: "clinic", label: "Clinic" },
-  { value: "department", label: "Department" },
-  { value: "virtual", label: "Virtual" },
-];
 
 interface ApiUser {
   id: number;
   username: string;
   email: string;
-}
-
-interface SiteStaff {
-  id: number;
-  username: string;
-  email: string;
-  full_name: string;
-}
-
-interface SiteData {
-  id: number;
-  name: string;
-  type: string;
-  parent_id: number | null;
-  location: string;
-  is_active: boolean;
-  staff: SiteStaff[];
-  // The clinical lead post, which is the source of truth. Read this
-  // rather than scanning staff for a role: a vacant post is a real state
-  // that a missing role cannot express.
-  clinical_lead_id: number | null;
 }
 
 interface EditSiteFormValues {
@@ -121,7 +95,7 @@ function EditSiteFields({
               <SelectField
                 label="Type"
                 placeholder="Select site type"
-                data={SITE_TYPE_OPTIONS}
+                data={placeTypeOptions}
                 value={field.value as string | null}
                 onChange={field.onChange}
                 error={fieldState.error?.message}
@@ -178,7 +152,7 @@ export default function EditSitePage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [siteData, setSiteData] = useState<SiteData | null>(null);
+  const [siteData, setSiteData] = useState<OrgUnitDetail | null>(null);
   const [users, setUsers] = useState<ApiUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(true);
   const [isActive, setIsActive] = useState(true);
@@ -192,7 +166,7 @@ export default function EditSitePage() {
       }
       try {
         const [site, usersResponse] = await Promise.all([
-          api.get<SiteData>(`/sites/${id}`),
+          orgUnits.get(Number(id)),
           api.get<{ users: ApiUser[] }>("/users"),
         ]);
         setSiteData(site);
@@ -221,34 +195,34 @@ export default function EditSitePage() {
     try {
       // Update site status if changed
       if (siteData && isActive !== siteData.is_active) {
-        await api.patch(`/sites/${id}/active`, { is_active: isActive });
+        await orgUnits.setActive(Number(id), isActive);
       }
 
-      await api.put(`/sites/${id}`, {
+      await orgUnits.update(Number(id), {
         name: data.name.trim(),
-        type: data.type,
-        location: data.location.trim() || null,
+        type: data.type as string,
+        location: data.location.trim(),
       });
 
-      // Handle clinical lead assignment
-      const currentLead = siteData?.staff.find(
-        (s) => s.id === siteData?.clinical_lead_id,
+      // Naming a clinical lead is two things: the person is here, and
+      // the person holds the post. Standing somebody down leaves the post
+      // vacant without taking them off the place, which is what the old
+      // "remove the staff row" did and should not have.
+      const currentLead = siteData?.members.find(
+        (member) => member.id === siteData?.clinical_lead_id,
       );
       const newLeadId = data.clinicalLeadId
         ? Number(data.clinicalLeadId)
         : null;
 
-      // Remove old clinical lead if changed
-      if (currentLead && currentLead.id !== newLeadId) {
-        await api.del(`/sites/${id}/staff/${currentLead.id}`);
-      }
-
-      // Add new clinical lead if set and different
-      if (newLeadId && (!currentLead || currentLead.id !== newLeadId)) {
-        await api.post(`/sites/${id}/staff`, {
-          user_id: newLeadId,
-          role: "clinical_lead",
-        });
+      if (currentLead?.id !== newLeadId) {
+        if (newLeadId !== null) {
+          await orgUnits.addMember(Number(id), {
+            user_id: newLeadId,
+            capacity: "staff",
+          });
+        }
+        await orgUnits.setClinicalLead(Number(id), newLeadId);
       }
 
       // Build description of what changed
@@ -316,8 +290,8 @@ export default function EditSitePage() {
     );
   }
 
-  const currentLead = siteData.staff.find(
-    (s) => s.id === siteData.clinical_lead_id,
+  const currentLead = siteData.members.find(
+    (member) => member.id === siteData.clinical_lead_id,
   );
 
   const statusChanged = siteData ? isActive !== siteData.is_active : false;

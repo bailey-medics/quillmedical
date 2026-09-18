@@ -309,7 +309,8 @@ def get_media_inventory(
 
     Args:
         db: Core database session.
-        organisation_id: Whose uploads to consider. Two organisations
+        organisation_id: Whose uploads to consider, as a place id.
+            Two organisations
             running the same module hold separate copies, so this is not
             optional.
         module_id: The question bank the module belongs to.
@@ -324,7 +325,7 @@ def get_media_inventory(
     rows = list(
         db.execute(
             select(ModuleMediaLink).where(
-                ModuleMediaLink.organisation_id == organisation_id,
+                ModuleMediaLink.org_unit_id == organisation_id,
                 ModuleMediaLink.question_bank_id == module_id,
             )
         )

@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "request-property-removed POST /api/users removed the request property `site_ids`"
+reason: "The companion to `organisation_ids` on the same request, removed for the same reason and at the same time. `place_ids` takes both, because an organisation and a ward are rows in one table."

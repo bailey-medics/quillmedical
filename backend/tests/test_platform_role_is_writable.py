@@ -23,10 +23,11 @@ from __future__ import annotations
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import insert, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Organisation, User, organisation_member
+from app.models import Organisation, User
+from app.organisations import add_place_member
 from app.security import hash_password
 
 
@@ -62,11 +63,7 @@ def org(db_session: Session) -> Organisation:
 
 
 def _place(db: Session, org: Organisation, user: User) -> None:
-    db.execute(
-        insert(organisation_member).values(
-            organisation_id=org.id, user_id=user.id, capacity="staff"
-        )
-    )
+    add_place_member(db, org.org_unit_id, user.id, "staff")
     db.commit()
 
 
@@ -134,7 +131,9 @@ class TestCreate:
         client = _login(test_client, "the_admin")
         response = client.post(
             "/api/users",
-            json=_new_user_payload("no_role_given", organisation_ids=[org.id]),
+            json=_new_user_payload(
+                "no_role_given", place_ids=[org.org_unit_id]
+            ),
             headers=_csrf(client),
         )
 
@@ -158,7 +157,7 @@ class TestCreate:
             json=_new_user_payload(
                 "a_new_operator",
                 platform_role="superadmin",
-                organisation_ids=[org.id],
+                place_ids=[org.org_unit_id],
             ),
             headers=_csrf(client),
         )
@@ -182,7 +181,7 @@ class TestCreate:
         response = client.post(
             "/api/users",
             json=_new_user_payload(
-                "bad_role", platform_role="admin", organisation_ids=[org.id]
+                "bad_role", platform_role="admin", place_ids=[org.org_unit_id]
             ),
             headers=_csrf(client),
         )
