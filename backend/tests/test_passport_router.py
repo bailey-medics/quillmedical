@@ -292,6 +292,112 @@ class TestReadAuthorisation:
         assert response.status_code == 404
 
 
+class TestSearchingForAnAssessor:
+    """Finding somebody a trainee already knows, not browsing a list."""
+
+    def test_an_email_a_username_or_a_name_all_find_them(
+        self, holder_client: TestClient, assessor: User
+    ) -> None:
+        """A trainee knows the person, not how Quill files them."""
+        for term in (assessor.email, assessor.username, "Assessor"):
+            response = holder_client.get(
+                "/api/passport/assessors/search", params={"q": term}
+            )
+
+            assert response.status_code == 200, response.text
+            found = [m["user_id"] for m in response.json()["matches"]]
+            assert assessor.id in found, f"{term!r} found nobody"
+
+    def test_the_registration_number_comes_back(
+        self, holder_client: TestClient, assessor: User
+    ) -> None:
+        """Hard evidence that this is the right person.
+
+        Two consultants may share a name and an address says only that
+        somebody controls a mailbox. The number says which registered
+        professional this is.
+        """
+        response = holder_client.get(
+            "/api/passport/assessors/search",
+            params={"q": assessor.email},
+        )
+
+        match = response.json()["matches"][0]
+        assert match["registrations"], response.text
+        assert match["registrations"][0]["number"] == "1234567"
+        # Declared, never checked by Quill. A screen that implied
+        # otherwise would be claiming something nobody did.
+        assert match["registrations"][0]["verified"] is False
+
+    def test_finding_nobody_is_not_an_error(
+        self, holder_client: TestClient
+    ) -> None:
+        """The case the whole flow exists for.
+
+        The consultant who observed the work is often at another trust
+        and has never used Quill. An empty answer is success: the
+        trainee goes on to ask by the address they typed.
+        """
+        response = holder_client.get(
+            "/api/passport/assessors/search",
+            params={"q": "nobody-here@other-trust.nhs.uk"},
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json()["matches"] == []
+
+    def test_a_very_short_search_is_refused(
+        self, holder_client: TestClient
+    ) -> None:
+        """Two characters would match a large share of a staff list,
+        which turns finding one person into reading all of them."""
+        response = holder_client.get(
+            "/api/passport/assessors/search", params={"q": "a"}
+        )
+
+        assert response.status_code == 400, response.text
+
+    def test_you_do_not_find_yourself(
+        self, holder_client: TestClient, holder: User
+    ) -> None:
+        """Nobody assesses their own competency, so nobody offers to."""
+        response = holder_client.get(
+            "/api/passport/assessors/search",
+            params={"q": holder.email},
+        )
+
+        assert response.status_code == 200, response.text
+        found = [m["user_id"] for m in response.json()["matches"]]
+        assert holder.id not in found
+
+    def test_somebody_without_the_passport_competency_cannot_search(
+        self,
+        test_client: TestClient,
+        db_session: Session,
+        org: Organisation,
+    ) -> None:
+        """The passport competency is the door, as on every other route.
+
+        Without it this would be a staff directory readable by anyone
+        with an account, which is not what a search for one known
+        assessor needs to be.
+        """
+        user = _make_user(db_session, "reception", profession="receptionist")
+        db_session.execute(
+            organisation_member.insert().values(
+                organisation_id=org.id, user_id=user.id
+            )
+        )
+        db_session.commit()
+
+        client = _login(test_client, "reception")
+        response = client.get(
+            "/api/passport/assessors/search", params={"q": "assessor"}
+        )
+
+        assert response.status_code == 403, response.text
+
+
 class TestRequestSignOff:
     def test_a_holder_can_request_one(
         self, holder_client: TestClient, assessor: User

@@ -68,6 +68,7 @@ EXPECTED_PATHS = {
     "/api/passport/me",
     "/api/passport/assessor-invites/accept",
     "/api/passport/assessor-invites/preview",
+    "/api/passport/assessors/search",
     "/api/passport/assessors/{assessor_user_id}/membership",
     "/api/passport/assessors/{assessor_user_id}/registration-verification",
     "/api/passport/requests/inbox",

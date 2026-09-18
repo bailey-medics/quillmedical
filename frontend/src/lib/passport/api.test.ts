@@ -42,6 +42,7 @@ import {
   removeLogbookEntry,
   removeReflection,
   requestSignOff,
+  searchAssessors,
   revokeAssessorMembership,
   signOff,
   verifyAssessorRegistration,
@@ -130,6 +131,15 @@ describe("sign-offs", () => {
   it("fetches the assessor inbox", async () => {
     await fetchInbox();
     expect(api.get).toHaveBeenCalledWith("/passport/requests/inbox");
+  });
+
+  it("searches for an assessor, escaping what was typed", async () => {
+    // A name holds a space and an address holds an @; both change what
+    // the query string means if they are passed through raw.
+    await searchAssessors("amara okonkwo@example.nhs.uk");
+    expect(api.get).toHaveBeenCalledWith(
+      "/passport/assessors/search?q=amara%20okonkwo%40example.nhs.uk",
+    );
   });
 
   it("requests a sign-off against a competency", async () => {

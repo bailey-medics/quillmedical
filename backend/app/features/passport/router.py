@@ -53,7 +53,7 @@ from fastapi import (
     Response,
     UploadFile,
 )
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -77,7 +77,9 @@ from app.passport_storage import get_blob_store, get_passport_store
 from app.schemas.passport import (
     AssessorInviteAcceptIn,
     AssessorInviteAcceptOut,
+    AssessorMatchOut,
     AssessorRevokeOut,
+    AssessorSearchOut,
     AttachmentIn,
     CertificateIn,
     CertificateOut,
@@ -736,6 +738,92 @@ def _email_sign_off_request(
         logger.warning(
             "sign-off request mail not sent: address rate limited",
         )
+
+
+#: How many people a search will name at once. A trainee looking for
+#: their consultant needs a handful; anything longer is a directory, and
+#: a directory is not what this route is for.
+ASSESSOR_SEARCH_LIMIT = 10
+
+#: Below this, a search is refused rather than answered. Two characters
+#: would match a large share of any staff list, which turns a field for
+#: finding one known person into a way of reading the whole of it.
+ASSESSOR_SEARCH_MIN = 3
+
+
+@passport_router.get(
+    "/assessors/search",
+    response_model=AssessorSearchOut,
+    dependencies=[_DEP_PASSPORT],
+)
+def search_assessors(
+    q: str,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+) -> AssessorSearchOut:
+    """Find somebody who might be the assessor being named.
+
+    Matches an email address, a username or a full name, because a
+    trainee knows the person rather than which identifier Quill files
+    them under.
+
+    **Finding nobody is an ordinary answer.** The assessor who observed
+    the work is often at another trust or has never used Quill, and that
+    is the case this flow exists for — so an empty list is success, and
+    the caller goes on to ask by the address they typed.
+
+    **This is not a directory.** It answers a search somebody already
+    knows the answer to, and the guards say so: a minimum length, a hard
+    limit on how many come back, and the caller's own account excluded
+    because nobody assesses themselves.
+    """
+    term = q.strip()
+
+    if len(term) < ASSESSOR_SEARCH_MIN:
+        raise HTTPException(
+            400,
+            (
+                f"Type at least {ASSESSOR_SEARCH_MIN} characters to "
+                "search for an assessor."
+            ),
+        )
+
+    like = f"%{term}%"
+
+    rows = (
+        db.execute(
+            select(User)
+            .where(
+                User.is_active.is_(True),
+                User.id != user.id,
+                or_(
+                    User.email.ilike(like),
+                    User.username.ilike(like),
+                    User.full_name.ilike(like),
+                ),
+            )
+            .order_by(User.username)
+            .limit(ASSESSOR_SEARCH_LIMIT)
+        )
+        .unique()
+        .scalars()
+        .all()
+    )
+
+    return AssessorSearchOut(
+        matches=[
+            AssessorMatchOut(
+                user_id=row.id,
+                username=row.username,
+                full_name=row.full_name,
+                email=row.email,
+                registrations=[
+                    RegistrationOut(**reg) for reg in _registration_dicts(row)
+                ],
+            )
+            for row in rows
+        ]
+    )
 
 
 @passport_router.post(
