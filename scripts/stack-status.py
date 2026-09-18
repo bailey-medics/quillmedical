@@ -61,8 +61,37 @@ class Palette:
     def yellow(self, text: str) -> str:
         return self._wrap("33", text)
 
+    def bold_yellow(self, text: str) -> str:
+        """Bold and yellow together, as one code.
+
+        Not `bold(yellow(text))`: the inner reset ends every attribute
+        rather than just the colour, so the bold stopped where the
+        colour did and the text came out yellow but light.
+        """
+        return self._wrap("1;33", text)
+
     def blue(self, text: str) -> str:
         return self._wrap("34", text)
+
+    def link(self, url: str, text: str) -> str:
+        """Make *text* clickable, with *url* hidden behind it.
+
+        OSC 8, which most terminals since about 2017 understand: the
+        URL travels in an escape sequence and only the label is drawn,
+        so a row keeps its width whatever the address behind it.
+
+        Gated on the same flag as the colours, and for the same
+        reason. A terminal that does not know the sequence prints it
+        as rubbish, and piped output would carry escapes into whatever
+        reads it next — so when stdout is not a terminal, or
+        `--no-colour` was passed, this hands back the plain text.
+        """
+        if not self.enabled or not url:
+            return text
+
+        start = f"\033]8;;{url}\033\\"
+        end = "\033]8;;\033\\"
+        return f"{start}{text}{end}"
 
 
 @dataclass
@@ -375,20 +404,56 @@ def draw(
         else:
             glyph = GLYPH_OPEN
 
-        name = palette.bold(branch.name) if branch.is_current else branch.name
+        # The branch you are on is bold and yellow, and so is the rest
+        # of its row. It used to be bold with "← you are here" after it,
+        # which was the longest thing on the line for the least in it —
+        # the colour says the same and says it at a glance.
+        current = branch.is_current
+        name = palette.bold_yellow(branch.name) if current else branch.name
 
         cells: list[str] = []
         if show_prs and branch.pr:
             number = branch.pr.get("number")
             state = str(branch.pr.get("state", ""))
+            # The number carries the link rather than the branch name:
+            # it is already a reference to the pull request, and it is
+            # short enough that a reader can tell what they are about
+            # to open. The state word rides along inside the link so
+            # the whole cell is one target rather than a two-character
+            # one.
+            url = str(branch.pr.get("url", ""))
+
+            # An open pull request is just its number, draft or not. It
+            # used to read "ready", meaning out of draft — but bare
+            # "ready" sounds like a verdict on the code, which this
+            # cannot know. "draft" went the same way for a different
+            # reason: the heavy-tier mark on the same row is a dash
+            # exactly when nothing has run, which is what being a draft
+            # amounts to, so the word repeated what the row already
+            # said. Merged and closed stay, because no mark carries
+            # those.
             if state == "MERGED":
-                cells.append(palette.green(f"#{number} merged"))
+                text = f"#{number} merged"
             elif state == "CLOSED":
-                cells.append(palette.red(f"#{number} closed"))
-            elif branch.pr.get("isDraft"):
-                cells.append(palette.dim(f"#{number} draft"))
+                text = f"#{number} closed"
             else:
-                cells.append(f"#{number} ready")
+                text = f"#{number}"
+
+            # On the current row the state colour gives way to the
+            # yellow: two colours in one cell would make one row look
+            # like two things. The words are the same either way — the
+            # colour says where you are, not what the state is.
+            if current:
+                label = palette.bold_yellow(text)
+            elif state == "MERGED":
+                label = palette.green(text)
+            elif state == "CLOSED":
+                label = palette.red(text)
+            elif branch.pr.get("isDraft"):
+                label = palette.dim(text)
+            else:
+                label = text
+            cells.append(palette.link(url, label))
             cells.append(summarise_checks(branch.pr, palette))
         elif show_prs:
             cells.append(palette.dim("no pull request"))
@@ -400,8 +465,6 @@ def draw(
         line = f"  {glyph} {name}"
         if suffix:
             line = f"{line}   {suffix}"
-        if branch.is_current:
-            line = f"{line}   {palette.dim('← you are here')}"
         print(line)
 
         notes: list[str] = []

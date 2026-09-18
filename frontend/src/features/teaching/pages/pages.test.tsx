@@ -19,10 +19,23 @@ vi.mock("@/lib/api", () => ({
   },
 }));
 
-// Mock useAuth for TeachingLayout
+// Mock useAuth for TeachingLayout.
+//
+// `enabled_features` and `competencies` are what the sidebar's entries
+// are gated on, so without them `TeachingMainNav` renders an empty list
+// and a test asserting the sidebar is present could not tell a working
+// sidebar from a missing one.
 vi.mock("@/auth/AuthContext", () => ({
   useAuth: () => ({
-    state: { status: "authenticated", user: { username: "test-user" } },
+    state: {
+      status: "authenticated",
+      user: {
+        username: "test-user",
+        enabled_features: ["teaching", "passport"],
+        competencies: ["access_clinician_passport"],
+      },
+    },
+    logout: vi.fn(),
   }),
 }));
 
@@ -53,6 +66,31 @@ describe("TeachingDashboard", () => {
     (api.get as Mock).mockReturnValue(new Promise(() => {})); // never resolves
     renderWithRouter(<TeachingDashboard />);
     expect(document.querySelector(".mantine-Skeleton-root")).toBeTruthy();
+  });
+
+  it("shows the sidebar while the dashboard is still loading", async () => {
+    // The layout was rendered with no sidebar at all until both API
+    // calls returned, so arriving from a main page meant the whole left
+    // column vanished for two round trips and then reappeared. The
+    // sidebar needs auth, which has already resolved, not the banks.
+    (api.get as Mock).mockReturnValue(new Promise(() => {}));
+    renderWithRouter(<TeachingDashboard />);
+
+    expect(document.querySelector(".mantine-Skeleton-root")).toBeTruthy();
+    // `findAllByText`, not `findByText`: the layout renders the nav
+    // twice, once as the sidebar and once inside the mobile drawer.
+    expect((await screen.findAllByText("Passport")).length).toBeGreaterThan(0);
+  });
+
+  it("shows the page title while loading rather than a skeleton of it", async () => {
+    // "Teaching modules" is a constant and never waited on the fetch,
+    // but a skeleton stood in for it anyway — so the title appeared to
+    // flash as a grey bar was swapped for the words it was always
+    // going to say. Skeletons belong where the content is unknown.
+    (api.get as Mock).mockReturnValue(new Promise(() => {}));
+    renderWithRouter(<TeachingDashboard />);
+
+    expect(await screen.findByText("Teaching modules")).toBeTruthy();
   });
 
   it("shows empty state when no banks", async () => {

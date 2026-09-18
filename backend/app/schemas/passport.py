@@ -108,6 +108,27 @@ class RegistrationOut(BaseModel):
     verified_on: date | None = None
 
 
+class AttachmentIn(_In):
+    """Evidence a record is about to name.
+
+    The same four fields the record stores, because the record stores
+    them: a blob is bytes at a path named by their hash, and nothing
+    beside it records what the file was called. The uploader is the only
+    party that ever knows, so it says so here rather than the API asking
+    for a bare hash and the filename being lost between the two calls.
+
+    The hash is still checked against the store before anything is
+    written — naming a blob that is not there would leave a dangling
+    reference in a record whose whole claim is that it can be checked
+    years later.
+    """
+
+    hash: str
+    filename: NonEmptyText
+    size_bytes: int = Field(ge=0)
+    media_type: NonEmptyText
+
+
 class AttachmentOut(BaseModel):
     """One piece of evidence, named by the hash of its own bytes.
 
@@ -225,21 +246,42 @@ class SignOffOut(BaseModel):
     content_hash: str | None = None
 
 
+class InboxItemOut(BaseModel):
+    """One open request, with the passport it belongs to.
+
+    The inbox is the only sign-off response that names its passport,
+    because it is the only one whose caller does not already know it:
+    every other sign-off route takes ``passport_id`` in the path. An
+    assessor needs it to act on the request, and needs it for no other
+    reason, so it is carried here rather than added to ``SignOffOut``
+    where five routes would repeat what their caller just sent.
+    """
+
+    passport_id: str
+    sign_off: SignOffOut
+
+
 class SignOffRequestIn(_In):
     """The holder asking for a sign-off.
 
-    ``assessor_user_id`` names who is being asked. The holder chooses,
-    because the judgement about who is appropriate belongs to them and
-    their supervisor. The one rule the API enforces is that it may not
-    be the holder themselves.
+    ``assessor_email`` names who is being asked. An address rather than
+    a user id, because the consultant who observed the work is often at
+    another trust or not on Quill at all, and requiring an account first
+    made this unreachable for the case it exists to serve. Matching the
+    address to an account is a lookup afterwards, never a condition of
+    asking.
+
+    The holder chooses, because the judgement about who is appropriate
+    belongs to them and their supervisor. The one rule the API enforces
+    is that it may not be the holder themselves.
     """
 
-    assessor_user_id: int
+    assessor_email: EmailStr
     observed_on: date
     level_id: str | None = None
     comments: str | None = None
     reflection: str | None = None
-    attachment_hashes: list[str] = Field(default_factory=list)
+    attachments: list[AttachmentIn] = Field(default_factory=list)
 
 
 class SignOffIn(_In):
@@ -312,7 +354,7 @@ class CertificateIn(_In):
     expires_on: date | None = None
     competencies: list[CompetencyIdField] = Field(default_factory=list)
     description: str | None = None
-    attachment_hashes: list[str] = Field(default_factory=list)
+    attachments: list[AttachmentIn] = Field(default_factory=list)
 
 
 class CertificateOut(BaseModel):
@@ -344,7 +386,7 @@ class LogbookEntryIn(_In):
     outcome: str | None = None
     notes: str | None = None
     also_counts_towards: list[CompetencyIdField] = Field(default_factory=list)
-    attachment_hashes: list[str] = Field(default_factory=list)
+    attachments: list[AttachmentIn] = Field(default_factory=list)
 
 
 class LogbookEntryOut(BaseModel):
@@ -376,6 +418,23 @@ class LogbookOut(BaseModel):
     entries: list[LogbookEntryOut] = Field(default_factory=list)
 
 
+class WholeLogbookOut(BaseModel):
+    """Every logged procedure, whatever competency it counts towards.
+
+    The same entries the per-competency response carries, kept in their
+    groups rather than merged into one list: an entry is about one
+    procedure and the competency it counts towards is part of what it
+    says. A reader wanting the flat view can concatenate; a reader
+    handed a flat list cannot get the grouping back.
+
+    A count and no target here too, for the reason ``LogbookOut``
+    gives: activity is not competence.
+    """
+
+    competencies: list[LogbookOut] = Field(default_factory=list)
+    count: int = Field(ge=0)
+
+
 class ReflectionIn(_In):
     """A reflection on a case, a complaint or a significant event.
 
@@ -393,7 +452,7 @@ class ReflectionIn(_In):
     body: NonEmptyText
     anonymised_confirmed: bool
     competencies: list[CompetencyIdField] = Field(default_factory=list)
-    attachment_hashes: list[str] = Field(default_factory=list)
+    attachments: list[AttachmentIn] = Field(default_factory=list)
 
 
 class ReflectionOut(BaseModel):
@@ -417,7 +476,7 @@ class CpdEntryIn(_In):
     competencies: list[CompetencyIdField] = Field(default_factory=list)
     certificate: str | None = None
     notes: str | None = None
-    attachment_hashes: list[str] = Field(default_factory=list)
+    attachments: list[AttachmentIn] = Field(default_factory=list)
 
 
 class CpdEntryOut(BaseModel):

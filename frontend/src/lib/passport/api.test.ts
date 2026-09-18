@@ -89,9 +89,14 @@ describe("passport paths", () => {
       "/api/passport/{passport_id}/cpd",
       "/api/passport/{passport_id}/cpd/{year}",
       "/api/passport/{passport_id}/cpd/{year}/{stem}",
+      "/api/passport/{passport_id}/logbook",
       "/api/passport/{passport_id}/logbook/{competency_id}",
       "/api/passport/{passport_id}/logbook/{competency_id}/{stem}",
       "/api/passport/{passport_id}/reflections",
+      "/api/passport/{passport_id}/evidence",
+      "/api/passport/{passport_id}/export.md",
+      "/api/passport/{passport_id}/export.pdf",
+      "/api/passport/{passport_id}/export.zip",
       "/api/passport/{passport_id}/reflections/{name}",
       "/api/passport/{passport_id}/sign-offs/{signoff_id}",
       "/api/passport/{passport_id}/sign-offs/{signoff_id}/decline",
@@ -128,7 +133,10 @@ describe("sign-offs", () => {
   });
 
   it("requests a sign-off against a competency", async () => {
-    const body = { assessor_user_id: 7, observed_on: "2026-03-14" };
+    const body = {
+      assessor_email: "amara.okonkwo@example.nhs.uk",
+      observed_on: "2026-03-14",
+    };
     await requestSignOff(PASSPORT_ID, COMPETENCY, body);
     expect(api.post).toHaveBeenCalledWith(
       `/passport/${PASSPORT_ID}/competencies/${COMPETENCY}/requests`,

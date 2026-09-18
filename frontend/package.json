@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "private": true,
-  "packageManager": "yarn@4.14.1",
+  "packageManager": "yarn@4.18.0",
   "workspaces": [
     "public_pages"
   ],
@@ -40,7 +40,7 @@
     "@fontsource-variable/cormorant-garamond": "^5.3.0",
     "@mantine/core": "^9.0.0",
     "@mantine/dates": "^9.0.0",
-    "@mantine/dropzone": "9.6.0",
+    "@mantine/dropzone": "9.6.1",
     "@mantine/hooks": "^9.0.0",
     "@mantine/notifications": "^9.0.0",
     "@tabler/icons-react": "^3.34.1",
@@ -79,7 +79,7 @@
     "@typescript-eslint/parser": "^8.69.0",
     "@vitejs/plugin-react": "^6.0.0",
     "@vitejs/plugin-react-swc": "^4.0.0",
-    "concurrently": "^9.2.1",
+    "concurrently": "^10.0.0",
     "cspell": "^9.2.1",
     "esbuild": "0.28.1",
     "eslint": "^10.0.0",
@@ -91,7 +91,6 @@
     "eslint-plugin-react-refresh": "^0.5.0",
     "eslint-plugin-regexp": "^3.0.0",
     "eslint-plugin-storybook": "10.5.10",
-    "eslint-plugin-unicorn": "^65.0.0",
     "globals": "^17.0.0",
     "husky": "9.1.7",
     "js-yaml": "^4.1.0",

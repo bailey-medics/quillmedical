@@ -13,16 +13,18 @@
  *
  * Three things worth knowing before adding to this file.
  *
- * **There are no export functions.** The plan's API surface lists
- * `export.md`, `export.pdf` and `export.zip`, but no such route exists:
- * `backend/app/features/passport/export.py` builds a zip and is called
- * directly by its tests, never wired to HTTP. Adding client functions for
- * them would fail at runtime.
+ * **Evidence uploads go through this application, not to a bucket.** A
+ * blob is addressed by the SHA-256 of its own bytes, which is what lets
+ * a holder check their record years later with nothing but a checksum
+ * tool, so the address cannot be computed without reading every byte.
+ * That rules out the signed-URL pattern the teaching videos use, where
+ * the browser uploads straight to GCS — a video is addressed by a
+ * generated id, so nobody has to look inside it.
  *
- * **There is no evidence upload, competency catalogue or shortlist
- * route** either, though schemas for all three exist in
- * `backend/app/schemas/passport.py`. Until a route does, the components
- * that need a competency list read `src/generated/competencies.json`.
+ * **There is no competency catalogue or shortlist route**, though
+ * schemas for both exist in `backend/app/schemas/passport.py`. Until one
+ * does, the components that need a competency list read
+ * `src/generated/competencies.json`.
  *
  * **The feature gate is not authorisation.** Every route here sits behind
  * `requires_feature("passport")` *and* `access_clinician_passport`, and
@@ -43,6 +45,8 @@ import type {
   CertificateInput,
   CpdEntry,
   CpdEntryInput,
+  EvidenceUpload,
+  InboxItem,
   InvitePreview,
   Logbook,
   LogbookEntryInput,
@@ -57,6 +61,7 @@ import type {
   SignOffDeclineInput,
   SignOffInput,
   SignOffRequestInput,
+  WholeLogbook,
   SignOffResult,
   Verification,
 } from "./types";
@@ -86,6 +91,11 @@ export const PASSPORT_PATHS = [
   "/passport/{passport_id}/cpd",
   "/passport/{passport_id}/cpd/{year}",
   "/passport/{passport_id}/cpd/{year}/{stem}",
+  "/passport/{passport_id}/evidence",
+  "/passport/{passport_id}/export.md",
+  "/passport/{passport_id}/export.pdf",
+  "/passport/{passport_id}/export.zip",
+  "/passport/{passport_id}/logbook",
   "/passport/{passport_id}/logbook/{competency_id}",
   "/passport/{passport_id}/logbook/{competency_id}/{stem}",
   "/passport/{passport_id}/reflections",
@@ -136,9 +146,14 @@ export function fetchPassport(passportId: string): Promise<PassportDetail> {
 // Sign-offs
 // ---------------------------------------------------------------------------
 
-/** The caller's open requests as an assessor, across every passport. */
-export function fetchInbox(): Promise<SignOff[]> {
-  return api.get<SignOff[]>("/passport/requests/inbox");
+/**
+ * The caller's open requests as an assessor, across every passport.
+ *
+ * Each item names its passport, which no other sign-off response does:
+ * this is the one an assessor reaches without already knowing it.
+ */
+export function fetchInbox(): Promise<InboxItem[]> {
+  return api.get<InboxItem[]>("/passport/requests/inbox");
 }
 
 /**
@@ -227,6 +242,68 @@ export function verifySignOff(
 }
 
 // ---------------------------------------------------------------------------
+// Export
+// ---------------------------------------------------------------------------
+
+/**
+ * The whole passport as Markdown.
+ *
+ * `reflections` is off unless asked for, matching the backend: a
+ * rendering handed to a panel or an employer must not carry one by
+ * accident, and written reflection can be disclosed in legal
+ * proceedings.
+ */
+export function exportMarkdown(
+  passportId: string,
+  options: { reflections?: boolean } = {},
+): Promise<Blob> {
+  const query = options.reflections ? "?reflections=true" : "";
+
+  return api.blob(`/passport/${segment(passportId)}/export.md${query}`);
+}
+
+/** The whole passport as a PDF. Never carries reflections. */
+export function exportPdf(passportId: string): Promise<Blob> {
+  return api.blob(`/passport/${segment(passportId)}/export.pdf`);
+}
+
+/** The portable bundle: the record, the renderings and the history. */
+export function exportBundle(passportId: string): Promise<Blob> {
+  return api.blob(`/passport/${segment(passportId)}/export.zip`);
+}
+
+// ---------------------------------------------------------------------------
+// Evidence
+// ---------------------------------------------------------------------------
+
+/**
+ * Uploads one file and returns the hash a record names it by.
+ *
+ * Multipart rather than JSON, so `Content-Type` is deleted rather than
+ * set: the browser has to supply its own boundary, and `api.ts` would
+ * otherwise say `application/json` over a `FormData` body.
+ *
+ * The response is passed straight back into the record being written —
+ * it is the only place the filename and media type exist, since a blob
+ * is bytes at a path named by their hash and nothing beside it says what
+ * the file was called.
+ */
+export function uploadEvidence(
+  passportId: string,
+  file: File,
+): Promise<EvidenceUpload> {
+  const form = new FormData();
+  form.append("file", file);
+
+  // No content-type header: `api.post` leaves it off for a FormData
+  // body so the browser can set one naming its own multipart boundary.
+  return api.post<EvidenceUpload>(
+    `/passport/${segment(passportId)}/evidence`,
+    form,
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Certificates
 // ---------------------------------------------------------------------------
 
@@ -284,6 +361,11 @@ export function addLogbookEntry(
     `/passport/${segment(passportId)}/logbook/${segment(competencyId)}`,
     data,
   );
+}
+
+/** Every logged procedure, grouped by the competency it counts towards. */
+export function fetchWholeLogbook(passportId: string): Promise<WholeLogbook> {
+  return api.get<WholeLogbook>(`/passport/${segment(passportId)}/logbook`);
 }
 
 /** A competency's logbook: its entries and how many there are, with no target. */

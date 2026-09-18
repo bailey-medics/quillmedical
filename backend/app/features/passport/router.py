@@ -44,7 +44,15 @@ import re
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query,
+    Request,
+    Response,
+    UploadFile,
+)
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -65,18 +73,21 @@ from app.organisations import (
     get_reachable_org_ids,
     remove_organisation_member,
 )
-from app.passport_storage import get_passport_store
+from app.passport_storage import get_blob_store, get_passport_store
 from app.schemas.passport import (
     AssessorInviteAcceptIn,
     AssessorInviteAcceptOut,
     AssessorInviteIn,
     AssessorInviteOut,
     AssessorRevokeOut,
+    AttachmentIn,
     CertificateIn,
     CertificateOut,
     CompetencyStateOut,
     CpdEntryIn,
     CpdEntryOut,
+    EvidenceUploadOut,
+    InboxItemOut,
     InvitePreviewOut,
     LogbookEntryIn,
     LogbookEntryOut,
@@ -95,6 +106,7 @@ from app.schemas.passport import (
     SignOffRequestIn,
     SignOffResultOut,
     VerificationOut,
+    WholeLogbookOut,
 )
 from app.security import (
     PASSPORT_INVITE_TTL_DAYS,
@@ -106,13 +118,22 @@ from app.security import (
 from . import (
     definitions,
     email_templates,
+    export,
     hashing,
     ids,
     paths,
+    pdf,
     records,
+    render,
     service,
 )
+from .blobs import (
+    BlobConflictError,
+    BlobError,
+    BlobStore,
+)
 from .commits import Actor
+from .gcs_store import GcsBlobStore
 from .models import (
     AssessorRegistrationVerification,
     Passport,
@@ -120,6 +141,7 @@ from .models import (
     PassportSignOffRequest,
 )
 from .schemas import (
+    Attachment,
     Certificate,
     CompetencyRef,
     CpdEntry,
@@ -166,6 +188,80 @@ _DEP_USER = Depends(_get_current_user)
 _DEP_REQUIRE_CSRF = Depends(_require_csrf)
 _DEP_PASSPORT = Depends(has_competency("access_clinician_passport"))
 _DEP_STORE = Depends(get_passport_store)
+_DEP_BLOBS = Depends(get_blob_store)
+
+#: What evidence may be. Deliberately short: a scan, a photograph of a
+#: logbook page, or a PDF of a course certificate is what this is for.
+#: `blobs.py` decides none of this on purpose — storing is separate from
+#: admitting — so the allow-list lives at the boundary that admits.
+ALLOWED_EVIDENCE_TYPES: frozenset[str] = frozenset(
+    {
+        "application/pdf",
+        "image/jpeg",
+        "image/png",
+        "image/heic",
+        "image/webp",
+    }
+)
+
+#: The most evidence may be, enforced by reading rather than by trusting
+#: a header. `limit_request_body_size` in ``app.main`` applies
+#: ``MAX_REQUEST_BODY_BYTES`` from ``Content-Length``, but skips the
+#: check when the header is absent — so a chunked request would
+#: otherwise be unbounded, and reading it whole would put it all in
+#: memory.
+#:
+#: Deliberately below the middleware's ceiling. At the same 10 MB the
+#: route's limit could never be reached: multipart framing adds the
+#: boundaries, the headers and the filename on top of the file itself,
+#: so a 10 MB file always makes an 11 MB body and dies at the
+#: middleware with its plain-text refusal. The gap leaves room for that
+#: overhead, so a file between the two is answered here, by the handler
+#: that knows it is evidence.
+MAX_EVIDENCE_BYTES = 8 * 1024 * 1024  # 8 MB
+
+#: How much to read at a time while enforcing that ceiling.
+_UPLOAD_CHUNK = 64 * 1024
+
+
+def _looks_like(data: bytes, media_type: str) -> bool:
+    """Whether the bytes begin the way *media_type* says they should.
+
+    A caller sets ``Content-Type``, so the allow-list alone checks a
+    claim rather than a file: anything at all can be uploaded as a PDF.
+    This checks the magic bytes instead.
+
+    Deliberately a short table rather than a dependency. Five formats,
+    all with fixed signatures that have not changed in decades, and a
+    library would be a supply-chain surface for something this small.
+    It is a sanity check and not a parser: a well-formed header on
+    malformed content still passes, which is the right depth here
+    because nothing executes or serves these bytes by path — a blob is
+    addressed by its own hash and handed back only as a download.
+    """
+    if media_type == "application/pdf":
+        return data.startswith(b"%PDF-")
+
+    if media_type == "image/png":
+        return data.startswith(b"\x89PNG\r\n\x1a\n")
+
+    if media_type == "image/jpeg":
+        return data.startswith(b"\xff\xd8\xff")
+
+    if media_type == "image/webp":
+        return data[:4] == b"RIFF" and data[8:12] == b"WEBP"
+
+    if media_type == "image/heic":
+        # ISO base media format: a four-byte length, then `ftyp`, then a
+        # brand. `heic` and `heix` are the still-image brands; `mif1`
+        # appears on images written by some phones.
+        return data[4:8] == b"ftyp" and data[8:12] in (
+            b"heic",
+            b"heix",
+            b"mif1",
+        )
+
+    return False
 
 
 def _actor(user: User) -> Actor:
@@ -258,7 +354,8 @@ def _is_named_assessor(
     """
     query = select(PassportSignOffRequest.id).where(
         PassportSignOffRequest.passport_id == passport_id,
-        PassportSignOffRequest.assessor_user_id == user.id,
+        func.lower(PassportSignOffRequest.assessor_email)
+        == user.email.strip().lower(),
     )
 
     if signoff_id is not None:
@@ -421,14 +518,14 @@ def get_my_passport(
 
 @passport_router.get(
     "/requests/inbox",
-    response_model=list[SignOffOut],
+    response_model=list[InboxItemOut],
     dependencies=[_DEP_PASSPORT],
 )
 def get_inbox(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
-) -> list[SignOffOut]:
+) -> list[InboxItemOut]:
     """The caller's open requests as an assessor.
 
     A cross-passport query, which is the entire reason a request row
@@ -441,7 +538,8 @@ def get_inbox(
     rows = (
         db.execute(
             select(PassportSignOffRequest).where(
-                PassportSignOffRequest.assessor_user_id == user.id,
+                func.lower(PassportSignOffRequest.assessor_email)
+                == user.email.strip().lower(),
                 PassportSignOffRequest.status == "open",
             )
         )
@@ -449,7 +547,7 @@ def get_inbox(
         .all()
     )
 
-    found: list[SignOffOut] = []
+    found: list[InboxItemOut] = []
 
     for row in rows:
         try:
@@ -466,7 +564,12 @@ def get_inbox(
             )
             continue
 
-        found.append(_sign_off_out(row.signoff_id, record))
+        found.append(
+            InboxItemOut(
+                passport_id=row.passport_id,
+                sign_off=_sign_off_out(row.signoff_id, record),
+            )
+        )
 
     return found
 
@@ -495,6 +598,120 @@ def get_passport(
     return _detail(row, store)
 
 
+def _requests_today(db: Session, passport_id: str) -> int:
+    """How many sign-offs this passport has asked for in the last day.
+
+    Counted for the same reason invitations are, and alongside them:
+    asking now sends mail to an address somebody typed, so a limit on
+    one and not the other is no limit at all. A rolling twenty-four
+    hours, matching :func:`_invites_today` — a calendar day would let
+    twice the limit go out either side of midnight.
+    """
+    since = _now() - timedelta(days=1)
+
+    return (
+        db.scalar(
+            select(func.count())
+            .select_from(PassportSignOffRequest)
+            .where(
+                PassportSignOffRequest.passport_id == passport_id,
+                PassportSignOffRequest.created_at >= since,
+            )
+        )
+        or 0
+    )
+
+
+def _email_sign_off_request(
+    *,
+    holder: User,
+    assessor_email: str,
+    assessor: User | None,
+    competency_id: str,
+    passport_id: str,
+    invited_by_user_id: int,
+    db: Session,
+) -> None:
+    """Tell the assessor they have been asked, whoever they are.
+
+    Two cases, one email. Somebody with an account is told to sign in;
+    somebody without gets a single-use link to register behind. The link
+    is what an invitation row exists for — a token carries no record of
+    having been spent, so the row is what makes it single-use.
+
+    **A failure here does not undo the request.** The record is written
+    and the row committed before this runs: the holder has asked, and
+    that stands whether or not the mail got out. Losing the ask because
+    a mail server was briefly unreachable would be worse than an
+    assessor who has to be told by other means.
+    """
+    try:
+        competency_name: str | None = definitions.competency_ref(
+            competency_id
+        ).name
+    except definitions.UnknownCompetencyError:
+        competency_name = None
+
+    if assessor is not None:
+        # They can already sign in, so no invitation and no token: the
+        # request is waiting in their inbox when they arrive.
+        url = f"{settings.FRONTEND_URL.rstrip('/')}/passport/requests"
+        expires_in_days = PASSPORT_INVITE_TTL_DAYS
+    else:
+        invite = PassportAssessorInvite(
+            id=str(uuid.uuid4()),
+            passport_id=passport_id,
+            invited_by_user_id=invited_by_user_id,
+            email=assessor_email,
+            # The holder gave an address and nothing else. The assessor
+            # states their own name and registration when they accept,
+            # which is the more trustworthy source for both.
+            name="",
+            registration_authority="",
+            registration_number="",
+            token_hash="",
+            expires_at=_now() + timedelta(days=PASSPORT_INVITE_TTL_DAYS),
+        )
+        token = create_passport_invite_token(
+            invite_id=invite.id,
+            email=invite.email,
+        )
+        invite.token_hash = hashlib.sha256(token.encode()).hexdigest()
+        db.add(invite)
+        db.flush()
+
+        url = email_templates.accept_url(settings.FRONTEND_URL, token)
+        expires_in_days = PASSPORT_INVITE_TTL_DAYS
+
+    message = email_templates.render_invite(
+        # No name was collected, so the greeting uses the address. Better
+        # than a blank "Dear ," and honest about what the holder gave.
+        assessor_name=(
+            assessor.full_name or assessor.username
+            if assessor is not None
+            else assessor_email
+        ),
+        holder_name=holder.full_name or holder.username,
+        competency_name=competency_name,
+        url=url,
+        expires_in_days=expires_in_days,
+    )
+
+    try:
+        send_email(
+            to=assessor_email,
+            subject=message["subject"],
+            html_body=message["html_body"],
+        )
+    except EmailRateLimitError:
+        # Deliberately swallowed. See the docstring: the ask is already
+        # recorded, and throwing here would roll it back over a mail
+        # problem the holder cannot do anything about.
+        logger.warning(
+            "sign-off request mail not sent: address rate limited",
+        )
+
+
 @passport_router.post(
     "/{passport_id}/competencies/{competency_id}/requests",
     response_model=SignOffResultOut,
@@ -509,25 +726,44 @@ def request_sign_off(
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
 ) -> SignOffResultOut:
-    """Ask a named assessor to sign off a competency.
+    """Ask an assessor, by email, to sign off a competency.
 
     The holder chooses their assessor, because the judgement about who is
     appropriate sits with them and their supervisor. The one rule is that
     it may not be the holder — the whole value of the record is a second
     named person accepting accountability.
+
+    **The address need not belong to a Quill account.** That is the
+    point: the consultant who observed the work is often at another
+    trust, or not on Quill at all. The request is written either way and
+    the assessor is emailed; they sign in or register, and the account
+    is joined to the request when they sign.
     """
     row = _require_holder(db, passport_id, user)
 
-    if body.assessor_user_id == user.id:
+    assessor_email = body.assessor_email.strip().lower()
+
+    if assessor_email == user.email.strip().lower():
         raise HTTPException(
             400,
             "You cannot ask yourself to sign off your own competency.",
         )
 
-    assessor = db.get(User, body.assessor_user_id)
-
-    if assessor is None or not assessor.is_active:
-        raise HTTPException(404, "Assessor not found")
+    # The same backstop the invite route carries, for the same reason:
+    # this route now sends mail to an address somebody typed, so without
+    # it the invite limit is bypassed by asking for sign-offs instead of
+    # inviting. Counted together, because to a recipient they are the
+    # same unsolicited mail from the same holder.
+    if _requests_today(db, row.id) + _invites_today(db, row.id) >= (
+        INVITES_PER_DAY
+    ):
+        raise HTTPException(
+            429,
+            (
+                f"You can ask up to {INVITES_PER_DAY} assessors a day. "
+                "Try again tomorrow."
+            ),
+        )
 
     try:
         name, commit = service.request_sign_off(
@@ -552,12 +788,33 @@ def request_sign_off(
             passport_id=row.id,
             signoff_id=name,
             competency_id=competency_id,
-            assessor_user_id=assessor.id,
+            assessor_email=assessor_email,
+            # Null until somebody signs. Who was asked is the address
+            # above; this records who actually signed, taken from the
+            # signer rather than from here.
+            assessor_user_id=None,
             status="open",
         )
     )
     row.head_commit = commit
     db.flush()
+
+    # Whether they already have an account decides what the email asks
+    # them to do, so it is looked up here — but a missing account is not
+    # an error, and the request stands either way.
+    assessor = db.scalar(
+        select(User).where(func.lower(User.email) == assessor_email)
+    )
+
+    _email_sign_off_request(
+        holder=user,
+        assessor_email=assessor_email,
+        assessor=assessor,
+        competency_id=competency_id,
+        passport_id=row.id,
+        invited_by_user_id=user.id,
+        db=db,
+    )
 
     return SignOffResultOut(name=name, status="requested", commit=commit)
 
@@ -616,7 +873,10 @@ def sign_off(
     if request_row is None:
         raise HTTPException(404, "Sign-off not found")
 
-    if request_row.assessor_user_id != user.id:
+    if (
+        request_row.assessor_email.strip().lower()
+        != user.email.strip().lower()
+    ):
         raise HTTPException(403, "You were not asked to sign this")
 
     if request_row.status != "open":
@@ -654,6 +914,9 @@ def sign_off(
 
     request_row.status = "signed_off"
     request_row.resolved_at = _now()
+    # Taken from the caller, never from the row: the column records who
+    # actually signed, and the address only says who was asked.
+    request_row.assessor_user_id = user.id
     passport.head_commit = commit
     db.flush()
 
@@ -691,7 +954,10 @@ def decline_sign_off(
     if request_row is None:
         raise HTTPException(404, "Sign-off not found")
 
-    if request_row.assessor_user_id != user.id:
+    if (
+        request_row.assessor_email.strip().lower()
+        != user.email.strip().lower()
+    ):
         raise HTTPException(403, "You were not asked to sign this")
 
     if request_row.status != "open":
@@ -712,6 +978,9 @@ def decline_sign_off(
 
     request_row.status = "declined"
     request_row.resolved_at = _now()
+    # Recorded on a decline too: somebody answered, and who they were is
+    # part of that answer.
+    request_row.assessor_user_id = user.id
     passport.head_commit = commit
     db.flush()
 
@@ -869,22 +1138,190 @@ def _competency_refs(ids_given: list[str]) -> list[CompetencyRef]:
         raise HTTPException(404, str(error)) from None
 
 
-def _attachments(hashes: list[str]) -> list[dict[str, object]]:
-    """Placeholder for evidence already stored as blobs.
+def _attachments(
+    blobs: BlobStore | GcsBlobStore,
+    passport_id: str,
+    named: list[AttachmentIn],
+) -> list[Attachment]:
+    """Check evidence exists, and describe it as the record will.
 
-    Upload lands in its own unit; until then a record may name no
-    attachments. Named hashes are refused rather than silently dropped,
-    because a caller believing evidence was attached when it was not is
-    worse than an error.
+    The caller supplies the filename and media type because it is the
+    only party that knows them: a blob is bytes at a path named by their
+    hash, and nothing beside it records what the file was called. The
+    record is where that description lives, which is why ``Attachment``
+    carries all four fields and the store carries none of them.
+
+    What is verified here is existence, and against this passport rather
+    than in general. A record naming a blob that is not there would be a
+    dangling reference in a document whose whole claim is that it can be
+    checked years later; naming one stored against somebody else's
+    passport would attach evidence the holder has never seen.
+
+    The media type is verified too, against the stored bytes. Upload
+    sniffs what it is given, but that guards only the moment of upload:
+    this is a second call, and until this check it took the caller's
+    word. A PNG uploaded honestly could be named here as
+    ``application/pdf`` and the record would say so permanently, which
+    is the same lie the sniff at upload exists to refuse — just told one
+    step later. The record outlives the request, so it is the record
+    that has to be true.
     """
-    if hashes:
-        raise HTTPException(
-            501,
-            "Evidence upload is not built yet, so a record cannot name "
-            "attachments.",
+    found: list[Attachment] = []
+
+    for item in named:
+        try:
+            present = blobs.exists(passport_id, item.hash)
+        except paths.PassportPathError:
+            raise HTTPException(400, "That is not a valid hash") from None
+
+        if not present:
+            raise HTTPException(
+                400,
+                "That evidence is not stored against this passport. "
+                "Upload it before naming it.",
+            )
+
+        if item.media_type not in ALLOWED_EVIDENCE_TYPES:
+            allowed = ", ".join(sorted(ALLOWED_EVIDENCE_TYPES))
+            raise HTTPException(
+                400, f"Unsupported evidence type (allowed: {allowed})"
+            )
+
+        # Only the first bytes decide the signature, but the stores hand
+        # back whole blobs. Bounded above by the upload ceiling, so this
+        # reads at most one already-admitted file.
+        stored = blobs.get(passport_id, item.hash)
+
+        if not _looks_like(stored, item.media_type):
+            raise HTTPException(
+                400,
+                f"That evidence is not {item.media_type}",
+            )
+
+        found.append(
+            Attachment(
+                hash=item.hash,
+                filename=item.filename,
+                size_bytes=item.size_bytes,
+                media_type=item.media_type,
+            )
         )
 
-    return []
+    return found
+
+
+# api-schema-check: allow-opaque-permanent is not needed here: this
+# returns a typed body describing what was stored, not the bytes.
+@passport_router.post(
+    "/{passport_id}/evidence",
+    response_model=EvidenceUploadOut,
+    status_code=201,
+    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+)
+async def upload_evidence(
+    passport_id: str,
+    file: UploadFile,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+    blobs: BlobStore | GcsBlobStore = _DEP_BLOBS,
+) -> EvidenceUploadOut:
+    """Store one piece of evidence and return the hash to name it by.
+
+    **The bytes come through this application deliberately.** A blob is
+    addressed by the SHA-256 of its contents, which is what lets a
+    holder check their own record years later with nothing but a
+    checksum tool — so the address cannot be computed without reading
+    every byte. That rules out the signed-URL pattern the teaching
+    videos use, where the browser uploads straight to the bucket: a
+    video is addressed by a generated id, so nobody has to look inside
+    it.
+
+    Uploading the same file twice yields the same hash and stores one
+    copy, so an interrupted upload is retried rather than reconciled.
+    """
+    row = _require_holder(db, passport_id, user)
+
+    media_type = (file.content_type or "").split(";")[0].strip().lower()
+
+    if media_type not in ALLOWED_EVIDENCE_TYPES:
+        allowed = ", ".join(sorted(ALLOWED_EVIDENCE_TYPES))
+        raise HTTPException(
+            400, f"Unsupported evidence type (allowed: {allowed})"
+        )
+
+    # Read in bounded chunks so an oversize upload is stopped partway
+    # rather than after. The middleware's ceiling comes from
+    # `Content-Length` and is skipped when that header is absent, so a
+    # chunked upload reaches here undeclared and nothing above has
+    # bounded it.
+    #
+    # This is not a memory optimisation, and an earlier comment here
+    # wrongly claimed it was: the join below materialises the whole file
+    # anyway, and Starlette has already spooled any part over 1 MB to
+    # disk. What it buys is a ceiling that holds when the header is
+    # missing, and a refusal that arrives without reading the rest.
+    # Hashing and storing need every byte together, so the join stays.
+    limit_mb = MAX_EVIDENCE_BYTES // (1024 * 1024)
+    chunks: list[bytes] = []
+    total = 0
+
+    while chunk := await file.read(_UPLOAD_CHUNK):
+        total += len(chunk)
+
+        if total > MAX_EVIDENCE_BYTES:
+            raise HTTPException(
+                413,
+                f"That file is larger than {limit_mb} MB",
+            )
+
+        chunks.append(chunk)
+
+    data = b"".join(chunks)
+
+    if not data:
+        raise HTTPException(400, "That file is empty")
+
+    # The allow-list above checks what the caller said; this checks what
+    # they sent. A mismatch is refused rather than corrected: guessing
+    # the real type and storing it under that would mean recording
+    # something the holder never claimed.
+    if not _looks_like(data, media_type):
+        raise HTTPException(
+            400,
+            f"That file does not look like {media_type}",
+        )
+
+    try:
+        attachment = blobs.put(
+            row.id,
+            data,
+            filename=file.filename or "evidence",
+            media_type=media_type,
+        )
+    except BlobConflictError:
+        # The hash is the name, so this means the same address already
+        # holds different bytes. Not something a caller can fix, and not
+        # something to overwrite: every record naming that hash would
+        # silently come to mean something else.
+        raise HTTPException(
+            409, "Stored evidence already exists at that hash"
+        ) from None
+    except BlobError:
+        raise HTTPException(500, "That file could not be stored") from None
+
+    logger.info(
+        "Passport evidence stored: passport=%s bytes=%d type=%s",
+        row.id,
+        attachment.size_bytes,
+        media_type,
+    )
+
+    return EvidenceUploadOut(
+        hash=attachment.hash,
+        filename=attachment.filename,
+        size_bytes=attachment.size_bytes,
+        media_type=attachment.media_type,
+    )
 
 
 @passport_router.post(
@@ -899,6 +1336,7 @@ def add_certificate(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
+    blobs: BlobStore | GcsBlobStore = _DEP_BLOBS,
 ) -> RecordResultOut:
     """File a certificate the holder is claiming.
 
@@ -919,7 +1357,7 @@ def add_certificate(
         expires_on=body.expires_on,
         competencies=_competency_refs(body.competencies),
         description=body.description,
-        attachments=_attachments(body.attachment_hashes),  # type: ignore[arg-type]
+        attachments=_attachments(blobs, row.id, body.attachments),
     )
 
     name, commit = records.add_certificate(
@@ -1061,6 +1499,7 @@ def add_logbook_entry(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
+    blobs: BlobStore | GcsBlobStore = _DEP_BLOBS,
 ) -> RecordResultOut:
     """Log one procedure against a competency.
 
@@ -1081,7 +1520,7 @@ def add_logbook_entry(
         outcome=body.outcome,
         notes=body.notes,
         also_counts_towards=body.also_counts_towards,
-        attachments=_attachments(body.attachment_hashes),  # type: ignore[arg-type]
+        attachments=_attachments(blobs, row.id, body.attachments),
     )
 
     stem, commit = records.add_logbook_entry(
@@ -1091,6 +1530,72 @@ def add_logbook_entry(
     db.flush()
 
     return RecordResultOut(name=stem, commit=commit)
+
+
+@passport_router.get(
+    "/{passport_id}/logbook",
+    response_model=WholeLogbookOut,
+    dependencies=[_DEP_PASSPORT],
+)
+def get_whole_logbook(
+    passport_id: str,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+    store: PassportStore = _DEP_STORE,
+) -> WholeLogbookOut:
+    """Every logged procedure, grouped by the competency it counts to.
+
+    Declared before ``/{passport_id}/logbook/{competency_id}`` so the
+    literal path wins over the parameterised one.
+
+    Which competencies appear is read from the directories on disk
+    rather than from the passport index: a competency with logbook
+    entries and nothing else is exactly the case this answers, and it
+    is the one the index describes least well.
+
+    Groups rather than one flat list, because an entry is about one
+    procedure and the competency it counts towards is part of what it
+    says. Sorted within each group by the clinical date recorded, as
+    the per-competency response is.
+    """
+    row = _require_reader(db, passport_id, user)
+
+    groups: list[LogbookOut] = []
+    total = 0
+
+    for directory in store.list_dir(row.id, paths.LOGBOOK):
+        competency_id = directory.name
+        entries: list[LogbookEntryOut] = []
+
+        for path in store.list_dir(row.id, directory):
+            raw = store.read(row.id, path)
+            entry = from_yaml(LogbookEntry, raw)
+            entries.append(
+                LogbookEntryOut.model_validate(
+                    {
+                        "filename": path.stem,
+                        "competency": competency_id,
+                        **entry.model_dump(mode="json"),
+                    }
+                )
+            )
+
+        if not entries:
+            continue
+
+        entries.sort(key=lambda item: item.performed_on)
+        total += len(entries)
+        groups.append(
+            LogbookOut(
+                competency=competency_id,
+                count=len(entries),
+                entries=entries,
+            )
+        )
+
+    groups.sort(key=lambda group: group.competency)
+
+    return WholeLogbookOut(competencies=groups, count=total)
 
 
 @passport_router.get(
@@ -1221,6 +1726,7 @@ def add_reflection(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
+    blobs: BlobStore | GcsBlobStore = _DEP_BLOBS,
 ) -> RecordResultOut:
     """Write a reflection.
 
@@ -1246,7 +1752,7 @@ def add_reflection(
         title=body.title,
         written_on=body.written_on,
         competencies=_competency_refs(body.competencies),
-        attachments=_attachments(body.attachment_hashes),  # type: ignore[arg-type]
+        attachments=_attachments(blobs, row.id, body.attachments),
     )
 
     name, commit = records.add_reflection(
@@ -1378,6 +1884,7 @@ def add_cpd_entry(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
+    blobs: BlobStore | GcsBlobStore = _DEP_BLOBS,
 ) -> RecordResultOut:
     """Record a continuing professional development activity.
 
@@ -1395,7 +1902,7 @@ def add_cpd_entry(
         competencies=_competency_refs(body.competencies),
         certificate=body.certificate,
         notes=body.notes,
-        attachments=_attachments(body.attachment_hashes),  # type: ignore[arg-type]
+        attachments=_attachments(blobs, row.id, body.attachments),
     )
 
     stem, commit = records.add_cpd_entry(store, row.id, _actor(user), entry)
@@ -2194,6 +2701,153 @@ def accept_assessor_invite(
         user_id=user.id,
         place=place,
         place_id=place_id,
+    )
+
+
+# ------------------------------------------------------------------
+# Export
+# ------------------------------------------------------------------
+#
+# All three are holder-only. The zip copies the canonical files
+# byte-for-byte, reflections among them, so it could never be anything
+# else. The Markdown and the PDF could in principle be read by a named
+# assessor, but an export is the holder taking their record away, and a
+# route that hands somebody else a whole passport in one call is not
+# something to add for the sake of symmetry with the per-record reads.
+#
+# Reflections are the reason the Markdown takes a parameter. `render()`
+# defaults them off because a rendering handed to a panel or an employer
+# must not carry one by accident, and written reflection can be
+# disclosed in legal proceedings. The holder may ask for them; nothing
+# else does it for them.
+
+
+def _export_filename(passport_id: str, suffix: str) -> str:
+    """A download name that says what the file is.
+
+    The passport id rather than the holder's name: a downloads folder is
+    not a place to scatter somebody's name, and the id is what the
+    record is addressed by everywhere else.
+    """
+    return f"passport-{passport_id}{suffix}"
+
+
+# api-schema-check: allow-opaque-permanent
+@passport_router.get(
+    "/{passport_id}/export.md",
+    dependencies=[_DEP_PASSPORT],
+    response_class=Response,
+    responses={200: {"content": {"text/markdown": {}}}},
+)
+def export_markdown(
+    passport_id: str,
+    reflections: bool = Query(
+        default=False,
+        description=(
+            "Include the holder's reflections. Off unless asked for: a "
+            "rendering shown to a panel or an employer must not carry "
+            "one by accident."
+        ),
+    ),
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+    store: PassportStore = _DEP_STORE,
+) -> Response:
+    """The whole passport as Markdown, for reading rather than parsing."""
+    row = _require_holder(db, passport_id, user)
+
+    try:
+        text = render.render(store, row.id, include_reflections=reflections)
+    except PassportNotFoundError:
+        raise HTTPException(404, "Passport not found") from None
+
+    return Response(
+        content=text,
+        media_type="text/markdown; charset=utf-8",
+        headers={
+            "Content-Disposition": (
+                "attachment; filename=" f'"{_export_filename(row.id, ".md")}"'
+            )
+        },
+    )
+
+
+# api-schema-check: allow-opaque-permanent
+@passport_router.get(
+    "/{passport_id}/export.pdf",
+    dependencies=[_DEP_PASSPORT],
+    response_class=Response,
+    responses={200: {"content": {"application/pdf": {}}}},
+)
+def export_pdf(
+    passport_id: str,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+    store: PassportStore = _DEP_STORE,
+) -> Response:
+    """The whole passport as a PDF.
+
+    Never carries reflections — `render_pdf` excludes them by design and
+    says so on the page, so a holder handing this to a panel is not
+    relying on having remembered a parameter.
+    """
+    row = _require_holder(db, passport_id, user)
+
+    try:
+        data = pdf.render_pdf(store, row.id, head_commit=row.head_commit)
+    except PassportNotFoundError:
+        raise HTTPException(404, "Passport not found") from None
+
+    return Response(
+        content=data,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": (
+                "attachment; filename=" f'"{_export_filename(row.id, ".pdf")}"'
+            )
+        },
+    )
+
+
+# api-schema-check: allow-opaque-permanent
+@passport_router.get(
+    "/{passport_id}/export.zip",
+    dependencies=[_DEP_PASSPORT],
+    response_class=Response,
+    responses={200: {"content": {"application/zip": {}}}},
+)
+def export_bundle(
+    passport_id: str,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+    store: PassportStore = _DEP_STORE,
+) -> Response:
+    """The portable bundle: the record, the renderings and the history.
+
+    The artefact a registrar carries between trusts, and the only export
+    that contains the canonical files themselves — reflections included,
+    copied byte-for-byte. Holder-only for that reason above all.
+    """
+    row = _require_holder(db, passport_id, user)
+
+    try:
+        data = export.build_bundle(
+            store,
+            row.id,
+            requested_by=str(user.id),
+            head_commit=row.head_commit,
+        )
+    except PassportNotFoundError:
+        raise HTTPException(404, "Passport not found") from None
+
+    return Response(
+        content=data,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": (
+                "attachment; filename=" f'"{_export_filename(row.id, ".zip")}"'
+            )
+        },
     )
 
 
