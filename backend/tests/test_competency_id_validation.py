@@ -140,7 +140,7 @@ class TestThePractisingRowRefusesBadIds:
         with pytest.raises(ValueError, match=MADE_UP):
             PractisingCompetency(
                 user_id=person.id,
-                organisation_id=org.id,
+                site_id=org.org_unit_id,
                 competency=MADE_UP,
             )
 
@@ -153,7 +153,7 @@ class TestThePractisingRowRefusesBadIds:
         db_session.add(
             PractisingCompetency(
                 user_id=person.id,
-                organisation_id=org.id,
+                site_id=org.org_unit_id,
                 competency=REAL,
             )
         )
