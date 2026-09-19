@@ -61,7 +61,10 @@ from app.cbac.positions import (
 )
 from app.config import settings
 from app.db import get_core_db
-from app.deps import has_competency
+from app.deps import (
+    DEP_REQUIRE_CLINICAL,
+    has_competency,
+)
 from app.ehrbase_client import (
     EhrbaseClientError,
     create_letter_composition,
@@ -119,6 +122,7 @@ from app.org_units import (
     get_org_unit_relation,
     validate_org_unit_relation,
 )
+from app.org_units.router import router as org_units_router
 from app.org_units.tree import (
     descendant_ids,
     organisation_id_of_site,
@@ -441,18 +445,6 @@ COOKIE_KW: dict[str, Any] = {
     "secure": settings.SECURE_COOKIES,
     "domain": settings.COOKIE_DOMAIN,
 }
-
-
-def require_clinical_services() -> None:
-    """FastAPI dependency: raises 503 when FHIR/EHRbase are disabled."""
-    if not settings.CLINICAL_SERVICES_ENABLED:
-        raise HTTPException(
-            status_code=503,
-            detail="Clinical services are not available in this deployment",
-        )
-
-
-DEP_REQUIRE_CLINICAL = Depends(require_clinical_services)
 
 
 def check_fhir_health() -> dict[str, bool | int | str]:
@@ -6272,6 +6264,7 @@ def mark_read_endpoint(
 
 from app.features.teaching.router import teaching_router  # noqa: E402
 
+router.include_router(org_units_router)
 router.include_router(teaching_router)
 
 from app.features.passport.router import (  # noqa: E402

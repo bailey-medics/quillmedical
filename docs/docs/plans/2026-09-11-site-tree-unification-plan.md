@@ -876,7 +876,7 @@ So the remaining steps land as:
 - [x] 10c — stop writing the old name, and drop it
 - [x] 10d — rename the tables and the model
 - [x] 10e — reach through a teaching link (the module move goes with 12b)
-- [ ] 11a — the `/api/org-units` surface, alongside the old ones
+- [x] 11a — the `/api/org-units` surface, alongside the old ones
 - [ ] 11b — the frontend onto it, and the thin-pages gap closed
 - [ ] 12a — retire the old API surfaces
 - [ ] 12b — drop the `organisations` table, and enforce the type flags
@@ -981,6 +981,34 @@ Three rules the plan did not spell out, all written into the code:
   itself.
 - **One hop.** Reach that chained would make "who can see this" depend on
   a path nobody drew.
+
+#### 11a — the `/api/org-units` surface
+
+Eleven paths, covering everything the two older surfaces do, all keyed on
+a place id. The old pair is untouched and still answers in organisation
+ids and site ids, which is why both run side by side rather than one being
+a view over the other.
+
+Four readings the plan left open were settled while building:
+
+- **The type decides whether a place may be a root**, so neither a
+  ward with no parent nor a nested organisation can be created by accident.
+  Creating a root stays an operator's job, as creating an organisation
+  always was.
+- **Changing a type across that line is refused.** Turning a ward into an
+  organisation is not a rename; it would move the place out of its tree
+  without saying so.
+- **Features and patient lists are refused on a place that cannot carry
+  them**, rather than written and never read. A feature quietly enabled on
+  a ward that does nothing is worse than being told it cannot be.
+- **Scoping here is membership, not reach.** Reach is why somebody sees
+  teaching content at a place they visit; it is not authority to
+  administer it, and these are the administration routes.
+
+`require_clinical_services` moved from `main` to `deps` so the new router
+could depend on the *same* callable. A wrapper would have been a different
+object, and the tests switch that gate off by overriding the object — so
+the wrapper would have quietly stayed on.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to
