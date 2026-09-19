@@ -875,7 +875,7 @@ So the remaining steps land as:
 - [x] 10b — read the new name
 - [x] 10c — stop writing the old name, and drop it
 - [x] 10d — rename the tables and the model
-- [ ] 10e — the org_units module, and reach through a teaching link
+- [x] 10e — reach through a teaching link (the module move goes with 12b)
 - [ ] 11a — the `/api/org-units` surface, alongside the old ones
 - [ ] 11b — the frontend onto it, and the thin-pages gap closed
 - [ ] 12a — retire the old API surfaces
@@ -957,6 +957,30 @@ does not mention it.
 It only needed repointing at the renamed table here. The pair itself
 collapses in 12b, where `organisations` goes and one of the two columns
 stops meaning anything.
+
+#### 10e — reach through a teaching link
+
+The item left unassigned at step 9 is built: a `teaches_at` link makes the
+place it points at reachable. Nothing else about it changes — not
+membership, not admin rights.
+
+**Departed from the plan on the module rename.** The plan pairs this with
+turning the organisations module into an org_units module. Its two
+functions still answer in *organisation* ids, because organisations still
+exist; renaming them now would be a large diff that says nothing true
+yet. The move goes with 12b, where the functions genuinely change meaning.
+
+Three rules the plan did not spell out, all written into the code:
+
+- **A link is followed away from its source, never back.** A link is a
+  claim its source makes about itself, so following it backwards would let
+  anybody name a school and be let into it.
+- **A link belongs to the place that made it.** One ward recording a
+  relationship must not quietly open it to everybody at the trust. An
+  organisation that means it for all its people records the link on
+  itself.
+- **One hop.** Reach that chained would make "who can see this" depend on
+  a path nobody drew.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to
