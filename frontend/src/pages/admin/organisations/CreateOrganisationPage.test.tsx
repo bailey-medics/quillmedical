@@ -15,6 +15,7 @@ import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import CreateOrganisationPage from "./CreateOrganisationPage";
 import * as apiLib from "@/lib/api";
+import { organisationTypeOptions } from "@/domains/orgUnit";
 
 const mockNavigate = vi.fn();
 
@@ -88,6 +89,34 @@ describe("CreateOrganisationPage", () => {
         "aria-disabled",
         "true",
       );
+    });
+  });
+
+  describe("The kinds on offer", () => {
+    it("are the ones the server will accept", async () => {
+      // The screen carried its own list, and the server's list moved on
+      // without it: every kind offered here was refused as unknown. They
+      // come from one file now, so the two cannot disagree.
+      const user = userEvent.setup();
+      renderWithRouter(<CreateOrganisationPage />);
+
+      await user.click(
+        screen.getByRole("combobox", { name: /organisation type/i }),
+      );
+
+      const offered = (await screen.findAllByRole("option")).map(
+        (option) => option.textContent,
+      );
+      expect(offered).toEqual(
+        organisationTypeOptions.map((option) => option.label),
+      );
+    });
+
+    it("are the places that stand at the top of a tree", () => {
+      // A ward is not a kind of organisation, whatever else it is.
+      const values = organisationTypeOptions.map((option) => option.value);
+      expect(values).toContain("organisation");
+      expect(values).not.toContain("ward");
     });
   });
 
