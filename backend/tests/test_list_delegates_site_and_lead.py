@@ -73,7 +73,10 @@ def _site_of(db: Session, org: Organisation, name: str) -> Site:
 def _member(db: Session, site: Site, user: User, capacity: str) -> None:
     db.execute(
         insert(site_member).values(
-            site_id=site.id, user_id=user.id, capacity=capacity
+            site_id=site.id,
+            org_unit_id=site.id,
+            user_id=user.id,
+            capacity=capacity,
         )
     )
     db.commit()

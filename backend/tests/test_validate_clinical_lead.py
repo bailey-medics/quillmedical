@@ -53,7 +53,10 @@ def _setup_org_with_site_and_lead(
     # and the column stays until the contract step removes it.
     db.execute(
         site_member.insert().values(
-            site_id=site.id, user_id=lead.id, capacity="staff"
+            site_id=site.id,
+            org_unit_id=site.id,
+            user_id=lead.id,
+            capacity="staff",
         )
     )
     set_clinical_lead(db, site, lead)
@@ -126,7 +129,10 @@ class TestValidateClinicalLead:
         db_session.flush()
         db_session.execute(
             site_member.insert().values(
-                site_id=site.id, user_id=staff_user.id, capacity="staff"
+                site_id=site.id,
+                org_unit_id=site.id,
+                user_id=staff_user.id,
+                capacity="staff",
             )
         )
         db_session.flush()
@@ -195,6 +201,7 @@ class TestValidateClinicalLead:
         db_session.execute(
             site_member.insert().values(
                 site_id=other_site.id,
+                org_unit_id=other_site.id,
                 user_id=other_lead.id,
                 capacity="staff",
             )

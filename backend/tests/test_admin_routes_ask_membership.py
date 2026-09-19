@@ -90,7 +90,10 @@ def site_only_admin(db_session: Session, site: Site) -> User:
     user = _user(db_session, "ward_admin", profession="system_administrator")
     db_session.execute(
         insert(site_member).values(
-            site_id=site.id, user_id=user.id, capacity="staff"
+            site_id=site.id,
+            org_unit_id=site.id,
+            user_id=user.id,
+            capacity="staff",
         )
     )
     db_session.commit()

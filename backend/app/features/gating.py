@@ -70,7 +70,7 @@ def requires_feature(feature_key: str) -> Callable[..., User]:
                     [
                         int(site_id)
                         for site_id in db.execute(
-                            select(site_member.c.site_id).where(
+                            select(site_member.c.org_unit_id).where(
                                 site_member.c.user_id == user.id
                             )
                         )

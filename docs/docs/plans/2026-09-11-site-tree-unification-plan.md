@@ -872,7 +872,7 @@ settled:
 So the remaining steps land as:
 
 - [x] 10a — write both names for the place column
-- [ ] 10b — read the new name
+- [x] 10b — read the new name
 - [ ] 10c — stop writing the old name, and drop it
 - [ ] 10d — rename the tables and the model
 - [ ] 10e — the org_units module, and reach through a teaching link
@@ -895,6 +895,19 @@ Two readings the plan left open were settled while building:
 
 `Site.staff` was removed on the way: two foreign keys to the same table
 made it ambiguous, and nothing used it.
+
+#### 10b — read the new name
+
+Every read moved across; every write still sets both. One thing worth
+recording:
+
+- **The test fixtures that write a membership row directly had to start
+  writing both names too.** They stand in for the old revision, which in
+  production writes both from 10a onwards — so this is the fixtures
+  catching up with the application rather than a change in behaviour.
+  A row carrying only the old name is simply not found once the reads
+  move, which is what makes the backfill in 10a load-bearing; there is a
+  test saying so.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to
