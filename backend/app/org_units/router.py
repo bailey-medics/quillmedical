@@ -657,8 +657,20 @@ def remove_org_unit_member(
     current_user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> OrgUnitStatusOut:
-    """Take somebody off a place. Requires ``manage_staff_membership``."""
-    _require_visible(db, current_user, unit_id)
+    """Take somebody off a place.
+
+    Anything they hold here goes with them. Naming a clinical lead
+    requires the person to be at the place, so leaving them holding the
+    post after taking them off it would leave the place in a state the
+    same surface refuses to create. The post is vacated rather than
+    deleted, so the handover is recorded.
+
+    Requires ``manage_staff_membership``.
+    """
+    unit = _require_visible(db, current_user, unit_id)
+
+    if clinical_leads_of(db, [unit_id]).get(unit_id) == user_id:
+        set_clinical_lead(db, unit, None, appointed_by=current_user)
 
     result = db.execute(
         delete(org_unit_member).where(

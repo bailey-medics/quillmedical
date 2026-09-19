@@ -22,9 +22,12 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.cbac.positions import clinical_lead_post, clinical_leads_of
 from app.models import (
     Organisation,
     OrgUnit,
+    Position,
+    PositionHolding,
     User,
     org_unit_member,
     org_unit_patient_member,
@@ -763,3 +766,164 @@ class TestTheClinicalLead:
         child = detail.json()["children"][0]
         assert child["clinical_lead_id"] == person.id
         assert child["clinical_lead_name"] == "alice"
+
+
+class TestLeavingAPlace:
+    """What somebody holds at a place goes when they do.
+
+    These rules were proved against `/api/sites` while it was the only
+    way to do any of this. They are rules about places, not about that
+    address, so they are asked here before it goes.
+    """
+
+    def test_taking_the_lead_off_the_place_vacates_the_post(
+        self, authenticated_superadmin_client, db_session
+    ):
+        org = _org(db_session)
+        ward = _ward(db_session, org.org_unit_id)
+        person = _person(db_session)
+        authenticated_superadmin_client.post(
+            f"/api/org-units/{ward.id}/members",
+            json={"user_id": person.id, "capacity": "staff"},
+        )
+        authenticated_superadmin_client.put(
+            f"/api/org-units/{ward.id}/clinical-lead",
+            json={"user_id": person.id},
+        )
+
+        authenticated_superadmin_client.delete(
+            f"/api/org-units/{ward.id}/members/{person.id}"
+        )
+
+        # Naming a lead requires them to be at the place, so leaving them
+        # holding the post afterwards would be a state this same surface
+        # refuses to create.
+        assert clinical_leads_of(db_session, [ward.id]) == {}
+
+    def test_the_departure_is_recorded_rather_than_erased(
+        self, authenticated_superadmin_client, db_session
+    ):
+        org = _org(db_session)
+        ward = _ward(db_session, org.org_unit_id)
+        person = _person(db_session)
+        authenticated_superadmin_client.post(
+            f"/api/org-units/{ward.id}/members",
+            json={"user_id": person.id, "capacity": "staff"},
+        )
+        authenticated_superadmin_client.put(
+            f"/api/org-units/{ward.id}/clinical-lead",
+            json={"user_id": person.id},
+        )
+
+        authenticated_superadmin_client.delete(
+            f"/api/org-units/{ward.id}/members/{person.id}"
+        )
+
+        post = clinical_lead_post(db_session, ward)
+        holdings = (
+            db_session.execute(
+                select(PositionHolding).where(
+                    PositionHolding.position_id == post.id
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert len(holdings) == 1
+        assert holdings[0].ended_on is not None
+
+    def test_taking_anybody_else_off_leaves_the_post_alone(
+        self, authenticated_superadmin_client, db_session
+    ):
+        org = _org(db_session)
+        ward = _ward(db_session, org.org_unit_id)
+        lead = _person(db_session)
+        nurse = _person(db_session, "nurse")
+        for person in (lead, nurse):
+            authenticated_superadmin_client.post(
+                f"/api/org-units/{ward.id}/members",
+                json={"user_id": person.id, "capacity": "staff"},
+            )
+        authenticated_superadmin_client.put(
+            f"/api/org-units/{ward.id}/clinical-lead",
+            json={"user_id": lead.id},
+        )
+
+        authenticated_superadmin_client.delete(
+            f"/api/org-units/{ward.id}/members/{nurse.id}"
+        )
+
+        assert clinical_leads_of(db_session, [ward.id]) == {ward.id: lead.id}
+
+
+class TestThePostIsCreatedOnDemand:
+    """A post nobody has tried to fill is not a vacancy anyone is chasing."""
+
+    def test_a_new_place_has_no_clinical_lead_post(self, db_session):
+        ward = OrgUnit(name="Fresh Ward", type="ward")
+        db_session.add(ward)
+        db_session.commit()
+
+        assert (
+            db_session.execute(
+                select(Position).where(Position.org_unit_id == ward.id)
+            ).first()
+            is None
+        )
+
+    def test_asking_for_it_creates_it_vacant(self, db_session):
+        ward = OrgUnit(name="Fresh Ward", type="ward")
+        db_session.add(ward)
+        db_session.commit()
+
+        post = clinical_lead_post(db_session, ward)
+        db_session.commit()
+
+        assert post.kind == "clinical_lead"
+        assert post.max_holders == 1
+        assert clinical_leads_of(db_session, [ward.id]) == {}
+
+
+class TestMovingAPlace:
+    """The tree has to stay a tree, however deep the chain being moved.
+
+    One level up is refused already (`TestChanging`). This is about the
+    walk going the whole way, which is what `/api/sites` proved and what
+    nothing else asks.
+    """
+
+    def test_under_a_deeper_descendant_is_refused(
+        self, authenticated_superadmin_client, db_session
+    ):
+        """The walk goes the whole way up, not one level."""
+        org = _org(db_session)
+        hospital = _ward(db_session, org.org_unit_id, "Hospital")
+        ward = OrgUnit(name="Ward", type="ward", parent_id=hospital.id)
+        db_session.add(ward)
+        db_session.commit()
+        room = OrgUnit(name="Room 4", type="room", parent_id=ward.id)
+        db_session.add(room)
+        db_session.commit()
+
+        resp = authenticated_superadmin_client.put(
+            f"/api/org-units/{hospital.id}", json={"parent_id": room.id}
+        )
+
+        assert resp.status_code == 400
+        db_session.refresh(hospital)
+        assert hospital.parent_id == org.org_unit_id
+
+    def test_a_move_that_keeps_it_a_tree_still_works(
+        self, authenticated_superadmin_client, db_session
+    ):
+        org = _org(db_session)
+        first = _ward(db_session, org.org_unit_id, "Ward 1")
+        second = _ward(db_session, org.org_unit_id, "Ward 2")
+
+        resp = authenticated_superadmin_client.put(
+            f"/api/org-units/{first.id}", json={"parent_id": second.id}
+        )
+
+        assert resp.status_code == 200
+        db_session.refresh(first)
+        assert first.parent_id == second.id
