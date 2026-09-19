@@ -188,6 +188,16 @@ export default function OrganisationAdminPage() {
   }, []);
 
   // The place sends patient ids; the table wants a row each.
+  // A page promising staff keeps that promise. The place answers with
+  // everybody who is here and what each of them is, which is right for
+  // the answer and wrong for this heading: a teaching delegate listed
+  // under "staff members" is how the old page came to be wrong about
+  // who worked there. Their own pages list them by the same capacity.
+  const staffMembers = useMemo(
+    () => (org?.members ?? []).filter((member) => member.capacity === "staff"),
+    [org],
+  );
+
   const patientRows: PatientRow[] = useMemo(
     () => (org?.patient_ids ?? []).map((patient_id) => ({ patient_id })),
     [org?.patient_ids],
@@ -335,7 +345,7 @@ export default function OrganisationAdminPage() {
           </Group>
 
           <DataTableControlled<OrgUnitMember>
-            data={org.members}
+            data={staffMembers}
             columns={staffColumns}
             onRowClick={(member) => navigate(`/admin/users/${member.id}`)}
             getRowKey={(member) => member.id}
