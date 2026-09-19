@@ -427,16 +427,16 @@ Two things to check rather than assume:
 
    ## LLM decisions
 
-   - **Bold sentence carrying the whole point.** Then a sentence or two of
-     plainer detail, which the reader may skip.
+   - One sentence carrying the whole point. A second only if the first
+     genuinely needs it.
 
    ## Risks
 
-   - **None found.** …or one bullet per risk.
+   - None found. …or one bullet per risk.
 
    ## What has changed
 
-   - **Bold sentence naming the change.** Then the detail.
+   - One sentence naming what is different now.
 
    Tests: `just ub -k org_units`, `just uf src/pages/admin/sites`.
    ```
@@ -489,18 +489,28 @@ Two things to check rather than assume:
    > they always did, so an old client gets '410, this has moved' rather
    > than 'your request is malformed'."
 
-   Three tests before a bullet goes in:
+   Two tests before a bullet goes in:
 
-   - **Subject, verb, object.** Name who or what does the thing.
-   - **Could someone who has read only the plan summary understand it on
-     one pass?** If it needs the diff to parse, rewrite it.
-   - **Is the bold text a punchline?** If the premise is in the sentence
-     after the bold, the bullet is the wrong way round.
+   - Subject, verb, object — name who or what does the thing.
+   - Could someone who has read only the plan summary understand it on one
+     pass? If it needs the diff to parse, rewrite it.
 
-   **Every bullet leads with a bold sentence that stands alone.** The
-   reader should be able to read only the bold text and have the whole
-   pull request. What follows the bold is expansion for anyone who wants
-   it, never the point itself.
+   ### One sentence per bullet, and no bold
+
+   **Never open a bullet with a bold phrase.** Bold on the front of every
+   bullet marks nothing, because everything is marked; it reads as a
+   headline over a sentence that then repeats it, and it tempts you into
+   putting the punchline in bold and the premise in the plain text that
+   follows.
+
+   **Write the whole bullet as one plain sentence.** If it needs a second,
+   the second adds a fact the first does not contain — never a restatement
+   of it. Never a third. A bullet that wants a third is two bullets, or it
+   is detail the diff already carries.
+
+   Bold is for the rare word inside a sentence that genuinely must not be
+   missed — "this **deletes** the rows" — and loses that power the moment
+   it becomes the house style.
 
    Each section:
 
@@ -515,7 +525,7 @@ Two things to check rather than assume:
 
    - **`## Risks`** — security, data leaks, patient safety, anything that
      could go wrong beyond the code being incorrect. **Always present**,
-     even as "**None found.**", because an omitted section cannot be told
+     even as "None found.", because an omitted section cannot be told
      apart from one nobody thought about. Say "none found", never "none":
      it is what you noticed, not a guarantee, and your judgement of risk
      is not well calibrated.
