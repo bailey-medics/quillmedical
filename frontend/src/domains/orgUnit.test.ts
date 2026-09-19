@@ -174,6 +174,26 @@ describe("who is there", () => {
 
     expect(mocked.del).toHaveBeenCalledWith("/org-units/5/members/9");
   });
+
+  it("names the clinical lead", async () => {
+    mocked.put.mockResolvedValue({ status: "ok" });
+
+    await orgUnits.setClinicalLead(5, 9);
+
+    expect(mocked.put).toHaveBeenCalledWith("/org-units/5/clinical-lead", {
+      user_id: 9,
+    });
+  });
+
+  it("leaves the post vacant", async () => {
+    mocked.put.mockResolvedValue({ status: "ok" });
+
+    await orgUnits.setClinicalLead(5, null);
+
+    expect(mocked.put).toHaveBeenCalledWith("/org-units/5/clinical-lead", {
+      user_id: null,
+    });
+  });
 });
 
 describe("what a place carries", () => {

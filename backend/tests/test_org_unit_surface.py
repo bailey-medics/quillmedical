@@ -277,6 +277,28 @@ class TestReadingOne:
         assert resp.json()["features"] == []
         assert resp.json()["patient_ids"] == []
 
+    def test_it_names_the_place_it_sits_inside(
+        self, authenticated_superadmin_client, db_session
+    ):
+        org = _org(db_session)
+        ward = _ward(db_session, org.org_unit_id)
+
+        resp = authenticated_superadmin_client.get(f"/api/org-units/{ward.id}")
+
+        assert resp.json()["parent_name"] == org.name
+
+    def test_the_top_of_a_tree_sits_inside_nothing(
+        self, authenticated_superadmin_client, db_session
+    ):
+        org = _org(db_session)
+
+        resp = authenticated_superadmin_client.get(
+            f"/api/org-units/{org.org_unit_id}"
+        )
+
+        assert resp.json()["parent_id"] is None
+        assert resp.json()["parent_name"] == ""
+
     def test_another_organisations_place_is_not_found(
         self, authenticated_admin_client, db_session
     ):
