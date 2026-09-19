@@ -117,9 +117,11 @@ describe("CreateOrganisationPage", () => {
       await user.click(submitButton);
 
       await waitFor(() => {
-        expect(postSpy).toHaveBeenCalledWith("/organisations", {
+        expect(postSpy).toHaveBeenCalledWith("/org-units", {
           name: "Test Hospital",
           type: "hospital_team",
+          // No parent: this is the top of a new tree.
+          parent_id: null,
           location: "London",
         });
       });

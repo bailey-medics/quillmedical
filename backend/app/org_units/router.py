@@ -20,7 +20,7 @@ from sqlalchemy import delete, insert, select
 from sqlalchemy.orm import Session
 
 from app.cbac.base_professions import grant_staff_competencies
-from app.cbac.positions import clinical_leads_of
+from app.cbac.positions import clinical_leads_of, set_clinical_lead
 from app.db import get_core_db
 from app.deps import (
     DEP_CURRENT_USER,
@@ -53,6 +53,7 @@ from app.org_units.types import (
     get_org_unit_type,
     type_can_have_members,
     type_can_hold_features,
+    type_can_hold_positions,
     type_requires_parent,
     validate_org_unit_type,
 )
@@ -67,6 +68,7 @@ from app.schemas.org_units import (
     OrgUnitMembersOut,
     OrgUnitsListOut,
     OrgUnitStatusOut,
+    SetClinicalLeadIn,
     ToggleOrgUnitActiveIn,
     ToggleOrgUnitFeatureIn,
     UpdateOrgUnitIn,
@@ -203,6 +205,24 @@ def _item(unit: OrgUnit) -> OrgUnitItem:
         created_at=unit.created_at.isoformat(),
         updated_at=unit.updated_at.isoformat(),
     )
+
+
+def _names_of(db: Session, user_ids: set[int]) -> dict[int, str]:
+    """Return a readable name for each of *user_ids*.
+
+    Resolved in one query so a list of places does not cost one request
+    per row to say who leads it.
+    """
+    if not user_ids:
+        return {}
+    return {
+        row.id: row.full_name or row.username
+        for row in db.execute(
+            select(User.id, User.full_name, User.username).where(
+                User.id.in_(user_ids)
+            )
+        ).all()
+    }
 
 
 def _members_of(db: Session, unit_id: int) -> OrgUnitMembersOut:
@@ -369,6 +389,7 @@ def get_org_unit(
         .all()
     )
     leads = clinical_leads_of(db, [child.id for child in children])
+    lead_names = _names_of(db, set(leads.values()))
 
     features: list[str] = []
     patient_ids: list[str] = []
@@ -414,6 +435,9 @@ def get_org_unit(
                 "type": child.type,
                 "is_active": child.is_active,
                 "clinical_lead_id": leads.get(child.id),
+                "clinical_lead_name": lead_names.get(
+                    leads.get(child.id, 0), ""
+                ),
             }
             for child in children
         ],
@@ -637,6 +661,63 @@ def remove_org_unit_member(
 
     db.flush()
     return OrgUnitStatusOut(status="removed")
+
+
+@router.put(
+    "/{unit_id}/clinical-lead",
+    response_model=OrgUnitStatusOut,
+    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_STAFF],
+)
+def set_org_unit_clinical_lead(
+    unit_id: int,
+    body: SetClinicalLeadIn,
+    current_user: User = DEP_CURRENT_USER,
+    db: Session = _DEP_SESSION,
+) -> OrgUnitStatusOut:
+    """Name the clinical lead of a place, or leave the post vacant.
+
+    A post is not a competency: it can be vacant, and "this ward has no
+    clinical lead" is a real and actionable state. Passing no person
+    vacates it, which is why this is one route rather than an add and a
+    remove.
+
+    Whoever holds it substantively is stood down first, so a handover is
+    recorded rather than the previous holder simply vanishing.
+
+    The person has to be at the place already. Naming somebody who is not
+    would make the post say they are involved here when nothing else does.
+
+    Requires ``manage_staff_membership``.
+    """
+    unit = _require_visible(db, current_user, unit_id)
+
+    if not type_can_hold_positions(unit.type):
+        raise HTTPException(
+            status_code=422,
+            detail=f"Nobody is clinical lead of a {unit.type}.",
+        )
+
+    lead: User | None = None
+    if body.user_id is not None:
+        lead = db.get(User, body.user_id)
+        if lead is None:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        at_this_place = db.scalar(
+            select(org_unit_member.c.user_id).where(
+                org_unit_member.c.org_unit_id == unit_id,
+                org_unit_member.c.user_id == body.user_id,
+            )
+        )
+        if at_this_place is None:
+            raise HTTPException(
+                status_code=422,
+                detail="That person is not at this place.",
+            )
+
+    set_clinical_lead(db, unit, lead, appointed_by=current_user)
+    db.flush()
+    return OrgUnitStatusOut(status="vacant" if lead is None else "set")
 
 
 # ------------------------------------------------------------------
