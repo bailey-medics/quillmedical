@@ -102,7 +102,7 @@ class TestThePatientBecomingStaff:
 
         client = _login(test_client, "the_admin")
         response = client.post(
-            f"/api/organisations/{org.id}/staff",
+            f"/api/org-units/{org.org_unit_id}/members",
             json={
                 "user_id": starter.id,
                 "base_profession": "healthcare_assistant",
@@ -137,7 +137,7 @@ class TestThePatientBecomingStaff:
 
         client = _login(test_client, "the_admin")
         response = client.post(
-            f"/api/organisations/{org.id}/staff",
+            f"/api/org-units/{org.org_unit_id}/members",
             json={
                 "user_id": starter.id,
                 "base_profession": "healthcare_assistant",
@@ -163,7 +163,7 @@ class TestThePatientBecomingStaff:
 
         client = _login(test_client, "the_admin")
         response = client.post(
-            f"/api/organisations/{org.id}/staff",
+            f"/api/org-units/{org.org_unit_id}/members",
             json={
                 "user_id": starter.id,
                 "base_profession": "healthcare_assistant",
@@ -190,7 +190,7 @@ class TestThePatientBecomingStaff:
 
         client = _login(test_client, "the_admin")
         response = client.post(
-            f"/api/organisations/{org.id}/staff",
+            f"/api/org-units/{org.org_unit_id}/members",
             json={
                 "user_id": starter.id,
                 "additional_competencies": ["view_teaching_cases"],
@@ -219,7 +219,7 @@ class TestTheGrantIsOptional:
 
         client = _login(test_client, "the_admin")
         response = client.post(
-            f"/api/organisations/{org.id}/staff",
+            f"/api/org-units/{org.org_unit_id}/members",
             json={"user_id": nurse.id},
             headers=_csrf(client),
         )
@@ -251,7 +251,7 @@ class TestWhatIsRefused:
 
         client = _login(test_client, "the_admin")
         response = client.post(
-            f"/api/organisations/{org.id}/staff",
+            f"/api/org-units/{org.org_unit_id}/members",
             json={
                 "user_id": starter.id,
                 "base_profession": "chief_wizard",
@@ -272,7 +272,7 @@ class TestWhatIsRefused:
 
         client = _login(test_client, "the_admin")
         response = client.post(
-            f"/api/organisations/{org.id}/staff",
+            f"/api/org-units/{org.org_unit_id}/members",
             json={
                 "user_id": starter.id,
                 "additional_competencies": ["prescribe_moonbeams"],

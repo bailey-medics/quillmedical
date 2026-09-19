@@ -38,6 +38,20 @@ class CreateOrgUnitIn(BaseModel):
     parent_id: int | None = None
     location: str | None = None
 
+    @field_validator("name")
+    @classmethod
+    def _name_says_something(cls, value: str) -> str:
+        """Refuse a name that is only spaces.
+
+        The routes strip a name before storing it, so a name of spaces
+        became a place called nothing: a row that cannot be searched for,
+        picked out of a list, or asked about. Refusing is the kinder
+        answer, and the same one a missing name already gets.
+        """
+        if not value.strip():
+            raise ValueError("A place needs a name.")
+        return value
+
 
 class UpdateOrgUnitIn(BaseModel):
     """Request to change a place. Only the fields given are changed.
@@ -56,6 +70,14 @@ class UpdateOrgUnitIn(BaseModel):
     type: str | None = None
     parent_id: int | None = None
     location: str | None = None
+
+    @field_validator("name")
+    @classmethod
+    def _name_says_something(cls, value: str | None) -> str | None:
+        """Refuse renaming a place to nothing, for the same reason."""
+        if value is not None and not value.strip():
+            raise ValueError("A place needs a name.")
+        return value
 
 
 class ToggleOrgUnitActiveIn(BaseModel):

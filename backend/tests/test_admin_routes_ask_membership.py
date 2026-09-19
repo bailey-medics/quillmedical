@@ -123,7 +123,7 @@ class TestSiteMembershipDoesNotAdministerTheTrust:
     ) -> None:
         """404, because the route asks membership and finds none."""
         client = _login(test_client, "ward_admin")
-        response = client.get(f"/api/organisations/{org.id}")
+        response = client.get(f"/api/org-units/{org.org_unit_id}")
 
         assert response.status_code == 404, response.text
 
@@ -135,7 +135,7 @@ class TestSiteMembershipDoesNotAdministerTheTrust:
     ) -> None:
         client = _login(test_client, "ward_admin")
         response = client.put(
-            f"/api/organisations/{org.id}",
+            f"/api/org-units/{org.org_unit_id}",
             json={"name": "Renamed By Someone Downstairs"},
             headers=_csrf(client),
         )
@@ -150,10 +150,10 @@ class TestSiteMembershipDoesNotAdministerTheTrust:
     ) -> None:
         """The listing is built from the same question."""
         client = _login(test_client, "ward_admin")
-        response = client.get("/api/organisations")
+        response = client.get("/api/org-units?roots=true")
 
         assert response.status_code == 200, response.text
-        names = [o["name"] for o in response.json()["organisations"]]
+        names = [o["name"] for o in response.json()["org_units"]]
         assert "Trust" not in names
 
 
@@ -176,7 +176,7 @@ class TestOrganisationMembershipStillWorks:
         org_admin: User,
     ) -> None:
         client = _login(test_client, "trust_admin")
-        response = client.get(f"/api/organisations/{org.id}")
+        response = client.get(f"/api/org-units/{org.org_unit_id}")
 
         assert response.status_code == 200, response.text
         assert response.json()["name"] == "Trust"
@@ -188,8 +188,8 @@ class TestOrganisationMembershipStillWorks:
         org_admin: User,
     ) -> None:
         client = _login(test_client, "trust_admin")
-        response = client.get("/api/organisations")
+        response = client.get("/api/org-units?roots=true")
 
         assert response.status_code == 200, response.text
-        names = [o["name"] for o in response.json()["organisations"]]
+        names = [o["name"] for o in response.json()["org_units"]]
         assert "Trust" in names
