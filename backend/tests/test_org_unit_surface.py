@@ -286,6 +286,23 @@ class TestReadingOne:
         resp = authenticated_superadmin_client.get(f"/api/org-units/{ward.id}")
 
         assert resp.json()["parent_name"] == org.name
+        assert resp.json()["parent_is_root"] is True
+
+    def test_it_says_when_the_place_above_is_not_an_organisation(
+        self, authenticated_superadmin_client, db_session
+    ):
+        org = _org(db_session)
+        ward = _ward(db_session, org.org_unit_id)
+        room = OrgUnit(name="Room 4", type="room", parent_id=ward.id)
+        db_session.add(room)
+        db_session.commit()
+
+        resp = authenticated_superadmin_client.get(f"/api/org-units/{room.id}")
+
+        # A screen linking upwards needs to know which page to send
+        # somebody to, and a ward is not an organisation.
+        assert resp.json()["parent_name"] == ward.name
+        assert resp.json()["parent_is_root"] is False
 
     def test_the_top_of_a_tree_sits_inside_nothing(
         self, authenticated_superadmin_client, db_session
@@ -298,6 +315,7 @@ class TestReadingOne:
 
         assert resp.json()["parent_id"] is None
         assert resp.json()["parent_name"] == ""
+        assert resp.json()["parent_is_root"] is False
 
     def test_another_organisations_place_is_not_found(
         self, authenticated_admin_client, db_session
