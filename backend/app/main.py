@@ -1194,6 +1194,7 @@ def register(
         db.execute(
             site_member.insert().values(
                 site_id=payload.site_id,
+                org_unit_id=payload.site_id,
                 user_id=user.id,
                 capacity="trainee",
             )
@@ -1636,6 +1637,7 @@ def create_user_with_cbac(
         db.execute(
             site_member.insert().values(
                 site_id=s_id,
+                org_unit_id=s_id,
                 user_id=user.id,
                 capacity="trainee",
             )
@@ -1901,6 +1903,7 @@ def update_user(
                 site_member.insert().values(
                     user_id=user_id,
                     site_id=s_id,
+                    org_unit_id=s_id,
                     capacity="trainee",
                 )
             )
@@ -5449,7 +5452,10 @@ def add_site_staff(
 
     db.execute(
         site_member.insert().values(
-            site_id=site_id, user_id=user_id, capacity=capacity
+            site_id=site_id,
+            org_unit_id=site_id,
+            user_id=user_id,
+            capacity=capacity,
         )
     )
     _mirror_clinical_lead(db, site_id, user_id, role, current_user)

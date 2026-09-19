@@ -852,31 +852,49 @@ which relation confers it — `teaches_at` and nothing else. What remains is
 one clause in `get_reachable_org_ids`, and it belongs with the org_units
 module in step 10, where the plan describes reach.
 
-### Steps 10 to 12 wait on two human decisions
+### How steps 10 to 12 are sequenced
 
-Steps 1 to 9 are built. The merge is done: one table of places, one
-membership table, one place column on competencies and posts, features and
-patient lists hanging off a place, a cycle guard, and every walk of the
-tree a single recursive query. Steps 10 to 12 are the rename, and two
-questions have to be settled before they can be:
+Two questions were put to the person the plan is for, and both are
+settled:
 
-- **A column rename is four deploys here, not one.** The backend rules
-  make renaming a column a copy-and-retire spread across separate
-  deploys, because the old and new revisions run side by side against one
-  schema. Step 10 renames `site_id` on three tables. Either each takes the
-  full four steps, or somebody decides this stack lands as one deploy and
-  a direct rename is acceptable. The same rules bless a single-step *table*
-  rename, so only the columns are in question.
+- **The column renames take the full expand-contract, inside this stack.**
+  `site_id` becoming `org_unit_id` is three units, not one: write both
+  names, then read the new one, then drop the old. A *table* rename stays
+  a single step, which the backend rules already bless.
 
-- **Folding `organisations` into `org_unit` changes every organisation id
-  in the API.** It is the largest breaking change in the plan, and the
-  only way to declare a breaking change intentional here is a required
-  reviewer approving the `api-breaking-change-review` environment, with a
-  decision file per flagged change. That approval is a human action by
-  design and nothing in a diff can stand in for it.
+- **`organisations` folds into `org_unit`, breaking changes and all.** The
+  gates will be signed off. Even so the fold is staged rather than
+  dropped in: the new `/api/org-units` surface arrives alongside the old
+  one, the frontend moves across, the old surfaces are retired, and only
+  then does the `organisations` table go. Nothing is broken at any point
+  a reviewer stops at.
 
-Neither is a reason to change the plan. Both are reasons for the person
-reading this to say which way, before the rename starts.
+So the remaining steps land as:
+
+- [x] 10a — write both names for the place column
+- [ ] 10b — read the new name
+- [ ] 10c — stop writing the old name, and drop it
+- [ ] 10d — rename the tables and the model
+- [ ] 10e — the org_units module, and reach through a teaching link
+- [ ] 11a — the `/api/org-units` surface, alongside the old ones
+- [ ] 11b — the frontend onto it, and the thin-pages gap closed
+- [ ] 12a — retire the old API surfaces
+- [ ] 12b — drop the `organisations` table, and enforce the type flags
+
+#### 10a — write both names for the place column
+
+Two readings the plan left open were settled while building:
+
+- **The mirror lives in the mapper, not at every write.** There are dozens
+  of places that record a place, and one of them being missed is a row
+  whose place is known under one name and not the other — the very failure
+  this plan exists to remove, reintroduced by accident.
+- **Both unique rules are in force meanwhile.** While both columns hold
+  the place, both have to refuse the same duplicates, or a row the old
+  rule would have stopped slips in under the new one.
+
+`Site.staff` was removed on the way: two foreign keys to the same table
+made it ambiguous, and nothing used it.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to
