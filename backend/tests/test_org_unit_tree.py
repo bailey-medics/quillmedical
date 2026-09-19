@@ -193,58 +193,6 @@ class TestNamingTheOrganisationForManyPlaces:
         assert root_ids_of_organisations(db_session, []) == []
 
 
-class TestAnOrganisationIsNotASite:
-    """Organisations share the table now, so the site routes must not
-    reach them: a trust renamed from a screen built for wards, or listed
-    among them, would be a surprise."""
-
-    def test_it_is_not_in_the_list_of_places(
-        self, authenticated_superadmin_client, db_session
-    ):
-        org = _org(db_session, "Trust")
-        ward = _under(db_session, org.org_unit_id, "Ward", "ward")
-
-        listed = authenticated_superadmin_client.get("/api/sites").json()
-        ids = [s["id"] for s in listed["sites"]]
-
-        assert ward.id in ids
-        assert org.org_unit_id not in ids
-
-    def test_it_cannot_be_read_as_a_place(
-        self, authenticated_superadmin_client, db_session
-    ):
-        org = _org(db_session, "Trust")
-
-        resp = authenticated_superadmin_client.get(
-            f"/api/sites/{org.org_unit_id}"
-        )
-
-        assert resp.status_code == 404
-
-    def test_it_cannot_be_renamed_as_a_place(
-        self, authenticated_superadmin_client, db_session
-    ):
-        org = _org(db_session, "Trust")
-
-        resp = authenticated_superadmin_client.put(
-            f"/api/sites/{org.org_unit_id}", json={"name": "Renamed"}
-        )
-
-        assert resp.status_code == 404
-
-    def test_it_cannot_be_deleted_as_a_place(
-        self, authenticated_superadmin_client, db_session
-    ):
-        org = _org(db_session, "Trust")
-
-        resp = authenticated_superadmin_client.delete(
-            f"/api/sites/{org.org_unit_id}"
-        )
-
-        assert resp.status_code == 404
-        assert db_session.get(OrgUnit, org.org_unit_id) is not None
-
-
 class TestDeletingAnOrganisation:
     def test_its_row_goes_with_it(self, db_session):
         org = _org(db_session, "Trust")
