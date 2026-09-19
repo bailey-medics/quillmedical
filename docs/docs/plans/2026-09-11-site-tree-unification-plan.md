@@ -888,7 +888,7 @@ So the remaining steps land as:
 - [x] 12b-i — the kinds of organisation become kinds of place
 - [x] 12b-ii — an organisation created as a place is still an organisation
 - [x] 12b-iii — the users API learns place ids, beside the old ones
-- [ ] 12b-iv — the user form onto place ids
+- [x] 12b-iv — the user form onto place ids
 - [ ] 12b-v — retire the organisation and site lists on the users API
 - [ ] 12b-vi — drop the `organisations` table, and enforce the type flags
 
@@ -1291,6 +1291,27 @@ reinterpret.
   on the way past.
 
 `oasdiff` reports no breaking change, as an expand step should.
+
+#### 12b-iv — the user form onto place ids
+
+The last screen reading `/api/organisations`. Nothing in the frontend
+asks either old surface anything now.
+
+- **One request instead of one per organisation.** It used to fetch the
+  organisations and then a detail request for each one's sites, so an
+  estate of thirty trusts meant thirty-one requests to fill two dropdowns.
+- **The form keeps its two controls over one list.** Which control a
+  place appears in is decided by what it is, not by where somebody put
+  it, so the two cannot disagree about a place.
+- **A ward is listed under the trust it is inside, however deep.** The
+  walk goes up to the root rather than reading the immediate parent, so a
+  ward inside a building inside a trust is still that trust's ward. The
+  walk is bounded by the number of places, so a chain that somehow loops
+  cannot hang the page.
+- **A place whose organisation is not in the answer is left out.**
+  Somebody may administer a ward without administering the tree above it;
+  showing it under a name we do not have would be worse than not showing
+  it, and the place's own screens can still put people there.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to
