@@ -69,7 +69,9 @@ def _authorise(
     db.add(
         PractisingCompetency(
             user_id=user.id,
-            site_id=org.org_unit_id if org else (site.id if site else None),
+            org_unit_id=(
+                org.org_unit_id if org else (site.id if site else None)
+            ),
             competency=competency,
         )
     )
@@ -196,7 +198,6 @@ class TestOneSiteWithinAnOrganisation:
         _staff(db_session, manager, trust)
         db_session.execute(
             insert(site_member).values(
-                site_id=ward.id,
                 org_unit_id=ward.id,
                 user_id=manager.id,
                 capacity="staff",
@@ -274,7 +275,7 @@ class TestPositionsAsOpposedToCompetencies:
 
     def _lead_post(self, db_session, site: Site) -> Position:
         post = Position(
-            site_id=site.id,
+            org_unit_id=site.id,
             kind="clinical_lead",
             title="Clinical lead",
             requires_competency="access_patient_records",

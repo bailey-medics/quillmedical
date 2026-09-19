@@ -105,7 +105,6 @@ def _make_lead(db: Session, site: Site, user: User) -> None:
     """
     db.execute(
         insert(site_member).values(
-            site_id=site.id,
             org_unit_id=site.id,
             user_id=user.id,
             capacity="staff",
@@ -279,7 +278,6 @@ class TestTheClinicalLead:
         impostor = _user(db_session, "dr_column_only", "column@example.test")
         db_session.execute(
             insert(site_member).values(
-                site_id=site.id,
                 org_unit_id=site.id,
                 user_id=impostor.id,
                 capacity="staff",

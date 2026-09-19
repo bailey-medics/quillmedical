@@ -1291,7 +1291,6 @@ class TestAcceptingAnInvitation:
         )
         db_session.execute(
             site_member.insert().values(
-                site_id=site.id,
                 org_unit_id=site.id,
                 user_id=holder.id,
                 capacity="trainee",
@@ -1310,7 +1309,7 @@ class TestAcceptingAnInvitation:
 
         capacity = db_session.scalar(
             select(site_member.c.capacity).where(
-                site_member.c.site_id == site.id,
+                site_member.c.org_unit_id == site.id,
                 site_member.c.user_id == body["user_id"],
             )
         )
@@ -1337,7 +1336,6 @@ class TestAcceptingAnInvitation:
         db_session.refresh(own_site)
         db_session.execute(
             site_member.insert().values(
-                site_id=own_site.id,
                 org_unit_id=own_site.id,
                 user_id=assessor.id,
                 capacity="staff",
@@ -1359,7 +1357,7 @@ class TestAcceptingAnInvitation:
 
         kept = db_session.scalar(
             select(site_member.c.capacity).where(
-                site_member.c.site_id == own_site.id,
+                site_member.c.org_unit_id == own_site.id,
                 site_member.c.user_id == assessor.id,
             )
         )
@@ -1517,7 +1515,6 @@ class TestTheGateResolvesForAnAcceptedAssessor:
         )
         db_session.execute(
             site_member.insert().values(
-                site_id=site.id,
                 org_unit_id=site.id,
                 user_id=holder.id,
                 capacity="trainee",
@@ -1533,7 +1530,7 @@ class TestTheGateResolvesForAnAcceptedAssessor:
         # The membership written was a site one, not an organisation one.
         at_site = db_session.scalar(
             select(site_member.c.capacity).where(
-                site_member.c.site_id == site.id,
+                site_member.c.org_unit_id == site.id,
                 site_member.c.user_id == assessor_id,
             )
         )
