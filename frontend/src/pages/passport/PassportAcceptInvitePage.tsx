@@ -15,7 +15,7 @@
 
 import { useEffect, useState } from "react";
 import { Stack } from "@mantine/core";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import PageHeader from "@/components/page-header";
 import BaseCard from "@/components/base-card/BaseCard";
 import { PasswordField, TextField } from "@components/form";
@@ -28,17 +28,32 @@ import { acceptAssessorInvite, previewAssessorInvite } from "@lib/passport";
 import type { InvitePreview } from "@lib/passport";
 
 export function Component() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
 
   const [preview, setPreview] = useState<InvitePreview | null>(null);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [registrationBody, setRegistrationBody] = useState("");
+  const [registrationNumber, setRegistrationNumber] = useState("");
   const [accepted, setAccepted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const missingToken = !token;
+
+  // Step 6 of the flow: the link lands them where the work is, rather
+  // than telling them to go and find it. A short pause so the
+  // confirmation is read rather than flashed past, and a button beside
+  // it for anyone who looked away or whose browser blocked the move.
+  useEffect(() => {
+    if (!accepted) return;
+
+    const timer = setTimeout(() => navigate("/passport/inbox"), 2000);
+    return () => clearTimeout(timer);
+  }, [accepted, navigate]);
 
   useEffect(() => {
     if (missingToken) return;
@@ -69,6 +84,17 @@ export function Component() {
         token,
         username: preview?.needs_account ? username : null,
         password: preview?.needs_account ? password : null,
+        // Stated by the assessor rather than copied from the
+        // invitation: the holder gave an address and nothing else, and
+        // a registration number is worth more from its holder than
+        // from somebody who half-remembered it.
+        full_name: preview?.needs_account ? fullName.trim() : null,
+        registration_authority: preview?.needs_account
+          ? registrationBody.trim()
+          : null,
+        registration_number: preview?.needs_account
+          ? registrationNumber.trim()
+          : null,
       });
       setAccepted(true);
       setError(null);
@@ -80,7 +106,12 @@ export function Component() {
   }
 
   const canSubmit = preview?.needs_account
-    ? username.trim().length > 0 && password.length > 0 && !submitting
+    ? username.trim().length > 0 &&
+      password.length > 0 &&
+      fullName.trim().length > 0 &&
+      registrationBody.trim().length > 0 &&
+      registrationNumber.trim().length > 0 &&
+      !submitting
     : !submitting;
 
   if (accepted) {
@@ -89,8 +120,12 @@ export function Component() {
         <StateMessage
           icon={<IconCircleCheck />}
           title="Invitation accepted"
-          description="You can now sign in and see the sign-off requests naming you."
+          description="Taking you to the sign-off requests waiting for you."
           colour="success"
+        />
+        <ButtonPair
+          acceptLabel="See my sign-off requests"
+          onAccept={() => navigate("/passport/inbox")}
         />
       </Stack>
     );
@@ -123,6 +158,31 @@ export function Component() {
 
             {preview.needs_account && (
               <>
+                <TextField
+                  label="Your full name"
+                  description="As it should read on the sign-offs you make."
+                  value={fullName}
+                  onChange={(event) => setFullName(event.currentTarget.value)}
+                  required
+                />
+                <TextField
+                  label="Registering body"
+                  description="GMC, NMC, HCPC or whichever holds your registration."
+                  value={registrationBody}
+                  onChange={(event) =>
+                    setRegistrationBody(event.currentTarget.value)
+                  }
+                  required
+                />
+                <TextField
+                  label="Registration number"
+                  description="Recorded on every sign-off you make, and checked by an administrator later."
+                  value={registrationNumber}
+                  onChange={(event) =>
+                    setRegistrationNumber(event.currentTarget.value)
+                  }
+                  required
+                />
                 <TextField
                   label="Choose a username"
                   value={username}
