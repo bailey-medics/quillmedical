@@ -1,12 +1,19 @@
 /**
- * Add Site to Organisation Page
+ * Create Site Page
  *
- * Form for creating a new site and linking it to the current organisation.
- * Only accessible to admin/superadmin users.
+ * Creating a site used to be possible only from the organisation it sits
+ * in, which quietly decided the answer to "what does it sit inside?"
+ * before the question was asked. Here the place above is picked like any
+ * other field, so a ward can be put inside a building rather than only
+ * inside a trust.
+ *
+ * Who leads the site is deliberately not asked here. The person has to be
+ * at the place before they can hold the post there, and both are one act
+ * on the site's own pages once it exists.
  */
 
-import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Stack } from "@mantine/core";
 import { Controller } from "react-hook-form";
 import BaseCard from "@/components/base-card/BaseCard";
@@ -20,34 +27,36 @@ import {
   useFormContext,
 } from "@/components/form/Form";
 import type { FormSubmitResult } from "@/components/form/Form";
-import { api } from "@/lib/api";
-import { orgUnits, placeTypeOptions } from "@/domains/orgUnit";
+import { orgUnits, placeTypeOptions, type OrgUnit } from "@/domains/orgUnit";
 import ErrorState from "@/components/error-state/ErrorState";
 
-interface ApiUser {
-  id: number;
-  username: string;
-  email: string;
-}
-
-interface AddSiteFormValues {
+interface CreateSiteFormValues {
+  parentId: string | null;
   name: string;
   type: string | null;
   location: string;
-  clinicalLeadId: string | null;
 }
 
-function AddSiteFields({
-  orgId,
-  users,
-  usersLoading,
+function CreateSiteFields({
+  places,
+  placesLoading,
 }: {
-  orgId: string;
-  users: ApiUser[];
-  usersLoading: boolean;
+  places: OrgUnit[];
+  placesLoading: boolean;
 }) {
   const navigate = useNavigate();
   const { methods } = useFormContext();
+
+  // A place is offered by name and kind together, because two wards in
+  // different hospitals are often called the same thing.
+  const parentOptions = useMemo(
+    () =>
+      places.map((place) => ({
+        value: String(place.id),
+        label: `${place.name} (${place.type_display_name})`,
+      })),
+    [places],
+  );
 
   return (
     <Stack gap="md">
@@ -55,13 +64,32 @@ function AddSiteFields({
       <BaseCard>
         <Stack gap="md">
           <Controller
+            name="parentId"
+            control={methods.control}
+            rules={{ required: "Please select the place it sits inside" }}
+            render={({ field, fieldState }) => (
+              <SelectField
+                label="Inside"
+                placeholder="Search for a place"
+                data={parentOptions}
+                value={field.value as string | null}
+                onChange={field.onChange}
+                error={fieldState.error?.message}
+                searchable
+                disabled={placesLoading}
+                withAsterisk
+              />
+            )}
+          />
+
+          <Controller
             name="name"
             control={methods.control}
             rules={{ required: "Site name is required" }}
             render={({ field, fieldState }) => (
               <TextField
                 label="Name"
-                placeholder="e.g. Addenbrooke's Hospital"
+                placeholder="e.g. Ward 12"
                 value={field.value as string}
                 onChange={field.onChange}
                 error={fieldState.error?.message}
@@ -100,29 +128,9 @@ function AddSiteFields({
             )}
           />
 
-          <Controller
-            name="clinicalLeadId"
-            control={methods.control}
-            render={({ field, fieldState }) => (
-              <SelectField
-                label="Clinical lead"
-                placeholder="Search for a user"
-                data={users.map((u) => ({
-                  value: String(u.id),
-                  label: `${u.username} (${u.email})`,
-                }))}
-                value={field.value as string | null}
-                onChange={field.onChange}
-                error={fieldState.error?.message}
-                searchable
-                disabled={usersLoading}
-              />
-            )}
-          />
-
           <SubmitButton
-            onCancel={() => navigate(`/admin/organisations/${orgId}`)}
-            disabled={usersLoading}
+            onCancel={() => navigate("/admin/sites")}
+            disabled={placesLoading}
           />
         </Stack>
       </BaseCard>
@@ -130,69 +138,49 @@ function AddSiteFields({
   );
 }
 
-export default function AddSiteToOrgPage() {
-  const { id } = useParams<{ id: string }>();
+export default function CreateSitePage() {
   const navigate = useNavigate();
-  const [users, setUsers] = useState<ApiUser[]>([]);
-  const [usersLoading, setUsersLoading] = useState(true);
+  const [places, setPlaces] = useState<OrgUnit[]>([]);
+  const [placesLoading, setPlacesLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchUsers() {
+    async function fetchPlaces() {
       try {
-        const response = await api.get<{ users: ApiUser[] }>("/users");
-        setUsers(response.users);
+        setPlaces(await orgUnits.list());
       } catch (err) {
         setLoadError(
-          err instanceof Error ? err.message : "Failed to load users",
+          err instanceof Error ? err.message : "Failed to load places",
         );
       } finally {
-        setUsersLoading(false);
+        setPlacesLoading(false);
       }
     }
 
-    fetchUsers();
+    fetchPlaces();
   }, []);
 
   async function handleSubmit(
-    data: AddSiteFormValues,
+    data: CreateSiteFormValues,
   ): Promise<FormSubmitResult> {
     try {
-      // Create the site inside this organisation. The link is written
-      // in the same transaction, so there is no window where the site
-      // belongs nowhere — which is what the second call used to leave.
       const site = await orgUnits.create({
-        name: data.name,
+        name: data.name.trim(),
         type: data.type as string,
-        parent_id: Number(id),
-        location: data.location || null,
+        parent_id: Number(data.parentId),
+        location: data.location.trim() || null,
       });
 
-      // Naming a clinical lead is two acts now: the person is at the
-      // place, and the person holds the post. They used to be one, which
-      // meant a post could not be vacant without also removing the
-      // person — and a vacancy is a real state worth being able to say.
-      if (data.clinicalLeadId) {
-        await orgUnits.addMember(site.id, {
-          user_id: Number(data.clinicalLeadId),
-          capacity: "staff",
-        });
-        await orgUnits.setClinicalLead(site.id, Number(data.clinicalLeadId));
-      }
-
-      navigate(`/admin/organisations/${id}`, {
+      navigate(`/admin/sites/${site.id}`, {
         state: {
           flash: {
             variant: "success",
             title: "Site created",
-            description: `${data.name} has been created and linked`,
+            description: `${site.name} has been created`,
           },
         },
       });
-      return {
-        state: "success",
-        message: { title: "Site created and linked" },
-      };
+      return { state: "success", message: { title: "Site created" } };
     } catch (err) {
       return {
         state: "error",
@@ -210,21 +198,21 @@ export default function AddSiteToOrgPage() {
       <PageHeader title="Add site" />
 
       {loadError && (
-        <ErrorState title="Error loading users" message={loadError} />
+        <ErrorState title="Error loading places" message={loadError} />
       )}
 
-      <Form<AddSiteFormValues>
+      <Form<CreateSiteFormValues>
         defaultValues={{
+          parentId: null,
           name: "",
           type: null,
           location: "",
-          clinicalLeadId: null,
         }}
         onSubmit={handleSubmit}
         submitLabel="Create site"
         submittingLabel="Creating…"
       >
-        <AddSiteFields orgId={id!} users={users} usersLoading={usersLoading} />
+        <CreateSiteFields places={places} placesLoading={placesLoading} />
       </Form>
     </Stack>
   );

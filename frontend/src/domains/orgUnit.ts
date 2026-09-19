@@ -12,6 +12,22 @@
  */
 
 import { api } from "@/lib/api";
+import orgUnitTypesData from "@/generated/org-unit-types.json";
+
+/**
+ * The kinds of place that sit inside another one.
+ *
+ * Read from `shared/org-unit-types.yaml`, the same file the backend
+ * validates against, rather than written out again on each screen. Three
+ * screens carried their own copy, which is how a list of kinds comes to
+ * disagree with what the server will accept.
+ *
+ * `requires_parent` is what separates them from an organisation: a ward
+ * sits inside something, a trust does not.
+ */
+export const placeTypeOptions = orgUnitTypesData.org_unit_types
+  .filter((type) => type.requires_parent)
+  .map((type) => ({ value: type.id, label: type.display_name }));
 
 /** One place in the tree, as a list shows it. */
 export type OrgUnit = {

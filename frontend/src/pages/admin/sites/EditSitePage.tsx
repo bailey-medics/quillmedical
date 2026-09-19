@@ -23,18 +23,12 @@ import {
 } from "@/components/form/Form";
 import type { FormSubmitResult } from "@/components/form/Form";
 import { api } from "@/lib/api";
-import { orgUnits, type OrgUnitDetail } from "@/domains/orgUnit";
+import {
+  orgUnits,
+  placeTypeOptions,
+  type OrgUnitDetail,
+} from "@/domains/orgUnit";
 import ErrorState from "@/components/error-state/ErrorState";
-
-const SITE_TYPE_OPTIONS = [
-  { value: "hospital", label: "Hospital" },
-  { value: "building", label: "Building" },
-  { value: "ward", label: "Ward" },
-  { value: "room", label: "Room" },
-  { value: "clinic", label: "Clinic" },
-  { value: "department", label: "Department" },
-  { value: "virtual", label: "Virtual" },
-];
 
 interface ApiUser {
   id: number;
@@ -101,7 +95,7 @@ function EditSiteFields({
               <SelectField
                 label="Type"
                 placeholder="Select site type"
-                data={SITE_TYPE_OPTIONS}
+                data={placeTypeOptions}
                 value={field.value as string | null}
                 onChange={field.onChange}
                 error={fieldState.error?.message}
