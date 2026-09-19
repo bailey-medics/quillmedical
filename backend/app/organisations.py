@@ -25,8 +25,8 @@ from app.models import (
     ExternalPatientAccess,
     Organisation,
     User,
-    organisation_patient_member,
-    site_member,
+    org_unit_member,
+    org_unit_patient_member,
     validate_member_capacity,
 )
 from app.org_units.tree import (
@@ -53,10 +53,13 @@ from app.org_units.tree import (
 organisation_member = (
     select(
         Organisation.id.label("organisation_id"),
-        site_member.c.user_id.label("user_id"),
-        site_member.c.capacity.label("capacity"),
+        org_unit_member.c.user_id.label("user_id"),
+        org_unit_member.c.capacity.label("capacity"),
     )
-    .join(site_member, site_member.c.org_unit_id == Organisation.org_unit_id)
+    .join(
+        org_unit_member,
+        org_unit_member.c.org_unit_id == Organisation.org_unit_id,
+    )
     .subquery("organisation_member")
 )
 
@@ -121,12 +124,12 @@ def get_reachable_org_ids(
     # accountable for each. Resolved by walking the tree up rather than by
     # joining on a column, because a place several levels down still
     # reaches its organisation and a join on the parent would not see it.
-    member_sites = select(site_member.c.org_unit_id).where(
-        site_member.c.user_id == user_id
+    member_sites = select(org_unit_member.c.org_unit_id).where(
+        org_unit_member.c.user_id == user_id
     )
     if capacity is not None:
         member_sites = member_sites.where(
-            site_member.c.capacity == validate_member_capacity(capacity)
+            org_unit_member.c.capacity == validate_member_capacity(capacity)
         )
 
     site_ids = [int(r[0]) for r in db.execute(member_sites).all()]
@@ -161,8 +164,8 @@ def get_patient_org_ids(db: Session, patient_id: str) -> list[int]:
     place_ids = [
         int(r[0])
         for r in db.execute(
-            select(organisation_patient_member.c.org_unit_id).where(
-                organisation_patient_member.c.patient_id == patient_id
+            select(org_unit_patient_member.c.org_unit_id).where(
+                org_unit_patient_member.c.patient_id == patient_id
             )
         ).all()
     ]
@@ -233,10 +236,10 @@ def check_user_patient_access(
     ):
         return True
 
-    # A record they were invited to. The grant row names which patient,
-    # exactly as organisation membership does below; without the pairing
-    # revoking a competency could not cut access, only deleting the row
-    # could.
+        # A record they were invited to. The grant row names which patient,
+        # exactly as organisation membership does below; without the pairing
+        # revoking a competency could not cut access, only deleting the row
+        # could.
     if "access_granted_patient_records" in competencies:
         grant = db.scalar(
             select(ExternalPatientAccess).where(
@@ -248,9 +251,9 @@ def check_user_patient_access(
         if grant is not None:
             return True
 
-    # A patient they are treating. Membership alone is not enough:
-    # sharing an organisation says only that the patient is in reach,
-    # never that this person may read them.
+            # A patient they are treating. Membership alone is not enough:
+            # sharing an organisation says only that the patient is in reach,
+            # never that this person may read them.
     if "access_patient_records" in competencies:
         if get_shared_org_ids(db, user.id, patient_id):
             return True
@@ -263,8 +266,8 @@ def get_org_patient_ids(db: Session, org_ids: list[int]) -> set[str]:
     if not org_ids:
         return set()
     rows = db.execute(
-        select(organisation_patient_member.c.patient_id).where(
-            organisation_patient_member.c.org_unit_id.in_(
+        select(org_unit_patient_member.c.patient_id).where(
+            org_unit_patient_member.c.org_unit_id.in_(
                 root_ids_of_organisations(db, org_ids)
             )
         )
@@ -330,7 +333,7 @@ def get_accessible_patient_ids(db: Session, user: User) -> set[str]:
     if user_orgs:
         result |= get_org_patient_ids(db, user_orgs)
 
-    # External access grants
+        # External access grants
     rows = db.execute(
         select(ExternalPatientAccess.patient_id).where(
             ExternalPatientAccess.user_id == user.id,
@@ -341,18 +344,17 @@ def get_accessible_patient_ids(db: Session, user: User) -> set[str]:
 
     return result
 
-
-# ------------------------------------------------------------------
-# Writing membership
-# ------------------------------------------------------------------
-#
-# Membership at an organisation and membership at a ward are the same
-# fact about the same person, and are now one table keyed on a place in
-# the tree. An organisation's place is its own row — its root.
-#
-# These three functions are the only code that writes an organisation
-# membership. They were what made switching every reader over a change in
-# one file rather than a hunt through the routes.
+    # ------------------------------------------------------------------
+    # Writing membership
+    # ------------------------------------------------------------------
+    #
+    # Membership at an organisation and membership at a ward are the same
+    # fact about the same person, and are now one table keyed on a place in
+    # the tree. An organisation's place is its own row — its root.
+    #
+    # These three functions are the only code that writes an organisation
+    # membership. They were what made switching every reader over a change in
+    # one file rather than a hunt through the routes.
 
 
 def _root_of(db: Session, organisation_id: int) -> int | None:
@@ -386,14 +388,14 @@ def add_organisation_member(
         return
 
     existing = db.scalar(
-        select(site_member.c.user_id).where(
-            site_member.c.org_unit_id == root_id,
-            site_member.c.user_id == user_id,
+        select(org_unit_member.c.user_id).where(
+            org_unit_member.c.org_unit_id == root_id,
+            org_unit_member.c.user_id == user_id,
         )
     )
     if existing is None:
         db.execute(
-            site_member.insert().values(
+            org_unit_member.insert().values(
                 org_unit_id=root_id,
                 user_id=user_id,
                 capacity=capacity,
@@ -401,10 +403,10 @@ def add_organisation_member(
         )
     else:
         db.execute(
-            site_member.update()
+            org_unit_member.update()
             .where(
-                site_member.c.org_unit_id == root_id,
-                site_member.c.user_id == user_id,
+                org_unit_member.c.org_unit_id == root_id,
+                org_unit_member.c.user_id == user_id,
             )
             .values(capacity=capacity)
         )
@@ -424,9 +426,9 @@ def remove_organisation_member(
     if root_id is None:
         return
     db.execute(
-        site_member.delete().where(
-            site_member.c.org_unit_id == root_id,
-            site_member.c.user_id == user_id,
+        org_unit_member.delete().where(
+            org_unit_member.c.org_unit_id == root_id,
+            org_unit_member.c.user_id == user_id,
         )
     )
 
@@ -469,8 +471,8 @@ def remove_organisation_memberships(
 
     if root_ids:
         db.execute(
-            site_member.delete().where(
-                site_member.c.user_id == user_id,
-                site_member.c.org_unit_id.in_(root_ids),
+            org_unit_member.delete().where(
+                org_unit_member.c.user_id == user_id,
+                org_unit_member.c.org_unit_id.in_(root_ids),
             )
         )

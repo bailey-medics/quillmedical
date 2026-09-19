@@ -31,7 +31,7 @@ from app.models import (
     ExternalPatientAccess,
     Organisation,
     User,
-    organisation_patient_member,
+    org_unit_patient_member,
 )
 from app.organisations import add_organisation_member
 from app.security import hash_password
@@ -55,7 +55,7 @@ def admin_org(db_session: Session, test_admin: User) -> Organisation:
     db_session.commit()
     add_organisation_member(db_session, org.id, test_admin.id, "staff")
     db_session.execute(
-        insert(organisation_patient_member).values(
+        insert(org_unit_patient_member).values(
             org_unit_id=org.org_unit_id, patient_id=OWN_PATIENT
         )
     )
@@ -71,7 +71,7 @@ def other_org(db_session: Session) -> Organisation:
     db_session.add(org)
     db_session.commit()
     db_session.execute(
-        insert(organisation_patient_member).values(
+        insert(org_unit_patient_member).values(
             org_unit_id=org.org_unit_id, patient_id=OUTSIDE_PATIENT
         )
     )

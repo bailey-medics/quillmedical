@@ -17,7 +17,7 @@ from app.cbac.scoped import (
     competencies_at,
     who_can_practise_at,
 )
-from app.models import Organisation, PractisingCompetency, Site, User
+from app.models import Organisation, OrgUnit, PractisingCompetency, User
 from app.security import hash_password
 
 
@@ -42,8 +42,8 @@ def _org(db: Session, name: str) -> Organisation:
     return org
 
 
-def _site(db: Session, name: str) -> Site:
-    site = Site(name=name, type="ward")
+def _site(db: Session, name: str) -> OrgUnit:
+    site = OrgUnit(name=name, type="ward")
     db.add(site)
     db.commit()
     return site
@@ -55,7 +55,7 @@ def _authorise(
     competency: str,
     *,
     org: Organisation | None = None,
-    site: Site | None = None,
+    site: OrgUnit | None = None,
 ) -> PractisingCompetency:
     row = PractisingCompetency(
         user_id=user.id,

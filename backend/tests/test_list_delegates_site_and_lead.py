@@ -19,10 +19,10 @@ from sqlalchemy.orm import Session
 from app.cbac.positions import set_clinical_lead
 from app.models import (
     Organisation,
-    OrganisationFeature,
-    Site,
+    OrgUnit,
+    OrgUnitFeature,
     User,
-    site_member,
+    org_unit_member,
 )
 from app.organisations import add_organisation_member
 from app.security import hash_password
@@ -49,7 +49,7 @@ def _org(db: Session, name: str) -> Organisation:
     db.add(org)
     db.flush()
     db.add(
-        OrganisationFeature(
+        OrgUnitFeature(
             org_unit_id=org.org_unit_id, feature_key="teaching", enabled_by=1
         )
     )
@@ -57,22 +57,22 @@ def _org(db: Session, name: str) -> Organisation:
     return org
 
 
-def _site_of(db: Session, org: Organisation, name: str) -> Site:
-    site = Site(name=name, type="ward")
+def _site_of(db: Session, org: Organisation, name: str) -> OrgUnit:
+    site = OrgUnit(name=name, type="ward")
     db.add(site)
     db.commit()
     db.execute(
-        update(Site)
-        .where(Site.id == site.id)
+        update(OrgUnit)
+        .where(OrgUnit.id == site.id)
         .values(parent_id=org.org_unit_id)
     )
     db.commit()
     return site
 
 
-def _member(db: Session, site: Site, user: User, capacity: str) -> None:
+def _member(db: Session, site: OrgUnit, user: User, capacity: str) -> None:
     db.execute(
-        insert(site_member).values(
+        insert(org_unit_member).values(
             org_unit_id=site.id,
             user_id=user.id,
             capacity=capacity,

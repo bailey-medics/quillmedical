@@ -19,9 +19,9 @@ from sqlalchemy.orm import Session
 
 from app.models import (
     Organisation,
-    OrganisationFeature,
-    Site,
-    organisation_patient_member,
+    OrgUnit,
+    OrgUnitFeature,
+    org_unit_patient_member,
 )
 from app.organisations import add_organisation_member
 
@@ -36,8 +36,8 @@ def _org(db: Session, name: str = "Trust") -> Organisation:
     return org
 
 
-def _ward(db: Session, org: Organisation) -> Site:
-    site = Site(name="Ward 1", type="ward", parent_id=org.org_unit_id)
+def _ward(db: Session, org: Organisation) -> OrgUnit:
+    site = OrgUnit(name="Ward 1", type="ward", parent_id=org.org_unit_id)
     db.add(site)
     db.commit()
     db.refresh(site)
@@ -57,8 +57,8 @@ class TestFeatures:
 
         assert resp.status_code == 200
         place_id = db_session.scalar(
-            select(OrganisationFeature.org_unit_id).where(
-                OrganisationFeature.feature_key == "teaching"
+            select(OrgUnitFeature.org_unit_id).where(
+                OrgUnitFeature.feature_key == "teaching"
             )
         )
         assert place_id == org.org_unit_id
@@ -88,15 +88,13 @@ class TestFeatures:
         org = _org(db_session)
         ward = _ward(db_session, org)
         db_session.add(
-            OrganisationFeature(
-                org_unit_id=org.org_unit_id, feature_key="teaching"
-            )
+            OrgUnitFeature(org_unit_id=org.org_unit_id, feature_key="teaching")
         )
         db_session.commit()
 
         at_ward = db_session.scalar(
-            select(OrganisationFeature.id).where(
-                OrganisationFeature.org_unit_id == ward.id
+            select(OrgUnitFeature.id).where(
+                OrgUnitFeature.org_unit_id == ward.id
             )
         )
         assert at_ward is None
@@ -122,8 +120,8 @@ class TestPatientLists:
 
         assert resp.status_code == 200
         place_id = db_session.scalar(
-            select(organisation_patient_member.c.org_unit_id).where(
-                organisation_patient_member.c.patient_id == PATIENT
+            select(org_unit_patient_member.c.org_unit_id).where(
+                org_unit_patient_member.c.patient_id == PATIENT
             )
         )
         assert place_id == org.org_unit_id
@@ -150,8 +148,7 @@ class TestPatientLists:
 
         assert resp.status_code == 200
         assert (
-            db_session.execute(select(organisation_patient_member)).first()
-            is None
+            db_session.execute(select(org_unit_patient_member)).first() is None
         )
 
     def test_the_organisation_page_lists_them(
@@ -159,7 +156,7 @@ class TestPatientLists:
     ):
         org = _org(db_session)
         db_session.execute(
-            insert(organisation_patient_member).values(
+            insert(org_unit_patient_member).values(
                 org_unit_id=org.org_unit_id, patient_id=PATIENT
             )
         )
@@ -179,12 +176,10 @@ class TestDeletingAnOrganisation:
     def test_everything_at_its_place_goes_with_it(self, db_session):
         org = _org(db_session)
         db_session.add(
-            OrganisationFeature(
-                org_unit_id=org.org_unit_id, feature_key="teaching"
-            )
+            OrgUnitFeature(org_unit_id=org.org_unit_id, feature_key="teaching")
         )
         db_session.execute(
-            insert(organisation_patient_member).values(
+            insert(org_unit_patient_member).values(
                 org_unit_id=org.org_unit_id, patient_id=PATIENT
             )
         )
@@ -193,8 +188,7 @@ class TestDeletingAnOrganisation:
         db_session.delete(org)
         db_session.commit()
 
-        assert db_session.execute(select(OrganisationFeature)).first() is None
+        assert db_session.execute(select(OrgUnitFeature)).first() is None
         assert (
-            db_session.execute(select(organisation_patient_member)).first()
-            is None
+            db_session.execute(select(org_unit_patient_member)).first() is None
         )

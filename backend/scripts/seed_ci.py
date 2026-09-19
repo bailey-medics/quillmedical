@@ -16,7 +16,7 @@ import sys
 sys.path.insert(0, "/app")
 
 from app.db import CoreSessionLocal  # noqa: E402
-from app.models import Organisation, OrganisationFeature, User  # noqa: E402
+from app.models import Organisation, OrgUnitFeature, User  # noqa: E402
 from app.organisations import add_organisation_member  # noqa: E402
 from app.security import hash_password  # noqa: E402
 
@@ -42,7 +42,7 @@ def seed() -> None:
         else:
             print("Admin user already exists")
 
-        # 2. Create educator (staff)
+            # 2. Create educator (staff)
         educator = db.query(User).filter(User.username == "educator").first()
         if not educator:
             educator = User(
@@ -60,7 +60,7 @@ def seed() -> None:
         else:
             print("Educator user already exists")
 
-        # 3. Create teaching organisation
+            # 3. Create teaching organisation
         org = (
             db.query(Organisation)
             .filter(Organisation.name == "CI Teaching Hospital")
@@ -78,17 +78,19 @@ def seed() -> None:
         else:
             print("Teaching organisation already exists")
 
-        # 4. Enable teaching feature for organisation
+            # 4. Enable teaching feature for organisation
+        # Features hang off the organisation's own row in the tree, which
+        # the model creates alongside the organisation itself.
         feat = (
-            db.query(OrganisationFeature)
+            db.query(OrgUnitFeature)
             .filter(
-                OrganisationFeature.org_unit_id == org.org_unit_id,
-                OrganisationFeature.feature_key == "teaching",
+                OrgUnitFeature.org_unit_id == org.org_unit_id,
+                OrgUnitFeature.feature_key == "teaching",
             )
             .first()
         )
         if not feat:
-            feat = OrganisationFeature(
+            feat = OrgUnitFeature(
                 org_unit_id=org.org_unit_id,
                 feature_key="teaching",
                 enabled_by=admin.id,
