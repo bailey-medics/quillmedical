@@ -32,6 +32,7 @@ from app.models import (
 )
 from app.org_units.relations import relation_grants_reach
 from app.org_units.tree import (
+    descendant_ids,
     organisation_ids_of_sites,
     root_ids_of_organisations,
 )
@@ -95,6 +96,33 @@ def get_member_org_ids(
             == validate_member_capacity(capacity)
         )
     return sorted({int(r[0]) for r in db.execute(stmt).all()})
+
+
+def places_administered_by(db: Session, user: User) -> set[int] | None:
+    """Return the places *user* may administer, or None for all of them.
+
+    An admin administers the organisations they belong to and everything
+    beneath them, at any depth. An operator gets None rather than a set
+    holding every id in the table, because "all of them" and "these
+    thousands" are different answers and only the first stays true as
+    the table grows.
+
+    Reach is deliberately not part of this. Reach is why somebody sees
+    teaching content at a place they visit; it is not authority over that
+    place.
+
+    Args:
+        db: Core database session.
+        user: The caller.
+
+    Returns:
+        The place ids, or None for an operator.
+    """
+    if user.platform_role == "superadmin":
+        return None
+
+    roots = root_ids_of_organisations(db, get_member_org_ids(db, user.id))
+    return set(roots) | descendant_ids(db, roots)
 
 
 def get_reachable_org_ids(
