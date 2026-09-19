@@ -408,14 +408,23 @@ Two things to check rather than assume:
 9. **Write the title and the body.** The title takes the stack key form
    — `Passport: what this branch does`, as "The stack key" sets out. The
    reader reads every line of the diff, so the body never describes it:
-   write only what reading the code cannot tell them, which is what you
-   chose, what might be risky, and what is different now.
+   write only what reading the code cannot tell them, which is where this
+   branch sits, what you chose, what might be risky, and what is
+   different now.
 
-   Three sections, in this order, each a level-two heading. **No summary
-   line above them** — the pull request title already says what the branch
-   does, and repeating it is the first thing the reader has to skip:
+   **Open with two orienting lines, then three level-two sections.** The
+   opening is not a summary of the diff and not a restatement of the
+   title: it is the context a reader needs before the first bullet makes
+   any sense at all.
 
    ```markdown
+   Staff can now be taken off a ward without leaving them in charge of it.
+
+   Step 3 of 5 in the [site tree unification plan][plan].
+   Follows #758, followed by #761.
+
+   [plan]: https://github.com/bailey-medics/quillmedical/blob/main/docs/docs/plans/2026-09-11-site-tree-unification-plan.md
+
    ## LLM decisions
 
    - **Bold sentence carrying the whole point.** Then a sentence or two of
@@ -428,18 +437,70 @@ Two things to check rather than assume:
    ## What has changed
 
    - **Bold sentence naming the change.** Then the detail.
+
+   Tests: `just ub -k org_units`, `just uf src/pages/admin/sites`.
    ```
+
+   ### The opening
+
+   - **Line one: one sentence, what is true now that was not true
+     before.** In terms of what someone using the thing would see. Never
+     a paraphrase of the title, and never a sentence that only parses if
+     you already know the answer.
+   - **Line two: where this branch sits.** The plan it comes from, linked,
+     and which step of it; then the pull request below it in the stack and
+     the one above, by number. Without this the reader has to rebuild the
+     stack from the base branches before they can judge anything, which is
+     the single biggest reason these read as cryptic.
+   - **Link the plan with a full `https://github.com/…/blob/main/…` URL.**
+     GitHub does not resolve a relative path in a pull request body.
+
+   ### Name things by their real names
+
+   **Use the vocabulary of the plan and of the code, not a private
+   synonym for it.** If the plan calls it an `org_unit`, call it an
+   `org_unit`. If the route is `/api/sites`, write `/api/sites`. Domain
+   nouns, table names, route paths and file paths are what the reader
+   already has in their head, and swapping them for a gentler word — "a
+   place", "the surface", "the address being retired" — does not make the
+   sentence simpler, it makes the reader translate it back before they
+   can use it.
+
+   What to leave out is the *incidental*: a local variable, a private
+   helper, an enum member, a count of lines. Those exist only inside the
+   diff and the diff already carries them.
+
+   ### Say it straight
+
+   **Write for a sixteen-year-old: short words, short sentences.** That
+   means plain, not clever. The commonest failure here is the aphorism —
+   a neat, balanced line that states a conclusion whose premise the
+   reader has not been given:
+
+   > ✗ "Whose tree a place goes into is checked on the move, not only on
+   > the create."
+   >
+   > ✓ "Moving an `org_unit` now checks its new parent is in the same
+   > organisation. Creating one already did."
+
+   > ✗ "The shapes stay while the answers stop."
+   >
+   > ✓ "The retired `/api/sites` routes still accept the request bodies
+   > they always did, so an old client gets '410, this has moved' rather
+   > than 'your request is malformed'."
+
+   Three tests before a bullet goes in:
+
+   - **Subject, verb, object.** Name who or what does the thing.
+   - **Could someone who has read only the plan summary understand it on
+     one pass?** If it needs the diff to parse, rewrite it.
+   - **Is the bold text a punchline?** If the premise is in the sentence
+     after the bold, the bullet is the wrong way round.
 
    **Every bullet leads with a bold sentence that stands alone.** The
    reader should be able to read only the bold text and have the whole
    pull request. What follows the bold is expansion for anyone who wants
    it, never the point itself.
-
-   **Write for a sixteen-year-old.** Short words, short sentences, no
-   jargon. Say what someone using the thing would see, not what the code
-   does: "shows a dot while tests run" rather than "returns a pending
-   mark". Use no word that exists only in the diff — a function name, a
-   constant, an enum value. Those belong in code comments.
 
    Each section:
 
@@ -462,13 +523,25 @@ Two things to check rather than assume:
    - **`## What has changed`** — what is different now, in terms of what a
      user of the thing would see. Not a file list and not a commit list:
      the diff already carries those, and repeating them is the most common
-     way this section becomes noise.
+     way this section becomes noise. **Counting is not describing** —
+     "sixteen tests" tells the reader nothing on its own; say what the
+     tests pin down, and let the diff do the counting.
+
+   ### Closing
+
+   **A `Tests:` line last**, naming the exact commands that were run, as
+   the project instructions require. Never a bare "tests pass", and never
+   a suite that was not run.
 
    Finish with `<!-- crp:pr-summary -->` on its own line — nothing after
-   it, and no attribution footer anywhere in the body.
+   it. **No attribution footer anywhere in the body**, no "Generated by",
+   no session link, no robot emoji: if a tool appends one, strip it
+   before the body is posted and say that you did.
 
-   Hard ceiling: **200 words**. A description that long usually means the
-   "What has changed" section has drifted into describing the diff.
+   Hard ceiling: **250 words**, of which the opening should take about
+   30. A description that long usually means the "What has changed"
+   section has drifted into describing the diff — cut there, never the
+   opening, which is the part that makes the rest readable.
 
    ```bash
    gh pr edit <number> \
