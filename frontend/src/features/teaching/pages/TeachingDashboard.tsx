@@ -50,11 +50,23 @@ export default function TeachingDashboard() {
     load();
   }, []);
 
+  // Built before the loading check, and passed to every branch below.
+  // It depends on auth, which has already resolved by the time this
+  // page renders, and not on the banks being fetched — so withholding
+  // it until they arrive left the sidebar genuinely absent for two
+  // round trips, which read as the whole page flashing on the way in.
+  const sidebarNav = <TeachingMainNav />;
+
   if (loading) {
     return (
-      <TeachingLayout>
+      <TeachingLayout sidebar={sidebarNav} drawerContent={sidebarNav}>
         <Stack gap="lg">
-          <Skeleton height={36} width={200} />
+          {/* The real heading, not a skeleton of one. It is a constant
+              and never waited on the fetch, so standing in for it made
+              the title appear to flash as the grey bar was swapped for
+              the words it was always going to say. Skeletons below,
+              where the content genuinely is unknown. */}
+          <PageHeader title="Teaching modules" />
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
             <Skeleton height={120} />
             <Skeleton height={120} />
@@ -70,20 +82,23 @@ export default function TeachingDashboard() {
 
   if (error) {
     return (
-      <TeachingLayout>
-        <StateMessage
-          icon={<IconAlertCircle />}
-          title="Error loading data"
-          description={error}
-          colour="alert"
-        />
+      <TeachingLayout sidebar={sidebarNav} drawerContent={sidebarNav}>
+        <Stack gap="lg">
+          {/* Kept here too, so a failed load still says which page the
+              reader is on rather than presenting a bare error. */}
+          <PageHeader title="Teaching modules" />
+          <StateMessage
+            icon={<IconAlertCircle />}
+            title="Error loading data"
+            description={error}
+            colour="alert"
+          />
+        </Stack>
       </TeachingLayout>
     );
   }
 
   const liveBanks = banks.filter((bank) => bank.is_live);
-
-  const sidebarNav = <TeachingMainNav />;
 
   return (
     <TeachingLayout sidebar={sidebarNav} drawerContent={sidebarNav}>

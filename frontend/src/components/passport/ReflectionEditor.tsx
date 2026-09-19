@@ -103,7 +103,7 @@ export default function ReflectionEditor({
           icon={<IconShieldCheck />}
           title="Only you can read this"
           description="Reflections are not shown to assessors, organisation admins or anyone else."
-          colour="info"
+          colour="update"
         />
 
         <TextField

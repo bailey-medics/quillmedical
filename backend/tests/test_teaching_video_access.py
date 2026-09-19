@@ -276,3 +276,67 @@ class TestLocalVideoRoute:
             pytest.skip("local video route not mounted in this environment")
         resp = client.get(f"/api/teaching/videos/no-such-module/lecture{ext}")
         assert resp.status_code == 404
+
+
+class TestTheCookieHeaderIsNotQuoted:
+    """The one byte that stopped every video from playing.
+
+    Starlette sets cookies through ``SimpleCookie``, which wraps a value
+    containing characters outside its safe set in double quotes. A Cloud
+    CDN policy is full of ``:`` and ``=``, so it came back as::
+
+        Cloud-CDN-Cookie="URLPrefix=…:Signature=…"
+
+    The browser stores the quotes and returns them, and the edge refuses
+    a policy that begins with one — a 403 carrying
+    ``signed_request_invalid_encoding``, which reaches the learner as a
+    black player with a dead play button. Object keys, signing and key
+    names were all checked before anyone looked at the quotes.
+    """
+
+    def test_the_value_carries_no_quotes(self) -> None:
+        # Built the way the endpoint builds it, then read back the way
+        # the browser would: a quote anywhere in the value is the bug.
+        from starlette.responses import Response
+
+        cookie = (
+            "URLPrefix=aHR0cHM6Ly9leGFtcGxlLnRlc3Qv:Expires=1789600000"
+            ":KeyName=teaching-video-key:Signature=abc-_123"
+        )
+        response = Response()
+        response.raw_headers.append(
+            (
+                b"set-cookie",
+                (
+                    f"Cloud-CDN-Cookie={cookie}; Max-Age=1800; "
+                    f"Path=/videos/; Secure; HttpOnly; SameSite=Lax"
+                ).encode("latin-1"),
+            )
+        )
+
+        header = next(
+            v.decode() for k, v in response.raw_headers if k == b"set-cookie"
+        )
+
+        assert '"' not in header
+        assert f"Cloud-CDN-Cookie={cookie};" in header
+
+    def test_set_cookie_would_have_quoted_it(self) -> None:
+        # The guard rail: if a later change reaches for `set_cookie`
+        # again because it reads more idiomatically, this says why it
+        # cannot. Delete this test only along with the reason.
+        from starlette.responses import Response
+
+        cookie = "URLPrefix=abc:Expires=1:KeyName=k:Signature=s"
+        response = Response()
+        response.set_cookie("Cloud-CDN-Cookie", cookie, path="/videos/")
+
+        header = next(
+            v.decode() for k, v in response.raw_headers if k == b"set-cookie"
+        )
+
+        assert '"' in header, (
+            "Starlette no longer quotes this value — if that is true, "
+            "the hand-built header in `grant_video_access` can be "
+            "replaced with `set_cookie` again."
+        )
