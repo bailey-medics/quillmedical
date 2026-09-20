@@ -50,4 +50,33 @@ describe("BaseCard", () => {
       borderColor: "var(--mantine-color-gray-2)",
     });
   });
+
+  it("defaults to white text on a coloured background", () => {
+    renderWithMantine(
+      <BaseCard data-testid="bg-card" bg="var(--success-color)">
+        Content
+      </BaseCard>,
+    );
+    expect(screen.getByTestId("bg-card")).toHaveStyle({
+      color: "var(--mantine-color-white)",
+    });
+  });
+
+  it("lets an explicit text colour override that default", () => {
+    // White was forced on any coloured card, which made a pale
+    // background unreadable — the text vanished into it. The default
+    // stays for saturated fills; a caller that knows better wins.
+    renderWithMantine(
+      <BaseCard
+        data-testid="bg-card"
+        bg="var(--update-color)"
+        c="var(--status-text-dark)"
+      >
+        Content
+      </BaseCard>,
+    );
+    expect(screen.getByTestId("bg-card")).toHaveStyle({
+      color: "var(--status-text-dark)",
+    });
+  });
 });

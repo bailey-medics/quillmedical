@@ -1,12 +1,15 @@
 /**
  * Passport components.
  *
- * Display components only so far. The forms and the evidence uploaders
- * are not here yet — see the plan's phase 6 for what each is waiting on.
+ * Display components and the self-declared record forms. The evidence
+ * uploaders are not here yet — see the plan's phase 7.
  */
 
 export { default as AssessorDeclaration } from "./AssessorDeclaration";
 export { ASSESSOR_DECLARATION_TEXT } from "./AssessorDeclaration";
+export { default as CertificateForm } from "./CertificateForm";
+export { default as CertificateUploader } from "./CertificateUploader";
+export { ACCEPTED_EVIDENCE_TYPES } from "./evidenceFormat";
 export { default as CompetencyPicker } from "./CompetencyPicker";
 export { default as CompetencyRow } from "./CompetencyRow";
 export { default as CompetencySummary } from "./CompetencySummary";
@@ -15,6 +18,7 @@ export { default as CpdTable } from "./CpdTable";
 export { default as InviteAssessorForm } from "./InviteAssessorForm";
 export { default as LogbookEntryForm } from "./LogbookEntryForm";
 export { default as LogbookTable } from "./LogbookTable";
+export { default as PassportExportButtons } from "./PassportExportButtons";
 export { default as ReflectionEditor } from "./ReflectionEditor";
 export { ANONYMISATION_DECLARATION } from "./ReflectionEditor";
 export { default as RegistrationBadge } from "./RegistrationBadge";

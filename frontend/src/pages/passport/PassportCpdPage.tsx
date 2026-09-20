@@ -10,13 +10,16 @@
  */
 
 import { useEffect, useState } from "react";
-import { Stack } from "@mantine/core";
+import { useNavigate } from "react-router-dom";
+import { Group, Stack } from "@mantine/core";
 import PageHeader from "@/components/page-header";
+import AddButton from "@/components/button/AddButton";
 import { SelectField } from "@components/form";
+import CpdEntryForm from "@/components/passport/CpdEntryForm";
 import CpdTable from "@/components/passport/CpdTable";
 import ErrorState from "@/components/error-state/ErrorState";
-import { fetchCpdYear, fetchMyPassport } from "@lib/passport";
-import type { CpdEntry } from "@lib/passport";
+import { addCpdEntry, fetchCpdYear, fetchMyPassport } from "@lib/passport";
+import type { CpdEntry, CpdEntryInput } from "@lib/passport";
 
 /** The current year and the four before it, newest first. */
 function recentYears(): { value: string; label: string }[] {
@@ -28,11 +31,14 @@ function recentYears(): { value: string; label: string }[] {
 }
 
 export function Component() {
+  const navigate = useNavigate();
   const [passportId, setPassportId] = useState<string | null>(null);
   const [year, setYear] = useState<string>(String(new Date().getFullYear()));
   const [entries, setEntries] = useState<CpdEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -76,6 +82,33 @@ export function Component() {
     };
   }, [passportId, year]);
 
+  async function handleSubmit(data: CpdEntryInput) {
+    if (passportId === null) return;
+
+    setSubmitting(true);
+    try {
+      await addCpdEntry(passportId, data);
+
+      // The API files an entry by its own date, which need not be the
+      // year on screen. Showing that year means the new entry is in
+      // view rather than apparently lost — and when it matches, this is
+      // simply the reload it would have been anyway.
+      const filedUnder = String(new Date(data.activity_on).getFullYear());
+      if (filedUnder !== year) {
+        setYear(filedUnder);
+      } else {
+        setEntries(await fetchCpdYear(passportId, Number(year)));
+      }
+
+      setAdding(false);
+      setError(null);
+    } catch {
+      setError("That activity could not be saved. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <Stack gap="lg">
       <PageHeader title="Continuing professional development" />
@@ -89,7 +122,28 @@ export function Component() {
         onChange={(value) => value && setYear(value)}
       />
 
-      <CpdTable entries={entries} isLoading={loading} />
+      {adding ? (
+        <CpdEntryForm
+          onSubmit={handleSubmit}
+          onCancel={() => setAdding(false)}
+          isSubmitting={submitting}
+        />
+      ) : (
+        <Group justify="flex-end">
+          <AddButton label="Add an activity" onClick={() => setAdding(true)} />
+        </Group>
+      )}
+
+      {/* Clicking an activity opens it in full. The year is in the
+          URL alongside the filename, so the link can be followed cold
+          rather than only from this table. */}
+      <CpdTable
+        entries={entries}
+        isLoading={loading}
+        onSelect={(entry) =>
+          navigate(`/passport/cpd/${entry.year}/${entry.filename}`)
+        }
+      />
     </Stack>
   );
 }

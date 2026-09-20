@@ -592,6 +592,27 @@ class ModuleMediaLink(Base):
     transcoded_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    #: When each job was *invoked*, as distinct from when it finished.
+    #:
+    #: Without these, "started and not finished" is indistinguishable
+    #: from "never started" — and the admin card said "No captions" for
+    #: two days while the caption job was unconfigured and nothing was
+    #: coming. Both readings fit the completion columns alone; only the
+    #: moment of invocation separates them.
+    #:
+    #: They also give the card an elapsed time, which is what turns
+    #: "transcribing" into "transcribing, started forty minutes ago" —
+    #: the second of which a person can act on.
+    #:
+    #: Cleared alongside the completion state when a reference is
+    #: re-linked, for the same reason: a previous asset's timings say
+    #: nothing about this one.
+    transcode_started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    caption_started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     #: Which outputs the job actually produced. Separate booleans rather
     #: than inferred from ``transcoded_at``, because they genuinely
     #: differ: captions come from a second job that may not have run, and
