@@ -1,0 +1,55 @@
+/*
+ * Mirrors FilterSelect's count badge, which is the app's existing way of
+ * putting a number beside an icon button. Same offsets, same inherited
+ * text colour, so the two read as one idea rather than two.
+ */
+
+.trigger {
+  position: relative;
+  display: inline-flex;
+  margin-right: 20px;
+
+  /*
+   * The badge is positioned at `left: 100%` of this box, so the box has
+   * to be the width of the icon and nothing more. A flex column parent
+   * stretches its children by default, which made the wrapper span the
+   * page and threw the number to the far side of it — the icon at one
+   * edge, its count at the other.
+   *
+   * `fit-content` rather than `align-self: flex-start`, which would fix
+   * the width but also pin the cross-axis position.
+   */
+  width: fit-content;
+  flex: 0 0 auto;
+
+  /*
+   * Nudged down so the foot of the envelope sits level with the foot of
+   * the heading beside it. Centring the two boxes leaves the icon
+   * looking high, because a heading carries line-height above and below
+   * its letters and the icon does not. A small translate is easier to
+   * judge by eye than baseline alignment, and it moves nothing else.
+   */
+  transform: translateY(0.1rem);
+}
+
+/*
+ * The button wraps the icon rather than imposing a size on it, so the
+ * two follow each other at every width and no pixel figure is repeated
+ * here to fall out of step.
+ */
+.button {
+  width: auto;
+  height: auto;
+  min-width: 0;
+  min-height: 0;
+  padding: 0.25rem;
+}
+
+.count {
+  position: absolute;
+  top: -8px;
+  left: 100%;
+  margin-left: 0;
+  line-height: 1;
+  color: var(--mantine-color-text);
+}

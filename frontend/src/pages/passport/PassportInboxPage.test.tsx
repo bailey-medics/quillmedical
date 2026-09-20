@@ -10,7 +10,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import { renderWithRouter } from "@/test/test-utils";
 import { Component as PassportInboxPage } from "./PassportInboxPage";
-import { requested } from "@/components/passport/fixtures";
+import { inboxItem } from "@/components/passport/fixtures";
 
 const fetchInbox = vi.fn();
 
@@ -24,7 +24,7 @@ describe("PassportInboxPage", () => {
   });
 
   it("lists the requests naming this assessor", async () => {
-    fetchInbox.mockResolvedValue([requested]);
+    fetchInbox.mockResolvedValue([inboxItem]);
     renderWithRouter(<PassportInboxPage />);
 
     expect(
