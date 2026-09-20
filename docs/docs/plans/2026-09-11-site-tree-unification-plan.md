@@ -905,7 +905,8 @@ So the remaining steps land as:
 - [x] 12c-ii-b — the membership writers take a place
 - [x] 12c-ii-c — the users list excludes members of a place
 - [x] 12c-ii-d — membership and reach answer in place ids
-- [ ] 12c-iii — drop the `organisations` table
+- [x] 12c-iii-a — a place remembers the prefix its media is filed under
+- [ ] 12c-iii-b — drop the `organisations` table
 - [x] 12c-iv — refuse deleting a parent with children, and enforce `requires_parent`
 
 #### 10a — write both names for the place column
@@ -1802,6 +1803,35 @@ either function ends up.
   found".** Setting a bank live at one used to 404 because the
   translation failed; it is a 403 now, the same answer as naming
   somebody else's trust, which is what it is.
+
+### Discovered while building: the media prefix was blocking the table's removal
+
+Everything else the organisations table answered is a property of a
+place — its name, its type, that it is a root. One thing was not: media
+lives at `{prefix}/{module}/{asset}` in a bucket, the signed cookie
+covers exactly that path, and the prefix is the organisation's own id.
+
+That number cannot simply become the place id. Every object already in
+the bucket is under the old one, and one module at one place has to have
+a single prefix — a second number would need a second cookie, and
+nothing issues one. So "drop the table" was, without noticing, "move
+every video and reissue every cookie".
+
+#### 12c-iii-a — a place remembers the prefix its media is filed under
+
+- **`org_unit.media_prefix_id` records the number**, backfilled from
+  `organisations.id`. Nothing in the bucket moves, and the table becomes
+  droppable.
+- **Null means "my own id"**, so a place created afterwards needs no
+  value, and the column is left null where the two numbers already agree
+  — which is the common case on a small installation. A stored number
+  repeating the id is one more thing that can drift from it.
+- **Read through `media_prefix_of`**, never directly, so the fallback is
+  in one place. The media-link listener reads it too, which is what
+  makes a new upload land where the cookie will look.
+- **A place that does not exist has no prefix**, rather than a number.
+  Otherwise a caller could sign a cookie for a path nothing is filed
+  under.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to

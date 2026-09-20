@@ -34,6 +34,7 @@ from sqlalchemy.orm import Session
 from app.models import (
     ExternalPatientAccess,
     Organisation,
+    OrgUnit,
     OrgUnitLink,
     User,
     org_unit_member,
@@ -473,6 +474,37 @@ def place_of_organisation(db: Session, organisation_id: int) -> int | None:
     """
     roots = root_ids_of_organisations(db, [organisation_id])
     return roots[0] if roots else None
+
+
+def media_prefix_of(db: Session, place_id: int) -> int | None:
+    """Return the number this place's media objects are filed under.
+
+    Media lives at ``{prefix}/{module}/{asset}`` in a bucket and the
+    signed cookie covers that path, so every object of one module at one
+    place has to share a prefix. That number was the organisation's own
+    id; ``org_unit.media_prefix_id`` records it, so the objects already
+    written stay addressable once the organisations table is gone.
+
+    A place with nothing recorded files under its own id — which is what
+    a place created from here onwards does, there being no second number
+    for it to have.
+
+    Args:
+        db: Core database session.
+        place_id: The place.
+
+    Returns:
+        The prefix, or None if there is no such place.
+    """
+    row = db.execute(
+        select(OrgUnit.id, OrgUnit.media_prefix_id).where(
+            OrgUnit.id == place_id
+        )
+    ).first()
+    if row is None:
+        return None
+    own_id, recorded = row
+    return int(recorded) if recorded is not None else int(own_id)
 
 
 def organisation_of_place(db: Session, place_id: int) -> int | None:
