@@ -62,14 +62,14 @@ from app.org_units.tree import (
 #: It is a query rather than a table, so nothing can insert into it.
 #: Every write goes through the three functions at the foot of this
 #: module.
-organisation_place_member = (
+organisation_org_unit_member = (
     select(
         org_unit_member.c.org_unit_id.label("org_unit_id"),
         org_unit_member.c.user_id.label("user_id"),
         org_unit_member.c.capacity.label("capacity"),
     )
     .where(org_unit_member.c.org_unit_id.in_(organisation_org_unit_ids()))
-    .subquery("organisation_place_member")
+    .subquery("organisation_org_unit_member")
 )
 
 
@@ -131,12 +131,12 @@ def get_member_org_unit_ids(
     Returns:
         Place IDs, ascending.
     """
-    stmt = select(organisation_place_member.c.org_unit_id).where(
-        organisation_place_member.c.user_id == user_id
+    stmt = select(organisation_org_unit_member.c.org_unit_id).where(
+        organisation_org_unit_member.c.user_id == user_id
     )
     if capacity is not None:
         stmt = stmt.where(
-            organisation_place_member.c.capacity
+            organisation_org_unit_member.c.capacity
             == validate_member_capacity(capacity)
         )
     return sorted({int(r[0]) for r in db.execute(stmt).all()})
@@ -396,12 +396,12 @@ def get_org_unit_member_ids(
     """
     if not org_unit_ids:
         return set()
-    stmt = select(organisation_place_member.c.user_id).where(
-        organisation_place_member.c.org_unit_id.in_(org_unit_ids)
+    stmt = select(organisation_org_unit_member.c.user_id).where(
+        organisation_org_unit_member.c.org_unit_id.in_(org_unit_ids)
     )
     if capacity is not None:
         stmt = stmt.where(
-            organisation_place_member.c.capacity
+            organisation_org_unit_member.c.capacity
             == validate_member_capacity(capacity)
         )
     return {int(r[0]) for r in db.execute(stmt).all()}

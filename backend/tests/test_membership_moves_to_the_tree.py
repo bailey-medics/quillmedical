@@ -33,7 +33,7 @@ from app.organisations import (
     add_org_unit_member,
     get_member_org_unit_ids,
     get_org_unit_member_ids,
-    organisation_place_member,
+    organisation_org_unit_member,
     remove_org_unit_member,
     remove_org_unit_memberships,
 )
@@ -74,9 +74,9 @@ def _person(db: Session, username: str) -> User:
 def _by_organisation(db: Session, org: OrgUnit, user: User) -> str | None:
     """Read the membership the way a route asking about an organisation does."""
     return db.scalar(
-        select(organisation_place_member.c.capacity).where(
-            organisation_place_member.c.org_unit_id == org.id,
-            organisation_place_member.c.user_id == user.id,
+        select(organisation_org_unit_member.c.capacity).where(
+            organisation_org_unit_member.c.org_unit_id == org.id,
+            organisation_org_unit_member.c.user_id == user.id,
         )
     )
 

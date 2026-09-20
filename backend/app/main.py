@@ -127,8 +127,8 @@ from app.organisations import (
     get_org_unit_staff_ids,
     get_patient_org_unit_ids,
     get_shared_org_unit_ids,
+    organisation_org_unit_member,
     organisation_org_units_of,
-    organisation_place_member,
     places_administered_by,
 )
 from app.push import router as push_router
@@ -2570,14 +2570,14 @@ def list_users(
         # named somebody else's.
         org_rows = db.execute(
             select(
-                organisation_place_member.c.user_id,
+                organisation_org_unit_member.c.user_id,
                 OrgUnit.name,
             )
             .join(
                 OrgUnit,
-                OrgUnit.id == organisation_place_member.c.org_unit_id,
+                OrgUnit.id == organisation_org_unit_member.c.org_unit_id,
             )
-            .where(organisation_place_member.c.user_id.in_(user_ids))
+            .where(organisation_org_unit_member.c.user_id.in_(user_ids))
         ).all()
         user_orgs: dict[int, list[str]] = {}
         for row in org_rows:

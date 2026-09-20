@@ -103,7 +103,7 @@ from app.organisations import (
     get_member_org_unit_ids,
     get_reachable_org_unit_ids,
     media_prefix_of,
-    organisation_place_member,
+    organisation_org_unit_member,
 )
 from app.rate_limit import limiter
 
@@ -2548,8 +2548,8 @@ def list_delegates(
     org_member_ids = set(
         row[0]
         for row in db.execute(
-            select(organisation_place_member.c.user_id).where(
-                organisation_place_member.c.org_unit_id.in_(caller_org_ids),
+            select(organisation_org_unit_member.c.user_id).where(
+                organisation_org_unit_member.c.org_unit_id.in_(caller_org_ids),
             )
         ).all()
     )
