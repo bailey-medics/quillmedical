@@ -464,6 +464,40 @@ migrate message:
     echo "Review upgrade() and downgrade() before committing."
 
 
+alias ml := migrate-local
+# Apply pending migrations to this worktree's dev database
+migrate-local:
+    #!/usr/bin/env bash
+    {{initialise}} "migrate-local"
+    set -euo pipefail
+    # The step `just migrate` deliberately does not do. That recipe
+    # compares models against a throwaway database and drops it, so a
+    # migration it writes — or one that arrived from `main` — has never
+    # touched the database the dev stack is actually serving. Without
+    # this the symptom is a column or table that exists in the models
+    # and not in Postgres, which surfaces as a 500 far from its cause.
+    just _worktree-guard quill_backend
+
+    before=$(docker exec quill_postgres_core \
+        psql -U core_user -d quill_core -tAc \
+        "SELECT version_num FROM alembic_version;" 2>/dev/null || echo "none")
+
+    docker exec quill_backend sh -lc 'alembic upgrade head'
+
+    after=$(docker exec quill_postgres_core \
+        psql -U core_user -d quill_core -tAc \
+        "SELECT version_num FROM alembic_version;" 2>/dev/null || echo "unknown")
+
+    # Said plainly, because "upgrade head" prints nothing when there was
+    # nothing to do, and a silent success is indistinguishable from a
+    # command that did not run.
+    if [ "${before}" = "${after}" ]; then
+        echo "Already at ${after} — nothing to apply."
+    else
+        echo "Migrated ${before} → ${after}"
+    fi
+
+
 alias pc := pre-commit
 # Run pre-commit checks
 pre-commit:
