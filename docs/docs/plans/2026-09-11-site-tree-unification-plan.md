@@ -912,7 +912,7 @@ So the remaining steps land as:
 - [x] 12c-iv — refuse deleting a parent with children, and enforce `requires_parent`
 - [x] 12d-i-a — the membership writers take an org_unit
 - [x] 12d-i-b — the reader helpers answer in org_unit ids
-- [ ] 12d-i-c — the membership subquery names an org_unit
+- [x] 12d-i-c — the membership subquery names an org_unit
 - [ ] 12d-i-d — the locals and parameters name an org_unit
 - [ ] 12d-i-e — `org_unit_ids` beside `place_ids` on the users API
 - [ ] 12d-ii — retire `place_ids`

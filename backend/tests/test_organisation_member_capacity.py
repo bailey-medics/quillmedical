@@ -23,7 +23,7 @@ from app.models import (
 )
 from app.organisations import (
     add_org_unit_member,
-    organisation_place_member,
+    organisation_org_unit_member,
 )
 from app.security import hash_password
 
@@ -51,9 +51,9 @@ def _org(db: Session, name: str = "Trust") -> OrgUnit:
 
 def _capacity_of(db: Session, org: OrgUnit, user: User) -> str | None:
     row = db.execute(
-        select(organisation_place_member.c.capacity).where(
-            organisation_place_member.c.org_unit_id == org.id,
-            organisation_place_member.c.user_id == user.id,
+        select(organisation_org_unit_member.c.capacity).where(
+            organisation_org_unit_member.c.org_unit_id == org.id,
+            organisation_org_unit_member.c.user_id == user.id,
         )
     ).first()
     return row[0] if row else None
@@ -155,9 +155,9 @@ class TestOneRowPerPersonPerOrganisation:
         db_session.commit()
 
         rows = db_session.execute(
-            select(organisation_place_member.c.capacity).where(
-                organisation_place_member.c.org_unit_id == org.id,
-                organisation_place_member.c.user_id == person.id,
+            select(organisation_org_unit_member.c.capacity).where(
+                organisation_org_unit_member.c.org_unit_id == org.id,
+                organisation_org_unit_member.c.user_id == person.id,
             )
         ).all()
         assert [("trainee",)] == [tuple(row) for row in rows]

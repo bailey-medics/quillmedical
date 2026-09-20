@@ -72,7 +72,7 @@ from app.organisations import (
     add_org_unit_member,
     get_member_org_unit_ids,
     get_reachable_org_unit_ids,
-    organisation_place_member,
+    organisation_org_unit_member,
     remove_org_unit_member,
 )
 from app.passport_storage import get_blob_store, get_passport_store
@@ -2383,10 +2383,11 @@ def revoke_assessor_membership(
         # ``Session.execute`` is typed to return, and a select says what is
         # meant anyway.
     external = db.scalar(
-        select(organisation_place_member.c.user_id).where(
-            organisation_place_member.c.org_unit_id == organisation_place_id,
-            organisation_place_member.c.user_id == assessor_user_id,
-            organisation_place_member.c.capacity == "external",
+        select(organisation_org_unit_member.c.user_id).where(
+            organisation_org_unit_member.c.org_unit_id
+            == organisation_place_id,
+            organisation_org_unit_member.c.user_id == assessor_user_id,
+            organisation_org_unit_member.c.capacity == "external",
         )
     )
 
@@ -2504,8 +2505,8 @@ def _holder_place(db: Session, passport_id: str) -> tuple[str, int]:
         return "site", int(site_id)
 
     organisation_place_id = db.scalar(
-        select(organisation_place_member.c.org_unit_id).where(
-            organisation_place_member.c.user_id == passport.user_id
+        select(organisation_org_unit_member.c.org_unit_id).where(
+            organisation_org_unit_member.c.user_id == passport.user_id
         )
     )
 
@@ -2676,9 +2677,9 @@ def accept_assessor_invite(
             )
     else:
         already = db.scalar(
-            select(organisation_place_member.c.user_id).where(
-                organisation_place_member.c.org_unit_id == place_id,
-                organisation_place_member.c.user_id == user.id,
+            select(organisation_org_unit_member.c.user_id).where(
+                organisation_org_unit_member.c.org_unit_id == place_id,
+                organisation_org_unit_member.c.user_id == user.id,
             )
         )
         if already is None:
