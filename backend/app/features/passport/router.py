@@ -70,8 +70,8 @@ from app.org_units.tree import descendant_ids
 from app.org_units.types import ROOT_TYPE_IDS
 from app.organisations import (
     add_org_unit_member,
-    get_member_place_ids,
-    get_reachable_place_ids,
+    get_member_org_unit_ids,
+    get_reachable_org_unit_ids,
     organisation_place_member,
     remove_org_unit_member,
 )
@@ -2203,7 +2203,7 @@ def _require_org_admin_over(
         raise HTTPException(404, "Assessor not found")
 
     if admin.platform_role == "superadmin":
-        shared = get_reachable_place_ids(db, assessor_user_id)
+        shared = get_reachable_org_unit_ids(db, assessor_user_id)
         if shared:
             return shared[0]
         raise HTTPException(404, "Assessor not found")
@@ -2211,8 +2211,8 @@ def _require_org_admin_over(
         # Membership for the admin, reach for the assessor. An admin is an
         # admin of a place they belong to; an assessor put at a ward by the
         # accept endpoint is reachable from the organisation above it.
-    admin_orgs = set(get_member_place_ids(db, admin.id))
-    assessor_orgs = set(get_reachable_place_ids(db, assessor_user_id))
+    admin_orgs = set(get_member_org_unit_ids(db, admin.id))
+    assessor_orgs = set(get_reachable_org_unit_ids(db, assessor_user_id))
     shared_ids = sorted(admin_orgs & assessor_orgs)
 
     if not shared_ids:

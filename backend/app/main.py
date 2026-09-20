@@ -116,19 +116,19 @@ from app.org_units import (
 from app.org_units.router import router as org_units_router
 from app.org_units.tree import (
     descendant_ids,
-    organisation_place_ids,
+    organisation_org_unit_ids,
     organisation_place_of_site,
     root_ids_of,
 )
 from app.organisations import (
     add_org_unit_member,
     get_accessible_patient_ids,
-    get_member_place_ids,
-    get_patient_place_ids,
-    get_place_staff_ids,
-    get_shared_place_ids,
+    get_member_org_unit_ids,
+    get_org_unit_staff_ids,
+    get_patient_org_unit_ids,
+    get_shared_org_unit_ids,
+    organisation_org_units_of,
     organisation_place_member,
-    organisation_places_of,
     places_administered_by,
 )
 from app.push import router as push_router
@@ -901,7 +901,7 @@ def list_organisations_public(
     organisations = (
         db.execute(
             select(OrgUnit)
-            .where(OrgUnit.id.in_(organisation_place_ids()))
+            .where(OrgUnit.id.in_(organisation_org_unit_ids()))
             .order_by(OrgUnit.name)
         )
         .scalars()
@@ -1160,7 +1160,7 @@ def register(
     # organisation: registration offers the tops of trees, and a
     # membership of a ward is what the site branch below writes.
     if payload.org_unit_id is not None:
-        if payload.org_unit_id not in organisation_places_of(
+        if payload.org_unit_id not in organisation_org_units_of(
             db, [payload.org_unit_id]
         ):
             raise HTTPException(
@@ -2361,7 +2361,7 @@ def me(
         .scalars()
         .all()
     )
-    user_place_ids = organisation_places_of(db, member_place_ids)
+    user_place_ids = organisation_org_units_of(db, member_place_ids)
     enabled_features: list[str] = []
     if user_place_ids:
         features = (
@@ -2477,9 +2477,9 @@ def list_users(
     """
     if patient_id:
         # Filtered mode: staff in patient's orgs + external with access
-        patient_orgs = get_patient_place_ids(db, patient_id)
+        patient_orgs = get_patient_org_unit_ids(db, patient_id)
         staff_ids = (
-            get_place_staff_ids(db, patient_orgs) if patient_orgs else set()
+            get_org_unit_staff_ids(db, patient_orgs) if patient_orgs else set()
         )
 
         # Also include external users with active access to this patient
@@ -2532,8 +2532,8 @@ def list_users(
         # Anyone but an operator sees only users at their own places;
         # operators see everyone.
     if current_user.platform_role != "superadmin":
-        admin_places = get_member_place_ids(db, current_user.id)
-        org_scoped_ids = get_place_staff_ids(db, admin_places)
+        admin_places = get_member_org_unit_ids(db, current_user.id)
+        org_scoped_ids = get_org_unit_staff_ids(db, admin_places)
 
         # Also include site-only members beneath the admin's places
         site_ids_for_orgs = descendant_ids(db, list(admin_places))
@@ -3557,7 +3557,7 @@ def shared_organisations_endpoint(
     Returns:
         dict: ``organisations`` list with id/name/type for each shared org.
     """
-    shared_places = get_shared_place_ids(db, current_user.id, patient_id)
+    shared_places = get_shared_org_unit_ids(db, current_user.id, patient_id)
     if not shared_places:
         return SharedOrganisationsOut(organisations=[])
 
@@ -3978,7 +3978,7 @@ def _require_shared_org_with_patient(
     """
     if current_user.platform_role == "superadmin":
         return
-    if not get_shared_place_ids(db, current_user.id, patient_id):
+    if not get_shared_org_unit_ids(db, current_user.id, patient_id):
         raise HTTPException(status_code=404, detail="Patient not found")
 
 
@@ -4011,8 +4011,8 @@ def _require_shared_org_with_user(
         return
     if target.id == current_user.id:
         return
-    admin_org_ids = set(get_member_place_ids(db, current_user.id))
-    target_org_ids = set(get_member_place_ids(db, target.id))
+    admin_org_ids = set(get_member_org_unit_ids(db, current_user.id))
+    target_org_ids = set(get_member_org_unit_ids(db, target.id))
     if not (admin_org_ids & target_org_ids):
         raise HTTPException(status_code=404, detail="User not found")
 

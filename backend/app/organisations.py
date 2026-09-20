@@ -13,11 +13,11 @@ id is on its way out and nothing here speaks it.
 Two questions live here and must not be confused:
 
 - **Membership** — *is this person at this organisation, and as what?*
-  :func:`get_member_place_ids`.
+  :func:`get_member_org_unit_ids`.
 - **Reach** — *which organisations can this person get to?* Organisation
   membership reaches the organisation and its sites; site membership
   reaches the organisations that site is linked to.
-  :func:`get_reachable_place_ids`.
+  :func:`get_reachable_org_unit_ids`.
 
 Reach flows downward. A site member reaching an organisation's teaching
 content does not thereby become a member of that organisation, which is
@@ -43,7 +43,7 @@ from app.models import (
 from app.org_units.relations import relation_grants_reach
 from app.org_units.tree import (
     descendant_ids,
-    organisation_place_ids,
+    organisation_org_unit_ids,
     root_ids_of,
 )
 
@@ -68,13 +68,15 @@ organisation_place_member = (
         org_unit_member.c.user_id.label("user_id"),
         org_unit_member.c.capacity.label("capacity"),
     )
-    .where(org_unit_member.c.org_unit_id.in_(organisation_place_ids()))
+    .where(org_unit_member.c.org_unit_id.in_(organisation_org_unit_ids()))
     .subquery("organisation_place_member")
 )
 
 
-def organisation_places_of(db: Session, place_ids: list[int]) -> set[int]:
-    """Return the organisation's own place above each of *place_ids*.
+def organisation_org_units_of(
+    db: Session, org_unit_ids: list[int]
+) -> set[int]:
+    """Return the organisation's own org_unit above each of *org_unit_ids*.
 
     The replacement for "which organisation is accountable here",
     answered in the same id space as the question. A place is its own
@@ -87,32 +89,32 @@ def organisation_places_of(db: Session, place_ids: list[int]) -> set[int]:
 
     Args:
         db: Core database session.
-        place_ids: The places to resolve.
+        org_unit_ids: The places to resolve.
 
     Returns:
         The places of the organisations above them.
     """
-    if not place_ids:
+    if not org_unit_ids:
         return set()
 
-    roots = set(root_ids_of(db, place_ids).values())
+    roots = set(root_ids_of(db, org_unit_ids).values())
     if not roots:
         return set()
 
     return {
-        int(place_id)
-        for place_id in db.execute(
-            organisation_place_ids().where(OrgUnit.id.in_(roots))
+        int(org_unit_id)
+        for org_unit_id in db.execute(
+            organisation_org_unit_ids().where(OrgUnit.id.in_(roots))
         )
         .scalars()
         .all()
     }
 
 
-def get_member_place_ids(
+def get_member_org_unit_ids(
     db: Session, user_id: int, *, capacity: str | None = None
 ) -> list[int]:
-    """Return the organisations' places where the user holds a membership.
+    """Return the organisations' org_units where the user holds a membership.
 
     This is *direct* organisation membership only. It does not walk the
     site linkage, because reach flows downward: an organisation member
@@ -163,14 +165,14 @@ def places_administered_by(db: Session, user: User) -> set[int] | None:
     if user.platform_role == "superadmin":
         return None
 
-    roots = get_member_place_ids(db, user.id)
+    roots = get_member_org_unit_ids(db, user.id)
     return set(roots) | descendant_ids(db, roots)
 
 
-def get_reachable_place_ids(
+def get_reachable_org_unit_ids(
     db: Session, user_id: int, *, capacity: str | None = None
 ) -> list[int]:
-    """Return the organisations' places the user can reach, by any membership.
+    """Return the organisations' org_units the user can reach, by any membership.
 
     One resolver, replacing two that disagreed. Membership of a place
     reaches the organisation accountable for it, because content is
@@ -186,11 +188,11 @@ def get_reachable_place_ids(
 
     **Reach is not membership and is not authority.** Nothing here makes
     anybody a member of anything, and nothing here lets them administer
-    it: the admin checks ask :func:`get_member_place_ids`, which does not
+    it: the admin checks ask :func:`get_member_org_unit_ids`, which does not
     follow links. That separation is the whole reason the two functions
     exist rather than one.
 
-    Prefer :func:`get_member_place_ids` where the question is *is this
+    Prefer :func:`get_member_org_unit_ids` where the question is *is this
     person a member of this organisation* rather than *can they reach
     it*.
 
@@ -215,13 +217,13 @@ def get_reachable_place_ids(
             org_unit_member.c.capacity == validate_member_capacity(capacity)
         )
 
-    place_ids = [int(r[0]) for r in db.execute(member_places).all()]
-    if not place_ids:
+    org_unit_ids = [int(r[0]) for r in db.execute(member_places).all()]
+    if not org_unit_ids:
         return []
 
-    roots = organisation_places_of(db, place_ids)
+    roots = organisation_org_units_of(db, org_unit_ids)
 
-    own_places = set(place_ids) | roots
+    own_places = set(org_unit_ids) | roots
     return sorted(roots | _reached_through_links(db, own_places))
 
 
@@ -267,18 +269,18 @@ def _reached_through_links(db: Session, place_ids: set[int]) -> set[int]:
     if not targets:
         return set()
 
-    return organisation_places_of(db, sorted(targets))
+    return organisation_org_units_of(db, sorted(targets))
 
 
-def get_patient_place_ids(db: Session, patient_id: str) -> list[int]:
-    """Return the organisations' places the patient belongs to."""
+def get_patient_org_unit_ids(db: Session, patient_id: str) -> list[int]:
+    """Return the organisations' org_units the patient belongs to."""
     return sorted(
-        int(place_id)
-        for place_id in db.execute(
+        int(org_unit_id)
+        for org_unit_id in db.execute(
             select(org_unit_patient_member.c.org_unit_id).where(
                 org_unit_patient_member.c.patient_id == patient_id,
                 org_unit_patient_member.c.org_unit_id.in_(
-                    organisation_place_ids()
+                    organisation_org_unit_ids()
                 ),
             )
         )
@@ -287,12 +289,12 @@ def get_patient_place_ids(db: Session, patient_id: str) -> list[int]:
     )
 
 
-def get_shared_place_ids(
+def get_shared_org_unit_ids(
     db: Session, user_id: int, patient_id: str
 ) -> list[int]:
-    """Return the places shared between a staff user and a patient."""
-    user_places = set(get_member_place_ids(db, user_id))
-    patient_places = set(get_patient_place_ids(db, patient_id))
+    """Return the org_units shared between a staff user and a patient."""
+    user_places = set(get_member_org_unit_ids(db, user_id))
+    patient_places = set(get_patient_org_unit_ids(db, patient_id))
     return sorted(user_places & patient_places)
 
 
@@ -359,32 +361,32 @@ def check_user_patient_access(
             # sharing an organisation says only that the patient is in reach,
             # never that this person may read them.
     if "access_patient_records" in competencies:
-        if get_shared_place_ids(db, user.id, patient_id):
+        if get_shared_org_unit_ids(db, user.id, patient_id):
             return True
 
     return False
 
 
-def get_place_patient_ids(db: Session, place_ids: list[int]) -> set[str]:
-    """Return all patient IDs across the given places."""
-    if not place_ids:
+def get_org_unit_patient_ids(db: Session, org_unit_ids: list[int]) -> set[str]:
+    """Return all patient IDs across the given org_units."""
+    if not org_unit_ids:
         return set()
     rows = db.execute(
         select(org_unit_patient_member.c.patient_id).where(
-            org_unit_patient_member.c.org_unit_id.in_(place_ids)
+            org_unit_patient_member.c.org_unit_id.in_(org_unit_ids)
         )
     ).all()
     return {r[0] for r in rows}
 
 
-def get_place_member_ids(
-    db: Session, place_ids: list[int], *, capacity: str | None = None
+def get_org_unit_member_ids(
+    db: Session, org_unit_ids: list[int], *, capacity: str | None = None
 ) -> set[int]:
     """Return user IDs who are members of the given organisations' places.
 
     Args:
         db: Core database session.
-        place_ids: The places to look in. An empty list returns nothing
+        org_unit_ids: The places to look in. An empty list returns nothing
             rather than everything, so a caller that resolved to no
             place cannot accidentally see the whole estate.
         capacity: When given, only members of that capacity are returned.
@@ -392,10 +394,10 @@ def get_place_member_ids(
     Returns:
         The matching user IDs.
     """
-    if not place_ids:
+    if not org_unit_ids:
         return set()
     stmt = select(organisation_place_member.c.user_id).where(
-        organisation_place_member.c.org_unit_id.in_(place_ids)
+        organisation_place_member.c.org_unit_id.in_(org_unit_ids)
     )
     if capacity is not None:
         stmt = stmt.where(
@@ -405,10 +407,10 @@ def get_place_member_ids(
     return {int(r[0]) for r in db.execute(stmt).all()}
 
 
-def get_place_staff_ids(db: Session, place_ids: list[int]) -> set[int]:
+def get_org_unit_staff_ids(db: Session, org_unit_ids: list[int]) -> set[int]:
     """Return every member of the given places, in any capacity.
 
-    Deprecated in favour of :func:`get_place_member_ids`, which makes the
+    Deprecated in favour of :func:`get_org_unit_member_ids`, which makes the
     capacity explicit. The name says staff and the behaviour never was —
     once registration began writing trainees into the same table this
     returned them too.
@@ -417,9 +419,9 @@ def get_place_staff_ids(db: Session, place_ids: list[int]) -> set[int]:
     what every existing caller means in one edit, and at least one of them
     (admin user listing) genuinely wants everybody at the place.
     Callers that mean staff should say
-    ``get_place_member_ids(db, place_ids, capacity="staff")``.
+    ``get_org_unit_member_ids(db, org_unit_ids, capacity="staff")``.
     """
-    return get_place_member_ids(db, place_ids)
+    return get_org_unit_member_ids(db, org_unit_ids)
 
 
 def get_accessible_patient_ids(db: Session, user: User) -> set[str]:
@@ -431,9 +433,9 @@ def get_accessible_patient_ids(db: Session, user: User) -> set[str]:
     result: set[str] = set()
 
     # Org-based access
-    user_places = get_member_place_ids(db, user.id)
+    user_places = get_member_org_unit_ids(db, user.id)
     if user_places:
-        result |= get_place_patient_ids(db, user_places)
+        result |= get_org_unit_patient_ids(db, user_places)
 
         # External access grants
     rows = db.execute(
@@ -579,7 +581,7 @@ def remove_org_unit_memberships(
         user_id: The person.
         org_unit_ids: Which places to clear, or None for every organisation.
     """
-    roots = organisation_place_ids()
+    roots = organisation_org_unit_ids()
     if org_unit_ids is not None:
         roots = roots.where(OrgUnit.id.in_(org_unit_ids))
     root_ids = list(db.execute(roots).scalars().all())

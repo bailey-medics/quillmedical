@@ -24,7 +24,7 @@ from app.models import (
     User,
     org_unit_member,
 )
-from app.organisations import organisation_places_of
+from app.organisations import organisation_org_units_of
 
 
 def requires_feature(feature_key: str) -> Callable[..., User]:
@@ -53,7 +53,7 @@ def requires_feature(feature_key: str) -> Callable[..., User]:
         # Every organisation a membership reaches: the ones they belong
         # to directly, and the one accountable for any ward or clinic
         # they belong to. One walk up answers both.
-        user_place_ids = organisation_places_of(
+        user_place_ids = organisation_org_units_of(
             db,
             [
                 int(place_id)

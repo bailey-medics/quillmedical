@@ -1,6 +1,6 @@
 """Administrative routes ask membership, not reach.
 
-`get_reachable_place_ids` answers *can this person get here*, and a site
+`get_reachable_org_unit_ids` answers *can this person get here*, and a site
 trainee reaches the organisations their site is linked to — that is why a
 delegate sees the trust's teaching content. Administrative routes must
 ask the narrower question: *is this person a member of this
@@ -8,7 +8,7 @@ organisation*.
 
 The two were one function until recently, and the call sites all said
 `get_user_org_ids`, a name that answers neither question out loud. They
-now say `get_member_place_ids`. That rename is behaviour-preserving, so
+now say `get_member_org_unit_ids`. That rename is behaviour-preserving, so
 these tests do not pin the rename — they pin the thing the rename exists
 to protect, which no test covered: that a site trainee cannot administer
 the trust above their site.
