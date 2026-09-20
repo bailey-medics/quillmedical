@@ -460,6 +460,22 @@ def place_of_organisation(db: Session, organisation_id: int) -> int | None:
     return roots[0] if roots else None
 
 
+def organisation_of_place(db: Session, place_id: int) -> int | None:
+    """Return the organisation id a place stands for, if any.
+
+    The translation back, for the few things that are addressed by an
+    organisation id rather than merely filtered by one. Media objects are
+    the case that matters: they are stored at
+    ``{organisation_id}/{module}/{asset}`` in a bucket, so that number is
+    the address of a real file. Changing which number it is would move
+    every future upload and leave everything already there unreachable —
+    an object-store migration, not a column switch.
+    """
+    return db.scalar(
+        select(Organisation.id).where(Organisation.org_unit_id == place_id)
+    )
+
+
 def _root_of(db: Session, organisation_id: int) -> int | None:
     """Return the tree row an organisation stands for, if it has one."""
     return place_of_organisation(db, organisation_id)

@@ -103,6 +103,7 @@ from app.organisations import (
     get_member_org_ids,
     get_reachable_org_ids,
     organisation_member,
+    organisation_of_place,
     place_of_organisation,
 )
 from app.rate_limit import limiter
@@ -142,8 +143,20 @@ _DEP_REQUIRE_CSRF = Depends(_require_csrf)
 _DEP_VIEW_CASES = Depends(has_competency("view_teaching_cases"))
 
 
+def _places_of(db: Session, organisation_ids: list[int]) -> list[int]:
+    """Translate organisation ids into the places they stand for.
+
+    A scaffold with a known end. Teaching's tables answer in place ids
+    from this step onwards, while membership still answers in
+    organisation ids; when membership moves too, every call to this
+    disappears rather than being rewritten.
+    """
+    places = [place_of_organisation(db, org_id) for org_id in organisation_ids]
+    return [place_id for place_id in places if place_id is not None]
+
+
 def _get_user_org_ids(user: User, db: Session) -> list[int]:
-    """Return the organisations the user can reach, or raise 403.
+    """Return the places the user can reach, or raise 403.
 
     Teaching used to carry its own copy of this, walking site membership
     up into organisation membership because that was the available fudge
@@ -154,7 +167,11 @@ def _get_user_org_ids(user: User, db: Session) -> list[int]:
     org_ids = get_reachable_org_ids(db, user.id)
     if not org_ids:
         raise HTTPException(403, "User has no organisation")
-    return org_ids
+    # Teaching's own tables are moving off organisation ids, so what
+    # leaves here is the place each organisation is. Membership still
+    # answers in organisation ids; when it stops, this translation goes
+    # and the helper returns what it is given.
+    return _places_of(db, org_ids)
 
 
 def _get_user_org_id(user: User, db: Session) -> int:
@@ -188,11 +205,14 @@ def _get_user_org_id(user: User, db: Session) -> int:
         # trust has a place, and saying otherwise would send them looking
         # for the wrong fix.
         raise HTTPException(403, "User is not a member of any organisation")
-    return org_ids[0]
+    place_ids = _places_of(db, org_ids)
+    if not place_ids:
+        raise HTTPException(403, "User is not a member of any organisation")
+    return place_ids[0]
 
 
 def resolve_visible_module(user: User, db: Session, module_id: str) -> int:
-    """Return an organisation ID that makes ``module_id`` visible to ``user``.
+    """Return a place id that makes ``module_id`` visible to ``user``.
 
     A module is visible when any of the user's organisations — reached
     directly or through a site — has a ``QuestionBankOrgStatus`` row for
@@ -222,7 +242,7 @@ def resolve_visible_module(user: User, db: Session, module_id: str) -> int:
     statuses = (
         db.execute(
             select(QuestionBankOrgStatus).where(
-                QuestionBankOrgStatus.organisation_id.in_(org_ids),
+                QuestionBankOrgStatus.org_unit_id.in_(org_ids),
                 QuestionBankOrgStatus.question_bank_id == module_id,
             )
         )
@@ -231,8 +251,11 @@ def resolve_visible_module(user: User, db: Session, module_id: str) -> int:
     )
 
     for status in statuses:
-        if status.is_live:
-            return int(status.organisation_id)
+        # A null place means a row written before the column existed and
+        # not touched since; the migration backfilled every one, so this
+        # is belt and braces rather than an expected state.
+        if status.is_live and status.org_unit_id is not None:
+            return int(status.org_unit_id)
 
     raise HTTPException(404, "Module not found")
 
@@ -340,7 +363,7 @@ def list_question_banks(
     statuses = (
         db.execute(
             select(QuestionBankOrgStatus).where(
-                QuestionBankOrgStatus.organisation_id.in_(org_ids),
+                QuestionBankOrgStatus.org_unit_id.in_(org_ids),
             )
         )
         .scalars()
@@ -366,7 +389,8 @@ def list_question_banks(
             # Which organisation makes this bank visible, for the media
             # gate below. Media links are per organisation, so completeness
             # has no global answer — only one per organisation.
-        org_by_bank.setdefault(s.question_bank_id, int(s.organisation_id))
+        if s.org_unit_id is not None:
+            org_by_bank.setdefault(s.question_bank_id, int(s.org_unit_id))
 
     if not visible_bank_ids:
         return []
@@ -467,7 +491,7 @@ def get_question_bank(
     status_row = (
         db.execute(
             select(QuestionBankOrgStatus).where(
-                QuestionBankOrgStatus.organisation_id.in_(org_ids),
+                QuestionBankOrgStatus.org_unit_id.in_(org_ids),
                 QuestionBankOrgStatus.question_bank_id == bank_id,
             )
         )
@@ -500,7 +524,7 @@ def get_question_bank(
         # Missing media hides the whole module, assessment included. Same
         # 404 as every other refusal here, so "incomplete" is
         # indistinguishable from "not yours" and "no such bank".
-    if not _module_is_servable(db, int(status_row.organisation_id), bank_id):
+    if not _module_is_servable(db, status_row.org_unit_id, bank_id):
         raise HTTPException(404, "Question bank not found")
 
     return {
@@ -616,7 +640,7 @@ def get_learning_content(
         row.media_key: row
         for row in db.execute(
             select(ModuleMediaLink).where(
-                ModuleMediaLink.organisation_id == org_id,
+                ModuleMediaLink.org_unit_id == org_id,
                 ModuleMediaLink.question_bank_id == module_id,
             )
         )
@@ -802,16 +826,17 @@ def list_learning_modules(
     for status in (
         db.execute(
             select(QuestionBankOrgStatus).where(
-                QuestionBankOrgStatus.organisation_id.in_(org_ids),
+                QuestionBankOrgStatus.org_unit_id.in_(org_ids),
             )
         )
         .scalars()
         .all()
     ):
         if status.is_live:
-            visible_org_by_bank.setdefault(
-                status.question_bank_id, int(status.organisation_id)
-            )
+            if status.org_unit_id is not None:
+                visible_org_by_bank.setdefault(
+                    status.question_bank_id, int(status.org_unit_id)
+                )
 
     visible_bank_ids = set(visible_org_by_bank)
     if not visible_bank_ids:
@@ -947,7 +972,10 @@ def grant_video_access(
         )
 
     try:
-        url_prefix = build_url_prefix(base_url, org_id, module_id)
+        storage_org_id = organisation_of_place(db, org_id)
+        if storage_org_id is None:
+            raise HTTPException(404, "Module not found")
+        url_prefix = build_url_prefix(base_url, storage_org_id, module_id)
     except ValueError:
         # An unsafe module_id reached the prefix builder. Refuse rather
         # than sign anything: the prefix is the entire authorisation
@@ -1027,7 +1055,7 @@ def start_assessment(
     status_row = (
         db.execute(
             select(QuestionBankOrgStatus).where(
-                QuestionBankOrgStatus.organisation_id.in_(org_ids),
+                QuestionBankOrgStatus.org_unit_id.in_(org_ids),
                 QuestionBankOrgStatus.question_bank_id
                 == body.question_bank_id,
                 QuestionBankOrgStatus.is_live.is_(True),
@@ -1069,7 +1097,7 @@ def start_assessment(
     published_items = (
         db.execute(
             select(QuestionBankItem).where(
-                QuestionBankItem.organisation_id == config_row.organisation_id,
+                QuestionBankItem.org_unit_id == config_row.org_unit_id,
                 QuestionBankItem.question_bank_id == body.question_bank_id,
                 QuestionBankItem.bank_version == config_row.version,
                 QuestionBankItem.status == "published",
@@ -1097,8 +1125,7 @@ def start_assessment(
         # Create assessment
     assessment = Assessment(
         user_id=user.id,
-        organisation_id=status_row.organisation_id,
-        org_unit_id=place_of_organisation(db, status_row.organisation_id),
+        org_unit_id=status_row.org_unit_id,
         question_bank_id=body.question_bank_id,
         bank_version=config_row.version,
         time_limit_minutes=time_limit,
@@ -1163,10 +1190,7 @@ def assessment_history(
                 == Assessment.question_bank_id
             )
             & (QuestionBankConfig.version == Assessment.bank_version)
-            & (
-                QuestionBankConfig.organisation_id
-                == Assessment.organisation_id
-            ),
+            & (QuestionBankConfig.org_unit_id == Assessment.org_unit_id),
         )
         .where(Assessment.user_id == user.id)
         .order_by(Assessment.started_at.desc())
@@ -1239,8 +1263,7 @@ def get_current_item(
     config_row = (
         db.execute(
             select(QuestionBankConfig).where(
-                QuestionBankConfig.organisation_id
-                == assessment.organisation_id,
+                QuestionBankConfig.org_unit_id == assessment.org_unit_id,
                 QuestionBankConfig.question_bank_id
                 == assessment.question_bank_id,
                 QuestionBankConfig.version == assessment.bank_version,
@@ -1290,8 +1313,7 @@ def get_item_by_order(
     config_row = (
         db.execute(
             select(QuestionBankConfig).where(
-                QuestionBankConfig.organisation_id
-                == assessment.organisation_id,
+                QuestionBankConfig.org_unit_id == assessment.org_unit_id,
                 QuestionBankConfig.question_bank_id
                 == assessment.question_bank_id,
                 QuestionBankConfig.version == assessment.bank_version,
@@ -1353,8 +1375,7 @@ def submit_answer(
     config_row = (
         db.execute(
             select(QuestionBankConfig).where(
-                QuestionBankConfig.organisation_id
-                == assessment.organisation_id,
+                QuestionBankConfig.org_unit_id == assessment.org_unit_id,
                 QuestionBankConfig.question_bank_id
                 == assessment.question_bank_id,
                 QuestionBankConfig.version == assessment.bank_version,
@@ -1455,8 +1476,7 @@ def update_answer(
     config_row = (
         db.execute(
             select(QuestionBankConfig).where(
-                QuestionBankConfig.organisation_id
-                == assessment.organisation_id,
+                QuestionBankConfig.org_unit_id == assessment.org_unit_id,
                 QuestionBankConfig.question_bank_id
                 == assessment.question_bank_id,
                 QuestionBankConfig.version == assessment.bank_version,
@@ -1527,8 +1547,7 @@ def _maybe_enqueue_certificate_emails(
         # Only send for live exams
     status_row = db.execute(
         select(QuestionBankOrgStatus).where(
-            QuestionBankOrgStatus.organisation_id
-            == assessment.organisation_id,
+            QuestionBankOrgStatus.org_unit_id == assessment.org_unit_id,
             QuestionBankOrgStatus.question_bank_id
             == assessment.question_bank_id,
         )
@@ -1552,7 +1571,7 @@ def _maybe_enqueue_certificate_emails(
         # Look up org settings for institution name
     org_settings = db.execute(
         select(TeachingOrgSettings).where(
-            TeachingOrgSettings.organisation_id == assessment.organisation_id
+            TeachingOrgSettings.org_unit_id == assessment.org_unit_id
         )
     ).scalar_one_or_none()
 
@@ -1637,7 +1656,7 @@ def _maybe_enqueue_certificate_emails(
     if email_coordinator:
         coord_template = extract_email_template(config, "coordinator_email")
         if coord_template:
-            from app.org_units.tree import site_ids_of_organisations
+            from app.org_units.tree import descendant_ids
 
             # Whoever holds the clinical lead post at a place beneath this
             # organisation. Read from the post rather than a role on a
@@ -1647,8 +1666,11 @@ def _maybe_enqueue_certificate_emails(
             # An exact match on one place, with no walk up the tree: a
             # ward does not inherit its hospital's lead, and implying it
             # did would email the wrong person without raising anything.
-            org_site_ids = site_ids_of_organisations(
-                db, [assessment.organisation_id]
+            org_place_id = assessment.org_unit_id
+            org_site_ids = (
+                sorted(descendant_ids(db, [org_place_id]))
+                if org_place_id is not None
+                else []
             )
             lead_ids = set(clinical_leads_of(db, org_site_ids).values())
             clinical_leads = (
@@ -1705,8 +1727,7 @@ def complete_assessment(
     config_row = (
         db.execute(
             select(QuestionBankConfig).where(
-                QuestionBankConfig.organisation_id
-                == assessment.organisation_id,
+                QuestionBankConfig.org_unit_id == assessment.org_unit_id,
                 QuestionBankConfig.question_bank_id
                 == assessment.question_bank_id,
                 QuestionBankConfig.version == assessment.bank_version,
@@ -1824,8 +1845,7 @@ def download_certificate(
     config_row = (
         db.execute(
             select(QuestionBankConfig).where(
-                QuestionBankConfig.organisation_id
-                == assessment.organisation_id,
+                QuestionBankConfig.org_unit_id == assessment.org_unit_id,
                 QuestionBankConfig.question_bank_id
                 == assessment.question_bank_id,
                 QuestionBankConfig.version == assessment.bank_version,
@@ -1948,7 +1968,7 @@ def list_items(
     """List items in the org's question bank (educator only)."""
     org_id = _get_user_org_id(user, db)
     stmt = select(QuestionBankItem).where(
-        QuestionBankItem.organisation_id == org_id
+        QuestionBankItem.org_unit_id == org_id
     )
     if question_bank_id:
         stmt = stmt.where(
@@ -2154,7 +2174,7 @@ def list_results(
     """List all assessment results for the educator's org."""
     org_id = _get_user_org_id(user, db)
     stmt = select(Assessment).where(
-        Assessment.organisation_id == org_id,
+        Assessment.org_unit_id == org_id,
         Assessment.completed_at.isnot(None),
     )
     if question_bank_id:
@@ -2212,6 +2232,14 @@ def create_media_upload_url(
         )
 
     org_id = _get_user_org_id(user, db)
+    # Media objects live at {organisation_id}/{module}/{asset} in the
+    # bucket, so that number addresses a real file rather than filtering
+    # a table. It keeps counting in organisation ids until the objects
+    # themselves are moved, which is storage work rather than a column
+    # switch.
+    storage_org_id = organisation_of_place(db, org_id)
+    if storage_org_id is None:
+        raise HTTPException(404, "Module not found")
     asset_id = uuid.uuid4().hex
 
     bucket = settings.TEACHING_VIDEOS_SOURCE_BUCKET
@@ -2246,7 +2274,7 @@ def create_media_upload_url(
 
     try:
         url = create_resumable_upload_url(
-            bucket, org_id, module_id, asset_id, body.content_type
+            bucket, storage_org_id, module_id, asset_id, body.content_type
         )
     except ValueError:
         # An unsafe module_id reached the path builder. The path is what
@@ -2364,7 +2392,7 @@ def link_module_media(
 
     existing = db.execute(
         select(ModuleMediaLink).where(
-            ModuleMediaLink.organisation_id == org_id,
+            ModuleMediaLink.org_unit_id == org_id,
             ModuleMediaLink.question_bank_id == module_id,
             ModuleMediaLink.media_key == media_key,
         )
@@ -2380,8 +2408,7 @@ def link_module_media(
         link = existing
     else:
         link = ModuleMediaLink(
-            organisation_id=org_id,
-            org_unit_id=place_of_organisation(db, org_id),
+            org_unit_id=org_id,
             question_bank_id=module_id,
             media_key=media_key,
             asset_id=body.asset_id,
@@ -2462,7 +2489,7 @@ def unlink_module_media(
 
     link = db.execute(
         select(ModuleMediaLink).where(
-            ModuleMediaLink.organisation_id == org_id,
+            ModuleMediaLink.org_unit_id == org_id,
             ModuleMediaLink.question_bank_id == module_id,
             ModuleMediaLink.media_key == media_key,
         )
@@ -2501,7 +2528,7 @@ def list_syncs(
     return list(
         db.execute(
             select(QuestionBankSync)
-            .where(QuestionBankSync.organisation_id == org_id)
+            .where(QuestionBankSync.org_unit_id == org_id)
             .order_by(QuestionBankSync.started_at.desc())
         )
         .scalars()
@@ -2590,7 +2617,7 @@ def list_delegates(
         db.execute(
             select(Assessment)
             .where(
-                Assessment.organisation_id.in_(caller_org_ids),
+                Assessment.org_unit_id.in_(caller_org_ids),
                 Assessment.user_id.in_(user_ids),
             )
             .order_by(Assessment.started_at.desc())
@@ -2715,7 +2742,7 @@ def list_admin_banks(
     db_configs = (
         db.execute(
             select(QuestionBankConfig)
-            .where(QuestionBankConfig.organisation_id == org_id)
+            .where(QuestionBankConfig.org_unit_id == org_id)
             .order_by(
                 QuestionBankConfig.question_bank_id,
                 QuestionBankConfig.version.desc(),
@@ -2736,7 +2763,7 @@ def list_admin_banks(
     for bank_id, cfg in seen.items():
         count = db.execute(
             select(QuestionBankItem.id).where(
-                QuestionBankItem.organisation_id == org_id,
+                QuestionBankItem.org_unit_id == org_id,
                 QuestionBankItem.question_bank_id == bank_id,
                 QuestionBankItem.bank_version == cfg.version,
             )
@@ -2750,7 +2777,7 @@ def list_admin_banks(
         row.question_bank_id: row.active_version
         for row in db.execute(
             select(QuestionBankOrgStatus).where(
-                QuestionBankOrgStatus.organisation_id == org_id,
+                QuestionBankOrgStatus.org_unit_id == org_id,
             )
         )
         .scalars()
@@ -2913,7 +2940,7 @@ def update_settings(
     org_id = _get_user_org_id(user, db)
     settings_row = db.execute(
         select(TeachingOrgSettings).where(
-            TeachingOrgSettings.organisation_id == org_id
+            TeachingOrgSettings.org_unit_id == org_id
         )
     ).scalar_one_or_none()
 
@@ -2922,8 +2949,7 @@ def update_settings(
         settings_row.institution_name = body.institution_name
     else:
         settings_row = TeachingOrgSettings(
-            organisation_id=org_id,
-            org_unit_id=place_of_organisation(db, org_id),
+            org_unit_id=org_id,
             coordinator_email=body.coordinator_email,
             institution_name=body.institution_name,
         )
@@ -2947,7 +2973,7 @@ def get_settings(
     org_id = _get_user_org_id(user, db)
     settings_row = db.execute(
         select(TeachingOrgSettings).where(
-            TeachingOrgSettings.organisation_id == org_id
+            TeachingOrgSettings.org_unit_id == org_id
         )
     ).scalar_one_or_none()
     if not settings_row:
@@ -2977,7 +3003,7 @@ def get_admin_bank_detail(
         db.execute(
             select(QuestionBankConfig)
             .where(
-                QuestionBankConfig.organisation_id == org_id,
+                QuestionBankConfig.org_unit_id == org_id,
                 QuestionBankConfig.question_bank_id == bank_id,
             )
             .order_by(QuestionBankConfig.version.desc())
@@ -2992,7 +3018,7 @@ def get_admin_bank_detail(
     item_count = (
         db.execute(
             select(QuestionBankItem.id).where(
-                QuestionBankItem.organisation_id == org_id,
+                QuestionBankItem.org_unit_id == org_id,
                 QuestionBankItem.question_bank_id == bank_id,
             )
         )
@@ -3035,7 +3061,7 @@ def get_admin_bank_detail(
     status_row = (
         db.execute(
             select(QuestionBankOrgStatus).where(
-                QuestionBankOrgStatus.organisation_id == org_id,
+                QuestionBankOrgStatus.org_unit_id == org_id,
                 QuestionBankOrgStatus.question_bank_id == bank_id,
             )
         )
@@ -3086,15 +3112,17 @@ def list_bank_organisations(
         .all()
     )
 
-    org_ids = [o.id for o in orgs]
+    # The status rows answer in place ids; the response still answers in
+    # organisation ids, which is why both are carried here.
+    place_ids = [o.org_unit_id for o in orgs]
 
     # Get bank status rows for these orgs
     statuses = {
-        row.organisation_id: row
+        row.org_unit_id: row
         for row in db.execute(
             select(QuestionBankOrgStatus).where(
                 QuestionBankOrgStatus.question_bank_id == bank_id,
-                QuestionBankOrgStatus.organisation_id.in_(org_ids),
+                QuestionBankOrgStatus.org_unit_id.in_(place_ids),
             )
         )
         .scalars()
@@ -3103,7 +3131,7 @@ def list_bank_organisations(
 
     rows: list[BankOrgRow] = []
     for org in orgs:
-        status = statuses.get(org.id)
+        status = statuses.get(org.org_unit_id)
         rows.append(
             BankOrgRow(
                 organisation_id=org.id,
@@ -3153,12 +3181,19 @@ def promote_bank_version(
             403, "You cannot promote a version for that organisation"
         )
 
+    # The path names an organisation; these tables answer in places. One
+    # translation here rather than at each query below, and it goes when
+    # the surface names the place itself.
+    place_id = place_of_organisation(db, org_id)
+    if place_id is None:
+        raise HTTPException(404, "Organisation not found")
+
         # The version must exist for this organisation. Content is shared, but a
         # version another organisation has synced is not one this one can serve.
     target = (
         db.execute(
             select(QuestionBankConfig).where(
-                QuestionBankConfig.organisation_id == org_id,
+                QuestionBankConfig.org_unit_id == place_id,
                 QuestionBankConfig.question_bank_id == bank_id,
                 QuestionBankConfig.version == body.version,
             )
@@ -3174,7 +3209,7 @@ def promote_bank_version(
     status_row = (
         db.execute(
             select(QuestionBankOrgStatus).where(
-                QuestionBankOrgStatus.organisation_id == org_id,
+                QuestionBankOrgStatus.org_unit_id == place_id,
                 QuestionBankOrgStatus.question_bank_id == bank_id,
             )
         )
@@ -3241,18 +3276,23 @@ def update_bank_org_settings(
     if not org:
         raise HTTPException(404, "Organisation not found")
 
-        # The bank must be one the caller can see, which is not the same as one
-        # the target organisation has already synced: setting a bank live for an
-        # organisation that has never synced it is how a bank is first set up,
-        # and the branch below handles that by leaving the pointer null.
-        #
-        # Across every organisation the caller belongs to, rather than
-        # `_get_user_org_id`'s arbitrary first one — with two, that decided
-        # whether the bank was found at all.
+    # As above: the path names an organisation, the tables answer in
+    # places.
+    place_id = org.org_unit_id
+    org_place_ids = _places_of(db, org_ids)
+
+    # The bank must be one the caller can see, which is not the same as one
+    # the target organisation has already synced: setting a bank live for an
+    # organisation that has never synced it is how a bank is first set up,
+    # and the branch below handles that by leaving the pointer null.
+    #
+    # Across every organisation the caller belongs to, rather than
+    # `_get_user_org_id`'s arbitrary first one — with two, that decided
+    # whether the bank was found at all.
     config_row = (
         db.execute(
             select(QuestionBankConfig).where(
-                QuestionBankConfig.organisation_id.in_(org_ids),
+                QuestionBankConfig.org_unit_id.in_(org_place_ids),
                 QuestionBankConfig.question_bank_id == bank_id,
             )
         )
@@ -3265,7 +3305,7 @@ def update_bank_org_settings(
         # Upsert status row
     status_row = db.execute(
         select(QuestionBankOrgStatus).where(
-            QuestionBankOrgStatus.organisation_id == org_id,
+            QuestionBankOrgStatus.org_unit_id == place_id,
             QuestionBankOrgStatus.question_bank_id == bank_id,
         )
     ).scalar_one_or_none()
@@ -3289,14 +3329,13 @@ def update_bank_org_settings(
         # which is honest — there is no version to serve.
         active_version = db.execute(
             select(func.max(QuestionBankConfig.version)).where(
-                QuestionBankConfig.organisation_id == org_id,
+                QuestionBankConfig.org_unit_id == place_id,
                 QuestionBankConfig.question_bank_id == bank_id,
             )
         ).scalar_one_or_none()
 
         status_row = QuestionBankOrgStatus(
-            organisation_id=org_id,
-            org_unit_id=place_of_organisation(db, org_id),
+            org_unit_id=place_id,
             question_bank_id=bank_id,
             is_live=body.is_live,
             site_registration=body.site_registration,
@@ -3483,7 +3522,7 @@ def delete_media_asset(
 
     link = db.execute(
         select(ModuleMediaLink).where(
-            ModuleMediaLink.organisation_id == org_id,
+            ModuleMediaLink.org_unit_id == org_id,
             ModuleMediaLink.question_bank_id == module_id,
             ModuleMediaLink.asset_id == asset_id,
         )
@@ -3500,7 +3539,10 @@ def delete_media_asset(
 
     bucket = settings.TEACHING_VIDEOS_SOURCE_BUCKET
     if bucket:
-        delete_media_object(bucket, org_id, module_id, asset_id)
+        # The row remembers which organisation's prefix its object was
+        # written under, which is the only thing that can say where the
+        # file is.
+        delete_media_object(bucket, link.organisation_id, module_id, asset_id)
     else:
         # Development, where the upload landed on disk rather than in a
         # bucket. Refusing here would leave the admin unable to undo the
@@ -3531,7 +3573,7 @@ def _caption_link_or_404(
     """
     link = db.execute(
         select(ModuleMediaLink).where(
-            ModuleMediaLink.organisation_id == org_id,
+            ModuleMediaLink.org_unit_id == org_id,
             ModuleMediaLink.question_bank_id == module_id,
             ModuleMediaLink.asset_id == asset_id,
         )

@@ -895,7 +895,7 @@ So the remaining steps land as:
 - [x] 12b-viii — retire the organisation and site lists on the users API
 - [x] 12c-0 — make the two id sequences disagree in the tests
 - [x] 12c-i-a — a place column beside every organisation column, and both written
-- [ ] 12c-i-b — those tables read the place column, translating at the API edge
+- [x] 12c-i-b — those tables read the place column, translating at the edges
 - [ ] 12c-i-b2 — teaching and passport answer in place ids, expand then contract
 - [ ] 12c-i-c — stop writing the organisation column, and drop it
 - [ ] 12c-i-d — `site_common_competency`'s two place columns collapse into one
@@ -1537,6 +1537,37 @@ from and where they go.
 - **Which is why the two are separate steps.** The reads can move now
   with the boundary translating back, and the surface can move after,
   each one small enough to check.
+
+#### 12c-i-b — teaching and the passport read the place column
+
+The switch itself was sixty-three query sites and mechanical. Four
+things around it were not.
+
+- **One listener replaced eight hand-written dual-writes.** The writers
+  are not only the eight places the application creates these rows —
+  fixtures, scripts and whatever is written next also write them, and a
+  row carrying one id and not the other is invisible to half the code
+  with nothing to say so. The pair is now kept in step on insert and
+  update, in either direction, which is what let the code move a writer
+  at a time.
+- **Media objects are addressed by organisation id, not merely filtered
+  by it.** They live at `{organisation_id}/{module}/{asset}` in a
+  bucket, and the signed-cookie prefix covers that path. Following the
+  column there would have moved every future upload and left everything
+  already uploaded unreachable — an object-store migration rather than a
+  column switch. Those three call sites translate back, and the deletion
+  reads the prefix from the row that remembers it.
+- **The continuous-integration sync fell back to the literal
+  organisation 1.** A guess that held while organisations were numbered
+  from one and nothing shared their numbering. It resolves the first
+  organisation in the tree now, and says so plainly when there is none
+  rather than writing rows that point at nothing.
+- **The tests found each of these**, because the id spacer from 12c-0
+  made a place id and an organisation id different numbers. Without it
+  every one of them would have passed.
+
+The surface is untouched: teaching and the passport still answer in
+organisation ids, translated at the edge. Moving that is 12c-i-b2.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to
