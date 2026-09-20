@@ -90,7 +90,7 @@ class TestSyncQuestionBank:
         bank = _make_bank(tmp_path)
         validation, sync_record = sync_question_bank(
             bank,
-            organisation_id=1,
+            place_id=1,
             user_id=1,
             db=db_session,
             validate_only=True,
@@ -109,7 +109,7 @@ class TestSyncQuestionBank:
         bank = _make_bank(tmp_path, item_count=3)
         validation, sync_record = sync_question_bank(
             bank,
-            organisation_id=organisation.org_unit_id,
+            place_id=organisation.org_unit_id,
             user_id=admin_user.id,
             db=db_session,
         )
@@ -148,14 +148,14 @@ class TestSyncQuestionBank:
         # First sync
         sync_question_bank(
             bank,
-            organisation_id=organisation.org_unit_id,
+            place_id=organisation.org_unit_id,
             user_id=admin_user.id,
             db=db_session,
         )
         # Second sync — should update, not create
         validation, sync_record = sync_question_bank(
             bank,
-            organisation_id=organisation.org_unit_id,
+            place_id=organisation.org_unit_id,
             user_id=admin_user.id,
             db=db_session,
         )
@@ -186,7 +186,7 @@ class TestSyncQuestionBank:
         )
         validation, sync_record = sync_question_bank(
             bank,
-            organisation_id=organisation.org_unit_id,
+            place_id=organisation.org_unit_id,
             user_id=admin_user.id,
             db=db_session,
         )
@@ -201,14 +201,14 @@ class TestSyncQuestionBank:
         bank = _make_bank(tmp_path)
         sync_question_bank(
             bank,
-            organisation_id=organisation.org_unit_id,
+            place_id=organisation.org_unit_id,
             user_id=admin_user.id,
             db=db_session,
         )
         records = (
             db_session.execute(
                 select(QuestionBankSync).where(
-                    QuestionBankSync.organisation_id == organisation.id
+                    QuestionBankSync.org_unit_id == organisation.org_unit_id
                 )
             )
             .scalars()
@@ -236,7 +236,7 @@ class TestSyncQuestionBank:
         }
         validation, sync_record = sync_question_bank(
             bank,
-            organisation_id=organisation.org_unit_id,
+            place_id=organisation.org_unit_id,
             user_id=admin_user.id,
             db=db_session,
             image_inventory=inventory,
@@ -301,7 +301,7 @@ class TestSyncQuestionBank:
 
         validation, sync_record = sync_question_bank(
             bank,
-            organisation_id=organisation.org_unit_id,
+            place_id=organisation.org_unit_id,
             user_id=admin_user.id,
             db=db_session,
         )
@@ -378,7 +378,7 @@ class TestVersionGuard:
 
         validation, sync_record = sync_question_bank(
             bank,
-            organisation_id=organisation.org_unit_id,
+            place_id=organisation.org_unit_id,
             user_id=admin_user.id,
             db=db_session,
             module_status="draft",
@@ -394,7 +394,7 @@ class TestVersionGuard:
         bank = _make_bank(tmp_path)
         validation, sync_record = sync_question_bank(
             bank,
-            organisation_id=organisation.org_unit_id,
+            place_id=organisation.org_unit_id,
             user_id=admin_user.id,
             db=db_session,
             module_status="draft",
@@ -411,7 +411,7 @@ class TestVersionGuard:
         # First sync — establishes version 1
         sync_question_bank(
             bank,
-            organisation_id=organisation.org_unit_id,
+            place_id=organisation.org_unit_id,
             user_id=admin_user.id,
             db=db_session,
             module_status="live",
@@ -419,7 +419,7 @@ class TestVersionGuard:
         # Second sync with same version — metadata-only update
         validation, sync_record = sync_question_bank(
             bank,
-            organisation_id=organisation.org_unit_id,
+            place_id=organisation.org_unit_id,
             user_id=admin_user.id,
             db=db_session,
             module_status="live",
@@ -435,7 +435,7 @@ class TestVersionGuard:
         # First sync — version 1
         sync_question_bank(
             bank,
-            organisation_id=organisation.org_unit_id,
+            place_id=organisation.org_unit_id,
             user_id=admin_user.id,
             db=db_session,
             module_status="live",
@@ -447,7 +447,7 @@ class TestVersionGuard:
 
         validation, sync_record = sync_question_bank(
             bank,
-            organisation_id=organisation.org_unit_id,
+            place_id=organisation.org_unit_id,
             user_id=admin_user.id,
             db=db_session,
             module_status="live",
@@ -463,7 +463,7 @@ class TestVersionGuard:
         bank = _make_bank(tmp_path)
         validation, sync_record = sync_question_bank(
             bank,
-            organisation_id=organisation.org_unit_id,
+            place_id=organisation.org_unit_id,
             user_id=admin_user.id,
             db=db_session,
             module_status="live",
@@ -479,7 +479,7 @@ class TestVersionGuard:
         bank = _make_bank(tmp_path)
         validation, sync_record = sync_question_bank(
             bank,
-            organisation_id=organisation.org_unit_id,
+            place_id=organisation.org_unit_id,
             user_id=admin_user.id,
             db=db_session,
             module_status="retired",
@@ -534,7 +534,7 @@ class TestVersionGuard:
         # and reject because version is 2
         validation, sync_record = sync_question_bank(
             assessment_dir,
-            organisation_id=organisation.org_unit_id,
+            place_id=organisation.org_unit_id,
             user_id=admin_user.id,
             db=db_session,
         )
@@ -642,7 +642,7 @@ class TestSyncStoresCoverImage:
 
         validation, sync_record = sync_question_bank(
             assessment_dir,
-            organisation_id=organisation.org_unit_id,
+            place_id=organisation.org_unit_id,
             user_id=admin_user.id,
             db=db_session,
         )

@@ -361,13 +361,19 @@ class TestModuleMediaLink:
         db.flush()
         return org
 
-    def _link(self, db: Session, org_id: int, key: str, asset: str):
+    def _link(self, db: Session, org, key: str, asset: str):
+        """A link named by place.
+
+        ``organisation_id`` is filled from it, because that column is
+        where the object sits in the bucket rather than who owns the
+        row.
+        """
         from datetime import UTC, datetime
 
         from app.features.teaching.models import ModuleMediaLink
 
         link = ModuleMediaLink(
-            organisation_id=org_id,
+            org_unit_id=org.org_unit_id,
             question_bank_id="test-bank",
             media_key=key,
             asset_id=asset,
@@ -381,7 +387,7 @@ class TestModuleMediaLink:
 
     def test_a_link_records_the_uploaded_file(self, db_session: Session):
         org = self._org(db_session, "Trust A")
-        link = self._link(db_session, org.id, "lecture-01", "abc123")
+        link = self._link(db_session, org, "lecture-01", "abc123")
         db_session.commit()
 
         assert link.id is not None
@@ -393,10 +399,10 @@ class TestModuleMediaLink:
     def test_one_video_per_reference(self, db_session: Session):
         """Two files cannot claim the same key in one module."""
         org = self._org(db_session, "Trust B")
-        self._link(db_session, org.id, "lecture-01", "abc123")
+        self._link(db_session, org, "lecture-01", "abc123")
         db_session.commit()
 
-        self._link(db_session, org.id, "lecture-01", "def456")
+        self._link(db_session, org, "lecture-01", "def456")
         with pytest.raises(IntegrityError):
             db_session.commit()
         db_session.rollback()
@@ -410,8 +416,8 @@ class TestModuleMediaLink:
         """
         a = self._org(db_session, "Trust C")
         b = self._org(db_session, "Trust D")
-        self._link(db_session, a.id, "lecture-01", "asset-a")
-        self._link(db_session, b.id, "lecture-01", "asset-b")
+        self._link(db_session, a, "lecture-01", "asset-a")
+        self._link(db_session, b, "lecture-01", "asset-b")
         db_session.commit()
 
         from app.features.teaching.models import ModuleMediaLink
@@ -428,7 +434,7 @@ class TestModuleMediaLink:
     ):
         """Lectures are large; size_bytes is a BigInteger for that reason."""
         org = self._org(db_session, "Trust E")
-        link = self._link(db_session, org.id, "lecture-01", "big")
+        link = self._link(db_session, org, "lecture-01", "big")
         link.size_bytes = 5_000_000_000
         db_session.commit()
 

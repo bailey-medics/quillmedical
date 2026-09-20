@@ -2272,14 +2272,18 @@ def verify_assessor_registration(
             ),
         )
 
+    # By place, like the column that is now written. Reading the
+    # organisation column here would find nothing once this revision
+    # stops filling it, and a re-check would silently become a second
+    # row saying the same thing.
+    place_id = place_of_organisation(db, organisation_id)
     existing = db.scalar(
         select(AssessorRegistrationVerification).where(
             AssessorRegistrationVerification.user_id == assessor_user_id,
             AssessorRegistrationVerification.registration_authority
             == authority,
             AssessorRegistrationVerification.registration_number == number,
-            AssessorRegistrationVerification.organisation_id
-            == organisation_id,
+            AssessorRegistrationVerification.org_unit_id == place_id,
         )
     )
 
@@ -2295,8 +2299,7 @@ def verify_assessor_registration(
             registration_authority=authority,
             registration_number=number,
             verified_by_user_id=user.id,
-            organisation_id=organisation_id,
-            org_unit_id=place_of_organisation(db, organisation_id),
+            org_unit_id=place_id,
         )
         db.add(row)
 

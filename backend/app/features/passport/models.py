@@ -44,7 +44,6 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models import Base
-from app.org_units.mirroring import mirror_the_organisations_place
 
 #: What a request can be. Mirrors the sign-off file's own vocabulary for
 #: the states a *request* can reach — a file may also be ``superseded``,
@@ -363,22 +362,21 @@ class AssessorRegistrationVerification(Base):
         nullable=False,
     )
 
-    #: Which organisation's admin checked it, so a reader can tell whose
-    #: assurance this is. Two trusts may each check the same number, and
-    #: one may be more diligent than the other.
-    organisation_id: Mapped[int] = mapped_column(
+    #: No longer written. Kept nullable for one release so a rollback to
+    #: the revision before this one still finds it, and dropped in the
+    #: step after.
+    organisation_id: Mapped[int | None] = mapped_column(
         ForeignKey("organisations.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
 
-    #: The same place, counted the way every other table counts one.
+    #: Whose admin checked it, so a reader can tell whose assurance this
+    #: is. Two trusts may each check the same number, and one may be more
+    #: diligent than the other.
     #:
-    #: ``organisation_id`` above points at the organisations table, which
-    #: is going: an organisation is a place at the top of a tree, and a
-    #: place id is the only id there will be. Both are written while the
-    #: two exist, this one is read from the next step onwards, and the
-    #: older column goes last.
+    #: Still nullable itself because the previous revision may still
+    #: insert without it.
     org_unit_id: Mapped[int | None] = mapped_column(
         ForeignKey("org_unit.id", ondelete="CASCADE"),
         nullable=True,
@@ -401,6 +399,17 @@ class AssessorRegistrationVerification(Base):
             "registration_number",
             "organisation_id",
             name="uq_assessor_registration_verified_here",
+        ),
+        # The same rule counted in places. Added while the older one is
+        # still here so uniqueness is never unenforced: once
+        # ``organisation_id`` stops being written the constraint above
+        # sees a null and stops rejecting anything.
+        UniqueConstraint(
+            "user_id",
+            "registration_authority",
+            "registration_number",
+            "org_unit_id",
+            name="uq_assessor_registration_verified_at_place",
         ),
     )
 
@@ -464,8 +473,3 @@ class SiteCommonCompetency(Base):
             name="uq_site_common_competency_org",
         ),
     )
-
-
-# The same two columns, kept in step the same way — see
-# ``app/org_units/mirroring.py`` for why it is a listener.
-mirror_the_organisations_place(AssessorRegistrationVerification)
