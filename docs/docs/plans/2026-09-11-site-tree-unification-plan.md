@@ -910,6 +910,8 @@ So the remaining steps land as:
 - [x] 12c-iii-c — the user listing names the right place
 - [x] 12c-iii-d — drop the `organisations` table
 - [x] 12c-iv — refuse deleting a parent with children, and enforce `requires_parent`
+- [ ] 12d-i — `org_unit_ids` beside `place_ids`, and the internals renamed
+- [ ] 12d-ii — retire `place_ids`
 
 #### 10a — write both names for the place column
 
@@ -1957,6 +1959,54 @@ there is one table of places.
     delete a parent that still has children and enforce each type's
     `requires_parent` flag.
     Last, so the earlier steps are not blocked by it.
+
+13. [ ] **Say `org_unit` where the code says `place`.** The table, the model
+    and the API path already read `org_unit`; only the word used to talk
+    about a row says `place`, which reads as geography for something that
+    is governance. Done at the end, when the stack has settled, because it
+    touches a hundred identifiers and would collide with everything above
+    it.
+
+#### 12d-i — `org_unit_ids` beside `place_ids`, and the internals renamed
+
+`OrgUnit` is a governance unit, not a location: what a row is comes from
+its type and never from its position, accountability is found by walking
+to the root, and a relationship that is not ownership is a typed link. The
+vocabulary has not kept up. The table is `org_unit`, the path is
+`/api/org-units`, and the model class is `OrgUnit` — but a row is called a
+place, so the users API answers in `place_ids`.
+
+That reads as *where somebody is*. It means *which governance units they
+belong to*, and some of those are `virtual` with no location at all. It is
+the same class of error the fold exists to remove: a number whose meaning
+depends on which table the reader had in mind.
+
+- **The API expands first.** `org_unit_ids` is added beside `place_ids`,
+  both answering the same list, and a write may use one or the other but
+  never both — the rule `place_ids` already applies to the two fields it
+  replaced. Additive, so `oasdiff` reports no breaking change.
+- **The internals rename outright**, because nothing outside the
+  repository reads them and a local name cannot be half-renamed. About a
+  hundred identifiers: `place_id`, `place_ids`, `add_place_member`,
+  `places_administered_by`, and the rest, across `backend/app`,
+  `backend/tests` and `frontend/src`.
+- **`OrgUnit`'s docstring is corrected.** It still opens "Physical or
+  virtual location within the healthcare system" and still calls a row a
+  Site throughout its attributes, which is the contradiction that started
+  this.
+
+#### 12d-ii — retire `place_ids`
+
+The contract half, a release after 12d-i. `place_ids` goes from the
+schema and the write path, leaving `org_unit_ids` as the only answer.
+Breaking, so it carries decision files and the `api-breaking-change-review`
+gate.
+
+**Left alone deliberately.** The `type` values still read as geography —
+`hospital`, `building`, `ward`, `room`. Whether a governance tree should
+name its levels that way is a question about the model rather than about
+naming, and changing them is a data migration. It is not part of this
+step.
 
 ## Risks
 
