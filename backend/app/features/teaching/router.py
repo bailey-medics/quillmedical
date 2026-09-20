@@ -100,8 +100,8 @@ from app.models import (
     User,
 )
 from app.organisations import (
-    get_member_place_ids,
-    get_reachable_place_ids,
+    get_member_org_unit_ids,
+    get_reachable_org_unit_ids,
     media_prefix_of,
     organisation_place_member,
 )
@@ -151,7 +151,7 @@ def _get_user_org_ids(user: User, db: Session) -> list[int]:
     shared resolver now expresses the same thing as downward reach, so
     this is a thin wrapper that adds only teaching's 403.
     """
-    place_ids = get_reachable_place_ids(db, user.id)
+    place_ids = get_reachable_org_unit_ids(db, user.id)
     if not place_ids:
         raise HTTPException(403, "User has no organisation")
     return place_ids
@@ -182,7 +182,7 @@ def _get_user_org_id(user: User, db: Session) -> int:
     Narrowing to membership shrinks the set it chooses from without
     making the choice correct.
     """
-    place_ids = get_member_place_ids(db, user.id)
+    place_ids = get_member_org_unit_ids(db, user.id)
     if not place_ids:
         # Deliberately not "no organisation": somebody at a ward of the
         # trust has a place, and saying otherwise would send them looking
@@ -2540,7 +2540,7 @@ def list_delegates(
     # Which organisations the caller is a member of. Direct membership,
     # not reach: this route lists the people *below* the caller, so a
     # trainee reaching up via a site link must not thereby list its staff.
-    caller_org_ids = get_member_place_ids(db, user.id)
+    caller_org_ids = get_member_org_unit_ids(db, user.id)
     if not caller_org_ids:
         return []
 
@@ -3148,7 +3148,7 @@ def _promote_bank_version(
     # trust serves. `_get_user_org_ids` answers reach, so a teaching admin
     # whose only membership is a linked site passed this check and could
     # promote for the whole organisation above them.
-    if place_id not in get_member_place_ids(db, user.id):
+    if place_id not in get_member_org_unit_ids(db, user.id):
         raise HTTPException(
             403, "You cannot promote a version for that organisation"
         )
@@ -3317,7 +3317,7 @@ def _update_bank_org_settings(
     # and reaching a trust from a ward is not belonging to it. Closing a
     # bank is the operation this protects: it locks candidates out of an
     # assessment they are part-way through.
-    org_place_ids = get_member_place_ids(db, user.id)
+    org_place_ids = get_member_org_unit_ids(db, user.id)
     if place_id not in org_place_ids:
         raise HTTPException(
             403, "You cannot change settings for that organisation"

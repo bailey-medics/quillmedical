@@ -34,7 +34,7 @@ from app.models import (
 from app.org_units.types import ROOT_TYPE_IDS
 from app.organisations import (
     add_org_unit_member,
-    organisation_places_of,
+    organisation_org_units_of,
 )
 from app.security import hash_password
 
@@ -1199,7 +1199,7 @@ class TestAnOrganisationCreatedAsAPlace:
         assert place is not None
         assert place.name == "New Trust"
         assert place.type == "gp_practice"
-        assert organisation_places_of(db_session, [place_id]) == {place_id}
+        assert organisation_org_units_of(db_session, [place_id]) == {place_id}
 
     def test_only_one_place_is_created(
         self, authenticated_superadmin_client, db_session
@@ -1235,7 +1235,7 @@ class TestAnOrganisationCreatedAsAPlace:
         add_org_unit_member(db_session, place_id, test_admin.id, "staff")
         db_session.commit()
 
-        assert organisation_places_of(db_session, [place_id]) == {place_id}
+        assert organisation_org_units_of(db_session, [place_id]) == {place_id}
 
     def test_renaming_it_renames_the_organisation(
         self, authenticated_superadmin_client, db_session
@@ -1265,7 +1265,7 @@ class TestAnOrganisationCreatedAsAPlace:
         authenticated_superadmin_client.delete(f"/api/org-units/{place_id}")
 
         assert db_session.get(OrgUnit, place_id) is None
-        assert organisation_places_of(db_session, [place_id]) == set()
+        assert organisation_org_units_of(db_session, [place_id]) == set()
 
 
 class TestWhoMayAskAtAll:

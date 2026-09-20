@@ -28,7 +28,7 @@ from app.models import OrgUnit
 from app.org_units.tree import (
     MAX_TREE_DEPTH,
     descendant_ids,
-    organisation_place_ids,
+    organisation_org_unit_ids,
     organisation_place_of_site,
     organisation_places_of_sites,
     root_id_of,
@@ -71,7 +71,7 @@ class TestWhatMakesAPlaceAnOrganisation:
         assert org.type in ROOT_TYPE_IDS
         assert org.parent_id is None
         assert org.id in set(
-            db_session.execute(organisation_place_ids()).scalars().all()
+            db_session.execute(organisation_org_unit_ids()).scalars().all()
         )
 
     def test_a_ward_with_no_parent_is_not(self, db_session):
@@ -84,7 +84,7 @@ class TestWhatMakesAPlaceAnOrganisation:
 
         assert loose.parent_id is None
         assert loose.id not in set(
-            db_session.execute(organisation_place_ids()).scalars().all()
+            db_session.execute(organisation_org_unit_ids()).scalars().all()
         )
 
     def test_renaming_one_is_one_row(self, db_session):
@@ -218,7 +218,7 @@ class TestNamingTheOrganisationForManyPlaces:
         loose = _under(db_session, None, "Loose", "ward")
 
         found = set(
-            db_session.execute(organisation_place_ids()).scalars().all()
+            db_session.execute(organisation_org_unit_ids()).scalars().all()
         )
 
         assert root_id_of(db_session, loose.id) == loose.id
@@ -228,7 +228,7 @@ class TestNamingTheOrganisationForManyPlaces:
         org = _org(db_session, "Trust")
 
         found = set(
-            db_session.execute(organisation_place_ids()).scalars().all()
+            db_session.execute(organisation_org_unit_ids()).scalars().all()
         )
 
         assert org.id in found

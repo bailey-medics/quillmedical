@@ -7,7 +7,7 @@ media, writing captions, reading results — so a ``teaching_admin`` whose
 only membership was a ward linked to the trust resolved to the trust and
 administered it.
 
-It now asks ``get_member_place_ids``. The plural helper keeps reach,
+It now asks ``get_member_org_unit_ids``. The plural helper keeps reach,
 because content visibility is a different question: a ward trainee
 receives what the trust made available there, which
 ``TestLearningContentGate`` pins.

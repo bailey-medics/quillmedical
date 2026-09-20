@@ -31,8 +31,8 @@ from app.models import (
 )
 from app.organisations import (
     add_org_unit_member,
-    get_member_place_ids,
-    get_place_member_ids,
+    get_member_org_unit_ids,
+    get_org_unit_member_ids,
     organisation_place_member,
     remove_org_unit_member,
     remove_org_unit_memberships,
@@ -348,8 +348,8 @@ class TestMembershipWrittenStraightToAPlace:
         )
         db_session.commit()
 
-        assert get_member_place_ids(db_session, person.id) == [org.id]
-        assert get_place_member_ids(db_session, [org.id]) == {person.id}
+        assert get_member_org_unit_ids(db_session, person.id) == [org.id]
+        assert get_org_unit_member_ids(db_session, [org.id]) == {person.id}
 
     def test_a_row_against_a_ward_is_not(self, db_session):
         """Membership does not climb: being on a ward is not being at the
@@ -367,8 +367,8 @@ class TestMembershipWrittenStraightToAPlace:
         )
         db_session.commit()
 
-        assert get_member_place_ids(db_session, person.id) == []
-        assert get_place_member_ids(db_session, [org.id]) == set()
+        assert get_member_org_unit_ids(db_session, person.id) == []
+        assert get_org_unit_member_ids(db_session, [org.id]) == set()
 
     def test_the_capacity_filter_still_bites(self, db_session):
         org = _org(db_session, "Trust")
@@ -377,8 +377,9 @@ class TestMembershipWrittenStraightToAPlace:
         db_session.commit()
 
         assert (
-            get_member_place_ids(db_session, person.id, capacity="staff") == []
+            get_member_org_unit_ids(db_session, person.id, capacity="staff")
+            == []
         )
-        assert get_member_place_ids(
+        assert get_member_org_unit_ids(
             db_session, person.id, capacity="trainee"
         ) == [org.id]

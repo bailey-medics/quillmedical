@@ -206,7 +206,7 @@ def descendant_ids(db: Session, root_ids: list[int]) -> set[int]:
     return found - set(root_ids)
 
 
-def organisation_place_ids() -> Select[tuple[int]]:
+def organisation_org_unit_ids() -> Select[tuple[int]]:
     """A selectable of every place that is an organisation.
 
     An organisation is a place at the top of a tree, and what makes it
@@ -249,7 +249,9 @@ def organisation_places_of_sites(
     organisations = {
         int(place_id)
         for place_id in db.execute(
-            organisation_place_ids().where(OrgUnit.id.in_(set(roots.values())))
+            organisation_org_unit_ids().where(
+                OrgUnit.id.in_(set(roots.values()))
+            )
         )
         .scalars()
         .all()

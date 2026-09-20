@@ -25,10 +25,10 @@ from app.models import (
 )
 from app.organisations import (
     add_org_unit_member,
-    get_member_place_ids,
-    get_place_member_ids,
-    get_place_staff_ids,
-    get_reachable_place_ids,
+    get_member_org_unit_ids,
+    get_org_unit_member_ids,
+    get_org_unit_staff_ids,
+    get_reachable_org_unit_ids,
 )
 from app.security import hash_password
 
@@ -99,7 +99,7 @@ class TestReachFlowsDownwardOnly:
         trainee = _user(db_session, "trainee")
         _join_site(db_session, site, trainee, "trainee")
 
-        assert get_reachable_place_ids(db_session, trainee.id) == [org.id]
+        assert get_reachable_org_unit_ids(db_session, trainee.id) == [org.id]
 
     def test_a_site_member_is_not_a_member_of_the_organisation(
         self, db_session
@@ -114,7 +114,7 @@ class TestReachFlowsDownwardOnly:
         trainee = _user(db_session, "trainee")
         _join_site(db_session, site, trainee, "trainee")
 
-        assert get_member_place_ids(db_session, trainee.id) == []
+        assert get_member_org_unit_ids(db_session, trainee.id) == []
 
     def test_an_unlinked_site_reaches_nothing(self, db_session):
         org = _org(db_session, "Trust")
@@ -122,7 +122,7 @@ class TestReachFlowsDownwardOnly:
         person = _user(db_session, "person")
         _join_site(db_session, site, person, "staff")
 
-        assert get_reachable_place_ids(db_session, person.id) == []
+        assert get_reachable_org_unit_ids(db_session, person.id) == []
         assert org.id is not None
 
     def test_direct_membership_reaches_the_organisation(self, db_session):
@@ -130,7 +130,9 @@ class TestReachFlowsDownwardOnly:
         consultant = _user(db_session, "consultant")
         _join_org(db_session, org, consultant, "staff")
 
-        assert get_reachable_place_ids(db_session, consultant.id) == [org.id]
+        assert get_reachable_org_unit_ids(db_session, consultant.id) == [
+            org.id
+        ]
 
     def test_both_routes_are_merged_without_duplicates(self, db_session):
         """Reachable by two paths is still one organisation."""
@@ -140,13 +142,13 @@ class TestReachFlowsDownwardOnly:
         _join_org(db_session, org, person, "staff")
         _join_site(db_session, site, person, "staff")
 
-        assert get_reachable_place_ids(db_session, person.id) == [org.id]
+        assert get_reachable_org_unit_ids(db_session, person.id) == [org.id]
 
     def test_someone_at_nowhere_reaches_nothing(self, db_session):
         stranger = _user(db_session, "stranger")
 
-        assert get_reachable_place_ids(db_session, stranger.id) == []
-        assert get_member_place_ids(db_session, stranger.id) == []
+        assert get_reachable_org_unit_ids(db_session, stranger.id) == []
+        assert get_member_org_unit_ids(db_session, stranger.id) == []
 
 
 class TestCapacityNarrowsTheAnswer:
@@ -164,11 +166,11 @@ class TestCapacityNarrowsTheAnswer:
         _join_org(db_session, org, consultant, "staff")
         _join_org(db_session, org, delegate, "trainee")
 
-        assert get_member_place_ids(
+        assert get_member_org_unit_ids(
             db_session, consultant.id, capacity="staff"
         ) == [org.id]
         assert (
-            get_member_place_ids(db_session, delegate.id, capacity="staff")
+            get_member_org_unit_ids(db_session, delegate.id, capacity="staff")
             == []
         )
 
@@ -177,7 +179,7 @@ class TestCapacityNarrowsTheAnswer:
         delegate = _user(db_session, "delegate")
         _join_org(db_session, org, delegate, "trainee")
 
-        assert get_member_place_ids(db_session, delegate.id) == [org.id]
+        assert get_member_org_unit_ids(db_session, delegate.id) == [org.id]
 
     def test_reach_can_be_narrowed_at_the_site_too(self, db_session):
         org = _org(db_session, "Trust")
@@ -185,9 +187,11 @@ class TestCapacityNarrowsTheAnswer:
         trainee = _user(db_session, "trainee")
         _join_site(db_session, site, trainee, "trainee")
 
-        assert get_reachable_place_ids(db_session, trainee.id) == [org.id]
+        assert get_reachable_org_unit_ids(db_session, trainee.id) == [org.id]
         assert (
-            get_reachable_place_ids(db_session, trainee.id, capacity="staff")
+            get_reachable_org_unit_ids(
+                db_session, trainee.id, capacity="staff"
+            )
             == []
         )
 
@@ -196,7 +200,7 @@ class TestCapacityNarrowsTheAnswer:
         person = _user(db_session, "person")
 
         with pytest.raises(ValueError, match="Unknown member capacity"):
-            get_member_place_ids(
+            get_member_org_unit_ids(
                 db_session, person.id, capacity="chief_wizard"
             )
 
@@ -205,7 +209,7 @@ class TestListingMembersOfAnOrganisation:
     """Who is at these organisations, and how a caller asks for staff."""
 
     def test_the_staff_helper_still_returns_everyone(self, db_session):
-        """`get_place_staff_ids` says staff and returns every member.
+        """`get_org_unit_staff_ids` says staff and returns every member.
 
         Left that way on purpose. Narrowing it would change what every
         existing caller means in a single edit, and the admin user
@@ -220,7 +224,7 @@ class TestListingMembersOfAnOrganisation:
         _join_org(db_session, org, consultant, "staff")
         _join_org(db_session, org, delegate, "trainee")
 
-        assert get_place_staff_ids(db_session, [org.id]) == {
+        assert get_org_unit_staff_ids(db_session, [org.id]) == {
             consultant.id,
             delegate.id,
         }
@@ -233,7 +237,7 @@ class TestListingMembersOfAnOrganisation:
         _join_org(db_session, org, consultant, "staff")
         _join_org(db_session, org, delegate, "trainee")
 
-        assert get_place_member_ids(
+        assert get_org_unit_member_ids(
             db_session, [org.id], capacity="staff"
         ) == {consultant.id}
 
@@ -243,5 +247,5 @@ class TestListingMembersOfAnOrganisation:
         consultant = _user(db_session, "consultant")
         _join_org(db_session, org, consultant, "staff")
 
-        assert get_place_member_ids(db_session, []) == set()
-        assert get_place_staff_ids(db_session, []) == set()
+        assert get_org_unit_member_ids(db_session, []) == set()
+        assert get_org_unit_staff_ids(db_session, []) == set()
