@@ -62,12 +62,12 @@ from app.deps import has_competency
 from app.email_send import EmailRateLimitError, send_email
 from app.features.gating import requires_feature
 from app.models import (
-    Site,
+    OrgUnit,
     User,
-    site_member,
+    org_unit_member,
 )
 from app.org_units.tree import site_ids_of_organisations
-from app.org_units.types import ORGANISATION_TYPE
+from app.org_units.types import ROOT_TYPE_IDS
 from app.organisations import (
     add_organisation_member,
     get_member_org_ids,
@@ -1223,19 +1223,18 @@ def get_competency_state(
 
     raise HTTPException(404, "No evidence for that competency")
 
-
-# --------------------------------------------------------------------
-# Self-declared evidence
-# --------------------------------------------------------------------
-#
-# Certificates, logbook entries, reflections and CPD are the holder's own
-# claims: they enter them, nobody countersigns, and they are editable
-# because a mistyped date should be fixable in seconds. That is the whole
-# difference between these and a sign-off, which is immutable once signed
-# and corrected only by superseding it — the difference follows from who
-# is accountable for each.
-#
-# So every route below requires the holder and nobody else.
+    # --------------------------------------------------------------------
+    # Self-declared evidence
+    # --------------------------------------------------------------------
+    #
+    # Certificates, logbook entries, reflections and CPD are the holder's own
+    # claims: they enter them, nobody countersigns, and they are editable
+    # because a mistyped date should be fixable in seconds. That is the whole
+    # difference between these and a sign-off, which is immutable once signed
+    # and corrected only by superseding it — the difference follows from who
+    # is accountable for each.
+    #
+    # So every route below requires the holder and nobody else.
 
 
 def _competency_refs(ids_given: list[str]) -> list[CompetencyRef]:
@@ -2137,33 +2136,34 @@ def remove_cpd_entry(
 
     return RecordResultOut(name=stem, commit=commit)
 
+    # --------------------------------------------------------------------
+    # External assessors
+    # --------------------------------------------------------------------
+    #
+    # The holder brings in somebody Quill may never have heard of. Three
+    # decisions shape the route below, and each is argued for in the plan:
+    #
+    # **The token is emailed, never returned.** The response carries the
+    # invitation but not the credential, so an invitation can only be
+    # redeemed by whoever controls the address it was sent to. Returning it
+    # would let a holder pass it on by any route they liked.
+    #
+    # **Only its hash is stored.** What is emailed is a credential, and a
+    # readable copy in the database would let anyone with a row redeem it.
+    #
+    # **The limit is per holder, not per address.** ``@limiter.limit`` keys
+    # on the remote address, which would throttle a hospital's whole NAT and
+    # leave a holder free to invite from anywhere else. Counting this
+    # passport's own invitations over the last day is the guarantee the plan
+    # asks for.
 
-# --------------------------------------------------------------------
-# External assessors
-# --------------------------------------------------------------------
-#
-# The holder brings in somebody Quill may never have heard of. Three
-# decisions shape the route below, and each is argued for in the plan:
-#
-# **The token is emailed, never returned.** The response carries the
-# invitation but not the credential, so an invitation can only be
-# redeemed by whoever controls the address it was sent to. Returning it
-# would let a holder pass it on by any route they liked.
-#
-# **Only its hash is stored.** What is emailed is a credential, and a
-# readable copy in the database would let anyone with a row redeem it.
-#
-# **The limit is per holder, not per address.** ``@limiter.limit`` keys
-# on the remote address, which would throttle a hospital's whole NAT and
-# leave a holder free to invite from anywhere else. Counting this
-# passport's own invitations over the last day is the guarantee the plan
-# asks for.
+    #: How many assessors one holder may invite in a day. High enough that a
+    #: trainee collecting sign-offs across a rotation never meets it, low
+    #: enough that a compromised account cannot mail an unbounded number of
+    #: addresses in Quill's name. It is a backstop against abuse, not a
+    #: quota anybody should feel.
 
-#: How many assessors one holder may invite in a day. High enough that a
-#: trainee collecting sign-offs across a rotation never meets it, low
-#: enough that a compromised account cannot mail an unbounded number of
-#: addresses in Quill's name. It is a backstop against abuse, not a
-#: quota anybody should feel.
+
 INVITES_PER_DAY = 100
 
 
@@ -2208,9 +2208,9 @@ def _require_org_admin_over(
             return shared[0]
         raise HTTPException(404, "Assessor not found")
 
-    # Membership for the admin, reach for the assessor. An admin is an
-    # admin of a place they belong to; an assessor put at a ward by the
-    # accept endpoint is reachable from the organisation above it.
+        # Membership for the admin, reach for the assessor. An admin is an
+        # admin of a place they belong to; an assessor put at a ward by the
+        # accept endpoint is reachable from the organisation above it.
     admin_orgs = set(get_member_org_ids(db, admin.id))
     assessor_orgs = set(get_reachable_org_ids(db, assessor_user_id))
     shared_ids = sorted(admin_orgs & assessor_orgs)
@@ -2350,10 +2350,10 @@ def revoke_assessor_membership(
     # A site membership first: the accept endpoint prefers the narrowest
     # place, so that is where an invited assessor usually sits.
     site_id = db.scalar(
-        select(site_member.c.site_id).where(
-            site_member.c.user_id == assessor_user_id,
-            site_member.c.capacity == "external",
-            site_member.c.site_id.in_(
+        select(org_unit_member.c.org_unit_id).where(
+            org_unit_member.c.user_id == assessor_user_id,
+            org_unit_member.c.capacity == "external",
+            org_unit_member.c.org_unit_id.in_(
                 site_ids_of_organisations(db, [organisation_id])
             ),
         )
@@ -2361,9 +2361,9 @@ def revoke_assessor_membership(
 
     if site_id is not None:
         db.execute(
-            site_member.delete().where(
-                site_member.c.site_id == site_id,
-                site_member.c.user_id == assessor_user_id,
+            org_unit_member.delete().where(
+                org_unit_member.c.org_unit_id == site_id,
+                org_unit_member.c.user_id == assessor_user_id,
             )
         )
         db.flush()
@@ -2375,14 +2375,14 @@ def revoke_assessor_membership(
             sign_offs_kept=int(sign_offs_kept),
         )
 
-    # Only an ``external`` membership is removable here. Revoking a
-    # ``staff`` row would let a passport route quietly sack somebody from
-    # the trust they actually work for.
-    #
-    # Looked up before deleting rather than by inspecting the delete's
-    # result: ``rowcount`` belongs to the cursor rather than to what
-    # ``Session.execute`` is typed to return, and a select says what is
-    # meant anyway.
+        # Only an ``external`` membership is removable here. Revoking a
+        # ``staff`` row would let a passport route quietly sack somebody from
+        # the trust they actually work for.
+        #
+        # Looked up before deleting rather than by inspecting the delete's
+        # result: ``rowcount`` belongs to the cursor rather than to what
+        # ``Session.execute`` is typed to return, and a select says what is
+        # meant anyway.
     external = db.scalar(
         select(organisation_member.c.user_id).where(
             organisation_member.c.organisation_id == organisation_id,
@@ -2406,22 +2406,22 @@ def revoke_assessor_membership(
         sign_offs_kept=int(sign_offs_kept),
     )
 
+    # --------------------------------------------------------------------
+    # Accepting an invitation
+    # --------------------------------------------------------------------
+    #
+    # **These two routes are deliberately outside the feature gate.** Every
+    # other route here hangs off ``requires_feature("passport")``, which
+    # resolves through organisation membership — and somebody accepting an
+    # invitation has no account, no organisation and no membership yet.
+    # Gating them would make the invitation impossible to accept, which is
+    # the sort of circular dependency that is obvious once seen and
+    # invisible in review. They are their own router for that reason, and
+    # it is mounted alongside the gated one.
+    #
+    # What stands in for the gate is the token: it is signed, it expires,
+    # and it names the invitation row. Nothing here trusts a path parameter.
 
-# --------------------------------------------------------------------
-# Accepting an invitation
-# --------------------------------------------------------------------
-#
-# **These two routes are deliberately outside the feature gate.** Every
-# other route here hangs off ``requires_feature("passport")``, which
-# resolves through organisation membership — and somebody accepting an
-# invitation has no account, no organisation and no membership yet.
-# Gating them would make the invitation impossible to accept, which is
-# the sort of circular dependency that is obvious once seen and
-# invisible in review. They are their own router for that reason, and
-# it is mounted alongside the gated one.
-#
-# What stands in for the gate is the token: it is signed, it expires,
-# and it names the invitation row. Nothing here trusts a path parameter.
 
 passport_public_router = APIRouter(
     prefix="/passport",
@@ -2456,10 +2456,10 @@ def _decoded_invite(
             400, "This invitation link is not valid or has expired."
         ) from None
 
-    # The token carries its own expiry and ``jwt.decode`` has already
-    # enforced it. The row is checked as well, because the row is what
-    # an administrator can see and reason about, and the two must not be
-    # able to disagree.
+        # The token carries its own expiry and ``jwt.decode`` has already
+        # enforced it. The row is checked as well, because the row is what
+        # an administrator can see and reason about, and the two must not be
+        # able to disagree.
     if _as_utc(invite.expires_at) <= _now():
         raise HTTPException(
             400, "This invitation link is not valid or has expired."
@@ -2488,15 +2488,15 @@ def _holder_place(db: Session, passport_id: str) -> tuple[str, int]:
     if passport is None:
         raise HTTPException(400, "This invitation is no longer valid.")
 
-    # A place *inside* an organisation. Organisations are rows in the
-    # same table now, and a membership of one is a row here too, so
-    # without this every holder would look as though they had a site and
-    # the organisation branch below would never be reached.
+        # A place *inside* an organisation. Organisations are rows in the
+        # same table now, and a membership of one is a row here too, so
+        # without this every holder would look as though they had a site and
+        # the organisation branch below would never be reached.
     site_id = db.scalar(
-        select(site_member.c.site_id).where(
-            site_member.c.user_id == passport.user_id,
-            site_member.c.site_id.in_(
-                select(Site.id).where(Site.type != ORGANISATION_TYPE)
+        select(org_unit_member.c.org_unit_id).where(
+            org_unit_member.c.user_id == passport.user_id,
+            org_unit_member.c.org_unit_id.in_(
+                select(OrgUnit.id).where(OrgUnit.type.notin_(ROOT_TYPE_IDS))
             ),
         )
     )
@@ -2662,15 +2662,15 @@ def accept_assessor_invite(
 
     if place == "site":
         already = db.scalar(
-            select(site_member.c.user_id).where(
-                site_member.c.site_id == place_id,
-                site_member.c.user_id == user.id,
+            select(org_unit_member.c.user_id).where(
+                org_unit_member.c.org_unit_id == place_id,
+                org_unit_member.c.user_id == user.id,
             )
         )
         if already is None:
             db.execute(
-                site_member.insert().values(
-                    site_id=place_id,
+                org_unit_member.insert().values(
+                    org_unit_id=place_id,
                     user_id=user.id,
                     capacity="external",
                 )

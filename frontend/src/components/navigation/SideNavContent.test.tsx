@@ -517,6 +517,120 @@ describe("SideNavContent Component", () => {
     });
   });
 
+  describe("Where you are", () => {
+    // The breadcrumb used to ask `/organisations/{id}` with what is now
+    // a place id, so it named whichever organisation happened to hold
+    // that number. Both kinds of place come from one address now.
+    function place(over: Record<string, unknown> = {}) {
+      return {
+        id: 5,
+        name: "Ward 1",
+        type: "ward",
+        type_display_name: "Ward",
+        is_root: false,
+        parent_id: 10,
+        parent_name: "Test Trust",
+        parent_is_root: true,
+        location: "",
+        is_active: true,
+        created_at: "2026-01-01T00:00:00Z",
+        updated_at: "2026-01-01T00:00:00Z",
+        members: [],
+        children: [],
+        features: [],
+        patient_ids: [],
+        clinical_lead_id: null,
+        ...over,
+      };
+    }
+
+    /** Render at a route, answering /auth/me and the place address. */
+    function renderAt(route: string, body: Record<string, unknown>) {
+      const asked: string[] = [];
+      const user = mockUsers.admin;
+
+      global.fetch = vi.fn((url: string | URL | Request) => {
+        const urlString = typeof url === "string" ? url : url.toString();
+        asked.push(urlString);
+
+        const answer = urlString.includes("/auth/me")
+          ? user
+          : urlString.includes("/org-units/")
+            ? body
+            : null;
+
+        if (answer === null) {
+          return Promise.resolve({
+            ok: false,
+            status: 404,
+            statusText: "Not Found",
+            json: () => Promise.resolve({}),
+          } as Response);
+        }
+
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          statusText: "OK",
+          headers: new Headers({ "Content-Type": "application/json" }),
+          json: () => Promise.resolve(answer),
+        } as Response);
+      }) as typeof global.fetch;
+
+      renderWithRouter(
+        <AuthProvider>
+          <SideNavContent />
+        </AuthProvider>,
+        { initialRoute: route },
+      );
+
+      return asked;
+    }
+
+    it("names the place and the one above it", async () => {
+      const asked = renderAt("/admin/sites/5", place());
+
+      await waitFor(() => {
+        expect(screen.getByText("Ward 1")).toBeInTheDocument();
+      });
+      expect(screen.getByText("Test Trust")).toBeInTheDocument();
+      expect(asked.some((url) => url.endsWith("/org-units/5"))).toBe(true);
+    });
+
+    it("goes up to a site when the place above is not an organisation", async () => {
+      const user = userEvent.setup();
+      const asked = renderAt(
+        "/admin/sites/5",
+        place({
+          parent_id: 11,
+          parent_name: "Main building",
+          parent_is_root: false,
+        }),
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("Main building")).toBeInTheDocument();
+      });
+      await user.click(screen.getByText("Main building"));
+
+      // A building is a place, not an organisation, so going up lands on
+      // the place page rather than the organisation one.
+      await waitFor(() => {
+        expect(asked.some((url) => url.endsWith("/org-units/11"))).toBe(true);
+      });
+    });
+
+    it("asks about nothing on the create page", async () => {
+      // "new" is a page, not a place.
+      const asked = renderAt("/admin/sites/new", place());
+
+      await waitFor(() => {
+        expect(screen.getByText("Admin")).toBeInTheDocument();
+      });
+      expect(asked.some((url) => url.includes("/org-units/"))).toBe(false);
+    });
+  });
+
   describe("Passport", () => {
     it("shows Passport to somebody holding the feature and the competency", async () => {
       renderWithAuth(<SideNavContent />, "passport_holder");

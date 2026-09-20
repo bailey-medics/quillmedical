@@ -32,6 +32,7 @@ import type {
   FormSubmitResult,
 } from "@/components/form/Form";
 import { api } from "@/lib/api";
+import { orgUnits } from "@/domains/orgUnit";
 import ErrorState from "@/components/error-state/ErrorState";
 import { holdsStaffLikeCompetency } from "@/lib/cbac/staffLike";
 import competenciesData from "@/generated/competencies.json";
@@ -48,15 +49,6 @@ interface ApiUser {
   username: string;
   email: string;
   competencies: string[];
-}
-
-interface SiteStaff {
-  id: number;
-}
-
-interface SiteData {
-  staff: SiteStaff[];
-  clinical_lead_id: number | null;
 }
 
 interface AddStaffFormValues {
@@ -233,10 +225,12 @@ export default function AddStaffToSitePage() {
       try {
         const [usersResponse, siteResponse] = await Promise.all([
           api.get<{ users: ApiUser[] }>("/users"),
-          api.get<SiteData>(`/sites/${id}`),
+          orgUnits.get(Number(id)),
         ]);
-        // Filter out users already assigned to this site
-        const existingStaffIds = new Set(siteResponse.staff.map((s) => s.id));
+        // Filter out users already at this place
+        const existingStaffIds = new Set(
+          siteResponse.members.map((member) => member.id),
+        );
         setUsers(
           usersResponse.users.filter((u) => !existingStaffIds.has(u.id)),
         );
@@ -278,9 +272,16 @@ export default function AddStaffToSitePage() {
     data: AddStaffFormValues,
   ): Promise<FormSubmitResult> {
     try {
-      await api.post(`/sites/${id}/staff`, {
+      // What somebody *is* here and what post they *hold* here are two
+      // different facts. The old request ran them together under one
+      // word, which is why a post could not be left vacant without also
+      // taking the person off the place. Clinical lead is a post; the
+      // person is staff who also holds it.
+      const isLead = data.role === "clinical_lead";
+
+      await orgUnits.addMember(Number(id), {
         user_id: Number(data.userId),
-        role: data.role,
+        capacity: isLead ? "staff" : (data.role ?? "trainee"),
         // Omitted rather than sent as null, so the request says nothing
         // about a grant where none was asked for.
         ...(data.baseProfession
@@ -290,6 +291,10 @@ export default function AddStaffToSitePage() {
           ? { additional_competencies: data.additionalCompetencies }
           : {}),
       });
+
+      if (isLead) {
+        await orgUnits.setClinicalLead(Number(id), Number(data.userId));
+      }
       const addedUser = users.find((u) => String(u.id) === data.userId);
       navigate(`/admin/sites/${id}`, {
         state: {

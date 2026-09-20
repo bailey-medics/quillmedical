@@ -852,31 +852,414 @@ which relation confers it — `teaches_at` and nothing else. What remains is
 one clause in `get_reachable_org_ids`, and it belongs with the org_units
 module in step 10, where the plan describes reach.
 
-### Steps 10 to 12 wait on two human decisions
+### How steps 10 to 12 are sequenced
 
-Steps 1 to 9 are built. The merge is done: one table of places, one
-membership table, one place column on competencies and posts, features and
-patient lists hanging off a place, a cycle guard, and every walk of the
-tree a single recursive query. Steps 10 to 12 are the rename, and two
-questions have to be settled before they can be:
+Two questions were put to the person the plan is for, and both are
+settled:
 
-- **A column rename is four deploys here, not one.** The backend rules
-  make renaming a column a copy-and-retire spread across separate
-  deploys, because the old and new revisions run side by side against one
-  schema. Step 10 renames `site_id` on three tables. Either each takes the
-  full four steps, or somebody decides this stack lands as one deploy and
-  a direct rename is acceptable. The same rules bless a single-step *table*
-  rename, so only the columns are in question.
+- **The column renames take the full expand-contract, inside this stack.**
+  `site_id` becoming `org_unit_id` is three units, not one: write both
+  names, then read the new one, then drop the old. A *table* rename stays
+  a single step, which the backend rules already bless.
 
-- **Folding `organisations` into `org_unit` changes every organisation id
-  in the API.** It is the largest breaking change in the plan, and the
-  only way to declare a breaking change intentional here is a required
-  reviewer approving the `api-breaking-change-review` environment, with a
-  decision file per flagged change. That approval is a human action by
-  design and nothing in a diff can stand in for it.
+- **`organisations` folds into `org_unit`, breaking changes and all.** The
+  gates will be signed off. Even so the fold is staged rather than
+  dropped in: the new `/api/org-units` surface arrives alongside the old
+  one, the frontend moves across, the old surfaces are retired, and only
+  then does the `organisations` table go. Nothing is broken at any point
+  a reviewer stops at.
 
-Neither is a reason to change the plan. Both are reasons for the person
-reading this to say which way, before the rename starts.
+So the remaining steps land as:
+
+- [x] 10a — write both names for the place column
+- [x] 10b — read the new name
+- [x] 10c — stop writing the old name, and drop it
+- [x] 10d — rename the tables and the model
+- [x] 10e — reach through a teaching link (the module move goes with 12b)
+- [x] 11a — the `/api/org-units` surface, alongside the old ones
+- [x] 11b-i — one place client and type for the screens to use
+- [x] 11b-ii — the organisation screens onto it
+- [x] 11b-iii — the place screens onto it, and the edit page tested
+- [x] 11b-iv — a list page and a create page for places
+- [x] 11b-v — the last readers of the old surfaces, bar one
+- [x] 12a-i — the rules the old surfaces prove, proved on the new one
+- [x] 12a-ii — the rest of those rules: scoping, and one place per site
+- [x] 12a-iii — retire `/api/sites`
+- [x] 12b-i — the kinds of organisation become kinds of place
+- [x] 12b-ii — an organisation created as a place is still an organisation
+- [ ] 12b-iii — the user form off the organisations surface
+- [ ] 12b-iv — drop the `organisations` table, and enforce the type flags
+
+#### 10a — write both names for the place column
+
+Two readings the plan left open were settled while building:
+
+- **The mirror lives in the mapper, not at every write.** There are dozens
+  of places that record a place, and one of them being missed is a row
+  whose place is known under one name and not the other — the very failure
+  this plan exists to remove, reintroduced by accident.
+- **Both unique rules are in force meanwhile.** While both columns hold
+  the place, both have to refuse the same duplicates, or a row the old
+  rule would have stopped slips in under the new one.
+
+`Site.staff` was removed on the way: two foreign keys to the same table
+made it ambiguous, and nothing used it.
+
+#### 10b — read the new name
+
+Every read moved across; every write still sets both. One thing worth
+recording:
+
+- **The test fixtures that write a membership row directly had to start
+  writing both names too.** They stand in for the old revision, which in
+  production writes both from 10a onwards — so this is the fixtures
+  catching up with the application rather than a change in behaviour.
+  A row carrying only the old name is simply not found once the reads
+  move, which is what makes the backfill in 10a load-bearing; there is a
+  test saying so.
+
+#### 10c — stop writing the old name, and drop it
+
+Three readings the plan left open were settled while building:
+
+- **The membership table's key moved with the column.** It keys on the
+  place, so the old key had to go before the column under it could.
+  Postgres marks a new key's columns as required by itself, which is how
+  the place stays mandatory without a default that would make no sense
+  for an id.
+- **Two indexes became one.** The old name carried a pair — place, and
+  place with competency — and the new name gained a single-column one
+  while both were live. One index answering "who here may practise this"
+  is enough.
+- **`test_the_place_column_is_being_renamed.py` was deleted.** Its whole
+  subject was the period when both names existed, and that period is over.
+
+The keyword arguments on `cbac/scoped.py` still read `site_id`, meaning "a
+place inside an organisation" as opposed to `organisation_id`. They
+collapse into one when `organisations` folds away in 12b; renaming them
+now would leave two words for one idea sitting next to each other.
+
+#### 10d — rename the tables and the model
+
+`sites` becomes `org_unit` and `Site` becomes `OrgUnit`, with the tables
+that hang off a place renamed to match. Three readings the plan left open
+were settled while building:
+
+- **The rename was done by token, not by text.** A search-and-replace on
+  the word would have rewritten the API path `/api/sites`, which is still
+  live, and the messages a user reads. Only names in code moved.
+- **Every index was renamed by hand.** Postgres leaves a renamed table's
+  auto-named indexes alone, so autogenerate would flag them against the
+  model's expected names forever.
+- **The dead many-to-many table went with it.** Nothing had read or
+  written it since ownership moved onto the parent column, and it held no
+  rows.
+
+### Discovered while building: a third table still has the pair of place columns
+
+`site_common_competency`, in the clinician passport, carries the same
+either/or `site_id` and `organisation_id` pair that step 6 removed from
+practising competencies and positions — with a check constraint policing
+it, and a comment saying it follows that pattern deliberately. The plan
+does not mention it.
+
+It only needed repointing at the renamed table here. The pair itself
+collapses in 12b, where `organisations` goes and one of the two columns
+stops meaning anything.
+
+#### 10e — reach through a teaching link
+
+The item left unassigned at step 9 is built: a `teaches_at` link makes the
+place it points at reachable. Nothing else about it changes — not
+membership, not admin rights.
+
+**Departed from the plan on the module rename.** The plan pairs this with
+turning the organisations module into an org_units module. Its two
+functions still answer in *organisation* ids, because organisations still
+exist; renaming them now would be a large diff that says nothing true
+yet. The move goes with 12b, where the functions genuinely change meaning.
+
+Three rules the plan did not spell out, all written into the code:
+
+- **A link is followed away from its source, never back.** A link is a
+  claim its source makes about itself, so following it backwards would let
+  anybody name a school and be let into it.
+- **A link belongs to the place that made it.** One ward recording a
+  relationship must not quietly open it to everybody at the trust. An
+  organisation that means it for all its people records the link on
+  itself.
+- **One hop.** Reach that chained would make "who can see this" depend on
+  a path nobody drew.
+
+#### 11a — the `/api/org-units` surface
+
+Eleven paths, covering everything the two older surfaces do, all keyed on
+a place id. The old pair is untouched and still answers in organisation
+ids and site ids, which is why both run side by side rather than one being
+a view over the other.
+
+Four readings the plan left open were settled while building:
+
+- **The type decides whether a place may be a root**, so neither a
+  ward with no parent nor a nested organisation can be created by accident.
+  Creating a root stays an operator's job, as creating an organisation
+  always was.
+- **Changing a type across that line is refused.** Turning a ward into an
+  organisation is not a rename; it would move the place out of its tree
+  without saying so.
+- **Features and patient lists are refused on a place that cannot carry
+  them**, rather than written and never read. A feature quietly enabled on
+  a ward that does nothing is worse than being told it cannot be.
+- **Scoping here is membership, not reach.** Reach is why somebody sees
+  teaching content at a place they visit; it is not authority to
+  administer it, and these are the administration routes.
+
+`require_clinical_services` moved from `main` to `deps` so the new router
+could depend on the *same* callable. A wrapper would have been a different
+object, and the tests switch that gate off by overriding the object — so
+the wrapper would have quietly stayed on.
+
+#### 11b — the frontend, in three
+
+The admin screens are about 2,700 lines of page code and 2,900 of tests.
+Moving all of them in one pull request would be far past what anybody can
+read at a sitting, so it is split: the client and type first, then the
+organisation screens, then the place screens together with the thin-pages
+gap.
+
+**11b-i** adds `frontend/src/domains/orgUnit.ts`: the `OrgUnit` type and
+every call the screens make, gathered so the addresses appear once. The
+rename just done showed why that matters — the same path was written out
+in a dozen files, and moving it meant finding all of them. No screen
+changes yet.
+
+**11b-ii** moves the eight organisation screens across. Five readings the
+plan left open were settled while building:
+
+- **The organisation page now makes one request instead of two.** A place
+  carries its own people, the places inside it, the features switched on
+  there and its patient list, so there is nothing to fetch separately.
+- **The type's name comes from the server.** The pages used to title-case
+  the stored value, which meant two places could disagree about what a
+  kind of place is called.
+- **Taking a place out of an organisation is deleting it.** A place that
+  belongs nowhere is invisible to every list and reachable by nobody,
+  which is worse than saying it has gone. The old "unlink" wording
+  promised something the tree cannot do.
+- **Adding somebody now says what they are.** The old address assumed
+  staff; a place takes trainees and external assessors too.
+- **Naming a clinical lead is two acts.** The person is at the place, and
+  the person holds the post. They used to be one, which meant a post could
+  not be made vacant without also removing the person — and a vacancy is a
+  real, actionable state.
+
+Two things were added to the surface from 11a while moving the screens,
+because moving them is what showed they were missing: a place's children
+carry their clinical lead's *name* as well as their id, so a list reads
+without a request per row; and there is a route for naming or vacating a
+clinical lead.
+
+#### 11b-iii — the place screens onto it
+
+The three screens under `pages/admin/sites/` now speak in places: the
+place page, the edit page and the staff picker. Nothing on them fetches an
+organisation any more.
+
+- **A place says where it sits.** The detail answer now carries
+  `parent_name` beside `parent_id`, so the page can print "inside Test
+  Trust" without a second request for a single word. Empty at the top of a
+  tree, which is a fact about the place rather than a missing value.
+- **The staff picker separates what somebody is from what they hold.** The
+  old form had one "role" field where clinical lead sat alongside staff
+  and trainee, as if they were three of a kind. They are not: the first is
+  a post, the other two are what a person is. Picking clinical lead now
+  adds the person as staff and then names them to the post.
+- **The edit page has a test at last.** It covers loading, renaming,
+  naming a lead, leaving an unchanged lead alone, and the confirmation
+  before a place is taken out of use. This was the gap the plan named, and
+  the page that most needed it — it is the one screen that can rename a
+  place, put it out of use, and change who leads it.
+
+The gap the plan named has three parts, and this unit closes one of them.
+The list page and the create page are the other two, and they are new
+screens rather than moved ones, so they land as **11b-iv** rather than
+swelling this unit past what anybody can read at a sitting. Creating a
+place still works today, from the organisation side.
+
+#### 11b-iv — a list page and a create page for places
+
+The rest of the thin-pages gap. Both screens existed for organisations and
+neither for the places inside them, which is why a site could only be
+reached through the organisation that owns it.
+
+- **One request builds the list.** Every place the person may administer
+  comes back at once; the organisations among them name each site's owner
+  rather than appearing as rows. Asking twice would cost a round trip to
+  say the same thing.
+- **A site whose owner is not in the answer is still listed.** Somebody
+  may administer a ward without administering the trust above it, so the
+  owner column reads "not known" rather than the row disappearing.
+- **The create page asks what the old flow assumed.** Creating from the
+  organisation side decided the parent before the question was put, so a
+  ward could not be placed inside a building. The place above is now a
+  field like any other.
+- **Who leads a site is not asked while creating one.** The person has to
+  be at the place before they can hold the post there, and both are one
+  act on the site's own pages once it exists.
+- **The list of kinds of place now comes from the shared file.** Three
+  screens carried their own copy of it, which is how a screen comes to
+  offer something the server will refuse. `shared/org-unit-types.yaml` is
+  generated into the frontend like the professions and competencies
+  already are, and `requires_parent` is what separates a ward from a
+  trust.
+
+#### 11b-v — the last readers of the old surfaces
+
+Three screens outside `pages/admin/` were still reading the old
+addresses, and one of them had gone quietly wrong when the admin screens
+moved.
+
+- **The breadcrumb was naming the wrong organisation.** It asked
+  `/organisations/{id}` with what is now a place id, so it named
+  whichever organisation happened to hold that number, or nothing at all.
+  Both kinds of place come from one address now, which is the whole point
+  of there being one.
+- **The place above is not always an organisation.** A ward can sit
+  inside a building, so a link upwards has to know which of the two pages
+  to go to. The detail answer carries `parent_is_root` for that, rather
+  than the screen fetching the parent to find out.
+- **"new" is a page, not a place.** Visiting the create form used to send
+  a request asking about a place called "new" and log the failure. Ids
+  that are not numbers are left alone now.
+- **Sub-pages are named rather than capitalised from the address.** The
+  navigation read "Add-staff".
+- **The count of organisations comes from the places at the top of a
+  tree**, which is what every other admin screen already counts.
+
+One reader is deliberately left: the user form sends `organisation_ids`
+and `site_ids` to the users API, and those are organisation ids, not
+place ids. Moving the screen means moving what the API accepts, so it
+goes with **12b**, where the table folds — and until it does, `/api/organisations`
+cannot be retired, which 12a has to respect.
+
+#### 12a — retiring the old surfaces, in three
+
+About ninety tests exercise `/api/sites` and `/api/organisations`, and
+most of them are proving rules about places rather than about those two
+addresses. Deleting them with the routes would lose the rules, so the
+retirement is split: move what is worth keeping first, then retire.
+
+**12a-i** moved the first group and found a gap while doing it.
+
+- **Taking somebody off a place did not vacate what they held there.**
+  Naming a clinical lead requires the person to be at the place, so
+  leaving them holding the post after taking them off it left the place
+  in a state the same surface refuses to create. The old surface got this
+  right; the new one did not, and nothing noticed because no test asked.
+  The post is vacated rather than deleted, so the handover is recorded.
+- **The cycle guard walks the whole chain.** One level up was already
+  refused. Moving a hospital under a room three levels below it is the
+  case the walk exists for, and only the old surface asked it.
+- **The membership competency is about the competency, not the address.**
+  Holding `manage_users` alone still does not put somebody at a place,
+  and `manage_staff_membership` alone still does, now asked of
+  `/api/org-units` as well.
+
+**12a-ii** moved the rest: who may see what, and whose tree a place can
+be put into.
+
+- **The list fails closed.** An admin belonging to no organisation sees
+  nothing, because `IN ()` is the classic way a filter turns into its
+  opposite. A place hanging off nothing is not shared either.
+- **The gate is a competency, not a rank.** A consultant in the right
+  organisation still cannot read the estate.
+- **Whose tree a place goes into is checked on the move as well as on the
+  create.** Only `/api/sites` asked that, and it is the same rule applied
+  later. Somebody else's ward cannot be the parent, and neither can a
+  place that belongs nowhere.
+
+A site belonging to exactly one organisation needed nothing moved: a
+place has one parent column, so a second owner is not a rule to enforce
+but a state that cannot be written down. The link and unlink routes that
+rule existed for go with the surface.
+
+**12a-iii** retired `/api/sites`. Thirteen addresses answer 410, and
+about 1,100 lines of routes and 1,300 lines of tests went with them.
+
+- **The shapes stay, the answers stop.** Each retired route still
+  declares the request it always took, so a stale client sending what it
+  always sent is told the address has gone rather than that its request
+  is malformed. Deleting the paths outright is a later step, and a
+  visible one.
+- **410 rather than 404**, so a caller can tell "this never existed" from
+  "this used to be here": the second says there is somewhere else to
+  look, and the answer names `/api/org-units`.
+- **Same answer to everybody.** A retired address holds nothing to
+  protect, so it answers without a permission check. Replying 403 to one
+  caller and 410 to another would only tell them apart.
+- **`oasdiff` sees no breaking change**, because the schema did not
+  change — the behaviour did. So the gate is not raised by this step, and
+  the deliberateness lives here and in the pull request instead. The one
+  client that used these addresses is this repository's own frontend, and
+  it moved in 11b.
+- **Two gaps surfaced while moving the tests.** The new surface accepted
+  a misspelt base profession where the old one refused it, which would
+  have written a profession nobody holds onto a person's record; and an
+  organisation could be read through the sites addresses, which is now
+  moot.
+
+`/api/organisations` cannot follow until the user form moves, which is
+12b.
+
+#### 12b-i — the kinds of organisation become kinds of place
+
+The plan left open what happens to `organisations.type`, whose values —
+hospital team, GP practice, private clinic, teaching establishment — say
+what kind of organisation something is. Moving the screens onto the place
+surface without settling it had already broken something: the create
+screen offered those kinds, the tree knew only `organisation`, and every
+attempt to create one answered "unknown kind of place". The screen's own
+test mocked the request, so nothing caught it.
+
+- **They become types of place**, alongside `organisation` itself, which
+  stays as the plain answer for a body that is none of the others. One
+  vocabulary for one question, and a root in the tree that can say which
+  kind of organisation it is.
+- **What makes something a root is the flag, not the name.** Three
+  queries asked `type != "organisation"` to mean "the places inside
+  organisations", which would have quietly lost a practice the day the
+  kinds arrived. They ask the flag now.
+- **`department` stays a place inside an organisation**, and is no longer
+  offered as a kind of organisation. It was in both lists meaning two
+  different things, and the nested meaning is the one the tree uses.
+  Nothing is live yet, so nothing has to be reclassified.
+- **The screens read the kinds from the shared file**, as the place
+  screens now do, so the list on screen cannot drift from the list the
+  server accepts. That drift is what broke it.
+
+Still open, and what 12b-ii and 12b-iii are for: the user form sends
+organisation ids to the users API, so `/api/organisations` still has one
+reader; and creating an organisation through the place surface writes no
+`organisations` row at all, which is fine only because that table is on
+its way out.
+
+#### 12b-ii — an organisation created as a place is still an organisation
+
+Creating a root through the place surface wrote no row in the
+organisations table, and that table is still what answers in organisation
+ids: who may administer what, and which organisations the user form
+offers. So a trust created on the new screens was a place only a
+superadmin could see, with nobody able to belong to it — the first thing
+anybody would try after creating it.
+
+- **The row is written beside the place**, and kept in step when the
+  place is renamed or retyped. It names its place on the way in, which is
+  what stops the model listener creating a *second* root for it.
+- **Deleting the place deletes the organisation**, through the same
+  listener that already clears everything hanging off a root.
+- **This is scaffolding with a known end.** The whole point of 12b-iv is
+  that one of the two tables goes; until it does, the honest thing is for
+  both to describe the same world rather than half of one.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to

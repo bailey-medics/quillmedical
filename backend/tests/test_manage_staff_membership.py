@@ -29,7 +29,7 @@ from sqlalchemy.orm import Session
 
 from app.models import (
     Organisation,
-    Site,
+    OrgUnit,
     User,
 )
 from app.organisations import add_organisation_member
@@ -74,14 +74,14 @@ def org(db_session: Session) -> Organisation:
 
 
 @pytest.fixture
-def site(db_session: Session, org: Organisation) -> Site:
-    site = Site(name="Ward 9", type="ward")
+def site(db_session: Session, org: Organisation) -> OrgUnit:
+    site = OrgUnit(name="Ward 9", type="ward")
     db_session.add(site)
     db_session.commit()
     db_session.refresh(site)
     db_session.execute(
-        update(Site)
-        .where(Site.id == site.id)
+        update(OrgUnit)
+        .where(OrgUnit.id == site.id)
         .values(parent_id=org.org_unit_id)
     )
     db_session.commit()
@@ -162,39 +162,6 @@ class TestManageUsersAloneIsNotEnough:
 
         assert response.status_code == 403, response.text
 
-    def test_it_cannot_add_staff_to_a_site(
-        self,
-        test_client: TestClient,
-        org: Organisation,
-        site: Site,
-        account_admin: User,
-        colleague: User,
-    ) -> None:
-        client = _login(test_client, "account_admin")
-        response = client.post(
-            f"/api/sites/{site.id}/staff",
-            json={"user_id": colleague.id, "role": "staff"},
-            headers=_csrf(client),
-        )
-
-        assert response.status_code == 403, response.text
-
-    def test_it_cannot_remove_staff_from_a_site(
-        self,
-        test_client: TestClient,
-        org: Organisation,
-        site: Site,
-        account_admin: User,
-        colleague: User,
-    ) -> None:
-        client = _login(test_client, "account_admin")
-        response = client.delete(
-            f"/api/sites/{site.id}/staff/{colleague.id}",
-            headers=_csrf(client),
-        )
-
-        assert response.status_code == 403, response.text
-
 
 class TestTheNewCompetencyOpensThem:
     """And it opens them without ``manage_users``.
@@ -248,47 +215,6 @@ class TestTheNewCompetencyOpensThem:
 
         assert response.status_code == 200, response.text
 
-    def test_it_adds_staff_to_a_site(
-        self,
-        test_client: TestClient,
-        org: Organisation,
-        site: Site,
-        membership_admin: User,
-        colleague: User,
-    ) -> None:
-        client = _login(test_client, "membership_admin")
-        response = client.post(
-            f"/api/sites/{site.id}/staff",
-            json={"user_id": colleague.id, "role": "staff"},
-            headers=_csrf(client),
-        )
-
-        assert response.status_code == 200, response.text
-
-    def test_it_removes_staff_from_a_site(
-        self,
-        test_client: TestClient,
-        org: Organisation,
-        site: Site,
-        membership_admin: User,
-        colleague: User,
-    ) -> None:
-        """Added first, so the removal has something to remove."""
-        client = _login(test_client, "membership_admin")
-        added = client.post(
-            f"/api/sites/{site.id}/staff",
-            json={"user_id": colleague.id, "role": "staff"},
-            headers=_csrf(client),
-        )
-        assert added.status_code == 200, added.text
-
-        response = client.delete(
-            f"/api/sites/{site.id}/staff/{colleague.id}",
-            headers=_csrf(client),
-        )
-
-        assert response.status_code == 200, response.text
-
 
 class TestTheGrantStillWorksThroughTheNewGate:
     """The competency grant on add survives the change of gate.
@@ -320,6 +246,131 @@ class TestTheGrantStillWorksThroughTheNewGate:
             f"/api/organisations/{org.id}/staff",
             json={
                 "user_id": colleague.id,
+                "base_profession": "healthcare_assistant",
+            },
+            headers=_csrf(client),
+        )
+
+        assert response.status_code == 200, response.text
+        db_session.refresh(colleague)
+        assert "perform_venepuncture" in colleague.get_final_competencies()
+
+
+class TestThePlaceSurfaceSaysTheSame:
+    """The same separation, asked of `/api/org-units`.
+
+    The four routes above belong to two addresses that are being retired.
+    The rule is about the competency, not the address, so it is asked of
+    the surface that stays before the others go.
+    """
+
+    @pytest.fixture
+    def account_admin(self, db_session: Session, org: Organisation) -> User:
+        user = _user(
+            db_session, "place_account_admin", competencies=["manage_users"]
+        )
+        _place(db_session, org, user)
+        return user
+
+    @pytest.fixture
+    def membership_admin(self, db_session: Session, org: Organisation) -> User:
+        user = _user(
+            db_session,
+            "place_membership_admin",
+            competencies=["manage_staff_membership"],
+        )
+        _place(db_session, org, user)
+        return user
+
+    def test_managing_accounts_does_not_put_somebody_at_a_place(
+        self,
+        test_client: TestClient,
+        org: Organisation,
+        site: OrgUnit,
+        account_admin: User,
+        colleague: User,
+    ) -> None:
+        client = _login(test_client, "place_account_admin")
+        response = client.post(
+            f"/api/org-units/{site.id}/members",
+            json={"user_id": colleague.id, "capacity": "staff"},
+            headers=_csrf(client),
+        )
+
+        assert response.status_code == 403, response.text
+
+    def test_managing_accounts_does_not_take_somebody_off_one(
+        self,
+        test_client: TestClient,
+        org: Organisation,
+        site: OrgUnit,
+        account_admin: User,
+        colleague: User,
+    ) -> None:
+        client = _login(test_client, "place_account_admin")
+        response = client.delete(
+            f"/api/org-units/{site.id}/members/{colleague.id}",
+            headers=_csrf(client),
+        )
+
+        assert response.status_code == 403, response.text
+
+    def test_managing_membership_puts_somebody_at_a_place(
+        self,
+        test_client: TestClient,
+        org: Organisation,
+        site: OrgUnit,
+        membership_admin: User,
+        colleague: User,
+    ) -> None:
+        client = _login(test_client, "place_membership_admin")
+        response = client.post(
+            f"/api/org-units/{site.id}/members",
+            json={"user_id": colleague.id, "capacity": "staff"},
+            headers=_csrf(client),
+        )
+
+        assert response.status_code == 200, response.text
+
+    def test_managing_membership_takes_somebody_off_one(
+        self,
+        test_client: TestClient,
+        org: Organisation,
+        site: OrgUnit,
+        membership_admin: User,
+        colleague: User,
+    ) -> None:
+        """Added first, so the removal has something to remove."""
+        client = _login(test_client, "place_membership_admin")
+        added = client.post(
+            f"/api/org-units/{site.id}/members",
+            json={"user_id": colleague.id, "capacity": "staff"},
+            headers=_csrf(client),
+        )
+        assert added.status_code == 200, added.text
+
+        response = client.delete(
+            f"/api/org-units/{site.id}/members/{colleague.id}",
+            headers=_csrf(client),
+        )
+
+        assert response.status_code == 200, response.text
+
+    def test_the_grant_comes_with_the_membership_here_too(
+        self,
+        test_client: TestClient,
+        db_session: Session,
+        org: Organisation,
+        membership_admin: User,
+        colleague: User,
+    ) -> None:
+        """Granting competencies without ``manage_users`` is deliberate."""
+        client = _login(test_client, "place_membership_admin")
+        response = client.post(
+            f"/api/org-units/{org.org_unit_id}/members",
+            json={
+                "user_id": colleague.id,
+                "capacity": "staff",
                 "base_profession": "healthcare_assistant",
             },
             headers=_csrf(client),

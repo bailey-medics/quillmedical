@@ -28,7 +28,7 @@ import {
 } from "@/components/form/Form";
 import type { FormSubmitResult } from "@/components/form/Form";
 import { useAuth } from "@/auth/AuthContext";
-import { api } from "@/lib/api";
+import { orgUnits } from "@/domains/orgUnit";
 import ErrorState from "@/components/error-state/ErrorState";
 
 /** Known features that can be toggled on an organisation. */
@@ -59,17 +59,6 @@ const AVAILABLE_FEATURES: {
       "Competency records signed off by a named assessor, held per clinician",
   },
 ];
-
-interface FeatureOut {
-  feature_key: string;
-  enabled_at: string;
-  enabled_by: number | null;
-}
-
-interface OrgSummary {
-  id: number;
-  name: string;
-}
 
 type FeatureFormValues = Record<string, boolean>;
 
@@ -175,13 +164,10 @@ export default function OrgFeaturesPage() {
       }
 
       try {
-        const [orgData, featuresData] = await Promise.all([
-          api.get<OrgSummary>(`/organisations/${id}`),
-          api.get<{ features: FeatureOut[] }>(`/organisations/${id}/features`),
-        ]);
-        setOrgName(orgData.name);
-        const keys = new Set(featuresData.features.map((f) => f.feature_key));
-        setSavedKeys(keys);
+        // One request: a place carries the features switched on there.
+        const place = await orgUnits.get(Number(id));
+        setOrgName(place.name);
+        setSavedKeys(new Set(place.features));
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
@@ -210,9 +196,7 @@ export default function OrgFeaturesPage() {
     try {
       await Promise.all(
         changes.map((change) =>
-          api.put(`/organisations/${id}/features/${change.key}`, {
-            enabled: data[change.key],
-          }),
+          orgUnits.setFeature(Number(id), change.key, data[change.key]),
         ),
       );
       const newSaved = new Set(

@@ -43,8 +43,8 @@ const A_PATIENT = {
   competencies: ["access_own_patient_records"],
 };
 
-/** No staff yet, and the clinical lead post is vacant. */
-const EMPTY_SITE = { staff: [], clinical_lead_id: null };
+/** Nobody here yet, and the clinical lead post is vacant. */
+const EMPTY_SITE = { members: [], clinical_lead_id: null };
 
 function mockLoad(users: object[], site = EMPTY_SITE) {
   return vi.spyOn(apiLib.api, "get").mockImplementation((path: string) => {
@@ -126,9 +126,11 @@ describe("AddStaffToSitePage", () => {
       await user.click(screen.getByTestId("submit-button"));
 
       await waitFor(() => {
-        expect(post).toHaveBeenCalledWith("/sites/1/staff", {
+        // What somebody is here, not what post they hold: those were
+        // one word on the old address and are two facts now.
+        expect(post).toHaveBeenCalledWith("/org-units/1/members", {
           user_id: 1,
-          role: "staff",
+          capacity: "staff",
         });
       });
     });
@@ -208,9 +210,9 @@ describe("AddStaffToSitePage", () => {
         );
 
         await waitFor(() => {
-          expect(post).toHaveBeenCalledWith("/sites/1/staff", {
+          expect(post).toHaveBeenCalledWith("/org-units/1/members", {
             user_id: 2,
-            role: "staff",
+            capacity: "staff",
             base_profession: "healthcare_assistant",
           });
         });

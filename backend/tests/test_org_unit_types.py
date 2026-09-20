@@ -23,6 +23,7 @@ from app.org_units.types import (
     ORG_UNIT_TYPE_IDS,
     ORG_UNIT_TYPES,
     ORGANISATION_TYPE,
+    ROOT_TYPE_IDS,
     OrgUnitTypeEntry,
     _load_org_unit_types,
     get_org_unit_type,
@@ -69,19 +70,37 @@ def test_existing_site_vocabulary_is_covered() -> None:
     assert VALID_SITE_TYPES <= set(ORG_UNIT_TYPE_IDS)
 
 
-def test_only_the_organisation_type_may_be_a_root() -> None:
-    """The two-level shape comes from the flags, not from a rule about roots."""
-    assert type_requires_parent(ORGANISATION_TYPE) is False
+def test_the_roots_are_the_kinds_of_organisation() -> None:
+    """The two-level shape comes from the flags, not a rule about roots.
+
+    There is more than one kind of organisation — a practice and a
+    teaching establishment are both tops of trees — so what makes
+    something a root is the flag rather than one name.
+    """
+    assert ORGANISATION_TYPE in ROOT_TYPE_IDS
     for type_id in ORG_UNIT_TYPE_IDS:
-        if type_id != ORGANISATION_TYPE:
-            assert type_requires_parent(type_id) is True
+        assert type_requires_parent(type_id) is (type_id not in ROOT_TYPE_IDS)
 
 
-def test_only_the_organisation_type_holds_features() -> None:
-    assert type_can_hold_features(ORGANISATION_TYPE) is True
+def test_every_kind_of_organisation_is_named() -> None:
+    """The kinds an organisation could be are all here.
+
+    They lived in a column on the organisations table, which is going.
+    One missing would be an organisation that cannot be created once the
+    screens read this file.
+    """
+    assert ROOT_TYPE_IDS == {
+        "organisation",
+        "hospital_team",
+        "gp_practice",
+        "private_clinic",
+        "teaching_establishment",
+    }
+
+
+def test_only_the_top_of_a_tree_holds_features() -> None:
     for type_id in ORG_UNIT_TYPE_IDS:
-        if type_id != ORGANISATION_TYPE:
-            assert type_can_hold_features(type_id) is False
+        assert type_can_hold_features(type_id) is (type_id in ROOT_TYPE_IDS)
 
 
 def test_a_site_names_a_clinical_lead() -> None:

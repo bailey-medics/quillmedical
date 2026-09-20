@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
-from app.models import Organisation, Site
+from app.models import Organisation, OrgUnit
 from app.org_units.tree import (
     MAX_TREE_DEPTH,
     descendant_ids,
@@ -27,7 +27,7 @@ from app.org_units.tree import (
     root_ids_of_organisations,
     site_ids_of_organisations,
 )
-from app.org_units.types import ORGANISATION_TYPE
+from app.org_units.types import ORGANISATION_TYPE, ROOT_TYPE_IDS
 
 
 def _org(db: Session, name: str) -> Organisation:
@@ -38,8 +38,10 @@ def _org(db: Session, name: str) -> Organisation:
     return org
 
 
-def _under(db: Session, parent_id: int | None, name: str, type_: str) -> Site:
-    site = Site(name=name, type=type_, parent_id=parent_id)
+def _under(
+    db: Session, parent_id: int | None, name: str, type_: str
+) -> OrgUnit:
+    site = OrgUnit(name=name, type=type_, parent_id=parent_id)
     db.add(site)
     db.commit()
     db.refresh(site)
@@ -51,10 +53,22 @@ class TestEveryOrganisationIsInTheTree:
         org = _org(db_session, "Trust")
 
         assert org.org_unit_id is not None
-        root = db_session.get(Site, org.org_unit_id)
+        root = db_session.get(OrgUnit, org.org_unit_id)
         assert root.name == "Trust"
-        assert root.type == ORGANISATION_TYPE
+        # The kind of organisation is a kind of place now, so the tree
+        # row says which one it is rather than every root looking alike.
+        assert root.type == "hospital_team"
+        assert root.type in ROOT_TYPE_IDS
         assert root.parent_id is None
+
+    def test_a_kind_the_tree_does_not_know_falls_back(self, db_session):
+        """A less specific row beats a row that cannot be created."""
+        org = Organisation(name="Odd One", type="something_else")
+        db_session.add(org)
+        db_session.commit()
+
+        root = db_session.get(OrgUnit, org.org_unit_id)
+        assert root.type == ORGANISATION_TYPE
 
     def test_renaming_one_renames_its_row(self, db_session):
         org = _org(db_session, "Old Name")
@@ -63,7 +77,7 @@ class TestEveryOrganisationIsInTheTree:
         org.location = "Elsewhere"
         db_session.commit()
 
-        root = db_session.get(Site, org.org_unit_id)
+        root = db_session.get(OrgUnit, org.org_unit_id)
         db_session.refresh(root)
         assert root.name == "New Name"
         assert root.location == "Elsewhere"
@@ -191,58 +205,6 @@ class TestNamingTheOrganisationForManyPlaces:
         assert root_ids_of_organisations(db_session, []) == []
 
 
-class TestAnOrganisationIsNotASite:
-    """Organisations share the table now, so the site routes must not
-    reach them: a trust renamed from a screen built for wards, or listed
-    among them, would be a surprise."""
-
-    def test_it_is_not_in_the_list_of_places(
-        self, authenticated_superadmin_client, db_session
-    ):
-        org = _org(db_session, "Trust")
-        ward = _under(db_session, org.org_unit_id, "Ward", "ward")
-
-        listed = authenticated_superadmin_client.get("/api/sites").json()
-        ids = [s["id"] for s in listed["sites"]]
-
-        assert ward.id in ids
-        assert org.org_unit_id not in ids
-
-    def test_it_cannot_be_read_as_a_place(
-        self, authenticated_superadmin_client, db_session
-    ):
-        org = _org(db_session, "Trust")
-
-        resp = authenticated_superadmin_client.get(
-            f"/api/sites/{org.org_unit_id}"
-        )
-
-        assert resp.status_code == 404
-
-    def test_it_cannot_be_renamed_as_a_place(
-        self, authenticated_superadmin_client, db_session
-    ):
-        org = _org(db_session, "Trust")
-
-        resp = authenticated_superadmin_client.put(
-            f"/api/sites/{org.org_unit_id}", json={"name": "Renamed"}
-        )
-
-        assert resp.status_code == 404
-
-    def test_it_cannot_be_deleted_as_a_place(
-        self, authenticated_superadmin_client, db_session
-    ):
-        org = _org(db_session, "Trust")
-
-        resp = authenticated_superadmin_client.delete(
-            f"/api/sites/{org.org_unit_id}"
-        )
-
-        assert resp.status_code == 404
-        assert db_session.get(Site, org.org_unit_id) is not None
-
-
 class TestDeletingAnOrganisation:
     def test_its_row_goes_with_it(self, db_session):
         org = _org(db_session, "Trust")
@@ -251,7 +213,7 @@ class TestDeletingAnOrganisation:
         db_session.delete(org)
         db_session.commit()
 
-        assert db_session.get(Site, root_id) is None
+        assert db_session.get(OrgUnit, root_id) is None
 
     def test_its_places_are_detached_rather_than_deleted(self, db_session):
         org = _org(db_session, "Trust")

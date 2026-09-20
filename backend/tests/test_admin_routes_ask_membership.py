@@ -30,9 +30,9 @@ from sqlalchemy.orm import Session
 
 from app.models import (
     Organisation,
-    Site,
+    OrgUnit,
     User,
-    site_member,
+    org_unit_member,
 )
 from app.organisations import add_organisation_member
 from app.security import hash_password
@@ -64,15 +64,15 @@ def org(db_session: Session) -> Organisation:
 
 
 @pytest.fixture
-def site(db_session: Session, org: Organisation) -> Site:
+def site(db_session: Session, org: Organisation) -> OrgUnit:
     """A ward of the trust, linked to it the ordinary way."""
-    site = Site(name="Ward 9", type="ward")
+    site = OrgUnit(name="Ward 9", type="ward")
     db_session.add(site)
     db_session.commit()
     db_session.refresh(site)
     db_session.execute(
-        update(Site)
-        .where(Site.id == site.id)
+        update(OrgUnit)
+        .where(OrgUnit.id == site.id)
         .values(parent_id=org.org_unit_id)
     )
     db_session.commit()
@@ -80,7 +80,7 @@ def site(db_session: Session, org: Organisation) -> Site:
 
 
 @pytest.fixture
-def site_only_admin(db_session: Session, site: Site) -> User:
+def site_only_admin(db_session: Session, site: OrgUnit) -> User:
     """Holds ``manage_users`` at a site, and no organisation row.
 
     They reach the trust — the site is linked to it — so a route asking
@@ -89,8 +89,10 @@ def site_only_admin(db_session: Session, site: Site) -> User:
     """
     user = _user(db_session, "ward_admin", profession="system_administrator")
     db_session.execute(
-        insert(site_member).values(
-            site_id=site.id, user_id=user.id, capacity="staff"
+        insert(org_unit_member).values(
+            org_unit_id=site.id,
+            user_id=user.id,
+            capacity="staff",
         )
     )
     db_session.commit()

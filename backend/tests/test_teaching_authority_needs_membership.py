@@ -36,10 +36,10 @@ from sqlalchemy.orm import Session
 
 from app.models import (
     Organisation,
-    OrganisationFeature,
-    Site,
+    OrgUnit,
+    OrgUnitFeature,
     User,
-    site_member,
+    org_unit_member,
 )
 from app.organisations import add_organisation_member
 from app.security import hash_password
@@ -50,7 +50,7 @@ def _teaching_org(db: Session, name: str = "Trust") -> Organisation:
     db.add(org)
     db.flush()
     db.add(
-        OrganisationFeature(
+        OrgUnitFeature(
             org_unit_id=org.org_unit_id, feature_key="teaching", enabled_by=1
         )
     )
@@ -80,22 +80,24 @@ def _join_org(db: Session, org: Organisation, user: User) -> None:
     db.commit()
 
 
-def _join_linked_site(db: Session, org: Organisation, user: User) -> Site:
+def _join_linked_site(db: Session, org: Organisation, user: User) -> OrgUnit:
     """Put the user on a ward of the trust, and in no organisation.
 
     This is the shape that reach admits and membership does not.
     """
-    site = Site(name="Ward 9", type="ward")
+    site = OrgUnit(name="Ward 9", type="ward")
     db.add(site)
     db.flush()
     db.execute(
-        update(Site)
-        .where(Site.id == site.id)
+        update(OrgUnit)
+        .where(OrgUnit.id == site.id)
         .values(parent_id=org.org_unit_id)
     )
     db.execute(
-        site_member.insert().values(
-            site_id=site.id, user_id=user.id, capacity="staff"
+        org_unit_member.insert().values(
+            org_unit_id=site.id,
+            user_id=user.id,
+            capacity="staff",
         )
     )
     db.commit()

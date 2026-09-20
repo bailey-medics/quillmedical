@@ -15,12 +15,31 @@ from fastapi import Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.db import get_core_db
 from app.log_context import user_id_var
 from app.models import User
 from app.security import decode_token
 
 DEP_GET_SESSION = Depends(get_core_db)
+
+
+def require_clinical_services() -> None:
+    """FastAPI dependency: raises 503 when FHIR/EHRbase are disabled.
+
+    Here rather than in ``main`` so that a sub-router can depend on the
+    *same* callable. A wrapper would be a different object, and the tests
+    switch this gate off by overriding the object — so a wrapper would
+    quietly stay on.
+    """
+    if not settings.CLINICAL_SERVICES_ENABLED:
+        raise HTTPException(
+            status_code=503,
+            detail="Clinical services are not available in this deployment",
+        )
+
+
+DEP_REQUIRE_CLINICAL = Depends(require_clinical_services)
 
 
 def get_current_user(request: Request, db: Session = DEP_GET_SESSION) -> User:
