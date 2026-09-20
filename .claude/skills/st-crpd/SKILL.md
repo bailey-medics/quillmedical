@@ -470,6 +470,54 @@ Two things to check rather than assume:
    helper, an enum member, a count of lines. Those exist only inside the
    diff and the diff already carries them.
 
+   **A gentler synonym is worse than jargon, because it can be wrong.**
+   "Place" for `org_unit` cost a review: the plan's own naming section
+   says the tree is governance and not geography, so a reader who met
+   "place" reasonably asked whether it meant an address, a ward or a bed.
+   The real name carries the meaning the plan settled on; a substitute
+   carries whatever the reader supplies.
+
+   ### Introduce a name the first time you use it
+
+   **Every name gets three or four words saying what it is, on its first
+   appearance, inline.** Not a glossary, not a preamble — a comma and a
+   short phrase:
+
+   > ✓ "`org_unit`, a node in the governance tree — a trust, a hospital
+   > or a ward"
+   >
+   > ✓ "`place_ids`, the new field naming which `org_unit`s a user
+   > belongs to"
+
+   After that first mention, use the bare name. Repeating the gloss is
+   padding.
+
+   **Never point at something with a bare noun phrase.** "The new list",
+   "the form", "the surface", "both vocabularies", "the older fields",
+   "that gate" — each one asks the reader to work out which thing is
+   meant, and only the diff can tell them. Name it, or describe it well
+   enough to be found:
+
+   > ✗ "The new list is added beside the old ones."
+   >
+   > ✓ "`place_ids` is added beside `organisation_ids` and `site_ids`."
+   >
+   > ✗ "An admin saving the form now changes only the places they
+   > administer."
+   >
+   > ✓ "An admin saving the add-or-edit-user form now changes only the
+   > `org_unit`s they administer."
+
+   **This applies to the branch below as much as to the code.** A reader
+   arrives at one pull request in a stack, not at all of them in order,
+   so a phrase that only parses if you read the one underneath — "the
+   expand you chose", "the two older lists" — needs naming here too, in
+   the same few words.
+
+   The test: **a reader who knows the product, but has not read this
+   diff, the branch below it, or the plan.** If a sentence leaves them
+   guessing what a noun refers to, it is not finished.
+
    ### Say it straight
 
    **Write for a sixteen-year-old: short words, short sentences.** That
@@ -548,10 +596,13 @@ Two things to check rather than assume:
    no session link, no robot emoji: if a tool appends one, strip it
    before the body is posted and say that you did.
 
-   Hard ceiling: **250 words**, of which the opening should take about
-   30. A description that long usually means the "What has changed"
-   section has drifted into describing the diff — cut there, never the
-   opening, which is the part that makes the rest readable.
+   **No hard word limit, and fewer words is still better.** Aim at
+   250-odd, with about 30 in the opening, but never buy the count by
+   dropping a gloss or an explanation — a short description the reader
+   cannot follow has saved nothing. Cut in this order: the "What has
+   changed" section where it has drifted into describing the diff, then
+   any bullet whose second sentence restates its first. Never cut the
+   opening or a first-use gloss; those are what make the rest readable.
 
    ```bash
    gh pr edit <number> \
