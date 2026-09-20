@@ -5262,6 +5262,11 @@ def ci_transcode_complete(
     # unreachable caption job would keep the module hidden — a missing
     # subtitle track is a smaller fault than a video nobody can watch.
     if any(name.endswith("-720p.mp4") for name in names):
+        # Recorded before firing, as the transcode invocation is: a card
+        # that says nothing is running over a job that is would be the
+        # worse mistake of the two.
+        link.caption_started_at = datetime.now(UTC)
+        db.flush()
         start_caption(body.org_id, body.module_id, body.asset_id)
 
     return TranscodeCompleteOut(recorded=True, flags=set_flags)

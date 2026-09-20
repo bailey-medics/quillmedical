@@ -11,6 +11,7 @@ import { Badge, Box, Group, Stack, Text } from "@mantine/core";
 import {
   brand,
   statusColours,
+  statusTextColour,
   textColours,
   type StatusColourName,
 } from "@/styles/semanticColours";
@@ -65,12 +66,17 @@ function StatusSwatch({
   name,
   config,
 }: {
-  name: string;
+  name: StatusColourName;
   config: { bg: string; text: string; usage: string };
 }) {
   return (
     <Group gap="md" align="center">
-      <Badge color={config.bg} c={config.text} variant="filled" size="lg">
+      <Badge
+        color={config.bg}
+        c={statusTextColour(name)}
+        variant="filled"
+        size="lg"
+      >
         {name}
       </Badge>
       <StoryNote mt={0}>{config.usage}</StoryNote>
