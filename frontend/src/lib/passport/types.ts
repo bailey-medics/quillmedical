@@ -538,11 +538,21 @@ export interface InvitePreview {
  * `username` and `password` are required only when the invitation
  * resolves to somebody without an account — see `needs_account` on the
  * preview. An assessor who already uses Quill sends the token alone.
+ *
+ * So are the name and registration, and for the same reason. The holder
+ * asking for a sign-off gives an address and nothing else, so nobody
+ * has told Quill who this person is until they say so — and a
+ * registration number is worth more from its holder than from somebody
+ * who half-remembered it. An assessor who already has an account has
+ * these on it already.
  */
 export interface AssessorInviteAcceptInput {
   token: string;
   username?: string | null;
   password?: string | null;
+  full_name?: string | null;
+  registration_authority?: string | null;
+  registration_number?: string | null;
 }
 
 /**
