@@ -98,6 +98,13 @@ describe("SignOffRequestForm", () => {
         screen.getByRole("button", { name: "Request sign-off" }),
       );
 
+      // The form confirms before sending, so nothing has gone yet.
+      expect(onSubmit).not.toHaveBeenCalled();
+
+      await user.click(
+        await screen.findByRole("button", { name: "Send request" }),
+      );
+
       expect(onSubmit).toHaveBeenCalledWith(
         expect.objectContaining({
           assessor_email: "amara.okonkwo@example.nhs.uk",
@@ -201,6 +208,87 @@ describe("SignOffRequestForm", () => {
         await screen.findByText(/Nobody on Quill uses that address/),
       ).toBeInTheDocument();
       expect(screen.queryByText(/already uses Quill/)).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Confirming before it is sent", () => {
+    const knownAssessor = {
+      user_id: 42,
+      username: "okonkwo",
+      full_name: "Dr Amara Okonkwo",
+      email: "amara.okonkwo@example.nhs.uk",
+      registrations: [{ body: "GMC", number: "7654321", verified: false }],
+    };
+
+    async function fillAndSend(
+      user: ReturnType<typeof userEvent.setup>,
+      address = "amara.okonkwo@example.nhs.uk",
+    ) {
+      await typeAssessorEmail(user, address);
+      await user.type(
+        screen.getByRole("textbox", { name: /Observed on/ }),
+        "14/03/2026",
+      );
+      await user.click(
+        screen.getByRole("button", { name: "Request sign-off" }),
+      );
+    }
+
+    it("shows the registration number, which is the hard evidence", async () => {
+      // Two consultants may share a name, and an address says only that
+      // somebody controls a mailbox. The number says which registered
+      // professional this is.
+      const user = userEvent.setup();
+      searchAssessors.mockResolvedValue({ matches: [knownAssessor] });
+      renderForm();
+
+      await fillAndSend(user);
+
+      expect(await screen.findByText(/GMC 7654321/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Dr Amara Okonkwo will be asked/),
+      ).toBeInTheDocument();
+    });
+
+    it("does not imply Quill checked the registration", async () => {
+      // Quill verifies no register; an admin does that by hand. A
+      // number beside a name reads as confirmation unless it says so.
+      const user = userEvent.setup();
+      searchAssessors.mockResolvedValue({ matches: [knownAssessor] });
+      renderForm();
+
+      await fillAndSend(user);
+
+      expect(
+        await screen.findByText(/stated by them, not checked by Quill/),
+      ).toBeInTheDocument();
+    });
+
+    it("shows only the address for somebody Quill does not know", async () => {
+      // It is genuinely all Quill knows about them, and claiming more
+      // would be inventing it.
+      const user = userEvent.setup();
+      renderForm();
+
+      await fillAndSend(user, "stranger@other-trust.nhs.uk");
+
+      expect(
+        await screen.findByText(/stranger@other-trust.nhs.uk will be asked/),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/GMC/)).not.toBeInTheDocument();
+    });
+
+    it("sends nothing when the holder backs out", async () => {
+      // The whole point of stopping here is that it can be stopped.
+      const user = userEvent.setup();
+      const onSubmit = vi.fn();
+      searchAssessors.mockResolvedValue({ matches: [knownAssessor] });
+      renderForm({ onSubmit });
+
+      await fillAndSend(user);
+      await user.click(await screen.findByRole("button", { name: "Cancel" }));
+
+      expect(onSubmit).not.toHaveBeenCalled();
     });
   });
 

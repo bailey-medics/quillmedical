@@ -3791,10 +3791,19 @@ anonymous holding a link.
       somebody new is the case the flow exists for. The form still
       needs wiring to it — that is the unit below.
 
-- [ ] **The confirmation step does not exist.** Submitting sends the
-      request immediately. Step 3 wants a modal showing who was
-      matched, and for a known assessor it needs their name, email and
-      registration number — which no endpoint returns today.
+- [x] **The confirmation step.** Asking now stops and shows who was
+      found before anything is sent. A known assessor appears by name,
+      address and registration number — the hard evidence that this is
+      the right person — marked as stated by them rather than checked
+      by Quill. An address Quill does not know shows only what was
+      typed, and says they will be invited.
+
+      **Step 2's search-as-you-type field is still outstanding**, and
+      does not block this: the form resolves one exact address today,
+      which is enough to confirm. Picking between several people needs
+      a combobox component that does not exist in the catalogue, and
+      `.claude/rules/components.md` says to ask before building a new
+      atomic one.
 
 - [x] **The invite link lands them at the requests.** The accept page
       stays — it is what a signed token in a URL opens, and the person

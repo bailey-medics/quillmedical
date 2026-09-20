@@ -43,6 +43,8 @@ import {
 } from "@components/form";
 import { BodyText, Heading } from "@/components/typography";
 import ButtonPair from "@/components/button/ButtonPair";
+import ConfirmModal from "@/components/confirm-modal/ConfirmModal";
+import { IconFileText } from "@/components/icons/appIcons";
 import { searchAssessors } from "@lib/passport";
 import type {
   AssessorMatch,
@@ -141,6 +143,11 @@ export default function SignOffRequestForm({
 
   const canSubmit = emailLooksValid && observedOn !== null && !isSubmitting;
 
+  // Asking is the last moment the holder can catch naming the wrong
+  // person, so the form stops here and shows who it found before
+  // anything is sent.
+  const [confirming, setConfirming] = useState(false);
+
   function handleSubmit() {
     if (!canSubmit || observedOn === null) return;
 
@@ -229,9 +236,53 @@ export default function SignOffRequestForm({
           acceptLabel="Request sign-off"
           acceptDisabled={!canSubmit}
           acceptLoading={isSubmitting}
-          onAccept={handleSubmit}
+          onAccept={() => setConfirming(true)}
           onCancel={onCancel}
         />
+
+        {/* Step 3 of the flow. A known assessor is shown by name and
+            registration number, so the holder can see they picked the
+            right person: two consultants may share a name, and an
+            address says only that somebody controls a mailbox. An
+            unknown address shows only what was typed, because that is
+            genuinely all Quill knows about them. */}
+        <ConfirmModal
+          opened={confirming}
+          onClose={() => setConfirming(false)}
+          onAccept={handleSubmit}
+          title="Ask for this sign-off?"
+          acceptLabel="Send request"
+          destructive={false}
+          icon={<IconFileText />}
+        >
+          <Stack gap="xs">
+            {lookup?.match ? (
+              <>
+                <BodyText>
+                  {lookup.match.full_name ?? lookup.match.username} will be
+                  asked to sign off {competency.name}.
+                </BodyText>
+                <BodyText>{lookup.match.email}</BodyText>
+                {lookup.match.registrations.map((registration) => (
+                  <BodyText key={`${registration.body}-${registration.number}`}>
+                    {registration.body} {registration.number} — stated by them,
+                    not checked by Quill.
+                  </BodyText>
+                ))}
+              </>
+            ) : (
+              <>
+                <BodyText>
+                  {trimmedEmail} will be asked to sign off {competency.name}.
+                </BodyText>
+                <BodyText>
+                  Nobody on Quill uses that address, so they will be emailed an
+                  invitation and can register to sign.
+                </BodyText>
+              </>
+            )}
+          </Stack>
+        </ConfirmModal>
       </Stack>
     </BaseCard>
   );
