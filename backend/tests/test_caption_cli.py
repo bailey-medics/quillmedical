@@ -12,6 +12,7 @@ body so they can be exercised without any of that machinery.
 
 from __future__ import annotations
 
+import json
 import os
 from unittest.mock import MagicMock, patch
 
@@ -32,6 +33,33 @@ def _patch_storage(storage_module: MagicMock):
         patch.dict("sys.modules", {"google.cloud.storage": storage_module}),
         patch.object(_gc, "storage", storage_module, create=True),
     )
+
+
+def _stub_urlopen(status: int = 200, side_effect=None):
+    """Patch `urlopen` and expose the Request it was handed.
+
+    The callbacks use the standard library rather than `httpx`: the
+    caption image carries its own three pinned packages and `httpx` was
+    not among them, so the report failed with `No module named 'httpx'`
+    after Whisper had already done an hour's work. Asserting on the
+    `Request` is what proves the wire format, which is the part a
+    missing import silently changed.
+    """
+    captured: dict[str, object] = {}
+
+    def _fake(request, timeout=None):  # noqa: ANN001
+        captured["url"] = request.full_url
+        captured["headers"] = {k.lower(): v for k, v in request.header_items()}
+        captured["json"] = json.loads(request.data.decode())
+        if side_effect is not None:
+            raise side_effect
+        response = MagicMock()
+        response.status = status
+        response.__enter__ = lambda s: s
+        response.__exit__ = lambda *a: False
+        return response
+
+    return patch("urllib.request.urlopen", side_effect=_fake), captured
 
 
 BASE_ENV = {
@@ -257,19 +285,16 @@ class TestCaptionReport:
             "CAPTION_CALLBACK_TOKEN": "tok",
         }
         with patch.dict(os.environ, env, clear=False):
-            with patch("httpx.post") as post:
-                post.return_value = MagicMock(status_code=200)
+            stub, captured = _stub_urlopen()
+            with stub:
                 _report_captions(7, "mod", "asset-1")
 
-        sent = post.call_args.kwargs["json"]
-        assert sent == {
+        assert captured["json"] == {
             "org_id": 7,
             "module_id": "mod",
             "asset_id": "asset-1",
         }
-        assert post.call_args.kwargs["headers"]["Authorization"] == (
-            "Bearer tok"
-        )
+        assert captured["headers"]["authorization"] == "Bearer tok"
 
     def test_it_uses_its_own_endpoint_not_the_transcode_one(self) -> None:
         """Sending a caption report to the transcode callback would
@@ -282,12 +307,12 @@ class TestCaptionReport:
             "CAPTION_CALLBACK_TOKEN": "tok",
         }
         with patch.dict(os.environ, env, clear=False):
-            with patch("httpx.post") as post:
-                post.return_value = MagicMock(status_code=200)
+            stub, captured = _stub_urlopen()
+            with stub:
                 _report_captions(7, "mod", "asset-1")
 
-        assert "caption-complete" in post.call_args.args[0]
-        assert "outputs" not in post.call_args.kwargs["json"]
+        assert "caption-complete" in str(captured["url"])
+        assert "outputs" not in captured["json"]
 
     def test_a_refusal_does_not_raise(self, capsys) -> None:
         from scripts.caption_cli import _report_captions
@@ -297,8 +322,8 @@ class TestCaptionReport:
             "CAPTION_CALLBACK_TOKEN": "tok",
         }
         with patch.dict(os.environ, env, clear=False):
-            with patch("httpx.post") as post:
-                post.return_value = MagicMock(status_code=401)
+            stub, _ = _stub_urlopen(status=401)
+            with stub:
                 _report_captions(7, "mod", "asset-1")
 
         assert "refused" in capsys.readouterr().err
@@ -313,7 +338,8 @@ class TestCaptionReport:
             "CAPTION_CALLBACK_TOKEN": "tok",
         }
         with patch.dict(os.environ, env, clear=False):
-            with patch("httpx.post", side_effect=OSError("no route")):
+            stub, _ = _stub_urlopen(side_effect=OSError("no route"))
+            with stub:
                 _report_captions(7, "mod", "asset-1")
 
         assert "callback failed" in capsys.readouterr().err

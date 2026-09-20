@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "api-path-removed-without-deprecation GET /api/passport/{passport_id}/assessor-invites api path removed without deprecation"
+reason: "The listing half of the same pair. It returned the invitations a holder had issued, which only existed because inviting was a separate act from asking; an invitation is now minted by a sign-off request and the request itself is what a holder looks at. Removed without deprecation for the same reason as the POST: no screen called it, the API client function was never wired to one, the passport feature is off for every organisation, and the table was empty when this shipped. Nothing a stale tab could be holding depends on it."

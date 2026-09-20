@@ -37,6 +37,15 @@ export interface CompetencyRowProps {
   competency: CompetencyState;
   /** Called when the row is chosen, if it should be selectable */
   onSelect?: (competencyId: string) => void;
+  /**
+   * Whether to report how many logbook entries the competency has.
+   *
+   * On by default, and off where the list is about sign-offs: a
+   * logbook entry is evidence towards a competency, not something an
+   * assessor signs, so counting them beside a sign-off status invites
+   * reading them as part of it.
+   */
+  showLogbookCount?: boolean;
 }
 
 /**
@@ -44,7 +53,13 @@ export interface CompetencyRowProps {
  * evidence count. Assembled as pieces so the mobile and desktop layouts
  * render the same facts.
  */
-function CompetencyDetail({ competency }: { competency: CompetencyState }) {
+function CompetencyDetail({
+  competency,
+  showLogbookCount = true,
+}: {
+  competency: CompetencyState;
+  showLogbookCount?: boolean;
+}) {
   const { level, signed_off_by, signed_on, expires_on, logbook_entries } =
     competency;
 
@@ -65,7 +80,7 @@ function CompetencyDetail({ competency }: { competency: CompetencyState }) {
         </BodyText>
       )}
 
-      {logbook_entries > 0 && (
+      {showLogbookCount && logbook_entries > 0 && (
         <BodyText c="dimmed">
           {logbook_entries} logbook{" "}
           {logbook_entries === 1 ? "entry" : "entries"}
@@ -84,25 +99,43 @@ function CompetencyDetail({ competency }: { competency: CompetencyState }) {
 export default function CompetencyRow({
   competency,
   onSelect,
+  showLogbookCount = true,
 }: CompetencyRowProps) {
   const theme = useMantineTheme();
   const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
+
+  // No badge where nothing has been signed or asked for. The API sends
+  // `requested` for a competency that only has a logbook entry against
+  // it, as the nearest of the four statuses to "there is evidence here
+  // and nobody has assessed it" — but shown as a badge it reads as a
+  // claim that an assessor has been asked, which nobody has. `sign_off`
+  // names the record and is null in exactly that case, so it is what
+  // tells a real request apart from a stand-in.
+  const badge = competency.sign_off ? (
+    <SignOffStatusBadge status={competency.status} />
+  ) : null;
 
   const content = isMobile ? (
     <Stack gap="xs" w="100%">
       <Group justify="space-between" wrap="nowrap" align="flex-start">
         <BodyTextBold>{competency.name}</BodyTextBold>
-        <SignOffStatusBadge status={competency.status} />
+        {badge}
       </Group>
-      <CompetencyDetail competency={competency} />
+      <CompetencyDetail
+        competency={competency}
+        showLogbookCount={showLogbookCount}
+      />
     </Stack>
   ) : (
     <Group justify="space-between" wrap="nowrap" align="flex-start" w="100%">
       <Stack gap={2}>
         <BodyTextBold>{competency.name}</BodyTextBold>
-        <CompetencyDetail competency={competency} />
+        <CompetencyDetail
+          competency={competency}
+          showLogbookCount={showLogbookCount}
+        />
       </Stack>
-      <SignOffStatusBadge status={competency.status} />
+      {badge}
     </Group>
   );
 

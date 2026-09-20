@@ -116,6 +116,12 @@ export const statusColourValues = {
   neutral: "#ffd43b", // Yellow — staff, default (Mantine yellow.4)
   accent: "#7950f2", // Violet — incomplete, special states (Mantine violet.6)
   alert: "#fa5252", // Red — no-show, patient, attention (Mantine red.6)
+  // The odd one out, deliberately: a pale wash rather than a saturated
+  // fill, and the only status colour that takes dark text. The others
+  // report that something has happened; this one says something has
+  // not happened yet, or invites the reader to act. A solid fill made
+  // an empty passport look like a warning about an ordinary situation.
+  update: "#e7f5ff", // Very light blue — nothing yet, gentle prompts (Mantine blue.0)
 } as const;
 
 /**
@@ -197,6 +203,12 @@ const appCssVariables = {
     "--neutral-color": statusColourValues.neutral,
     "--accent-color": statusColourValues.accent,
     "--outstanding-color": statusColourValues.outstanding,
+    "--update-color": statusColourValues.update,
+    // Text on a status fill that asks for dark. Near-black rather than
+    // the app's navy body colour: navy on the yellow `neutral` fill is
+    // a markedly weaker contrast than black, and these fills exist to
+    // be read at a glance.
+    "--status-text-dark": "#1a1a1a",
   },
   dark: {
     // Text — light grey on dark background (placeholder values, to be refined)
