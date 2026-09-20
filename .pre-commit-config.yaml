@@ -9,7 +9,7 @@ repos:
     rev: 26.5.0
     hooks:
       - id: black
-        language_version: python3.13
+        language_version: python3.14
         args: ["--config=backend/pyproject.toml"]
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -22,7 +22,7 @@ repos:
       - id: check-json
 
   - repo: https://github.com/streetsidesoftware/cspell-cli
-    rev: v9.8.0
+    rev: v10.2.0
     hooks:
       - id: cspell
         name: cspell (spelling checker)
@@ -34,7 +34,7 @@ repos:
           - cspell.config.json
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.20.0
+    rev: v2.3.1
     hooks:
       - id: mypy
         additional_dependencies:

@@ -14,6 +14,7 @@ import type {
   CpdEntry,
   Logbook,
   Registration,
+  InboxItem,
   SignOff,
   Verification,
 } from "@lib/passport";
@@ -139,6 +140,16 @@ export const requested: SignOff = {
   evidence: null,
   attachments: [],
   content_hash: null,
+};
+
+/**
+ * One open request as the assessor's inbox returns it: the sign-off,
+ * and the passport it belongs to. No other sign-off response carries
+ * the passport id, because every other one takes it in the path.
+ */
+export const inboxItem: InboxItem = {
+  passport_id: "3f2a8c1e",
+  sign_off: requested,
 };
 
 export const unchangedVerification: Verification = {

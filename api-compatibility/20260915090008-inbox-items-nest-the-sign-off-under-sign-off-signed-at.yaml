@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "response-optional-property-removed GET /api/passport/requests/inbox removed the optional property `items/signed_at` from the response with the `200` status"
+reason: "The assessor inbox now returns each request paired with the passport it belongs to, so `signed_at` moved from the top of the item to `sign_off/signed_at` one level down. Nothing was dropped: the same sign-off is returned, wrapped. The passport id was added because the inbox is the only sign-off response whose caller does not already know it — every other sign-off route takes `passport_id` in its path — and an assessor cannot act on a request without it, which is why the sign-off page could display a request and not submit it. No open tab needs reloading and nothing can break: the passport feature is off for every organisation, no released bundle reads this response, and this endpoint has never been called by a client."

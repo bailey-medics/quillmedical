@@ -80,6 +80,18 @@ export function Component() {
 
       {error && <ErrorState message={error} />}
 
+      {/* Above the editor rather than below the list: on an empty page
+          this says what reflections are for, which is what somebody
+          deciding whether to write one needs before they start. */}
+      {reflections.length === 0 && (
+        <StateMessage
+          colour="update"
+          icon={<IconFileText />}
+          title="Nothing written yet"
+          description="Reflections are yours alone — no assessor or administrator can read them."
+        />
+      )}
+
       {writing ? (
         <ReflectionEditor
           onSubmit={handleSubmit}
@@ -93,13 +105,7 @@ export function Component() {
         />
       )}
 
-      {reflections.length === 0 ? (
-        <StateMessage
-          icon={<IconFileText />}
-          title="Nothing written yet"
-          description="Reflections are yours alone — no assessor or administrator can read them."
-        />
-      ) : (
+      {reflections.length > 0 &&
         reflections.map((reflection) => (
           <BaseCard key={reflection.name}>
             <Stack gap="xs">
@@ -110,8 +116,7 @@ export function Component() {
               <BodyText>{reflection.body}</BodyText>
             </Stack>
           </BaseCard>
-        ))
-      )}
+        ))}
     </Stack>
   );
 }
