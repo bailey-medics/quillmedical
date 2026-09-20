@@ -68,6 +68,23 @@ type Options = Omit<RequestInit, "method" | "body" | "credentials"> & {
 };
 
 /**
+ * Turn a caller's body into something `fetch` can send.
+ *
+ * Everything is JSON here except a file upload, which arrives as
+ * `FormData` and has to go through untouched: `JSON.stringify` on it
+ * yields `"{}"`, so the file was silently dropped and the server saw an
+ * empty body it could not parse. The upload failed with no clue that
+ * the file had never left the browser.
+ */
+function serialiseBody(body: unknown): BodyInit | undefined {
+  if (body === undefined) return undefined;
+  if (typeof FormData !== "undefined" && body instanceof FormData) {
+    return body;
+  }
+  return JSON.stringify(body);
+}
+
+/**
  * Core API Request Handler
  *
  * Makes an authenticated HTTP request to the backend API with automatic token
@@ -115,10 +132,25 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
     throw new Error("App update pending — please wait for the page to reload.");
   }
 
+  // A FormData body carries a file, and the browser has to set its own
+  // `Content-Type` for that: the header has to name a multipart
+  // boundary that only the browser knows. Declaring JSON over it, or
+  // passing an empty string, both leave the request unparseable at the
+  // far end — an upload then failed before the file ever left.
+  const isFormData =
+    typeof FormData !== "undefined" && opts.body instanceof FormData;
+
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    ...(isFormData ? {} : { "Content-Type": "application/json" }),
     ...((opts.headers as Record<string, string>) ?? {}),
   };
+
+  // A caller asking for no content type gets none, rather than an empty
+  // one. `fetch` sends `Content-Type:` with nothing after it otherwise,
+  // which is not the same as leaving it out.
+  for (const [name, value] of Object.entries(headers)) {
+    if (value === "") delete headers[name];
+  }
   if (method !== "GET" && !headers["X-CSRF-Token"]) {
     const match = document.cookie
       .split("; ")
@@ -134,7 +166,10 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
       method,
       headers,
       credentials: "include",
-      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+      // FormData goes as itself. `JSON.stringify` on it yields "{}",
+      // so the file was silently dropped and the server saw an empty
+      // body it could not parse.
+      body: serialiseBody(opts.body),
     });
   } catch (err) {
     // TypeError from fetch indicates a network failure (DNS, connection refused, etc.)
@@ -211,8 +246,7 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
           // detail is likely a string
           message = (data?.detail ?? data?.message ?? message) as string;
           errorCode = (data as Record<string, unknown>)["error_code"] as
-            | string
-            | undefined;
+            string | undefined;
         }
       }
     } catch {
@@ -311,7 +345,10 @@ async function requestBlob(path: string, opts: Options = {}): Promise<Blob> {
       method,
       headers,
       credentials: "include",
-      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+      // FormData goes as itself. `JSON.stringify` on it yields "{}",
+      // so the file was silently dropped and the server saw an empty
+      // body it could not parse.
+      body: serialiseBody(opts.body),
     });
   } catch (err) {
     if (err instanceof TypeError) {
