@@ -19,7 +19,7 @@ const docs: DocumentProps[] = [
       "/mock-documents/thumbnails/1_external_clinical_letter.pdf.png",
   },
   {
-    name: "Colonoscopy report",
+    name: "Endoscopy report",
     type: "pdf",
     url: "/mock-documents/2_colonoscopy_report.pdf",
     thumbnailUrl: "/mock-documents/thumbnails/2_colonoscopy_report.pdf.png",

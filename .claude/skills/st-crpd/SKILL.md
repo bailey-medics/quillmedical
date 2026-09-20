@@ -3,7 +3,7 @@ name: st-crpd
 description: Commit, rebase, push and describe one stacked branch
 argument-hint: "[ready]"
 allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git fetch:*), Bash(git push:*), Bash(just stack-log:*), Bash(just stack-log-long:*), Bash(just stack-files:*), Bash(git switch:*), Bash(just stack-add:*), Bash(just stack-new:*), Bash(just stack-sync:*), Bash(just stack-rebase:*), Bash(just stack-submit:*), Bash(just stack-move:*), Bash(gh stack view:*), Bash(gh pr list:*), Bash(gh pr view:*), Bash(gh pr edit:*), Bash(gh pr ready:*), Bash(python3 scripts/stack-status.py:*)
-disallowed-tools: Bash(gh pr merge:*), Bash(gh stack merge:*), Bash(git rebase:*), mcp__github__merge_pull_request, mcp__github__enable_pr_auto_merge
+disallowed-tools: Bash(gh pr merge:*), Bash(gh stack merge:*), Bash(git rebase:*), Bash(git commit:*), Bash(git reset:*), Bash(git cherry-pick:*), Bash(git stash:*), mcp__github__merge_pull_request, mcp__github__enable_pr_auto_merge
 disable-model-invocation: true
 ---
 
@@ -46,9 +46,17 @@ These hold on every run.
   guard, and verifies afterwards that no branch was silently skipped
   (`gh stack rebase` exits 0 even when it does nothing). It is blocked at the
   permission layer for the same reason merging is.
-- **Never change the pull request title.** It is derived from the branch name
-  by `auto-pr.yml`, or set by hand. Either way it is not yours to rewrite —
-  the description is the only field this command edits.
+- **Never commit with `git commit`, and never undo one with `git reset`.**
+  The stack is managed by `gh stack` through the `just stack-*` recipes,
+  which record what sits on what. `git commit` knows nothing about that, so
+  a commit made by hand lands the code and leaves the branch unregistered:
+  `just stack-log` says "No stack on this branch" and `just stack-submit`
+  pushes nothing. It looks like success, which is what makes it dangerous.
+  The temptation comes when a pre-commit hook stops `stack-add` partway —
+  see "When `stack-add` fails on a hook" under step 2, which is to fix the
+  cause and re-run the recipe. Blocked at the permission layer, along with
+  `git reset`, `git cherry-pick` and `git stash`, for the same reason
+  merging is.
 - **Never change labels, reviewers, milestones, or the base branch.** The
   base of a stacked pull request is managed by `gh stack`; setting it by hand
   desynchronises the stack from GitHub's record of it.
@@ -175,12 +183,120 @@ Two things to check rather than assume:
    - **The name** describes the unit, not the session: `pr-description-join`,
      not `fixes` or `part-2`. Lower case, hyphenated, no `feature/` prefix —
      `stack-add` adds it. Keep it short enough to read in a stack diagram.
+   - **The name opens with the stack key**, so every branch in the stack
+     sorts and reads together: `passport-record-and-review`,
+     `passport-sign-off-page`. See "The stack key" below. On a stack that
+     already has branches, take the key from them rather than choosing
+     again.
    - **The message** is conventional-commit style, matching the branch's own
      history: `fix(tooling): stack-log-long could not read pull requests`.
      Describe what the change does, not what you did.
    - **Read the diff before naming either.** `git diff --stat` and the diff
      itself; the name and message should come from the code, not from what
      the conversation was about.
+
+   ### The stack key
+
+   Every branch in one stack opens its name with the same single word,
+   so the pull requests read as a set rather than as unrelated work.
+   `passport-record-and-review` and `passport-sign-off-page` sit
+   together in a list; `make-the-passport-usable` and
+   `stop-a-hook-failure` do not, even when they are the same stack.
+
+   **One word, naming the area the stack is about**: `Passport`,
+   `Teaching`, `Billing`. Not the change — the area. The rest of the name
+   says what this unit does.
+
+   **Capitalised in a title, lower case in a branch name.**
+   `Passport: record and review` is what a reader sees;
+   `passport-record-and-review` is what git holds, because branch names
+   here are lower case throughout. Same word, written the way each
+   place writes words.
+
+   **Choose it once, when the stack is started** — the `stack-new` run,
+   or the first `stack-add` onto a bare branch. Every later branch takes
+   the key from the branches already in the stack, read from
+   `just stack-log`. It does not change while the stack lives, even as
+   the work drifts: a stack whose PRs share a word and then stop sharing
+   it is worse than one that never had a key.
+
+   **Check the key is free before adopting it.** Another open stack using
+   the same word would leave two unrelated sets of pull requests looking
+   like one:
+
+   ```bash
+   gh pr list --state open --json number,title,headRefName \
+     --limit 100
+   ```
+
+   If any open pull request's branch already opens with the word, choose
+   another. Prefer a narrower one — `passport-evidence` over `passport`
+   — rather than a vaguer one. Closed and merged pull requests do not
+   count: a key is reusable once its stack is finished.
+
+   **The title reads `Passport: what this branch does`** — the key, a
+   colon, then a plain description of the unit. The colon is what makes
+   the key scannable: `Passport: record and review` reads as a set,
+   `Passport record and review` reads as a sentence that happens to
+   start with a word.
+
+   **Set the title, because nothing else will get it right.**
+   `auto-pr.yml` builds titles as `Feature: <the branch words>` and
+   `gh stack submit` falls back to the commit subject, so whichever
+   opens the pull request produces something close but not this. Set it
+   alongside the description in step 9:
+
+   ```bash
+   gh pr edit <number> --title "Passport: what this branch does"
+   ```
+
+   Leave every other field alone — labels, reviewers, milestones and
+   the base branch are still not this command's to change, and the base
+   in particular belongs to `gh stack`.
+
+   ### When `stack-add` fails on a hook
+
+   A pre-commit hook will sooner or later stop the commit — a spelling
+   word it does not know, a formatter that rewrote a file, a linter with
+   a finding. The recipe then exits non-zero **having already created
+   and checked out the branch**, because making the branch comes before
+   committing onto it. The stack has no record of that branch: writing
+   it into the stack is the last thing the recipe does, and it never got
+   there.
+
+   **Fix the cause, then run the same recipe again.** It is safe to
+   re-run: the branch already exists and it simply commits onto it and
+   completes the registration.
+
+   - **The branch is already checked out**, so run `just stack-add`
+     again exactly as before — same name, same message. Do not switch
+     branches first, and do not create a second one.
+   - **Fix the cause the same way `/crp` does.** A hook that rewrote
+     files, or a spelling fix, is mechanical: apply it and re-run
+     without pausing. Anything needing you to write or change code —
+     mypy, a lint finding a formatter would not fix, bandit — is a
+     change nobody has reviewed: stop, show the diff and the reason, and
+     wait.
+
+   **Never finish the job with `git commit`.** This is the failure this
+   section exists for, and it looks exactly like success: the code is
+   committed, the tree is clean, and the branch carries the right
+   commit. What is missing is invisible — `git commit` knows nothing
+   about stacks, so the branch is never registered, `just stack-log`
+   reports "No stack on this branch", and `just stack-submit` pushes
+   nothing and opens no pull request. The work looks landed and is not.
+
+   `git commit`, `git rebase`, `git cherry-pick` and `git reset` are all
+   outside this command for the same reason: the stack is managed by
+   `gh stack` through the `just stack-*` recipes, and any git command
+   that writes history behind its back leaves the two disagreeing. If a
+   recipe cannot be made to work, stop and report it — that is a
+   mechanical failure of the first kind, and repairing a stack by hand
+   is not this command's job.
+
+   **Check the registration, not just the commit.** After `stack-add` or
+   `stack-new` returns, `just stack-log` must draw the new branch in the
+   stack. A clean tree and a good commit prove only that git is happy.
 
    **Do not judge the work. Commit it.** Whatever is uncommitted becomes
    one branch and one pull request. Running this command *is* the decision
@@ -289,9 +405,11 @@ Two things to check rather than assume:
    `<!-- crp:pr-summary -->` marker meaning it was generated here before.
    Anything else is someone's writing: show it, and ask before replacing it.
 
-9. **Write the body.** The reader reads every line of the diff, so never
-   describe the diff. Write only what reading the code cannot tell them:
-   what you chose, what might be risky, and what is different now.
+9. **Write the title and the body.** The title takes the stack key form
+   — `Passport: what this branch does`, as "The stack key" sets out. The
+   reader reads every line of the diff, so the body never describes it:
+   write only what reading the code cannot tell them, which is what you
+   chose, what might be risky, and what is different now.
 
    Three sections, in this order, each a level-two heading. **No summary
    line above them** — the pull request title already says what the branch
@@ -353,8 +471,13 @@ Two things to check rather than assume:
    "What has changed" section has drifted into describing the diff.
 
    ```bash
-   gh pr edit <number> --body "..."
+   gh pr edit <number> \
+     --title "Passport: what this branch does" \
+     --body-file <path to the body>
    ```
+
+   `--body-file` rather than `--body`: the body holds backticks, quotes
+   and newlines, and passing it inline leaves them at the shell's mercy.
 
 10. **Mark it ready only if `ready` was given**, and only if step 6 reported
    `isDraft: true`:
@@ -374,7 +497,8 @@ One short block:
 - The branch created, and its position in the stack (`just stack-log`).
 - The pull request URL, and one line on what the description now says.
 - Whether it was left a draft or marked ready.
-- The commit message used, since the name and message were chosen for you.
+- The commit message and the title used, since the name, the message and
+  the title were all chosen for you.
 - **Any decision or risk written into the description**, repeated here in
   one line each. After an unattended run the terminal is read before the
   pull requests are, and a decision nobody sees is a decision nobody
