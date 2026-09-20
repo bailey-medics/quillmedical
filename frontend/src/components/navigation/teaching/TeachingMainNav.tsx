@@ -9,9 +9,9 @@
 
 import { NavLink, Stack } from "@mantine/core";
 import { useAuth } from "@/auth/AuthContext";
-import { useHasCompetency } from "@/lib/cbac/hooks";
 import NavIcon from "@/components/icons/NavIcon";
 import NestedNavLink, { type NavItem } from "../NestedNavLink";
+import { useFeatureNavItems } from "../featureNavItems";
 import { navLinkStyles } from "../navStyles";
 
 export interface TeachingMainNavProps {
@@ -30,31 +30,23 @@ export default function TeachingMainNav({
 }: TeachingMainNavProps) {
   const { logout } = useAuth();
 
-  // Matches the `/admin` route guard, so the link never leads to a 404.
-  const hasAdminAccess = useHasCompetency("manage_users");
+  // The same entries the main sidebar shows. Teaching is not a place
+  // apart: somebody on a teaching page still has a passport, and used
+  // to watch the link disappear because this file kept its own list.
+  const featureItems = useFeatureNavItems();
 
   const truncatedName =
     moduleName && moduleName.length > 15
       ? `${moduleName.slice(0, 15)}…`
       : moduleName;
 
-  const teachingItem: NavItem = {
-    label: "Teaching",
-    href: "/teaching",
-    icon: "teaching",
-    children:
-      truncatedName && moduleHref
-        ? [{ label: truncatedName, href: moduleHref }]
-        : undefined,
-  };
-
-  const navItems: NavItem[] = [
-    teachingItem,
-    { label: "Settings", href: "/settings", icon: "settings" },
-    ...(hasAdminAccess
-      ? [{ label: "Admin", href: "/admin", icon: "adjustments" as const }]
-      : []),
-  ];
+  // The one thing genuinely local to here: the module being worked on,
+  // hung under the Teaching entry the shared list already provides.
+  const navItems: NavItem[] = featureItems.map((item) =>
+    item.href === "/teaching" && truncatedName && moduleHref
+      ? { ...item, children: [{ label: truncatedName, href: moduleHref }] }
+      : item,
+  );
 
   return (
     <Stack gap={0} p="sm">

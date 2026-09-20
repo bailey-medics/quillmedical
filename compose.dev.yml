@@ -30,6 +30,12 @@ services:
       - ./shared:/shared
       - ./api-compatibility:/api-compatibility
       - ./teaching-repos:/teaching-repos
+      # Passports, when no GCS bucket is set — which is every local run.
+      # A named volume rather than a bind mount: these are git
+      # repositories with evidence blobs beside them, not source, and
+      # they should survive a rebuild without ever landing in the
+      # worktree where git status would report them.
+      - passport_data:/data
 
   frontend:
     image: quill-frontend-dev
@@ -169,7 +175,7 @@ services:
 
   ehrbase:
     profiles: ["clinical"]
-    image: ehrbase/ehrbase:2.33.0
+    image: ehrbase/ehrbase:2.35.1
     container_name: quill_ehrbase
     env_file: backend/.env
     environment:
@@ -232,6 +238,7 @@ volumes:
   caddy_config:
   frontend_node_modules:
   public_pages_node_modules:
+  passport_data:
 
 networks:
   public: {}

@@ -4,48 +4,45 @@
  * The holder's half of a sign-off: naming an assessor, saying when the
  * work was observed, and optionally adding a reflection.
  *
- * **The holder chooses their own assessor**, and the list is not filtered
- * by who is "allowed" to sign. Who is fit to assess whom is a clinical
- * judgement that varies by procedure, department and the people
- * involved, and any rule table encoding it would be wrong somewhere on
- * the day it shipped. The one rule the API enforces is that it cannot be
- * the holder themselves — the whole value of the record is a second
- * named person accepting accountability.
+ * **The assessor is named by email address, not picked from a list.**
+ * The consultant who observed the work is often at another trust, or
+ * not on Quill at all, and that is the case this feature exists for —
+ * a dropdown of existing users had no row for them, so the holder
+ * could not ask. An address is what a holder knows; whether it belongs
+ * to an account is Quill's problem, not theirs.
+ *
+ * **The holder chooses their own assessor**, and nothing filters who is
+ * "allowed" to sign. Who is fit to assess whom is a clinical judgement
+ * that varies by procedure, department and the people involved, and any
+ * rule table encoding it would be wrong somewhere on the day it
+ * shipped. The one rule the API enforces is that it cannot be the
+ * holder themselves — the whole value of the record is a second named
+ * person accepting accountability.
  *
  * **`observed_on` is a day with no time**, and cannot be in the future:
  * it records work that has already happened. It is deliberately distinct
  * from `signed_at`, which the server sets when the assessor signs, often
  * days or weeks later.
  *
- * The assessor list arrives as a prop rather than being fetched here, so
- * the component stays presentational — the same shape `NewMessageModal`
- * uses for picking recipients.
- *
  * @example
  * ```tsx
- * <SignOffRequestForm
- *   competency={competency}
- *   assessors={assessors}
- *   onSubmit={request}
- * />
+ * <SignOffRequestForm competency={competency} onSubmit={request} />
  * ```
  */
 
 import { useState } from "react";
 import { Stack } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
-import { DateField, SelectField, TextAreaField } from "@components/form";
+import {
+  DateField,
+  EmailField,
+  EMAIL_PATTERN,
+  SelectField,
+  TextAreaField,
+} from "@components/form";
 import { Heading } from "@/components/typography";
 import ButtonPair from "@/components/button/ButtonPair";
 import type { CompetencyState, SignOffRequestInput } from "@lib/passport";
-
-/** Somebody the holder may ask. Shaped for a `SelectField`. */
-export interface AssessorOption {
-  /** The assessor's user id, sent as `assessor_user_id` */
-  value: string;
-  /** Their name, and role where it helps tell two people apart */
-  label: string;
-}
 
 /** A level the competency offers, where it declares any. */
 export interface LevelOption {
@@ -56,8 +53,6 @@ export interface LevelOption {
 export interface SignOffRequestFormProps {
   /** The competency being requested */
   competency: CompetencyState;
-  /** Assessors the holder may ask, fetched by the page */
-  assessors: AssessorOption[];
   /** Levels this competency declares, if it has any */
   levels?: LevelOption[];
   /** Called with the completed request */
@@ -76,25 +71,33 @@ export interface SignOffRequestFormProps {
  */
 export default function SignOffRequestForm({
   competency,
-  assessors,
   levels,
   onSubmit,
   onCancel,
   isSubmitting = false,
 }: SignOffRequestFormProps) {
-  const [assessorId, setAssessorId] = useState<string | null>(null);
+  const [assessorEmail, setAssessorEmail] = useState("");
   const [observedOn, setObservedOn] = useState<string | null>(null);
   const [levelId, setLevelId] = useState<string | null>(null);
   const [comments, setComments] = useState("");
   const [reflection, setReflection] = useState("");
 
-  const canSubmit = assessorId !== null && observedOn !== null && !isSubmitting;
+  const trimmedEmail = assessorEmail.trim();
+  const emailLooksValid = EMAIL_PATTERN.value.test(trimmedEmail);
+
+  // Only once something has been typed: an empty field is a form not
+  // filled in yet, not a mistake, and colouring it red on arrival is
+  // the most common way a form greets somebody with a complaint.
+  const emailError =
+    trimmedEmail !== "" && !emailLooksValid ? EMAIL_PATTERN.message : undefined;
+
+  const canSubmit = emailLooksValid && observedOn !== null && !isSubmitting;
 
   function handleSubmit() {
-    if (!canSubmit || assessorId === null || observedOn === null) return;
+    if (!canSubmit || observedOn === null) return;
 
     onSubmit({
-      assessor_user_id: Number(assessorId),
+      assessor_email: trimmedEmail.toLowerCase(),
       observed_on: observedOn,
       level_id: levelId,
       comments: comments.trim() || null,
@@ -107,15 +110,13 @@ export default function SignOffRequestForm({
       <Stack gap="md">
         <Heading>Request sign-off for {competency.name}</Heading>
 
-        <SelectField
+        <EmailField
           label="Who should assess this?"
-          description="Your choice. Quill does not decide who may sign off what."
-          placeholder="Choose an assessor"
-          data={assessors}
-          value={assessorId}
-          onChange={setAssessorId}
-          searchable
-          nothingFoundMessage="No assessors found"
+          description="Their email address. They do not need a Quill account — we will email them, and they can sign in or register to sign."
+          placeholder="assessor@example.nhs.uk"
+          value={assessorEmail}
+          onChange={(event) => setAssessorEmail(event.currentTarget.value)}
+          error={emailError}
           required
         />
 
