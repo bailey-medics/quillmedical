@@ -13,7 +13,7 @@ none — every link row in every seed and test points at exactly one
 organisation — so the check proves itself rather than resolving anything.
 
 Revision ID: 09b1d53782d3
-Revises: 618a413e034e
+Revises: 427687ff1b36
 Create Date: 2026-09-16 13:07:55.350313
 
 """
@@ -26,7 +26,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "09b1d53782d3"
-down_revision: str | None = "618a413e034e"
+down_revision: str | None = "427687ff1b36"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

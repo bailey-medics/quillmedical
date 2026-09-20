@@ -99,7 +99,10 @@ def seed() -> None:
             db.flush()
             print("Enabled teaching feature")
 
-            # 5. Add educator to organisation (staff)
+        # 5. Add educator to organisation (staff)
+        # Membership is one table keyed on the place now, so this goes
+        # through the writer rather than a relationship on Organisation.
+        # It is idempotent, which is why there is no membership check.
         add_organisation_member(db, org.id, educator.id, "staff")
         print("Added educator to organisation")
 
