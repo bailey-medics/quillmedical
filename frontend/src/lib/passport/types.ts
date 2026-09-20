@@ -208,20 +208,75 @@ export interface SignOff {
 }
 
 /**
+ * One open request, with the passport it belongs to.
+ *
+ * The inbox is the only sign-off response that names its passport,
+ * because it is the only one whose caller does not already know it:
+ * every other sign-off route takes the passport id in its path.
+ */
+export interface InboxItem {
+  passport_id: string;
+  sign_off: SignOff;
+}
+
+/**
  * The holder asking for a sign-off.
  *
- * `assessor_user_id` names who is being asked. The holder chooses,
- * because the judgement about who is appropriate belongs to them and
- * their supervisor. The one rule the API enforces is that it may not be
- * the holder themselves.
+ * `assessor_email` names who is being asked. An address rather than an
+ * account, because the assessor who observed the work may have no Quill
+ * account yet — they are emailed, and sign in or register to sign. The
+ * holder chooses, because the judgement about who is appropriate
+ * belongs to them and their supervisor. The one rule the API enforces
+ * is that it may not be the holder themselves.
  */
+/**
+ * Evidence a record is about to name.
+ *
+ * The same four fields the record stores. A blob is bytes at a path
+ * named by their hash and nothing beside it records what the file was
+ * called, so the uploader says: `uploadEvidence` returns exactly this
+ * shape, and it is passed straight back when the record is written.
+ */
+export interface AttachmentInput {
+  hash: string;
+  filename: string;
+  size_bytes: number;
+  media_type: string;
+}
+
+/**
+ * Somebody on Quill who might be the assessor being named.
+ *
+ * `registrations` is what the person states, never what Quill checked —
+ * `verified` says whether an organisation admin has looked at a
+ * register. A screen showing a number beside a name must say which it
+ * is, or it reads as confirmation nobody gave.
+ */
+export interface AssessorMatch {
+  user_id: number;
+  username: string;
+  full_name: string | null;
+  email: string;
+  registrations: Registration[];
+}
+
+/**
+ * What a search for an assessor found.
+ *
+ * Empty is an ordinary answer, not an error: asking somebody who has
+ * never used Quill is the case the flow exists for.
+ */
+export interface AssessorSearch {
+  matches: AssessorMatch[];
+}
+
 export interface SignOffRequestInput {
-  assessor_user_id: number;
+  assessor_email: string;
   observed_on: IsoDate;
   level_id?: string | null;
   comments?: string | null;
   reflection?: string | null;
-  attachment_hashes?: string[];
+  attachments?: AttachmentInput[];
 }
 
 /**
@@ -269,6 +324,21 @@ export interface Verification {
   does_not_prove: string;
 }
 
+/**
+ * A file that has been stored, and the hash a record names it by.
+ *
+ * Passed straight back into the record being written: this is the only
+ * place the filename and media type exist, because a blob is bytes at a
+ * path named by their hash and nothing beside it records what the file
+ * was called.
+ */
+export interface EvidenceUpload {
+  hash: string;
+  filename: string;
+  size_bytes: number;
+  media_type: string;
+}
+
 // ---------------------------------------------------------------------------
 // Self-declared evidence
 //
@@ -287,7 +357,7 @@ export interface CertificateInput {
   expires_on?: IsoDate | null;
   competencies?: string[];
   description?: string | null;
-  attachment_hashes?: string[];
+  attachments?: AttachmentInput[];
 }
 
 /** A certificate as stored. */
@@ -313,7 +383,7 @@ export interface LogbookEntryInput {
   outcome?: string | null;
   notes?: string | null;
   also_counts_towards?: string[];
-  attachment_hashes?: string[];
+  attachments?: AttachmentInput[];
 }
 
 /** A logbook entry as stored. */
@@ -337,6 +407,12 @@ export interface LogbookEntry {
  * A count and no target, deliberately. Two hundred bronchoscopies prove
  * activity, not competence.
  */
+/** Every logged procedure, grouped by the competency it counts towards. */
+export interface WholeLogbook {
+  competencies: Logbook[];
+  count: number;
+}
+
 export interface Logbook {
   competency: string;
   count: number;
@@ -357,7 +433,7 @@ export interface ReflectionInput {
   body: string;
   anonymised_confirmed: boolean;
   competencies?: string[];
-  attachment_hashes?: string[];
+  attachments?: AttachmentInput[];
 }
 
 /** A reflection as stored, with its prose. */
@@ -379,7 +455,7 @@ export interface CpdEntryInput {
   competencies?: string[];
   certificate?: string | null;
   notes?: string | null;
-  attachment_hashes?: string[];
+  attachments?: AttachmentInput[];
 }
 
 /** A CPD activity as stored. */

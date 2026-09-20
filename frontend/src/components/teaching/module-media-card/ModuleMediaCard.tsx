@@ -16,18 +16,21 @@
  */
 
 import { useState } from "react";
-import { Progress, Stack } from "@mantine/core";
+import { Stack } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
-import { CaptionStatusBadge } from "@/components/badge";
 import ConfirmModal from "@/components/confirm-modal/ConfirmModal";
 import DataTable from "@/components/tables/DataTable";
+import EllipsisMenu from "@/components/ellipsis-menu/EllipsisMenu";
 import { StateMessage } from "@/components/message-cards";
-import IconTextButton from "@/components/button/IconTextButton";
-import { IconAlertTriangle } from "@/components/icons/appIcons";
+import {
+  IconAlertTriangle,
+  IconPencil,
+  IconTrash,
+} from "@/components/icons/appIcons";
 import { BodyText, BodyTextInline, Heading } from "@/components/typography";
+import { TeachingProgressBar } from "@/components/teaching/teaching-progress-bar";
 import type { MediaAsset, ModuleMedia } from "@/features/teaching/types";
 import MediaDropzone from "./MediaDropzone";
-import { formatSize } from "./mediaFormat";
 
 export interface ModuleMediaCardProps {
   /** References and uploads for one module, from the media endpoint. */
@@ -42,6 +45,14 @@ export interface ModuleMediaCardProps {
   liveOrganisations?: string[];
   /** Upload progress 0–100 for one reference key, while in flight. */
   uploadProgress?: Record<string, number>;
+  /**
+   * Name of the file being uploaded, per reference key.
+   *
+   * Comes from the dropped file, because the asset it will become does
+   * not exist until the upload finishes. Without it the row can only
+   * say something is on its way, not what.
+   */
+  uploadNames?: Record<string, string>;
   /** Called with the file dropped against a reference key. */
   onUpload?: (key: string, file: File) => void;
   /** Called once the admin has confirmed removing an asset. */
@@ -77,6 +88,7 @@ export default function ModuleMediaCard({
   media,
   liveOrganisations = [],
   uploadProgress = {},
+  uploadNames = {},
   onUpload,
   onDelete,
   onEditCaptions,
@@ -147,64 +159,143 @@ export default function ModuleMediaCard({
               render: (row) => (row.unattached ? "Not referenced" : row.key),
             },
             {
+              // The file and what is happening to it, in one cell: the
+              // bar sits directly under the name of the thing it is
+              // working on, so there is nothing to read across to.
               header: "File",
-              render: (row) =>
-                row.asset ? (
-                  <Stack gap={2}>
-                    <BodyTextInline>
-                      {row.asset.original_filename}
-                    </BodyTextInline>
-                    <BodyTextInline>
-                      {formatSize(row.asset.size_bytes)}
-                    </BodyTextInline>
-                  </Stack>
-                ) : uploadProgress[row.key] !== undefined ? (
-                  <Progress
-                    value={uploadProgress[row.key]}
-                    aria-label={`Uploading ${row.key}`}
-                  />
-                ) : (
-                  <MediaDropzone onDrop={(file) => onUpload?.(row.key, file)} />
-                ),
-            },
-            {
-              header: "Captions",
-              render: (row) =>
-                row.asset?.has_captions ? (
-                  <Stack gap={4} align="flex-start">
-                    {/* Whisper mishears clinical terminology, so the
-                        state is worth showing without opening the
-                        editor: an unreviewed track is machine output a
-                        learner is relying on. */}
-                    <CaptionStatusBadge
-                      status={
-                        row.asset.captions_reviewed_at
-                          ? "reviewed"
-                          : "unreviewed"
-                      }
+              render: (row) => {
+                const percent = uploadProgress[row.key];
+
+                // Nothing uploaded and nothing on its way.
+                if (!row.asset && percent === undefined) {
+                  return (
+                    <MediaDropzone
+                      onDrop={(file) => onUpload?.(row.key, file)}
                     />
-                    <IconTextButton
-                      icon="pencil"
-                      label="Edit captions"
-                      variant="light"
-                      onClick={() => onEditCaptions?.(row.asset as MediaAsset)}
-                    />
+                  );
+                }
+
+                // The bar goes once the captions are signed off: that
+                // is the end of the job, and a full bar left on a
+                // finished row reads as something still running. It is
+                // the row an admin sees for the rest of the video's
+                // life, so only the transient states earn a bar.
+                //
+                // The label stays, because it is the only thing left
+                // saying the video has captions and that someone has
+                // read them. Whisper mishears clinical terminology, so
+                // that is worth knowing without opening the editor.
+                //
+                // Keyed on the review timestamp rather than on the
+                // stage reaching the total, so adding a fifth stage
+                // later cannot quietly bring the bar back.
+                const done = row.asset?.captions_reviewed_at != null;
+                const progress = row.asset?.progress;
+
+                return (
+                  <Stack gap={4}>
+                    {/* The name only, and the same name throughout: an
+                        upload in flight shows the dropped file's name
+                        rather than "Sending the file…", so the row does
+                        not rename itself the moment the upload lands.
+                        The fallback covers a caller that gives progress
+                        without a name.
+
+                        The size is deliberately absent. It answered a
+                        question nobody asks here: it cannot be acted
+                        on, it does not tell two videos apart the way
+                        the name does, and it competed with the status
+                        line beneath it. Size still appears where it
+                        decides something — the message refusing a file
+                        too large to upload. */}
+                    <BodyTextInline>
+                      {row.asset?.original_filename ??
+                        uploadNames[row.key] ??
+                        "Sending the file…"}
+                    </BodyTextInline>
+
+                    {percent !== undefined ? (
+                      <>
+                        {/* The bar creeps across the first of the four
+                            stages as the bytes go up rather than
+                            sitting at zero until the upload finishes:
+                            a 900MB lecture holds this stage for
+                            minutes, and a bar that does not move in
+                            that time is indistinguishable from one
+                            that has stopped. */}
+                        <TeachingProgressBar
+                          current={0}
+                          total={4}
+                          fill={Math.min(percent, 100) / 100}
+                          showCount={false}
+                        />
+                        <BodyTextInline>Uploading</BodyTextInline>
+                      </>
+                    ) : progress && done ? (
+                      /* Finished: the line alone, dimmed. Nothing is
+                         happening and nothing is owed, so it reads as
+                         settled rather than as something to attend
+                         to. */
+                      <BodyTextInline c="gray.6">
+                        {progress.label}
+                      </BodyTextInline>
+                    ) : progress ? (
+                      <>
+                        {/* No "X of 4": the stages are our own
+                            machinery, not something the admin is
+                            working through, and the line underneath
+                            says what is happening in words they can
+                            act on. */}
+                        <TeachingProgressBar
+                          current={progress.stage}
+                          total={progress.total_stages}
+                          showCount={false}
+                        />
+                        <BodyTextInline
+                          c={
+                            progress.stalled ? "var(--alert-color)" : undefined
+                          }
+                        >
+                          {progress.label}
+                        </BodyTextInline>
+                      </>
+                    ) : null}
                   </Stack>
-                ) : row.asset ? (
-                  <BodyTextInline>No captions</BodyTextInline>
-                ) : null,
+                );
+              },
             },
             {
               header: "",
-              render: (row) =>
-                row.asset ? (
-                  <IconTextButton
-                    icon="trash"
-                    label="Delete"
-                    variant="outline"
-                    onClick={() => setPendingDelete(row.asset)}
+              render: (row) => {
+                // One ellipsis rather than buttons in two columns,
+                // matching the site and organisation tables. Editing
+                // captions only appears where there are captions to
+                // edit, so the menu never offers a dead action.
+                if (!row.asset) return null;
+                const asset = row.asset;
+                return (
+                  <EllipsisMenu
+                    aria-label={`Actions for ${asset.original_filename}`}
+                    items={[
+                      ...(asset.has_captions
+                        ? [
+                            {
+                              label: "Edit captions",
+                              icon: <IconPencil />,
+                              onClick: () => onEditCaptions?.(asset),
+                            },
+                          ]
+                        : []),
+                      {
+                        label: "Delete",
+                        icon: <IconTrash />,
+                        color: "var(--alert-color)",
+                        onClick: () => setPendingDelete(asset),
+                      },
+                    ]}
                   />
-                ) : null,
+                );
+              },
             },
           ]}
         />

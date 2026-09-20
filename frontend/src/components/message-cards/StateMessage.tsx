@@ -14,7 +14,11 @@ import { Box, Group, Stack } from "@mantine/core";
 import Icon from "@/components/icons";
 import BaseCard from "@/components/base-card/BaseCard";
 import { BodyTextInline, Heading } from "@/components/typography";
-import { statusColours, type StatusColourName } from "@/styles/semanticColours";
+import {
+  statusColours,
+  statusTextColour,
+  type StatusColourName,
+} from "@/styles/semanticColours";
 
 export interface StateMessageProps {
   /** Tabler icon element to display */
@@ -39,15 +43,25 @@ export default function StateMessage({
   description,
   colour = "info",
 }: StateMessageProps) {
+  // The palette has always carried a `text` value per colour; this
+  // component hardcoded white and so quietly disagreed with it for
+  // `neutral`, which asks for dark. It matters now because `update` is
+  // a pale wash: white on it is unreadable rather than merely off-key.
+  const textColour = statusTextColour(colour);
+
   return (
-    <BaseCard bg={statusColours[colour].bg} data-testid="state-message">
+    <BaseCard
+      bg={statusColours[colour].bg}
+      c={textColour}
+      data-testid="state-message"
+    >
       <Group gap="md" wrap="nowrap" align="flex-start">
-        <Box style={{ flexShrink: 0 }}>
+        <Box style={{ flexShrink: 0, color: textColour }}>
           <Icon icon={icon} size="lg" />
         </Box>
         <Stack gap={4}>
-          <Heading c="white">{title}</Heading>
-          <BodyTextInline c="white">{description}</BodyTextInline>
+          <Heading c={textColour}>{title}</Heading>
+          <BodyTextInline c={textColour}>{description}</BodyTextInline>
         </Stack>
       </Group>
     </BaseCard>
