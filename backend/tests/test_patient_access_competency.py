@@ -40,7 +40,7 @@ from app.models import (
     org_unit_patient_member,
 )
 from app.organisations import (
-    add_organisation_member,
+    add_place_member,
     check_user_patient_access,
 )
 from app.security import hash_password
@@ -94,7 +94,7 @@ def org_with_patient(db_session: Session) -> Organisation:
 
 
 def _place(db: Session, org: Organisation, user: User) -> None:
-    add_organisation_member(db, org.id, user.id, "staff")
+    add_place_member(db, org.org_unit_id, user.id, "staff")
     db.commit()
 
 

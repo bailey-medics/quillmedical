@@ -17,7 +17,7 @@ sys.path.insert(0, "/app")
 
 from app.db import CoreSessionLocal  # noqa: E402
 from app.models import Organisation, OrgUnitFeature, User  # noqa: E402
-from app.organisations import add_organisation_member  # noqa: E402
+from app.organisations import add_place_member  # noqa: E402
 from app.security import hash_password  # noqa: E402
 
 
@@ -103,7 +103,7 @@ def seed() -> None:
         # Membership is one table keyed on the place now, so this goes
         # through the writer rather than a relationship on Organisation.
         # It is idempotent, which is why there is no membership check.
-        add_organisation_member(db, org.id, educator.id, "staff")
+        add_place_member(db, org.org_unit_id, educator.id, "staff")
         print("Added educator to organisation")
 
         db.commit()

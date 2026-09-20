@@ -476,45 +476,40 @@ def organisation_of_place(db: Session, place_id: int) -> int | None:
     )
 
 
-def _root_of(db: Session, organisation_id: int) -> int | None:
-    """Return the tree row an organisation stands for, if it has one."""
-    return place_of_organisation(db, organisation_id)
-
-
-def add_organisation_member(
+def add_place_member(
     db: Session,
-    organisation_id: int,
+    place_id: int,
     user_id: int,
     capacity: str,
 ) -> None:
-    """Record that somebody is at an organisation, in a given capacity.
+    """Record that somebody is at a place, in a given capacity.
 
     Writing the same membership twice changes the capacity rather than
     failing, so a caller that has already checked and one that has not
     both end up with one row saying the same thing.
 
+    Named for a place rather than an organisation because that is what
+    the table has always held: the translation this used to do at the
+    top was the last thing making it look otherwise.
+
     Args:
         db: Core database session. The caller commits.
-        organisation_id: The organisation they are at.
+        place_id: The place they are at.
         user_id: The person.
         capacity: One of ``MEMBER_CAPACITIES``.
     """
     capacity = validate_member_capacity(capacity)
 
-    root_id = _root_of(db, organisation_id)
-    if root_id is None:
-        return
-
     existing = db.scalar(
         select(org_unit_member.c.user_id).where(
-            org_unit_member.c.org_unit_id == root_id,
+            org_unit_member.c.org_unit_id == place_id,
             org_unit_member.c.user_id == user_id,
         )
     )
     if existing is None:
         db.execute(
             org_unit_member.insert().values(
-                org_unit_id=root_id,
+                org_unit_id=place_id,
                 user_id=user_id,
                 capacity=capacity,
             )
@@ -523,69 +518,55 @@ def add_organisation_member(
         db.execute(
             org_unit_member.update()
             .where(
-                org_unit_member.c.org_unit_id == root_id,
+                org_unit_member.c.org_unit_id == place_id,
                 org_unit_member.c.user_id == user_id,
             )
             .values(capacity=capacity)
         )
 
 
-def remove_organisation_member(
-    db: Session, organisation_id: int, user_id: int
-) -> None:
-    """Remove one person's membership of one organisation.
+def remove_place_member(db: Session, place_id: int, user_id: int) -> None:
+    """Remove one person's membership of one place.
 
     Args:
         db: Core database session. The caller commits.
-        organisation_id: The organisation.
+        place_id: The place.
         user_id: The person.
     """
-    root_id = _root_of(db, organisation_id)
-    if root_id is None:
-        return
     db.execute(
         org_unit_member.delete().where(
-            org_unit_member.c.org_unit_id == root_id,
+            org_unit_member.c.org_unit_id == place_id,
             org_unit_member.c.user_id == user_id,
         )
     )
 
 
-def remove_organisation_memberships(
+def remove_place_memberships(
     db: Session,
     user_id: int,
-    organisation_ids: list[int] | None = None,
+    place_ids: list[int] | None = None,
 ) -> None:
-    """Remove a person's organisation memberships.
+    """Remove a person's memberships of organisations.
 
-    Removes every one of them when *organisation_ids* is None, which is
-    what a superadmin replacing somebody's memberships wants. An admin
-    passes the organisations they are entitled to act on, so the edit
-    cannot reach a membership they cannot see.
+    Removes every one of them when *place_ids* is None, which is what a
+    superadmin replacing somebody's memberships wants. An admin passes
+    the places they are entitled to act on, so the edit cannot reach a
+    membership they cannot see.
 
-    Only memberships *of organisations* go: a membership of a ward is a
-    different fact about a different place, and an admin editing which
-    trusts somebody belongs to should not silently take them off a ward.
+    Only memberships *of organisations* go, even when a ward is named: a
+    membership of a ward is a different fact about a different place,
+    and an admin editing which trusts somebody belongs to should not
+    silently take them off a ward.
 
     Args:
         db: Core database session. The caller commits.
         user_id: The person.
-        organisation_ids: Which organisations to clear, or None for all.
+        place_ids: Which places to clear, or None for every organisation.
     """
-    if organisation_ids is None:
-        root_ids = [
-            root_id
-            for root_id in db.execute(
-                select(Organisation.org_unit_id).where(
-                    Organisation.org_unit_id.is_not(None)
-                )
-            )
-            .scalars()
-            .all()
-            if root_id is not None
-        ]
-    else:
-        root_ids = root_ids_of_organisations(db, organisation_ids)
+    roots = select(Organisation.org_unit_id)
+    if place_ids is not None:
+        roots = roots.where(Organisation.org_unit_id.in_(place_ids))
+    root_ids = list(db.execute(roots).scalars().all())
 
     if root_ids:
         db.execute(

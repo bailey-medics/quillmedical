@@ -7,7 +7,7 @@ from app.models import (
     OrgUnitFeature,
     User,
 )
-from app.organisations import add_organisation_member
+from app.organisations import add_place_member
 from app.security import hash_password
 
 # ---------------------------------------------------------------------------
@@ -168,7 +168,7 @@ def _make_admin(db_session, org: Organisation | None = None) -> User:
     db_session.add(user)
     db_session.flush()
     if org:
-        add_organisation_member(db_session, org.id, user.id, "trainee")
+        add_place_member(db_session, org.org_unit_id, user.id, "trainee")
     db_session.commit()
     db_session.refresh(user)
     return user
@@ -393,7 +393,7 @@ class TestMeEnabledFeatures:
         db_session.flush()
 
         # Link user to org
-        add_organisation_member(db_session, org.id, user.id, "trainee")
+        add_place_member(db_session, org.org_unit_id, user.id, "trainee")
         # Enable teaching on the org
         db_session.add(
             OrgUnitFeature(

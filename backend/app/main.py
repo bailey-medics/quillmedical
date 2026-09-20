@@ -124,7 +124,7 @@ from app.org_units.tree import (
     site_ids_of_organisations,
 )
 from app.organisations import (
-    add_organisation_member,
+    add_place_member,
     get_accessible_patient_ids,
     get_member_org_ids,
     get_org_staff_ids,
@@ -1148,9 +1148,9 @@ def register(
     db.add(user)
     db.flush()  # Assigns user.id so we can create memberships
 
-    # Add the user to the selected organisation, which registration now
-    # names by its place. Membership is still recorded against the
-    # organisation, so the place is translated here.
+    # Add the user to the place they named. The organisation it stands
+    # for is still resolved, because the site check below asks which
+    # organisation a site sits under.
     organisation_id = None
     if payload.org_unit_id is not None:
         organisation_id = organisation_of_place(db, payload.org_unit_id)
@@ -1162,7 +1162,7 @@ def register(
         # are not staff. Recording that here is what lets the admin page
         # and the messaging self-join check tell them apart; previously
         # nothing could.
-        add_organisation_member(db, organisation_id, user.id, "trainee")
+        add_place_member(db, payload.org_unit_id, user.id, "trainee")
 
     # Add the user to the selected site as a trainee
     if payload.site_id is not None:

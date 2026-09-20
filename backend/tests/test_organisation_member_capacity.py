@@ -21,7 +21,7 @@ from app.models import (
     User,
     validate_member_capacity,
 )
-from app.organisations import add_organisation_member, organisation_member
+from app.organisations import add_place_member, organisation_member
 from app.security import hash_password
 
 
@@ -64,8 +64,8 @@ class TestTheCapacityDistinguishesMembers:
         consultant = _user(db_session, "consultant")
         delegate = _user(db_session, "delegate")
 
-        add_organisation_member(db_session, org.id, consultant.id, "staff")
-        add_organisation_member(db_session, org.id, delegate.id, "trainee")
+        add_place_member(db_session, org.org_unit_id, consultant.id, "staff")
+        add_place_member(db_session, org.org_unit_id, delegate.id, "trainee")
         db_session.commit()
 
         assert _capacity_of(db_session, org, consultant) == "staff"
@@ -80,7 +80,7 @@ class TestTheCapacityDistinguishesMembers:
         """
         org = _org(db_session)
         person = _user(db_session, "someone")
-        add_organisation_member(db_session, org.id, person.id, "trainee")
+        add_place_member(db_session, org.org_unit_id, person.id, "trainee")
         db_session.commit()
 
         assert _capacity_of(db_session, org, person) == "trainee"
@@ -145,10 +145,10 @@ class TestOneRowPerPersonPerOrganisation:
     def test_the_same_person_twice_leaves_one_row(self, db_session):
         org = _org(db_session)
         person = _user(db_session, "someone")
-        add_organisation_member(db_session, org.id, person.id, "staff")
+        add_place_member(db_session, org.org_unit_id, person.id, "staff")
         db_session.commit()
 
-        add_organisation_member(db_session, org.id, person.id, "trainee")
+        add_place_member(db_session, org.org_unit_id, person.id, "trainee")
         db_session.commit()
 
         rows = db_session.execute(

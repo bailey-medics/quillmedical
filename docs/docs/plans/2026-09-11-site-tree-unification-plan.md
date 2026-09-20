@@ -902,7 +902,7 @@ So the remaining steps land as:
 - [x] 12c-i-c2 — drop the organisation column
 - [x] 12c-i-d — `site_common_competency`'s two place columns collapse into one
 - [x] 12c-ii-a — an organisation's place is required
-- [ ] 12c-ii-b — the membership writers take a place
+- [x] 12c-ii-b — the membership writers take a place
 - [ ] 12c-ii-c — membership and reach answer in place ids
 - [ ] 12c-iii — drop the `organisations` table
 - [x] 12c-iv — refuse deleting a parent with children, and enforce `requires_parent`
@@ -1714,6 +1714,29 @@ checker go with it.
 - **The `before_insert` guard stays.** It reads a column typed as
   required, which is not a contradiction: before the insert the
   attribute is unset, and a caller that has chosen a place keeps it.
+
+#### 12c-ii-b — the membership writers take a place
+
+`add_organisation_member`, `remove_organisation_member` and
+`remove_organisation_memberships` become `add_place_member`,
+`remove_place_member` and `remove_place_memberships`, and stop
+translating.
+
+- **The translation was the only thing making them look
+  organisation-shaped.** `org_unit_member` has always been keyed on a
+  place; each of these took an organisation id and resolved it to that
+  organisation's row before touching the table.
+- **It was also a quiet failure.** Handed a ward id, the old writer
+  looked for an organisation with that id: it found none and did
+  nothing, or — where the two id sequences overlap, which they do on a
+  small installation — found a different organisation and wrote the
+  membership there. Two new tests pin the ward case.
+- **`remove_place_memberships` still clears only organisations**, even
+  when a ward is named. An admin editing which trusts somebody belongs
+  to should not silently take them off a ward.
+- **Three call sites in the application still hold organisation ids**
+  and translate at the call. They stop needing to in 12c-ii-c, when the
+  membership reads answer in places.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to
