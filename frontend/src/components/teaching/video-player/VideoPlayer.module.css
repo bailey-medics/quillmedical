@@ -15,6 +15,43 @@
   height: 100%;
 }
 
+/*
+ * Caption cues.
+ *
+ * The browser draws each line of a cue in its own box, and each box
+ * carries its own background by default. On a two-line cue the boxes
+ * sit close enough that their backgrounds overlap, which reads as a
+ * darker band across the join and a ragged edge down the sides.
+ *
+ * `::cue` is the one hook into that shadow DOM the browser exposes, and
+ * a background set here replaces the default rather than adding to it.
+ * That is what fixes the overlap: `::cue` accepts only a small set of
+ * properties — background, colour, font, shadow and a few more — and
+ * padding is not among them, so the boxes cannot simply be spaced
+ * apart.
+ *
+ * Slightly transparent so the picture stays visible behind, but not so
+ * much that white text on a bright frame stops being readable. Captions
+ * are a WCAG 2.1 AA requirement, so legibility wins over seeing every
+ * pixel.
+ *
+ * Matched on a bare `video` because that is what react-player renders
+ * for a plain MP4, which is the hosted path captions are served on.
+ * YouTube brings its own captions and its own custom element, so it is
+ * not this rule's business.
+ *
+ * A `::cue` rule that matches nothing fails silently — it type-checks,
+ * passes every test and changes nothing — and jsdom does not render
+ * cues, so no unit test can confirm this one works. Check it against a
+ * real two-line caption in the browser.
+ */
+.wrapper :global(video)::cue {
+  background-color: rgb(0 0 0 / 75%);
+  color: var(--mantine-color-white);
+  font-size: var(--typo-sm);
+  line-height: 1.4;
+}
+
 /* The quality control sits outside the frame rather than over it. The
    browser draws its own controls in shadow DOM and decides where they
    go, so anything overlaid risks covering them at some viewport width
