@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "response-required-property-removed GET /api/auth/organisations removed the required property `organisations/items/id` from the response with the `200` status"
+reason: "Replaced by `org_unit_id` in the same row. The organisations table is gone: an organisation is a place at the top of a tree, so the only id it has is a place id — and that is the number the registration this list feeds sends back, which `id` never was. Renamed rather than reinterpreted, because the number changed. No screen reads this endpoint; the registration form builds its dropdown from the places surface. No open tab needs reloading."

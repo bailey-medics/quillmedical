@@ -15,28 +15,26 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.features.teaching.models import QuestionBankConfig
-from app.models import Organisation, OrgUnitFeature, User
+from app.models import OrgUnit, OrgUnitFeature, User
 from app.organisations import add_place_member
 from app.security import hash_password
 
 
 @pytest.fixture
-def org(db_session: Session) -> Organisation:
-    organisation = Organisation(name="Teaching Trust", type="hospital_team")
+def org(db_session: Session) -> OrgUnit:
+    organisation = OrgUnit(name="Teaching Trust", type="hospital_team")
     db_session.add(organisation)
     db_session.commit()
     db_session.refresh(organisation)
     db_session.add(
-        OrgUnitFeature(
-            org_unit_id=organisation.org_unit_id, feature_key="teaching"
-        )
+        OrgUnitFeature(org_unit_id=organisation.id, feature_key="teaching")
     )
     db_session.commit()
     return organisation
 
 
 @pytest.fixture
-def educator(db_session: Session, org: Organisation) -> User:
+def educator(db_session: Session, org: OrgUnit) -> User:
     user = User(
         username="an_educator",
         email="educator@example.com",
@@ -47,7 +45,7 @@ def educator(db_session: Session, org: Organisation) -> User:
     )
     db_session.add(user)
     db_session.commit()
-    add_place_member(db_session, org.org_unit_id, user.id, "staff")
+    add_place_member(db_session, org.id, user.id, "staff")
     db_session.commit()
     db_session.refresh(user)
     return user
@@ -62,10 +60,10 @@ def _login(client: TestClient) -> dict[str, str]:
     return {"X-CSRF-Token": client.cookies.get("XSRF-TOKEN", "")}
 
 
-def _seed_bank(db: Session, org: Organisation, educator: User) -> None:
+def _seed_bank(db: Session, org: OrgUnit, educator: User) -> None:
     db.add(
         QuestionBankConfig(
-            org_unit_id=org.org_unit_id,
+            org_unit_id=org.id,
             question_bank_id="test-bank",
             version=1,
             title="Test Bank",
@@ -82,7 +80,7 @@ class TestTheSettingsAnswer:
     def test_it_carries_only_the_place_id(
         self,
         test_client: TestClient,
-        org: Organisation,
+        org: OrgUnit,
         educator: User,
     ) -> None:
         headers = _login(test_client)
@@ -98,7 +96,7 @@ class TestTheSettingsAnswer:
 
         assert resp.status_code == 200, resp.text
         body = resp.json()
-        assert body["org_unit_id"] == org.org_unit_id
+        assert body["org_unit_id"] == org.id
         assert "organisation_id" not in body
 
 
@@ -107,7 +105,7 @@ class TestThePlaceKeyedPaths:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         educator: User,
     ) -> None:
         _seed_bank(db_session, org, educator)
@@ -115,7 +113,7 @@ class TestThePlaceKeyedPaths:
 
         resp = test_client.put(
             f"/api/teaching/admin/banks/test-bank"
-            f"/places/{org.org_unit_id}/settings",
+            f"/places/{org.id}/settings",
             json={"is_live": True, "site_registration": False},
             headers=headers,
         )
@@ -127,7 +125,7 @@ class TestThePlaceKeyedPaths:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         educator: User,
     ) -> None:
         """410, not 404, and not silently doing the work either.
@@ -154,7 +152,7 @@ class TestThePlaceKeyedPaths:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         educator: User,
     ) -> None:
         _seed_bank(db_session, org, educator)
@@ -173,7 +171,7 @@ class TestThePlaceKeyedPaths:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         educator: User,
     ) -> None:
         """The spacer ward in the fixtures is exactly such a place.

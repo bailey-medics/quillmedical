@@ -34,7 +34,6 @@ from sqlalchemy import (
     UniqueConstraint,
     delete,
     event,
-    insert,
     update,
 )
 from sqlalchemy.engine import Connection
@@ -50,7 +49,6 @@ from sqlalchemy.orm import (
 from app.cbac.base_professions import resolve_user_competencies
 from app.cbac.competencies import validate_competency_ids
 from app.org_units.relations import validate_org_unit_relation
-from app.org_units.types import ORGANISATION_TYPE, ROOT_TYPE_IDS
 
 
 class Base(DeclarativeBase):
@@ -225,68 +223,6 @@ The place is an organisation's own row in the tree. Whether a patient
 list may ever hang below a root is a product decision rather than a
 schema one; nothing stops it here.
 """
-
-
-class Organisation(Base):
-    """Healthcare organisation (hospital, GP practice, clinic, department).
-
-    Represents a named group of healthcare staff who share responsibility for a
-    defined group of patients.
-
-    Attributes:
-        id: Primary key.
-        name: Organisation name (e.g., "Great Eastern Hospital").
-        type: Organisation type (hospital_team, gp_practice, private_clinic,
-            department, teaching_establishment).
-        location: Optional location/address information.
-        org_unit_id: The row in the org_unit tree that stands for this
-            organisation — its root. Every site it is accountable for
-            hangs beneath that row. Required: the mapper below creates
-            one for every organisation, and an organisation without it
-            is invisible to the whole permission system.
-        created_at: Timestamp when organisation was created.
-        updated_at: Timestamp when organisation was last updated.
-    """
-
-    __tablename__ = "organisations"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    type: Mapped[str] = mapped_column(
-        String(50), nullable=False, default="hospital_team"
-    )
-    location: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    org_unit_id: Mapped[int] = mapped_column(
-        Integer,
-        # CASCADE rather than SET NULL, which a required column cannot
-        # accept: deleting the place an organisation *is* deletes the
-        # organisation, because there is nothing left for it to be.
-        ForeignKey("org_unit.id", ondelete="CASCADE"),
-        nullable=False,
-        unique=True,
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(UTC),
-        nullable=False,
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(UTC),
-        onupdate=lambda: datetime.now(UTC),
-        nullable=False,
-    )
-
-    # One-to-many relationship to enabled features, reached through the
-    # organisation's own row in the tree. Read-only: writes go through the
-    # feature rows themselves, which name the place.
-    features: Mapped[list[OrgUnitFeature]] = relationship(
-        primaryjoin=(
-            "foreign(OrgUnitFeature.org_unit_id)"
-            " == Organisation.org_unit_id"
-        ),
-        viewonly=True,
-    )
 
 
 class OrgUnitFeature(Base):
@@ -989,104 +925,34 @@ class OrgUnitLink(Base):
         # row cannot fail to be itself.
 
 
-@event.listens_for(Organisation, "before_insert")
-def _give_every_organisation_a_root(
-    _mapper: Mapper[Organisation],
+@event.listens_for(OrgUnit, "before_delete")
+def _clear_what_hangs_off_a_place(
+    _mapper: Mapper[OrgUnit],
     connection: Connection,
-    target: Organisation,
+    target: OrgUnit,
 ) -> None:
-    """Create the tree row a new organisation stands for.
+    """Take everything that hangs off a place away with it.
 
-    Writes through the connection rather than the session, so the row
-    exists before the organisation that points at it.
+    Its members, its features, its patient list, its conversations, who
+    may practise there, the posts it holds and the links it made.
 
-    The guard reads a column typed as required, which is not a
-    contradiction: before the insert the attribute is simply unset, and
-    a caller that has already chosen a place keeps it.
-    """
-    if target.org_unit_id is not None:
-        return
-
-    now = datetime.now(UTC)
-    target.org_unit_id = connection.execute(
-        insert(OrgUnit)
-        .values(
-            name=target.name,
-            type=_kind_of(target),
-            location=target.location,
-            is_active=True,
-            created_at=now,
-            updated_at=now,
-        )
-        .returning(OrgUnit.id)
-    ).scalar_one()
-
-
-def _kind_of(organisation: Organisation) -> str:
-    """What kind of place an organisation's tree row is.
-
-    The kinds of organisation — a practice, a teaching establishment —
-    are types of place now, so the tree row can say which one it is
-    rather than every root looking alike. A kind the tree does not know
-    falls back to the plain one, because a row that cannot be created is
-    worse than a row that is less specific than it could be.
-    """
-    kind = organisation.type or ORGANISATION_TYPE
-    return kind if kind in ROOT_TYPE_IDS else ORGANISATION_TYPE
-
-
-@event.listens_for(Organisation, "before_update")
-def _keep_the_root_in_step(
-    _mapper: Mapper[Organisation],
-    connection: Connection,
-    target: Organisation,
-) -> None:
-    """Carry a renamed or moved organisation through to its tree row.
-
-    The tree row carries its own name and location so that the tree reads
-    correctly on its own. Two copies of a name drift apart unless one
-    follows the other, and the organisation is the one people edit.
-    """
-    connection.execute(
-        update(OrgUnit)
-        .where(OrgUnit.id == target.org_unit_id)
-        .values(
-            name=target.name,
-            type=_kind_of(target),
-            location=target.location,
-            updated_at=datetime.now(UTC),
-        )
-    )
-
-
-@event.listens_for(Organisation, "after_delete")
-def _remove_the_root_with_it(
-    _mapper: Mapper[Organisation],
-    connection: Connection,
-    target: Organisation,
-) -> None:
-    """Take the organisation's tree row away when the organisation goes.
-
-    Leaving it behind would leave a root standing for nobody, which every
-    walk up the tree would then resolve to no organisation at all — a
-    place that exists, has members, and is accountable to nothing.
-
-    The places beneath it are detached rather than deleted, which matches
-    what deleting an organisation did before the tree existed. Whatever
-    hung off the organisation's own place — its members, its features, its
-    patient list, its conversations, who may practise there and the posts
-    it holds — goes with it.
+    The places beneath it are detached rather than deleted, which is
+    what deleting an organisation did before the tree existed. The
+    delete route refuses a place that still has children, so this is the
+    net rather than the rule.
 
     All of it is written out rather than left to the foreign keys, which
     would do the same job in Postgres. The unit-test database does not
     enforce foreign keys, so leaving it to the database would make the
     behaviour true only in production, which is the half of a delete
     nobody notices is missing.
-    """
-    if target.org_unit_id is None:
-        return
 
-    place_id = target.org_unit_id
+    This was a listener on ``Organisation`` until that table went. It
+    already did its work through the place the organisation stood for,
+    so moving it here asks the same of the row that actually holds the
+    rest.
+    """
+    place_id = target.id
 
     connection.execute(
         update(OrgUnit)
@@ -1118,7 +984,6 @@ def _remove_the_root_with_it(
             | (OrgUnitLink.target_id == place_id)
         )
     )
-    connection.execute(delete(OrgUnit).where(OrgUnit.id == place_id))
 
 
 class PractisingCompetency(Base):

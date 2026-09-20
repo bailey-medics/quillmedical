@@ -242,11 +242,13 @@ class OrganisationListItem(BaseModel):
     """Organisation summary for public listing.
 
     Attributes:
-        id: Organisation ID.
+        org_unit_id: The organisation's own row in the tree, which is
+            the id registration sends back. Replaces ``id``, which
+            counted in the organisations table's own ids.
         name: Organisation name.
     """
 
-    id: int
+    org_unit_id: int
     name: str
 
 

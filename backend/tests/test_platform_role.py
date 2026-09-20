@@ -25,7 +25,7 @@ from sqlalchemy.orm import Session
 
 from app.models import (
     PLATFORM_ROLES,
-    Organisation,
+    OrgUnit,
     User,
     validate_platform_role,
 )
@@ -192,7 +192,7 @@ class TestTheListingsHideOperatorsByTheNewColumn:
         test_admin: User,
         db_session: Session,
     ):
-        org = Organisation(name="Shared Trust", type="hospital")
+        org = OrgUnit(name="Shared Trust", type="organisation")
         db_session.add(org)
         db_session.commit()
         db_session.refresh(org)
@@ -204,7 +204,7 @@ class TestTheListingsHideOperatorsByTheNewColumn:
             base_profession="superadmin_profession",
         )
         for person in (test_admin, operator):
-            add_place_member(db_session, org.org_unit_id, person.id, "staff")
+            add_place_member(db_session, org.id, person.id, "staff")
         db_session.commit()
 
         resp = authenticated_admin_client.get("/api/users")
@@ -220,7 +220,7 @@ class TestTheListingsHideOperatorsByTheNewColumn:
         db_session: Session,
     ):
         """The mirror, so the test above cannot pass by listing nobody."""
-        org = Organisation(name="Shared Trust", type="hospital")
+        org = OrgUnit(name="Shared Trust", type="organisation")
         db_session.add(org)
         db_session.commit()
         db_session.refresh(org)
@@ -231,7 +231,7 @@ class TestTheListingsHideOperatorsByTheNewColumn:
             platform_role="standard",
         )
         for person in (test_admin, colleague):
-            add_place_member(db_session, org.org_unit_id, person.id, "staff")
+            add_place_member(db_session, org.id, person.id, "staff")
         db_session.commit()
 
         resp = authenticated_admin_client.get("/api/users")
@@ -263,14 +263,14 @@ class TestScopingAsksTheNewColumn:
         those now. The organisation row behind it is still written, and
         still what membership counts against.
         """
-        org = Organisation(name=name, type="hospital_team")
+        org = OrgUnit(name=name, type="hospital_team")
         db.add(org)
         db.commit()
         db.refresh(org)
         for person in members:
-            add_place_member(db, org.org_unit_id, person.id, "staff")
+            add_place_member(db, org.id, person.id, "staff")
         db.commit()
-        place_id = org.org_unit_id
+        place_id = org.id
         return int(place_id)
 
     def test_an_operator_is_not_confined_to_their_organisations(
@@ -435,7 +435,7 @@ class TestOperatorsAreProtectedByTheNewColumn:
         Shares an organisation with the admin, since the place check runs
         immediately after the operator check.
         """
-        org = Organisation(name="Shared Trust", type="hospital")
+        org = OrgUnit(name="Shared Trust", type="organisation")
         db_session.add(org)
         db_session.commit()
         db_session.refresh(org)
@@ -446,7 +446,7 @@ class TestOperatorsAreProtectedByTheNewColumn:
             platform_role="standard",
         )
         for person in (test_admin, colleague):
-            add_place_member(db_session, org.org_unit_id, person.id, "staff")
+            add_place_member(db_session, org.id, person.id, "staff")
         db_session.commit()
 
         resp = authenticated_admin_client.get(f"/api/users/{colleague.id}")

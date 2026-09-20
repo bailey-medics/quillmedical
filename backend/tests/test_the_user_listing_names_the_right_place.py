@@ -5,13 +5,15 @@ table. The names come from a join between the membership rows and the
 places they name.
 
 That join compared an *organisation* id against a *place* id for a
-release. The two sequences agree on a small installation — an
-organisation and its own row in the tree are created together — so it
+release. The two sequences agreed on a small installation — an
+organisation and its own row in the tree were created together — so it
 matched, and stopped matching the moment a ward was created between two
 organisations. From then on an admin saw a user with no organisations at
 all, or with somebody else's.
 
-Nothing tested the names, which is how it got through. These do.
+Nothing tested the names, which is how it got through. These do. The
+join itself has since gone with the organisations table, and these stay
+because the names still have to come out right.
 """
 
 from __future__ import annotations
@@ -20,31 +22,22 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.models import Organisation, OrgUnit, User
+from app.models import OrgUnit, User
 from app.organisations import add_place_member
 from app.security import hash_password
 
 
 @pytest.fixture
-def org(db_session: Session, test_superadmin: User) -> Organisation:
-    """An organisation whose id and place id differ.
-
-    The ward in between pushes the two sequences apart. With the same
-    number either join would pass, which is exactly how the wrong one
-    survived.
-    """
-    db_session.add(OrgUnit(name="A ward in between", type="ward"))
-    db_session.commit()
-
-    organisation = Organisation(name="Great Eastern Hospital", type="hospital")
+def org(db_session: Session, test_superadmin: User) -> OrgUnit:
+    """An organisation, which is a place at the top of a tree."""
+    organisation = OrgUnit(name="Great Eastern Hospital", type="organisation")
     db_session.add(organisation)
     db_session.commit()
     db_session.refresh(organisation)
-    assert organisation.id != organisation.org_unit_id
     return organisation
 
 
-def _member(db: Session, org: Organisation, username: str) -> User:
+def _member(db: Session, org: OrgUnit, username: str) -> User:
     user = User(
         username=username,
         email=f"{username}@example.test",
@@ -55,7 +48,7 @@ def _member(db: Session, org: Organisation, username: str) -> User:
     )
     db.add(user)
     db.flush()
-    add_place_member(db, org.org_unit_id, user.id, "staff")
+    add_place_member(db, org.id, user.id, "staff")
     db.commit()
     db.refresh(user)
     return user
@@ -74,7 +67,7 @@ class TestTheOrganisationNames:
         self,
         authenticated_superadmin_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
     ) -> None:
         _member(db_session, org, "a_consultant")
 
@@ -86,7 +79,7 @@ class TestTheOrganisationNames:
         self,
         authenticated_superadmin_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
     ) -> None:
         """The other half: an empty list has to mean empty.
 
@@ -112,14 +105,14 @@ class TestTheOrganisationNames:
         self,
         authenticated_superadmin_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
     ) -> None:
         """It is listed as a site, which is the column beside it.
 
         Membership does not climb: being on a ward is not being at the
         trust, and the table says so in two separate columns.
         """
-        ward = OrgUnit(name="Ward 9", type="ward", parent_id=org.org_unit_id)
+        ward = OrgUnit(name="Ward 9", type="ward", parent_id=org.id)
         db_session.add(ward)
         db_session.commit()
 

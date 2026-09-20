@@ -23,7 +23,6 @@ from app.cbac.positions import (
     vacate,
 )
 from app.models import (
-    Organisation,
     OrgUnit,
     Position,
     PractisingCompetency,
@@ -48,8 +47,8 @@ def _user(db: Session, username: str) -> User:
     return user
 
 
-def _org(db: Session, name: str = "Trust") -> Organisation:
-    org = Organisation(name=name, type="hospital")
+def _org(db: Session, name: str = "Trust") -> OrgUnit:
+    org = OrgUnit(name=name, type="organisation")
     db.add(org)
     db.commit()
     return org
@@ -67,15 +66,13 @@ def _authorise(
     user: User,
     competency: str = LEAD_COMPETENCY,
     *,
-    org: Organisation | None = None,
+    org: OrgUnit | None = None,
     site: OrgUnit | None = None,
 ) -> None:
     db.add(
         PractisingCompetency(
             user_id=user.id,
-            org_unit_id=(
-                org.org_unit_id if org else (site.id if site else None)
-            ),
+            org_unit_id=(org.id if org else (site.id if site else None)),
             competency=competency,
         )
     )
@@ -85,14 +82,14 @@ def _authorise(
 def _post(
     db: Session,
     *,
-    org: Organisation | None = None,
+    org: OrgUnit | None = None,
     site: OrgUnit | None = None,
     requires: str | None = LEAD_COMPETENCY,
     max_holders: int | None = 1,
     kind: str = "clinical_lead",
 ) -> Position:
     post = Position(
-        org_unit_id=org.org_unit_id if org else (site.id if site else None),
+        org_unit_id=org.id if org else (site.id if site else None),
         kind=kind,
         title="Clinical lead",
         requires_competency=requires,

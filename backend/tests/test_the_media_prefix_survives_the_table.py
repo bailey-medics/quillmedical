@@ -5,11 +5,11 @@ signed cookie covers exactly that path, so every object of one module at
 one place has to share a prefix. A second number for the same place
 would need a second cookie, and nothing issues one.
 
-That prefix has been the organisation's own id. The organisations table
-is being dropped, so the number is recorded on the place instead —
+That prefix was the organisation's own id. The organisations table is
+gone, so the number is recorded on the place instead —
 ``org_unit.media_prefix_id`` — and read from there. Nothing in the
-bucket moves, and a place created afterwards files under its own id,
-there being no second number for it to have.
+bucket moved, and a place created since files under its own id, there
+being no second number for it to have.
 
 These tests pin the two halves: what the prefix resolves to, and that a
 media link written by naming a place lands on the same number.
@@ -23,41 +23,43 @@ import pytest
 from sqlalchemy.orm import Session
 
 from app.features.teaching.models import ModuleMediaLink
-from app.models import Organisation, OrgUnit
+from app.models import OrgUnit
 from app.organisations import media_prefix_of
+
+#: A number no place's id will be, so a recorded prefix cannot be
+#: mistaken for the fallback.
+AN_OLDER_ORGANISATION_ID = 9001
 
 
 @pytest.fixture
-def org(db_session: Session) -> Organisation:
-    """An organisation whose id and place id differ.
-
-    The spacer ward in ``conftest`` keeps the two sequences apart, which
-    is what makes the fallback distinguishable from the recorded value.
-    """
-    organisation = Organisation(name="Trust", type="hospital")
+def org(db_session: Session) -> OrgUnit:
+    """An organisation, which is a place at the top of a tree."""
+    organisation = OrgUnit(name="Trust", type="organisation")
     db_session.add(organisation)
     db_session.commit()
     db_session.refresh(organisation)
-    assert organisation.id != organisation.org_unit_id
     return organisation
 
 
-def _record_the_existing_prefix(db: Session, org: Organisation) -> None:
-    """What the migration does for an organisation already holding media."""
-    place = db.get(OrgUnit, org.org_unit_id)
-    assert place is not None
-    place.media_prefix_id = org.id
+def _record_the_existing_prefix(db: Session, org: OrgUnit) -> None:
+    """What the migration did for a place already holding media.
+
+    The number is the id its organisation had, which is deliberately
+    nothing like the place's own: if the two matched, a test could not
+    tell a recorded prefix from the fallback.
+    """
+    org.media_prefix_id = AN_OLDER_ORGANISATION_ID
     db.commit()
 
 
 class TestWhatThePrefixResolvesTo:
     def test_a_recorded_prefix_is_used(
-        self, db_session: Session, org: Organisation
+        self, db_session: Session, org: OrgUnit
     ) -> None:
         """The objects are under that number, so the answer must be it."""
         _record_the_existing_prefix(db_session, org)
 
-        assert media_prefix_of(db_session, org.org_unit_id) == org.id
+        assert media_prefix_of(db_session, org.id) == AN_OLDER_ORGANISATION_ID
 
     def test_a_place_with_nothing_recorded_uses_its_own_id(
         self, db_session: Session
@@ -79,7 +81,7 @@ class TestWhatThePrefixResolvesTo:
 
 class TestWhereALinkLands:
     def test_a_link_takes_the_recorded_prefix(
-        self, db_session: Session, org: Organisation
+        self, db_session: Session, org: OrgUnit
     ) -> None:
         """Otherwise a new upload would point at a path with no file.
 
@@ -89,7 +91,25 @@ class TestWhereALinkLands:
         _record_the_existing_prefix(db_session, org)
 
         link = ModuleMediaLink(
-            org_unit_id=org.org_unit_id,
+            org_unit_id=org.id,
+            question_bank_id="test-bank",
+            media_key="lecture-01",
+            asset_id="asset-1",
+            original_filename="asset-1.mp4",
+            content_type="video/mp4",
+            size_bytes=1024,
+            uploaded_at=datetime.now(UTC),
+        )
+        db_session.add(link)
+        db_session.commit()
+
+        assert link.organisation_id == AN_OLDER_ORGANISATION_ID
+
+    def test_a_link_at_a_place_with_nothing_recorded_takes_its_id(
+        self, db_session: Session, org: OrgUnit
+    ) -> None:
+        link = ModuleMediaLink(
+            org_unit_id=org.id,
             question_bank_id="test-bank",
             media_key="lecture-01",
             asset_id="asset-1",
@@ -102,21 +122,3 @@ class TestWhereALinkLands:
         db_session.commit()
 
         assert link.organisation_id == org.id
-
-    def test_a_link_at_a_place_with_nothing_recorded_takes_its_id(
-        self, db_session: Session, org: Organisation
-    ) -> None:
-        link = ModuleMediaLink(
-            org_unit_id=org.org_unit_id,
-            question_bank_id="test-bank",
-            media_key="lecture-01",
-            asset_id="asset-1",
-            original_filename="asset-1.mp4",
-            content_type="video/mp4",
-            size_bytes=1024,
-            uploaded_at=datetime.now(UTC),
-        )
-        db_session.add(link)
-        db_session.commit()
-
-        assert link.organisation_id == org.org_unit_id
