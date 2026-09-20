@@ -79,6 +79,23 @@ describe("CompetencyRow", () => {
       expect(screen.queryByText(/Review due/)).not.toBeInTheDocument();
       expect(screen.getByText("Requested")).toBeInTheDocument();
     });
+
+    it("shows no badge when nothing has been signed or asked for", () => {
+      // The API sends `requested` for a competency that only has a
+      // logbook entry against it, as the nearest of its four statuses
+      // to "evidence here, nobody has assessed it". As a badge that
+      // reads as a claim an assessor was asked, which nobody was.
+      renderWithMantine(
+        <CompetencyRow
+          competency={{ ...requestedCompetency, sign_off: null }}
+        />,
+      );
+
+      expect(screen.queryByText("Requested")).not.toBeInTheDocument();
+      expect(
+        screen.getByText("Perform thoracic ultrasound"),
+      ).toBeInTheDocument();
+    });
   });
 
   describe("Selection", () => {

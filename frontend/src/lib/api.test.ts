@@ -48,6 +48,34 @@ describe("api.request", () => {
     expect(result).toEqual({ id: "1", username: "alice" });
   });
 
+  it("sends a file upload as itself rather than as JSON", async () => {
+    // `JSON.stringify` on FormData yields "{}", so the file was
+    // silently dropped and the upload failed with no sign that it had
+    // never left the browser.
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ hash: "abc" }));
+
+    const form = new FormData();
+    form.append("file", new Blob(["x"]), "scan.png");
+    await api.post("/passport/1/evidence", form);
+
+    const [, init] = vi.mocked(fetch).mock.calls[0];
+    expect(init?.body).toBeInstanceOf(FormData);
+  });
+
+  it("leaves the content type off a file upload", async () => {
+    // The browser has to set its own, naming a multipart boundary only
+    // it knows. Declaring JSON over it leaves the request unparseable.
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ hash: "abc" }));
+
+    const form = new FormData();
+    form.append("file", new Blob(["x"]), "scan.png");
+    await api.post("/passport/1/evidence", form);
+
+    const [, init] = vi.mocked(fetch).mock.calls[0];
+    const headers = init?.headers as Record<string, string>;
+    expect(headers["Content-Type"]).toBeUndefined();
+  });
+
   it("throws on a non-JSON 200 response (e.g. HTML placeholder page)", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
       htmlResponse("<html><title>Congratulations</title></html>"),
