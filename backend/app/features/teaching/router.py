@@ -102,7 +102,7 @@ from app.models import (
 from app.organisations import (
     get_member_place_ids,
     get_reachable_place_ids,
-    organisation_of_place,
+    media_prefix_of,
     organisation_place_member,
 )
 from app.rate_limit import limiter
@@ -952,10 +952,10 @@ def grant_video_access(
         )
 
     try:
-        storage_org_id = organisation_of_place(db, org_id)
-        if storage_org_id is None:
+        storage_prefix_id = media_prefix_of(db, org_id)
+        if storage_prefix_id is None:
             raise HTTPException(404, "Module not found")
-        url_prefix = build_url_prefix(base_url, storage_org_id, module_id)
+        url_prefix = build_url_prefix(base_url, storage_prefix_id, module_id)
     except ValueError:
         # An unsafe module_id reached the prefix builder. Refuse rather
         # than sign anything: the prefix is the entire authorisation
@@ -2212,13 +2212,12 @@ def create_media_upload_url(
         )
 
     org_id = _get_user_org_id(user, db)
-    # Media objects live at {organisation_id}/{module}/{asset} in the
-    # bucket, so that number addresses a real file rather than filtering
-    # a table. It keeps counting in organisation ids until the objects
-    # themselves are moved, which is storage work rather than a column
-    # switch.
-    storage_org_id = organisation_of_place(db, org_id)
-    if storage_org_id is None:
+    # Media objects live at {prefix}/{module}/{asset} in the bucket, so
+    # that number addresses a real file rather than filtering a table.
+    # The place records which one, because the objects already written
+    # are under the organisation id the place used to have.
+    storage_prefix_id = media_prefix_of(db, org_id)
+    if storage_prefix_id is None:
         raise HTTPException(404, "Module not found")
     asset_id = uuid.uuid4().hex
 
@@ -2254,7 +2253,7 @@ def create_media_upload_url(
 
     try:
         url = create_resumable_upload_url(
-            bucket, storage_org_id, module_id, asset_id, body.content_type
+            bucket, storage_prefix_id, module_id, asset_id, body.content_type
         )
     except ValueError:
         # An unsafe module_id reached the path builder. The path is what

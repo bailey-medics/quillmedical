@@ -570,6 +570,11 @@ def _fill_the_storage_address(
     object sits rather than who owns it. A writer names the place, as
     everything else here does, and the address follows from it.
 
+    Read from the place's own ``media_prefix_id``, falling back to its
+    id, rather than from the organisations table: the objects already in
+    the bucket sit under the organisation id the place used to have, and
+    that number is recorded on the place so it survives the table.
+
     A listener rather than a line at each write for the same reason the
     pair of ids had one: the writers are not only the places the
     application creates these rows, and a row with the wrong prefix
@@ -578,13 +583,17 @@ def _fill_the_storage_address(
     if target.organisation_id is not None or target.org_unit_id is None:
         return
 
-    from app.models import Organisation
+    from app.models import OrgUnit
 
-    target.organisation_id = connection.scalar(
-        select(Organisation.id).where(
-            Organisation.org_unit_id == target.org_unit_id
+    row = connection.execute(
+        select(OrgUnit.id, OrgUnit.media_prefix_id).where(
+            OrgUnit.id == target.org_unit_id
         )
-    )
+    ).first()
+    if row is None:
+        return
+    own_id, recorded = row
+    target.organisation_id = int(recorded if recorded is not None else own_id)
 
 
 event.listen(ModuleMediaLink, "before_insert", _fill_the_storage_address)

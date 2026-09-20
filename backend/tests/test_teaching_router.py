@@ -3507,7 +3507,11 @@ class TestMediaAssetDeletion:
         )
 
         assert resp.status_code == 204
-        assert deleted == [("src-bucket", org.id, "test-bank", "asset-1")]
+        # The link's own stored prefix, which is the place's id here:
+        # nothing records an older one for a place made in a fixture.
+        assert deleted == [
+            ("src-bucket", org.org_unit_id, "test-bank", "asset-1")
+        ]
         assert (
             db_session.query(ModuleMediaLink)
             .filter_by(asset_id="asset-1")
