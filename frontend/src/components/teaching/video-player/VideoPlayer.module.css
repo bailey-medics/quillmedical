@@ -48,7 +48,23 @@
 .wrapper :global(video)::cue {
   background-color: rgb(0 0 0 / 75%);
   color: var(--mantine-color-white);
-  font-size: var(--typo-sm);
+
+  /*
+   * Atkinson Hyperlegible, named rather than left to inherit. A cue is
+   * drawn in shadow DOM and the browser falls back to its own default
+   * there, so the app's font does not reach it on its own. The face was
+   * designed by the Braille Institute for low-vision reading, which is
+   * the same job a caption does.
+   */
+  font-family: var(--mantine-font-family);
+
+  /*
+   * Body-text size, not the smaller step this first shipped at.
+   * Captions sit over moving picture, which is harder to read than
+   * text on a page, so the app's ordinary reading size is the floor
+   * rather than the ceiling.
+   */
+  font-size: var(--typo-md);
   line-height: 1.4;
 }
 
