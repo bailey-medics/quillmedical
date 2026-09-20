@@ -72,9 +72,16 @@ Proxy in front of non-production.
 ## Phase 3: Settle the environment names
 
 - [ ] Adopt `app.quill-medical.com` for teaching and passport — the
-      product that is actually live — and `epr.quill-medical.com` for
-      clinical when it exists. The public navigation already calls the
-      clinical product "EPR" in `frontend/src/components/ribbon/publicNavLinks.ts`.
+      product that is actually live — and `ehr.quill-medical.com` for
+      clinical when it exists.
+
+- [ ] Note that the subdomain says EHR while the application still says
+      EPR — the nav link in
+      `frontend/src/components/ribbon/publicNavLinks.ts`, the two landing
+      page buttons and the marketing copy. Nothing user-facing depends on
+      it, because the clinical product is not live and every one of those
+      links is disabled, so the mismatch costs nothing today. Renaming
+      them is separate work, out of scope here.
 
 - [ ] Name environments after their regulatory class and audience, not
       their current feature list. `teaching.` has already outgrown itself
