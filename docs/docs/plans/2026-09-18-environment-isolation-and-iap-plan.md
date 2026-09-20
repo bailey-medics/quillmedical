@@ -80,12 +80,12 @@ the rename ever happens.
 
 ### Phase 2: Host-only auth cookies
 
-- [ ] Remove `COOKIE_DOMAIN = ".${var.domain}"` from `infra/main.tf`.
+- [x] Remove `COOKIE_DOMAIN = ".${var.domain}"` from `infra/main.tf`.
 
-- [ ] Remove `COOKIE_DOMAIN: ".quill-medical.com"` from
+- [x] Remove `COOKIE_DOMAIN: ".quill-medical.com"` from
       `compose.prod.cloud-run.yml`.
 
-- [ ] Confirm no code change is needed. `backend/app/config.py` already
+- [x] Confirm no code change is needed. `backend/app/config.py` already
       declares `COOKIE_DOMAIN: str | None = None`, documented as "None =
       current domain", and `backend/app/main.py` passes it straight
       through to every `set_cookie` and `delete_cookie` call.
@@ -94,9 +94,16 @@ the rename ever happens.
       `.quill-medical.com` cookies stop matching the host-only ones, so
       existing sessions end. Ship it at a quiet time.
 
-- [ ] Check nothing depends on a session surviving a hop between
-      `teaching.` and the apex — the landing site is static and should
-      not, but confirm rather than assume.
+- [x] Check nothing depends on a session surviving a hop between
+      `teaching.` and the apex. The landing page at
+      `infra/modules/load-balancer/landing/index.html` is a static file
+      with no script and no form, so nothing there reads a cookie.
+
+- [x] Pin the behaviour with tests.
+      `backend/tests/test_auth_cookies_are_host_only.py` asserts that no
+      `Set-Cookie` header from login or logout carries a `Domain`, and
+      that login sets all three cookies, so the first assertion cannot
+      pass by setting none.
 
 - [ ] Record the `__Host-` cookie prefix as a later hardening step. It
       requires host-only, `Secure` and `Path=/`, all of which this phase
