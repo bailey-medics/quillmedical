@@ -423,17 +423,12 @@ Two things to check rather than assume:
    way and not another, what could go wrong, where this sits in the
    stack.
 
-   **Open with two orienting lines, then three level-two sections.** The
+   **Open with one orienting line, then three level-two sections.** The
    opening is not a restatement of the title: it is the context a reader
    needs before the first bullet makes any sense at all.
 
    ```markdown
    Staff can now be taken off a ward without leaving them in charge of it.
-
-   Step 3 of 5 in the [site tree unification plan][plan].
-   Follows #758, followed by #761.
-
-   [plan]: https://github.com/bailey-medics/quillmedical/blob/main/docs/docs/plans/2026-09-11-site-tree-unification-plan.md
 
    ## LLM decisions
 
@@ -457,13 +452,9 @@ Two things to check rather than assume:
      before.** In terms of what someone using the thing would see. Never
      a paraphrase of the title, and never a sentence that only parses if
      you already know the answer.
-   - **Line two: where this branch sits.** The plan it comes from, linked,
-     and which step of it; then the pull request below it in the stack and
-     the one above, by number. Without this the reader has to rebuild the
-     stack from the base branches before they can judge anything, which is
-     the single biggest reason these read as cryptic.
-   - **Link the plan with a full `https://github.com/…/blob/main/…` URL.**
-     GitHub does not resolve a relative path in a pull request body.
+   - **If you do link something — a plan, a document — use a full
+     `https://github.com/…/blob/main/…` URL.** GitHub does not resolve a
+     relative path in a pull request body.
 
    ### Name things by their real names
 
