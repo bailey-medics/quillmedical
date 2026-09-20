@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { renderWithMantine } from "@test/test-utils";
+import { renderWithMantine, remToPx } from "@test/test-utils";
 import TextField from "./TextField";
 
 describe("TextField", () => {
@@ -31,7 +31,7 @@ describe("TextField", () => {
     expect(label).toHaveStyle({
       fontSize: "var(--mantine-font-size-md)",
       color: "var(--mantine-color-text)",
-      marginBottom: "0.25rem",
+      marginBottom: remToPx("0.25rem"),
     });
   });
 
