@@ -952,11 +952,11 @@ def _clear_what_hangs_off_a_place(
     so moving it here asks the same of the row that actually holds the
     rest.
     """
-    place_id = target.id
+    org_unit_id = target.id
 
     connection.execute(
         update(OrgUnit)
-        .where(OrgUnit.parent_id == place_id)
+        .where(OrgUnit.parent_id == org_unit_id)
         .values(parent_id=None)
     )
     for table in (
@@ -965,23 +965,23 @@ def _clear_what_hangs_off_a_place(
         message_org_unit,
     ):
         connection.execute(
-            table.delete().where(table.c.org_unit_id == place_id)
+            table.delete().where(table.c.org_unit_id == org_unit_id)
         )
     connection.execute(
-        delete(OrgUnitFeature).where(OrgUnitFeature.org_unit_id == place_id)
+        delete(OrgUnitFeature).where(OrgUnitFeature.org_unit_id == org_unit_id)
     )
     connection.execute(
         delete(PractisingCompetency).where(
-            PractisingCompetency.org_unit_id == place_id
+            PractisingCompetency.org_unit_id == org_unit_id
         )
     )
     connection.execute(
-        delete(Position).where(Position.org_unit_id == place_id)
+        delete(Position).where(Position.org_unit_id == org_unit_id)
     )
     connection.execute(
         delete(OrgUnitLink).where(
-            (OrgUnitLink.source_id == place_id)
-            | (OrgUnitLink.target_id == place_id)
+            (OrgUnitLink.source_id == org_unit_id)
+            | (OrgUnitLink.target_id == org_unit_id)
         )
     )
 

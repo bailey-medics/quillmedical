@@ -159,9 +159,9 @@ def _seed_bank(
     is_live: bool = True,
 ) -> QuestionBankConfig:
     """Create a question bank config + published items."""
-    place_id = org_id
+    org_unit_id = org_id
     config = QuestionBankConfig(
-        org_unit_id=place_id,
+        org_unit_id=org_unit_id,
         question_bank_id="test-bank",
         version=1,
         title="Test Bank",
@@ -179,7 +179,7 @@ def _seed_bank(
     # follow it, so a fixture without one would not represent a live bank.
     db.add(
         QuestionBankOrgStatus(
-            org_unit_id=place_id,
+            org_unit_id=org_unit_id,
             question_bank_id="test-bank",
             is_live=is_live,
             active_version=1,
@@ -189,7 +189,7 @@ def _seed_bank(
     diagnoses = ["adenoma", "serrated", "adenoma", "serrated", "adenoma"]
     for i in range(n_items):
         item = QuestionBankItem(
-            org_unit_id=place_id,
+            org_unit_id=org_unit_id,
             question_bank_id="test-bank",
             bank_version=1,
             status="published",

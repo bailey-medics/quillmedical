@@ -2244,7 +2244,7 @@ def verify_assessor_registration(
     ones would make the record claim a check that had not happened when
     it was signed.
     """
-    place_id = _require_org_admin_over(db, user, assessor_user_id)
+    org_unit_id = _require_org_admin_over(db, user, assessor_user_id)
 
     assessor = db.get(User, assessor_user_id)
 
@@ -2277,7 +2277,7 @@ def verify_assessor_registration(
             AssessorRegistrationVerification.registration_authority
             == authority,
             AssessorRegistrationVerification.registration_number == number,
-            AssessorRegistrationVerification.org_unit_id == place_id,
+            AssessorRegistrationVerification.org_unit_id == org_unit_id,
         )
     )
 
@@ -2293,7 +2293,7 @@ def verify_assessor_registration(
             registration_authority=authority,
             registration_number=number,
             verified_by_user_id=user.id,
-            org_unit_id=place_id,
+            org_unit_id=org_unit_id,
         )
         db.add(row)
 
@@ -2305,7 +2305,7 @@ def verify_assessor_registration(
         registration_number=number,
         verified_by_name=user.full_name or user.username,
         verified_at=_as_utc(row.verified_at),
-        org_unit_id=place_id,
+        org_unit_id=org_unit_id,
     )
 
 
@@ -2658,19 +2658,19 @@ def accept_assessor_invite(
         db.flush()
         status = "registered"
 
-    place, place_id = _holder_place(db, invite.passport_id)
+    place, org_unit_id = _holder_place(db, invite.passport_id)
 
     if place == "site":
         already = db.scalar(
             select(org_unit_member.c.user_id).where(
-                org_unit_member.c.org_unit_id == place_id,
+                org_unit_member.c.org_unit_id == org_unit_id,
                 org_unit_member.c.user_id == user.id,
             )
         )
         if already is None:
             db.execute(
                 org_unit_member.insert().values(
-                    org_unit_id=place_id,
+                    org_unit_id=org_unit_id,
                     user_id=user.id,
                     capacity="external",
                 )
@@ -2678,12 +2678,12 @@ def accept_assessor_invite(
     else:
         already = db.scalar(
             select(organisation_org_unit_member.c.user_id).where(
-                organisation_org_unit_member.c.org_unit_id == place_id,
+                organisation_org_unit_member.c.org_unit_id == org_unit_id,
                 organisation_org_unit_member.c.user_id == user.id,
             )
         )
         if already is None:
-            add_org_unit_member(db, place_id, user.id, "external")
+            add_org_unit_member(db, org_unit_id, user.id, "external")
 
     invite.accepted_at = _now()
     invite.accepted_user_id = user.id
@@ -2693,7 +2693,7 @@ def accept_assessor_invite(
         status=status,
         user_id=user.id,
         place=place,
-        place_id=place_id,
+        place_id=org_unit_id,
     )
 
 

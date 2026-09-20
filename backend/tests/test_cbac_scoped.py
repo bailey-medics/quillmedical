@@ -81,10 +81,11 @@ class TestTheCeilingNarrowsEveryPlace:
             db_session,
             receptionist,
             "access_patient_records",
-            place_id=org.id,
+            org_unit_id=org.id,
         )
         assert (
-            competencies_at(db_session, receptionist, place_id=org.id) == set()
+            competencies_at(db_session, receptionist, org_unit_id=org.id)
+            == set()
         )
 
     def test_the_ceiling_alone_authorises_nothing(self, db_session):
@@ -97,7 +98,7 @@ class TestTheCeilingNarrowsEveryPlace:
             db_session,
             doctor,
             "access_patient_records",
-            place_id=org.id,
+            org_unit_id=org.id,
         )
 
 
@@ -114,10 +115,10 @@ class TestNothingIsInherited:
             db_session,
             doctor,
             "access_patient_records",
-            place_id=org.id,
+            org_unit_id=org.id,
         )
         assert not can_practise_at(
-            db_session, doctor, "access_patient_records", place_id=site.id
+            db_session, doctor, "access_patient_records", org_unit_id=site.id
         )
 
     def test_a_site_row_does_not_reach_its_organisation(self, db_session):
@@ -127,13 +128,13 @@ class TestNothingIsInherited:
         _authorise(db_session, doctor, "access_patient_records", site=site)
 
         assert can_practise_at(
-            db_session, doctor, "access_patient_records", place_id=site.id
+            db_session, doctor, "access_patient_records", org_unit_id=site.id
         )
         assert not can_practise_at(
             db_session,
             doctor,
             "access_patient_records",
-            place_id=org.id,
+            org_unit_id=org.id,
         )
 
 
@@ -149,7 +150,7 @@ class TestBothDirections:
             db_session, doctor, "prescribe_controlled_schedule_2", org=there
         )
 
-        assert competencies_at(db_session, doctor, place_id=here.id) == {
+        assert competencies_at(db_session, doctor, org_unit_id=here.id) == {
             "access_patient_records"
         }
 
@@ -166,7 +167,7 @@ class TestBothDirections:
         _authorise(db_session, cara, "access_patient_records", org=there)
 
         found = who_can_practise_at(
-            db_session, "access_patient_records", place_id=here.id
+            db_session, "access_patient_records", org_unit_id=here.id
         )
         assert sorted(found) == sorted([anna.id, ben.id])
 
@@ -185,13 +186,13 @@ class TestBothDirections:
         )
 
         assert who_can_practise_at(
-            db_session, "access_patient_records", place_id=here.id
+            db_session, "access_patient_records", org_unit_id=here.id
         ) == [receptionist.id]
         assert not can_practise_at(
             db_session,
             receptionist,
             "access_patient_records",
-            place_id=here.id,
+            org_unit_id=here.id,
         )
 
 
@@ -229,10 +230,10 @@ class TestTheResolverAsksForOnePlace:
             db_session,
             doctor,
             "access_patient_records",
-            place_id=org.id,
+            org_unit_id=org.id,
         )
         assert can_practise_at(
-            db_session, doctor, "access_patient_records", place_id=site.id
+            db_session, doctor, "access_patient_records", org_unit_id=site.id
         )
 
 

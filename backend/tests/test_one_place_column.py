@@ -79,8 +79,12 @@ class TestBothSpellingsFindTheSameRow:
         doctor = _doctor(db_session)
         _authorise(db_session, doctor, org.id)
 
-        assert can_practise_at(db_session, doctor, COMPETENCY, place_id=org.id)
-        assert can_practise_at(db_session, doctor, COMPETENCY, place_id=org.id)
+        assert can_practise_at(
+            db_session, doctor, COMPETENCY, org_unit_id=org.id
+        )
+        assert can_practise_at(
+            db_session, doctor, COMPETENCY, org_unit_id=org.id
+        )
 
     def test_the_row_is_stored_against_the_place(self, db_session):
         org = _org(db_session)
@@ -106,7 +110,7 @@ class TestNothingIsInherited:
         _authorise(db_session, doctor, org.id)
 
         assert not can_practise_at(
-            db_session, doctor, COMPETENCY, place_id=ward.id
+            db_session, doctor, COMPETENCY, org_unit_id=ward.id
         )
 
     def test_an_organisation_does_not_take_a_wards(self, db_session):
@@ -116,9 +120,9 @@ class TestNothingIsInherited:
         _authorise(db_session, doctor, ward.id)
 
         assert not can_practise_at(
-            db_session, doctor, COMPETENCY, place_id=org.id
+            db_session, doctor, COMPETENCY, org_unit_id=org.id
         )
-        assert competencies_at(db_session, doctor, place_id=org.id) == set()
+        assert competencies_at(db_session, doctor, org_unit_id=org.id) == set()
 
 
 class TestTheRulesThatSurvived:
@@ -146,9 +150,11 @@ class TestTheRulesThatSurvived:
         _authorise(db_session, doctor, org.id)
         _authorise(db_session, doctor, ward.id)
 
-        assert can_practise_at(db_session, doctor, COMPETENCY, place_id=org.id)
         assert can_practise_at(
-            db_session, doctor, COMPETENCY, place_id=ward.id
+            db_session, doctor, COMPETENCY, org_unit_id=org.id
+        )
+        assert can_practise_at(
+            db_session, doctor, COMPETENCY, org_unit_id=ward.id
         )
 
     def test_a_row_with_no_place_is_refused(self, db_session):

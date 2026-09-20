@@ -32,7 +32,7 @@ from sqlalchemy.sql.elements import ColumnElement
 from app.models import PractisingCompetency, User
 
 
-def _place_clause(place_id: int) -> ColumnElement[bool]:
+def _place_clause(org_unit_id: int) -> ColumnElement[bool]:
     """Build the where-clause for one place.
 
     One column on the row, one argument here. This used to take an
@@ -42,27 +42,27 @@ def _place_clause(place_id: int) -> ColumnElement[bool]:
     for the other.
 
     Args:
-        place_id: The place — an organisation's own row in the tree, or
+        org_unit_id: The place — an organisation's own row in the tree, or
             any place beneath one.
 
     Returns:
         The matching column comparison.
     """
-    return PractisingCompetency.org_unit_id == place_id
+    return PractisingCompetency.org_unit_id == org_unit_id
 
 
 def competencies_at(
     db: Session,
     user: User,
     *,
-    place_id: int,
+    org_unit_id: int,
 ) -> set[str]:
     """Return what ``user`` may practise at one place.
 
     Args:
         db: Database session.
         user: The person asked about.
-        place_id: The place — an organisation's own row in the tree, or
+        org_unit_id: The place — an organisation's own row in the tree, or
             any place beneath one.
 
     Returns:
@@ -73,7 +73,7 @@ def competencies_at(
         db.execute(
             select(PractisingCompetency.competency).where(
                 PractisingCompetency.user_id == user.id,
-                _place_clause(place_id),
+                _place_clause(org_unit_id),
             )
         )
         .scalars()
@@ -87,7 +87,7 @@ def can_practise_at(
     user: User,
     competency: str,
     *,
-    place_id: int,
+    org_unit_id: int,
 ) -> bool:
     """Whether ``user`` may practise ``competency`` at one place.
 
@@ -95,7 +95,7 @@ def can_practise_at(
         db: Database session.
         user: The person asked about.
         competency: A competency id from ``shared/competency-definitions/``.
-        place_id: The place — an organisation's own row in the tree, or
+        org_unit_id: The place — an organisation's own row in the tree, or
             any place beneath one.
 
     Returns:
@@ -109,7 +109,7 @@ def can_practise_at(
         select(PractisingCompetency.id).where(
             PractisingCompetency.user_id == user.id,
             PractisingCompetency.competency == competency,
-            _place_clause(place_id),
+            _place_clause(org_unit_id),
         )
     ).first()
     return row is not None
@@ -119,7 +119,7 @@ def who_can_practise_at(
     db: Session,
     competency: str,
     *,
-    place_id: int,
+    org_unit_id: int,
 ) -> list[int]:
     """Return the ids of everyone authorised for ``competency`` at one place.
 
@@ -134,7 +134,7 @@ def who_can_practise_at(
     Args:
         db: Database session.
         competency: A competency id from ``shared/competency-definitions/``.
-        place_id: The place — an organisation's own row in the tree, or
+        org_unit_id: The place — an organisation's own row in the tree, or
             any place beneath one.
 
     Returns:
@@ -145,7 +145,7 @@ def who_can_practise_at(
         for uid in db.execute(
             select(PractisingCompetency.user_id).where(
                 PractisingCompetency.competency == competency,
-                _place_clause(place_id),
+                _place_clause(org_unit_id),
             )
         )
         .scalars()

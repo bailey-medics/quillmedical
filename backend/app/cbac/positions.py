@@ -139,7 +139,7 @@ def appoint(
             db,
             user,
             position.requires_competency,
-            place_id=position.org_unit_id,
+            org_unit_id=position.org_unit_id,
         )
         if not allowed:
             raise ValueError(

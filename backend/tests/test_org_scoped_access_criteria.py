@@ -45,17 +45,17 @@ from app.security import hash_password
 
 
 def _can_at_org(
-    db: Session, user: User, place_id: int, competency: str
+    db: Session, user: User, org_unit_id: int, competency: str
 ) -> bool:
     """Whether ``user`` may exercise ``competency`` at an organisation."""
-    return can_practise_at(db, user, competency, place_id=place_id)
+    return can_practise_at(db, user, competency, org_unit_id=org_unit_id)
 
 
 def _can_at_site(
     db: Session, user: User, site_id: int, competency: str
 ) -> bool:
     """Whether ``user`` may exercise ``competency`` at a site."""
-    return can_practise_at(db, user, competency, place_id=site_id)
+    return can_practise_at(db, user, competency, org_unit_id=site_id)
 
 
 def _authorise(

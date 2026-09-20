@@ -461,7 +461,7 @@ def get_accessible_patient_ids(db: Session, user: User) -> set[str]:
     # one file rather than a hunt through the routes.
 
 
-def media_prefix_of(db: Session, place_id: int) -> int | None:
+def media_prefix_of(db: Session, org_unit_id: int) -> int | None:
     """Return the number this place's media objects are filed under.
 
     Media lives at ``{prefix}/{module}/{asset}`` in a bucket and the
@@ -476,14 +476,14 @@ def media_prefix_of(db: Session, place_id: int) -> int | None:
 
     Args:
         db: Core database session.
-        place_id: The place.
+        org_unit_id: The place.
 
     Returns:
         The prefix, or None if there is no such place.
     """
     row = db.execute(
         select(OrgUnit.id, OrgUnit.media_prefix_id).where(
-            OrgUnit.id == place_id
+            OrgUnit.id == org_unit_id
         )
     ).first()
     if row is None:

@@ -247,8 +247,8 @@ def organisation_places_of_sites(
         return {}
 
     organisations = {
-        int(place_id)
-        for place_id in db.execute(
+        int(org_unit_id)
+        for org_unit_id in db.execute(
             organisation_org_unit_ids().where(
                 OrgUnit.id.in_(set(roots.values()))
             )
