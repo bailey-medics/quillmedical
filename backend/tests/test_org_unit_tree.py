@@ -21,11 +21,10 @@ from app.models import Organisation, OrgUnit
 from app.org_units.tree import (
     MAX_TREE_DEPTH,
     descendant_ids,
-    organisation_id_of_site,
-    organisation_ids_of_sites,
+    organisation_place_ids,
+    organisation_place_of_site,
+    organisation_places_of_sites,
     root_id_of,
-    root_ids_of_organisations,
-    site_ids_of_organisations,
 )
 from app.org_units.types import ORGANISATION_TYPE, ROOT_TYPE_IDS
 
@@ -103,7 +102,9 @@ class TestWalkingUp:
         room = _under(db_session, ward.id, "Room", "room")
 
         assert root_id_of(db_session, room.id) == org.org_unit_id
-        assert organisation_id_of_site(db_session, room.id) == org.id
+        assert (
+            organisation_place_of_site(db_session, room.id) == org.org_unit_id
+        )
 
     def test_a_place_with_no_parent_at_all_has_no_organisation(
         self, db_session
@@ -112,7 +113,7 @@ class TestWalkingUp:
         loose = _under(db_session, None, "Loose Ward", "ward")
 
         assert root_id_of(db_session, loose.id) == loose.id
-        assert organisation_id_of_site(db_session, loose.id) is None
+        assert organisation_place_of_site(db_session, loose.id) is None
 
     def test_a_place_that_does_not_exist_has_no_root(self, db_session):
         assert root_id_of(db_session, 999999) is None
@@ -126,7 +127,7 @@ class TestWalkingUp:
         db_session.commit()
 
         assert root_id_of(db_session, a.id) is None
-        assert organisation_id_of_site(db_session, a.id) is None
+        assert organisation_place_of_site(db_session, a.id) is None
 
     def test_a_chain_longer_than_the_cap_gives_up(self, db_session):
         org = _org(db_session, "Trust")
@@ -156,7 +157,7 @@ class TestWalkingDown:
         org = _org(db_session, "Trust")
         ward = _under(db_session, org.org_unit_id, "Ward", "ward")
 
-        assert site_ids_of_organisations(db_session, [org.id]) == [ward.id]
+        assert descendant_ids(db_session, [org.org_unit_id]) == {ward.id}
 
     def test_a_neighbouring_organisation_does_not_leak_in(self, db_session):
         mine = _org(db_session, "My Trust")
@@ -164,10 +165,9 @@ class TestWalkingDown:
         my_ward = _under(db_session, mine.org_unit_id, "My Ward", "ward")
         _under(db_session, theirs.org_unit_id, "Their Ward", "ward")
 
-        assert site_ids_of_organisations(db_session, [mine.id]) == [my_ward.id]
+        assert descendant_ids(db_session, [mine.org_unit_id]) == {my_ward.id}
 
     def test_asking_about_no_organisations_returns_nothing(self, db_session):
-        assert site_ids_of_organisations(db_session, []) == []
         assert descendant_ids(db_session, []) == set()
 
     def test_a_cycle_below_a_root_does_not_loop(self, db_session):
@@ -191,18 +191,38 @@ class TestNamingTheOrganisationForManyPlaces:
         their_ward = _under(db_session, theirs.org_unit_id, "Ward", "ward")
         loose = _under(db_session, None, "Loose", "ward")
 
-        assert organisation_ids_of_sites(
+        assert organisation_places_of_sites(
             db_session, [my_ward.id, their_ward.id, loose.id]
-        ) == {my_ward.id: mine.id, their_ward.id: theirs.id}
+        ) == {
+            my_ward.id: mine.org_unit_id,
+            their_ward.id: theirs.org_unit_id,
+        }
 
-    def test_roots_come_back_for_the_organisations_asked_for(self, db_session):
-        a = _org(db_session, "A")
-        b = _org(db_session, "B")
+    def test_a_detached_ward_is_not_an_organisation(self, db_session):
+        """It is its own root, which is not the same thing.
 
-        assert root_ids_of_organisations(db_session, [a.id, b.id]) == sorted(
-            [a.org_unit_id, b.org_unit_id]
+        What makes a place an organisation is its type — the kinds that
+        need no parent are the kinds a tree starts with. Reading "root"
+        as "organisation" would give a detached ward's members the run
+        of somewhere nobody is accountable for.
+        """
+        loose = _under(db_session, None, "Loose", "ward")
+
+        found = set(
+            db_session.execute(organisation_place_ids()).scalars().all()
         )
-        assert root_ids_of_organisations(db_session, []) == []
+
+        assert root_id_of(db_session, loose.id) == loose.id
+        assert loose.id not in found
+
+    def test_an_organisations_own_row_is_one(self, db_session):
+        org = _org(db_session, "Trust")
+
+        found = set(
+            db_session.execute(organisation_place_ids()).scalars().all()
+        )
+
+        assert org.org_unit_id in found
 
 
 class TestDeletingAnOrganisation:
@@ -224,7 +244,7 @@ class TestDeletingAnOrganisation:
 
         db_session.refresh(ward)
         assert ward.parent_id is None
-        assert organisation_id_of_site(db_session, ward.id) is None
+        assert organisation_place_of_site(db_session, ward.id) is None
 
 
 class TestEachWalkIsOneQuery:
@@ -297,7 +317,7 @@ class TestEachWalkIsOneQuery:
 
         asked = self._count_queries(
             db_session,
-            lambda: organisation_ids_of_sites(
+            lambda: organisation_places_of_sites(
                 db_session, [room_id, their_ward_id]
             ),
         )

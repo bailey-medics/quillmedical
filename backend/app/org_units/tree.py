@@ -18,10 +18,11 @@ one. Nothing should ever reach the cap; reaching it means the tree is
 broken, and the guard in the write path exists to stop that happening.
 """
 
-from sqlalchemy import literal, select
+from sqlalchemy import Select, literal, select
 from sqlalchemy.orm import Session, aliased
 
-from app.models import Organisation, OrgUnit
+from app.models import OrgUnit
+from app.org_units.types import ROOT_TYPE_IDS
 
 #: How far a walk goes before it gives up. Ten is far past anything the
 #: application builds — trust, hospital, building, ward, room is five —
@@ -205,66 +206,38 @@ def descendant_ids(db: Session, root_ids: list[int]) -> set[int]:
     return found - set(root_ids)
 
 
-def root_ids_of_organisations(db: Session, org_ids: list[int]) -> list[int]:
-    """Return the tree roots standing for *org_ids*.
+def organisation_place_ids() -> Select[tuple[int]]:
+    """A selectable of every place that is an organisation.
 
-    Args:
-        db: Core database session.
-        org_ids: Organisation ids.
+    An organisation is a place at the top of a tree, and what makes it
+    one is its *type*: the kinds that need no parent are exactly the
+    kinds a tree starts with. Not "has no parent", which a detached ward
+    also satisfies — the test fixtures make one on purpose, and treating
+    it as an organisation would give its members the run of somewhere
+    nobody is accountable for.
 
-    Returns:
-        The org_unit ids of their roots, ascending. An organisation with
-        no root yet contributes nothing.
+    Returned as a selectable rather than a list of ids so it can go
+    inside an ``IN`` without a second round trip.
     """
-    if not org_ids:
-        return []
-    return sorted(
-        org_unit_id
-        for org_unit_id in db.execute(
-            select(Organisation.org_unit_id).where(
-                Organisation.id.in_(org_ids),
-                Organisation.org_unit_id.is_not(None),
-            )
-        )
-        .scalars()
-        .all()
-        if org_unit_id is not None
-    )
+    return select(OrgUnit.id).where(OrgUnit.type.in_(ROOT_TYPE_IDS))
 
 
-def site_ids_of_organisations(db: Session, org_ids: list[int]) -> list[int]:
-    """Return every place beneath *org_ids*, at any depth.
-
-    The replacement for "the sites linked to this organisation". Roots
-    themselves are excluded: an organisation is not one of its own sites.
-
-    Args:
-        db: Core database session.
-        org_ids: Organisation ids.
-
-    Returns:
-        Site ids, ascending.
-    """
-    roots = root_ids_of_organisations(db, org_ids)
-    return sorted(descendant_ids(db, roots))
-
-
-def organisation_ids_of_sites(
+def organisation_places_of_sites(
     db: Session, site_ids: list[int]
 ) -> dict[int, int]:
-    """Return the organisation accountable for each of *site_ids*.
+    """Return the organisation's place above each of *site_ids*.
 
-    One walk up for the whole list, then one lookup of which organisation
-    each root stands for.
+    One walk up for the whole list, then one check that each root
+    reached is a kind of place a tree starts with.
 
     Args:
         db: Core database session.
         site_ids: The places to resolve.
 
     Returns:
-        A mapping of site id to organisation id, leaving out any place
-        whose chain does not reach a root, and any root that stands for no
-        organisation.
+        A mapping of place id to the id of the organisation's own place,
+        leaving out any place whose chain does not reach a root, and any
+        root that is not an organisation.
     """
     if not site_ids:
         return {}
@@ -274,26 +247,26 @@ def organisation_ids_of_sites(
         return {}
 
     organisations = {
-        int(root_id): int(org_id)
-        for root_id, org_id in db.execute(
-            select(Organisation.org_unit_id, Organisation.id).where(
-                Organisation.org_unit_id.in_(set(roots.values()))
-            )
-        ).all()
+        int(place_id)
+        for place_id in db.execute(
+            organisation_place_ids().where(OrgUnit.id.in_(set(roots.values())))
+        )
+        .scalars()
+        .all()
     }
 
     return {
-        site_id: organisations[root_id]
+        site_id: root_id
         for site_id, root_id in roots.items()
         if root_id in organisations
     }
 
 
-def organisation_id_of_site(db: Session, site_id: int) -> int | None:
-    """Return the organisation accountable for *site_id*.
+def organisation_place_of_site(db: Session, site_id: int) -> int | None:
+    """Return the place of the organisation accountable for *site_id*.
 
-    Walks up to the root and reads which organisation that root stands
-    for. A place whose chain does not reach a root — one that has been
+    Walks up to the root and checks it is a kind of place a tree starts
+    with. A place whose chain does not reach one — one that has been
     detached, or whose parent is missing — has no accountable body, and
     the answer is None rather than a guess.
 
@@ -302,6 +275,6 @@ def organisation_id_of_site(db: Session, site_id: int) -> int | None:
         site_id: The place to resolve.
 
     Returns:
-        The organisation's id, or None.
+        The organisation's place id, or None.
     """
-    return organisation_ids_of_sites(db, [site_id]).get(site_id)
+    return organisation_places_of_sites(db, [site_id]).get(site_id)

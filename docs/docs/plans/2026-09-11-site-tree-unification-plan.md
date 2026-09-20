@@ -906,7 +906,8 @@ So the remaining steps land as:
 - [x] 12c-ii-c — the users list excludes members of a place
 - [x] 12c-ii-d — membership and reach answer in place ids
 - [x] 12c-iii-a — a place remembers the prefix its media is filed under
-- [ ] 12c-iii-b — drop the `organisations` table
+- [x] 12c-iii-b — the place surfaces stop translating organisation ids
+- [ ] 12c-iii-c — drop the `organisations` table
 - [x] 12c-iv — refuse deleting a parent with children, and enforce `requires_parent`
 
 #### 10a — write both names for the place column
@@ -1832,6 +1833,33 @@ every video and reissue every cookie".
 - **A place that does not exist has no prefix**, rather than a number.
   Otherwise a caller could sign a cookie for a path nothing is filed
   under.
+
+#### 12c-iii-b — the place surfaces stop translating organisation ids
+
+Split out so the drop itself is small. Nothing here removes the table;
+it removes every remaining reason to consult it.
+
+- **What makes a place an organisation is its *type*.** The kinds that
+  need no parent are exactly the kinds a tree starts with, and
+  `organisation_place_ids()` is that test in one place. Not "has no
+  parent", which a detached ward also satisfies — the fixtures make one
+  on purpose, and reading it as an organisation would give its members
+  the run of somewhere nobody is accountable for.
+- **`cbac/scoped.py`'s two keyword arguments became one.** They were
+  kept apart because an organisation was a row in another table; an
+  organisation is a place, so `organisation_id=` and `site_id=` collapse
+  into `place_id=` and there is no branch left for a caller to get
+  wrong. The 10c notes said this was where they would go.
+- **A post with no place now fails closed** rather than raising. The
+  column is nullable, so the state is representable, and a post nobody
+  can fill is safer than one anybody can. The old code reached the
+  resolver's "name exactly one place" error.
+- **Registration checks the site sits under the place it was given**,
+  rather than under the organisation that place stands for. Same
+  question, one fewer id space.
+- **Three tree helpers went**: `root_ids_of_organisations`,
+  `site_ids_of_organisations` and `organisation_ids_of_sites`. The
+  callers either had the place already or wanted `descendant_ids`.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to
