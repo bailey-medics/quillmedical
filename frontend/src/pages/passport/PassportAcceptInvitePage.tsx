@@ -23,7 +23,7 @@ import ButtonPair from "@/components/button/ButtonPair";
 import ErrorState from "@/components/error-state/ErrorState";
 import StateMessage from "@/components/message-cards/StateMessage";
 import { IconCircleCheck, IconInfoCircle } from "@/components/icons/appIcons";
-import { BodyText } from "@/components/typography";
+import { BodyText, BodyTextInline } from "@/components/typography";
 import { acceptAssessorInvite, previewAssessorInvite } from "@lib/passport";
 import type { InvitePreview } from "@lib/passport";
 
@@ -44,14 +44,24 @@ export function Component() {
 
   const missingToken = !token;
 
-  // Step 6 of the flow: the link lands them where the work is, rather
-  // than telling them to go and find it. A short pause so the
-  // confirmation is read rather than flashed past, and a button beside
-  // it for anyone who looked away or whose browser blocked the move.
+  // Step 6 of the flow, as far as it can go here: registering creates
+  // an account but not a session, so `/passport/inbox` would bounce
+  // straight off `RequireAuth` to the login page anyway. Going there
+  // directly, carrying the confirmation, says what happened and what to
+  // do next in one move rather than two.
   useEffect(() => {
     if (!accepted) return;
 
-    const timer = setTimeout(() => navigate("/passport/inbox"), 2000);
+    const timer = setTimeout(
+      () =>
+        navigate("/login", {
+          state: {
+            notice:
+              "Your account is ready. Sign in to see the sign-off requests waiting for you.",
+          },
+        }),
+      2000,
+    );
     return () => clearTimeout(timer);
   }, [accepted, navigate]);
 
@@ -120,12 +130,19 @@ export function Component() {
         <StateMessage
           icon={<IconCircleCheck />}
           title="Invitation accepted"
-          description="Taking you to the sign-off requests waiting for you."
+          description="Taking you to sign in."
           colour="success"
         />
         <ButtonPair
-          acceptLabel="See my sign-off requests"
-          onAccept={() => navigate("/passport/inbox")}
+          acceptLabel="Sign in"
+          onAccept={() =>
+            navigate("/login", {
+              state: {
+                notice:
+                  "Your account is ready. Sign in to see the sign-off requests waiting for you.",
+              },
+            })
+          }
         />
       </Stack>
     );
@@ -152,9 +169,36 @@ export function Component() {
         <BaseCard>
           <Stack gap="md">
             <BodyText>
-              {preview.holder_name} has asked you to assess them. The invitation
-              was sent to {preview.email}.
+              You have been asked by{" "}
+              <BodyTextInline bold>{preview.holder_name}</BodyTextInline> to
+              sign off{" "}
+              {preview.competency_name ? (
+                <>
+                  a{" "}
+                  <BodyTextInline bold>
+                    {preview.competency_name}
+                  </BodyTextInline>{" "}
+                  competency.
+                </>
+              ) : (
+                "a competency."
+              )}
             </BodyText>
+
+            {/* Why a form at all. Somebody arriving from an email has
+                not asked for an account and will reasonably wonder why
+                they are being made to create one, so the page says what
+                it is for and that it happens once. */}
+            {preview.needs_account ? (
+              <BodyText>
+                For governance, you first need to register. Please do so below.
+              </BodyText>
+            ) : (
+              <BodyText>
+                You already use Quill, so there is nothing to set up. Accepting
+                puts this request with any others waiting for you.
+              </BodyText>
+            )}
 
             {preview.needs_account && (
               <>

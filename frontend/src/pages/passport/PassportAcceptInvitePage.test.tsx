@@ -44,9 +44,10 @@ describe("PassportAcceptInvitePage", () => {
     previewAssessorInvite.mockResolvedValue(preview);
     renderWithToken();
 
-    expect(
-      await screen.findByText(/Dr Mark Bailey has asked you to assess them/),
-    ).toBeInTheDocument();
+    // The name is emphasised, so it is its own element and the
+    // surrounding sentence no longer matches as one string.
+    expect(await screen.findByText("Dr Mark Bailey")).toBeInTheDocument();
+    expect(screen.getByText(/You have been asked by/)).toBeInTheDocument();
   });
 
   it("asks for a username and password only when an account is needed", async () => {
@@ -65,10 +66,60 @@ describe("PassportAcceptInvitePage", () => {
     previewAssessorInvite.mockResolvedValue(preview);
     renderWithToken();
 
-    await screen.findByText(/has asked you to assess them/);
+    await screen.findByText(/You have been asked by/);
 
     expect(
       screen.queryByLabelText(/Choose a username/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("names the competency they were asked to sign off", async () => {
+    // Somebody deciding whether to register at all needs to know what
+    // they are being asked to judge.
+    previewAssessorInvite.mockResolvedValue({
+      ...preview,
+      competency_name: "Perform thoracic ultrasound",
+    });
+    renderWithToken();
+
+    expect(
+      await screen.findByText("Perform thoracic ultrasound"),
+    ).toBeInTheDocument();
+  });
+
+  it("still reads sensibly when no competency is named", async () => {
+    // An invitation can be raised without a request behind it, and one
+    // written before invitations carried a competency has none.
+    previewAssessorInvite.mockResolvedValue({
+      ...preview,
+      competency_name: null,
+    });
+    renderWithToken();
+
+    expect(await screen.findByText(/a competency\./)).toBeInTheDocument();
+  });
+
+  it("says why an account is needed", async () => {
+    // Somebody arriving from an email has not asked for an account and
+    // will reasonably wonder why they are being made to create one.
+    previewAssessorInvite.mockResolvedValue({
+      ...preview,
+      needs_account: true,
+    });
+    renderWithToken();
+
+    expect(
+      await screen.findByText(/For governance, you first need to register/),
+    ).toBeInTheDocument();
+  });
+
+  it("does not ask an existing user to set anything up", async () => {
+    previewAssessorInvite.mockResolvedValue(preview);
+    renderWithToken();
+
+    expect(await screen.findByText(/nothing to set up/)).toBeInTheDocument();
+    expect(
+      screen.queryByText(/For governance, you first need to register/),
     ).not.toBeInTheDocument();
   });
 
@@ -144,9 +195,10 @@ describe("PassportAcceptInvitePage", () => {
     );
   });
 
-  it("offers the way on to the requests once accepted", async () => {
-    // The link lands them where the work is rather than telling them to
-    // go and find it.
+  it("offers the way on to sign in once accepted", async () => {
+    // Registering creates an account but not a session, so the inbox
+    // would bounce off RequireAuth to the login page anyway. Going
+    // there directly says what happened and what to do next at once.
     const user = userEvent.setup();
     previewAssessorInvite.mockResolvedValue(preview);
     acceptAssessorInvite.mockResolvedValue({ status: "linked" });
@@ -157,7 +209,7 @@ describe("PassportAcceptInvitePage", () => {
     );
 
     expect(
-      await screen.findByRole("button", { name: "See my sign-off requests" }),
+      await screen.findByRole("button", { name: "Sign in" }),
     ).toBeInTheDocument();
   });
 

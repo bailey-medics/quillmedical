@@ -74,10 +74,36 @@ describe("PassportSignOffPage", () => {
     await waitFor(() => {
       expect(signOff).toHaveBeenCalledWith(
         inboxItem.passport_id,
-        inboxItem.sign_off.id,
+        // `name`, the folder inside the repository, which is what the
+        // route keys on. `id` is the record's own identifier and
+        // matches no request row: posting it was a 404 every time, and
+        // this test asserted it, so it pinned the bug rather than the
+        // requirement.
+        inboxItem.sign_off.name,
         expect.any(Object),
       );
     });
+  });
+
+  it("says why a sign-off was refused rather than doing nothing", async () => {
+    // Clicking and seeing nothing happen is the worst of the options:
+    // the assessor cannot tell whether it worked, failed, or was
+    // ignored.
+    const user = userEvent.setup();
+    fetchInbox.mockResolvedValue([inboxItem]);
+    signOff.mockRejectedValue(new Error("You were not asked to sign this"));
+    renderPage();
+
+    await user.click(await screen.findByRole("combobox"));
+    await user.click(await screen.findByText("Directly observed"));
+    await user.click(screen.getByRole("checkbox"));
+    await user.click(
+      screen.getByRole("button", { name: "Sign off competency" }),
+    );
+
+    expect(
+      await screen.findByText(/You were not asked to sign this/),
+    ).toBeInTheDocument();
   });
 
   it("refuses a request that is not in this assessor's inbox", async () => {

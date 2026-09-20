@@ -213,6 +213,12 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
       "/verify-email",
       "/verify-email-pending",
       "/teaching/register",
+      // Opened by somebody with no account at all: the signed token in
+      // the URL is what authenticates them. Without this the page loads,
+      // AuthContext asks /api/auth/me, gets the 401 it should expect,
+      // and this handler sends an invited assessor to /login before
+      // they can register.
+      "/passport/assessors/accept",
     ];
     const currentPath = window.location.pathname;
     const isGuestPath = guestPaths.some(

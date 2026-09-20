@@ -30,6 +30,18 @@ vi.mock("@/lib/api", () => ({
   api: { get: () => Promise.resolve({ users: [] }) },
 }));
 
+// The pages read the signed-in holder's address so the form can refuse
+// it: naming yourself is not a sign-off. Mocked the way every other
+// page test that reads auth does, rather than wrapping in a provider.
+vi.mock("@/auth/AuthContext", () => ({
+  useAuth: () => ({
+    state: {
+      status: "authenticated",
+      user: { username: "holder", email: "holder@example.nhs.uk" },
+    },
+  }),
+}));
+
 function competency(
   id: string,
   name: string,
@@ -188,6 +200,32 @@ describe("PassportSignOffsPage", () => {
     expect(screen.queryByText(/logbook/)).not.toBeInTheDocument();
   });
 
+  it("refuses the holder's own address before anything is sent", async () => {
+    // The form carries this check, but only if the page tells it who
+    // the holder is. Without that the form offered to email an
+    // invitation to the holder themselves, which is nonsense the
+    // server would then refuse.
+    const user = userEvent.setup();
+    fetchMyPassport.mockResolvedValue(detailWith([]));
+    renderWithRouter(<PassportSignOffsPage />);
+
+    await user.click(
+      await screen.findByRole("button", { name: "Ask for a sign-off" }),
+    );
+    await user.click(await screen.findByRole("combobox"));
+    await user.click(await screen.findByText("Manage User Accounts"));
+
+    await user.type(
+      await screen.findByRole("textbox", { name: /Who should assess this/ }),
+      "holder@example.nhs.uk",
+    );
+
+    expect(
+      await screen.findByText(/You cannot sign off yourself/),
+    ).toBeInTheDocument();
+    expect(requestSignOff).not.toHaveBeenCalled();
+  });
+
   it("says why the server refused, rather than 'try again'", async () => {
     // Asking yourself is refused, and so are several other things a
     // holder can act on. "Please try again" hides the reason and
@@ -207,7 +245,7 @@ describe("PassportSignOffsPage", () => {
 
     await user.type(
       await screen.findByRole("textbox", { name: /Who should assess this/ }),
-      "holder@example.nhs.uk",
+      "assessor@other-trust.nhs.uk",
     );
     await user.type(
       screen.getByRole("textbox", { name: /Observed on/ }),
@@ -218,6 +256,7 @@ describe("PassportSignOffsPage", () => {
     await screen.findByText(/Nobody on Quill uses that address/);
 
     await user.click(screen.getByRole("button", { name: "Request sign-off" }));
+
     await user.click(
       await screen.findByRole("button", { name: "Send request" }),
     );
@@ -229,7 +268,7 @@ describe("PassportSignOffsPage", () => {
     // the competency already chosen and everything filled in.
     expect(
       screen.getByRole("textbox", { name: /Who should assess this/ }),
-    ).toHaveValue("holder@example.nhs.uk");
+    ).toHaveValue("assessor@other-trust.nhs.uk");
 
     // And it is not dressed as a crash: the rule worked exactly as
     // intended.

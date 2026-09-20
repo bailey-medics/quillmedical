@@ -128,8 +128,24 @@ describe("SignOffRequestForm", () => {
       await typeAssessorEmail(user, "holder@example.nhs.uk");
 
       expect(
-        await screen.findByText(/That is your own address/),
+        await screen.findByText(/You cannot sign off yourself/),
       ).toBeInTheDocument();
+    });
+
+    it("refuses the holder's own username", async () => {
+      // The search leaves the caller out of its own results, so a
+      // holder typing their username finds nobody. Without this they
+      // would be told to keep typing rather than that they had named
+      // themselves.
+      const user = userEvent.setup();
+      renderForm({ holderUsername: "holder" });
+
+      await typeAssessorEmail(user, "holder");
+
+      expect(
+        await screen.findByText(/You cannot sign off yourself/),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/No match yet/)).not.toBeInTheDocument();
     });
 
     it("will not let the holder send their own address", async () => {
@@ -141,7 +157,7 @@ describe("SignOffRequestForm", () => {
         screen.getByRole("textbox", { name: /Observed on/ }),
         "14/03/2026",
       );
-      await screen.findByText(/That is your own address/);
+      await screen.findByText(/You cannot sign off yourself/);
 
       // Compared without regard to case, because an address typed with
       // capitals is the same mailbox.

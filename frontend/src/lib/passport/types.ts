@@ -530,6 +530,13 @@ export interface InvitePreview {
   expires_at: IsoDateTime;
   needs_account: boolean;
   already_accepted: boolean;
+  /**
+   * What they were asked to sign off, where the invitation names one.
+   *
+   * Null for an invitation raised without a request behind it, and for
+   * one written before invitations carried a competency.
+   */
+  competency_name?: string | null;
 }
 
 /**

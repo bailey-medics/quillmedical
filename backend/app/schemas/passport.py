@@ -679,8 +679,10 @@ class InvitePreviewOut(BaseModel):
     model.
 
     The holder's name is included because a cold recipient needs to know
-    who is asking. Nothing else about the passport is: not its id, not
-    its contents, not any competency.
+    who is asking, and ``competency_name`` because they need to know what
+    they are being asked to judge before deciding to register at all.
+    Nothing else about the passport is: not its id, not its contents,
+    and no other competency.
     """
 
     holder_name: NonEmptyText
@@ -689,6 +691,11 @@ class InvitePreviewOut(BaseModel):
     expires_at: datetime
     needs_account: bool
     already_accepted: bool
+
+    #: What they were asked to sign off, where the invitation names one.
+    #: Null for an invitation written before the competency was carried,
+    #: and for one raised without a request behind it.
+    competency_name: str | None = None
 
 
 class AssessorInviteAcceptIn(_In):

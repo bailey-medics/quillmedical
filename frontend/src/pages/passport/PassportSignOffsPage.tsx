@@ -21,6 +21,7 @@
 import { useEffect, useState } from "react";
 import { Group, Stack } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/auth/AuthContext";
 import PageHeader from "@/components/page-header";
 import AddButton from "@/components/button/AddButton";
 import CompetencyPicker from "@/components/passport/CompetencyPicker";
@@ -97,6 +98,7 @@ const GROUPS: { status: SignOffStatus; title: string }[] = [
 
 export function Component() {
   const navigate = useNavigate();
+  const { state } = useAuth();
   const [competencies, setCompetencies] = useState<CompetencyState[]>([]);
   const [passportId, setPassportId] = useState<string | null>(null);
   // The passport could not be loaded, so there is no page to show.
@@ -221,6 +223,8 @@ export function Component() {
           {chosen && (
             <SignOffRequestForm
               competency={competencyForForm(chosen, competencies)}
+              holderEmail={state.user?.email}
+              holderUsername={state.user?.username}
               onSubmit={handleRequest}
               onCancel={() => {
                 setAsking(false);

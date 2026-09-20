@@ -61,10 +61,23 @@ export function Component() {
 
     setSubmitting(true);
     try {
-      await submitSignOff(item.passport_id, item.sign_off.id, data);
+      // `name`, not `id`. The route keys on the folder name inside the
+      // repository, which is what the request row stores and what the
+      // inbox returns as `sign_off.name`. `id` is the record's own
+      // identifier and matches no row, so posting it was a 404 every
+      // time.
+      await submitSignOff(item.passport_id, item.sign_off.name, data);
       navigate("/passport/inbox");
-    } catch {
-      setError("The sign-off could not be saved. Please try again.");
+    } catch (caught) {
+      // The server's own words where it gave any: it refuses for
+      // reasons an assessor can act on, and "please try again" hides
+      // them.
+      const said = caught instanceof Error ? caught.message.trim() : "";
+      setError(
+        said !== ""
+          ? said
+          : "The sign-off could not be saved. Please try again.",
+      );
     } finally {
       setSubmitting(false);
     }

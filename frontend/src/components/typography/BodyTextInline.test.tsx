@@ -23,4 +23,22 @@ describe("BodyTextInline", () => {
     const element = screen.getByText(/Line one/);
     expect(element).toHaveStyle({ whiteSpace: "pre-wrap" });
   });
+
+  it("stays at body weight unless asked", () => {
+    // The default has to be unchanged: every existing caller renders
+    // ordinary body text and none of them pass this prop.
+    renderWithMantine(<BodyTextInline>Ordinary</BodyTextInline>);
+
+    expect(screen.getByText("Ordinary")).toHaveStyle({ fontWeight: "500" });
+  });
+
+  it("emphasises a name inside a sentence when asked", () => {
+    // `BodyTextBold` renders a block, so it cannot carry a name in the
+    // middle of a line without breaking the sentence around it.
+    renderWithMantine(<BodyTextInline bold>Dr Okonkwo</BodyTextInline>);
+
+    const element = screen.getByText("Dr Okonkwo");
+    expect(element).toHaveStyle({ fontWeight: "700" });
+    expect(element.tagName).toBe("SPAN");
+  });
 });

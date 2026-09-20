@@ -179,4 +179,52 @@ describe("api.request", () => {
 
     window.removeEventListener("app:api-success", handler);
   });
+
+  describe("the redirect to login on a 401", () => {
+    /**
+     * Stubs the navigation and reports where it was sent.
+     *
+     * `window.location.assign` is what the handler calls, and jsdom
+     * refuses to navigate for real, so it is replaced outright.
+     */
+    function watchNavigation(path: string): { to: string | null } {
+      const seen: { to: string | null } = { to: null };
+      Object.defineProperty(window, "location", {
+        configurable: true,
+        value: {
+          pathname: path,
+          assign: (url: string) => {
+            seen.to = url;
+          },
+        },
+      });
+      return seen;
+    }
+
+    it("leaves an invited assessor on the accept page", async () => {
+      // The page is opened by somebody with no account: the signed
+      // token in the URL is what authenticates them. AuthContext still
+      // asks /api/auth/me and still gets a 401, and sending them to
+      // /login on that basis stops them registering at all.
+      const seen = watchNavigation("/passport/assessors/accept");
+      vi.mocked(fetch).mockResolvedValue(
+        jsonResponse({ detail: "Not authenticated" }, 401),
+      );
+
+      await expect(api.get("/auth/me")).rejects.toThrow();
+
+      expect(seen.to).toBeNull();
+    });
+
+    it("still sends an ordinary page to login", async () => {
+      const seen = watchNavigation("/passport");
+      vi.mocked(fetch).mockResolvedValue(
+        jsonResponse({ detail: "Not authenticated" }, 401),
+      );
+
+      await expect(api.get("/auth/me")).rejects.toThrow();
+
+      expect(seen.to).toBe("/login");
+    });
+  });
 });

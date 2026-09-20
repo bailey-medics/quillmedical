@@ -12,6 +12,9 @@ import { LoginForm, type LoginFormData } from "@components/registration";
 import type { FormSubmitResult } from "@/components/form/Form";
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { Stack } from "@mantine/core";
+import StateMessage from "@/components/message-cards/StateMessage";
+import { IconCircleCheck } from "@/components/icons/appIcons";
 import { useAuth } from "../auth/AuthContext";
 
 export default function LoginPage() {
@@ -19,10 +22,18 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const [requireTotp, setRequireTotp] = useState(false);
 
-  const location = useLocation() as { state?: { from?: Location } };
+  const location = useLocation() as {
+    state?: { from?: Location; notice?: string };
+  };
   const rawBase = (import.meta.env.BASE_URL as string) || "/";
   const base = rawBase.endsWith("/") ? rawBase : rawBase + "/";
   const redirectFrom = location.state?.from?.pathname;
+
+  // Set by a page that sent somebody here having just done something
+  // that worked. An assessor who has only this moment registered has
+  // no session yet, so saying "your account is ready" beside the form
+  // is the difference between arriving and feeling bounced.
+  const notice = location.state?.notice;
 
   async function handleSubmit(data: LoginFormData): Promise<FormSubmitResult> {
     try {
@@ -88,8 +99,7 @@ export default function LoginPage() {
 
       if (code === "email_not_verified") {
         const email = (errObj as unknown as Record<string, unknown>).email as
-          | string
-          | undefined;
+          string | undefined;
         navigate("/verify-email-pending", { state: { email } });
         return {
           state: "error",
@@ -133,11 +143,21 @@ export default function LoginPage() {
     : "Sign in to Quill Teaching";
 
   return (
-    <LoginForm
-      onSubmit={handleSubmit}
-      requireTotp={requireTotp}
-      registerPath={isClinical ? null : "/register"}
-      title={title}
-    />
+    <Stack gap="lg">
+      {notice !== undefined && (
+        <StateMessage
+          icon={<IconCircleCheck />}
+          title="Registration complete"
+          description={notice}
+          colour="success"
+        />
+      )}
+      <LoginForm
+        onSubmit={handleSubmit}
+        requireTotp={requireTotp}
+        registerPath={isClinical ? null : "/register"}
+        title={title}
+      />
+    </Stack>
   );
 }

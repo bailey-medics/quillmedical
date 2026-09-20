@@ -291,8 +291,17 @@ class TestAssessorInvite:
 
     def test_it_carries_no_part_of_the_record(self) -> None:
         """It is how an assessor was reached, never what they decided.
-        The sign-off is a file; a level or a signature here would be a
-        second version of it."""
+
+        The sign-off is a file; a level, a date, a signature or a hash
+        here would be a second version of it, waiting to disagree.
+
+        ``competency_id`` is deliberately not in this list. It says what
+        the assessor was *asked* about, which the accept page needs so
+        somebody deciding whether to register at all can see what they
+        are being asked to judge. It is not what they decided, and
+        nothing reads it to determine what they may sign: that is still
+        resolved from the request rows naming them.
+        """
         columns = {
             column.name for column in inspect(PassportAssessorInvite).columns
         }
@@ -302,7 +311,6 @@ class TestAssessorInvite:
             "observed_on",
             "signed_at",
             "content_hash",
-            "competency_id",
         ):
             assert content not in columns
 

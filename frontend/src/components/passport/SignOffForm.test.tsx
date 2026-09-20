@@ -34,11 +34,24 @@ describe("SignOffForm", () => {
   });
 
   describe("The declaration", () => {
-    it("shows the declaration wording", () => {
+    it("shows the declaration wording once", () => {
+      // Once, not merely at least once. The form used to render the
+      // words in the declaration card and again as the checkbox's
+      // description, so the same paragraph appeared twice on screen
+      // and `toBeGreaterThan(0)` was happy with both.
       renderWithMantine(<SignOffForm signOff={requested} onSubmit={vi.fn()} />);
       expect(
-        screen.getAllByText(/accept professional accountability/).length,
-      ).toBeGreaterThan(0);
+        screen.getAllByText(/accept professional accountability/),
+      ).toHaveLength(1);
+    });
+
+    it("puts the confirmation inside the declaration card", () => {
+      // The statement and the act of agreeing to it are one thing, so
+      // the checkbox sits under the words rather than beside the card.
+      renderWithMantine(<SignOffForm signOff={requested} onSubmit={vi.fn()} />);
+
+      const card = screen.getByTestId("assessor-declaration");
+      expect(card).toContainElement(screen.getByRole("checkbox"));
     });
 
     it("starts unticked", () => {

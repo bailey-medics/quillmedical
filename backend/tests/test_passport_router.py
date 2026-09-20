@@ -1062,6 +1062,30 @@ class TestAcceptingAnInvitation:
             assert body["needs_account"] is True
             assert body["already_accepted"] is False
 
+    def test_the_preview_names_the_competency_asked_about(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        sent: list[dict[str, str]],
+    ) -> None:
+        """Somebody deciding whether to register needs to know what for.
+
+        The words rather than the id, so the page renders without
+        holding the catalogue.
+        """
+        passport_id = _create_passport(holder_client)
+        self._invite(holder_client, passport_id)
+
+        response = test_client.get(
+            "/api/passport/assessor-invites/preview",
+            params={"token": self._token(sent)},
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json()["competency_name"] == (
+            "Review and prescribe systemic anti-cancer therapy"
+        )
+
     def test_the_preview_says_who_is_asking_and_nothing_more(
         self,
         holder_client: TestClient,
@@ -1488,6 +1512,61 @@ class TestTheGateResolvesForAnAcceptedAssessor:
         assert response.status_code == 200, response.text
         assert len(response.json()) == 1
         assert response.json()[0]["passport_id"] == passport_id
+
+    def test_a_holder_in_two_places_puts_them_where_the_feature_is(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        db_session: Session,
+        holder: User,
+        sent: list[dict[str, str]],
+    ) -> None:
+        """A rotating trainee belongs to more than one place.
+
+        One of them is a hospital under a different trust, with no
+        passport feature. Adding the assessor there leaves them a member
+        of a real place that still cannot open a passport, which is a
+        403 nobody can explain from the screen.
+        """
+        elsewhere = OrgUnit(name="Another Trust", type="organisation")
+        db_session.add(elsewhere)
+        db_session.commit()
+        db_session.refresh(elsewhere)
+
+        hospital = OrgUnit(
+            name="Hospital With No Passport",
+            type="hospital",
+            parent_id=elsewhere.id,
+        )
+        db_session.add(hospital)
+        db_session.commit()
+        db_session.refresh(hospital)
+
+        db_session.execute(
+            org_unit_member.insert().values(
+                org_unit_id=hospital.id, user_id=holder.id, capacity="trainee"
+            )
+        )
+        db_session.commit()
+
+        passport_id = _create_passport(holder_client)
+        assessor_id = self._invite_and_accept(
+            holder_client, test_client, passport_id, sent
+        )
+
+        # Not the hospital with no feature, however narrow it is.
+        placed = db_session.scalar(
+            select(org_unit_member.c.org_unit_id).where(
+                org_unit_member.c.user_id == assessor_id
+            )
+        )
+        assert placed != hospital.id
+
+        assessor_client = _login(test_client, "okafor")
+        assert (
+            assessor_client.get("/api/passport/requests/inbox").status_code
+            == 200
+        )
 
     def test_a_site_membership_opens_it_through_its_organisation(
         self,

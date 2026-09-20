@@ -40,9 +40,7 @@ import {
 } from "@components/form";
 import { Heading } from "@/components/typography";
 import ButtonPair from "@/components/button/ButtonPair";
-import AssessorDeclaration, {
-  ASSESSOR_DECLARATION_TEXT,
-} from "./AssessorDeclaration";
+import AssessorDeclaration from "./AssessorDeclaration";
 import type { SignOff, SignOffInput, SignOffMeaning } from "@lib/passport";
 
 /**
@@ -146,15 +144,17 @@ export default function SignOffForm({
           minRows={3}
         />
 
-        <AssessorDeclaration />
-
-        <CheckboxField
-          label="I confirm this declaration"
-          description={ASSESSOR_DECLARATION_TEXT}
-          checked={confirmed}
-          onChange={(event) => setConfirmed(event.currentTarget.checked)}
-          required
-        />
+        {/* The checkbox sits inside the card, under the words it
+            agrees to. No description on it: the declaration is right
+            above, and repeating it showed the same paragraph twice. */}
+        <AssessorDeclaration>
+          <CheckboxField
+            label="I confirm this declaration"
+            checked={confirmed}
+            onChange={(event) => setConfirmed(event.currentTarget.checked)}
+            required
+          />
+        </AssessorDeclaration>
 
         <ButtonPair
           acceptLabel="Sign off competency"
