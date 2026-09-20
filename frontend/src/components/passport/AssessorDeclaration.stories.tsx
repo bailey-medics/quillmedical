@@ -5,6 +5,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Stack } from "@mantine/core";
 import AssessorDeclaration from "./AssessorDeclaration";
+import CheckboxField from "@/components/form/CheckboxField";
 import { StoryNote } from "@/stories/variants";
 
 const meta: Meta<typeof AssessorDeclaration> = {
@@ -30,5 +31,23 @@ export const WithContext: Story = {
         submits it, not to this component.
       </StoryNote>
     </Stack>
+  ),
+};
+
+/**
+ * With the confirmation inside it, as the sign-off form shows it. The
+ * control is passed in rather than built here, because the same words
+ * are also shown where no signing happens.
+ */
+export const WithConfirmation: Story = {
+  render: () => (
+    <AssessorDeclaration>
+      <CheckboxField
+        label="I confirm this declaration"
+        checked={false}
+        onChange={() => {}}
+        required
+      />
+    </AssessorDeclaration>
   ),
 };

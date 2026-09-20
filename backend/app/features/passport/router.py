@@ -63,6 +63,7 @@ from app.email_send import EmailRateLimitError, send_email
 from app.features.gating import requires_feature
 from app.models import (
     OrgUnit,
+    OrgUnitFeature,
     User,
     org_unit_member,
 )
@@ -73,6 +74,7 @@ from app.organisations import (
     get_member_org_unit_ids,
     get_reachable_org_unit_ids,
     organisation_org_unit_member,
+    organisation_org_units_of,
     remove_org_unit_member,
 )
 from app.passport_storage import get_blob_store, get_passport_store
@@ -699,6 +701,10 @@ def _email_sign_off_request(
             name="",
             registration_authority="",
             registration_number="",
+            # So the accept page can say what they were asked to judge.
+            # Not what they may sign: that is still resolved from the
+            # request rows naming them.
+            competency_id=competency_id,
             token_hash="",
             expires_at=_now() + timedelta(days=PASSPORT_INVITE_TTL_DAYS),
         )
@@ -2492,9 +2498,49 @@ def _holder_place(db: Session, passport_id: str) -> tuple[str, int]:
         # same table now, and a membership of one is a row here too, so
         # without this every holder would look as though they had a site and
         # the organisation branch below would never be reached.
+    # Every place the holder belongs to, narrowest first. A holder can
+    # be in several: a rotating trainee sits at the hospital they are
+    # at now, one they were at before, and the trust above both.
+    member_ids = [
+        int(row)
+        for row in db.execute(
+            select(org_unit_member.c.org_unit_id).where(
+                org_unit_member.c.user_id == passport.user_id
+            )
+        )
+        .scalars()
+        .all()
+    ]
+
+    # Only those that reach an organisation where the passport is
+    # switched on. Adding the assessor anywhere else leaves them a
+    # member of a real place that still cannot open a passport, which
+    # is the failure this resolves: `requires_feature` rolls a member
+    # up to their root organisations and looks for the feature there.
+    with_feature = [
+        unit_id
+        for unit_id in member_ids
+        if db.scalar(
+            select(OrgUnitFeature.id).where(
+                # The same walk `requires_feature` makes, so a place that
+                # passes here is one the gate will accept. Anything else
+                # leaves the assessor a member of a real place that still
+                # cannot open a passport.
+                OrgUnitFeature.org_unit_id.in_(
+                    organisation_org_units_of(db, [unit_id])
+                ),
+                OrgUnitFeature.feature_key == "passport",
+            )
+        )
+        is not None
+    ]
+
+    usable = with_feature or member_ids
+
     site_id = db.scalar(
         select(org_unit_member.c.org_unit_id).where(
             org_unit_member.c.user_id == passport.user_id,
+            org_unit_member.c.org_unit_id.in_(usable),
             org_unit_member.c.org_unit_id.in_(
                 select(OrgUnit.id).where(OrgUnit.type.notin_(ROOT_TYPE_IDS))
             ),
@@ -2520,6 +2566,22 @@ def _holder_place(db: Session, passport_id: str) -> tuple[str, int]:
             "organisation, so there is nowhere to add you."
         ),
     )
+
+
+def _competency_name_or_none(competency_id: str | None) -> str | None:
+    """The competency's display name, or nothing.
+
+    Nothing covers three cases that are all ordinary: an invitation
+    raised without a request behind it, one written before the column
+    existed, and an id the catalogue has since retired.
+    """
+    if competency_id is None:
+        return None
+
+    try:
+        return definitions.competency_ref(competency_id).name
+    except definitions.UnknownCompetencyError:
+        return None
 
 
 @passport_public_router.get(
@@ -2563,6 +2625,11 @@ def preview_assessor_invite(
         expires_at=invite.expires_at,
         needs_account=existing is None,
         already_accepted=invite.accepted_at is not None,
+        # The words rather than the id, so the page renders without
+        # holding the catalogue. An id the catalogue no longer knows
+        # yields nothing rather than an error: a retired competency
+        # must not stop somebody accepting an invitation.
+        competency_name=_competency_name_or_none(invite.competency_id),
     )
 
 

@@ -22,6 +22,7 @@
  * ```
  */
 
+import type { ReactNode } from "react";
 import { Stack } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import { BodyText, BodyTextBold } from "@/components/typography";
@@ -38,6 +39,15 @@ export const ASSESSOR_DECLARATION_TEXT =
 export interface AssessorDeclarationProps {
   /** Optional heading above the declaration */
   title?: string;
+  /**
+   * The control that confirms it, shown inside the card.
+   *
+   * Passed in rather than built here, because the component is also
+   * shown where no signing happens and the confirmation belongs to the
+   * form that submits it. Inside the card so the statement and the act
+   * of agreeing to it read as one thing.
+   */
+  children?: ReactNode;
 }
 
 /**
@@ -49,12 +59,14 @@ export interface AssessorDeclarationProps {
  */
 export default function AssessorDeclaration({
   title = "Declaration",
+  children,
 }: AssessorDeclarationProps) {
   return (
     <BaseCard data-testid="assessor-declaration">
       <Stack gap="xs">
         <BodyTextBold>{title}</BodyTextBold>
         <BodyText>{ASSESSOR_DECLARATION_TEXT}</BodyText>
+        {children}
       </Stack>
     </BaseCard>
   );

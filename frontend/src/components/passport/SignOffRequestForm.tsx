@@ -72,6 +72,15 @@ export interface SignOffRequestFormProps {
    * so the component stays presentational.
    */
   holderEmail?: string;
+  /**
+   * The holder's own username, refused for the same reason.
+   *
+   * Needed separately because the search leaves the caller out of its
+   * results, so a holder typing their own username finds nobody and
+   * would be told to keep typing rather than that they had named
+   * themselves.
+   */
+  holderUsername?: string;
   /** Called with the completed request */
   onSubmit: (data: SignOffRequestInput) => void;
   /** Called when the holder backs out */
@@ -90,6 +99,7 @@ export default function SignOffRequestForm({
   competency,
   levels,
   holderEmail,
+  holderUsername,
   onSubmit,
   onCancel,
   isSubmitting = false,
@@ -162,9 +172,13 @@ export default function SignOffRequestForm({
   // is not a sign-off at all. Compared on the address because that is
   // what gets sent; a holder typing their own name finds nobody
   // already, since the search leaves the caller out.
-  const isSelf =
-    holderEmail !== undefined &&
-    typed.toLowerCase() === holderEmail.trim().toLowerCase();
+  const typedLower = typed.toLowerCase();
+  const isSelf = [holderEmail, holderUsername].some(
+    (own) =>
+      own !== undefined &&
+      own.trim() !== "" &&
+      typedLower === own.trim().toLowerCase(),
+  );
 
   const namesSomebody = !isSelf && (found !== null || looksLikeEmail);
 
@@ -201,30 +215,28 @@ export default function SignOffRequestForm({
           placeholder="assessor@example.nhs.uk"
           value={assessorEmail}
           onChange={(event) => setAssessorEmail(event.currentTarget.value)}
+          error={isSelf ? "You cannot sign off yourself" : undefined}
           required
         />
 
         {/* What will happen, rather than leaving the holder to guess.
-            Deliberately not the field's error channel, which renders
-            red with a warning icon: somebody part-way through typing a
-            name has made no mistake, and saying otherwise while they
-            are still typing alarms them about something merely
-            unfinished. Shown only once the lookup has answered, so the
-            line never contradicts itself mid-keystroke. */}
-        {(settled !== null || isSelf) && (
+            Naming yourself is the one case that goes to the field's
+            error channel instead, red and with an icon, because it is
+            a real mistake rather than a form not finished: no amount
+            of further typing makes that address the right one. A
+            half-typed name is merely unfinished, so it is said plainly
+            here and only once the lookup has answered. */}
+        {settled !== null && !isSelf && (
           <BodyText>
             {found
               ? `${found.full_name ?? found.username} already uses Quill. ` +
                 "They will be emailed and can sign in to sign this off."
-              : isSelf
-                ? "That is your own address. A sign-off records somebody " +
-                  "else's judgement, so it cannot be your own."
-                : namesSomebody
-                  ? "Nobody on Quill uses that address. They will be " +
-                    "emailed an invitation, and can register to sign " +
-                    "this off."
-                  : "No match yet. Keep typing, or use their email " +
-                    "address if they do not use Quill."}
+              : namesSomebody
+                ? "Nobody on Quill uses that address. They will be " +
+                  "emailed an invitation, and can register to sign " +
+                  "this off."
+                : "No match yet. Keep typing, or use their email " +
+                  "address if they do not use Quill."}
           </BodyText>
         )}
 

@@ -15,6 +15,13 @@ export interface BodyTextInlineProps {
   children: ReactNode;
   /** Optional colour override */
   c?: MantineColor;
+  /**
+   * Emphasises a word or two inside a sentence. Defaults to false.
+   *
+   * `BodyTextBold` renders a block, so it cannot carry a name in the
+   * middle of a line without breaking the sentence around it.
+   */
+  bold?: boolean;
 }
 
 /**
@@ -23,12 +30,20 @@ export interface BodyTextInlineProps {
  * @param props - Component props
  * @returns Inline text span
  */
-export default function BodyTextInline({ children, c }: BodyTextInlineProps) {
+export default function BodyTextInline({
+  children,
+  c,
+  bold = false,
+}: BodyTextInlineProps) {
   return (
     <Text
       component="span"
       size="md"
-      fw={typographyTokens.fontWeights.body}
+      fw={
+        bold
+          ? typographyTokens.fontWeights.bold
+          : typographyTokens.fontWeights.body
+      }
       c={c}
       style={{ whiteSpace: "pre-wrap" }}
     >

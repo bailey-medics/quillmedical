@@ -13,6 +13,7 @@
 import { useEffect, useState } from "react";
 import { Stack } from "@mantine/core";
 import { useParams } from "react-router-dom";
+import { useAuth } from "@/auth/AuthContext";
 import PageHeader from "@/components/page-header";
 import SignOffRequestForm from "@/components/passport/SignOffRequestForm";
 import ErrorState from "@/components/error-state/ErrorState";
@@ -28,6 +29,7 @@ import type {
 
 export function Component() {
   const { id: competencyId } = useParams<{ id: string }>();
+  const { state } = useAuth();
   const [passport, setPassport] = useState<PassportDetail | null>(null);
   const [requesting, setRequesting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -80,6 +82,8 @@ export function Component() {
       {competency && requesting ? (
         <SignOffRequestForm
           competency={competency}
+          holderEmail={state.user?.email}
+          holderUsername={state.user?.username}
           onSubmit={handleRequest}
           onCancel={() => setRequesting(false)}
           isSubmitting={submitting}

@@ -266,6 +266,20 @@ class PassportAssessorInvite(Base):
         String(50), nullable=False
     )
 
+    #: What the assessor was asked to sign off, so the accept page can
+    #: name it. Nullable because an invitation can precede a request: a
+    #: holder may bring somebody in first and choose the competency
+    #: afterwards, and invitations written before this column existed
+    #: carry nothing.
+    #:
+    #: **It is not what they may sign.** That is still resolved from the
+    #: request rows naming them, which is what an assessor's reach has
+    #: always come from. This is the page's greeting, and nothing reads
+    #: it to decide access.
+    competency_id: Mapped[str | None] = mapped_column(
+        String(100), nullable=True
+    )
+
     #: A hash of the token, never the token itself. What is emailed is a
     #: credential, and a readable copy in the database would let anyone
     #: with a row redeem the invitation.

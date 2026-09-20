@@ -24,6 +24,18 @@ vi.mock("@lib/api", () => ({
   api: { get: (...args: unknown[]) => apiGet(...args) },
 }));
 
+// The pages read the signed-in holder's address so the form can refuse
+// it: naming yourself is not a sign-off. Mocked the way every other
+// page test that reads auth does, rather than wrapping in a provider.
+vi.mock("@/auth/AuthContext", () => ({
+  useAuth: () => ({
+    state: {
+      status: "authenticated",
+      user: { username: "holder", email: "holder@example.nhs.uk" },
+    },
+  }),
+}));
+
 const detail = {
   passport: {
     passport_id: "3f2a8c1e",
