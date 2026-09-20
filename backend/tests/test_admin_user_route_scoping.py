@@ -23,7 +23,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.models import OrgUnit, User
-from app.organisations import add_place_member
+from app.organisations import add_org_unit_member
 from app.security import hash_password
 
 
@@ -43,7 +43,7 @@ def admin_org(db_session: Session, test_admin: User) -> OrgUnit:
     org = OrgUnit(name="Own Trust", type="organisation")
     db_session.add(org)
     db_session.commit()
-    add_place_member(db_session, org.id, test_admin.id, "staff")
+    add_org_unit_member(db_session, org.id, test_admin.id, "staff")
     db_session.commit()
     db_session.refresh(org)
     return org
@@ -62,7 +62,7 @@ def outsider(db_session: Session, other_org: OrgUnit) -> User:
     )
     db_session.add(user)
     db_session.flush()
-    add_place_member(db_session, other_org.id, user.id, "staff")
+    add_org_unit_member(db_session, other_org.id, user.id, "staff")
     db_session.commit()
     db_session.refresh(user)
     return user
@@ -81,7 +81,7 @@ def insider(db_session: Session, admin_org: OrgUnit) -> User:
     )
     db_session.add(user)
     db_session.flush()
-    add_place_member(db_session, admin_org.id, user.id, "staff")
+    add_org_unit_member(db_session, admin_org.id, user.id, "staff")
     db_session.commit()
     db_session.refresh(user)
     return user
@@ -205,7 +205,7 @@ class TestTheGateIsACompetencyNotARank:
         distinction the swap exists to make.
         """
         test_user.base_profession = "consultant"
-        add_place_member(db_session, admin_org.id, test_user.id, "staff")
+        add_org_unit_member(db_session, admin_org.id, test_user.id, "staff")
         db_session.commit()
 
         resp = authenticated_client.get(f"/api/users/{insider.id}")
@@ -241,7 +241,9 @@ class TestSuperadminsAreGlobal:
         in no organisation would pass the test above and fail here, since
         this one puts them in an organisation the target is not in.
         """
-        add_place_member(db_session, admin_org.id, test_superadmin.id, "staff")
+        add_org_unit_member(
+            db_session, admin_org.id, test_superadmin.id, "staff"
+        )
         db_session.commit()
 
         resp = authenticated_superadmin_client.get(f"/api/users/{outsider.id}")

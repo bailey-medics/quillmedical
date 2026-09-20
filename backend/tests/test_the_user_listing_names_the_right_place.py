@@ -23,7 +23,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.models import OrgUnit, User
-from app.organisations import add_place_member
+from app.organisations import add_org_unit_member
 from app.security import hash_password
 
 
@@ -48,7 +48,7 @@ def _member(db: Session, org: OrgUnit, username: str) -> User:
     )
     db.add(user)
     db.flush()
-    add_place_member(db, org.id, user.id, "staff")
+    add_org_unit_member(db, org.id, user.id, "staff")
     db.commit()
     db.refresh(user)
     return user
@@ -126,7 +126,7 @@ class TestTheOrganisationNames:
         )
         db_session.add(trainee)
         db_session.flush()
-        add_place_member(db_session, ward.id, trainee.id, "trainee")
+        add_org_unit_member(db_session, ward.id, trainee.id, "trainee")
         db_session.commit()
 
         row = _row(authenticated_superadmin_client, "a_trainee")

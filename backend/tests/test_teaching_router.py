@@ -29,8 +29,8 @@ from app.models import (
     org_unit_member,
 )
 from app.organisations import (
-    add_place_member,
-    remove_place_memberships,
+    add_org_unit_member,
+    remove_org_unit_memberships,
 )
 from app.security import hash_password
 
@@ -67,7 +67,7 @@ def _make_educator(db: Session, org: OrgUnit) -> User:
     )
     db.add(user)
     db.flush()
-    add_place_member(db, org.id, user.id, "trainee")
+    add_org_unit_member(db, org.id, user.id, "trainee")
     db.flush()
     return user
 
@@ -84,7 +84,7 @@ def _make_learner(db: Session, org: OrgUnit) -> User:
     )
     db.add(user)
     db.flush()
-    add_place_member(db, org.id, user.id, "trainee")
+    add_org_unit_member(db, org.id, user.id, "trainee")
     db.flush()
     return user
 
@@ -240,7 +240,7 @@ class TestFeatureGating:
         )
         db_session.add(user)
         db_session.flush()
-        add_place_member(db_session, org.id, user.id, "trainee")
+        add_org_unit_member(db_session, org.id, user.id, "trainee")
         db_session.commit()
 
         test_client.post(
@@ -1700,7 +1700,7 @@ class TestBankOrgSettingsAreScopedToYourOrganisations:
         second = OrgUnit(name="Second Org", type="hospital_team")
         db_session.add(second)
         db_session.flush()
-        add_place_member(db_session, second.id, educator.id, "trainee")
+        add_org_unit_member(db_session, second.id, educator.id, "trainee")
         db_session.commit()
         _seed_bank(db_session, second.id, educator.id)
         db_session.query(QuestionBankOrgStatus).delete()
@@ -2106,7 +2106,7 @@ class TestLearningContentGate:
         _seed_bank(db_session, with_live.id, educator.id)
 
         learner = _make_learner(db_session, without)
-        add_place_member(db_session, with_live.id, learner.id, "trainee")
+        add_org_unit_member(db_session, with_live.id, learner.id, "trainee")
         db_session.commit()
 
         assert (
@@ -2177,7 +2177,7 @@ class TestLearningContentGate:
 
         # The learner belongs to the site, and to no organisation.
         learner = _make_learner(db_session, org)
-        remove_place_memberships(db_session, learner.id)
+        remove_org_unit_memberships(db_session, learner.id)
         site = OrgUnit(name="Ward 9", type="ward")
         db_session.add(site)
         db_session.flush()
@@ -2243,7 +2243,7 @@ class TestLearningRoutesRequireTheViewCompetency:
         )
         db.add(user)
         db.flush()
-        add_place_member(db, org.id, user.id, "trainee")
+        add_org_unit_member(db, org.id, user.id, "trainee")
         db.flush()
         return user
 

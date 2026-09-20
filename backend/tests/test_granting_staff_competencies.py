@@ -33,7 +33,7 @@ from app.models import (
     User,
 )
 from app.organisations import (
-    add_place_member,
+    add_org_unit_member,
     organisation_place_member,
 )
 from app.security import hash_password
@@ -65,7 +65,7 @@ def org(db_session: Session) -> OrgUnit:
 
 
 def _place(db: Session, org: OrgUnit, user: User) -> None:
-    add_place_member(db, org.id, user.id, "staff")
+    add_org_unit_member(db, org.id, user.id, "staff")
     db.commit()
 
 

@@ -20,7 +20,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.models import OrgUnit, User
-from app.organisations import add_place_member
+from app.organisations import add_org_unit_member
 from app.security import hash_password
 
 
@@ -56,7 +56,7 @@ def org(db_session: Session) -> OrgUnit:
 
 
 def _place(db: Session, org: OrgUnit, user: User) -> None:
-    add_place_member(db, org.id, user.id, "staff")
+    add_org_unit_member(db, org.id, user.id, "staff")
     db.commit()
 
 

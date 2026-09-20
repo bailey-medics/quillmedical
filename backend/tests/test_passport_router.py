@@ -61,7 +61,7 @@ from app.models import (
     org_unit_member,
 )
 from app.organisations import (
-    add_place_member,
+    add_org_unit_member,
     organisation_place_member,
 )
 from app.passport_storage import get_blob_store, get_passport_store
@@ -140,7 +140,7 @@ def _enable_passport(db: Session, *users: User) -> OrgUnit:
     db.add(OrgUnitFeature(org_unit_id=org.id, feature_key="passport"))
 
     for user in users:
-        add_place_member(db, org.id, user.id, "trainee")
+        add_org_unit_member(db, org.id, user.id, "trainee")
 
     db.commit()
     return org
@@ -381,7 +381,7 @@ class TestSearchingForAnAssessor:
         assessor needs to be.
         """
         user = _make_user(db_session, "reception", profession="receptionist")
-        add_place_member(db_session, org.id, user.id, "staff")
+        add_org_unit_member(db_session, org.id, user.id, "staff")
         db_session.commit()
 
         client = _login(test_client, "reception")
@@ -1630,7 +1630,7 @@ class TestAdminVerifyAndRevoke:
         """An admin of the holder's organisation."""
         user = _make_user(db_session, "orgadmin", profession="consultant")
         user.additional_competencies = ["manage_users"]
-        add_place_member(db_session, org.id, user.id, "staff")
+        add_org_unit_member(db_session, org.id, user.id, "staff")
         db_session.commit()
         db_session.refresh(user)
         return user
@@ -1652,7 +1652,7 @@ class TestAdminVerifyAndRevoke:
         db_session.add(
             OrgUnitFeature(org_unit_id=other.id, feature_key="passport")
         )
-        add_place_member(db_session, other.id, user.id, "staff")
+        add_org_unit_member(db_session, other.id, user.id, "staff")
         db_session.commit()
         db_session.refresh(user)
         return user
@@ -2878,7 +2878,7 @@ class TestFeatureGate:
         db_session.add(organisation)
         db_session.commit()
         db_session.refresh(organisation)
-        add_place_member(db_session, organisation.id, user.id, "trainee")
+        add_org_unit_member(db_session, organisation.id, user.id, "trainee")
         db_session.commit()
 
         client = _login(test_client, "ungated")

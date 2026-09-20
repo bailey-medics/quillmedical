@@ -12,7 +12,7 @@ from app.models import (
     User,
     org_unit_patient_member,
 )
-from app.organisations import add_place_member
+from app.organisations import add_org_unit_member
 from app.security import hash_password
 
 # ---------------------------------------------------------------------------
@@ -41,7 +41,7 @@ def _setup_org_context(
     """
     db_session.flush()
 
-    add_place_member(db_session, test_org.id, test_user.id, "staff")
+    add_org_unit_member(db_session, test_org.id, test_user.id, "staff")
     db_session.execute(
         org_unit_patient_member.insert().values(
             org_unit_id=test_org.id,
@@ -72,7 +72,7 @@ def second_user(db_session: Session, test_org: OrgUnit) -> User:
     db_session.add(user)
     db_session.flush()
 
-    add_place_member(db_session, test_org.id, user.id, "staff")
+    add_org_unit_member(db_session, test_org.id, user.id, "staff")
     db_session.commit()
     db_session.refresh(user)
     return user
@@ -84,7 +84,7 @@ def _place_admin_in(db: Session, org: OrgUnit, admin: User) -> None:
     An admin may act on a user only where they share an organisation, so a
     test that acts on someone must say where both of them are.
     """
-    add_place_member(db, org.id, admin.id, "staff")
+    add_org_unit_member(db, org.id, admin.id, "staff")
     db.commit()
 
 
@@ -105,7 +105,7 @@ def patient_user(db_session: Session, test_org: OrgUnit) -> User:
     )
     db_session.add(user)
     db_session.flush()
-    add_place_member(db_session, test_org.id, user.id, "trainee")
+    add_org_unit_member(db_session, test_org.id, user.id, "trainee")
     db_session.commit()
     db_session.refresh(user)
     return user
@@ -1024,7 +1024,7 @@ class TestJoinConversation:
         )
         db_session.add(delegate)
         db_session.flush()
-        add_place_member(db_session, test_org.id, delegate.id, "trainee")
+        add_org_unit_member(db_session, test_org.id, delegate.id, "trainee")
         db_session.commit()
 
         authenticated_client.post(
@@ -1124,7 +1124,7 @@ class TestOrgScopedAccess:
         other_org = OrgUnit(name="Other Hospital", type="hospital_team")
         db_session.add(other_org)
         db_session.flush()
-        add_place_member(db_session, other_org.id, outsider.id, "staff")
+        add_org_unit_member(db_session, other_org.id, outsider.id, "staff")
         db_session.commit()
 
         # Log in as outsider
@@ -1362,7 +1362,7 @@ class TestRemoveStaffFromOrg:
     ):
         """Admin can remove a staff member from an org."""
         # Add admin to org so they pass the membership check
-        add_place_member(db_session, test_org.id, test_admin.id, "staff")
+        add_org_unit_member(db_session, test_org.id, test_admin.id, "staff")
         db_session.commit()
 
         authenticated_client.post(
@@ -1410,7 +1410,7 @@ class TestRemovePatientFromOrg:
         which patients a place cares for.
         """
         # Add them to the org so they pass the membership check
-        add_place_member(
+        add_org_unit_member(
             db_session, test_org.id, test_patient_manager.id, "staff"
         )
         db_session.commit()
@@ -1485,7 +1485,7 @@ class TestLinkPatient:
         )
         db_session.add(other)
         db_session.flush()
-        add_place_member(db_session, test_org.id, other.id, "trainee")
+        add_org_unit_member(db_session, test_org.id, other.id, "trainee")
         db_session.commit()
 
         authenticated_client.post(

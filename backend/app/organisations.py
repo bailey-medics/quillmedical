@@ -490,25 +490,25 @@ def media_prefix_of(db: Session, place_id: int) -> int | None:
     return int(recorded) if recorded is not None else int(own_id)
 
 
-def add_place_member(
+def add_org_unit_member(
     db: Session,
-    place_id: int,
+    org_unit_id: int,
     user_id: int,
     capacity: str,
 ) -> None:
-    """Record that somebody is at a place, in a given capacity.
+    """Record that somebody is at an org_unit, in a given capacity.
 
     Writing the same membership twice changes the capacity rather than
     failing, so a caller that has already checked and one that has not
     both end up with one row saying the same thing.
 
-    Named for a place rather than an organisation because that is what
+    Named for an org_unit rather than an organisation because that is what
     the table has always held: the translation this used to do at the
     top was the last thing making it look otherwise.
 
     Args:
         db: Core database session. The caller commits.
-        place_id: The place they are at.
+        org_unit_id: The org_unit they are at.
         user_id: The person.
         capacity: One of ``MEMBER_CAPACITIES``.
     """
@@ -516,14 +516,14 @@ def add_place_member(
 
     existing = db.scalar(
         select(org_unit_member.c.user_id).where(
-            org_unit_member.c.org_unit_id == place_id,
+            org_unit_member.c.org_unit_id == org_unit_id,
             org_unit_member.c.user_id == user_id,
         )
     )
     if existing is None:
         db.execute(
             org_unit_member.insert().values(
-                org_unit_id=place_id,
+                org_unit_id=org_unit_id,
                 user_id=user_id,
                 capacity=capacity,
             )
@@ -532,37 +532,39 @@ def add_place_member(
         db.execute(
             org_unit_member.update()
             .where(
-                org_unit_member.c.org_unit_id == place_id,
+                org_unit_member.c.org_unit_id == org_unit_id,
                 org_unit_member.c.user_id == user_id,
             )
             .values(capacity=capacity)
         )
 
 
-def remove_place_member(db: Session, place_id: int, user_id: int) -> None:
-    """Remove one person's membership of one place.
+def remove_org_unit_member(
+    db: Session, org_unit_id: int, user_id: int
+) -> None:
+    """Remove one person's membership of one org_unit.
 
     Args:
         db: Core database session. The caller commits.
-        place_id: The place.
+        org_unit_id: The org_unit.
         user_id: The person.
     """
     db.execute(
         org_unit_member.delete().where(
-            org_unit_member.c.org_unit_id == place_id,
+            org_unit_member.c.org_unit_id == org_unit_id,
             org_unit_member.c.user_id == user_id,
         )
     )
 
 
-def remove_place_memberships(
+def remove_org_unit_memberships(
     db: Session,
     user_id: int,
-    place_ids: list[int] | None = None,
+    org_unit_ids: list[int] | None = None,
 ) -> None:
     """Remove a person's memberships of organisations.
 
-    Removes every one of them when *place_ids* is None, which is what a
+    Removes every one of them when *org_unit_ids* is None, which is what a
     superadmin replacing somebody's memberships wants. An admin passes
     the places they are entitled to act on, so the edit cannot reach a
     membership they cannot see.
@@ -575,11 +577,11 @@ def remove_place_memberships(
     Args:
         db: Core database session. The caller commits.
         user_id: The person.
-        place_ids: Which places to clear, or None for every organisation.
+        org_unit_ids: Which places to clear, or None for every organisation.
     """
     roots = organisation_place_ids()
-    if place_ids is not None:
-        roots = roots.where(OrgUnit.id.in_(place_ids))
+    if org_unit_ids is not None:
+        roots = roots.where(OrgUnit.id.in_(org_unit_ids))
     root_ids = list(db.execute(roots).scalars().all())
 
     if root_ids:

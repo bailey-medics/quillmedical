@@ -33,7 +33,7 @@ from app.models import (
 )
 from app.org_units.types import ROOT_TYPE_IDS
 from app.organisations import (
-    add_place_member,
+    add_org_unit_member,
     organisation_places_of,
 )
 from app.security import hash_password
@@ -116,7 +116,7 @@ class TestListing:
     ):
         mine = _org(db_session, "My Trust")
         theirs = _org(db_session, "Their Trust")
-        add_place_member(db_session, mine.id, test_admin.id, "staff")
+        add_org_unit_member(db_session, mine.id, test_admin.id, "staff")
         db_session.commit()
         my_ward = _ward(db_session, mine.id, "My Ward")
         _ward(db_session, theirs.id, "Their Ward")
@@ -254,7 +254,7 @@ class TestCreating:
     ):
         mine = _org(db_session, "My Trust")
         theirs = _org(db_session, "Their Trust")
-        add_place_member(db_session, mine.id, test_admin.id, "staff")
+        add_org_unit_member(db_session, mine.id, test_admin.id, "staff")
         db_session.commit()
 
         resp = authenticated_admin_client.post(
@@ -286,7 +286,7 @@ class TestReadingOne:
     ):
         org = _org(db_session)
         person = _person(db_session)
-        add_place_member(db_session, org.id, person.id, "staff")
+        add_org_unit_member(db_session, org.id, person.id, "staff")
         db_session.commit()
 
         resp = authenticated_superadmin_client.get(f"/api/org-units/{org.id}")
@@ -483,7 +483,7 @@ class TestChanging:
         self, authenticated_admin_client, db_session, test_admin
     ):
         mine = _org(db_session, "My Trust")
-        add_place_member(db_session, mine.id, test_admin.id, "staff")
+        add_org_unit_member(db_session, mine.id, test_admin.id, "staff")
         db_session.commit()
 
         resp = authenticated_admin_client.delete(f"/api/org-units/{mine.id}")
@@ -609,7 +609,7 @@ class TestFeatures:
         surface was retired.
         """
         mine = _org(db_session, "My Trust")
-        add_place_member(db_session, mine.id, test_admin.id, "staff")
+        add_org_unit_member(db_session, mine.id, test_admin.id, "staff")
         db_session.commit()
 
         resp = authenticated_admin_client.put(
@@ -625,7 +625,7 @@ class TestFeatures:
     ):
         mine = _org(db_session, "My Trust")
         theirs = _org(db_session, "Their Trust")
-        add_place_member(db_session, mine.id, test_admin.id, "staff")
+        add_org_unit_member(db_session, mine.id, test_admin.id, "staff")
         db_session.commit()
 
         resp = authenticated_admin_client.put(
@@ -658,7 +658,9 @@ class TestPatients:
         test_patient_manager,
     ):
         org = _org(db_session)
-        add_place_member(db_session, org.id, test_patient_manager.id, "staff")
+        add_org_unit_member(
+            db_session, org.id, test_patient_manager.id, "staff"
+        )
         db_session.commit()
         authenticated_superadmin_client = authenticated_patient_manager_client
 
@@ -687,7 +689,9 @@ class TestPatients:
         test_patient_manager,
     ):
         org = _org(db_session)
-        add_place_member(db_session, org.id, test_patient_manager.id, "staff")
+        add_org_unit_member(
+            db_session, org.id, test_patient_manager.id, "staff"
+        )
         db_session.commit()
         ward = _ward(db_session, org.id)
 
@@ -1047,7 +1051,7 @@ class TestWhatTheAnswerLeavesOut:
     ):
         """A place under nothing is an anomaly, not a commons."""
         mine = _org(db_session, "My Trust")
-        add_place_member(db_session, mine.id, test_admin.id, "staff")
+        add_org_unit_member(db_session, mine.id, test_admin.id, "staff")
         db_session.commit()
         orphan = OrgUnit(name="Orphan Ward", type="ward")
         db_session.add(orphan)
@@ -1068,7 +1072,7 @@ class TestWhatTheAnswerLeavesOut:
         """
         org = _org(db_session, "My Trust")
         test_user.base_profession = "consultant"
-        add_place_member(db_session, org.id, test_user.id, "staff")
+        add_org_unit_member(db_session, org.id, test_user.id, "staff")
         db_session.commit()
 
         resp = authenticated_client.get("/api/org-units")
@@ -1101,7 +1105,7 @@ class TestNestingStaysInsideOneOrganisation:
     ):
         mine = _org(db_session, "My Trust")
         theirs = _org(db_session, "Their Trust")
-        add_place_member(db_session, mine.id, test_admin.id, "staff")
+        add_org_unit_member(db_session, mine.id, test_admin.id, "staff")
         db_session.commit()
         my_ward = _ward(db_session, mine.id, "My Ward")
         their_ward = _ward(db_session, theirs.id, "Their Ward")
@@ -1121,7 +1125,7 @@ class TestNestingStaysInsideOneOrganisation:
         """Not only their organisation: anything in their tree."""
         mine = _org(db_session, "My Trust")
         theirs = _org(db_session, "Their Trust")
-        add_place_member(db_session, mine.id, test_admin.id, "staff")
+        add_org_unit_member(db_session, mine.id, test_admin.id, "staff")
         db_session.commit()
         their_ward = _ward(db_session, theirs.id, "Their Ward")
 
@@ -1141,7 +1145,7 @@ class TestNestingStaysInsideOneOrganisation:
     ):
         """An orphan is not a shared place to hang things off."""
         mine = _org(db_session, "My Trust")
-        add_place_member(db_session, mine.id, test_admin.id, "staff")
+        add_org_unit_member(db_session, mine.id, test_admin.id, "staff")
         db_session.commit()
         orphan = OrgUnit(name="Orphan Ward", type="ward")
         db_session.add(orphan)
@@ -1158,7 +1162,7 @@ class TestNestingStaysInsideOneOrganisation:
         self, authenticated_admin_client, db_session, test_admin
     ):
         mine = _org(db_session, "My Trust")
-        add_place_member(db_session, mine.id, test_admin.id, "staff")
+        add_org_unit_member(db_session, mine.id, test_admin.id, "staff")
         db_session.commit()
         first = _ward(db_session, mine.id, "Ward 1")
         second = _ward(db_session, mine.id, "Ward 2")
@@ -1228,7 +1232,7 @@ class TestAnOrganisationCreatedAsAPlace:
         )
         place_id = resp.json()["id"]
 
-        add_place_member(db_session, place_id, test_admin.id, "staff")
+        add_org_unit_member(db_session, place_id, test_admin.id, "staff")
         db_session.commit()
 
         assert organisation_places_of(db_session, [place_id]) == {place_id}

@@ -30,12 +30,12 @@ from app.models import (
     org_unit_member,
 )
 from app.organisations import (
-    add_place_member,
+    add_org_unit_member,
     get_member_place_ids,
     get_place_member_ids,
     organisation_place_member,
-    remove_place_member,
-    remove_place_memberships,
+    remove_org_unit_member,
+    remove_org_unit_memberships,
 )
 from app.security import hash_password
 
@@ -96,7 +96,7 @@ class TestRecordingMembership:
         org = _org(db_session, "Trust")
         person = _person(db_session, "alice")
 
-        add_place_member(db_session, org.id, person.id, "staff")
+        add_org_unit_member(db_session, org.id, person.id, "staff")
         db_session.commit()
 
         assert _by_organisation(db_session, org, person) == "staff"
@@ -106,8 +106,8 @@ class TestRecordingMembership:
         org = _org(db_session, "Trust")
         person = _person(db_session, "alice")
 
-        add_place_member(db_session, org.id, person.id, "trainee")
-        add_place_member(db_session, org.id, person.id, "staff")
+        add_org_unit_member(db_session, org.id, person.id, "trainee")
+        add_org_unit_member(db_session, org.id, person.id, "staff")
         db_session.commit()
 
         assert _by_organisation(db_session, org, person) == "staff"
@@ -118,7 +118,7 @@ class TestRecordingMembership:
         person = _person(db_session, "alice")
 
         with pytest.raises(ValueError):
-            add_place_member(db_session, org.id, person.id, "chief_wizard")
+            add_org_unit_member(db_session, org.id, person.id, "chief_wizard")
 
 
 class TestAWardIsAPlaceToo:
@@ -135,7 +135,7 @@ class TestAWardIsAPlaceToo:
         ward = _ward(db_session, org, "Ward 1")
         person = _person(db_session, "alice")
 
-        add_place_member(db_session, ward.id, person.id, "trainee")
+        add_org_unit_member(db_session, ward.id, person.id, "trainee")
         db_session.commit()
 
         assert (
@@ -154,7 +154,7 @@ class TestAWardIsAPlaceToo:
         ward = _ward(db_session, org, "Ward 1")
         person = _person(db_session, "alice")
 
-        add_place_member(db_session, ward.id, person.id, "trainee")
+        add_org_unit_member(db_session, ward.id, person.id, "trainee")
         db_session.commit()
 
         assert _by_organisation(db_session, org, person) is None
@@ -164,10 +164,10 @@ class TestRemovingMembership:
     def test_the_row_goes(self, db_session):
         org = _org(db_session, "Trust")
         person = _person(db_session, "alice")
-        add_place_member(db_session, org.id, person.id, "staff")
+        add_org_unit_member(db_session, org.id, person.id, "staff")
         db_session.commit()
 
-        remove_place_member(db_session, org.id, person.id)
+        remove_org_unit_member(db_session, org.id, person.id)
         db_session.commit()
 
         assert _by_organisation(db_session, org, person) is None
@@ -177,11 +177,11 @@ class TestRemovingMembership:
         a = _org(db_session, "A")
         b = _org(db_session, "B")
         person = _person(db_session, "alice")
-        add_place_member(db_session, a.id, person.id, "staff")
-        add_place_member(db_session, b.id, person.id, "staff")
+        add_org_unit_member(db_session, a.id, person.id, "staff")
+        add_org_unit_member(db_session, b.id, person.id, "staff")
         db_session.commit()
 
-        remove_place_memberships(db_session, person.id)
+        remove_org_unit_memberships(db_session, person.id)
         db_session.commit()
 
         for org in (a, b):
@@ -192,11 +192,11 @@ class TestRemovingMembership:
         mine = _org(db_session, "Mine")
         theirs = _org(db_session, "Theirs")
         person = _person(db_session, "alice")
-        add_place_member(db_session, mine.id, person.id, "staff")
-        add_place_member(db_session, theirs.id, person.id, "staff")
+        add_org_unit_member(db_session, mine.id, person.id, "staff")
+        add_org_unit_member(db_session, theirs.id, person.id, "staff")
         db_session.commit()
 
-        remove_place_memberships(db_session, person.id, [mine.id])
+        remove_org_unit_memberships(db_session, person.id, [mine.id])
         db_session.commit()
 
         assert _by_place(db_session, mine, person) is None
@@ -208,7 +208,7 @@ class TestRemovingMembership:
         org = _org(db_session, "Trust")
         ward = _ward(db_session, org, "Ward 1")
         person = _person(db_session, "alice")
-        add_place_member(db_session, org.id, person.id, "staff")
+        add_org_unit_member(db_session, org.id, person.id, "staff")
         db_session.execute(
             insert(org_unit_member).values(
                 org_unit_id=ward.id,
@@ -218,7 +218,7 @@ class TestRemovingMembership:
         )
         db_session.commit()
 
-        remove_place_memberships(db_session, person.id)
+        remove_org_unit_memberships(db_session, person.id)
         db_session.commit()
 
         still_on_ward = db_session.scalar(
@@ -373,7 +373,7 @@ class TestMembershipWrittenStraightToAPlace:
     def test_the_capacity_filter_still_bites(self, db_session):
         org = _org(db_session, "Trust")
         person = _person(db_session, "alice")
-        add_place_member(db_session, org.id, person.id, "trainee")
+        add_org_unit_member(db_session, org.id, person.id, "trainee")
         db_session.commit()
 
         assert (

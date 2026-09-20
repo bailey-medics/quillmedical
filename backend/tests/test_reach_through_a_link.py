@@ -24,7 +24,7 @@ from app.models import (
     org_unit_member,
 )
 from app.organisations import (
-    add_place_member,
+    add_org_unit_member,
     get_member_place_ids,
     get_reachable_place_ids,
 )
@@ -74,7 +74,7 @@ class TestATeachingLinkGrantsReach:
         school = _org(db_session, "Medical School")
         trust = _org(db_session, "Trust")
         student = _person(db_session, "student")
-        add_place_member(db_session, school.id, student.id, "trainee")
+        add_org_unit_member(db_session, school.id, student.id, "trainee")
         _link(db_session, school.id, trust.id, "teaches_at")
 
         assert get_reachable_place_ids(db_session, student.id) == sorted(
@@ -114,7 +114,7 @@ class TestATeachingLinkGrantsReach:
         trust = _org(db_session, "Trust")
         classroom = _ward(db_session, school, "Classroom")
         student = _person(db_session, "student")
-        add_place_member(db_session, school.id, student.id, "trainee")
+        add_org_unit_member(db_session, school.id, student.id, "trainee")
         _link(db_session, classroom.id, trust.id, "teaches_at")
 
         assert get_reachable_place_ids(db_session, student.id) == [school.id]
@@ -123,7 +123,7 @@ class TestATeachingLinkGrantsReach:
         school = _org(db_session, "Medical School")
         trust = _org(db_session, "Trust")
         student = _person(db_session, "student")
-        add_place_member(db_session, school.id, student.id, "trainee")
+        add_org_unit_member(db_session, school.id, student.id, "trainee")
         _link(db_session, school.id, trust.id, "hosts")
 
         assert get_reachable_place_ids(db_session, student.id) == [school.id]
@@ -139,7 +139,7 @@ class TestATeachingLinkGrantsReach:
         school = _org(db_session, "Medical School")
         trust = _org(db_session, "Trust")
         consultant = _person(db_session, "consultant")
-        add_place_member(db_session, trust.id, consultant.id, "staff")
+        add_org_unit_member(db_session, trust.id, consultant.id, "staff")
         _link(db_session, school.id, trust.id, "teaches_at")
 
         assert get_reachable_place_ids(db_session, consultant.id) == [trust.id]
@@ -150,7 +150,7 @@ class TestATeachingLinkGrantsReach:
         trust = _org(db_session, "Trust")
         further = _org(db_session, "Another Trust")
         student = _person(db_session, "student")
-        add_place_member(db_session, school.id, student.id, "trainee")
+        add_org_unit_member(db_session, school.id, student.id, "trainee")
         _link(db_session, school.id, trust.id, "teaches_at")
         _link(db_session, trust.id, further.id, "teaches_at")
 
@@ -164,7 +164,7 @@ class TestALinkConfersNothingElse:
         school = _org(db_session, "Medical School")
         trust = _org(db_session, "Trust")
         student = _person(db_session, "student")
-        add_place_member(db_session, school.id, student.id, "trainee")
+        add_org_unit_member(db_session, school.id, student.id, "trainee")
         _link(db_session, school.id, trust.id, "teaches_at")
 
         assert get_member_place_ids(db_session, student.id) == [school.id]
@@ -176,7 +176,7 @@ class TestALinkConfersNothingElse:
         links. That separation is why the two lookups exist."""
         school = _org(db_session, "Medical School")
         trust = _org(db_session, "Trust")
-        add_place_member(db_session, school.id, test_admin.id, "staff")
+        add_org_unit_member(db_session, school.id, test_admin.id, "staff")
         _link(db_session, school.id, trust.id, "teaches_at")
 
         resp = authenticated_admin_client.get(f"/api/org-units/{trust.id}")
@@ -187,6 +187,6 @@ class TestALinkConfersNothingElse:
         school = _org(db_session, "Medical School")
         _org(db_session, "Trust")
         student = _person(db_session, "student")
-        add_place_member(db_session, school.id, student.id, "trainee")
+        add_org_unit_member(db_session, school.id, student.id, "trainee")
 
         assert get_reachable_place_ids(db_session, student.id) == [school.id]
