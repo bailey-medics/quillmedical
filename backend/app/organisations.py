@@ -23,12 +23,46 @@ from sqlalchemy.orm import Session
 
 from app.models import (
     ExternalPatientAccess,
+    Organisation,
+    OrgUnitLink,
     User,
-    organisation_member,
-    organisation_patient_member,
-    organisation_site,
-    site_member,
+    org_unit_member,
+    org_unit_patient_member,
     validate_member_capacity,
+)
+from app.org_units.relations import relation_grants_reach
+from app.org_units.tree import (
+    organisation_ids_of_sites,
+    root_ids_of_organisations,
+)
+
+# ------------------------------------------------------------------
+# Organisation membership, read from the merged table
+# ------------------------------------------------------------------
+
+#: Who is at an organisation, and in what capacity — the same three
+#: columns the separate table used to hold, now read from the one
+#: membership table by way of each organisation's own row in the tree.
+#:
+#: Kept under the name the call sites already used, because what they ask
+#: has not changed: only where the answer comes from. A membership of a
+#: ward is not in here; that is a membership of the ward, and asking for
+#: it means asking about the ward.
+#:
+#: It is a query rather than a table, so nothing can insert into it. Every
+#: write goes through the three functions above, which is what made
+#: switching the reads a change in one file.
+organisation_member = (
+    select(
+        Organisation.id.label("organisation_id"),
+        org_unit_member.c.user_id.label("user_id"),
+        org_unit_member.c.capacity.label("capacity"),
+    )
+    .join(
+        org_unit_member,
+        org_unit_member.c.org_unit_id == Organisation.org_unit_id,
+    )
+    .subquery("organisation_member")
 )
 
 
@@ -68,42 +102,102 @@ def get_reachable_org_ids(
 ) -> list[int]:
     """Return organisation IDs the user can reach, by any membership.
 
-    One resolver, replacing two that disagreed. Membership of an
-    organisation reaches that organisation; membership of a site reaches
-    the organisations that site is linked to, because content is delivered
-    downward and a trainee at a site receives what the organisation made
-    available there.
+    One resolver, replacing two that disagreed. Membership of a place
+    reaches the organisation accountable for it, because content is
+    delivered downward and a trainee on a ward receives what the trust
+    made available there.
+
+    **A teaching link reaches further.** A medical school teaching on a
+    trust's wards is a relationship and not ownership, so it is a link
+    rather than a parent — and the point of recording it is that people at
+    the school can then reach the trust's teaching content. Which
+    relations do that is declared beside them in
+    ``app/org_units/relations.py``; today only ``teaches_at`` does.
+
+    **Reach is not membership and is not authority.** Nothing here makes
+    anybody a member of anything, and nothing here lets them administer
+    it: the admin checks ask :func:`get_member_org_ids`, which does not
+    follow links. That separation is the whole reason the two functions
+    exist rather than one.
 
     Prefer :func:`get_member_org_ids` where the question is *is this person
-    a member of this organisation* rather than *can they reach it*. The
-    difference matters: reach is why a site trainee sees teaching content,
-    and membership is why they are not thereby staff of the trust.
+    a member of this organisation* rather than *can they reach it*.
 
     Args:
         db: Core database session.
         user_id: The user to resolve.
         capacity: When given, only memberships of that capacity count, at
-            the site and the organisation alike.
+            every kind of place alike.
 
     Returns:
         Organisation IDs, ascending.
     """
-    via_site = (
-        select(organisation_site.c.organisation_id)
-        .join(
-            site_member,
-            site_member.c.site_id == organisation_site.c.site_id,
-        )
-        .where(site_member.c.user_id == user_id)
+    # Which places the user belongs to, then which organisation is
+    # accountable for each. Resolved by walking the tree up rather than by
+    # joining on a column, because a place several levels down still
+    # reaches its organisation and a join on the parent would not see it.
+    member_places = select(org_unit_member.c.org_unit_id).where(
+        org_unit_member.c.user_id == user_id
     )
     if capacity is not None:
-        via_site = via_site.where(
-            site_member.c.capacity == validate_member_capacity(capacity)
+        member_places = member_places.where(
+            org_unit_member.c.capacity == validate_member_capacity(capacity)
         )
 
-    direct = get_member_org_ids(db, user_id, capacity=capacity)
-    reached = {int(r[0]) for r in db.execute(via_site).all()}
-    return sorted(set(direct) | reached)
+    place_ids = [int(r[0]) for r in db.execute(member_places).all()]
+
+    direct = set(get_member_org_ids(db, user_id, capacity=capacity))
+    reached = set(organisation_ids_of_sites(db, place_ids).values())
+
+    own_places = set(place_ids) | set(
+        root_ids_of_organisations(db, sorted(direct | reached))
+    )
+    return sorted(direct | reached | _reached_through_links(db, own_places))
+
+
+def _reached_through_links(db: Session, place_ids: set[int]) -> set[int]:
+    """Return organisations reached from *place_ids* by a link.
+
+    Only links pointing *away* from a place the person is actually at,
+    and only relations that say they grant reach. Two limits, both
+    deliberate:
+
+    - **A link is a claim its source makes about itself** — "we teach
+      there" — so following it the other way would let anybody name a
+      school and be let into it.
+    - **A link belongs to the place that made it**, not to everything
+      above it. One ward recording a relationship must not quietly open it
+      to everybody at the trust, which is a wider promise than the ward
+      made. An organisation that means it for all of its people records
+      the link on itself.
+
+    One hop, too. Reach that chained would make "who can see this" depend
+    on a path nobody drew, which is the ambiguity the single parent exists
+    to remove.
+
+    Args:
+        db: Core database session.
+        place_ids: Places the person is at, and the roots they reach.
+
+    Returns:
+        The ids of organisations reached through a link, if any.
+    """
+    if not place_ids:
+        return set()
+
+    targets = {
+        int(target_id)
+        for target_id, relation in db.execute(
+            select(OrgUnitLink.target_id, OrgUnitLink.relation).where(
+                OrgUnitLink.source_id.in_(place_ids)
+            )
+        ).all()
+        if relation_grants_reach(str(relation))
+    }
+    if not targets:
+        return set()
+
+    return set(organisation_ids_of_sites(db, sorted(targets)).values())
 
 
 def get_user_org_ids(db: Session, user_id: int) -> list[int]:
@@ -128,12 +222,26 @@ def get_user_org_ids(db: Session, user_id: int) -> list[int]:
 
 def get_patient_org_ids(db: Session, patient_id: str) -> list[int]:
     """Return organisation IDs the patient belongs to."""
-    rows = db.execute(
-        select(organisation_patient_member.c.organisation_id).where(
-            organisation_patient_member.c.patient_id == patient_id
+    place_ids = [
+        int(r[0])
+        for r in db.execute(
+            select(org_unit_patient_member.c.org_unit_id).where(
+                org_unit_patient_member.c.patient_id == patient_id
+            )
+        ).all()
+    ]
+    if not place_ids:
+        return []
+    return sorted(
+        int(org_id)
+        for org_id in db.execute(
+            select(Organisation.id).where(
+                Organisation.org_unit_id.in_(place_ids)
+            )
         )
-    ).all()
-    return [r[0] for r in rows]
+        .scalars()
+        .all()
+    )
 
 
 def get_shared_org_ids(
@@ -189,10 +297,10 @@ def check_user_patient_access(
     ):
         return True
 
-    # A record they were invited to. The grant row names which patient,
-    # exactly as organisation membership does below; without the pairing
-    # revoking a competency could not cut access, only deleting the row
-    # could.
+        # A record they were invited to. The grant row names which patient,
+        # exactly as organisation membership does below; without the pairing
+        # revoking a competency could not cut access, only deleting the row
+        # could.
     if "access_granted_patient_records" in competencies:
         grant = db.scalar(
             select(ExternalPatientAccess).where(
@@ -204,9 +312,9 @@ def check_user_patient_access(
         if grant is not None:
             return True
 
-    # A patient they are treating. Membership alone is not enough:
-    # sharing an organisation says only that the patient is in reach,
-    # never that this person may read them.
+            # A patient they are treating. Membership alone is not enough:
+            # sharing an organisation says only that the patient is in reach,
+            # never that this person may read them.
     if "access_patient_records" in competencies:
         if get_shared_org_ids(db, user.id, patient_id):
             return True
@@ -219,8 +327,10 @@ def get_org_patient_ids(db: Session, org_ids: list[int]) -> set[str]:
     if not org_ids:
         return set()
     rows = db.execute(
-        select(organisation_patient_member.c.patient_id).where(
-            organisation_patient_member.c.organisation_id.in_(org_ids)
+        select(org_unit_patient_member.c.patient_id).where(
+            org_unit_patient_member.c.org_unit_id.in_(
+                root_ids_of_organisations(db, org_ids)
+            )
         )
     ).all()
     return {r[0] for r in rows}
@@ -284,7 +394,7 @@ def get_accessible_patient_ids(db: Session, user: User) -> set[str]:
     if user_orgs:
         result |= get_org_patient_ids(db, user_orgs)
 
-    # External access grants
+        # External access grants
     rows = db.execute(
         select(ExternalPatientAccess.patient_id).where(
             ExternalPatientAccess.user_id == user.id,
@@ -294,3 +404,136 @@ def get_accessible_patient_ids(db: Session, user: User) -> set[str]:
     result |= {r[0] for r in rows}
 
     return result
+
+    # ------------------------------------------------------------------
+    # Writing membership
+    # ------------------------------------------------------------------
+    #
+    # Membership at an organisation and membership at a ward are the same
+    # fact about the same person, and are now one table keyed on a place in
+    # the tree. An organisation's place is its own row — its root.
+    #
+    # These three functions are the only code that writes an organisation
+    # membership. They were what made switching every reader over a change in
+    # one file rather than a hunt through the routes.
+
+
+def _root_of(db: Session, organisation_id: int) -> int | None:
+    """Return the tree row an organisation stands for, if it has one."""
+    roots = root_ids_of_organisations(db, [organisation_id])
+    return roots[0] if roots else None
+
+
+def add_organisation_member(
+    db: Session,
+    organisation_id: int,
+    user_id: int,
+    capacity: str,
+) -> None:
+    """Record that somebody is at an organisation, in a given capacity.
+
+    Writing the same membership twice changes the capacity rather than
+    failing, so a caller that has already checked and one that has not
+    both end up with one row saying the same thing.
+
+    Args:
+        db: Core database session. The caller commits.
+        organisation_id: The organisation they are at.
+        user_id: The person.
+        capacity: One of ``MEMBER_CAPACITIES``.
+    """
+    capacity = validate_member_capacity(capacity)
+
+    root_id = _root_of(db, organisation_id)
+    if root_id is None:
+        return
+
+    existing = db.scalar(
+        select(org_unit_member.c.user_id).where(
+            org_unit_member.c.org_unit_id == root_id,
+            org_unit_member.c.user_id == user_id,
+        )
+    )
+    if existing is None:
+        db.execute(
+            org_unit_member.insert().values(
+                org_unit_id=root_id,
+                user_id=user_id,
+                capacity=capacity,
+            )
+        )
+    else:
+        db.execute(
+            org_unit_member.update()
+            .where(
+                org_unit_member.c.org_unit_id == root_id,
+                org_unit_member.c.user_id == user_id,
+            )
+            .values(capacity=capacity)
+        )
+
+
+def remove_organisation_member(
+    db: Session, organisation_id: int, user_id: int
+) -> None:
+    """Remove one person's membership of one organisation.
+
+    Args:
+        db: Core database session. The caller commits.
+        organisation_id: The organisation.
+        user_id: The person.
+    """
+    root_id = _root_of(db, organisation_id)
+    if root_id is None:
+        return
+    db.execute(
+        org_unit_member.delete().where(
+            org_unit_member.c.org_unit_id == root_id,
+            org_unit_member.c.user_id == user_id,
+        )
+    )
+
+
+def remove_organisation_memberships(
+    db: Session,
+    user_id: int,
+    organisation_ids: list[int] | None = None,
+) -> None:
+    """Remove a person's organisation memberships.
+
+    Removes every one of them when *organisation_ids* is None, which is
+    what a superadmin replacing somebody's memberships wants. An admin
+    passes the organisations they are entitled to act on, so the edit
+    cannot reach a membership they cannot see.
+
+    Only memberships *of organisations* go: a membership of a ward is a
+    different fact about a different place, and an admin editing which
+    trusts somebody belongs to should not silently take them off a ward.
+
+    Args:
+        db: Core database session. The caller commits.
+        user_id: The person.
+        organisation_ids: Which organisations to clear, or None for all.
+    """
+    if organisation_ids is None:
+        root_ids = [
+            root_id
+            for root_id in db.execute(
+                select(Organisation.org_unit_id).where(
+                    Organisation.org_unit_id.is_not(None)
+                )
+            )
+            .scalars()
+            .all()
+            if root_id is not None
+        ]
+    else:
+        root_ids = root_ids_of_organisations(db, organisation_ids)
+
+    if root_ids:
+        db.execute(
+            org_unit_member.delete().where(
+                org_unit_member.c.user_id == user_id,
+                org_unit_member.c.org_unit_id.in_(root_ids),
+            )
+        )

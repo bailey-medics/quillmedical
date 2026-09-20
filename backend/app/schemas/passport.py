@@ -261,16 +261,61 @@ class InboxItemOut(BaseModel):
     sign_off: SignOffOut
 
 
+class AssessorMatchOut(BaseModel):
+    """Somebody on Quill who might be the assessor being named.
+
+    **The registration number is returned deliberately.** A trainee
+    about to ask somebody to sign off a competency needs to know they
+    have the right person, and two consultants may share a name while an
+    email address says only that somebody controls a mailbox. A
+    registration number is the one identifier that says *which*
+    registered professional this is. The trainee ends up holding it
+    regardless — every sign-off writes the assessor's registrations into
+    the passport — so showing it beforehand only brings it forward to
+    the moment it can still prevent a mistake.
+
+    **It is what the person states, not what Quill checked.** Quill
+    verifies no register; an organisation admin does that by hand, and
+    ``verified`` says whether they have. A number shown beside a name
+    reads as confirmation unless the wording says otherwise, so any
+    screen rendering this must say which it is.
+    """
+
+    user_id: int
+    username: NonEmptyText
+    full_name: str | None = None
+    email: NonEmptyText
+    registrations: list[RegistrationOut] = Field(default_factory=list)
+
+
+class AssessorSearchOut(BaseModel):
+    """What a search for an assessor found.
+
+    A list rather than a single match, because a name is not unique and
+    the trainee is the one who can tell two people apart. Empty is an
+    ordinary answer, not an error: asking somebody who has never used
+    Quill is the case this whole flow exists for.
+    """
+
+    matches: list[AssessorMatchOut] = Field(default_factory=list)
+
+
 class SignOffRequestIn(_In):
     """The holder asking for a sign-off.
 
-    ``assessor_user_id`` names who is being asked. The holder chooses,
-    because the judgement about who is appropriate belongs to them and
-    their supervisor. The one rule the API enforces is that it may not
-    be the holder themselves.
+    ``assessor_email`` names who is being asked. An address rather than
+    a user id, because the consultant who observed the work is often at
+    another trust or not on Quill at all, and requiring an account first
+    made this unreachable for the case it exists to serve. Matching the
+    address to an account is a lookup afterwards, never a condition of
+    asking.
+
+    The holder chooses, because the judgement about who is appropriate
+    belongs to them and their supervisor. The one rule the API enforces
+    is that it may not be the holder themselves.
     """
 
-    assessor_user_id: int
+    assessor_email: EmailStr
     observed_on: date
     level_id: str | None = None
     comments: str | None = None
@@ -410,6 +455,23 @@ class LogbookOut(BaseModel):
     competency: CompetencyIdField
     count: int = Field(ge=0)
     entries: list[LogbookEntryOut] = Field(default_factory=list)
+
+
+class WholeLogbookOut(BaseModel):
+    """Every logged procedure, whatever competency it counts towards.
+
+    The same entries the per-competency response carries, kept in their
+    groups rather than merged into one list: an entry is about one
+    procedure and the competency it counts towards is part of what it
+    says. A reader wanting the flat view can concatenate; a reader
+    handed a flat list cannot get the grouping back.
+
+    A count and no target here too, for the reason ``LogbookOut``
+    gives: activity is not competence.
+    """
+
+    competencies: list[LogbookOut] = Field(default_factory=list)
+    count: int = Field(ge=0)
 
 
 class ReflectionIn(_In):
@@ -636,11 +698,22 @@ class AssessorInviteAcceptIn(_In):
     resolves to somebody without an account. An assessor who already
     uses Quill sends the token alone and signs in normally; nothing
     about their existing account is changed.
+
+    **The assessor states their own name and registration**, for the
+    same reason. A trainee asking for a sign-off gives an email address
+    and nothing else — they may not know their consultant's GMC number,
+    and a number typed by somebody else is worth less than one typed by
+    its holder. Required alongside ``username`` and ``password``, and
+    ignored for an assessor who already has an account, whose details
+    are already on it.
     """
 
     token: NonEmptyText
     username: str | None = None
     password: str | None = None
+    full_name: str | None = None
+    registration_authority: str | None = None
+    registration_number: str | None = None
 
 
 class RegistrationVerifyIn(_In):

@@ -36,10 +36,10 @@ from app.features.passport.store import LocalPassportStore
 from app.main import app
 from app.models import (
     Organisation,
-    OrganisationFeature,
+    OrgUnitFeature,
     User,
-    organisation_member,
 )
+from app.organisations import add_organisation_member
 from app.passport_storage import get_passport_store
 from app.security import hash_password
 
@@ -68,11 +68,11 @@ EXPECTED_PATHS = {
     "/api/passport/me",
     "/api/passport/assessor-invites/accept",
     "/api/passport/assessor-invites/preview",
+    "/api/passport/assessors/search",
     "/api/passport/assessors/{assessor_user_id}/membership",
     "/api/passport/assessors/{assessor_user_id}/registration-verification",
     "/api/passport/requests/inbox",
     "/api/passport/{passport_id}",
-    "/api/passport/{passport_id}/assessor-invites",
     "/api/passport/{passport_id}/certificates",
     "/api/passport/{passport_id}/certificates/{name}",
     "/api/passport/{passport_id}/competencies/{competency_id}",
@@ -84,6 +84,7 @@ EXPECTED_PATHS = {
     "/api/passport/{passport_id}/export.zip",
     "/api/passport/{passport_id}/cpd/{year}",
     "/api/passport/{passport_id}/cpd/{year}/{stem}",
+    "/api/passport/{passport_id}/logbook",
     "/api/passport/{passport_id}/logbook/{competency_id}",
     "/api/passport/{passport_id}/logbook/{competency_id}/{stem}",
     "/api/passport/{passport_id}/reflections",
@@ -173,15 +174,11 @@ def org(db_session: Session, holder: User, org_admin: User) -> Organisation:
     db_session.refresh(org)
 
     db_session.add(
-        OrganisationFeature(organisation_id=org.id, feature_key="passport")
+        OrgUnitFeature(org_unit_id=org.org_unit_id, feature_key="passport")
     )
 
     for user in (holder, org_admin):
-        db_session.execute(
-            organisation_member.insert().values(
-                organisation_id=org.id, user_id=user.id
-            )
-        )
+        add_organisation_member(db_session, org.id, user.id, "trainee")
 
     db_session.commit()
     return org

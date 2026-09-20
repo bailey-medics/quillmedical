@@ -24,7 +24,8 @@ os.environ.setdefault("CLINICAL_SERVICES_ENABLED", "false")
 os.environ["EMAIL_DRY_RUN"] = "true"
 
 from app.db import get_core_db
-from app.main import app, limiter, require_clinical_services
+from app.deps import require_clinical_services
+from app.main import app, limiter
 from app.models import Base, Role, User
 from app.security import hash_password
 

@@ -210,8 +210,11 @@ describe("AddStaffToOrgPage", () => {
       await user.click(screen.getByTestId("submit-button"));
 
       await waitFor(() => {
-        expect(post).toHaveBeenCalledWith("/organisations/1/staff", {
+        expect(post).toHaveBeenCalledWith("/org-units/1/members", {
           user_id: 1,
+          // The old address assumed this; the new one asks, because a
+          // place takes trainees and external assessors too.
+          capacity: "staff",
         });
       });
     });
@@ -303,8 +306,9 @@ describe("AddStaffToOrgPage", () => {
       );
 
       await waitFor(() => {
-        expect(post).toHaveBeenCalledWith("/organisations/1/staff", {
+        expect(post).toHaveBeenCalledWith("/org-units/1/members", {
           user_id: 2,
+          capacity: "staff",
           base_profession: "healthcare_assistant",
         });
       });

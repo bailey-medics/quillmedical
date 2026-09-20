@@ -15,15 +15,21 @@ vi.mock("@/auth/AuthContext", () => ({
 }));
 
 describe("OrgFeaturesPage", () => {
-  const mockOrg = { id: 3, name: "Test Hospital" };
-  const mockFeatures = {
-    features: [
-      {
-        feature_key: "teaching",
-        enabled_at: "2026-01-15T10:00:00Z",
-        enabled_by: 1,
-      },
-    ],
+  // One request now: a place carries the features switched on there.
+  const mockOrg = {
+    id: 3,
+    name: "Test Hospital",
+    type: "hospital_team",
+    type_display_name: "Organisation",
+    is_root: true,
+    parent_id: null,
+    location: "",
+    is_active: true,
+    members: [],
+    children: [],
+    features: ["teaching"],
+    patient_ids: [],
+    clinical_lead_id: null,
   };
 
   beforeEach(() => {
@@ -31,10 +37,7 @@ describe("OrgFeaturesPage", () => {
   });
 
   it("renders page heading after load", async () => {
-    vi.spyOn(apiLib.api, "get").mockImplementation((url: string) => {
-      if (url.includes("/features")) return Promise.resolve(mockFeatures);
-      return Promise.resolve(mockOrg);
-    });
+    vi.spyOn(apiLib.api, "get").mockResolvedValue(mockOrg);
 
     renderWithRouter(<OrgFeaturesPage />, {
       routePath: "/admin/organisations/:id/features",
@@ -49,9 +52,9 @@ describe("OrgFeaturesPage", () => {
   });
 
   it("shows all available features", async () => {
-    vi.spyOn(apiLib.api, "get").mockImplementation((url: string) => {
-      if (url.includes("/features")) return Promise.resolve({ features: [] });
-      return Promise.resolve(mockOrg);
+    vi.spyOn(apiLib.api, "get").mockResolvedValue({
+      ...mockOrg,
+      features: [],
     });
 
     renderWithRouter(<OrgFeaturesPage />, {
@@ -68,10 +71,7 @@ describe("OrgFeaturesPage", () => {
   });
 
   it("shows enabled features as checked", async () => {
-    vi.spyOn(apiLib.api, "get").mockImplementation((url: string) => {
-      if (url.includes("/features")) return Promise.resolve(mockFeatures);
-      return Promise.resolve(mockOrg);
-    });
+    vi.spyOn(apiLib.api, "get").mockResolvedValue(mockOrg);
 
     const { container } = renderWithRouter(<OrgFeaturesPage />, {
       routePath: "/admin/organisations/:id/features",
@@ -91,10 +91,7 @@ describe("OrgFeaturesPage", () => {
   });
 
   it("disables save button when nothing changed", async () => {
-    vi.spyOn(apiLib.api, "get").mockImplementation((url: string) => {
-      if (url.includes("/features")) return Promise.resolve(mockFeatures);
-      return Promise.resolve(mockOrg);
-    });
+    vi.spyOn(apiLib.api, "get").mockResolvedValue(mockOrg);
 
     renderWithRouter(<OrgFeaturesPage />, {
       routePath: "/admin/organisations/:id/features",
@@ -115,9 +112,9 @@ describe("OrgFeaturesPage", () => {
   it("enables save button after toggling a switch", async () => {
     const user = userEvent.setup();
 
-    vi.spyOn(apiLib.api, "get").mockImplementation((url: string) => {
-      if (url.includes("/features")) return Promise.resolve({ features: [] });
-      return Promise.resolve(mockOrg);
+    vi.spyOn(apiLib.api, "get").mockResolvedValue({
+      ...mockOrg,
+      features: [],
     });
 
     const { container } = renderWithRouter(<OrgFeaturesPage />, {
@@ -142,9 +139,9 @@ describe("OrgFeaturesPage", () => {
   it("navigates back to org page when cancel is clicked with no changes", async () => {
     const user = userEvent.setup();
 
-    vi.spyOn(apiLib.api, "get").mockImplementation((url: string) => {
-      if (url.includes("/features")) return Promise.resolve({ features: [] });
-      return Promise.resolve(mockOrg);
+    vi.spyOn(apiLib.api, "get").mockResolvedValue({
+      ...mockOrg,
+      features: [],
     });
 
     renderWithRouter(<OrgFeaturesPage />, {
@@ -170,9 +167,9 @@ describe("OrgFeaturesPage", () => {
     const user = userEvent.setup();
     vi.spyOn(apiLib.api, "put").mockResolvedValue({ status: "enabled" });
 
-    vi.spyOn(apiLib.api, "get").mockImplementation((url: string) => {
-      if (url.includes("/features")) return Promise.resolve({ features: [] });
-      return Promise.resolve(mockOrg);
+    vi.spyOn(apiLib.api, "get").mockResolvedValue({
+      ...mockOrg,
+      features: [],
     });
 
     const { container } = renderWithRouter(<OrgFeaturesPage />, {
@@ -201,9 +198,9 @@ describe("OrgFeaturesPage", () => {
       .spyOn(apiLib.api, "put")
       .mockResolvedValue({ status: "enabled" });
 
-    vi.spyOn(apiLib.api, "get").mockImplementation((url: string) => {
-      if (url.includes("/features")) return Promise.resolve({ features: [] });
-      return Promise.resolve(mockOrg);
+    vi.spyOn(apiLib.api, "get").mockResolvedValue({
+      ...mockOrg,
+      features: [],
     });
 
     const { container } = renderWithRouter(<OrgFeaturesPage />, {
@@ -222,7 +219,7 @@ describe("OrgFeaturesPage", () => {
     await user.click(screen.getByTestId("submit-button"));
     await user.click(screen.getByRole("button", { name: "Confirm" }));
 
-    expect(putSpy).toHaveBeenCalledWith("/organisations/3/features/teaching", {
+    expect(putSpy).toHaveBeenCalledWith("/org-units/3/features/teaching", {
       enabled: true,
     });
   });
@@ -233,9 +230,9 @@ describe("OrgFeaturesPage", () => {
       .spyOn(apiLib.api, "put")
       .mockResolvedValue({ status: "enabled" });
 
-    vi.spyOn(apiLib.api, "get").mockImplementation((url: string) => {
-      if (url.includes("/features")) return Promise.resolve({ features: [] });
-      return Promise.resolve(mockOrg);
+    vi.spyOn(apiLib.api, "get").mockResolvedValue({
+      ...mockOrg,
+      features: [],
     });
 
     const { container } = renderWithRouter(<OrgFeaturesPage />, {
@@ -257,7 +254,7 @@ describe("OrgFeaturesPage", () => {
     await user.click(screen.getByTestId("submit-button"));
     await user.click(screen.getByRole("button", { name: "Confirm" }));
 
-    expect(putSpy).toHaveBeenCalledWith("/organisations/3/features/passport", {
+    expect(putSpy).toHaveBeenCalledWith("/org-units/3/features/passport", {
       enabled: true,
     });
   });
@@ -266,10 +263,7 @@ describe("OrgFeaturesPage", () => {
     const user = userEvent.setup();
     vi.spyOn(apiLib.api, "put").mockResolvedValue({ status: "disabled" });
 
-    vi.spyOn(apiLib.api, "get").mockImplementation((url: string) => {
-      if (url.includes("/features")) return Promise.resolve(mockFeatures);
-      return Promise.resolve(mockOrg);
-    });
+    vi.spyOn(apiLib.api, "get").mockResolvedValue(mockOrg);
 
     const { container } = renderWithRouter(<OrgFeaturesPage />, {
       routePath: "/admin/organisations/:id/features",
@@ -295,9 +289,9 @@ describe("OrgFeaturesPage", () => {
       .spyOn(apiLib.api, "put")
       .mockResolvedValue({ status: "enabled" });
 
-    vi.spyOn(apiLib.api, "get").mockImplementation((url: string) => {
-      if (url.includes("/features")) return Promise.resolve({ features: [] });
-      return Promise.resolve(mockOrg);
+    vi.spyOn(apiLib.api, "get").mockResolvedValue({
+      ...mockOrg,
+      features: [],
     });
 
     const { container } = renderWithRouter(<OrgFeaturesPage />, {
@@ -325,9 +319,9 @@ describe("OrgFeaturesPage", () => {
     const user = userEvent.setup();
     vi.spyOn(apiLib.api, "put").mockRejectedValue(new Error("Server error"));
 
-    vi.spyOn(apiLib.api, "get").mockImplementation((url: string) => {
-      if (url.includes("/features")) return Promise.resolve({ features: [] });
-      return Promise.resolve(mockOrg);
+    vi.spyOn(apiLib.api, "get").mockResolvedValue({
+      ...mockOrg,
+      features: [],
     });
 
     const { container } = renderWithRouter(<OrgFeaturesPage />, {

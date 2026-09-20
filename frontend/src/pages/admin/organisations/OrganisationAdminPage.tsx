@@ -34,58 +34,16 @@ import FeatureBadge from "@/components/badge/FeatureBadge";
 import ActiveStatusBadge from "@/components/badge/ActiveStatusBadge";
 import NotFoundLayout from "@/components/layouts/NotFoundLayout";
 import { useAuth } from "@/auth/AuthContext";
-import { api } from "@/lib/api";
+import {
+  orgUnits,
+  type OrgUnitChild,
+  type OrgUnitDetail,
+  type OrgUnitMember,
+} from "@/domains/orgUnit";
 
-/**
- * Staff member in organisation
- */
-interface StaffMember {
-  id: number;
-  username: string;
-  email: string;
-  full_name: string;
-}
-
-/**
- * Patient member in organisation
- */
-interface PatientMember {
+/** A patient this organisation is responsible for, as a table row. */
+interface PatientRow {
   patient_id: string;
-}
-
-/**
- * Site linked to organisation
- */
-interface SiteMember {
-  id: number;
-  name: string;
-  type: string;
-  location: string;
-  is_active: boolean;
-  clinical_lead: string;
-}
-
-/**
- * Organisation details from API
- */
-interface OrganisationDetails {
-  id: number;
-  name: string;
-  type: string;
-  location: string | null;
-  created_at: string;
-  updated_at: string;
-  staff_count: number;
-  patient_count: number;
-  staff_members: StaffMember[];
-  patient_members: PatientMember[];
-  sites: SiteMember[];
-}
-
-interface FeatureOut {
-  feature_key: string;
-  enabled_at: string;
-  enabled_by: number | null;
 }
 
 /** Labels for known feature keys */
@@ -114,28 +72,27 @@ export default function OrganisationAdminPage() {
     state.status === "authenticated"
       ? state.user.clinical_services_enabled !== false
       : true;
-  const [org, setOrg] = useState<OrganisationDetails | null>(null);
+  const [org, setOrg] = useState<OrgUnitDetail | null>(null);
   const [enabledFeatures, setEnabledFeatures] = useState<string[]>([]);
   // Without an id there is nothing to fetch, so the page does not begin in
   // a loading state and the effect below has nothing to do.
   const [loading, setLoading] = useState(Boolean(id));
   const [error, setError] = useState<string | null>(null);
-  const [removingMember, setRemovingMember] = useState<StaffMember | null>(
+  const [removingMember, setRemovingMember] = useState<OrgUnitMember | null>(
     null,
   );
-  const [removingSite, setRemovingSite] = useState<SiteMember | null>(null);
+  const [removingSite, setRemovingSite] = useState<OrgUnitChild | null>(null);
   const { showMessage } = usePageMessage();
 
   const fetchOrganisationData = useCallback(async () => {
     if (!id) return;
 
     try {
-      const [orgData, featuresData] = await Promise.all([
-        api.get<OrganisationDetails>(`/organisations/${id}`),
-        api.get<{ features: FeatureOut[] }>(`/organisations/${id}/features`),
-      ]);
-      setOrg(orgData);
-      setEnabledFeatures(featuresData.features.map((f) => f.feature_key));
+      // One request now: a place carries its own people, the places
+      // inside it and the features switched on there.
+      const place = await orgUnits.get(Number(id));
+      setOrg(place);
+      setEnabledFeatures(place.features);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -157,7 +114,7 @@ export default function OrganisationAdminPage() {
   async function confirmRemoveStaff() {
     if (!id || !removingMember) return;
     try {
-      await api.del(`/organisations/${id}/staff/${removingMember.id}`);
+      await orgUnits.removeMember(Number(id), removingMember.id);
       showMessage({
         variant: "success",
         title: "Staff member removed",
@@ -177,7 +134,10 @@ export default function OrganisationAdminPage() {
   async function confirmRemoveSite() {
     if (!id || !removingSite) return;
     try {
-      await api.del(`/organisations/${id}/sites/${removingSite.id}`);
+      // Taking a place out of an organisation is deleting it: a place
+      // that belongs nowhere is invisible to every list and reachable by
+      // nobody, which is worse than saying it has gone.
+      await orgUnits.remove(removingSite.id);
       showMessage({
         variant: "success",
         title: "Site removed",
@@ -202,7 +162,7 @@ export default function OrganisationAdminPage() {
   };
 
   const siteFilterOptions = useMemo(() => {
-    const types = [...new Set((org?.sites ?? []).map((s) => s.type))].sort();
+    const types = [...new Set((org?.children ?? []).map((s) => s.type))].sort();
     return [
       {
         group: "Type",
@@ -212,20 +172,26 @@ export default function OrganisationAdminPage() {
         })),
       },
     ];
-  }, [org?.sites]);
+  }, [org?.children]);
 
   const siteFilterPredicate = useCallback((filters: string[]) => {
     const typeFilters = filters
       .filter((f) => f.startsWith("type:"))
       .map((f) => f.slice(5));
 
-    return (site: SiteMember) => {
+    return (site: OrgUnitChild) => {
       if (typeFilters.length > 0 && !typeFilters.includes(site.type)) {
         return false;
       }
       return true;
     };
   }, []);
+
+  // The place sends patient ids; the table wants a row each.
+  const patientRows: PatientRow[] = useMemo(
+    () => (org?.patient_ids ?? []).map((patient_id) => ({ patient_id })),
+    [org?.patient_ids],
+  );
 
   if (loading) {
     return (
@@ -241,7 +207,7 @@ export default function OrganisationAdminPage() {
     return <NotFoundLayout />;
   }
 
-  const staffColumns: Column<StaffMember>[] = [
+  const staffColumns: Column<OrgUnitMember>[] = [
     {
       header: "Full name",
       render: (member) => member.full_name || member.username,
@@ -276,11 +242,11 @@ export default function OrganisationAdminPage() {
     },
   ];
 
-  const patientColumns: Column<PatientMember>[] = [
+  const patientColumns: Column<PatientRow>[] = [
     { header: "Patient ID", render: (patient) => patient.patient_id },
   ];
 
-  const siteColumns: Column<SiteMember>[] = [
+  const siteColumns: Column<OrgUnitChild>[] = [
     {
       header: "Name",
       width: "25%",
@@ -296,8 +262,8 @@ export default function OrganisationAdminPage() {
     {
       header: "Clinical lead",
       width: "160px",
-      render: (site) => site.clinical_lead || "\u2014",
-      accessor: (site) => site.clinical_lead || "",
+      render: (site) => site.clinical_lead_name || "\u2014",
+      accessor: (site) => site.clinical_lead_name || "",
     },
     {
       header: "Status",
@@ -368,8 +334,8 @@ export default function OrganisationAdminPage() {
             />
           </Group>
 
-          <DataTableControlled<StaffMember>
-            data={org.staff_members}
+          <DataTableControlled<OrgUnitMember>
+            data={org.members}
             columns={staffColumns}
             onRowClick={(member) => navigate(`/admin/users/${member.id}`)}
             getRowKey={(member) => member.id}
@@ -392,8 +358,8 @@ export default function OrganisationAdminPage() {
               />
             </Group>
 
-            <DataTableControlled<PatientMember>
-              data={org.patient_members}
+            <DataTableControlled<PatientRow>
+              data={patientRows}
               columns={patientColumns}
               onRowClick={(patient) =>
                 navigate(`/admin/patients/${patient.patient_id}`)
@@ -439,13 +405,13 @@ export default function OrganisationAdminPage() {
             />
           </Group>
 
-          <DataTableControlled<SiteMember>
-            data={org.sites}
+          <DataTableControlled<OrgUnitChild>
+            data={org.children}
             columns={siteColumns}
             onRowClick={(site) => navigate(`/admin/sites/${site.id}`)}
             getRowKey={(site) => site.id}
             emptyMessage="No sites linked"
-            searchFields={(s) => [s.name, s.type, s.location, s.clinical_lead]}
+            searchFields={(s) => [s.name, s.type, s.clinical_lead_name]}
             filterData={siteFilterOptions}
             filterLabel="Filter sites"
             filterAriaLabel="Filter sites"

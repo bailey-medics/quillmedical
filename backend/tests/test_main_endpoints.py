@@ -5,7 +5,8 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
-from app.models import Organisation, User, organisation_member
+from app.models import Organisation, User
+from app.organisations import add_organisation_member, organisation_member
 from app.security import hash_password
 
 
@@ -360,9 +361,8 @@ class TestOrganisationEndpoints:
         test_admin: User,
     ):
         """Test getting list of organisations (admin sees only own)."""
-        from sqlalchemy import insert
 
-        from app.models import Organisation, organisation_member
+        from app.models import Organisation
 
         # Create test organisations
         org1 = Organisation(
@@ -375,22 +375,8 @@ class TestOrganisationEndpoints:
         db_session.commit()
 
         # Add admin as staff to both orgs
-        db_session.execute(
-            insert(organisation_member).values(
-                [
-                    {
-                        "organisation_id": org1.id,
-                        "user_id": test_admin.id,
-                        "capacity": "staff",
-                    },
-                    {
-                        "organisation_id": org2.id,
-                        "user_id": test_admin.id,
-                        "capacity": "staff",
-                    },
-                ]
-            )
-        )
+        add_organisation_member(db_session, org1.id, test_admin.id, "staff")
+        add_organisation_member(db_session, org2.id, test_admin.id, "staff")
         db_session.commit()
 
         response = authenticated_admin_client.get("/api/organisations")
@@ -409,9 +395,8 @@ class TestOrganisationEndpoints:
         test_admin: User,
     ):
         """Test admin only sees organisations they are a member of."""
-        from sqlalchemy import insert
 
-        from app.models import Organisation, organisation_member
+        from app.models import Organisation
 
         org1 = Organisation(name="My Org", type="hospital", location="London")
         org2 = Organisation(
@@ -421,13 +406,7 @@ class TestOrganisationEndpoints:
         db_session.commit()
 
         # Admin is only a member of org1
-        db_session.execute(
-            insert(organisation_member).values(
-                organisation_id=org1.id,
-                user_id=test_admin.id,
-                capacity="staff",
-            )
-        )
+        add_organisation_member(db_session, org1.id, test_admin.id, "staff")
         db_session.commit()
 
         response = authenticated_admin_client.get("/api/organisations")
@@ -469,9 +448,8 @@ class TestOrganisationEndpoints:
         test_admin: User,
     ):
         """Test getting organisation by ID with details."""
-        from sqlalchemy import insert
 
-        from app.models import Organisation, organisation_member
+        from app.models import Organisation
 
         # Create organisation
         org = Organisation(name="Test Practice", type="general_practice")
@@ -479,10 +457,7 @@ class TestOrganisationEndpoints:
         db_session.commit()
 
         # Add staff member
-        stmt = insert(organisation_member).values(
-            organisation_id=org.id, user_id=test_admin.id, capacity="staff"
-        )
-        db_session.execute(stmt)
+        add_organisation_member(db_session, org.id, test_admin.id, "staff")
         db_session.commit()
 
         response = authenticated_admin_client.get(
@@ -632,9 +607,8 @@ class TestOrganisationEndpoints:
         test_admin: User,
     ):
         """Test successfully updating an organisation."""
-        from sqlalchemy import insert
 
-        from app.models import Organisation, organisation_member
+        from app.models import Organisation
 
         org = Organisation(
             name="Original Hospital",
@@ -644,11 +618,7 @@ class TestOrganisationEndpoints:
         db_session.add(org)
         db_session.commit()
 
-        db_session.execute(
-            insert(organisation_member).values(
-                organisation_id=org.id, user_id=test_admin.id, capacity="staff"
-            )
-        )
+        add_organisation_member(db_session, org.id, test_admin.id, "staff")
         db_session.commit()
 
         # Update it
@@ -669,19 +639,14 @@ class TestOrganisationEndpoints:
         test_admin: User,
     ):
         """Test updating organisation with invalid type."""
-        from sqlalchemy import insert
 
-        from app.models import Organisation, organisation_member
+        from app.models import Organisation
 
         org = Organisation(name="Test Org", type="hospital_team")
         db_session.add(org)
         db_session.commit()
 
-        db_session.execute(
-            insert(organisation_member).values(
-                organisation_id=org.id, user_id=test_admin.id, capacity="staff"
-            )
-        )
+        add_organisation_member(db_session, org.id, test_admin.id, "staff")
         db_session.commit()
 
         response = authenticated_admin_client.put(
@@ -696,9 +661,8 @@ class TestOrganisationEndpoints:
         test_admin: User,
     ):
         """Test partial update only changes specified fields."""
-        from sqlalchemy import insert
 
-        from app.models import Organisation, organisation_member
+        from app.models import Organisation
 
         org = Organisation(
             name="Test Hospital",
@@ -708,11 +672,7 @@ class TestOrganisationEndpoints:
         db_session.add(org)
         db_session.commit()
 
-        db_session.execute(
-            insert(organisation_member).values(
-                organisation_id=org.id, user_id=test_admin.id, capacity="staff"
-            )
-        )
+        add_organisation_member(db_session, org.id, test_admin.id, "staff")
         db_session.commit()
 
         response = authenticated_admin_client.put(
@@ -754,19 +714,14 @@ class TestOrganisationEndpoints:
         test_admin: User,
     ):
         """Test adding non-existent user as staff."""
-        from sqlalchemy import insert
 
-        from app.models import Organisation, organisation_member
+        from app.models import Organisation
 
         org = Organisation(name="Test Org", type="hospital_team")
         db_session.add(org)
         db_session.commit()
 
-        db_session.execute(
-            insert(organisation_member).values(
-                organisation_id=org.id, user_id=test_admin.id, capacity="staff"
-            )
-        )
+        add_organisation_member(db_session, org.id, test_admin.id, "staff")
         db_session.commit()
 
         response = authenticated_admin_client.post(
@@ -782,20 +737,15 @@ class TestOrganisationEndpoints:
         test_admin: User,
     ):
         """Test successfully adding a staff member."""
-        from sqlalchemy import insert
 
-        from app.models import Organisation, organisation_member
+        from app.models import Organisation
 
         org = Organisation(name="Staff Org", type="hospital_team")
         db_session.add(org)
         db_session.commit()
 
         # Pre-add admin as member so they can manage this org
-        db_session.execute(
-            insert(organisation_member).values(
-                organisation_id=org.id, user_id=test_admin.id, capacity="staff"
-            )
-        )
+        add_organisation_member(db_session, org.id, test_admin.id, "staff")
         db_session.commit()
 
         # Create a second staff user to add
@@ -825,20 +775,14 @@ class TestOrganisationEndpoints:
         test_admin: User,
     ):
         """Test adding user who is already a staff member."""
-        from sqlalchemy import insert
 
-        from app.models import Organisation, organisation_member
+        from app.models import Organisation
 
         org = Organisation(name="Dup Org", type="hospital_team")
         db_session.add(org)
         db_session.commit()
 
-        stmt = insert(organisation_member).values(
-            organisation_id=org.id,
-            user_id=test_admin.id,
-            capacity="staff",
-        )
-        db_session.execute(stmt)
+        add_organisation_member(db_session, org.id, test_admin.id, "staff")
         db_session.commit()
 
         response = authenticated_admin_client.post(
@@ -862,19 +806,15 @@ class TestOrganisationEndpoints:
         first was the old hierarchy answering a question membership now
         answers. See the platform role plan.
         """
-        from sqlalchemy import insert, select
+        from sqlalchemy import select
 
-        from app.models import Organisation, organisation_member
+        from app.models import Organisation
 
         org = Organisation(name="Staff Only Org", type="hospital_team")
         db_session.add(org)
         db_session.commit()
 
-        db_session.execute(
-            insert(organisation_member).values(
-                organisation_id=org.id, user_id=test_admin.id, capacity="staff"
-            )
-        )
+        add_organisation_member(db_session, org.id, test_admin.id, "staff")
         db_session.commit()
 
         patient_user = User(
@@ -911,12 +851,7 @@ class TestOrganisationEndpoints:
         org_a = Organisation(name="Org A")
         db_session.add(org_a)
         db_session.flush()
-        db_session.execute(
-            organisation_member.insert().values(
-                organisation_id=org_a.id,
-                user_id=test_admin.id,
-            )
-        )
+        add_organisation_member(db_session, org_a.id, test_admin.id, "trainee")
 
         # Another org with a user the admin should NOT see
         org_b = Organisation(name="Org B")
@@ -931,12 +866,7 @@ class TestOrganisationEndpoints:
         )
         db_session.add(other_user)
         db_session.flush()
-        db_session.execute(
-            organisation_member.insert().values(
-                organisation_id=org_b.id,
-                user_id=other_user.id,
-            )
-        )
+        add_organisation_member(db_session, org_b.id, other_user.id, "trainee")
         db_session.commit()
 
         response = authenticated_admin_client.get("/api/users")
@@ -957,12 +887,7 @@ class TestOrganisationEndpoints:
         db_session.flush()
 
         # Add admin to org so they can see users
-        db_session.execute(
-            organisation_member.insert().values(
-                organisation_id=org.id,
-                user_id=test_admin.id,
-            )
-        )
+        add_organisation_member(db_session, org.id, test_admin.id, "trainee")
 
         # Create two staff users in the same org
         member_user = User(
@@ -983,19 +908,9 @@ class TestOrganisationEndpoints:
         db_session.flush()
 
         # Add both to admin's org so admin can see them
-        db_session.execute(
-            organisation_member.insert().values(
-                [
-                    {
-                        "organisation_id": org.id,
-                        "user_id": member_user.id,
-                    },
-                    {
-                        "organisation_id": org.id,
-                        "user_id": non_member_user.id,
-                    },
-                ]
-            )
+        add_organisation_member(db_session, org.id, member_user.id, "trainee")
+        add_organisation_member(
+            db_session, org.id, non_member_user.id, "trainee"
         )
         db_session.commit()
 
@@ -1042,22 +957,8 @@ class TestOrganisationEndpoints:
         )
         db_session.add(user)
         db_session.flush()
-        db_session.execute(
-            organisation_member.insert().values(
-                [
-                    {
-                        "organisation_id": org.id,
-                        "user_id": test_admin.id,
-                        "capacity": "staff",
-                    },
-                    {
-                        "organisation_id": org.id,
-                        "user_id": user.id,
-                        "capacity": "staff",
-                    },
-                ]
-            )
-        )
+        add_organisation_member(db_session, org.id, test_admin.id, "staff")
+        add_organisation_member(db_session, org.id, user.id, "staff")
         db_session.commit()
         db_session.refresh(user)
 
@@ -1106,22 +1007,8 @@ class TestOrganisationEndpoints:
         )
         db_session.add(user)
         db_session.flush()
-        db_session.execute(
-            organisation_member.insert().values(
-                [
-                    {
-                        "organisation_id": org.id,
-                        "user_id": test_admin.id,
-                        "capacity": "staff",
-                    },
-                    {
-                        "organisation_id": org.id,
-                        "user_id": user.id,
-                        "capacity": "staff",
-                    },
-                ]
-            )
-        )
+        add_organisation_member(db_session, org.id, test_admin.id, "staff")
+        add_organisation_member(db_session, org.id, user.id, "staff")
         db_session.commit()
         db_session.refresh(user)
 
@@ -1160,12 +1047,7 @@ class TestOrganisationEndpoints:
         org = Organisation(name="Admin Org")
         db_session.add(org)
         db_session.flush()
-        db_session.execute(
-            organisation_member.insert().values(
-                organisation_id=org.id,
-                user_id=test_admin.id,
-            )
-        )
+        add_organisation_member(db_session, org.id, test_admin.id, "trainee")
         # Create a superadmin in the same org
         superadmin = User(
             username="hidden_superadmin",
@@ -1177,12 +1059,7 @@ class TestOrganisationEndpoints:
         )
         db_session.add(superadmin)
         db_session.flush()
-        db_session.execute(
-            organisation_member.insert().values(
-                organisation_id=org.id,
-                user_id=superadmin.id,
-            )
-        )
+        add_organisation_member(db_session, org.id, superadmin.id, "trainee")
         db_session.commit()
 
         response = authenticated_admin_client.get("/api/users")
@@ -1238,22 +1115,8 @@ class TestOrganisationEndpoints:
         )
         db_session.add(superadmin)
         db_session.flush()
-        db_session.execute(
-            organisation_member.insert().values(
-                [
-                    {
-                        "organisation_id": org.id,
-                        "user_id": test_admin.id,
-                        "capacity": "staff",
-                    },
-                    {
-                        "organisation_id": org.id,
-                        "user_id": superadmin.id,
-                        "capacity": "staff",
-                    },
-                ]
-            )
-        )
+        add_organisation_member(db_session, org.id, test_admin.id, "staff")
+        add_organisation_member(db_session, org.id, superadmin.id, "staff")
         db_session.commit()
 
         response = authenticated_admin_client.patch(
@@ -1288,22 +1151,8 @@ class TestOrganisationEndpoints:
         )
         db_session.add(superadmin)
         db_session.flush()
-        db_session.execute(
-            organisation_member.insert().values(
-                [
-                    {
-                        "organisation_id": org.id,
-                        "user_id": test_admin.id,
-                        "capacity": "staff",
-                    },
-                    {
-                        "organisation_id": org.id,
-                        "user_id": superadmin.id,
-                        "capacity": "staff",
-                    },
-                ]
-            )
-        )
+        add_organisation_member(db_session, org.id, test_admin.id, "staff")
+        add_organisation_member(db_session, org.id, superadmin.id, "staff")
         db_session.commit()
 
         response = authenticated_admin_client.post(
@@ -1323,12 +1172,7 @@ class TestOrganisationEndpoints:
         org = Organisation(name="Escalation Org")
         db_session.add(org)
         db_session.flush()
-        db_session.execute(
-            organisation_member.insert().values(
-                organisation_id=org.id,
-                user_id=test_admin.id,
-            )
-        )
+        add_organisation_member(db_session, org.id, test_admin.id, "trainee")
         # Staff user in same org
         staff_user = User(
             username="escalation_target",
@@ -1339,12 +1183,7 @@ class TestOrganisationEndpoints:
         )
         db_session.add(staff_user)
         db_session.flush()
-        db_session.execute(
-            organisation_member.insert().values(
-                organisation_id=org.id,
-                user_id=staff_user.id,
-            )
-        )
+        add_organisation_member(db_session, org.id, staff_user.id, "trainee")
         db_session.commit()
 
         response = authenticated_admin_client.patch(
@@ -1387,20 +1226,15 @@ class TestOrganisationEndpoints:
         test_patient_manager: User,
     ):
         """Test successfully adding a patient."""
-        from sqlalchemy import insert
 
-        from app.models import Organisation, organisation_member
+        from app.models import Organisation
 
         org = Organisation(name="Patient Org", type="hospital_team")
         db_session.add(org)
         db_session.commit()
 
-        db_session.execute(
-            insert(organisation_member).values(
-                organisation_id=org.id,
-                user_id=test_patient_manager.id,
-                capacity="staff",
-            )
+        add_organisation_member(
+            db_session, org.id, test_patient_manager.id, "staff"
         )
         db_session.commit()
 
@@ -1424,24 +1258,19 @@ class TestOrganisationEndpoints:
 
         from app.models import (
             Organisation,
-            organisation_member,
-            organisation_patient_member,
+            org_unit_patient_member,
         )
 
         org = Organisation(name="Dup Patient Org", type="hospital_team")
         db_session.add(org)
         db_session.commit()
 
-        db_session.execute(
-            insert(organisation_member).values(
-                organisation_id=org.id,
-                user_id=test_patient_manager.id,
-                capacity="staff",
-            )
+        add_organisation_member(
+            db_session, org.id, test_patient_manager.id, "staff"
         )
         db_session.execute(
-            insert(organisation_patient_member).values(
-                organisation_id=org.id,
+            insert(org_unit_patient_member).values(
+                org_unit_id=org.org_unit_id,
                 patient_id="fhir-789",
             )
         )

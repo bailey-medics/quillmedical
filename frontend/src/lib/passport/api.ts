@@ -36,6 +36,7 @@
 
 import { api } from "@lib/api";
 import type {
+  AssessorSearch,
   AssessorInvite,
   AssessorInviteAccept,
   AssessorInviteAcceptInput,
@@ -61,6 +62,7 @@ import type {
   SignOffDeclineInput,
   SignOffInput,
   SignOffRequestInput,
+  WholeLogbook,
   SignOffResult,
   Verification,
 } from "./types";
@@ -94,6 +96,7 @@ export const PASSPORT_PATHS = [
   "/passport/{passport_id}/export.md",
   "/passport/{passport_id}/export.pdf",
   "/passport/{passport_id}/export.zip",
+  "/passport/{passport_id}/logbook",
   "/passport/{passport_id}/logbook/{competency_id}",
   "/passport/{passport_id}/logbook/{competency_id}/{stem}",
   "/passport/{passport_id}/reflections",
@@ -152,6 +155,21 @@ export function fetchPassport(passportId: string): Promise<PassportDetail> {
  */
 export function fetchInbox(): Promise<InboxItem[]> {
   return api.get<InboxItem[]>("/passport/requests/inbox");
+}
+
+/**
+ * Find somebody on Quill who might be the assessor being named.
+ *
+ * Matches an email address, a username or a full name, because a holder
+ * knows the person rather than which identifier Quill files them under.
+ * Finding nobody is an ordinary answer: the assessor who observed the
+ * work is often at another trust and has never used Quill, which is the
+ * case the whole flow exists for.
+ */
+export function searchAssessors(term: string): Promise<AssessorSearch> {
+  return api.get<AssessorSearch>(
+    `/passport/assessors/search?q=${encodeURIComponent(term)}`,
+  );
 }
 
 /**
@@ -293,10 +311,11 @@ export function uploadEvidence(
   const form = new FormData();
   form.append("file", file);
 
+  // No content-type header: `api.post` leaves it off for a FormData
+  // body so the browser can set one naming its own multipart boundary.
   return api.post<EvidenceUpload>(
     `/passport/${segment(passportId)}/evidence`,
     form,
-    { headers: { "Content-Type": "" } },
   );
 }
 
@@ -358,6 +377,11 @@ export function addLogbookEntry(
     `/passport/${segment(passportId)}/logbook/${segment(competencyId)}`,
     data,
   );
+}
+
+/** Every logged procedure, grouped by the competency it counts towards. */
+export function fetchWholeLogbook(passportId: string): Promise<WholeLogbook> {
+  return api.get<WholeLogbook>(`/passport/${segment(passportId)}/logbook`);
 }
 
 /** A competency's logbook: its entries and how many there are, with no target. */
