@@ -894,7 +894,11 @@ So the remaining steps land as:
 - [x] 12b-vii — retire `/api/organisations`
 - [x] 12b-viii — retire the organisation and site lists on the users API
 - [x] 12c-0 — make the two id sequences disagree in the tests
-- [ ] 12c-i — the teaching and passport tables onto place ids, a column at a time
+- [x] 12c-i-a — a place column beside every organisation column, and both written
+- [ ] 12c-i-b — those tables read the place column, translating at the API edge
+- [ ] 12c-i-b2 — teaching and passport answer in place ids, expand then contract
+- [ ] 12c-i-c — stop writing the organisation column, and drop it
+- [ ] 12c-i-d — `site_common_competency`'s two place columns collapse into one
 - [ ] 12c-ii — membership and reach answer in place ids
 - [ ] 12c-iii — drop the `organisations` table
 - [x] 12c-iv — refuse deleting a parent with children, and enforce `requires_parent`
@@ -1489,6 +1493,50 @@ exact list of places where it meant "the organisation is not among
 them". The other asked which places had nothing above them, when what it
 meant was which places are organisations — the difference this whole
 plan exists to draw, written in a test of the plan's own work.
+
+#### 12c-i-a — a place column beside every organisation column
+
+The expand step, taken for all eight tables at once because it is one
+idea eight times: seven in teaching and one in the passport each gain an
+`org_unit_id` beside their `organisation_id`.
+
+- **The backfill is a join, not a guess.** Every organisation already
+  names its own place, so the migration fills the new column for every
+  existing row from `organisations.org_unit_id`.
+- **Both columns are written from this deploy.** There is exactly one
+  place each of these rows is created, which is what makes the step
+  small; a row written with only the old column would be invisible to
+  the reads that switch next, and nothing would say so — the reader
+  would simply find less than there is.
+- **Nullable for as long as the move takes.** A null means a writer that
+  has not been moved across, which is a state the next step's tests can
+  see rather than one the database forbids.
+- **`site_common_competency` is not in this batch.** It carries a pair of
+  place columns with a check constraint saying exactly one is set, so it
+  collapses rather than gains a column, and that deserves its own review.
+
+Round-tripped against a real Postgres — upgrade, downgrade, upgrade —
+with `alembic check` reporting no drift afterwards.
+
+#### What 12c-i-b has to be careful about
+
+Switching these tables' reads is sixty-three query sites, which is
+tedious but not interesting. What is interesting is where the ids come
+from and where they go.
+
+- **They come from membership**, which still answers in organisation ids
+  until 12c-ii. So the read switch translates once, where teaching
+  resolves the caller's organisations, rather than at each query.
+- **They go out of the API.** Teaching and the passport both put
+  `organisation_id` in responses, and teaching has paths of the shape
+  `/admin/banks/{bank_id}/organisations/{org_id}/settings`. The frontend
+  reads those ids and puts them back in URLs. Changing what the number
+  means without changing its name is the silent break this plan refuses
+  everywhere else, so the surface moves the way the users API did:
+  a place id alongside, the screens across, then the old field out.
+- **Which is why the two are separate steps.** The reads can move now
+  with the boundary translating back, and the surface can move after,
+  each one small enough to check.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to

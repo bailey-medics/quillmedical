@@ -103,6 +103,7 @@ from app.organisations import (
     get_member_org_ids,
     get_reachable_org_ids,
     organisation_member,
+    place_of_organisation,
 )
 from app.rate_limit import limiter
 
@@ -1097,6 +1098,7 @@ def start_assessment(
     assessment = Assessment(
         user_id=user.id,
         organisation_id=status_row.organisation_id,
+        org_unit_id=place_of_organisation(db, status_row.organisation_id),
         question_bank_id=body.question_bank_id,
         bank_version=config_row.version,
         time_limit_minutes=time_limit,
@@ -2379,6 +2381,7 @@ def link_module_media(
     else:
         link = ModuleMediaLink(
             organisation_id=org_id,
+            org_unit_id=place_of_organisation(db, org_id),
             question_bank_id=module_id,
             media_key=media_key,
             asset_id=body.asset_id,
@@ -2920,6 +2923,7 @@ def update_settings(
     else:
         settings_row = TeachingOrgSettings(
             organisation_id=org_id,
+            org_unit_id=place_of_organisation(db, org_id),
             coordinator_email=body.coordinator_email,
             institution_name=body.institution_name,
         )
@@ -3292,6 +3296,7 @@ def update_bank_org_settings(
 
         status_row = QuestionBankOrgStatus(
             organisation_id=org_id,
+            org_unit_id=place_of_organisation(db, org_id),
             question_bank_id=bank_id,
             is_live=body.is_live,
             site_registration=body.site_registration,
