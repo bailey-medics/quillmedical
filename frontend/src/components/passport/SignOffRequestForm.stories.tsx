@@ -71,3 +71,28 @@ export const AnAssessorFromAnywhere: Story = {
     onCancel: fn(),
   },
 };
+
+/**
+ * Asking stops for confirmation, and a known assessor is shown by name
+ * and registration number.
+ */
+export const ConfirmsBeforeSending: Story = {
+  render: (args) => (
+    <Stack gap="sm">
+      <SignOffRequestForm {...args} />
+      <StoryNote>
+        Fill in an address and a date, then ask: the form confirms who it found
+        before anything is sent. A registration number is hard evidence that
+        this is the right person — two consultants may share a name, and an
+        address says only that somebody controls a mailbox. It says the number
+        is stated by them rather than checked by Quill, because nobody here has
+        checked a register.
+      </StoryNote>
+    </Stack>
+  ),
+  args: {
+    competency: requestedCompetency,
+    onSubmit: fn(),
+    onCancel: fn(),
+  },
+};
