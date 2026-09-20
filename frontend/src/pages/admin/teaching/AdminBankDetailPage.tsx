@@ -49,6 +49,7 @@ export default function AdminBankDetailPage() {
     loading: mediaLoading,
     error: mediaError,
     uploadProgress,
+    uploadNames,
     upload,
     remove,
     loadCaptions,
@@ -259,6 +260,7 @@ export default function AdminBankDetailPage() {
             .filter((o) => o.is_live)
             .map((o) => o.organisation_name)}
           uploadProgress={uploadProgress}
+          uploadNames={uploadNames}
           onUpload={upload}
           onDelete={remove}
           onEditCaptions={openCaptions}
