@@ -22,7 +22,7 @@ from app.models import (
     OrgUnitFeature,
     org_unit_patient_member,
 )
-from app.organisations import add_place_member
+from app.organisations import add_org_unit_member
 
 PATIENT = "patient-abc"
 
@@ -107,7 +107,9 @@ class TestPatientLists:
         test_patient_manager,
     ):
         org = _org(db_session)
-        add_place_member(db_session, org.id, test_patient_manager.id, "staff")
+        add_org_unit_member(
+            db_session, org.id, test_patient_manager.id, "staff"
+        )
         db_session.commit()
 
         resp = authenticated_patient_manager_client.post(
@@ -130,7 +132,9 @@ class TestPatientLists:
         test_patient_manager,
     ):
         org = _org(db_session)
-        add_place_member(db_session, org.id, test_patient_manager.id, "staff")
+        add_org_unit_member(
+            db_session, org.id, test_patient_manager.id, "staff"
+        )
         db_session.commit()
         authenticated_patient_manager_client.post(
             f"/api/org-units/{org.id}/patients",

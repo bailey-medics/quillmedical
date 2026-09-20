@@ -27,7 +27,7 @@ from app.features.teaching.models import (
     TeachingOrgSettings,
 )
 from app.models import OrgUnit, OrgUnitFeature, User
-from app.organisations import add_place_member
+from app.organisations import add_org_unit_member
 from app.security import hash_password
 
 
@@ -56,7 +56,7 @@ def educator(db_session: Session, org: OrgUnit) -> User:
     )
     db_session.add(user)
     db_session.commit()
-    add_place_member(db_session, org.id, user.id, "staff")
+    add_org_unit_member(db_session, org.id, user.id, "staff")
     db_session.commit()
     db_session.refresh(user)
     return user

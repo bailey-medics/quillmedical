@@ -910,7 +910,11 @@ So the remaining steps land as:
 - [x] 12c-iii-c — the user listing names the right place
 - [x] 12c-iii-d — drop the `organisations` table
 - [x] 12c-iv — refuse deleting a parent with children, and enforce `requires_parent`
-- [ ] 12d-i — `org_unit_ids` beside `place_ids`, and the internals renamed
+- [x] 12d-i-a — the membership writers take an org_unit
+- [ ] 12d-i-b — the reader helpers answer in org_unit ids
+- [ ] 12d-i-c — the membership subquery names an org_unit
+- [ ] 12d-i-d — the locals and parameters name an org_unit
+- [ ] 12d-i-e — `org_unit_ids` beside `place_ids` on the users API
 - [ ] 12d-ii — retire `place_ids`
 
 #### 10a — write both names for the place column
@@ -1994,6 +1998,29 @@ depends on which table the reader had in mind.
   virtual location within the healthcare system" and still calls a row a
   Site throughout its attributes, which is the contradiction that started
   this.
+
+##### Split into five, because one unit is four hundred and fifty changes
+
+The plan counted identifiers; the code has call sites. `place_id` and
+`place_ids` alone appear over two hundred times, and the whole rename is
+453 occurrences across `backend/app`, `backend/tests` and `frontend/src`.
+That is far past what a reviewer can hold in their head, so it lands as
+five units along the seams the names themselves make:
+
+- **12d-i-a** the three membership writers, `add_place_member` and the two
+  removers, 159 occurrences.
+- **12d-i-b** the reader helpers: `get_member_place_ids`,
+  `get_reachable_place_ids`, `get_place_member_ids`, `get_place_staff_ids`,
+  `organisation_place_ids` and `organisation_places_of`.
+- **12d-i-c** `organisation_place_member`, the subquery alias. It is a
+  Python name and not a table, so no migration follows it.
+- **12d-i-d** the locals and parameters: `place_id`, `place_ids`,
+  `user_place_ids`, `placeIds`.
+- **12d-i-e** the API expand, which is the only part a caller outside this
+  repository can see, and the only part carrying decision files.
+
+`exclude_place` is a query parameter rather than an internal name, so it
+belongs with the API step and not with the locals.
 
 #### 12d-ii — retire `place_ids`
 

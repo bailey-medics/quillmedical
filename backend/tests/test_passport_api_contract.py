@@ -39,7 +39,7 @@ from app.models import (
     OrgUnitFeature,
     User,
 )
-from app.organisations import add_place_member
+from app.organisations import add_org_unit_member
 from app.passport_storage import get_passport_store
 from app.security import hash_password
 
@@ -176,7 +176,7 @@ def org(db_session: Session, holder: User, org_admin: User) -> OrgUnit:
     db_session.add(OrgUnitFeature(org_unit_id=org.id, feature_key="passport"))
 
     for user in (holder, org_admin):
-        add_place_member(db_session, org.id, user.id, "trainee")
+        add_org_unit_member(db_session, org.id, user.id, "trainee")
 
     db_session.commit()
     return org

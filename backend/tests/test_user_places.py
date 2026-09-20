@@ -16,7 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import OrgUnit, User, org_unit_member
-from app.organisations import add_place_member
+from app.organisations import add_org_unit_member
 from app.security import hash_password
 
 
@@ -124,7 +124,7 @@ class TestCreating:
         test_admin: User,
     ) -> None:
         """404, so the answer does not confirm that the place exists."""
-        add_place_member(db_session, org.id, test_admin.id, "staff")
+        add_org_unit_member(db_session, org.id, test_admin.id, "staff")
         db_session.commit()
 
         resp = authenticated_admin_client.post(
@@ -203,9 +203,9 @@ class TestChanging:
         empty somebody's memberships at another by saving a form they
         could not even read.
         """
-        add_place_member(db_session, org.id, test_admin.id, "staff")
+        add_org_unit_member(db_session, org.id, test_admin.id, "staff")
         # The person is in both trusts. The admin can see one of them.
-        add_place_member(db_session, org.id, person.id, "staff")
+        add_org_unit_member(db_session, org.id, person.id, "staff")
         db_session.execute(
             org_unit_member.insert().values(
                 org_unit_id=other_ward.id,

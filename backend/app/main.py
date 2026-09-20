@@ -121,7 +121,7 @@ from app.org_units.tree import (
     root_ids_of,
 )
 from app.organisations import (
-    add_place_member,
+    add_org_unit_member,
     get_accessible_patient_ids,
     get_member_place_ids,
     get_patient_place_ids,
@@ -1170,7 +1170,7 @@ def register(
         # are not staff. Recording that here is what lets the admin page
         # and the messaging self-join check tell them apart; previously
         # nothing could.
-        add_place_member(db, payload.org_unit_id, user.id, "trainee")
+        add_org_unit_member(db, payload.org_unit_id, user.id, "trainee")
 
     # Add the user to the selected site as a trainee
     if payload.site_id is not None:
