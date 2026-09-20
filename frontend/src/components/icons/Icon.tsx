@@ -17,16 +17,26 @@ import { useMediaQuery } from "@mantine/hooks";
  * Desktop (≥640px):
  * - sm: 20px (inputs, small buttons, inline text)
  * - md: 28px (default size, general UI elements)
+ * - mlg: 36px (an icon that is the whole control, beside a heading)
  * - lg: 48px (action cards, prominent features)
  * - xl: 72px (hero sections, landing page features)
  *
  * Mobile (<640px):
  * - sm: 16px
  * - md: 20px
+ * - mlg: 28px
  * - lg: 32px
  * - xl: 48px
+ *
+ * `mlg` exists for an icon that is the entire control rather than
+ * decoration beside a label — the sort that sits in a page heading and
+ * leads somewhere. It needs to be easy to press and easy to notice, so
+ * `md` is too small, but it should not compete with the page's own
+ * content, so `lg` is too big. Every such icon wants the same size,
+ * which is why this is a named step rather than a measurement repeated
+ * in each component.
  */
-export type IconSize = "sm" | "md" | "lg" | "xl";
+export type IconSize = "sm" | "md" | "mlg" | "lg" | "xl";
 
 interface IconProps {
   /** Icon element from @tabler/icons-react */
@@ -47,6 +57,7 @@ interface IconProps {
 const desktopSizeMap: Record<IconSize, number> = {
   sm: 20,
   md: 28,
+  mlg: 36,
   lg: 48,
   xl: 72,
 };
@@ -55,6 +66,7 @@ const desktopSizeMap: Record<IconSize, number> = {
 const mobileSizeMap: Record<IconSize, number> = {
   sm: 16,
   md: 20,
+  mlg: 28,
   lg: 32,
   xl: 48,
 };

@@ -478,7 +478,7 @@ class TestReflections:
         client.post(
             f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
             json={
-                "assessor_user_id": assessor.id,
+                "assessor_email": assessor.email,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },
@@ -624,8 +624,19 @@ class TestEvidenceNotYetBuilt:
                 "title": "A course",
                 "issuer": "UKONS",
                 "awarded_on": "2026-02-11",
-                "attachment_hashes": ["sha256:" + "ab" * 32],
+                "attachments": [
+                    {
+                        "hash": "sha256:" + "ab" * 32,
+                        "filename": "certificate.pdf",
+                        "size_bytes": 1,
+                        "media_type": "application/pdf",
+                    }
+                ],
             },
         )
 
-        assert response.status_code == 501
+        # Evidence must be uploaded before a record may name it. A
+        # record pointing at a blob that is not there would be a
+        # dangling reference in a document whose whole claim is that it
+        # can be checked years later.
+        assert response.status_code == 400

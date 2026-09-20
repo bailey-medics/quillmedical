@@ -14,8 +14,9 @@ export const Default: Story = {};
 
 export const WithModuleName: Story = {
   args: {
-    moduleName: "Colonoscopy optical diagnosis",
-    moduleHref: "/teaching/colonoscopy-optical-diagnosis-test",
+    moduleName: "Acute stroke assessment",
+    /* Never followed in Storybook; it is here so the link renders. */
+    moduleHref: "/teaching/acute-stroke-assessment",
   },
 };
 
