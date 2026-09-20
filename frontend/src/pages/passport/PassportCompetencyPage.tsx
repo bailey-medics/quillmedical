@@ -4,9 +4,10 @@
  * One competency's history: its sign-offs in full, and the form for
  * requesting a new one.
  *
- * The assessor list comes from `/users`, as the admin pages fetch it.
- * There is no passport endpoint listing assessors, so the page does the
- * fetching and `SignOffRequestForm` stays presentational.
+ * The assessor is named by email on the form, so this page fetches
+ * nothing but the passport itself. It used to read `/users` to fill a
+ * dropdown, which meant asking for a sign-off required the holder to
+ * pull the whole user list.
  */
 
 import { useEffect, useState } from "react";
@@ -18,7 +19,6 @@ import ErrorState from "@/components/error-state/ErrorState";
 import StateMessage from "@/components/message-cards/StateMessage";
 import { IconFileText } from "@/components/icons/appIcons";
 import AddButton from "@/components/button/AddButton";
-import { api } from "@lib/api";
 import { fetchMyPassport, requestSignOff } from "@lib/passport";
 import type {
   CompetencyState,
@@ -26,17 +26,9 @@ import type {
   SignOffRequestInput,
 } from "@lib/passport";
 
-interface ApiUser {
-  id: number;
-  username: string;
-}
-
 export function Component() {
   const { id: competencyId } = useParams<{ id: string }>();
   const [passport, setPassport] = useState<PassportDetail | null>(null);
-  const [assessors, setAssessors] = useState<
-    { value: string; label: string }[]
-  >([]);
   const [requesting, setRequesting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,22 +44,6 @@ export function Component() {
         if (!cancelled) {
           setError("Your passport could not be loaded. Please try again.");
         }
-      });
-
-    api
-      .get<{ users: ApiUser[] }>("/users")
-      .then(({ users }) => {
-        if (cancelled) return;
-        setAssessors(
-          users.map((user) => ({
-            value: String(user.id),
-            label: user.username,
-          })),
-        );
-      })
-      .catch(() => {
-        // A missing assessor list is not fatal: the rest of the page
-        // still reads, and the request form simply has nobody to offer.
       });
 
     return () => {
@@ -104,7 +80,6 @@ export function Component() {
       {competency && requesting ? (
         <SignOffRequestForm
           competency={competency}
-          assessors={assessors}
           onSubmit={handleRequest}
           onCancel={() => setRequesting(false)}
           isSubmitting={submitting}
@@ -126,6 +101,7 @@ export function Component() {
         />
       ) : (
         <StateMessage
+          colour="update"
           icon={<IconFileText />}
           title="Nothing recorded yet"
           description="This competency has no sign-offs, logbook entries or certificates."

@@ -21,8 +21,9 @@ import { forwardRef, type ReactNode, type Ref } from "react";
  * fixed styling props so they cannot be overridden by consumers.
  * `children` is re-declared as required.
  *
- * Pass `bg` (a Mantine colour value) to create a coloured card —
- * the border is automatically removed and text set to white.
+ * Pass `bg` (a Mantine colour value) to create a coloured card — the
+ * border is automatically removed and text defaults to white. Pass `c`
+ * alongside it for a pale background, where white would be unreadable.
  */
 export type BaseCardProps = Omit<
   CardProps,
@@ -41,7 +42,7 @@ const COLOURED_CARD_SHADOW =
   "0 1px 3px rgba(0,0,0,0.25), 0 4px 12px rgba(0,0,0,0.22)";
 
 const BaseCard = forwardRef(function BaseCard(
-  { children, bg, style, ...rest }: BaseCardProps,
+  { children, bg, c, style, ...rest }: BaseCardProps,
   ref: Ref<HTMLDivElement>,
 ) {
   const hasBg = !!bg;
@@ -54,7 +55,10 @@ const BaseCard = forwardRef(function BaseCard(
       radius="md"
       withBorder={!hasBg}
       bg={bg}
-      c={hasBg ? "white" : undefined}
+      // White is the right default for a saturated fill, but only a
+      // default: a pale background needs dark text, and forcing white
+      // regardless left the card unreadable. An explicit `c` wins.
+      c={c ?? (hasBg ? "white" : undefined)}
       style={{
         overflow: "visible",
         ...(!hasBg && {
