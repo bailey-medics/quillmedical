@@ -1793,9 +1793,8 @@ def complete_assessment(
     # Certificate
     # ------------------------------------------------------------------
 
-    # api-schema-check: allow-opaque-permanent
 
-
+# api-schema-check: allow-opaque-permanent
 @teaching_router.get(
     "/assessments/{assessment_id}/certificate",
 )
@@ -2441,11 +2440,10 @@ def link_module_media(
 
     return MediaAssetOut.model_validate(link)
 
-    # A 204 carries no body at all, so there is no schema for oasdiff to
-    # diff. Same shape as the analytics 204s, which carry this marker too.
-    # api-schema-check: allow-opaque-permanent
 
-
+# A 204 carries no body at all, so there is no schema for oasdiff to
+# diff. Same shape as the analytics 204s, which carry this marker too.
+# api-schema-check: allow-opaque-permanent
 @teaching_router.delete(
     "/admin/modules/{module_id}/media/{media_key}/link",
     status_code=204,
@@ -3395,11 +3393,10 @@ def _update_bank_org_settings(
         site_registration=status_row.site_registration,
     )
 
-    # A 204 carries no body at all, so there is no schema for oasdiff to
-    # diff. Same shape as the unlink 204 above.
-    # api-schema-check: allow-opaque-permanent
 
-
+# A 204 carries no body at all, so there is no schema for oasdiff to
+# diff. Same shape as the unlink 204 above.
+# api-schema-check: allow-opaque-permanent
 @teaching_router.put(
     "/admin/modules/{module_id}/media/{asset_id}/content",
     status_code=204,
@@ -3531,11 +3528,10 @@ def _delete_local_media_object(
     )
     (module_dir / "learning" / f"{asset_id}{suffix}").unlink(missing_ok=True)
 
-    # A 204 carries no body at all, so there is no schema for oasdiff to
-    # diff. Same shape as the unlink 204 above.
-    # api-schema-check: allow-opaque-permanent
 
-
+# A 204 carries no body at all, so there is no schema for oasdiff to
+# diff. Same shape as the unlink 204 above.
+# api-schema-check: allow-opaque-permanent
 @teaching_router.delete(
     "/admin/modules/{module_id}/media/{asset_id}",
     status_code=204,

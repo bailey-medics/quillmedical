@@ -27,7 +27,7 @@ import time
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, NoReturn
+from typing import Any, NoReturn, TypeVar
 from uuid import uuid4
 
 import httpx
@@ -40,7 +40,7 @@ from fastapi import (
     Response,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy import select
@@ -1382,6 +1382,28 @@ def reset_password(
     return DetailResponse(detail="Password reset successfully")
 
 
+_TwoVocabularies = TypeVar("_TwoVocabularies", bound=BaseModel)
+
+
+def _refuse_two_vocabularies(  # noqa: UP047
+    payload: _TwoVocabularies,
+) -> _TwoVocabularies:
+    """Refuse a request naming the same list twice.
+
+    `place_ids` and `org_unit_ids` carry the same thing under the old
+    name and the new one. Applying both would make the answer depend on
+    which was applied last, so a request uses one or the other.
+    """
+    place_ids = getattr(payload, "place_ids", None)
+    org_unit_ids = getattr(payload, "org_unit_ids", None)
+    if place_ids and org_unit_ids:
+        raise ValueError(
+            "Send place_ids or org_unit_ids, not both: they name the "
+            "same list, and applying both would depend on the order."
+        )
+    return payload
+
+
 class AdminUserCreateIn(BaseModel):
     """Admin User Creation Request.
 
@@ -1398,9 +1420,11 @@ class AdminUserCreateIn(BaseModel):
         additional_competencies: Extra competencies beyond base profession.
         removed_competencies: Competencies to remove from base profession.
         platform_role: Whether this person operates Quill itself.
-        place_ids: Every place the person belongs to, in place ids,
-            organisations included. It replaced two lists that answered
-            in two different kinds of id.
+        place_ids: Every org_unit the person belongs to, organisations
+            included. The older name for org_unit_ids, kept for one
+            release; send one list or the other, never both.
+        org_unit_ids: The same list under the name the table, the model
+            and the path already use.
     """
 
     model_config = {"extra": "forbid"}
@@ -1416,6 +1440,11 @@ class AdminUserCreateIn(BaseModel):
     # never by omitting a field.
     platform_role: str = "standard"
     place_ids: list[int] = []
+    org_unit_ids: list[int] | None = None
+
+    @model_validator(mode="after")
+    def _one_vocabulary(self) -> "AdminUserCreateIn":
+        return _refuse_two_vocabularies(self)
 
     @field_validator("platform_role")
     @classmethod
@@ -1485,6 +1514,11 @@ class AdminUserUpdateIn(BaseModel):
     removed_competencies: list[str] | None = None
     platform_role: str | None = None
     place_ids: list[int] | None = None
+    org_unit_ids: list[int] | None = None
+
+    @model_validator(mode="after")
+    def _one_vocabulary(self) -> "AdminUserUpdateIn":
+        return _refuse_two_vocabularies(self)
 
     @field_validator("platform_role")
     @classmethod
@@ -1624,9 +1658,12 @@ def create_user_with_cbac(
     if existing:
         raise HTTPException(status_code=400, detail="Email already exists")
 
-    places = _require_places_the_caller_administers(
-        db, current_user, payload.place_ids
+    named = (
+        payload.org_unit_ids
+        if payload.org_unit_ids is not None
+        else payload.place_ids
     )
+    places = _require_places_the_caller_administers(db, current_user, named)
 
     # Create user
     user = User(
@@ -1858,9 +1895,14 @@ def update_user(
     # the caller may administer: the places named are kept, the rest of
     # theirs are cleared. Places outside their organisations are left
     # alone, because somebody else's tree is not theirs to empty.
-    if payload.place_ids is not None:
+    named = (
+        payload.org_unit_ids
+        if payload.org_unit_ids is not None
+        else payload.place_ids
+    )
+    if named is not None:
         places = _require_places_the_caller_administers(
-            db, current_user, payload.place_ids
+            db, current_user, named
         )
         theirs = places_administered_by(db, current_user)
         clearing = org_unit_member.delete().where(
@@ -2354,7 +2396,7 @@ def me(
     # the ones they belong to directly, and the one accountable for any
     # ward or clinic they belong to. One walk up answers both, because
     # an organisation's own row is its own root.
-    member_place_ids = list(
+    member_org_unit_ids = list(
         db.execute(
             select(org_unit_member.c.org_unit_id).where(
                 org_unit_member.c.user_id == current_user.id
@@ -2363,13 +2405,13 @@ def me(
         .scalars()
         .all()
     )
-    user_place_ids = organisation_org_units_of(db, member_place_ids)
+    user_org_unit_ids = organisation_org_units_of(db, member_org_unit_ids)
     enabled_features: list[str] = []
-    if user_place_ids:
+    if user_org_unit_ids:
         features = (
             db.execute(
                 select(OrgUnitFeature.feature_key)
-                .where(OrgUnitFeature.org_unit_id.in_(user_place_ids))
+                .where(OrgUnitFeature.org_unit_id.in_(user_org_unit_ids))
                 .distinct()
             )
             .scalars()
@@ -2680,7 +2722,7 @@ def get_user(
 
     _require_shared_org_with_user(db, current_user, user)
 
-    user_place_ids = [
+    user_org_unit_ids = [
         row[0]
         for row in db.execute(
             select(org_unit_member.c.org_unit_id).where(
@@ -2699,9 +2741,10 @@ def get_user(
         removed_competencies=user.removed_competencies or [],
         platform_role=user.platform_role,
         is_active=user.is_active,
-        # Every place they belong to, organisations included, in the
-        # ids the places themselves answer in.
-        place_ids=user_place_ids,
+        # Every org_unit they belong to, organisations included. Both
+        # names carry the same list while place_ids is retired.
+        place_ids=user_org_unit_ids,
+        org_unit_ids=user_org_unit_ids,
     )
 
 

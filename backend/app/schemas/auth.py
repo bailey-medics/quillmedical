@@ -386,10 +386,11 @@ class UserOut(BaseModel):
         removed_competencies: User's removed competencies.
         platform_role: Whether this person operates Quill itself.
         is_active: Whether user is active.
-        place_ids: Every place the user belongs to, organisations
-            included, all in place ids. One list because there is one
-            table of places, and one kind of id because two kinds is how
-            a number gets read against the wrong table.
+        place_ids: Every org_unit the user belongs to, organisations
+            included. The older name for org_unit_ids, kept for one
+            release so a tab open across the deploy keeps working.
+        org_unit_ids: The same list, under the name the table, the model
+            and the path already use.
     """
 
     id: int
@@ -402,6 +403,7 @@ class UserOut(BaseModel):
     platform_role: str
     is_active: bool
     place_ids: list[int] = []
+    org_unit_ids: list[int] = []
 
 
 class LinkPatientIn(BaseModel):
