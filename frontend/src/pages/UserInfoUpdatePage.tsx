@@ -46,9 +46,14 @@ import PlatformRoleBadge, {
   type PlatformRole,
 } from "@/components/badge/PlatformRoleBadge";
 import ErrorState from "@/components/error-state/ErrorState";
+import { orgUnits, type OrgUnit } from "@/domains/orgUnit";
 
 /**
- * Organisation option from the API
+ * An organisation and the places inside it, all in place ids.
+ *
+ * Organisations and the places inside them are rows in one table, so
+ * there is one kind of id here. There used to be two, counted against
+ * two tables, and the form was the last thing still telling them apart.
  */
 interface OrgOption {
   id: number;
@@ -68,8 +73,14 @@ interface UserFormData {
   additionalCompetencies: CompetencyId[];
   removedCompetencies: CompetencyId[];
   platformRole: PlatformRole;
-  organisationIds: string[];
-  siteIds: string[];
+  /**
+   * Every place the person belongs to, organisations included.
+   *
+   * One list, because the backend now takes one. The two controls on
+   * screen are a view of it: one offers the organisations, the other the
+   * places inside them.
+   */
+  placeIds: string[];
 }
 
 /**
@@ -202,13 +213,23 @@ function Step2Organisation({
     })),
   );
 
-  // Only show IDs that exist in available options (admin may not see all)
+  // Two controls over one list. Which control a place belongs in is
+  // decided by what it is, not by the person having put it there.
   const validOrgIds = new Set(orgOptions.map((o) => o.value));
   const validSiteIds = new Set(siteOptions.map((s) => s.value));
-  const visibleOrgIds = formData.organisationIds.filter((id) =>
-    validOrgIds.has(id),
-  );
-  const visibleSiteIds = formData.siteIds.filter((id) => validSiteIds.has(id));
+  const visibleOrgIds = formData.placeIds.filter((id) => validOrgIds.has(id));
+  const visibleSiteIds = formData.placeIds.filter((id) => validSiteIds.has(id));
+
+  /** Replace one control's share of the list, leaving the rest alone. */
+  function replaceShare(offered: Set<string>, chosen: string[]) {
+    setFormData({
+      ...formData,
+      placeIds: [
+        ...formData.placeIds.filter((id) => !offered.has(id)),
+        ...chosen,
+      ],
+    });
+  }
 
   return (
     <Stack gap="md">
@@ -223,15 +244,7 @@ function Step2Organisation({
         placeholder="Select organisations (optional)"
         data={orgOptions}
         value={visibleOrgIds}
-        onChange={(value) =>
-          setFormData({
-            ...formData,
-            organisationIds: [
-              ...formData.organisationIds.filter((id) => !validOrgIds.has(id)),
-              ...value,
-            ],
-          })
-        }
+        onChange={(value) => replaceShare(validOrgIds, value)}
         searchable
       />
 
@@ -241,15 +254,7 @@ function Step2Organisation({
         placeholder="Select sites (optional)"
         data={siteOptions}
         value={visibleSiteIds}
-        onChange={(value) =>
-          setFormData({
-            ...formData,
-            siteIds: [
-              ...formData.siteIds.filter((id) => !validSiteIds.has(id)),
-              ...value,
-            ],
-          })
-        }
+        onChange={(value) => replaceShare(validSiteIds, value)}
         searchable
       />
     </Stack>
@@ -423,11 +428,11 @@ function Step4Review({
     : null;
 
   const selectedOrgs = organisations.filter((o) =>
-    formData.organisationIds.includes(String(o.id)),
+    formData.placeIds.includes(String(o.id)),
   );
   const selectedSites = organisations.flatMap((org) =>
     org.sites
-      .filter((s) => formData.siteIds.includes(String(s.id)))
+      .filter((s) => formData.placeIds.includes(String(s.id)))
       .map((s) => `${org.name} - ${s.name}`),
   );
 
@@ -598,8 +603,7 @@ export default function UserInfoUpdatePage() {
     additionalCompetencies: [],
     removedCompetencies: [],
     platformRole: "standard",
-    organisationIds: [],
-    siteIds: [],
+    placeIds: [],
   });
 
   // Fetch user data in edit mode
@@ -618,8 +622,7 @@ export default function UserInfoUpdatePage() {
           additional_competencies?: string[];
           removed_competencies?: string[];
           platform_role?: PlatformRole;
-          organisation_ids?: number[];
-          site_ids?: number[];
+          place_ids?: number[];
         }>(`/users/${userId}`);
 
         // Pre-fill form with user data
@@ -632,10 +635,7 @@ export default function UserInfoUpdatePage() {
           additionalCompetencies: data.additional_competencies || [],
           removedCompetencies: data.removed_competencies || [],
           platformRole: data.platform_role || "standard",
-          organisationIds: data.organisation_ids
-            ? data.organisation_ids.map(String)
-            : [],
-          siteIds: data.site_ids ? data.site_ids.map(String) : [],
+          placeIds: data.place_ids ? data.place_ids.map(String) : [],
         });
       } catch (error) {
         console.error("Failed to fetch user:", error);
@@ -650,39 +650,62 @@ export default function UserInfoUpdatePage() {
     fetchUser();
   }, [isEditMode, userId]);
 
-  // Fetch organisations with their sites
+  // Fetch every place the person may be put in, in one request
   useEffect(() => {
-    async function fetchOrgs() {
+    async function fetchPlaces() {
       try {
-        const orgsResp = await api.get<{
-          organisations: { id: number; name: string }[];
-        }>("/organisations");
+        const places = await orgUnits.list();
 
-        // Fetch sites for each org
-        const orgsWithSites: OrgOption[] = await Promise.all(
-          orgsResp.organisations.map(async (org) => {
-            try {
-              const detail = await api.get<{
-                sites: { id: number; name: string }[];
-              }>(`/organisations/${org.id}`);
-              return {
-                id: org.id,
-                name: org.name,
-                sites: detail.sites || [],
-              };
-            } catch {
-              return { id: org.id, name: org.name, sites: [] };
-            }
-          }),
-        );
+        const byId = new Map(places.map((place) => [place.id, place]));
 
-        setOrganisations(orgsWithSites);
+        /**
+         * The organisation a place belongs to.
+         *
+         * Walked rather than read off the parent, because a ward can sit
+         * inside a building inside a hospital, and it is still that
+         * trust's ward. The walk is bounded by the number of places, so
+         * a chain that somehow loops cannot hang the page.
+         */
+        function rootOf(place: OrgUnit): OrgUnit | undefined {
+          let current: OrgUnit | undefined = place;
+          for (let step = 0; step < places.length && current; step += 1) {
+            if (current.is_root) return current;
+            current =
+              current.parent_id === null
+                ? undefined
+                : byId.get(current.parent_id);
+          }
+          return undefined;
+        }
+
+        const grouped = new Map<number, OrgOption>();
+        for (const place of places) {
+          if (place.is_root) {
+            grouped.set(place.id, {
+              id: place.id,
+              name: place.name,
+              sites: grouped.get(place.id)?.sites ?? [],
+            });
+          }
+        }
+        for (const place of places) {
+          if (place.is_root) continue;
+          const root = rootOf(place);
+          // A place whose organisation is not in the answer is one the
+          // person may administer without administering the tree above
+          // it. It has nowhere to be listed, so it is left out rather
+          // than shown under a name we do not have.
+          if (!root) continue;
+          grouped.get(root.id)?.sites.push({ id: place.id, name: place.name });
+        }
+
+        setOrganisations([...grouped.values()]);
       } catch (error) {
-        console.error("Failed to fetch organisations:", error);
+        console.error("Failed to fetch places:", error);
       }
     }
 
-    fetchOrgs();
+    fetchPlaces();
   }, []);
 
   // Block navigation when form is dirty and not yet submitted
@@ -754,8 +777,7 @@ export default function UserInfoUpdatePage() {
         removed_competencies: CompetencyId[];
         platform_role: PlatformRole;
         password?: string;
-        organisation_ids: number[];
-        site_ids: number[];
+        place_ids: number[];
       } = {
         name: formData.name,
         email: formData.email,
@@ -764,8 +786,7 @@ export default function UserInfoUpdatePage() {
         additional_competencies: formData.additionalCompetencies,
         removed_competencies: formData.removedCompetencies,
         platform_role: formData.platformRole,
-        organisation_ids: formData.organisationIds.map(Number),
-        site_ids: formData.siteIds.map(Number),
+        place_ids: formData.placeIds.map(Number),
       };
 
       // Only include password if provided (required for create, optional for edit)
