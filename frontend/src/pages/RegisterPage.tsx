@@ -105,7 +105,6 @@ function TeachingRegisterPage() {
       const result = await api.post<{
         valid: boolean;
         site_name: string | null;
-        organisation_id: number | null;
         org_unit_id: number | null;
         site_id: number | null;
       }>("/teaching/public/validate-clinical-lead", {

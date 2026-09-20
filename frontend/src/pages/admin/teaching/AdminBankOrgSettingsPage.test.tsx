@@ -35,17 +35,15 @@ const mockBank = {
   student_email_template: null,
 };
 
-// The two ids differ on purpose: the page matches the row by place id
-// now, and identical numbers would let it pass either way.
+// Place ids that no organisation id would match, so a row found by
+// number alone would be the wrong one.
 const mockOrgs = [
   {
-    organisation_id: 1,
     org_unit_id: 11,
     organisation_name: "Test Hospital",
     is_live: false,
   },
   {
-    organisation_id: 2,
     org_unit_id: 12,
     organisation_name: "Another Clinic",
     is_live: true,

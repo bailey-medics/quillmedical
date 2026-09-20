@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "response-required-property-removed PUT /api/teaching/settings removed the required property `organisation_id` from the response with the `200` status"
+reason: "The same field on the same row, removed for the same reason as on the GET beside it: the row is keyed by place, and `org_unit_id` is the id it actually holds. No open tab needs reloading."

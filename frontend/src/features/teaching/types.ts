@@ -195,10 +195,8 @@ export interface SyncHistory {
 
 export interface TeachingOrgSettings {
   id: number;
-  /** The organisation, in organisation ids. Retired once nothing reads it. */
-  organisation_id: number;
-  /** The same organisation, as a place id — what everything else counts in. */
-  org_unit_id: number | null;
+  /** The organisation, as a place id. */
+  org_unit_id: number;
   coordinator_email: string;
   institution_name: string;
 }
@@ -231,10 +229,8 @@ export interface AdminBankDetail {
 }
 
 export interface BankOrganisation {
-  /** Retired once nothing reads it — see `org_unit_id` beside it. */
-  organisation_id: number;
-  /** The same organisation, as a place id. */
-  org_unit_id: number | null;
+  /** The organisation, as a place id. */
+  org_unit_id: number;
   organisation_name: string;
   is_live: boolean;
   site_registration: boolean;
