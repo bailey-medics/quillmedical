@@ -28,7 +28,6 @@ from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from app.models import (
-    Organisation,
     OrgUnit,
     User,
 )
@@ -65,8 +64,8 @@ def _user(
 
 
 @pytest.fixture
-def org(db_session: Session) -> Organisation:
-    organisation = Organisation(name="Trust", type="hospital")
+def org(db_session: Session) -> OrgUnit:
+    organisation = OrgUnit(name="Trust", type="organisation")
     db_session.add(organisation)
     db_session.commit()
     db_session.refresh(organisation)
@@ -74,22 +73,20 @@ def org(db_session: Session) -> Organisation:
 
 
 @pytest.fixture
-def site(db_session: Session, org: Organisation) -> OrgUnit:
+def site(db_session: Session, org: OrgUnit) -> OrgUnit:
     site = OrgUnit(name="Ward 9", type="ward")
     db_session.add(site)
     db_session.commit()
     db_session.refresh(site)
     db_session.execute(
-        update(OrgUnit)
-        .where(OrgUnit.id == site.id)
-        .values(parent_id=org.org_unit_id)
+        update(OrgUnit).where(OrgUnit.id == site.id).values(parent_id=org.id)
     )
     db_session.commit()
     return site
 
 
-def _place(db: Session, org: Organisation, user: User) -> None:
-    add_place_member(db, org.org_unit_id, user.id, "staff")
+def _place(db: Session, org: OrgUnit, user: User) -> None:
+    add_place_member(db, org.id, user.id, "staff")
     db.commit()
 
 
@@ -121,7 +118,7 @@ class TestThePlaceSurfaceSaysTheSame:
     """
 
     @pytest.fixture
-    def account_admin(self, db_session: Session, org: Organisation) -> User:
+    def account_admin(self, db_session: Session, org: OrgUnit) -> User:
         user = _user(
             db_session, "place_account_admin", competencies=["manage_users"]
         )
@@ -129,7 +126,7 @@ class TestThePlaceSurfaceSaysTheSame:
         return user
 
     @pytest.fixture
-    def membership_admin(self, db_session: Session, org: Organisation) -> User:
+    def membership_admin(self, db_session: Session, org: OrgUnit) -> User:
         user = _user(
             db_session,
             "place_membership_admin",
@@ -141,7 +138,7 @@ class TestThePlaceSurfaceSaysTheSame:
     def test_managing_accounts_does_not_put_somebody_at_a_place(
         self,
         test_client: TestClient,
-        org: Organisation,
+        org: OrgUnit,
         site: OrgUnit,
         account_admin: User,
         colleague: User,
@@ -158,7 +155,7 @@ class TestThePlaceSurfaceSaysTheSame:
     def test_managing_accounts_does_not_take_somebody_off_one(
         self,
         test_client: TestClient,
-        org: Organisation,
+        org: OrgUnit,
         site: OrgUnit,
         account_admin: User,
         colleague: User,
@@ -174,7 +171,7 @@ class TestThePlaceSurfaceSaysTheSame:
     def test_managing_membership_puts_somebody_at_a_place(
         self,
         test_client: TestClient,
-        org: Organisation,
+        org: OrgUnit,
         site: OrgUnit,
         membership_admin: User,
         colleague: User,
@@ -191,7 +188,7 @@ class TestThePlaceSurfaceSaysTheSame:
     def test_managing_membership_takes_somebody_off_one(
         self,
         test_client: TestClient,
-        org: Organisation,
+        org: OrgUnit,
         site: OrgUnit,
         membership_admin: User,
         colleague: User,
@@ -216,14 +213,14 @@ class TestThePlaceSurfaceSaysTheSame:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         membership_admin: User,
         colleague: User,
     ) -> None:
         """Granting competencies without ``manage_users`` is deliberate."""
         client = _login(test_client, "place_membership_admin")
         response = client.post(
-            f"/api/org-units/{org.org_unit_id}/members",
+            f"/api/org-units/{org.id}/members",
             json={
                 "user_id": colleague.id,
                 "capacity": "staff",

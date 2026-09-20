@@ -30,7 +30,6 @@ from app.deps import (
 )
 from app.models import (
     MEMBER_CAPACITIES,
-    Organisation,
     OrgUnit,
     OrgUnitFeature,
     OrgUnitLink,
@@ -181,38 +180,6 @@ def _is_root(unit: OrgUnit) -> bool:
     a parent, and one flag changes in a configuration file.
     """
     return not type_requires_parent(unit.type)
-
-
-def _keep_the_organisation_row_in_step(db: Session, unit: OrgUnit) -> None:
-    """Write the organisation row that stands for a root place.
-
-    Two tables still describe one thing. The organisations table is on
-    its way out, but until it goes it is what answers in organisation
-    ids — who may administer what, and which organisations the user form
-    offers. A root created here without one would be a place only a
-    superadmin could see and nobody could be made a member of.
-
-    ``org_unit_id`` is set on the way in, so the listener that would
-    otherwise create a *second* root for the new organisation returns
-    early.
-    """
-    organisation = db.scalar(
-        select(Organisation).where(Organisation.org_unit_id == unit.id)
-    )
-    if organisation is None:
-        db.add(
-            Organisation(
-                name=unit.name,
-                type=unit.type,
-                location=unit.location,
-                org_unit_id=unit.id,
-            )
-        )
-    else:
-        organisation.name = unit.name
-        organisation.type = unit.type
-        organisation.location = unit.location
-    db.flush()
 
 
 def _item(unit: OrgUnit) -> OrgUnitItem:
@@ -383,10 +350,6 @@ def create_org_unit(
     )
     db.add(unit)
     db.flush()
-
-    if body.parent_id is None:
-        _keep_the_organisation_row_in_step(db, unit)
-
     db.refresh(unit)
     return _item(unit)
 
@@ -548,9 +511,6 @@ def update_org_unit(
         _require_visible(db, current_user, body.parent_id)
         unit.parent_id = body.parent_id
 
-    if _is_root(unit):
-        _keep_the_organisation_row_in_step(db, unit)
-
     db.flush()
     db.refresh(unit)
     return _item(unit)
@@ -617,18 +577,8 @@ def delete_org_unit(
             ),
         )
 
-    if _is_root(unit):
-        organisation = db.scalar(
-            select(Organisation).where(Organisation.org_unit_id == unit.id)
-        )
-        if organisation is not None:
-            # Deleting the organisation takes its place with it, through
-            # the listener on the model, which also clears everything
-            # hanging off that place.
-            db.delete(organisation)
-            db.flush()
-            return OrgUnitStatusOut(status="deleted")
-
+    # Deleting the place clears everything hanging off it, through the
+    # listener on the model.
     db.delete(unit)
     db.flush()
     return OrgUnitStatusOut(status="deleted")

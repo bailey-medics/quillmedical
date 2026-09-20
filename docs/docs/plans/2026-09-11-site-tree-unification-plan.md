@@ -908,7 +908,7 @@ So the remaining steps land as:
 - [x] 12c-iii-a — a place remembers the prefix its media is filed under
 - [x] 12c-iii-b — the place surfaces stop translating organisation ids
 - [x] 12c-iii-c — the user listing names the right place
-- [ ] 12c-iii-d — drop the `organisations` table
+- [x] 12c-iii-d — drop the `organisations` table
 - [x] 12c-iv — refuse deleting a parent with children, and enforce `requires_parent`
 
 #### 10a — write both names for the place column
@@ -1888,46 +1888,72 @@ introduced it and the two after.
   failure — and a ward membership shows as a site rather than an
   organisation.
 
-#### 12c-iii-d — drop the `organisations` table (not started)
+#### 12c-iii-d — drop the `organisations` table
 
-The application side is ready: nothing reads the table for its own id
-any more. What remains was attempted and backed out, and is written
-down here rather than half-landed.
+The last step. An organisation is a place at the top of a tree, and
+there is one table of places.
 
-- **The drop itself is small**: delete the model and its three
-  listeners, move the delete cascade onto `OrgUnit` (it already works
-  through the place), stop `org_units/router.py` writing the paired row,
-  drop the last foreign key — `module_media_link.organisation_id`, which
-  keeps its value as an address — and drop the table.
-- **Two response fields have to be renamed, not reinterpreted**:
-  `OrganisationListItem.id` on `/auth/organisations` and
-  `SharedOrganisationSummary.id` on
-  `/patients/{id}/shared-organisations` both publish an organisation id
-  and would have to publish a place id. Neither is read by any screen.
-  Two `oasdiff` findings, two decision files.
-- **`exclude_org` goes with the table**, since it counts in ids that no
-  longer exist. A third decision file.
-- **The fixture migration is the real work, and the trap.** Fifty test
-  files build an `Organisation`; the mechanical rewrite is
-  `Organisation(...)` to `OrgUnit(...)` with the type mapped the way
-  `_kind_of` maps it — a root type kept, anything else becoming
+- **The model and its three listeners go.** Two of them existed to
+  create the paired row and keep its name and type in step; with one row
+  there is nothing to keep in step. The third took everything hanging
+  off the place away when the organisation was deleted, and moves onto
+  `OrgUnit` as a `before_delete` — it already did its work through the
+  place, so it is asked of the row that actually holds the rest.
+- **`module_media_link.organisation_id` keeps its value and loses its
+  foreign key.** It is an address, and an address is not a reference:
+  the number stays valid whether or not anything else still knows it.
+- **Three API changes, renamed rather than reinterpreted.**
+  `OrganisationListItem.id` and `SharedOrganisationSummary.id` become
+  `org_unit_id`; `exclude_org` goes, since it counted in ids that no
+  longer exist. Neither response field is read by any screen. Three
+  decision files.
+- **The fixture rewrite was scripted, and the exceptions were read.**
+  `Organisation(...)` becomes `OrgUnit(...)` with the type mapped the
+  way `_kind_of` mapped it — a root type kept, anything else becoming
   `organisation`, a missing one becoming `hospital_team` — and
-  `X.org_unit_id` becoming `X.id` for the twenty-odd names that hold an
-  organisation. Applied blindly it is **not** meaning-preserving: the
-  tests whose subject is the two id spaces, `test_the_two_id_sequences_stay_apart`
-  and `test_the_media_prefix_survives_the_table` among them, assert
-  that two numbers differ, and the rewrite turns those into `x != x`.
-  Those files need reading, not rewriting.
+  `X.org_unit_id` becomes `X.id` for the names that hold an
+  organisation, never for `c.org_unit_id`, `row.org_unit_id` or a
+  model's own column.
+- **Applied blindly that rewrite is not meaning-preserving**, which is
+  why it was tried once and backed out. The tests whose subject is the
+  two id spaces assert that two numbers differ, and the script turns
+  those into `x != x` — some fail loudly, and some pass while testing
+  nothing. Those were handled by hand:
+  - `TestTheTwoIdSequencesStayApart` and the matching test in
+    `test_teaching_rows_name_their_place` are **deleted**, with the
+    reason recorded where they stood. There is one sequence, so there is
+    nothing left to guard.
+  - `TestTheTranslation` goes with `place_of_organisation` and
+    `organisation_of_place`: nothing left to translate.
+  - `TestExcludingByOrganisation` goes with `exclude_org`.
+  - `test_the_media_prefix_survives_the_table` keeps its subject by
+    recording a prefix that is deliberately nothing like the place's own
+    id, rather than leaning on the two id spaces to supply the
+    difference. That is the better test either way.
+  - `TestAnOrganisationCreatedAsAPlace` and
+    `TestEveryOrganisationIsInTheTree` asked whether the paired row was
+    made and kept in step. They now ask what those rows existed to
+    answer: a root type with no parent is an organisation, a detached
+    ward is not.
+  - `Organisation.features` was a read-only relationship nothing but one
+    test read. It went with the model, and the test reads the rows.
+- **The conftest spacer stays, renamed.** It was there to keep the two
+  id sequences apart; that is moot now, but a ward with no parent is
+  still the only "place that is not an organisation" the fixtures have,
+  and several tests point at it. `DETACHED_PLACE_NAME` says what it is.
+- **`app/organisations.py` survives**, despite the name. It is the
+  access-helpers module — membership and reach — not the API surface
+  step 10 meant, which was retired in 12b-vii.
 
-10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
+10. [x] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to
     match, and delete the old organisations module.
 
-11. [ ] **Add the new API surface** alongside the old one, migrate the frontend
+11. [x] **Add the new API surface** alongside the old one, migrate the frontend
     onto it, and rename the frontend type. Close the thin-pages gap in the
     same pass.
 
-12. [ ] **Retire both old API surfaces** once nothing reads them, then refuse to
+12. [x] **Retire both old API surfaces** once nothing reads them, then refuse to
     delete a parent that still has children and enforce each type's
     `requires_parent` flag.
     Last, so the earlier steps are not blocked by it.

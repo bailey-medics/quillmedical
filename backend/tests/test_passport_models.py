@@ -31,7 +31,7 @@ from app.features.passport.models import (
     PassportSignOffRequest,
     SiteCommonCompetency,
 )
-from app.models import Base, Organisation, OrgUnit, User
+from app.models import Base, OrgUnit, User
 
 PASSPORT_ID = "3f2a8c1e4b7d49f0a6c2e8b1d5a7f309"
 OTHER_ID = "a1b2c3d4e5f60718293a4b5c6d7e8f90"
@@ -181,13 +181,13 @@ class TestSiteCommonCompetency:
         trust-wide list is the organisation's own row in the tree and a
         ward's is the ward's — the same column either way.
         """
-        organisation = Organisation(name="A trust")
+        organisation = OrgUnit(name="A trust", type="hospital_team")
         db_session.add(organisation)
         db_session.flush()
 
         db_session.add(
             SiteCommonCompetency(
-                org_unit_id=organisation.org_unit_id,
+                org_unit_id=organisation.id,
                 competency_id="prescribe_sact",
             )
         )
@@ -203,14 +203,14 @@ class TestSiteCommonCompetency:
     def test_a_competency_appears_once_per_place(
         self, db_session: Session
     ) -> None:
-        organisation = Organisation(name="Another trust")
+        organisation = OrgUnit(name="Another trust", type="hospital_team")
         db_session.add(organisation)
         db_session.flush()
 
         for _ in range(2):
             db_session.add(
                 SiteCommonCompetency(
-                    org_unit_id=organisation.org_unit_id,
+                    org_unit_id=organisation.id,
                     competency_id="prescribe_sact",
                 )
             )
@@ -226,18 +226,16 @@ class TestSiteCommonCompetency:
         A ward's shortlist and the trust's are two rows naming two
         places, rather than two columns on rows of one table.
         """
-        organisation = Organisation(name="A third trust")
+        organisation = OrgUnit(name="A third trust", type="hospital_team")
         db_session.add(organisation)
         db_session.flush()
-        ward = OrgUnit(
-            name="Ward 9", type="ward", parent_id=organisation.org_unit_id
-        )
+        ward = OrgUnit(name="Ward 9", type="ward", parent_id=organisation.id)
         db_session.add(ward)
         db_session.flush()
 
         db_session.add(
             SiteCommonCompetency(
-                org_unit_id=organisation.org_unit_id,
+                org_unit_id=organisation.id,
                 competency_id="prescribe_sact",
             )
         )
@@ -422,7 +420,7 @@ class TestRegistrationVerification:
         *,
         assessor: User,
         admin: User,
-        organisation: Organisation,
+        organisation: OrgUnit,
         number: str = "7654321",
         authority: str = "GMC",
     ) -> AssessorRegistrationVerification:
@@ -431,7 +429,7 @@ class TestRegistrationVerification:
             registration_authority=authority,
             registration_number=number,
             verified_by_user_id=admin.id,
-            org_unit_id=organisation.org_unit_id,
+            org_unit_id=organisation.id,
         )
 
     def test_it_records_who_checked_and_when(
@@ -442,7 +440,7 @@ class TestRegistrationVerification:
         needs, and why ``Registration`` refuses one."""
         assessor = _user(db_session, "assessor-v1@example.nhs.uk")
         admin = _user(db_session, "admin-v1@example.nhs.uk")
-        organisation = Organisation(name="Checking Trust")
+        organisation = OrgUnit(name="Checking Trust", type="hospital_team")
         db_session.add(organisation)
         db_session.flush()
 
@@ -479,7 +477,7 @@ class TestRegistrationVerification:
         """A second would make "is this verified" ambiguous."""
         assessor = _user(db_session, "assessor-v2@example.nhs.uk")
         admin = _user(db_session, "admin-v2@example.nhs.uk")
-        organisation = Organisation(name="Twice Trust")
+        organisation = OrgUnit(name="Twice Trust", type="hospital_team")
         db_session.add(organisation)
         db_session.flush()
 
@@ -503,8 +501,8 @@ class TestRegistrationVerification:
         assessor = _user(db_session, "assessor-v3@example.nhs.uk")
         admin = _user(db_session, "admin-v3@example.nhs.uk")
 
-        first = Organisation(name="First Trust")
-        second = Organisation(name="Second Trust")
+        first = OrgUnit(name="First Trust", type="hospital_team")
+        second = OrgUnit(name="Second Trust", type="hospital_team")
         db_session.add_all([first, second])
         db_session.flush()
 
@@ -533,7 +531,9 @@ class TestRegistrationVerification:
         """An admin who checked a GMC number has not checked an NMC one."""
         assessor = _user(db_session, "assessor-v4@example.nhs.uk")
         admin = _user(db_session, "admin-v4@example.nhs.uk")
-        organisation = Organisation(name="Both Registers Trust")
+        organisation = OrgUnit(
+            name="Both Registers Trust", type="hospital_team"
+        )
         db_session.add(organisation)
         db_session.flush()
 

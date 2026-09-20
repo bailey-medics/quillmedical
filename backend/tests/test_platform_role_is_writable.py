@@ -26,7 +26,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Organisation, User
+from app.models import OrgUnit, User
 from app.organisations import add_place_member
 from app.security import hash_password
 
@@ -54,21 +54,21 @@ def _user(
 
 
 @pytest.fixture
-def org(db_session: Session) -> Organisation:
-    organisation = Organisation(name="Trust", type="hospital")
+def org(db_session: Session) -> OrgUnit:
+    organisation = OrgUnit(name="Trust", type="organisation")
     db_session.add(organisation)
     db_session.commit()
     db_session.refresh(organisation)
     return organisation
 
 
-def _place(db: Session, org: Organisation, user: User) -> None:
-    add_place_member(db, org.org_unit_id, user.id, "staff")
+def _place(db: Session, org: OrgUnit, user: User) -> None:
+    add_place_member(db, org.id, user.id, "staff")
     db.commit()
 
 
 @pytest.fixture
-def admin(db_session: Session, org: Organisation) -> User:
+def admin(db_session: Session, org: OrgUnit) -> User:
     """Holds ``manage_users`` and is not an operator."""
     user = _user(
         db_session,
@@ -81,7 +81,7 @@ def admin(db_session: Session, org: Organisation) -> User:
 
 
 @pytest.fixture
-def operator(db_session: Session, org: Organisation) -> User:
+def operator(db_session: Session, org: OrgUnit) -> User:
     user = _user(
         db_session,
         "the_operator",
@@ -124,16 +124,14 @@ class TestCreate:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         admin: User,
     ) -> None:
         """Omitting the field must never produce an operator."""
         client = _login(test_client, "the_admin")
         response = client.post(
             "/api/users",
-            json=_new_user_payload(
-                "no_role_given", place_ids=[org.org_unit_id]
-            ),
+            json=_new_user_payload("no_role_given", place_ids=[org.id]),
             headers=_csrf(client),
         )
 
@@ -148,7 +146,7 @@ class TestCreate:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         operator: User,
     ) -> None:
         client = _login(test_client, "the_operator")
@@ -157,7 +155,7 @@ class TestCreate:
             json=_new_user_payload(
                 "a_new_operator",
                 platform_role="superadmin",
-                place_ids=[org.org_unit_id],
+                place_ids=[org.id],
             ),
             headers=_csrf(client),
         )
@@ -173,7 +171,7 @@ class TestCreate:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         operator: User,
     ) -> None:
         """Validated in code, as ``PLATFORM_ROLES`` is elsewhere."""
@@ -181,7 +179,7 @@ class TestCreate:
         response = client.post(
             "/api/users",
             json=_new_user_payload(
-                "bad_role", platform_role="admin", place_ids=[org.org_unit_id]
+                "bad_role", platform_role="admin", place_ids=[org.id]
             ),
             headers=_csrf(client),
         )
@@ -196,7 +194,7 @@ class TestUpdate:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         operator: User,
     ) -> None:
         target = _user(
@@ -222,7 +220,7 @@ class TestUpdate:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         operator: User,
     ) -> None:
         """Otherwise every competency gate would refuse the new operator."""
@@ -251,7 +249,7 @@ class TestUpdate:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         admin: User,
     ) -> None:
         """``manage_users`` does not carry the power to make operators."""
@@ -278,7 +276,7 @@ class TestUpdate:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         admin: User,
     ) -> None:
         """The guard refuses promotion, not the field."""

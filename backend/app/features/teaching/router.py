@@ -95,7 +95,7 @@ from app.features.teaching.video_access import (
     sign_cookie,
 )
 from app.models import (
-    Organisation,
+    OrgUnit,
     OrgUnitFeature,
     User,
 )
@@ -2534,7 +2534,7 @@ def list_delegates(
     (either direct org staff or site staff), with their latest
     assessment result if they have one.
     """
-    from app.models import OrgUnit, org_unit_member
+    from app.models import org_unit_member
     from app.org_units.tree import descendant_ids
 
     # Which organisations the caller is a member of. Direct membership,
@@ -3079,21 +3079,19 @@ def list_bank_organisations(
     # All orgs that have the "teaching" feature enabled
     orgs = (
         db.execute(
-            select(Organisation)
+            select(OrgUnit)
             .join(
                 OrgUnitFeature,
-                OrgUnitFeature.org_unit_id == Organisation.org_unit_id,
+                OrgUnitFeature.org_unit_id == OrgUnit.id,
             )
             .where(OrgUnitFeature.feature_key == "teaching")
-            .order_by(Organisation.name)
+            .order_by(OrgUnit.name)
         )
         .scalars()
         .all()
     )
 
-    # The status rows answer in place ids; the response still answers in
-    # organisation ids, which is why both are carried here.
-    place_ids = [o.org_unit_id for o in orgs if o.org_unit_id is not None]
+    place_ids = [place.id for place in orgs]
 
     # Get bank status rows for these orgs
     statuses = {
@@ -3109,18 +3107,12 @@ def list_bank_organisations(
     }
 
     rows: list[BankOrgRow] = []
-    for org in orgs:
-        # An organisation with no row in the tree can hold no status,
-        # because a status is keyed by the place.
-        status = (
-            statuses.get(org.org_unit_id)
-            if org.org_unit_id is not None
-            else None
-        )
+    for place in orgs:
+        status = statuses.get(place.id)
         rows.append(
             BankOrgRow(
-                org_unit_id=org.org_unit_id,
-                organisation_name=org.name,
+                org_unit_id=place.id,
+                organisation_name=place.name,
                 is_live=status.is_live if status else False,
                 site_registration=(
                     status.site_registration if status else False

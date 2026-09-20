@@ -16,7 +16,7 @@ import sys
 sys.path.insert(0, "/app")
 
 from app.db import CoreSessionLocal  # noqa: E402
-from app.models import Organisation, OrgUnitFeature, User  # noqa: E402
+from app.models import OrgUnit, OrgUnitFeature, User  # noqa: E402
 from app.organisations import add_place_member  # noqa: E402
 from app.security import hash_password  # noqa: E402
 
@@ -62,12 +62,12 @@ def seed() -> None:
 
             # 3. Create teaching organisation
         org = (
-            db.query(Organisation)
-            .filter(Organisation.name == "CI Teaching Hospital")
+            db.query(OrgUnit)
+            .filter(OrgUnit.name == "CI Teaching Hospital")
             .first()
         )
         if not org:
-            org = Organisation(
+            org = OrgUnit(
                 name="CI Teaching Hospital",
                 type="teaching_establishment",
                 location="CI",
@@ -84,14 +84,14 @@ def seed() -> None:
         feat = (
             db.query(OrgUnitFeature)
             .filter(
-                OrgUnitFeature.org_unit_id == org.org_unit_id,
+                OrgUnitFeature.org_unit_id == org.id,
                 OrgUnitFeature.feature_key == "teaching",
             )
             .first()
         )
         if not feat:
             feat = OrgUnitFeature(
-                org_unit_id=org.org_unit_id,
+                org_unit_id=org.id,
                 feature_key="teaching",
                 enabled_by=admin.id,
             )
@@ -101,9 +101,9 @@ def seed() -> None:
 
         # 5. Add educator to organisation (staff)
         # Membership is one table keyed on the place now, so this goes
-        # through the writer rather than a relationship on Organisation.
+        # through the writer rather than a relationship on the place.
         # It is idempotent, which is why there is no membership check.
-        add_place_member(db, org.org_unit_id, educator.id, "staff")
+        add_place_member(db, org.id, educator.id, "staff")
         print("Added educator to organisation")
 
         db.commit()

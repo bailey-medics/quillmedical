@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "response-required-property-removed GET /api/patients/{patient_id}/shared-organisations removed the required property `organisations/items/id` from the response with the `200` status"
+reason: "Replaced by `org_unit_id`, for the same reason as the public organisations list: the organisations table is gone and a place id is the only id an organisation has. The endpoint is not read by any screen. No open tab needs reloading."
