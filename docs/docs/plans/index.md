@@ -54,3 +54,4 @@
 - [Platform Role](2026-09-09-platform-role-plan.md)
 - [Membership and Reach](2026-09-09-membership-and-reach-plan.md)
 - [Stacked Branches](2026-09-14-stacked-branches-plan.md)
+- [Environment Isolation and IAP](2026-09-18-environment-isolation-and-iap-plan.md)

@@ -26,7 +26,7 @@ import {
 } from "@/components/icons/appIcons";
 
 /** Available icon types */
-type IconName =
+export type IconName =
   | "home"
   | "settings"
   | "logout"

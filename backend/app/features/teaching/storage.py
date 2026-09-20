@@ -10,13 +10,27 @@ YAML files from GCS to a local temporary directory.
 from __future__ import annotations
 
 import logging
-import re
 import tempfile
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
 
 from app.config import settings
+
+# Re-exported, not merely used. These were defined here until the
+# transcode job — which needs one of them and no configuration at all —
+# crashed on startup, because importing this module constructs
+# ``Settings`` and that requires ``JWT_SECRET`` and ``CORE_DB_PASSWORD``.
+# They now live in a module that imports nothing, and are imported back
+# so every existing caller of ``storage`` is unaffected.
+from app.features.teaching.object_paths import (  # noqa: F401
+    SAFE_ID,
+    assessment_prefix,
+    caption_object_path,
+    learning_prefix,
+    media_object_path,
+    module_prefix,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -39,21 +53,6 @@ _TEXT_SUFFIXES = frozenset({".yaml", ".yml", ".mdx", ".md", ".json"})
 #: module directory into ``modules/<bank_id>/`` and changes nothing on the way.
 #: Everything that addresses the bucket goes through these three, so the
 #: layout is stated once rather than rebuilt at each of seventeen call sites.
-
-
-def module_prefix(bank_id: str) -> str:
-    """Where a module's files live: ``modules/<bank_id>/``."""
-    return f"modules/{bank_id}/"
-
-
-def assessment_prefix(bank_id: str) -> str:
-    """Where a module's assessment lives, ``questions/<bank_id>/`` before."""
-    return f"{module_prefix(bank_id)}assessment/"
-
-
-def learning_prefix(module_id: str) -> str:
-    """Where a module's learning content lives, ``learning/<id>/`` before."""
-    return f"{module_prefix(module_id)}learning/"
 
 
 class LocalStorageBackend(StorageBackend):
@@ -143,7 +142,10 @@ def get_storage_backend() -> StorageBackend:
 # GCS helpers for sync
 # ------------------------------------------------------------------
 
-_SAFE_BANK_ID = re.compile(r"^[a-zA-Z0-9_-]+$")
+#: Aliased rather than renamed at thirteen call sites below. The
+#: definition now lives in ``object_paths``, which the Cloud Run jobs
+#: import without pulling in ``settings``.
+_SAFE_BANK_ID = SAFE_ID
 
 
 def _has_assessment_config(directory: Path) -> bool:
@@ -667,25 +669,6 @@ ALLOWED_MEDIA_TYPES: dict[str, str] = {
 }
 
 
-def media_object_path(org_id: int, module_id: str, asset_id: str) -> str:
-    """Where an uploaded asset lives in the source bucket.
-
-    Keyed by generated id, never the uploaded filename: collisions
-    become impossible, upload naming becomes irrelevant, and a filename
-    carrying a patient identifier never reaches a URL.
-    """
-    if org_id <= 0:
-        msg = f"Invalid org_id: {org_id!r}"
-        raise ValueError(msg)
-    if not module_id or not _SAFE_BANK_ID.match(module_id):
-        msg = f"Invalid module_id: {module_id!r}"
-        raise ValueError(msg)
-    if not asset_id or not _SAFE_BANK_ID.match(asset_id):
-        msg = f"Invalid asset_id: {asset_id!r}"
-        raise ValueError(msg)
-    return f"{org_id}/{module_id}/{asset_id}"
-
-
 def create_resumable_upload_url(
     bucket_name: str,
     org_id: int,
@@ -734,20 +717,6 @@ def create_resumable_upload_url(
             access_token=credentials.token,
         )
     )
-
-
-def caption_object_path(org_id: int, module_id: str, asset_id: str) -> str:
-    """Where an asset's WebVTT lives in the processed bucket.
-
-    The caption job writes ``{asset_id}.vtt`` beside the renditions, and
-    ``_resolve_video_filename`` returns that name to the player, so this
-    is the one place the spelling is stated for the admin path too.
-
-    Built on ``media_object_path`` so the same validation guards it: a
-    traversal here would let a caller read or overwrite another
-    organisation's captions.
-    """
-    return f"{media_object_path(org_id, module_id, asset_id)}.vtt"
 
 
 def read_caption_object(

@@ -26,6 +26,14 @@ export interface ModuleMediaState {
   error: string | null;
   /** Percent complete per reference key, while an upload is in flight. */
   uploadProgress: Record<string, number>;
+  /**
+   * Name of the file being uploaded, per reference key.
+   *
+   * Taken from the dropped file rather than the asset, which does not
+   * exist until the upload finishes and the link is recorded. Without
+   * it the row can only say that something is on its way, not what.
+   */
+  uploadNames: Record<string, string>;
   upload: (key: string, file: File) => Promise<void>;
   remove: (assetId: string) => Promise<void>;
   /**
@@ -175,13 +183,31 @@ async function putToBucket(
   return sendToSession(session, file, onProgress);
 }
 
-export function useModuleMedia(moduleId: string | null): ModuleMediaState {
+/**
+ * How often to re-ask while a job is running.
+ *
+ * Ten seconds: a transcode takes minutes and captions longer, so this
+ * is far finer than the work it watches, and the request is one small
+ * read of rows the page already holds.
+ *
+ * Overridable so a test can prove the polling without waiting ten real
+ * seconds. Swapping the clock for fake timers was tried first and
+ * proved unreliable — the interval is registered inside an effect that
+ * runs after an awaited fetch, and the two did not line up.
+ */
+export const MEDIA_POLL_INTERVAL_MS = 10_000;
+
+export function useModuleMedia(
+  moduleId: string | null,
+  pollIntervalMs: number = MEDIA_POLL_INTERVAL_MS,
+): ModuleMediaState {
   const [media, setMedia] = useState<ModuleMedia | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>(
     {},
   );
+  const [uploadNames, setUploadNames] = useState<Record<string, string>>({});
 
   const refresh = useCallback(async () => {
     if (!moduleId) return;
@@ -225,11 +251,37 @@ export function useModuleMedia(moduleId: string | null): ModuleMediaState {
     void refresh();
   }, [moduleId, refresh]);
 
+  // Whether any row is waiting on a job. Derived from what the backend
+  // says rather than guessed here: it owns the rules, and a second
+  // opinion in the card would be the one that drifts.
+  const anyInProgress = Boolean(
+    media?.references?.some((ref) => ref.asset?.progress?.in_progress),
+  );
+
+  useEffect(() => {
+    // Polled only while something is actually running. The card was
+    // fetched once and never again, so a progress bar would have sat at
+    // the same figure until someone reloaded — which is no better than
+    // the "No captions" line it replaces.
+    //
+    // Stops the moment nothing is in progress, including when a job has
+    // stalled: there is no point asking every ten seconds about work
+    // that has already failed.
+    if (!moduleId || !anyInProgress) return;
+
+    const timer = setInterval(() => {
+      void refresh();
+    }, pollIntervalMs);
+
+    return () => clearInterval(timer);
+  }, [moduleId, anyInProgress, refresh, pollIntervalMs]);
+
   const upload = useCallback(
     async (key: string, file: File) => {
       if (!moduleId) return;
       setError(null);
       setUploadProgress((p) => ({ ...p, [key]: 0 }));
+      setUploadNames((n) => ({ ...n, [key]: file.name }));
 
       try {
         const grant = await api.post<MediaUploadUrl>(
@@ -267,6 +319,11 @@ export function useModuleMedia(moduleId: string | null): ModuleMediaState {
         // the row to a dropzone rather than a bar stuck at 60%.
         setUploadProgress((p) => {
           const next = { ...p };
+          delete next[key];
+          return next;
+        });
+        setUploadNames((n) => {
+          const next = { ...n };
           delete next[key];
           return next;
         });
@@ -342,6 +399,7 @@ export function useModuleMedia(moduleId: string | null): ModuleMediaState {
       loading: false,
       error: null,
       uploadProgress: {},
+      uploadNames: {},
       upload,
       remove,
       loadCaptions,
@@ -354,6 +412,7 @@ export function useModuleMedia(moduleId: string | null): ModuleMediaState {
     loading,
     error,
     uploadProgress,
+    uploadNames,
     upload,
     remove,
     loadCaptions,

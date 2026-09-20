@@ -100,6 +100,42 @@ describe("StateMessage Component", () => {
     });
   });
 
+  describe("Text colour", () => {
+    it("uses dark text on the pale update colour", () => {
+      // `update` is a pale wash, so the hardcoded white this component
+      // used to apply left the text invisible against it. The palette
+      // has always carried a `text` value per colour; the component now
+      // honours it rather than assuming every colour is saturated.
+      renderWithMantine(
+        <StateMessage
+          colour="update"
+          icon={<IconClock />}
+          title="Nothing yet"
+          description="No records"
+        />,
+      );
+
+      expect(screen.getByText("Nothing yet")).toHaveStyle({
+        color: "var(--status-text-dark)",
+      });
+    });
+
+    it("keeps white text on a saturated colour", () => {
+      renderWithMantine(
+        <StateMessage
+          colour="info"
+          icon={<IconClock />}
+          title="Something happened"
+          description="A real status"
+        />,
+      );
+
+      expect(screen.getByText("Something happened")).toHaveStyle({
+        color: "var(--mantine-color-white)",
+      });
+    });
+  });
+
   describe("Description content", () => {
     it("renders JSX description content", () => {
       renderWithMantine(

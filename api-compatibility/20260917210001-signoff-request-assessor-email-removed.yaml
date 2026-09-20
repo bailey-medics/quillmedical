@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "request-property-removed POST /api/passport/{passport_id}/competencies/{competency_id}/requests removed the request property `assessor_user_id`"
+reason: "`assessor_user_id` is replaced by `assessor_email`. Naming the assessor by account made the feature unreachable for the case it exists to serve: the consultant who observed a registrar is usually at another trust, and often has no Quill account at all, so a dropdown of existing users had no row for them and the holder could not ask. An email address is what a holder knows at the moment of asking, and matching it to an account is now a lookup rather than a precondition. No open tab needs reloading and nothing can break: the passport feature is off for every organisation, both tables are empty, and the only screen that sends this request changes in the same stack."
