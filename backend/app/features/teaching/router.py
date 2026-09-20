@@ -11,7 +11,7 @@ import random
 import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, NoReturn
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.responses import Response
@@ -193,8 +193,8 @@ def _get_user_org_id(user: User, db: Session) -> int:
     **Which organisation it returns is still arbitrary**, and that is a
     separate, known bug rather than something this fixes. With two
     memberships it picks whichever comes back first — see
-    ``promote_bank_version``, which takes ``org_id`` in the path for that
-    reason, and the test named
+    ``promote_bank_version_at_place``, which takes ``place_id`` in the
+    path for that reason, and the test named
     ``test_a_bank_held_only_by_your_second_organisation_is_found``.
     Narrowing to membership shrinks the set it chooses from without
     making the choice correct.
@@ -3134,7 +3134,6 @@ def list_bank_organisations(
         status = statuses.get(org.org_unit_id)
         rows.append(
             BankOrgRow(
-                organisation_id=org.id,
                 org_unit_id=org.org_unit_id,
                 organisation_name=org.name,
                 is_live=status.is_live if status else False,
@@ -3147,48 +3146,20 @@ def list_bank_organisations(
     return rows
 
 
-@teaching_router.put(
-    "/admin/banks/{bank_id}/places/{place_id}/active-version",
-    response_model=PromoteBankVersionOut,
-    dependencies=[_DEP_MANAGE],
-)
-def promote_bank_version_at_place(
-    bank_id: str,
-    place_id: int,
-    body: PromoteBankVersionIn,
-    user: User = _DEP_USER,
-    db: Session = _DEP_SESSION,
-) -> PromoteBankVersionOut:
-    """Move which version a place's candidates receive.
-
-    The same operation as the organisation-keyed path beside it, named
-    the way everything else now names a place. That one is retired once
-    nothing calls it.
-    """
-    organisation_id = organisation_of_place(db, place_id)
-    if organisation_id is None:
-        raise HTTPException(404, "Organisation not found")
-    return promote_bank_version(bank_id, organisation_id, body, user, db)
-
-
-@teaching_router.put(
-    "/admin/banks/{bank_id}/organisations/{org_id}/active-version",
-    response_model=PromoteBankVersionOut,
-    dependencies=[_DEP_MANAGE],
-)
-def promote_bank_version(
+def _promote_bank_version(
     bank_id: str,
     org_id: int,
     body: PromoteBankVersionIn,
-    user: User = _DEP_USER,
-    db: Session = _DEP_SESSION,
+    user: User,
+    db: Session,
 ) -> PromoteBankVersionOut:
     """Move which version of a bank an organisation's candidates receive.
 
-    The organisation is named in the path and the caller must belong to it.
-    Not inferred from the caller: ``_get_user_org_id`` returns whichever
-    organisation happens to come back first, so a person teaching for two
-    would silently promote for the wrong one.
+    The organisation comes from the place the caller named, and the
+    caller must belong to it. Not inferred from the caller:
+    ``_get_user_org_id`` returns whichever organisation happens to come
+    back first, so a person teaching for two would silently promote for
+    the wrong one.
 
     Restricted to the caller's own organisations because nothing models which
     organisations one may promote on behalf of. That question belongs to
@@ -3282,33 +3253,107 @@ def update_bank_place_settings(
 ) -> QuestionBankOrgSettingsOut:
     """Set a bank live or closed for a place.
 
-    The same operation as the organisation-keyed path beside it, named
-    the way everything else now names a place.
+    The only path for this now. It translates to the organisation the
+    place belongs to because membership still counts in organisation
+    ids; ``12c-ii`` removes that step.
     """
     organisation_id = organisation_of_place(db, place_id)
     if organisation_id is None:
         raise HTTPException(404, "Organisation not found")
-    return update_bank_org_settings(bank_id, organisation_id, body, user, db)
+    return _update_bank_org_settings(bank_id, organisation_id, body, user, db)
+
+
+@teaching_router.put(
+    "/admin/banks/{bank_id}/places/{place_id}/active-version",
+    response_model=PromoteBankVersionOut,
+    dependencies=[_DEP_MANAGE],
+)
+def promote_bank_version_at_place(
+    bank_id: str,
+    place_id: int,
+    body: PromoteBankVersionIn,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+) -> PromoteBankVersionOut:
+    """Move which version a place's candidates receive.
+
+    The only path for this now. As with the settings route beside it,
+    the translation to an organisation is what membership still needs.
+    """
+    organisation_id = organisation_of_place(db, place_id)
+    if organisation_id is None:
+        raise HTTPException(404, "Organisation not found")
+    return _promote_bank_version(bank_id, organisation_id, body, user, db)
+
+
+def _retired(place_path: str) -> NoReturn:
+    """Say that an organisation-keyed address has been retired.
+
+    410 rather than 404, for the same reason the retired sites and
+    organisations addresses answer 410: a caller can tell "this never
+    existed" from "this used to be here". The replacement is named, so a
+    stale tab's error reaches somebody who can act on it.
+    """
+    raise HTTPException(
+        status_code=410,
+        detail=(
+            "This address has been retired. Name the place instead: "
+            f"{place_path}."
+        ),
+    )
 
 
 @teaching_router.put(
     "/admin/banks/{bank_id}/organisations/{org_id}/settings",
     response_model=QuestionBankOrgSettingsOut,
-    dependencies=[_DEP_MANAGE],
 )
-def update_bank_org_settings(
+def update_bank_org_settings_retired(
     bank_id: str,
     org_id: int,
     body: QuestionBankOrgSettingsIn,
-    user: User = _DEP_USER,
-    db: Session = _DEP_SESSION,
+) -> QuestionBankOrgSettingsOut:
+    """Retired. Settings are set at ``/places/{place_id}/settings``.
+
+    No permission check, as with the other retired addresses: there is
+    nothing behind it to protect, and saying it has gone discloses
+    nothing.
+    """
+    _retired("/api/teaching/admin/banks/{bank_id}/places/{place_id}/settings")
+
+
+@teaching_router.put(
+    "/admin/banks/{bank_id}/organisations/{org_id}/active-version",
+    response_model=PromoteBankVersionOut,
+)
+def promote_bank_version_retired(
+    bank_id: str,
+    org_id: int,
+    body: PromoteBankVersionIn,
+) -> PromoteBankVersionOut:
+    """Retired. Versions are promoted at ``/places/{place_id}``."""
+    _retired(
+        "/api/teaching/admin/banks/{bank_id}/places/{place_id}"
+        "/active-version"
+    )
+
+
+def _update_bank_org_settings(
+    bank_id: str,
+    org_id: int,
+    body: QuestionBankOrgSettingsIn,
+    user: User,
+    db: Session,
 ) -> QuestionBankOrgSettingsOut:
     """Update settings (status) for a bank-org pair.
 
-    The caller must belong to the organisation named in the path. Without
-    that, anyone holding ``manage_teaching_content`` could set a bank live
-    or closed for any organisation at all — and closing one mid-cohort
-    locks its candidates out of an assessment they are part-way through.
+    The caller must belong to the organisation the named place sits in.
+    Without that, anyone holding ``manage_teaching_content`` could set a
+    bank live or closed for any organisation at all — and closing one
+    mid-cohort locks its candidates out of an assessment they are
+    part-way through.
+
+    Still keyed by organisation because membership is: ``12c-ii`` is
+    where that changes, and this becomes a place-keyed body.
     """
     # Membership, not reach — the docstring above already says *belong*,
     # and reaching a trust from a ward is not belonging to it. Closing a
