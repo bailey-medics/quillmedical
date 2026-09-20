@@ -8,20 +8,19 @@ from sqlalchemy.orm import Session
 from app.cbac.positions import set_clinical_lead
 from app.features.teaching.models import QuestionBankOrgStatus
 from app.models import (
-    Organisation,
     OrgUnit,
     User,
     org_unit_member,
 )
-from app.organisations import organisation_member
+from app.organisations import organisation_place_member
 from app.security import hash_password
 
 
 def _setup_org_with_site_and_lead(
     db: Session,
-) -> tuple[Organisation, OrgUnit, User]:
+) -> tuple[OrgUnit, OrgUnit, User]:
     """Create an org, site, and clinical lead linked together."""
-    org = Organisation(name="Teaching Org")
+    org = OrgUnit(name="Teaching Org", type="hospital_team")
     db.add(org)
     db.flush()
 
@@ -31,9 +30,7 @@ def _setup_org_with_site_and_lead(
 
     # Link site to org
     db.execute(
-        update(OrgUnit)
-        .where(OrgUnit.id == site.id)
-        .values(parent_id=org.org_unit_id)
+        update(OrgUnit).where(OrgUnit.id == site.id).values(parent_id=org.id)
     )
     db.flush()
 
@@ -63,7 +60,7 @@ def _setup_org_with_site_and_lead(
 
     # Enable bank for this org with site_registration
     status = QuestionBankOrgStatus(
-        organisation_id=org.id,
+        org_unit_id=org.id,
         question_bank_id="test-bank",
         is_live=True,
         site_registration=True,
@@ -89,7 +86,9 @@ class TestValidateClinicalLead:
         data = resp.json()
         assert data["valid"] is True
         assert data["site_name"] == site.name
-        assert data["organisation_id"] == org.id
+        # The organisation is named by its place now, and only by it.
+        assert data["org_unit_id"] == org.id
+        assert "organisation_id" not in data
         assert data["site_id"] == site.id
 
     def test_valid_lead_case_insensitive(self, test_client, db_session):
@@ -159,7 +158,7 @@ class TestValidateClinicalLead:
 
         # Disable site registration
         db_session.query(QuestionBankOrgStatus).filter_by(
-            organisation_id=org.id, question_bank_id="test-bank"
+            org_unit_id=org.id, question_bank_id="test-bank"
         ).update({"site_registration": False})
         db_session.flush()
 
@@ -175,7 +174,7 @@ class TestValidateClinicalLead:
         _setup_org_with_site_and_lead(db_session)
 
         # Create a separate org+site not linked to this bank
-        other_org = Organisation(name="Other Org")
+        other_org = OrgUnit(name="Other Org", type="hospital_team")
         db_session.add(other_org)
         db_session.flush()
 
@@ -185,7 +184,7 @@ class TestValidateClinicalLead:
         db_session.execute(
             update(OrgUnit)
             .where(OrgUnit.id == other_site.id)
-            .values(parent_id=other_org.org_unit_id)
+            .values(parent_id=other_org.id)
         )
 
         other_lead = User(
@@ -218,7 +217,7 @@ class TestValidateClinicalLead:
 
 
 class TestRegisterWithSiteMembership:
-    """POST /api/auth/register with organisation_id and site_id."""
+    """POST /api/auth/register with org_unit_id and site_id."""
 
     def test_register_adds_org_and_site_membership(
         self, test_client, db_session
@@ -233,7 +232,7 @@ class TestRegisterWithSiteMembership:
                 "email": "trainee@example.com",
                 "password": "Secure123!",
                 "full_name": "New Trainee",
-                "organisation_id": org.id,
+                "org_unit_id": org.id,
                 "site_id": site.id,
             },
         )
@@ -251,9 +250,9 @@ class TestRegisterWithSiteMembership:
         assert new_user is not None
 
         org_row = db_session.execute(
-            select(organisation_member).where(
-                organisation_member.c.user_id == new_user.id,
-                organisation_member.c.organisation_id == org.id,
+            select(organisation_place_member).where(
+                organisation_place_member.c.user_id == new_user.id,
+                organisation_place_member.c.org_unit_id == org.id,
             )
         ).first()
         assert org_row is not None
@@ -269,7 +268,7 @@ class TestRegisterWithSiteMembership:
         assert site_row.capacity == "trainee"
 
     def test_register_site_without_org_fails(self, test_client, db_session):
-        """Providing site_id without organisation_id returns 400."""
+        """Providing site_id without org_unit_id returns 400."""
         _org, site, _lead = _setup_org_with_site_and_lead(db_session)
 
         resp = test_client.post(
@@ -282,7 +281,7 @@ class TestRegisterWithSiteMembership:
             },
         )
         assert resp.status_code == 400
-        assert "organisation_id required" in resp.json()["detail"]
+        assert "org_unit_id required" in resp.json()["detail"]
 
     def test_register_site_not_linked_to_org_fails(
         self, test_client, db_session
@@ -301,7 +300,7 @@ class TestRegisterWithSiteMembership:
                 "username": "baduser2",
                 "email": "bad2@example.com",
                 "password": "Secure123!",
-                "organisation_id": org.id,
+                "org_unit_id": org.id,
                 "site_id": unlinked_site.id,
             },
         )

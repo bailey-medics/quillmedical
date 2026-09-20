@@ -582,7 +582,12 @@ export interface RegistrationVerification {
   registration_number: string;
   verified_by_name: string;
   verified_at: IsoDateTime;
-  organisation_id: number;
+  /**
+   * The place of the organisation whose admin checked it. Replaces
+   * `organisation_id`, which counted in the organisations table's own
+   * ids; membership answers in place ids now.
+   */
+  org_unit_id: number;
 }
 
 /**
@@ -595,6 +600,11 @@ export interface RegistrationVerification {
 export interface AssessorRevoke {
   user_id: number;
   place: string;
+  /**
+   * A place id whichever kind `place` says. It used to hold the
+   * organisation's own id when `place` was `organisation`, which the
+   * name never said.
+   */
   place_id: number;
   sign_offs_kept: number;
 }

@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
-from app.models import Organisation, OrgUnit
+from app.models import OrgUnit
 from app.org_units.tree import (
     MAX_TREE_DEPTH,
     ancestor_ids,
@@ -27,8 +27,8 @@ from app.org_units.tree import (
 )
 
 
-def _org(db: Session, name: str = "Trust") -> Organisation:
-    org = Organisation(name=name, type="hospital_team")
+def _org(db: Session, name: str = "Trust") -> OrgUnit:
+    org = OrgUnit(name=name, type="hospital_team")
     db.add(org)
     db.commit()
     db.refresh(org)
@@ -46,13 +46,13 @@ def _under(db: Session, parent_id: int | None, name: str) -> OrgUnit:
 class TestTheGuardItself:
     def test_a_place_is_not_its_own_parent(self, db_session):
         org = _org(db_session)
-        ward = _under(db_session, org.org_unit_id, "Ward")
+        ward = _under(db_session, org.id, "Ward")
 
         assert would_make_a_cycle(db_session, ward.id, ward.id)
 
     def test_its_own_child_is_refused(self, db_session):
         org = _org(db_session)
-        ward = _under(db_session, org.org_unit_id, "Ward")
+        ward = _under(db_session, org.id, "Ward")
         room = _under(db_session, ward.id, "Room")
 
         assert would_make_a_cycle(db_session, ward.id, room.id)
@@ -60,7 +60,7 @@ class TestTheGuardItself:
     def test_a_deeper_descendant_is_refused(self, db_session):
         """The walk goes the whole way up, not one level."""
         org = _org(db_session)
-        hospital = _under(db_session, org.org_unit_id, "Hospital")
+        hospital = _under(db_session, org.id, "Hospital")
         ward = _under(db_session, hospital.id, "Ward")
         room = _under(db_session, ward.id, "Room")
 
@@ -68,8 +68,8 @@ class TestTheGuardItself:
 
     def test_a_sibling_subtree_is_allowed(self, db_session):
         org = _org(db_session)
-        first = _under(db_session, org.org_unit_id, "Building A")
-        second = _under(db_session, org.org_unit_id, "Building B")
+        first = _under(db_session, org.id, "Building A")
+        second = _under(db_session, org.id, "Building B")
 
         assert not would_make_a_cycle(db_session, first.id, second.id)
 
@@ -77,20 +77,20 @@ class TestTheGuardItself:
 class TestWalkingUp:
     def test_ancestors_come_back_nearest_first(self, db_session):
         org = _org(db_session)
-        hospital = _under(db_session, org.org_unit_id, "Hospital")
+        hospital = _under(db_session, org.id, "Hospital")
         ward = _under(db_session, hospital.id, "Ward")
         room = _under(db_session, ward.id, "Room")
 
         assert ancestor_ids(db_session, room.id) == [
             ward.id,
             hospital.id,
-            org.org_unit_id,
+            org.id,
         ]
 
     def test_a_root_has_none(self, db_session):
         org = _org(db_session)
 
-        assert ancestor_ids(db_session, org.org_unit_id) == []
+        assert ancestor_ids(db_session, org.id) == []
 
     def test_a_chain_that_never_ends_stops_at_the_cap(self, db_session):
         """A wrong answer beats a request that never finishes."""

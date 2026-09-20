@@ -8,11 +8,11 @@ from sqlalchemy.orm import Session
 
 from app.models import (
     Message,
-    Organisation,
+    OrgUnit,
     User,
     org_unit_patient_member,
 )
-from app.organisations import add_organisation_member
+from app.organisations import add_place_member
 from app.security import hash_password
 
 # ---------------------------------------------------------------------------
@@ -21,9 +21,9 @@ from app.security import hash_password
 
 
 @pytest.fixture
-def test_org(db_session: Session) -> Organisation:
+def test_org(db_session: Session) -> OrgUnit:
     """Create a test organisation."""
-    org = Organisation(name="Test Hospital", type="hospital_team")
+    org = OrgUnit(name="Test Hospital", type="hospital_team")
     db_session.add(org)
     db_session.commit()
     db_session.refresh(org)
@@ -32,7 +32,7 @@ def test_org(db_session: Session) -> Organisation:
 
 @pytest.fixture(autouse=True)
 def _setup_org_context(
-    db_session: Session, test_user: User, test_org: Organisation
+    db_session: Session, test_user: User, test_org: OrgUnit
 ) -> None:
     """Set up organisation membership for messaging tests.
 
@@ -41,10 +41,10 @@ def _setup_org_context(
     """
     db_session.flush()
 
-    add_organisation_member(db_session, test_org.id, test_user.id, "staff")
+    add_place_member(db_session, test_org.id, test_user.id, "staff")
     db_session.execute(
         org_unit_patient_member.insert().values(
-            org_unit_id=test_org.org_unit_id,
+            org_unit_id=test_org.id,
             patient_id=PATIENT_ID,
         )
     )
@@ -52,7 +52,7 @@ def _setup_org_context(
 
 
 @pytest.fixture
-def second_user(db_session: Session, test_org: Organisation) -> User:
+def second_user(db_session: Session, test_org: OrgUnit) -> User:
     """Create a second test user with staff permissions in the same org.
 
     ``registered_nurse`` for the same reason as the ``test_user``
@@ -72,24 +72,24 @@ def second_user(db_session: Session, test_org: Organisation) -> User:
     db_session.add(user)
     db_session.flush()
 
-    add_organisation_member(db_session, test_org.id, user.id, "staff")
+    add_place_member(db_session, test_org.id, user.id, "staff")
     db_session.commit()
     db_session.refresh(user)
     return user
 
 
-def _place_admin_in(db: Session, org: Organisation, admin: User) -> None:
+def _place_admin_in(db: Session, org: OrgUnit, admin: User) -> None:
     """Put an admin in an organisation so admin routes can reach its users.
 
     An admin may act on a user only where they share an organisation, so a
     test that acts on someone must say where both of them are.
     """
-    add_organisation_member(db, org.id, admin.id, "staff")
+    add_place_member(db, org.id, admin.id, "staff")
     db.commit()
 
 
 @pytest.fixture
-def patient_user(db_session: Session, test_org: Organisation) -> User:
+def patient_user(db_session: Session, test_org: OrgUnit) -> User:
     """Create a test user with patient permissions.
 
     Placed in ``test_org`` so admin routes can reach them. An admin may
@@ -105,7 +105,7 @@ def patient_user(db_session: Session, test_org: Organisation) -> User:
     )
     db_session.add(user)
     db_session.flush()
-    add_organisation_member(db_session, test_org.id, user.id, "trainee")
+    add_place_member(db_session, test_org.id, user.id, "trainee")
     db_session.commit()
     db_session.refresh(user)
     return user
@@ -990,7 +990,7 @@ class TestJoinConversation:
         _mock_fhir,
         authenticated_client: TestClient,
         csrf_token: str,
-        test_org: Organisation,
+        test_org: OrgUnit,
         db_session: Session,
     ):
         """A trainee is at the organisation but is not its staff.
@@ -1024,9 +1024,7 @@ class TestJoinConversation:
         )
         db_session.add(delegate)
         db_session.flush()
-        add_organisation_member(
-            db_session, test_org.id, delegate.id, "trainee"
-        )
+        add_place_member(db_session, test_org.id, delegate.id, "trainee")
         db_session.commit()
 
         authenticated_client.post(
@@ -1123,10 +1121,10 @@ class TestOrgScopedAccess:
             email_verified=True,
         )
         db_session.add(outsider)
-        other_org = Organisation(name="Other Hospital", type="hospital_team")
+        other_org = OrgUnit(name="Other Hospital", type="hospital_team")
         db_session.add(other_org)
         db_session.flush()
-        add_organisation_member(db_session, other_org.id, outsider.id, "staff")
+        add_place_member(db_session, other_org.id, outsider.id, "staff")
         db_session.commit()
 
         # Log in as outsider
@@ -1149,7 +1147,7 @@ class TestSharedOrganisations:
     def test_shared_orgs_returned(
         self,
         authenticated_client: TestClient,
-        test_org: Organisation,
+        test_org: OrgUnit,
     ):
         """Returns orgs shared between user and patient."""
         resp = authenticated_client.get(
@@ -1158,7 +1156,10 @@ class TestSharedOrganisations:
         assert resp.status_code == 200
         orgs = resp.json()["organisations"]
         assert len(orgs) == 1
-        assert orgs[0]["id"] == test_org.id
+        # ``org_unit_id``, not ``id``: the field was renamed when the
+        # organisations table went, rather than quietly changing which
+        # id space it counted in.
+        assert orgs[0]["org_unit_id"] == test_org.id
         assert orgs[0]["name"] == "Test Hospital"
 
     def test_no_shared_orgs(self, authenticated_client: TestClient):
@@ -1283,7 +1284,7 @@ class TestRevokeExternalAccess:
         self,
         authenticated_client: TestClient,
         test_admin: User,
-        test_org: Organisation,
+        test_org: OrgUnit,
         db_session: Session,
     ):
         """Admin can revoke external access.
@@ -1344,26 +1345,24 @@ class TestRevokeExternalAccess:
         assert resp.status_code == 403
 
         # ---------------------------------------------------------------------------
-        # Organisation management: remove staff / patients, link patient
+        # OrgUnit management: remove staff / patients, link patient
         # ---------------------------------------------------------------------------
 
 
 class TestRemoveStaffFromOrg:
-    """Test DELETE /api/organisations/{org_id}/staff/{user_id}."""
+    """Test DELETE /api/org-units/{unit_id}/members/{user_id}."""
 
     def test_admin_can_remove_staff(
         self,
         authenticated_client: TestClient,
         test_admin: User,
-        test_org: Organisation,
+        test_org: OrgUnit,
         second_user: User,
         db_session: Session,
     ):
         """Admin can remove a staff member from an org."""
         # Add admin to org so they pass the membership check
-        add_organisation_member(
-            db_session, test_org.id, test_admin.id, "staff"
-        )
+        add_place_member(db_session, test_org.id, test_admin.id, "staff")
         db_session.commit()
 
         authenticated_client.post(
@@ -1374,7 +1373,7 @@ class TestRemoveStaffFromOrg:
         token = authenticated_client.cookies.get("XSRF-TOKEN")
 
         resp = authenticated_client.delete(
-            f"/api/organisations/{test_org.id}/staff/{second_user.id}",
+            f"/api/org-units/{test_org.id}/members/{second_user.id}",
             headers={"X-CSRF-Token": token},
         )
         assert resp.status_code == 200
@@ -1383,25 +1382,25 @@ class TestRemoveStaffFromOrg:
         self,
         authenticated_client: TestClient,
         csrf_token: str,
-        test_org: Organisation,
+        test_org: OrgUnit,
         second_user: User,
     ):
         """Non-admin cannot remove staff."""
         resp = authenticated_client.delete(
-            f"/api/organisations/{test_org.id}/staff/{second_user.id}",
+            f"/api/org-units/{test_org.id}/members/{second_user.id}",
             headers={"X-CSRF-Token": csrf_token},
         )
         assert resp.status_code == 403
 
 
 class TestRemovePatientFromOrg:
-    """Test DELETE /api/organisations/{org_id}/patients/{patient_id}."""
+    """Test DELETE /api/org-units/{unit_id}/patients/{patient_id}."""
 
     def test_patient_manager_can_remove_patient(
         self,
         authenticated_client: TestClient,
         test_patient_manager: User,
-        test_org: Organisation,
+        test_org: OrgUnit,
         db_session: Session,
     ):
         """Someone holding `manage_patient_membership` can remove a patient.
@@ -1411,7 +1410,7 @@ class TestRemovePatientFromOrg:
         which patients a place cares for.
         """
         # Add them to the org so they pass the membership check
-        add_organisation_member(
+        add_place_member(
             db_session, test_org.id, test_patient_manager.id, "staff"
         )
         db_session.commit()
@@ -1427,7 +1426,7 @@ class TestRemovePatientFromOrg:
         token = authenticated_client.cookies.get("XSRF-TOKEN")
 
         resp = authenticated_client.delete(
-            f"/api/organisations/{test_org.id}/patients/{PATIENT_ID}",
+            f"/api/org-units/{test_org.id}/patients/{PATIENT_ID}",
             headers={"X-CSRF-Token": token},
         )
         assert resp.status_code == 200
@@ -1441,7 +1440,7 @@ class TestLinkPatient:
         authenticated_client: TestClient,
         test_admin: User,
         patient_user: User,
-        test_org: Organisation,
+        test_org: OrgUnit,
         db_session: Session,
     ):
         """Admin can link a user to a FHIR patient record."""
@@ -1466,7 +1465,7 @@ class TestLinkPatient:
         authenticated_client: TestClient,
         test_admin: User,
         patient_user: User,
-        test_org: Organisation,
+        test_org: OrgUnit,
         db_session: Session,
     ):
         """Cannot link two users to the same FHIR patient."""
@@ -1486,7 +1485,7 @@ class TestLinkPatient:
         )
         db_session.add(other)
         db_session.flush()
-        add_organisation_member(db_session, test_org.id, other.id, "trainee")
+        add_place_member(db_session, test_org.id, other.id, "trainee")
         db_session.commit()
 
         authenticated_client.post(

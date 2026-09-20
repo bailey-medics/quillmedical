@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "request-property-removed PATCH /api/users/{user_id} removed the request property `site_ids`"
+reason: "The companion field on the same request, removed with it. An admin saving the form now settles the places they administer and leaves the rest, which the old pair could not express."

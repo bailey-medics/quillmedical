@@ -16,7 +16,7 @@ scoping walks the tree, which is what decides who may see and edit what.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy import delete, insert, select
+from sqlalchemy import delete, func, insert, select
 from sqlalchemy.orm import Session
 
 from app.cbac.base_professions import grant_staff_competencies
@@ -30,7 +30,6 @@ from app.deps import (
 )
 from app.models import (
     MEMBER_CAPACITIES,
-    Organisation,
     OrgUnit,
     OrgUnitFeature,
     OrgUnitLink,
@@ -181,38 +180,6 @@ def _is_root(unit: OrgUnit) -> bool:
     a parent, and one flag changes in a configuration file.
     """
     return not type_requires_parent(unit.type)
-
-
-def _keep_the_organisation_row_in_step(db: Session, unit: OrgUnit) -> None:
-    """Write the organisation row that stands for a root place.
-
-    Two tables still describe one thing. The organisations table is on
-    its way out, but until it goes it is what answers in organisation
-    ids — who may administer what, and which organisations the user form
-    offers. A root created here without one would be a place only a
-    superadmin could see and nobody could be made a member of.
-
-    ``org_unit_id`` is set on the way in, so the listener that would
-    otherwise create a *second* root for the new organisation returns
-    early.
-    """
-    organisation = db.scalar(
-        select(Organisation).where(Organisation.org_unit_id == unit.id)
-    )
-    if organisation is None:
-        db.add(
-            Organisation(
-                name=unit.name,
-                type=unit.type,
-                location=unit.location,
-                org_unit_id=unit.id,
-            )
-        )
-    else:
-        organisation.name = unit.name
-        organisation.type = unit.type
-        organisation.location = unit.location
-    db.flush()
 
 
 def _item(unit: OrgUnit) -> OrgUnitItem:
@@ -383,10 +350,6 @@ def create_org_unit(
     )
     db.add(unit)
     db.flush()
-
-    if body.parent_id is None:
-        _keep_the_organisation_row_in_step(db, unit)
-
     db.refresh(unit)
     return _item(unit)
 
@@ -528,6 +491,18 @@ def update_org_unit(
         unit.location = body.location.strip() or None
 
     if body.parent_id is not None:
+        # The type says whether a place sits inside another. An
+        # organisation given a parent would be a top of tree with
+        # something above it: `is_root` would keep saying yes while
+        # every walk up found somebody else's trust.
+        if not type_requires_parent(unit.type):
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"A {unit.type} is the top of a tree and does not sit "
+                    "inside anything."
+                ),
+            )
         if would_make_a_cycle(db, unit_id, body.parent_id):
             raise HTTPException(
                 status_code=400,
@@ -535,9 +510,6 @@ def update_org_unit(
             )
         _require_visible(db, current_user, body.parent_id)
         unit.parent_id = body.parent_id
-
-    if _is_root(unit):
-        _keep_the_organisation_row_in_step(db, unit)
 
     db.flush()
     db.refresh(unit)
@@ -585,18 +557,28 @@ def delete_org_unit(
             status_code=403, detail="Requires superadmin permissions"
         )
 
-    if _is_root(unit):
-        organisation = db.scalar(
-            select(Organisation).where(Organisation.org_unit_id == unit.id)
+    # A place with something inside it is refused rather than emptied.
+    # The column says ``SET NULL``, so deleting a ward would leave its
+    # rooms belonging nowhere: invisible to every list, reachable by
+    # nobody, and impossible to tell from rooms that were always loose.
+    # Saying so is the kinder answer, and it is reversible — move them or
+    # delete them first.
+    children = db.scalar(
+        select(func.count())
+        .select_from(OrgUnit)
+        .where(OrgUnit.parent_id == unit_id)
+    )
+    if children:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"This place still has {children} inside it. Move them or "
+                "delete them first."
+            ),
         )
-        if organisation is not None:
-            # Deleting the organisation takes its place with it, through
-            # the listener on the model, which also clears everything
-            # hanging off that place.
-            db.delete(organisation)
-            db.flush()
-            return OrgUnitStatusOut(status="deleted")
 
+    # Deleting the place clears everything hanging off it, through the
+    # listener on the model.
     db.delete(unit)
     db.flush()
     return OrgUnitStatusOut(status="deleted")
@@ -833,7 +815,7 @@ def list_org_unit_features(
 @router.put(
     "/{unit_id}/features/{feature_key}",
     response_model=OrgUnitStatusOut,
-    dependencies=[DEP_REQUIRE_CSRF],
+    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_USERS],
 )
 def set_org_unit_feature(
     unit_id: int,
@@ -848,13 +830,11 @@ def set_org_unit_feature(
     writing a row nothing would ever read: a feature quietly enabled on a
     ward that does nothing is worse than being told it cannot be.
 
-    Requires superadmin permissions, as switching a feature on always has.
+    Requires ``manage_users`` at a place the caller may administer, which
+    is what the organisations surface has always asked. An operator-only
+    gate here would have taken a working thing away from every admin the
+    day that surface was retired.
     """
-    if current_user.platform_role != "superadmin":
-        raise HTTPException(
-            status_code=403, detail="Requires superadmin permissions"
-        )
-
     unit = _require_visible(db, current_user, unit_id)
 
     if not type_can_hold_features(unit.type):

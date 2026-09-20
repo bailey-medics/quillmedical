@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "response-optional-property-removed POST /api/teaching/public/validate-clinical-lead removed the optional property `organisation_id` from the response with the `200` status"
+reason: "The last of the teaching fields answering in organisation ids. Registration sends back what this response gives it, and it has been given `org_unit_id` beside `organisation_id` for a release, so the screen already returns the place id. Serving both meant publishing two numbers for one organisation from two independent id sequences, which is the ambiguity this work removes. The property was optional and absent whenever validation failed, so a caller already had to handle it missing. No open tab needs reloading."

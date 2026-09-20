@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from pydantic import SecretStr
 
 from app.config import settings
+from app.models import OrgUnit
 
 _VALID_MODULE = (
     Path(__file__).parent / "fixtures" / "teaching_tooling" / ".valid-module"
@@ -94,7 +95,16 @@ class TestRejectedBanksFailTheDeploy:
 
         return str(tmp_path)
 
-    def _sync(self, client: TestClient, monkeypatch, base: str):
+    def _sync(self, client: TestClient, monkeypatch, base: str, db=None):
+        """Sync, having first made somewhere for the banks to land.
+
+        The route used to fall back to the literal organisation 1
+        whether or not it existed, so the rows it wrote pointed at
+        nothing — which SQLite allowed and Postgres would not.
+        """
+        if db is not None:
+            db.add(OrgUnit(name="Teaching Trust", type="hospital_team"))
+            db.commit()
         monkeypatch.setattr(
             settings, "TEACHING_SYNC_TOKEN", SecretStr("test-token")
         )
@@ -106,20 +116,20 @@ class TestRejectedBanksFailTheDeploy:
         )
 
     def test_a_rejected_bank_returns_422(
-        self, test_client: TestClient, monkeypatch, tmp_path: Path
+        self, test_client: TestClient, monkeypatch, tmp_path: Path, db_session
     ):
         base = self._base_with(tmp_path, bad=True)
-        resp = self._sync(test_client, monkeypatch, base)
+        resp = self._sync(test_client, monkeypatch, base, db_session)
 
         assert resp.status_code == 422
 
     def test_the_body_survives_the_422(
-        self, test_client: TestClient, monkeypatch, tmp_path: Path
+        self, test_client: TestClient, monkeypatch, tmp_path: Path, db_session
     ):
         """The workflow uses curl --fail-with-body, so the body is what
         tells whoever broke it which bank failed and why."""
         base = self._base_with(tmp_path, bad=True)
-        resp = self._sync(test_client, monkeypatch, base)
+        resp = self._sync(test_client, monkeypatch, base, db_session)
 
         data = resp.json()
         assert [e["bank_id"] for e in data["errors"]] == ["bad-bank"]
@@ -127,16 +137,16 @@ class TestRejectedBanksFailTheDeploy:
         assert "synced" in data
 
     def test_a_clean_sync_is_still_200(
-        self, test_client: TestClient, monkeypatch, tmp_path: Path
+        self, test_client: TestClient, monkeypatch, tmp_path: Path, db_session
     ):
         base = self._base_with(tmp_path, good=True)
-        resp = self._sync(test_client, monkeypatch, base)
+        resp = self._sync(test_client, monkeypatch, base, db_session)
 
         assert resp.status_code == 200
         assert resp.json()["errors"] == []
 
     def test_a_partial_sync_still_fails(
-        self, test_client: TestClient, monkeypatch, tmp_path: Path
+        self, test_client: TestClient, monkeypatch, tmp_path: Path, db_session
     ):
         """One good bank does not excuse a rejected one.
 
@@ -145,7 +155,7 @@ class TestRejectedBanksFailTheDeploy:
         of its neighbours were fine.
         """
         base = self._base_with(tmp_path, good=True, bad=True)
-        resp = self._sync(test_client, monkeypatch, base)
+        resp = self._sync(test_client, monkeypatch, base, db_session)
 
         assert resp.status_code == 422
         data = resp.json()
@@ -153,7 +163,7 @@ class TestRejectedBanksFailTheDeploy:
         assert [s["bank_id"] for s in data["synced"]] == [_VALID_MODULE_ID]
 
     def test_no_banks_found_is_not_a_failure(
-        self, test_client: TestClient, monkeypatch, tmp_path: Path
+        self, test_client: TestClient, monkeypatch, tmp_path: Path, db_session
     ):
         """Nothing to sync is not the same as something rejected."""
         resp = self._sync(test_client, monkeypatch, str(tmp_path))

@@ -29,11 +29,11 @@ from sqlalchemy.orm import Session
 
 from app.models import (
     ExternalPatientAccess,
-    Organisation,
+    OrgUnit,
     User,
     org_unit_patient_member,
 )
-from app.organisations import add_organisation_member
+from app.organisations import add_place_member
 from app.security import hash_password
 
 OUTSIDE_PATIENT = "fhir-patient-other-trust"
@@ -48,15 +48,15 @@ def _fhir(patient_id: str) -> dict[str, object]:
 
 
 @pytest.fixture
-def admin_org(db_session: Session, test_admin: User) -> Organisation:
+def admin_org(db_session: Session, test_admin: User) -> OrgUnit:
     """The admin's own organisation, with a patient in it."""
-    org = Organisation(name="Own Trust", type="hospital")
+    org = OrgUnit(name="Own Trust", type="organisation")
     db_session.add(org)
     db_session.commit()
-    add_organisation_member(db_session, org.id, test_admin.id, "staff")
+    add_place_member(db_session, org.id, test_admin.id, "staff")
     db_session.execute(
         insert(org_unit_patient_member).values(
-            org_unit_id=org.org_unit_id, patient_id=OWN_PATIENT
+            org_unit_id=org.id, patient_id=OWN_PATIENT
         )
     )
     db_session.commit()
@@ -65,14 +65,14 @@ def admin_org(db_session: Session, test_admin: User) -> Organisation:
 
 
 @pytest.fixture
-def other_org(db_session: Session) -> Organisation:
+def other_org(db_session: Session) -> OrgUnit:
     """An organisation the admin has nothing to do with."""
-    org = Organisation(name="Other Trust", type="hospital")
+    org = OrgUnit(name="Other Trust", type="organisation")
     db_session.add(org)
     db_session.commit()
     db_session.execute(
         insert(org_unit_patient_member).values(
-            org_unit_id=org.org_unit_id, patient_id=OUTSIDE_PATIENT
+            org_unit_id=org.id, patient_id=OUTSIDE_PATIENT
         )
     )
     db_session.commit()
@@ -92,8 +92,8 @@ class TestAnAdminCannotReachAnotherOrganisationsPatient:
         self,
         _mock_fhir,
         authenticated_admin_client: TestClient,
-        admin_org: Organisation,
-        other_org: Organisation,
+        admin_org: OrgUnit,
+        other_org: OrgUnit,
     ):
         resp = authenticated_admin_client.post(
             f"/api/patients/{OUTSIDE_PATIENT}/deactivate",
@@ -106,8 +106,8 @@ class TestAnAdminCannotReachAnotherOrganisationsPatient:
         self,
         _mock_fhir,
         authenticated_admin_client: TestClient,
-        admin_org: Organisation,
-        other_org: Organisation,
+        admin_org: OrgUnit,
+        other_org: OrgUnit,
     ):
         resp = authenticated_admin_client.post(
             f"/api/patients/{OUTSIDE_PATIENT}/activate",
@@ -118,8 +118,8 @@ class TestAnAdminCannotReachAnotherOrganisationsPatient:
     def test_cannot_revoke_external_access_to_them(
         self,
         authenticated_admin_client: TestClient,
-        admin_org: Organisation,
-        other_org: Organisation,
+        admin_org: OrgUnit,
+        other_org: OrgUnit,
         db_session: Session,
     ):
         """Revoking another trust's grant is a change to their care.
@@ -177,7 +177,7 @@ class TestTheGateIsACompetencyNotARank:
         self,
         _mock_fhir,
         authenticated_client: TestClient,
-        admin_org: Organisation,
+        admin_org: OrgUnit,
         test_user: User,
         db_session: Session,
     ):
@@ -188,9 +188,7 @@ class TestTheGateIsACompetencyNotARank:
         old string comparison this would have succeeded.
         """
         test_user.base_profession = "consultant"
-        add_organisation_member(
-            db_session, admin_org.id, test_user.id, "staff"
-        )
+        add_place_member(db_session, admin_org.id, test_user.id, "staff")
         db_session.commit()
 
         resp = authenticated_client.post(
@@ -205,8 +203,8 @@ class TestTheGateIsACompetencyNotARank:
         self,
         _mock_fhir,
         authenticated_client: TestClient,
-        admin_org: Organisation,
-        other_org: Organisation,
+        admin_org: OrgUnit,
+        other_org: OrgUnit,
         test_user: User,
         db_session: Session,
     ):
@@ -217,9 +215,7 @@ class TestTheGateIsACompetencyNotARank:
         that check and this test fails while the one above still passes.
         """
         test_user.base_profession = "system_administrator"
-        add_organisation_member(
-            db_session, admin_org.id, test_user.id, "staff"
-        )
+        add_place_member(db_session, admin_org.id, test_user.id, "staff")
         db_session.commit()
 
         resp = authenticated_client.post(
@@ -238,7 +234,7 @@ class TestTheCheckDoesNotBreakLegitimateAdministration:
         self,
         _mock_fhir,
         authenticated_admin_client: TestClient,
-        admin_org: Organisation,
+        admin_org: OrgUnit,
     ):
         resp = authenticated_admin_client.post(
             f"/api/patients/{OWN_PATIENT}/deactivate",
@@ -251,7 +247,7 @@ class TestTheCheckDoesNotBreakLegitimateAdministration:
         self,
         _mock_fhir,
         authenticated_admin_client: TestClient,
-        admin_org: Organisation,
+        admin_org: OrgUnit,
     ):
         resp = authenticated_admin_client.post(
             f"/api/patients/{OWN_PATIENT}/activate",
@@ -268,7 +264,7 @@ class TestSuperadminsAreGlobal:
         self,
         _mock_fhir,
         authenticated_superadmin_client: TestClient,
-        other_org: Organisation,
+        other_org: OrgUnit,
     ):
         resp = authenticated_superadmin_client.post(
             f"/api/patients/{OUTSIDE_PATIENT}/deactivate",
@@ -285,7 +281,7 @@ class TestAPatientInNoOrganisationFailsClosed:
         self,
         _mock_fhir,
         authenticated_admin_client: TestClient,
-        admin_org: Organisation,
+        admin_org: OrgUnit,
     ):
         resp = authenticated_admin_client.post(
             "/api/patients/fhir-patient-orphan/deactivate",

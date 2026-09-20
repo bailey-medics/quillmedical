@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
-import { renderWithRouter } from "@test/test-utils";
+import { renderWithRouter, remToPx } from "@test/test-utils";
 import userEvent from "@testing-library/user-event";
 import SideNav from "./SideNav";
 
@@ -148,7 +148,7 @@ describe("SideNav Component", () => {
     it("has minimum width of 6.25rem", () => {
       const { container } = renderNav(<SideNav showSearch={false} />);
       const nav = container.querySelector("nav");
-      expect(nav).toHaveStyle({ minWidth: "6.25rem" });
+      expect(nav).toHaveStyle({ minWidth: remToPx("6.25rem") });
     });
 
     it("has 100% height", () => {

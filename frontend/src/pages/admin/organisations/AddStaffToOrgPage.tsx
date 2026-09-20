@@ -194,7 +194,13 @@ export default function AddStaffToOrgPage() {
     async function fetchUsers() {
       try {
         const response = await api.get<{ users: ApiUser[] }>(
-          `/users?exclude_org=${id}`,
+          // A place id, which is what this route's `id` is: the
+          // membership added below names one too. The older
+          // `exclude_org` parameter read the same number as an
+          // organisation id, so it excluded the members of a different
+          // organisation once the two id sequences diverged. It has
+          // since gone with the organisations table.
+          `/users?exclude_place=${id}`,
         );
         setUsers(response.users);
       } catch (err) {

@@ -29,11 +29,13 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.models import (
-    Organisation,
     OrgUnit,
     User,
 )
-from app.organisations import add_organisation_member, organisation_member
+from app.organisations import (
+    add_place_member,
+    organisation_place_member,
+)
 from app.security import hash_password
 
 
@@ -54,21 +56,21 @@ def _user(db: Session, username: str, *, profession: str) -> User:
 
 
 @pytest.fixture
-def org(db_session: Session) -> Organisation:
-    organisation = Organisation(name="Trust", type="hospital")
+def org(db_session: Session) -> OrgUnit:
+    organisation = OrgUnit(name="Trust", type="organisation")
     db_session.add(organisation)
     db_session.commit()
     db_session.refresh(organisation)
     return organisation
 
 
-def _place(db: Session, org: Organisation, user: User) -> None:
-    add_organisation_member(db, org.id, user.id, "staff")
+def _place(db: Session, org: OrgUnit, user: User) -> None:
+    add_place_member(db, org.id, user.id, "staff")
     db.commit()
 
 
 @pytest.fixture
-def admin(db_session: Session, org: Organisation) -> User:
+def admin(db_session: Session, org: OrgUnit) -> User:
     """Holds ``manage_users`` at the organisation."""
     user = _user(db_session, "the_admin", profession="system_administrator")
     _place(db_session, org, user)
@@ -95,14 +97,14 @@ class TestThePatientBecomingStaff:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         admin: User,
     ) -> None:
         starter = _user(db_session, "new_hca", profession="patient")
 
         client = _login(test_client, "the_admin")
         response = client.post(
-            f"/api/organisations/{org.id}/staff",
+            f"/api/org-units/{org.id}/members",
             json={
                 "user_id": starter.id,
                 "base_profession": "healthcare_assistant",
@@ -120,7 +122,7 @@ class TestThePatientBecomingStaff:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         admin: User,
     ) -> None:
         """Additive: the grant adds, it does not replace.
@@ -137,7 +139,7 @@ class TestThePatientBecomingStaff:
 
         client = _login(test_client, "the_admin")
         response = client.post(
-            f"/api/organisations/{org.id}/staff",
+            f"/api/org-units/{org.id}/members",
             json={
                 "user_id": starter.id,
                 "base_profession": "healthcare_assistant",
@@ -155,7 +157,7 @@ class TestThePatientBecomingStaff:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         admin: User,
     ) -> None:
         """A real person diverges from the template."""
@@ -163,7 +165,7 @@ class TestThePatientBecomingStaff:
 
         client = _login(test_client, "the_admin")
         response = client.post(
-            f"/api/organisations/{org.id}/staff",
+            f"/api/org-units/{org.id}/members",
             json={
                 "user_id": starter.id,
                 "base_profession": "healthcare_assistant",
@@ -182,7 +184,7 @@ class TestThePatientBecomingStaff:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         admin: User,
     ) -> None:
         """Either field may be sent on its own."""
@@ -190,7 +192,7 @@ class TestThePatientBecomingStaff:
 
         client = _login(test_client, "the_admin")
         response = client.post(
-            f"/api/organisations/{org.id}/staff",
+            f"/api/org-units/{org.id}/members",
             json={
                 "user_id": starter.id,
                 "additional_competencies": ["view_teaching_cases"],
@@ -211,7 +213,7 @@ class TestTheGrantIsOptional:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         admin: User,
     ) -> None:
         nurse = _user(db_session, "a_nurse", profession="registered_nurse")
@@ -219,7 +221,7 @@ class TestTheGrantIsOptional:
 
         client = _login(test_client, "the_admin")
         response = client.post(
-            f"/api/organisations/{org.id}/staff",
+            f"/api/org-units/{org.id}/members",
             json={"user_id": nurse.id},
             headers=_csrf(client),
         )
@@ -229,9 +231,9 @@ class TestTheGrantIsOptional:
         assert sorted(nurse.get_final_competencies()) == before
 
         row = db_session.scalar(
-            select(organisation_member).where(
-                organisation_member.c.organisation_id == org.id,
-                organisation_member.c.user_id == nurse.id,
+            select(organisation_place_member).where(
+                organisation_place_member.c.org_unit_id == org.id,
+                organisation_place_member.c.user_id == nurse.id,
             )
         )
         assert row is not None
@@ -244,14 +246,14 @@ class TestWhatIsRefused:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         admin: User,
     ) -> None:
         starter = _user(db_session, "bad_profession", profession="patient")
 
         client = _login(test_client, "the_admin")
         response = client.post(
-            f"/api/organisations/{org.id}/staff",
+            f"/api/org-units/{org.id}/members",
             json={
                 "user_id": starter.id,
                 "base_profession": "chief_wizard",
@@ -265,14 +267,14 @@ class TestWhatIsRefused:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         admin: User,
     ) -> None:
         starter = _user(db_session, "bad_competency", profession="patient")
 
         client = _login(test_client, "the_admin")
         response = client.post(
-            f"/api/organisations/{org.id}/staff",
+            f"/api/org-units/{org.id}/members",
             json={
                 "user_id": starter.id,
                 "additional_competencies": ["prescribe_moonbeams"],
@@ -293,7 +295,7 @@ class TestTheSameAtASite:
     """
 
     @pytest.fixture
-    def site(self, db_session: Session, org: Organisation) -> OrgUnit:
+    def site(self, db_session: Session, org: OrgUnit) -> OrgUnit:
         site = OrgUnit(name="Ward 9", type="ward")
         db_session.add(site)
         db_session.commit()
@@ -301,7 +303,7 @@ class TestTheSameAtASite:
         db_session.execute(
             update(OrgUnit)
             .where(OrgUnit.id == site.id)
-            .values(parent_id=org.org_unit_id)
+            .values(parent_id=org.id)
         )
         db_session.commit()
         return site
@@ -310,7 +312,7 @@ class TestTheSameAtASite:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         site: OrgUnit,
         admin: User,
     ) -> None:
@@ -338,7 +340,7 @@ class TestTheSameAtASite:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         site: OrgUnit,
         admin: User,
     ) -> None:
@@ -360,7 +362,7 @@ class TestTheSameAtASite:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         site: OrgUnit,
         admin: User,
     ) -> None:
@@ -398,7 +400,7 @@ class TestTheSameAtASite:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         site: OrgUnit,
         admin: User,
     ) -> None:
@@ -425,7 +427,7 @@ class TestThePickerCanSeeWhoNeedsIt:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         admin: User,
     ) -> None:
         """Without this the interface cannot know who to ask about."""

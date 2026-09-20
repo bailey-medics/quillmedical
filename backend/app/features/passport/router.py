@@ -66,14 +66,14 @@ from app.models import (
     User,
     org_unit_member,
 )
-from app.org_units.tree import site_ids_of_organisations
+from app.org_units.tree import descendant_ids
 from app.org_units.types import ROOT_TYPE_IDS
 from app.organisations import (
-    add_organisation_member,
-    get_member_org_ids,
-    get_reachable_org_ids,
-    organisation_member,
-    remove_organisation_member,
+    add_place_member,
+    get_member_place_ids,
+    get_reachable_place_ids,
+    organisation_place_member,
+    remove_place_member,
 )
 from app.passport_storage import get_blob_store, get_passport_store
 from app.schemas.passport import (
@@ -2190,7 +2190,7 @@ def _require_org_admin_over(
     """Require that *admin* administers somebody at a shared organisation.
 
     Returns:
-        The organisation id the authority runs through, so the
+        The place of the organisation the authority runs through, so the
         verification row can record whose assurance it is.
 
     Raises:
@@ -2203,7 +2203,7 @@ def _require_org_admin_over(
         raise HTTPException(404, "Assessor not found")
 
     if admin.platform_role == "superadmin":
-        shared = get_reachable_org_ids(db, assessor_user_id)
+        shared = get_reachable_place_ids(db, assessor_user_id)
         if shared:
             return shared[0]
         raise HTTPException(404, "Assessor not found")
@@ -2211,8 +2211,8 @@ def _require_org_admin_over(
         # Membership for the admin, reach for the assessor. An admin is an
         # admin of a place they belong to; an assessor put at a ward by the
         # accept endpoint is reachable from the organisation above it.
-    admin_orgs = set(get_member_org_ids(db, admin.id))
-    assessor_orgs = set(get_reachable_org_ids(db, assessor_user_id))
+    admin_orgs = set(get_member_place_ids(db, admin.id))
+    assessor_orgs = set(get_reachable_place_ids(db, assessor_user_id))
     shared_ids = sorted(admin_orgs & assessor_orgs)
 
     if not shared_ids:
@@ -2244,7 +2244,7 @@ def verify_assessor_registration(
     ones would make the record claim a check that had not happened when
     it was signed.
     """
-    organisation_id = _require_org_admin_over(db, user, assessor_user_id)
+    place_id = _require_org_admin_over(db, user, assessor_user_id)
 
     assessor = db.get(User, assessor_user_id)
 
@@ -2277,8 +2277,7 @@ def verify_assessor_registration(
             AssessorRegistrationVerification.registration_authority
             == authority,
             AssessorRegistrationVerification.registration_number == number,
-            AssessorRegistrationVerification.organisation_id
-            == organisation_id,
+            AssessorRegistrationVerification.org_unit_id == place_id,
         )
     )
 
@@ -2294,7 +2293,7 @@ def verify_assessor_registration(
             registration_authority=authority,
             registration_number=number,
             verified_by_user_id=user.id,
-            organisation_id=organisation_id,
+            org_unit_id=place_id,
         )
         db.add(row)
 
@@ -2306,7 +2305,7 @@ def verify_assessor_registration(
         registration_number=number,
         verified_by_name=user.full_name or user.username,
         verified_at=_as_utc(row.verified_at),
-        organisation_id=organisation_id,
+        org_unit_id=place_id,
     )
 
 
@@ -2330,7 +2329,7 @@ def revoke_assessor_membership(
     of who assessed somebody is not undone by that person later losing
     their access — the assessment happened.
     """
-    organisation_id = _require_org_admin_over(db, user, assessor_user_id)
+    organisation_place_id = _require_org_admin_over(db, user, assessor_user_id)
 
     if assessor_user_id == user.id:
         raise HTTPException(400, "You cannot revoke your own access this way.")
@@ -2354,7 +2353,7 @@ def revoke_assessor_membership(
             org_unit_member.c.user_id == assessor_user_id,
             org_unit_member.c.capacity == "external",
             org_unit_member.c.org_unit_id.in_(
-                site_ids_of_organisations(db, [organisation_id])
+                descendant_ids(db, [organisation_place_id])
             ),
         )
     )
@@ -2384,10 +2383,10 @@ def revoke_assessor_membership(
         # ``Session.execute`` is typed to return, and a select says what is
         # meant anyway.
     external = db.scalar(
-        select(organisation_member.c.user_id).where(
-            organisation_member.c.organisation_id == organisation_id,
-            organisation_member.c.user_id == assessor_user_id,
-            organisation_member.c.capacity == "external",
+        select(organisation_place_member.c.user_id).where(
+            organisation_place_member.c.org_unit_id == organisation_place_id,
+            organisation_place_member.c.user_id == assessor_user_id,
+            organisation_place_member.c.capacity == "external",
         )
     )
 
@@ -2396,13 +2395,13 @@ def revoke_assessor_membership(
             404, "That person has no external assessor access here."
         )
 
-    remove_organisation_member(db, organisation_id, assessor_user_id)
+    remove_place_member(db, organisation_place_id, assessor_user_id)
     db.flush()
 
     return AssessorRevokeOut(
         user_id=assessor_user_id,
         place="organisation",
-        place_id=organisation_id,
+        place_id=organisation_place_id,
         sign_offs_kept=int(sign_offs_kept),
     )
 
@@ -2476,7 +2475,7 @@ def _holder_place(db: Session, passport_id: str) -> tuple[str, int]:
     level is the ordinary case for a rotating trainee, not an exception.
 
     Returns:
-        ``("site", id)`` or ``("organisation", id)``.
+        ``("site", id)`` or ``("organisation", id)``, both place ids.
 
     Raises:
         HTTPException: 409 if the holder belongs nowhere. Nothing can be
@@ -2504,14 +2503,14 @@ def _holder_place(db: Session, passport_id: str) -> tuple[str, int]:
     if site_id is not None:
         return "site", int(site_id)
 
-    organisation_id = db.scalar(
-        select(organisation_member.c.organisation_id).where(
-            organisation_member.c.user_id == passport.user_id
+    organisation_place_id = db.scalar(
+        select(organisation_place_member.c.org_unit_id).where(
+            organisation_place_member.c.user_id == passport.user_id
         )
     )
 
-    if organisation_id is not None:
-        return "organisation", int(organisation_id)
+    if organisation_place_id is not None:
+        return "organisation", int(organisation_place_id)
 
     raise HTTPException(
         409,
@@ -2677,13 +2676,13 @@ def accept_assessor_invite(
             )
     else:
         already = db.scalar(
-            select(organisation_member.c.user_id).where(
-                organisation_member.c.organisation_id == place_id,
-                organisation_member.c.user_id == user.id,
+            select(organisation_place_member.c.user_id).where(
+                organisation_place_member.c.org_unit_id == place_id,
+                organisation_place_member.c.user_id == user.id,
             )
         )
         if already is None:
-            add_organisation_member(db, place_id, user.id, "external")
+            add_place_member(db, place_id, user.id, "external")
 
     invite.accepted_at = _now()
     invite.accepted_user_id = user.id

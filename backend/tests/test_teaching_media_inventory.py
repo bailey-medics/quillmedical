@@ -13,11 +13,11 @@ from sqlalchemy.orm import Session
 
 from app.features.teaching.media import get_media_inventory
 from app.features.teaching.models import ModuleMediaLink
-from app.models import Organisation
+from app.models import OrgUnit
 
 
-def _org(db: Session, name: str) -> Organisation:
-    org = Organisation(name=name)
+def _org(db: Session, name: str) -> OrgUnit:
+    org = OrgUnit(name=name, type="hospital_team")
     db.add(org)
     db.flush()
     return org
@@ -39,7 +39,7 @@ def _upload(
     not yet playable.
     """
     link = ModuleMediaLink(
-        organisation_id=org_id,
+        org_unit_id=org_id,
         question_bank_id="test-bank",
         media_key=key,
         asset_id=asset,
@@ -159,7 +159,13 @@ class TestServableVersusComplete:
         self, db_session: Session
     ):
         org = _org(db_session, "Trust Waiting")
-        _upload(db_session, org.id, "lecture-01", "asset-1", transcoded=False)
+        _upload(
+            db_session,
+            org.id,
+            "lecture-01",
+            "asset-1",
+            transcoded=False,
+        )
 
         inv = get_media_inventory(
             db_session, org.id, "test-bank", ["lecture-01"]
@@ -207,10 +213,19 @@ class TestServableVersusComplete:
         """Every reference, not any: a half-ready module is not served."""
         org = _org(db_session, "Trust Partial")
         _upload(db_session, org.id, "lecture-01", "asset-1")
-        _upload(db_session, org.id, "lecture-02", "asset-2", transcoded=False)
+        _upload(
+            db_session,
+            org.id,
+            "lecture-02",
+            "asset-2",
+            transcoded=False,
+        )
 
         inv = get_media_inventory(
-            db_session, org.id, "test-bank", ["lecture-01", "lecture-02"]
+            db_session,
+            org.id,
+            "test-bank",
+            ["lecture-01", "lecture-02"],
         )
 
         assert inv.is_complete

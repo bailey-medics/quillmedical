@@ -7,7 +7,7 @@ media, writing captions, reading results — so a ``teaching_admin`` whose
 only membership was a ward linked to the trust resolved to the trust and
 administered it.
 
-It now asks ``get_member_org_ids``. The plural helper keeps reach,
+It now asks ``get_member_place_ids``. The plural helper keeps reach,
 because content visibility is a different question: a ward trainee
 receives what the trust made available there, which
 ``TestLearningContentGate`` pins.
@@ -34,23 +34,22 @@ from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from app.models import (
-    Organisation,
     OrgUnit,
     OrgUnitFeature,
     User,
     org_unit_member,
 )
-from app.organisations import add_organisation_member
+from app.organisations import add_place_member
 from app.security import hash_password
 
 
-def _teaching_org(db: Session, name: str = "Trust") -> Organisation:
-    org = Organisation(name=name)
+def _teaching_org(db: Session, name: str = "Trust") -> OrgUnit:
+    org = OrgUnit(name=name, type="hospital_team")
     db.add(org)
     db.flush()
     db.add(
         OrgUnitFeature(
-            org_unit_id=org.org_unit_id, feature_key="teaching", enabled_by=1
+            org_unit_id=org.id, feature_key="teaching", enabled_by=1
         )
     )
     db.commit()
@@ -74,12 +73,12 @@ def _teaching_admin(db: Session, username: str) -> User:
     return user
 
 
-def _join_org(db: Session, org: Organisation, user: User) -> None:
-    add_organisation_member(db, org.id, user.id, "staff")
+def _join_org(db: Session, org: OrgUnit, user: User) -> None:
+    add_place_member(db, org.id, user.id, "staff")
     db.commit()
 
 
-def _join_linked_site(db: Session, org: Organisation, user: User) -> None:
+def _join_linked_site(db: Session, org: OrgUnit, user: User) -> None:
     """A ward of the trust, and no organisation row.
 
     The shape reach admits and membership does not.
@@ -88,9 +87,7 @@ def _join_linked_site(db: Session, org: Organisation, user: User) -> None:
     db.add(site)
     db.flush()
     db.execute(
-        update(OrgUnit)
-        .where(OrgUnit.id == site.id)
-        .values(parent_id=org.org_unit_id)
+        update(OrgUnit).where(OrgUnit.id == site.id).values(parent_id=org.id)
     )
     db.execute(
         org_unit_member.insert().values(
@@ -112,7 +109,7 @@ def _login(client: TestClient, username: str) -> dict[str, str]:
 
 
 @pytest.fixture
-def org(db_session: Session) -> Organisation:
+def org(db_session: Session) -> OrgUnit:
     return _teaching_org(db_session)
 
 
@@ -124,13 +121,13 @@ class TestAWardAdminCannotAdministerTheTrust:
     """
 
     @pytest.fixture
-    def ward_admin(self, db_session: Session, org: Organisation) -> User:
+    def ward_admin(self, db_session: Session, org: OrgUnit) -> User:
         user = _teaching_admin(db_session, "ward_admin")
         _join_linked_site(db_session, org, user)
         return user
 
     def test_they_cannot_list_the_trusts_items(
-        self, test_client: TestClient, org: Organisation, ward_admin: User
+        self, test_client: TestClient, org: OrgUnit, ward_admin: User
     ) -> None:
         """A read, and the simplest of the eighteen."""
         headers = _login(test_client, "ward_admin")
@@ -139,7 +136,7 @@ class TestAWardAdminCannotAdministerTheTrust:
         assert response.status_code == 403, response.text
 
     def test_they_cannot_read_the_trusts_results(
-        self, test_client: TestClient, org: Organisation, ward_admin: User
+        self, test_client: TestClient, org: OrgUnit, ward_admin: User
     ) -> None:
         """Assessment results are other people's performance data."""
         headers = _login(test_client, "ward_admin")
@@ -148,7 +145,7 @@ class TestAWardAdminCannotAdministerTheTrust:
         assert response.status_code == 403, response.text
 
     def test_they_cannot_list_the_trusts_banks(
-        self, test_client: TestClient, org: Organisation, ward_admin: User
+        self, test_client: TestClient, org: OrgUnit, ward_admin: User
     ) -> None:
         headers = _login(test_client, "ward_admin")
         response = test_client.get(
@@ -158,7 +155,7 @@ class TestAWardAdminCannotAdministerTheTrust:
         assert response.status_code == 403, response.text
 
     def test_the_refusal_says_membership_rather_than_no_organisation(
-        self, test_client: TestClient, org: Organisation, ward_admin: User
+        self, test_client: TestClient, org: OrgUnit, ward_admin: User
     ) -> None:
         """They have a place; what they lack is membership of the trust.
 
@@ -174,13 +171,13 @@ class TestAnOrganisationMemberIsUnaffected:
     """A narrowing must refuse only the people it is about."""
 
     @pytest.fixture
-    def trust_admin(self, db_session: Session, org: Organisation) -> User:
+    def trust_admin(self, db_session: Session, org: OrgUnit) -> User:
         user = _teaching_admin(db_session, "trust_admin")
         _join_org(db_session, org, user)
         return user
 
     def test_they_can_still_list_items(
-        self, test_client: TestClient, org: Organisation, trust_admin: User
+        self, test_client: TestClient, org: OrgUnit, trust_admin: User
     ) -> None:
         headers = _login(test_client, "trust_admin")
         response = test_client.get("/api/teaching/items", headers=headers)
@@ -188,7 +185,7 @@ class TestAnOrganisationMemberIsUnaffected:
         assert response.status_code == 200, response.text
 
     def test_they_can_still_read_results(
-        self, test_client: TestClient, org: Organisation, trust_admin: User
+        self, test_client: TestClient, org: OrgUnit, trust_admin: User
     ) -> None:
         headers = _login(test_client, "trust_admin")
         response = test_client.get("/api/teaching/results", headers=headers)

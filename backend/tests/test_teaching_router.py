@@ -23,15 +23,14 @@ from app.features.teaching.models import (
 )
 from app.features.teaching.router import resolve_visible_module
 from app.models import (
-    Organisation,
     OrgUnit,
     OrgUnitFeature,
     User,
     org_unit_member,
 )
 from app.organisations import (
-    add_organisation_member,
-    remove_organisation_memberships,
+    add_place_member,
+    remove_place_memberships,
 )
 from app.security import hash_password
 
@@ -40,14 +39,14 @@ from app.security import hash_password
 # ------------------------------------------------------------------
 
 
-def _make_teaching_org(db: Session) -> Organisation:
+def _make_teaching_org(db: Session) -> OrgUnit:
     """Create an org with the teaching feature enabled."""
-    org = Organisation(name="Teaching Org")
+    org = OrgUnit(name="Teaching Org", type="hospital_team")
     db.add(org)
     db.flush()
 
     feature = OrgUnitFeature(
-        org_unit_id=org.org_unit_id,
+        org_unit_id=org.id,
         feature_key="teaching",
         enabled_by=1,
     )
@@ -56,7 +55,7 @@ def _make_teaching_org(db: Session) -> Organisation:
     return org
 
 
-def _make_educator(db: Session, org: Organisation) -> User:
+def _make_educator(db: Session, org: OrgUnit) -> User:
     """Create an educator user linked as staff."""
     user = User(
         username="testeducator",
@@ -68,12 +67,12 @@ def _make_educator(db: Session, org: Organisation) -> User:
     )
     db.add(user)
     db.flush()
-    add_organisation_member(db, org.id, user.id, "trainee")
+    add_place_member(db, org.id, user.id, "trainee")
     db.flush()
     return user
 
 
-def _make_learner(db: Session, org: Organisation) -> User:
+def _make_learner(db: Session, org: OrgUnit) -> User:
     """Create a learner user linked as staff."""
     user = User(
         username="testlearner",
@@ -85,7 +84,7 @@ def _make_learner(db: Session, org: Organisation) -> User:
     )
     db.add(user)
     db.flush()
-    add_organisation_member(db, org.id, user.id, "trainee")
+    add_place_member(db, org.id, user.id, "trainee")
     db.flush()
     return user
 
@@ -160,8 +159,9 @@ def _seed_bank(
     is_live: bool = True,
 ) -> QuestionBankConfig:
     """Create a question bank config + published items."""
+    place_id = org_id
     config = QuestionBankConfig(
-        organisation_id=org_id,
+        org_unit_id=place_id,
         question_bank_id="test-bank",
         version=1,
         title="Test Bank",
@@ -179,7 +179,7 @@ def _seed_bank(
     # follow it, so a fixture without one would not represent a live bank.
     db.add(
         QuestionBankOrgStatus(
-            organisation_id=org_id,
+            org_unit_id=place_id,
             question_bank_id="test-bank",
             is_live=is_live,
             active_version=1,
@@ -189,7 +189,7 @@ def _seed_bank(
     diagnoses = ["adenoma", "serrated", "adenoma", "serrated", "adenoma"]
     for i in range(n_items):
         item = QuestionBankItem(
-            organisation_id=org_id,
+            org_unit_id=place_id,
             question_bank_id="test-bank",
             bank_version=1,
             status="published",
@@ -226,7 +226,7 @@ class TestFeatureGating:
 
     def test_no_feature_returns_403(self, test_client, db_session):
         """User whose org lacks teaching feature gets 403."""
-        org = Organisation(name="No Feature Org")
+        org = OrgUnit(name="No Feature Org", type="hospital_team")
         db_session.add(org)
         db_session.flush()
 
@@ -240,7 +240,7 @@ class TestFeatureGating:
         )
         db_session.add(user)
         db_session.flush()
-        add_organisation_member(db_session, org.id, user.id, "trainee")
+        add_place_member(db_session, org.id, user.id, "trainee")
         db_session.commit()
 
         test_client.post(
@@ -379,7 +379,7 @@ class TestQuestionBanks:
         _make_learner(db_session, org)
         db_session.add(
             ModuleMediaLink(
-                organisation_id=org.id,
+                org_unit_id=org.id,
                 question_bank_id="test-bank",
                 media_key="lecture-01",
                 asset_id="asset-1",
@@ -425,7 +425,7 @@ class TestQuestionBanks:
         _make_learner(db_session, org)
         db_session.add(
             ModuleMediaLink(
-                organisation_id=org.id,
+                org_unit_id=org.id,
                 question_bank_id="test-bank",
                 media_key="lecture-01",
                 asset_id="asset-1",
@@ -1079,17 +1079,17 @@ class TestPromotingAVersion:
     revision can be imported but never reach anyone.
     """
 
-    def _url(self, org_id: int) -> str:
+    def _url(self, org: OrgUnit) -> str:
         return (
             f"/api/teaching/admin/banks/test-bank"
-            f"/organisations/{org_id}/active-version"
+            f"/places/{org.id}/active-version"
         )
 
     def _with_two_versions(self, db_session, org, educator) -> None:
         _seed_bank(db_session, org.id, educator.id)
         db_session.add(
             QuestionBankConfig(
-                organisation_id=org.id,
+                org_unit_id=org.id,
                 question_bank_id="test-bank",
                 version=2,
                 title="Test Bank",
@@ -1104,7 +1104,7 @@ class TestPromotingAVersion:
     def _status(self, db_session, org):
         return (
             db_session.query(QuestionBankOrgStatus)
-            .filter_by(organisation_id=org.id, question_bank_id="test-bank")
+            .filter_by(org_unit_id=org.id, question_bank_id="test-bank")
             .one()
         )
 
@@ -1115,7 +1115,7 @@ class TestPromotingAVersion:
 
         headers = _login(test_client, "testeducator", "Educator123!")
         resp = test_client.put(
-            self._url(org.id), headers=headers, json={"version": 2}
+            self._url(org), headers=headers, json={"version": 2}
         )
 
         assert resp.status_code == 200
@@ -1130,11 +1130,9 @@ class TestPromotingAVersion:
         self._with_two_versions(db_session, org, educator)
 
         headers = _login(test_client, "testeducator", "Educator123!")
-        test_client.put(
-            self._url(org.id), headers=headers, json={"version": 2}
-        )
+        test_client.put(self._url(org), headers=headers, json={"version": 2})
         resp = test_client.put(
-            self._url(org.id), headers=headers, json={"version": 1}
+            self._url(org), headers=headers, json={"version": 1}
         )
 
         assert resp.status_code == 200
@@ -1146,9 +1144,7 @@ class TestPromotingAVersion:
         self._with_two_versions(db_session, org, educator)
 
         headers = _login(test_client, "testeducator", "Educator123!")
-        test_client.put(
-            self._url(org.id), headers=headers, json={"version": 2}
-        )
+        test_client.put(self._url(org), headers=headers, json={"version": 2})
 
         row = self._status(db_session, org)
         assert row.active_version_set_by == educator.id
@@ -1163,7 +1159,7 @@ class TestPromotingAVersion:
 
         headers = _login(test_client, "testeducator", "Educator123!")
         resp = test_client.put(
-            self._url(org.id), headers=headers, json={"version": 9}
+            self._url(org), headers=headers, json={"version": 9}
         )
 
         assert resp.status_code == 404
@@ -1177,12 +1173,12 @@ class TestPromotingAVersion:
         org = _make_teaching_org(db_session)
         educator = _make_educator(db_session, org)
         _seed_bank(db_session, org.id, educator.id)
-        other = Organisation(name="Other Org")
+        other = OrgUnit(name="Other Org", type="hospital_team")
         db_session.add(other)
         db_session.flush()
         db_session.add(
             QuestionBankConfig(
-                organisation_id=other.id,
+                org_unit_id=other.id,
                 question_bank_id="test-bank",
                 version=5,
                 title="Test Bank",
@@ -1196,7 +1192,7 @@ class TestPromotingAVersion:
 
         headers = _login(test_client, "testeducator", "Educator123!")
         resp = test_client.put(
-            self._url(org.id), headers=headers, json={"version": 5}
+            self._url(org), headers=headers, json={"version": 5}
         )
 
         assert resp.status_code == 404
@@ -1210,7 +1206,7 @@ class TestPromotingAVersion:
 
         headers = _login(test_client, "testeducator", "Educator123!")
         resp = test_client.put(
-            self._url(org.id), headers=headers, json={"version": 1}
+            self._url(org), headers=headers, json={"version": 1}
         )
 
         assert resp.status_code == 404
@@ -1224,7 +1220,7 @@ class TestPromotingAVersion:
 
         headers = _login(test_client, "testeducator", "Educator123!")
         resp = test_client.put(
-            self._url(org.id), headers=headers, json={"version": 0}
+            self._url(org), headers=headers, json={"version": 0}
         )
 
         assert resp.status_code == 422
@@ -1241,13 +1237,13 @@ class TestPromotingAVersion:
         org = _make_teaching_org(db_session)
         educator = _make_educator(db_session, org)
         self._with_two_versions(db_session, org, educator)
-        other = Organisation(name="Not Mine")
+        other = OrgUnit(name="Not Mine", type="hospital_team")
         db_session.add(other)
         db_session.commit()
 
         headers = _login(test_client, "testeducator", "Educator123!")
         resp = test_client.put(
-            self._url(other.id), headers=headers, json={"version": 2}
+            self._url(other), headers=headers, json={"version": 2}
         )
 
         assert resp.status_code == 403
@@ -1263,7 +1259,7 @@ class TestPromotingAVersion:
 
         headers = _login(test_client, "testlearner", "Learner123!")
         resp = test_client.put(
-            self._url(org.id), headers=headers, json={"version": 2}
+            self._url(org), headers=headers, json={"version": 2}
         )
 
         assert resp.status_code == 403
@@ -1277,9 +1273,7 @@ class TestPromotingAVersion:
         self._with_two_versions(db_session, org, educator)
 
         headers = _login(test_client, "testeducator", "Educator123!")
-        test_client.put(
-            self._url(org.id), headers=headers, json={"version": 2}
-        )
+        test_client.put(self._url(org), headers=headers, json={"version": 2})
         resp = test_client.get(
             "/api/teaching/question-banks/test-bank", headers=headers
         )
@@ -1301,7 +1295,7 @@ class TestAdminViewsShowBothVersions:
         _seed_bank(db_session, org.id, educator.id)
         db_session.add(
             QuestionBankConfig(
-                organisation_id=org.id,
+                org_unit_id=org.id,
                 question_bank_id="test-bank",
                 version=2,
                 title="Test Bank",
@@ -1327,7 +1321,7 @@ class TestAdminViewsShowBothVersions:
         _seed_bank(db_session, org.id, educator.id)
         db_session.add(
             QuestionBankConfig(
-                organisation_id=org.id,
+                org_unit_id=org.id,
                 question_bank_id="test-bank",
                 version=2,
                 title="Test Bank",
@@ -1358,7 +1352,7 @@ class TestAdminViewsShowBothVersions:
         _seed_bank(db_session, org.id, educator.id)
         status = (
             db_session.query(QuestionBankOrgStatus)
-            .filter_by(organisation_id=org.id, question_bank_id="test-bank")
+            .filter_by(org_unit_id=org.id, question_bank_id="test-bank")
             .one()
         )
         status.active_version = None
@@ -1379,7 +1373,7 @@ class TestAdminViewsShowBothVersions:
         _seed_bank(db_session, org.id, educator.id)
         status = (
             db_session.query(QuestionBankOrgStatus)
-            .filter_by(organisation_id=org.id, question_bank_id="test-bank")
+            .filter_by(org_unit_id=org.id, question_bank_id="test-bank")
             .one()
         )
         status.active_version = None
@@ -1402,7 +1396,7 @@ class TestCandidateQueriesFollowThePointer:
     def _add_version(self, db_session, org, educator, version: int) -> None:
         db_session.add(
             QuestionBankConfig(
-                organisation_id=org.id,
+                org_unit_id=org.id,
                 question_bank_id="test-bank",
                 version=version,
                 title=f"Test Bank v{version}",
@@ -1455,7 +1449,7 @@ class TestCandidateQueriesFollowThePointer:
         _seed_bank(db_session, org.id, educator.id)
         status = (
             db_session.query(QuestionBankOrgStatus)
-            .filter_by(organisation_id=org.id, question_bank_id="test-bank")
+            .filter_by(org_unit_id=org.id, question_bank_id="test-bank")
             .one()
         )
         status.active_version = None
@@ -1479,7 +1473,7 @@ class TestCandidateQueriesFollowThePointer:
         for i in range(3):
             db_session.add(
                 QuestionBankItem(
-                    organisation_id=org.id,
+                    org_unit_id=org.id,
                     question_bank_id="test-bank",
                     bank_version=2,
                     status="published",
@@ -1516,7 +1510,7 @@ class TestCandidateQueriesFollowThePointer:
         _seed_bank(db_session, org.id, educator.id)
         status = (
             db_session.query(QuestionBankOrgStatus)
-            .filter_by(organisation_id=org.id, question_bank_id="test-bank")
+            .filter_by(org_unit_id=org.id, question_bank_id="test-bank")
             .one()
         )
         status.active_version = None
@@ -1540,10 +1534,9 @@ class TestBankOrgSettingsSetTheActiveVersion:
     serve nothing once the candidate queries follow it.
     """
 
-    def _settings_url(self, org_id: int) -> str:
+    def _settings_url(self, org: OrgUnit) -> str:
         return (
-            f"/api/teaching/admin/banks/test-bank"
-            f"/organisations/{org_id}/settings"
+            f"/api/teaching/admin/banks/test-bank" f"/places/{org.id}/settings"
         )
 
     def test_creating_the_row_pins_the_current_version(
@@ -1557,7 +1550,7 @@ class TestBankOrgSettingsSetTheActiveVersion:
 
         headers = _login(test_client, "testeducator", "Educator123!")
         resp = test_client.put(
-            self._settings_url(org.id),
+            self._settings_url(org),
             headers=headers,
             json={"is_live": True, "site_registration": False},
         )
@@ -1565,7 +1558,7 @@ class TestBankOrgSettingsSetTheActiveVersion:
         assert resp.status_code == 200
         row = (
             db_session.query(QuestionBankOrgStatus)
-            .filter_by(organisation_id=org.id, question_bank_id="test-bank")
+            .filter_by(org_unit_id=org.id, question_bank_id="test-bank")
             .one()
         )
         assert row.active_version == 1
@@ -1583,13 +1576,13 @@ class TestBankOrgSettingsSetTheActiveVersion:
         _seed_bank(db_session, org.id, educator.id)
         row = (
             db_session.query(QuestionBankOrgStatus)
-            .filter_by(organisation_id=org.id, question_bank_id="test-bank")
+            .filter_by(org_unit_id=org.id, question_bank_id="test-bank")
             .one()
         )
         row.active_version = 1
         db_session.add(
             QuestionBankConfig(
-                organisation_id=org.id,
+                org_unit_id=org.id,
                 question_bank_id="test-bank",
                 version=2,
                 title="Test Bank",
@@ -1603,7 +1596,7 @@ class TestBankOrgSettingsSetTheActiveVersion:
 
         headers = _login(test_client, "testeducator", "Educator123!")
         resp = test_client.put(
-            self._settings_url(org.id),
+            self._settings_url(org),
             headers=headers,
             json={"is_live": False, "site_registration": False},
         )
@@ -1623,7 +1616,7 @@ class TestBankOrgSettingsSetTheActiveVersion:
         for version in (2, 3):
             db_session.add(
                 QuestionBankConfig(
-                    organisation_id=org.id,
+                    org_unit_id=org.id,
                     question_bank_id="test-bank",
                     version=version,
                     title="Test Bank",
@@ -1637,14 +1630,14 @@ class TestBankOrgSettingsSetTheActiveVersion:
 
         headers = _login(test_client, "testeducator", "Educator123!")
         test_client.put(
-            self._settings_url(org.id),
+            self._settings_url(org),
             headers=headers,
             json={"is_live": True, "site_registration": False},
         )
 
         row = (
             db_session.query(QuestionBankOrgStatus)
-            .filter_by(organisation_id=org.id, question_bank_id="test-bank")
+            .filter_by(org_unit_id=org.id, question_bank_id="test-bank")
             .one()
         )
         assert row.active_version == 3
@@ -1659,10 +1652,9 @@ class TestBankOrgSettingsAreScopedToYourOrganisations:
     locks its candidates out of an assessment.
     """
 
-    def _settings_url(self, org_id: int) -> str:
+    def _settings_url(self, org: OrgUnit) -> str:
         return (
-            f"/api/teaching/admin/banks/test-bank"
-            f"/organisations/{org_id}/settings"
+            f"/api/teaching/admin/banks/test-bank" f"/places/{org.id}/settings"
         )
 
     def test_settings_for_an_organisation_you_are_not_in_are_refused(
@@ -1671,13 +1663,13 @@ class TestBankOrgSettingsAreScopedToYourOrganisations:
         org = _make_teaching_org(db_session)
         educator = _make_educator(db_session, org)
         _seed_bank(db_session, org.id, educator.id)
-        other = Organisation(name="Not Mine")
+        other = OrgUnit(name="Not Mine", type="hospital_team")
         db_session.add(other)
         db_session.commit()
 
         headers = _login(test_client, "testeducator", "Educator123!")
         resp = test_client.put(
-            self._settings_url(other.id),
+            self._settings_url(other),
             headers=headers,
             json={"is_live": True, "site_registration": False},
         )
@@ -1687,7 +1679,7 @@ class TestBankOrgSettingsAreScopedToYourOrganisations:
         # belong to — a 403 that still wrote would be no fix at all.
         assert (
             db_session.query(QuestionBankOrgStatus)
-            .filter_by(organisation_id=other.id)
+            .filter_by(org_unit_id=other.id)
             .count()
             == 0
         )
@@ -1705,10 +1697,10 @@ class TestBankOrgSettingsAreScopedToYourOrganisations:
         org = _make_teaching_org(db_session)
         educator = _make_educator(db_session, org)
 
-        second = Organisation(name="Second Org")
+        second = OrgUnit(name="Second Org", type="hospital_team")
         db_session.add(second)
         db_session.flush()
-        add_organisation_member(db_session, second.id, educator.id, "trainee")
+        add_place_member(db_session, second.id, educator.id, "trainee")
         db_session.commit()
         _seed_bank(db_session, second.id, educator.id)
         db_session.query(QuestionBankOrgStatus).delete()
@@ -1716,7 +1708,7 @@ class TestBankOrgSettingsAreScopedToYourOrganisations:
 
         headers = _login(test_client, "testeducator", "Educator123!")
         resp = test_client.put(
-            self._settings_url(second.id),
+            self._settings_url(second),
             headers=headers,
             json={"is_live": True, "site_registration": False},
         )
@@ -1724,7 +1716,7 @@ class TestBankOrgSettingsAreScopedToYourOrganisations:
         assert resp.status_code == 200
         row = (
             db_session.query(QuestionBankOrgStatus)
-            .filter_by(organisation_id=second.id, question_bank_id="test-bank")
+            .filter_by(org_unit_id=second.id, question_bank_id="test-bank")
             .one()
         )
         assert row.is_live is True
@@ -1791,7 +1783,7 @@ class TestAdminBanks:
         }
 
         config = QuestionBankConfig(
-            organisation_id=org.id,
+            org_unit_id=org.id,
             question_bank_id="test-bank",
             version=1,
             title="Test Bank",
@@ -1804,7 +1796,7 @@ class TestAdminBanks:
         db_session.flush()
         db_session.add(
             QuestionBankOrgStatus(
-                organisation_id=org.id,
+                org_unit_id=org.id,
                 question_bank_id="test-bank",
                 is_live=True,
             )
@@ -1873,7 +1865,7 @@ def _slides_for_linked_video(
     _make_learner(db_session, org)
     db_session.add(
         ModuleMediaLink(
-            organisation_id=org.id,
+            org_unit_id=org.id,
             question_bank_id="test-bank",
             media_key="lecture-01",
             asset_id="asset1",
@@ -2084,6 +2076,8 @@ class TestLearningContentGate:
         learner = _make_learner(db_session, org)
         db_session.commit()
 
+        # A place id: teaching's own tables answer in those now, and
+        # this helper answers with what they are keyed by.
         assert (
             resolve_visible_module(learner, db_session, "test-bank") == org.id
         )
@@ -2112,9 +2106,7 @@ class TestLearningContentGate:
         _seed_bank(db_session, with_live.id, educator.id)
 
         learner = _make_learner(db_session, without)
-        add_organisation_member(
-            db_session, with_live.id, learner.id, "trainee"
-        )
+        add_place_member(db_session, with_live.id, learner.id, "trainee")
         db_session.commit()
 
         assert (
@@ -2185,14 +2177,14 @@ class TestLearningContentGate:
 
         # The learner belongs to the site, and to no organisation.
         learner = _make_learner(db_session, org)
-        remove_organisation_memberships(db_session, learner.id)
+        remove_place_memberships(db_session, learner.id)
         site = OrgUnit(name="Ward 9", type="ward")
         db_session.add(site)
         db_session.flush()
         db_session.execute(
             update(OrgUnit)
             .where(OrgUnit.id == site.id)
-            .values(parent_id=org.org_unit_id)
+            .values(parent_id=org.id)
         )
         db_session.execute(
             org_unit_member.insert().values(
@@ -2203,6 +2195,8 @@ class TestLearningContentGate:
         )
         db_session.commit()
 
+        # A place id: teaching's own tables answer in those now, and
+        # this helper answers with what they are keyed by.
         assert (
             resolve_visible_module(learner, db_session, "test-bank") == org.id
         )
@@ -2237,7 +2231,7 @@ class TestLearningRoutesRequireTheViewCompetency:
     left the pair half-closed before.
     """
 
-    def _consultant_in(self, db: Session, org: Organisation) -> User:
+    def _consultant_in(self, db: Session, org: OrgUnit) -> User:
         """A clinician whose profession does not grant the competency."""
         user = User(
             username="testconsultant",
@@ -2249,7 +2243,7 @@ class TestLearningRoutesRequireTheViewCompetency:
         )
         db.add(user)
         db.flush()
-        add_organisation_member(db, org.id, user.id, "trainee")
+        add_place_member(db, org.id, user.id, "trainee")
         db.flush()
         return user
 
@@ -2634,7 +2628,7 @@ class TestModuleMedia:
         """
         db.add(
             ModuleMediaLink(
-                organisation_id=org_id,
+                org_unit_id=org_id,
                 question_bank_id="test-bank",
                 media_key=key,
                 asset_id=asset,
@@ -2727,7 +2721,7 @@ class TestModuleMedia:
         """
         org = _make_teaching_org(db_session)
         _make_educator(db_session, org)
-        other = Organisation(name="Other Trust")
+        other = OrgUnit(name="Other Trust", type="hospital_team")
         db_session.add(other)
         db_session.flush()
         self._upload(db_session, other.id, "lecture-01", "asset-b")
@@ -2808,7 +2802,7 @@ class TestMediaLinking:
     def _existing(self, db, org_id: int, key: str, asset: str) -> None:
         db.add(
             ModuleMediaLink(
-                organisation_id=org_id,
+                org_unit_id=org_id,
                 question_bank_id="test-bank",
                 media_key=key,
                 asset_id=asset,
@@ -2947,7 +2941,7 @@ class TestMediaLinking:
         """
         org = _make_teaching_org(db_session)
         _make_educator(db_session, org)
-        other = Organisation(name="Other Trust")
+        other = OrgUnit(name="Other Trust", type="hospital_team")
         db_session.add(other)
         db_session.flush()
         self._existing(db_session, other.id, "lecture-01", "asset-theirs")
@@ -2972,7 +2966,7 @@ class TestMediaLinking:
         """The same key in two trusts is two rows, not a conflict."""
         org = _make_teaching_org(db_session)
         _make_educator(db_session, org)
-        other = Organisation(name="Other Trust")
+        other = OrgUnit(name="Other Trust", type="hospital_team")
         db_session.add(other)
         db_session.flush()
         self._existing(db_session, other.id, "lecture-01", "asset-theirs")
@@ -3039,7 +3033,7 @@ class TestMediaCaptions:
     def _upload(self, db, org_id: int, asset: str) -> None:
         db.add(
             ModuleMediaLink(
-                organisation_id=org_id,
+                org_unit_id=org_id,
                 question_bank_id="test-bank",
                 media_key="lecture-01",
                 asset_id=asset,
@@ -3079,7 +3073,7 @@ class TestMediaCaptions:
         is not this caller's to learn."""
         org = _make_teaching_org(db_session)
         _make_educator(db_session, org)
-        other = Organisation(name="Another Trust")
+        other = OrgUnit(name="Another Trust", type="hospital_team")
         db_session.add(other)
         db_session.flush()
         self._upload(db_session, other.id, "asset-theirs")
@@ -3265,7 +3259,7 @@ class TestIncompleteModulesAreNotServed:
         """
         db.add(
             ModuleMediaLink(
-                organisation_id=org_id,
+                org_unit_id=org_id,
                 question_bank_id="test-bank",
                 media_key=key,
                 asset_id=asset,
@@ -3398,7 +3392,7 @@ class TestIncompleteModulesAreNotServed:
         lacks = _make_teaching_org(db_session)
         db_session.add(
             QuestionBankOrgStatus(
-                organisation_id=lacks.id,
+                org_unit_id=lacks.id,
                 question_bank_id="test-bank",
                 is_live=True,
                 active_version=1,
@@ -3433,7 +3427,7 @@ class TestMediaAssetDeletion:
     def _existing(self, db, org_id: int, key: str, asset: str) -> None:
         db.add(
             ModuleMediaLink(
-                organisation_id=org_id,
+                org_unit_id=org_id,
                 question_bank_id="test-bank",
                 media_key=key,
                 asset_id=asset,
@@ -3470,6 +3464,8 @@ class TestMediaAssetDeletion:
         )
 
         assert resp.status_code == 204
+        # The link's own stored prefix, which is the place's id here:
+        # nothing records an older one for a place made in a fixture.
         assert deleted == [("src-bucket", org.id, "test-bank", "asset-1")]
         assert (
             db_session.query(ModuleMediaLink)
@@ -3662,7 +3658,7 @@ class TestVideoResolutionOnTheGcsPath:
         _make_learner(db_session, org)
         db_session.add(
             ModuleMediaLink(
-                organisation_id=org.id,
+                org_unit_id=org.id,
                 question_bank_id="test-bank",
                 media_key="lecture-01",
                 asset_id="asset1",

@@ -34,27 +34,28 @@ from sqlalchemy.orm import Session
 from app.cbac.positions import appoint, holders_of, is_vacant
 from app.cbac.scoped import can_practise_at
 from app.models import (
-    Organisation,
     OrgUnit,
     Position,
     PractisingCompetency,
     User,
     org_unit_member,
 )
-from app.organisations import add_organisation_member
+from app.organisations import add_place_member
 from app.security import hash_password
 
 
-def _can_at_org(db: Session, user: User, org_id: int, competency: str) -> bool:
+def _can_at_org(
+    db: Session, user: User, place_id: int, competency: str
+) -> bool:
     """Whether ``user`` may exercise ``competency`` at an organisation."""
-    return can_practise_at(db, user, competency, organisation_id=org_id)
+    return can_practise_at(db, user, competency, place_id=place_id)
 
 
 def _can_at_site(
     db: Session, user: User, site_id: int, competency: str
 ) -> bool:
     """Whether ``user`` may exercise ``competency`` at a site."""
-    return can_practise_at(db, user, competency, site_id=site_id)
+    return can_practise_at(db, user, competency, place_id=site_id)
 
 
 def _authorise(
@@ -62,16 +63,14 @@ def _authorise(
     user: User,
     competency: str,
     *,
-    org: Organisation | None = None,
+    org: OrgUnit | None = None,
     site: OrgUnit | None = None,
 ) -> None:
     """Enable one competency for one person at one place."""
     db.add(
         PractisingCompetency(
             user_id=user.id,
-            org_unit_id=(
-                org.org_unit_id if org else (site.id if site else None)
-            ),
+            org_unit_id=(org.id if org else (site.id if site else None)),
             competency=competency,
         )
     )
@@ -99,28 +98,26 @@ def _user(
     return user
 
 
-def _org(db: Session, name: str) -> Organisation:
-    org = Organisation(name=name, type="hospital")
+def _org(db: Session, name: str) -> OrgUnit:
+    org = OrgUnit(name=name, type="organisation")
     db.add(org)
     db.commit()
     return org
 
 
-def _site(db: Session, name: str, org: Organisation) -> OrgUnit:
+def _site(db: Session, name: str, org: OrgUnit) -> OrgUnit:
     site = OrgUnit(name=name, type="ward")
     db.add(site)
     db.commit()
     db.execute(
-        update(OrgUnit)
-        .where(OrgUnit.id == site.id)
-        .values(parent_id=org.org_unit_id)
+        update(OrgUnit).where(OrgUnit.id == site.id).values(parent_id=org.id)
     )
     db.commit()
     return site
 
 
-def _staff(db: Session, user: User, org: Organisation) -> None:
-    add_organisation_member(db, org.id, user.id, "trainee")
+def _staff(db: Session, user: User, org: OrgUnit) -> None:
+    add_place_member(db, org.id, user.id, "trainee")
     db.commit()
 
 
@@ -156,10 +153,16 @@ class TestTwoPlacesOnePerson:
         )
 
         assert _can_at_org(
-            db_session, locum, home.id, "prescribe_controlled_schedule_2"
+            db_session,
+            locum,
+            home.id,
+            "prescribe_controlled_schedule_2",
         )
         assert not _can_at_org(
-            db_session, locum, locum_at.id, "prescribe_controlled_schedule_2"
+            db_session,
+            locum,
+            locum_at.id,
+            "prescribe_controlled_schedule_2",
         )
 
     def test_a_student_at_one_teaching_site_and_nothing_at_another(

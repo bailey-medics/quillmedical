@@ -3706,9 +3706,13 @@ its own.
 - [x] Replace the assessor dropdown in
       `frontend/src/components/passport/SignOffRequestForm.tsx` with
       an email field, and update its stories and tests.
-- [ ] Say what happens next on the form: whether the address belongs
-      to a Quill account decides whether they sign in or register, and
-      a holder should not have to guess which.
+- [x] Say what happens next on the form. The address is looked up as
+      it is typed, debounced, and the form says either that the person
+      already uses Quill and will sign in, or that nobody does and they
+      will be invited to register. Nothing is claimed while the address
+      is half typed, and only an exact address counts as a match — the
+      search matches anywhere in an address, so a near miss would
+      otherwise report a colleague the holder had not found.
 - [ ] Decide what becomes of `passport_assessor_invite`. Its routes
       serve a rate-limit count, an invite list and token redemption;
       only the single-use link has to survive, and it is a credential
@@ -3787,10 +3791,25 @@ anonymous holding a link.
       somebody new is the case the flow exists for. The form still
       needs wiring to it — that is the unit below.
 
-- [ ] **The confirmation step does not exist.** Submitting sends the
-      request immediately. Step 3 wants a modal showing who was
-      matched, and for a known assessor it needs their name, email and
-      registration number — which no endpoint returns today.
+- [x] **The confirmation step.** Asking now stops and shows who was
+      found before anything is sent. A known assessor appears by name,
+      address and registration number — the hard evidence that this is
+      the right person — marked as stated by them rather than checked
+      by Quill. An address Quill does not know shows only what was
+      typed, and says they will be invited.
+
+      **Step 2 is settled too, by a rule the product owner gave on
+      20 September:** somebody already on Quill may be named by name,
+      username or address; somebody who is not must be given as an
+      address, because an address is the only thing that can be
+      emailed. That needs no new component — the field searches on
+      whatever is typed, and refuses only text that finds nobody and
+      is not an address.
+
+      **One match, or none.** Two people answering to "Okonkwo" is not
+      an answer, and taking the first would name whichever the database
+      happened to return — the mistake the confirmation step exists to
+      prevent. The holder is asked for an address instead.
 
 - [x] **The invite link lands them at the requests.** The accept page
       stays — it is what a signed token in a URL opens, and the person

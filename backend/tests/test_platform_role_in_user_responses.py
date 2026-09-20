@@ -19,8 +19,8 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.models import Organisation, User
-from app.organisations import add_organisation_member
+from app.models import OrgUnit, User
+from app.organisations import add_place_member
 from app.security import hash_password
 
 
@@ -47,21 +47,21 @@ def _user(
 
 
 @pytest.fixture
-def org(db_session: Session) -> Organisation:
-    organisation = Organisation(name="Trust", type="hospital")
+def org(db_session: Session) -> OrgUnit:
+    organisation = OrgUnit(name="Trust", type="organisation")
     db_session.add(organisation)
     db_session.commit()
     db_session.refresh(organisation)
     return organisation
 
 
-def _place(db: Session, org: Organisation, user: User) -> None:
-    add_organisation_member(db, org.id, user.id, "staff")
+def _place(db: Session, org: OrgUnit, user: User) -> None:
+    add_place_member(db, org.id, user.id, "staff")
     db.commit()
 
 
 @pytest.fixture
-def caller(db_session: Session, org: Organisation) -> User:
+def caller(db_session: Session, org: OrgUnit) -> User:
     """An administrator who may list and read users at their own place."""
     admin = _user(
         db_session,
@@ -89,7 +89,7 @@ class TestTheListingCarriesIt:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         caller: User,
     ) -> None:
         """The listing carries the field for an ordinary account."""
@@ -108,7 +108,7 @@ class TestTheDetailCarriesIt:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         caller: User,
     ) -> None:
         target = _user(
@@ -129,7 +129,7 @@ class TestTheDetailCarriesIt:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         caller: User,
     ) -> None:
         """Self is always reachable, and carries the field too."""
@@ -147,7 +147,7 @@ class TestMeCarriesIt:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         caller: User,
     ) -> None:
         client = _login(test_client, "the_admin")

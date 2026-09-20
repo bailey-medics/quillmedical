@@ -25,78 +25,55 @@ touching a single call site. See
 
 from __future__ import annotations
 
-from sqlalchemy import false, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import ColumnElement
 
 from app.models import PractisingCompetency, User
-from app.org_units.tree import root_ids_of_organisations
 
 
-def _place_clause(
-    db: Session, organisation_id: int | None, site_id: int | None
-) -> ColumnElement[bool]:
-    """Build the where-clause for one place, named either way.
+def _place_clause(place_id: int) -> ColumnElement[bool]:
+    """Build the where-clause for one place.
 
-    There is one place column on the row now. An organisation is named by
-    its own row in the tree, so naming an organisation is translated into
-    the id of that row; callers keep saying which kind of place they mean,
-    which is what stops one being mistaken for the other.
-
-    An organisation with no row in the tree matches nothing rather than
-    everything. Failing closed: a place the tree does not know about
-    cannot authorise anybody.
+    One column on the row, one argument here. This used to take an
+    organisation id or a site id and translate the first, because an
+    organisation was a row in another table; an organisation is a place
+    now, so the two collapse and there is nothing left to mistake one
+    for the other.
 
     Args:
-        db: Database session.
-        organisation_id: The organisation, or None.
-        site_id: The place inside one, or None.
+        place_id: The place — an organisation's own row in the tree, or
+            any place beneath one.
 
     Returns:
         The matching column comparison.
-
-    Raises:
-        ValueError: If both or neither were given. A caller that cannot say
-            which place it means has a bug, and guessing is what this whole
-            module exists to stop.
     """
-    if (organisation_id is None) == (site_id is None):
-        raise ValueError("Name exactly one place: organisation_id or site_id")
-    if organisation_id is not None:
-        roots = root_ids_of_organisations(db, [organisation_id])
-        if not roots:
-            return false()
-        return PractisingCompetency.org_unit_id == roots[0]
-    return PractisingCompetency.org_unit_id == site_id
+    return PractisingCompetency.org_unit_id == place_id
 
 
 def competencies_at(
     db: Session,
     user: User,
     *,
-    organisation_id: int | None = None,
-    site_id: int | None = None,
+    place_id: int,
 ) -> set[str]:
     """Return what ``user`` may practise at one place.
 
     Args:
         db: Database session.
         user: The person asked about.
-        organisation_id: The organisation, when the place is an organisation.
-        site_id: The site, when the place is a site.
+        place_id: The place — an organisation's own row in the tree, or
+            any place beneath one.
 
     Returns:
         The competencies authorised at that place, narrowed to the user's own
         ceiling. Empty when nothing is authorised there.
-
-    Raises:
-        ValueError: If both or neither place was given.
     """
     authorised = set(
         db.execute(
             select(PractisingCompetency.competency).where(
                 PractisingCompetency.user_id == user.id,
-                _place_clause(db, organisation_id, site_id),
+                _place_clause(place_id),
             )
         )
         .scalars()
@@ -110,8 +87,7 @@ def can_practise_at(
     user: User,
     competency: str,
     *,
-    organisation_id: int | None = None,
-    site_id: int | None = None,
+    place_id: int,
 ) -> bool:
     """Whether ``user`` may practise ``competency`` at one place.
 
@@ -119,15 +95,12 @@ def can_practise_at(
         db: Database session.
         user: The person asked about.
         competency: A competency id from ``shared/competency-definitions/``.
-        organisation_id: The organisation, when the place is an organisation.
-        site_id: The site, when the place is a site.
+        place_id: The place — an organisation's own row in the tree, or
+            any place beneath one.
 
     Returns:
         True only if the competency is authorised there *and* within the
         user's ceiling.
-
-    Raises:
-        ValueError: If both or neither place was given.
     """
     if competency not in user.get_final_competencies():
         return False
@@ -136,7 +109,7 @@ def can_practise_at(
         select(PractisingCompetency.id).where(
             PractisingCompetency.user_id == user.id,
             PractisingCompetency.competency == competency,
-            _place_clause(db, organisation_id, site_id),
+            _place_clause(place_id),
         )
     ).first()
     return row is not None
@@ -146,8 +119,7 @@ def who_can_practise_at(
     db: Session,
     competency: str,
     *,
-    organisation_id: int | None = None,
-    site_id: int | None = None,
+    place_id: int,
 ) -> list[int]:
     """Return the ids of everyone authorised for ``competency`` at one place.
 
@@ -162,21 +134,18 @@ def who_can_practise_at(
     Args:
         db: Database session.
         competency: A competency id from ``shared/competency-definitions/``.
-        organisation_id: The organisation, when the place is an organisation.
-        site_id: The site, when the place is a site.
+        place_id: The place — an organisation's own row in the tree, or
+            any place beneath one.
 
     Returns:
         User ids, in no particular order.
-
-    Raises:
-        ValueError: If both or neither place was given.
     """
     return [
         int(uid)
         for uid in db.execute(
             select(PractisingCompetency.user_id).where(
                 PractisingCompetency.competency == competency,
-                _place_clause(db, organisation_id, site_id),
+                _place_clause(place_id),
             )
         )
         .scalars()

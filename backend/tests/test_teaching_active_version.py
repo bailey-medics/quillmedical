@@ -18,7 +18,7 @@ from app.features.teaching.models import QuestionBankOrgStatus
 
 def _status(**overrides: object) -> QuestionBankOrgStatus:
     values: dict[str, object] = {
-        "organisation_id": 1,
+        "org_unit_id": 1,
         "question_bank_id": "a-bank",
         "is_live": False,
         "site_registration": False,
@@ -55,8 +55,8 @@ class TestPointerIsPerOrganisation:
         self, db_session: Session
     ) -> None:
         """The point of the feature: one org may promote before another."""
-        early = _status(organisation_id=1, active_version=2)
-        late = _status(organisation_id=2, active_version=5)
+        early = _status(org_unit_id=1, active_version=2)
+        late = _status(org_unit_id=2, active_version=5)
         db_session.add_all([early, late])
         db_session.commit()
 

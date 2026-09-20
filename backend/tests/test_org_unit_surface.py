@@ -24,7 +24,6 @@ from sqlalchemy.orm import Session
 
 from app.cbac.positions import clinical_lead_post, clinical_leads_of
 from app.models import (
-    Organisation,
     OrgUnit,
     Position,
     PositionHolding,
@@ -32,13 +31,16 @@ from app.models import (
     org_unit_member,
     org_unit_patient_member,
 )
-from app.org_units.tree import root_ids_of_organisations
-from app.organisations import add_organisation_member
+from app.org_units.types import ROOT_TYPE_IDS
+from app.organisations import (
+    add_place_member,
+    organisation_places_of,
+)
 from app.security import hash_password
 
 
-def _org(db: Session, name: str = "Trust") -> Organisation:
-    org = Organisation(name=name, type="hospital_team")
+def _org(db: Session, name: str = "Trust") -> OrgUnit:
+    org = OrgUnit(name=name, type="hospital_team")
     db.add(org)
     db.commit()
     db.refresh(org)
@@ -73,37 +75,38 @@ class TestListing:
         self, authenticated_superadmin_client, db_session
     ):
         org = _org(db_session)
-        ward = _ward(db_session, org.org_unit_id)
+        ward = _ward(db_session, org.id)
 
         resp = authenticated_superadmin_client.get("/api/org-units?roots=true")
 
         assert resp.status_code == 200
         ids = [u["id"] for u in resp.json()["org_units"]]
-        assert org.org_unit_id in ids
+        assert org.id in ids
         assert ward.id not in ids
 
     def test_asking_for_the_others_excludes_them(
         self, authenticated_superadmin_client, db_session
     ):
         org = _org(db_session)
-        ward = _ward(db_session, org.org_unit_id)
+        ward = _ward(db_session, org.id)
 
         resp = authenticated_superadmin_client.get(
             "/api/org-units?roots=false"
         )
 
         ids = [u["id"] for u in resp.json()["org_units"]]
-        assert ids == [ward.id]
+        assert ward.id in ids
+        assert org.id not in ids
 
     def test_children_of_one_place(
         self, authenticated_superadmin_client, db_session
     ):
         org = _org(db_session)
-        ward = _ward(db_session, org.org_unit_id, "Ward 1")
+        ward = _ward(db_session, org.id, "Ward 1")
         _ward(db_session, ward.id, "Room 4")
 
         resp = authenticated_superadmin_client.get(
-            f"/api/org-units?parent_id={org.org_unit_id}"
+            f"/api/org-units?parent_id={org.id}"
         )
 
         assert [u["id"] for u in resp.json()["org_units"]] == [ward.id]
@@ -113,21 +116,21 @@ class TestListing:
     ):
         mine = _org(db_session, "My Trust")
         theirs = _org(db_session, "Their Trust")
-        add_organisation_member(db_session, mine.id, test_admin.id, "staff")
+        add_place_member(db_session, mine.id, test_admin.id, "staff")
         db_session.commit()
-        my_ward = _ward(db_session, mine.org_unit_id, "My Ward")
-        _ward(db_session, theirs.org_unit_id, "Their Ward")
+        my_ward = _ward(db_session, mine.id, "My Ward")
+        _ward(db_session, theirs.id, "Their Ward")
 
         resp = authenticated_admin_client.get("/api/org-units")
 
         ids = {u["id"] for u in resp.json()["org_units"]}
-        assert ids == {mine.org_unit_id, my_ward.id}
+        assert ids == {mine.id, my_ward.id}
 
     def test_the_type_is_named_for_a_person(
         self, authenticated_superadmin_client, db_session
     ):
         org = _org(db_session)
-        _ward(db_session, org.org_unit_id)
+        _ward(db_session, org.id)
 
         resp = authenticated_superadmin_client.get(
             "/api/org-units?roots=false"
@@ -170,12 +173,12 @@ class TestCreating:
             json={
                 "name": "Ward 9",
                 "type": "ward",
-                "parent_id": org.org_unit_id,
+                "parent_id": org.id,
             },
         )
 
         assert resp.status_code == 200
-        assert resp.json()["parent_id"] == org.org_unit_id
+        assert resp.json()["parent_id"] == org.id
         assert resp.json()["is_root"] is False
 
     def test_a_ward_with_no_parent_is_refused(
@@ -198,7 +201,7 @@ class TestCreating:
             json={
                 "name": "Inner Trust",
                 "type": "organisation",
-                "parent_id": org.org_unit_id,
+                "parent_id": org.id,
             },
         )
 
@@ -240,7 +243,7 @@ class TestCreating:
             json={
                 "name": "Thing",
                 "type": "corridor",
-                "parent_id": org.org_unit_id,
+                "parent_id": org.id,
             },
         )
 
@@ -251,7 +254,7 @@ class TestCreating:
     ):
         mine = _org(db_session, "My Trust")
         theirs = _org(db_session, "Their Trust")
-        add_organisation_member(db_session, mine.id, test_admin.id, "staff")
+        add_place_member(db_session, mine.id, test_admin.id, "staff")
         db_session.commit()
 
         resp = authenticated_admin_client.post(
@@ -259,7 +262,7 @@ class TestCreating:
             json={
                 "name": "My Ward",
                 "type": "ward",
-                "parent_id": theirs.org_unit_id,
+                "parent_id": theirs.id,
             },
         )
 
@@ -271,11 +274,9 @@ class TestReadingOne:
         self, authenticated_superadmin_client, db_session
     ):
         org = _org(db_session)
-        ward = _ward(db_session, org.org_unit_id)
+        ward = _ward(db_session, org.id)
 
-        resp = authenticated_superadmin_client.get(
-            f"/api/org-units/{org.org_unit_id}"
-        )
+        resp = authenticated_superadmin_client.get(f"/api/org-units/{org.id}")
 
         assert resp.status_code == 200
         assert [c["id"] for c in resp.json()["children"]] == [ward.id]
@@ -285,12 +286,10 @@ class TestReadingOne:
     ):
         org = _org(db_session)
         person = _person(db_session)
-        add_organisation_member(db_session, org.id, person.id, "staff")
+        add_place_member(db_session, org.id, person.id, "staff")
         db_session.commit()
 
-        resp = authenticated_superadmin_client.get(
-            f"/api/org-units/{org.org_unit_id}"
-        )
+        resp = authenticated_superadmin_client.get(f"/api/org-units/{org.id}")
 
         members = resp.json()["members"]
         assert [m["id"] for m in members] == [person.id]
@@ -300,7 +299,7 @@ class TestReadingOne:
         self, authenticated_superadmin_client, db_session
     ):
         org = _org(db_session)
-        ward = _ward(db_session, org.org_unit_id)
+        ward = _ward(db_session, org.id)
 
         resp = authenticated_superadmin_client.get(f"/api/org-units/{ward.id}")
 
@@ -311,7 +310,7 @@ class TestReadingOne:
         self, authenticated_superadmin_client, db_session
     ):
         org = _org(db_session)
-        ward = _ward(db_session, org.org_unit_id)
+        ward = _ward(db_session, org.id)
 
         resp = authenticated_superadmin_client.get(f"/api/org-units/{ward.id}")
 
@@ -322,7 +321,7 @@ class TestReadingOne:
         self, authenticated_superadmin_client, db_session
     ):
         org = _org(db_session)
-        ward = _ward(db_session, org.org_unit_id)
+        ward = _ward(db_session, org.id)
         room = OrgUnit(name="Room 4", type="room", parent_id=ward.id)
         db_session.add(room)
         db_session.commit()
@@ -339,9 +338,7 @@ class TestReadingOne:
     ):
         org = _org(db_session)
 
-        resp = authenticated_superadmin_client.get(
-            f"/api/org-units/{org.org_unit_id}"
-        )
+        resp = authenticated_superadmin_client.get(f"/api/org-units/{org.id}")
 
         assert resp.json()["parent_id"] is None
         assert resp.json()["parent_name"] == ""
@@ -352,9 +349,7 @@ class TestReadingOne:
     ):
         theirs = _org(db_session, "Their Trust")
 
-        resp = authenticated_admin_client.get(
-            f"/api/org-units/{theirs.org_unit_id}"
-        )
+        resp = authenticated_admin_client.get(f"/api/org-units/{theirs.id}")
 
         assert resp.status_code == 404
 
@@ -362,7 +357,7 @@ class TestReadingOne:
 class TestChanging:
     def test_renaming(self, authenticated_superadmin_client, db_session):
         org = _org(db_session)
-        ward = _ward(db_session, org.org_unit_id)
+        ward = _ward(db_session, org.id)
 
         resp = authenticated_superadmin_client.put(
             f"/api/org-units/{ward.id}", json={"name": "Renamed"}
@@ -375,7 +370,7 @@ class TestChanging:
         self, authenticated_superadmin_client, db_session
     ):
         org = _org(db_session)
-        ward = _ward(db_session, org.org_unit_id, "Ward")
+        ward = _ward(db_session, org.id, "Ward")
         room = _ward(db_session, ward.id, "Room")
 
         resp = authenticated_superadmin_client.put(
@@ -384,12 +379,33 @@ class TestChanging:
 
         assert resp.status_code == 400
 
+    def test_giving_an_organisation_a_parent_is_refused(
+        self, authenticated_superadmin_client, db_session
+    ):
+        """It would be a top of a tree with something above it.
+
+        `is_root` would go on saying yes — the type declares it — while
+        every walk upwards landed in somebody else's trust.
+        """
+        org = _org(db_session)
+        theirs = _org(db_session, "Their Trust")
+        ward = _ward(db_session, theirs.id, "Their Ward")
+
+        resp = authenticated_superadmin_client.put(
+            f"/api/org-units/{org.id}", json={"parent_id": ward.id}
+        )
+
+        assert resp.status_code == 422
+        db_session.refresh(org)
+        root = db_session.get(OrgUnit, org.id)
+        assert root.parent_id is None
+
     def test_changing_a_ward_into_an_organisation_is_refused(
         self, authenticated_superadmin_client, db_session
     ):
         """Whether a place sits inside another is not a rename."""
         org = _org(db_session)
-        ward = _ward(db_session, org.org_unit_id)
+        ward = _ward(db_session, org.id)
 
         resp = authenticated_superadmin_client.put(
             f"/api/org-units/{ward.id}", json={"type": "organisation"}
@@ -399,7 +415,7 @@ class TestChanging:
 
     def test_deactivating(self, authenticated_superadmin_client, db_session):
         org = _org(db_session)
-        ward = _ward(db_session, org.org_unit_id)
+        ward = _ward(db_session, org.id)
 
         resp = authenticated_superadmin_client.patch(
             f"/api/org-units/{ward.id}/active", json={"is_active": False}
@@ -412,7 +428,49 @@ class TestChanging:
         self, authenticated_superadmin_client, db_session
     ):
         org = _org(db_session)
-        ward = _ward(db_session, org.org_unit_id)
+        ward = _ward(db_session, org.id)
+
+        resp = authenticated_superadmin_client.delete(
+            f"/api/org-units/{ward.id}"
+        )
+
+        assert resp.status_code == 200
+        assert db_session.get(OrgUnit, ward.id) is None
+
+    def test_a_place_with_something_inside_it_is_refused(
+        self, authenticated_superadmin_client, db_session
+    ):
+        """The column says SET NULL, so deleting would orphan them.
+
+        A room whose ward has gone belongs nowhere: invisible to every
+        list, reachable by nobody, and impossible to tell from a room
+        that was always loose.
+        """
+        org = _org(db_session)
+        ward = _ward(db_session, org.id)
+        room = OrgUnit(name="Room 4", type="room", parent_id=ward.id)
+        db_session.add(room)
+        db_session.commit()
+
+        resp = authenticated_superadmin_client.delete(
+            f"/api/org-units/{ward.id}"
+        )
+
+        assert resp.status_code == 409
+        assert db_session.get(OrgUnit, ward.id) is not None
+        db_session.refresh(room)
+        assert room.parent_id == ward.id
+
+    def test_emptying_it_first_makes_it_deletable(
+        self, authenticated_superadmin_client, db_session
+    ):
+        """Refusing is reversible, which is what makes it the kind one."""
+        org = _org(db_session)
+        ward = _ward(db_session, org.id)
+        room = OrgUnit(name="Room 4", type="room", parent_id=ward.id)
+        db_session.add(room)
+        db_session.commit()
+        authenticated_superadmin_client.delete(f"/api/org-units/{room.id}")
 
         resp = authenticated_superadmin_client.delete(
             f"/api/org-units/{ward.id}"
@@ -425,12 +483,10 @@ class TestChanging:
         self, authenticated_admin_client, db_session, test_admin
     ):
         mine = _org(db_session, "My Trust")
-        add_organisation_member(db_session, mine.id, test_admin.id, "staff")
+        add_place_member(db_session, mine.id, test_admin.id, "staff")
         db_session.commit()
 
-        resp = authenticated_admin_client.delete(
-            f"/api/org-units/{mine.org_unit_id}"
-        )
+        resp = authenticated_admin_client.delete(f"/api/org-units/{mine.id}")
 
         assert resp.status_code == 403
 
@@ -440,7 +496,7 @@ class TestMembers:
         self, authenticated_superadmin_client, db_session
     ):
         org = _org(db_session)
-        ward = _ward(db_session, org.org_unit_id)
+        ward = _ward(db_session, org.id)
         person = _person(db_session)
 
         added = authenticated_superadmin_client.post(
@@ -468,11 +524,11 @@ class TestMembers:
         person = _person(db_session)
         body = {"user_id": person.id, "capacity": "trainee"}
         authenticated_superadmin_client.post(
-            f"/api/org-units/{org.org_unit_id}/members", json=body
+            f"/api/org-units/{org.id}/members", json=body
         )
 
         again = authenticated_superadmin_client.post(
-            f"/api/org-units/{org.org_unit_id}/members",
+            f"/api/org-units/{org.id}/members",
             json={"user_id": person.id, "capacity": "staff"},
         )
 
@@ -491,7 +547,7 @@ class TestMembers:
     ):
         """The type says a room is only an address."""
         org = _org(db_session)
-        ward = _ward(db_session, org.org_unit_id)
+        ward = _ward(db_session, org.id)
         room = OrgUnit(name="Room 4", type="room", parent_id=ward.id)
         db_session.add(room)
         db_session.commit()
@@ -510,7 +566,7 @@ class TestMembers:
         person = _person(db_session)
 
         resp = authenticated_superadmin_client.post(
-            f"/api/org-units/{org.org_unit_id}/members",
+            f"/api/org-units/{org.id}/members",
             json={"user_id": person.id, "capacity": "chief"},
         )
 
@@ -524,30 +580,67 @@ class TestFeatures:
         org = _org(db_session)
 
         on = authenticated_superadmin_client.put(
-            f"/api/org-units/{org.org_unit_id}/features/teaching",
+            f"/api/org-units/{org.id}/features/teaching",
             json={"enabled": True},
         )
         assert on.json()["status"] == "enabled"
 
         listed = authenticated_superadmin_client.get(
-            f"/api/org-units/{org.org_unit_id}/features"
+            f"/api/org-units/{org.id}/features"
         )
         assert [f["feature_key"] for f in listed.json()["features"]] == [
             "teaching"
         ]
 
         off = authenticated_superadmin_client.put(
-            f"/api/org-units/{org.org_unit_id}/features/teaching",
+            f"/api/org-units/{org.id}/features/teaching",
             json={"enabled": False},
         )
         assert off.json()["status"] == "disabled"
+
+    def test_an_admin_of_the_place_may_switch_one(
+        self, authenticated_admin_client, db_session, test_admin
+    ):
+        """What the organisations surface has always allowed.
+
+        Features are how an organisation says what it does, and its own
+        administrators settle that. An operator-only gate here would have
+        taken a working thing away from every admin the day the older
+        surface was retired.
+        """
+        mine = _org(db_session, "My Trust")
+        add_place_member(db_session, mine.id, test_admin.id, "staff")
+        db_session.commit()
+
+        resp = authenticated_admin_client.put(
+            f"/api/org-units/{mine.id}/features/teaching",
+            json={"enabled": True},
+        )
+
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["status"] == "enabled"
+
+    def test_another_organisations_features_are_not_theirs_to_set(
+        self, authenticated_admin_client, db_session, test_admin
+    ):
+        mine = _org(db_session, "My Trust")
+        theirs = _org(db_session, "Their Trust")
+        add_place_member(db_session, mine.id, test_admin.id, "staff")
+        db_session.commit()
+
+        resp = authenticated_admin_client.put(
+            f"/api/org-units/{theirs.id}/features/teaching",
+            json={"enabled": True},
+        )
+
+        assert resp.status_code == 404
 
     def test_a_ward_carries_none(
         self, authenticated_superadmin_client, db_session
     ):
         """Refused rather than written and never read."""
         org = _org(db_session)
-        ward = _ward(db_session, org.org_unit_id)
+        ward = _ward(db_session, org.id)
 
         resp = authenticated_superadmin_client.put(
             f"/api/org-units/{ward.id}/features/teaching",
@@ -565,27 +658,25 @@ class TestPatients:
         test_patient_manager,
     ):
         org = _org(db_session)
-        add_organisation_member(
-            db_session, org.id, test_patient_manager.id, "staff"
-        )
+        add_place_member(db_session, org.id, test_patient_manager.id, "staff")
         db_session.commit()
         authenticated_superadmin_client = authenticated_patient_manager_client
 
         added = authenticated_superadmin_client.post(
-            f"/api/org-units/{org.org_unit_id}/patients",
+            f"/api/org-units/{org.id}/patients",
             json={"patient_id": "patient-1"},
         )
         assert added.json()["status"] == "added"
 
         stored = db_session.execute(
             select(org_unit_patient_member.c.patient_id).where(
-                org_unit_patient_member.c.org_unit_id == org.org_unit_id
+                org_unit_patient_member.c.org_unit_id == org.id
             )
         ).scalar_one()
         assert stored == "patient-1"
 
         removed = authenticated_superadmin_client.delete(
-            f"/api/org-units/{org.org_unit_id}/patients/patient-1"
+            f"/api/org-units/{org.id}/patients/patient-1"
         )
         assert removed.json()["status"] == "removed"
 
@@ -596,11 +687,9 @@ class TestPatients:
         test_patient_manager,
     ):
         org = _org(db_session)
-        add_organisation_member(
-            db_session, org.id, test_patient_manager.id, "staff"
-        )
+        add_place_member(db_session, org.id, test_patient_manager.id, "staff")
         db_session.commit()
-        ward = _ward(db_session, org.org_unit_id)
+        ward = _ward(db_session, org.id)
 
         resp = authenticated_patient_manager_client.post(
             f"/api/org-units/{ward.id}/patients",
@@ -618,9 +707,9 @@ class TestLinks:
         trust = _org(db_session, "Trust")
 
         created = authenticated_superadmin_client.post(
-            f"/api/org-units/{school.org_unit_id}/links",
+            f"/api/org-units/{school.id}/links",
             json={
-                "target_id": trust.org_unit_id,
+                "target_id": trust.id,
                 "relation": "teaches_at",
             },
         )
@@ -630,7 +719,7 @@ class TestLinks:
         assert links[0]["target_name"] == "Trust"
 
         removed = authenticated_superadmin_client.delete(
-            f"/api/org-units/{school.org_unit_id}/links/{links[0]['id']}"
+            f"/api/org-units/{school.id}/links/{links[0]['id']}"
         )
         assert removed.json()["links"] == []
 
@@ -640,15 +729,15 @@ class TestLinks:
         school = _org(db_session, "Medical School")
         trust = _org(db_session, "Trust")
         authenticated_superadmin_client.post(
-            f"/api/org-units/{school.org_unit_id}/links",
+            f"/api/org-units/{school.id}/links",
             json={
-                "target_id": trust.org_unit_id,
+                "target_id": trust.id,
                 "relation": "teaches_at",
             },
         )
 
         resp = authenticated_superadmin_client.get(
-            f"/api/org-units/{trust.org_unit_id}/links"
+            f"/api/org-units/{trust.id}/links"
         )
 
         assert len(resp.json()["links"]) == 1
@@ -659,38 +748,17 @@ class TestLinks:
         org = _org(db_session)
 
         resp = authenticated_superadmin_client.post(
-            f"/api/org-units/{org.org_unit_id}/links",
-            json={"target_id": org.org_unit_id, "relation": "hosts"},
+            f"/api/org-units/{org.id}/links",
+            json={"target_id": org.id, "relation": "hosts"},
         )
 
         assert resp.status_code == 400
 
 
-class TestTheOrganisationsSurfaceStillWorks:
-    """The sites surface has gone; this one has not.
-
-    It answers in organisation ids rather than place ids, which is what
-    makes them two surfaces rather than one with two names. It stays
-    until the user form stops sending organisation ids to the users API.
-    """
-
-    def test_it_still_answers_in_organisation_ids(
-        self, authenticated_superadmin_client, db_session
-    ):
-        org = _org(db_session)
-
-        resp = authenticated_superadmin_client.get(
-            f"/api/organisations/{org.id}"
-        )
-
-        assert resp.status_code == 200
-        assert resp.json()["id"] == org.id
-
-
 class TestTheClinicalLead:
     def test_naming_one(self, authenticated_superadmin_client, db_session):
         org = _org(db_session)
-        ward = _ward(db_session, org.org_unit_id)
+        ward = _ward(db_session, org.id)
         person = _person(db_session)
         authenticated_superadmin_client.post(
             f"/api/org-units/{ward.id}/members",
@@ -714,7 +782,7 @@ class TestTheClinicalLead:
     ):
         """A vacancy is a real state, so it is said rather than implied."""
         org = _org(db_session)
-        ward = _ward(db_session, org.org_unit_id)
+        ward = _ward(db_session, org.id)
         person = _person(db_session)
         authenticated_superadmin_client.post(
             f"/api/org-units/{ward.id}/members",
@@ -739,7 +807,7 @@ class TestTheClinicalLead:
         self, authenticated_superadmin_client, db_session
     ):
         org = _org(db_session)
-        ward = _ward(db_session, org.org_unit_id)
+        ward = _ward(db_session, org.id)
         stranger = _person(db_session, "stranger")
 
         resp = authenticated_superadmin_client.put(
@@ -753,7 +821,7 @@ class TestTheClinicalLead:
         self, authenticated_superadmin_client, db_session
     ):
         org = _org(db_session)
-        ward = _ward(db_session, org.org_unit_id)
+        ward = _ward(db_session, org.id)
         room = OrgUnit(name="Room 4", type="room", parent_id=ward.id)
         db_session.add(room)
         db_session.commit()
@@ -771,7 +839,7 @@ class TestTheClinicalLead:
     ):
         """So a list reads without a request per row."""
         org = _org(db_session)
-        ward = _ward(db_session, org.org_unit_id)
+        ward = _ward(db_session, org.id)
         person = _person(db_session)
         authenticated_superadmin_client.post(
             f"/api/org-units/{ward.id}/members",
@@ -783,7 +851,7 @@ class TestTheClinicalLead:
         )
 
         detail = authenticated_superadmin_client.get(
-            f"/api/org-units/{org.org_unit_id}"
+            f"/api/org-units/{org.id}"
         )
 
         child = detail.json()["children"][0]
@@ -803,7 +871,7 @@ class TestLeavingAPlace:
         self, authenticated_superadmin_client, db_session
     ):
         org = _org(db_session)
-        ward = _ward(db_session, org.org_unit_id)
+        ward = _ward(db_session, org.id)
         person = _person(db_session)
         authenticated_superadmin_client.post(
             f"/api/org-units/{ward.id}/members",
@@ -827,7 +895,7 @@ class TestLeavingAPlace:
         self, authenticated_superadmin_client, db_session
     ):
         org = _org(db_session)
-        ward = _ward(db_session, org.org_unit_id)
+        ward = _ward(db_session, org.id)
         person = _person(db_session)
         authenticated_superadmin_client.post(
             f"/api/org-units/{ward.id}/members",
@@ -859,7 +927,7 @@ class TestLeavingAPlace:
         self, authenticated_superadmin_client, db_session
     ):
         org = _org(db_session)
-        ward = _ward(db_session, org.org_unit_id)
+        ward = _ward(db_session, org.id)
         lead = _person(db_session)
         nurse = _person(db_session, "nurse")
         for person in (lead, nurse):
@@ -920,7 +988,7 @@ class TestMovingAPlace:
     ):
         """The walk goes the whole way up, not one level."""
         org = _org(db_session)
-        hospital = _ward(db_session, org.org_unit_id, "Hospital")
+        hospital = _ward(db_session, org.id, "Hospital")
         ward = OrgUnit(name="Ward", type="ward", parent_id=hospital.id)
         db_session.add(ward)
         db_session.commit()
@@ -934,14 +1002,14 @@ class TestMovingAPlace:
 
         assert resp.status_code == 400
         db_session.refresh(hospital)
-        assert hospital.parent_id == org.org_unit_id
+        assert hospital.parent_id == org.id
 
     def test_a_move_that_keeps_it_a_tree_still_works(
         self, authenticated_superadmin_client, db_session
     ):
         org = _org(db_session)
-        first = _ward(db_session, org.org_unit_id, "Ward 1")
-        second = _ward(db_session, org.org_unit_id, "Ward 2")
+        first = _ward(db_session, org.id, "Ward 1")
+        second = _ward(db_session, org.id, "Ward 2")
 
         resp = authenticated_superadmin_client.put(
             f"/api/org-units/{first.id}", json={"parent_id": second.id}
@@ -967,7 +1035,7 @@ class TestWhatTheAnswerLeavesOut:
         ``IN ()`` is the classic way a filter turns into its opposite.
         """
         org = _org(db_session, "Some Trust")
-        _ward(db_session, org.org_unit_id, "Unreachable Ward")
+        _ward(db_session, org.id, "Unreachable Ward")
 
         resp = authenticated_admin_client.get("/api/org-units")
 
@@ -979,7 +1047,7 @@ class TestWhatTheAnswerLeavesOut:
     ):
         """A place under nothing is an anomaly, not a commons."""
         mine = _org(db_session, "My Trust")
-        add_organisation_member(db_session, mine.id, test_admin.id, "staff")
+        add_place_member(db_session, mine.id, test_admin.id, "staff")
         db_session.commit()
         orphan = OrgUnit(name="Orphan Ward", type="ward")
         db_session.add(orphan)
@@ -1000,7 +1068,7 @@ class TestWhatTheAnswerLeavesOut:
         """
         org = _org(db_session, "My Trust")
         test_user.base_profession = "consultant"
-        add_organisation_member(db_session, org.id, test_user.id, "staff")
+        add_place_member(db_session, org.id, test_user.id, "staff")
         db_session.commit()
 
         resp = authenticated_client.get("/api/org-units")
@@ -1012,8 +1080,8 @@ class TestWhatTheAnswerLeavesOut:
     ):
         first = _org(db_session, "First Trust")
         second = _org(db_session, "Second Trust")
-        mine = _ward(db_session, first.org_unit_id, "First Ward")
-        theirs = _ward(db_session, second.org_unit_id, "Second Ward")
+        mine = _ward(db_session, first.id, "First Ward")
+        theirs = _ward(db_session, second.id, "Second Ward")
 
         resp = authenticated_superadmin_client.get("/api/org-units")
 
@@ -1033,10 +1101,10 @@ class TestNestingStaysInsideOneOrganisation:
     ):
         mine = _org(db_session, "My Trust")
         theirs = _org(db_session, "Their Trust")
-        add_organisation_member(db_session, mine.id, test_admin.id, "staff")
+        add_place_member(db_session, mine.id, test_admin.id, "staff")
         db_session.commit()
-        my_ward = _ward(db_session, mine.org_unit_id, "My Ward")
-        their_ward = _ward(db_session, theirs.org_unit_id, "Their Ward")
+        my_ward = _ward(db_session, mine.id, "My Ward")
+        their_ward = _ward(db_session, theirs.id, "Their Ward")
 
         resp = authenticated_admin_client.put(
             f"/api/org-units/{my_ward.id}",
@@ -1045,7 +1113,7 @@ class TestNestingStaysInsideOneOrganisation:
 
         assert resp.status_code == 404
         db_session.refresh(my_ward)
-        assert my_ward.parent_id == mine.org_unit_id
+        assert my_ward.parent_id == mine.id
 
     def test_creating_under_another_organisations_place_is_refused(
         self, authenticated_admin_client, db_session, test_admin
@@ -1053,9 +1121,9 @@ class TestNestingStaysInsideOneOrganisation:
         """Not only their organisation: anything in their tree."""
         mine = _org(db_session, "My Trust")
         theirs = _org(db_session, "Their Trust")
-        add_organisation_member(db_session, mine.id, test_admin.id, "staff")
+        add_place_member(db_session, mine.id, test_admin.id, "staff")
         db_session.commit()
-        their_ward = _ward(db_session, theirs.org_unit_id, "Their Ward")
+        their_ward = _ward(db_session, theirs.id, "Their Ward")
 
         resp = authenticated_admin_client.post(
             "/api/org-units",
@@ -1073,7 +1141,7 @@ class TestNestingStaysInsideOneOrganisation:
     ):
         """An orphan is not a shared place to hang things off."""
         mine = _org(db_session, "My Trust")
-        add_organisation_member(db_session, mine.id, test_admin.id, "staff")
+        add_place_member(db_session, mine.id, test_admin.id, "staff")
         db_session.commit()
         orphan = OrgUnit(name="Orphan Ward", type="ward")
         db_session.add(orphan)
@@ -1090,10 +1158,10 @@ class TestNestingStaysInsideOneOrganisation:
         self, authenticated_admin_client, db_session, test_admin
     ):
         mine = _org(db_session, "My Trust")
-        add_organisation_member(db_session, mine.id, test_admin.id, "staff")
+        add_place_member(db_session, mine.id, test_admin.id, "staff")
         db_session.commit()
-        first = _ward(db_session, mine.org_unit_id, "Ward 1")
-        second = _ward(db_session, mine.org_unit_id, "Ward 2")
+        first = _ward(db_session, mine.id, "Ward 1")
+        second = _ward(db_session, mine.id, "Ward 2")
 
         resp = authenticated_admin_client.put(
             f"/api/org-units/{first.id}", json={"parent_id": second.id}
@@ -1107,13 +1175,14 @@ class TestNestingStaysInsideOneOrganisation:
 class TestAnOrganisationCreatedAsAPlace:
     """A root created here is an organisation in every sense.
 
-    Two tables still describe one thing: the places, and the
-    organisations that answer in organisation ids. Creating a root
-    without the second one produced a place only a superadmin could see,
-    with nobody able to belong to it — the first thing anybody would try.
+    Two tables described one thing until the organisations table went:
+    a root created without its paired row was a place only a superadmin
+    could see, with nobody able to belong to it — the first thing
+    anybody would try. There is one row now, so the pairing cannot come
+    apart; what these check is that the consequences still hold.
     """
 
-    def test_it_gets_its_organisation_row(
+    def test_it_is_an_organisation(
         self, authenticated_superadmin_client, db_session
     ):
         resp = authenticated_superadmin_client.post(
@@ -1122,29 +1191,28 @@ class TestAnOrganisationCreatedAsAPlace:
         )
 
         place_id = resp.json()["id"]
-        organisation = db_session.scalar(
-            select(Organisation).where(Organisation.org_unit_id == place_id)
-        )
-        assert organisation is not None
-        assert organisation.name == "New Trust"
-        assert organisation.type == "gp_practice"
+        place = db_session.get(OrgUnit, place_id)
+        assert place is not None
+        assert place.name == "New Trust"
+        assert place.type == "gp_practice"
+        assert organisation_places_of(db_session, [place_id]) == {place_id}
 
     def test_only_one_place_is_created(
         self, authenticated_superadmin_client, db_session
     ):
-        """The listener on the model makes a root for a new organisation.
-
-        Writing the organisation with its place already named is what
-        stops it making a second one.
-        """
+        """One row, so there is nothing to double up."""
         resp = authenticated_superadmin_client.post(
             "/api/org-units",
             json={"name": "New Trust", "type": "organisation"},
         )
 
+        # Root-ness is declared by the type, never inferred from having
+        # nothing above it — a ward with no parent is a loose ward, not a
+        # trust, and the test would read the same either way if it asked
+        # about the column.
         roots = (
             db_session.execute(
-                select(OrgUnit).where(OrgUnit.parent_id.is_(None))
+                select(OrgUnit).where(OrgUnit.type.in_(ROOT_TYPE_IDS))
             )
             .scalars()
             .all()
@@ -1159,18 +1227,11 @@ class TestAnOrganisationCreatedAsAPlace:
             json={"name": "New Trust", "type": "organisation"},
         )
         place_id = resp.json()["id"]
-        organisation = db_session.scalar(
-            select(Organisation).where(Organisation.org_unit_id == place_id)
-        )
 
-        add_organisation_member(
-            db_session, organisation.id, test_admin.id, "staff"
-        )
+        add_place_member(db_session, place_id, test_admin.id, "staff")
         db_session.commit()
 
-        assert root_ids_of_organisations(db_session, [organisation.id]) == [
-            place_id
-        ]
+        assert organisation_places_of(db_session, [place_id]) == {place_id}
 
     def test_renaming_it_renames_the_organisation(
         self, authenticated_superadmin_client, db_session
@@ -1185,10 +1246,8 @@ class TestAnOrganisationCreatedAsAPlace:
             f"/api/org-units/{place_id}", json={"name": "New Name"}
         )
 
-        organisation = db_session.scalar(
-            select(Organisation).where(Organisation.org_unit_id == place_id)
-        )
-        assert organisation.name == "New Name"
+        place = db_session.get(OrgUnit, place_id)
+        assert place.name == "New Name"
 
     def test_deleting_it_deletes_the_organisation(
         self, authenticated_superadmin_client, db_session
@@ -1201,12 +1260,81 @@ class TestAnOrganisationCreatedAsAPlace:
 
         authenticated_superadmin_client.delete(f"/api/org-units/{place_id}")
 
-        assert (
-            db_session.scalar(
-                select(Organisation).where(
-                    Organisation.org_unit_id == place_id
-                )
-            )
-            is None
-        )
         assert db_session.get(OrgUnit, place_id) is None
+        assert organisation_places_of(db_session, [place_id]) == set()
+
+
+class TestWhoMayAskAtAll:
+    """Before any of the rules above: authentication, then competency.
+
+    These were asked of `/api/organisations`, which is being retired.
+    They are not about organisations; they are about a surface that
+    administers places.
+    """
+
+    def test_nobody_gets_an_answer_without_signing_in(self, test_client):
+        resp = test_client.get("/api/org-units")
+
+        assert resp.status_code == 401
+
+    def test_signing_in_is_not_the_same_as_being_allowed(
+        self, authenticated_client
+    ):
+        """A signed-in person with no competency for this is refused."""
+        resp = authenticated_client.get("/api/org-units")
+
+        assert resp.status_code == 403
+
+
+class TestWhatCreatingRefuses:
+    """The small ways a create request can be wrong."""
+
+    def test_a_name_of_spaces_is_refused(
+        self, authenticated_superadmin_client
+    ):
+        resp = authenticated_superadmin_client.post(
+            "/api/org-units", json={"name": "   ", "type": "organisation"}
+        )
+
+        assert resp.status_code == 422
+
+    def test_no_name_at_all_is_refused(self, authenticated_superadmin_client):
+        resp = authenticated_superadmin_client.post(
+            "/api/org-units", json={"type": "organisation"}
+        )
+
+        assert resp.status_code == 422
+
+    def test_the_name_is_stored_without_its_spaces(
+        self, authenticated_superadmin_client
+    ):
+        resp = authenticated_superadmin_client.post(
+            "/api/org-units",
+            json={"name": "  Test Trust  ", "type": "organisation"},
+        )
+
+        assert resp.json()["name"] == "Test Trust"
+
+
+class TestMembersThatCannotBeAdded:
+    def test_somebody_who_does_not_exist(
+        self, authenticated_superadmin_client, db_session
+    ):
+        org = _org(db_session)
+
+        resp = authenticated_superadmin_client.post(
+            f"/api/org-units/{org.id}/members",
+            json={"user_id": 999999, "capacity": "staff"},
+        )
+
+        assert resp.status_code == 404
+
+    def test_at_a_place_that_does_not_exist(
+        self, authenticated_superadmin_client
+    ):
+        resp = authenticated_superadmin_client.post(
+            "/api/org-units/999999/members",
+            json={"user_id": 1, "capacity": "staff"},
+        )
+
+        assert resp.status_code == 404

@@ -18,30 +18,29 @@ from __future__ import annotations
 from sqlalchemy.orm import Session
 
 from app.models import (
-    Organisation,
     OrgUnit,
     OrgUnitLink,
     User,
     org_unit_member,
 )
 from app.organisations import (
-    add_organisation_member,
-    get_member_org_ids,
-    get_reachable_org_ids,
+    add_place_member,
+    get_member_place_ids,
+    get_reachable_place_ids,
 )
 from app.security import hash_password
 
 
-def _org(db: Session, name: str) -> Organisation:
-    org = Organisation(name=name, type="hospital_team")
+def _org(db: Session, name: str) -> OrgUnit:
+    org = OrgUnit(name=name, type="hospital_team")
     db.add(org)
     db.commit()
     db.refresh(org)
     return org
 
 
-def _ward(db: Session, org: Organisation, name: str) -> OrgUnit:
-    place = OrgUnit(name=name, type="ward", parent_id=org.org_unit_id)
+def _ward(db: Session, org: OrgUnit, name: str) -> OrgUnit:
+    place = OrgUnit(name=name, type="ward", parent_id=org.id)
     db.add(place)
     db.commit()
     db.refresh(place)
@@ -75,10 +74,10 @@ class TestATeachingLinkGrantsReach:
         school = _org(db_session, "Medical School")
         trust = _org(db_session, "Trust")
         student = _person(db_session, "student")
-        add_organisation_member(db_session, school.id, student.id, "trainee")
-        _link(db_session, school.org_unit_id, trust.org_unit_id, "teaches_at")
+        add_place_member(db_session, school.id, student.id, "trainee")
+        _link(db_session, school.id, trust.id, "teaches_at")
 
-        assert get_reachable_org_ids(db_session, student.id) == sorted(
+        assert get_reachable_place_ids(db_session, student.id) == sorted(
             [school.id, trust.id]
         )
 
@@ -98,9 +97,9 @@ class TestATeachingLinkGrantsReach:
             )
         )
         db_session.commit()
-        _link(db_session, classroom.id, trust.org_unit_id, "teaches_at")
+        _link(db_session, classroom.id, trust.id, "teaches_at")
 
-        assert trust.id in get_reachable_org_ids(db_session, student.id)
+        assert trust.id in get_reachable_place_ids(db_session, student.id)
 
     def test_a_link_one_ward_made_is_not_the_whole_organisation_s(
         self, db_session
@@ -115,19 +114,19 @@ class TestATeachingLinkGrantsReach:
         trust = _org(db_session, "Trust")
         classroom = _ward(db_session, school, "Classroom")
         student = _person(db_session, "student")
-        add_organisation_member(db_session, school.id, student.id, "trainee")
-        _link(db_session, classroom.id, trust.org_unit_id, "teaches_at")
+        add_place_member(db_session, school.id, student.id, "trainee")
+        _link(db_session, classroom.id, trust.id, "teaches_at")
 
-        assert get_reachable_org_ids(db_session, student.id) == [school.id]
+        assert get_reachable_place_ids(db_session, student.id) == [school.id]
 
     def test_other_relations_add_nothing(self, db_session):
         school = _org(db_session, "Medical School")
         trust = _org(db_session, "Trust")
         student = _person(db_session, "student")
-        add_organisation_member(db_session, school.id, student.id, "trainee")
-        _link(db_session, school.org_unit_id, trust.org_unit_id, "hosts")
+        add_place_member(db_session, school.id, student.id, "trainee")
+        _link(db_session, school.id, trust.id, "hosts")
 
-        assert get_reachable_org_ids(db_session, student.id) == [school.id]
+        assert get_reachable_place_ids(db_session, student.id) == [school.id]
 
     def test_a_link_pointing_the_other_way_does_not_let_you_in(
         self, db_session
@@ -140,10 +139,10 @@ class TestATeachingLinkGrantsReach:
         school = _org(db_session, "Medical School")
         trust = _org(db_session, "Trust")
         consultant = _person(db_session, "consultant")
-        add_organisation_member(db_session, trust.id, consultant.id, "staff")
-        _link(db_session, school.org_unit_id, trust.org_unit_id, "teaches_at")
+        add_place_member(db_session, trust.id, consultant.id, "staff")
+        _link(db_session, school.id, trust.id, "teaches_at")
 
-        assert get_reachable_org_ids(db_session, consultant.id) == [trust.id]
+        assert get_reachable_place_ids(db_session, consultant.id) == [trust.id]
 
     def test_reach_does_not_chain(self, db_session):
         """One hop. Two would make reach depend on a path nobody drew."""
@@ -151,11 +150,11 @@ class TestATeachingLinkGrantsReach:
         trust = _org(db_session, "Trust")
         further = _org(db_session, "Another Trust")
         student = _person(db_session, "student")
-        add_organisation_member(db_session, school.id, student.id, "trainee")
-        _link(db_session, school.org_unit_id, trust.org_unit_id, "teaches_at")
-        _link(db_session, trust.org_unit_id, further.org_unit_id, "teaches_at")
+        add_place_member(db_session, school.id, student.id, "trainee")
+        _link(db_session, school.id, trust.id, "teaches_at")
+        _link(db_session, trust.id, further.id, "teaches_at")
 
-        reachable = get_reachable_org_ids(db_session, student.id)
+        reachable = get_reachable_place_ids(db_session, student.id)
         assert trust.id in reachable
         assert further.id not in reachable
 
@@ -165,10 +164,10 @@ class TestALinkConfersNothingElse:
         school = _org(db_session, "Medical School")
         trust = _org(db_session, "Trust")
         student = _person(db_session, "student")
-        add_organisation_member(db_session, school.id, student.id, "trainee")
-        _link(db_session, school.org_unit_id, trust.org_unit_id, "teaches_at")
+        add_place_member(db_session, school.id, student.id, "trainee")
+        _link(db_session, school.id, trust.id, "teaches_at")
 
-        assert get_member_org_ids(db_session, student.id) == [school.id]
+        assert get_member_place_ids(db_session, student.id) == [school.id]
 
     def test_it_does_not_let_you_administer_the_other_place(
         self, authenticated_admin_client, db_session, test_admin
@@ -177,10 +176,10 @@ class TestALinkConfersNothingElse:
         links. That separation is why the two lookups exist."""
         school = _org(db_session, "Medical School")
         trust = _org(db_session, "Trust")
-        add_organisation_member(db_session, school.id, test_admin.id, "staff")
-        _link(db_session, school.org_unit_id, trust.org_unit_id, "teaches_at")
+        add_place_member(db_session, school.id, test_admin.id, "staff")
+        _link(db_session, school.id, trust.id, "teaches_at")
 
-        resp = authenticated_admin_client.get(f"/api/organisations/{trust.id}")
+        resp = authenticated_admin_client.get(f"/api/org-units/{trust.id}")
 
         assert resp.status_code == 404
 
@@ -188,6 +187,6 @@ class TestALinkConfersNothingElse:
         school = _org(db_session, "Medical School")
         _org(db_session, "Trust")
         student = _person(db_session, "student")
-        add_organisation_member(db_session, school.id, student.id, "trainee")
+        add_place_member(db_session, school.id, student.id, "trainee")
 
-        assert get_reachable_org_ids(db_session, student.id) == [school.id]
+        assert get_reachable_place_ids(db_session, student.id) == [school.id]

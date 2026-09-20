@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
-import { renderWithMantine } from "@test/test-utils";
+import { renderWithMantine, remToPx } from "@test/test-utils";
 import userEvent from "@testing-library/user-event";
 import NavigationDrawer from "./NavigationDrawer";
 
@@ -92,7 +92,7 @@ describe("NavigationDrawer Component", () => {
         </NavigationDrawer>,
       );
       const paper = container.querySelector("#app-navbar");
-      expect(paper).toHaveStyle({ width: "16.25rem" });
+      expect(paper).toHaveStyle({ width: remToPx("16.25rem") });
     });
 
     it("accepts custom width", () => {
@@ -103,7 +103,7 @@ describe("NavigationDrawer Component", () => {
         </NavigationDrawer>,
       );
       const paper = container.querySelector("#app-navbar");
-      expect(paper).toHaveStyle({ width: customWidth });
+      expect(paper).toHaveStyle({ width: remToPx(customWidth) });
     });
   });
 

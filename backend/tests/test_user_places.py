@@ -4,9 +4,8 @@ It used to say it twice: `organisation_ids`, counting in organisation
 ids, and `site_ids`, counting in place ids. Two vocabularies for one
 question, and the same number meaning different things in each.
 
-`place_ids` is the one list. Both older fields still work, so a tab left
-open across the deploy keeps working; they are retired in a later step,
-which is why a request may use one vocabulary or the other but not both.
+`place_ids` is the one list, and now the only one: the two older fields
+arrived, overlapped, and have been retired.
 """
 
 from __future__ import annotations
@@ -16,14 +15,14 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Organisation, OrgUnit, User, org_unit_member
-from app.organisations import add_organisation_member
+from app.models import OrgUnit, User, org_unit_member
+from app.organisations import add_place_member
 from app.security import hash_password
 
 
 @pytest.fixture
-def org(db_session: Session) -> Organisation:
-    organisation = Organisation(name="Own Trust", type="hospital_team")
+def org(db_session: Session) -> OrgUnit:
+    organisation = OrgUnit(name="Own Trust", type="hospital_team")
     db_session.add(organisation)
     db_session.commit()
     db_session.refresh(organisation)
@@ -31,8 +30,8 @@ def org(db_session: Session) -> Organisation:
 
 
 @pytest.fixture
-def ward(db_session: Session, org: Organisation) -> OrgUnit:
-    place = OrgUnit(name="Ward 9", type="ward", parent_id=org.org_unit_id)
+def ward(db_session: Session, org: OrgUnit) -> OrgUnit:
+    place = OrgUnit(name="Ward 9", type="ward", parent_id=org.id)
     db_session.add(place)
     db_session.commit()
     db_session.refresh(place)
@@ -42,12 +41,10 @@ def ward(db_session: Session, org: Organisation) -> OrgUnit:
 @pytest.fixture
 def other_ward(db_session: Session) -> OrgUnit:
     """A ward in a tree the admin has nothing to do with."""
-    other = Organisation(name="Other Trust", type="hospital_team")
+    other = OrgUnit(name="Other Trust", type="hospital_team")
     db_session.add(other)
     db_session.commit()
-    place = OrgUnit(
-        name="Their Ward", type="ward", parent_id=other.org_unit_id
-    )
+    place = OrgUnit(name="Their Ward", type="ward", parent_id=other.id)
     db_session.add(place)
     db_session.commit()
     db_session.refresh(place)
@@ -81,17 +78,17 @@ class TestCreating:
         self,
         authenticated_superadmin_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         ward: OrgUnit,
     ) -> None:
         resp = authenticated_superadmin_client.post(
             "/api/users",
-            json=_new_user(place_ids=[org.org_unit_id, ward.id]),
+            json=_new_user(place_ids=[org.id, ward.id]),
         )
 
         assert resp.status_code == 200, resp.text
         assert set(_places_of(db_session, resp.json()["id"])) == {
-            org.org_unit_id,
+            org.id,
             ward.id,
         }
 
@@ -99,7 +96,7 @@ class TestCreating:
         self,
         authenticated_superadmin_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         ward: OrgUnit,
     ) -> None:
         """What each of the two older lists did, kept exactly.
@@ -109,11 +106,11 @@ class TestCreating:
         """
         resp = authenticated_superadmin_client.post(
             "/api/users",
-            json=_new_user(place_ids=[org.org_unit_id, ward.id]),
+            json=_new_user(place_ids=[org.id, ward.id]),
         )
 
         places = _places_of(db_session, resp.json()["id"])
-        root_id = org.org_unit_id
+        root_id = org.id
         assert root_id is not None
         assert places[root_id] == "staff"
         assert places[ward.id] == "trainee"
@@ -122,12 +119,12 @@ class TestCreating:
         self,
         authenticated_admin_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         other_ward: OrgUnit,
         test_admin: User,
     ) -> None:
         """404, so the answer does not confirm that the place exists."""
-        add_organisation_member(db_session, org.id, test_admin.id, "staff")
+        add_place_member(db_session, org.id, test_admin.id, "staff")
         db_session.commit()
 
         resp = authenticated_admin_client.post(
@@ -135,41 +132,6 @@ class TestCreating:
         )
 
         assert resp.status_code == 404, resp.text
-
-    def test_both_vocabularies_at_once_are_refused(
-        self,
-        authenticated_superadmin_client: TestClient,
-        org: Organisation,
-        ward: OrgUnit,
-    ) -> None:
-        """The same number means different things in each list."""
-        resp = authenticated_superadmin_client.post(
-            "/api/users",
-            json=_new_user(
-                organisation_ids=[org.id], place_ids=[org.org_unit_id]
-            ),
-        )
-
-        assert resp.status_code == 422, resp.text
-
-    def test_the_older_lists_still_work(
-        self,
-        authenticated_superadmin_client: TestClient,
-        db_session: Session,
-        org: Organisation,
-        ward: OrgUnit,
-    ) -> None:
-        """A tab left open across the deploy keeps working."""
-        resp = authenticated_superadmin_client.post(
-            "/api/users",
-            json=_new_user(organisation_ids=[org.id], site_ids=[ward.id]),
-        )
-
-        assert resp.status_code == 200, resp.text
-        assert set(_places_of(db_session, resp.json()["id"])) == {
-            org.org_unit_id,
-            ward.id,
-        }
 
 
 class TestChanging:
@@ -192,13 +154,13 @@ class TestChanging:
         self,
         authenticated_superadmin_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         ward: OrgUnit,
         person: User,
     ) -> None:
         authenticated_superadmin_client.patch(
             f"/api/users/{person.id}",
-            json={"place_ids": [org.org_unit_id, ward.id]},
+            json={"place_ids": [org.id, ward.id]},
         )
 
         resp = authenticated_superadmin_client.patch(
@@ -212,11 +174,11 @@ class TestChanging:
         self,
         authenticated_superadmin_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         person: User,
     ) -> None:
         authenticated_superadmin_client.patch(
-            f"/api/users/{person.id}", json={"place_ids": [org.org_unit_id]}
+            f"/api/users/{person.id}", json={"place_ids": [org.id]}
         )
 
         authenticated_superadmin_client.patch(
@@ -229,7 +191,7 @@ class TestChanging:
         self,
         authenticated_admin_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         ward: OrgUnit,
         other_ward: OrgUnit,
         person: User,
@@ -241,9 +203,9 @@ class TestChanging:
         empty somebody's memberships at another by saving a form they
         could not even read.
         """
-        add_organisation_member(db_session, org.id, test_admin.id, "staff")
+        add_place_member(db_session, org.id, test_admin.id, "staff")
         # The person is in both trusts. The admin can see one of them.
-        add_organisation_member(db_session, org.id, person.id, "staff")
+        add_place_member(db_session, org.id, person.id, "staff")
         db_session.execute(
             org_unit_member.insert().values(
                 org_unit_id=other_ward.id,
@@ -269,15 +231,15 @@ class TestReading:
         self,
         authenticated_superadmin_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
         ward: OrgUnit,
     ) -> None:
         created = authenticated_superadmin_client.post(
             "/api/users",
-            json=_new_user(place_ids=[org.org_unit_id, ward.id]),
+            json=_new_user(place_ids=[org.id, ward.id]),
         )
         user_id = created.json()["id"]
 
         resp = authenticated_superadmin_client.get(f"/api/users/{user_id}")
 
-        assert set(resp.json()["place_ids"]) == {org.org_unit_id, ward.id}
+        assert set(resp.json()["place_ids"]) == {org.id, ward.id}
