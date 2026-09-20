@@ -8,6 +8,7 @@
 import Admin from "@/components/admin";
 import { useAuth } from "@/auth/AuthContext";
 import { api } from "@/lib/api";
+import { orgUnits } from "@/domains/orgUnit";
 import { FHIR_POLLING_TIME } from "@/lib/constants";
 import { useEffect, useState } from "react";
 
@@ -187,12 +188,13 @@ export default function AdminPage() {
 
       try {
         setOrganisationsLoading(true);
-        const response = await api.get<{
-          organisations: Array<{ id: number }>;
-        }>("/organisations");
+        // The organisations are the places at the top of a tree, which
+        // is what the admin screens have counted since they moved onto
+        // the place surface.
+        const organisations = await orgUnits.list({ roots: true });
 
         if (!cancelled) {
-          setOrganisationCount(response.organisations.length);
+          setOrganisationCount(organisations.length);
         }
       } catch (error) {
         console.error("Failed to fetch organisations:", error);

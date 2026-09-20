@@ -65,7 +65,7 @@ describe("AdminOrganisationsPage", () => {
 
   describe("Page layout", () => {
     it("displays page title", async () => {
-      vi.spyOn(apiLib.api, "get").mockResolvedValue({ organisations: [] });
+      vi.spyOn(apiLib.api, "get").mockResolvedValue({ org_units: [] });
 
       renderWithRouter(<AdminOrganisationsPage />, {
         initialRoute: "/admin/organisations",
@@ -77,7 +77,7 @@ describe("AdminOrganisationsPage", () => {
     });
 
     it("does not display add organisation button for admin", async () => {
-      vi.spyOn(apiLib.api, "get").mockResolvedValue({ organisations: [] });
+      vi.spyOn(apiLib.api, "get").mockResolvedValue({ org_units: [] });
 
       renderWithRouter(<AdminOrganisationsPage />, {
         initialRoute: "/admin/organisations",
@@ -101,7 +101,7 @@ describe("AdminOrganisationsPage", () => {
         reload: vi.fn(),
       });
 
-      vi.spyOn(apiLib.api, "get").mockResolvedValue({ organisations: [] });
+      vi.spyOn(apiLib.api, "get").mockResolvedValue({ org_units: [] });
 
       renderWithRouter(<AdminOrganisationsPage />, {
         initialRoute: "/admin/organisations",
@@ -120,6 +120,10 @@ describe("AdminOrganisationsPage", () => {
           id: 1,
           name: "Test Hospital",
           type: "hospital",
+          type_display_name: "Hospital",
+          is_root: true,
+          parent_id: null,
+          is_active: true,
           location: "London, UK",
           created_at: "2024-01-15T10:00:00Z",
           updated_at: "2024-01-15T10:00:00Z",
@@ -128,6 +132,10 @@ describe("AdminOrganisationsPage", () => {
           id: 2,
           name: "Test Clinic",
           type: "clinic",
+          type_display_name: "Clinic",
+          is_root: true,
+          parent_id: null,
+          is_active: true,
           location: "Manchester, UK",
           created_at: "2024-02-20T14:30:00Z",
           updated_at: "2024-02-20T14:30:00Z",
@@ -135,7 +143,7 @@ describe("AdminOrganisationsPage", () => {
       ];
 
       vi.spyOn(apiLib.api, "get").mockResolvedValue({
-        organisations: mockOrganisations,
+        org_units: mockOrganisations,
       });
 
       renderWithRouter(<AdminOrganisationsPage />, {
@@ -152,12 +160,16 @@ describe("AdminOrganisationsPage", () => {
       });
     });
 
-    it("formats organisation type correctly", async () => {
+    it("shows the name the server gives the type", async () => {
       const mockOrganisations = [
         {
           id: 1,
           name: "Test Practice",
           type: "general_practice",
+          type_display_name: "General practice",
+          is_root: true,
+          parent_id: null,
+          is_active: true,
           location: null,
           created_at: "2024-01-15T10:00:00Z",
           updated_at: "2024-01-15T10:00:00Z",
@@ -165,7 +177,7 @@ describe("AdminOrganisationsPage", () => {
       ];
 
       vi.spyOn(apiLib.api, "get").mockResolvedValue({
-        organisations: mockOrganisations,
+        org_units: mockOrganisations,
       });
 
       renderWithRouter(<AdminOrganisationsPage />, {
@@ -173,7 +185,10 @@ describe("AdminOrganisationsPage", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText("General Practice")).toBeInTheDocument();
+        // The server names the type now. The page used to guess at it by
+        // title-casing the stored value, which meant two places could
+        // disagree about what a kind of place is called.
+        expect(screen.getByText("General practice")).toBeInTheDocument();
       });
     });
 
@@ -183,14 +198,20 @@ describe("AdminOrganisationsPage", () => {
           id: 1,
           name: "Test Org",
           type: "clinic",
-          location: null,
+          type_display_name: "Clinic",
+          is_root: true,
+          parent_id: null,
+          is_active: true,
+          // The server sends an empty string rather than nothing at all,
+          // so the page has one absent value to handle instead of two.
+          location: "",
           created_at: "2024-01-15T10:00:00Z",
           updated_at: "2024-01-15T10:00:00Z",
         },
       ];
 
       vi.spyOn(apiLib.api, "get").mockResolvedValue({
-        organisations: mockOrganisations,
+        org_units: mockOrganisations,
       });
 
       renderWithRouter(<AdminOrganisationsPage />, {
@@ -203,7 +224,7 @@ describe("AdminOrganisationsPage", () => {
     });
 
     it("shows empty state when no organisations", async () => {
-      vi.spyOn(apiLib.api, "get").mockResolvedValue({ organisations: [] });
+      vi.spyOn(apiLib.api, "get").mockResolvedValue({ org_units: [] });
 
       renderWithRouter(<AdminOrganisationsPage />, {
         initialRoute: "/admin/organisations",
@@ -223,6 +244,10 @@ describe("AdminOrganisationsPage", () => {
           id: 1,
           name: "Test Hospital",
           type: "hospital",
+          type_display_name: "Hospital",
+          is_root: true,
+          parent_id: null,
+          is_active: true,
           location: "London",
           created_at: "2024-01-15T10:00:00Z",
           updated_at: "2024-01-15T10:00:00Z",
@@ -230,7 +255,7 @@ describe("AdminOrganisationsPage", () => {
       ];
 
       vi.spyOn(apiLib.api, "get").mockResolvedValue({
-        organisations: mockOrganisations,
+        org_units: mockOrganisations,
       });
 
       renderWithRouter(<AdminOrganisationsPage />, {
@@ -262,7 +287,7 @@ describe("AdminOrganisationsPage", () => {
       });
 
       const user = userEvent.setup();
-      vi.spyOn(apiLib.api, "get").mockResolvedValue({ organisations: [] });
+      vi.spyOn(apiLib.api, "get").mockResolvedValue({ org_units: [] });
 
       renderWithRouter(<AdminOrganisationsPage />, {
         initialRoute: "/admin/organisations",

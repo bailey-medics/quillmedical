@@ -32,11 +32,16 @@ from sqlalchemy import (
     String,
     Table,
     UniqueConstraint,
-    text,
+    delete,
+    event,
+    insert,
+    update,
 )
+from sqlalchemy.engine import Connection
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
+    Mapper,
     mapped_column,
     relationship,
     validates,
@@ -44,6 +49,8 @@ from sqlalchemy.orm import (
 
 from app.cbac.base_professions import resolve_user_competencies
 from app.cbac.competencies import validate_competency_ids
+from app.org_units.relations import validate_org_unit_relation
+from app.org_units.types import ORGANISATION_TYPE, ROOT_TYPE_IDS
 
 
 class Base(DeclarativeBase):
@@ -206,42 +213,18 @@ class PatientMetadata(Base):
     )
 
 
-organisation_member = Table(
-    "organisation_member",
+org_unit_patient_member = Table(
+    "org_unit_patient_member",
     Base.metadata,
-    Column(
-        "organisation_id", ForeignKey("organisations.id"), primary_key=True
-    ),
-    Column("user_id", ForeignKey("users.id"), primary_key=True),
-    # Least privilege: an insert that forgets to say gets the narrower
-    # capacity, not the wider one. A row wrongly marked trainee loses access
-    # and someone complains; a row wrongly marked staff keeps access nobody
-    # notices, which is the failure that does not announce itself.
-    Column("capacity", String(50), nullable=False, server_default="trainee"),
-)
-"""Association table: who is at an organisation, and in what capacity.
-
-Named ``organisation_member`` rather than ``organisation_member``
-because not everyone in it is staff. Registration put teaching delegates
-here so that anything outside teaching could find them, and with only two
-columns nothing could tell a student from a consultant — so the admin page
-listed them together and the messaging self-join check had to fall back on
-asking what platform level someone held.
-
-Membership answers *where is this person*. What they may do there is a
-practising competency, and who holds a post is a ``Position``.
-"""
-
-
-organisation_patient_member = Table(
-    "organisation_patient_member",
-    Base.metadata,
-    Column(
-        "organisation_id", ForeignKey("organisations.id"), primary_key=True
-    ),
+    Column("org_unit_id", ForeignKey("org_unit.id"), primary_key=True),
     Column("patient_id", String(255), primary_key=True),
 )
-"""Association table for many-to-many relationship between organisations and patients."""
+"""Association table: which patients a place is responsible for.
+
+The place is an organisation's own row in the tree. Whether a patient
+list may ever hang below a root is a product decision rather than a
+schema one; nothing stops it here.
+"""
 
 
 class Organisation(Base):
@@ -256,9 +239,12 @@ class Organisation(Base):
         type: Organisation type (hospital_team, gp_practice, private_clinic,
             department, teaching_establishment).
         location: Optional location/address information.
+        org_unit_id: The row in the org_unit tree that stands for this
+            organisation — its root. Every site it is accountable for
+            hangs beneath that row. Nullable only until the backfill has
+            given every organisation one.
         created_at: Timestamp when organisation was created.
         updated_at: Timestamp when organisation was last updated.
-        staff_members: List of users (staff) who belong to this organisation.
     """
 
     __tablename__ = "organisations"
@@ -269,6 +255,12 @@ class Organisation(Base):
         String(50), nullable=False, default="hospital_team"
     )
     location: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    org_unit_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("org_unit.id", ondelete="SET NULL"),
+        nullable=True,
+        unique=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
@@ -281,20 +273,19 @@ class Organisation(Base):
         nullable=False,
     )
 
-    # Many-to-many relationship to users (staff members)
-    staff_members: Mapped[list[User]] = relationship(
-        secondary=organisation_member,
-        backref="organisations",
+    # One-to-many relationship to enabled features, reached through the
+    # organisation's own row in the tree. Read-only: writes go through the
+    # feature rows themselves, which name the place.
+    features: Mapped[list[OrgUnitFeature]] = relationship(
+        primaryjoin=(
+            "foreign(OrgUnitFeature.org_unit_id)"
+            " == Organisation.org_unit_id"
+        ),
+        viewonly=True,
     )
 
-    # One-to-many relationship to enabled features
-    features: Mapped[list[OrganisationFeature]] = relationship(
-        back_populates="organisation",
-        cascade="all, delete-orphan",
-    )
 
-
-class OrganisationFeature(Base):
+class OrgUnitFeature(Base):
     """Feature flag for an organisation.
 
     Row existence = feature is enabled. Deleting the row disables the
@@ -303,26 +294,34 @@ class OrganisationFeature(Base):
 
     Attributes:
         id: Primary key.
-        organisation_id: FK to the owning organisation.
+        org_unit_id: FK to the place the feature is enabled at, which is
+            an organisation's own row in the tree. Nullable in the column
+            type only: the check constraint requires it, which is how a
+            required column is added to a populated table without a
+            server default that would make no sense for an id.
         feature_key: Feature identifier (e.g. "epr", "teaching").
         enabled_at: When the feature was enabled.
         enabled_by: FK to the user who enabled it.
     """
 
-    __tablename__ = "organisation_features"
+    __tablename__ = "org_unit_feature"
     __table_args__ = (
         UniqueConstraint(
-            "organisation_id",
+            "org_unit_id",
             "feature_key",
-            name="uq_org_feature",
+            name="uq_org_unit_feature",
+        ),
+        CheckConstraint(
+            "org_unit_id IS NOT NULL",
+            name="ck_org_unit_feature_place_required",
         ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    organisation_id: Mapped[int] = mapped_column(
+    org_unit_id: Mapped[int | None] = mapped_column(
         Integer,
-        ForeignKey("organisations.id", ondelete="CASCADE"),
-        nullable=False,
+        ForeignKey("org_unit.id", ondelete="CASCADE"),
+        nullable=True,
         index=True,
     )
     feature_key: Mapped[str] = mapped_column(
@@ -339,17 +338,15 @@ class OrganisationFeature(Base):
         nullable=True,
     )
 
-    organisation: Mapped[Organisation] = relationship(
-        back_populates="features",
-    )
+    org_unit: Mapped[OrgUnit | None] = relationship()
     enabled_by_user: Mapped[User | None] = relationship(
         foreign_keys=[enabled_by],
         lazy="joined",
     )
 
 
-message_organisation = Table(
-    "message_organisation",
+message_org_unit = Table(
+    "message_org_unit",
     Base.metadata,
     Column(
         "conversation_id",
@@ -357,12 +354,18 @@ message_organisation = Table(
         primary_key=True,
     ),
     Column(
-        "organisation_id",
-        ForeignKey("organisations.id", ondelete="CASCADE"),
+        "org_unit_id",
+        ForeignKey("org_unit.id", ondelete="CASCADE"),
         primary_key=True,
     ),
 )
-"""Association table linking conversations to organisations."""
+"""Association table linking conversations to places.
+
+The place is an organisation's own row in the tree. The column was
+renamed rather than repointed in silence: it holds a different number
+than it used to, and a call site that had not been moved across would
+otherwise have matched a different place without saying so.
+"""
 
 
 class ExternalPatientAccess(Base):
@@ -480,8 +483,12 @@ class Conversation(Base):
         back_populates="conversation",
         cascade="all, delete-orphan",
     )
-    organisations: Mapped[list[Organisation]] = relationship(
-        secondary=message_organisation,
+    # The places a conversation belongs to: an organisation's own row in
+    # the tree. Named ``places`` rather than ``organisations`` because the
+    # rows hold a place id now, and a name that still said organisation
+    # would be a set of numbers that do not mean what the name says.
+    places: Mapped[list[OrgUnit]] = relationship(
+        secondary=message_org_unit,
     )
 
 
@@ -640,26 +647,9 @@ class PushSubscription(Base):
 
     user: Mapped[User] = relationship(foreign_keys=[user_id])
 
-
-# ------------------------------------------------------------------
-# Sites
-# ------------------------------------------------------------------
-
-organisation_site = Table(
-    "organisation_site",
-    Base.metadata,
-    Column(
-        "organisation_id",
-        ForeignKey("organisations.id", ondelete="CASCADE"),
-        primary_key=True,
-    ),
-    Column(
-        "site_id",
-        ForeignKey("sites.id", ondelete="CASCADE"),
-        primary_key=True,
-    ),
-)
-"""Association table: many-to-many between organisations and sites."""
+    # ------------------------------------------------------------------
+    # Sites
+    # ------------------------------------------------------------------
 
 
 # In what capacity someone is at a place, whether that place is an
@@ -718,22 +708,23 @@ def validate_platform_role(value: str) -> str:
         )
     return value
 
+    #: What relationship a person has to a place. Never a ranking and never a
+    #: permission check: what somebody may do comes from their competencies,
+    #: and this says only how they come to be here at all.
+    #:
+    #: ``external`` is for somebody who belongs to another place entirely and
+    #: is here for one purpose — a consultant from another trust invited to
+    #: sign off a trainee's competency. It has to be its own word rather than
+    #: reusing ``staff``: ``staff`` carries a live behavioural check, letting
+    #: a member self-join a conversation in ``messaging.py``, and a visiting
+    #: assessor should not gain that.
+    #:
+    #: ``patient`` is added alongside because the membership plan already
+    #: anticipates it. What it means in business logic is settled there, not
+    #: here — this only reserves the word so the two plans cannot each invent
+    #: a different one.
 
-#: What relationship a person has to a place. Never a ranking and never a
-#: permission check: what somebody may do comes from their competencies,
-#: and this says only how they come to be here at all.
-#:
-#: ``external`` is for somebody who belongs to another place entirely and
-#: is here for one purpose — a consultant from another trust invited to
-#: sign off a trainee's competency. It has to be its own word rather than
-#: reusing ``staff``: ``staff`` carries a live behavioural check, letting
-#: a member self-join a conversation in ``messaging.py``, and a visiting
-#: assessor should not gain that.
-#:
-#: ``patient`` is added alongside because the membership plan already
-#: anticipates it. What it means in business logic is settled there, not
-#: here — this only reserves the word so the two plans cannot each invent
-#: a different one.
+
 MEMBER_CAPACITIES: tuple[str, ...] = (
     "staff",
     "trainee",
@@ -771,12 +762,12 @@ def validate_site_capacity(value: str) -> str:
     return validate_member_capacity(value)
 
 
-site_member = Table(
-    "site_member",
+org_unit_member = Table(
+    "org_unit_member",
     Base.metadata,
     Column(
-        "site_id",
-        ForeignKey("sites.id", ondelete="CASCADE"),
+        "org_unit_id",
+        ForeignKey("org_unit.id", ondelete="CASCADE"),
         primary_key=True,
     ),
     Column(
@@ -784,9 +775,22 @@ site_member = Table(
         ForeignKey("users.id", ondelete="CASCADE"),
         primary_key=True,
     ),
-    Column("capacity", String(50), nullable=False),
+    # Least privilege, carried across from the organisation membership
+    # table as the two merged. An insert that forgets to say gets the narrower
+    # capacity, not the wider one: a row wrongly marked trainee loses
+    # access and someone complains; a row wrongly marked staff keeps
+    # access nobody notices, which is the failure that does not announce
+    # itself. This table had no default at all, so the merge would have
+    # quietly lost that behaviour.
+    Column("capacity", String(50), nullable=False, server_default="trainee"),
 )
-"""Association table: who is at a site, and in what capacity.
+"""Association table: who is at a place, and in what capacity.
+
+Keyed on a place in the tree, so a membership at an organisation is a row
+against that organisation's own row — the root — and a membership at a
+ward is a row against the ward. One table for both, because a trainee is
+the same kind of member at either, and two tables were two meanings of
+one word waiting to drift apart.
 
 Named ``site_member`` rather than ``site_staff_member`` because a third of
 its rows were never staff: ``register``, the public self-registration route,
@@ -798,12 +802,27 @@ lead among them, which is why ``clinical_lead`` is no longer a capacity.
 """
 
 
-class Site(Base):
+class OrgUnit(Base):
     """Physical or virtual location within the healthcare system.
 
-    Sites form a self-referential hierarchy (hospital > building > ward > room).
-    They link to organisations via a many-to-many relationship and can serve
-    both teaching (clinical lead governance) and clinical (EPR/trust) use cases.
+    Sites form a self-referential hierarchy (organisation > hospital >
+    building > ward > room). Each sits beneath exactly one parent, and can
+    serve both teaching (clinical lead governance) and clinical (EPR/trust)
+    use cases.
+
+    **One owner, not many.** A site used to be linked to any number of
+    organisations, which left three questions with no single answer: whose
+    features apply here, who the clinical lead is, and which admins may edit
+    it. Ownership is now the parent column alone, and a relationship that is
+    not ownership — a medical school teaching on a trust's wards — becomes a
+    typed link rather than a second owner.
+
+    **Organisations are rows in this table too**, carrying
+    ``type = "organisation"`` and no parent. What a row is comes from its
+    type and never from its position, so a body sitting above today's
+    organisations would need no schema change. The accountable organisation
+    for any place is found by walking up to the root; see
+    ``app/org_units/tree.py``.
 
     Attributes:
         id: Primary key.
@@ -816,13 +835,19 @@ class Site(Base):
         updated_at: Timestamp when site was last updated.
     """
 
-    __tablename__ = "sites"
+    __tablename__ = "org_unit"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     type: Mapped[str] = mapped_column(String(50), nullable=False)
     parent_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("sites.id", ondelete="SET NULL"), nullable=True
+        Integer,
+        ForeignKey("org_unit.id", ondelete="SET NULL"),
+        nullable=True,
+        # Every walk up or down the tree goes through this column, and
+        # scoping now walks it on every admin request. Only the name
+        # column was indexed, so a walk scanned the whole table.
+        index=True,
     )
     location: Mapped[str | None] = mapped_column(String(500), nullable=True)
     is_active: Mapped[bool] = mapped_column(
@@ -840,18 +865,240 @@ class Site(Base):
         nullable=False,
     )
 
-    parent: Mapped[Site | None] = relationship(
-        remote_side="Site.id",
+    parent: Mapped[OrgUnit | None] = relationship(
+        remote_side="OrgUnit.id",
         foreign_keys=[parent_id],
     )
-    organisations: Mapped[list[Organisation]] = relationship(
-        secondary=organisation_site,
-        backref="sites",
+
+
+class OrgUnitLink(Base):
+    """A relationship between two places that is not ownership.
+
+    Ownership is the parent column: one parent each, no cycles, and one
+    answer to who is accountable. A medical school teaching on a trust's
+    wards is a real relationship and not ownership, so it lives here
+    rather than becoming a second parent and splitting every governance
+    question into two answers.
+
+    Plays the part ``OrganizationAffiliation`` plays in FHIR and the
+    relationship codes play in NHS ODS. **A link confers no membership and
+    no admin rights.** What a relation may confer is declared beside it in
+    ``app/org_units/relations.py``, so a route asks the relation rather
+    than matching on its name.
+
+    Both ends point at ``sites``, which is the table the org_unit tree is
+    being built in: organisations become rows there in a later step, at
+    which point a school-to-trust link becomes expressible without this
+    table changing.
+
+    **Direction matters.** ``teaches_at`` from a school to a trust is not
+    the same fact as the reverse, so the pair is ordered and the same two
+    places may hold a link each way.
+
+    Attributes:
+        id: Primary key.
+        source_id: The place the relationship is *from*.
+        target_id: The place the relationship is *to*.
+        relation: A relation id from ``app/org_units/relations.py``.
+        created_by: Who recorded the link. Null once that user is deleted,
+            so the fact that somebody recorded it outlives the person.
+        created_at: When the link was recorded.
+    """
+
+    __tablename__ = "org_unit_link"
+    __table_args__ = (
+        UniqueConstraint(
+            "source_id",
+            "target_id",
+            "relation",
+            name="uq_org_unit_link_triple",
+        ),
+        CheckConstraint(
+            "source_id <> target_id",
+            name="ck_org_unit_link_not_self",
+        ),
     )
-    staff: Mapped[list[User]] = relationship(
-        secondary=site_member,
-        backref="sites",
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    source_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("org_unit.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
+    target_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("org_unit.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    relation: Mapped[str] = mapped_column(String(50), nullable=False)
+    created_by: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+
+    @validates("relation")
+    def _relation_known(self, _key: str, value: str) -> str:
+        """Refuse a relation the code does not define.
+
+        The list is in code rather than a database enum so it can grow
+        without a migration, which means the model is the only place that
+        can refuse an unknown value before it is stored.
+        """
+        return validate_org_unit_relation(value)
+
+        # ------------------------------------------------------------------
+        # Every organisation is a row in the tree as well
+        # ------------------------------------------------------------------
+        #
+        # An organisation is the root of its own tree: the row every place beneath
+        # it walks up to, and the thing that answers "who is accountable here". An
+        # organisation without one is invisible to the whole permission system —
+        # its sites reach no root, so nobody can administer them and nothing can be
+        # scoped to them.
+        #
+        # That is exactly the failure the plan warns about, so the invariant is
+        # held by the mapper rather than by remembering to call something. The two
+        # tables become one when the merge finishes, at which point this goes: a
+        # row cannot fail to be itself.
+
+
+@event.listens_for(Organisation, "before_insert")
+def _give_every_organisation_a_root(
+    _mapper: Mapper[Organisation],
+    connection: Connection,
+    target: Organisation,
+) -> None:
+    """Create the tree row a new organisation stands for.
+
+    Writes through the connection rather than the session, so the row
+    exists before the organisation that points at it.
+    """
+    if target.org_unit_id is not None:
+        return
+
+    now = datetime.now(UTC)
+    target.org_unit_id = connection.execute(
+        insert(OrgUnit)
+        .values(
+            name=target.name,
+            type=_kind_of(target),
+            location=target.location,
+            is_active=True,
+            created_at=now,
+            updated_at=now,
+        )
+        .returning(OrgUnit.id)
+    ).scalar_one()
+
+
+def _kind_of(organisation: Organisation) -> str:
+    """What kind of place an organisation's tree row is.
+
+    The kinds of organisation — a practice, a teaching establishment —
+    are types of place now, so the tree row can say which one it is
+    rather than every root looking alike. A kind the tree does not know
+    falls back to the plain one, because a row that cannot be created is
+    worse than a row that is less specific than it could be.
+    """
+    kind = organisation.type or ORGANISATION_TYPE
+    return kind if kind in ROOT_TYPE_IDS else ORGANISATION_TYPE
+
+
+@event.listens_for(Organisation, "before_update")
+def _keep_the_root_in_step(
+    _mapper: Mapper[Organisation],
+    connection: Connection,
+    target: Organisation,
+) -> None:
+    """Carry a renamed or moved organisation through to its tree row.
+
+    The tree row carries its own name and location so that the tree reads
+    correctly on its own. Two copies of a name drift apart unless one
+    follows the other, and the organisation is the one people edit.
+    """
+    if target.org_unit_id is None:
+        return
+
+    connection.execute(
+        update(OrgUnit)
+        .where(OrgUnit.id == target.org_unit_id)
+        .values(
+            name=target.name,
+            type=_kind_of(target),
+            location=target.location,
+            updated_at=datetime.now(UTC),
+        )
+    )
+
+
+@event.listens_for(Organisation, "after_delete")
+def _remove_the_root_with_it(
+    _mapper: Mapper[Organisation],
+    connection: Connection,
+    target: Organisation,
+) -> None:
+    """Take the organisation's tree row away when the organisation goes.
+
+    Leaving it behind would leave a root standing for nobody, which every
+    walk up the tree would then resolve to no organisation at all — a
+    place that exists, has members, and is accountable to nothing.
+
+    The places beneath it are detached rather than deleted, which matches
+    what deleting an organisation did before the tree existed. Whatever
+    hung off the organisation's own place — its members, its features, its
+    patient list, its conversations, who may practise there and the posts
+    it holds — goes with it.
+
+    All of it is written out rather than left to the foreign keys, which
+    would do the same job in Postgres. The unit-test database does not
+    enforce foreign keys, so leaving it to the database would make the
+    behaviour true only in production, which is the half of a delete
+    nobody notices is missing.
+    """
+    if target.org_unit_id is None:
+        return
+
+    place_id = target.org_unit_id
+
+    connection.execute(
+        update(OrgUnit)
+        .where(OrgUnit.parent_id == place_id)
+        .values(parent_id=None)
+    )
+    for table in (
+        org_unit_member,
+        org_unit_patient_member,
+        message_org_unit,
+    ):
+        connection.execute(
+            table.delete().where(table.c.org_unit_id == place_id)
+        )
+    connection.execute(
+        delete(OrgUnitFeature).where(OrgUnitFeature.org_unit_id == place_id)
+    )
+    connection.execute(
+        delete(PractisingCompetency).where(
+            PractisingCompetency.org_unit_id == place_id
+        )
+    )
+    connection.execute(
+        delete(Position).where(Position.org_unit_id == place_id)
+    )
+    connection.execute(
+        delete(OrgUnitLink).where(
+            (OrgUnitLink.source_id == place_id)
+            | (OrgUnitLink.target_id == place_id)
+        )
+    )
+    connection.execute(delete(OrgUnit).where(OrgUnit.id == place_id))
 
 
 class PractisingCompetency(Base):
@@ -873,14 +1120,20 @@ class PractisingCompetency(Base):
     state, so practice cannot be silently withdrawn without removing the row
     that says who authorised it.
 
-    **Exactly one of organisation_id and site_id is set**, enforced by
-    ``ck_practising_competency_one_place``. A shared "places" table was
-    considered and rejected: it would need a row for every organisation and
-    site forever, and a missed one makes that place invisible to the whole
-    permission system.
+    **One place column, and it is required**, enforced by
+    ``ck_practising_competency_place_required``. It used to be a pair of
+    columns with exactly one of them set, because organisations and sites
+    were different tables. They are one table now, so the pair, the check
+    that policed it and the two partial unique indexes it forced all go.
+
+    The objection once raised against a shared "places" table — that it
+    would need a row for every organisation and site forever, and a missed
+    one makes that place invisible to the whole permission system — does
+    not apply: every place is a row by construction, because there is
+    nowhere else for it to be.
 
     Nothing is inherited. A row at an organisation says nothing about its
-    sites, and one at a site says nothing about its organisation — so a ward
+    wards, and one at a ward says nothing about its organisation — so a ward
     manager can administer their ward without trust-wide authority, and "why
     could this person do that?" is answered by one row rather than by
     replaying a hierarchy.
@@ -888,8 +1141,11 @@ class PractisingCompetency(Base):
     Attributes:
         id: Primary key.
         user_id: The person.
-        organisation_id: The organisation, when the place is an organisation.
-        site_id: The site, when the place is a site.
+        org_unit_id: The place. An organisation's place is its own row in
+            the tree. Nullable in the column type only: the check
+            constraint requires it, which is how a required column is
+            added to a populated table without a server default that would
+            make no sense for an id.
         competency: A competency id from ``shared/competency-definitions/``.
         authorised_by: Who authorised practice here. Null once that user is
             deleted, so the fact it was authorised outlives the person who
@@ -900,43 +1156,24 @@ class PractisingCompetency(Base):
     __tablename__ = "practising_competency"
     __table_args__ = (
         CheckConstraint(
-            "(organisation_id IS NOT NULL) <> (site_id IS NOT NULL)",
-            name="ck_practising_competency_one_place",
+            "org_unit_id IS NOT NULL",
+            name="ck_practising_competency_place_required",
         ),
-        # Two partial unique indexes rather than one UniqueConstraint over
-        # all four columns. One of the place columns is always NULL, and SQL
-        # treats NULLs as distinct, so a four-column constraint never fires
-        # and the same row could be written twice. Declared for both
-        # dialects: the unit-test database is SQLite, where
-        # postgresql_where is silently ignored.
-        Index(
-            "uq_practising_competency_org",
+        # One ordinary unique constraint now that there is one place
+        # column. It used to be two partial unique indexes, because one of
+        # the two place columns was always NULL and SQL treats NULLs as
+        # distinct, so a constraint over all of them never fired.
+        UniqueConstraint(
             "user_id",
-            "organisation_id",
+            "org_unit_id",
             "competency",
-            unique=True,
-            postgresql_where=text("organisation_id IS NOT NULL"),
-            sqlite_where=text("organisation_id IS NOT NULL"),
-        ),
-        Index(
-            "uq_practising_competency_site",
-            "user_id",
-            "site_id",
-            "competency",
-            unique=True,
-            postgresql_where=text("site_id IS NOT NULL"),
-            sqlite_where=text("site_id IS NOT NULL"),
+            name="uq_practising_competency_org_unit",
         ),
         # Both directions the resolver asks: what may this person practise
         # here, and who here may practise this.
         Index(
-            "ix_practising_competency_org",
-            "organisation_id",
-            "competency",
-        ),
-        Index(
-            "ix_practising_competency_site",
-            "site_id",
+            "ix_practising_competency_org_unit",
+            "org_unit_id",
             "competency",
         ),
         Index("ix_practising_competency_user", "user_id"),
@@ -946,11 +1183,8 @@ class PractisingCompetency(Base):
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
-    organisation_id: Mapped[int | None] = mapped_column(
-        ForeignKey("organisations.id", ondelete="CASCADE"), nullable=True
-    )
-    site_id: Mapped[int | None] = mapped_column(
-        ForeignKey("sites.id", ondelete="CASCADE"), nullable=True
+    org_unit_id: Mapped[int | None] = mapped_column(
+        ForeignKey("org_unit.id", ondelete="CASCADE"), nullable=True
     )
     competency: Mapped[str] = mapped_column(String(100), nullable=False)
     authorised_by: Mapped[int | None] = mapped_column(
@@ -975,12 +1209,13 @@ class PractisingCompetency(Base):
         validate_competency_ids([value])
         return value
 
+        # The positions the application itself reasons about. A free string would
+        # repeat the competency-id mistake — a bare value nothing validates — and a
+        # YAML catalogue is not earned yet at this size. Display names live on the
+        # row, so an organisation can call its clinical lead something else without
+        # the code losing track of what the post is.
 
-# The positions the application itself reasons about. A free string would
-# repeat the competency-id mistake — a bare value nothing validates — and a
-# YAML catalogue is not earned yet at this size. Display names live on the
-# row, so an organisation can call its clinical lead something else without
-# the code losing track of what the post is.
+
 POSITION_KINDS: tuple[str, ...] = (
     "clinical_lead",
     "caldicott_guardian",
@@ -990,7 +1225,7 @@ POSITION_KINDS: tuple[str, ...] = (
 
 
 class Position(Base):
-    """A slot an organisation or site has, which may be vacant.
+    """A slot a place has, which may be vacant.
 
     The test that separates this from a competency is **can it be vacant?**
     "This site has no clinical lead" is a real and actionable state; a
@@ -1009,13 +1244,13 @@ class Position(Base):
     Holding is recorded separately, in ``PositionHolding``, so the slot
     outlives whoever fills it and the post's history is queryable.
 
-    **Exactly one of organisation_id and site_id is set**, matching
+    **One place column, and it is required**, matching
     ``PractisingCompetency`` and enforced the same way.
 
     Attributes:
         id: Primary key.
-        organisation_id: The organisation, when the place is an organisation.
-        site_id: The site, when the place is a site.
+        org_unit_id: The place. An organisation's place is its own row in
+            the tree.
         kind: One of ``POSITION_KINDS``.
         title: What this organisation calls it, for display.
         requires_competency: A competency the holder must have authorised at
@@ -1029,37 +1264,25 @@ class Position(Base):
     __tablename__ = "position"
     __table_args__ = (
         CheckConstraint(
-            "(organisation_id IS NOT NULL) <> (site_id IS NOT NULL)",
-            name="ck_position_one_place",
+            "org_unit_id IS NOT NULL",
+            name="ck_position_place_required",
         ),
         CheckConstraint(
             "max_holders IS NULL OR max_holders > 0",
             name="ck_position_max_holders_positive",
         ),
-        Index(
-            "uq_position_org_kind",
-            "organisation_id",
+        UniqueConstraint(
+            "org_unit_id",
             "kind",
-            unique=True,
-            postgresql_where=text("organisation_id IS NOT NULL"),
-            sqlite_where=text("organisation_id IS NOT NULL"),
-        ),
-        Index(
-            "uq_position_site_kind",
-            "site_id",
-            "kind",
-            unique=True,
-            postgresql_where=text("site_id IS NOT NULL"),
-            sqlite_where=text("site_id IS NOT NULL"),
+            name="uq_position_org_unit_kind",
         ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    organisation_id: Mapped[int | None] = mapped_column(
-        ForeignKey("organisations.id", ondelete="CASCADE"), nullable=True
-    )
-    site_id: Mapped[int | None] = mapped_column(
-        ForeignKey("sites.id", ondelete="CASCADE"), nullable=True
+    org_unit_id: Mapped[int | None] = mapped_column(
+        ForeignKey("org_unit.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
     )
     kind: Mapped[str] = mapped_column(String(50), nullable=False)
     title: Mapped[str] = mapped_column(String(100), nullable=False)

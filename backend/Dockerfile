@@ -92,6 +92,15 @@ RUN --mount=type=cache,target=/root/.cache/pypoetry \
         sleep 5; \
     done; \
     exit 1
+# Where passports live when no GCS bucket is configured, which is every
+# local run. `compose.dev.yml` mounts a named volume here; Docker copies
+# this directory's ownership onto an empty volume when it first mounts
+# it, so creating it as appuser is what makes the volume writable. The
+# container runs as uid 10001 and a bare named volume would arrive owned
+# by root, which is how a passport create came to fail with
+# `Permission denied: '/data'`. Dev stage only — production sets
+# PASSPORT_GCS_BUCKET and never touches this path.
+RUN mkdir -p /data/passports && chown -R appuser:appuser /data
 USER appuser
 # Copy the scripts directory into the dev image and set ownership to the unprivileged user.
 COPY --chown=appuser:appuser backend/scripts ./scripts

@@ -15,18 +15,17 @@ content without becoming staff of the trust.
 from __future__ import annotations
 
 import pytest
-from sqlalchemy import insert
+from sqlalchemy import insert, update
 from sqlalchemy.orm import Session
 
 from app.models import (
     Organisation,
-    Site,
+    OrgUnit,
     User,
-    organisation_member,
-    organisation_site,
-    site_member,
+    org_unit_member,
 )
 from app.organisations import (
+    add_organisation_member,
     get_member_org_ids,
     get_org_member_ids,
     get_org_staff_ids,
@@ -56,15 +55,15 @@ def _org(db: Session, name: str) -> Organisation:
     return org
 
 
-def _site(db: Session, name: str, org: Organisation | None = None) -> Site:
-    site = Site(name=name, type="ward")
+def _site(db: Session, name: str, org: Organisation | None = None) -> OrgUnit:
+    site = OrgUnit(name=name, type="ward")
     db.add(site)
     db.commit()
     if org is not None:
         db.execute(
-            insert(organisation_site).values(
-                organisation_id=org.id, site_id=site.id
-            )
+            update(OrgUnit)
+            .where(OrgUnit.id == site.id)
+            .values(parent_id=org.org_unit_id)
         )
         db.commit()
     return site
@@ -73,18 +72,16 @@ def _site(db: Session, name: str, org: Organisation | None = None) -> Site:
 def _join_org(
     db: Session, org: Organisation, user: User, capacity: str
 ) -> None:
-    db.execute(
-        insert(organisation_member).values(
-            organisation_id=org.id, user_id=user.id, capacity=capacity
-        )
-    )
+    add_organisation_member(db, org.id, user.id, capacity)
     db.commit()
 
 
-def _join_site(db: Session, site: Site, user: User, capacity: str) -> None:
+def _join_site(db: Session, site: OrgUnit, user: User, capacity: str) -> None:
     db.execute(
-        insert(site_member).values(
-            site_id=site.id, user_id=user.id, capacity=capacity
+        insert(org_unit_member).values(
+            org_unit_id=site.id,
+            user_id=user.id,
+            capacity=capacity,
         )
     )
     db.commit()
