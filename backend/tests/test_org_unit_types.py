@@ -18,7 +18,6 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from app.main import VALID_SITE_TYPES
 from app.org_units.types import (
     ORG_UNIT_TYPE_IDS,
     ORG_UNIT_TYPES,
@@ -61,13 +60,29 @@ def test_every_type_is_described() -> None:
         assert entry.description.strip()
 
 
+#: What the retired sites surface accepted as a type.
+#:
+#: A historical fact rather than configuration, so it is written here
+#: rather than imported: the list it came from went with the routes that
+#: validated against it.
+TYPES_A_SITE_COULD_ALREADY_HOLD = {
+    "hospital",
+    "building",
+    "ward",
+    "room",
+    "clinic",
+    "department",
+    "virtual",
+}
+
+
 def test_existing_site_vocabulary_is_covered() -> None:
     """Every type a site may already hold has to remain a valid type.
 
     A site type missing from this file would be a row the merge cannot
     carry across, found at migration time rather than now.
     """
-    assert VALID_SITE_TYPES <= set(ORG_UNIT_TYPE_IDS)
+    assert TYPES_A_SITE_COULD_ALREADY_HOLD <= set(ORG_UNIT_TYPE_IDS)
 
 
 def test_the_roots_are_the_kinds_of_organisation() -> None:
