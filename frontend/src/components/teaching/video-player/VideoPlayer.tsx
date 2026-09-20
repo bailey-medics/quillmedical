@@ -144,12 +144,16 @@ export default function VideoPlayer({
               onCanPlay={handleReady}
               onTimeUpdate={handleTimeUpdate}
             >
+              {/* No `default`: the track is offered in the player's
+                  own captions menu rather than switched on when the
+                  video loads. WCAG 2.1 AA asks that captions exist and
+                  can be turned on, not that they start on, and every
+                  player a learner already knows behaves this way. */}
               <track
                 kind="captions"
                 src={captionsUrl}
                 srcLang="en"
                 label="English"
-                default
               />
             </ReactPlayer>
           ) : (

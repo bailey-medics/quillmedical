@@ -110,6 +110,24 @@ describe("VideoPlayer", () => {
     expect(track).toHaveAttribute("kind", "captions");
   });
 
+  it("does not switch the captions on by itself", async () => {
+    // The track is offered in the player's menu rather than turned on
+    // when the video loads, which is how every player a learner
+    // already knows behaves. WCAG 2.1 AA asks that captions exist and
+    // can be turned on, not that they start on — so this is a
+    // preference, and the assertion exists to stop `default` drifting
+    // back in unnoticed.
+    const { container, findByTestId } = renderWithMantine(
+      <VideoPlayer
+        src="https://x.test/a.mp4"
+        captionsUrl="https://x.test/a.vtt"
+      />,
+    );
+
+    await findByTestId("react-player");
+    expect(container.querySelector("track")).not.toHaveAttribute("default");
+  });
+
   it("hands YouTube no children at all", async () => {
     // Not the same as "no track". react-player passes `children`
     // straight into the underlying custom element, and the YouTube one
