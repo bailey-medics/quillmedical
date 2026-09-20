@@ -89,7 +89,9 @@ class TestValidateClinicalLead:
         data = resp.json()
         assert data["valid"] is True
         assert data["site_name"] == site.name
-        assert data["organisation_id"] == org.id
+        # The organisation is named by its place now, and only by it.
+        assert data["org_unit_id"] == org.org_unit_id
+        assert "organisation_id" not in data
         assert data["site_id"] == site.id
 
     def test_valid_lead_case_insensitive(self, test_client, db_session):
@@ -233,7 +235,7 @@ class TestRegisterWithSiteMembership:
                 "email": "trainee@example.com",
                 "password": "Secure123!",
                 "full_name": "New Trainee",
-                "organisation_id": org.id,
+                "org_unit_id": org.org_unit_id,
                 "site_id": site.id,
             },
         )
@@ -269,7 +271,7 @@ class TestRegisterWithSiteMembership:
         assert site_row.capacity == "trainee"
 
     def test_register_site_without_org_fails(self, test_client, db_session):
-        """Providing site_id without organisation_id returns 400."""
+        """Providing site_id without org_unit_id returns 400."""
         _org, site, _lead = _setup_org_with_site_and_lead(db_session)
 
         resp = test_client.post(
@@ -282,7 +284,7 @@ class TestRegisterWithSiteMembership:
             },
         )
         assert resp.status_code == 400
-        assert "organisation_id required" in resp.json()["detail"]
+        assert "org_unit_id required" in resp.json()["detail"]
 
     def test_register_site_not_linked_to_org_fails(
         self, test_client, db_session
@@ -301,7 +303,7 @@ class TestRegisterWithSiteMembership:
                 "username": "baduser2",
                 "email": "bad2@example.com",
                 "password": "Secure123!",
-                "organisation_id": org.id,
+                "org_unit_id": org.org_unit_id,
                 "site_id": unlinked_site.id,
             },
         )

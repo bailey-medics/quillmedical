@@ -393,13 +393,7 @@ class TeachingOrgSettingsOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    #: The organisation, in organisation ids. Retired once nothing reads
-    #: it: an organisation is a place, and ``place_id`` is the same thing
-    #: counted the way everything else counts it.
-    organisation_id: int
-    #: The same organisation, as a place id. Named for the column
-    #: it comes from, which is what every other place-shaped answer
-    #: uses.
+    #: The organisation, as a place id.
     org_unit_id: int | None = None
     coordinator_email: str
     institution_name: str
@@ -538,11 +532,7 @@ class AdminBankDetailOut(BaseModel):
 class BankOrgRow(BaseModel):
     """One organisation's status for a question bank."""
 
-    #: Retired once nothing reads it — see ``place_id`` beside it.
-    organisation_id: int
-    #: The same organisation, as a place id. Named for the column
-    #: it comes from, which is what every other place-shaped answer
-    #: uses.
+    #: The organisation, as a place id.
     org_unit_id: int | None = None
     organisation_name: str
     is_live: bool = False
