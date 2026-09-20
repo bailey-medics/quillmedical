@@ -129,6 +129,8 @@ from app.organisations import (
     get_patient_org_ids,
     get_shared_org_ids,
     organisation_member,
+    organisation_of_place,
+    place_of_organisation,
     places_administered_by,
 )
 from app.push import router as push_router
@@ -1047,6 +1049,11 @@ def validate_clinical_lead(
         valid=True,
         site_name=site.name if site else None,
         organisation_id=org_id_for_site,
+        org_unit_id=(
+            place_of_organisation(db, org_id_for_site)
+            if org_id_for_site is not None
+            else None
+        ),
         site_id=matched_site_id,
     )
 
@@ -1141,12 +1148,20 @@ def register(
     db.add(user)
     db.flush()  # Assigns user.id so we can create memberships
 
-    # Add the user to the selected organisation
-    if payload.organisation_id is not None:
-        org = db.scalar(
-            select(Organisation).where(
-                Organisation.id == payload.organisation_id
+    # Add the user to the selected organisation. Either id names it: the
+    # place is what registration sends now, and the organisation id is
+    # kept until nothing does.
+    organisation_id = payload.organisation_id
+    if organisation_id is None and payload.org_unit_id is not None:
+        organisation_id = organisation_of_place(db, payload.org_unit_id)
+        if organisation_id is None:
+            raise HTTPException(
+                status_code=400, detail="Organisation not found"
             )
+
+    if organisation_id is not None:
+        org = db.scalar(
+            select(Organisation).where(Organisation.id == organisation_id)
         )
         if org is None:
             raise HTTPException(
@@ -1160,7 +1175,7 @@ def register(
 
         # Add the user to the selected site as a trainee
     if payload.site_id is not None:
-        if payload.organisation_id is None:
+        if organisation_id is None:
             raise HTTPException(
                 status_code=400,
                 detail="organisation_id required when site_id is provided",
@@ -1172,10 +1187,7 @@ def register(
         # the flag, not one name.
         if site is None or site.type in ROOT_TYPE_IDS:
             raise HTTPException(status_code=400, detail="Site not found")
-        if (
-            organisation_id_of_site(db, payload.site_id)
-            != payload.organisation_id
-        ):
+        if organisation_id_of_site(db, payload.site_id) != organisation_id:
             raise HTTPException(status_code=400, detail="Site not found")
         db.execute(
             org_unit_member.insert().values(

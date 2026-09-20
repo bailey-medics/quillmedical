@@ -32,7 +32,12 @@ class RegisterIn(BaseModel):
         email: Email address (must be unique).
         password: Desired password (min 8 characters).
         organisation_id: ID of the organisation to join (optional).
-        site_id: ID of the site to join as trainee (optional).
+            Retired once nothing sends it; ``org_unit_id`` says the same
+            thing in the ids everything else uses.
+        org_unit_id: The place to join, which for a registration is the
+            organisation's own row in the tree (optional).
+        site_id: ID of the site to join as trainee (optional). Already a
+            place id: a site is a place.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -42,6 +47,7 @@ class RegisterIn(BaseModel):
     email: EmailStr
     password: str
     organisation_id: int | None = None
+    org_unit_id: int | None = None
     site_id: int | None = None
 
 
@@ -287,12 +293,17 @@ class ValidateClinicalLeadOut(BaseModel):
         valid: Whether the email is a clinical lead for the bank.
         site_name: Name of the site if valid, else None.
         organisation_id: ID of the organisation if valid, else None.
-        site_id: ID of the site if valid, else None.
+            Retired once nothing reads it.
+        org_unit_id: The same organisation as a place id, which is what
+            the registration that follows will send back.
+        site_id: ID of the site if valid, else None. Already a place id:
+            a site is a place.
     """
 
     valid: bool
     site_name: str | None = None
     organisation_id: int | None = None
+    org_unit_id: int | None = None
     site_id: int | None = None
 
 

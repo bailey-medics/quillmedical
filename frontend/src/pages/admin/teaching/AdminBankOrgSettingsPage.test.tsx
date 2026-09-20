@@ -15,7 +15,8 @@ vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual("react-router-dom");
   return {
     ...actual,
-    useParams: () => ({ bankId: "test-bank", orgId: "1" }),
+    // The route carries a place id now, not an organisation id.
+    useParams: () => ({ bankId: "test-bank", orgId: "11" }),
   };
 });
 
@@ -34,14 +35,18 @@ const mockBank = {
   student_email_template: null,
 };
 
+// The two ids differ on purpose: the page matches the row by place id
+// now, and identical numbers would let it pass either way.
 const mockOrgs = [
   {
     organisation_id: 1,
+    org_unit_id: 11,
     organisation_name: "Test Hospital",
     is_live: false,
   },
   {
     organisation_id: 2,
+    org_unit_id: 12,
     organisation_name: "Another Clinic",
     is_live: true,
   },

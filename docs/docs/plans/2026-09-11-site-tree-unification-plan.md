@@ -896,7 +896,8 @@ So the remaining steps land as:
 - [x] 12c-0 — make the two id sequences disagree in the tests
 - [x] 12c-i-a — a place column beside every organisation column, and both written
 - [x] 12c-i-b — those tables read the place column, translating at the edges
-- [ ] 12c-i-b2 — teaching and passport answer in place ids, expand then contract
+- [x] 12c-i-b2 — teaching's surface answers in place ids, beside the old one
+- [ ] 12c-i-b3 — retire teaching's organisation-keyed fields and paths
 - [ ] 12c-i-c — stop writing the organisation column, and drop it
 - [ ] 12c-i-d — `site_common_competency`'s two place columns collapse into one
 - [ ] 12c-ii — membership and reach answer in place ids
@@ -1568,6 +1569,30 @@ things around it were not.
 
 The surface is untouched: teaching and the passport still answer in
 organisation ids, translated at the edge. Moving that is 12c-i-b2.
+
+#### 12c-i-b2 — teaching's surface learns place ids
+
+The expand step for the API itself, so the screens can move before
+anything is taken away.
+
+- **Both ids in the answers.** The settings response and each row of the
+  bank's organisation list carry `org_unit_id` beside `organisation_id`.
+  Named for the column rather than prettily, because that is what every
+  other place-shaped answer is named.
+- **A second path beside each organisation-keyed one.**
+  `/admin/banks/{bank}/places/{place}/settings` and its active-version
+  twin, each translating once and calling the same handler, so the two
+  cannot drift.
+- **The screens moved across in the same unit**, because the ids they
+  hold are ids they put straight back into URLs: the bank detail page
+  links by place, the settings page matches its row by place, and
+  registration sends the place the validation handed it.
+- **Registration takes either.** `org_unit_id` is what the form sends
+  now; `organisation_id` still works for a tab left open across the
+  deploy.
+
+The organisation-keyed fields and paths go in 12c-i-b3, which is a
+breaking change and needs its decision files.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to

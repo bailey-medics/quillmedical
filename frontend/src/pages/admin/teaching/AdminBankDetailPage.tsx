@@ -180,10 +180,10 @@ export default function AdminBankDetailPage() {
               ]}
               onRowClick={(org) =>
                 navigate(
-                  `/admin/teaching/modules/${bankId}/org/${org.organisation_id}`,
+                  `/admin/teaching/modules/${bankId}/org/${org.org_unit_id}`,
                 )
               }
-              getRowKey={(org) => org.organisation_id}
+              getRowKey={(org) => org.org_unit_id ?? org.organisation_id}
               emptyMessage="No organisations have the teaching feature enabled"
             />
           )}
