@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { screen } from "@testing-library/react";
-import { renderWithMantine } from "@test/test-utils";
+import { renderWithMantine, remToPx } from "@test/test-utils";
 import userEvent from "@testing-library/user-event";
 import EnableNotificationsButton from "./EnableNotificationsButton";
 import * as apiLib from "@/lib/api";
@@ -293,7 +293,7 @@ describe("EnableNotificationsButton Component", () => {
     it("has max-width of 9.375rem", () => {
       renderWithMantine(<EnableNotificationsButton />);
       const button = screen.getByRole("button");
-      expect(button).toHaveStyle({ maxWidth: "9.375rem" });
+      expect(button).toHaveStyle({ maxWidth: remToPx("9.375rem") });
     });
 
     it("has 100% width", () => {
@@ -305,7 +305,7 @@ describe("EnableNotificationsButton Component", () => {
     it("has padding", () => {
       renderWithMantine(<EnableNotificationsButton />);
       const button = screen.getByRole("button");
-      expect(button).toHaveStyle({ padding: "0.5rem 1rem" });
+      expect(button).toHaveStyle({ padding: remToPx("0.5rem 1rem") });
     });
   });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
-import { renderWithRouter } from "@test/test-utils";
+import { renderWithRouter, remToPx } from "@test/test-utils";
 import userEvent from "@testing-library/user-event";
 import TopRibbon from "./TopRibbon";
 import type { Patient } from "@/domains/patient";
@@ -247,7 +247,7 @@ describe("TopRibbon Component", () => {
         />,
       );
       const nameElement = screen.getByText("John Smith");
-      expect(nameElement).toHaveStyle({ fontSize: "1.125rem" });
+      expect(nameElement).toHaveStyle({ fontSize: remToPx("1.125rem") });
     });
   });
 

@@ -202,3 +202,33 @@ export async function waitForCondition(
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
 }
+
+/**
+ * Convert a length written in `rem` into the `px` string a computed style
+ * reports.
+ *
+ * From jsdom 30 onwards `getComputedStyle` resolves relative lengths against
+ * the root font size rather than echoing the authored value back, so
+ * `toHaveStyle({ height: "8rem" })` no longer matches an element styled
+ * `height: 8rem` — the computed value is `128px`. Wrapping the authored value
+ * keeps the assertion readable and leaves the arithmetic in one place.
+ *
+ * Multiple values are converted individually, so shorthands work too.
+ *
+ * @example
+ * expect(img).toHaveStyle({ height: remToPx("8rem") }); // "128px"
+ * expect(button).toHaveStyle({ padding: remToPx("0.5rem 1rem") }); // "8px 16px"
+ */
+export function remToPx(value: string, rootFontSize = 16): string {
+  return value
+    .trim()
+    .split(/\s+/)
+    .map((part) => {
+      const match = /^(-?(?:\d*\.)?\d+)rem$/.exec(part);
+      if (!match) return part;
+      const px = Number(match[1]) * rootFontSize;
+      // Trim floating-point noise (2.1rem * 16 = 33.6, not 33.599999999999994)
+      return `${Number(px.toFixed(5))}px`;
+    })
+    .join(" ");
+}
