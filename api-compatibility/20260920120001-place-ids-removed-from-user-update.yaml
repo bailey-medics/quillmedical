@@ -1,0 +1,4 @@
+"generation": !!int "1"
+"forces_reload": !!bool "false"
+change: "request-property-removed PATCH /api/users/{user_id} removed the request property `place_ids`"
+reason: "The same retirement as on create, and the same reasoning. An update is the more dangerous of the two: `place_ids` quietly ignored on a PATCH would leave the caller believing they had changed somebody's memberships when nothing had moved. It is refused rather than ignored, because `AdminUserUpdateIn` forbids unknown properties."

@@ -1,0 +1,4 @@
+"generation": !!int "1"
+"forces_reload": !!bool "false"
+change: "response-optional-property-removed GET /api/users/{user_id} removed the optional property `place_ids` from the response with the `200` status"
+reason: "`org_unit_ids` carries the same list and shipped a release ago. The admin user form reads the new name and has done since the release before this one, and it still falls back to the old name when a server does not offer the new one, so a tab open across the deploy fills the form correctly either way."

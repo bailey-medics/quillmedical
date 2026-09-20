@@ -916,7 +916,7 @@ So the remaining steps land as:
 - [x] 12d-i-d — the locals and parameters name an org_unit
 - [x] 12d-i-e — `org_unit_ids` beside `place_ids` on the users API
 - [x] 12d-i-f — the frontend sends and reads `org_unit_ids`
-- [ ] 12d-ii — retire `place_ids`
+- [x] 12d-ii — retire `place_ids`
 
 #### 10a — write both names for the place column
 

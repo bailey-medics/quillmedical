@@ -1,0 +1,4 @@
+"generation": !!int "1"
+"forces_reload": !!bool "false"
+change: "request-property-removed POST /api/users removed the request property `place_ids`"
+reason: "`org_unit_ids` arrived beside it a release ago and carries the same list, so a caller has had a full cycle to move. The admin user form moved to the new name in the release below this one, so nothing this repository ships still sends the old one. No forced reload: bumping the generation stops a tab that has not reloaded from sending any mutation at all, and the login POST is a mutation, so a logged-out person could not sign in to collect the new bundle. The silent background update carries this instead."

@@ -300,7 +300,7 @@ class TestThroughTheRoutes:
 
         resp = authenticated_superadmin_client.patch(
             f"/api/users/{person.id}",
-            json={"place_ids": [org.id]},
+            json={"org_unit_ids": [org.id]},
         )
 
         assert resp.status_code == 200
@@ -320,11 +320,11 @@ class TestThroughTheRoutes:
         person = _person(db_session, "alice")
         authenticated_superadmin_client.patch(
             f"/api/users/{person.id}",
-            json={"place_ids": [org.id, ward.id]},
+            json={"org_unit_ids": [org.id, ward.id]},
         )
 
         resp = authenticated_superadmin_client.patch(
-            f"/api/users/{person.id}", json={"place_ids": [ward.id]}
+            f"/api/users/{person.id}", json={"org_unit_ids": [ward.id]}
         )
 
         assert resp.status_code == 200
