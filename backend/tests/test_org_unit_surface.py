@@ -1194,12 +1194,14 @@ class TestAnOrganisationCreatedAsAPlace:
             json={"name": "New Trust", "type": "gp_practice"},
         )
 
-        place_id = resp.json()["id"]
-        place = db_session.get(OrgUnit, place_id)
+        org_unit_id = resp.json()["id"]
+        place = db_session.get(OrgUnit, org_unit_id)
         assert place is not None
         assert place.name == "New Trust"
         assert place.type == "gp_practice"
-        assert organisation_org_units_of(db_session, [place_id]) == {place_id}
+        assert organisation_org_units_of(db_session, [org_unit_id]) == {
+            org_unit_id
+        }
 
     def test_only_one_place_is_created(
         self, authenticated_superadmin_client, db_session
@@ -1230,12 +1232,14 @@ class TestAnOrganisationCreatedAsAPlace:
             "/api/org-units",
             json={"name": "New Trust", "type": "organisation"},
         )
-        place_id = resp.json()["id"]
+        org_unit_id = resp.json()["id"]
 
-        add_org_unit_member(db_session, place_id, test_admin.id, "staff")
+        add_org_unit_member(db_session, org_unit_id, test_admin.id, "staff")
         db_session.commit()
 
-        assert organisation_org_units_of(db_session, [place_id]) == {place_id}
+        assert organisation_org_units_of(db_session, [org_unit_id]) == {
+            org_unit_id
+        }
 
     def test_renaming_it_renames_the_organisation(
         self, authenticated_superadmin_client, db_session
@@ -1244,13 +1248,13 @@ class TestAnOrganisationCreatedAsAPlace:
             "/api/org-units",
             json={"name": "Old Name", "type": "organisation"},
         )
-        place_id = created.json()["id"]
+        org_unit_id = created.json()["id"]
 
         authenticated_superadmin_client.put(
-            f"/api/org-units/{place_id}", json={"name": "New Name"}
+            f"/api/org-units/{org_unit_id}", json={"name": "New Name"}
         )
 
-        place = db_session.get(OrgUnit, place_id)
+        place = db_session.get(OrgUnit, org_unit_id)
         assert place.name == "New Name"
 
     def test_deleting_it_deletes_the_organisation(
@@ -1260,12 +1264,12 @@ class TestAnOrganisationCreatedAsAPlace:
             "/api/org-units",
             json={"name": "Doomed Trust", "type": "organisation"},
         )
-        place_id = created.json()["id"]
+        org_unit_id = created.json()["id"]
 
-        authenticated_superadmin_client.delete(f"/api/org-units/{place_id}")
+        authenticated_superadmin_client.delete(f"/api/org-units/{org_unit_id}")
 
-        assert db_session.get(OrgUnit, place_id) is None
-        assert organisation_org_units_of(db_session, [place_id]) == set()
+        assert db_session.get(OrgUnit, org_unit_id) is None
+        assert organisation_org_units_of(db_session, [org_unit_id]) == set()
 
 
 class TestWhoMayAskAtAll:

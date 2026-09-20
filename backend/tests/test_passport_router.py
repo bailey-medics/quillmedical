@@ -1258,8 +1258,8 @@ class TestAcceptingAnInvitation:
         body = response.json()
 
         assert body["place"] == "organisation"
-        # A place id whichever kind ``place`` says, now that membership
-        # counts in places. It used to be the organisation's own id.
+        # ``place_id`` is still the wire name: the response field is
+        # renamed with the rest of the API, not with the internals.
         assert body["place_id"] == org.id
 
         capacity = db_session.scalar(

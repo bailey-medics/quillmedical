@@ -55,12 +55,12 @@ class TestFeatures:
         )
 
         assert resp.status_code == 200
-        place_id = db_session.scalar(
+        org_unit_id = db_session.scalar(
             select(OrgUnitFeature.org_unit_id).where(
                 OrgUnitFeature.feature_key == "teaching"
             )
         )
-        assert place_id == org.id
+        assert org_unit_id == org.id
 
     def test_the_organisation_lists_it_back(
         self, authenticated_superadmin_client, db_session
@@ -118,12 +118,12 @@ class TestPatientLists:
         )
 
         assert resp.status_code == 200
-        place_id = db_session.scalar(
+        org_unit_id = db_session.scalar(
             select(org_unit_patient_member.c.org_unit_id).where(
                 org_unit_patient_member.c.patient_id == PATIENT
             )
         )
-        assert place_id == org.id
+        assert org_unit_id == org.id
 
     def test_removing_them_clears_the_row(
         self,

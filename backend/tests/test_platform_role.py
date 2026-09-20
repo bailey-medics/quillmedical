@@ -270,8 +270,8 @@ class TestScopingAsksTheNewColumn:
         for person in members:
             add_org_unit_member(db, org.id, person.id, "staff")
         db.commit()
-        place_id = org.id
-        return int(place_id)
+        org_unit_id = org.id
+        return int(org_unit_id)
 
     def test_an_operator_is_not_confined_to_their_organisations(
         self,

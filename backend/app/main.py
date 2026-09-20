@@ -1552,11 +1552,13 @@ def _require_places_the_caller_administers(
     allowed = places_administered_by(db, current_user)
 
     places: list[OrgUnit] = []
-    for place_id in place_ids:
-        place = db.get(OrgUnit, place_id)
-        if place is None or (allowed is not None and place_id not in allowed):
+    for org_unit_id in place_ids:
+        place = db.get(OrgUnit, org_unit_id)
+        if place is None or (
+            allowed is not None and org_unit_id not in allowed
+        ):
             raise HTTPException(
-                status_code=404, detail=f"Place {place_id} not found"
+                status_code=404, detail=f"Place {org_unit_id} not found"
             )
         places.append(place)
     return places

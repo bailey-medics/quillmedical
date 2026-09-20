@@ -56,8 +56,8 @@ def requires_feature(feature_key: str) -> Callable[..., User]:
         user_place_ids = organisation_org_units_of(
             db,
             [
-                int(place_id)
-                for place_id in db.execute(
+                int(org_unit_id)
+                for org_unit_id in db.execute(
                     select(org_unit_member.c.org_unit_id).where(
                         org_unit_member.c.user_id == user.id
                     )

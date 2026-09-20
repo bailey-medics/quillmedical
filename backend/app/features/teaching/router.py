@@ -176,7 +176,7 @@ def _get_user_org_id(user: User, db: Session) -> int:
     **Which organisation it returns is still arbitrary**, and that is a
     separate, known bug rather than something this fixes. With two
     memberships it picks whichever comes back first — see
-    ``promote_bank_version_at_place``, which takes ``place_id`` in the
+    ``promote_bank_version_at_place``, which takes ``org_unit_id`` in the
     path for that reason, and the test named
     ``test_a_bank_held_only_by_your_second_organisation_is_found``.
     Narrowing to membership shrinks the set it chooses from without
@@ -3125,7 +3125,7 @@ def list_bank_organisations(
 
 def _promote_bank_version(
     bank_id: str,
-    place_id: int,
+    org_unit_id: int,
     body: PromoteBankVersionIn,
     user: User,
     db: Session,
@@ -3148,7 +3148,7 @@ def _promote_bank_version(
     # trust serves. `_get_user_org_ids` answers reach, so a teaching admin
     # whose only membership is a linked site passed this check and could
     # promote for the whole organisation above them.
-    if place_id not in get_member_org_unit_ids(db, user.id):
+    if org_unit_id not in get_member_org_unit_ids(db, user.id):
         raise HTTPException(
             403, "You cannot promote a version for that organisation"
         )
@@ -3158,7 +3158,7 @@ def _promote_bank_version(
     target = (
         db.execute(
             select(QuestionBankConfig).where(
-                QuestionBankConfig.org_unit_id == place_id,
+                QuestionBankConfig.org_unit_id == org_unit_id,
                 QuestionBankConfig.question_bank_id == bank_id,
                 QuestionBankConfig.version == body.version,
             )
@@ -3174,7 +3174,7 @@ def _promote_bank_version(
     status_row = (
         db.execute(
             select(QuestionBankOrgStatus).where(
-                QuestionBankOrgStatus.org_unit_id == place_id,
+                QuestionBankOrgStatus.org_unit_id == org_unit_id,
                 QuestionBankOrgStatus.question_bank_id == bank_id,
             )
         )
@@ -3197,7 +3197,7 @@ def _promote_bank_version(
         bank_id,
         previous,
         body.version,
-        place_id,
+        org_unit_id,
         user.id,
     )
 
@@ -3209,13 +3209,13 @@ def _promote_bank_version(
 
 
 @teaching_router.put(
-    "/admin/banks/{bank_id}/places/{place_id}/settings",
+    "/admin/banks/{bank_id}/places/{org_unit_id}/settings",
     response_model=QuestionBankOrgSettingsOut,
     dependencies=[_DEP_MANAGE],
 )
 def update_bank_place_settings(
     bank_id: str,
-    place_id: int,
+    org_unit_id: int,
     body: QuestionBankOrgSettingsIn,
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
@@ -3225,17 +3225,17 @@ def update_bank_place_settings(
     The only path for this now, and no translation left in it:
     membership answers in place ids too.
     """
-    return _update_bank_org_settings(bank_id, place_id, body, user, db)
+    return _update_bank_org_settings(bank_id, org_unit_id, body, user, db)
 
 
 @teaching_router.put(
-    "/admin/banks/{bank_id}/places/{place_id}/active-version",
+    "/admin/banks/{bank_id}/places/{org_unit_id}/active-version",
     response_model=PromoteBankVersionOut,
     dependencies=[_DEP_MANAGE],
 )
 def promote_bank_version_at_place(
     bank_id: str,
-    place_id: int,
+    org_unit_id: int,
     body: PromoteBankVersionIn,
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
@@ -3245,7 +3245,7 @@ def promote_bank_version_at_place(
     The only path for this now, and no translation left in it, as with
     the settings route beside it.
     """
-    return _promote_bank_version(bank_id, place_id, body, user, db)
+    return _promote_bank_version(bank_id, org_unit_id, body, user, db)
 
 
 def _retired(place_path: str) -> NoReturn:
@@ -3274,13 +3274,15 @@ def update_bank_org_settings_retired(
     org_id: int,
     body: QuestionBankOrgSettingsIn,
 ) -> QuestionBankOrgSettingsOut:
-    """Retired. Settings are set at ``/places/{place_id}/settings``.
+    """Retired. Settings are set at ``/places/{org_unit_id}/settings``.
 
     No permission check, as with the other retired addresses: there is
     nothing behind it to protect, and saying it has gone discloses
     nothing.
     """
-    _retired("/api/teaching/admin/banks/{bank_id}/places/{place_id}/settings")
+    _retired(
+        "/api/teaching/admin/banks/{bank_id}/places/{org_unit_id}/settings"
+    )
 
 
 @teaching_router.put(
@@ -3292,16 +3294,16 @@ def promote_bank_version_retired(
     org_id: int,
     body: PromoteBankVersionIn,
 ) -> PromoteBankVersionOut:
-    """Retired. Versions are promoted at ``/places/{place_id}``."""
+    """Retired. Versions are promoted at ``/places/{org_unit_id}``."""
     _retired(
-        "/api/teaching/admin/banks/{bank_id}/places/{place_id}"
+        "/api/teaching/admin/banks/{bank_id}/places/{org_unit_id}"
         "/active-version"
     )
 
 
 def _update_bank_org_settings(
     bank_id: str,
-    place_id: int,
+    org_unit_id: int,
     body: QuestionBankOrgSettingsIn,
     user: User,
     db: Session,
@@ -3318,7 +3320,7 @@ def _update_bank_org_settings(
     # bank is the operation this protects: it locks candidates out of an
     # assessment they are part-way through.
     org_place_ids = get_member_org_unit_ids(db, user.id)
-    if place_id not in org_place_ids:
+    if org_unit_id not in org_place_ids:
         raise HTTPException(
             403, "You cannot change settings for that organisation"
         )
@@ -3347,7 +3349,7 @@ def _update_bank_org_settings(
         # Upsert status row
     status_row = db.execute(
         select(QuestionBankOrgStatus).where(
-            QuestionBankOrgStatus.org_unit_id == place_id,
+            QuestionBankOrgStatus.org_unit_id == org_unit_id,
             QuestionBankOrgStatus.question_bank_id == bank_id,
         )
     ).scalar_one_or_none()
@@ -3371,13 +3373,13 @@ def _update_bank_org_settings(
         # which is honest — there is no version to serve.
         active_version = db.execute(
             select(func.max(QuestionBankConfig.version)).where(
-                QuestionBankConfig.org_unit_id == place_id,
+                QuestionBankConfig.org_unit_id == org_unit_id,
                 QuestionBankConfig.question_bank_id == bank_id,
             )
         ).scalar_one_or_none()
 
         status_row = QuestionBankOrgStatus(
-            org_unit_id=place_id,
+            org_unit_id=org_unit_id,
             question_bank_id=bank_id,
             is_live=body.is_live,
             site_registration=body.site_registration,

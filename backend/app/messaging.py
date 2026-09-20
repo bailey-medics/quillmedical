@@ -145,12 +145,12 @@ def _snowball_orgs(db: Session, conversation_id: int, user_id: int) -> None:
         )
     ).all()
     existing_place_ids = {r.org_unit_id for r in existing}
-    for place_id in user_places:
-        if place_id not in existing_place_ids:
+    for org_unit_id in user_places:
+        if org_unit_id not in existing_place_ids:
             db.execute(
                 message_org_unit.insert().values(
                     conversation_id=conversation_id,
-                    org_unit_id=place_id,
+                    org_unit_id=org_unit_id,
                 )
             )
 
@@ -297,11 +297,11 @@ def create_conversation(
     db.flush()  # get conv.id
 
     # Auto-add all shared orgs between creator and patient
-    for place_id in get_shared_org_unit_ids(db, creator.id, patient_id):
+    for org_unit_id in get_shared_org_unit_ids(db, creator.id, patient_id):
         db.execute(
             message_org_unit.insert().values(
                 conversation_id=conv.id,
-                org_unit_id=place_id,
+                org_unit_id=org_unit_id,
             )
         )
 
