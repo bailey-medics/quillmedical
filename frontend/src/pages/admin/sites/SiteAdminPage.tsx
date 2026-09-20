@@ -21,54 +21,31 @@ import type { Column } from "@/components/tables/DataTable";
 import DataTableControlled from "@/components/tables/DataTableControlled";
 import { ConfirmModal } from "@/components/confirm-modal";
 import { usePageMessage } from "@/components/page-message";
-import { api } from "@/lib/api";
+import {
+  orgUnits,
+  type OrgUnitDetail,
+  type OrgUnitMember,
+} from "@/domains/orgUnit";
 import ErrorState from "@/components/error-state/ErrorState";
-
-interface SiteStaff {
-  id: number;
-  username: string;
-  email: string;
-  full_name: string;
-}
-
-interface SiteOrganisation {
-  id: number;
-  name: string;
-}
-
-interface SiteDetails {
-  id: number;
-  name: string;
-  type: string;
-  parent_id: number | null;
-  location: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-  staff: SiteStaff[];
-  organisations: SiteOrganisation[];
-  // The clinical lead post, which is the source of truth. A vacant post
-  // is a real state that a missing role on a staff row cannot express.
-  clinical_lead_id: number | null;
-}
 
 export default function SiteAdminPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { showMessage } = usePageMessage();
-  const [site, setSite] = useState<SiteDetails | null>(null);
+  const [site, setSite] = useState<OrgUnitDetail | null>(null);
   // Without an id there is nothing to fetch, so the page does not begin in a
   // loading state and the effect below has nothing to do.
   const [loading, setLoading] = useState(Boolean(id));
   const [error, setError] = useState<string | null>(null);
-  const [removingStaff, setRemovingStaff] = useState<SiteStaff | null>(null);
+  const [removingStaff, setRemovingStaff] = useState<OrgUnitMember | null>(
+    null,
+  );
 
   const fetchSite = useCallback(async () => {
     if (!id) return;
 
     try {
-      const data = await api.get<SiteDetails>(`/sites/${id}`);
-      setSite(data);
+      setSite(await orgUnits.get(Number(id)));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -91,7 +68,7 @@ export default function SiteAdminPage() {
   async function confirmRemoveStaff() {
     if (!id || !removingStaff) return;
     try {
-      await api.del(`/sites/${id}/staff/${removingStaff.id}`);
+      await orgUnits.removeMember(Number(id), removingStaff.id);
       showMessage({
         variant: "success",
         title: "Staff member removed",
@@ -109,7 +86,9 @@ export default function SiteAdminPage() {
   }
 
   // Resolved from the post rather than from a role on a staff row.
-  const clinicalLead = site?.staff.find((s) => s.id === site?.clinical_lead_id);
+  const clinicalLead = site?.members.find(
+    (member) => member.id === site?.clinical_lead_id,
+  );
 
   if (loading) {
     return (
@@ -137,7 +116,7 @@ export default function SiteAdminPage() {
       .join(" ");
   };
 
-  const staffColumns: Column<SiteStaff>[] = [
+  const staffColumns: Column<OrgUnitMember>[] = [
     {
       header: "Full name",
       render: (member) => member.full_name || member.username,
@@ -197,9 +176,7 @@ export default function SiteAdminPage() {
             <Group gap="xs">
               <BodyTextBold>Organisation(s):</BodyTextBold>
               <BodyTextInline>
-                {site.organisations.length > 0
-                  ? site.organisations.map((o) => o.name).join(", ")
-                  : "None"}
+                {site.parent_name ? site.parent_name : "None"}
               </BodyTextInline>
             </Group>
 
@@ -248,8 +225,8 @@ export default function SiteAdminPage() {
             />
           </Group>
 
-          <DataTableControlled<SiteStaff>
-            data={site.staff}
+          <DataTableControlled<OrgUnitMember>
+            data={site.members}
             columns={staffColumns}
             getRowKey={(member) => member.id}
             pageSize={10}

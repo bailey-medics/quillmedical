@@ -25,9 +25,9 @@ from sqlalchemy.orm import Session
 
 from app.models import (
     Organisation,
-    Site,
+    OrgUnit,
     User,
-    site_member,
+    org_unit_member,
 )
 from app.organisations import (
     add_organisation_member,
@@ -48,8 +48,8 @@ def _org(db: Session, name: str) -> Organisation:
     return org
 
 
-def _ward(db: Session, org: Organisation, name: str) -> Site:
-    site = Site(name=name, type="ward", parent_id=org.org_unit_id)
+def _ward(db: Session, org: Organisation, name: str) -> OrgUnit:
+    site = OrgUnit(name=name, type="ward", parent_id=org.org_unit_id)
     db.add(site)
     db.commit()
     db.refresh(site)
@@ -84,9 +84,9 @@ def _by_organisation(db: Session, org: Organisation, user: User) -> str | None:
 def _by_place(db: Session, org: Organisation, user: User) -> str | None:
     """Read the same row directly, as a row against the organisation's place."""
     return db.scalar(
-        select(site_member.c.capacity).where(
-            site_member.c.site_id == org.org_unit_id,
-            site_member.c.user_id == user.id,
+        select(org_unit_member.c.capacity).where(
+            org_unit_member.c.org_unit_id == org.org_unit_id,
+            org_unit_member.c.user_id == user.id,
         )
     )
 
@@ -173,8 +173,10 @@ class TestRemovingMembership:
         person = _person(db_session, "alice")
         add_organisation_member(db_session, org.id, person.id, "staff")
         db_session.execute(
-            insert(site_member).values(
-                site_id=ward.id, user_id=person.id, capacity="trainee"
+            insert(org_unit_member).values(
+                org_unit_id=ward.id,
+                user_id=person.id,
+                capacity="trainee",
             )
         )
         db_session.commit()
@@ -183,9 +185,9 @@ class TestRemovingMembership:
         db_session.commit()
 
         still_on_ward = db_session.scalar(
-            select(site_member.c.capacity).where(
-                site_member.c.site_id == ward.id,
-                site_member.c.user_id == person.id,
+            select(org_unit_member.c.capacity).where(
+                org_unit_member.c.org_unit_id == ward.id,
+                org_unit_member.c.user_id == person.id,
             )
         )
         assert still_on_ward == "trainee"
@@ -203,15 +205,17 @@ class TestTheNarrowerDefault:
         person = _person(db_session, "alice")
 
         db_session.execute(
-            insert(site_member).values(site_id=ward.id, user_id=person.id)
+            insert(org_unit_member).values(
+                org_unit_id=ward.id, user_id=person.id
+            )
         )
         db_session.commit()
 
         assert (
             db_session.scalar(
-                select(site_member.c.capacity).where(
-                    site_member.c.site_id == ward.id,
-                    site_member.c.user_id == person.id,
+                select(org_unit_member.c.capacity).where(
+                    org_unit_member.c.org_unit_id == ward.id,
+                    org_unit_member.c.user_id == person.id,
                 )
             )
             == "trainee"
@@ -291,8 +295,8 @@ class TestMembershipWrittenStraightToAPlace:
         person = _person(db_session, "alice")
 
         db_session.execute(
-            insert(site_member).values(
-                site_id=org.org_unit_id,
+            insert(org_unit_member).values(
+                org_unit_id=org.org_unit_id,
                 user_id=person.id,
                 capacity="staff",
             )
@@ -310,8 +314,10 @@ class TestMembershipWrittenStraightToAPlace:
         person = _person(db_session, "alice")
 
         db_session.execute(
-            insert(site_member).values(
-                site_id=ward.id, user_id=person.id, capacity="trainee"
+            insert(org_unit_member).values(
+                org_unit_id=ward.id,
+                user_id=person.id,
+                capacity="trainee",
             )
         )
         db_session.commit()

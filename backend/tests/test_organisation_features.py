@@ -4,7 +4,7 @@ from sqlalchemy import select
 
 from app.models import (
     Organisation,
-    OrganisationFeature,
+    OrgUnitFeature,
     User,
 )
 from app.organisations import add_organisation_member
@@ -24,7 +24,7 @@ class TestOrganisationFeatureModel:
         db_session.add(org)
         db_session.flush()
 
-        feature = OrganisationFeature(
+        feature = OrgUnitFeature(
             org_unit_id=org.org_unit_id,
             feature_key="teaching",
         )
@@ -32,8 +32,8 @@ class TestOrganisationFeatureModel:
         db_session.commit()
 
         result = db_session.scalar(
-            select(OrganisationFeature).where(
-                OrganisationFeature.org_unit_id == org.org_unit_id,
+            select(OrgUnitFeature).where(
+                OrgUnitFeature.org_unit_id == org.org_unit_id,
             )
         )
         assert result is not None
@@ -49,10 +49,10 @@ class TestOrganisationFeatureModel:
         db_session.add(org)
         db_session.flush()
 
-        f1 = OrganisationFeature(
+        f1 = OrgUnitFeature(
             org_unit_id=org.org_unit_id, feature_key="teaching"
         )
-        f2 = OrganisationFeature(
+        f2 = OrgUnitFeature(
             org_unit_id=org.org_unit_id, feature_key="teaching"
         )
         db_session.add(f1)
@@ -69,10 +69,8 @@ class TestOrganisationFeatureModel:
 
         db_session.add_all(
             [
-                OrganisationFeature(
-                    org_unit_id=org.org_unit_id, feature_key="epr"
-                ),
-                OrganisationFeature(
+                OrgUnitFeature(org_unit_id=org.org_unit_id, feature_key="epr"),
+                OrgUnitFeature(
                     org_unit_id=org.org_unit_id, feature_key="teaching"
                 ),
             ]
@@ -81,8 +79,8 @@ class TestOrganisationFeatureModel:
 
         features = (
             db_session.execute(
-                select(OrganisationFeature).where(
-                    OrganisationFeature.org_unit_id == org.org_unit_id,
+                select(OrgUnitFeature).where(
+                    OrgUnitFeature.org_unit_id == org.org_unit_id,
                 )
             )
             .unique()
@@ -97,7 +95,7 @@ class TestOrganisationFeatureModel:
         db_session.add(org)
         db_session.flush()
 
-        feature = OrganisationFeature(
+        feature = OrgUnitFeature(
             org_unit_id=org.org_unit_id, feature_key="teaching"
         )
         db_session.add(feature)
@@ -107,8 +105,8 @@ class TestOrganisationFeatureModel:
         db_session.commit()
 
         remaining = db_session.scalar(
-            select(OrganisationFeature).where(
-                OrganisationFeature.org_unit_id == org.org_unit_id,
+            select(OrgUnitFeature).where(
+                OrgUnitFeature.org_unit_id == org.org_unit_id,
             )
         )
         assert remaining is None
@@ -120,7 +118,7 @@ class TestOrganisationFeatureModel:
         db_session.flush()
 
         db_session.add(
-            OrganisationFeature(org_unit_id=org.org_unit_id, feature_key="epr")
+            OrgUnitFeature(org_unit_id=org.org_unit_id, feature_key="epr")
         )
         db_session.commit()
 
@@ -128,8 +126,8 @@ class TestOrganisationFeatureModel:
         db_session.commit()
 
         count = db_session.scalar(
-            select(OrganisationFeature.id).where(
-                OrganisationFeature.feature_key == "epr",
+            select(OrgUnitFeature.id).where(
+                OrgUnitFeature.feature_key == "epr",
             )
         )
         assert count is None
@@ -141,9 +139,7 @@ class TestOrganisationFeatureModel:
         db_session.flush()
 
         db_session.add(
-            OrganisationFeature(
-                org_unit_id=org.org_unit_id, feature_key="teaching"
-            )
+            OrgUnitFeature(org_unit_id=org.org_unit_id, feature_key="teaching")
         )
         db_session.commit()
         db_session.refresh(org)
@@ -151,10 +147,9 @@ class TestOrganisationFeatureModel:
         assert len(org.features) == 1
         assert org.features[0].feature_key == "teaching"
 
-
-# ---------------------------------------------------------------------------
-# API endpoint tests
-# ---------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------
+        # API endpoint tests
+        # ---------------------------------------------------------------------------
 
 
 def _make_admin(db_session, org: Organisation | None = None) -> User:
@@ -376,10 +371,9 @@ class TestFeatureEndpoints:
         )
         assert resp.status_code == 404
 
-
-# ---------------------------------------------------------------------------
-# /auth/me enabled_features tests
-# ---------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------
+        # /auth/me enabled_features tests
+        # ---------------------------------------------------------------------------
 
 
 class TestMeEnabledFeatures:
@@ -402,7 +396,7 @@ class TestMeEnabledFeatures:
         add_organisation_member(db_session, org.id, user.id, "trainee")
         # Enable teaching on the org
         db_session.add(
-            OrganisationFeature(
+            OrgUnitFeature(
                 org_unit_id=org.org_unit_id,
                 feature_key="teaching",
             )

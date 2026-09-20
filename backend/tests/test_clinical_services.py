@@ -3,7 +3,8 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from app.main import app, require_clinical_services
+from app.deps import require_clinical_services
+from app.main import app
 from app.models import Organisation, User
 from app.organisations import add_organisation_member
 from app.security import hash_password

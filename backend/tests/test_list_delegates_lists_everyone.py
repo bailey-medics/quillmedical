@@ -28,7 +28,7 @@ from sqlalchemy.orm import Session
 
 from app.models import (
     Organisation,
-    OrganisationFeature,
+    OrgUnitFeature,
     User,
 )
 from app.organisations import add_organisation_member
@@ -64,7 +64,7 @@ def org(db_session: Session) -> Organisation:
     db_session.add(organisation)
     db_session.flush()
     db_session.add(
-        OrganisationFeature(
+        OrgUnitFeature(
             org_unit_id=organisation.org_unit_id,
             feature_key="teaching",
             enabled_by=1,

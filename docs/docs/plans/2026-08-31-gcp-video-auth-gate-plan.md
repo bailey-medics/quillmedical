@@ -1878,6 +1878,25 @@ violates the following Content Security Policy directive:
       images, the unset job names, the wrong invoker role, and an import
       that pulled the application config into a job holding no credentials.
 
+### Item 30 is withdrawn: the YouTube player stays
+
+**[decided 2026-09-18]** Item 30 proposed retiring `react-player` and the
+`youtubeId` branch once hosted video worked. Hosted video now works, and the
+decision is to keep both rather than swap.
+
+- **Two sources answer two different needs.** Licensed lecture material is
+  what the private bucket and the signed cookie exist for. Public content
+  that someone else hosts has no reason to be copied into our storage, and
+  copying it would take on both the bandwidth and the licensing question.
+
+- **Nothing is left half-finished by keeping it.** `youtubeId` and `src` are
+  separate branches in `VideoPlayer.tsx`, each complete. This is not a
+  migration that stalled; it is two supported paths.
+
+- **So item 30 should not be read as outstanding work.** It is closed by
+  decision, not by being done. Anyone auditing the parent plan will
+  otherwise keep rediscovering it as a loose end.
+
 ### The cookie was sent wrapped in quote marks
 
 **[found 2026-09-17]** Every video failed to play, with a black player and a

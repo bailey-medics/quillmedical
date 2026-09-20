@@ -9,9 +9,9 @@ from app.cbac.positions import set_clinical_lead
 from app.features.teaching.models import QuestionBankOrgStatus
 from app.models import (
     Organisation,
-    Site,
+    OrgUnit,
     User,
-    site_member,
+    org_unit_member,
 )
 from app.organisations import organisation_member
 from app.security import hash_password
@@ -19,20 +19,20 @@ from app.security import hash_password
 
 def _setup_org_with_site_and_lead(
     db: Session,
-) -> tuple[Organisation, Site, User]:
+) -> tuple[Organisation, OrgUnit, User]:
     """Create an org, site, and clinical lead linked together."""
     org = Organisation(name="Teaching Org")
     db.add(org)
     db.flush()
 
-    site = Site(name="Test Hospital", type="hospital")
+    site = OrgUnit(name="Test Hospital", type="hospital")
     db.add(site)
     db.flush()
 
     # Link site to org
     db.execute(
-        update(Site)
-        .where(Site.id == site.id)
+        update(OrgUnit)
+        .where(OrgUnit.id == site.id)
         .values(parent_id=org.org_unit_id)
     )
     db.flush()
@@ -52,8 +52,10 @@ def _setup_org_with_site_and_lead(
     # position are written, as the API does: the endpoint reads the post,
     # and the column stays until the contract step removes it.
     db.execute(
-        site_member.insert().values(
-            site_id=site.id, user_id=lead.id, capacity="staff"
+        org_unit_member.insert().values(
+            org_unit_id=site.id,
+            user_id=lead.id,
+            capacity="staff",
         )
     )
     set_clinical_lead(db, site, lead)
@@ -125,8 +127,10 @@ class TestValidateClinicalLead:
         db_session.add(staff_user)
         db_session.flush()
         db_session.execute(
-            site_member.insert().values(
-                site_id=site.id, user_id=staff_user.id, capacity="staff"
+            org_unit_member.insert().values(
+                org_unit_id=site.id,
+                user_id=staff_user.id,
+                capacity="staff",
             )
         )
         db_session.flush()
@@ -175,12 +179,12 @@ class TestValidateClinicalLead:
         db_session.add(other_org)
         db_session.flush()
 
-        other_site = Site(name="Other Hospital", type="hospital")
+        other_site = OrgUnit(name="Other Hospital", type="hospital")
         db_session.add(other_site)
         db_session.flush()
         db_session.execute(
-            update(Site)
-            .where(Site.id == other_site.id)
+            update(OrgUnit)
+            .where(OrgUnit.id == other_site.id)
             .values(parent_id=other_org.org_unit_id)
         )
 
@@ -193,8 +197,8 @@ class TestValidateClinicalLead:
         db_session.add(other_lead)
         db_session.flush()
         db_session.execute(
-            site_member.insert().values(
-                site_id=other_site.id,
+            org_unit_member.insert().values(
+                org_unit_id=other_site.id,
                 user_id=other_lead.id,
                 capacity="staff",
             )
@@ -256,9 +260,9 @@ class TestRegisterWithSiteMembership:
 
         # Verify site membership as trainee
         site_row = db_session.execute(
-            select(site_member).where(
-                site_member.c.user_id == new_user.id,
-                site_member.c.site_id == site.id,
+            select(org_unit_member).where(
+                org_unit_member.c.user_id == new_user.id,
+                org_unit_member.c.org_unit_id == site.id,
             )
         ).first()
         assert site_row is not None
@@ -287,7 +291,7 @@ class TestRegisterWithSiteMembership:
         org, _site, _lead = _setup_org_with_site_and_lead(db_session)
 
         # Create an unlinked site
-        unlinked_site = Site(name="Unlinked Hospital", type="hospital")
+        unlinked_site = OrgUnit(name="Unlinked Hospital", type="hospital")
         db_session.add(unlinked_site)
         db_session.flush()
 
