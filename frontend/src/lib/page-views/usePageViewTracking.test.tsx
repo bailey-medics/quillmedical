@@ -55,8 +55,16 @@ describe("counting an ordinary page", () => {
     renderAt("/organisations/943-476-5919", "/organisations/:id");
 
     await waitFor(() => expect(beacon).toHaveBeenCalled());
-    const body = await (beacon.mock.calls[0]?.[1] as Blob).text();
-    expect(body).not.toContain("943");
+    // Against the fields the beacon carries, not the raw body. The body
+    // also holds a random session id, and a short decimal run like "943"
+    // turns up inside a hex UUID about once in 135 runs — which failed
+    // this test on a branch that had not touched page views at all.
+    const body = JSON.parse(
+      await (beacon.mock.calls[0]?.[1] as Blob).text(),
+    ) as Record<string, unknown>;
+    expect(body["page"]).toBe("/organisations/:id");
+    expect(JSON.stringify(body["page"])).not.toContain("943");
+    expect(Object.keys(body)).not.toContain("path");
   });
 });
 

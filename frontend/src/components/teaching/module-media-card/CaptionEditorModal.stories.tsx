@@ -20,29 +20,29 @@ type Story = StoryObj<typeof CaptionEditorModal>;
 const WHISPER_OUTPUT = `WEBVTT
 
 00:00:01.000 --> 00:00:04.500
-The seek 'em is entered under direct vision
+The dye is a stole pressure is measured first
 
 00:00:04.500 --> 00:00:08.000
-and the scope withdrawn slowly`;
+and the a fib is rate controlled`;
 
 /** What Whisper produces before anyone has corrected it. */
 export const Unreviewed: Story = {
   args: {
-    filename: "colonoscopy-intro.mp4",
+    filename: "atrial-fibrillation-intro.mp4",
     webvtt: WHISPER_OUTPUT,
   },
 };
 
 export const NoCaptionsYet: Story = {
   args: {
-    filename: "colonoscopy-intro.mp4",
+    filename: "atrial-fibrillation-intro.mp4",
     webvtt: null,
   },
 };
 
 export const SaveRejected: Story = {
   args: {
-    filename: "colonoscopy-intro.mp4",
+    filename: "atrial-fibrillation-intro.mp4",
     webvtt: WHISPER_OUTPUT,
     error: "Captions must be WebVTT, beginning with the line WEBVTT",
   },
@@ -50,7 +50,7 @@ export const SaveRejected: Story = {
 
 export const Loading: Story = {
   args: {
-    filename: "colonoscopy-intro.mp4",
+    filename: "atrial-fibrillation-intro.mp4",
     loading: true,
   },
 };

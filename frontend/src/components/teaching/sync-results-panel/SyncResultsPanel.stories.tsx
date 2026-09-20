@@ -26,8 +26,8 @@ type Story = StoryObj<typeof SyncResultsPanel>;
 
 const allPassed: SyncModuleRow[] = [
   {
-    bank_id: "eoeeta-basic",
-    title: "EoE/ETA basic assessment",
+    bank_id: "diabetes-basic",
+    title: "Diabetes basic assessment",
     type: "uniform",
     outcome: "imported",
     version: 2,
@@ -36,8 +36,8 @@ const allPassed: SyncModuleRow[] = [
     last_synced: "2026-05-27T14:30:00Z",
   },
   {
-    bank_id: "eoeeta-advanced",
-    title: "EoE/ETA advanced assessment",
+    bank_id: "stroke-advanced",
+    title: "Stroke advanced assessment",
     type: "uniform",
     outcome: "imported",
     version: 1,
@@ -58,8 +58,8 @@ const allPassed: SyncModuleRow[] = [
 
 const withErrors: SyncModuleRow[] = [
   {
-    bank_id: "eoeeta-basic",
-    title: "EoE/ETA basic assessment",
+    bank_id: "diabetes-basic",
+    title: "Diabetes basic assessment",
     type: "uniform",
     outcome: "imported",
     version: 2,
@@ -67,8 +67,8 @@ const withErrors: SyncModuleRow[] = [
     reason: "",
   },
   {
-    bank_id: "eoeeta-advanced",
-    title: "EoE/ETA advanced assessment",
+    bank_id: "stroke-advanced",
+    title: "Stroke advanced assessment",
     type: "uniform",
     outcome: "error",
     version: 2,

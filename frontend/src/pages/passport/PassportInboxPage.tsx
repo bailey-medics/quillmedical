@@ -19,11 +19,11 @@ import StateMessage from "@/components/message-cards/StateMessage";
 import { IconFileText } from "@/components/icons/appIcons";
 import { UnstyledButton } from "@mantine/core";
 import { fetchInbox } from "@lib/passport";
-import type { SignOff } from "@lib/passport";
+import type { InboxItem } from "@lib/passport";
 
 export function Component() {
   const navigate = useNavigate();
-  const [requests, setRequests] = useState<SignOff[]>([]);
+  const [requests, setRequests] = useState<InboxItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,21 +54,28 @@ export function Component() {
 
       {error && <ErrorState message={error} />}
 
+      {/* Held back until the fetch returns, unlike the passport's own
+          empty states, which show straight away rather than flicker.
+          This one is about other people's requests: "Nothing waiting"
+          shown before the answer arrives could have an assessor glance,
+          see nothing and close the page while somebody is in fact
+          waiting on them. A moment's flicker is the cheaper mistake. */}
       {!loading && requests.length === 0 && (
         <StateMessage
+          colour="update"
           icon={<IconFileText />}
           title="Nothing waiting"
           description="Requests appear here when somebody asks you to assess them."
         />
       )}
 
-      {requests.map((signOff) => (
+      {requests.map((item) => (
         <UnstyledButton
-          key={signOff.id}
-          onClick={() => navigate(`/passport/sign-off/${signOff.id}`)}
-          aria-label={signOff.competency.name}
+          key={item.sign_off.id}
+          onClick={() => navigate(`/passport/sign-off/${item.sign_off.id}`)}
+          aria-label={item.sign_off.competency.name}
         >
-          <SignOffCard signOff={signOff} />
+          <SignOffCard signOff={item.sign_off} />
         </UnstyledButton>
       ))}
     </Stack>
