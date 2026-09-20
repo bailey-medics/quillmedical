@@ -42,6 +42,27 @@ describe("MediaDropzone", () => {
     expect(onDrop).not.toHaveBeenCalled();
   });
 
+  it("accepts another allow-list when given one", async () => {
+    // The passport uploads scanned certificates through the same box.
+    // Defaulting to video keeps every existing caller unchanged; passing
+    // `accept` is what makes one component serve both.
+    const { container } = renderWithMantine(
+      <MediaDropzone
+        onDrop={vi.fn()}
+        accept={["application/pdf", "image/png"]}
+        label="Drop a certificate or click to browse"
+      />,
+    );
+
+    expect(container.querySelector('input[type="file"]')).toHaveAttribute(
+      "accept",
+      "application/pdf,image/png",
+    );
+    expect(
+      screen.getByText("Drop a certificate or click to browse"),
+    ).toBeInTheDocument();
+  });
+
   it("can be disabled while another upload runs", () => {
     // Mantine marks the wrapper rather than the input, so the data
     // attribute is what carries the state.

@@ -18,8 +18,8 @@ export const WithAttempts: Story = {
     assessments: [
       {
         id: 1,
-        question_bank_id: "colonoscopy-optical-diagnosis",
-        bank_title: "Colonoscopy optical diagnosis",
+        question_bank_id: "echocardiography-interpretation",
+        bank_title: "Echocardiography interpretation",
         bank_version: 1,
         started_at: "2024-12-01T10:00:00Z",
         completed_at: "2024-12-01T11:10:00Z",
@@ -29,8 +29,8 @@ export const WithAttempts: Story = {
       },
       {
         id: 2,
-        question_bank_id: "colonoscopy-optical-diagnosis",
-        bank_title: "Colonoscopy optical diagnosis",
+        question_bank_id: "echocardiography-interpretation",
+        bank_title: "Echocardiography interpretation",
         bank_version: 1,
         started_at: "2024-11-15T14:00:00Z",
         completed_at: "2024-11-15T15:05:00Z",
