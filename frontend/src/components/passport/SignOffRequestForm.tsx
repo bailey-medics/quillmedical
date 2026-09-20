@@ -63,6 +63,15 @@ export interface SignOffRequestFormProps {
   competency: CompetencyState;
   /** Levels this competency declares, if it has any */
   levels?: LevelOption[];
+  /**
+   * The holder's own email address, so the form can refuse it.
+   *
+   * The server refuses a self-request too, but only once the whole form
+   * has been filled in and sent. Catching it here says so while the
+   * address is still being typed. Passed in rather than read from auth
+   * so the component stays presentational.
+   */
+  holderEmail?: string;
   /** Called with the completed request */
   onSubmit: (data: SignOffRequestInput) => void;
   /** Called when the holder backs out */
@@ -80,6 +89,7 @@ export interface SignOffRequestFormProps {
 export default function SignOffRequestForm({
   competency,
   levels,
+  holderEmail,
   onSubmit,
   onCancel,
   isSubmitting = false,
@@ -148,14 +158,15 @@ export default function SignOffRequestForm({
   // The rule: somebody on Quill may be named any way the holder knows
   // them; somebody who is not must be given as an address, because an
   // address is the only thing that can be emailed.
-  const namesSomebody = found !== null || looksLikeEmail;
+  // A passport records a second person's judgement, so naming yourself
+  // is not a sign-off at all. Compared on the address because that is
+  // what gets sent; a holder typing their own name finds nobody
+  // already, since the search leaves the caller out.
+  const isSelf =
+    holderEmail !== undefined &&
+    typed.toLowerCase() === holderEmail.trim().toLowerCase();
 
-  // Only once the lookup has answered, so a half-typed name is not
-  // called a mistake while somebody is still typing it.
-  const assessorError =
-    typed !== "" && settled !== null && !namesSomebody
-      ? "Nobody on Quill matches that. Type their email address instead."
-      : undefined;
+  const namesSomebody = !isSelf && (found !== null || looksLikeEmail);
 
   const canSubmit = namesSomebody && observedOn !== null && !isSubmitting;
 
@@ -186,26 +197,34 @@ export default function SignOffRequestForm({
 
         <EmailField
           label="Who should assess this?"
-          description="A name or username if they use Quill. They do not need a Quill account — an email address is enough."
+          description="Name, username or email address"
           placeholder="assessor@example.nhs.uk"
           value={assessorEmail}
           onChange={(event) => setAssessorEmail(event.currentTarget.value)}
-          error={assessorError}
           required
         />
 
-        {/* What will happen to the address, rather than leaving the
-            holder to guess. Only once the address is well formed and
-            the lookup has answered: saying "we will email a new
-            assessor" while somebody is still halfway through typing a
-            colleague's address would be wrong more often than right. */}
-        {namesSomebody && settled !== null && (
+        {/* What will happen, rather than leaving the holder to guess.
+            Deliberately not the field's error channel, which renders
+            red with a warning icon: somebody part-way through typing a
+            name has made no mistake, and saying otherwise while they
+            are still typing alarms them about something merely
+            unfinished. Shown only once the lookup has answered, so the
+            line never contradicts itself mid-keystroke. */}
+        {(settled !== null || isSelf) && (
           <BodyText>
             {found
               ? `${found.full_name ?? found.username} already uses Quill. ` +
                 "They will be emailed and can sign in to sign this off."
-              : "Nobody on Quill uses that address. They will be emailed " +
-                "an invitation, and can register to sign this off."}
+              : isSelf
+                ? "That is your own address. A sign-off records somebody " +
+                  "else's judgement, so it cannot be your own."
+                : namesSomebody
+                  ? "Nobody on Quill uses that address. They will be " +
+                    "emailed an invitation, and can register to sign " +
+                    "this off."
+                  : "No match yet. Keep typing, or use their email " +
+                    "address if they do not use Quill."}
           </BodyText>
         )}
 

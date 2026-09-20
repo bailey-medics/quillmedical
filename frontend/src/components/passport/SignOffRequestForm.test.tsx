@@ -76,14 +76,6 @@ describe("SignOffRequestForm", () => {
       expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
     });
 
-    it("says an account is not needed, so a holder does not assume one is", () => {
-      renderForm();
-
-      expect(
-        screen.getByText(/They do not need a Quill account/),
-      ).toBeInTheDocument();
-    });
-
     it("sends the address, folded to lower case and trimmed", async () => {
       const user = userEvent.setup();
       const onSubmit = vi.fn();
@@ -112,23 +104,69 @@ describe("SignOffRequestForm", () => {
       );
     });
 
-    it("refuses a name that matches nobody, but not an empty field", async () => {
-      // Somebody on Quill may be named any way the holder knows them.
-      // Somebody who is not must be given as an address, because an
-      // address is the only thing that can be emailed. An empty field
-      // is a form not filled in yet, not a mistake.
+    it("says a name has matched nobody without calling it a mistake", async () => {
+      // Somebody part-way through typing a name has done nothing wrong,
+      // so this is said in the same plain line that reports a match,
+      // never in the field's red error channel.
       const user = userEvent.setup();
       renderForm();
 
-      expect(
-        screen.queryByText(/Type their email address instead/),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText(/No match yet/)).not.toBeInTheDocument();
 
       await typeAssessorEmail(user, "Doctor Nobody");
 
+      expect(await screen.findByText(/No match yet/)).toBeInTheDocument();
+    });
+
+    it("refuses the holder's own address", async () => {
+      // A passport records a second person's judgement, so naming
+      // yourself is not a sign-off. The server refuses it too, but only
+      // after the whole form has been filled in and sent.
+      const user = userEvent.setup();
+      renderForm({ holderEmail: "holder@example.nhs.uk" });
+
+      await typeAssessorEmail(user, "holder@example.nhs.uk");
+
       expect(
-        await screen.findByText(/Type their email address instead/),
+        await screen.findByText(/That is your own address/),
       ).toBeInTheDocument();
+    });
+
+    it("will not let the holder send their own address", async () => {
+      const user = userEvent.setup();
+      renderForm({ holderEmail: "holder@example.nhs.uk" });
+
+      await typeAssessorEmail(user, "Holder@Example.NHS.uk");
+      await user.type(
+        screen.getByRole("textbox", { name: /Observed on/ }),
+        "14/03/2026",
+      );
+      await screen.findByText(/That is your own address/);
+
+      // Compared without regard to case, because an address typed with
+      // capitals is the same mailbox.
+      expect(
+        screen.getByRole("button", { name: "Request sign-off" }),
+      ).toHaveAttribute("aria-disabled", "true");
+    });
+
+    it("will not send a name that matched nobody", async () => {
+      // The rule underneath the wording: somebody not on Quill has to
+      // be given as an address, because an address is the only thing
+      // that can be emailed.
+      const user = userEvent.setup();
+      renderForm();
+
+      await typeAssessorEmail(user, "Doctor Nobody");
+      await user.type(
+        screen.getByRole("textbox", { name: /Observed on/ }),
+        "14/03/2026",
+      );
+      await screen.findByText(/No match yet/);
+
+      expect(
+        screen.getByRole("button", { name: "Request sign-off" }),
+      ).toHaveAttribute("aria-disabled", "true");
     });
 
     it("accepts a colleague named any way the holder knows them", async () => {
@@ -256,9 +294,7 @@ describe("SignOffRequestForm", () => {
       // assertion below passes before anything was searched.
       await waitFor(() => expect(searchAssessors).toHaveBeenCalled());
 
-      expect(
-        await screen.findByText(/Type their email address instead/),
-      ).toBeInTheDocument();
+      expect(await screen.findByText(/No match yet/)).toBeInTheDocument();
       expect(screen.queryByText(/already uses Quill/)).not.toBeInTheDocument();
     });
   });
