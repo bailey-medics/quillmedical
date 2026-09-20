@@ -31,12 +31,12 @@ from sqlalchemy.orm import Session
 
 from app.models import (
     ExternalPatientAccess,
-    Organisation,
+    OrgUnit,
     User,
-    organisation_patient_member,
+    org_unit_patient_member,
 )
 from app.organisations import (
-    add_organisation_member,
+    add_place_member,
     check_user_patient_access,
 )
 from app.security import hash_password
@@ -70,14 +70,14 @@ def _user(
 
 
 @pytest.fixture
-def org(db_session: Session) -> Organisation:
+def org(db_session: Session) -> OrgUnit:
     """An organisation with one patient on its books."""
-    organisation = Organisation(name="Trust", type="hospital")
+    organisation = OrgUnit(name="Trust", type="organisation")
     db_session.add(organisation)
     db_session.commit()
     db_session.execute(
-        insert(organisation_patient_member).values(
-            org_unit_id=organisation.org_unit_id, patient_id=A_PATIENT_HERE
+        insert(org_unit_patient_member).values(
+            org_unit_id=organisation.id, patient_id=A_PATIENT_HERE
         )
     )
     db_session.commit()
@@ -85,8 +85,8 @@ def org(db_session: Session) -> Organisation:
     return organisation
 
 
-def _place(db: Session, org: Organisation, user: User) -> None:
-    add_organisation_member(db, org.id, user.id, "staff")
+def _place(db: Session, org: OrgUnit, user: User) -> None:
+    add_place_member(db, org.id, user.id, "staff")
     db.commit()
 
 
@@ -213,7 +213,7 @@ class TestThePatientsYouTreat:
     """``access_patient_records`` plus a shared organisation."""
 
     def test_a_clinician_reaches_a_patient_at_their_organisation(
-        self, db_session: Session, org: Organisation
+        self, db_session: Session, org: OrgUnit
     ) -> None:
         clinician = _user(
             db_session, "a_clinician", profession="specialty_trainee_1_2"
@@ -226,7 +226,7 @@ class TestThePatientsYouTreat:
         )
 
     def test_a_clinician_elsewhere_is_refused(
-        self, db_session: Session, org: Organisation
+        self, db_session: Session, org: OrgUnit
     ) -> None:
         clinician = _user(
             db_session, "an_outsider", profession="specialty_trainee_1_2"
@@ -238,7 +238,7 @@ class TestThePatientsYouTreat:
         )
 
     def test_sharing_an_organisation_without_the_competency_is_refused(
-        self, db_session: Session, org: Organisation
+        self, db_session: Session, org: OrgUnit
     ) -> None:
         """A receptionist is at the organisation and may not read records."""
         receptionist = _user(
@@ -256,7 +256,7 @@ class TestTheRoutesDoNotSubstituteForEachOther:
     """The point of splitting the id: one competency, one route."""
 
     def test_a_patient_cannot_read_the_ward(
-        self, db_session: Session, org: Organisation
+        self, db_session: Session, org: OrgUnit
     ) -> None:
         """Own-records is not a caseload, even inside an organisation.
 
@@ -290,7 +290,7 @@ class TestTheRoutesDoNotSubstituteForEachOther:
         )
 
     def test_an_advocate_cannot_read_a_caseload(
-        self, db_session: Session, org: Organisation
+        self, db_session: Session, org: OrgUnit
     ) -> None:
         """Being invited to one record reaches no others, even shared ones."""
         advocate = _user(
@@ -309,7 +309,7 @@ class TestSomeoneWhoIsBoth:
     """Staff who are also patients here — the ordinary case."""
 
     def test_a_clinician_reaches_their_own_record_and_their_patients(
-        self, db_session: Session, org: Organisation
+        self, db_session: Session, org: OrgUnit
     ) -> None:
         """Both competencies, both routes, no interference between them.
 

@@ -3627,11 +3627,19 @@ not deferred items: deferring is for what nobody should build yet.
     returned 500 — returns 201, leaving a real git repository sharded
     under `/data/passports/d9/08/…`. Probe user and files removed
     afterwards.
-- [ ] Give the assessor's queue a name and a way in. `/passport/inbox`
-      is built and tested, and nothing links to it: a request to assess
-      somebody sits where only a typed URL reaches it, and the person
-      who asked cannot tell. It was missed when the other four sections
-      were linked from the passport page.
+- [x] Give the assessor's queue a name and a way in. **Done, and this
+      checkbox was stale** — found on 18 September while picking the
+      item up. `InboxButton` sits beside the header on `/passport`
+      carrying a count from `fetchInbox`, and navigates to
+      `/passport/inbox`. It renders in every state of that page,
+      including the error state and the one shown to somebody with no
+      passport at all — which matters, because an external assessor
+      has no passport and would otherwise have no way through.
+
+      **The name is settled too:** the page is titled "Sign-off
+      requests", which says whose work it is and that it is waiting,
+      without "inbox" promising a general queue or "sign-offs"
+      colliding with the holder's own card.
 
   - **"Inbox" is the wrong name and so is "sign-offs".** Inbox promises
     a general queue and will only ever hold one kind of thing. Sign-offs
@@ -3698,9 +3706,13 @@ its own.
 - [x] Replace the assessor dropdown in
       `frontend/src/components/passport/SignOffRequestForm.tsx` with
       an email field, and update its stories and tests.
-- [ ] Say what happens next on the form: whether the address belongs
-      to a Quill account decides whether they sign in or register, and
-      a holder should not have to guess which.
+- [x] Say what happens next on the form. The address is looked up as
+      it is typed, debounced, and the form says either that the person
+      already uses Quill and will sign in, or that nobody does and they
+      will be invited to register. Nothing is claimed while the address
+      is half typed, and only an exact address counts as a match — the
+      search matches anywhere in an address, so a near miss would
+      otherwise report a colleague the holder had not found.
 - [ ] Decide what becomes of `passport_assessor_invite`. Its routes
       serve a rate-limit count, an invite list and token redemption;
       only the single-use link has to survive, and it is a credential
@@ -3779,14 +3791,37 @@ anonymous holding a link.
       somebody new is the case the flow exists for. The form still
       needs wiring to it — that is the unit below.
 
-- [ ] **The confirmation step does not exist.** Submitting sends the
-      request immediately. Step 3 wants a modal showing who was
-      matched, and for a known assessor it needs their name, email and
-      registration number — which no endpoint returns today.
+- [x] **The confirmation step.** Asking now stops and shows who was
+      found before anything is sent. A known assessor appears by name,
+      address and registration number — the hard evidence that this is
+      the right person — marked as stated by them rather than checked
+      by Quill. An address Quill does not know shows only what was
+      typed, and says they will be invited.
 
-- [ ] **The invite link goes to an accept page, not the inbox.**
-      `ACCEPT_PATH` points at `/passport/assessors/accept`. Step 6
-      wants registration or login, then the inbox.
+      **Step 2 is settled too, by a rule the product owner gave on
+      20 September:** somebody already on Quill may be named by name,
+      username or address; somebody who is not must be given as an
+      address, because an address is the only thing that can be
+      emailed. That needs no new component — the field searches on
+      whatever is typed, and refuses only text that finds nobody and
+      is not an address.
+
+      **One match, or none.** Two people answering to "Okonkwo" is not
+      an answer, and taking the first would name whichever the database
+      happened to return — the mistake the confirmation step exists to
+      prevent. The holder is asked for an address instead.
+
+- [x] **The invite link lands them at the requests.** The accept page
+      stays — it is what a signed token in a URL opens, and the person
+      may have no account — but it now collects the assessor's own
+      name and registration, and moves on to `/passport/inbox` once
+      accepted rather than telling them to go and find it. A button
+      sits beside the confirmation for anyone who looked away.
+
+      **It also fixed a break.** The page still sent only a username
+      and password, which the accept route began refusing when the
+      assessor started stating their own details, so registering
+      through the link would have failed with a 422.
 
 - [x] **Fix the blank name and registration on a new account.** The
       accept flow reads `name`, `registration_authority` and

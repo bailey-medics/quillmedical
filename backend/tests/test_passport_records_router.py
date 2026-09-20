@@ -32,11 +32,11 @@ from sqlalchemy.orm import Session
 from app.features.passport.store import LocalPassportStore
 from app.main import app
 from app.models import (
-    Organisation,
-    OrganisationFeature,
+    OrgUnit,
+    OrgUnitFeature,
     User,
 )
-from app.organisations import add_organisation_member
+from app.organisations import add_place_member
 from app.passport_storage import get_passport_store
 from app.security import hash_password
 
@@ -97,20 +97,16 @@ def assessor(db_session: Session) -> User:
 
 
 @pytest.fixture
-def org(db_session: Session, holder: User, assessor: User) -> Organisation:
-    org = Organisation(name="Test Trust")
+def org(db_session: Session, holder: User, assessor: User) -> OrgUnit:
+    org = OrgUnit(name="Test Trust", type="hospital_team")
     db_session.add(org)
     db_session.commit()
     db_session.refresh(org)
 
-    db_session.add(
-        OrganisationFeature(
-            org_unit_id=org.org_unit_id, feature_key="passport"
-        )
-    )
+    db_session.add(OrgUnitFeature(org_unit_id=org.id, feature_key="passport"))
 
     for user in (holder, assessor):
-        add_organisation_member(db_session, org.id, user.id, "trainee")
+        add_place_member(db_session, org.id, user.id, "trainee")
 
     db_session.commit()
     return org
@@ -120,7 +116,7 @@ def org(db_session: Session, holder: User, assessor: User) -> Organisation:
 def passport(
     test_client: TestClient,
     passport_store: LocalPassportStore,
-    org: Organisation,
+    org: OrgUnit,
 ) -> tuple[TestClient, str]:
     """A holder with a passport, signed in."""
     client = _login(test_client, "holder")

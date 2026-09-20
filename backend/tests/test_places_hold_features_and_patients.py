@@ -18,26 +18,25 @@ from sqlalchemy import insert, select
 from sqlalchemy.orm import Session
 
 from app.models import (
-    Organisation,
-    OrganisationFeature,
-    Site,
-    organisation_patient_member,
+    OrgUnit,
+    OrgUnitFeature,
+    org_unit_patient_member,
 )
-from app.organisations import add_organisation_member
+from app.organisations import add_place_member
 
 PATIENT = "patient-abc"
 
 
-def _org(db: Session, name: str = "Trust") -> Organisation:
-    org = Organisation(name=name, type="hospital_team")
+def _org(db: Session, name: str = "Trust") -> OrgUnit:
+    org = OrgUnit(name=name, type="hospital_team")
     db.add(org)
     db.commit()
     db.refresh(org)
     return org
 
 
-def _ward(db: Session, org: Organisation) -> Site:
-    site = Site(name="Ward 1", type="ward", parent_id=org.org_unit_id)
+def _ward(db: Session, org: OrgUnit) -> OrgUnit:
+    site = OrgUnit(name="Ward 1", type="ward", parent_id=org.id)
     db.add(site)
     db.commit()
     db.refresh(site)
@@ -51,29 +50,29 @@ class TestFeatures:
         org = _org(db_session)
 
         resp = authenticated_superadmin_client.put(
-            f"/api/organisations/{org.id}/features/teaching",
+            f"/api/org-units/{org.id}/features/teaching",
             json={"enabled": True},
         )
 
         assert resp.status_code == 200
         place_id = db_session.scalar(
-            select(OrganisationFeature.org_unit_id).where(
-                OrganisationFeature.feature_key == "teaching"
+            select(OrgUnitFeature.org_unit_id).where(
+                OrgUnitFeature.feature_key == "teaching"
             )
         )
-        assert place_id == org.org_unit_id
+        assert place_id == org.id
 
     def test_the_organisation_lists_it_back(
         self, authenticated_superadmin_client, db_session
     ):
         org = _org(db_session)
         authenticated_superadmin_client.put(
-            f"/api/organisations/{org.id}/features/teaching",
+            f"/api/org-units/{org.id}/features/teaching",
             json={"enabled": True},
         )
 
         listed = authenticated_superadmin_client.get(
-            f"/api/organisations/{org.id}/features"
+            f"/api/org-units/{org.id}/features"
         )
 
         assert listed.status_code == 200
@@ -88,15 +87,13 @@ class TestFeatures:
         org = _org(db_session)
         ward = _ward(db_session, org)
         db_session.add(
-            OrganisationFeature(
-                org_unit_id=org.org_unit_id, feature_key="teaching"
-            )
+            OrgUnitFeature(org_unit_id=org.id, feature_key="teaching")
         )
         db_session.commit()
 
         at_ward = db_session.scalar(
-            select(OrganisationFeature.id).where(
-                OrganisationFeature.org_unit_id == ward.id
+            select(OrgUnitFeature.id).where(
+                OrgUnitFeature.org_unit_id == ward.id
             )
         )
         assert at_ward is None
@@ -110,23 +107,21 @@ class TestPatientLists:
         test_patient_manager,
     ):
         org = _org(db_session)
-        add_organisation_member(
-            db_session, org.id, test_patient_manager.id, "staff"
-        )
+        add_place_member(db_session, org.id, test_patient_manager.id, "staff")
         db_session.commit()
 
         resp = authenticated_patient_manager_client.post(
-            f"/api/organisations/{org.id}/patients",
+            f"/api/org-units/{org.id}/patients",
             json={"patient_id": PATIENT},
         )
 
         assert resp.status_code == 200
         place_id = db_session.scalar(
-            select(organisation_patient_member.c.org_unit_id).where(
-                organisation_patient_member.c.patient_id == PATIENT
+            select(org_unit_patient_member.c.org_unit_id).where(
+                org_unit_patient_member.c.patient_id == PATIENT
             )
         )
-        assert place_id == org.org_unit_id
+        assert place_id == org.id
 
     def test_removing_them_clears_the_row(
         self,
@@ -135,57 +130,48 @@ class TestPatientLists:
         test_patient_manager,
     ):
         org = _org(db_session)
-        add_organisation_member(
-            db_session, org.id, test_patient_manager.id, "staff"
-        )
+        add_place_member(db_session, org.id, test_patient_manager.id, "staff")
         db_session.commit()
         authenticated_patient_manager_client.post(
-            f"/api/organisations/{org.id}/patients",
+            f"/api/org-units/{org.id}/patients",
             json={"patient_id": PATIENT},
         )
 
         resp = authenticated_patient_manager_client.delete(
-            f"/api/organisations/{org.id}/patients/{PATIENT}"
+            f"/api/org-units/{org.id}/patients/{PATIENT}"
         )
 
         assert resp.status_code == 200
         assert (
-            db_session.execute(select(organisation_patient_member)).first()
-            is None
+            db_session.execute(select(org_unit_patient_member)).first() is None
         )
 
-    def test_the_organisation_page_lists_them(
+    def test_the_places_page_lists_them(
         self, authenticated_superadmin_client, db_session
     ):
         org = _org(db_session)
         db_session.execute(
-            insert(organisation_patient_member).values(
-                org_unit_id=org.org_unit_id, patient_id=PATIENT
+            insert(org_unit_patient_member).values(
+                org_unit_id=org.id, patient_id=PATIENT
             )
         )
         db_session.commit()
 
-        resp = authenticated_superadmin_client.get(
-            f"/api/organisations/{org.id}"
-        )
+        resp = authenticated_superadmin_client.get(f"/api/org-units/{org.id}")
 
         assert resp.status_code == 200
-        assert [p["patient_id"] for p in resp.json()["patient_members"]] == [
-            PATIENT
-        ]
+        assert resp.json()["patient_ids"] == [PATIENT]
 
 
 class TestDeletingAnOrganisation:
     def test_everything_at_its_place_goes_with_it(self, db_session):
         org = _org(db_session)
         db_session.add(
-            OrganisationFeature(
-                org_unit_id=org.org_unit_id, feature_key="teaching"
-            )
+            OrgUnitFeature(org_unit_id=org.id, feature_key="teaching")
         )
         db_session.execute(
-            insert(organisation_patient_member).values(
-                org_unit_id=org.org_unit_id, patient_id=PATIENT
+            insert(org_unit_patient_member).values(
+                org_unit_id=org.id, patient_id=PATIENT
             )
         )
         db_session.commit()
@@ -193,8 +179,7 @@ class TestDeletingAnOrganisation:
         db_session.delete(org)
         db_session.commit()
 
-        assert db_session.execute(select(OrganisationFeature)).first() is None
+        assert db_session.execute(select(OrgUnitFeature)).first() is None
         assert (
-            db_session.execute(select(organisation_patient_member)).first()
-            is None
+            db_session.execute(select(org_unit_patient_member)).first() is None
         )

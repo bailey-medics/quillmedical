@@ -32,7 +32,7 @@ from app.cbac.competencies import (
     unknown_competency_ids,
     validate_competency_ids,
 )
-from app.models import Organisation, PractisingCompetency, User
+from app.models import OrgUnit, PractisingCompetency, User
 from app.security import hash_password
 
 REAL = "access_patient_records"
@@ -239,13 +239,13 @@ class TestTheCleanupQueue:
         It cannot be written the other way round: the model refuses a
         retired competency, which is the point of the guard.
         """
-        org = Organisation(name="Trust", type="hospital")
+        org = OrgUnit(name="Trust", type="organisation")
         db_session.add(org)
         db_session.commit()
         person = self._user(db_session, "long_server")
         row = PractisingCompetency(
             user_id=person.id,
-            site_id=org.org_unit_id,
+            org_unit_id=org.id,
             competency=RETIRABLE,
         )
         db_session.add(row)

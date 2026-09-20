@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renderWithMantine } from "@test/test-utils";
+import { renderWithMantine, remToPx } from "@test/test-utils";
 import QuillName from "./QuillName";
 
 describe("QuillName Component", () => {
@@ -36,7 +36,7 @@ describe("QuillName Component", () => {
     it("applies custom height", () => {
       const { container } = renderWithMantine(<QuillName height={48} />);
       const img = container.querySelector("img");
-      expect(img).toHaveStyle({ height: "48rem" });
+      expect(img).toHaveStyle({ height: remToPx("48rem") });
     });
 
     it("accepts string height value", () => {
@@ -58,7 +58,7 @@ describe("QuillName Component", () => {
         <QuillName style={{ marginLeft: "1rem" }} />,
       );
       const img = container.querySelector("img");
-      expect(img).toHaveStyle({ marginLeft: "1rem" });
+      expect(img).toHaveStyle({ marginLeft: remToPx("1rem") });
     });
   });
 
@@ -66,13 +66,13 @@ describe("QuillName Component", () => {
     it("uses default height of 2.1rem", () => {
       const { container } = renderWithMantine(<QuillName />);
       const img = container.querySelector("img");
-      expect(img).toHaveStyle({ height: "2.1rem" });
+      expect(img).toHaveStyle({ height: remToPx("2.1rem") });
     });
 
     it("uses default marginRight of 0.5rem", () => {
       const { container } = renderWithMantine(<QuillName />);
       const img = container.querySelector("img");
-      expect(img).toHaveStyle({ marginRight: "0.5rem" });
+      expect(img).toHaveStyle({ marginRight: remToPx("0.5rem") });
     });
   });
 });

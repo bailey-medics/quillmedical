@@ -10,7 +10,13 @@ Covers:
 - Nothing is inherited, in either direction
 - The same authorisation twice is still refused
 - A row with no place is still refused
-- An organisation the tree does not know about authorises nobody
+
+``TestAnOrganisationOutsideTheTree`` used to sit here, checking that an
+organisation whose ``org_unit_id`` was null authorised nobody. That
+column is required now, so the state it guarded against cannot be
+written — the test could only reach it by setting the column to null
+itself, which is the database refusing rather than the code failing
+closed.
 """
 
 from __future__ import annotations
@@ -21,22 +27,22 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.cbac.scoped import can_practise_at, competencies_at
-from app.models import Organisation, PractisingCompetency, Site, User
+from app.models import OrgUnit, PractisingCompetency, User
 from app.security import hash_password
 
 COMPETENCY = "access_patient_records"
 
 
-def _org(db: Session, name: str = "Trust") -> Organisation:
-    org = Organisation(name=name, type="hospital_team")
+def _org(db: Session, name: str = "Trust") -> OrgUnit:
+    org = OrgUnit(name=name, type="hospital_team")
     db.add(org)
     db.commit()
     db.refresh(org)
     return org
 
 
-def _ward(db: Session, org: Organisation, name: str = "Ward 1") -> Site:
-    site = Site(name=name, type="ward", parent_id=org.org_unit_id)
+def _ward(db: Session, org: OrgUnit, name: str = "Ward 1") -> OrgUnit:
+    site = OrgUnit(name=name, type="ward", parent_id=org.id)
     db.add(site)
     db.commit()
     db.refresh(site)
@@ -61,7 +67,7 @@ def _doctor(db: Session, username: str = "doc") -> User:
 def _authorise(db: Session, user: User, site_id: int) -> None:
     db.add(
         PractisingCompetency(
-            user_id=user.id, site_id=site_id, competency=COMPETENCY
+            user_id=user.id, org_unit_id=site_id, competency=COMPETENCY
         )
     )
     db.commit()
@@ -71,26 +77,22 @@ class TestBothSpellingsFindTheSameRow:
     def test_naming_the_organisation_or_its_row_agree(self, db_session):
         org = _org(db_session)
         doctor = _doctor(db_session)
-        _authorise(db_session, doctor, org.org_unit_id)
+        _authorise(db_session, doctor, org.id)
 
-        assert can_practise_at(
-            db_session, doctor, COMPETENCY, organisation_id=org.id
-        )
-        assert can_practise_at(
-            db_session, doctor, COMPETENCY, site_id=org.org_unit_id
-        )
+        assert can_practise_at(db_session, doctor, COMPETENCY, place_id=org.id)
+        assert can_practise_at(db_session, doctor, COMPETENCY, place_id=org.id)
 
     def test_the_row_is_stored_against_the_place(self, db_session):
         org = _org(db_session)
         doctor = _doctor(db_session)
-        _authorise(db_session, doctor, org.org_unit_id)
+        _authorise(db_session, doctor, org.id)
 
         stored = db_session.scalar(
-            select(PractisingCompetency.site_id).where(
+            select(PractisingCompetency.org_unit_id).where(
                 PractisingCompetency.user_id == doctor.id
             )
         )
-        assert stored == org.org_unit_id
+        assert stored == org.id
 
 
 class TestNothingIsInherited:
@@ -101,10 +103,10 @@ class TestNothingIsInherited:
         org = _org(db_session)
         ward = _ward(db_session, org)
         doctor = _doctor(db_session)
-        _authorise(db_session, doctor, org.org_unit_id)
+        _authorise(db_session, doctor, org.id)
 
         assert not can_practise_at(
-            db_session, doctor, COMPETENCY, site_id=ward.id
+            db_session, doctor, COMPETENCY, place_id=ward.id
         )
 
     def test_an_organisation_does_not_take_a_wards(self, db_session):
@@ -114,24 +116,21 @@ class TestNothingIsInherited:
         _authorise(db_session, doctor, ward.id)
 
         assert not can_practise_at(
-            db_session, doctor, COMPETENCY, organisation_id=org.id
+            db_session, doctor, COMPETENCY, place_id=org.id
         )
-        assert (
-            competencies_at(db_session, doctor, organisation_id=org.id)
-            == set()
-        )
+        assert competencies_at(db_session, doctor, place_id=org.id) == set()
 
 
 class TestTheRulesThatSurvived:
     def test_the_same_authorisation_twice_is_refused(self, db_session):
         org = _org(db_session)
         doctor = _doctor(db_session)
-        _authorise(db_session, doctor, org.org_unit_id)
+        _authorise(db_session, doctor, org.id)
 
         db_session.add(
             PractisingCompetency(
                 user_id=doctor.id,
-                site_id=org.org_unit_id,
+                org_unit_id=org.id,
                 competency=COMPETENCY,
             )
         )
@@ -144,13 +143,13 @@ class TestTheRulesThatSurvived:
         ward = _ward(db_session, org)
         doctor = _doctor(db_session)
 
-        _authorise(db_session, doctor, org.org_unit_id)
+        _authorise(db_session, doctor, org.id)
         _authorise(db_session, doctor, ward.id)
 
+        assert can_practise_at(db_session, doctor, COMPETENCY, place_id=org.id)
         assert can_practise_at(
-            db_session, doctor, COMPETENCY, organisation_id=org.id
+            db_session, doctor, COMPETENCY, place_id=ward.id
         )
-        assert can_practise_at(db_session, doctor, COMPETENCY, site_id=ward.id)
 
     def test_a_row_with_no_place_is_refused(self, db_session):
         doctor = _doctor(db_session)
@@ -161,23 +160,3 @@ class TestTheRulesThatSurvived:
         with pytest.raises(IntegrityError):
             db_session.commit()
         db_session.rollback()
-
-
-class TestAnOrganisationOutsideTheTree:
-    def test_it_authorises_nobody(self, db_session):
-        """Failing closed: a place the tree has never heard of is not a
-        place everybody can practise at."""
-        org = _org(db_session)
-        doctor = _doctor(db_session)
-        _authorise(db_session, doctor, org.org_unit_id)
-
-        org.org_unit_id = None
-        db_session.commit()
-
-        assert not can_practise_at(
-            db_session, doctor, COMPETENCY, organisation_id=org.id
-        )
-        assert (
-            competencies_at(db_session, doctor, organisation_id=org.id)
-            == set()
-        )

@@ -407,39 +407,175 @@ Two things to check rather than assume:
 
 9. **Write the title and the body.** The title takes the stack key form
    — `Passport: what this branch does`, as "The stack key" sets out. The
-   reader reads every line of the diff, so the body never describes it:
-   write only what reading the code cannot tell them, which is what you
-   chose, what might be risky, and what is different now.
+   body's job is to make the change quickly clear: where this branch
+   sits, what it does, what you chose, and what might be risky.
 
-   Three sections, in this order, each a level-two heading. **No summary
-   line above them** — the pull request title already says what the branch
-   does, and repeating it is the first thing the reader has to skip:
+   **The reader could work most of this out from the diff. The point is
+   that they should not have to.** A good description is the short,
+   accurate account that saves them reconstructing it — so summarising
+   what the change does is the job, not a thing to avoid. What to avoid
+   is *transcribing*: a file list, a count of lines or tests, a walk
+   through the diff in order. Those cost the reader time and tell them
+   what the diff already shows plainly.
+
+   Say what the change does in the fewest words that stay true, and
+   spend the rest on what the diff genuinely does not carry — why this
+   way and not another, what could go wrong, where this sits in the
+   stack.
+
+   **Open with one orienting line, then three level-two sections.** The
+   opening is not a restatement of the title: it is the context a reader
+   needs before the first bullet makes any sense at all.
 
    ```markdown
+   Staff can now be taken off a ward without leaving them in charge of it.
+
    ## LLM decisions
 
-   - **Bold sentence carrying the whole point.** Then a sentence or two of
-     plainer detail, which the reader may skip.
+   - One sentence carrying the whole point. A second only if the first
+     genuinely needs it.
 
    ## Risks
 
-   - **None found.** …or one bullet per risk.
+   - None found. …or one bullet per risk.
 
    ## What has changed
 
-   - **Bold sentence naming the change.** Then the detail.
+   - One sentence naming what is different now.
    ```
 
-   **Every bullet leads with a bold sentence that stands alone.** The
-   reader should be able to read only the bold text and have the whole
-   pull request. What follows the bold is expansion for anyone who wants
-   it, never the point itself.
+   ### The opening
 
-   **Write for a sixteen-year-old.** Short words, short sentences, no
-   jargon. Say what someone using the thing would see, not what the code
-   does: "shows a dot while tests run" rather than "returns a pending
-   mark". Use no word that exists only in the diff — a function name, a
-   constant, an enum value. Those belong in code comments.
+   - **Line one: one sentence, what is true now that was not true
+     before.** In terms of what someone using the thing would see. Never
+     a paraphrase of the title, and never a sentence that only parses if
+     you already know the answer.
+   - **If you do link something — a plan, a document — use a full
+     `https://github.com/…/blob/main/…` URL.** GitHub does not resolve a
+     relative path in a pull request body.
+
+   ### Name things by their real names
+
+   **Use the vocabulary of the plan and of the code, not a private
+   synonym for it.** If the plan calls it an `org_unit`, call it an
+   `org_unit`. If the route is `/api/sites`, write `/api/sites`. Domain
+   nouns, table names, route paths and file paths are what the reader
+   already has in their head, and swapping them for a gentler word — "a
+   place", "the surface", "the address being retired" — does not make the
+   sentence simpler, it makes the reader translate it back before they
+   can use it.
+
+   What to leave out is the *incidental*: a local variable, a private
+   helper, an enum member, a count of lines. Those exist only inside the
+   diff and the diff already carries them.
+
+   **A gentler synonym is worse than jargon, because it can be wrong.**
+   "Place" for `org_unit` cost a review: the plan's own naming section
+   says the tree is governance and not geography, so a reader who met
+   "place" reasonably asked whether it meant an address, a ward or a bed.
+   The real name carries the meaning the plan settled on; a substitute
+   carries whatever the reader supplies.
+
+   ### Introduce a name the first time you use it
+
+   **Every name gets three or four words saying what it is, on its first
+   appearance, inline.** Not a glossary, not a preamble — a comma and a
+   short phrase:
+
+   > ✓ "`org_unit`, a node in the governance tree: a trust, a hospital
+   > or a ward"
+   >
+   > ✓ "`place_ids`, the new field naming which `org_unit`s a user
+   > belongs to"
+
+   After that first mention, use the bare name. Repeating the gloss is
+   padding.
+
+   **Never point at something with a bare noun phrase.** "The new list",
+   "the form", "the surface", "both vocabularies", "the older fields",
+   "that gate" — each one asks the reader to work out which thing is
+   meant, and only the diff can tell them. Name it, or describe it well
+   enough to be found:
+
+   > ✗ "The new list is added beside the old ones."
+   >
+   > ✓ "`place_ids` is added beside `organisation_ids` and `site_ids`."
+   >
+   > ✗ "An admin saving the form now changes only the places they
+   > administer."
+   >
+   > ✓ "An admin saving the add-or-edit-user form now changes only the
+   > `org_unit`s they administer."
+
+   **This applies to the branch below as much as to the code.** A reader
+   arrives at one pull request in a stack, not at all of them in order,
+   so a phrase that only parses if you read the one underneath — "the
+   expand you chose", "the two older lists" — needs naming here too, in
+   the same few words.
+
+   The test: **a reader who knows the product, but has not read this
+   diff, the branch below it, or the plan.** If a sentence leaves them
+   guessing what a noun refers to, it is not finished.
+
+   ### Say it straight
+
+   **Write for a sixteen-year-old: short words, short sentences.** That
+   means plain, not clever. The commonest failure here is the aphorism —
+   a neat, balanced line that states a conclusion whose premise the
+   reader has not been given:
+
+   > ✗ "Whose tree a place goes into is checked on the move, not only on
+   > the create."
+   >
+   > ✓ "Moving an `org_unit` now checks its new parent is in the same
+   > organisation. Creating one already did."
+
+   > ✗ "The shapes stay while the answers stop."
+   >
+   > ✓ "The retired `/api/sites` routes still accept the request bodies
+   > they always did, so an old client gets '410, this has moved' rather
+   > than 'your request is malformed'."
+
+   Two tests before a bullet goes in:
+
+   - Subject, verb, object: name who or what does the thing.
+   - Could someone who has read only the plan summary understand it on one
+     pass? If it needs the diff to parse, rewrite it.
+
+   ### Punctuation and spelling
+
+   **No em dashes.** Not in the opening, not in a bullet, not in a
+   heading. A comma, a colon, a full stop or a pair of brackets does the
+   same job and reads plainly. A sentence reaching for an em dash is
+   usually one clause too long, so the honest fix is to split it.
+
+   **British English throughout**, as `CLAUDE.md` requires of everything
+   in this repository: organisation, behaviour, recognise, licence as the
+   noun. Identifiers, route paths and library names keep whatever
+   spelling the code gives them.
+
+   ### One idea per bullet, and no bold
+
+   **Never open a bullet with a bold phrase.** Bold on the front of every
+   bullet marks nothing, because everything is marked; it reads as a
+   headline over a sentence that then repeats it, and it tempts you into
+   putting the punchline in bold and the premise in the plain text that
+   follows.
+
+   **One idea per bullet, and no sentence that restates another.** Do not
+   count sentences. A bullet that needs four short ones to introduce a
+   name, give the reason and state the consequence is doing its job;
+   squeezing those into one produces the clause-stacked sentence this
+   section exists to prevent.
+
+   What to cut is repetition, not length. Two bullets on the same idea
+   are one bullet. One bullet carrying two ideas is two bullets. A second
+   sentence that says the first again in other words is deleted, however
+   short it is.
+
+   Bold is for the rare word inside a sentence that genuinely must not be
+   missed — "this **deletes** the rows" — and loses that power the moment
+   it becomes the house style.
 
    Each section:
 
@@ -454,7 +590,7 @@ Two things to check rather than assume:
 
    - **`## Risks`** — security, data leaks, patient safety, anything that
      could go wrong beyond the code being incorrect. **Always present**,
-     even as "**None found.**", because an omitted section cannot be told
+     even as "None found.", because an omitted section cannot be told
      apart from one nobody thought about. Say "none found", never "none":
      it is what you noticed, not a guarantee, and your judgement of risk
      is not well calibrated.
@@ -462,13 +598,24 @@ Two things to check rather than assume:
    - **`## What has changed`** — what is different now, in terms of what a
      user of the thing would see. Not a file list and not a commit list:
      the diff already carries those, and repeating them is the most common
-     way this section becomes noise.
+     way this section becomes noise. **Counting is not describing** —
+     "sixteen tests" tells the reader nothing on its own; say what the
+     tests pin down, and let the diff do the counting.
+
+   ### Closing
 
    Finish with `<!-- crp:pr-summary -->` on its own line — nothing after
-   it, and no attribution footer anywhere in the body.
+   it. **No attribution footer anywhere in the body**, no "Generated by",
+   no session link, no robot emoji: if a tool appends one, strip it
+   before the body is posted and say that you did.
 
-   Hard ceiling: **200 words**. A description that long usually means the
-   "What has changed" section has drifted into describing the diff.
+   **No hard word limit, and fewer words is still better.** Aim at
+   250-odd, with about 30 in the opening, but never buy the count by
+   dropping a gloss or an explanation — a short description the reader
+   cannot follow has saved nothing. Cut in this order: the "What has
+   changed" section where it has drifted into describing the diff, then
+   any bullet whose second sentence restates its first. Never cut the
+   opening or a first-use gloss; those are what make the rest readable.
 
    ```bash
    gh pr edit <number> \

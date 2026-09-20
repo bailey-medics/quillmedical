@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renderWithMantine } from "@test/test-utils";
+import { renderWithMantine, remToPx } from "@test/test-utils";
 import QuillLogo from "./QuillLogo";
 
 describe("QuillLogo Component", () => {
@@ -56,7 +56,7 @@ describe("QuillLogo Component", () => {
     it("applies custom height", () => {
       const { container } = renderWithMantine(<QuillLogo height={256} />);
       const img = container.querySelector("img");
-      expect(img).toHaveStyle({ height: "256rem" });
+      expect(img).toHaveStyle({ height: remToPx("256rem") });
     });
 
     it("accepts string height value", () => {
@@ -86,7 +86,7 @@ describe("QuillLogo Component", () => {
     it("uses default height of 8rem", () => {
       const { container } = renderWithMantine(<QuillLogo />);
       const img = container.querySelector("img");
-      expect(img).toHaveStyle({ height: "8rem" });
+      expect(img).toHaveStyle({ height: remToPx("8rem") });
     });
   });
 });

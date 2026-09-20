@@ -38,20 +38,27 @@ const mockAdminUser: User = {
 };
 
 describe("OrganisationAdminPage", () => {
-  const emptyFeatures: {
-    features: Array<{
-      feature_key: string;
-      enabled_at: string;
-      enabled_by: number;
-    }>;
-  } = { features: [] };
-
-  /** Mock api.get to return org data and empty features by default */
-  function mockOrgApi(org: Record<string, unknown>, features = emptyFeatures) {
-    const orgWithDefaults = { sites: [], ...org };
-    vi.spyOn(apiLib.api, "get").mockImplementation((url: string) => {
-      if (url.includes("/features")) return Promise.resolve(features);
-      return Promise.resolve(orgWithDefaults);
+  /**
+   * Answer the one request the page makes.
+   *
+   * A place carries its own people, the places inside it, the features
+   * switched on there and its patient list, so the page asks once. The
+   * fields it does not name default to empty.
+   */
+  function mockOrgApi(org: Record<string, unknown>, features: string[] = []) {
+    vi.spyOn(apiLib.api, "get").mockResolvedValue({
+      type: "hospital_team",
+      type_display_name: "Organisation",
+      is_root: true,
+      parent_id: null,
+      location: "",
+      is_active: true,
+      members: [],
+      children: [],
+      patient_ids: [],
+      clinical_lead_id: null,
+      ...org,
+      features,
     });
   }
 
@@ -81,8 +88,8 @@ describe("OrganisationAdminPage", () => {
         created_at: "2024-01-15T10:00:00Z",
         updated_at: "2024-01-15T10:00:00Z",
         staff_count: 0,
-        staff_members: [],
-        patient_members: [],
+        members: [],
+        patient_ids: [],
         patient_count: 0,
       };
 
@@ -109,8 +116,8 @@ describe("OrganisationAdminPage", () => {
         created_at: "2024-01-15T10:00:00Z",
         updated_at: "2024-01-15T10:00:00Z",
         staff_count: 0,
-        staff_members: [],
-        patient_members: [],
+        members: [],
+        patient_ids: [],
         patient_count: 0,
       };
 
@@ -134,8 +141,8 @@ describe("OrganisationAdminPage", () => {
         location: "Birmingham, UK",
         created_at: "2024-01-15T10:00:00Z",
         updated_at: "2024-01-15T10:00:00Z",
-        staff_members: [],
-        patient_members: [],
+        members: [],
+        patient_ids: [],
         patient_count: 0,
       };
 
@@ -160,8 +167,8 @@ describe("OrganisationAdminPage", () => {
         created_at: "2024-01-15T10:00:00Z",
         updated_at: "2024-01-15T10:00:00Z",
         staff_count: 0,
-        staff_members: [],
-        patient_members: [],
+        members: [],
+        patient_ids: [],
         patient_count: 0,
       };
 
@@ -187,22 +194,24 @@ describe("OrganisationAdminPage", () => {
         location: "London",
         created_at: "2024-01-15T10:00:00Z",
         updated_at: "2024-01-15T10:00:00Z",
-        staff_members: [
+        members: [
           {
             id: "1",
             username: "doctor1",
             full_name: "Dr One",
             email: "doctor1@test.com",
+            capacity: "staff",
           },
           {
             id: "2",
             username: "nurse1",
             full_name: "Nurse One",
             email: "nurse1@test.com",
+            capacity: "staff",
           },
         ],
         staff_count: 2,
-        patient_members: [],
+        patient_ids: [],
         patient_count: 0,
       };
 
@@ -229,8 +238,8 @@ describe("OrganisationAdminPage", () => {
         location: "Manchester",
         created_at: "2024-01-15T10:00:00Z",
         updated_at: "2024-01-15T10:00:00Z",
-        staff_members: [],
-        patient_members: [],
+        members: [],
+        patient_ids: [],
         patient_count: 0,
       };
 
@@ -258,11 +267,8 @@ describe("OrganisationAdminPage", () => {
         location: "London",
         created_at: "2024-01-15T10:00:00Z",
         updated_at: "2024-01-15T10:00:00Z",
-        staff_members: [],
-        patient_members: [
-          { patient_id: "fhir-001" },
-          { patient_id: "fhir-002" },
-        ],
+        members: [],
+        patient_ids: ["fhir-001", "fhir-002"],
         patient_count: 2,
       };
 
@@ -287,8 +293,8 @@ describe("OrganisationAdminPage", () => {
         location: "Manchester",
         created_at: "2024-01-15T10:00:00Z",
         updated_at: "2024-01-15T10:00:00Z",
-        staff_members: [],
-        patient_members: [],
+        members: [],
+        patient_ids: [],
         patient_count: 0,
       };
 
@@ -314,8 +320,8 @@ describe("OrganisationAdminPage", () => {
         location: "London",
         created_at: "2024-01-15T10:00:00Z",
         updated_at: "2024-01-15T10:00:00Z",
-        staff_members: [],
-        patient_members: [],
+        members: [],
+        patient_ids: [],
         patient_count: 0,
       };
 
@@ -341,8 +347,8 @@ describe("OrganisationAdminPage", () => {
         location: "London",
         created_at: "2024-01-15T10:00:00Z",
         updated_at: "2024-01-15T10:00:00Z",
-        staff_members: [],
-        patient_members: [],
+        members: [],
+        patient_ids: [],
         patient_count: 0,
       };
 
@@ -368,8 +374,8 @@ describe("OrganisationAdminPage", () => {
         location: "London",
         created_at: "2024-01-15T10:00:00Z",
         updated_at: "2024-01-15T10:00:00Z",
-        staff_members: [],
-        patient_members: [],
+        members: [],
+        patient_ids: [],
         patient_count: 0,
       };
 
@@ -397,8 +403,8 @@ describe("OrganisationAdminPage", () => {
         created_at: "2024-01-15T10:00:00Z",
         updated_at: "2024-01-15T10:00:00Z",
         staff_count: 0,
-        staff_members: [],
-        patient_members: [],
+        members: [],
+        patient_ids: [],
         patient_count: 0,
       };
 
@@ -429,8 +435,8 @@ describe("OrganisationAdminPage", () => {
         location: "London",
         created_at: "2024-01-15T10:00:00Z",
         updated_at: "2024-01-15T10:00:00Z",
-        staff_members: [],
-        patient_members: [],
+        members: [],
+        patient_ids: [],
         patient_count: 0,
       };
 
@@ -458,8 +464,8 @@ describe("OrganisationAdminPage", () => {
         created_at: "2024-01-15T10:00:00Z",
         updated_at: "2024-01-15T10:00:00Z",
         staff_count: 0,
-        staff_members: [],
-        patient_members: [],
+        members: [],
+        patient_ids: [],
         patient_count: 0,
       };
 
@@ -492,8 +498,8 @@ describe("OrganisationAdminPage", () => {
         created_at: "2024-01-15T10:00:00Z",
         updated_at: "2024-01-15T10:00:00Z",
         staff_count: 0,
-        staff_members: [],
-        patient_members: [],
+        members: [],
+        patient_ids: [],
         patient_count: 0,
       };
 
@@ -526,8 +532,8 @@ describe("OrganisationAdminPage", () => {
         created_at: "2024-01-15T10:00:00Z",
         updated_at: "2024-01-15T10:00:00Z",
         staff_count: 0,
-        staff_members: [],
-        patient_members: [],
+        members: [],
+        patient_ids: [],
         patient_count: 0,
       };
 
@@ -609,26 +615,13 @@ describe("OrganisationAdminPage", () => {
       created_at: "2024-01-15T10:00:00Z",
       updated_at: "2024-01-15T10:00:00Z",
       staff_count: 0,
-      staff_members: [],
-      patient_members: [],
+      members: [],
+      patient_ids: [],
       patient_count: 0,
     };
 
     it("shows enabled features as badges", async () => {
-      mockOrgApi(baseOrg, {
-        features: [
-          {
-            feature_key: "teaching",
-            enabled_at: "2026-01-15T10:00:00Z",
-            enabled_by: 1,
-          },
-          {
-            feature_key: "messaging",
-            enabled_at: "2026-01-15T10:00:00Z",
-            enabled_by: 1,
-          },
-        ],
-      });
+      mockOrgApi(baseOrg, ["teaching", "messaging"]);
 
       renderWithRouter(<OrganisationAdminPage />, {
         routePath: "/admin/organisations/:id",
@@ -658,6 +651,46 @@ describe("OrganisationAdminPage", () => {
     });
   });
 
+  describe("Who counts as staff", () => {
+    // The heading says staff members, so the list has to be staff. A
+    // place answers with everybody who is there and what each of them
+    // is, which is the right answer to a different question: a teaching
+    // delegate under this heading is how the page came to be wrong
+    // about who worked there.
+    it("leaves out somebody who is here as a trainee", async () => {
+      mockOrgApi({
+        id: 1,
+        name: "Test Hospital",
+        members: [
+          {
+            id: 1,
+            username: "a_nurse",
+            full_name: "A Nurse",
+            email: "nurse@example.com",
+            capacity: "staff",
+          },
+          {
+            id: 2,
+            username: "a_delegate",
+            full_name: "A Delegate",
+            email: "delegate@example.com",
+            capacity: "trainee",
+          },
+        ],
+      });
+
+      renderWithRouter(<OrganisationAdminPage />, {
+        routePath: "/admin/organisations/:id",
+        initialRoute: "/admin/organisations/1",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("A Nurse")).toBeInTheDocument();
+      });
+      expect(screen.queryByText("A Delegate")).not.toBeInTheDocument();
+    });
+  });
+
   describe("Remove staff member", () => {
     const orgWithStaff = {
       id: 3,
@@ -667,21 +700,23 @@ describe("OrganisationAdminPage", () => {
       created_at: "2024-01-15T10:00:00Z",
       updated_at: "2024-01-15T10:00:00Z",
       staff_count: 2,
-      staff_members: [
+      members: [
         {
           id: 10,
           username: "alice",
           full_name: "Alice Smith",
           email: "alice@example.com",
+          capacity: "staff",
         },
         {
           id: 20,
           username: "bob",
           full_name: "Bob Jones",
           email: "bob@example.com",
+          capacity: "staff",
         },
       ],
-      patient_members: [],
+      patient_ids: [],
       patient_count: 0,
     };
 
@@ -734,7 +769,7 @@ describe("OrganisationAdminPage", () => {
       await user.click(screen.getByRole("button", { name: "Remove" }));
 
       await waitFor(() => {
-        expect(delSpy).toHaveBeenCalledWith("/organisations/3/staff/20");
+        expect(delSpy).toHaveBeenCalledWith("/org-units/3/members/20");
       });
     });
 

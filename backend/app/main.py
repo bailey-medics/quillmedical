@@ -27,7 +27,7 @@ import time
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, NoReturn
 from uuid import uuid4
 
 import httpx
@@ -52,16 +52,17 @@ from app.cbac.base_professions import (
     PROFESSION_IDS,
     SUPERADMIN_PROFESSION,
     get_profession_base_competencies,
-    grant_staff_competencies,
 )
 from app.cbac.competencies import validate_competency_ids
 from app.cbac.positions import (
     clinical_leads_of,
-    set_clinical_lead,
 )
 from app.config import settings
 from app.db import get_core_db
-from app.deps import has_competency
+from app.deps import (
+    DEP_REQUIRE_CLINICAL,
+    has_competency,
+)
 from app.ehrbase_client import (
     EhrbaseClientError,
     create_letter_composition,
@@ -102,40 +103,33 @@ from app.messaging import (
 from app.models import (
     Conversation,
     ExternalPatientAccess,
-    Organisation,
-    OrganisationFeature,
-    OrgUnitLink,
+    OrgUnit,
+    OrgUnitFeature,
     PatientMetadata,
-    Site,
     User,
-    organisation_patient_member,
-    site_member,
-    validate_member_capacity,
+    org_unit_member,
     validate_platform_role,
 )
 from app.org_units import (
-    ORG_UNIT_RELATION_IDS,
-    ORGANISATION_TYPE,
-    get_org_unit_relation,
-    validate_org_unit_relation,
+    ROOT_TYPE_IDS,
 )
+from app.org_units.router import router as org_units_router
 from app.org_units.tree import (
     descendant_ids,
-    organisation_id_of_site,
-    organisation_ids_of_sites,
-    root_ids_of_organisations,
-    site_ids_of_organisations,
+    organisation_place_ids,
+    organisation_place_of_site,
+    root_ids_of,
 )
 from app.organisations import (
-    add_organisation_member,
+    add_place_member,
     get_accessible_patient_ids,
-    get_member_org_ids,
-    get_org_staff_ids,
-    get_patient_org_ids,
-    get_shared_org_ids,
-    organisation_member,
-    remove_organisation_member,
-    remove_organisation_memberships,
+    get_member_place_ids,
+    get_patient_place_ids,
+    get_place_staff_ids,
+    get_shared_place_ids,
+    organisation_place_member,
+    organisation_places_of,
+    places_administered_by,
 )
 from app.push import router as push_router
 from app.push_send import router as push_send_router
@@ -205,7 +199,6 @@ from app.schemas.organisations import (
     OrganisationsListOut,
     OrgPatientAddResponse,
     OrgStaffAddResponse,
-    OrgUnitLinkItem,
     OrgUnitLinksOut,
     SiteDetailOut,
     SiteOut,
@@ -344,11 +337,12 @@ async def add_compat_generation_header(
     response.headers["Compat-Generation"] = str(REQUIRED_CLIENT_GENERATION)
     return response
 
+    # --- Rate limiting (slowapi) ---
+    # Created in app.rate_limit so routers in their own modules can decorate with
+    # it without importing main. Re-exported here by the import above, so
+    # `from app.main import limiter` keeps working.
 
-# --- Rate limiting (slowapi) ---
-# Created in app.rate_limit so routers in their own modules can decorate with
-# it without importing main. Re-exported here by the import above, so
-# `from app.main import limiter` keeps working.
+
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
@@ -366,8 +360,9 @@ async def fhir_client_error_handler(
         content={"detail": str(exc)},
     )
 
+    # --- EHRbase client error handler ---
 
-# --- EHRbase client error handler ---
+
 @app.exception_handler(EhrbaseClientError)
 async def ehrbase_client_error_handler(
     request: Request, exc: EhrbaseClientError
@@ -380,8 +375,9 @@ async def ehrbase_client_error_handler(
         content={"detail": str(exc)},
     )
 
+    # --- Request logging middleware ---
 
-# --- Request logging middleware ---
+
 @app.middleware("http")
 async def log_requests(
     request: Request,
@@ -437,18 +433,6 @@ COOKIE_KW: dict[str, Any] = {
     "secure": settings.SECURE_COOKIES,
     "domain": settings.COOKIE_DOMAIN,
 }
-
-
-def require_clinical_services() -> None:
-    """FastAPI dependency: raises 503 when FHIR/EHRbase are disabled."""
-    if not settings.CLINICAL_SERVICES_ENABLED:
-        raise HTTPException(
-            status_code=503,
-            detail="Clinical services are not available in this deployment",
-        )
-
-
-DEP_REQUIRE_CLINICAL = Depends(require_clinical_services)
 
 
 def check_fhir_health() -> dict[str, bool | int | str]:
@@ -676,7 +660,7 @@ def get_current_user(request: Request, db: Session = DEP_GET_SESSION) -> User:
     user = db.scalar(select(User).where(User.username == sub))
     if not user or not user.is_active:
         raise HTTPException(401, "Inactive user")
-    # Reject tokens minted before a password change
+        # Reject tokens minted before a password change
     if payload.get("tv", 0) != user.token_version:
         raise HTTPException(401, "Session invalidated")
     request.state.roles = [r.name for r in user.roles]
@@ -763,7 +747,7 @@ DEP_REQUIRE_CSRF = Depends(require_csrf)
 #: do — a rank that was global in the column and scoped in practice.
 #:
 #: It answers *what*, never *where*. Every route carrying it keeps the
-#: place check beside it: ``_require_own_org``,
+#: place check beside it: ``_require_shared_org_with_user``,
 #: ``_require_site_in_own_org``, ``_require_shared_org_with_user`` or
 #: ``_require_shared_org_with_patient``. Without one of those this
 #: competency is global, which is strictly weaker than the rank it
@@ -903,19 +887,30 @@ def list_organisations_public(
 ) -> OrganisationsOut:
     """List organisations for registration.
 
-    Public endpoint that returns organisation names and IDs for the
-    registration form dropdown. No authentication required. Only exposes
-    the minimum fields needed (id and name).
+    Public endpoint that returns organisation names and place ids for
+    the registration form dropdown. No authentication required. Only
+    exposes the minimum fields needed.
+
+    An organisation is a place at the top of a tree, so the id is a
+    place id — the same number the registration this feeds sends back.
 
     Returns:
         dict with key ``organisations`` containing a list of
-        ``{id, name}`` objects.
+        ``{org_unit_id, name}`` objects.
     """
-    organisations = db.execute(select(Organisation)).scalars().all()
+    organisations = (
+        db.execute(
+            select(OrgUnit)
+            .where(OrgUnit.id.in_(organisation_place_ids()))
+            .order_by(OrgUnit.name)
+        )
+        .scalars()
+        .all()
+    )
     return OrganisationsOut(
         organisations=[
-            OrganisationListItem(id=org.id, name=org.name)
-            for org in organisations
+            OrganisationListItem(org_unit_id=place.id, name=place.name)
+            for place in organisations
         ]
     )
 
@@ -1018,10 +1013,11 @@ def validate_clinical_lead(
     if not user:
         return ValidateClinicalLeadOut(valid=False)
 
-    # Get org IDs that have this bank with site_registration enabled
-    org_ids = (
+    # The places offering this bank for site registration. Counted in
+    # place ids, which is what the table holds.
+    place_ids = (
         db.execute(
-            select(QuestionBankOrgStatus.organisation_id).where(
+            select(QuestionBankOrgStatus.org_unit_id).where(
                 QuestionBankOrgStatus.question_bank_id == payload.bank_id,
                 QuestionBankOrgStatus.site_registration.is_(True),
             )
@@ -1029,18 +1025,21 @@ def validate_clinical_lead(
         .scalars()
         .all()
     )
-    if not org_ids:
+    offering = [p for p in place_ids if p is not None]
+    if not offering:
         return ValidateClinicalLeadOut(valid=False)
 
-    # Every place beneath those organisations, at any depth
-    site_ids = site_ids_of_organisations(db, list(org_ids))
+    # Every place beneath them, at any depth. The offering places are
+    # organisations' own rows, so they are roots and excluded — a lead
+    # holds their post at a ward, not at the trust.
+    site_ids = sorted(descendant_ids(db, offering))
     if not site_ids:
         return ValidateClinicalLeadOut(valid=False)
 
-    # Which of those sites this user holds the clinical lead post at.
-    # Read from positions rather than site_member.role: the post is
-    # the thing being asked about, and a post can be vacant, which a role
-    # column cannot express.
+        # Which of those sites this user holds the clinical lead post at.
+        # Read from positions rather than site_member.role: the post is
+        # the thing being asked about, and a post can be vacant, which a role
+        # column cannot express.
     leads = clinical_leads_of(db, list(site_ids))
     held_at = [site_id for site_id, lead in leads.items() if lead == user.id]
     if not held_at:
@@ -1050,19 +1049,19 @@ def validate_clinical_lead(
 
     # Look up the site name for display
     site = (
-        db.execute(select(Site).where(Site.id == matched_site_id))
+        db.execute(select(OrgUnit).where(OrgUnit.id == matched_site_id))
         .scalars()
         .first()
     )
 
-    # The organisation accountable for this place, if it offers the bank
-    accountable = organisation_id_of_site(db, matched_site_id)
-    org_id_for_site = accountable if accountable in org_ids else None
+    # The place accountable for this one, if it offers the bank
+    accountable = root_ids_of(db, [matched_site_id]).get(matched_site_id)
+    place_for_site = accountable if accountable in offering else None
 
     return ValidateClinicalLeadOut(
         valid=True,
         site_name=site.name if site else None,
-        organisation_id=org_id_for_site,
+        org_unit_id=place_for_site,
         site_id=matched_site_id,
     )
 
@@ -1122,7 +1121,7 @@ def register(
             detail="Password must be at least 8 characters",
         )
 
-    # Use generic message to prevent account enumeration
+        # Use generic message to prevent account enumeration
     existing = db.scalar(select(User).where(User.username == username))
     if existing:
         raise HTTPException(
@@ -1157,14 +1156,13 @@ def register(
     db.add(user)
     db.flush()  # Assigns user.id so we can create memberships
 
-    # Add the user to the selected organisation
-    if payload.organisation_id is not None:
-        org = db.scalar(
-            select(Organisation).where(
-                Organisation.id == payload.organisation_id
-            )
-        )
-        if org is None:
+    # Add the user to the place they named. It has to be an
+    # organisation: registration offers the tops of trees, and a
+    # membership of a ward is what the site branch below writes.
+    if payload.org_unit_id is not None:
+        if payload.org_unit_id not in organisation_places_of(
+            db, [payload.org_unit_id]
+        ):
             raise HTTPException(
                 status_code=400, detail="Organisation not found"
             )
@@ -1172,27 +1170,30 @@ def register(
         # are not staff. Recording that here is what lets the admin page
         # and the messaging self-join check tell them apart; previously
         # nothing could.
-        add_organisation_member(db, org.id, user.id, "trainee")
+        add_place_member(db, payload.org_unit_id, user.id, "trainee")
 
     # Add the user to the selected site as a trainee
     if payload.site_id is not None:
-        if payload.organisation_id is None:
+        if payload.org_unit_id is None:
             raise HTTPException(
                 status_code=400,
-                detail="organisation_id required when site_id is provided",
+                detail="org_unit_id required when site_id is provided",
             )
         # Verify the place exists AND sits beneath the organisation given
-        site = db.get(Site, payload.site_id)
-        if site is None or site.type == ORGANISATION_TYPE:
+        site = db.get(OrgUnit, payload.site_id)
+        # There is more than one kind of organisation — a practice and a
+        # teaching establishment are both tops of trees — so the test is
+        # the flag, not one name.
+        if site is None or site.type in ROOT_TYPE_IDS:
             raise HTTPException(status_code=400, detail="Site not found")
         if (
-            organisation_id_of_site(db, payload.site_id)
-            != payload.organisation_id
+            organisation_place_of_site(db, payload.site_id)
+            != payload.org_unit_id
         ):
             raise HTTPException(status_code=400, detail="Site not found")
         db.execute(
-            site_member.insert().values(
-                site_id=payload.site_id,
+            org_unit_member.insert().values(
+                org_unit_id=payload.site_id,
                 user_id=user.id,
                 capacity="trainee",
             )
@@ -1290,7 +1291,7 @@ def resend_verification(
                 f"{settings.EMAIL_VERIFY_TTL_MIN} minutes.</p>"
             ),
         )
-    # Always return ok to prevent account enumeration
+        # Always return ok to prevent account enumeration
     return DetailResponse(detail="ok")
 
 
@@ -1331,7 +1332,7 @@ def forgot_password(
                 f" minutes. If you did not request this, ignore this email.</p>"
             ),
         )
-    # Always return ok to prevent account enumeration
+        # Always return ok to prevent account enumeration
     return DetailResponse(detail="ok")
 
 
@@ -1397,8 +1398,9 @@ class AdminUserCreateIn(BaseModel):
         additional_competencies: Extra competencies beyond base profession.
         removed_competencies: Competencies to remove from base profession.
         platform_role: Whether this person operates Quill itself.
-        organisation_ids: Organisations to assign user to (optional).
-        site_ids: Sites to assign user to as trainee (optional).
+        place_ids: Every place the person belongs to, in place ids,
+            organisations included. It replaced two lists that answered
+            in two different kinds of id.
     """
 
     model_config = {"extra": "forbid"}
@@ -1413,8 +1415,7 @@ class AdminUserCreateIn(BaseModel):
     # Defaults to a standard account: an operator is made deliberately,
     # never by omitting a field.
     platform_role: str = "standard"
-    organisation_ids: list[int] = []
-    site_ids: list[int] = []
+    place_ids: list[int] = []
 
     @field_validator("platform_role")
     @classmethod
@@ -1483,8 +1484,7 @@ class AdminUserUpdateIn(BaseModel):
     additional_competencies: list[str] | None = None
     removed_competencies: list[str] | None = None
     platform_role: str | None = None
-    organisation_ids: list[int] | None = None
-    site_ids: list[int] | None = None
+    place_ids: list[int] | None = None
 
     @field_validator("platform_role")
     @classmethod
@@ -1526,6 +1526,40 @@ class AdminUserUpdateIn(BaseModel):
                 "defined in shared/base-professions.yaml."
             )
         return value
+
+
+def _capacity_at(place: OrgUnit) -> str:
+    """What a person added through the user form is at a place.
+
+    Staff at an organisation and a trainee at a place inside one, which
+    is what the two older lists each did. Keeping the difference means
+    this step widens the request without changing who counts as staff
+    anywhere; settling on one answer is a separate decision from
+    replacing two lists with one.
+    """
+    return "staff" if place.type in ROOT_TYPE_IDS else "trainee"
+
+
+def _require_places_the_caller_administers(
+    db: Session, current_user: User, place_ids: list[int]
+) -> list[OrgUnit]:
+    """Load the places named, refusing any the caller may not administer.
+
+    404 rather than 403 for a place outside their organisations, matching
+    the place surface: the answer must not confirm that a place exists to
+    somebody who cannot see it.
+    """
+    allowed = places_administered_by(db, current_user)
+
+    places: list[OrgUnit] = []
+    for place_id in place_ids:
+        place = db.get(OrgUnit, place_id)
+        if place is None or (allowed is not None and place_id not in allowed):
+            raise HTTPException(
+                status_code=404, detail=f"Place {place_id} not found"
+            )
+        places.append(place)
+    return places
 
 
 @router.post(
@@ -1579,7 +1613,7 @@ def create_user_with_cbac(
             status_code=400, detail="Password must be at least 8 characters"
         )
 
-    # Check uniqueness
+        # Check uniqueness
     existing = db.scalar(select(User).where(User.username == username))
     if existing:
         raise HTTPException(status_code=400, detail="Username already exists")
@@ -1588,28 +1622,9 @@ def create_user_with_cbac(
     if existing:
         raise HTTPException(status_code=400, detail="Email already exists")
 
-    # Validate organisation access for non-superadmins
-    for org_id in payload.organisation_ids:
-        org = db.scalar(select(Organisation).where(Organisation.id == org_id))
-        if not org:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Organisation {org_id} not found",
-            )
-        if current_user.platform_role != "superadmin":
-            if org_id not in get_member_org_ids(db, current_user.id):
-                raise HTTPException(
-                    status_code=403,
-                    detail="You do not have access to this organisation",
-                )
-
-    for s_id in payload.site_ids:
-        site = db.get(Site, s_id)
-        if not site:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Site {s_id} not found",
-            )
+    places = _require_places_the_caller_administers(
+        db, current_user, payload.place_ids
+    )
 
     # Create user
     user = User(
@@ -1626,17 +1641,14 @@ def create_user_with_cbac(
     db.add(user)
     db.flush()
 
-    # Assign to organisations
-    for org_id in payload.organisation_ids:
-        add_organisation_member(db, org_id, user.id, "staff")
-
-    # Assign to sites as trainee
-    for s_id in payload.site_ids:
+    # The one list, in place ids. Organisations and the places inside
+    # them are rows in the same table, so there is nothing to split.
+    for place in places:
         db.execute(
-            site_member.insert().values(
-                site_id=s_id,
+            org_unit_member.insert().values(
+                org_unit_id=place.id,
                 user_id=user.id,
-                capacity="trainee",
+                capacity=_capacity_at(place),
             )
         )
 
@@ -1697,7 +1709,7 @@ def update_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Only an operator may modify another operator
+        # Only an operator may modify another operator
     if (
         current_user.platform_role != "superadmin"
         and user.platform_role == "superadmin"
@@ -1740,7 +1752,7 @@ def update_user(
                 ),
             )
 
-    # Validate and update username
+            # Validate and update username
     if payload.username is not None:
         username = payload.username.strip()
         if username != user.username:
@@ -1751,11 +1763,11 @@ def update_user(
                 )
             user.username = username
 
-    # Update full name
+            # Update full name
     if payload.name is not None:
         user.full_name = payload.name.strip() or None
 
-    # Validate and update email
+        # Validate and update email
     if payload.email is not None:
         email = payload.email.strip()
         if email != user.email:
@@ -1770,7 +1782,7 @@ def update_user(
                 )
             user.email = email
 
-    # Update password if provided
+            # Update password if provided
     if payload.password is not None and payload.password:
         if len(payload.password) < 8:
             raise HTTPException(
@@ -1779,7 +1791,7 @@ def update_user(
             )
         user.password_hash = hash_password(payload.password)
 
-    # Update CBAC fields if provided
+        # Update CBAC fields if provided
     if payload.base_profession is not None:
         # A profession is a template, not state: `additional` and
         # `removed` exist precisely so reality can diverge from it. So
@@ -1840,75 +1852,38 @@ def update_user(
             )
             user.additional_competencies = sorted(granted)
 
-    # Update organisation memberships if provided
-    if payload.organisation_ids is not None:
-        if current_user.platform_role == "superadmin":
-            # Superadmin: replace all memberships
-            remove_organisation_memberships(db, user_id)
-        else:
-            # Admin: only remove memberships within admin's own orgs
-            admin_org_ids = get_member_org_ids(db, current_user.id)
-            remove_organisation_memberships(db, user_id, admin_org_ids)
-        # Add new org memberships
-        for org_id in payload.organisation_ids:
-            org = db.scalar(
-                select(Organisation).where(Organisation.id == org_id)
+    # The one list, in place ids. It settles membership of every place
+    # the caller may administer: the places named are kept, the rest of
+    # theirs are cleared. Places outside their organisations are left
+    # alone, because somebody else's tree is not theirs to empty.
+    if payload.place_ids is not None:
+        places = _require_places_the_caller_administers(
+            db, current_user, payload.place_ids
+        )
+        theirs = places_administered_by(db, current_user)
+        clearing = org_unit_member.delete().where(
+            org_unit_member.c.user_id == user_id
+        )
+        if theirs is not None:
+            clearing = clearing.where(
+                org_unit_member.c.org_unit_id.in_(theirs)
             )
-            if not org:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Organisation {org_id} not found",
-                )
-            add_organisation_member(db, org_id, user_id, "staff")
+        db.execute(clearing)
 
-    # Update site memberships if provided
-    if payload.site_ids is not None:
-        if current_user.platform_role == "superadmin":
-            # Superadmin: replace every membership of a place inside an
-            # organisation. Not the memberships of the organisations
-            # themselves, which are rows in the same table now and are
-            # settled by the organisation block above — clearing those
-            # here would undo it.
+        for place in places:
             db.execute(
-                site_member.delete().where(
-                    site_member.c.user_id == user_id,
-                    site_member.c.site_id.in_(
-                        select(Site.id).where(Site.type != ORGANISATION_TYPE)
-                    ),
-                )
-            )
-        else:
-            # Admin: only remove memberships for sites within admin's orgs
-            admin_org_ids = get_member_org_ids(db, current_user.id)
-            admin_site_ids = site_ids_of_organisations(db, admin_org_ids)
-            if admin_site_ids:
-                db.execute(
-                    site_member.delete().where(
-                        site_member.c.user_id == user_id,
-                        site_member.c.site_id.in_(admin_site_ids),
-                    )
-                )
-        # Add new site memberships
-        for s_id in payload.site_ids:
-            site = db.scalar(select(Site).where(Site.id == s_id))
-            if not site:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Site {s_id} not found",
-                )
-            db.execute(
-                site_member.insert().values(
+                org_unit_member.insert().values(
                     user_id=user_id,
-                    site_id=s_id,
-                    capacity="trainee",
+                    org_unit_id=place.id,
+                    capacity=_capacity_at(place),
                 )
             )
 
-    # Flush before refreshing: refresh reloads the row from the database,
-    # so pending in-memory changes are discarded unless they have been
-    # written first. The payload assignments above happen to survive
-    # because the session flushes automatically on the queries between
-    # them; an assignment after the last query would not.
+            # Flush before refreshing: refresh reloads the row from the database,
+            # so pending in-memory changes are discarded unless they have been
+            # written first. The payload assignments above happen to survive
+            # because the session flushes automatically on the queries between
+            # them; an assignment after the last query would not.
     db.flush()
     db.refresh(user)
 
@@ -1955,7 +1930,7 @@ def deactivate_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Only an operator may deactivate another operator
+        # Only an operator may deactivate another operator
     if (
         current_user.platform_role != "superadmin"
         and user.platform_role == "superadmin"
@@ -2018,7 +1993,7 @@ def reactivate_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Only an operator may reactivate another operator
+        # Only an operator may reactivate another operator
     if (
         current_user.platform_role != "superadmin"
         and user.platform_role == "superadmin"
@@ -2373,39 +2348,26 @@ def me(
             - enabled_features: Features enabled on any of the user's orgs
             - competencies: Resolved CBAC competency IDs
     """
-    # Resolve features from all user's organisations (union)
-    # Direct org membership
-    direct_org_ids = set(
+    # Resolve features from every organisation a membership reaches:
+    # the ones they belong to directly, and the one accountable for any
+    # ward or clinic they belong to. One walk up answers both, because
+    # an organisation's own row is its own root.
+    member_place_ids = list(
         db.execute(
-            select(organisation_member.c.organisation_id).where(
-                organisation_member.c.user_id == current_user.id,
+            select(org_unit_member.c.org_unit_id).where(
+                org_unit_member.c.user_id == current_user.id
             )
         )
         .scalars()
         .all()
     )
-    # Indirect: the organisation accountable for a place they belong to
-    member_site_ids = list(
-        db.execute(
-            select(site_member.c.site_id).where(
-                site_member.c.user_id == current_user.id
-            )
-        )
-        .scalars()
-        .all()
-    )
-    site_org_ids = set(organisation_ids_of_sites(db, member_site_ids).values())
-    user_org_ids = list(direct_org_ids | site_org_ids)
+    user_place_ids = organisation_places_of(db, member_place_ids)
     enabled_features: list[str] = []
-    if user_org_ids:
+    if user_place_ids:
         features = (
             db.execute(
-                select(OrganisationFeature.feature_key)
-                .where(
-                    OrganisationFeature.org_unit_id.in_(
-                        root_ids_of_organisations(db, user_org_ids)
-                    ),
-                )
+                select(OrgUnitFeature.feature_key)
+                .where(OrgUnitFeature.org_unit_id.in_(user_place_ids))
                 .distinct()
             )
             .scalars()
@@ -2483,7 +2445,7 @@ def update_profile(
 )
 def list_users(
     patient_id: str | None = None,
-    exclude_org: int | None = None,
+    exclude_place: int | None = None,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> UsersListOut:
@@ -2494,12 +2456,16 @@ def list_users(
     used by the message participant picker.
 
     Without ``patient_id``, returns all users the caller may administer.
-    Use ``exclude_org`` to exclude users who are already staff members
-    of the given organisation.
+    Use ``exclude_place`` to exclude people who are already members of
+    the place being added to.
+
+    ``exclude_org`` was the older spelling and counted in organisation
+    ids. It went with the table those ids belonged to; a caller still
+    sending it now excludes nobody rather than being quietly misread.
 
     Args:
         patient_id: Optional FHIR patient ID to filter by shared org.
-        exclude_org: Optional organisation ID to exclude existing members.
+        exclude_place: Optional place ID to exclude members of.
         current_user: Currently authenticated user.
         db: Database session.
 
@@ -2511,9 +2477,9 @@ def list_users(
     """
     if patient_id:
         # Filtered mode: staff in patient's orgs + external with access
-        patient_orgs = get_patient_org_ids(db, patient_id)
+        patient_orgs = get_patient_place_ids(db, patient_id)
         staff_ids = (
-            get_org_staff_ids(db, patient_orgs) if patient_orgs else set()
+            get_place_staff_ids(db, patient_orgs) if patient_orgs else set()
         )
 
         # Also include external users with active access to this patient
@@ -2549,33 +2515,35 @@ def list_users(
             ]
         )
 
-    # Unfiltered mode: admin/superadmin only
+        # Unfiltered mode: admin/superadmin only
     stmt = select(User)
 
-    # Exclude users who are already staff of the given organisation
-    if exclude_org is not None:
-        existing_staff_ids = select(organisation_member.c.user_id).where(
-            organisation_member.c.organisation_id == exclude_org
+    # Exclude people who are already members of the place being added
+    # to. A caller sending nothing excludes nobody.
+    if exclude_place is not None:
+        stmt = stmt.where(
+            User.id.notin_(
+                select(org_unit_member.c.user_id).where(
+                    org_unit_member.c.org_unit_id == exclude_place
+                )
+            )
         )
-        stmt = stmt.where(User.id.notin_(existing_staff_ids))
 
-    # Anyone but an operator sees only users at their own places;
-    # operators see everyone.
+        # Anyone but an operator sees only users at their own places;
+        # operators see everyone.
     if current_user.platform_role != "superadmin":
-        admin_orgs = get_member_org_ids(db, current_user.id)
-        org_scoped_ids = get_org_staff_ids(db, admin_orgs)
+        admin_places = get_member_place_ids(db, current_user.id)
+        org_scoped_ids = get_place_staff_ids(db, admin_places)
 
-        # Also include site-only members beneath the admin's orgs
-        site_ids_for_orgs = set(
-            site_ids_of_organisations(db, list(admin_orgs))
-        )
+        # Also include site-only members beneath the admin's places
+        site_ids_for_orgs = descendant_ids(db, list(admin_places))
         site_scoped_ids: set[int] = set()
         if site_ids_for_orgs:
             site_scoped_ids = {
                 row[0]
                 for row in db.execute(
-                    select(site_member.c.user_id).where(
-                        site_member.c.site_id.in_(site_ids_for_orgs)
+                    select(org_unit_member.c.user_id).where(
+                        org_unit_member.c.org_unit_id.in_(site_ids_for_orgs)
                     )
                 ).all()
             }
@@ -2593,16 +2561,23 @@ def list_users(
 
         # Batch-load organisation and site memberships
         user_ids = [user.id for user in users]
+        # Joined on the place, which is what the membership row holds.
+        # This read ``Organisation.id == ...org_unit_id`` for a release:
+        # an organisation id compared against a place id, which matches
+        # on a small installation because the two sequences agree, and
+        # stops matching the moment a ward is created between two
+        # organisations. A user's organisations then came back empty, or
+        # named somebody else's.
         org_rows = db.execute(
             select(
-                organisation_member.c.user_id,
-                Organisation.name,
+                organisation_place_member.c.user_id,
+                OrgUnit.name,
             )
             .join(
-                Organisation,
-                Organisation.id == organisation_member.c.organisation_id,
+                OrgUnit,
+                OrgUnit.id == organisation_place_member.c.org_unit_id,
             )
-            .where(organisation_member.c.user_id.in_(user_ids))
+            .where(organisation_place_member.c.user_id.in_(user_ids))
         ).all()
         user_orgs: dict[int, list[str]] = {}
         for row in org_rows:
@@ -2610,14 +2585,14 @@ def list_users(
 
         site_rows = db.execute(
             select(
-                site_member.c.user_id,
-                Site.name,
+                org_unit_member.c.user_id,
+                OrgUnit.name,
             )
             .join(
-                Site,
-                Site.id == site_member.c.site_id,
+                OrgUnit,
+                OrgUnit.id == org_unit_member.c.org_unit_id,
             )
-            .where(site_member.c.user_id.in_(user_ids))
+            .where(org_unit_member.c.user_id.in_(user_ids))
         ).all()
         user_sites: dict[int, list[str]] = {}
         for row in site_rows:
@@ -2694,7 +2669,7 @@ def get_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Only an operator may view another operator
+        # Only an operator may view another operator
     if (
         current_user.platform_role != "superadmin"
         and user.platform_role == "superadmin"
@@ -2703,20 +2678,11 @@ def get_user(
 
     _require_shared_org_with_user(db, current_user, user)
 
-    # Get user's org and site memberships
-    user_org_ids = [
+    user_place_ids = [
         row[0]
         for row in db.execute(
-            select(organisation_member.c.organisation_id).where(
-                organisation_member.c.user_id == user_id
-            )
-        ).all()
-    ]
-    user_site_ids = [
-        row[0]
-        for row in db.execute(
-            select(site_member.c.site_id).where(
-                site_member.c.user_id == user_id
+            select(org_unit_member.c.org_unit_id).where(
+                org_unit_member.c.user_id == user_id
             )
         ).all()
     ]
@@ -2731,8 +2697,9 @@ def get_user(
         removed_competencies=user.removed_competencies or [],
         platform_role=user.platform_role,
         is_active=user.is_active,
-        organisation_ids=user_org_ids,
-        site_ids=user_site_ids,
+        # Every place they belong to, organisations included, in the
+        # ids the places themselves answer in.
+        place_ids=user_place_ids,
     )
 
 
@@ -2789,7 +2756,7 @@ def refresh(
     user = db.scalar(select(User).where(User.username == sub))
     if not user or not user.is_active:
         raise HTTPException(401, "Inactive user")
-    # Reject refresh tokens minted before a password change
+        # Reject refresh tokens minted before a password change
     if payload.get("tv", 0) != user.token_version:
         raise HTTPException(401, "Session invalidated")
     roles = [r.name for r in user.roles]
@@ -2916,14 +2883,14 @@ def list_patients(
         else:
             accessible_ids = get_accessible_patient_ids(db, current_user)
 
-        # Enrich patients with activation status and filter
+            # Enrich patients with activation status and filter
         enriched_patients: list[PatientListItem] = []
         for patient in patients:
             patient_id = patient.get("id")
             if patient_id is None:
                 continue
 
-            # Org-based filtering (skip for admin scope)
+                # Org-based filtering (skip for admin scope)
             if accessible_ids is not None and patient_id not in accessible_ids:
                 continue
 
@@ -3203,8 +3170,7 @@ def list_letters(
             },
         ) from e
 
-
-# --- FHIR Endpoints ---
+        # --- FHIR Endpoints ---
 
 
 class FHIRPatientCreateIn(BaseModel):
@@ -3359,7 +3325,7 @@ def update_patient(
         if not existing:
             raise HTTPException(status_code=404, detail="Patient not found")
 
-        # Build update dict in the format update_fhir_patient expects
+            # Build update dict in the format update_fhir_patient expects
         updates: dict[str, Any] = {}
 
         if data.given_name:
@@ -3371,7 +3337,7 @@ def update_patient(
         if data.gender:
             updates["sex"] = data.gender
 
-        # Perform update
+            # Perform update
         updated_patient = update_fhir_patient(patient_id, updates)
         if not updated_patient:
             raise HTTPException(
@@ -3591,26 +3557,27 @@ def shared_organisations_endpoint(
     Returns:
         dict: ``organisations`` list with id/name/type for each shared org.
     """
-    shared_ids = get_shared_org_ids(db, current_user.id, patient_id)
-    if not shared_ids:
+    shared_places = get_shared_place_ids(db, current_user.id, patient_id)
+    if not shared_places:
         return SharedOrganisationsOut(organisations=[])
 
     orgs = (
-        db.execute(select(Organisation).where(Organisation.id.in_(shared_ids)))
+        db.execute(select(OrgUnit).where(OrgUnit.id.in_(shared_places)))
         .scalars()
         .all()
     )
     return SharedOrganisationsOut(
         organisations=[
-            SharedOrganisationSummary(id=o.id, name=o.name, type=o.type)
-            for o in orgs
+            SharedOrganisationSummary(
+                org_unit_id=place.id, name=place.name, type=place.type
+            )
+            for place in orgs
         ]
     )
 
-
-# ==========================================================================
-# CBAC (Competency-Based Access Control) Routes
-# ==========================================================================
+    # ==========================================================================
+    # CBAC (Competency-Based Access Control) Routes
+    # ==========================================================================
 
 
 @router.get(
@@ -3734,7 +3701,7 @@ async def update_my_competencies(
                 "manage_users"
             ),
         )
-    # Update user's competencies
+        # Update user's competencies
     if data.additional_competencies is not None:
         user.additional_competencies = data.additional_competencies
     if data.removed_competencies is not None:
@@ -3752,1014 +3719,237 @@ async def update_my_competencies(
         final_competencies=user.get_final_competencies(),
     )
 
-
-# ==========================================================================
-# ORGANISATION ENDPOINTS
-# ==========================================================================
+    # ==========================================================================
+    # ORGANISATION ENDPOINTS
+    # ==========================================================================
 
 
 @router.get(
     "/organisations",
     response_model=OrganisationsListOut,
-    dependencies=[DEP_REQUIRE_MANAGE_USERS],
 )
-def list_organisations(
-    current_user: User = DEP_CURRENT_USER, db: Session = DEP_GET_SESSION
-) -> OrganisationsListOut:
-    """List all organisations.
+def list_organisations() -> OrganisationsListOut:
+    """Retired. Places live at ``/api/org-units``.
 
-    Retrieves all organisations from the database. Returns basic information
-    Retrieves all organisations from the database. Returns basic information
-    for each organisation. Used by the admin interface to display organisation
-    list and management options.
-    Requires the ``manage_users`` competency and a shared organisation
-    with the patient.
-
-    Args:
-        current_user: Authenticated user holding ``manage_users``.
-        db: Database session.
-
-    Returns:
-        dict: Response with key:
-            - organisations: Array of organisation objects
-
-    Raises:
-        HTTPException: 403 if the user lacks ``manage_users``.
-        HTTPException: 500 if database query fails.
+    The request it always took is still declared, so a caller
+    sending what it always sent is told the address has gone
+    rather than that its request is malformed.
     """
-    # Check permissions
-    try:
-        if current_user.platform_role == "superadmin":
-            organisations = db.execute(select(Organisation)).scalars().all()
-        else:
-            user_org_ids = get_member_org_ids(db, current_user.id)
-            organisations = (
-                db.execute(
-                    select(Organisation).where(
-                        Organisation.id.in_(user_org_ids)
-                    )
-                )
-                .scalars()
-                .all()
-            )
-        return OrganisationsListOut(
-            organisations=[
-                {
-                    "id": org.id,
-                    "name": org.name,
-                    "type": org.type,
-                    "location": org.location,
-                    "created_at": org.created_at.isoformat(),
-                    "updated_at": org.updated_at.isoformat(),
-                }
-                for org in organisations
-            ]
-        )
-    except Exception as e:
-        logger.exception("Failed to list organisations")
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "message": "Could not load the organisations",
-                "error_code": "organisation_list_failed",
-            },
-        ) from e
+    _gone()
 
 
 @router.get(
     "/organisations/{org_id}",
     response_model=OrganisationDetailOut,
-    dependencies=[DEP_REQUIRE_MANAGE_USERS],
 )
 def get_organisation(
     org_id: int,
-    current_user: User = DEP_CURRENT_USER,
-    db: Session = DEP_GET_SESSION,
 ) -> OrganisationDetailOut:
-    """Get Organisation Details.
+    """Retired. Places live at ``/api/org-units``.
 
-    Retrieves detailed information about a specific organisation including
-    staff members and patient count.
-
-    Requires the ``manage_users`` competency and a shared organisation
-    with the patient.
-
-    Args:
-        org_id: ID of the organisation to retrieve.
-        current_user: Authenticated user holding ``manage_users``.
-        db: Database session.
-
-    Returns:
-        dict: Organisation details with staff and patient information.
-
-    Raises:
-        HTTPException: 403 if the user lacks ``manage_users``.
-        HTTPException: 404 if organisation not found.
+    The request it always took is still declared, so a caller
+    sending what it always sent is told the address has gone
+    rather than that its request is malformed.
     """
-    # Check permissions
-    # Fetch organisation
-    org = db.scalar(select(Organisation).where(Organisation.id == org_id))
-    if not org:
-        raise HTTPException(status_code=404, detail="Organisation not found")
-
-    # Anyone but an operator is confined to their own organisations
-    if current_user.platform_role != "superadmin":
-        user_org_ids = get_member_org_ids(db, current_user.id)
-        if org_id not in user_org_ids:
-            raise HTTPException(
-                status_code=404,
-                detail="Organisation not found",
-            )
-
-    # Get staff members
-    staff_query = (
-        select(
-            User.id,
-            User.username,
-            User.email,
-            User.full_name,
-        )
-        .join(
-            organisation_member,
-            organisation_member.c.user_id == User.id,
-        )
-        .where(organisation_member.c.organisation_id == org_id)
-        # Staff, not everyone. The table held two columns until recently,
-        # so a teaching delegate and a consultant were the same row and
-        # this page listed students among the staff — it could not tell
-        # them apart, because nothing could. The capacity column can, and
-        # this is the heading that promises it: "Organisation staff
-        # members".
-        #
-        # Trainees are not thereby hidden from administration. They are
-        # listed where they belong — the delegates pages, which read the
-        # same table asking for their capacity.
-        .where(
-            organisation_member.c.capacity == validate_member_capacity("staff")
-        )
-    )
-
-    # Operators are hidden from everyone but another operator
-    if current_user.platform_role != "superadmin":
-        staff_query = staff_query.where(User.platform_role != "superadmin")
-
-    staff_members = db.execute(staff_query).all()
-
-    # Get patient members
-    patient_query = select(
-        organisation_patient_member.c.patient_id,
-    ).where(organisation_patient_member.c.org_unit_id == org.org_unit_id)
-
-    patient_members = db.execute(patient_query).all()
-
-    # Every place beneath this organisation, at any depth
-    site_query = (
-        select(Site.id, Site.name, Site.type, Site.location, Site.is_active)
-        .where(Site.id.in_(site_ids_of_organisations(db, [org_id])))
-        .order_by(Site.name)
-    )
-    sites = db.execute(site_query).all()
-
-    # Get clinical leads for each site
-    site_ids = [s.id for s in sites]
-    clinical_leads: dict[int, str] = {}
-    if site_ids:
-        lead_ids = clinical_leads_of(db, site_ids)
-        if lead_ids:
-            names = {
-                row.id: row.full_name or row.username
-                for row in db.execute(
-                    select(User.id, User.full_name, User.username).where(
-                        User.id.in_(set(lead_ids.values()))
-                    )
-                ).all()
-            }
-            clinical_leads = {
-                site_id: names[user_id]
-                for site_id, user_id in lead_ids.items()
-                if user_id in names
-            }
-
-    return OrganisationDetailOut(
-        id=org.id,
-        name=org.name,
-        type=org.type,
-        location=org.location,
-        created_at=org.created_at.isoformat(),
-        updated_at=org.updated_at.isoformat(),
-        staff_count=len(staff_members),
-        patient_count=len(patient_members),
-        staff_members=[
-            {
-                "id": sm.id,
-                "username": sm.username,
-                "email": sm.email,
-                "full_name": sm.full_name or "",
-            }
-            for sm in staff_members
-        ],
-        patient_members=[
-            {
-                "patient_id": pm.patient_id,
-            }
-            for pm in patient_members
-        ],
-        sites=[
-            {
-                "id": s.id,
-                "name": s.name,
-                "type": s.type,
-                "location": s.location or "",
-                "is_active": s.is_active,
-                "clinical_lead": clinical_leads.get(s.id, ""),
-            }
-            for s in sites
-        ],
-    )
+    _gone()
 
 
 @router.put(
     "/organisations/{org_id}",
     response_model=OrganisationOut,
-    dependencies=[DEP_REQUIRE_MANAGE_USERS],
 )
 def update_organisation(
     org_id: int,
     body: UpdateOrganisationIn,
-    current_user: User = DEP_REQUIRE_CSRF,
-    db: Session = DEP_GET_SESSION,
 ) -> OrganisationOut:
-    """Update Organisation.
+    """Retired. Places live at ``/api/org-units``.
 
-    Updates an existing organisation's details.
-
-    Requires the ``manage_users`` competency and a shared organisation
-    with the patient.
-
-    Args:
-        org_id: ID of the organisation to update.
-        body: Fields to update (name, type, location). Only provided fields are updated.
-        current_user: Authenticated user holding ``manage_users``.
-        db: Database session.
-
-    Returns:
-        dict: Updated organisation details.
-
-    Raises:
-        HTTPException: 400 if type is invalid.
-        HTTPException: 403 if the user lacks ``manage_users``.
-        HTTPException: 404 if organisation not found.
+    The request it always took is still declared, so a caller
+    sending what it always sent is told the address has gone
+    rather than that its request is malformed.
     """
-    org = db.get(Organisation, org_id)
-    if not org:
-        raise HTTPException(status_code=404, detail="Organisation not found")
-
-    # Anyone but an operator is confined to their own organisations
-    if current_user.platform_role != "superadmin":
-        if org_id not in get_member_org_ids(db, current_user.id):
-            raise HTTPException(
-                status_code=404, detail="Organisation not found"
-            )
-
-    valid_types = [
-        "hospital_team",
-        "gp_practice",
-        "private_clinic",
-        "department",
-        "teaching_establishment",
-    ]
-
-    if body.name is not None:
-        org.name = body.name.strip()
-    if body.type is not None:
-        if body.type not in valid_types:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid organisation type. Must be one of: {', '.join(valid_types)}",
-            )
-        org.type = body.type
-    if body.location is not None:
-        org.location = body.location.strip() or None
-
-    db.flush()
-    db.refresh(org)
-
-    return OrganisationOut(
-        id=org.id,
-        name=org.name,
-        type=org.type,
-        location=org.location,
-        created_at=org.created_at.isoformat(),
-        updated_at=org.updated_at.isoformat(),
-    )
+    _gone()
 
 
-@router.post("/organisations", response_model=OrganisationOut)
+@router.post(
+    "/organisations",
+    response_model=OrganisationOut,
+)
 def create_organisation(
     body: CreateOrganisationIn,
-    current_user: User = DEP_REQUIRE_CSRF,
-    db: Session = DEP_GET_SESSION,
 ) -> OrganisationOut:
-    """Create Organisation.
+    """Retired. Places live at ``/api/org-units``.
 
-    Creates a new organisation in the database.
-
-    Requires superadmin system permissions.
-
-    Args:
-        body: Organisation details (name, type, optional location).
-        current_user: Currently authenticated user (superadmin only).
-        db: Database session.
-
-    Returns:
-        dict: Created organisation details.
-
-    Raises:
-        HTTPException: 400 if type is invalid.
-        HTTPException: 403 if user lacks superadmin permissions.
+    The request it always took is still declared, so a caller
+    sending what it always sent is told the address has gone
+    rather than that its request is malformed.
     """
-    if current_user.platform_role != "superadmin":
-        raise HTTPException(
-            status_code=403,
-            detail="Requires superadmin permissions",
-        )
-
-    valid_types = [
-        "hospital_team",
-        "gp_practice",
-        "private_clinic",
-        "department",
-        "teaching_establishment",
-    ]
-    if body.type not in valid_types:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid organisation type. Must be one of: {', '.join(valid_types)}",
-        )
-
-    org = Organisation(
-        name=body.name.strip(),
-        type=body.type,
-        location=body.location.strip() if body.location else None,
-    )
-    db.add(org)
-    db.flush()
-    db.refresh(org)
-
-    return OrganisationOut(
-        id=org.id,
-        name=org.name,
-        type=org.type,
-        location=org.location,
-        created_at=org.created_at.isoformat(),
-        updated_at=org.updated_at.isoformat(),
-    )
+    _gone()
 
 
-@router.delete("/organisations/{org_id}", response_model=DetailResponse)
+@router.delete(
+    "/organisations/{org_id}",
+    response_model=DetailResponse,
+)
 def delete_organisation(
     org_id: int,
-    current_user: User = DEP_REQUIRE_CSRF,
-    db: Session = DEP_GET_SESSION,
 ) -> DetailResponse:
-    """Delete Organisation.
+    """Retired. Places live at ``/api/org-units``.
 
-    Permanently removes an organisation and all associated memberships.
-
-    Requires superadmin system permissions.
-
-    Args:
-        org_id: ID of the organisation to delete.
-        current_user: Currently authenticated user (superadmin only).
-        db: Database session.
-
-    Returns:
-        dict: Success confirmation.
-
-    Raises:
-        HTTPException: 403 if user lacks superadmin permissions.
-        HTTPException: 404 if organisation not found.
+    The request it always took is still declared, so a caller
+    sending what it always sent is told the address has gone
+    rather than that its request is malformed.
     """
-    if current_user.platform_role != "superadmin":
-        raise HTTPException(
-            status_code=403,
-            detail="Requires superadmin permissions",
-        )
-
-    org = db.get(Organisation, org_id)
-    if not org:
-        raise HTTPException(status_code=404, detail="Organisation not found")
-
-    db.delete(org)
-    return DetailResponse(detail="Organisation deleted")
+    _gone()
 
 
 @router.post(
     "/organisations/{org_id}/staff",
     response_model=OrgStaffAddResponse,
-    dependencies=[DEP_REQUIRE_MANAGE_STAFF_MEMBERSHIP],
 )
 def add_staff_to_organisation(
     org_id: int,
     body: AddStaffIn,
-    current_user: User = DEP_REQUIRE_CSRF,
-    db: Session = DEP_GET_SESSION,
 ) -> OrgStaffAddResponse:
-    """Add Staff Member to Organisation.
+    """Retired. Places live at ``/api/org-units``.
 
-    Adds an existing user as a staff member of an organisation.
-
-    Requires the ``manage_users`` competency and a shared organisation
-    with the patient.
-
-    Args:
-        org_id: ID of the organisation.
-        body: Staff member details (user_id).
-        current_user: Authenticated user holding ``manage_users``.
-        db: Database session.
-
-    Returns:
-        dict: Confirmation with organisation and user IDs.
-
-    Raises:
-        HTTPException: 403 if the user lacks ``manage_users``.
-        HTTPException: 404 if organisation or user not found.
-        HTTPException: 409 if user is already a staff member.
+    The request it always took is still declared, so a caller
+    sending what it always sent is told the address has gone
+    rather than that its request is malformed.
     """
-    org = db.scalar(select(Organisation).where(Organisation.id == org_id))
-    if not org:
-        raise HTTPException(status_code=404, detail="Organisation not found")
-
-    # Anyone but an operator is confined to their own organisations
-    if current_user.platform_role != "superadmin":
-        if org_id not in get_member_org_ids(db, current_user.id):
-            raise HTTPException(
-                status_code=404, detail="Organisation not found"
-            )
-
-    user = db.scalar(select(User).where(User.id == body.user_id))
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    # Eligibility to be staff here is the membership row itself, which is
-    # written below with ``capacity="staff"``. Requiring a staff rank
-    # elsewhere first was the old hierarchy answering a question that
-    # membership now answers — see the platform role plan.
-
-    # Check if already a member
-    existing = db.scalar(
-        select(organisation_member).where(
-            organisation_member.c.organisation_id == org_id,
-            organisation_member.c.user_id == body.user_id,
-        )
-    )
-    if existing:
-        raise HTTPException(
-            status_code=409,
-            detail="User is already a staff member of this organisation",
-        )
-
-    add_organisation_member(db, org_id, body.user_id, "staff")
-
-    # The grant, in the same act as the membership. Adding somebody as
-    # staff and then separately remembering to give them competencies is
-    # two steps that can be half-done, and the half-done state is a new
-    # starter who can reach nothing. The interface asks for both at once
-    # where the person holds nothing a member of staff would; either
-    # field may be omitted for somebody who is already staff elsewhere.
-    #
-    # Additive, like a profession change on `update_user`: whatever the
-    # person already held survives, because a patient becoming a
-    # healthcare assistant keeps the competency for their own record.
-    grant_staff_competencies(
-        user, body.base_profession, body.additional_competencies
-    )
-
-    return OrgStaffAddResponse(
-        organisation_id=org_id,
-        user_id=body.user_id,
-        username=user.username,
-    )
+    _gone()
 
 
 @router.post(
     "/organisations/{org_id}/patients",
-    dependencies=[
-        DEP_REQUIRE_CLINICAL,
-        DEP_REQUIRE_MANAGE_PATIENT_MEMBERSHIP,
-    ],
     response_model=OrgPatientAddResponse,
 )
 def add_patient_to_organisation(
     org_id: int,
     body: AddPatientIn,
-    current_user: User = DEP_CURRENT_USER,
-    db: Session = DEP_GET_SESSION,
 ) -> OrgPatientAddResponse:
-    """Add Patient to Organisation.
+    """Retired. Places live at ``/api/org-units``.
 
-    Adds a patient to an organisation by their FHIR patient ID.
-
-    Requires the ``manage_patient_membership`` competency and a shared organisation
-    with the patient.
-
-    Args:
-        org_id: ID of the organisation.
-        body: Patient details (patient_id).
-        current_user: Authenticated user holding ``manage_patient_membership``.
-        db: Database session.
-
-    Returns:
-        dict: Confirmation with organisation and patient IDs.
-
-    Raises:
-        HTTPException: 403 if the user lacks ``manage_patient_membership``.
-        HTTPException: 404 if organisation not found.
-        HTTPException: 409 if patient is already a member.
+    The request it always took is still declared, so a caller
+    sending what it always sent is told the address has gone
+    rather than that its request is malformed.
     """
-    org = db.scalar(select(Organisation).where(Organisation.id == org_id))
-    if not org:
-        raise HTTPException(status_code=404, detail="Organisation not found")
-
-    # Anyone but an operator is confined to their own organisations
-    if current_user.platform_role != "superadmin":
-        if org_id not in get_member_org_ids(db, current_user.id):
-            raise HTTPException(
-                status_code=404, detail="Organisation not found"
-            )
-
-    # Check if already a member
-    place_id = _place_of_organisation(db, org_id)
-
-    existing = db.scalar(
-        select(organisation_patient_member).where(
-            organisation_patient_member.c.org_unit_id == place_id,
-            organisation_patient_member.c.patient_id == body.patient_id,
-        )
-    )
-    if existing:
-        raise HTTPException(
-            status_code=409,
-            detail="Patient is already a member of this organisation",
-        )
-
-    db.execute(
-        organisation_patient_member.insert().values(
-            org_unit_id=place_id,
-            patient_id=body.patient_id,
-        )
-    )
-
-    return OrgPatientAddResponse(
-        organisation_id=org_id,
-        patient_id=body.patient_id,
-    )
+    _gone()
 
 
 @router.delete(
     "/organisations/{org_id}/staff/{user_id}",
-    dependencies=[
-        DEP_REQUIRE_CSRF,
-        DEP_REQUIRE_MANAGE_STAFF_MEMBERSHIP,
-    ],
     response_model=StatusResponse,
 )
 def remove_staff_from_organisation(
     org_id: int,
     user_id: int,
-    current_user: User = DEP_CURRENT_USER,
-    db: Session = DEP_GET_SESSION,
 ) -> StatusResponse:
-    """Remove a staff member from an organisation.
+    """Retired. Places live at ``/api/org-units``.
 
-    Requires ``manage_users``.
-
-    Args:
-        org_id: Organisation ID.
-        user_id: User ID to remove.
-        current_user: Authenticated user holding ``manage_users``.
-        db: Database session.
-
-    Returns:
-        dict: Confirmation.
+    The request it always took is still declared, so a caller
+    sending what it always sent is told the address has gone
+    rather than that its request is malformed.
     """
-    # Anyone but an operator is confined to their own organisations
-    if current_user.platform_role != "superadmin":
-        if org_id not in get_member_org_ids(db, current_user.id):
-            raise HTTPException(
-                status_code=404, detail="Organisation not found"
-            )
-
-    existing = db.scalar(
-        select(organisation_member).where(
-            organisation_member.c.organisation_id == org_id,
-            organisation_member.c.user_id == user_id,
-        )
-    )
-    if not existing:
-        raise HTTPException(status_code=404, detail="Membership not found")
-
-    remove_organisation_member(db, org_id, user_id)
-    return StatusResponse(status="removed")
+    _gone()
 
 
 @router.delete(
     "/organisations/{org_id}/patients/{patient_id}",
-    dependencies=[
-        DEP_REQUIRE_CSRF,
-        DEP_REQUIRE_MANAGE_PATIENT_MEMBERSHIP,
-    ],
     response_model=StatusResponse,
 )
 def remove_patient_from_organisation(
     org_id: int,
     patient_id: str,
-    current_user: User = DEP_CURRENT_USER,
-    db: Session = DEP_GET_SESSION,
 ) -> StatusResponse:
-    """Remove a patient from an organisation.
+    """Retired. Places live at ``/api/org-units``.
 
-    Requires ``manage_patient_membership``.
-
-    Args:
-        org_id: Organisation ID.
-        patient_id: FHIR Patient resource ID.
-        current_user: Authenticated user holding ``manage_patient_membership``.
-        db: Database session.
-
-    Returns:
-        dict: Confirmation.
+    The request it always took is still declared, so a caller
+    sending what it always sent is told the address has gone
+    rather than that its request is malformed.
     """
-    # Anyone but an operator is confined to their own organisations
-    if current_user.platform_role != "superadmin":
-        if org_id not in get_member_org_ids(db, current_user.id):
-            raise HTTPException(
-                status_code=404, detail="Organisation not found"
-            )
-
-    place_id = _place_of_organisation(db, org_id)
-
-    existing = db.scalar(
-        select(organisation_patient_member).where(
-            organisation_patient_member.c.org_unit_id == place_id,
-            organisation_patient_member.c.patient_id == patient_id,
-        )
-    )
-    if not existing:
-        raise HTTPException(status_code=404, detail="Membership not found")
-
-    db.execute(
-        organisation_patient_member.delete().where(
-            organisation_patient_member.c.org_unit_id == place_id,
-            organisation_patient_member.c.patient_id == patient_id,
-        )
-    )
-    return StatusResponse(status="removed")
-
-
-# ==========================================================================
-# ORGANISATION FEATURE ENDPOINTS
-# ==========================================================================
+    _gone()
 
 
 @router.get(
     "/organisations/{org_id}/features",
     response_model=FeaturesListOut,
-    dependencies=[DEP_REQUIRE_MANAGE_USERS],
 )
 def list_org_features(
     org_id: int,
-    current_user: User = DEP_CURRENT_USER,
-    db: Session = DEP_GET_SESSION,
 ) -> FeaturesListOut:
-    """List enabled features for an organisation.
+    """Retired. Places live at ``/api/org-units``.
 
-    Requires ``manage_users``.
+    The request it always took is still declared, so a caller
+    sending what it always sent is told the address has gone
+    rather than that its request is malformed.
     """
-    org = db.get(Organisation, org_id)
-    if not org:
-        raise HTTPException(status_code=404, detail="Organisation not found")
-
-    # Anyone but an operator is confined to their own organisations
-    if current_user.platform_role != "superadmin":
-        if org_id not in get_member_org_ids(db, current_user.id):
-            raise HTTPException(
-                status_code=404, detail="Organisation not found"
-            )
-
-    return FeaturesListOut(
-        features=[
-            {
-                "feature_key": f.feature_key,
-                "enabled_at": (
-                    f.enabled_at.isoformat() if f.enabled_at else None
-                ),
-                "enabled_by": f.enabled_by,
-            }
-            for f in org.features
-        ]
-    )
+    _gone()
 
 
 @router.put(
     "/organisations/{org_id}/features/{feature_key}",
     response_model=FeatureToggleResponse,
-    dependencies=[
-        DEP_REQUIRE_CSRF,
-        DEP_REQUIRE_MANAGE_USERS,
-    ],
 )
 def toggle_org_feature(
     org_id: int,
     feature_key: str,
     body: FeatureToggleIn,
-    current_user: User = DEP_CURRENT_USER,
-    db: Session = DEP_GET_SESSION,
 ) -> FeatureToggleResponse:
-    """Enable or disable a feature on an organisation.
+    """Retired. Places live at ``/api/org-units``.
 
-    Requires ``manage_users``.  When ``enabled=true`` a row is created;
-    when ``enabled=false`` the row is deleted.
+    The request it always took is still declared, so a caller
+    sending what it always sent is told the address has gone
+    rather than that its request is malformed.
     """
-    org = db.get(Organisation, org_id)
-    if not org:
-        raise HTTPException(status_code=404, detail="Organisation not found")
+    _gone()
 
-    # Anyone but an operator is confined to their own organisations
-    if current_user.platform_role != "superadmin":
-        if org_id not in get_member_org_ids(db, current_user.id):
-            raise HTTPException(
-                status_code=404, detail="Organisation not found"
-            )
 
-    place_id = _place_of_organisation(db, org_id)
+def _gone() -> NoReturn:
+    """Say that an address has been retired, and where to go instead.
 
-    existing = db.scalar(
-        select(OrganisationFeature).where(
-            OrganisationFeature.org_unit_id == place_id,
-            OrganisationFeature.feature_key == feature_key,
-        )
+    Both the sites surface and the organisations surface are views over
+    one table now, and the places answer at ``/api/org-units``. A retired
+    address answers 410 rather than 404 so a caller can tell "this never
+    existed" from "this used to be here and has gone".
+    """
+    raise HTTPException(
+        status_code=410,
+        detail=(
+            "This address has been retired. The places are at "
+            "/api/org-units."
+        ),
     )
-
-    if body.enabled:
-        if existing:
-            return FeatureToggleResponse(status="already_enabled")
-        feature = OrganisationFeature(
-            org_unit_id=place_id,
-            feature_key=feature_key,
-            enabled_by=current_user.id,
-        )
-        db.add(feature)
-        return FeatureToggleResponse(status="enabled")
-    else:
-        if not existing:
-            return FeatureToggleResponse(status="already_disabled")
-        db.delete(existing)
-        return FeatureToggleResponse(status="disabled")
-
-
-# ==========================================================================
-# SITES
-# ==========================================================================
-
-
-VALID_SITE_TYPES = {
-    "hospital",
-    "building",
-    "ward",
-    "room",
-    "clinic",
-    "department",
-    "virtual",
-}
 
 
 @router.get(
     "/sites",
     response_model=SitesListOut,
-    dependencies=[DEP_REQUIRE_MANAGE_USERS],
 )
-def list_sites(
-    current_user: User = DEP_CURRENT_USER,
-    db: Session = DEP_GET_SESSION,
-) -> SitesListOut:
-    """List the sites of the caller's organisations.
+def list_sites() -> SitesListOut:
+    """Retired. Places live at ``/api/org-units``.
 
-    Requires ``manage_users``.
-
-    Filtered the way ``list_organisations`` is filtered: a superadmin sees
-    the estate, an admin sees the sites of organisations they belong to.
-    It previously returned every site in the deployment to any admin —
-    not a by-id leak, since no id was needed to read it.
-
-    A site linked to no organisation is not listed. Sites are created from
-    inside an organisation and linked in the same action, so an unlinked
-    site is an anomaly rather than a shared resource, and failing closed
-    is the right way round to be wrong about one.
+    Answers 410 to anybody who asks, without a permission check:
+    a retired address holds nothing to protect, and saying that it
+    has gone discloses nothing a reader of these notes cannot see.
     """
-    # Roots are organisations, and have their own list. This one shows
-    # the places inside them.
-    stmt = (
-        select(Site).where(Site.type != ORGANISATION_TYPE).order_by(Site.name)
-    )
-    if current_user.platform_role != "superadmin":
-        own_org_ids = get_member_org_ids(db, current_user.id)
-        stmt = stmt.where(
-            Site.id.in_(site_ids_of_organisations(db, own_org_ids))
-        )
-
-    rows = db.execute(stmt).scalars().all()
-
-    return SitesListOut(
-        sites=[
-            {
-                "id": s.id,
-                "name": s.name,
-                "type": s.type,
-                "parent_id": s.parent_id,
-                "location": s.location or "",
-                "is_active": s.is_active,
-                "created_at": s.created_at.isoformat(),
-                "updated_at": s.updated_at.isoformat(),
-            }
-            for s in rows
-        ]
-    )
+    _gone()
 
 
 @router.post(
     "/sites",
     response_model=SiteOut,
-    dependencies=[
-        DEP_REQUIRE_CSRF,
-        DEP_REQUIRE_MANAGE_USERS,
-    ],
 )
 def create_site(
     body: CreateSiteIn,
-    current_user: User = DEP_CURRENT_USER,
-    db: Session = DEP_GET_SESSION,
 ) -> SiteOut:
-    """Create a site inside an organisation. Requires ``manage_users``.
+    """Retired. Places live at ``/api/org-units``.
 
-    The organisation is required and written on the row itself, so a site
-    is never ownerless. It used to be created bare and linked by a second
-    request, which left a window where the record belonged nowhere —
-    permanently, if that second call never came.
-    ``_require_site_in_own_org`` already assumed this was impossible when
-    it called a site's organisation "the site's owner"; now it is.
+    Answers 410 to anybody who asks, without a permission check:
+    a retired address holds nothing to protect, and saying that it
+    has gone discloses nothing a reader of these notes cannot see.
     """
-    if body.type not in VALID_SITE_TYPES:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Invalid site type. Must be one of: "
-            f"{', '.join(sorted(VALID_SITE_TYPES))}",
-        )
-
-    org = db.get(Organisation, body.organisation_id)
-    if org is None:
-        raise HTTPException(status_code=404, detail="Organisation not found")
-    _require_own_org(db, current_user, body.organisation_id)
-
-    if org.org_unit_id is None:
-        raise HTTPException(status_code=404, detail="Organisation not found")
-
-    if body.parent_id is not None:
-        parent = db.get(Site, body.parent_id)
-        if not parent:
-            raise HTTPException(
-                status_code=404, detail="Parent site not found"
-            )
-        _require_parent_in_org(db, body.parent_id, body.organisation_id)
-        parent_id = body.parent_id
-    else:
-        # Naming no parent means "directly inside the organisation", which
-        # is the organisation's own row in the tree.
-        parent_id = org.org_unit_id
-
-    site = Site(
-        name=body.name,
-        type=body.type,
-        parent_id=parent_id,
-        location=body.location,
-    )
-    db.add(site)
-    db.flush()
-    db.refresh(site)
-
-    return SiteOut(
-        id=site.id,
-        name=site.name,
-        type=site.type,
-        parent_id=site.parent_id,
-        location=site.location or "",
-        is_active=site.is_active,
-        created_at=site.created_at.isoformat(),
-        updated_at=site.updated_at.isoformat(),
-    )
-
-
-def _require_parent_in_org(db: Session, parent_id: int, org_id: int) -> None:
-    """Refuse a parent site that belongs to a different organisation.
-
-    Sites nest — hospital, building, ward, room — so creating one means
-    naming the site it sits inside. The route checked that the parent
-    existed and not that it was the caller's, which let an admin at one
-    trust hang a ward inside another trust's building: a write into a
-    structure they do not own.
-
-    The rule is same-organisation rather than merely "one of the caller's",
-    which differ when an admin belongs to several. A ward in Trust A's
-    building is Trust A's ward, whoever created it.
-
-    This used to be two functions, one for creating and one for moving,
-    because a site could have several organisations and they had to
-    referee between the two sets. A site now has one owner, so both
-    questions are the same comparison.
-
-    404 rather than 403, matching the other site checks, so the response
-    does not confirm that a site exists to someone who may not see it.
-
-    Args:
-        db: Core database session.
-        parent_id: The site being nested under.
-        org_id: The organisation the new or updated site belongs to.
-
-    Raises:
-        HTTPException: 404 if the parent is not in that organisation.
-    """
-    roots = root_ids_of_organisations(db, [org_id])
-    allowed = set(roots) | descendant_ids(db, roots)
-    if parent_id not in allowed:
-        raise HTTPException(status_code=404, detail="Parent site not found")
-
-
-def _require_site_in_own_org(
-    db: Session, current_user: User, site_id: int
-) -> None:
-    """Refuse a site outside the admin's own organisations.
-
-    Sites are not standalone: one is created from inside an organisation and
-    linked to it in the same action, so "an organisation the site belongs
-    to" is the site's owner. Superadmins are global and skip the check.
-
-    404 rather than 403, matching ``get_organisation``, so the response does
-    not confirm that a site exists to someone who may not see it.
-    """
-    if current_user.platform_role == "superadmin":
-        return
-
-    accountable = organisation_id_of_site(db, site_id)
-    if accountable is None:
-        raise HTTPException(status_code=404, detail="Site not found")
-    if accountable not in get_member_org_ids(db, current_user.id):
-        raise HTTPException(status_code=404, detail="Site not found")
-
-
-def _place_of_organisation(db: Session, org_id: int) -> int:
-    """Return the tree row an organisation stands for.
-
-    Features, patient lists and conversation links hang off a place now,
-    and an organisation's place is its own row. An organisation without
-    one cannot hold any of them, and saying so is better than writing a
-    row against a place that does not exist.
-
-    Args:
-        db: Core database session.
-        org_id: The organisation.
-
-    Returns:
-        The id of its row in the tree.
-
-    Raises:
-        HTTPException: 404 if the organisation has no row in the tree.
-    """
-    roots = root_ids_of_organisations(db, [org_id])
-    if not roots:
-        raise HTTPException(status_code=404, detail="Organisation not found")
-    return roots[0]
-
-
-def _require_not_a_root(site: Site) -> None:
-    """Refuse a row that is an organisation rather than a place inside one.
-
-    Organisations are rows in the same table now, carrying no parent, and
-    they have their own routes. Letting the site routes reach them would
-    mean a trust could be renamed, deactivated or deleted from a screen
-    built for wards, and shown in a list of them.
-
-    404 rather than 403, matching the other site checks.
-    """
-    if site.type == ORGANISATION_TYPE:
-        raise HTTPException(status_code=404, detail="Site not found")
-
-
-def _require_own_org(db: Session, current_user: User, org_id: int) -> None:
-    """Refuse an organisation the admin does not belong to."""
-    if current_user.platform_role == "superadmin":
-        return
-    if org_id not in get_member_org_ids(db, current_user.id):
-        raise HTTPException(status_code=404, detail="Organisation not found")
+    _gone()
 
 
 def _require_shared_org_with_patient(
@@ -4788,7 +3978,7 @@ def _require_shared_org_with_patient(
     """
     if current_user.platform_role == "superadmin":
         return
-    if not get_shared_org_ids(db, current_user.id, patient_id):
+    if not get_shared_place_ids(db, current_user.id, patient_id):
         raise HTTPException(status_code=404, detail="Patient not found")
 
 
@@ -4806,9 +3996,8 @@ def _require_shared_org_with_user(
     everyone's, so a record that has slipped out of the membership tables
     fails closed.
 
-    404 rather than 403, matching ``_require_own_org`` and
-    ``_require_site_in_own_org``, so the response does not confirm that a
-    user exists to someone who may not see them.
+    404 rather than 403, matching the place checks, so the response does
+    not confirm that a user exists to somebody who may not see them.
 
     Args:
         db: Core database session.
@@ -4822,8 +4011,8 @@ def _require_shared_org_with_user(
         return
     if target.id == current_user.id:
         return
-    admin_org_ids = set(get_member_org_ids(db, current_user.id))
-    target_org_ids = set(get_member_org_ids(db, target.id))
+    admin_org_ids = set(get_member_place_ids(db, current_user.id))
+    target_org_ids = set(get_member_place_ids(db, target.id))
     if not (admin_org_ids & target_org_ids):
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -4831,661 +4020,185 @@ def _require_shared_org_with_user(
 @router.get(
     "/sites/{site_id}",
     response_model=SiteDetailOut,
-    dependencies=[DEP_REQUIRE_MANAGE_USERS],
 )
 def get_site(
     site_id: int,
-    current_user: User = DEP_CURRENT_USER,
-    db: Session = DEP_GET_SESSION,
 ) -> SiteDetailOut:
-    """Get site details including staff. Requires ``manage_users``."""
-    _require_site_in_own_org(db, current_user, site_id)
+    """Retired. Places live at ``/api/org-units``.
 
-    site = db.get(Site, site_id)
-    if not site:
-        raise HTTPException(status_code=404, detail="Site not found")
-    _require_not_a_root(site)
-
-    # Get staff
-    staff_query = (
-        select(
-            User.id,
-            User.username,
-            User.email,
-            User.full_name,
-        )
-        .join(site_member, site_member.c.user_id == User.id)
-        .where(site_member.c.site_id == site_id)
-    )
-
-    # Operators are hidden from everyone but another operator
-    if current_user.platform_role != "superadmin":
-        staff_query = staff_query.where(User.platform_role != "superadmin")
-
-    staff = db.execute(staff_query).all()
-
-    # The owning organisation, returned as a list of one so the response
-    # shape does not change while the frontend still reads a list. `type`
-    # is selected because LinkedOrganisationItem requires it: without it
-    # this endpoint raises a validation error for any site that has an
-    # organisation, which is every site the product can actually create.
-    org_query = select(
-        Organisation.id, Organisation.name, Organisation.type
-    ).where(Organisation.id == organisation_id_of_site(db, site_id))
-    orgs = db.execute(org_query).all()
-
-    return SiteDetailOut(
-        id=site.id,
-        name=site.name,
-        type=site.type,
-        parent_id=site.parent_id,
-        location=site.location or "",
-        is_active=site.is_active,
-        created_at=site.created_at.isoformat(),
-        updated_at=site.updated_at.isoformat(),
-        staff=[
-            {
-                "id": s.id,
-                "username": s.username,
-                "email": s.email,
-                "full_name": s.full_name or "",
-            }
-            for s in staff
-        ],
-        organisations=[
-            {"id": o.id, "name": o.name, "type": o.type} for o in orgs
-        ],
-        clinical_lead_id=clinical_leads_of(db, [site_id]).get(site_id),
-    )
+    Answers 410 to anybody who asks, without a permission check:
+    a retired address holds nothing to protect, and saying that it
+    has gone discloses nothing a reader of these notes cannot see.
+    """
+    _gone()
 
 
 @router.put(
     "/sites/{site_id}",
     response_model=SiteOut,
-    dependencies=[
-        DEP_REQUIRE_CSRF,
-        DEP_REQUIRE_MANAGE_USERS,
-    ],
 )
 def update_site(
     site_id: int,
     body: UpdateSiteIn,
-    current_user: User = DEP_CURRENT_USER,
-    db: Session = DEP_GET_SESSION,
 ) -> SiteOut:
-    """Update a site. Requires ``manage_users``."""
-    _require_site_in_own_org(db, current_user, site_id)
+    """Retired. Places live at ``/api/org-units``.
 
-    site = db.get(Site, site_id)
-    if not site:
-        raise HTTPException(status_code=404, detail="Site not found")
-    _require_not_a_root(site)
-
-    if body.type is not None:
-        if body.type not in VALID_SITE_TYPES:
-            raise HTTPException(
-                status_code=422,
-                detail=f"Invalid site type. Must be one of: "
-                f"{', '.join(sorted(VALID_SITE_TYPES))}",
-            )
-        site.type = body.type
-
-    if body.name is not None:
-        site.name = body.name
-    if body.parent_id is not None:
-        if body.parent_id == site_id:
-            raise HTTPException(
-                status_code=422,
-                detail="Site cannot be its own parent",
-            )
-        parent = db.get(Site, body.parent_id)
-        if not parent:
-            raise HTTPException(
-                status_code=404, detail="Parent site not found"
-            )
-        # Same fault as create_site had: existence was checked, ownership
-        # was not, so a site could be re-parented under another trust's.
-        # Compared against this site's own organisation rather than the
-        # caller's, which differ when an admin belongs to several.
-        accountable = organisation_id_of_site(db, site_id)
-        if accountable is None:
-            raise HTTPException(
-                status_code=404, detail="Parent site not found"
-            )
-        _require_parent_in_org(db, body.parent_id, accountable)
-        site.parent_id = body.parent_id
-    if body.location is not None:
-        site.location = body.location
-
-    db.flush()
-    db.refresh(site)
-
-    return SiteOut(
-        id=site.id,
-        name=site.name,
-        type=site.type,
-        parent_id=site.parent_id,
-        location=site.location or "",
-        is_active=site.is_active,
-        created_at=site.created_at.isoformat(),
-        updated_at=site.updated_at.isoformat(),
-    )
+    Answers 410 to anybody who asks, without a permission check:
+    a retired address holds nothing to protect, and saying that it
+    has gone discloses nothing a reader of these notes cannot see.
+    """
+    _gone()
 
 
 @router.patch(
     "/sites/{site_id}/active",
     response_model=SiteOut,
-    dependencies=[
-        DEP_REQUIRE_CSRF,
-        DEP_REQUIRE_MANAGE_USERS,
-    ],
 )
 def toggle_site_active(
     site_id: int,
     body: ToggleSiteActiveIn,
-    current_user: User = DEP_CURRENT_USER,
-    db: Session = DEP_GET_SESSION,
 ) -> SiteOut:
-    """Toggle a site's active status. Requires ``manage_users``."""
-    _require_site_in_own_org(db, current_user, site_id)
+    """Retired. Places live at ``/api/org-units``.
 
-    site = db.get(Site, site_id)
-    if not site:
-        raise HTTPException(status_code=404, detail="Site not found")
-    _require_not_a_root(site)
-
-    site.is_active = body.is_active
-    db.flush()
-    db.refresh(site)
-
-    return SiteOut(
-        id=site.id,
-        name=site.name,
-        type=site.type,
-        parent_id=site.parent_id,
-        location=site.location or "",
-        is_active=site.is_active,
-        created_at=site.created_at.isoformat(),
-        updated_at=site.updated_at.isoformat(),
-    )
+    Answers 410 to anybody who asks, without a permission check:
+    a retired address holds nothing to protect, and saying that it
+    has gone discloses nothing a reader of these notes cannot see.
+    """
+    _gone()
 
 
 @router.delete(
     "/sites/{site_id}",
     response_model=StatusResponse,
-    dependencies=[
-        DEP_REQUIRE_CSRF,
-        DEP_REQUIRE_MANAGE_USERS,
-    ],
 )
 def delete_site(
     site_id: int,
-    current_user: User = DEP_CURRENT_USER,
-    db: Session = DEP_GET_SESSION,
 ) -> StatusResponse:
-    """Delete a site. Requires ``manage_users``."""
-    _require_site_in_own_org(db, current_user, site_id)
+    """Retired. Places live at ``/api/org-units``.
 
-    site = db.get(Site, site_id)
-    if not site:
-        raise HTTPException(status_code=404, detail="Site not found")
-    _require_not_a_root(site)
-
-    db.delete(site)
-    return StatusResponse(status="deleted")
+    Answers 410 to anybody who asks, without a permission check:
+    a retired address holds nothing to protect, and saying that it
+    has gone discloses nothing a reader of these notes cannot see.
+    """
+    _gone()
 
 
 @router.post(
     "/organisations/{org_id}/sites/{site_id}",
     response_model=StatusResponse,
-    dependencies=[
-        DEP_REQUIRE_CSRF,
-        DEP_REQUIRE_MANAGE_USERS,
-    ],
 )
 def link_site_to_org(
     org_id: int,
     site_id: int,
-    current_user: User = DEP_CURRENT_USER,
-    db: Session = DEP_GET_SESSION,
 ) -> StatusResponse:
-    """Give a site to an organisation. Requires ``manage_users``.
+    """Retired. Places live at ``/api/org-units``.
 
-    A site now has one owner rather than a set of them, so this moves the
-    site rather than adding a second organisation to it. Moving a site
-    that already belongs to somebody else is refused: it would take the
-    site out of the reach of the admins who have it today, and doing that
-    from a route named "link" would be a surprise.
+    Answers 410 to anybody who asks, without a permission check:
+    a retired address holds nothing to protect, and saying that it
+    has gone discloses nothing a reader of these notes cannot see.
     """
-    _require_own_org(db, current_user, org_id)
-
-    org = db.get(Organisation, org_id)
-    if not org:
-        raise HTTPException(status_code=404, detail="Organisation not found")
-
-    site = db.get(Site, site_id)
-    if not site:
-        raise HTTPException(status_code=404, detail="Site not found")
-
-    if org.org_unit_id is None:
-        raise HTTPException(status_code=404, detail="Organisation not found")
-
-    if site.parent_id == org.org_unit_id:
-        return StatusResponse(status="already_linked")
-
-    if site.parent_id is not None:
-        raise HTTPException(
-            status_code=409,
-            detail=(
-                "Site already belongs to another organisation. Remove it "
-                "from that organisation first."
-            ),
-        )
-
-    site.parent_id = org.org_unit_id
-    db.flush()
-    return StatusResponse(status="linked")
+    _gone()
 
 
 @router.delete(
     "/organisations/{org_id}/sites/{site_id}",
     response_model=StatusResponse,
-    dependencies=[
-        DEP_REQUIRE_CSRF,
-        DEP_REQUIRE_MANAGE_USERS,
-    ],
 )
 def unlink_site_from_org(
     org_id: int,
     site_id: int,
-    current_user: User = DEP_CURRENT_USER,
-    db: Session = DEP_GET_SESSION,
 ) -> StatusResponse:
-    """Take a site away from an organisation. Requires ``manage_users``.
+    """Retired. Places live at ``/api/org-units``.
 
-    The site is left owned by nobody, which is what this route has always
-    done — it is the second half of moving one, and the site is invisible
-    to every admin list until it is given a new owner.
+    Answers 410 to anybody who asks, without a permission check:
+    a retired address holds nothing to protect, and saying that it
+    has gone discloses nothing a reader of these notes cannot see.
     """
-    _require_own_org(db, current_user, org_id)
-
-    org = db.get(Organisation, org_id)
-    site = db.get(Site, site_id)
-    if org is None or site is None or site.parent_id != org.org_unit_id:
-        raise HTTPException(status_code=404, detail="Link not found")
-
-    site.parent_id = None
-    db.flush()
-
-    return StatusResponse(status="unlinked")
-
-
-# ==========================================================================
-# LINKS BETWEEN PLACES
-# ==========================================================================
-#
-# Ownership is the parent column and nothing else. Everything that is not
-# ownership — a school teaching on a trust's wards, two trusts sharing a
-# laboratory — is a row here, so that a second relationship never becomes a
-# second parent and splits "who is accountable for this place" into two
-# answers.
-#
-# A link confers nothing on its own. What a relation is expected to confer
-# is declared beside it in ``app/org_units/relations.py``.
-
-
-def _link_item(link: OrgUnitLink, names: dict[int, str]) -> OrgUnitLinkItem:
-    """Build the response for one link, naming both of its ends."""
-    relation = get_org_unit_relation(link.relation)
-    return OrgUnitLinkItem(
-        id=link.id,
-        source_id=link.source_id,
-        source_name=names.get(link.source_id, ""),
-        target_id=link.target_id,
-        target_name=names.get(link.target_id, ""),
-        relation=link.relation,
-        relation_display_name=(
-            relation.display_name if relation else link.relation
-        ),
-        created_at=link.created_at.isoformat(),
-    )
-
-
-def _links_of(db: Session, site_id: int) -> OrgUnitLinksOut:
-    """Return every link the site is either end of, oldest first."""
-    links = list(
-        db.execute(
-            select(OrgUnitLink)
-            .where(
-                (OrgUnitLink.source_id == site_id)
-                | (OrgUnitLink.target_id == site_id)
-            )
-            .order_by(OrgUnitLink.id)
-        )
-        .scalars()
-        .all()
-    )
-
-    wanted = {link.source_id for link in links} | {
-        link.target_id for link in links
-    }
-    names: dict[int, str] = {}
-    if wanted:
-        names = {
-            row.id: row.name
-            for row in db.execute(
-                select(Site.id, Site.name).where(Site.id.in_(wanted))
-            ).all()
-        }
-
-    return OrgUnitLinksOut(links=[_link_item(link, names) for link in links])
+    _gone()
 
 
 @router.get(
     "/sites/{site_id}/links",
     response_model=OrgUnitLinksOut,
-    dependencies=[DEP_REQUIRE_MANAGE_USERS],
 )
 def list_site_links(
     site_id: int,
-    current_user: User = DEP_CURRENT_USER,
-    db: Session = DEP_GET_SESSION,
 ) -> OrgUnitLinksOut:
-    """List the relationships this place is either end of.
+    """Retired. Places live at ``/api/org-units``.
 
-    Both directions are returned. ``teaches_at`` from a school to a trust
-    is one fact and the reverse is another, so a place has to be able to
-    see the links pointing at it as well as the ones it made.
-
-    Requires ``manage_users``, and the place must be one of the caller's.
+    Answers 410 to anybody who asks, without a permission check:
+    a retired address holds nothing to protect, and saying that it
+    has gone discloses nothing a reader of these notes cannot see.
     """
-    _require_site_in_own_org(db, current_user, site_id)
-
-    site = db.get(Site, site_id)
-    if not site:
-        raise HTTPException(status_code=404, detail="Site not found")
-
-    return _links_of(db, site_id)
+    _gone()
 
 
 @router.post(
     "/sites/{site_id}/links",
     response_model=OrgUnitLinksOut,
-    dependencies=[
-        DEP_REQUIRE_CSRF,
-        DEP_REQUIRE_MANAGE_USERS,
-    ],
 )
 def create_site_link(
     site_id: int,
     body: CreateOrgUnitLinkIn,
-    current_user: User = DEP_CURRENT_USER,
-    db: Session = DEP_GET_SESSION,
 ) -> OrgUnitLinksOut:
-    """Record a relationship from this place to another.
+    """Retired. Places live at ``/api/org-units``.
 
-    **The place at the other end is not checked for ownership**, and that
-    is the point: the relationships worth recording are the ones that
-    cross between organisations, and requiring both ends would make the
-    table useless for exactly those. Recording one confers nothing — no
-    membership, no admin rights — so naming somebody else's place here
-    gives the caller nothing they did not already have.
-
-    Requires ``manage_users``, and the place the link is *from* must be
-    one of the caller's.
+    Answers 410 to anybody who asks, without a permission check:
+    a retired address holds nothing to protect, and saying that it
+    has gone discloses nothing a reader of these notes cannot see.
     """
-    _require_site_in_own_org(db, current_user, site_id)
-
-    source = db.get(Site, site_id)
-    if not source:
-        raise HTTPException(status_code=404, detail="Site not found")
-
-    if body.target_id == site_id:
-        raise HTTPException(
-            status_code=400,
-            detail="A place cannot be linked to itself",
-        )
-
-    target = db.get(Site, body.target_id)
-    if not target:
-        raise HTTPException(status_code=404, detail="Target site not found")
-
-    try:
-        relation = validate_org_unit_relation(body.relation)
-    except ValueError:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "Invalid relation. Must be one of: "
-                + ", ".join(ORG_UNIT_RELATION_IDS)
-            ),
-        ) from None
-
-    existing = db.scalar(
-        select(OrgUnitLink).where(
-            OrgUnitLink.source_id == site_id,
-            OrgUnitLink.target_id == body.target_id,
-            OrgUnitLink.relation == relation,
-        )
-    )
-    if existing is None:
-        db.add(
-            OrgUnitLink(
-                source_id=site_id,
-                target_id=body.target_id,
-                relation=relation,
-                created_by=current_user.id,
-            )
-        )
-        db.flush()
-
-    return _links_of(db, site_id)
+    _gone()
 
 
 @router.delete(
     "/sites/{site_id}/links/{link_id}",
     response_model=OrgUnitLinksOut,
-    dependencies=[
-        DEP_REQUIRE_CSRF,
-        DEP_REQUIRE_MANAGE_USERS,
-    ],
 )
 def delete_site_link(
     site_id: int,
     link_id: int,
-    current_user: User = DEP_CURRENT_USER,
-    db: Session = DEP_GET_SESSION,
 ) -> OrgUnitLinksOut:
-    """Remove a relationship this place is either end of.
+    """Retired. Places live at ``/api/org-units``.
 
-    Either end may remove it. A relationship somebody else recorded about
-    your place is still a claim about your place, and you should not have
-    to ask them to withdraw it.
-
-    Requires ``manage_users``, and the place must be one of the caller's.
+    Answers 410 to anybody who asks, without a permission check:
+    a retired address holds nothing to protect, and saying that it
+    has gone discloses nothing a reader of these notes cannot see.
     """
-    _require_site_in_own_org(db, current_user, site_id)
-
-    link = db.get(OrgUnitLink, link_id)
-    if link is None or site_id not in (link.source_id, link.target_id):
-        raise HTTPException(status_code=404, detail="Link not found")
-
-    db.delete(link)
-    db.flush()
-
-    return _links_of(db, site_id)
-
-
-def _mirror_clinical_lead(
-    db: Session,
-    site_id: int,
-    user_id: int,
-    role: str,
-    actor: User,
-) -> None:
-    """Keep the clinical lead position in step with the role column.
-
-    Expand step of moving clinical lead onto positions: both are written,
-    and reads have already moved across. The column and its place in the
-    API response stay until the contract step, which is a breaking change
-    and needs its own deploy.
-
-    Args:
-        db: Database session.
-        site_id: The site being changed.
-        user_id: The staff member.
-        role: The role just written to ``site_member``.
-        actor: Who made the change.
-    """
-    site = db.get(Site, site_id)
-    if site is None:
-        return
-
-    if role == "clinical_lead":
-        person = db.get(User, user_id)
-        if person is not None:
-            set_clinical_lead(db, site, person, appointed_by=actor)
-        return
-
-    # Demoted out of the post, so the post falls vacant.
-    if clinical_leads_of(db, [site_id]).get(site_id) == user_id:
-        set_clinical_lead(db, site, None)
+    _gone()
 
 
 @router.post(
     "/sites/{site_id}/staff",
     response_model=AddSiteStaffResponse,
-    dependencies=[
-        DEP_REQUIRE_CSRF,
-        DEP_REQUIRE_MANAGE_STAFF_MEMBERSHIP,
-    ],
 )
 def add_site_staff(
     site_id: int,
     body: AddSiteStaffIn,
-    current_user: User = DEP_CURRENT_USER,
-    db: Session = DEP_GET_SESSION,
 ) -> AddSiteStaffResponse:
-    """Add a staff member to a site. Requires ``manage_users``.
+    """Retired. Places live at ``/api/org-units``.
 
-    Role must be one of: clinical_lead, staff, trainee.
+    Answers 410 to anybody who asks, without a permission check:
+    a retired address holds nothing to protect, and saying that it
+    has gone discloses nothing a reader of these notes cannot see.
     """
-    _require_site_in_own_org(db, current_user, site_id)
-
-    site = db.get(Site, site_id)
-    if not site:
-        raise HTTPException(status_code=404, detail="Site not found")
-
-    user_id = body.user_id
-    role = body.role
-
-    valid_roles = {"clinical_lead", "staff", "trainee"}
-    if role not in valid_roles:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Invalid role. Must be one of: "
-            f"{', '.join(sorted(valid_roles))}",
-        )
-
-    # The request still names a role, because "make this person the clinical
-    # lead" is what the interface is asking for. What gets stored is a
-    # capacity, and clinical lead is not one of those — it is a post, filled
-    # below by _mirror_clinical_lead. Someone appointed to it is a member of
-    # the site in the ordinary way.
-    capacity = "staff" if role == "clinical_lead" else role
-
-    # One lead per site is enforced by max_holders on the post, not by a
-    # uniqueness rule on this table, so the post can also be vacant and can
-    # record acting cover.
-    if role == "clinical_lead":
-        existing_lead_id = clinical_leads_of(db, [site_id]).get(site_id)
-        if existing_lead_id is not None and existing_lead_id != user_id:
-            raise HTTPException(
-                status_code=409,
-                detail="Site already has a clinical lead",
-            )
-
-    target_user = db.get(User, user_id)
-    if not target_user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    # Check if already assigned
-    existing = db.execute(
-        select(site_member).where(
-            site_member.c.site_id == site_id,
-            site_member.c.user_id == user_id,
-        )
-    ).first()
-    # The grant, in the same act as the membership — see
-    # `grant_staff_competencies`. A site is where somebody works, so the
-    # person becoming staff here is as likely to hold nothing staff-like
-    # as one joining an organisation, and the interface asks the same
-    # question. Applied before the early return below so it reaches a
-    # role change too: appointing an existing member clinical lead is
-    # exactly when a missing competency would be noticed.
-    grant_staff_competencies(
-        target_user, body.base_profession, body.additional_competencies
-    )
-
-    if existing:
-        # Update role
-        db.execute(
-            site_member.update()
-            .where(
-                site_member.c.site_id == site_id,
-                site_member.c.user_id == user_id,
-            )
-            .values(capacity=capacity)
-        )
-        _mirror_clinical_lead(db, site_id, user_id, role, current_user)
-        return AddSiteStaffResponse(status="updated")
-
-    db.execute(
-        site_member.insert().values(
-            site_id=site_id, user_id=user_id, capacity=capacity
-        )
-    )
-    _mirror_clinical_lead(db, site_id, user_id, role, current_user)
-    return AddSiteStaffResponse(status="added")
+    _gone()
 
 
 @router.delete(
     "/sites/{site_id}/staff/{user_id}",
     response_model=StatusResponse,
-    dependencies=[
-        DEP_REQUIRE_CSRF,
-        DEP_REQUIRE_MANAGE_STAFF_MEMBERSHIP,
-    ],
 )
 def remove_site_staff(
     site_id: int,
     user_id: int,
-    current_user: User = DEP_CURRENT_USER,
-    db: Session = DEP_GET_SESSION,
 ) -> StatusResponse:
-    """Remove a staff member from a site. Requires ``manage_users``."""
-    _require_site_in_own_org(db, current_user, site_id)
+    """Retired. Places live at ``/api/org-units``.
 
-    # Vacate the post before the row goes, so the handover is recorded
-    # rather than the holder simply disappearing.
-    site = db.get(Site, site_id)
-    if (
-        site is not None
-        and clinical_leads_of(db, [site_id]).get(site_id) == user_id
-    ):
-        set_clinical_lead(db, site, None)
-
-    result = db.execute(
-        site_member.delete().where(
-            site_member.c.site_id == site_id,
-            site_member.c.user_id == user_id,
-        )
-    )
-
-    if result.rowcount == 0:  # type: ignore[attr-defined]
-        raise HTTPException(status_code=404, detail="Staff member not found")
-
-    return StatusResponse(status="removed")
+    Answers 410 to anybody who asks, without a permission check:
+    a retired address holds nothing to protect, and saying that it
+    has gone discloses nothing a reader of these notes cannot see.
+    """
+    _gone()
 
 
 @router.patch(
@@ -5547,10 +4260,9 @@ def link_patient_to_user(
         fhir_patient_id=fhir_patient_id,
     )
 
-
-# ==========================================================================
-# EXTERNAL ACCESS (invite / accept / revoke)
-# ==========================================================================
+    # ==========================================================================
+    # EXTERNAL ACCESS (invite / accept / revoke)
+    # ==========================================================================
 
 
 @router.post(
@@ -5664,14 +4376,14 @@ def accept_invite(
             grant.revoked_at = None
         return AcceptInviteOut(status="access_granted", user_id=existing.id)
 
-    # New user registration
+        # New user registration
     if not body.username or not body.password:
         raise HTTPException(
             status_code=422,
             detail="username and password required for new registration",
         )
 
-    # Validate uniqueness
+        # Validate uniqueness
     if db.scalar(select(User).where(User.username == body.username)):
         raise HTTPException(status_code=409, detail="Username already taken")
 
@@ -5801,10 +4513,9 @@ def list_external_access(
         ]
     )
 
-
-# ---------------------------------------------------------------------------
-# Messaging
-# ---------------------------------------------------------------------------
+    # ---------------------------------------------------------------------------
+    # Messaging
+    # ---------------------------------------------------------------------------
 
 
 @router.post(
@@ -6258,6 +4969,7 @@ def mark_read_endpoint(
 
 from app.features.teaching.router import teaching_router  # noqa: E402
 
+router.include_router(org_units_router)
 router.include_router(teaching_router)
 
 from app.features.passport.router import (  # noqa: E402
@@ -6326,7 +5038,7 @@ def ci_teaching_sync(
     if not hmac.compare_digest(provided, token.get_secret_value()):
         raise HTTPException(401, "Invalid token")
 
-    # Discover banks
+        # Discover banks
     bucket = settings.TEACHING_GCS_BUCKET
     base_path = settings.TEACHING_QUESTION_BANK_PATH
     bank_ids: list[str] = []
@@ -6344,14 +5056,34 @@ def ci_teaching_sync(
             synced=[], errors=[], message="No banks found"
         )
 
-    # Resolve the organisation — use the first org that has
-    # a teaching bank configured, or the first org in the system
+        # Resolve the place to sync into — the one an existing bank is
+        # already held by, or the first organisation in the system.
+        #
+        # It used to fall back to the literal 1, which was a guess that
+        # happened to be right while organisations were numbered from one
+        # and nothing else shared their numbering. Teaching answers in
+        # place ids now, where 1 may well be a ward.
     from app.features.teaching.models import QuestionBankConfig
 
     existing_config = db.execute(
         select(QuestionBankConfig).limit(1)
     ).scalar_one_or_none()
-    org_id = existing_config.organisation_id if existing_config else 1
+    org_id = (
+        existing_config.org_unit_id
+        if existing_config
+        else db.scalar(
+            select(OrgUnit.id)
+            .where(OrgUnit.type.in_(ROOT_TYPE_IDS))
+            .order_by(OrgUnit.id)
+            .limit(1)
+        )
+    )
+    if org_id is None:
+        return CiTeachingSyncOut(
+            synced=[],
+            errors=[],
+            message="No organisation to sync into",
+        )
 
     synced: list[CiSyncBankResult] = []
     errors: list[CiSyncErrorItem] = []
@@ -6445,21 +5177,22 @@ def ci_teaching_sync(
 
     return CiTeachingSyncOut(synced=synced, errors=errors)
 
+    # --- Transcode completion callback (service token auth) ---
+    #
+    # Beside the sync endpoint rather than on `teaching_router`, and for the
+    # same reason the passport's public router sits apart: that router carries
+    # `requires_feature("teaching")`, which resolves a feature flag through the
+    # caller's organisation membership. A Cloud Run Job has no user, no
+    # organisation and nothing for that gate to resolve through.
+    #
+    # This closes the one gap that kept the pipeline from working end to end.
+    # The backend fires the transcode job and deliberately does not wait —
+    # encoding takes minutes and an admin's request cannot hold open for it —
+    # so without this report nothing ever learns the job finished,
+    # `transcoded_at` stays null, and the availability gate hides a module
+    # whose renditions are sitting in the bucket.
 
-# --- Transcode completion callback (service token auth) ---
-#
-# Beside the sync endpoint rather than on `teaching_router`, and for the
-# same reason the passport's public router sits apart: that router carries
-# `requires_feature("teaching")`, which resolves a feature flag through the
-# caller's organisation membership. A Cloud Run Job has no user, no
-# organisation and nothing for that gate to resolve through.
-#
-# This closes the one gap that kept the pipeline from working end to end.
-# The backend fires the transcode job and deliberately does not wait —
-# encoding takes minutes and an admin's request cannot hold open for it —
-# so without this report nothing ever learns the job finished,
-# `transcoded_at` stays null, and the availability gate hides a module
-# whose renditions are sitting in the bucket.
+
 @router.post(
     "/ci/teaching/transcode-complete",
     response_model=TranscodeCompleteOut,
@@ -6507,9 +5240,9 @@ def ci_transcode_complete(
         # orphaned and the lifecycle rule will sweep them.
         raise HTTPException(404, "No such media asset")
 
-    # The job reports filenames; the suffix-to-column mapping lives here,
-    # in the one place that already owns it. A job that knew column names
-    # would need redeploying whenever one was renamed.
+        # The job reports filenames; the suffix-to-column mapping lives here,
+        # in the one place that already owns it. A job that knew column names
+        # would need redeploying whenever one was renamed.
     names = set(body.outputs)
     set_flags: list[str] = []
     for field, suffix in RENDITION_FLAGS:
@@ -6518,9 +5251,9 @@ def ci_transcode_complete(
         if present:
             set_flags.append(field)
 
-    # Last, and only once the flags are right: this is what the
-    # availability gate reads, so setting it before them would open a
-    # window where a module is servable and its renditions unrecorded.
+            # Last, and only once the flags are right: this is what the
+            # availability gate reads, so setting it before them would open a
+            # window where a module is servable and its renditions unrecorded.
     link.transcoded_at = datetime.now(UTC)
     db.flush()
 
@@ -6551,13 +5284,14 @@ def ci_transcode_complete(
 
     return TranscodeCompleteOut(recorded=True, flags=set_flags)
 
+    # --- Caption completion callback (service token auth) ---
+    #
+    # Its own endpoint rather than a mode of the one above. The transcode
+    # callback rewrites every rendition flag from the list it is given, so a
+    # report naming only a `.vtt` would clear `has_1080p` and `has_poster`
+    # and stamp a `transcoded_at` for a transcode that never ran.
 
-# --- Caption completion callback (service token auth) ---
-#
-# Its own endpoint rather than a mode of the one above. The transcode
-# callback rewrites every rendition flag from the list it is given, so a
-# report naming only a `.vtt` would clear `has_1080p` and `has_poster`
-# and stamp a `transcoded_at` for a transcode that never ran.
+
 @router.post(
     "/ci/teaching/caption-complete",
     response_model=CaptionCompleteOut,
@@ -6598,9 +5332,9 @@ def ci_caption_complete(
     if link is None:
         raise HTTPException(404, "No such media asset")
 
-    # This column only. `captions_reviewed_at` is a human's statement
-    # that they read the text, and a job re-running must not erase it —
-    # nor claim it, which is why this never sets it either.
+        # This column only. `captions_reviewed_at` is a human's statement
+        # that they read the text, and a job re-running must not erase it —
+        # nor claim it, which is why this never sets it either.
     link.has_captions = True
     db.flush()
 
@@ -6646,7 +5380,7 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
             if ".." in part or "/" in part:
                 raise HTTPException(400, "Invalid path")
 
-        # Restrict to allowed image extensions
+                # Restrict to allowed image extensions
         ext = Path(filename).suffix.lower()
         if ext not in _ALLOWED_IMAGE_EXTENSIONS:
             raise HTTPException(400, "Invalid file type")
@@ -6664,7 +5398,8 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
         )
         return FileResponse(file_path, media_type=content_type)
 
-    # api-schema-check: allow-opaque-permanent
+        # api-schema-check: allow-opaque-permanent
+
     @app.get("/api/teaching/images/cover/{module_id}/{filename}")
     async def _serve_cover_image(
         module_id: str,
@@ -6680,7 +5415,7 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
             if ".." in part or "/" in part:
                 raise HTTPException(400, "Invalid path")
 
-        # Restrict to allowed image extensions
+                # Restrict to allowed image extensions
         ext = Path(filename).suffix.lower()
         if ext not in _ALLOWED_IMAGE_EXTENSIONS:
             raise HTTPException(400, "Invalid file type")
@@ -6698,7 +5433,8 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
         )
         return FileResponse(file_path, media_type=content_type)
 
-    # api-schema-check: allow-opaque-permanent
+        # api-schema-check: allow-opaque-permanent
+
     @app.get("/api/teaching/images/learning/{module_id}/{filename}")
     async def _serve_learning_image(
         module_id: str,
@@ -6714,7 +5450,7 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
             if ".." in part or "/" in part:
                 raise HTTPException(400, "Invalid path")
 
-        # Restrict to allowed image extensions
+                # Restrict to allowed image extensions
         ext = Path(filename).suffix.lower()
         if ext not in _ALLOWED_IMAGE_EXTENSIONS:
             raise HTTPException(400, "Invalid file type")
@@ -6732,7 +5468,8 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
         )
         return FileResponse(file_path, media_type=content_type)
 
-    # api-schema-check: allow-opaque-permanent
+        # api-schema-check: allow-opaque-permanent
+
     @app.get("/api/teaching/videos/{module_id}/{filename}")
     async def _serve_learning_video(
         module_id: str,

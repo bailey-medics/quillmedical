@@ -24,9 +24,12 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    event,
     false,
+    select,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.engine import Connection
+from sqlalchemy.orm import Mapped, Mapper, mapped_column, relationship
 
 from app.models import Base
 
@@ -53,17 +56,18 @@ class QuestionBankConfig(Base):
     __tablename__ = "question_bank_configs"
     __table_args__ = (
         UniqueConstraint(
-            "organisation_id",
+            "org_unit_id",
             "question_bank_id",
             "version",
-            name="uq_qb_config_org_bank_ver",
+            name="uq_qb_config_place_bank_ver",
         ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    organisation_id: Mapped[int] = mapped_column(
+    #: Which place this row belongs to. The only id it has.
+    org_unit_id: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey("organisations.id", ondelete="CASCADE"),
+        ForeignKey("org_unit.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -114,9 +118,10 @@ class QuestionBankItem(Base):
     __tablename__ = "question_bank_items"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    organisation_id: Mapped[int] = mapped_column(
+    #: Which place this row belongs to. The only id it has.
+    org_unit_id: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey("organisations.id", ondelete="CASCADE"),
+        ForeignKey("org_unit.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -169,9 +174,10 @@ class Assessment(Base):
         nullable=False,
         index=True,
     )
-    organisation_id: Mapped[int] = mapped_column(
+    #: Which place this row belongs to. The only id it has.
+    org_unit_id: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey("organisations.id", ondelete="CASCADE"),
+        ForeignKey("org_unit.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -255,15 +261,16 @@ class TeachingOrgSettings(Base):
     __tablename__ = "teaching_org_settings"
     __table_args__ = (
         UniqueConstraint(
-            "organisation_id",
-            name="uq_teaching_org_settings_org",
+            "org_unit_id",
+            name="uq_teaching_org_settings_place",
         ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    organisation_id: Mapped[int] = mapped_column(
+    #: Which place this row belongs to. The only id it has.
+    org_unit_id: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey("organisations.id", ondelete="CASCADE"),
+        ForeignKey("org_unit.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -293,16 +300,17 @@ class QuestionBankOrgStatus(Base):
     __tablename__ = "question_bank_org_status"
     __table_args__ = (
         UniqueConstraint(
-            "organisation_id",
+            "org_unit_id",
             "question_bank_id",
-            name="uq_qb_org_status_org_bank",
+            name="uq_qb_org_status_place_bank",
         ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    organisation_id: Mapped[int] = mapped_column(
+    #: Which place this row belongs to. The only id it has.
+    org_unit_id: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey("organisations.id", ondelete="CASCADE"),
+        ForeignKey("org_unit.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -343,9 +351,10 @@ class QuestionBankSync(Base):
     __tablename__ = "question_bank_syncs"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    organisation_id: Mapped[int] = mapped_column(
+    #: Which place this row belongs to. The only id it has.
+    org_unit_id: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey("organisations.id", ondelete="CASCADE"),
+        ForeignKey("org_unit.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -417,18 +426,45 @@ class ModuleMediaLink(Base):
 
     __tablename__ = "module_media_link"
     __table_args__ = (
+        # One video per reference, per place. Not per
+        # ``organisation_id``: that column is the object's address in the
+        # bucket, and the place is what every query here reads.
         UniqueConstraint(
-            "organisation_id",
+            "org_unit_id",
             "question_bank_id",
             "media_key",
-            name="uq_module_media_link_org_bank_key",
+            name="uq_module_media_link_place_bank_key",
         ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    #: Where the object sits in the bucket, and nothing else.
+    #:
+    #: Media lives at ``{organisation_id}/{module}/{asset}``, and the
+    #: signed cookie's prefix covers that path, so this number addresses
+    #: a real file rather than filtering a table. It is the one column in
+    #: this group that survives the organisations table: moving it means
+    #: moving objects and reissuing cookies, which is storage work rather
+    #: than a column switch.
+    #:
+    #: No foreign key, because there is no longer a table to point at.
+    #: It is an address, and an address is not a reference — the number
+    #: stays valid whether or not anything else still knows it. Which
+    #: number a place uses is ``org_unit.media_prefix_id``, read through
+    #: ``app.organisations.media_prefix_of``.
     organisation_id: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey("organisations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    #: Which place this row belongs to, and what every query here uses.
+    #:
+    #: ``organisation_id`` above is an address, not an owner: every
+    #: question this table is asked — is this module complete, whose
+    #: upload is this — is answered by the place.
+    org_unit_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("org_unit.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -526,3 +562,43 @@ class ModuleMediaLink(Base):
     captions_reviewed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+
+
+def _fill_the_storage_address(
+    _mapper: Mapper[Any], connection: Connection, target: ModuleMediaLink
+) -> None:
+    """Derive a media link's bucket prefix from the place it belongs to.
+
+    The one column of this group that outlives the organisations table
+    is ``ModuleMediaLink.organisation_id``, because it is where the
+    object sits rather than who owns it. A writer names the place, as
+    everything else here does, and the address follows from it.
+
+    Read from the place's own ``media_prefix_id``, falling back to its
+    id, rather than from the organisations table: the objects already in
+    the bucket sit under the organisation id the place used to have, and
+    that number is recorded on the place so it survives the table.
+
+    A listener rather than a line at each write for the same reason the
+    pair of ids had one: the writers are not only the places the
+    application creates these rows, and a row with the wrong prefix
+    points at a file that is not there.
+    """
+    if target.organisation_id is not None or target.org_unit_id is None:
+        return
+
+    from app.models import OrgUnit
+
+    row = connection.execute(
+        select(OrgUnit.id, OrgUnit.media_prefix_id).where(
+            OrgUnit.id == target.org_unit_id
+        )
+    ).first()
+    if row is None:
+        return
+    own_id, recorded = row
+    target.organisation_id = int(recorded if recorded is not None else own_id)
+
+
+event.listen(ModuleMediaLink, "before_insert", _fill_the_storage_address)
+event.listen(ModuleMediaLink, "before_update", _fill_the_storage_address)

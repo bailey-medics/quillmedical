@@ -420,10 +420,22 @@ def draw(
     trunk: str,
     palette: Palette,
     show_prs: bool,
+    hide_merged: bool = False,
 ) -> None:
-    """Print the stack."""
+    """Print the stack.
+
+    `hide_merged` drops the branches that have already landed. They are
+    kept by default because "what has gone in" is worth seeing, but a
+    long-lived stack accumulates them — five merged against ten live, on
+    2026-09-19 — and the part still being worked on is what a watch loop
+    is for. The count is still reported, so nothing disappears silently.
+    """
     print()
+    merged_hidden = 0
     for branch in branches:
+        if hide_merged and branch.is_merged:
+            merged_hidden += 1
+            continue
         if branch.is_merged:
             glyph = palette.green(GLYPH_MERGED)
         elif branch.is_queued:
@@ -484,6 +496,12 @@ def draw(
                 label = text
             cells.append(palette.link(url, label))
             cells.append(summarise_checks(branch.pr, palette))
+        elif show_prs and branch.is_merged:
+            # A merged branch has no *open* pull request, which is what the
+            # listing asks for — but "no pull request" then reads as "you
+            # never opened one", the opposite of what happened. The stack
+            # data still knows it merged, so say that.
+            cells.append(palette.green("merged"))
         elif show_prs:
             cells.append(palette.dim("no pull request"))
 
@@ -506,7 +524,16 @@ def draw(
             print(f"  {PIPE}   {note}")
         print(f"  {PIPE}")
 
-    print(f"  {ELBOW}─ {palette.dim(trunk)}")
+    if merged_hidden:
+        # Named on the trunk line rather than as a separate note: they
+        # merged into it, so that is where they went.
+        landed = "branch" if merged_hidden == 1 else "branches"
+        print(
+            f"  {ELBOW}─ {palette.dim(trunk)}   "
+            + palette.green(f"+{merged_hidden} merged {landed}")
+        )
+    else:
+        print(f"  {ELBOW}─ {palette.dim(trunk)}")
     print()
 
 
@@ -657,6 +684,11 @@ def main() -> int:
         help="with --files, show the full diff rather than a summary",
     )
     parser.add_argument(
+        "--hide-merged",
+        action="store_true",
+        help="leave out branches that have already merged",
+    )
+    parser.add_argument(
         "--no-colour", action="store_true", help="disable ANSI colour"
     )
     parser.add_argument(
@@ -689,7 +721,13 @@ def main() -> int:
     if args.files:
         draw_files(stack, occupied, palette, patch=args.patch)
     elif not args.check:
-        draw(branches, trunk, palette, show_prs=args.prs)
+        draw(
+            branches,
+            trunk,
+            palette,
+            show_prs=args.prs,
+            hide_merged=args.hide_merged,
+        )
         # The drawing goes to stdout and the warning to stderr; flushing
         # between them keeps the warning under the stack it refers to
         # rather than above it when both land on a terminal.

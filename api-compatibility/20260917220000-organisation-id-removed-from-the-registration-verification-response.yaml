@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "response-required-property-removed POST /api/passport/assessors/{assessor_user_id}/registration-verification removed the required property `organisation_id` from the response with the `201` status"
+reason: "Replaced by `org_unit_id` in the same response, because that is the id the row now holds: membership counts in place ids, so the authority this verification runs through is named by the organisation's own row in the tree. Renamed rather than reinterpreted — the number changed, so the name had to. No screen reads either field; the passport's assessor pages show the verification's author and date, not its place. No open tab needs reloading."

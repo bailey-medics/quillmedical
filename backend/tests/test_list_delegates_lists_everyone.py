@@ -6,7 +6,7 @@
 
 which read as a check and was not one. The route already carries
 ``_DEP_MANAGE`` at the decorator and already scopes to
-``get_member_org_ids``, so by the time this query runs both the *what*
+``get_member_place_ids``, so by the time this query runs both the *what*
 and the *where* are settled. What the line actually expressed was a
 display preference — do not offer staff-admin accounts as teaching
 delegates — and it did so by reading the column being retired.
@@ -27,11 +27,11 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.models import (
-    Organisation,
-    OrganisationFeature,
+    OrgUnit,
+    OrgUnitFeature,
     User,
 )
-from app.organisations import add_organisation_member
+from app.organisations import add_place_member
 from app.security import hash_password
 
 
@@ -58,14 +58,14 @@ def _user(
 
 
 @pytest.fixture
-def org(db_session: Session) -> Organisation:
+def org(db_session: Session) -> OrgUnit:
     """An organisation with teaching enabled."""
-    organisation = Organisation(name="Teaching Trust", type="hospital")
+    organisation = OrgUnit(name="Teaching Trust", type="organisation")
     db_session.add(organisation)
     db_session.flush()
     db_session.add(
-        OrganisationFeature(
-            org_unit_id=organisation.org_unit_id,
+        OrgUnitFeature(
+            org_unit_id=organisation.id,
             feature_key="teaching",
             enabled_by=1,
         )
@@ -75,8 +75,8 @@ def org(db_session: Session) -> Organisation:
     return organisation
 
 
-def _place(db: Session, org: Organisation, user: User) -> None:
-    add_organisation_member(db, org.id, user.id, "staff")
+def _place(db: Session, org: OrgUnit, user: User) -> None:
+    add_place_member(db, org.id, user.id, "staff")
     db.commit()
 
 
@@ -96,7 +96,7 @@ class TestAdminsAreListed:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
     ) -> None:
         """Fails while the ``notin_`` filter stands."""
         caller = _user(db_session, "coordinator", profession="teaching_admin")
@@ -119,7 +119,7 @@ class TestAdminsAreListed:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
     ) -> None:
         """A superadmin who is genuinely a member is a member.
 
@@ -152,13 +152,13 @@ class TestTheScopingIsUntouched:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
     ) -> None:
         """The check that actually matters, asserted beside the change."""
         caller = _user(db_session, "coordinator", profession="teaching_admin")
         _place(db_session, org, caller)
 
-        other = Organisation(name="Other Trust", type="hospital")
+        other = OrgUnit(name="Other Trust", type="organisation")
         db_session.add(other)
         db_session.commit()
         stranger = _user(db_session, "stranger")
@@ -175,7 +175,7 @@ class TestTheScopingIsUntouched:
         self,
         test_client: TestClient,
         db_session: Session,
-        org: Organisation,
+        org: OrgUnit,
     ) -> None:
         """Unchanged, and worth keeping covered while the query moves."""
         caller = _user(db_session, "coordinator", profession="teaching_admin")

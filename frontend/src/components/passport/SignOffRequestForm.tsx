@@ -30,8 +30,9 @@
  * ```
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Stack } from "@mantine/core";
+import { useDebouncedValue } from "@mantine/hooks";
 import BaseCard from "@/components/base-card/BaseCard";
 import {
   DateField,
@@ -40,9 +41,16 @@ import {
   SelectField,
   TextAreaField,
 } from "@components/form";
-import { Heading } from "@/components/typography";
+import { BodyText, Heading } from "@/components/typography";
 import ButtonPair from "@/components/button/ButtonPair";
-import type { CompetencyState, SignOffRequestInput } from "@lib/passport";
+import ConfirmModal from "@/components/confirm-modal/ConfirmModal";
+import { IconFileText } from "@/components/icons/appIcons";
+import { searchAssessors } from "@lib/passport";
+import type {
+  AssessorMatch,
+  CompetencyState,
+  SignOffRequestInput,
+} from "@lib/passport";
 
 /** A level the competency offers, where it declares any. */
 export interface LevelOption {
@@ -55,6 +63,15 @@ export interface SignOffRequestFormProps {
   competency: CompetencyState;
   /** Levels this competency declares, if it has any */
   levels?: LevelOption[];
+  /**
+   * The holder's own email address, so the form can refuse it.
+   *
+   * The server refuses a self-request too, but only once the whole form
+   * has been filled in and sent. Catching it here says so while the
+   * address is still being typed. Passed in rather than read from auth
+   * so the component stays presentational.
+   */
+  holderEmail?: string;
   /** Called with the completed request */
   onSubmit: (data: SignOffRequestInput) => void;
   /** Called when the holder backs out */
@@ -72,6 +89,7 @@ export interface SignOffRequestFormProps {
 export default function SignOffRequestForm({
   competency,
   levels,
+  holderEmail,
   onSubmit,
   onCancel,
   isSubmitting = false,
@@ -82,22 +100,89 @@ export default function SignOffRequestForm({
   const [comments, setComments] = useState("");
   const [reflection, setReflection] = useState("");
 
-  const trimmedEmail = assessorEmail.trim();
-  const emailLooksValid = EMAIL_PATTERN.value.test(trimmedEmail);
+  const typed = assessorEmail.trim();
+  const looksLikeEmail = EMAIL_PATTERN.value.test(typed);
 
-  // Only once something has been typed: an empty field is a form not
-  // filled in yet, not a mistake, and colouring it red on arrival is
-  // the most common way a form greets somebody with a complaint.
-  const emailError =
-    trimmedEmail !== "" && !emailLooksValid ? EMAIL_PATTERN.message : undefined;
+  // Looked up as they type, so a holder is told what will happen rather
+  // than guessing. Debounced because a request per keystroke would mean
+  // twenty lookups to type one address.
+  const [debouncedEmail] = useDebouncedValue(typed, 400);
+  // The answer and the address it answers for, together. Two pieces of
+  // state that must agree, so they are one: "still looking" is then
+  // derived rather than tracked, and cannot drift out of step with the
+  // result the way a separate loading flag can.
+  const [lookup, setLookup] = useState<{
+    email: string;
+    match: AssessorMatch | null;
+  } | null>(null);
 
-  const canSubmit = emailLooksValid && observedOn !== null && !isSubmitting;
+  // Searched on whatever was typed, not only on an address. Somebody
+  // already on Quill can be named however the holder knows them — by
+  // name, by username or by address — and only somebody Quill has
+  // never heard of must be given as an address.
+  useEffect(() => {
+    if (debouncedEmail.length < 3) {
+      return;
+    }
+
+    let cancelled = false;
+
+    searchAssessors(debouncedEmail)
+      .then(({ matches }) => {
+        if (cancelled) return;
+        // One match and one only. Two people answering to "Okonkwo" is
+        // not an answer, and picking the first would name whichever the
+        // database happened to return — the mistake this whole step
+        // exists to prevent.
+        const term = debouncedEmail.toLowerCase();
+        const exactEmail = matches.find((m) => m.email.toLowerCase() === term);
+        const sole = matches.length === 1 ? matches[0] : null;
+        setLookup({ email: debouncedEmail, match: exactEmail ?? sole });
+      })
+      .catch(() => {
+        // Not fatal. The request can still be sent; the holder simply
+        // is not told in advance which of the two will happen.
+        if (!cancelled) setLookup({ email: debouncedEmail, match: null });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedEmail]);
+
+  // The answer for what is in the box now, rather than a stale one for
+  // something typed earlier.
+  const settled = lookup?.email === debouncedEmail ? lookup : null;
+  const found = settled?.match ?? null;
+
+  // The rule: somebody on Quill may be named any way the holder knows
+  // them; somebody who is not must be given as an address, because an
+  // address is the only thing that can be emailed.
+  // A passport records a second person's judgement, so naming yourself
+  // is not a sign-off at all. Compared on the address because that is
+  // what gets sent; a holder typing their own name finds nobody
+  // already, since the search leaves the caller out.
+  const isSelf =
+    holderEmail !== undefined &&
+    typed.toLowerCase() === holderEmail.trim().toLowerCase();
+
+  const namesSomebody = !isSelf && (found !== null || looksLikeEmail);
+
+  const canSubmit = namesSomebody && observedOn !== null && !isSubmitting;
+
+  // Asking is the last moment the holder can catch naming the wrong
+  // person, so the form stops here and shows who it found before
+  // anything is sent.
+  const [confirming, setConfirming] = useState(false);
 
   function handleSubmit() {
     if (!canSubmit || observedOn === null) return;
 
     onSubmit({
-      assessor_email: trimmedEmail.toLowerCase(),
+      // The address of whoever was found, or what was typed when
+      // nobody was. Sending the typed text for a person found by name
+      // would post "Dr Amara Okonkwo" as an email address.
+      assessor_email: (found?.email ?? typed).toLowerCase(),
       observed_on: observedOn,
       level_id: levelId,
       comments: comments.trim() || null,
@@ -112,13 +197,36 @@ export default function SignOffRequestForm({
 
         <EmailField
           label="Who should assess this?"
-          description="Their email address. They do not need a Quill account — we will email them, and they can sign in or register to sign."
+          description="Name, username or email address"
           placeholder="assessor@example.nhs.uk"
           value={assessorEmail}
           onChange={(event) => setAssessorEmail(event.currentTarget.value)}
-          error={emailError}
           required
         />
+
+        {/* What will happen, rather than leaving the holder to guess.
+            Deliberately not the field's error channel, which renders
+            red with a warning icon: somebody part-way through typing a
+            name has made no mistake, and saying otherwise while they
+            are still typing alarms them about something merely
+            unfinished. Shown only once the lookup has answered, so the
+            line never contradicts itself mid-keystroke. */}
+        {(settled !== null || isSelf) && (
+          <BodyText>
+            {found
+              ? `${found.full_name ?? found.username} already uses Quill. ` +
+                "They will be emailed and can sign in to sign this off."
+              : isSelf
+                ? "That is your own address. A sign-off records somebody " +
+                  "else's judgement, so it cannot be your own."
+                : namesSomebody
+                  ? "Nobody on Quill uses that address. They will be " +
+                    "emailed an invitation, and can register to sign " +
+                    "this off."
+                  : "No match yet. Keep typing, or use their email " +
+                    "address if they do not use Quill."}
+          </BodyText>
+        )}
 
         <DateField
           label="Observed on"
@@ -166,9 +274,53 @@ export default function SignOffRequestForm({
           acceptLabel="Request sign-off"
           acceptDisabled={!canSubmit}
           acceptLoading={isSubmitting}
-          onAccept={handleSubmit}
+          onAccept={() => setConfirming(true)}
           onCancel={onCancel}
         />
+
+        {/* Step 3 of the flow. A known assessor is shown by name and
+            registration number, so the holder can see they picked the
+            right person: two consultants may share a name, and an
+            address says only that somebody controls a mailbox. An
+            unknown address shows only what was typed, because that is
+            genuinely all Quill knows about them. */}
+        <ConfirmModal
+          opened={confirming}
+          onClose={() => setConfirming(false)}
+          onAccept={handleSubmit}
+          title="Ask for this sign-off?"
+          acceptLabel="Send request"
+          destructive={false}
+          icon={<IconFileText />}
+        >
+          <Stack gap="xs">
+            {found ? (
+              <>
+                <BodyText>
+                  {found.full_name ?? found.username} will be asked to sign off{" "}
+                  {competency.name}.
+                </BodyText>
+                <BodyText>{found.email}</BodyText>
+                {found.registrations.map((registration) => (
+                  <BodyText key={`${registration.body}-${registration.number}`}>
+                    {registration.body} {registration.number} — stated by them,
+                    not checked by Quill.
+                  </BodyText>
+                ))}
+              </>
+            ) : (
+              <>
+                <BodyText>
+                  {typed} will be asked to sign off {competency.name}.
+                </BodyText>
+                <BodyText>
+                  Nobody on Quill uses that address, so they will be emailed an
+                  invitation and can register to sign.
+                </BodyText>
+              </>
+            )}
+          </Stack>
+        </ConfirmModal>
       </Stack>
     </BaseCard>
   );

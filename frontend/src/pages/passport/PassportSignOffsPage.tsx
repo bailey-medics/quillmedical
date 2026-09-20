@@ -27,6 +27,7 @@ import CompetencyPicker from "@/components/passport/CompetencyPicker";
 import CompetencySummary from "@/components/passport/CompetencySummary";
 import SignOffRequestForm from "@/components/passport/SignOffRequestForm";
 import ErrorState from "@/components/error-state/ErrorState";
+import ResultMessage from "@/components/message-cards/ResultMessage";
 import StateMessage from "@/components/message-cards/StateMessage";
 import { IconFileText } from "@/components/icons/appIcons";
 import competenciesData from "@/generated/competencies.json";
@@ -98,7 +99,11 @@ export function Component() {
   const navigate = useNavigate();
   const [competencies, setCompetencies] = useState<CompetencyState[]>([]);
   const [passportId, setPassportId] = useState<string | null>(null);
+  // The passport could not be loaded, so there is no page to show.
   const [error, setError] = useState<string | null>(null);
+  // One ask was refused. Everything else on the page is fine, and the
+  // holder needs the form they filled in to still be there.
+  const [refusal, setRefusal] = useState<string | null>(null);
   const [asking, setAsking] = useState(false);
   const [chosen, setChosen] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -137,9 +142,18 @@ export function Component() {
       setCompetencies((await fetchMyPassport()).competencies);
       setAsking(false);
       setChosen(null);
-      setError(null);
-    } catch {
-      setError("The request could not be sent. Please try again.");
+      setRefusal(null);
+    } catch (caught) {
+      // The server's own words where it gave any. It refuses some asks
+      // for reasons a holder can act on — naming yourself, a competency
+      // that does not exist, too many in a day — and "please try again"
+      // both hides the reason and invites retrying something that will
+      // never work. The api client has already lifted FastAPI's detail
+      // into the message.
+      const said = caught instanceof Error ? caught.message.trim() : "";
+      setRefusal(
+        said !== "" ? said : "The request could not be sent. Please try again.",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -179,6 +193,12 @@ export function Component() {
           description="Start a sign-off request to have an assessor review a competency."
         />
       )}
+
+      {/* A refused ask, said where the asking happened. Not ErrorState:
+          that replaces the view, which would throw away the form and
+          the competency already chosen, and its "Something went wrong"
+          heading overstates a rule working exactly as intended. */}
+      {refusal !== null && <ResultMessage variant="warning" title={refusal} />}
 
       {/* Above the groups, because asking is what a holder came here to
           do. The picker offers the whole catalogue rather than only

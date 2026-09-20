@@ -22,15 +22,15 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.models import Organisation, User
-from app.organisations import add_organisation_member
+from app.models import OrgUnit, User
+from app.organisations import add_place_member
 from app.security import hash_password
 
 
 @pytest.fixture
-def other_org(db_session: Session) -> Organisation:
+def other_org(db_session: Session) -> OrgUnit:
     """An organisation the admin has nothing to do with."""
-    org = Organisation(name="Other Trust", type="hospital")
+    org = OrgUnit(name="Other Trust", type="organisation")
     db_session.add(org)
     db_session.commit()
     db_session.refresh(org)
@@ -38,19 +38,19 @@ def other_org(db_session: Session) -> Organisation:
 
 
 @pytest.fixture
-def admin_org(db_session: Session, test_admin: User) -> Organisation:
+def admin_org(db_session: Session, test_admin: User) -> OrgUnit:
     """The admin's own organisation."""
-    org = Organisation(name="Own Trust", type="hospital")
+    org = OrgUnit(name="Own Trust", type="organisation")
     db_session.add(org)
     db_session.commit()
-    add_organisation_member(db_session, org.id, test_admin.id, "staff")
+    add_place_member(db_session, org.id, test_admin.id, "staff")
     db_session.commit()
     db_session.refresh(org)
     return org
 
 
 @pytest.fixture
-def outsider(db_session: Session, other_org: Organisation) -> User:
+def outsider(db_session: Session, other_org: OrgUnit) -> User:
     """A user at an organisation the admin does not belong to."""
     user = User(
         username="outsider",
@@ -62,14 +62,14 @@ def outsider(db_session: Session, other_org: Organisation) -> User:
     )
     db_session.add(user)
     db_session.flush()
-    add_organisation_member(db_session, other_org.id, user.id, "staff")
+    add_place_member(db_session, other_org.id, user.id, "staff")
     db_session.commit()
     db_session.refresh(user)
     return user
 
 
 @pytest.fixture
-def insider(db_session: Session, admin_org: Organisation) -> User:
+def insider(db_session: Session, admin_org: OrgUnit) -> User:
     """A user at the admin's own organisation."""
     user = User(
         username="insider",
@@ -81,7 +81,7 @@ def insider(db_session: Session, admin_org: Organisation) -> User:
     )
     db_session.add(user)
     db_session.flush()
-    add_organisation_member(db_session, admin_org.id, user.id, "staff")
+    add_place_member(db_session, admin_org.id, user.id, "staff")
     db_session.commit()
     db_session.refresh(user)
     return user
@@ -194,7 +194,7 @@ class TestTheGateIsACompetencyNotARank:
         self,
         authenticated_client: TestClient,
         test_user: User,
-        admin_org: Organisation,
+        admin_org: OrgUnit,
         insider: User,
         db_session: Session,
     ):
@@ -205,9 +205,7 @@ class TestTheGateIsACompetencyNotARank:
         distinction the swap exists to make.
         """
         test_user.base_profession = "consultant"
-        add_organisation_member(
-            db_session, admin_org.id, test_user.id, "staff"
-        )
+        add_place_member(db_session, admin_org.id, test_user.id, "staff")
         db_session.commit()
 
         resp = authenticated_client.get(f"/api/users/{insider.id}")
@@ -233,7 +231,7 @@ class TestSuperadminsAreGlobal:
         self,
         authenticated_superadmin_client: TestClient,
         test_superadmin: User,
-        admin_org: Organisation,
+        admin_org: OrgUnit,
         outsider: User,
         db_session: Session,
     ):
@@ -243,9 +241,7 @@ class TestSuperadminsAreGlobal:
         in no organisation would pass the test above and fail here, since
         this one puts them in an organisation the target is not in.
         """
-        add_organisation_member(
-            db_session, admin_org.id, test_superadmin.id, "staff"
-        )
+        add_place_member(db_session, admin_org.id, test_superadmin.id, "staff")
         db_session.commit()
 
         resp = authenticated_superadmin_client.get(f"/api/users/{outsider.id}")
@@ -258,7 +254,7 @@ class TestAUserInNoOrganisationFailsClosed:
     def test_an_orphan_user_is_not_visible_to_an_admin(
         self,
         authenticated_admin_client: TestClient,
-        admin_org: Organisation,
+        admin_org: OrgUnit,
         db_session: Session,
     ):
         orphan = User(

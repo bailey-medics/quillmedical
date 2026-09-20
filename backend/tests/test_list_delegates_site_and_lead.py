@@ -18,13 +18,12 @@ from sqlalchemy.orm import Session
 
 from app.cbac.positions import set_clinical_lead
 from app.models import (
-    Organisation,
-    OrganisationFeature,
-    Site,
+    OrgUnit,
+    OrgUnitFeature,
     User,
-    site_member,
+    org_unit_member,
 )
-from app.organisations import add_organisation_member
+from app.organisations import add_place_member
 from app.security import hash_password
 
 
@@ -44,44 +43,44 @@ def _user(
     return user
 
 
-def _org(db: Session, name: str) -> Organisation:
-    org = Organisation(name=name, type="hospital")
+def _org(db: Session, name: str) -> OrgUnit:
+    org = OrgUnit(name=name, type="organisation")
     db.add(org)
     db.flush()
     db.add(
-        OrganisationFeature(
-            org_unit_id=org.org_unit_id, feature_key="teaching", enabled_by=1
+        OrgUnitFeature(
+            org_unit_id=org.id, feature_key="teaching", enabled_by=1
         )
     )
     db.commit()
     return org
 
 
-def _site_of(db: Session, org: Organisation, name: str) -> Site:
-    site = Site(name=name, type="ward")
+def _site_of(db: Session, org: OrgUnit, name: str) -> OrgUnit:
+    site = OrgUnit(name=name, type="ward")
     db.add(site)
     db.commit()
     db.execute(
-        update(Site)
-        .where(Site.id == site.id)
-        .values(parent_id=org.org_unit_id)
+        update(OrgUnit).where(OrgUnit.id == site.id).values(parent_id=org.id)
     )
     db.commit()
     return site
 
 
-def _member(db: Session, site: Site, user: User, capacity: str) -> None:
+def _member(db: Session, site: OrgUnit, user: User, capacity: str) -> None:
     db.execute(
-        insert(site_member).values(
-            site_id=site.id, user_id=user.id, capacity=capacity
+        insert(org_unit_member).values(
+            org_unit_id=site.id,
+            user_id=user.id,
+            capacity=capacity,
         )
     )
     db.commit()
 
 
-def _in_org(db: Session, org: Organisation, user: User) -> None:
+def _in_org(db: Session, org: OrgUnit, user: User) -> None:
     """Put the caller in the organisation, with the gate the route needs."""
-    add_organisation_member(db, org.id, user.id, "trainee")
+    add_place_member(db, org.id, user.id, "trainee")
     user.additional_competencies = ["manage_teaching_content"]
     db.commit()
 
