@@ -137,7 +137,7 @@ class TestSignOffRequest:
                     passport_id=PASSPORT_ID,
                     signoff_id="2026-03-14-a-thing",
                     competency_id="perform_cannulation",
-                    assessor_user_id=assessor.id,
+                    assessor_email=assessor.email,
                 )
             )
 
@@ -161,7 +161,7 @@ class TestSignOffRequest:
             passport_id=PASSPORT_ID,
             signoff_id="2026-03-14-a-thing",
             competency_id="perform_cannulation",
-            assessor_user_id=assessor.id,
+            assessor_email=assessor.email,
         )
         db_session.add(request)
         db_session.flush()
