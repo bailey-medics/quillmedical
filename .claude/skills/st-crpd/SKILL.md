@@ -407,15 +407,25 @@ Two things to check rather than assume:
 
 9. **Write the title and the body.** The title takes the stack key form
    — `Passport: what this branch does`, as "The stack key" sets out. The
-   reader reads every line of the diff, so the body never describes it:
-   write only what reading the code cannot tell them, which is where this
-   branch sits, what you chose, what might be risky, and what is
-   different now.
+   body's job is to make the change quickly clear: where this branch
+   sits, what it does, what you chose, and what might be risky.
+
+   **The reader could work most of this out from the diff. The point is
+   that they should not have to.** A good description is the short,
+   accurate account that saves them reconstructing it — so summarising
+   what the change does is the job, not a thing to avoid. What to avoid
+   is *transcribing*: a file list, a count of lines or tests, a walk
+   through the diff in order. Those cost the reader time and tell them
+   what the diff already shows plainly.
+
+   Say what the change does in the fewest words that stay true, and
+   spend the rest on what the diff genuinely does not carry — why this
+   way and not another, what could go wrong, where this sits in the
+   stack.
 
    **Open with two orienting lines, then three level-two sections.** The
-   opening is not a summary of the diff and not a restatement of the
-   title: it is the context a reader needs before the first bullet makes
-   any sense at all.
+   opening is not a restatement of the title: it is the context a reader
+   needs before the first bullet makes any sense at all.
 
    ```markdown
    Staff can now be taken off a ward without leaving them in charge of it.
