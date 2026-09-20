@@ -482,7 +482,7 @@ Two things to check rather than assume:
    appearance, inline.** Not a glossary, not a preamble — a comma and a
    short phrase:
 
-   > ✓ "`org_unit`, a node in the governance tree — a trust, a hospital
+   > ✓ "`org_unit`, a node in the governance tree: a trust, a hospital
    > or a ward"
    >
    > ✓ "`place_ids`, the new field naming which `org_unit`s a user
@@ -538,9 +538,21 @@ Two things to check rather than assume:
 
    Two tests before a bullet goes in:
 
-   - Subject, verb, object — name who or what does the thing.
+   - Subject, verb, object: name who or what does the thing.
    - Could someone who has read only the plan summary understand it on one
      pass? If it needs the diff to parse, rewrite it.
+
+   ### Punctuation and spelling
+
+   **No em dashes.** Not in the opening, not in a bullet, not in a
+   heading. A comma, a colon, a full stop or a pair of brackets does the
+   same job and reads plainly. A sentence reaching for an em dash is
+   usually one clause too long, so the honest fix is to split it.
+
+   **British English throughout**, as `CLAUDE.md` requires of everything
+   in this repository: organisation, behaviour, recognise, licence as the
+   noun. Identifiers, route paths and library names keep whatever
+   spelling the code gives them.
 
    ### One idea per bullet, and no bold
 
