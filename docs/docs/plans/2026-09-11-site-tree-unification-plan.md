@@ -901,7 +901,9 @@ So the remaining steps land as:
 - [x] 12c-i-c1 — stop writing the organisation column
 - [x] 12c-i-c2 — drop the organisation column
 - [x] 12c-i-d — `site_common_competency`'s two place columns collapse into one
-- [ ] 12c-ii — membership and reach answer in place ids
+- [x] 12c-ii-a — an organisation's place is required
+- [ ] 12c-ii-b — the membership writers take a place
+- [ ] 12c-ii-c — membership and reach answer in place ids
 - [ ] 12c-iii — drop the `organisations` table
 - [x] 12c-iv — refuse deleting a parent with children, and enforce `requires_parent`
 
@@ -1685,6 +1687,33 @@ Seven columns, their indexes, their foreign keys and four unique rules.
   left it in place, silently rejecting every row the new column allows.
 - **The class is still `SiteCommonCompetency`.** Renaming it and its
   table is a separate move and not what this step is about.
+
+#### 12c-ii-a — an organisation's place is required
+
+Split out of 12c-ii, which was going to be one unit and is three: the
+membership helpers alone have well over a hundred call sites.
+
+`Organisation.org_unit_id` was nullable "only until the backfill has
+given every organisation one", and that was two steps ago. Making it
+required is what takes `int | None` out of everything downstream — the
+assertions the test helpers were carrying purely to satisfy the type
+checker go with it.
+
+- **The foreign key becomes `CASCADE`.** `SET NULL` is what a nullable
+  column allowed. Deleting the place an organisation *is* deletes the
+  organisation, because there is nothing left for it to be.
+- **The migration creates a place for any organisation still without
+  one**, row by row, so the tightening cannot fail on live data. The
+  mapper has made one for every organisation since the tree arrived, so
+  this should find nothing; it is there because "should" is not a
+  guarantee about somebody else's database.
+- **`TestAnOrganisationOutsideTheTree` was deleted.** It set the column
+  to null to check that such an organisation authorised nobody. That
+  state cannot be written now, so the test could only have proved the
+  database was refusing it.
+- **The `before_insert` guard stays.** It reads a column typed as
+  required, which is not a contradiction: before the insert the
+  attribute is unset, and a caller that has chosen a place keeps it.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to

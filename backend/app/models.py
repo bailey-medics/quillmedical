@@ -241,8 +241,9 @@ class Organisation(Base):
         location: Optional location/address information.
         org_unit_id: The row in the org_unit tree that stands for this
             organisation — its root. Every site it is accountable for
-            hangs beneath that row. Nullable only until the backfill has
-            given every organisation one.
+            hangs beneath that row. Required: the mapper below creates
+            one for every organisation, and an organisation without it
+            is invisible to the whole permission system.
         created_at: Timestamp when organisation was created.
         updated_at: Timestamp when organisation was last updated.
     """
@@ -255,10 +256,13 @@ class Organisation(Base):
         String(50), nullable=False, default="hospital_team"
     )
     location: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    org_unit_id: Mapped[int | None] = mapped_column(
+    org_unit_id: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey("org_unit.id", ondelete="SET NULL"),
-        nullable=True,
+        # CASCADE rather than SET NULL, which a required column cannot
+        # accept: deleting the place an organisation *is* deletes the
+        # organisation, because there is nothing left for it to be.
+        ForeignKey("org_unit.id", ondelete="CASCADE"),
+        nullable=False,
         unique=True,
     )
     created_at: Mapped[datetime] = mapped_column(
@@ -980,6 +984,10 @@ def _give_every_organisation_a_root(
 
     Writes through the connection rather than the session, so the row
     exists before the organisation that points at it.
+
+    The guard reads a column typed as required, which is not a
+    contradiction: before the insert the attribute is simply unset, and
+    a caller that has already chosen a place keeps it.
     """
     if target.org_unit_id is not None:
         return
@@ -1024,9 +1032,6 @@ def _keep_the_root_in_step(
     correctly on its own. Two copies of a name drift apart unless one
     follows the other, and the organisation is the one people edit.
     """
-    if target.org_unit_id is None:
-        return
-
     connection.execute(
         update(OrgUnit)
         .where(OrgUnit.id == target.org_unit_id)
