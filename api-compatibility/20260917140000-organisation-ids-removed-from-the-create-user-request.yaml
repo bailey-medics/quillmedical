@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "request-property-removed POST /api/users removed the request property `organisation_ids`"
+reason: "The request counterpart of the response field above. A create request says where the new person belongs in `place_ids`, which has been accepted since the previous release. Removing it rather than ignoring it is deliberate: silently accepting a field that no longer does anything is how a caller comes to believe a membership was recorded when it was not."

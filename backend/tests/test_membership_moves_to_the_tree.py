@@ -255,7 +255,7 @@ class TestThroughTheRoutes:
         assert _by_organisation(db_session, org, person) is None
         assert _by_place(db_session, org, person) is None
 
-    def test_editing_a_persons_organisations_records_it(
+    def test_editing_where_a_person_belongs_records_it(
         self, authenticated_superadmin_client, db_session
     ):
         org = _org(db_session, "Trust")
@@ -263,29 +263,35 @@ class TestThroughTheRoutes:
 
         resp = authenticated_superadmin_client.patch(
             f"/api/users/{person.id}",
-            json={"organisation_ids": [org.id]},
+            json={"place_ids": [org.org_unit_id]},
         )
 
         assert resp.status_code == 200
         assert _by_place(db_session, org, person) == "staff"
 
-    def test_editing_a_persons_wards_leaves_their_organisations(
+    def test_the_organisation_and_the_ward_are_one_list(
         self, authenticated_superadmin_client, db_session
     ):
+        """They were two fields counted against two tables.
+
+        Sending the ward alone used to leave the organisation membership
+        standing, because a separate field settled it. One list settles
+        both, so naming the ward and not the trust means exactly that.
+        """
         org = _org(db_session, "Trust")
         ward = _ward(db_session, org, "Ward 1")
         person = _person(db_session, "alice")
         authenticated_superadmin_client.patch(
             f"/api/users/{person.id}",
-            json={"organisation_ids": [org.id]},
+            json={"place_ids": [org.org_unit_id, ward.id]},
         )
 
         resp = authenticated_superadmin_client.patch(
-            f"/api/users/{person.id}", json={"site_ids": [ward.id]}
+            f"/api/users/{person.id}", json={"place_ids": [ward.id]}
         )
 
         assert resp.status_code == 200
-        assert _by_place(db_session, org, person) == "staff"
+        assert _by_place(db_session, org, person) is None
 
 
 class TestMembershipWrittenStraightToAPlace:

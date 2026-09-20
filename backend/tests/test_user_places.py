@@ -4,9 +4,8 @@ It used to say it twice: `organisation_ids`, counting in organisation
 ids, and `site_ids`, counting in place ids. Two vocabularies for one
 question, and the same number meaning different things in each.
 
-`place_ids` is the one list. Both older fields still work, so a tab left
-open across the deploy keeps working; they are retired in a later step,
-which is why a request may use one vocabulary or the other but not both.
+`place_ids` is the one list, and now the only one: the two older fields
+arrived, overlapped, and have been retired.
 """
 
 from __future__ import annotations
@@ -135,41 +134,6 @@ class TestCreating:
         )
 
         assert resp.status_code == 404, resp.text
-
-    def test_both_vocabularies_at_once_are_refused(
-        self,
-        authenticated_superadmin_client: TestClient,
-        org: Organisation,
-        ward: OrgUnit,
-    ) -> None:
-        """The same number means different things in each list."""
-        resp = authenticated_superadmin_client.post(
-            "/api/users",
-            json=_new_user(
-                organisation_ids=[org.id], place_ids=[org.org_unit_id]
-            ),
-        )
-
-        assert resp.status_code == 422, resp.text
-
-    def test_the_older_lists_still_work(
-        self,
-        authenticated_superadmin_client: TestClient,
-        db_session: Session,
-        org: Organisation,
-        ward: OrgUnit,
-    ) -> None:
-        """A tab left open across the deploy keeps working."""
-        resp = authenticated_superadmin_client.post(
-            "/api/users",
-            json=_new_user(organisation_ids=[org.id], site_ids=[ward.id]),
-        )
-
-        assert resp.status_code == 200, resp.text
-        assert set(_places_of(db_session, resp.json()["id"])) == {
-            org.org_unit_id,
-            ward.id,
-        }
 
 
 class TestChanging:
