@@ -57,15 +57,16 @@ describe("CompetencySummary", () => {
     });
   });
 
-  describe("Loading state", () => {
-    it("shows skeletons instead of rows", () => {
-      const { container } = renderWithMantine(
-        <CompetencySummary competencies={[]} isLoading />,
-      );
-      expect(
-        container.querySelector(".mantine-Skeleton-root"),
-      ).toBeInTheDocument();
-      expect(screen.queryByText("No competencies yet")).not.toBeInTheDocument();
+  describe("Empty state", () => {
+    it("shows the message straight away, without a loading pass", () => {
+      // There was a loading state here, showing three grey bars that
+      // were then replaced by this fixed message. The words are the
+      // same whatever the fetch returns, so the panel changed shape
+      // for no information — which read as a flicker on every first
+      // visit.
+      renderWithMantine(<CompetencySummary competencies={[]} />);
+
+      expect(screen.getByText("No competencies yet")).toBeInTheDocument();
     });
   });
 

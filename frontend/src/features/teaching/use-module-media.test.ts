@@ -111,7 +111,7 @@ describe("useModuleMedia", () => {
   it("loads a module's media", async () => {
     (api.get as Mock).mockResolvedValue(media);
 
-    const { result } = renderHook(() => useModuleMedia("mod-1"));
+    const { result } = renderHook(() => useModuleMedia("mod-1", 20));
 
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.media).toEqual(media);
@@ -127,7 +127,7 @@ describe("useModuleMedia", () => {
   it("reports a failure rather than throwing", async () => {
     (api.get as Mock).mockRejectedValue(new Error("nope"));
 
-    const { result } = renderHook(() => useModuleMedia("mod-1"));
+    const { result } = renderHook(() => useModuleMedia("mod-1", 20));
 
     await waitFor(() => expect(result.current.error).toBe("nope"));
     expect(result.current.media).toBeNull();
@@ -143,7 +143,7 @@ describe("useModuleMedia", () => {
       asset_id: "asset-1",
     });
 
-    const { result } = renderHook(() => useModuleMedia("mod-1"));
+    const { result } = renderHook(() => useModuleMedia("mod-1", 20));
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     const file = new File(["x"], "lecture.mp4", { type: "video/mp4" });
@@ -173,7 +173,7 @@ describe("useModuleMedia", () => {
       asset_id: "asset-1",
     });
 
-    const { result } = renderHook(() => useModuleMedia("mod-1"));
+    const { result } = renderHook(() => useModuleMedia("mod-1", 20));
     await waitFor(() => expect(result.current.loading).toBe(false));
     await act(async () => {
       await result.current.upload(
@@ -195,7 +195,7 @@ describe("useModuleMedia", () => {
       asset_id: "asset-1",
     });
 
-    const { result } = renderHook(() => useModuleMedia("mod-1"));
+    const { result } = renderHook(() => useModuleMedia("mod-1", 20));
     await waitFor(() => expect(result.current.loading).toBe(false));
     await act(async () => {
       await result.current.upload(
@@ -219,7 +219,7 @@ describe("useModuleMedia", () => {
       asset_id: "asset-1",
     });
 
-    const { result } = renderHook(() => useModuleMedia("mod-1"));
+    const { result } = renderHook(() => useModuleMedia("mod-1", 20));
     await waitFor(() => expect(result.current.loading).toBe(false));
     await act(async () => {
       await result.current.upload(
@@ -244,7 +244,7 @@ describe("useModuleMedia", () => {
       asset_id: "asset-1",
     });
 
-    const { result } = renderHook(() => useModuleMedia("mod-1"));
+    const { result } = renderHook(() => useModuleMedia("mod-1", 20));
     await waitFor(() => expect(result.current.loading).toBe(false));
     await act(async () => {
       await result.current.upload(
@@ -267,7 +267,7 @@ describe("useModuleMedia", () => {
       asset_id: "asset-1",
     });
 
-    const { result } = renderHook(() => useModuleMedia("mod-1"));
+    const { result } = renderHook(() => useModuleMedia("mod-1", 20));
     await waitFor(() => expect(result.current.loading).toBe(false));
     const file = new File(["x"], "lecture.mp4", { type: "video/mp4" });
     await act(async () => {
@@ -290,7 +290,7 @@ describe("useModuleMedia", () => {
       asset_id: "asset-1",
     });
 
-    const { result } = renderHook(() => useModuleMedia("mod-1"));
+    const { result } = renderHook(() => useModuleMedia("mod-1", 20));
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     await act(async () => {
@@ -318,7 +318,7 @@ describe("useModuleMedia", () => {
       asset_id: "asset-1",
     });
 
-    const { result } = renderHook(() => useModuleMedia("mod-1"));
+    const { result } = renderHook(() => useModuleMedia("mod-1", 20));
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     await act(async () => {
@@ -335,7 +335,7 @@ describe("useModuleMedia", () => {
     (api.get as Mock).mockResolvedValue(media);
     (api.del as Mock).mockResolvedValue(undefined);
 
-    const { result } = renderHook(() => useModuleMedia("mod-1"));
+    const { result } = renderHook(() => useModuleMedia("mod-1", 20));
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     await act(async () => {
@@ -347,5 +347,73 @@ describe("useModuleMedia", () => {
     );
     // Two gets: the initial load and the refresh after deleting.
     expect((api.get as Mock).mock.calls.length).toBe(2);
+  });
+});
+
+describe("polling while a job is running", () => {
+  /** One reference whose asset is at the given progress state. */
+  const withProgress = (inProgress: boolean) => ({
+    module_id: "mod-1",
+    references: [
+      {
+        key: "lecture-01",
+        asset: {
+          asset_id: "a1",
+          original_filename: "lecture.mp4",
+          content_type: "video/mp4",
+          size_bytes: 1024,
+          uploaded_at: "2026-09-17T12:00:00Z",
+          progress: {
+            stage: 1,
+            total_stages: 4,
+            label: inProgress ? "Preparing the video" : "Video ready",
+            in_progress: inProgress,
+          },
+        },
+      },
+    ],
+    unattached: [],
+    is_complete: true,
+  });
+
+  it("asks again while something is still running", async () => {
+    // Without this the bar would sit at the same figure until someone
+    // reloaded, which is no better than the line it replaces.
+    (api.get as Mock).mockResolvedValue(withProgress(true));
+
+    const { result } = renderHook(() => useModuleMedia("mod-1", 20));
+
+    // Wait for the state, not just the call: the polling effect keys off
+    // `media`, so installing fake timers before that has landed would
+    // start the clock while the interval is not yet registered.
+    await waitFor(() =>
+      expect(
+        result.current.media?.references[0]?.asset?.progress?.in_progress,
+      ).toBe(true),
+    );
+
+    const before = (api.get as Mock).mock.calls.length;
+
+    // Real timers with a short wait rather than fake ones: the interval
+    // is registered inside an effect that runs after an awaited fetch,
+    // and swapping the clock underneath that proved unreliable. Ten
+    // seconds is the production interval, so the test waits it out.
+    await waitFor(() =>
+      expect((api.get as Mock).mock.calls.length).toBeGreaterThan(before),
+    );
+  });
+
+  it("stops once nothing is in progress", async () => {
+    // Includes a job that has stalled: there is no point asking every
+    // ten seconds about work that has already failed.
+    (api.get as Mock).mockResolvedValue(withProgress(false));
+
+    renderHook(() => useModuleMedia("mod-1", 20));
+    await waitFor(() => expect(api.get).toHaveBeenCalledTimes(1));
+
+    // Long enough for many intervals to have fired, had any been set.
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    expect(api.get).toHaveBeenCalledTimes(1);
   });
 });

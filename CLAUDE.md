@@ -557,3 +557,30 @@ committing; the pre-commit hook runs `check_migrations.py` over it as well.
 A stray `.hypothesis/` directory at the repository root is a smaller symptom of
 the same thing: it appears when pytest is run from the host rather than in a
 container, and is not gitignored.
+
+### One commit per stacked branch: amend, never add
+
+A stacked branch carries exactly one commit, and that commit is the unit
+being reviewed. So when a change is made on a branch that is part of a
+stack, it is folded into the commit already there — never added as a second
+one.
+
+**Use `just stack-update` (`just stu`)**, not `git commit`. It amends the
+branch's commit with whatever is in the working tree, then rebases every
+branch above it, because amending rewrites the commit those branches sit on.
+Both halves are the same operation: a plain `git commit` leaves the branches
+above stranded on a commit that no longer exists, and does it silently.
+
+- `just stu` on its own keeps the existing message.
+- `just stu "new message"` rewords it at the same time.
+- It stages everything, untracked files included, exactly as `stack-new` and
+  `stack-add` do.
+
+**Check whether the branch is in a stack before committing.** `just stl`
+draws the stack, or says "No stack on this branch"; `python3
+scripts/stack-status.py --check` answers the same question by exit code, 0
+in a stack and 1 outside one. On an ordinary branch the "NEVER
+auto-commit/push" rule under **Critical Rules** applies unchanged.
+
+A branch that accumulates "fix: typo" on top of its real change is how a
+two-unit stack became four branches on the first real run of this tooling.

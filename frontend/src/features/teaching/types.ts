@@ -378,6 +378,32 @@ export interface MediaAsset {
    * learner relying on captions cannot tell the difference.
    */
   captions_reviewed_at?: string | null;
+  /**
+   * How far processing has got, and what is happening now.
+   *
+   * Derived by the backend rather than worked out here, so the words
+   * and the rules behind them live in one place.
+   */
+  progress?: MediaProgress | null;
+}
+
+/** How far an upload has got, in terms a person can act on. */
+export interface MediaProgress {
+  /** Stages finished, 1-based, for "X of N". */
+  stage: number;
+  total_stages: number;
+  /** What is happening now, or what is waiting. */
+  label: string;
+  /** Whether anything will change without someone acting. */
+  in_progress: boolean;
+  /**
+   * A started job that has overrun what it plausibly needs.
+   *
+   * Distinct from `in_progress` being false: this one means something
+   * was expected to happen and has not, which is worth saying rather
+   * than showing a bar that will never move.
+   */
+  stalled?: boolean;
 }
 
 /** One asset's WebVTT, as the caption editor loads and saves it. */

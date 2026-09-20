@@ -42,6 +42,7 @@ import {
   removeLogbookEntry,
   removeReflection,
   requestSignOff,
+  searchAssessors,
   revokeAssessorMembership,
   signOff,
   verifyAssessorRegistration,
@@ -89,9 +90,14 @@ describe("passport paths", () => {
       "/api/passport/{passport_id}/cpd",
       "/api/passport/{passport_id}/cpd/{year}",
       "/api/passport/{passport_id}/cpd/{year}/{stem}",
+      "/api/passport/{passport_id}/logbook",
       "/api/passport/{passport_id}/logbook/{competency_id}",
       "/api/passport/{passport_id}/logbook/{competency_id}/{stem}",
       "/api/passport/{passport_id}/reflections",
+      "/api/passport/{passport_id}/evidence",
+      "/api/passport/{passport_id}/export.md",
+      "/api/passport/{passport_id}/export.pdf",
+      "/api/passport/{passport_id}/export.zip",
       "/api/passport/{passport_id}/reflections/{name}",
       "/api/passport/{passport_id}/sign-offs/{signoff_id}",
       "/api/passport/{passport_id}/sign-offs/{signoff_id}/decline",
@@ -127,8 +133,20 @@ describe("sign-offs", () => {
     expect(api.get).toHaveBeenCalledWith("/passport/requests/inbox");
   });
 
+  it("searches for an assessor, escaping what was typed", async () => {
+    // A name holds a space and an address holds an @; both change what
+    // the query string means if they are passed through raw.
+    await searchAssessors("amara okonkwo@example.nhs.uk");
+    expect(api.get).toHaveBeenCalledWith(
+      "/passport/assessors/search?q=amara%20okonkwo%40example.nhs.uk",
+    );
+  });
+
   it("requests a sign-off against a competency", async () => {
-    const body = { assessor_user_id: 7, observed_on: "2026-03-14" };
+    const body = {
+      assessor_email: "amara.okonkwo@example.nhs.uk",
+      observed_on: "2026-03-14",
+    };
     await requestSignOff(PASSPORT_ID, COMPETENCY, body);
     expect(api.post).toHaveBeenCalledWith(
       `/passport/${PASSPORT_ID}/competencies/${COMPETENCY}/requests`,
