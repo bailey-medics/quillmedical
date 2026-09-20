@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "response-required-property-removed GET /api/users/{user_id} removed the required property `site_ids` from the response with the `200` status"
+reason: "The companion to `organisation_ids`, and removed for the same reason: `place_ids` says where somebody belongs in one list and one kind of id. `site_ids` was the more misleading of the two — it already answered in place ids and already included places that were not sites, so its name said something narrower than it meant. Served alongside `place_ids` for a release; the one client moved then. No open tab needs reloading."

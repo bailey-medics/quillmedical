@@ -131,7 +131,9 @@ class TestCreate:
         client = _login(test_client, "the_admin")
         response = client.post(
             "/api/users",
-            json=_new_user_payload("no_role_given", organisation_ids=[org.id]),
+            json=_new_user_payload(
+                "no_role_given", place_ids=[org.org_unit_id]
+            ),
             headers=_csrf(client),
         )
 
@@ -155,7 +157,7 @@ class TestCreate:
             json=_new_user_payload(
                 "a_new_operator",
                 platform_role="superadmin",
-                organisation_ids=[org.id],
+                place_ids=[org.org_unit_id],
             ),
             headers=_csrf(client),
         )
@@ -179,7 +181,7 @@ class TestCreate:
         response = client.post(
             "/api/users",
             json=_new_user_payload(
-                "bad_role", platform_role="admin", organisation_ids=[org.id]
+                "bad_role", platform_role="admin", place_ids=[org.org_unit_id]
             ),
             headers=_csrf(client),
         )
