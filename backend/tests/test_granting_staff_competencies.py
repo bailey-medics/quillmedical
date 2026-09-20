@@ -25,16 +25,15 @@ from __future__ import annotations
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import insert, select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.models import (
     Organisation,
-    Site,
+    OrgUnit,
     User,
-    organisation_member,
-    organisation_site,
 )
+from app.organisations import add_organisation_member, organisation_member
 from app.security import hash_password
 
 
@@ -64,11 +63,7 @@ def org(db_session: Session) -> Organisation:
 
 
 def _place(db: Session, org: Organisation, user: User) -> None:
-    db.execute(
-        insert(organisation_member).values(
-            organisation_id=org.id, user_id=user.id, capacity="staff"
-        )
-    )
+    add_organisation_member(db, org.id, user.id, "staff")
     db.commit()
 
 
@@ -298,15 +293,15 @@ class TestTheSameAtASite:
     """
 
     @pytest.fixture
-    def site(self, db_session: Session, org: Organisation) -> Site:
-        site = Site(name="Ward 9", type="ward")
+    def site(self, db_session: Session, org: Organisation) -> OrgUnit:
+        site = OrgUnit(name="Ward 9", type="ward")
         db_session.add(site)
         db_session.commit()
         db_session.refresh(site)
         db_session.execute(
-            insert(organisation_site).values(
-                organisation_id=org.id, site_id=site.id
-            )
+            update(OrgUnit)
+            .where(OrgUnit.id == site.id)
+            .values(parent_id=org.org_unit_id)
         )
         db_session.commit()
         return site
@@ -316,17 +311,17 @@ class TestTheSameAtASite:
         test_client: TestClient,
         db_session: Session,
         org: Organisation,
-        site: Site,
+        site: OrgUnit,
         admin: User,
     ) -> None:
         starter = _user(db_session, "site_starter", profession="patient")
 
         client = _login(test_client, "the_admin")
         response = client.post(
-            f"/api/sites/{site.id}/staff",
+            f"/api/org-units/{site.id}/members",
             json={
                 "user_id": starter.id,
-                "role": "staff",
+                "capacity": "staff",
                 "base_profession": "healthcare_assistant",
             },
             headers=_csrf(client),
@@ -344,7 +339,7 @@ class TestTheSameAtASite:
         test_client: TestClient,
         db_session: Session,
         org: Organisation,
-        site: Site,
+        site: OrgUnit,
         admin: User,
     ) -> None:
         nurse = _user(db_session, "site_nurse", profession="registered_nurse")
@@ -352,8 +347,8 @@ class TestTheSameAtASite:
 
         client = _login(test_client, "the_admin")
         response = client.post(
-            f"/api/sites/{site.id}/staff",
-            json={"user_id": nurse.id, "role": "staff"},
+            f"/api/org-units/{site.id}/members",
+            json={"user_id": nurse.id, "capacity": "staff"},
             headers=_csrf(client),
         )
 
@@ -366,7 +361,7 @@ class TestTheSameAtASite:
         test_client: TestClient,
         db_session: Session,
         org: Organisation,
-        site: Site,
+        site: OrgUnit,
         admin: User,
     ) -> None:
         """Appointing an existing member is when a gap gets noticed.
@@ -378,17 +373,17 @@ class TestTheSameAtASite:
 
         client = _login(test_client, "the_admin")
         first = client.post(
-            f"/api/sites/{site.id}/staff",
-            json={"user_id": member.id, "role": "trainee"},
+            f"/api/org-units/{site.id}/members",
+            json={"user_id": member.id, "capacity": "trainee"},
             headers=_csrf(client),
         )
         assert first.status_code == 200, first.text
 
         second = client.post(
-            f"/api/sites/{site.id}/staff",
+            f"/api/org-units/{site.id}/members",
             json={
                 "user_id": member.id,
-                "role": "staff",
+                "capacity": "staff",
                 "base_profession": "healthcare_assistant",
             },
             headers=_csrf(client),
@@ -404,17 +399,17 @@ class TestTheSameAtASite:
         test_client: TestClient,
         db_session: Session,
         org: Organisation,
-        site: Site,
+        site: OrgUnit,
         admin: User,
     ) -> None:
         starter = _user(db_session, "site_bad", profession="patient")
 
         client = _login(test_client, "the_admin")
         response = client.post(
-            f"/api/sites/{site.id}/staff",
+            f"/api/org-units/{site.id}/members",
             json={
                 "user_id": starter.id,
-                "role": "staff",
+                "capacity": "staff",
                 "base_profession": "chief_wizard",
             },
             headers=_csrf(client),

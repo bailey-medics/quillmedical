@@ -33,10 +33,10 @@ from app.features.passport.store import LocalPassportStore
 from app.main import app
 from app.models import (
     Organisation,
-    OrganisationFeature,
+    OrgUnitFeature,
     User,
-    organisation_member,
 )
+from app.organisations import add_organisation_member
 from app.passport_storage import get_passport_store
 from app.security import hash_password
 
@@ -104,15 +104,11 @@ def org(db_session: Session, holder: User, assessor: User) -> Organisation:
     db_session.refresh(org)
 
     db_session.add(
-        OrganisationFeature(organisation_id=org.id, feature_key="passport")
+        OrgUnitFeature(org_unit_id=org.org_unit_id, feature_key="passport")
     )
 
     for user in (holder, assessor):
-        db_session.execute(
-            organisation_member.insert().values(
-                organisation_id=org.id, user_id=user.id
-            )
-        )
+        add_organisation_member(db_session, org.id, user.id, "trainee")
 
     db_session.commit()
     return org
@@ -484,7 +480,7 @@ class TestReflections:
         client.post(
             f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
             json={
-                "assessor_user_id": assessor.id,
+                "assessor_email": assessor.email,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },

@@ -95,6 +95,19 @@ export function Component() {
 
       {error && <ErrorState message={error} />}
 
+      {/* Above the form rather than below the list: on an empty page
+          this says what a certificate record is and that nobody
+          countersigns it, which is worth knowing before recording one
+          rather than after. */}
+      {certificates.length === 0 && (
+        <StateMessage
+          colour="update"
+          icon={<IconFileText />}
+          title="Nothing recorded yet"
+          description="Courses, qualifications and awards you are claiming. Nobody countersigns these."
+        />
+      )}
+
       {recording ? (
         <>
           {passportId && (
@@ -118,13 +131,7 @@ export function Component() {
         />
       )}
 
-      {certificates.length === 0 ? (
-        <StateMessage
-          icon={<IconFileText />}
-          title="Nothing recorded yet"
-          description="Courses, qualifications and awards you are claiming. Nobody countersigns these."
-        />
-      ) : (
+      {certificates.length > 0 &&
         certificates.map((certificate) => (
           <BaseCard key={certificate.name}>
             <Stack gap="xs">
@@ -138,8 +145,7 @@ export function Component() {
               )}
             </Stack>
           </BaseCard>
-        ))
-      )}
+        ))}
     </Stack>
   );
 }

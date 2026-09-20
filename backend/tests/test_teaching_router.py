@@ -10,6 +10,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi import HTTPException
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from app.features.teaching.models import (
@@ -23,12 +24,14 @@ from app.features.teaching.models import (
 from app.features.teaching.router import resolve_visible_module
 from app.models import (
     Organisation,
-    OrganisationFeature,
-    Site,
+    OrgUnit,
+    OrgUnitFeature,
     User,
-    organisation_member,
-    organisation_site,
-    site_member,
+    org_unit_member,
+)
+from app.organisations import (
+    add_organisation_member,
+    remove_organisation_memberships,
 )
 from app.security import hash_password
 
@@ -43,8 +46,8 @@ def _make_teaching_org(db: Session) -> Organisation:
     db.add(org)
     db.flush()
 
-    feature = OrganisationFeature(
-        organisation_id=org.id,
+    feature = OrgUnitFeature(
+        org_unit_id=org.org_unit_id,
         feature_key="teaching",
         enabled_by=1,
     )
@@ -65,11 +68,7 @@ def _make_educator(db: Session, org: Organisation) -> User:
     )
     db.add(user)
     db.flush()
-    db.execute(
-        organisation_member.insert().values(
-            organisation_id=org.id, user_id=user.id
-        )
-    )
+    add_organisation_member(db, org.id, user.id, "trainee")
     db.flush()
     return user
 
@@ -86,11 +85,7 @@ def _make_learner(db: Session, org: Organisation) -> User:
     )
     db.add(user)
     db.flush()
-    db.execute(
-        organisation_member.insert().values(
-            organisation_id=org.id, user_id=user.id
-        )
-    )
+    add_organisation_member(db, org.id, user.id, "trainee")
     db.flush()
     return user
 
@@ -221,10 +216,9 @@ def _login(client, username: str, password: str) -> dict[str, str]:
     csrf = cookies.get("XSRF-TOKEN", "")
     return {"X-CSRF-Token": csrf}
 
-
-# ------------------------------------------------------------------
-# Feature gating
-# ------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Feature gating
+    # ------------------------------------------------------------------
 
 
 class TestFeatureGating:
@@ -246,12 +240,7 @@ class TestFeatureGating:
         )
         db_session.add(user)
         db_session.flush()
-        db_session.execute(
-            organisation_member.insert().values(
-                organisation_id=org.id,
-                user_id=user.id,
-            )
-        )
+        add_organisation_member(db_session, org.id, user.id, "trainee")
         db_session.commit()
 
         test_client.post(
@@ -281,10 +270,9 @@ class TestFeatureGating:
         resp = test_client.get("/api/teaching/question-banks")
         assert resp.status_code == 403
 
-
-# ------------------------------------------------------------------
-# Question banks
-# ------------------------------------------------------------------
+        # ------------------------------------------------------------------
+        # Question banks
+        # ------------------------------------------------------------------
 
 
 class TestQuestionBanks:
@@ -497,10 +485,9 @@ class TestQuestionBanks:
         resp = test_client.get("/api/teaching/question-banks/nonexistent")
         assert resp.status_code == 404
 
-
-# ------------------------------------------------------------------
-# Assessment lifecycle
-# ------------------------------------------------------------------
+        # ------------------------------------------------------------------
+        # Assessment lifecycle
+        # ------------------------------------------------------------------
 
 
 class TestAssessmentLifecycle:
@@ -594,7 +581,7 @@ class TestAssessmentLifecycle:
             else:
                 assert data["all_answered"] is True
 
-        # Complete
+                # Complete
         resp = test_client.post(
             f"/api/teaching/assessments/{assessment_id}/complete",
             headers=headers,
@@ -702,7 +689,7 @@ class TestAssessmentLifecycle:
                 headers=headers,
             )
 
-        # Complete
+            # Complete
         resp = test_client.post(
             f"/api/teaching/assessments/{assessment_id}/complete",
             headers=headers,
@@ -748,10 +735,9 @@ class TestAssessmentLifecycle:
         assert resp.status_code == 409
         assert "Time limit" in resp.json()["detail"]
 
-
-# ------------------------------------------------------------------
-# Certificate download
-# ------------------------------------------------------------------
+        # ------------------------------------------------------------------
+        # Certificate download
+        # ------------------------------------------------------------------
 
 
 class TestDownloadCertificate:
@@ -800,10 +786,9 @@ class TestDownloadCertificate:
         assert resp.status_code == 400
         assert "passed assessments" in resp.json()["detail"]
 
-
-# ------------------------------------------------------------------
-# Assessment history
-# ------------------------------------------------------------------
+        # ------------------------------------------------------------------
+        # Assessment history
+        # ------------------------------------------------------------------
 
 
 class TestAssessmentHistory:
@@ -842,10 +827,9 @@ class TestAssessmentHistory:
         assert resp.status_code == 200
         assert len(resp.json()) == 1
 
-
-# ------------------------------------------------------------------
-# Educator endpoints
-# ------------------------------------------------------------------
+        # ------------------------------------------------------------------
+        # Educator endpoints
+        # ------------------------------------------------------------------
 
 
 class TestEducatorEndpoints:
@@ -924,10 +908,9 @@ class TestEducatorEndpoints:
         assert data["coordinator_email"] == "coord@test.local"
         assert data["institution_name"] == "Test Institution"
 
-
-# ------------------------------------------------------------------
-# _resolve_bank_path security
-# ------------------------------------------------------------------
+        # ------------------------------------------------------------------
+        # _resolve_bank_path security
+        # ------------------------------------------------------------------
 
 
 class TestResolveBankPath:
@@ -1004,10 +987,9 @@ class TestResolveBankPath:
         result = _resolve_bank_path("my-bank")
         assert result == bank_dir
 
-
-# ------------------------------------------------------------------
-# _resolve_bank_path_or_gcs
-# ------------------------------------------------------------------
+        # ------------------------------------------------------------------
+        # _resolve_bank_path_or_gcs
+        # ------------------------------------------------------------------
 
 
 class TestResolveBankPathOrGcs:
@@ -1085,10 +1067,9 @@ class TestResolveBankPathOrGcs:
             _resolve_bank_path_or_gcs("some-bank")
         assert exc.value.status_code == 400
 
-
-# ------------------------------------------------------------------
-# Admin banks endpoint
-# ------------------------------------------------------------------
+        # ------------------------------------------------------------------
+        # Admin banks endpoint
+        # ------------------------------------------------------------------
 
 
 class TestPromotingAVersion:
@@ -1727,11 +1708,7 @@ class TestBankOrgSettingsAreScopedToYourOrganisations:
         second = Organisation(name="Second Org")
         db_session.add(second)
         db_session.flush()
-        db_session.execute(
-            organisation_member.insert().values(
-                organisation_id=second.id, user_id=educator.id
-            )
-        )
+        add_organisation_member(db_session, second.id, educator.id, "trainee")
         db_session.commit()
         _seed_bank(db_session, second.id, educator.id)
         db_session.query(QuestionBankOrgStatus).delete()
@@ -2135,10 +2112,8 @@ class TestLearningContentGate:
         _seed_bank(db_session, with_live.id, educator.id)
 
         learner = _make_learner(db_session, without)
-        db_session.execute(
-            organisation_member.insert().values(
-                organisation_id=with_live.id, user_id=learner.id
-            )
+        add_organisation_member(
+            db_session, with_live.id, learner.id, "trainee"
         )
         db_session.commit()
 
@@ -2210,22 +2185,20 @@ class TestLearningContentGate:
 
         # The learner belongs to the site, and to no organisation.
         learner = _make_learner(db_session, org)
-        db_session.execute(
-            organisation_member.delete().where(
-                organisation_member.c.user_id == learner.id
-            )
-        )
-        site = Site(name="Ward 9", type="ward")
+        remove_organisation_memberships(db_session, learner.id)
+        site = OrgUnit(name="Ward 9", type="ward")
         db_session.add(site)
         db_session.flush()
         db_session.execute(
-            organisation_site.insert().values(
-                organisation_id=org.id, site_id=site.id
-            )
+            update(OrgUnit)
+            .where(OrgUnit.id == site.id)
+            .values(parent_id=org.org_unit_id)
         )
         db_session.execute(
-            site_member.insert().values(
-                site_id=site.id, user_id=learner.id, capacity="staff"
+            org_unit_member.insert().values(
+                org_unit_id=site.id,
+                user_id=learner.id,
+                capacity="staff",
             )
         )
         db_session.commit()
@@ -2276,11 +2249,7 @@ class TestLearningRoutesRequireTheViewCompetency:
         )
         db.add(user)
         db.flush()
-        db.execute(
-            organisation_member.insert().values(
-                organisation_id=org.id, user_id=user.id
-            )
-        )
+        add_organisation_member(db, org.id, user.id, "trainee")
         db.flush()
         return user
 

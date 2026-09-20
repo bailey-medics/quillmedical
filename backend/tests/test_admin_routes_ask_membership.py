@@ -25,17 +25,16 @@ from __future__ import annotations
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import insert
+from sqlalchemy import insert, update
 from sqlalchemy.orm import Session
 
 from app.models import (
     Organisation,
-    Site,
+    OrgUnit,
     User,
-    organisation_member,
-    organisation_site,
-    site_member,
+    org_unit_member,
 )
+from app.organisations import add_organisation_member
 from app.security import hash_password
 
 
@@ -65,23 +64,23 @@ def org(db_session: Session) -> Organisation:
 
 
 @pytest.fixture
-def site(db_session: Session, org: Organisation) -> Site:
+def site(db_session: Session, org: Organisation) -> OrgUnit:
     """A ward of the trust, linked to it the ordinary way."""
-    site = Site(name="Ward 9", type="ward")
+    site = OrgUnit(name="Ward 9", type="ward")
     db_session.add(site)
     db_session.commit()
     db_session.refresh(site)
     db_session.execute(
-        insert(organisation_site).values(
-            organisation_id=org.id, site_id=site.id
-        )
+        update(OrgUnit)
+        .where(OrgUnit.id == site.id)
+        .values(parent_id=org.org_unit_id)
     )
     db_session.commit()
     return site
 
 
 @pytest.fixture
-def site_only_admin(db_session: Session, site: Site) -> User:
+def site_only_admin(db_session: Session, site: OrgUnit) -> User:
     """Holds ``manage_users`` at a site, and no organisation row.
 
     They reach the trust — the site is linked to it — so a route asking
@@ -90,8 +89,10 @@ def site_only_admin(db_session: Session, site: Site) -> User:
     """
     user = _user(db_session, "ward_admin", profession="system_administrator")
     db_session.execute(
-        insert(site_member).values(
-            site_id=site.id, user_id=user.id, capacity="staff"
+        insert(org_unit_member).values(
+            org_unit_id=site.id,
+            user_id=user.id,
+            capacity="staff",
         )
     )
     db_session.commit()
@@ -164,11 +165,7 @@ class TestOrganisationMembershipStillWorks:
         user = _user(
             db_session, "trust_admin", profession="system_administrator"
         )
-        db_session.execute(
-            insert(organisation_member).values(
-                organisation_id=org.id, user_id=user.id, capacity="staff"
-            )
-        )
+        add_organisation_member(db_session, org.id, user.id, "staff")
         db_session.commit()
         return user
 
