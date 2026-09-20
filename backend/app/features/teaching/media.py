@@ -19,11 +19,138 @@ liveness.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.features.teaching.models import ModuleMediaLink
+
+#: How long each job may run before the card stops claiming it is
+#: working. Generous rather than tight: overstating a stall would have
+#: someone re-upload a video that was merely slow, which is the mistake
+#: this whole feature exists to stop.
+#:
+#: The jobs' own timeouts are 20 minutes for transcode and an hour for
+#: captions, so a job past these has certainly failed rather than being
+#: unlucky.
+_TRANSCODE_PATIENCE = timedelta(minutes=25)
+_CAPTION_PATIENCE = timedelta(minutes=70)
+
+#: Uploaded, transcoded, captioned, reviewed.
+_TOTAL_STAGES = 4
+
+
+@dataclass(frozen=True)
+class MediaProgress:
+    """How far one upload has got, and what is happening now."""
+
+    stage: int
+    total_stages: int
+    label: str
+    in_progress: bool
+    stalled: bool
+
+
+def describe_progress(
+    link: ModuleMediaLink, *, now: datetime | None = None
+) -> MediaProgress:
+    """Say where an upload has reached, in words a person can act on.
+
+    The admin card used to show "No captions" from the moment a file
+    landed until Whisper finished, which states absence where the truth
+    was "not yet" — and sent someone re-uploading a video that was
+    working perfectly.
+
+    Two states look identical in the completion columns alone: a job
+    still running, and a job that will never finish. Only the start
+    times separate them, which is why they exist. A caption job that was
+    never configured sat in the second state for two days and the card
+    said nothing was wrong.
+
+    Ordered most-finished first, so each branch can assume everything
+    below it has happened.
+    """
+    now = now or datetime.now(UTC)
+
+    def _overdue(started: datetime | None, patience: timedelta) -> bool:
+        if started is None:
+            return False
+        # A naive timestamp from SQLite in tests; treat it as UTC rather
+        # than crashing on the comparison.
+        if started.tzinfo is None:
+            started = started.replace(tzinfo=UTC)
+        return now - started > patience
+
+    if link.captions_reviewed_at is not None:
+        return MediaProgress(
+            stage=4,
+            total_stages=_TOTAL_STAGES,
+            label="Ready — captions checked",
+            in_progress=False,
+            stalled=False,
+        )
+
+    if link.has_captions:
+        return MediaProgress(
+            stage=3,
+            total_stages=_TOTAL_STAGES,
+            label="Ready — captions need checking",
+            in_progress=False,
+            stalled=False,
+        )
+
+    if link.transcoded_at is not None:
+        # Renditions exist, so the video plays; only captions are
+        # outstanding. Whether anything is working on them is what the
+        # start time answers.
+        if link.caption_started_at is None:
+            return MediaProgress(
+                stage=2,
+                total_stages=_TOTAL_STAGES,
+                label="Video ready — captions have not started",
+                in_progress=False,
+                stalled=False,
+            )
+        if _overdue(link.caption_started_at, _CAPTION_PATIENCE):
+            return MediaProgress(
+                stage=2,
+                total_stages=_TOTAL_STAGES,
+                label="Video ready — captions seem to have failed",
+                in_progress=False,
+                stalled=True,
+            )
+        return MediaProgress(
+            stage=2,
+            total_stages=_TOTAL_STAGES,
+            label="Writing captions",
+            in_progress=True,
+            stalled=False,
+        )
+
+    if link.transcode_started_at is None:
+        return MediaProgress(
+            stage=1,
+            total_stages=_TOTAL_STAGES,
+            label="Uploaded — processing has not started",
+            in_progress=False,
+            stalled=False,
+        )
+    if _overdue(link.transcode_started_at, _TRANSCODE_PATIENCE):
+        return MediaProgress(
+            stage=1,
+            total_stages=_TOTAL_STAGES,
+            label="Processing seems to have failed",
+            in_progress=False,
+            stalled=True,
+        )
+    return MediaProgress(
+        stage=1,
+        total_stages=_TOTAL_STAGES,
+        label="Preparing the video",
+        in_progress=True,
+        stalled=False,
+    )
 
 
 def get_referenced_media_keys(module_id: str) -> list[str]:

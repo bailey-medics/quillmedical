@@ -479,6 +479,50 @@ there is any doubt.
 
 Rediscovered three times in one session before it was written down.
 
+### A stopped Docker daemon is not a reason to skip the tests
+
+Every test recipe here runs in a container, so on a machine where Docker
+Desktop is not running they all fail the same way, before a single test is
+collected:
+
+```text
+Cannot connect to the Docker daemon at unix:///var/run/docker.sock.
+Is the docker daemon running?
+```
+
+That is a stopped daemon, not a broken test run — and not a reason to report
+back that the Docker tests were left out. **Start the daemon, then run them.**
+
+```bash
+just dds    # docker-daemon-start: opens Docker Desktop, waits until
+            # `docker system info` answers, prints "Docker is running."
+```
+
+Then re-run whichever recipe failed — `just ub -k "…"`, `just uf
+src/path/to/file.test.tsx`, `just e2e`, `just migrate "…"` — and
+report its real result.
+
+- **Do this without asking first.** Starting the daemon changes nothing in
+  the repository and nothing outside the machine. It is setup for a command
+  already agreed, not a new decision.
+- **`just sd`, `just st` and `just ts` already do it themselves**, via the
+  private `_start-docker-daemon` recipe (same check, with a 60s timeout and a
+  clear message when the host is not macOS). The unit-test, E2E and migration
+  recipes do not, which is why this rule exists.
+- **`just dds` only knows how to drive Docker Desktop on macOS.** On any
+  other host it will not help: say the daemon is down and what it needs,
+  rather than quietly dropping the tests.
+- **It waits indefinitely** for the daemon to answer, so a `just dds` still
+  running after a minute or two means Docker Desktop itself is stuck. Stop
+  waiting and report that.
+- **Never substitute a host-level run** — a bare `pytest`, `yarn
+  unit-test:run` or `npx playwright` — because the daemon was down. The
+  container is what makes the run correct; see the section below.
+
+**Never report a suite as passing that Docker refused to run**, and never let
+a daemon failure stand in for a test result. Either the suite ran, and the
+command and its outcome are named, or it did not run and that is said plainly.
+
 ### Tests run from any worktree; the dev stack belongs to one
 
 There are several worktrees of this repository, but only one dev stack. Its
@@ -557,3 +601,30 @@ committing; the pre-commit hook runs `check_migrations.py` over it as well.
 A stray `.hypothesis/` directory at the repository root is a smaller symptom of
 the same thing: it appears when pytest is run from the host rather than in a
 container, and is not gitignored.
+
+### One commit per stacked branch: amend, never add
+
+A stacked branch carries exactly one commit, and that commit is the unit
+being reviewed. So when a change is made on a branch that is part of a
+stack, it is folded into the commit already there — never added as a second
+one.
+
+**Use `just stack-update` (`just stu`)**, not `git commit`. It amends the
+branch's commit with whatever is in the working tree, then rebases every
+branch above it, because amending rewrites the commit those branches sit on.
+Both halves are the same operation: a plain `git commit` leaves the branches
+above stranded on a commit that no longer exists, and does it silently.
+
+- `just stu` on its own keeps the existing message.
+- `just stu "new message"` rewords it at the same time.
+- It stages everything, untracked files included, exactly as `stack-new` and
+  `stack-add` do.
+
+**Check whether the branch is in a stack before committing.** `just stl`
+draws the stack, or says "No stack on this branch"; `python3
+scripts/stack-status.py --check` answers the same question by exit code, 0
+in a stack and 1 outside one. On an ordinary branch the "NEVER
+auto-commit/push" rule under **Critical Rules** applies unchanged.
+
+A branch that accumulates "fix: typo" on top of its real change is how a
+two-unit stack became four branches on the first real run of this tooling.

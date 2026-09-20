@@ -16,8 +16,10 @@ import { useAuth } from "../../auth/AuthContext";
 import { useHasFeature } from "@lib/features";
 import { useHasCompetency } from "@/lib/cbac/hooks";
 import { api } from "@/lib/api";
+import { orgUnits } from "@/domains/orgUnit";
 import NavIcon from "../icons/NavIcon";
 import NestedNavLink, { type NavItem } from "./NestedNavLink";
+import { useFeatureNavItems } from "./featureNavItems";
 import { navLinkStyles } from "./navStyles";
 
 /**
@@ -58,24 +60,19 @@ export default function SideNavContent({
   );
   const [bankTitle, setBankTitle] = useState<string | null>(null);
 
-  // The admin link should advertise exactly what `/admin` requires, or
-  // it offers a route that answers 404.
-  const hasAdminAccess = useHasCompetency("manage_users");
+  // Teaching, Passport, Settings and Admin, with their gates. Shared
+  // with the teaching sidebar so the two cannot disagree about which
+  // features exist — see `featureNavItems.ts`.
+  const featureItems = useFeatureNavItems();
 
-  // Check if teaching feature is enabled for this user's organisation
+  // Still needed here: the admin section has its own teaching sub-nav,
+  // which is about administering the feature rather than using it.
   const hasTeaching = useHasFeature("teaching");
-  const canManageContent = useHasCompetency("manage_teaching_content");
 
-  // The passport link asks both questions the route asks, unlike
-  // teaching, which gates its entry on the feature alone. The passport
-  // routes carry RequireFeature *and* RequireCompetency, so an entry
-  // shown on the feature alone would lead some users to a 404.
-  // Both hooks are called unconditionally and combined afterwards: `&&`
-  // between them short-circuits the second, so the hook order changes
-  // with the feature flag.
-  const passportEnabled = useHasFeature("passport");
-  const canUsePassport = useHasCompetency("access_clinician_passport");
-  const hasPassport = passportEnabled && canUsePassport;
+  // What hangs under Teaching belongs to the sidebar rather than to the
+  // shared list: here an educator gets the teaching pages, whereas the
+  // teaching sidebar hangs the current module there instead.
+  const canManageContent = useHasCompetency("manage_teaching_content");
 
   // Check if clinical services (FHIR/EHRbase) are available
   const hasClinicalServices =
@@ -191,69 +188,65 @@ export default function SideNavContent({
     let cancelled = false;
 
     async function fetchOrgNav() {
-      if (orgId) {
-        try {
-          const org = await api.get<{ name: string }>(
-            `/organisations/${orgId}`,
-          );
-          if (cancelled) return;
-          const orgItem: NavItem = {
-            label: org.name || "Unknown Organisation",
-            href: `/admin/organisations/${orgId}`,
-            children:
-              orgSubPage === "features"
-                ? [
-                    {
-                      label: "Features",
-                      href: `/admin/organisations/${orgId}/features`,
-                    },
-                  ]
-                : undefined,
-          };
-          setOrgNavChildren([orgItem]);
-        } catch (error) {
-          console.error("Failed to fetch organisation name:", error);
-          if (!cancelled) setOrgNavChildren(undefined);
-        }
-      } else if (siteId) {
-        try {
-          const site = await api.get<{
-            name: string;
-            organisations: Array<{ id: number; name: string }>;
-          }>(`/sites/${siteId}`);
-          if (cancelled) return;
-          const firstOrg = site.organisations?.[0];
-          const siteChild: NavItem = {
-            label: site.name || "Unknown Site",
-            href: `/admin/sites/${siteId}`,
-            children: siteSubPage
-              ? [
-                  {
-                    label:
-                      siteSubPage.charAt(0).toUpperCase() +
-                      siteSubPage.slice(1),
-                    href: `/admin/sites/${siteId}/${siteSubPage}`,
-                  },
-                ]
-              : undefined,
-          };
-          if (firstOrg) {
-            setOrgNavChildren([
-              {
-                label: firstOrg.name,
-                href: `/admin/organisations/${firstOrg.id}`,
-                children: [siteChild],
-              },
-            ]);
-          } else {
-            setOrgNavChildren([siteChild]);
-          }
-        } catch (error) {
-          console.error("Failed to fetch site name:", error);
-          if (!cancelled) setOrgNavChildren(undefined);
-        }
-      } else {
+      // Sentence case, and named here rather than capitalised from the
+      // address — "add-staff" became "Add-staff" on screen.
+      const subPageLabels: Record<string, string> = {
+        features: "Features",
+        edit: "Edit",
+        "add-staff": "Add staff",
+        "add-patient": "Add patient",
+        "add-site": "Add site",
+      };
+
+      // Both branches read the same address, because an organisation and
+      // a site are the same kind of thing now. The old code asked
+      // `/organisations/{id}` with what is a place id, which answered
+      // about whichever organisation happened to hold that number.
+      const placeId = orgId ?? siteId;
+      // "new" is a page, not a place. Asking about it used to produce a
+      // failed request on every visit to the create form.
+      if (!placeId || !/^\d+$/.test(placeId)) {
         setOrgNavChildren(undefined);
+        return;
+      }
+
+      try {
+        const place = await orgUnits.get(Number(placeId));
+        if (cancelled) return;
+
+        const subPage = orgId ? orgSubPage : siteSubPage;
+        const subPageLabel = subPage ? subPageLabels[subPage] : undefined;
+        const base = orgId
+          ? `/admin/organisations/${placeId}`
+          : `/admin/sites/${placeId}`;
+
+        const placeItem: NavItem = {
+          label: place.name || "Unknown place",
+          href: base,
+          children: subPageLabel
+            ? [{ label: subPageLabel, href: `${base}/${subPage}` }]
+            : undefined,
+        };
+
+        // The place above may be a building rather than the trust, so
+        // which page to link to comes from the server rather than from
+        // assuming everything hangs straight off an organisation.
+        if (place.parent_id !== null && place.parent_name) {
+          setOrgNavChildren([
+            {
+              label: place.parent_name,
+              href: place.parent_is_root
+                ? `/admin/organisations/${place.parent_id}`
+                : `/admin/sites/${place.parent_id}`,
+              children: [placeItem],
+            },
+          ]);
+        } else {
+          setOrgNavChildren([placeItem]);
+        }
+      } catch (error) {
+        console.error("Failed to fetch place name:", error);
+        if (!cancelled) setOrgNavChildren(undefined);
       }
     }
 
@@ -352,6 +345,14 @@ export default function SideNavContent({
         icon: showIcons ? "building-community" : undefined,
         children: orgNavEffective,
       } satisfies NavItem,
+      // The sites of one organisation already hang under it above. This
+      // is the way in for somebody who knows the site but not which
+      // organisation owns it, which until now was no way in at all.
+      {
+        label: "Sites",
+        href: "/admin/sites",
+        icon: showIcons ? "building-hospital" : undefined,
+      } satisfies NavItem,
       ...(hasTeaching
         ? [
             {
@@ -397,24 +398,6 @@ export default function SideNavContent({
         : []),
     ],
   };
-
-  // Teaching navigation structure — only built when feature is enabled
-  // Educators get nested nav with manage/results sub-pages
-  const teachingNavItem: NavItem = canManageContent
-    ? {
-        label: "Teaching",
-        href: "/teaching",
-        icon: showIcons ? "teaching" : undefined,
-        children: [
-          { label: "Assessments", href: "/teaching" },
-          { label: "Manage items", href: "/teaching/manage" },
-        ],
-      }
-    : {
-        label: "Teaching",
-        href: "/teaching",
-        icon: showIcons ? "teaching" : undefined,
-      };
 
   // Build nested patient nav item from flat patientNav array
   // [a, b, c] → a { children: [b { children: [c] }] }
@@ -472,42 +455,31 @@ export default function SideNavContent({
           leftSection={showIcons ? <NavIcon name="message" /> : undefined}
         />
       )}
-      {hasTeaching && (
+      {/* The cross-feature entries, from the one module that owns them.
+          Two get their children here rather than there, because what
+          hangs under them depends on this sidebar: Admin grows a
+          breadcrumb for whichever record is open, and Teaching offers
+          an educator the teaching pages. */}
+      {featureItems.map((item) => (
         <NestedNavLink
-          item={teachingNavItem}
+          key={item.label}
+          item={
+            item.href === "/admin"
+              ? adminNavItem
+              : item.href === "/teaching" && canManageContent
+                ? {
+                    ...item,
+                    children: [
+                      { label: "Assessments", href: "/teaching" },
+                      { label: "Manage items", href: "/teaching/manage" },
+                    ],
+                  }
+                : item
+          }
           onNavigate={onNavigate}
           showIcons={showIcons}
         />
-      )}
-      {hasPassport && (
-        <NavLink
-          label="Passport"
-          styles={navLinkStyles}
-          active={location.pathname.startsWith("/passport")}
-          onClick={() => {
-            navigate("/passport");
-            if (onNavigate) onNavigate();
-          }}
-          leftSection={showIcons ? <NavIcon name="passport" /> : undefined}
-        />
-      )}
-      <NavLink
-        label="Settings"
-        styles={navLinkStyles}
-        active={location.pathname.startsWith("/settings")}
-        onClick={() => {
-          navigate("/settings");
-          if (onNavigate) onNavigate();
-        }}
-        leftSection={showIcons ? <NavIcon name="settings" /> : undefined}
-      />
-      {hasAdminAccess && (
-        <NestedNavLink
-          item={adminNavItem}
-          onNavigate={onNavigate}
-          showIcons={showIcons}
-        />
-      )}
+      ))}
       <NavLink
         label="Logout"
         styles={navLinkStyles}

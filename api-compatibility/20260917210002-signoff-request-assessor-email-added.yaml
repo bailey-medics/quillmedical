@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "new-required-request-property POST /api/passport/{passport_id}/competencies/{competency_id}/requests added the new required request property `assessor_email`"
+reason: "The other half of replacing `assessor_user_id`. It is required rather than optional because a sign-off request with nobody named is not a request: the assessor, the competency, the passport and the state are all known when the holder asks, and none of them is left undecided. A stale client sending the old field is rejected rather than silently writing a request nobody would ever be asked to sign. No open tab needs reloading: the passport feature is off for every organisation, both tables are empty, and no released bundle sends this request."

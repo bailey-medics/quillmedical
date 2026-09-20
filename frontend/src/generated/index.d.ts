@@ -79,3 +79,26 @@ declare module "@/generated/jurisdiction-config.json" {
 
   export default data;
 }
+
+declare module "@/generated/org-unit-types.json" {
+  // Generated from shared/org-unit-types.yaml, the one list of what a
+  // place can be. The flags say what a type of place can hold, so a
+  // rule asks "can this hold a clinical lead?" rather than carrying its
+  // own list of names.
+  interface OrgUnitType {
+    id: string;
+    display_name: string;
+    description: string;
+    requires_parent: boolean;
+    can_hold_features: boolean;
+    can_hold_positions: boolean;
+    can_hold_competencies: boolean;
+    can_have_members: boolean;
+  }
+
+  const data: {
+    org_unit_types: OrgUnitType[];
+  };
+
+  export default data;
+}
