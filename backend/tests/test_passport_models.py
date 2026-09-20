@@ -394,7 +394,7 @@ class TestRegistrationVerification:
             registration_authority=authority,
             registration_number=number,
             verified_by_user_id=admin.id,
-            organisation_id=organisation.id,
+            org_unit_id=organisation.org_unit_id,
         )
 
     def test_it_records_who_checked_and_when(

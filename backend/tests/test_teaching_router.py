@@ -31,6 +31,7 @@ from app.models import (
 )
 from app.organisations import (
     add_organisation_member,
+    place_of_organisation,
     remove_organisation_memberships,
 )
 from app.security import hash_password
@@ -48,6 +49,16 @@ def _place_of(org: Organisation) -> int:
     than for a state that happens.
     """
     place_id = org.org_unit_id
+    assert place_id is not None
+    return place_id
+
+
+def _place_of_id(db: Session, org_id: int) -> int:
+    """The place an organisation id names.
+
+    For the fixtures that hold the id rather than the row.
+    """
+    place_id = place_of_organisation(db, org_id)
     assert place_id is not None
     return place_id
 
@@ -171,9 +182,15 @@ def _seed_bank(
     n_items: int = 3,
     is_live: bool = True,
 ) -> QuestionBankConfig:
-    """Create a question bank config + published items."""
+    """Create a question bank config + published items.
+
+    Takes an organisation id and seeds against its place, because that
+    is what every caller here has to hand and what the tables count in.
+    """
+    place_id = place_of_organisation(db, org_id)
+    assert place_id is not None
     config = QuestionBankConfig(
-        organisation_id=org_id,
+        org_unit_id=place_id,
         question_bank_id="test-bank",
         version=1,
         title="Test Bank",
@@ -191,7 +208,7 @@ def _seed_bank(
     # follow it, so a fixture without one would not represent a live bank.
     db.add(
         QuestionBankOrgStatus(
-            organisation_id=org_id,
+            org_unit_id=place_id,
             question_bank_id="test-bank",
             is_live=is_live,
             active_version=1,
@@ -201,7 +218,7 @@ def _seed_bank(
     diagnoses = ["adenoma", "serrated", "adenoma", "serrated", "adenoma"]
     for i in range(n_items):
         item = QuestionBankItem(
-            organisation_id=org_id,
+            org_unit_id=place_id,
             question_bank_id="test-bank",
             bank_version=1,
             status="published",
@@ -391,7 +408,7 @@ class TestQuestionBanks:
         _make_learner(db_session, org)
         db_session.add(
             ModuleMediaLink(
-                organisation_id=org.id,
+                org_unit_id=_place_of(org),
                 question_bank_id="test-bank",
                 media_key="lecture-01",
                 asset_id="asset-1",
@@ -437,7 +454,7 @@ class TestQuestionBanks:
         _make_learner(db_session, org)
         db_session.add(
             ModuleMediaLink(
-                organisation_id=org.id,
+                org_unit_id=_place_of(org),
                 question_bank_id="test-bank",
                 media_key="lecture-01",
                 asset_id="asset-1",
@@ -1101,7 +1118,7 @@ class TestPromotingAVersion:
         _seed_bank(db_session, org.id, educator.id)
         db_session.add(
             QuestionBankConfig(
-                organisation_id=org.id,
+                org_unit_id=_place_of(org),
                 question_bank_id="test-bank",
                 version=2,
                 title="Test Bank",
@@ -1116,7 +1133,9 @@ class TestPromotingAVersion:
     def _status(self, db_session, org):
         return (
             db_session.query(QuestionBankOrgStatus)
-            .filter_by(organisation_id=org.id, question_bank_id="test-bank")
+            .filter_by(
+                org_unit_id=_place_of(org), question_bank_id="test-bank"
+            )
             .one()
         )
 
@@ -1190,7 +1209,7 @@ class TestPromotingAVersion:
         db_session.flush()
         db_session.add(
             QuestionBankConfig(
-                organisation_id=other.id,
+                org_unit_id=_place_of(other),
                 question_bank_id="test-bank",
                 version=5,
                 title="Test Bank",
@@ -1307,7 +1326,7 @@ class TestAdminViewsShowBothVersions:
         _seed_bank(db_session, org.id, educator.id)
         db_session.add(
             QuestionBankConfig(
-                organisation_id=org.id,
+                org_unit_id=_place_of(org),
                 question_bank_id="test-bank",
                 version=2,
                 title="Test Bank",
@@ -1333,7 +1352,7 @@ class TestAdminViewsShowBothVersions:
         _seed_bank(db_session, org.id, educator.id)
         db_session.add(
             QuestionBankConfig(
-                organisation_id=org.id,
+                org_unit_id=_place_of(org),
                 question_bank_id="test-bank",
                 version=2,
                 title="Test Bank",
@@ -1364,7 +1383,9 @@ class TestAdminViewsShowBothVersions:
         _seed_bank(db_session, org.id, educator.id)
         status = (
             db_session.query(QuestionBankOrgStatus)
-            .filter_by(organisation_id=org.id, question_bank_id="test-bank")
+            .filter_by(
+                org_unit_id=_place_of(org), question_bank_id="test-bank"
+            )
             .one()
         )
         status.active_version = None
@@ -1385,7 +1406,9 @@ class TestAdminViewsShowBothVersions:
         _seed_bank(db_session, org.id, educator.id)
         status = (
             db_session.query(QuestionBankOrgStatus)
-            .filter_by(organisation_id=org.id, question_bank_id="test-bank")
+            .filter_by(
+                org_unit_id=_place_of(org), question_bank_id="test-bank"
+            )
             .one()
         )
         status.active_version = None
@@ -1408,7 +1431,7 @@ class TestCandidateQueriesFollowThePointer:
     def _add_version(self, db_session, org, educator, version: int) -> None:
         db_session.add(
             QuestionBankConfig(
-                organisation_id=org.id,
+                org_unit_id=_place_of(org),
                 question_bank_id="test-bank",
                 version=version,
                 title=f"Test Bank v{version}",
@@ -1461,7 +1484,9 @@ class TestCandidateQueriesFollowThePointer:
         _seed_bank(db_session, org.id, educator.id)
         status = (
             db_session.query(QuestionBankOrgStatus)
-            .filter_by(organisation_id=org.id, question_bank_id="test-bank")
+            .filter_by(
+                org_unit_id=_place_of(org), question_bank_id="test-bank"
+            )
             .one()
         )
         status.active_version = None
@@ -1485,7 +1510,7 @@ class TestCandidateQueriesFollowThePointer:
         for i in range(3):
             db_session.add(
                 QuestionBankItem(
-                    organisation_id=org.id,
+                    org_unit_id=_place_of(org),
                     question_bank_id="test-bank",
                     bank_version=2,
                     status="published",
@@ -1522,7 +1547,9 @@ class TestCandidateQueriesFollowThePointer:
         _seed_bank(db_session, org.id, educator.id)
         status = (
             db_session.query(QuestionBankOrgStatus)
-            .filter_by(organisation_id=org.id, question_bank_id="test-bank")
+            .filter_by(
+                org_unit_id=_place_of(org), question_bank_id="test-bank"
+            )
             .one()
         )
         status.active_version = None
@@ -1571,7 +1598,9 @@ class TestBankOrgSettingsSetTheActiveVersion:
         assert resp.status_code == 200
         row = (
             db_session.query(QuestionBankOrgStatus)
-            .filter_by(organisation_id=org.id, question_bank_id="test-bank")
+            .filter_by(
+                org_unit_id=_place_of(org), question_bank_id="test-bank"
+            )
             .one()
         )
         assert row.active_version == 1
@@ -1589,13 +1618,15 @@ class TestBankOrgSettingsSetTheActiveVersion:
         _seed_bank(db_session, org.id, educator.id)
         row = (
             db_session.query(QuestionBankOrgStatus)
-            .filter_by(organisation_id=org.id, question_bank_id="test-bank")
+            .filter_by(
+                org_unit_id=_place_of(org), question_bank_id="test-bank"
+            )
             .one()
         )
         row.active_version = 1
         db_session.add(
             QuestionBankConfig(
-                organisation_id=org.id,
+                org_unit_id=_place_of(org),
                 question_bank_id="test-bank",
                 version=2,
                 title="Test Bank",
@@ -1629,7 +1660,7 @@ class TestBankOrgSettingsSetTheActiveVersion:
         for version in (2, 3):
             db_session.add(
                 QuestionBankConfig(
-                    organisation_id=org.id,
+                    org_unit_id=_place_of(org),
                     question_bank_id="test-bank",
                     version=version,
                     title="Test Bank",
@@ -1650,7 +1681,9 @@ class TestBankOrgSettingsSetTheActiveVersion:
 
         row = (
             db_session.query(QuestionBankOrgStatus)
-            .filter_by(organisation_id=org.id, question_bank_id="test-bank")
+            .filter_by(
+                org_unit_id=_place_of(org), question_bank_id="test-bank"
+            )
             .one()
         )
         assert row.active_version == 3
@@ -1693,7 +1726,7 @@ class TestBankOrgSettingsAreScopedToYourOrganisations:
         # belong to — a 403 that still wrote would be no fix at all.
         assert (
             db_session.query(QuestionBankOrgStatus)
-            .filter_by(organisation_id=other.id)
+            .filter_by(org_unit_id=_place_of(other))
             .count()
             == 0
         )
@@ -1730,7 +1763,9 @@ class TestBankOrgSettingsAreScopedToYourOrganisations:
         assert resp.status_code == 200
         row = (
             db_session.query(QuestionBankOrgStatus)
-            .filter_by(organisation_id=second.id, question_bank_id="test-bank")
+            .filter_by(
+                org_unit_id=_place_of(second), question_bank_id="test-bank"
+            )
             .one()
         )
         assert row.is_live is True
@@ -1797,7 +1832,7 @@ class TestAdminBanks:
         }
 
         config = QuestionBankConfig(
-            organisation_id=org.id,
+            org_unit_id=_place_of(org),
             question_bank_id="test-bank",
             version=1,
             title="Test Bank",
@@ -1810,7 +1845,7 @@ class TestAdminBanks:
         db_session.flush()
         db_session.add(
             QuestionBankOrgStatus(
-                organisation_id=org.id,
+                org_unit_id=_place_of(org),
                 question_bank_id="test-bank",
                 is_live=True,
             )
@@ -1879,7 +1914,7 @@ def _slides_for_linked_video(
     _make_learner(db_session, org)
     db_session.add(
         ModuleMediaLink(
-            organisation_id=org.id,
+            org_unit_id=_place_of(org),
             question_bank_id="test-bank",
             media_key="lecture-01",
             asset_id="asset1",
@@ -2646,7 +2681,7 @@ class TestModuleMedia:
         """
         db.add(
             ModuleMediaLink(
-                organisation_id=org_id,
+                org_unit_id=_place_of_id(db, org_id),
                 question_bank_id="test-bank",
                 media_key=key,
                 asset_id=asset,
@@ -2820,7 +2855,7 @@ class TestMediaLinking:
     def _existing(self, db, org_id: int, key: str, asset: str) -> None:
         db.add(
             ModuleMediaLink(
-                organisation_id=org_id,
+                org_unit_id=_place_of_id(db, org_id),
                 question_bank_id="test-bank",
                 media_key=key,
                 asset_id=asset,
@@ -3051,7 +3086,7 @@ class TestMediaCaptions:
     def _upload(self, db, org_id: int, asset: str) -> None:
         db.add(
             ModuleMediaLink(
-                organisation_id=org_id,
+                org_unit_id=_place_of_id(db, org_id),
                 question_bank_id="test-bank",
                 media_key="lecture-01",
                 asset_id=asset,
@@ -3277,7 +3312,7 @@ class TestIncompleteModulesAreNotServed:
         """
         db.add(
             ModuleMediaLink(
-                organisation_id=org_id,
+                org_unit_id=_place_of_id(db, org_id),
                 question_bank_id="test-bank",
                 media_key=key,
                 asset_id=asset,
@@ -3410,7 +3445,7 @@ class TestIncompleteModulesAreNotServed:
         lacks = _make_teaching_org(db_session)
         db_session.add(
             QuestionBankOrgStatus(
-                organisation_id=lacks.id,
+                org_unit_id=_place_of(lacks),
                 question_bank_id="test-bank",
                 is_live=True,
                 active_version=1,
@@ -3445,7 +3480,7 @@ class TestMediaAssetDeletion:
     def _existing(self, db, org_id: int, key: str, asset: str) -> None:
         db.add(
             ModuleMediaLink(
-                organisation_id=org_id,
+                org_unit_id=_place_of_id(db, org_id),
                 question_bank_id="test-bank",
                 media_key=key,
                 asset_id=asset,
@@ -3674,7 +3709,7 @@ class TestVideoResolutionOnTheGcsPath:
         _make_learner(db_session, org)
         db_session.add(
             ModuleMediaLink(
-                organisation_id=org.id,
+                org_unit_id=_place_of(org),
                 question_bank_id="test-bank",
                 media_key="lecture-01",
                 asset_id="asset1",

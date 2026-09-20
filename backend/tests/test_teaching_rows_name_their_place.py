@@ -1,23 +1,24 @@
-"""Teaching and passport rows carry a place id as well as an organisation.
+"""Teaching and passport rows name their place, and nothing else.
 
-The expand step of moving these tables off ``organisations.id``. Every
-one of them answers "which organisation?" with a row id from a table
-that is going, so each gains a place id beside it: written from this
-deploy, read from the next, and the older column dropped in the one
-after.
+The contract step of moving these tables off ``organisations.id``. The
+place id has been written and read for two deploys; here the older
+column stops being written, so a row carries the place alone.
 
-What matters here is that both are written *together*. A row with only
-the old column is invisible to the code that reads the new one, and
-nothing would say so — the reader would simply find less than there is.
+The one exception is ``ModuleMediaLink.organisation_id``, which is where
+the object sits in the bucket rather than who owns the row. It is still
+filled, from the place, and the last test says so.
 """
 
 from __future__ import annotations
+
+from datetime import UTC, datetime
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.features.teaching.models import (
+    ModuleMediaLink,
     QuestionBankOrgStatus,
     TeachingOrgSettings,
 )
@@ -68,7 +69,7 @@ def _login(client: TestClient) -> dict[str, str]:
     return {"X-CSRF-Token": client.cookies.get("XSRF-TOKEN", "")}
 
 
-class TestThePlaceIsWrittenBeside:
+class TestTheRowsNameTheirPlace:
     def test_the_two_ids_are_not_the_same_number(
         self, db_session: Session, org: Organisation
     ) -> None:
@@ -99,8 +100,8 @@ class TestThePlaceIsWrittenBeside:
 
         assert resp.status_code == 200, resp.text
         row = db_session.query(TeachingOrgSettings).one()
-        assert row.organisation_id == org.id
         assert row.org_unit_id == org.org_unit_id
+        assert row.organisation_id is None
 
 
 class TestTheTranslation:
@@ -115,21 +116,20 @@ class TestTheTranslation:
         assert place_of_organisation(db_session, 999999) is None
 
 
-class TestEitherIdAloneIsEnough:
-    """A writer may name either, and the row carries both.
+class TestTheOrganisationColumnIsNotWritten:
+    """A writer names the place, and the older column stays empty.
 
-    Eight tables and more writers than the eight places the application
-    creates these rows — fixtures, scripts, and whatever is written
-    next. A row carrying only one of the two is invisible to half the
-    code and nothing says so, so the pair is kept in step by a listener
-    rather than by remembering.
+    It still exists, nullable, so that a rollback to the revision before
+    this one finds it. Filling it would be worse than leaving it: a half
+    of the rows carrying a stale number is how a reader comes to trust
+    one.
     """
 
-    def test_naming_the_organisation_fills_the_place(
+    def test_a_row_named_by_place_leaves_the_organisation_empty(
         self, db_session: Session, org: Organisation
     ) -> None:
         row = QuestionBankOrgStatus(
-            organisation_id=org.id,
+            org_unit_id=org.org_unit_id,
             question_bank_id="a-bank",
             is_live=True,
         )
@@ -137,16 +137,32 @@ class TestEitherIdAloneIsEnough:
         db_session.commit()
 
         assert row.org_unit_id == org.org_unit_id
+        assert row.organisation_id is None
 
-    def test_naming_the_place_fills_the_organisation(
+
+class TestTheMediaLinkKeepsItsAddress:
+    """The one column of this group that is still filled.
+
+    Media objects live at ``{organisation_id}/{module}/{asset}``, and
+    the signed cookie's prefix covers that path, so the number addresses
+    a file rather than filtering a table. A row written without it would
+    point nowhere.
+    """
+
+    def test_naming_the_place_fills_the_bucket_prefix(
         self, db_session: Session, org: Organisation
     ) -> None:
-        row = QuestionBankOrgStatus(
+        link = ModuleMediaLink(
             org_unit_id=org.org_unit_id,
-            question_bank_id="another-bank",
-            is_live=True,
+            question_bank_id="a-bank",
+            media_key="lecture-01",
+            asset_id="asset-1",
+            original_filename="asset-1.mp4",
+            content_type="video/mp4",
+            size_bytes=1024,
+            uploaded_at=datetime.now(UTC),
         )
-        db_session.add(row)
+        db_session.add(link)
         db_session.commit()
 
-        assert row.organisation_id == org.id
+        assert link.organisation_id == org.id
