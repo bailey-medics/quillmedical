@@ -1,0 +1,73 @@
+# Monthly check on whether the TypeScript major-version hold still applies.
+#
+# renovate.json holds major TypeScript upgrades behind Dependency Dashboard
+# approval, because typescript-eslint refuses to load against the TS 7 API.
+# Holds like that have no natural end: nothing in Renovate watches for the
+# day one stops being necessary, and the note beside it reminds nobody. The
+# Python 3.13.x pin in the same file said "Revisit Q3 2026" while the
+# Dockerfiles had already moved to 3.14.
+#
+# Schedule: the 1st of each month at 09:00 UTC. typescript-eslint support for
+# a TypeScript major lands once, not continuously, so a monthly look is
+# plenty and a daily one would only train people to ignore it.
+name: TypeScript hold check
+
+on:
+  schedule:
+    - cron: "0 9 1 * *"
+  workflow_dispatch:
+    inputs:
+      peer_range:
+        description: >-
+          Peer range to test instead of asking npm. Use it to rehearse a
+          range that has not shipped yet, and confirm the issue this opens
+          reads the way you want.
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+  issues: write # Opens the issue when the hold can go
+
+concurrency:
+  group: typescript-hold-check
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Check whether the hold can be lifted
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      liftable: ${{ steps.check.outputs.liftable }}
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Check typescript-eslint's peer range
+        id: check
+        env:
+          PEER_RANGE: ${{ inputs.peer_range }}
+        run: bash .github/scripts/ci/check-typescript-hold.sh
+
+  # ---------- Raise an issue ----------
+  #
+  # Only when the hold can actually go. A monthly "still held" issue would be
+  # exactly the kind of routine notification people learn to ignore, which is
+  # the failure this whole thing exists to prevent.
+  raise-issue:
+    name: Raise an issue
+    needs: check
+    if: ${{ needs.check.outputs.liftable != '' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Open or find the issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPORT: ${{ needs.check.outputs.liftable }}
+        run: bash .github/scripts/ci/raise-typescript-hold-issue.sh

@@ -209,10 +209,11 @@
       "allowedVersions": "<3.14"
     },
     {
-      "description": "Hold TypeScript at 6.x — typescript-eslint refuses to load against the TS 7 API and declares a peer range of >=4.8.4 <6.1.0, so the eslint job throws before it lints a file. tsc and the test suites are fine on TS 7; the linter alone is the blocker. Lift this once typescript-eslint supports TS >=7.1 — see https://github.com/typescript-eslint/typescript-eslint/issues/10940.",
+      "description": "Hold major TypeScript upgrades behind Dependency Dashboard approval — typescript-eslint refuses to load against the TS 7 API and declares a peer range of >=4.8.4 <6.1.0, so the eslint job throws before it lints a file. tsc and the test suites are fine on TS 7; the linter alone is the blocker. This is deliberately dependencyDashboardApproval rather than allowedVersions: allowedVersions would filter the upgrade out of Renovate's view entirely and leave nothing to come back to, whereas this keeps it listed under Pending Approval on the dashboard until someone ticks it. Tick the box once typescript-eslint supports TS >=7.1 and Renovate will raise the PR — see https://github.com/typescript-eslint/typescript-eslint/issues/10940.",
       "matchManagers": ["npm"],
       "matchPackageNames": ["typescript"],
-      "allowedVersions": "<7"
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
     }
   ],
   "pre-commit": {
