@@ -479,6 +479,50 @@ there is any doubt.
 
 Rediscovered three times in one session before it was written down.
 
+### A stopped Docker daemon is not a reason to skip the tests
+
+Every test recipe here runs in a container, so on a machine where Docker
+Desktop is not running they all fail the same way, before a single test is
+collected:
+
+```text
+Cannot connect to the Docker daemon at unix:///var/run/docker.sock.
+Is the docker daemon running?
+```
+
+That is a stopped daemon, not a broken test run — and not a reason to report
+back that the Docker tests were left out. **Start the daemon, then run them.**
+
+```bash
+just dds    # docker-daemon-start: opens Docker Desktop, waits until
+            # `docker system info` answers, prints "Docker is running."
+```
+
+Then re-run whichever recipe failed — `just ub -k "…"`, `just uf
+src/path/to/file.test.tsx`, `just e2e`, `just migrate "…"` — and
+report its real result.
+
+- **Do this without asking first.** Starting the daemon changes nothing in
+  the repository and nothing outside the machine. It is setup for a command
+  already agreed, not a new decision.
+- **`just sd`, `just st` and `just ts` already do it themselves**, via the
+  private `_start-docker-daemon` recipe (same check, with a 60s timeout and a
+  clear message when the host is not macOS). The unit-test, E2E and migration
+  recipes do not, which is why this rule exists.
+- **`just dds` only knows how to drive Docker Desktop on macOS.** On any
+  other host it will not help: say the daemon is down and what it needs,
+  rather than quietly dropping the tests.
+- **It waits indefinitely** for the daemon to answer, so a `just dds` still
+  running after a minute or two means Docker Desktop itself is stuck. Stop
+  waiting and report that.
+- **Never substitute a host-level run** — a bare `pytest`, `yarn
+  unit-test:run` or `npx playwright` — because the daemon was down. The
+  container is what makes the run correct; see the section below.
+
+**Never report a suite as passing that Docker refused to run**, and never let
+a daemon failure stand in for a test result. Either the suite ran, and the
+command and its outcome are named, or it did not run and that is said plainly.
+
 ### Tests run from any worktree; the dev stack belongs to one
 
 There are several worktrees of this repository, but only one dev stack. Its
