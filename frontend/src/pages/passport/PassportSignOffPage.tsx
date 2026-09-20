@@ -4,9 +4,10 @@
  * One sign-off in full, and the form for signing it.
  *
  * The passport id is not in the route: an assessor reaching this page
- * knows the sign-off id from their inbox, and the API resolves which
- * passport it belongs to from the request row naming them. That keeps
- * the URL from implying an assessor may address a passport directly.
+ * knows the sign-off id from their inbox, and the inbox says which
+ * passport each request belongs to. That keeps the URL from implying an
+ * assessor may address a passport directly — they may reach exactly the
+ * requests naming them, which is what the inbox returns.
  */
 
 import { useEffect, useState } from "react";
@@ -17,13 +18,12 @@ import SignOffCard from "@/components/passport/SignOffCard";
 import SignOffForm from "@/components/passport/SignOffForm";
 import ErrorState from "@/components/error-state/ErrorState";
 import { fetchInbox, signOff as submitSignOff } from "@lib/passport";
-import type { SignOff, SignOffInput } from "@lib/passport";
+import type { InboxItem, SignOffInput } from "@lib/passport";
 
 export function Component() {
   const { signOffId } = useParams<{ signOffId: string }>();
   const navigate = useNavigate();
-  const [record, setRecord] = useState<SignOff | null>(null);
-  const passportId: string | null = null;
+  const [item, setItem] = useState<InboxItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,13 +31,16 @@ export function Component() {
     let cancelled = false;
 
     // The inbox is the only list an assessor may read, and it carries
-    // the sign-off in full, so there is nothing further to fetch.
+    // the sign-off in full alongside the passport it belongs to, so
+    // there is nothing further to fetch.
     fetchInbox()
       .then((requests) => {
         if (cancelled) return;
-        const found = requests.find((request) => request.id === signOffId);
+        const found = requests.find(
+          (request) => request.sign_off.id === signOffId,
+        );
         if (found) {
-          setRecord(found);
+          setItem(found);
         } else {
           setError("That request is not in your inbox.");
         }
@@ -54,14 +57,11 @@ export function Component() {
   }, [signOffId]);
 
   async function handleSignOff(data: SignOffInput) {
-    if (!record || passportId === null) {
-      setError("This request cannot be signed from here yet.");
-      return;
-    }
+    if (!item) return;
 
     setSubmitting(true);
     try {
-      await submitSignOff(passportId, record.id, data);
+      await submitSignOff(item.passport_id, item.sign_off.id, data);
       navigate("/passport/inbox");
     } catch {
       setError("The sign-off could not be saved. Please try again.");
@@ -76,11 +76,11 @@ export function Component() {
 
       {error && <ErrorState message={error} />}
 
-      {record && (
+      {item && (
         <>
-          <SignOffCard signOff={record} />
+          <SignOffCard signOff={item.sign_off} />
           <SignOffForm
-            signOff={record}
+            signOff={item.sign_off}
             onSubmit={handleSignOff}
             onCancel={() => navigate("/passport/inbox")}
             isSubmitting={submitting}

@@ -341,6 +341,28 @@ module "cloud_run_backend" {
         "jobs", "quill-transcode-${var.environment}",
       ])
 
+      # The caption job, fired from the transcode completion report once a
+      # 720p rendition exists for Whisper to read.
+      #
+      # Every other half of the caption wiring shipped without this one:
+      # the setting in `config.py`, `start_caption` reading it, the
+      # invoker grant below, the deploy step pointing the job at its
+      # image, and the job's own callback URL and token. Only the line
+      # naming the job to the backend was missing, so the first real
+      # transcode completed, called `start_caption`, found nothing
+      # configured and returned — leaving "No captions" on the admin card
+      # with no job ever having run.
+      #
+      # It failed exactly as designed: `start_caption` treats an unset
+      # job as development rather than as an error. That is right for a
+      # laptop and invisible in production, which is the trade this
+      # comment exists to flag.
+      TEACHING_CAPTION_JOB = join("/", [
+        "projects", var.project_id,
+        "locations", var.region,
+        "jobs", "quill-caption-${var.environment}",
+      ])
+
       # Same host as the app, deliberately: the load balancer routes
       # /videos/* to the backend bucket, so the signed cookie is same-origin
       # and the browser sends it on media requests with no cross-site
@@ -492,13 +514,29 @@ module "cloud_run_transcode_job" {
 # Without this, `start_transcode` raises inside its own try/except, logs,
 # and returns None. The upload still succeeds and the module stays
 # hidden, which is the safe direction but an entirely silent failure.
+#
+# **`jobsExecutorWithOverrides`, not `invoker`.** Starting a job as
+# configured is `run.jobs.run`, which `roles/run.invoker` confers.
+# Starting one with container overrides — which is how the three ids
+# reach the job, and the only way they can, since each execution needs
+# different ones — is `run.jobs.runWithOverrides`, a separate permission
+# that `run.invoker` does not include. Granting the narrower role first
+# produced exactly the silent failure described above, with the
+# distinction visible only in the traceback:
+#
+#   PERMISSION_DENIED: Permission 'run.jobs.runWithOverrides' denied on
+#   resource '.../jobs/quill-transcode-teaching'
+#
+# `roles/run.developer` and `roles/run.admin` also carry it, and both
+# carry a great deal else besides. This role is the two permissions and
+# nothing more, which is what a serving application should hold.
 resource "google_cloud_run_v2_job_iam_member" "backend_invokes_transcode" {
   count = var.environment == "teaching" ? 1 : 0
 
   project  = var.project_id
   location = var.region
   name     = module.cloud_run_transcode_job[0].job_name
-  role     = "roles/run.invoker"
+  role     = "roles/run.jobsExecutorWithOverrides"
   member   = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
 }
 
@@ -512,7 +550,7 @@ resource "google_cloud_run_v2_job_iam_member" "backend_invokes_caption" {
   project  = var.project_id
   location = var.region
   name     = module.cloud_run_caption_job[0].job_name
-  role     = "roles/run.invoker"
+  role     = "roles/run.jobsExecutorWithOverrides"
   member   = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
 }
 
