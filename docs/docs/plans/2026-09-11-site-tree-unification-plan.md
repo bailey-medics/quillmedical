@@ -889,8 +889,12 @@ So the remaining steps land as:
 - [x] 12b-ii — an organisation created as a place is still an organisation
 - [x] 12b-iii — the users API learns place ids, beside the old ones
 - [x] 12b-iv — the user form onto place ids
-- [ ] 12b-v — retire the organisation and site lists on the users API
-- [ ] 12b-vi — drop the `organisations` table, and enforce the type flags
+- [x] 12b-v — the features, patients and staff rules onto the place surface
+- [ ] 12b-vi — the remaining organisation-surface tests onto places
+- [ ] 12b-vii — retire `/api/organisations`
+- [ ] 12b-viii — drop the `organisations` table, and enforce the type flags
+- [ ] 12b-ix — retire the organisation and site lists on the users API,
+      a release after 12b-iii expanded them
 
 #### 10a — write both names for the place column
 
@@ -1312,6 +1316,27 @@ asks either old surface anything now.
   Somebody may administer a ward without administering the tree above it;
   showing it under a name we do not have would be worse than not showing
   it, and the place's own screens can still put people there.
+
+#### 12b-v — features, patients and staff, on the place surface
+
+The first group of organisation-surface tests moved across, and moving
+them turned up two more places where the new surface had quietly drifted
+from the old.
+
+- **Switching a feature on was operator-only on the place surface.** The
+  organisations surface asks for `manage_users` at an organisation the
+  caller administers, and the teaching plan says the same: features are
+  how an organisation says what it does, and its own administrators
+  settle that. Retiring the older surface would have taken a working
+  thing away from every admin. The competency gate was missing from the
+  route as well, so it now asks for both.
+- **The organisation page listed trainees as staff again.** The old
+  response had a filtered `staff_members` list; a place answers with
+  everybody who is there and what each of them is, which is right for the
+  answer and wrong for a heading promising staff. The page filters now,
+  and the rule is tested where it lives — on the screen.
+- **Patients and features moved without incident**, the shapes being the
+  same either side.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to
