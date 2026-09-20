@@ -887,8 +887,10 @@ So the remaining steps land as:
 - [x] 12a-iii — retire `/api/sites`
 - [x] 12b-i — the kinds of organisation become kinds of place
 - [x] 12b-ii — an organisation created as a place is still an organisation
-- [ ] 12b-iii — the user form off the organisations surface
-- [ ] 12b-iv — drop the `organisations` table, and enforce the type flags
+- [x] 12b-iii — the users API learns place ids, beside the old ones
+- [ ] 12b-iv — the user form onto place ids
+- [ ] 12b-v — retire the organisation and site lists on the users API
+- [ ] 12b-vi — drop the `organisations` table, and enforce the type flags
 
 #### 10a — write both names for the place column
 
@@ -1260,6 +1262,35 @@ anybody would try after creating it.
 - **This is scaffolding with a known end.** The whole point of 12b-iv is
   that one of the two tables goes; until it does, the honest thing is for
   both to describe the same world rather than half of one.
+
+#### 12b-iii — the users API learns place ids
+
+The user form is the last reader of `/api/organisations`, because the
+ids it sends to the users API are organisation ids. Changing what those
+numbers mean in one step would be a breaking change no schema check can
+see: a tab left open across the deploy would write place ids into fields
+counted against another table, and nothing would notice. So it expands
+first — the decision recorded is to expand and contract rather than
+reinterpret.
+
+- **`place_ids` is the one list**, counting in place ids, organisations
+  included. There is one table of places, so there is nothing to split
+  into two fields.
+- **A request may use one vocabulary or the other, never both.** The same
+  number means different things in each, so applying both would make the
+  answer depend on which was applied last. Sending both is refused.
+- **What somebody is at a place is unchanged**: staff at an organisation,
+  a trainee at a place inside one, exactly as the two older lists each
+  did. Widening the request must not quietly change who counts as staff;
+  settling on one answer is a separate decision.
+- **An admin settles their own places and leaves the rest.** Saving the
+  form clears the memberships they can administer and keeps the others,
+  so an admin at one trust cannot empty somebody's memberships at
+  another by saving a form they could not even read. The old `site_ids`
+  path checked only that a place existed, which is the hole this closes
+  on the way past.
+
+`oasdiff` reports no breaking change, as an expand step should.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to

@@ -45,8 +45,6 @@ from app.org_units.relations import (
     validate_org_unit_relation,
 )
 from app.org_units.tree import (
-    descendant_ids,
-    root_ids_of_organisations,
     would_make_a_cycle,
 )
 from app.org_units.types import (
@@ -58,7 +56,7 @@ from app.org_units.types import (
     type_requires_parent,
     validate_org_unit_type,
 )
-from app.organisations import get_member_org_ids
+from app.organisations import places_administered_by
 from app.schemas.org_units import (
     AddOrgUnitMemberIn,
     AddOrgUnitPatientIn,
@@ -122,11 +120,7 @@ def _visible_ids(db: Session, user: User) -> set[int] | None:
     teaching content at a place they visit; it is not authority to
     administer that place, and these are the administration routes.
     """
-    if user.platform_role == "superadmin":
-        return None
-
-    roots = root_ids_of_organisations(db, get_member_org_ids(db, user.id))
-    return set(roots) | descendant_ids(db, roots)
+    return places_administered_by(db, user)
 
 
 def _require_visible(db: Session, user: User, unit_id: int) -> OrgUnit:
