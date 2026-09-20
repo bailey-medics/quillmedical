@@ -131,11 +131,15 @@ def appoint(
     start = started_on or _today()
 
     if position.requires_competency is not None:
-        allowed = can_practise_at(
+        # A post with no place has no place to be authorised at, so
+        # nobody qualifies for it. Failing closed rather than raising:
+        # the column is nullable, so the state is representable, and a
+        # post nobody can fill is safer than one anybody can.
+        allowed = position.org_unit_id is not None and can_practise_at(
             db,
             user,
             position.requires_competency,
-            site_id=position.org_unit_id,
+            place_id=position.org_unit_id,
         )
         if not allowed:
             raise ValueError(

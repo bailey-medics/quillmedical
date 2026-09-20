@@ -81,10 +81,10 @@ class TestTheCeilingNarrowsEveryPlace:
             db_session,
             receptionist,
             "access_patient_records",
-            organisation_id=org.id,
+            place_id=org.org_unit_id,
         )
         assert (
-            competencies_at(db_session, receptionist, organisation_id=org.id)
+            competencies_at(db_session, receptionist, place_id=org.org_unit_id)
             == set()
         )
 
@@ -98,7 +98,7 @@ class TestTheCeilingNarrowsEveryPlace:
             db_session,
             doctor,
             "access_patient_records",
-            organisation_id=org.id,
+            place_id=org.org_unit_id,
         )
 
 
@@ -115,10 +115,10 @@ class TestNothingIsInherited:
             db_session,
             doctor,
             "access_patient_records",
-            organisation_id=org.id,
+            place_id=org.org_unit_id,
         )
         assert not can_practise_at(
-            db_session, doctor, "access_patient_records", site_id=site.id
+            db_session, doctor, "access_patient_records", place_id=site.id
         )
 
     def test_a_site_row_does_not_reach_its_organisation(self, db_session):
@@ -128,13 +128,13 @@ class TestNothingIsInherited:
         _authorise(db_session, doctor, "access_patient_records", site=site)
 
         assert can_practise_at(
-            db_session, doctor, "access_patient_records", site_id=site.id
+            db_session, doctor, "access_patient_records", place_id=site.id
         )
         assert not can_practise_at(
             db_session,
             doctor,
             "access_patient_records",
-            organisation_id=org.id,
+            place_id=org.org_unit_id,
         )
 
 
@@ -151,7 +151,7 @@ class TestBothDirections:
         )
 
         assert competencies_at(
-            db_session, doctor, organisation_id=here.id
+            db_session, doctor, place_id=here.org_unit_id
         ) == {"access_patient_records"}
 
     def test_who_can_practise_at_finds_everyone_authorised_here(
@@ -167,7 +167,7 @@ class TestBothDirections:
         _authorise(db_session, cara, "access_patient_records", org=there)
 
         found = who_can_practise_at(
-            db_session, "access_patient_records", organisation_id=here.id
+            db_session, "access_patient_records", place_id=here.org_unit_id
         )
         assert sorted(found) == sorted([anna.id, ben.id])
 
@@ -186,41 +186,55 @@ class TestBothDirections:
         )
 
         assert who_can_practise_at(
-            db_session, "access_patient_records", organisation_id=here.id
+            db_session, "access_patient_records", place_id=here.org_unit_id
         ) == [receptionist.id]
         assert not can_practise_at(
             db_session,
             receptionist,
             "access_patient_records",
-            organisation_id=here.id,
+            place_id=here.org_unit_id,
         )
 
 
-class TestTheResolverRefusesToGuess:
-    """Naming no place, or two, is a caller bug rather than a default."""
+class TestTheResolverAsksForOnePlace:
+    """One place, named once.
 
-    def test_naming_no_place_raises(self, db_session):
+    This used to take an organisation id or a site id and refuse both or
+    neither, because an organisation was a row in another table. An
+    organisation is a place now, so the pair collapsed into one required
+    argument and Python does the refusing.
+    """
+
+    def test_naming_no_place_is_a_type_error(self, db_session):
         doctor = _user(db_session, "doc")
-        with pytest.raises(ValueError, match="exactly one place"):
+        with pytest.raises(TypeError):
             can_practise_at(db_session, doctor, "access_patient_records")
 
-    def test_naming_both_places_raises(self, db_session):
+    def test_competencies_at_asks_the_same_way(self, db_session):
+        doctor = _user(db_session, "doc")
+        with pytest.raises(TypeError):
+            competencies_at(db_session, doctor)
+
+    def test_an_organisation_and_a_place_beneath_it_are_named_alike(
+        self, db_session
+    ):
+        """Which is the point of the collapse: one argument, two kinds
+        of place, no branch for the caller to get wrong."""
         org = _org(db_session, "Trust")
         site = _site(db_session, "Ward 1")
         doctor = _user(db_session, "doc")
-        with pytest.raises(ValueError, match="exactly one place"):
-            can_practise_at(
-                db_session,
-                doctor,
-                "access_patient_records",
-                organisation_id=org.id,
-                site_id=site.id,
-            )
+        _authorise(db_session, doctor, "access_patient_records", org=org)
+        _authorise(db_session, doctor, "access_patient_records", site=site)
 
-    def test_competencies_at_refuses_the_same_way(self, db_session):
-        doctor = _user(db_session, "doc")
-        with pytest.raises(ValueError, match="exactly one place"):
-            competencies_at(db_session, doctor)
+        assert can_practise_at(
+            db_session,
+            doctor,
+            "access_patient_records",
+            place_id=org.org_unit_id,
+        )
+        assert can_practise_at(
+            db_session, doctor, "access_patient_records", place_id=site.id
+        )
 
 
 class TestTheDatabaseKeepsAGrantToOnePlace:

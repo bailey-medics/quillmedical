@@ -32,9 +32,11 @@ from app.models import (
     org_unit_member,
     org_unit_patient_member,
 )
-from app.org_units.tree import root_ids_of_organisations
 from app.org_units.types import ROOT_TYPE_IDS
-from app.organisations import add_place_member
+from app.organisations import (
+    add_place_member,
+    organisation_places_of,
+)
 from app.security import hash_password
 
 
@@ -1253,9 +1255,7 @@ class TestAnOrganisationCreatedAsAPlace:
         )
         db_session.commit()
 
-        assert root_ids_of_organisations(db_session, [organisation.id]) == [
-            place_id
-        ]
+        assert organisation_places_of(db_session, [place_id]) == {place_id}
 
     def test_renaming_it_renames_the_organisation(
         self, authenticated_superadmin_client, db_session
