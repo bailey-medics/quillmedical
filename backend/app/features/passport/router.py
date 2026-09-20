@@ -79,8 +79,6 @@ from app.passport_storage import get_blob_store, get_passport_store
 from app.schemas.passport import (
     AssessorInviteAcceptIn,
     AssessorInviteAcceptOut,
-    AssessorInviteIn,
-    AssessorInviteOut,
     AssessorMatchOut,
     AssessorRevokeOut,
     AssessorSearchOut,
