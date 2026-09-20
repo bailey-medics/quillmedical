@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "private": true,
-  "packageManager": "yarn@4.14.1",
+  "packageManager": "yarn@4.18.0",
   "workspaces": [
     "public_pages"
   ],
@@ -17,7 +17,7 @@
     "storybook": "yarn generate:types && storybook dev -p 6006",
     "storybook:build": "yarn generate:types && storybook build -o ../docs/docs/code/storybook",
     "storybook:test": "test-storybook --testTimeout 30000 ${SB_MAX_WORKERS:+--maxWorkers=$SB_MAX_WORKERS}",
-    "storybook:test:ci": "concurrently -k -s first -n \"SB,TEST\" -c \"magenta,blue\" \"yarn storybook --no-open --quiet --ci\" \"wait-on tcp:127.0.0.1:6006 -t 120000 && yarn storybook:test\"",
+    "storybook:test:ci": "concurrently -k -s first -n \"SB,TEST\" -c \"magenta,blue\" \"yarn storybook --no-open --quiet --ci\" \"wait-on http-get://127.0.0.1:6006/index.json -t 120000 && yarn storybook:test\"",
     "docs:build": "typedoc",
     "husky:prepare": "husky",
     "lint-staged": "lint-staged",
@@ -40,7 +40,7 @@
     "@fontsource-variable/cormorant-garamond": "^5.3.0",
     "@mantine/core": "^9.0.0",
     "@mantine/dates": "^9.0.0",
-    "@mantine/dropzone": "9.6.0",
+    "@mantine/dropzone": "9.6.1",
     "@mantine/hooks": "^9.0.0",
     "@mantine/notifications": "^9.0.0",
     "@tabler/icons-react": "^3.34.1",
@@ -91,7 +91,6 @@
     "eslint-plugin-react-refresh": "^0.5.0",
     "eslint-plugin-regexp": "^3.0.0",
     "eslint-plugin-storybook": "10.5.10",
-    "eslint-plugin-unicorn": "^65.0.0",
     "globals": "^17.0.0",
     "husky": "9.1.7",
     "js-yaml": "^4.1.0",

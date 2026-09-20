@@ -37,6 +37,7 @@ import type {
   FormSubmitResult,
 } from "@/components/form/Form";
 import { api } from "@/lib/api";
+import { orgUnits } from "@/domains/orgUnit";
 import { useAuth } from "@/auth/AuthContext";
 import ErrorState from "@/components/error-state/ErrorState";
 import { holdsStaffLikeCompetency } from "@/lib/cbac/staffLike";
@@ -231,8 +232,11 @@ export default function AddStaffToOrgPage() {
     data: AddStaffFormValues,
   ): Promise<FormSubmitResult> {
     try {
-      await api.post(`/organisations/${id}/staff`, {
+      await orgUnits.addMember(Number(id), {
         user_id: Number(data.userId),
+        // The old route assumed this; the new one asks, because a place
+        // takes trainees and external assessors too.
+        capacity: "staff",
         // Omitted rather than sent as null, so the request says nothing
         // about a grant where none was asked for.
         ...(data.baseProfession

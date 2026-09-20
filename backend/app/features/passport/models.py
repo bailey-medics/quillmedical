@@ -116,6 +116,13 @@ class PassportSignOffRequest(Base):
     ``signoff_id`` is the folder name inside the repository, so a row can
     be joined back to the record it produced without the row ever holding
     the record's contents.
+
+    **The assessor is named by email, not by account.** Everything the
+    row must know is known when the holder asks: the passport, the
+    competency, the address the request went to, and its state. None of
+    them is null at any point. ``assessor_user_id`` is the exception and
+    means something different — who signed — so it is null for exactly
+    as long as ``status`` says nobody has.
     """
 
     __tablename__ = "passport_signoff_request"
@@ -136,9 +143,25 @@ class PassportSignOffRequest(Base):
     #: retired competency must stay readable on records that reference it.
     competency_id: Mapped[str] = mapped_column(String(100), nullable=False)
 
-    assessor_user_id: Mapped[int] = mapped_column(
+    #: Who was asked, as the holder named them. An email address rather
+    #: than a user id because that is what a holder knows at the moment
+    #: of asking: the assessor observing a registrar may have no Quill
+    #: account, and requiring one first is what made this feature
+    #: unreachable for the case it exists to serve. Matching it to a
+    #: ``users`` row is a lookup, never a precondition.
+    assessor_email: Mapped[str] = mapped_column(
+        String(255), nullable=False, server_default=""
+    )
+
+    #: Who signed, set from the authenticated signer at the moment of
+    #: signing. Null means nobody has yet — the same thing
+    #: ``accepted_at`` records on an invite — not that the assessor is
+    #: unknown, which ``assessor_email`` always answers. Never copied
+    #: from the request, so it names whoever truly signed rather than
+    #: whoever was expected to.
+    assessor_user_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
 
@@ -164,12 +187,16 @@ class PassportSignOffRequest(Base):
             "signoff_id",
             name="uq_passport_signoff_request_folder",
         ),
-        # The inbox query: an assessor's open requests. Indexed together
-        # because that is how it is read, and it is read on every page
-        # load for anyone who assesses.
+        # The inbox query: an assessor's open requests, found by the
+        # address they were asked at rather than by account. An assessor
+        # invited before they had a Quill account must see the request
+        # that brought them here, and their user id did not exist when
+        # it was written. Indexed together because that is how it is
+        # read, and it is read on every page load for anyone who
+        # assesses.
         Index(
             "ix_passport_signoff_request_inbox",
-            "assessor_user_id",
+            "assessor_email",
             "status",
         ),
     )
@@ -387,7 +414,9 @@ class SiteCommonCompetency(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
 
     site_id: Mapped[int | None] = mapped_column(
-        ForeignKey("sites.id", ondelete="CASCADE"), nullable=True, index=True
+        ForeignKey("org_unit.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
     )
 
     organisation_id: Mapped[int | None] = mapped_column(

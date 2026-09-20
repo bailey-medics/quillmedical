@@ -22,7 +22,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.cbac.scoped import can_practise_at
-from app.models import Position, PositionHolding, Site, User
+from app.models import OrgUnit, Position, PositionHolding, User
 
 
 def _today() -> date:
@@ -135,8 +135,7 @@ def appoint(
             db,
             user,
             position.requires_competency,
-            organisation_id=position.organisation_id,
-            site_id=position.site_id,
+            site_id=position.org_unit_id,
         )
         if not allowed:
             raise ValueError(
@@ -220,7 +219,7 @@ def holders_of(
 CLINICAL_LEAD = "clinical_lead"
 
 
-def clinical_lead_post(db: Session, site: Site) -> Position:
+def clinical_lead_post(db: Session, site: OrgUnit) -> Position:
     """Return a site's clinical lead post, creating it if absent.
 
     Created on demand rather than with every site, because a post nobody
@@ -241,14 +240,14 @@ def clinical_lead_post(db: Session, site: Site) -> Position:
     """
     post = db.execute(
         select(Position).where(
-            Position.site_id == site.id,
+            Position.org_unit_id == site.id,
             Position.kind == CLINICAL_LEAD,
         )
     ).scalar_one_or_none()
 
     if post is None:
         post = Position(
-            site_id=site.id,
+            org_unit_id=site.id,
             kind=CLINICAL_LEAD,
             title="Clinical lead",
             max_holders=1,
@@ -260,7 +259,7 @@ def clinical_lead_post(db: Session, site: Site) -> Position:
 
 def set_clinical_lead(
     db: Session,
-    site: Site,
+    site: OrgUnit,
     user: User | None,
     *,
     appointed_by: User | None = None,
@@ -311,10 +310,10 @@ def clinical_leads_of(db: Session, site_ids: list[int]) -> dict[int, int]:
         return {}
 
     rows = db.execute(
-        select(Position.site_id, PositionHolding.user_id)
+        select(Position.org_unit_id, PositionHolding.user_id)
         .join(PositionHolding, PositionHolding.position_id == Position.id)
         .where(
-            Position.site_id.in_(site_ids),
+            Position.org_unit_id.in_(site_ids),
             Position.kind == CLINICAL_LEAD,
             PositionHolding.is_acting.is_(False),
             PositionHolding.started_on <= _today(),

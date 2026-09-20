@@ -54,8 +54,15 @@ export function Component() {
 
       {error && <ErrorState message={error} />}
 
+      {/* Held back until the fetch returns, unlike the passport's own
+          empty states, which show straight away rather than flicker.
+          This one is about other people's requests: "Nothing waiting"
+          shown before the answer arrives could have an assessor glance,
+          see nothing and close the page while somebody is in fact
+          waiting on them. A moment's flicker is the cheaper mistake. */}
       {!loading && requests.length === 0 && (
         <StateMessage
+          colour="update"
           icon={<IconFileText />}
           title="Nothing waiting"
           description="Requests appear here when somebody asks you to assess them."

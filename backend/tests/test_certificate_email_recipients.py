@@ -17,7 +17,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import BackgroundTasks
-from sqlalchemy import insert
+from sqlalchemy import insert, update
 from sqlalchemy.orm import Session
 
 from app.cbac.positions import set_clinical_lead
@@ -29,10 +29,9 @@ from app.features.teaching.models import (
 from app.features.teaching.router import _maybe_enqueue_certificate_emails
 from app.models import (
     Organisation,
-    Site,
+    OrgUnit,
     User,
-    organisation_site,
-    site_member,
+    org_unit_member,
 )
 from app.security import hash_password
 
@@ -84,20 +83,20 @@ def _org(db: Session, name: str) -> Organisation:
     return org
 
 
-def _site_of(db: Session, org: Organisation, name: str) -> Site:
-    site = Site(name=name, type="ward")
+def _site_of(db: Session, org: Organisation, name: str) -> OrgUnit:
+    site = OrgUnit(name=name, type="ward")
     db.add(site)
     db.commit()
     db.execute(
-        insert(organisation_site).values(
-            organisation_id=org.id, site_id=site.id
-        )
+        update(OrgUnit)
+        .where(OrgUnit.id == site.id)
+        .values(parent_id=org.org_unit_id)
     )
     db.commit()
     return site
 
 
-def _make_lead(db: Session, site: Site, user: User) -> None:
+def _make_lead(db: Session, site: OrgUnit, user: User) -> None:
     """Make someone the clinical lead, the way the API does.
 
     Both the post and the role column are written while the column still
@@ -105,8 +104,10 @@ def _make_lead(db: Session, site: Site, user: User) -> None:
     the contract step removes it.
     """
     db.execute(
-        insert(site_member).values(
-            site_id=site.id, user_id=user.id, capacity="staff"
+        insert(org_unit_member).values(
+            org_unit_id=site.id,
+            user_id=user.id,
+            capacity="staff",
         )
     )
     set_clinical_lead(db, site, user)
@@ -276,8 +277,8 @@ class TestTheClinicalLead:
         site = _site_of(db_session, org, "Ward 1")
         impostor = _user(db_session, "dr_column_only", "column@example.test")
         db_session.execute(
-            insert(site_member).values(
-                site_id=site.id,
+            insert(org_unit_member).values(
+                org_unit_id=site.id,
                 user_id=impostor.id,
                 capacity="staff",
             )
