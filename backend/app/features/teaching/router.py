@@ -3114,7 +3114,7 @@ def list_bank_organisations(
 
     # The status rows answer in place ids; the response still answers in
     # organisation ids, which is why both are carried here.
-    place_ids = [o.org_unit_id for o in orgs]
+    place_ids = [o.org_unit_id for o in orgs if o.org_unit_id is not None]
 
     # Get bank status rows for these orgs
     statuses = {
@@ -3131,7 +3131,13 @@ def list_bank_organisations(
 
     rows: list[BankOrgRow] = []
     for org in orgs:
-        status = statuses.get(org.org_unit_id)
+        # An organisation with no row in the tree can hold no status,
+        # because a status is keyed by the place.
+        status = (
+            statuses.get(org.org_unit_id)
+            if org.org_unit_id is not None
+            else None
+        )
         rows.append(
             BankOrgRow(
                 org_unit_id=org.org_unit_id,
