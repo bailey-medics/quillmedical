@@ -744,7 +744,10 @@ class RegistrationVerificationOut(BaseModel):
     registration_number: NonEmptyText
     verified_by_name: NonEmptyText
     verified_at: datetime
-    organisation_id: int
+    #: The place of the organisation whose admin checked it. Named for
+    #: the place because that is the id it holds; ``organisation_id``,
+    #: which it replaces, counted in the organisations table's own ids.
+    org_unit_id: int
 
 
 class AssessorRevokeOut(BaseModel):
@@ -758,6 +761,9 @@ class AssessorRevokeOut(BaseModel):
 
     user_id: int
     place: NonEmptyText
+    #: A place id whichever kind ``place`` says. It used to hold the
+    #: organisation's own id when ``place`` was ``organisation``, which
+    #: the name never said and no caller could have told apart.
     place_id: int
     sign_offs_kept: int
 

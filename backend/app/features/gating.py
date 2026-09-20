@@ -24,11 +24,7 @@ from app.models import (
     User,
     org_unit_member,
 )
-from app.org_units.tree import (
-    organisation_ids_of_sites,
-    root_ids_of_organisations,
-)
-from app.organisations import organisation_member
+from app.organisations import organisation_places_of
 
 
 def requires_feature(feature_key: str) -> Callable[..., User]:
@@ -54,34 +50,24 @@ def requires_feature(feature_key: str) -> Callable[..., User]:
 
         user = get_current_user(request, db)
 
-        user_org_ids = list(
-            set(
-                db.execute(
-                    select(organisation_member.c.organisation_id).where(
-                        organisation_member.c.user_id == user.id,
+        # Every organisation a membership reaches: the ones they belong
+        # to directly, and the one accountable for any ward or clinic
+        # they belong to. One walk up answers both.
+        user_place_ids = organisation_places_of(
+            db,
+            [
+                int(place_id)
+                for place_id in db.execute(
+                    select(org_unit_member.c.org_unit_id).where(
+                        org_unit_member.c.user_id == user.id
                     )
                 )
                 .scalars()
                 .all()
-            )
-            | set(
-                organisation_ids_of_sites(
-                    db,
-                    [
-                        int(site_id)
-                        for site_id in db.execute(
-                            select(org_unit_member.c.org_unit_id).where(
-                                org_unit_member.c.user_id == user.id
-                            )
-                        )
-                        .scalars()
-                        .all()
-                    ],
-                ).values()
-            )
+            ],
         )
 
-        if not user_org_ids:
+        if not user_place_ids:
             raise HTTPException(
                 status_code=403,
                 detail="User has no organisation",
@@ -89,9 +75,7 @@ def requires_feature(feature_key: str) -> Callable[..., User]:
 
         enabled = db.scalar(
             select(OrgUnitFeature.id).where(
-                OrgUnitFeature.org_unit_id.in_(
-                    root_ids_of_organisations(db, list(user_org_ids))
-                ),
+                OrgUnitFeature.org_unit_id.in_(user_place_ids),
                 OrgUnitFeature.feature_key == feature_key,
             )
         )

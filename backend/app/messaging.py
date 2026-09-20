@@ -23,11 +23,10 @@ from app.models import (
     User,
     message_org_unit,
 )
-from app.org_units.tree import root_ids_of_organisations
 from app.organisations import (
     check_user_patient_access,
-    get_member_org_ids,
-    get_shared_org_ids,
+    get_member_place_ids,
+    get_shared_place_ids,
 )
 from app.schemas.messaging import (
     ConversationDetailOut,
@@ -136,8 +135,8 @@ class NotInMessageOrganisation(MessagingError):
 
 def _snowball_orgs(db: Session, conversation_id: int, user_id: int) -> None:
     """Add a user's org(s) to a conversation (org snowball effect)."""
-    user_orgs = get_member_org_ids(db, user_id)
-    if not user_orgs:
+    user_places = get_member_place_ids(db, user_id)
+    if not user_places:
         return
         # Get existing conversation org IDs
     existing = db.execute(
@@ -146,7 +145,7 @@ def _snowball_orgs(db: Session, conversation_id: int, user_id: int) -> None:
         )
     ).all()
     existing_place_ids = {r.org_unit_id for r in existing}
-    for place_id in root_ids_of_organisations(db, list(user_orgs)):
+    for place_id in user_places:
         if place_id not in existing_place_ids:
             db.execute(
                 message_org_unit.insert().values(
@@ -172,8 +171,7 @@ def _user_has_conversation_access(
         return True
 
         # Org overlap check
-    user_orgs = set(get_member_org_ids(db, user.id))
-    user_places = set(root_ids_of_organisations(db, list(user_orgs)))
+    user_places = set(get_member_place_ids(db, user.id))
     conv_place_ids = {place.id for place in conv.places}
     if user_places & conv_place_ids:
         return True
@@ -299,8 +297,7 @@ def create_conversation(
     db.flush()  # get conv.id
 
     # Auto-add all shared orgs between creator and patient
-    shared_org_ids = get_shared_org_ids(db, creator.id, patient_id)
-    for place_id in root_ids_of_organisations(db, shared_org_ids):
+    for place_id in get_shared_place_ids(db, creator.id, patient_id):
         db.execute(
             message_org_unit.insert().values(
                 conversation_id=conv.id,
@@ -379,8 +376,7 @@ def list_conversations(
     query = query.order_by(Conversation.updated_at.desc())
     conversations = query.all()
 
-    user_org_ids = set(get_member_org_ids(db, user.id))
-    user_place_ids = set(root_ids_of_organisations(db, list(user_org_ids)))
+    user_place_ids = set(get_member_place_ids(db, user.id))
 
     # Get per-patient access grants (for users with external patient access)
     external_patient_ids: set[str] = set()
@@ -626,8 +622,7 @@ def list_patient_conversations(
     query = query.order_by(Conversation.updated_at.desc())
     conversations = query.all()
 
-    user_org_ids = set(get_member_org_ids(db, user.id))
-    user_place_ids = set(root_ids_of_organisations(db, list(user_org_ids)))
+    user_place_ids = set(get_member_place_ids(db, user.id))
 
     # Get per-patient access grants
     ext_rows = db.execute(
@@ -699,8 +694,7 @@ def join_conversation(
     if conv is None:
         raise ConversationNotFound()
 
-    staff_org_ids = get_member_org_ids(db, user.id, capacity="staff")
-    staff_place_ids = set(root_ids_of_organisations(db, staff_org_ids))
+    staff_place_ids = set(get_member_place_ids(db, user.id, capacity="staff"))
     conv_place_ids = {place.id for place in conv.places}
     if not (staff_place_ids & conv_place_ids):
         raise NotInMessageOrganisation()

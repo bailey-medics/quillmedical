@@ -169,14 +169,21 @@ class TestThePlaceKeyedPaths:
 
         assert resp.status_code == 410, resp.text
 
-    def test_a_place_that_is_not_an_organisation_is_not_found(
+    def test_a_place_that_is_not_an_organisation_is_refused(
         self,
         test_client: TestClient,
         db_session: Session,
         org: Organisation,
         educator: User,
     ) -> None:
-        """The spacer ward in the fixtures is exactly such a place."""
+        """The spacer ward in the fixtures is exactly such a place.
+
+        Refused as a place the caller is not a member of, which is what
+        it is: membership answers in the places of organisations, so a
+        ward is never one of them and neither is a place standing on its
+        own. Same refusal as naming somebody else's trust, and for the
+        same reason — the answer discloses nothing either way.
+        """
         _seed_bank(db_session, org, educator)
         headers = _login(test_client)
 
@@ -186,4 +193,4 @@ class TestThePlaceKeyedPaths:
             headers=headers,
         )
 
-        assert resp.status_code == 404
+        assert resp.status_code == 403

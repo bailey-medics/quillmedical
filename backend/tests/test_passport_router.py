@@ -61,7 +61,10 @@ from app.models import (
     User,
     org_unit_member,
 )
-from app.organisations import add_place_member, organisation_member
+from app.organisations import (
+    add_place_member,
+    organisation_place_member,
+)
 from app.passport_storage import get_blob_store, get_passport_store
 from app.security import PASSPORT_INVITE_TYPE, hash_password
 
@@ -1256,12 +1259,14 @@ class TestAcceptingAnInvitation:
         body = response.json()
 
         assert body["place"] == "organisation"
-        assert body["place_id"] == org.id
+        # A place id whichever kind ``place`` says, now that membership
+        # counts in places. It used to be the organisation's own id.
+        assert body["place_id"] == org.org_unit_id
 
         capacity = db_session.scalar(
-            select(organisation_member.c.capacity).where(
-                organisation_member.c.organisation_id == org.id,
-                organisation_member.c.user_id == body["user_id"],
+            select(organisation_place_member.c.capacity).where(
+                organisation_place_member.c.org_unit_id == org.org_unit_id,
+                organisation_place_member.c.user_id == body["user_id"],
             )
         )
         assert capacity == "external"
@@ -1531,9 +1536,9 @@ class TestTheGateResolvesForAnAcceptedAssessor:
             )
         )
         at_org = db_session.scalar(
-            select(organisation_member.c.user_id).where(
-                organisation_member.c.organisation_id == org.id,
-                organisation_member.c.user_id == assessor_id,
+            select(organisation_place_member.c.user_id).where(
+                organisation_place_member.c.org_unit_id == org.org_unit_id,
+                organisation_place_member.c.user_id == assessor_id,
             )
         )
         assert at_site == "external"
@@ -1563,8 +1568,8 @@ class TestTheGateResolvesForAnAcceptedAssessor:
         )
 
         capacity = db_session.scalar(
-            select(organisation_member.c.capacity).where(
-                organisation_member.c.user_id == assessor_id,
+            select(organisation_place_member.c.capacity).where(
+                organisation_place_member.c.user_id == assessor_id,
             )
         )
         assert capacity == "external"
@@ -1845,9 +1850,9 @@ class TestAdminVerifyAndRevoke:
         assert response.status_code == 200, response.text
 
         remaining = db_session.scalar(
-            select(organisation_member.c.user_id).where(
-                organisation_member.c.organisation_id == org.id,
-                organisation_member.c.user_id == assessor_id,
+            select(organisation_place_member.c.user_id).where(
+                organisation_place_member.c.org_unit_id == org.org_unit_id,
+                organisation_place_member.c.user_id == assessor_id,
             )
         )
         assert remaining is None
@@ -1915,9 +1920,9 @@ class TestAdminVerifyAndRevoke:
         assert response.status_code == 404
 
         still_staff = db_session.scalar(
-            select(organisation_member.c.user_id).where(
-                organisation_member.c.organisation_id == org.id,
-                organisation_member.c.user_id == assessor.id,
+            select(organisation_place_member.c.user_id).where(
+                organisation_place_member.c.org_unit_id == org.org_unit_id,
+                organisation_place_member.c.user_id == assessor.id,
             )
         )
         assert still_staff is not None
@@ -2839,9 +2844,9 @@ class TestWhatAnExternalAssessorCannotReach:
         )
 
         member = db_session.scalar(
-            select(organisation_member.c.capacity).where(
-                organisation_member.c.organisation_id == org.id,
-                organisation_member.c.user_id == assessor_id,
+            select(organisation_place_member.c.capacity).where(
+                organisation_place_member.c.org_unit_id == org.org_unit_id,
+                organisation_place_member.c.user_id == assessor_id,
             )
         )
         assert member == "external"

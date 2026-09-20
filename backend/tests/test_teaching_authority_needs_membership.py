@@ -13,7 +13,7 @@ Both authority routes asked reach, through ``_get_user_org_ids``. So a
 ``teaching_admin`` whose only membership was a site linked to the trust
 passed the ``org_id not in ...`` check and could promote a version, or
 close a bank, for the whole organisation above them. They now ask
-``get_member_org_ids``.
+``get_member_place_ids``.
 
 **This narrows, which is the opposite direction to the rest of the
 walk.** The plan names the walk's risk as widening — reach adds

@@ -32,9 +32,9 @@ from app.models import (
 )
 from app.organisations import (
     add_place_member,
-    get_member_org_ids,
-    get_org_member_ids,
-    organisation_member,
+    get_member_place_ids,
+    get_place_member_ids,
+    organisation_place_member,
     remove_place_member,
     remove_place_memberships,
 )
@@ -75,9 +75,9 @@ def _person(db: Session, username: str) -> User:
 def _by_organisation(db: Session, org: Organisation, user: User) -> str | None:
     """Read the membership the way a route asking about an organisation does."""
     return db.scalar(
-        select(organisation_member.c.capacity).where(
-            organisation_member.c.organisation_id == org.id,
-            organisation_member.c.user_id == user.id,
+        select(organisation_place_member.c.capacity).where(
+            organisation_place_member.c.org_unit_id == org.org_unit_id,
+            organisation_place_member.c.user_id == user.id,
         )
     )
 
@@ -351,8 +351,10 @@ class TestMembershipWrittenStraightToAPlace:
         )
         db_session.commit()
 
-        assert get_member_org_ids(db_session, person.id) == [org.id]
-        assert get_org_member_ids(db_session, [org.id]) == {person.id}
+        assert get_member_place_ids(db_session, person.id) == [org.org_unit_id]
+        assert get_place_member_ids(db_session, [org.org_unit_id]) == {
+            person.id
+        }
 
     def test_a_row_against_a_ward_is_not(self, db_session):
         """Membership does not climb: being on a ward is not being at the
@@ -370,8 +372,8 @@ class TestMembershipWrittenStraightToAPlace:
         )
         db_session.commit()
 
-        assert get_member_org_ids(db_session, person.id) == []
-        assert get_org_member_ids(db_session, [org.id]) == set()
+        assert get_member_place_ids(db_session, person.id) == []
+        assert get_place_member_ids(db_session, [org.org_unit_id]) == set()
 
     def test_the_capacity_filter_still_bites(self, db_session):
         org = _org(db_session, "Trust")
@@ -380,8 +382,8 @@ class TestMembershipWrittenStraightToAPlace:
         db_session.commit()
 
         assert (
-            get_member_org_ids(db_session, person.id, capacity="staff") == []
+            get_member_place_ids(db_session, person.id, capacity="staff") == []
         )
-        assert get_member_org_ids(
+        assert get_member_place_ids(
             db_session, person.id, capacity="trainee"
-        ) == [org.id]
+        ) == [org.org_unit_id]
