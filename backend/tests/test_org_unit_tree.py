@@ -303,3 +303,30 @@ class TestEachWalkIsOneQuery:
         )
 
         assert asked == 2
+
+
+class TestTheTwoIdSequencesStayApart:
+    """The spacer place in ``conftest`` is load-bearing.
+
+    ``organisations`` and ``org_unit`` number their rows independently,
+    and an organisation writes exactly one place, so a database holding
+    nothing else gives the two tables matching ids: organisation 3 is
+    place 3. Anything confusing one for the other then works perfectly
+    in the tests and nowhere else.
+
+    This is the guard on the guard: if the spacer is ever removed, these
+    fail rather than the suite quietly going back to agreeing with
+    itself.
+    """
+
+    def test_an_organisation_id_is_not_its_place_id(self, db_session):
+        org = _org(db_session, "Trust")
+
+        assert org.id != org.org_unit_id
+
+    def test_that_holds_for_every_organisation_in_a_test(self, db_session):
+        first = _org(db_session, "First")
+        second = _org(db_session, "Second")
+
+        for org in (first, second):
+            assert org.id != org.org_unit_id

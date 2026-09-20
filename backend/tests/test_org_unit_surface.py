@@ -33,6 +33,7 @@ from app.models import (
     org_unit_patient_member,
 )
 from app.org_units.tree import root_ids_of_organisations
+from app.org_units.types import ROOT_TYPE_IDS
 from app.organisations import add_organisation_member
 from app.security import hash_password
 
@@ -93,7 +94,8 @@ class TestListing:
         )
 
         ids = [u["id"] for u in resp.json()["org_units"]]
-        assert ids == [ward.id]
+        assert ward.id in ids
+        assert org.org_unit_id not in ids
 
     def test_children_of_one_place(
         self, authenticated_superadmin_client, db_session
@@ -1221,9 +1223,13 @@ class TestAnOrganisationCreatedAsAPlace:
             json={"name": "New Trust", "type": "organisation"},
         )
 
+        # Root-ness is declared by the type, never inferred from having
+        # nothing above it — a ward with no parent is a loose ward, not a
+        # trust, and the test would read the same either way if it asked
+        # about the column.
         roots = (
             db_session.execute(
-                select(OrgUnit).where(OrgUnit.parent_id.is_(None))
+                select(OrgUnit).where(OrgUnit.type.in_(ROOT_TYPE_IDS))
             )
             .scalars()
             .all()
