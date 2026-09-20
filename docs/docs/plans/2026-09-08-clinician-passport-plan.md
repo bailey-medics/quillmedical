@@ -3706,9 +3706,13 @@ its own.
 - [x] Replace the assessor dropdown in
       `frontend/src/components/passport/SignOffRequestForm.tsx` with
       an email field, and update its stories and tests.
-- [ ] Say what happens next on the form: whether the address belongs
-      to a Quill account decides whether they sign in or register, and
-      a holder should not have to guess which.
+- [x] Say what happens next on the form. The address is looked up as
+      it is typed, debounced, and the form says either that the person
+      already uses Quill and will sign in, or that nobody does and they
+      will be invited to register. Nothing is claimed while the address
+      is half typed, and only an exact address counts as a match — the
+      search matches anywhere in an address, so a near miss would
+      otherwise report a colleague the holder had not found.
 - [ ] Decide what becomes of `passport_assessor_invite`. Its routes
       serve a rate-limit count, an invite list and token redemption;
       only the single-use link has to survive, and it is a credential

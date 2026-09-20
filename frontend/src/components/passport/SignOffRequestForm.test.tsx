@@ -2,12 +2,18 @@
  * SignOffRequestForm Component Tests
  */
 
-import { describe, it, expect, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@test/test-utils";
 import SignOffRequestForm from "./SignOffRequestForm";
 import { requestedCompetency } from "./fixtures";
+
+const searchAssessors = vi.fn();
+
+vi.mock("@lib/passport", () => ({
+  searchAssessors: (...args: unknown[]) => searchAssessors(...args),
+}));
 
 const levels = [
   { id: "supervised", name: "Can perform with supervision available" },
@@ -38,6 +44,11 @@ async function typeAssessorEmail(
 }
 
 describe("SignOffRequestForm", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    searchAssessors.mockResolvedValue({ matches: [] });
+  });
+
   it("names the competency being requested", () => {
     renderForm();
     expect(
@@ -106,6 +117,90 @@ describe("SignOffRequestForm", () => {
       expect(
         await screen.findByText(/valid email address/),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("Saying what will happen to the address", () => {
+    it("names somebody who already uses Quill", async () => {
+      // A holder should not have to guess whether the person they named
+      // will be signing in or registering.
+      const user = userEvent.setup();
+      searchAssessors.mockResolvedValue({
+        matches: [
+          {
+            user_id: 42,
+            username: "okonkwo",
+            full_name: "Dr Amara Okonkwo",
+            email: "amara.okonkwo@example.nhs.uk",
+            registrations: [],
+          },
+        ],
+      });
+      renderForm();
+
+      await typeAssessorEmail(user, "amara.okonkwo@example.nhs.uk");
+
+      expect(
+        await screen.findByText(/Dr Amara Okonkwo already uses Quill/),
+      ).toBeInTheDocument();
+    });
+
+    it("says an unknown address will be invited", async () => {
+      // The case the whole flow exists for: an assessor at another
+      // trust who has never used Quill.
+      const user = userEvent.setup();
+      renderForm();
+
+      await typeAssessorEmail(user, "stranger@other-trust.nhs.uk");
+
+      expect(
+        await screen.findByText(/Nobody on Quill uses that address/),
+      ).toBeInTheDocument();
+    });
+
+    it("claims nothing while the address is half typed", async () => {
+      // "They will be invited" is wrong more often than right when
+      // somebody is midway through a colleague's address.
+      const user = userEvent.setup();
+      renderForm();
+
+      await typeAssessorEmail(user, "amara");
+
+      expect(
+        screen.queryByText(/already uses Quill|Nobody on Quill/),
+      ).not.toBeInTheDocument();
+    });
+
+    it("does not claim a near miss is the right person", async () => {
+      // The server matches anywhere in an address, so a search for
+      // "okonkwo@example.nhs.uk" comes back holding somebody whose
+      // address merely *contains* it. Reporting that person would tell
+      // the holder they had found a colleague they had not.
+      const user = userEvent.setup();
+      searchAssessors.mockResolvedValue({
+        matches: [
+          {
+            user_id: 42,
+            username: "okonkwo",
+            full_name: "Dr Amara Okonkwo",
+            // Contains the typed address, and is not it.
+            email: "amara.okonkwo@example.nhs.uk.eu",
+            registrations: [],
+          },
+        ],
+      });
+      renderForm();
+
+      await typeAssessorEmail(user, "okonkwo@example.nhs.uk");
+
+      // Wait for the debounced lookup to have actually run, or the
+      // assertion below passes before anything was searched.
+      await waitFor(() => expect(searchAssessors).toHaveBeenCalled());
+
+      expect(
+        await screen.findByText(/Nobody on Quill uses that address/),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/already uses Quill/)).not.toBeInTheDocument();
     });
   });
 

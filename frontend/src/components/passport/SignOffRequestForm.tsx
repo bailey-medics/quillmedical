@@ -30,8 +30,9 @@
  * ```
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Stack } from "@mantine/core";
+import { useDebouncedValue } from "@mantine/hooks";
 import BaseCard from "@/components/base-card/BaseCard";
 import {
   DateField,
@@ -40,9 +41,14 @@ import {
   SelectField,
   TextAreaField,
 } from "@components/form";
-import { Heading } from "@/components/typography";
+import { BodyText, Heading } from "@/components/typography";
 import ButtonPair from "@/components/button/ButtonPair";
-import type { CompetencyState, SignOffRequestInput } from "@lib/passport";
+import { searchAssessors } from "@lib/passport";
+import type {
+  AssessorMatch,
+  CompetencyState,
+  SignOffRequestInput,
+} from "@lib/passport";
 
 /** A level the competency offers, where it declares any. */
 export interface LevelOption {
@@ -91,6 +97,48 @@ export default function SignOffRequestForm({
   const emailError =
     trimmedEmail !== "" && !emailLooksValid ? EMAIL_PATTERN.message : undefined;
 
+  // Looked up as they type, so a holder is told what will happen rather
+  // than guessing. Debounced because a request per keystroke would mean
+  // twenty lookups to type one address.
+  const [debouncedEmail] = useDebouncedValue(trimmedEmail, 400);
+  // The answer and the address it answers for, together. Two pieces of
+  // state that must agree, so they are one: "still looking" is then
+  // derived rather than tracked, and cannot drift out of step with the
+  // result the way a separate loading flag can.
+  const [lookup, setLookup] = useState<{
+    email: string;
+    match: AssessorMatch | null;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!EMAIL_PATTERN.value.test(debouncedEmail)) {
+      return;
+    }
+
+    let cancelled = false;
+
+    searchAssessors(debouncedEmail)
+      .then(({ matches }) => {
+        if (cancelled) return;
+        // Matched on the address, so only an exact one is this person:
+        // a search for "a.okonkwo@" must not claim to have found
+        // somebody whose address merely contains it.
+        const exact = matches.find(
+          (m) => m.email.toLowerCase() === debouncedEmail.toLowerCase(),
+        );
+        setLookup({ email: debouncedEmail, match: exact ?? null });
+      })
+      .catch(() => {
+        // Not fatal. The request can still be sent; the holder simply
+        // is not told in advance which of the two will happen.
+        if (!cancelled) setLookup({ email: debouncedEmail, match: null });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedEmail]);
+
   const canSubmit = emailLooksValid && observedOn !== null && !isSubmitting;
 
   function handleSubmit() {
@@ -112,13 +160,28 @@ export default function SignOffRequestForm({
 
         <EmailField
           label="Who should assess this?"
-          description="Their email address. They do not need a Quill account — we will email them, and they can sign in or register to sign."
+          description="Their email address. They do not need a Quill account."
           placeholder="assessor@example.nhs.uk"
           value={assessorEmail}
           onChange={(event) => setAssessorEmail(event.currentTarget.value)}
           error={emailError}
           required
         />
+
+        {/* What will happen to the address, rather than leaving the
+            holder to guess. Only once the address is well formed and
+            the lookup has answered: saying "we will email a new
+            assessor" while somebody is still halfway through typing a
+            colleague's address would be wrong more often than right. */}
+        {emailLooksValid && lookup?.email === debouncedEmail && (
+          <BodyText>
+            {lookup.match
+              ? `${lookup.match.full_name ?? lookup.match.username} already uses Quill. ` +
+                "They will be emailed and can sign in to sign this off."
+              : "Nobody on Quill uses that address. They will be emailed " +
+                "an invitation, and can register to sign this off."}
+          </BodyText>
+        )}
 
         <DateField
           label="Observed on"
