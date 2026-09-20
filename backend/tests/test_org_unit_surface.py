@@ -384,6 +384,27 @@ class TestChanging:
 
         assert resp.status_code == 400
 
+    def test_giving_an_organisation_a_parent_is_refused(
+        self, authenticated_superadmin_client, db_session
+    ):
+        """It would be a top of a tree with something above it.
+
+        `is_root` would go on saying yes — the type declares it — while
+        every walk upwards landed in somebody else's trust.
+        """
+        org = _org(db_session)
+        theirs = _org(db_session, "Their Trust")
+        ward = _ward(db_session, theirs.org_unit_id, "Their Ward")
+
+        resp = authenticated_superadmin_client.put(
+            f"/api/org-units/{org.org_unit_id}", json={"parent_id": ward.id}
+        )
+
+        assert resp.status_code == 422
+        db_session.refresh(org)
+        root = db_session.get(OrgUnit, org.org_unit_id)
+        assert root.parent_id is None
+
     def test_changing_a_ward_into_an_organisation_is_refused(
         self, authenticated_superadmin_client, db_session
     ):
@@ -413,6 +434,48 @@ class TestChanging:
     ):
         org = _org(db_session)
         ward = _ward(db_session, org.org_unit_id)
+
+        resp = authenticated_superadmin_client.delete(
+            f"/api/org-units/{ward.id}"
+        )
+
+        assert resp.status_code == 200
+        assert db_session.get(OrgUnit, ward.id) is None
+
+    def test_a_place_with_something_inside_it_is_refused(
+        self, authenticated_superadmin_client, db_session
+    ):
+        """The column says SET NULL, so deleting would orphan them.
+
+        A room whose ward has gone belongs nowhere: invisible to every
+        list, reachable by nobody, and impossible to tell from a room
+        that was always loose.
+        """
+        org = _org(db_session)
+        ward = _ward(db_session, org.org_unit_id)
+        room = OrgUnit(name="Room 4", type="room", parent_id=ward.id)
+        db_session.add(room)
+        db_session.commit()
+
+        resp = authenticated_superadmin_client.delete(
+            f"/api/org-units/{ward.id}"
+        )
+
+        assert resp.status_code == 409
+        assert db_session.get(OrgUnit, ward.id) is not None
+        db_session.refresh(room)
+        assert room.parent_id == ward.id
+
+    def test_emptying_it_first_makes_it_deletable(
+        self, authenticated_superadmin_client, db_session
+    ):
+        """Refusing is reversible, which is what makes it the kind one."""
+        org = _org(db_session)
+        ward = _ward(db_session, org.org_unit_id)
+        room = OrgUnit(name="Room 4", type="room", parent_id=ward.id)
+        db_session.add(room)
+        db_session.commit()
+        authenticated_superadmin_client.delete(f"/api/org-units/{room.id}")
 
         resp = authenticated_superadmin_client.delete(
             f"/api/org-units/{ward.id}"
