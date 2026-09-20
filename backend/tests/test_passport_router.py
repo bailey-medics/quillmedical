@@ -61,7 +61,7 @@ from app.models import (
     User,
     org_unit_member,
 )
-from app.organisations import add_organisation_member, organisation_member
+from app.organisations import add_place_member, organisation_member
 from app.passport_storage import get_blob_store, get_passport_store
 from app.security import PASSPORT_INVITE_TYPE, hash_password
 
@@ -138,7 +138,7 @@ def _enable_passport(db: Session, *users: User) -> Organisation:
     db.add(OrgUnitFeature(org_unit_id=org.org_unit_id, feature_key="passport"))
 
     for user in users:
-        add_organisation_member(db, org.id, user.id, "trainee")
+        add_place_member(db, org.org_unit_id, user.id, "trainee")
 
     db.commit()
     return org
@@ -379,7 +379,7 @@ class TestSearchingForAnAssessor:
         assessor needs to be.
         """
         user = _make_user(db_session, "reception", profession="receptionist")
-        add_organisation_member(db_session, org.id, user.id, "staff")
+        add_place_member(db_session, org.org_unit_id, user.id, "staff")
         db_session.commit()
 
         client = _login(test_client, "reception")
@@ -1626,7 +1626,7 @@ class TestAdminVerifyAndRevoke:
         """An admin of the holder's organisation."""
         user = _make_user(db_session, "orgadmin", profession="consultant")
         user.additional_competencies = ["manage_users"]
-        add_organisation_member(db_session, org.id, user.id, "staff")
+        add_place_member(db_session, org.org_unit_id, user.id, "staff")
         db_session.commit()
         db_session.refresh(user)
         return user
@@ -1650,7 +1650,7 @@ class TestAdminVerifyAndRevoke:
                 org_unit_id=other.org_unit_id, feature_key="passport"
             )
         )
-        add_organisation_member(db_session, other.id, user.id, "staff")
+        add_place_member(db_session, other.org_unit_id, user.id, "staff")
         db_session.commit()
         db_session.refresh(user)
         return user
@@ -2876,8 +2876,8 @@ class TestFeatureGate:
         db_session.add(organisation)
         db_session.commit()
         db_session.refresh(organisation)
-        add_organisation_member(
-            db_session, organisation.id, user.id, "trainee"
+        add_place_member(
+            db_session, organisation.org_unit_id, user.id, "trainee"
         )
         db_session.commit()
 

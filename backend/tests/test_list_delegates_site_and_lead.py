@@ -24,7 +24,7 @@ from app.models import (
     User,
     org_unit_member,
 )
-from app.organisations import add_organisation_member
+from app.organisations import add_place_member
 from app.security import hash_password
 
 
@@ -83,7 +83,7 @@ def _member(db: Session, site: OrgUnit, user: User, capacity: str) -> None:
 
 def _in_org(db: Session, org: Organisation, user: User) -> None:
     """Put the caller in the organisation, with the gate the route needs."""
-    add_organisation_member(db, org.id, user.id, "trainee")
+    add_place_member(db, org.org_unit_id, user.id, "trainee")
     user.additional_competencies = ["manage_teaching_content"]
     db.commit()
 

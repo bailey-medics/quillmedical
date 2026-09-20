@@ -29,7 +29,7 @@ from app.models import (
     User,
     validate_platform_role,
 )
-from app.organisations import add_organisation_member
+from app.organisations import add_place_member
 from app.security import hash_password
 
 
@@ -204,7 +204,7 @@ class TestTheListingsHideOperatorsByTheNewColumn:
             base_profession="superadmin_profession",
         )
         for person in (test_admin, operator):
-            add_organisation_member(db_session, org.id, person.id, "staff")
+            add_place_member(db_session, org.org_unit_id, person.id, "staff")
         db_session.commit()
 
         resp = authenticated_admin_client.get("/api/users")
@@ -231,7 +231,7 @@ class TestTheListingsHideOperatorsByTheNewColumn:
             platform_role="standard",
         )
         for person in (test_admin, colleague):
-            add_organisation_member(db_session, org.id, person.id, "staff")
+            add_place_member(db_session, org.org_unit_id, person.id, "staff")
         db_session.commit()
 
         resp = authenticated_admin_client.get("/api/users")
@@ -268,7 +268,7 @@ class TestScopingAsksTheNewColumn:
         db.commit()
         db.refresh(org)
         for person in members:
-            add_organisation_member(db, org.id, person.id, "staff")
+            add_place_member(db, org.org_unit_id, person.id, "staff")
         db.commit()
         place_id = org.org_unit_id
         return int(place_id)
@@ -446,7 +446,7 @@ class TestOperatorsAreProtectedByTheNewColumn:
             platform_role="standard",
         )
         for person in (test_admin, colleague):
-            add_organisation_member(db_session, org.id, person.id, "staff")
+            add_place_member(db_session, org.org_unit_id, person.id, "staff")
         db_session.commit()
 
         resp = authenticated_admin_client.get(f"/api/users/{colleague.id}")

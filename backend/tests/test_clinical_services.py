@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from app.deps import require_clinical_services
 from app.main import app
 from app.models import Organisation, User
-from app.organisations import add_organisation_member
+from app.organisations import add_place_member
 from app.security import hash_password
 
 
@@ -127,7 +127,7 @@ class TestRequireFeatureDependency:
         db_session.add(user)
         db_session.flush()
 
-        add_organisation_member(db_session, org.id, user.id, "trainee")
+        add_place_member(db_session, org.org_unit_id, user.id, "trainee")
         db_session.commit()
 
         # No features enabled on the org — the guard should reject
