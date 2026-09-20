@@ -572,6 +572,39 @@ class MediaUploadUrlOut(BaseModel):
     asset_id: str
 
 
+class MediaProgressOut(BaseModel):
+    """How far an upload has got, in terms a person can act on.
+
+    The card previously showed "No captions" throughout processing,
+    which states absence where the truth was "not yet" — and sent
+    someone re-uploading a video that was working. These fields exist to
+    let it say which instead.
+
+    ``stage`` and ``total_stages`` drive the bar; ``label`` is the line
+    beneath it. ``stalled`` is the part that needs the start times: a job
+    running far longer than it should looks identical to a finished one
+    from the completion columns alone, and for two days a caption job
+    that was never configured looked exactly like one in progress.
+    """
+
+    #: Stages finished, 1-based, for "X of N". Uploaded counts as one:
+    #: the file is there, which is real progress and the only stage that
+    #: is certain.
+    stage: int
+    total_stages: int
+    #: What is happening now, or what is waiting. Written for a reader,
+    #: not a developer: "Transcribing audio" rather than "caption job
+    #: running".
+    label: str
+    #: Whether anything is expected to change without someone acting.
+    #: False once the pipeline is done, and false when a job has been
+    #: running long enough that it has probably failed.
+    in_progress: bool
+    #: Set when a started job has overrun what it plausibly needs. The
+    #: card says so rather than showing a bar that will never move.
+    stalled: bool = False
+
+
 class MediaAssetOut(BaseModel):
     """One uploaded file, as the admin card shows it."""
 
@@ -594,6 +627,10 @@ class MediaAssetOut(BaseModel):
     #: machine output is a draft until a human has been over it — and a
     #: learner relying on captions cannot tell the difference.
     captions_reviewed_at: datetime | None = None
+    #: How far through processing this upload is, and what is happening
+    #: now. Derived server-side rather than in the card, so one place
+    #: decides what the states mean and the two cannot drift.
+    progress: MediaProgressOut | None = None
 
 
 class MediaReferenceOut(BaseModel):

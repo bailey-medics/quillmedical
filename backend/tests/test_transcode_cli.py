@@ -9,6 +9,7 @@ without which the CDN caches nothing.
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -31,6 +32,33 @@ def _patch_storage(storage_module: MagicMock):
         patch.dict("sys.modules", {"google.cloud.storage": storage_module}),
         patch.object(_gc, "storage", storage_module, create=True),
     )
+
+
+def _stub_urlopen(status: int = 200, side_effect=None):
+    """Patch `urlopen` and expose the Request it was handed.
+
+    The callback uses the standard library rather than `httpx`, matching
+    the caption job: that image carries its own pinned packages and
+    `httpx` was not among them, so its report died with
+    `No module named 'httpx'` after an hour of Whisper. Asserting on the
+    `Request` proves the wire format, which is what a missing import
+    silently changed.
+    """
+    captured: dict[str, object] = {}
+
+    def _fake(request, timeout=None):  # noqa: ANN001
+        captured["url"] = request.full_url
+        captured["headers"] = {k.lower(): v for k, v in request.header_items()}
+        captured["json"] = json.loads(request.data.decode())
+        if side_effect is not None:
+            raise side_effect
+        response = MagicMock()
+        response.status = status
+        response.__enter__ = lambda s: s
+        response.__exit__ = lambda *a: False
+        return response
+
+    return patch("urllib.request.urlopen", side_effect=_fake), captured
 
 
 BASE_ENV = {
@@ -391,8 +419,8 @@ class TestCompletionReport:
             "TRANSCODE_CALLBACK_TOKEN": "tok",
         }
         with patch.dict(os.environ, env, clear=False):
-            with patch("httpx.post") as post:
-                post.return_value = MagicMock(status_code=200)
+            stub, captured = _stub_urlopen()
+            with stub:
                 _report_complete(
                     7,
                     "mod",
@@ -402,15 +430,13 @@ class TestCompletionReport:
 
         # The backend rebuilds the prefix from the ids, so a report
         # cannot name a path outside its own module.
-        sent = post.call_args.kwargs["json"]
+        sent = captured["json"]
         assert sent["outputs"] == [
             "asset-1-720p.mp4",
             "asset-1-poster.jpg",
         ]
         assert sent["org_id"] == 7
-        assert post.call_args.kwargs["headers"]["Authorization"] == (
-            "Bearer tok"
-        )
+        assert captured["headers"]["authorization"] == "Bearer tok"
 
     def test_a_refusal_does_not_raise(self, capsys) -> None:
         from scripts.transcode_cli import _report_complete
@@ -420,8 +446,8 @@ class TestCompletionReport:
             "TRANSCODE_CALLBACK_TOKEN": "tok",
         }
         with patch.dict(os.environ, env, clear=False):
-            with patch("httpx.post") as post:
-                post.return_value = MagicMock(status_code=401)
+            stub, _ = _stub_urlopen(status=401)
+            with stub:
                 _report_complete(7, "mod", "asset-1", ["7/mod/a.mp4"])
 
         assert "refused" in capsys.readouterr().err
@@ -434,7 +460,8 @@ class TestCompletionReport:
             "TRANSCODE_CALLBACK_TOKEN": "tok",
         }
         with patch.dict(os.environ, env, clear=False):
-            with patch("httpx.post", side_effect=OSError("no route")):
+            stub, _ = _stub_urlopen(side_effect=OSError("no route"))
+            with stub:
                 _report_complete(7, "mod", "asset-1", ["7/mod/a.mp4"])
 
         assert "callback failed" in capsys.readouterr().err

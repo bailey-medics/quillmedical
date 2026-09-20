@@ -50,9 +50,20 @@ export default function TeachingModuleMain() {
     load();
   }, [bankId]);
 
+  // The module's own name is the one part that waits for the fetch;
+  // the rest of the navigation does not, so it renders throughout
+  // rather than leaving the sidebar absent while the module loads and
+  // then appearing, which read as the page flashing.
+  const sidebarNav = (
+    <TeachingMainNav
+      moduleName={bank?.title}
+      moduleHref={bank ? `/teaching/${bankId}` : undefined}
+    />
+  );
+
   if (loading) {
     return (
-      <TeachingLayout>
+      <TeachingLayout sidebar={sidebarNav} drawerContent={sidebarNav}>
         <Stack gap="lg">
           <Skeleton height={36} width={200} />
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
@@ -66,7 +77,7 @@ export default function TeachingModuleMain() {
 
   if (error || !bank) {
     return (
-      <TeachingLayout>
+      <TeachingLayout sidebar={sidebarNav} drawerContent={sidebarNav}>
         <StateMessage
           icon={<IconAlertCircle />}
           title="Error"
@@ -78,13 +89,6 @@ export default function TeachingModuleMain() {
   }
 
   const hasLearning = bank.has_learning;
-
-  const sidebarNav = (
-    <TeachingMainNav
-      moduleName={bank.title}
-      moduleHref={`/teaching/${bankId}`}
-    />
-  );
 
   return (
     <TeachingLayout sidebar={sidebarNav} drawerContent={sidebarNav}>

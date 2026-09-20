@@ -140,17 +140,45 @@ resource "google_compute_url_map" "https" {
         [{
           paths   = ["/api", "/api/*"]
           service = google_compute_backend_service.backend.id
+          # The API is proxied as-is: FastAPI routes on the full path.
+          rewrite = null
         }],
         # Absent outside teaching, so prod and staging render the same single
         # rule they always have.
         var.videos_backend_bucket_id != null ? [{
           paths   = ["/videos/*"]
           service = var.videos_backend_bucket_id
+          # A backend bucket does not strip the matched prefix: without
+          # this, `/videos/1/mod/x.mp4` asks the bucket for the object key
+          # `videos/1/mod/x.mp4`, and the transcode job writes
+          # `1/mod/x.mp4`. The mismatch presents as a 404 on a file
+          # plainly in the bucket — a black player and a dead play
+          # button, with nothing to say why.
+          #
+          # Rewriting to `/` makes the key the path after `/videos/`,
+          # which is what `media_object_path` produces.
+          #
+          # The signed cookie is unaffected. Its `URLPrefix` covers the
+          # request URL — `.../videos/{org}/{module}/` — and Cloud CDN
+          # checks that before this rewrite, so the module boundary is
+          # exactly where it was.
+          rewrite = "/"
         }] : []
       )
       content {
         paths   = path_rule.value.paths
         service = path_rule.value.service
+
+        # Rendered only for a rule that asks for one, so the API rule is
+        # byte-for-byte what it was.
+        dynamic "route_action" {
+          for_each = path_rule.value.rewrite != null ? [path_rule.value.rewrite] : []
+          content {
+            url_rewrite {
+              path_prefix_rewrite = route_action.value
+            }
+          }
+        }
       }
     }
   }

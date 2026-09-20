@@ -6,8 +6,8 @@
 
 # ---------- Base layer (deps + app) ----------
 # Pin by digest for reproducible builds. To update, run:
-#   docker pull python:3.13-slim && docker inspect --format='{{index .RepoDigests 0}}' python:3.13-slim
-FROM python:3.13-slim@sha256:9d2e5553305c7c7b0097999bb17187c69b921ccd6bc9d40e4bb5ebe652c00285 AS base
+#   docker pull python:3.14-slim && docker inspect --format='{{index .RepoDigests 0}}' python:3.14-slim
+FROM python:3.14-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6 AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -92,6 +92,15 @@ RUN --mount=type=cache,target=/root/.cache/pypoetry \
         sleep 5; \
     done; \
     exit 1
+# Where passports live when no GCS bucket is configured, which is every
+# local run. `compose.dev.yml` mounts a named volume here; Docker copies
+# this directory's ownership onto an empty volume when it first mounts
+# it, so creating it as appuser is what makes the volume writable. The
+# container runs as uid 10001 and a bare named volume would arrive owned
+# by root, which is how a passport create came to fail with
+# `Permission denied: '/data'`. Dev stage only — production sets
+# PASSPORT_GCS_BUCKET and never touches this path.
+RUN mkdir -p /data/passports && chown -R appuser:appuser /data
 USER appuser
 # Copy the scripts directory into the dev image and set ownership to the unprivileged user.
 COPY --chown=appuser:appuser backend/scripts ./scripts

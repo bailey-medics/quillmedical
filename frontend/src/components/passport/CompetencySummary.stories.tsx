@@ -63,7 +63,3 @@ export const Selectable: Story = {
 export const Empty: Story = {
   args: { competencies: [] },
 };
-
-export const Loading: Story = {
-  args: { competencies: [], isLoading: true },
-};
