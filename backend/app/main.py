@@ -118,20 +118,19 @@ from app.org_units.router import router as org_units_router
 from app.org_units.tree import (
     descendant_ids,
     organisation_id_of_site,
-    organisation_ids_of_sites,
     root_ids_of,
-    root_ids_of_organisations,
-    site_ids_of_organisations,
 )
 from app.organisations import (
     add_place_member,
     get_accessible_patient_ids,
-    get_member_org_ids,
-    get_org_staff_ids,
-    get_patient_org_ids,
-    get_shared_org_ids,
-    organisation_member,
+    get_member_place_ids,
+    get_patient_place_ids,
+    get_place_staff_ids,
+    get_shared_place_ids,
     organisation_of_place,
+    organisation_place_member,
+    organisation_places_of,
+    place_of_organisation,
     places_administered_by,
 )
 from app.push import router as push_router
@@ -2337,19 +2336,11 @@ def me(
             - enabled_features: Features enabled on any of the user's orgs
             - competencies: Resolved CBAC competency IDs
     """
-    # Resolve features from all user's organisations (union)
-    # Direct org membership
-    direct_org_ids = set(
-        db.execute(
-            select(organisation_member.c.organisation_id).where(
-                organisation_member.c.user_id == current_user.id,
-            )
-        )
-        .scalars()
-        .all()
-    )
-    # Indirect: the organisation accountable for a place they belong to
-    member_site_ids = list(
+    # Resolve features from every organisation a membership reaches:
+    # the ones they belong to directly, and the one accountable for any
+    # ward or clinic they belong to. One walk up answers both, because
+    # an organisation's own row is its own root.
+    member_place_ids = list(
         db.execute(
             select(org_unit_member.c.org_unit_id).where(
                 org_unit_member.c.user_id == current_user.id
@@ -2358,18 +2349,13 @@ def me(
         .scalars()
         .all()
     )
-    site_org_ids = set(organisation_ids_of_sites(db, member_site_ids).values())
-    user_org_ids = list(direct_org_ids | site_org_ids)
+    user_place_ids = organisation_places_of(db, member_place_ids)
     enabled_features: list[str] = []
-    if user_org_ids:
+    if user_place_ids:
         features = (
             db.execute(
                 select(OrgUnitFeature.feature_key)
-                .where(
-                    OrgUnitFeature.org_unit_id.in_(
-                        root_ids_of_organisations(db, user_org_ids)
-                    ),
-                )
+                .where(OrgUnitFeature.org_unit_id.in_(user_place_ids))
                 .distinct()
             )
             .scalars()
@@ -2487,9 +2473,9 @@ def list_users(
     """
     if patient_id:
         # Filtered mode: staff in patient's orgs + external with access
-        patient_orgs = get_patient_org_ids(db, patient_id)
+        patient_orgs = get_patient_place_ids(db, patient_id)
         staff_ids = (
-            get_org_staff_ids(db, patient_orgs) if patient_orgs else set()
+            get_place_staff_ids(db, patient_orgs) if patient_orgs else set()
         )
 
         # Also include external users with active access to this patient
@@ -2540,21 +2526,27 @@ def list_users(
             )
         )
     elif exclude_org is not None:
-        existing_staff_ids = select(organisation_member.c.user_id).where(
-            organisation_member.c.organisation_id == exclude_org
-        )
-        stmt = stmt.where(User.id.notin_(existing_staff_ids))
+        # Still an organisation id, translated here. Reading it as a
+        # place id would be the silent reinterpretation this parameter
+        # was split in two to avoid.
+        excluded_place = place_of_organisation(db, exclude_org)
+        if excluded_place is not None:
+            stmt = stmt.where(
+                User.id.notin_(
+                    select(org_unit_member.c.user_id).where(
+                        org_unit_member.c.org_unit_id == excluded_place
+                    )
+                )
+            )
 
         # Anyone but an operator sees only users at their own places;
         # operators see everyone.
     if current_user.platform_role != "superadmin":
-        admin_orgs = get_member_org_ids(db, current_user.id)
-        org_scoped_ids = get_org_staff_ids(db, admin_orgs)
+        admin_places = get_member_place_ids(db, current_user.id)
+        org_scoped_ids = get_place_staff_ids(db, admin_places)
 
-        # Also include site-only members beneath the admin's orgs
-        site_ids_for_orgs = set(
-            site_ids_of_organisations(db, list(admin_orgs))
-        )
+        # Also include site-only members beneath the admin's places
+        site_ids_for_orgs = descendant_ids(db, list(admin_places))
         site_scoped_ids: set[int] = set()
         if site_ids_for_orgs:
             site_scoped_ids = {
@@ -2581,14 +2573,14 @@ def list_users(
         user_ids = [user.id for user in users]
         org_rows = db.execute(
             select(
-                organisation_member.c.user_id,
+                organisation_place_member.c.user_id,
                 Organisation.name,
             )
             .join(
                 Organisation,
-                Organisation.id == organisation_member.c.organisation_id,
+                Organisation.id == organisation_place_member.c.org_unit_id,
             )
-            .where(organisation_member.c.user_id.in_(user_ids))
+            .where(organisation_place_member.c.user_id.in_(user_ids))
         ).all()
         user_orgs: dict[int, list[str]] = {}
         for row in org_rows:
@@ -3568,12 +3560,19 @@ def shared_organisations_endpoint(
     Returns:
         dict: ``organisations`` list with id/name/type for each shared org.
     """
-    shared_ids = get_shared_org_ids(db, current_user.id, patient_id)
-    if not shared_ids:
+    shared_places = get_shared_place_ids(db, current_user.id, patient_id)
+    if not shared_places:
         return SharedOrganisationsOut(organisations=[])
 
+    # Looked up by place, answered in organisation ids: this response's
+    # ``id`` still means one, and reinterpreting it silently is what the
+    # rest of this work refuses. It moves when the table goes.
     orgs = (
-        db.execute(select(Organisation).where(Organisation.id.in_(shared_ids)))
+        db.execute(
+            select(Organisation).where(
+                Organisation.org_unit_id.in_(shared_places)
+            )
+        )
         .scalars()
         .all()
     )
@@ -3987,7 +3986,7 @@ def _require_shared_org_with_patient(
     """
     if current_user.platform_role == "superadmin":
         return
-    if not get_shared_org_ids(db, current_user.id, patient_id):
+    if not get_shared_place_ids(db, current_user.id, patient_id):
         raise HTTPException(status_code=404, detail="Patient not found")
 
 
@@ -4020,8 +4019,8 @@ def _require_shared_org_with_user(
         return
     if target.id == current_user.id:
         return
-    admin_org_ids = set(get_member_org_ids(db, current_user.id))
-    target_org_ids = set(get_member_org_ids(db, target.id))
+    admin_org_ids = set(get_member_place_ids(db, current_user.id))
+    target_org_ids = set(get_member_place_ids(db, target.id))
     if not (admin_org_ids & target_org_ids):
         raise HTTPException(status_code=404, detail="User not found")
 

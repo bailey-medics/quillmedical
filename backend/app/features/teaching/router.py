@@ -100,11 +100,10 @@ from app.models import (
     User,
 )
 from app.organisations import (
-    get_member_org_ids,
-    get_reachable_org_ids,
-    organisation_member,
+    get_member_place_ids,
+    get_reachable_place_ids,
     organisation_of_place,
-    place_of_organisation,
+    organisation_place_member,
 )
 from app.rate_limit import limiter
 
@@ -143,18 +142,6 @@ _DEP_REQUIRE_CSRF = Depends(_require_csrf)
 _DEP_VIEW_CASES = Depends(has_competency("view_teaching_cases"))
 
 
-def _places_of(db: Session, organisation_ids: list[int]) -> list[int]:
-    """Translate organisation ids into the places they stand for.
-
-    A scaffold with a known end. Teaching's tables answer in place ids
-    from this step onwards, while membership still answers in
-    organisation ids; when membership moves too, every call to this
-    disappears rather than being rewritten.
-    """
-    places = [place_of_organisation(db, org_id) for org_id in organisation_ids]
-    return [place_id for place_id in places if place_id is not None]
-
-
 def _get_user_org_ids(user: User, db: Session) -> list[int]:
     """Return the places the user can reach, or raise 403.
 
@@ -164,14 +151,10 @@ def _get_user_org_ids(user: User, db: Session) -> list[int]:
     shared resolver now expresses the same thing as downward reach, so
     this is a thin wrapper that adds only teaching's 403.
     """
-    org_ids = get_reachable_org_ids(db, user.id)
-    if not org_ids:
+    place_ids = get_reachable_place_ids(db, user.id)
+    if not place_ids:
         raise HTTPException(403, "User has no organisation")
-    # Teaching's own tables are moving off organisation ids, so what
-    # leaves here is the place each organisation is. Membership still
-    # answers in organisation ids; when it stops, this translation goes
-    # and the helper returns what it is given.
-    return _places_of(db, org_ids)
+    return place_ids
 
 
 def _get_user_org_id(user: User, db: Session) -> int:
@@ -199,14 +182,11 @@ def _get_user_org_id(user: User, db: Session) -> int:
     Narrowing to membership shrinks the set it chooses from without
     making the choice correct.
     """
-    org_ids = get_member_org_ids(db, user.id)
-    if not org_ids:
+    place_ids = get_member_place_ids(db, user.id)
+    if not place_ids:
         # Deliberately not "no organisation": somebody at a ward of the
         # trust has a place, and saying otherwise would send them looking
         # for the wrong fix.
-        raise HTTPException(403, "User is not a member of any organisation")
-    place_ids = _places_of(db, org_ids)
-    if not place_ids:
         raise HTTPException(403, "User is not a member of any organisation")
     return place_ids[0]
 
@@ -2556,12 +2536,12 @@ def list_delegates(
     assessment result if they have one.
     """
     from app.models import OrgUnit, org_unit_member
-    from app.org_units.tree import site_ids_of_organisations
+    from app.org_units.tree import descendant_ids
 
     # Which organisations the caller is a member of. Direct membership,
     # not reach: this route lists the people *below* the caller, so a
     # trainee reaching up via a site link must not thereby list its staff.
-    caller_org_ids = get_member_org_ids(db, user.id)
+    caller_org_ids = get_member_place_ids(db, user.id)
     if not caller_org_ids:
         return []
 
@@ -2569,13 +2549,13 @@ def list_delegates(
     org_member_ids = set(
         row[0]
         for row in db.execute(
-            select(organisation_member.c.user_id).where(
-                organisation_member.c.organisation_id.in_(caller_org_ids),
+            select(organisation_place_member.c.user_id).where(
+                organisation_place_member.c.org_unit_id.in_(caller_org_ids),
             )
         ).all()
     )
 
-    caller_site_ids = site_ids_of_organisations(db, caller_org_ids)
+    caller_site_ids = descendant_ids(db, caller_org_ids)
     site_member_ids = set(
         row[0]
         for row in db.execute(
@@ -3154,18 +3134,17 @@ def list_bank_organisations(
 
 def _promote_bank_version(
     bank_id: str,
-    org_id: int,
+    place_id: int,
     body: PromoteBankVersionIn,
     user: User,
     db: Session,
 ) -> PromoteBankVersionOut:
-    """Move which version of a bank an organisation's candidates receive.
+    """Move which version of a bank a place's candidates receive.
 
-    The organisation comes from the place the caller named, and the
-    caller must belong to it. Not inferred from the caller:
-    ``_get_user_org_id`` returns whichever organisation happens to come
-    back first, so a person teaching for two would silently promote for
-    the wrong one.
+    The place is the one the caller named, and they must be a member of
+    it. Not inferred from the caller: ``_get_user_org_id`` returns
+    whichever membership happens to come back first, so a person
+    teaching for two would silently promote for the wrong one.
 
     Restricted to the caller's own organisations because nothing models which
     organisations one may promote on behalf of. That question belongs to
@@ -3178,17 +3157,10 @@ def _promote_bank_version(
     # trust serves. `_get_user_org_ids` answers reach, so a teaching admin
     # whose only membership is a linked site passed this check and could
     # promote for the whole organisation above them.
-    if org_id not in get_member_org_ids(db, user.id):
+    if place_id not in get_member_place_ids(db, user.id):
         raise HTTPException(
             403, "You cannot promote a version for that organisation"
         )
-
-    # The path names an organisation; these tables answer in places. One
-    # translation here rather than at each query below, and it goes when
-    # the surface names the place itself.
-    place_id = place_of_organisation(db, org_id)
-    if place_id is None:
-        raise HTTPException(404, "Organisation not found")
 
         # The version must exist for this organisation. Content is shared, but a
         # version another organisation has synced is not one this one can serve.
@@ -3230,11 +3202,11 @@ def _promote_bank_version(
     db.flush()
 
     logger.info(
-        "Bank '%s' promoted from v%s to v%d for org %d by user %d",
+        "Bank '%s' promoted from v%s to v%d at place %d by user %d",
         bank_id,
         previous,
         body.version,
-        org_id,
+        place_id,
         user.id,
     )
 
@@ -3259,14 +3231,10 @@ def update_bank_place_settings(
 ) -> QuestionBankOrgSettingsOut:
     """Set a bank live or closed for a place.
 
-    The only path for this now. It translates to the organisation the
-    place belongs to because membership still counts in organisation
-    ids; ``12c-ii`` removes that step.
+    The only path for this now, and no translation left in it:
+    membership answers in place ids too.
     """
-    organisation_id = organisation_of_place(db, place_id)
-    if organisation_id is None:
-        raise HTTPException(404, "Organisation not found")
-    return _update_bank_org_settings(bank_id, organisation_id, body, user, db)
+    return _update_bank_org_settings(bank_id, place_id, body, user, db)
 
 
 @teaching_router.put(
@@ -3283,13 +3251,10 @@ def promote_bank_version_at_place(
 ) -> PromoteBankVersionOut:
     """Move which version a place's candidates receive.
 
-    The only path for this now. As with the settings route beside it,
-    the translation to an organisation is what membership still needs.
+    The only path for this now, and no translation left in it, as with
+    the settings route beside it.
     """
-    organisation_id = organisation_of_place(db, place_id)
-    if organisation_id is None:
-        raise HTTPException(404, "Organisation not found")
-    return _promote_bank_version(bank_id, organisation_id, body, user, db)
+    return _promote_bank_version(bank_id, place_id, body, user, db)
 
 
 def _retired(place_path: str) -> NoReturn:
@@ -3345,40 +3310,27 @@ def promote_bank_version_retired(
 
 def _update_bank_org_settings(
     bank_id: str,
-    org_id: int,
+    place_id: int,
     body: QuestionBankOrgSettingsIn,
     user: User,
     db: Session,
 ) -> QuestionBankOrgSettingsOut:
-    """Update settings (status) for a bank-org pair.
+    """Update settings (status) for a bank at a place.
 
-    The caller must belong to the organisation the named place sits in.
-    Without that, anyone holding ``manage_teaching_content`` could set a
-    bank live or closed for any organisation at all — and closing one
-    mid-cohort locks its candidates out of an assessment they are
-    part-way through.
-
-    Still keyed by organisation because membership is: ``12c-ii`` is
-    where that changes, and this becomes a place-keyed body.
+    The caller must be a member of the place named. Without that, anyone
+    holding ``manage_teaching_content`` could set a bank live or closed
+    anywhere at all — and closing one mid-cohort locks its candidates
+    out of an assessment they are part-way through.
     """
-    # Membership, not reach — the docstring above already says *belong*,
+    # Membership, not reach — the docstring above already says *member*,
     # and reaching a trust from a ward is not belonging to it. Closing a
     # bank is the operation this protects: it locks candidates out of an
     # assessment they are part-way through.
-    org_ids = get_member_org_ids(db, user.id)
-    if org_id not in org_ids:
+    org_place_ids = get_member_place_ids(db, user.id)
+    if place_id not in org_place_ids:
         raise HTTPException(
             403, "You cannot change settings for that organisation"
         )
-
-    org = db.get(Organisation, org_id)
-    if not org:
-        raise HTTPException(404, "Organisation not found")
-
-    # As above: the path names an organisation, the tables answer in
-    # places.
-    place_id = org.org_unit_id
-    org_place_ids = _places_of(db, org_ids)
 
     # The bank must be one the caller can see, which is not the same as one
     # the target organisation has already synced: setting a bank live for an

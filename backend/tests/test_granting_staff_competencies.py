@@ -33,7 +33,10 @@ from app.models import (
     OrgUnit,
     User,
 )
-from app.organisations import add_place_member, organisation_member
+from app.organisations import (
+    add_place_member,
+    organisation_place_member,
+)
 from app.security import hash_password
 
 
@@ -229,9 +232,9 @@ class TestTheGrantIsOptional:
         assert sorted(nurse.get_final_competencies()) == before
 
         row = db_session.scalar(
-            select(organisation_member).where(
-                organisation_member.c.organisation_id == org.id,
-                organisation_member.c.user_id == nurse.id,
+            select(organisation_place_member).where(
+                organisation_place_member.c.org_unit_id == org.org_unit_id,
+                organisation_place_member.c.user_id == nurse.id,
             )
         )
         assert row is not None
