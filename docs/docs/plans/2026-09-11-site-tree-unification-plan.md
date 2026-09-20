@@ -891,7 +891,7 @@ So the remaining steps land as:
 - [x] 12b-iv — the user form onto place ids
 - [x] 12b-v — the features, patients and staff rules onto the place surface
 - [x] 12b-vi — the remaining organisation-surface tests onto places
-- [ ] 12b-vii — retire `/api/organisations`
+- [x] 12b-vii — retire `/api/organisations`
 - [ ] 12b-viii — drop the `organisations` table, and enforce the type flags
 - [ ] 12b-ix — retire the organisation and site lists on the users API,
       a release after 12b-iii expanded them
@@ -1358,6 +1358,27 @@ a membership, and the unauthenticated sweep.
 
 What is left on the old surface is its own CRUD tests, which the place
 surface now covers rule for rule. They go with it in 12b-vii.
+
+#### 12b-vii — retire `/api/organisations`
+
+The second of the two old surfaces. Eleven addresses answer 410, and
+about 670 lines of routes went with them, along with the tests that only
+exercised that address.
+
+- **Same shape as the sites retirement**: the request each route always
+  took is still declared, so a stale caller is told the address has gone
+  rather than that its request is malformed; 410 rather than 404; the
+  same answer to everybody, because a retired address has nothing left
+  to protect.
+- **What the organisation detail said about its sites** — each one's
+  clinical lead — the place detail says about its children, and the test
+  for it moved there in 11b.
+- **`oasdiff` sees no breaking change again**, because the schema has
+  not changed, only the behaviour. The one client of these addresses was
+  this repository's frontend, which moved earlier in the stack.
+
+The `organisations` table is still there, still written beside each root
+place and still what membership counts against. Dropping it is 12b-viii.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to
