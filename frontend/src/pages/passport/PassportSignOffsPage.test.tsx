@@ -16,10 +16,12 @@ import type { CompetencyState, SignOffStatus } from "@lib/passport";
 
 const fetchMyPassport = vi.fn();
 const requestSignOff = vi.fn();
+const searchAssessors = vi.fn();
 
 vi.mock("@lib/passport", () => ({
   fetchMyPassport: (...args: unknown[]) => fetchMyPassport(...args),
   requestSignOff: (...args: unknown[]) => requestSignOff(...args),
+  searchAssessors: (...args: unknown[]) => searchAssessors(...args),
 }));
 
 // The page asks for users directly to fill the assessor list, since
@@ -65,6 +67,9 @@ function detailWith(competencies: CompetencyState[]) {
 describe("PassportSignOffsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Nobody on Quill by default, which is the ordinary case: the
+    // request form then accepts the address as typed.
+    searchAssessors.mockResolvedValue({ matches: [] });
   });
 
   it("puts each competency under the heading for its status", async () => {
@@ -181,6 +186,54 @@ describe("PassportSignOffsPage", () => {
     await screen.findByText("Assess toxicity");
 
     expect(screen.queryByText(/logbook/)).not.toBeInTheDocument();
+  });
+
+  it("says why the server refused, rather than 'try again'", async () => {
+    // Asking yourself is refused, and so are several other things a
+    // holder can act on. "Please try again" hides the reason and
+    // invites retrying something that will never work.
+    const user = userEvent.setup();
+    fetchMyPassport.mockResolvedValue(detailWith([]));
+    requestSignOff.mockRejectedValue(
+      new Error("You cannot ask yourself to sign off your own competency."),
+    );
+    renderWithRouter(<PassportSignOffsPage />);
+
+    await user.click(
+      await screen.findByRole("button", { name: "Ask for a sign-off" }),
+    );
+    await user.click(await screen.findByRole("combobox"));
+    await user.click(await screen.findByText("Manage User Accounts"));
+
+    await user.type(
+      await screen.findByRole("textbox", { name: /Who should assess this/ }),
+      "holder@example.nhs.uk",
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: /Observed on/ }),
+      "14/03/2026",
+    );
+    // The form will not submit until the lookup has answered for the
+    // address that is in the box now.
+    await screen.findByText(/Nobody on Quill uses that address/);
+
+    await user.click(screen.getByRole("button", { name: "Request sign-off" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Send request" }),
+    );
+
+    expect(await screen.findByText(/cannot ask yourself/)).toBeInTheDocument();
+
+    // The form is still there, holding what was typed. A refusal means
+    // one field needs changing, so replacing the page would throw away
+    // the competency already chosen and everything filled in.
+    expect(
+      screen.getByRole("textbox", { name: /Who should assess this/ }),
+    ).toHaveValue("holder@example.nhs.uk");
+
+    // And it is not dressed as a crash: the rule worked exactly as
+    // intended.
+    expect(screen.queryByText(/Something went wrong/)).not.toBeInTheDocument();
   });
 
   it("explains a failed load rather than showing an empty record", async () => {
