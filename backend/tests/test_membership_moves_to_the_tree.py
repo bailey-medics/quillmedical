@@ -230,7 +230,8 @@ class TestThroughTheRoutes:
         person = _person(db_session, "alice")
 
         resp = authenticated_superadmin_client.post(
-            f"/api/organisations/{org.id}/staff", json={"user_id": person.id}
+            f"/api/org-units/{org.org_unit_id}/members",
+            json={"user_id": person.id, "capacity": "staff"},
         )
 
         assert resp.status_code == 200
@@ -242,11 +243,12 @@ class TestThroughTheRoutes:
         org = _org(db_session, "Trust")
         person = _person(db_session, "alice")
         authenticated_superadmin_client.post(
-            f"/api/organisations/{org.id}/staff", json={"user_id": person.id}
+            f"/api/org-units/{org.org_unit_id}/members",
+            json={"user_id": person.id, "capacity": "staff"},
         )
 
         resp = authenticated_superadmin_client.delete(
-            f"/api/organisations/{org.id}/staff/{person.id}"
+            f"/api/org-units/{org.org_unit_id}/members/{person.id}"
         )
 
         assert resp.status_code == 200

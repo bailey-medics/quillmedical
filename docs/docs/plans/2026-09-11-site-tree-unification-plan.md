@@ -890,7 +890,7 @@ So the remaining steps land as:
 - [x] 12b-iii — the users API learns place ids, beside the old ones
 - [x] 12b-iv — the user form onto place ids
 - [x] 12b-v — the features, patients and staff rules onto the place surface
-- [ ] 12b-vi — the remaining organisation-surface tests onto places
+- [x] 12b-vi — the remaining organisation-surface tests onto places
 - [ ] 12b-vii — retire `/api/organisations`
 - [ ] 12b-viii — drop the `organisations` table, and enforce the type flags
 - [ ] 12b-ix — retire the organisation and site lists on the users API,
@@ -1337,6 +1337,27 @@ from the old.
   and the rule is tested where it lives — on the screen.
 - **Patients and features moved without incident**, the shapes being the
   same either side.
+
+#### 12b-vi — the rest of the organisation-surface tests
+
+Seven more files now ask `/api/org-units`: membership through the
+routes, reach through a link, what a site-only admin may not administer,
+the platform-role column, messaging's removals, the grant that rides with
+a membership, and the unauthenticated sweep.
+
+- **What was only asked of the organisations surface is asked here now**:
+  that an unauthenticated caller gets 401 and a signed-in one without the
+  competency gets 403, that a member who does not exist and a place that
+  does not exist are both 404, and that a name is stored without its
+  surrounding spaces.
+- **A place must have a name.** The routes strip a name before storing
+  it, so a name of spaces became a place called nothing — a row nobody
+  can search for, pick out of a list, or ask about. Both surfaces
+  accepted it; this one refuses, which is a deliberate improvement rather
+  than a port.
+
+What is left on the old surface is its own CRUD tests, which the place
+surface now covers rule for rule. They go with it in 12b-vii.
 
 10. [ ] **Rename the table and model** to `org_unit` and `OrgUnit`, renaming the
     membership, features, patient membership, conversation and link tables to

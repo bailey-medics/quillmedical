@@ -1349,7 +1349,7 @@ class TestRevokeExternalAccess:
 
 
 class TestRemoveStaffFromOrg:
-    """Test DELETE /api/organisations/{org_id}/staff/{user_id}."""
+    """Test DELETE /api/org-units/{unit_id}/members/{user_id}."""
 
     def test_admin_can_remove_staff(
         self,
@@ -1374,7 +1374,7 @@ class TestRemoveStaffFromOrg:
         token = authenticated_client.cookies.get("XSRF-TOKEN")
 
         resp = authenticated_client.delete(
-            f"/api/organisations/{test_org.id}/staff/{second_user.id}",
+            f"/api/org-units/{test_org.org_unit_id}/members/{second_user.id}",
             headers={"X-CSRF-Token": token},
         )
         assert resp.status_code == 200
@@ -1388,14 +1388,14 @@ class TestRemoveStaffFromOrg:
     ):
         """Non-admin cannot remove staff."""
         resp = authenticated_client.delete(
-            f"/api/organisations/{test_org.id}/staff/{second_user.id}",
+            f"/api/org-units/{test_org.org_unit_id}/members/{second_user.id}",
             headers={"X-CSRF-Token": csrf_token},
         )
         assert resp.status_code == 403
 
 
 class TestRemovePatientFromOrg:
-    """Test DELETE /api/organisations/{org_id}/patients/{patient_id}."""
+    """Test DELETE /api/org-units/{unit_id}/patients/{patient_id}."""
 
     def test_patient_manager_can_remove_patient(
         self,
@@ -1427,7 +1427,7 @@ class TestRemovePatientFromOrg:
         token = authenticated_client.cookies.get("XSRF-TOKEN")
 
         resp = authenticated_client.delete(
-            f"/api/organisations/{test_org.id}/patients/{PATIENT_ID}",
+            f"/api/org-units/{test_org.org_unit_id}/patients/{PATIENT_ID}",
             headers={"X-CSRF-Token": token},
         )
         assert resp.status_code == 200
