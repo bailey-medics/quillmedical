@@ -90,19 +90,13 @@ export default function SignOffRequestForm({
   const [comments, setComments] = useState("");
   const [reflection, setReflection] = useState("");
 
-  const trimmedEmail = assessorEmail.trim();
-  const emailLooksValid = EMAIL_PATTERN.value.test(trimmedEmail);
-
-  // Only once something has been typed: an empty field is a form not
-  // filled in yet, not a mistake, and colouring it red on arrival is
-  // the most common way a form greets somebody with a complaint.
-  const emailError =
-    trimmedEmail !== "" && !emailLooksValid ? EMAIL_PATTERN.message : undefined;
+  const typed = assessorEmail.trim();
+  const looksLikeEmail = EMAIL_PATTERN.value.test(typed);
 
   // Looked up as they type, so a holder is told what will happen rather
   // than guessing. Debounced because a request per keystroke would mean
   // twenty lookups to type one address.
-  const [debouncedEmail] = useDebouncedValue(trimmedEmail, 400);
+  const [debouncedEmail] = useDebouncedValue(typed, 400);
   // The answer and the address it answers for, together. Two pieces of
   // state that must agree, so they are one: "still looking" is then
   // derived rather than tracked, and cannot drift out of step with the
@@ -112,8 +106,12 @@ export default function SignOffRequestForm({
     match: AssessorMatch | null;
   } | null>(null);
 
+  // Searched on whatever was typed, not only on an address. Somebody
+  // already on Quill can be named however the holder knows them — by
+  // name, by username or by address — and only somebody Quill has
+  // never heard of must be given as an address.
   useEffect(() => {
-    if (!EMAIL_PATTERN.value.test(debouncedEmail)) {
+    if (debouncedEmail.length < 3) {
       return;
     }
 
@@ -122,13 +120,14 @@ export default function SignOffRequestForm({
     searchAssessors(debouncedEmail)
       .then(({ matches }) => {
         if (cancelled) return;
-        // Matched on the address, so only an exact one is this person:
-        // a search for "a.okonkwo@" must not claim to have found
-        // somebody whose address merely contains it.
-        const exact = matches.find(
-          (m) => m.email.toLowerCase() === debouncedEmail.toLowerCase(),
-        );
-        setLookup({ email: debouncedEmail, match: exact ?? null });
+        // One match and one only. Two people answering to "Okonkwo" is
+        // not an answer, and picking the first would name whichever the
+        // database happened to return — the mistake this whole step
+        // exists to prevent.
+        const term = debouncedEmail.toLowerCase();
+        const exactEmail = matches.find((m) => m.email.toLowerCase() === term);
+        const sole = matches.length === 1 ? matches[0] : null;
+        setLookup({ email: debouncedEmail, match: exactEmail ?? sole });
       })
       .catch(() => {
         // Not fatal. The request can still be sent; the holder simply
@@ -141,7 +140,24 @@ export default function SignOffRequestForm({
     };
   }, [debouncedEmail]);
 
-  const canSubmit = emailLooksValid && observedOn !== null && !isSubmitting;
+  // The answer for what is in the box now, rather than a stale one for
+  // something typed earlier.
+  const settled = lookup?.email === debouncedEmail ? lookup : null;
+  const found = settled?.match ?? null;
+
+  // The rule: somebody on Quill may be named any way the holder knows
+  // them; somebody who is not must be given as an address, because an
+  // address is the only thing that can be emailed.
+  const namesSomebody = found !== null || looksLikeEmail;
+
+  // Only once the lookup has answered, so a half-typed name is not
+  // called a mistake while somebody is still typing it.
+  const assessorError =
+    typed !== "" && settled !== null && !namesSomebody
+      ? "Nobody on Quill matches that. Type their email address instead."
+      : undefined;
+
+  const canSubmit = namesSomebody && observedOn !== null && !isSubmitting;
 
   // Asking is the last moment the holder can catch naming the wrong
   // person, so the form stops here and shows who it found before
@@ -152,7 +168,10 @@ export default function SignOffRequestForm({
     if (!canSubmit || observedOn === null) return;
 
     onSubmit({
-      assessor_email: trimmedEmail.toLowerCase(),
+      // The address of whoever was found, or what was typed when
+      // nobody was. Sending the typed text for a person found by name
+      // would post "Dr Amara Okonkwo" as an email address.
+      assessor_email: (found?.email ?? typed).toLowerCase(),
       observed_on: observedOn,
       level_id: levelId,
       comments: comments.trim() || null,
@@ -167,11 +186,11 @@ export default function SignOffRequestForm({
 
         <EmailField
           label="Who should assess this?"
-          description="Their email address. They do not need a Quill account."
+          description="A name or username if they use Quill. They do not need a Quill account — an email address is enough."
           placeholder="assessor@example.nhs.uk"
           value={assessorEmail}
           onChange={(event) => setAssessorEmail(event.currentTarget.value)}
-          error={emailError}
+          error={assessorError}
           required
         />
 
@@ -180,10 +199,10 @@ export default function SignOffRequestForm({
             the lookup has answered: saying "we will email a new
             assessor" while somebody is still halfway through typing a
             colleague's address would be wrong more often than right. */}
-        {emailLooksValid && lookup?.email === debouncedEmail && (
+        {namesSomebody && settled !== null && (
           <BodyText>
-            {lookup.match
-              ? `${lookup.match.full_name ?? lookup.match.username} already uses Quill. ` +
+            {found
+              ? `${found.full_name ?? found.username} already uses Quill. ` +
                 "They will be emailed and can sign in to sign this off."
               : "Nobody on Quill uses that address. They will be emailed " +
                 "an invitation, and can register to sign this off."}
@@ -256,14 +275,14 @@ export default function SignOffRequestForm({
           icon={<IconFileText />}
         >
           <Stack gap="xs">
-            {lookup?.match ? (
+            {found ? (
               <>
                 <BodyText>
-                  {lookup.match.full_name ?? lookup.match.username} will be
-                  asked to sign off {competency.name}.
+                  {found.full_name ?? found.username} will be asked to sign off{" "}
+                  {competency.name}.
                 </BodyText>
-                <BodyText>{lookup.match.email}</BodyText>
-                {lookup.match.registrations.map((registration) => (
+                <BodyText>{found.email}</BodyText>
+                {found.registrations.map((registration) => (
                   <BodyText key={`${registration.body}-${registration.number}`}>
                     {registration.body} {registration.number} — stated by them,
                     not checked by Quill.
@@ -273,7 +292,7 @@ export default function SignOffRequestForm({
             ) : (
               <>
                 <BodyText>
-                  {trimmedEmail} will be asked to sign off {competency.name}.
+                  {typed} will be asked to sign off {competency.name}.
                 </BodyText>
                 <BodyText>
                   Nobody on Quill uses that address, so they will be emailed an

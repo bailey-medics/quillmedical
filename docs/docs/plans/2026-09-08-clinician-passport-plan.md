@@ -3798,12 +3798,18 @@ anonymous holding a link.
       by Quill. An address Quill does not know shows only what was
       typed, and says they will be invited.
 
-      **Step 2's search-as-you-type field is still outstanding**, and
-      does not block this: the form resolves one exact address today,
-      which is enough to confirm. Picking between several people needs
-      a combobox component that does not exist in the catalogue, and
-      `.claude/rules/components.md` says to ask before building a new
-      atomic one.
+      **Step 2 is settled too, by a rule the product owner gave on
+      20 September:** somebody already on Quill may be named by name,
+      username or address; somebody who is not must be given as an
+      address, because an address is the only thing that can be
+      emailed. That needs no new component — the field searches on
+      whatever is typed, and refuses only text that finds nobody and
+      is not an address.
+
+      **One match, or none.** Two people answering to "Okonkwo" is not
+      an answer, and taking the first would name whichever the database
+      happened to return — the mistake the confirmation step exists to
+      prevent. The holder is asked for an address instead.
 
 - [x] **The invite link lands them at the requests.** The accept page
       stays — it is what a signed token in a URL opens, and the person

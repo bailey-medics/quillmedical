@@ -112,18 +112,65 @@ describe("SignOffRequestForm", () => {
       );
     });
 
-    it("complains about a malformed address, but not about an empty one", async () => {
-      // An empty field is a form not filled in yet, not a mistake.
+    it("refuses a name that matches nobody, but not an empty field", async () => {
+      // Somebody on Quill may be named any way the holder knows them.
+      // Somebody who is not must be given as an address, because an
+      // address is the only thing that can be emailed. An empty field
+      // is a form not filled in yet, not a mistake.
       const user = userEvent.setup();
       renderForm();
 
-      expect(screen.queryByText(/valid email address/)).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/Type their email address instead/),
+      ).not.toBeInTheDocument();
 
-      await typeAssessorEmail(user, "not-an-address");
+      await typeAssessorEmail(user, "Doctor Nobody");
 
       expect(
-        await screen.findByText(/valid email address/),
+        await screen.findByText(/Type their email address instead/),
       ).toBeInTheDocument();
+    });
+
+    it("accepts a colleague named any way the holder knows them", async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn();
+      searchAssessors.mockResolvedValue({
+        matches: [
+          {
+            user_id: 42,
+            username: "okonkwo",
+            full_name: "Dr Amara Okonkwo",
+            email: "amara.okonkwo@example.nhs.uk",
+            registrations: [],
+          },
+        ],
+      });
+      renderForm({ onSubmit });
+
+      await typeAssessorEmail(user, "Okonkwo");
+      await user.type(
+        screen.getByRole("textbox", { name: /Observed on/ }),
+        "14/03/2026",
+      );
+
+      // The form cannot be sent until the lookup has answered — a name
+      // that has found nobody yet is not somebody to ask.
+      await screen.findByText(/Dr Amara Okonkwo already uses Quill/);
+
+      await user.click(
+        screen.getByRole("button", { name: "Request sign-off" }),
+      );
+      await user.click(
+        await screen.findByRole("button", { name: "Send request" }),
+      );
+
+      // Their address, not the name that was typed: posting
+      // "Okonkwo" as an email address would fail at the server.
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          assessor_email: "amara.okonkwo@example.nhs.uk",
+        }),
+      );
     });
   });
 
@@ -178,11 +225,10 @@ describe("SignOffRequestForm", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("does not claim a near miss is the right person", async () => {
-      // The server matches anywhere in an address, so a search for
-      // "okonkwo@example.nhs.uk" comes back holding somebody whose
-      // address merely *contains* it. Reporting that person would tell
-      // the holder they had found a colleague they had not.
+    it("does not pick one of several people answering to a name", async () => {
+      // Two consultants answering to "Okonkwo" is not an answer, and
+      // taking the first would name whichever the database happened to
+      // return — the mistake this whole step exists to prevent.
       const user = userEvent.setup();
       searchAssessors.mockResolvedValue({
         matches: [
@@ -190,22 +236,28 @@ describe("SignOffRequestForm", () => {
             user_id: 42,
             username: "okonkwo",
             full_name: "Dr Amara Okonkwo",
-            // Contains the typed address, and is not it.
-            email: "amara.okonkwo@example.nhs.uk.eu",
+            email: "amara.okonkwo@example.nhs.uk",
+            registrations: [],
+          },
+          {
+            user_id: 43,
+            username: "okonkwo2",
+            full_name: "Dr Ravi Okonkwo",
+            email: "ravi.okonkwo@example.nhs.uk",
             registrations: [],
           },
         ],
       });
       renderForm();
 
-      await typeAssessorEmail(user, "okonkwo@example.nhs.uk");
+      await typeAssessorEmail(user, "Okonkwo");
 
       // Wait for the debounced lookup to have actually run, or the
       // assertion below passes before anything was searched.
       await waitFor(() => expect(searchAssessors).toHaveBeenCalled());
 
       expect(
-        await screen.findByText(/Nobody on Quill uses that address/),
+        await screen.findByText(/Type their email address instead/),
       ).toBeInTheDocument();
       expect(screen.queryByText(/already uses Quill/)).not.toBeInTheDocument();
     });
