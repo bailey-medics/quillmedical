@@ -7,13 +7,13 @@
  *
  * This replaces `RequirePermission`, which took a `level` and compared it
  * against a four-rung hierarchy of `system_permissions`. Three of those
- * rungs described a person at a *place* and moved to membership and
+ * rungs described a person at a *org_unit* and moved to membership and
  * competencies; by the end only `superadmin` was ever passed, so the
  * hierarchy, its `single-user` fallback branch and the prop itself were
  * unreachable code referring to a retiring column. See
  * docs/docs/plans/2026-09-09-platform-role-plan.md.
  *
- * Administering a place is not this question — that is the `manage_users`
+ * Administering an org_unit is not this question — that is the `manage_users`
  * competency, guarded by `RequireCompetency` beside this.
  *
  * Works in conjunction with RequireAuth — assumes the user is authenticated.
@@ -42,7 +42,7 @@ interface RequireOperatorProps {
  *
  * 404 is the default because it hides the route's existence from someone
  * who may not use it, matching `RequireCompetency` and the backend's own
- * preference for 404 over 403 on place checks.
+ * preference for 404 over 403 on org_unit checks.
  *
  * @param props - Component props
  * @returns Protected content, a redirect, or 404

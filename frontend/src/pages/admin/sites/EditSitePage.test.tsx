@@ -1,13 +1,13 @@
 /**
  * EditSitePage tests
  *
- * This page had none. It is the one screen that can rename a place, move
+ * This page had none. It is the one screen that can rename an org_unit, move
  * it out of use, and name or stand down its clinical lead — so the gap
  * mattered more than most.
  *
- * The clinical lead is the thing to watch. What somebody *is* at a place
+ * The clinical lead is the thing to watch. What somebody *is* at an org_unit
  * and what post they *hold* there are two facts now; standing a lead down
- * leaves the post vacant without taking the person off the place, which
+ * leaves the post vacant without taking the person off the org_unit, which
  * the old single "staff row with a role" could not express.
  */
 
@@ -212,7 +212,7 @@ describe("EditSitePage", () => {
       await user.click(screen.getByRole("switch"));
       await user.click(screen.getByTestId("submit-button"));
 
-      // Taking a place out of use asks first, so the request only goes
+      // Taking an org_unit out of use asks first, so the request only goes
       // once somebody has said yes.
       await user.click(
         await screen.findByRole("button", { name: "Deactivate" }),

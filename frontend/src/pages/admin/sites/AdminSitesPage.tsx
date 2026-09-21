@@ -6,7 +6,7 @@
  * in, so anybody who knew the site but not its owner had nowhere to
  * start.
  *
- * One request fetches every place the person may administer, and the
+ * One request fetches every org_unit the person may administer, and the
  * organisations among them are used to name each site's owner. Asking
  * twice — once for the sites, once for the organisations — would cost a
  * round trip to say the same thing.

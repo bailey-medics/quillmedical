@@ -227,7 +227,7 @@ export default function AddStaffToSitePage() {
           api.get<{ users: ApiUser[] }>("/users"),
           orgUnits.get(Number(id)),
         ]);
-        // Filter out users already at this place
+        // Filter out users already at this org_unit
         const existingStaffIds = new Set(
           siteResponse.members.map((member) => member.id),
         );
@@ -275,7 +275,7 @@ export default function AddStaffToSitePage() {
       // What somebody *is* here and what post they *hold* here are two
       // different facts. The old request ran them together under one
       // word, which is why a post could not be left vacant without also
-      // taking the person off the place. Clinical lead is a post; the
+      // taking the person off the org_unit. Clinical lead is a post; the
       // person is staff who also holds it.
       const isLead = data.role === "clinical_lead";
 

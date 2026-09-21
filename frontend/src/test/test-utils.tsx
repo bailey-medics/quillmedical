@@ -211,7 +211,7 @@ export async function waitForCondition(
  * the root font size rather than echoing the authored value back, so
  * `toHaveStyle({ height: "8rem" })` no longer matches an element styled
  * `height: 8rem` — the computed value is `128px`. Wrapping the authored value
- * keeps the assertion readable and leaves the arithmetic in one place.
+ * keeps the assertion readable and leaves the arithmetic in one org_unit.
  *
  * Multiple values are converted individually, so shorthands work too.
  *

@@ -43,7 +43,7 @@ org_unit_types:
 
   # The kinds of thing that can stand at the top of a tree. They used to
   # be a separate `type` column on the organisations table, which meant
-  # two vocabularies for one question — what is this place? — and a root
+  # two vocabularies for one question — what is this org_unit? — and a root
   # in the tree that could not say which kind of organisation it was.
   #
   # `organisation` stays as the plain answer for a body that is none of

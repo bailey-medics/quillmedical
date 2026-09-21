@@ -173,7 +173,7 @@ export function Component() {
   // What the page can actually show, not what the passport holds. A
   // competency whose only sign-off is superseded belongs to no group,
   // so counting it would suppress the empty state and leave the page
-  // blank — headings gone, nothing in their place.
+  // blank — headings gone, nothing in their org_unit.
   const shown = competencies.filter((competency) =>
     GROUPS.some((group) => group.status === competency.status),
   );

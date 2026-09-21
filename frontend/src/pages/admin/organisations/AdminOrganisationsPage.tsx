@@ -39,8 +39,8 @@ export default function AdminOrganisationsPage() {
   useEffect(() => {
     async function fetchOrganisations() {
       try {
-        // The organisations are the places at the top of a tree. Which
-        // places those are comes from their type, never from having
+        // The organisations are the org_units at the top of a tree. Which
+        // org_units those are comes from their type, never from having
         // nothing above them.
         setOrganisations(await orgUnits.list({ roots: true }));
       } catch (err) {

@@ -2,7 +2,7 @@
  * The route-tracking wrapper route.
  *
  * A pathless route sitting above every tree in the router, so that recording
- * which screen is showing happens in one place rather than once per layout.
+ * which screen is showing happens in one org_unit rather than once per layout.
  * It renders nothing of its own — only the matched route beneath it.
  *
  * The alternative was calling `useRouteTracking` in each layout, which is how

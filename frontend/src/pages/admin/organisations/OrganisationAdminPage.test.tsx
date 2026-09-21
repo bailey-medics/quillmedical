@@ -41,7 +41,7 @@ describe("OrganisationAdminPage", () => {
   /**
    * Answer the one request the page makes.
    *
-   * A place carries its own people, the places inside it, the features
+   * An org_unit carries its own people, the org_units inside it, the features
    * switched on there and its patient list, so the page asks once. The
    * fields it does not name default to empty.
    */
@@ -653,7 +653,7 @@ describe("OrganisationAdminPage", () => {
 
   describe("Who counts as staff", () => {
     // The heading says staff members, so the list has to be staff. A
-    // place answers with everybody who is there and what each of them
+    // org_unit answers with everybody who is there and what each of them
     // is, which is the right answer to a different question: a teaching
     // delegate under this heading is how the page came to be wrong
     // about who worked there.

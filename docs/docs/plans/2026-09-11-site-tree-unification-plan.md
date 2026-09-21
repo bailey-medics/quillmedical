@@ -917,13 +917,14 @@ So the remaining steps land as:
 - [x] 12d-i-e — `org_unit_ids` beside `place_ids` on the users API
 - [x] 12d-i-f — the frontend sends and reads `org_unit_ids`
 - [x] 12d-ii — retire `place_ids`
-- [ ] 12d-iii — say `org_unit` everywhere `place` still stands in for it
+- [x] 12d-iii — say `org_unit` everywhere `place` still stands in for it
   - [x] 12d-iii-a — the nine helper functions named for a place
   - [x] 12d-iii-b — the locals and parameters named for a place
   - [x] 12d-iii-c-i — `exclude_org_unit` beside `exclude_place`
   - [x] 12d-iii-c-ii — `org_unit_id` beside `place_id` on the passport replies
   - [x] 12d-iii-c-iii — the teaching bank routes answer at `/org-units/`
   - [x] 12d-iii-d-i — the backend comments and docstrings say `org_unit`
+  - [x] 12d-iii-d-ii — the frontend comments say `org_unit`
 
 #### 10a — write both names for the place column
 
@@ -1972,7 +1973,7 @@ there is one table of places.
     `requires_parent` flag.
     Last, so the earlier steps are not blocked by it.
 
-13. [ ] **Say `org_unit` where the code says `place`.** The table, the model
+13. [x] **Say `org_unit` where the code says `place`.** The table, the model
     and the API path already read `org_unit`; only the word used to talk
     about a row says `place`, which reads as geography for something that
     is governance. Done at the end, when the stack has settled, because it
@@ -2111,6 +2112,21 @@ that is a change to the database rather than to a name in the code.
 
 **The `type` values stay out of it**, for the reason above: that is a
 question about the model and a data migration, not a rename.
+
+**What is deliberately left when 12d-iii finishes.** Three kinds of
+"place" survive, each for a reason rather than by omission:
+
+- **User-facing text.** The `virtual` org_unit type is described as "a
+  place with no address", and a teaching establishment "teaches at places
+  it does not own". Those descriptions are read by clinicians in the
+  interface, where "place" is ordinary English and `org_unit` would leak
+  an internal name.
+- **Code rather than prose.** The `places` relationship on
+  `Conversation`, the loop variables over it, and the text of error
+  messages. Renaming a relationship changes the model; renaming an error
+  message changes what somebody sees.
+- **Database constraint names**, for the reason given above: they are
+  fixed in migrations that have already merged.
 
 ## Risks
 

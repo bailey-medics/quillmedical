@@ -188,9 +188,9 @@ export default function AdminPage() {
 
       try {
         setOrganisationsLoading(true);
-        // The organisations are the places at the top of a tree, which
+        // The organisations are the org_units at the top of a tree, which
         // is what the admin screens have counted since they moved onto
-        // the place surface.
+        // the org_unit surface.
         const organisations = await orgUnits.list({ roots: true });
 
         if (!cancelled) {

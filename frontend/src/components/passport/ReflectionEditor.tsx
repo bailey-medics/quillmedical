@@ -12,7 +12,7 @@
  * read it rather than having to infer it.
  *
  * **The anonymisation tick is required, not a reminder.** Reflections
- * are one of only two places patient data could enter a passport, and
+ * are one of only two org_units patient data could enter a passport, and
  * they are the likelier one because they are written about real cases.
  * The logbook carries a passive note in a field description; here it is
  * a checkbox that must be ticked, worded more firmly, and the API

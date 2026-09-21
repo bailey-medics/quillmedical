@@ -7,7 +7,7 @@
  * asks for no step-up authentication at the moment of signing — no code,
  * no re-entered password — because a consultant fishing out a phone five
  * times after a clinic is friction landing exactly where adoption is most
- * fragile. What stands in its place is this: somebody reads a statement
+ * fragile. What stands in its org_unit is this: somebody reads a statement
  * and puts their name to it, which is what a wet signature has always
  * been.
  *

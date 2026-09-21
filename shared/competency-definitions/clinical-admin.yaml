@@ -10,7 +10,7 @@
 # Reading them interleaved makes the distinction hard to see and invites
 # the wrong judgement about risk.
 #
-# Administering a *place* — the users at an organisation or site — is in
+# Administering a *org_unit* — the users at an organisation or site — is in
 # admin.yaml. The other features that gate parts of Quill have their own
 # files: teaching.yaml and passport.yaml.
 #
@@ -29,7 +29,7 @@ competencies:
   # ==========================================================================
 
   # Not currently enforced anywhere in the backend or frontend. Left in
-  # place rather than retired, because retirement is one way and this is
+  # org_unit rather than retired, because retirement is one way and this is
   # a competency awaiting a gate rather than one withdrawn.
   - id: access_clinic_admin
     display_name: "Access Clinic Administration Functions"

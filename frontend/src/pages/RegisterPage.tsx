@@ -125,7 +125,7 @@ function TeachingRegisterPage() {
 
       navigate(`/teaching/register/${data.module}`, {
         state: {
-          // The place the organisation is, which is what registration
+          // The org_unit the organisation is, which is what registration
           // sends back. The organisation id beside it is on its way out.
           organisationId: result.org_unit_id,
           siteId: result.site_id,

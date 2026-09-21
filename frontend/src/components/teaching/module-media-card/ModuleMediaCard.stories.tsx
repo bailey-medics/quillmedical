@@ -271,7 +271,7 @@ const processing = (
  * Every state the File column reaches, as one table.
  *
  * The labels are copied verbatim from `describe_progress` in
- * `backend/app/features/teaching/media.py`, which is the only place
+ * `backend/app/features/teaching/media.py`, which is the only org_unit
  * that decides them — so if the wording here looks wrong, it is the
  * wording an admin actually sees.
  *

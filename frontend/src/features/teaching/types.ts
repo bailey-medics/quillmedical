@@ -195,7 +195,7 @@ export interface SyncHistory {
 
 export interface TeachingOrgSettings {
   id: number;
-  /** The organisation, as a place id. */
+  /** The organisation, as an org_unit id. */
   org_unit_id: number;
   coordinator_email: string;
   institution_name: string;
@@ -229,7 +229,7 @@ export interface AdminBankDetail {
 }
 
 export interface BankOrganisation {
-  /** The organisation, as a place id. */
+  /** The organisation, as an org_unit id. */
   org_unit_id: number;
   organisation_name: string;
   is_live: boolean;
@@ -382,7 +382,7 @@ export interface MediaAsset {
    * How far processing has got, and what is happening now.
    *
    * Derived by the backend rather than worked out here, so the words
-   * and the rules behind them live in one place.
+   * and the rules behind them live in one org_unit.
    */
   progress?: MediaProgress | null;
 }

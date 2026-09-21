@@ -10,7 +10,7 @@
  * It deliberately does not ask *where*. A competency answers what someone
  * may do; membership answers where they may do it, and the backend scopes
  * each request on `platform_role` and the caller's organisations. A route
- * guard has no place to scope to, so it gates on the competency alone and
+ * guard has no org_unit to scope to, so it gates on the competency alone and
  * lets the API refuse anything out of scope — see
  * docs/docs/plans/2026-09-09-platform-role-plan.md.
  *
@@ -44,7 +44,7 @@ interface RequireCompetencyProps {
  *
  * 404 is the default because it hides the route's existence from someone
  * who may not use it, matching `RequireFeature` and the backend's own
- * preference for 404 over 403 on place checks.
+ * preference for 404 over 403 on org_unit checks.
  *
  * @param props - Component props
  * @returns Protected content, a redirect, or 404
