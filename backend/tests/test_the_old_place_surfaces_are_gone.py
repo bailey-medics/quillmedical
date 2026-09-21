@@ -1,21 +1,22 @@
-"""The old place surfaces answer 410, not data.
+"""The old org_unit surfaces are gone.
 
-Every place lives at ``/api/org-units`` now. The sites and organisations
-addresses each stayed for a deploy cycle so nothing broke mid-rollout;
-this is where they stop answering.
+Every org_unit lives at ``/api/org-units`` now. The sites and
+organisations addresses stayed for a deploy cycle so nothing broke
+mid-rollout, then answered 410 naming their replacement for several
+releases after that. This is where they stop existing.
 
-410 rather than 404, so a caller can tell "this never existed" from
-"this used to be here and has gone" — the second is worth saying,
-because it tells them there is somewhere else to look.
+404 rather than 410, because a retired address is a courtesy with an
+end. What must never happen is one of them answering with data: the
+tables they read are gone, so a reply could only be wrong.
 """
 
 from __future__ import annotations
 
 import pytest
 
-#: The retired address, and a body that used to be valid there. The
-#: shapes are still declared, so a caller sending what it always sent
-#: gets 410 rather than a complaint about its request.
+#: A deleted address, and a body that used to be valid there. Sending
+#: the old body still gets 404: the address is unknown, so nothing
+#: reaches a validator that could complain about the request instead.
 RETIRED: list[tuple[str, str, dict[str, object] | None]] = [
     ("get", "/api/sites", None),
     (
@@ -53,7 +54,7 @@ RETIRED: list[tuple[str, str, dict[str, object] | None]] = [
 
 
 @pytest.mark.parametrize("method,path,body", RETIRED)
-def test_it_says_it_has_gone(
+def test_the_address_no_longer_exists(
     authenticated_superadmin_client,
     method: str,
     path: str,
@@ -62,23 +63,17 @@ def test_it_says_it_has_gone(
     call = getattr(authenticated_superadmin_client, method)
     resp = call(path) if body is None else call(path, json=body)
 
-    assert resp.status_code == 410, resp.text
-
-
-def test_it_says_where_to_go_instead(authenticated_superadmin_client) -> None:
-    resp = authenticated_superadmin_client.get("/api/organisations")
-
-    assert "/api/org-units" in resp.json()["detail"]
+    assert resp.status_code == 404, resp.text
 
 
 def test_it_answers_the_same_to_somebody_with_no_permissions(
     authenticated_client,
 ) -> None:
-    """A retired address has nothing left to protect.
+    """A deleted address has nothing left to protect.
 
-    Answering 403 to one caller and 410 to another would only tell them
+    Answering 403 to one caller and 404 to another would only tell them
     apart, and there is no longer anything behind the door.
     """
     resp = authenticated_client.get("/api/sites")
 
-    assert resp.status_code == 410
+    assert resp.status_code == 404

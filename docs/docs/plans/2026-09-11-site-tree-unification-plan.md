@@ -930,6 +930,7 @@ So the remaining steps land as:
   - [x] 12d-iv-b — retire `place_id` on the passport replies
   - [x] 12d-iv-c — retire the `/places/` teaching paths
 - [x] 12d-v — delete the retired 410 stubs
+- [x] 12d-vi — delete the retired sites and organisations surfaces
 
 #### 10a — write both names for the place column
 
@@ -2117,6 +2118,29 @@ that is a change to the database rather than to a name in the code.
 
 **The `type` values stay out of it**, for the reason above: that is a
 question about the model and a data migration, not a rename.
+
+#### 12d-vi — delete the retired sites and organisations surfaces
+
+The last of the going. 12a-iii and 12b-vii retired `/api/sites` and
+`/api/organisations`, and this plan promised the rest of the sentence:
+both surfaces "keep working as views over the same table for a full
+deploy cycle, then return 410, then go". They have been at 410 for
+several releases. This is the go.
+
+Twenty-four addresses across six families, and `_gone`, the helper
+raising the 410. Nothing reads them: the tables behind them were dropped
+in 12c-iii-d, so an answer could only be wrong, and every screen moved to
+`/api/org-units` when the surfaces were first retired.
+
+**404 from here, not 410.** A retired address that names its replacement
+is worth having while callers are still moving; once they have moved, it
+is a permanent entry in the routing table saying nothing. The test file
+that pinned down the 410 now pins down the 404, renamed to match.
+
+**Found the same way 12d-v was.** The promise lived in a bullet rather
+than a checkbox, so counting the plan's boxes reported the work finished
+while twenty-four routes sat in `main.py`. That is twice. A step written
+in prose is a step nobody will find.
 
 #### 12d-v — delete the retired 410 stubs
 
