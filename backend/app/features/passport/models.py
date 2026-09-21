@@ -457,6 +457,16 @@ class SiteCommonCompetency(Base):
     )
 
 
+#: How long an entitlement granted at onboarding runs for.
+#:
+#: A year, because that is the shape of the arrangements being sold and
+#: because a renewal somebody has to think about once a year is the
+#: point of having an end date at all. It is a default, not a rule: a
+#: row can be written with any ``ends_on``, and a longer agreement is a
+#: further-off date rather than a special case.
+PASSPORT_ENTITLEMENT_DAYS = 365
+
+
 class PassportWriteEntitlement(Base):
     """Until when somebody may add to their own passport.
 

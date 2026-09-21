@@ -4207,7 +4207,7 @@ and likely a different price.
       the CI seed, so the feature is testable after the split.
       **Found on doing it that no seeding was needed, and a real bug
       was in the way instead.** See below.
-- [ ] Grant `passport_write` to the person at onboarding, where an
+- [x] Grant `passport_write` to the person at onboarding, where an
       organisation pays for it. No organisation flag: the gate asks the
       person, never the place.
 - [x] Gate every passport write path on `passport_write`, and gate no

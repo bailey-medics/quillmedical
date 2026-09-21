@@ -28,6 +28,9 @@ from app.deps import (
     get_current_user,
     has_competency,
 )
+from app.features.passport.entitlements import (
+    grant_entitlement_at_onboarding,
+)
 from app.models import (
     MEMBER_CAPACITIES,
     OrgUnit,
@@ -679,6 +682,18 @@ def add_org_unit_member(
     grant_staff_competencies(
         person, body.base_profession, body.additional_competencies
     )
+
+    # The term comes with the grant, for the reason the grant comes with
+    # the membership: a new starter holding `passport_write` and no
+    # entitlement can open their passport and not write to it, which
+    # reads as a broken page rather than an arrangement nobody set up.
+    grant_entitlement_at_onboarding(
+        db,
+        person.id,
+        unit_id,
+        body.additional_competencies or [],
+    )
+
     db.flush()
     return OrgUnitStatusOut(status=status)
 

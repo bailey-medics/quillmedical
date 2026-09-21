@@ -137,13 +137,13 @@ from .blobs import (
     BlobStore,
 )
 from .commits import Actor
+from .entitlements import current_entitlement_end
 from .gcs_store import GcsBlobStore
 from .models import (
     AssessorRegistrationVerification,
     Passport,
     PassportAssessorInvite,
     PassportSignOffRequest,
-    PassportWriteEntitlement,
 )
 from .schemas import (
     Attachment,
@@ -392,30 +392,6 @@ def _require_holder(db: Session, passport_id: str, user: User) -> Passport:
     return row
 
 
-def _entitlement_end(db: Session, user_id: int) -> datetime | None:
-    """When this person's right to write runs out, or None if it has.
-
-    Somebody may hold the entitlement from more than one source at once
-    — their organisation and a subscription of their own — so the
-    question is whether *any* row is still current, and the answer is
-    the latest end date among those that are. Losing one source must not
-    end the other.
-
-    Returns:
-        The furthest-off end date still in the future, or None when
-        nothing current remains.
-    """
-    return db.scalar(
-        select(PassportWriteEntitlement.ends_on)
-        .where(
-            PassportWriteEntitlement.user_id == user_id,
-            PassportWriteEntitlement.ends_on > _now(),
-        )
-        .order_by(PassportWriteEntitlement.ends_on.desc())
-        .limit(1)
-    )
-
-
 def _require_writer(db: Session, passport_id: str, user: User) -> Passport:
     """Require that the caller owns this passport *and* may write to it.
 
@@ -444,7 +420,7 @@ def _require_writer(db: Session, passport_id: str, user: User) -> Passport:
             "it; adding to it needs an active entitlement.",
         )
 
-    if _entitlement_end(db, user.id) is None:
+    if current_entitlement_end(db, user.id) is None:
         raise HTTPException(
             403,
             "Your passport is read-only because your entitlement has "
@@ -2456,6 +2432,7 @@ def revoke_assessor_membership(
         return AssessorRevokeOut(
             user_id=assessor_user_id,
             place="site",
+            place_id=int(site_id),
             org_unit_id=int(site_id),
             sign_offs_kept=int(sign_offs_kept),
         )
@@ -2488,6 +2465,7 @@ def revoke_assessor_membership(
     return AssessorRevokeOut(
         user_id=assessor_user_id,
         place="organisation",
+        place_id=organisation_org_unit_id,
         org_unit_id=organisation_org_unit_id,
         sign_offs_kept=int(sign_offs_kept),
     )
@@ -2840,6 +2818,7 @@ def accept_assessor_invite(
         status=status,
         user_id=user.id,
         place=place,
+        place_id=org_unit_id,
         org_unit_id=org_unit_id,
     )
 
