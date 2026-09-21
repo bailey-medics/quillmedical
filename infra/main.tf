@@ -288,6 +288,15 @@ module "cloud_run_backend" {
   vpc_connector_id  = module.networking.vpc_connector_id
   health_check_path = "/api/health"
 
+  # Only the load balancer may reach this service. Without it the service
+  # answers on its own *.run.app URL, which is published in Certificate
+  # Transparency logs and skips Cloud Armor entirely, making the throttle
+  # rule in modules/load-balancer bypassable. `roles/run.invoker` stays
+  # granted to allUsers in the module: the load balancer calls the service
+  # as an anonymous caller, so removing it would break the site rather than
+  # harden it.
+  ingress = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
+
   env_vars = merge(
     {
       BACKEND_ENV     = "production"
@@ -614,6 +623,9 @@ module "cloud_run_frontend" {
   cpu               = "1"
   max_instances     = var.cloud_run_max_instances
   health_check_path = "/healthz"
+
+  # As for the backend above: reachable only through the load balancer.
+  ingress = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
 }
 
 # ---------- Global HTTPS Load Balancer ----------

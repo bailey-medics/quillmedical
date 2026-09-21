@@ -53,18 +53,23 @@ the rename ever happens.
 
 ### Phase 1: Close the load balancer bypass
 
-- [ ] Set `ingress = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"` on the
+- [x] Set `ingress = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"` on the
       backend and frontend Cloud Run services in `infra/main.tf`. The
       module already takes the variable (`infra/modules/cloud-run/variables.tf`),
       defaulting to `INGRESS_TRAFFIC_ALL`; nothing overrides it today.
 
-- [ ] Leave `roles/run.invoker` granted to `allUsers` in
+- [x] Leave `roles/run.invoker` granted to `allUsers` in
       `infra/modules/cloud-run/main.tf`. Once ingress is closed the load
       balancer still calls the service as an anonymous caller, so
       removing it would break the site rather than harden it.
 
 - [ ] Apply to teaching, which is the only environment deployed and the
-      one currently exposed.
+      one currently exposed. This step is Batch 2.
+
+- [x] Confirmed the three Cloud Run *jobs* need no equivalent. Admin,
+      transcode and caption use `modules/cloud-run-job`, which creates a
+      `google_cloud_run_v2_job`, and a job has no ingress setting because
+      it is not reachable over HTTP.
 
 - [ ] Verify the service's `*.run.app` URL now refuses the request, and
       that the public hostname still serves normally.
