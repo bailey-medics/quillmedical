@@ -288,14 +288,15 @@ module "cloud_run_backend" {
   vpc_connector_id  = module.networking.vpc_connector_id
   health_check_path = "/api/health"
 
-  # Only the load balancer may reach this service. Without it the service
-  # answers on its own *.run.app URL, which is published in Certificate
-  # Transparency logs and skips Cloud Armor entirely, making the throttle
-  # rule in modules/load-balancer bypassable. `roles/run.invoker` stays
-  # granted to allUsers in the module: the load balancer calls the service
-  # as an anonymous caller, so removing it would break the site rather than
-  # harden it.
-  ingress = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
+  # Ingress is deliberately left at the module default of
+  # INGRESS_TRAFFIC_ALL, which leaves the *.run.app URL reachable and Cloud
+  # Armor's throttle rule bypassable. Closing it broke every deploy:
+  # deploy-tagged.sh releases a revision with --no-traffic and smoke-tests
+  # that revision's own tagged *.run.app URL before promoting it, and a
+  # closed ingress rejects that request before it reaches the service. A
+  # GitHub-hosted runner has no route to a tagged revision once ingress is
+  # closed, so the smoke test has to move inside the project first. See
+  # Phase D of docs/docs/plans/2026-09-18-environment-isolation-and-iap-plan.md.
 
   env_vars = merge(
     {
@@ -303,7 +304,7 @@ module "cloud_run_backend" {
       SECURE_COOKIES = "true"
       # No COOKIE_DOMAIN: unset means host-only, so a cookie set by this
       # host is never sent to another subdomain of quill-medical.com.
-      FRONTEND_URL = "https://${var.lb_domains[0]}"
+      FRONTEND_URL    = "https://${var.lb_domains[0]}"
       CORE_DB_HOST    = module.cloud_sql_core.private_ip
       CORE_DB_NAME    = module.cloud_sql_core.database_name
       CORE_DB_USER    = module.cloud_sql_core.database_user
@@ -625,8 +626,8 @@ module "cloud_run_frontend" {
   max_instances     = var.cloud_run_max_instances
   health_check_path = "/healthz"
 
-  # As for the backend above: reachable only through the load balancer.
-  ingress = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
+  # As for the backend above: ingress stays open until the smoke test can
+  # reach a tagged revision from inside the project.
 }
 
 # ---------- Global HTTPS Load Balancer ----------
