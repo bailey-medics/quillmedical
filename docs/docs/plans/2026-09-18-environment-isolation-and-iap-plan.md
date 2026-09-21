@@ -666,6 +666,22 @@ one.
   where it wants `false`, with a message that names the type rather than
   the cause.
 
+- **The paths filter answers a repository question, not an environment
+  one.** `dorny/paths-filter` in the prepare job decides whether the
+  frontend changed *in this commit*, which is the right question for an
+  environment that is already current and the wrong one for an
+  environment that has never had a frontend at all. The first deploy to
+  the app project touched only workflow files, so it deployed the backend,
+  skipped the frontend, and reported success while the hostname served
+  Google's placeholder over a valid certificate. The deploy job now asks
+  each service what image it is running and forces a deploy for anything
+  still on `gcr.io/cloudrun/hello`, which is self-healing rather than
+  special-cased to one environment. The logic lives in
+  `.github/scripts/deploy/find-placeholder-services.sh` with its own
+  `.bats` tests, following the convention the other deploy scripts set:
+  a `run:` block of any size is checked by neither shellcheck nor a
+  test, and this one decides whether a deploy happens.
+
 - **A successful `terraform apply` is not a working environment.**
   Terraform builds infrastructure; `deploy.yml` builds and ships the
   application. Every image variable starts as `gcr.io/cloudrun/hello`
