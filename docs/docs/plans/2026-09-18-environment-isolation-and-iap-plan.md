@@ -390,11 +390,12 @@ secret renames are yours, because Claude cannot write repository secrets.
       shut-down project is recoverable for thirty days; a deleted one is
       not, and nothing is gained by being final on the same day.
 
-## Batch 9 — waiting: a second environment, and launch
+## Batch 9 — waiting: a second environment
 
-Nothing in this batch can start yet. The three phases are kept rather than
-deleted because the reasoning was expensive to work out and costs nothing
-to store.
+Phases A and B wait on a non-production environment existing, and are kept
+rather than deleted because the reasoning was expensive to work out and
+costs nothing to store. Phase C no longer waits: the domains were
+registered on 2026-09-20.
 
 ### Phase A: Take the health path off the gate
 
@@ -460,18 +461,48 @@ product and must stay reachable without a sign-in wall.
 
 ### Phase C: Second registrable domain
 
-Waiting on launch. This is brand protection rather than isolation, and a
-lookalike domain needs people who recognise the name well enough to be
-fooled by it. Quill has no users yet, so the risk starts when it does.
+Registered on 2026-09-20, ahead of the rest of this batch. Brand
+protection does not depend on a second environment existing, and the
+lookalike names were cheap enough that waiting saved nothing.
 
-- [ ] Register a `.dev` domain, as insurance against a lookalike sign-in
-      page on a name that reads as ours. Identity-Aware Proxy does not
-      help here: it gates who reaches our environments, and cannot touch
-      a domain somebody else owns.
+- [x] Register `quill-medical.dev`, for five years. It is the one that
+      matters: `.dev` is on the HSTS preload list, so a browser will only
+      ever load it over HTTPS and a lookalike sign-in page on it cannot be
+      served over plain HTTP. Identity-Aware Proxy does not help here,
+      because it gates who reaches our environments and cannot touch a
+      domain somebody else owns.
 
-- [ ] Set auto-renew, registrar lock, a company card and a shared billing
-      address. Domains are lost to lapsed renewals far more often than to
-      anyone taking them deliberately.
+- [x] Register the defensive names alongside it: `quill-medical.net`,
+      `.me`, `.xyz`, `.store` and `.online`. These are held to stop
+      somebody else using them, not to be served. Around £18 for the first
+      year, with `.net` and `.me` the only two worth much at renewal.
+
+- [ ] Forward the five defensive names to `https://quill-medical.com` at
+      the registrar, using its own HTTP forwarding rather than DNS records
+      of ours. The registrar supplies the certificate, so this costs
+      nothing and adds no infrastructure. A typo then lands on the real
+      site instead of nowhere.
+
+- [ ] Do not add them to our load balancer's managed certificate. Serving
+      the redirect ourselves would mean five more domains on
+      `quill-medical.com`'s certificate, and a Google-managed certificate
+      only goes active once every domain on it validates, so a name that
+      fails to validate would take TLS down for the real site.
+
+- [ ] Do not forward `quill-medical.dev`. It is the one name here that
+      may be served for real later, and a redirect would have to be undone
+      first.
+
+- [ ] Set auto-renew and registrar lock on all six, with a company card
+      and a shared billing address. Domains are lost to lapsed renewals
+      far more often than to anyone taking them deliberately. `.dev` is
+      paid to 2031, so the first real renewal risk is `.net` and `.me` in
+      September 2027.
+
+- [ ] Decide what `quill-medical.dev` is actually for before using it for
+      anything. Registering it was brand protection; serving a
+      non-production environment from it is a separate decision that
+      belongs with Phase B, because the environment has to exist first.
 
 - [ ] Treat the isolation benefit as secondary. Host-only cookies from
       Phase 2 already close the shared-jar problem; what a separate
@@ -545,9 +576,20 @@ fooled by it. Quill has no users yet, so the risk starts when it does.
   solves both, and a route that returns only liveness is not worth
   protecting.
 
-- **The `.dev` domain is brand protection, and waits for launch** — the
-  isolation argument did not justify it once host-only cookies were on the
-  table, and Identity-Aware Proxy covers the access side. What is left is
-  the risk of somebody else holding a name that looks like ours, which is
-  worth roughly a tenner a year but only once there is a brand to
-  imitate.
+- **The `.dev` domain is brand protection, not isolation** — the isolation
+  argument did not justify it once host-only cookies were on the table, and
+  Identity-Aware Proxy covers the access side. What was left is the risk of
+  somebody else holding a name that looks like ours, and that was settled
+  by registering it on 2026-09-20 rather than waiting for launch.
+
+- **The defensive names forward at the registrar, not through our load
+  balancer** — `quill-medical.net`, `.me`, `.xyz`, `.store` and `.online`
+  are held so that nobody else holds them, and forwarding them to the real
+  site means a typo lands somewhere correct. Doing it at the registrar
+  keeps them off our managed certificate: that certificate only goes active
+  once every domain on it validates, so a defensive name that failed to
+  validate would take TLS down for `quill-medical.com` itself.
+
+- **`quill-medical.dev` is not forwarded** — it is the one name that may be
+  served for real later, most likely a non-production environment under
+  Phase B, and a redirect set up now would only have to be undone.
