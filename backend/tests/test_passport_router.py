@@ -51,6 +51,7 @@ from app.features.passport.models import (
     Passport,
     PassportAssessorInvite,
     PassportSignOffRequest,
+    PassportWriteEntitlement,
 )
 from app.features.passport.store import LocalPassportStore
 from app.main import app
@@ -131,6 +132,19 @@ def _make_user(
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    if writes:
+        # The competency says they may write; the entitlement says until
+        # when. Both are needed, exactly as they are for a real holder.
+        db.add(
+            PassportWriteEntitlement(
+                user_id=user.id,
+                source="organisation",
+                ends_on=datetime.now(UTC) + timedelta(days=365),
+            )
+        )
+        db.commit()
+
     return user
 
 

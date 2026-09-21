@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Iterator
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +33,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
+from app.features.passport.models import PassportWriteEntitlement
 from app.features.passport.store import LocalPassportStore
 from app.main import app
 from app.models import (
@@ -135,6 +137,19 @@ def _make_user(
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    if writes:
+        # The competency says they may write; the entitlement says until
+        # when. Both are needed, exactly as they are for a real holder.
+        db.add(
+            PassportWriteEntitlement(
+                user_id=user.id,
+                source="organisation",
+                ends_on=datetime.now(UTC) + timedelta(days=365),
+            )
+        )
+        db.commit()
+
     return user
 
 
@@ -402,6 +417,114 @@ class TestALapsedHolderKeepsTheirRecord:
         )
 
         assert response.status_code == 404
+
+
+class TestAnEntitlementThatHasRunOut:
+    """The competency says they may write; the entitlement says until when.
+
+    Both are needed, and they fail differently: losing the competency is
+    somebody's access being changed, while an entitlement running out is
+    the ordinary end of an arrangement nobody renewed.
+    """
+
+    def _expire(self, db_session: Session, user: User) -> None:
+        """Move every entitlement this person holds into the past."""
+        rows = (
+            db_session.query(PassportWriteEntitlement)
+            .filter(PassportWriteEntitlement.user_id == user.id)
+            .all()
+        )
+        for row in rows:
+            row.starts_on = datetime.now(UTC) - timedelta(days=400)
+            row.ends_on = datetime.now(UTC) - timedelta(days=1)
+        db_session.commit()
+
+    def test_writing_is_refused_once_it_has_ended(
+        self,
+        passport: str,
+        test_client: TestClient,
+        holder: User,
+        db_session: Session,
+    ) -> None:
+        """The entitlement is what ends, so the write is what stops."""
+        self._expire(db_session, holder)
+        client = _login(test_client, "holder")
+
+        response = client.post(
+            f"/api/passport/{passport}/certificates",
+            json={
+                "title": "After it lapsed",
+                "issuer": "UKONS",
+                "awarded_on": "2026-02-11",
+            },
+        )
+
+        assert response.status_code == 403
+
+    def test_reading_is_untouched_by_it(
+        self,
+        passport: str,
+        test_client: TestClient,
+        holder: User,
+        db_session: Session,
+    ) -> None:
+        """Reading is derived from owning the passport, never from paying."""
+        self._expire(db_session, holder)
+        client = _login(test_client, "holder")
+
+        assert client.get(f"/api/passport/{passport}").status_code == 200
+
+    def test_exporting_is_untouched_by_it(
+        self,
+        passport: str,
+        test_client: TestClient,
+        holder: User,
+        db_session: Session,
+    ) -> None:
+        """Somebody whose cover ended needs their record more, not less."""
+        self._expire(db_session, holder)
+        client = _login(test_client, "holder")
+
+        assert (
+            client.get(f"/api/passport/{passport}/export.md").status_code
+            == 200
+        )
+
+    def test_a_second_source_keeps_them_writing(
+        self,
+        passport: str,
+        test_client: TestClient,
+        holder: User,
+        db_session: Session,
+    ) -> None:
+        """Losing one source must not end the other.
+
+        Somebody covered by their organisation *and* paying for
+        themselves keeps writing when the organisation's cover ends, and
+        should never notice it happened.
+        """
+        self._expire(db_session, holder)
+        db_session.add(
+            PassportWriteEntitlement(
+                user_id=holder.id,
+                source="individual",
+                ends_on=datetime.now(UTC) + timedelta(days=30),
+            )
+        )
+        db_session.commit()
+
+        client = _login(test_client, "holder")
+
+        response = client.post(
+            f"/api/passport/{passport}/certificates",
+            json={
+                "title": "Paid for it themselves",
+                "issuer": "UKONS",
+                "awarded_on": "2026-02-11",
+            },
+        )
+
+        assert response.status_code == 201
 
 
 class TestTheSpecIsAdditiveAndDiffable:

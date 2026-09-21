@@ -23,12 +23,14 @@ are and nothing resembling a target.
 from __future__ import annotations
 
 from collections.abc import Iterator
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
+from app.features.passport.models import PassportWriteEntitlement
 from app.features.passport.store import LocalPassportStore
 from app.main import app
 from app.models import (
@@ -77,6 +79,19 @@ def _make_user(
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    if writes:
+        # The competency says they may write; the entitlement says until
+        # when. Both are needed, exactly as they are for a real holder.
+        db.add(
+            PassportWriteEntitlement(
+                user_id=user.id,
+                source="organisation",
+                ends_on=datetime.now(UTC) + timedelta(days=365),
+            )
+        )
+        db.commit()
+
     return user
 
 
