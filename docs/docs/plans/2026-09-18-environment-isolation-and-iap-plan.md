@@ -666,6 +666,21 @@ one.
   where it wants `false`, with a message that names the type rather than
   the cause.
 
+- **A successful `terraform apply` is not a working environment.**
+  Terraform builds infrastructure; `deploy.yml` builds and ships the
+  application. Every image variable starts as `gcr.io/cloudrun/hello`
+  because a Cloud Run service cannot be created without naming an image,
+  and CI replaces it on the first deploy. So the new environment answered
+  on its hostname, with a valid certificate, serving Google's placeholder
+  page, and everything looked healthy in the console.
+
+- **The build job authenticates as one project and pushes to both.**
+  Teaching's CI service account was granted
+  `roles/artifactregistry.writer` on the app project's repository, which
+  is simpler than authenticating twice in one job. That grant is
+  teaching's to lose in Batch 8, so the images must already be in the app
+  project by then, which is why both are pushed rather than one pulled.
+
 - **The DNS zone is in the production project, which is shut down.** Two
   managed zones exist for `quill-medical.com`, one in
   `quill-medical-production` and one in `quill-medical-staging`, and only
@@ -774,8 +789,23 @@ whole domain with it.
       deliberate. Everything up to here is reversible by leaving DNS
       alone; after Batch 8 it is not.
 
-**Hands over:** `app.quill-medical.com` serving, `teaching.` redirecting
-to it, and both verified by hand. Batch 6 must not merge before this.
+- [x] **(Claude)** Make `deploy.yml` deploy the application to both
+      environments. Terraform builds infrastructure and nothing else, so
+      a successful apply left both Cloud Run services running
+      `gcr.io/cloudrun/hello` and `app.quill-medical.com` serving Google's
+      "Congratulations" page over a valid certificate. The deploy
+      workflow named `GCP_TEACHING_*` in about a dozen places, exactly as
+      `terraform.yml` had.
+
+- [x] **(Claude)** Push every image to both projects' Artifact Registry
+      rather than pulling cross-project. `docker/build-push-action` takes
+      several tags, so the image is still built once. Each project then
+      holds its own copy, and retiring teaching in Batch 8 cannot leave
+      the app environment unable to pull what it is running.
+
+**Hands over:** `app.quill-medical.com` serving the real application,
+`teaching.` redirecting to it, and both verified by hand. Batch 6 must
+not merge before this.
 
 ## Batch 6 — Claude: move everything off the old hostname
 
