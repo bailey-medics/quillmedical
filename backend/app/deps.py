@@ -15,6 +15,7 @@ from fastapi import Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.cbac.scoped import can_practise_at
 from app.config import settings
 from app.db import get_core_db
 from app.log_context import user_id_var
@@ -178,6 +179,93 @@ def has_competency(competency: str) -> Callable[[Request, User], User]:
         return user
 
     return check_competency
+
+
+def has_competency_at(
+    competency: str, place_param: str = "unit_id"
+) -> Callable[..., User]:
+    """FastAPI dependency: the competency, *and* authority to use it here.
+
+    ``has_competency`` asks only what somebody is qualified for, which is
+    their ceiling and true everywhere at once. This asks the second half:
+    are they authorised to practise it at the place this request is about?
+    A row in ``practising_competency`` says they are, and
+    ``can_practise_at`` requires both, so a lapsed qualification narrows
+    every place without a row being touched.
+
+    Use it wherever the place is named in the path. Where a route has no
+    place to scope to — a listing that *discovers* which places somebody
+    may administer — scope the query instead, because there is no single
+    place to check.
+
+    **Operators bypass the row check.** ``platform_role == "superadmin"``
+    means operating Quill itself, which is true everywhere or nowhere, and
+    an operator holds no rows anywhere; checking them would lock them out
+    of the estate they are there to run. This mirrors
+    ``places_administered_by``, which returns None for an operator to mean
+    "all of them".
+
+    Refusal is **404, not 403**, matching ``_require_visible`` in
+    ``app.org_units.router`` and the frontend guards: a refusal must not
+    confirm that a place exists to somebody who may not see it. The
+    competency is not named in the detail either, for the same reason.
+
+    Usage Example:
+        from app.deps import has_competency_at
+
+        @router.post("/{unit_id}/rota")
+        def write_rota(
+            unit_id: int,
+            user: Annotated[User, Depends(has_competency_at("manage_rota"))],
+        ) -> RotaOut:
+            ...
+
+    Args:
+        competency: Competency ID required (e.g. ``"manage_users"``).
+        place_param: The path parameter naming the place. Defaults to
+            ``unit_id``, which is what the org-unit routes call it.
+
+    Returns:
+        Callable: FastAPI dependency function that validates both halves.
+
+    Raises:
+        HTTPException: 404 if the place is not named, is not a place, or
+            the caller may not practise the competency there.
+    """
+
+    def check_competency_at(
+        request: Request,
+        user: User = DEP_CURRENT_USER,
+        db: Session = DEP_GET_SESSION,
+    ) -> User:
+        """Check the caller may practise the competency at this place."""
+        if user.platform_role == "superadmin":
+            return user
+
+        raw = request.path_params.get(place_param)
+        if raw is None:
+            # A programming error, not a caller's: the route does not carry
+            # the parameter this dependency was told to read. 500 rather
+            # than 404, because answering "not found" would hide a
+            # mis-wired route behind a plausible refusal.
+            raise HTTPException(
+                status_code=500,
+                detail="Route is missing the place parameter.",
+            )
+
+        try:
+            place_id = int(raw)
+        except (TypeError, ValueError):
+            raise HTTPException(
+                status_code=404, detail="Place not found"
+            ) from None
+
+        if not can_practise_at(db, user, competency, org_unit_id=place_id):
+            raise HTTPException(status_code=404, detail="Place not found")
+
+        return user
+
+    return check_competency_at
 
 
 def requires_competency_decorator(competency: str) -> Callable[..., Any]:
