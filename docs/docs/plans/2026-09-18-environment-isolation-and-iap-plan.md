@@ -446,10 +446,38 @@ here because the next environment will want the same list:
       successful apply has shown what is genuinely used, on both
       projects.
 
-- [ ] **(Claude)** Create the Terraform workspace `app`, once #884 is
-      merged. State is separated by workspace under
-      `gs://quill-medical-terraform-state/terraform/state/`, so it starts
-      empty.
+- [x] **(Claude)** Make CI able to apply the new environment at all.
+      `.github/workflows/terraform.yml` selected the `teaching` workspace
+      and read teaching's tfvars in both the plan and apply jobs, with
+      both hardcoded, so merging Batch 3 changed nothing for the new
+      project and nothing ever would have. Both jobs are now a matrix
+      over `teaching` and `app`, reading each environment's secrets by
+      name. The workspace itself needs no separate step: the jobs already
+      run `terraform workspace select -or-create`.
+
+- [x] **(Claude)** Create three GitHub secrets, following the naming the
+      repository already uses for `GCP_TEACHING_*`, `GCP_STAGING_*` and
+      `GCP_PROD_*`:
+
+      - `GCP_APP_PROJECT_ID` = `quill-medical-app`
+      - `GCP_APP_SERVICE_ACCOUNT` =
+        `github-actions@quill-medical-app.iam.gserviceaccount.com`
+      - `GCP_APP_WIF_PROVIDER` =
+        `projects/45814277366/locations/global/workloadIdentityPools/github-pool/providers/github-provider`
+
+- [x] **(Claude)** Set each of those at both repository scope and `app`
+      environment scope, because that is what `teaching` does. Its three
+      exist in both places, and an environment-scoped secret overrides a
+      repository one for jobs running in that environment, so matching
+      only one scope would have left the two environments behaving
+      differently for no visible reason.
+
+- [x] **(Claude)** Create a GitHub Environment named `app`, with the same
+      protection as `teaching`: a custom branch policy allowing
+      deployments from `main` only, no required reviewers and no wait
+      timer. The apply job declares
+      `environment: ${{ matrix.environment }}`, and a job naming an
+      environment that does not exist fails before it runs a step.
 
 - [ ] **(Mark)** Apply Batch 3's Terraform to the new workspace, and let
       it build the environment from nothing. Around thirty resources take
@@ -527,6 +555,43 @@ one.
   it. Creating the first two and forgetting the third produces
   authentication that succeeds and then cannot do anything, which reads
   as a permissions problem rather than a missing binding.
+
+- **CI decides which environments exist, not the tfvars.** Adding
+  `infra/environments/app/terraform.tfvars` and merging it did nothing:
+  `terraform.yml` named the `teaching` workspace and teaching's tfvars in
+  four places, all hardcoded. A new environment is not real until the
+  workflow knows about it, and the failure mode is silence rather than an
+  error, because the workflow keeps succeeding against the old
+  environment.
+
+- **A matrix beats a second job.** The plan and apply jobs now loop over
+  the environment list, so retiring `teaching` in Batch 8 is one edit
+  rather than deleting a duplicated pair of jobs and hoping nothing else
+  referenced them. The applies run with `max-parallel: 1`, because both
+  environments share one state bucket.
+
+- **A GitHub Environment is a separate thing from a GitHub secret**, and
+  both are needed. The apply job names an environment, and a job naming
+  one that does not exist fails before its first step, which reads as a
+  workflow syntax problem rather than missing configuration.
+
+- **Read the environment you are copying before creating its twin.**
+  `teaching` restricts deployments to `main` through a custom branch
+  policy. Creating `app` with the defaults would have produced an
+  environment that looks equivalent in the workflow and accepts a deploy
+  from any branch.
+
+- **The same secret can exist at two scopes, and teaching uses both.**
+  `GCP_TEACHING_*` are set at repository level and again on the
+  `teaching` environment, where the environment copy wins for jobs
+  running there. Setting only the repository copy for `app` would work
+  until somebody added an environment-scoped override to one environment
+  and not the other.
+
+- **`gh api` needs `--input -` for boolean fields.** `-f` sends every
+  value as a string, and the environments endpoint rejects `"false"`
+  where it wants `false`, with a message that names the type rather than
+  the cause.
 
 - **`roles/editor` on the CI service account is worth questioning.** It
   was copied from teaching, where it sits beside `run.admin` and
