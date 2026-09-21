@@ -4212,7 +4212,7 @@ and likely a different price.
       person, never the place.
 - [x] Gate every passport write path on `passport_write`, and gate no
       read or export path on it.
-- [ ] Give the entitlement an end date, and have the write gate report
+- [x] Give the entitlement an end date, and have the write gate report
       why and until when.
 - [ ] Warn on entry to the passport from two weeks out, repeating every
       five days.

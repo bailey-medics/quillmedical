@@ -26,6 +26,8 @@ Tables:
 - ``PassportAssessorInvite`` — an outside assessor being brought in.
 - ``AssessorRegistrationVerification`` — that an admin checked a register.
 - ``SiteCommonCompetency`` — an admin-curated shortlist for the picker.
+- ``PassportWriteEntitlement`` — until when somebody may add to their
+  own passport, and what paid for it.
 """
 
 from __future__ import annotations
@@ -451,5 +453,95 @@ class SiteCommonCompetency(Base):
             "org_unit_id",
             "competency_id",
             name="uq_site_common_competency_place",
+        ),
+    )
+
+
+class PassportWriteEntitlement(Base):
+    """Until when somebody may add to their own passport.
+
+    ``passport_write`` is sold, so unlike every other competency it ends.
+    A competency is a string in a JSON list with nowhere to put a date,
+    which is why this is a table rather than a flag: the warning has to
+    name the day, and a boolean cannot say when.
+
+    **This never gates reading.** A passport is somebody's professional
+    record, and reading, rendering and exporting it are derived from
+    owning it rather than from paying. An entitlement that has run out
+    takes away the ability to add to the record and nothing else.
+
+    **One row per source, not one per person.** Somebody may hold the
+    entitlement from their organisation and from a subscription of their
+    own at the same time, and losing one must not end the other. The
+    question the gate asks is whether *any* row is still current, so the
+    two come apart exactly as they should when somebody leaves a trust
+    they were covered by.
+
+    Rows are kept after they expire. What somebody was entitled to do,
+    and until when, is what an audit trail needs in order to explain a
+    write that happened last year.
+    """
+
+    __tablename__ = "passport_write_entitlement"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    #: Where the entitlement came from. ``organisation`` is granted at
+    #: onboarding by a body that pays; ``individual`` is bought by the
+    #: person. Nothing in the gate cares which, and both are recorded
+    #: because renewing one is a different conversation from the other.
+    source: Mapped[str] = mapped_column(String(20), nullable=False)
+
+    #: The organisation that pays, where one does. Null for an
+    #: individual subscription, which belongs to nobody but the person.
+    org_unit_id: Mapped[int | None] = mapped_column(
+        ForeignKey("org_unit.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    starts_on: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+    )
+
+    #: The day it runs out. Not nullable: an entitlement without an end
+    #: is one nobody ever has to renew, and the warning could not name a
+    #: date. A long-running arrangement is a far-off date, not an absent
+    #: one.
+    ends_on: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        index=True,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "source IN ('organisation', 'individual')",
+            name="ck_passport_write_entitlement_source",
+        ),
+        CheckConstraint(
+            "ends_on > starts_on",
+            name="ck_passport_write_entitlement_ends_after_start",
+        ),
+        # The gate asks "has this person any row still current", so it
+        # reads by user and date together on every write.
+        Index(
+            "ix_passport_write_entitlement_user_ends",
+            "user_id",
+            "ends_on",
         ),
     )
