@@ -62,3 +62,20 @@
     color: var(--mantine-color-secondary-4);
   }
 }
+
+/*
+ * "Log in", hard right. Not a nav link: it leaves the public site for the
+ * application, so it reads as an action. The margin keeps it off the edge
+ * the ribbon's own padding already sets.
+ */
+.login {
+  font-size: 1.25rem;
+  color: var(--mantine-color-secondary-4);
+  margin-right: var(--mantine-spacing-sm);
+  white-space: nowrap;
+  transition: color 0.15s ease;
+
+  &:hover {
+    color: #fff;
+  }
+}

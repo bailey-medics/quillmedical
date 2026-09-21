@@ -12,17 +12,13 @@ import {
   IconBook,
   IconCurrencyPound,
   IconDatabase,
+  IconLogin,
   IconMail,
 } from "@/components/icons/appIcons";
 
 /** Icon names available in public navigation */
 export type PublicNavIconName =
-  | "home"
-  | "teaching"
-  | "book"
-  | "pricing"
-  | "database"
-  | "mail";
+  "home" | "teaching" | "book" | "pricing" | "database" | "login" | "mail";
 
 /** Available icon sizes */
 type IconSize = "xs" | "sm" | "md" | "lg" | "xl";
@@ -40,6 +36,7 @@ const iconMap: Record<PublicNavIconName, typeof IconHome2> = {
   book: IconBook,
   pricing: IconCurrencyPound,
   database: IconDatabase,
+  login: IconLogin,
   mail: IconMail,
 };
 

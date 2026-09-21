@@ -3,7 +3,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@test/test-utils";
 import PublicLayout from "./PublicLayout";
-import publicNavLinks from "@/components/ribbon/publicNavLinks";
+import publicNavLinks, { LOGIN_URL } from "@/components/ribbon/publicNavLinks";
 
 describe("PublicLayout", () => {
   it("renders children content", () => {
@@ -93,6 +93,20 @@ describe("PublicLayout", () => {
       }
     });
 
+    it("offers a log in link, which the ribbon's own does not cover", () => {
+      // The ribbon renders "Log in" in wide mode only, so on a narrow
+      // viewport the drawer is the only way to reach the application.
+      renderWithMantine(
+        <PublicLayout>
+          <p>Content</p>
+        </PublicLayout>,
+      );
+      const nav = screen.getByRole("navigation", { name: "Primary" });
+      const login = nav.querySelector(`a[href="${LOGIN_URL}"]`);
+      expect(login).toBeInTheDocument();
+      expect(login).toHaveTextContent("Log in");
+    });
+
     it("renders nav icons for each link", () => {
       renderWithMantine(
         <PublicLayout>
@@ -101,7 +115,9 @@ describe("PublicLayout", () => {
       );
       const nav = screen.getByRole("navigation", { name: "Primary" });
       const icons = nav.querySelectorAll("svg");
-      expect(icons.length).toBe(publicNavLinks.length + 1);
+      // The links, plus Home and Log in, neither of which is in the list:
+      // Home is the site root, and Log in leaves the site for the app.
+      expect(icons.length).toBe(publicNavLinks.length + 2);
     });
 
     it("opens the drawer when burger is clicked", async () => {

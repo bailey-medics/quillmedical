@@ -8,7 +8,7 @@
 import NavigationDrawer from "@/components/drawers/NavigationDrawer";
 import PublicFooter from "@/components/footer/PublicFooter";
 import PublicNavIcon from "@/components/icons/PublicNavIcon";
-import publicNavLinks from "@/components/ribbon/publicNavLinks";
+import publicNavLinks, { LOGIN_URL } from "@/components/ribbon/publicNavLinks";
 import PublicTopRibbon from "@/components/ribbon/PublicTopRibbon";
 import { Box, Flex, NavLink, Stack, useMantineTheme } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
@@ -70,6 +70,19 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
                 }}
               />
             ))}
+            {/*
+              The ribbon's "Log in" is wide-mode only, so the drawer carries
+              its own. Last in the list, because it leaves the public site.
+            */}
+            <NavLink
+              label="Log in"
+              href={LOGIN_URL}
+              component="a"
+              onClick={close}
+              leftSection={<PublicNavIcon name="login" />}
+              style={{ fontSize: "1.25rem" }}
+              styles={{ label: { fontSize: "1.25rem" } }}
+            />
           </Stack>
         </NavigationDrawer>
 

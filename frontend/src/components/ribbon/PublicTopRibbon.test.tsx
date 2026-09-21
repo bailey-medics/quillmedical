@@ -3,9 +3,34 @@ import { screen } from "@testing-library/react";
 import { renderWithMantine } from "@test/test-utils";
 import userEvent from "@testing-library/user-event";
 import PublicTopRibbon from "./PublicTopRibbon";
-import publicNavLinks from "./publicNavLinks";
+import publicNavLinks, { LOGIN_URL } from "./publicNavLinks";
 
 describe("PublicTopRibbon Component", () => {
+  describe("Log in", () => {
+    it("offers a log in link pointing at the application", () => {
+      renderWithMantine(<PublicTopRibbon onBurgerClick={vi.fn()} />);
+      const login = screen.getByRole("link", { name: "Log in" });
+      expect(login).toHaveAttribute("href", LOGIN_URL);
+    });
+
+    it("keeps log in out of the nav links", () => {
+      // It is an action that leaves the public site, not a page of it, so
+      // it sits outside the nav group and hard right.
+      renderWithMantine(<PublicTopRibbon onBurgerClick={vi.fn()} />);
+      const nav = screen.getByRole("navigation");
+      expect(nav).not.toHaveTextContent("Log in");
+    });
+
+    it("does not offer the retired Teaching or EPR links", () => {
+      // Teaching became the log in link when app.quill-medical.com started
+      // serving it; EPR was a disabled placeholder for a product that is
+      // not built.
+      renderWithMantine(<PublicTopRibbon onBurgerClick={vi.fn()} />);
+      expect(screen.queryByText("Teaching")).not.toBeInTheDocument();
+      expect(screen.queryByText("EPR")).not.toBeInTheDocument();
+    });
+  });
+
   describe("Wide mode (default)", () => {
     it("renders with dark navy background", () => {
       const { container } = renderWithMantine(
