@@ -295,20 +295,48 @@ refactor removes without noticing.
 
 ## Phase 5: Make it visible
 
-- [ ] **Add a practising-competencies panel to the place admin screens under
+- [x] **Add a practising-competencies panel to the place admin screens under
       `frontend/src/pages/admin/`**, listing who may practise what here, with grant
       and withdraw actions gated on `manage_practising_competencies` via
       `useHasCompetency`. Until this exists the rows can only be written by hand,
       and an authorisation model nobody can see is one nobody will maintain.
 
-- [ ] **Build it from existing components**, per the Storybook-first hierarchy in
+  Built as `PractisingCompetenciesCard` in
+  `frontend/src/components/practising-competencies/`, mounted on
+  `OrganisationAdminPage`. A component rather than page code, because the
+  same card belongs on every org_unit's screen: nothing is inherited, so a
+  ward's authorisations are only visible at the ward.
+
+  It renders nothing at all, rather than an empty card, for somebody
+  without `manage_practising_competencies`. A heading over a table they
+  cannot use is worse than no heading.
+
+  The list is not narrowed to each person's competencies. A row beyond
+  somebody's ceiling authorises nothing, but somebody wrote it, and whoever
+  reviews authorisations here needs to see what is actually stored.
+
+- [x] **Build it from existing components**, per the Storybook-first hierarchy in
       `CLAUDE.md`: `BaseCard`, the `Icon` wrapper, and `ButtonPair` for the
       confirm-and-cancel pair on withdrawal. Withdrawal needs a confirmation step,
       because it removes somebody's authorisation to work and there is no undo.
 
-- [ ] **Ship `.stories.tsx` and `.test.tsx` beside every new component**, as all
+  `ConfirmModal` already does that, so no new atomic component was needed.
+  `BaseCard`, `DataTableControlled`, `AddButton`, `IconButton` and `Icon`
+  cover the rest. The confirmation says the person stays qualified and stays
+  authorised elsewhere, because that is the half of the model somebody
+  withdrawing an authorisation is most likely to get wrong.
+
+- [x] **Ship `.stories.tsx` and `.test.tsx` beside every new component**, as all
       reusable UI here must. Cover the empty state, which is the common one: most
       places will have no rows at first.
+
+  Ten tests and three stories. Three test-quality points worth carrying
+  forward: Mantine injects its theme styles into the render container, so
+  `toBeEmptyDOMElement` never passes and absence is asserted by querying for
+  the heading; a competency's display name appears in both the table and the
+  dropdown, so the table row is found by its withdraw button rather than by
+  text; and `AddButton` marks itself `aria-disabled` rather than `disabled`,
+  so `toBeDisabled` does not apply.
 
 ## Phase 6: Close the loop on clinical competencies
 

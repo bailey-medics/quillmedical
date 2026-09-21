@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Stack, Group, Skeleton } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
+import { PractisingCompetenciesCard } from "@/components/practising-competencies";
 import {
   BodyTextInline,
   BodyTextBold,
@@ -381,6 +382,16 @@ export default function OrganisationAdminPage() {
           </Stack>
         </BaseCard>
       )}
+      {/* Who may practise here */}
+      <PractisingCompetenciesCard
+        orgUnitId={Number(id)}
+        members={org.members}
+        onChanged={(title) => {
+          showMessage({ variant: "success", title });
+          void fetchOrganisationData();
+        }}
+        onError={(title) => showMessage({ variant: "error", title })}
+      />
       {/* Enabled Features */}
       <BaseCard>
         <Stack gap="md">
