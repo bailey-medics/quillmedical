@@ -53,30 +53,129 @@ the rename ever happens.
 
 ### Phase 1: Close the load balancer bypass
 
+**Attempted and reverted on 2026-09-21.** Closing the ingress broke every
+deploy, because the deploy checks a new revision at the address the
+closed ingress rejects. The bypass is open again and stays open until
+Phase D solves that. Do not re-apply the ingress setting before then: it
+looks like a one-line change and takes the deploy pipeline down.
+
 - [x] Set `ingress = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"` on the
       backend and frontend Cloud Run services in `infra/main.tf`. The
       module already takes the variable (`infra/modules/cloud-run/variables.tf`),
-      defaulting to `INGRESS_TRAFFIC_ALL`; nothing overrides it today.
+      defaulting to `INGRESS_TRAFFIC_ALL`.
 
 - [x] Leave `roles/run.invoker` granted to `allUsers` in
       `infra/modules/cloud-run/main.tf`. Once ingress is closed the load
       balancer still calls the service as an anonymous caller, so
-      removing it would break the site rather than harden it.
-
-- [ ] Apply to teaching, which is the only environment deployed and the
-      one currently exposed. This step is Batch 2.
+      removing it would break the site rather than harden it. This turned
+      out not to be what rejected the deploy's health check: the request
+      never reached the service at all.
 
 - [x] Confirmed the three Cloud Run *jobs* need no equivalent. Admin,
       transcode and caption use `modules/cloud-run-job`, which creates a
       `google_cloud_run_v2_job`, and a job has no ingress setting because
       it is not reachable over HTTP.
 
-- [ ] Verify the service's `*.run.app` URL now refuses the request, and
+- [x] Reverted both services to the module default of
+      `INGRESS_TRAFFIC_ALL`, with a comment in `infra/main.tf` saying why
+      and pointing at Phase D.
+
+- [ ] Re-apply the ingress setting, once Phase D has moved the deploy's
+      health check onto a route the closed ingress accepts. Everything
+      below waits on that.
+
+- [ ] Verify the service's `*.run.app` URL then refuses the request, and
       that the public hostname still serves normally.
 
-- [ ] Verify Cloud Armor now sees the traffic — the throttle rule at
+- [ ] Verify Cloud Armor then sees the traffic — the throttle rule at
       `infra/modules/load-balancer/main.tf` should be reachable on every
       request rather than skippable.
+
+### Phase D: Let the deploy check a revision it cannot reach directly
+
+Phase 1 cannot be finished until this is. What follows is what was learnt
+on 2026-09-21, written down because none of it is visible from the code
+and the next person to read Phase 1 will otherwise repeat it.
+
+**What broke.** `.github/scripts/deploy/deploy-tagged.sh` releases each
+new revision with `--no-traffic` and a traffic tag, then smoke-tests that
+revision at its own tagged `*.run.app` URL, and only promotes it to
+serve traffic once it answers 200. Closing the ingress rejects that
+request before it reaches the service, so the smoke test got 404 five
+times and the deploy stopped with traffic left on the previous revision.
+The site stayed up throughout, which is the script working as designed.
+
+**That design is worth keeping.** Checking a revision before it serves
+anybody is the whole reason the script exists, and the alternative of
+promoting first and checking afterwards means a bad revision reaches
+users before anything notices.
+
+**The 404 was the ingress, not permissions.** `roles/run.invoker` is
+granted to `allUsers` and `/api/health` is public, so it is worth being
+clear that no IAM change would have helped. Cloud Run rejected the
+request at the ingress layer before any authorisation ran, which is why
+it answered 404 rather than 403.
+
+Two approaches were considered and ruled out. Both look reasonable and
+neither works.
+
+- [x] **A Cloud Run job running the smoke test from inside the project.**
+      Rejected. The jobs in `infra/modules/cloud-run-job` set
+      `egress = "PRIVATE_RANGES_ONLY"`, so traffic to a `*.run.app`
+      address leaves over the public internet, as `infra/main.tf` already
+      notes at the transcode job. The job would be rejected exactly as a
+      GitHub-hosted runner is. Setting `egress = "ALL_TRAFFIC"` does not
+      rescue it: `INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER` accepts traffic
+      from the load balancer, not from the VPC generally, and the setting
+      that would accept VPC traffic, `INGRESS_TRAFFIC_INTERNAL_ONLY`,
+      rejects the load balancer and takes the site down.
+
+- [x] **Smoke-testing the public hostname instead.** Rejected, and worse
+      than doing nothing. The new revision carries no traffic at that
+      point, so a request to `teaching.quill-medical.com` reaches the
+      *old* revision and passes whatever the new one does. It would look
+      like a working check while testing nothing.
+
+**The approach that should work** is to route the tagged revision through
+the load balancer, so the smoke test reaches it at the public hostname
+and the ingress rule is satisfied. Google's serverless NEGs support this:
+`--cloud-run-tag` is documented as "the named revision to provide
+additional fine-grained traffic routing configuration", and it "may be
+provided explicitly or in the URL mask", where a URL mask is "a template
+of your URL schema" that parses service and tag from the request URL.
+Explicitly is no use here, because the tag is `rev-<sha>` and changes
+every deploy, so the URL mask is the part that matters.
+
+- [ ] Find out the URL mask syntax for extracting a tag, and whether it
+      can come from a path prefix or only from the hostname. This decides
+      the size of the whole job: a path such as
+      `/_rev/rev-abc123/api/health` needs only a URL map rule, while a
+      hostname such as `rev-abc123.teaching.quill-medical.com` needs a
+      wildcard certificate and DNS to match, which is a much larger
+      change.
+
+- [ ] Add a second serverless NEG with the URL mask, and a backend
+      service for it, in `infra/modules/load-balancer/main.tf`. Validate
+      with a real `terraform plan` before touching the URL map.
+
+- [ ] Add the routing rule to the URL map **last, and carefully**. That
+      resource already carries a comment recording that a dynamic block
+      mistake once planned `/api/*` to null and took the API down. The
+      new rule goes in the same `concat` list as the existing ones, never
+      as a static rule beside the dynamic block.
+
+- [ ] Make sure the tagged route cannot be used to reach anything else.
+      It exposes a revision by name at the public hostname, so it should
+      match the health path only, and a request for any other path
+      through that prefix should not reach the service.
+
+- [ ] Point `run_smoke_test` in `deploy-tagged.sh` at the new route
+      rather than the tagged `*.run.app` URL. The function is already
+      isolated so tests can stub it, so this is a small change once the
+      route exists.
+
+- [ ] Only then re-apply Phase 1's ingress setting, and watch the first
+      deploy.
 
 ### Phase 2: Host-only auth cookies
 
@@ -115,8 +214,17 @@ Batch 2.
 
 ## Batch 2 — Mark: apply the security fixes
 
-- [ ] Apply Batch 1's Terraform to the teaching project, ingress first,
-      then the cookie change at a quiet moment.
+**Terraform applies itself.** `.github/workflows/terraform.yml` runs on
+every push to `main` that touches `infra/**`, so merging a Claude batch
+that changes Terraform deploys it with no further step. This batch was
+written assuming a manual apply, and that assumption was wrong: both
+Batch 1 changes went live on merge. Every later batch touching `infra/`
+behaves the same way, so read "hands over" as "merging this applies it".
+
+- [x] The cookie change applied on merge and is live.
+
+- [x] The ingress change applied on merge, broke the deploy, and was
+      reverted. See Phase D.
 
 - [ ] Verify the `*.run.app` URL now refuses the request and the public
       hostname still serves.
@@ -512,9 +620,18 @@ lookalike names were cheap enough that waiting saved nothing.
 ## Decisions
 
 - **Ingress and cookies come before naming and IAP** — the bypass is live
-  on the only deployed environment, and both fixes are small and depend on
-  no decision still open. The bypass in particular makes every other
-  access control conditional, so it is not worth building a gate above it.
+  on the only deployed environment, and the bypass in particular makes
+  every other access control conditional, so it is not worth building a
+  gate above it. The cookie fix was as small as expected. The ingress one
+  was not: it took the deploy pipeline down and is now blocked behind
+  Phase D.
+
+- **The deploy keeps checking a revision before it serves traffic** — the
+  cheapest way to close the ingress would be to drop that check, promote
+  each revision straight to traffic and test the public hostname
+  afterwards. That trades a real safety property for a configuration
+  convenience: a bad revision would reach users before anything noticed.
+  Phase D moves the check instead of removing it.
 
 - **A new project rather than a rename** — a GCP project ID is immutable
   after creation, so there is no rename to do. The choice is between a new
