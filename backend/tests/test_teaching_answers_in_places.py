@@ -150,7 +150,7 @@ class TestBothAddresses:
         assert resp.status_code != 404, resp.text
 
 
-class TestThePlaceKeyedPaths:
+class TestTheOrgUnitKeyedPaths:
     def test_settings_can_be_set_by_place(
         self,
         test_client: TestClient,
@@ -163,7 +163,7 @@ class TestThePlaceKeyedPaths:
 
         resp = test_client.put(
             f"/api/teaching/admin/banks/test-bank"
-            f"/places/{org.id}/settings",
+            f"/org-units/{org.id}/settings",
             json={"is_live": True, "site_registration": False},
             headers=headers,
         )
@@ -196,7 +196,7 @@ class TestThePlaceKeyedPaths:
         )
 
         assert resp.status_code == 410, resp.text
-        assert "places" in resp.json()["detail"]
+        assert "org-units" in resp.json()["detail"]
 
     def test_the_older_promote_path_says_it_has_gone(
         self,
@@ -236,7 +236,7 @@ class TestThePlaceKeyedPaths:
         headers = _login(test_client)
 
         resp = test_client.put(
-            "/api/teaching/admin/banks/test-bank/places/1/settings",
+            "/api/teaching/admin/banks/test-bank/org-units/1/settings",
             json={"is_live": True, "site_registration": False},
             headers=headers,
         )

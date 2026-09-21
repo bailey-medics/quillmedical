@@ -3211,11 +3211,6 @@ def _promote_bank_version(
     response_model=QuestionBankOrgSettingsOut,
     dependencies=[_DEP_MANAGE],
 )
-@teaching_router.put(
-    "/admin/banks/{bank_id}/places/{org_unit_id}/settings",
-    response_model=QuestionBankOrgSettingsOut,
-    dependencies=[_DEP_MANAGE],
-)
 def update_bank_org_unit_settings(
     bank_id: str,
     org_unit_id: int,
@@ -3225,20 +3220,14 @@ def update_bank_org_unit_settings(
 ) -> QuestionBankOrgSettingsOut:
     """Set a bank live or closed for an org_unit.
 
-    Served at two addresses while the older one is retired. The
-    ``org_units`` spelling is kept for one release so a tab open across the
-    deploy keeps working; ``org-units`` is the name the tree uses.
+    The only address for this now. The ``places`` spelling answered
+    beside it for a release and has been retired.
     """
     return _update_bank_org_settings(bank_id, org_unit_id, body, user, db)
 
 
 @teaching_router.put(
     "/admin/banks/{bank_id}/org-units/{org_unit_id}/active-version",
-    response_model=PromoteBankVersionOut,
-    dependencies=[_DEP_MANAGE],
-)
-@teaching_router.put(
-    "/admin/banks/{bank_id}/places/{org_unit_id}/active-version",
     response_model=PromoteBankVersionOut,
     dependencies=[_DEP_MANAGE],
 )
@@ -3268,7 +3257,7 @@ def _retired(org_unit_path: str) -> NoReturn:
     raise HTTPException(
         status_code=410,
         detail=(
-            "This address has been retired. Name the place instead: "
+            "This address has been retired. Name the org_unit instead: "
             f"{org_unit_path}."
         ),
     )
@@ -3290,7 +3279,7 @@ def update_bank_org_settings_retired(
     nothing.
     """
     _retired(
-        "/api/teaching/admin/banks/{bank_id}/places/{org_unit_id}/settings"
+        "/api/teaching/admin/banks/{bank_id}/org-units/{org_unit_id}/settings"
     )
 
 
@@ -3305,7 +3294,7 @@ def promote_bank_version_retired(
 ) -> PromoteBankVersionOut:
     """Retired. Versions are promoted at ``/org_units/{org_unit_id}``."""
     _retired(
-        "/api/teaching/admin/banks/{bank_id}/places/{org_unit_id}"
+        "/api/teaching/admin/banks/{bank_id}/org-units/{org_unit_id}"
         "/active-version"
     )
 

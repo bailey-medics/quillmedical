@@ -113,12 +113,14 @@ def _login(client: TestClient, username: str) -> dict[str, str]:
 def _promote_url(org: OrgUnit) -> str:
     return (
         "/api/teaching/admin/banks/test-bank"
-        f"/places/{org.id}/active-version"
+        f"/org-units/{org.id}/active-version"
     )
 
 
 def _settings_url(org: OrgUnit) -> str:
-    return "/api/teaching/admin/banks/test-bank" f"/places/{org.id}/settings"
+    return (
+        "/api/teaching/admin/banks/test-bank" f"/org-units/{org.id}/settings"
+    )
 
 
 @pytest.fixture

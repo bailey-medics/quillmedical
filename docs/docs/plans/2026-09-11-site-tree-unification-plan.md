@@ -925,10 +925,10 @@ So the remaining steps land as:
   - [x] 12d-iii-c-iii — the teaching bank routes answer at `/org-units/`
   - [x] 12d-iii-d-i — the backend comments and docstrings say `org_unit`
   - [x] 12d-iii-d-ii — the frontend comments say `org_unit`
-- [ ] 12d-iv — the three contracts, each a release after its expand
+- [x] 12d-iv — the three contracts, each a release after its expand
   - [x] 12d-iv-a — retire `exclude_place`
   - [x] 12d-iv-b — retire `place_id` on the passport replies
-  - [ ] 12d-iv-c — retire the `/places/` teaching paths
+  - [x] 12d-iv-c — retire the `/places/` teaching paths
 
 #### 10a — write both names for the place column
 
