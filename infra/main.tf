@@ -16,6 +16,27 @@ provider "google-beta" {
   region  = var.region
 }
 
+locals {
+  # Which environments run the teaching product: the teaching buckets, the
+  # video pipeline, the sync token secret, and clinical services switched
+  # off. `teaching` is the live project; `app` is the renamed one it is
+  # moving to, and both are listed while the move is in progress.
+  #
+  # Deliberately a list rather than a swap from "teaching" to "app".
+  # Terraform applies on merge, and most of the conditions below are
+  # `count`, so dropping `teaching` from this list before the old project
+  # is retired reads to Terraform as an instruction to destroy what those
+  # conditions gate: the Cloud SQL instance, the video buckets and the
+  # content bucket among them. `teaching` comes out in Batch 8 of
+  # docs/docs/plans/2026-09-18-environment-isolation-and-iap-plan.md, once
+  # the workspace is gone and there is nothing live for it to turn off.
+  teaching_product_environments = ["teaching", "app"]
+
+  is_teaching_product = contains(
+    local.teaching_product_environments, var.environment
+  )
+}
+
 # ---------- Artifact Registry ----------
 resource "google_artifact_registry_repository" "docker" {
   project       = var.project_id
@@ -56,7 +77,7 @@ module "secrets" {
     # The video signing key is the one secret Terraform both creates and fills:
     # the load balancer validates cookies with it and the backend mints them
     # with it, so the two must be the same bytes and no human types it in.
-    var.environment == "teaching" ? [
+    local.is_teaching_product ? [
       "teaching-video-signing-key",
       "teaching-sync-token",
       "teaching-transcode-callback-token",
@@ -77,7 +98,7 @@ module "secrets" {
 # exists everywhere, this secret only in teaching. An unconditional import
 # would have prod and staging try to adopt a secret that is not there.
 import {
-  for_each = var.environment == "teaching" ? toset(["teaching-sync-token"]) : toset([])
+  for_each = local.is_teaching_product ? toset(["teaching-sync-token"]) : toset([])
   to       = module.secrets.google_secret_manager_secret.secrets[each.key]
   id       = "projects/${var.project_id}/secrets/${each.key}"
 }
@@ -221,7 +242,7 @@ resource "google_project_iam_member" "cloudrun_secret_accessor" {
 
 # Cloud Run needs to sign its own tokens to generate GCS signed URLs
 resource "google_service_account_iam_member" "cloudrun_token_creator" {
-  count              = var.environment == "teaching" ? 1 : 0
+  count              = local.is_teaching_product ? 1 : 0
   service_account_id = "projects/${var.project_id}/serviceAccounts/${data.google_project.project.number}-compute@developer.gserviceaccount.com"
   role               = "roles/iam.serviceAccountTokenCreator"
   member             = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
@@ -249,13 +270,13 @@ resource "google_secret_manager_secret_version" "jwt_secret" {
 # both is a transcription error waiting to happen, and there is nothing
 # to be gained by anyone ever seeing it.
 resource "random_password" "transcode_callback_token" {
-  count   = var.environment == "teaching" ? 1 : 0
+  count   = local.is_teaching_product ? 1 : 0
   length  = 48
   special = false
 }
 
 resource "google_secret_manager_secret_version" "transcode_callback_token" {
-  count       = var.environment == "teaching" ? 1 : 0
+  count       = local.is_teaching_product ? 1 : 0
   secret      = "projects/${var.project_id}/secrets/teaching-transcode-callback-token"
   secret_data = random_password.transcode_callback_token[0].result
   depends_on  = [module.secrets]
@@ -320,7 +341,7 @@ module "cloud_run_backend" {
       EHRBASE_DB_NAME = module.cloud_sql_ehrbase[0].database_name
       EHRBASE_DB_USER = module.cloud_sql_ehrbase[0].database_user
     } : {},
-    var.environment == "teaching" ? {
+    local.is_teaching_product ? {
       CLINICAL_SERVICES_ENABLED = "false"
       TEACHING_STORAGE_BACKEND  = "gcs"
       TEACHING_GCS_BUCKET       = module.cloud_storage[0].bucket_name
@@ -407,7 +428,7 @@ module "cloud_run_backend" {
       EHRBASE_API_PASSWORD       = "ehrbase-api-password"
       EHRBASE_API_ADMIN_PASSWORD = "ehrbase-admin-password"
     } : {},
-    var.environment == "teaching" ? {
+    local.is_teaching_product ? {
       TEACHING_SYNC_TOKEN        = "teaching-sync-token"
       TEACHING_VIDEO_SIGNING_KEY = "teaching-video-signing-key"
       # The other end of the transcode job's completion report. Same
@@ -472,7 +493,7 @@ module "cloud_run_admin_job" {
 # for the admin job. The module's `ignore_changes` on the image is what makes
 # that safe.
 module "cloud_run_transcode_job" {
-  count       = var.environment == "teaching" ? 1 : 0
+  count       = local.is_teaching_product ? 1 : 0
   source      = "./modules/cloud-run-job"
   project_id  = var.project_id
   region      = var.region
@@ -542,7 +563,7 @@ module "cloud_run_transcode_job" {
 # carry a great deal else besides. This role is the two permissions and
 # nothing more, which is what a serving application should hold.
 resource "google_cloud_run_v2_job_iam_member" "backend_invokes_transcode" {
-  count = var.environment == "teaching" ? 1 : 0
+  count = local.is_teaching_product ? 1 : 0
 
   project  = var.project_id
   location = var.region
@@ -556,7 +577,7 @@ resource "google_cloud_run_v2_job_iam_member" "backend_invokes_transcode" {
 # from the upload, because Whisper transcribes the 720p rendition and
 # that does not exist until the transcode job has written it.
 resource "google_cloud_run_v2_job_iam_member" "backend_invokes_caption" {
-  count = var.environment == "teaching" ? 1 : 0
+  count = local.is_teaching_product ? 1 : 0
 
   project  = var.project_id
   location = var.region
@@ -579,7 +600,7 @@ resource "google_cloud_run_v2_job_iam_member" "backend_invokes_caption" {
 # job's 4. The hour-long timeout is the plan's figure and deliberate — a
 # transcription that has not finished in an hour has gone wrong.
 module "cloud_run_caption_job" {
-  count       = var.environment == "teaching" ? 1 : 0
+  count       = local.is_teaching_product ? 1 : 0
   source      = "./modules/cloud-run-job"
   project_id  = var.project_id
   region      = var.region
@@ -643,12 +664,12 @@ module "load_balancer" {
   frontend_service_name = module.cloud_run_frontend.service_name
 
   # Null outside teaching, so prod and staging render an unchanged URL map.
-  videos_backend_bucket_id = var.environment == "teaching" ? module.teaching_video_pipeline[0].backend_bucket_id : null
+  videos_backend_bucket_id = local.is_teaching_product ? module.teaching_video_pipeline[0].backend_bucket_id : null
 }
 
 # ---------- Cloud Storage: teaching images (teaching only) ----------
 module "cloud_storage" {
-  count       = var.environment == "teaching" ? 1 : 0
+  count       = local.is_teaching_product ? 1 : 0
   source      = "./modules/cloud-storage"
   project_id  = var.project_id
   region      = var.region
@@ -676,7 +697,7 @@ module "passport_storage" {
 
 # ---------- Teaching video pipeline (teaching only) ----------
 module "teaching_video_pipeline" {
-  count          = var.environment == "teaching" ? 1 : 0
+  count          = local.is_teaching_product ? 1 : 0
   source         = "./modules/teaching-video-pipeline"
   project_id     = var.project_id
   project_number = data.google_project.project.number
@@ -717,7 +738,7 @@ module "monitoring" {
   # prod and staging have no video buckets, so a 404 under /videos/ there is
   # an unrecognised path falling through to the frontend, not rendition drift.
   video_not_found_metric = (
-    var.landing_domain != null && var.environment == "teaching"
+    var.landing_domain != null && local.is_teaching_product
     ? module.analytics[0].video_not_found_metric
     : null
   )

@@ -263,26 +263,26 @@ move the environment into a new GCP project and rename it there — doing
 it twice, once on the old project and once on the new, would rebuild the
 certificate and move the DNS record for nothing.
 
-- [ ] Adopt `app.quill-medical.com` for teaching and passport — the
+- [x] Adopt `app.quill-medical.com` for teaching and passport — the
       product that is actually live — and `ehr.quill-medical.com` for
       clinical when it exists.
 
-- [ ] Name the environment `app` too, not just the hostname. The
+- [x] Name the environment `app` too, not just the hostname. The
       Terraform workspace, `var.environment` and the directory
       `infra/environments/teaching/` all carry `teaching` today, and
       `var.environment` is interpolated into around thirty resource names.
 
-- [ ] Name environments after their regulatory class and audience, not
+- [x] Name environments after their regulatory class and audience, not
       their current feature list. `teaching.` has already outgrown itself
       once by acquiring the clinician passport.
 
-- [ ] Leave the teaching feature named `teaching` throughout — the content
+- [x] Leave the teaching feature named `teaching` throughout — the content
       repositories, `teaching-pipeline.yml`, the video pipeline module and
       the three secrets. They are about teaching. Only the environment is
       renamed, and renaming both would leave nothing to distinguish the
       deployment from the feature it serves.
 
-- [ ] Note that the subdomain says EHR while the application still says
+- [x] Note that the subdomain says EHR while the application still says
       EPR — the nav link in
       `frontend/src/components/ribbon/publicNavLinks.ts`, the two landing
       page buttons and the marketing copy. Nothing user-facing depends on
@@ -292,18 +292,18 @@ certificate and move the DNS record for nothing.
 
 ### Phase 4: The new environment's Terraform
 
-- [ ] Add `infra/environments/app/terraform.tfvars`, copied from the
+- [x] Add `infra/environments/app/terraform.tfvars`, copied from the
       teaching one, with `project_id = "quill-medical-app"` and
       `environment = "app"`. Leave `lb_domains` on a temporary hostname;
       the cutover is Batch 5.
 
-- [ ] Widen the fifteen `var.environment == "teaching"` conditions in
+- [x] Widen the fifteen `var.environment == "teaching"` conditions in
       `infra/main.tf` to accept either name, using
       `contains(["teaching", "app"], var.environment)`. They gate the
       teaching video pipeline, the teaching buckets, the sync token
       secret and `CLINICAL_SERVICES_ENABLED`.
 
-- [ ] Do not swap `"teaching"` for `"app"` in those conditions. Most are
+- [x] Do not swap `"teaching"` for `"app"` in those conditions. Most are
       `count = ... ? 1 : 0`, so against the live `teaching` workspace the
       swapped condition is false, the count falls to zero, and Terraform
       destroys the resource. That list includes the Cloud SQL instance at
@@ -316,22 +316,39 @@ certificate and move the DNS record for nothing.
       proposing to destroy anything means a condition was swapped rather
       than widened.
 
-- [ ] Add `app` to the validation condition in `infra/variables.tf`, which
+- [x] Add `app` to the validation condition in `infra/variables.tf`, which
       allows only `prod`, `staging` and `teaching` today. Keep `teaching`
       accepted until the old project goes in Batch 8.
 
-- [ ] Keep the three secret names as they are —
+- [x] Keep the three secret names as they are —
       `teaching-video-signing-key`, `teaching-sync-token` and
       `teaching-transcode-callback-token`. They are teaching feature
       secrets rather than environment labels, and renaming them means
       touching `infra/main.tf`, the transcode job, the caption job and the
       pipeline workflow for no gain.
 
-- [ ] Check the CORS origin on the video buckets follows `var.app_domain`.
+- [x] Check the CORS origin on the video buckets follows `var.app_domain`.
       The module takes `app_origin` from it, so it tracks the hostname
-      automatically, but the upload goes cross-origin to
-      `storage.googleapis.com` and a wrong value fails only at upload
-      time.
+      automatically. `app_domain` is `app.quill-medical.com` in the new
+      tfvars, so uploads there will be allowed from that origin and no
+      other.
+
+- [x] Widened through one `local` rather than fifteen inline `contains`
+      calls. `local.is_teaching_product` in `infra/main.tf` names the idea
+      once, and Batch 8's narrowing becomes a one-line edit to the list
+      above it rather than fifteen edits that have to agree.
+
+- [x] Verified the widening is a no-op for `teaching` by evaluating the
+      local directly: `teaching` and `app` are both true, `prod` and
+      `staging` both false. The live workspace therefore sees no change.
+      The plan posted on this pull request should confirm it.
+
+- [x] Gave the new environment `app.quill-medical.com` and nothing else,
+      rather than copying teaching's hostnames. Two projects claiming
+      `teaching.quill-medical.com` and the apex would leave the new
+      project's Google-managed certificate pending for ever, because
+      certificates validate by DNS and the DNS still points at the old
+      project. `landing_domain` is null there for the same reason.
 
 **Hands over:** branches that describe the new environment but do not
 build it. They apply to the live `teaching` workspace on merge, as every
