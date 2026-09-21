@@ -6,11 +6,11 @@ Quill Medical runs on three separate GCP projects, each in **europe-west2** (Lon
 
 | Environment | Project ID                 | Purpose                                    | Status     |
 | ----------- | -------------------------- | ------------------------------------------ | ---------- |
-| Production  | `quill-medical-production` | Clinical app for real patients             | Hibernated |
-| Staging     | `quill-medical-staging`    | Integration testing + landing page         | Active     |
-| Teaching    | `quill-medical-teaching`   | Educational environment (no clinical data) | Active     |
+| Production  | `quill-medical-production` | Clinical app for real patients             | Shut down  |
+| Staging     | `quill-medical-staging`    | Integration testing + landing page         | Shut down  |
+| Teaching    | `quill-medical-teaching`   | Teaching and clinician passport            | Active     |
 
-Estimated cost: **£72–107/month** across staging and teaching (production hibernated — see [Production hibernation](#production-hibernation) below).
+Only teaching is deployed. Staging was shut down because an idle environment was not worth its monthly cost, and production was shut down when clinical work stopped; both configurations are kept in `infra/environments/` so either can be brought back. See [Production hibernation](#production-hibernation) below.
 
 ## Architecture
 
