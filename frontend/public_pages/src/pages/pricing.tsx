@@ -42,7 +42,7 @@ createRoot(document.getElementById("root")!).render(
               we are building.
             </PublicBodyText>
             <Group mt="lg">
-              <PublicButton href="https://teaching.quill-medical.com">
+              <PublicButton href="https://app.quill-medical.com">
                 Try Teaching
               </PublicButton>
             </Group>

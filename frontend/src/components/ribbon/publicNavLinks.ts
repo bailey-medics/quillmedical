@@ -11,7 +11,7 @@ export interface PublicNavLink {
 const publicNavLinks: PublicNavLink[] = [
   {
     label: "Teaching",
-    href: "https://teaching.quill-medical.com",
+    href: "https://app.quill-medical.com",
     icon: "teaching",
   },
   { label: "About", href: "/about", icon: "book" },

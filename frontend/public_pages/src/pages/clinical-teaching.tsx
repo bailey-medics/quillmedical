@@ -86,7 +86,7 @@ createRoot(document.getElementById("root")!).render(
               specialty, and start working through questions — no commitment, no
               paywall, just good clinical teaching.
             </PublicBodyText>
-            <PublicButton href="https://teaching.quill-medical.com">
+            <PublicButton href="https://app.quill-medical.com">
               Go to Teaching
             </PublicButton>
           </Stack>

@@ -750,6 +750,9 @@ whole domain with it.
       `infra/environments/prod/terraform.tfvars`, which claimed it.
       Production is the clinical environment, so it now claims
       `ehr.quill-medical.com`, the name Phase 3 settled for clinical.
+      That hostname does not resolve and nothing serves it: the value sits
+      in a tfvars file for a project that is shut down, and whoever
+      restores it creates the record then.
       Production is shut down so nothing clashed today, but two projects
       naming one hostname would have collided on restore.
 
@@ -810,53 +813,82 @@ not merge before this.
 ## Batch 6 — Claude: move everything off the old hostname
 
 Retiring `teaching.quill-medical.com` is a list with an end, and this is
-it. Nobody is stranded if it breaks — Quill has no users — so this is
-about not breaking our own wiring.
+it. Nobody is stranded if it breaks, Quill has no users, so this is about
+not breaking our own wiring.
 
-**Do not start this batch until Batch 5 is done.** The deploy smoke test
-moves to `app.quill-medical.com` here, so if it merges first, it points at
-a hostname that is not serving yet and every deploy fails.
+**The order below is by what each item depends on**, not by where it sits
+in the codebase. Some of it can be done while the new environment is
+still being proven, and some of it must not be, because until the app
+environment is serving the real application `teaching.` is still the
+environment that works.
 
-- [ ] Move the CI references first: the ZAP scan target in
-      `.github/workflows/zap-scan.yml` and the deploy smoke test in
-      `.github/workflows/deploy.yml`. If the redirect dies before these
-      move, the smoke test fails the deploy that would have fixed it.
+### Safe before the app environment is proven
 
-- [ ] Rename `GCP_TEACHING_PROJECT_ID`, `GCP_TEACHING_WIF_PROVIDER` and
-      `GCP_TEACHING_SERVICE_ACCOUNT` to their `GCP_APP_*` equivalents,
-      pointing at the new project, and update `deploy.yml`, `ci.yml`,
-      `terraform.yml` and `zap-scan.yml`. Leaving them named `TEACHING`
-      recreates inside CI the two-names problem this plan exists to
-      remove.
+Nothing here changes which environment anything tests or deploys to, so
+none of it can break a deploy.
 
-- [ ] Change the workspace and tfvars path in `terraform.yml`, which
-      selects the `teaching` workspace and reads
-      `environments/teaching/terraform.tfvars` in both the plan and apply
-      jobs.
-
-- [ ] Point `BACKEND_SYNC_URL` in the teaching pipeline at the new
-      hostname, or the content sync succeeds against an environment that
-      is about to be deleted.
-
-- [ ] Scope the new secrets to this repository rather than leaving them
-      organisation-visible, as the secrets rule in `CLAUDE.md` requires.
-
-- [ ] Move the application links: the three public pages
+- [x] Move the application links: the three public pages
       (`index.tsx`, `pricing.tsx`, `clinical-teaching.tsx`), the ribbon
       navigation in `frontend/src/components/ribbon/publicNavLinks.ts`,
       and the landing page in
-      `infra/modules/load-balancer/landing/index.html`.
+      `infra/modules/load-balancer/landing/index.html`. These are links a
+      visitor follows, and `app.quill-medical.com` serves today.
 
-- [ ] Update the monitoring dashboard prose in
+- [x] Fix the production smoke test in `deploy.yml`, which checks
+      `https://app.quill-medical.com/api/health`. That hostname now
+      belongs to the teaching and passport environment, so the
+      `promote-to-production` job would report a healthy production
+      having tested a different project entirely. Production is
+      `ehr.quill-medical.com`, which does not resolve yet. Failing on a
+      hostname that does not exist is the safer of the two wrong answers,
+      and whoever restores production has to create the record anyway.
+      The job is gated behind `ENABLE_PRODUCTION_DEPLOY`, so this is
+      latent rather than live, which is exactly why a false pass would
+      have survived to bite whoever re-enables it.
+
+- [x] Update the monitoring dashboard prose in
       `infra/modules/monitoring/main.tf` and the domain tables in
-      `docs/docs/infrastructure/gcp.md`.
+      `docs/docs/infrastructure/gcp.md`. The prose now interpolates
+      `var.app_domain` rather than naming a hostname, so each environment
+      describes itself and this cannot go stale again. The tables were
+      wrong beyond the hostname: staging was listed as active, and
+      production still claimed `app.`.
+
+- [x] Leave `frontend/src/lib/error-reporting/sanitise.test.ts` alone.
+      It uses `teaching.quill-medical.com` as sample data for URL
+      redaction, not as a link, so the hostname is arbitrary and changing
+      it would say something the test does not mean.
+
+### Only once the app environment serves the real application
+
+Each of these points a check or a deploy at the new environment, so doing
+them early aims CI at something that is not ready.
+
+- [ ] Move the ZAP scan target in `.github/workflows/zap-scan.yml`. It
+      should scan whichever environment is real, and until the app
+      environment has had a successful deploy that is still teaching.
+
+- [ ] Point `BACKEND_SYNC_URL` in the teaching pipeline at the new
+      hostname, or the content sync succeeds against an environment that
+      is about to be deleted. This one needs a repository secret changed,
+      so it is Mark's.
 
 - [ ] Drop `teaching.quill-medical.com` from `lb_domains` and
       `monitored_hostnames`. The DNS A record is deleted by hand in
       Batch 7.
 
-**Hands over:** branches to review and merge, then apply. The GitHub
-secret renames are yours, because Claude cannot write repository secrets.
+### After the old project is retired
+
+- [ ] Rename `GCP_TEACHING_PROJECT_ID`, `GCP_TEACHING_WIF_PROVIDER` and
+      `GCP_TEACHING_SERVICE_ACCOUNT` to their `GCP_APP_*` equivalents.
+      The `GCP_APP_*` secrets already exist and are what the app
+      environment uses; what is left is deleting the teaching ones once
+      nothing reads them, which is Batch 8 rather than here. Doing it
+      sooner breaks every workflow at once, because the matrix in
+      `deploy.yml` and `terraform.yml` still names `teaching`.
+
+**Hands over:** branches to review and merge. The secret changes are
+Mark's, because Claude cannot write repository secrets.
 
 ## Batch 7 — Mark: the secrets and the old DNS record
 

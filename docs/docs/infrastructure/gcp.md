@@ -303,10 +303,11 @@ Each environment has a Global HTTPS Load Balancer that sits in front of the Clou
 
 | Environment | Domain                       | Load Balancer IP  | Status                |
 | ----------- | ---------------------------- | ----------------- | --------------------- |
-| Staging     | `staging.quill-medical.com`  | `35.186.223.130`  | Active                |
+| App         | `app.quill-medical.com`      | `34.49.99.83`     | Active                |
+| Teaching    | `teaching.quill-medical.com` | `136.110.221.126` | Active (being retired) |
+| Staging     | `staging.quill-medical.com`  | `35.186.223.130`  | Shut down             |
 | Staging     | `quill-medical.com`          | `35.186.223.130`  | Active (landing page) |
-| Teaching    | `teaching.quill-medical.com` | `136.110.221.126` | Active                |
-| Production  | `app.quill-medical.com`      | —                 | Hibernated            |
+| Production  | `ehr.quill-medical.com`      | —                 | Shut down, no DNS record |
 
 The Caddyfile no longer reverse-proxies `/api/*` to the backend — the load balancer handles all routing. Caddy now just serves static frontend files and provides a `/healthz` endpoint for health checks.
 
@@ -315,9 +316,10 @@ The Caddyfile no longer reverse-proxies `/api/*` to the backend — the load bal
 | Domain                       | Purpose                       | Update process                       | Status              |
 | ---------------------------- | ----------------------------- | ------------------------------------ | ------------------- |
 | `quill-medical.com`          | Public landing/marketing site | Update anytime, no clinical sign-off | Active (staging LB) |
-| `app.quill-medical.com`      | Live clinical application     | Release versions, DCB0129, UAT       | Hibernated          |
-| `staging.quill-medical.com`  | Staging/integration testing   | Auto-deploy from main branch         | Active              |
-| `teaching.quill-medical.com` | Teaching/training environment | Auto-deploy from main branch         | Active              |
+| `app.quill-medical.com`      | Teaching and clinician passport | Auto-deploy from main branch       | Active              |
+| `teaching.quill-medical.com` | The same product, on the project it is moving off | Auto-deploy from main branch | Active, retired in Batch 8 |
+| `ehr.quill-medical.com`      | Live clinical application     | Release versions, DCB0129, UAT       | Named only, not built |
+| `staging.quill-medical.com`  | Staging/integration testing   | Auto-deploy from main branch         | Shut down           |
 
 The public landing site (`quill-medical.com` and `www.quill-medical.com`) is served from a GCS bucket behind the staging load balancer. The site is built from the `frontend/public_pages/` Vite workspace and deployed via the `public-site.yml` CI workflow on pushes to `main`. This allows marketing pages and feature announcements to be updated without going through clinical release gates.
 
@@ -329,8 +331,9 @@ Cloud DNS zone `quill-medical-zone` in the production project holds all DNS reco
 | ---------------------------- | ----- | --- | ------------------- | ------------------------- |
 | `quill-medical.com`          | A     | 300 | `35.186.223.130`    | Landing page (staging LB) |
 | `www.quill-medical.com`      | CNAME | 300 | `quill-medical.com` | www redirect to apex      |
-| `staging.quill-medical.com`  | A     | 300 | `35.186.223.130`    |                           |
-| `teaching.quill-medical.com` | A     | 300 | `136.110.221.126`   |                           |
+| `staging.quill-medical.com`  | A     | 300 | `35.186.223.130`    | Environment shut down     |
+| `teaching.quill-medical.com` | A     | 300 | `136.110.221.126`   | Retired in Batch 8        |
+| `app.quill-medical.com`      | A     | 300 | `34.49.99.83`       |                           |
 
 GoDaddy nameservers were updated to delegate to Google Cloud DNS:
 

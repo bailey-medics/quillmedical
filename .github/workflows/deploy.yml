@@ -402,8 +402,20 @@ jobs:
             --region=${{ env.GCP_REGION }} \
             --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROD_PROJECT_ID }}/quill/frontend:${{ needs.prepare.outputs.sha }}
 
+      # ehr.quill-medical.com does not resolve yet. Nothing has been built
+      # for the clinical product, and this whole job is gated behind
+      # ENABLE_PRODUCTION_DEPLOY, so nothing runs this today.
+      #
+      # It says ehr rather than app because app.quill-medical.com is the
+      # teaching and passport environment. Checking that here would pass,
+      # and report a healthy production having tested a different project
+      # entirely. Failing on a hostname that does not exist is the safer
+      # of the two wrong answers, and whoever restores production has to
+      # create the record anyway. The name is the one Phase 3 of
+      # docs/docs/plans/2026-09-18-environment-isolation-and-iap-plan.md
+      # settled for clinical.
       - name: Smoke test production
-        run: bash .github/scripts/deploy/smoke-test.sh "https://app.quill-medical.com/api/health"
+        run: bash .github/scripts/deploy/smoke-test.sh "https://ehr.quill-medical.com/api/health"
 
       - name: Create CalVer tag
         run: |
