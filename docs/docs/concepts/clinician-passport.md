@@ -52,7 +52,7 @@ Two gates, both required, and they answer different questions:
 
 - **The `passport` feature flag** — is this switched on for the holder's
   organisation or site?
-- **The `access_clinician_passport` competency** — a CBAC competency, so CBAC
+- **The `assess_clinician_passport` competency** — a CBAC competency, so CBAC
   does gate *reaching* the passport even though the passport never writes back
   to CBAC.
 

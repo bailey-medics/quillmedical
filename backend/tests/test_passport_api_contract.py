@@ -153,7 +153,7 @@ def holder(db_session: Session) -> User:
 def org_admin(db_session: Session) -> User:
     """An admin of the holder's own organisation.
 
-    Carries ``consultant`` so they hold ``access_clinician_passport`` and
+    Carries ``consultant`` so they hold ``assess_clinician_passport`` and
     reach the routes at all: without it the refusal under test would come
     from the competency gate rather than from the passport's own
     authorisation, and the test would pass for the wrong reason.

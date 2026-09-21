@@ -27,7 +27,7 @@
  * `src/generated/competencies.json`.
  *
  * **The feature gate is not authorisation.** Every route here sits behind
- * `requires_feature("passport")` *and* `access_clinician_passport`, and
+ * `requires_feature("passport")` *and* `assess_clinician_passport`, and
  * passing both still says nothing about whether the caller may read a
  * given passport — that comes from being the holder, or from a
  * `passport_signoff_request` row naming them as assessor. A 403 or 404

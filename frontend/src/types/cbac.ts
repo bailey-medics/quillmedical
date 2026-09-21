@@ -5,7 +5,32 @@ import baseProfessionsData from "../generated/base-professions.json";
 
 // Infer competency types from generated JSON
 export type CompetencyId = (typeof competenciesData.competencies)[number]["id"];
-export type Competency = (typeof competenciesData.competencies)[number];
+
+/**
+ * One entry in the generated catalogue.
+ *
+ * Declared rather than inferred from the JSON. Inference gave the union
+ * of the shapes that happened to be in the file, so the first entry to
+ * carry `retired_on` split the type in three and every
+ * `(c: Competency) => ...` callback stopped matching. The fields below
+ * are optional in the source YAML, so they are optional here whether or
+ * not any entry currently uses them.
+ */
+export interface CompetencyLevel {
+  id: string;
+  name: string;
+}
+
+export interface Competency {
+  id: string;
+  display_name: string;
+  /** Set once a competency is retired. Retired ids stay readable and
+   *  cannot be granted again. */
+  retired_on?: string;
+  /** Present only where a competency is signed off against a scale. */
+  levels?: CompetencyLevel[];
+  expires_after_months?: number;
+}
 export type BaseProfessionId =
   (typeof baseProfessionsData.base_professions)[number]["id"];
 export type BaseProfession =

@@ -3990,6 +3990,203 @@ access and why, in the way a new starter would be told in person.
       by department, strictness belongs as a setting on the place rather
       than hard-coded.
 
+## Phase 11: assessing is free, holding is sold
+
+Settled in discussion on 20 September. Nothing here is built.
+
+### The problem this answers
+
+`access_clinician_passport` means two things at once: may take part in
+the passport system at all, and may hold a passport of one's own. They
+are the same thing only while the passport is free.
+
+They come apart the moment it is sold, because the two roles have
+opposite economics. **Assessing is a favour to somebody else's
+record** — the holder's organisation gets the benefit and the assessor
+gets nothing, so an assessor who meets a price simply declines and the
+holder cannot be signed off at all. **Holding is the product**: it is
+your own record, it persists, and it is what has value to a clinician
+and to whoever employs them.
+
+So one competency cannot express the split, and the thing that makes
+money must not sit anywhere in the assessor's path.
+
+### `passport_write` comes from an entitlement, never a profession
+
+Settled on 21 September, on finding that `access_clinician_passport` is
+a **base-profession** competency: sixteen professions in
+`shared/base-professions.yaml` grant it at provisioning, so every
+clinician holds it the moment their account exists.
+
+That is right for a free feature and wrong for a sold one. Had
+`passport_write` simply inherited those grants, every clinician would
+hold the paid product by default and the split would be cosmetic.
+
+So **no base profession grants `passport_write`.** It comes only from
+an organisation's enablement or an individual subscription, which is
+the only reading where the split actually gates anything.
+
+`assess_clinician_passport` keeps the profession grants, because
+assessing is free and a clinician asked to sign off a colleague should
+never meet a wall.
+
+**This means nobody can write to a passport until an entitlement
+exists**, including on the dev stack and in any demonstration. Seeding
+one is part of the work rather than an afterthought: the first person
+to test this after the split will otherwise find a passport they
+cannot create, and reasonably conclude it is broken.
+
+### Two competencies, not one
+
+- **`assess_clinician_passport`** — granted on accepting an invitation,
+  exactly as `access_clinician_passport` is granted today. It reaches
+  the sign-off request queue and the sign-off pages, and nothing else.
+  **It is never sold and never lapses for payment.**
+
+- **`passport_write`** — held by a passport holder, and what grants the
+  right to create a passport and to write to it. Granted to an
+  individual by either of two routes, and it makes no difference which:
+
+  - **Through an organisation**, where it is granted at the front door
+    when somebody is onboarded to an organisation that enables it.
+  - **Through an individual subscription**, bought by the person
+    themselves.
+
+**It is granted to individuals either way.** The organisation is a
+source of the grant, not the holder of it: a person carries
+`passport_write`, and an organisation's enablement is one of the things
+that can put it there. That matters at the lapse, below, where somebody
+may hold it from more than one source at once.
+
+Most staff at a paying organisation hold both competencies. An external
+consultant assessing one registrar holds only the first. Somebody who
+later joins a paying organisation gains the second, which is consistent
+with `external` naming a relationship to a place rather than a kind of
+person.
+
+**A new feature flag is needed, distinct from `passport`.** The existing
+`OrgUnitFeature` key `passport` now means "assessors can be placed
+here", which is what an accepted assessor's placement resolves against
+(see Phase 9). Reusing it to mean "this organisation buys writing"
+would re-merge exactly what this phase separates, and would quietly buy
+seats for every assessor hosted there.
+
+### Three entitlement states, not two
+
+A single on/off gives "may write" and "cannot see it at all". The
+second is unacceptable: a passport is somebody's professional record and
+**must never be held hostage**. So there are three states:
+
+- **No passport.** Nothing has been created.
+- **Holds one, and may write.** The ordinary state.
+- **Holds one, and may only read.** The lapsed state: the passport
+  opens, reads, renders and exports in full, and refuses new entries.
+
+**Reading is derived from ownership, never from payment.** The read and
+export paths check that a passport row exists and belongs to the
+caller — not that anything has been paid. That is what guarantees the
+record cannot be locked away, and it makes the guarantee structural
+rather than a promise somebody has to remember to keep.
+
+**Every write is gated on `passport_write`**: creating a passport,
+raising a sign-off request, logbook entries, CPD, certificates,
+reflections and uploads.
+
+### What a lapse is
+
+Two routes, and they reduce to the same question at write time:
+
+- **Stopping paying an individual subscription.**
+- **Being removed from every organisation that grants it.**
+
+So the gate asks one thing — **does this person hold `passport_write`
+from any source?** — evaluated live on each write. Live evaluation
+rather than an event somebody has to notice: nothing watches membership
+today, and a scheduled job would leave a stale window in both
+directions.
+
+This also settles the case neither route mentions: somebody holding it
+from an organisation *and* a subscription who loses one keeps writing,
+correctly, and never notices.
+
+### Sign-offs already in flight still land
+
+A lapsed holder may have sign-off requests already sitting in
+assessors' queues. **Those complete.** The write that lands is the
+assessor's judgement about work already done and observed, not the
+lapsed holder's, so allowing it does not breach the rule above.
+
+Freezing them instead would put an item in an assessor's queue that
+they cannot action for a billing reason, which is precisely the
+assessor-facing wall this phase exists to avoid. It does mean a lapsed
+passport can still gain a sign-off, which is deliberate rather than an
+oversight — recorded here because it reads as an inconsistency to
+anybody meeting the code without the reasoning.
+
+### Warning before refusing
+
+Discovering the lapse at the moment of typing a reflection is the worst
+possible moment. So:
+
+- **The warning starts two weeks before the entitlement ends, and
+  repeats every five days.**
+- **It is shown on the way in to the passport, not at the point of
+  refusal.**
+- **It names the date.** Which means the entitlement carries an end
+  date rather than being a boolean — worth building in from the start,
+  since retrofitting a date onto a flag makes an awkward migration
+  later.
+
+The write gate therefore answers more than yes or no: it says why, and
+until when, so the frontend can render the warning without a second
+endpoint for it.
+
+### The continuation offer goes to the individual
+
+When an organisation paid the seat and the person leaves, **the offer
+to continue is made to the person**, not to the organisation they have
+left. That is a different customer from the organisation relationship,
+and likely a different price.
+
+### Work
+
+- [x] Split `access_clinician_passport` into
+      `assess_clinician_passport` and `passport_write` in
+      `shared/competency-definitions/`. Base professions grant only
+      the first; `passport_write` is left to the entitlement.
+      **Cheap now, while nobody is in production; expensive once
+      anybody is.**
+- [ ] Seed a `passport_write` entitlement on the dev stack and in
+      the CI seed, so the feature is testable after the split.
+- [ ] Add the organisation feature flag that grants `passport_write` at
+      onboarding, distinct from the existing `passport` key.
+- [ ] Gate every passport write path on `passport_write`, and gate no
+      read or export path on it.
+- [ ] Give the entitlement an end date, and have the write gate report
+      why and until when.
+- [ ] Warn on entry to the passport from two weeks out, repeating every
+      five days.
+- [ ] Route the navigation link by competency: `passport_write` to the
+      holder's passport, `assess_clinician_passport` to the sign-off
+      request queue. This is what makes an assessor's landing correct
+      without the sidebar fetching anything or guessing.
+- [ ] Tests: an assessor with no `passport_write` can complete a
+      sign-off end to end and is never shown a price; a lapsed holder
+      can read, render and export but cannot write; a sign-off raised
+      before a lapse still lands after it.
+
+### Open questions
+
+- [ ] **Unlimited writing or a number of seats?** A flag is trivial;
+      seats mean counting, and a rule for what happens when a paying
+      organisation's fifty-first clinician tries to create a passport.
+      It changes the data model, so it wants settling before this is
+      built.
+
+- [ ] **What the individual continuation costs.** A product decision,
+      not a design one, but the grant mechanism cannot be finished
+      without it.
+
 ## Future items, deliberately deferred
 
 These are recorded now so the phase 1 design does not accidentally

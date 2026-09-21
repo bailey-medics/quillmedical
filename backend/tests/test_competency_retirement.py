@@ -83,17 +83,50 @@ def with_a_retired_competency(monkeypatch):
 
 
 class TestTheShippedCatalogue:
-    """What the file looks like today."""
+    """What the file looks like today.
 
-    def test_nothing_is_retired_yet(self):
-        """A guard on the fixture above: it stands in for a real case."""
-        assert catalogue.RETIRED_COMPETENCY_IDS == ()
+    These three used to assert that nothing had been retired yet, which
+    was a guard on the fixture above while the catalogue had no real
+    case. ``access_clinician_passport`` was retired on 21 September 2026
+    when it split into ``assess_clinician_passport`` and
+    ``passport_write``, so they now assert the property that guard stood
+    in for: a retired id stays readable and can no longer be granted.
+    """
 
-    def test_active_and_all_agree_while_nothing_is_retired(self):
-        assert catalogue.ACTIVE_COMPETENCY_IDS == catalogue.COMPETENCY_IDS
+    def test_a_retired_competency_is_still_in_the_catalogue(self):
+        """Retiring is not deleting, which is the whole point of it.
 
-    def test_retired_on_defaults_to_none(self):
-        assert all(c.retired_on is None for c in catalogue.COMPETENCIES)
+        Everything that reads a stored grant or an audit row resolves
+        ids through ``COMPETENCY_IDS``. Dropping one would make a record
+        of what somebody was authorised to do unreadable, while revoking
+        nothing.
+        """
+        assert "access_clinician_passport" in catalogue.COMPETENCY_IDS
+
+    def test_a_retired_competency_cannot_be_newly_granted(self):
+        """Write boundaries take ``ACTIVE_COMPETENCY_IDS``.
+
+        This is the half that makes retiring mean anything: the id
+        resolves for reading and is refused for granting.
+        """
+        assert (
+            "access_clinician_passport" not in catalogue.ACTIVE_COMPETENCY_IDS
+        )
+        assert "access_clinician_passport" in catalogue.RETIRED_COMPETENCY_IDS
+
+    def test_the_two_lists_differ_by_exactly_what_is_retired(self):
+        """No id may be missing from both, or present in both."""
+        assert set(catalogue.COMPETENCY_IDS) - set(
+            catalogue.ACTIVE_COMPETENCY_IDS
+        ) == set(catalogue.RETIRED_COMPETENCY_IDS)
+
+    def test_the_competencies_that_replaced_it_are_current(self):
+        """The successors must not inherit the retirement."""
+        for competency_id in (
+            "assess_clinician_passport",
+            "passport_write",
+        ):
+            assert competency_id in catalogue.ACTIVE_COMPETENCY_IDS
 
 
 class TestTheYamlRoundTrip:

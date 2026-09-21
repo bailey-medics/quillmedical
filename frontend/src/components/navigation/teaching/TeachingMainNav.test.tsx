@@ -23,7 +23,7 @@ vi.mock("@/auth/AuthContext", () => ({
         competencies: [
           "manage_users",
           "manage_teaching_content",
-          "access_clinician_passport",
+          "assess_clinician_passport",
         ],
         enabled_features: ["teaching", "passport"],
       },
