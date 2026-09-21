@@ -1294,9 +1294,9 @@ class TestAcceptingAnInvitation:
         body = response.json()
 
         assert body["place"] == "organisation"
-        # Both names carry the same id while ``place_id`` is retired.
+        # ``place_id`` has gone; ``org_unit_id`` is the only name now.
         assert body["org_unit_id"] == org.id
-        assert body["place_id"] == body["org_unit_id"]
+        assert "place_id" not in body
 
         capacity = db_session.scalar(
             select(organisation_org_unit_member.c.capacity).where(
@@ -1342,7 +1342,7 @@ class TestAcceptingAnInvitation:
 
         assert body["place"] == "site"
         assert body["org_unit_id"] == site.id
-        assert body["place_id"] == body["org_unit_id"]
+        assert "place_id" not in body
 
         capacity = db_session.scalar(
             select(org_unit_member.c.capacity).where(

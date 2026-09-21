@@ -1,0 +1,4 @@
+"generation": !!int "1"
+"forces_reload": !!bool "false"
+change: "response-required-property-removed DELETE /api/passport/assessors/{assessor_user_id}/membership removed the required property `place_id` from the response with the `200` status"
+reason: "`org_unit_id` arrived beside it a release ago and carries the same id. Nothing in this repository reads the old field: `AssessorInviteAccept` and `AssessorRevoke` are re-exported through `lib/passport/index.ts` and no screen touches `place_id`. No forced reload, because a removed response field is simply absent rather than wrong, and bumping the generation would stop every open tab sending any mutation until it reloaded, which includes the login POST."

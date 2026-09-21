@@ -2424,7 +2424,6 @@ def revoke_assessor_membership(
         return AssessorRevokeOut(
             user_id=assessor_user_id,
             place="site",
-            place_id=int(site_id),
             org_unit_id=int(site_id),
             sign_offs_kept=int(sign_offs_kept),
         )
@@ -2457,7 +2456,6 @@ def revoke_assessor_membership(
     return AssessorRevokeOut(
         user_id=assessor_user_id,
         place="organisation",
-        place_id=organisation_org_unit_id,
         org_unit_id=organisation_org_unit_id,
         sign_offs_kept=int(sign_offs_kept),
     )
@@ -2810,7 +2808,6 @@ def accept_assessor_invite(
         status=status,
         user_id=user.id,
         place=place,
-        place_id=org_unit_id,
         org_unit_id=org_unit_id,
     )
 

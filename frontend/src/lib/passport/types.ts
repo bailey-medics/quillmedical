@@ -570,8 +570,6 @@ export interface AssessorInviteAccept {
   status: string;
   user_id: number;
   place: string;
-  /** The older name for `org_unit_id`, retiring a release later. */
-  place_id: number;
   /** The org_unit the assessor now holds a membership at. */
   org_unit_id: number;
 }
@@ -610,8 +608,6 @@ export interface RegistrationVerification {
 export interface AssessorRevoke {
   user_id: number;
   place: string;
-  /** The older name for `org_unit_id`, retiring a release later. */
-  place_id: number;
   /**
    * The org_unit the membership was held at, whichever kind `org_unit`
    * says. It used to hold the organisation's own id when `org_unit` was
