@@ -1082,7 +1082,7 @@ class TestPromotingAVersion:
     def _url(self, org: OrgUnit) -> str:
         return (
             f"/api/teaching/admin/banks/test-bank"
-            f"/places/{org.id}/active-version"
+            f"/org-units/{org.id}/active-version"
         )
 
     def _with_two_versions(self, db_session, org, educator) -> None:
@@ -1536,7 +1536,8 @@ class TestBankOrgSettingsSetTheActiveVersion:
 
     def _settings_url(self, org: OrgUnit) -> str:
         return (
-            f"/api/teaching/admin/banks/test-bank" f"/places/{org.id}/settings"
+            f"/api/teaching/admin/banks/test-bank"
+            f"/org-units/{org.id}/settings"
         )
 
     def test_creating_the_row_pins_the_current_version(
@@ -1654,7 +1655,8 @@ class TestBankOrgSettingsAreScopedToYourOrganisations:
 
     def _settings_url(self, org: OrgUnit) -> str:
         return (
-            f"/api/teaching/admin/banks/test-bank" f"/places/{org.id}/settings"
+            f"/api/teaching/admin/banks/test-bank"
+            f"/org-units/{org.id}/settings"
         )
 
     def test_settings_for_an_organisation_you_are_not_in_are_refused(

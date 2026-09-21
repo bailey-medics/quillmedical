@@ -1,0 +1,4 @@
+"generation": !!int "1"
+"forces_reload": !!bool "false"
+change: "api-path-removed-without-deprecation PUT /api/teaching/admin/banks/{bank_id}/places/{org_unit_id}/settings api path removed without deprecation"
+reason: "The same route has answered at `/api/teaching/admin/banks/{bank_id}/org-units/{org_unit_id}/...` for a release, and the admin question bank settings screen moved to that address then, so nothing this repository ships still asks at the old one. No forced reload: a caller at the retired address gets a 410 naming where the route moved to, which is a clear answer rather than a silent failure. Bumping the generation would stop every open tab sending any mutation until it reloaded, and that includes the login POST, so a logged-out person could not sign in to collect the new bundle."
