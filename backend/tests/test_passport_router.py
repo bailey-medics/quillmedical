@@ -107,8 +107,16 @@ def _make_user(
     *,
     profession: str = "consultant",
     registrations: dict[str, str] | None = None,
+    writes: bool = False,
 ) -> User:
-    """A user who holds ``assess_clinician_passport`` by profession."""
+    """A user who holds ``assess_clinician_passport`` by profession.
+
+    ``writes`` grants ``passport_write`` as well, which no profession
+    carries: it is sold, and reaches a person through onboarding or an
+    individual subscription. It goes in ``additional_competencies``
+    because that is the column the admin pages write, so a fixture
+    holder is granted it exactly as a real one is.
+    """
     user = User(
         username=username,
         email=f"{username}@example.nhs.uk",
@@ -117,6 +125,7 @@ def _make_user(
         is_active=True,
         email_verified=True,
         base_profession=profession,
+        additional_competencies=["passport_write"] if writes else [],
         professional_registrations=registrations or {"GMC": "1234567"},
     )
     db.add(user)
@@ -164,7 +173,10 @@ def _login(client: TestClient, username: str) -> TestClient:
 @pytest.fixture
 def holder(db_session: Session) -> User:
     return _make_user(
-        db_session, "holder", profession="specialty_trainee_3_plus"
+        db_session,
+        "holder",
+        profession="specialty_trainee_3_plus",
+        writes=True,
     )
 
 

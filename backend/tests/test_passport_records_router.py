@@ -53,7 +53,16 @@ def passport_store(tmp_path: Path) -> Iterator[LocalPassportStore]:
     app.dependency_overrides.pop(get_passport_store, None)
 
 
-def _make_user(db: Session, username: str, *, profession: str) -> User:
+def _make_user(
+    db: Session, username: str, *, profession: str, writes: bool = False
+) -> User:
+    """A user, optionally holding ``passport_write``.
+
+    No profession grants ``passport_write``: it is sold, and reaches a
+    person through onboarding or an individual subscription. It goes in
+    ``additional_competencies`` because that is the column the admin
+    pages write.
+    """
     user = User(
         username=username,
         email=f"{username}@example.nhs.uk",
@@ -62,6 +71,7 @@ def _make_user(db: Session, username: str, *, profession: str) -> User:
         is_active=True,
         email_verified=True,
         base_profession=profession,
+        additional_competencies=["passport_write"] if writes else [],
         professional_registrations={"GMC": "1234567"},
     )
     db.add(user)
@@ -87,7 +97,10 @@ def _login(client: TestClient, username: str) -> TestClient:
 @pytest.fixture
 def holder(db_session: Session) -> User:
     return _make_user(
-        db_session, "holder", profession="specialty_trainee_3_plus"
+        db_session,
+        "holder",
+        profession="specialty_trainee_3_plus",
+        writes=True,
     )
 
 

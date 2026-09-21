@@ -111,7 +111,16 @@ def _make_user(
     *,
     profession: str,
     permissions: str = "single-user",
+    writes: bool = False,
 ) -> User:
+    """A user, optionally holding ``passport_write``.
+
+    No profession grants ``passport_write``: it is sold, and reaches a
+    person through onboarding or an individual subscription. It goes in
+    ``additional_competencies`` because that is the column the admin
+    pages write, so a fixture holder is granted it exactly as a real
+    one is.
+    """
     user = User(
         username=username,
         email=f"{username}@example.nhs.uk",
@@ -120,6 +129,7 @@ def _make_user(
         is_active=True,
         email_verified=True,
         base_profession=profession,
+        additional_competencies=["passport_write"] if writes else [],
         professional_registrations={"GMC": "1234567"},
     )
     db.add(user)
@@ -145,7 +155,10 @@ def _login(client: TestClient, username: str) -> TestClient:
 @pytest.fixture
 def holder(db_session: Session) -> User:
     return _make_user(
-        db_session, "holder", profession="specialty_trainee_3_plus"
+        db_session,
+        "holder",
+        profession="specialty_trainee_3_plus",
+        writes=True,
     )
 
 
@@ -163,6 +176,10 @@ def org_admin(db_session: Session) -> User:
         "orgadmin",
         profession="consultant",
         permissions="admin",
+        # Holds ``passport_write`` for the same reason they hold the
+        # feature: every refusal below must come from the passport's own
+        # authorisation rather than from a gate they never got past.
+        writes=True,
     )
 
 
@@ -278,6 +295,113 @@ def _spec() -> dict[str, Any]:
 
     spec: dict[str, Any] = generate_spec(dev=True)
     return spec
+
+
+class TestALapsedHolderKeepsTheirRecord:
+    """``passport_write`` is sold, and losing it must not lock anybody out.
+
+    A passport is somebody's professional record. Reading, rendering and
+    exporting it are derived from owning it, never from paying, so an
+    entitlement that has lapsed takes away the ability to add to the
+    record and nothing else.
+    """
+
+    @pytest.fixture
+    def lapsed(self, db_session: Session) -> User:
+        """A holder whose entitlement has gone, or never arrived."""
+        return _make_user(
+            db_session,
+            "lapsed",
+            profession="specialty_trainee_3_plus",
+            writes=False,
+        )
+
+    def test_they_cannot_add_to_their_own_passport(
+        self, passport: str, test_client: TestClient, holder: User
+    ) -> None:
+        """The one thing a lapse takes away."""
+        holder.additional_competencies = []
+        client = _login(test_client, "holder")
+
+        response = client.post(
+            f"/api/passport/{passport}/certificates",
+            json={
+                "title": "After the lapse",
+                "issuer": "UKONS",
+                "awarded_on": "2026-02-11",
+            },
+        )
+
+        assert response.status_code == 403
+
+    def test_they_can_still_read_it(
+        self, passport: str, test_client: TestClient, holder: User
+    ) -> None:
+        """Their own record, still theirs.
+
+        Reading is derived from owning the passport, so this must not
+        consult the entitlement at all.
+        """
+        holder.additional_competencies = []
+        client = _login(test_client, "holder")
+
+        assert client.get(f"/api/passport/{passport}").status_code == 200
+
+    def test_they_can_still_export_it(
+        self, passport: str, test_client: TestClient, holder: User
+    ) -> None:
+        """Taking the record with you is the thing a lapse must not stop.
+
+        Somebody whose organisation stopped paying needs their record
+        more than ever, not less.
+        """
+        holder.additional_competencies = []
+        client = _login(test_client, "holder")
+
+        response = client.get(f"/api/passport/{passport}/export.md")
+
+        assert response.status_code == 200
+
+    def test_a_stranger_is_still_told_nothing(
+        self,
+        passport: str,
+        test_client: TestClient,
+        db_session: Session,
+        org: OrgUnit,
+    ) -> None:
+        """Ownership is checked before the entitlement, and that is the point.
+
+        The stranger here holds no ``passport_write``, so a gate that
+        asked the competency first would answer 403 and confirm the
+        passport is real to somebody holding only its id. Ownership is
+        asked first, so they are told it does not exist.
+        """
+        stranger = _make_user(
+            db_session,
+            "stranger",
+            profession="consultant",
+            writes=False,
+        )
+        # In the organisation, so the feature gate admits them and the
+        # only thing left to refuse them is the passport's own
+        # authorisation. Outside it they would get 403 from the feature
+        # gate and the test would pass without proving anything.
+        add_org_unit_member(db_session, org.id, stranger.id, "trainee")
+        db_session.commit()
+
+        client = _login(test_client, "stranger")
+
+        response = client.post(
+            f"/api/passport/{passport}/reflections",
+            json={
+                "title": "Not theirs",
+                "written_on": "2026-03-14",
+                "body": "Not theirs to write.",
+                "anonymised_confirmed": True,
+            },
+        )
+
+        assert response.status_code == 404
 
 
 class TestTheSpecIsAdditiveAndDiffable:

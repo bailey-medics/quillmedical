@@ -4210,7 +4210,7 @@ and likely a different price.
 - [ ] Grant `passport_write` to the person at onboarding, where an
       organisation pays for it. No organisation flag: the gate asks the
       person, never the place.
-- [ ] Gate every passport write path on `passport_write`, and gate no
+- [x] Gate every passport write path on `passport_write`, and gate no
       read or export path on it.
 - [ ] Give the entitlement an end date, and have the write gate report
       why and until when.
