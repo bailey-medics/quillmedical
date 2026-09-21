@@ -1,10 +1,10 @@
-"""The user form says where somebody belongs, in place ids.
+"""The user form says where somebody belongs, in org_unit ids.
 
 It used to say it twice: `organisation_ids`, counting in organisation
-ids, and `site_ids`, counting in place ids. Two vocabularies for one
+ids, and `site_ids`, counting in site ids. Two vocabularies for one
 question, and the same number meaning different things in each.
 
-`place_ids` is the one list, and now the only one: the two older fields
+`org_unit_ids` is the one list, and now the only one: the older fields
 arrived, overlapped, and have been retired.
 """
 
@@ -83,7 +83,7 @@ class TestCreating:
     ) -> None:
         resp = authenticated_superadmin_client.post(
             "/api/users",
-            json=_new_user(place_ids=[org.id, ward.id]),
+            json=_new_user(org_unit_ids=[org.id, ward.id]),
         )
 
         assert resp.status_code == 200, resp.text
@@ -106,7 +106,7 @@ class TestCreating:
         """
         resp = authenticated_superadmin_client.post(
             "/api/users",
-            json=_new_user(place_ids=[org.id, ward.id]),
+            json=_new_user(org_unit_ids=[org.id, ward.id]),
         )
 
         places = _places_of(db_session, resp.json()["id"])
@@ -128,7 +128,7 @@ class TestCreating:
         db_session.commit()
 
         resp = authenticated_admin_client.post(
-            "/api/users", json=_new_user(place_ids=[other_ward.id])
+            "/api/users", json=_new_user(org_unit_ids=[other_ward.id])
         )
 
         assert resp.status_code == 404, resp.text
@@ -160,11 +160,11 @@ class TestChanging:
     ) -> None:
         authenticated_superadmin_client.patch(
             f"/api/users/{person.id}",
-            json={"place_ids": [org.id, ward.id]},
+            json={"org_unit_ids": [org.id, ward.id]},
         )
 
         resp = authenticated_superadmin_client.patch(
-            f"/api/users/{person.id}", json={"place_ids": [ward.id]}
+            f"/api/users/{person.id}", json={"org_unit_ids": [ward.id]}
         )
 
         assert resp.status_code == 200, resp.text
@@ -178,11 +178,11 @@ class TestChanging:
         person: User,
     ) -> None:
         authenticated_superadmin_client.patch(
-            f"/api/users/{person.id}", json={"place_ids": [org.id]}
+            f"/api/users/{person.id}", json={"org_unit_ids": [org.id]}
         )
 
         authenticated_superadmin_client.patch(
-            f"/api/users/{person.id}", json={"place_ids": []}
+            f"/api/users/{person.id}", json={"org_unit_ids": []}
         )
 
         assert _places_of(db_session, person.id) == {}
@@ -216,7 +216,7 @@ class TestChanging:
         db_session.commit()
 
         resp = authenticated_admin_client.patch(
-            f"/api/users/{person.id}", json={"place_ids": [ward.id]}
+            f"/api/users/{person.id}", json={"org_unit_ids": [ward.id]}
         )
 
         assert resp.status_code == 200, resp.text
@@ -236,89 +236,37 @@ class TestReading:
     ) -> None:
         created = authenticated_superadmin_client.post(
             "/api/users",
-            json=_new_user(place_ids=[org.id, ward.id]),
+            json=_new_user(org_unit_ids=[org.id, ward.id]),
         )
         user_id = created.json()["id"]
 
         resp = authenticated_superadmin_client.get(f"/api/users/{user_id}")
 
-        assert set(resp.json()["place_ids"]) == {org.id, ward.id}
+        assert set(resp.json()["org_unit_ids"]) == {org.id, ward.id}
 
 
-class TestBothVocabularies:
-    """`org_unit_ids` is the new name for `place_ids`, added beside it.
+class TestTheRetiredName:
+    """`place_ids` is gone, leaving `org_unit_ids` as the only answer.
 
-    Both carry the same list while the older name is retired, so a tab
-    open across the deploy keeps working. A request sends one or the
-    other: applying both would make the answer depend on which was
-    applied last.
+    The expand added `org_unit_ids` beside `place_ids` and shipped a
+    release earlier, so a client still sending the old name has had a
+    full cycle to move. It is now refused rather than quietly ignored,
+    because a silently dropped list reads as "nobody belongs anywhere".
     """
 
-    def test_org_unit_ids_records_the_membership(
-        self,
-        authenticated_superadmin_client: TestClient,
-        db_session: Session,
-        org: OrgUnit,
-        ward: OrgUnit,
-    ) -> None:
-        created = authenticated_superadmin_client.post(
-            "/api/users",
-            json=_new_user(org_unit_ids=[org.id, ward.id]),
-        )
-
-        assert created.status_code == 200, created.text
-        user_id = created.json()["id"]
-        recorded = set(
-            db_session.scalars(
-                select(org_unit_member.c.org_unit_id).where(
-                    org_unit_member.c.user_id == user_id
-                )
-            ).all()
-        )
-        assert recorded == {org.id, ward.id}
-
-    def test_sending_both_is_refused(
+    def test_the_old_name_is_refused_on_create(
         self,
         authenticated_superadmin_client: TestClient,
         org: OrgUnit,
-        ward: OrgUnit,
     ) -> None:
         response = authenticated_superadmin_client.post(
             "/api/users",
-            json=_new_user(place_ids=[org.id], org_unit_ids=[ward.id]),
+            json=_new_user(place_ids=[org.id]),
         )
 
         assert response.status_code == 422, response.text
 
-    def test_an_update_takes_org_unit_ids(
-        self,
-        authenticated_superadmin_client: TestClient,
-        db_session: Session,
-        org: OrgUnit,
-        ward: OrgUnit,
-    ) -> None:
-        created = authenticated_superadmin_client.post(
-            "/api/users",
-            json=_new_user(place_ids=[org.id]),
-        )
-        user_id = created.json()["id"]
-
-        updated = authenticated_superadmin_client.patch(
-            f"/api/users/{user_id}",
-            json={"org_unit_ids": [ward.id]},
-        )
-
-        assert updated.status_code == 200, updated.text
-        recorded = set(
-            db_session.scalars(
-                select(org_unit_member.c.org_unit_id).where(
-                    org_unit_member.c.user_id == user_id
-                )
-            ).all()
-        )
-        assert recorded == {ward.id}
-
-    def test_the_response_carries_both_names(
+    def test_the_response_carries_only_the_new_name(
         self,
         authenticated_superadmin_client: TestClient,
         org: OrgUnit,
@@ -335,4 +283,4 @@ class TestBothVocabularies:
         ).json()
 
         assert set(body["org_unit_ids"]) == {org.id, ward.id}
-        assert body["place_ids"] == body["org_unit_ids"]
+        assert "place_ids" not in body

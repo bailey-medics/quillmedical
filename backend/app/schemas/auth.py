@@ -386,11 +386,8 @@ class UserOut(BaseModel):
         removed_competencies: User's removed competencies.
         platform_role: Whether this person operates Quill itself.
         is_active: Whether user is active.
-        place_ids: Every org_unit the user belongs to, organisations
-            included. The older name for org_unit_ids, kept for one
-            release so a tab open across the deploy keeps working.
-        org_unit_ids: The same list, under the name the table, the model
-            and the path already use.
+        org_unit_ids: Every org_unit the user belongs to, organisations
+            included, in the ids the org_units themselves answer in.
     """
 
     id: int
@@ -402,7 +399,6 @@ class UserOut(BaseModel):
     removed_competencies: list[str]
     platform_role: str
     is_active: bool
-    place_ids: list[int] = []
     org_unit_ids: list[int] = []
 
 
