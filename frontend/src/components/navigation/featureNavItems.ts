@@ -46,8 +46,19 @@ export function useFeatureNavItems(): NavItem[] {
   // so both are asked here. Teaching gates its entry on the feature
   // alone, matching its own routes.
   const passportEnabled = useHasFeature("passport");
-  const canUsePassport = useHasCompetency("assess_clinician_passport");
-  const hasPassport = passportEnabled && canUsePassport;
+  const canAssess = useHasCompetency("assess_clinician_passport");
+  const canWrite = useHasCompetency("passport_write");
+  const hasPassport = passportEnabled && canAssess;
+
+  // Somebody who can only assess has no passport of their own and no
+  // way to start one, so `/passport` would greet them with an offer to
+  // create one and hide the sign-off queue behind a button in the
+  // corner. Their one page is the queue, so the link goes straight
+  // there.
+  //
+  // Holding `passport_write` as well means the holder's own record is
+  // the right landing place, whether or not they have created it yet.
+  const assessesOnly = canAssess && !canWrite;
 
   const items: NavItem[] = [];
 
@@ -67,8 +78,8 @@ export function useFeatureNavItems(): NavItem[] {
 
   if (hasPassport) {
     items.push({
-      label: "Passport",
-      href: "/passport",
+      label: assessesOnly ? "Sign-off requests" : "Passport",
+      href: assessesOnly ? "/passport/inbox" : "/passport",
       icon: "passport",
     });
   }

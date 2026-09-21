@@ -51,6 +51,18 @@ const mockUsers: Record<string, User> = {
     username: "passport.holder",
     email: "passport@example.com",
     roles: ["Clinician"],
+    competencies: ["assess_clinician_passport", "passport_write"],
+    enabled_features: ["passport"],
+    clinical_services_enabled: true,
+  },
+  // Can sign off somebody else's competency and holds no record of
+  // their own: an invited external assessor, who cannot create a
+  // passport because nothing has granted them `passport_write`.
+  passport_assessor_only: {
+    id: "9",
+    username: "passport.assessor",
+    email: "assessor@example.com",
+    roles: ["Clinician"],
     competencies: ["assess_clinician_passport"],
     enabled_features: ["passport"],
     clinical_services_enabled: true,
@@ -638,6 +650,32 @@ describe("SideNavContent Component", () => {
       await waitFor(() => {
         expect(screen.getByText("Passport")).toBeInTheDocument();
       });
+    });
+
+    it("offers the sign-off queue to somebody who can only assess", async () => {
+      // Their one page is other people's records awaiting their
+      // judgement. `/passport` would greet them with an offer to start
+      // a passport they have no way to create, and hide the queue
+      // behind a button in the corner.
+      renderWithAuth(<SideNavContent />, "passport_assessor_only");
+
+      await waitFor(() => {
+        expect(screen.getByText("Sign-off requests")).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText("Passport")).not.toBeInTheDocument();
+    });
+
+    it("offers the passport itself to a holder, not the queue", async () => {
+      // Holding `passport_write` means there is a record of their own
+      // to land on, whether or not they have started it yet.
+      renderWithAuth(<SideNavContent />, "passport_holder");
+
+      await waitFor(() => {
+        expect(screen.getByText("Passport")).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText("Sign-off requests")).not.toBeInTheDocument();
     });
 
     it("hides Passport when the feature is on but the competency is missing", async () => {
