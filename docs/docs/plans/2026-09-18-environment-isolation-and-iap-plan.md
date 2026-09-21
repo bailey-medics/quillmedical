@@ -666,6 +666,19 @@ one.
   where it wants `false`, with a message that names the type rather than
   the cause.
 
+- **The DNS zone is in the production project, which is shut down.** Two
+  managed zones exist for `quill-medical.com`, one in
+  `quill-medical-production` and one in `quill-medical-staging`, and only
+  the production one is delegated to. Check the nameservers against `dig
+  +short NS quill-medical.com` before editing a zone, because writing to
+  the wrong one succeeds and changes nothing.
+
+- **A managed certificate cannot validate before its DNS record exists.**
+  `quill-cert-v5-app` was created by the apply and sat in `PROVISIONING`
+  with nothing wrong, because validation resolves the domain and the
+  record was not written until later. Creating the record starts the
+  clock rather than the apply doing so.
+
 - **Terraform creates secret containers and never versions**, by the
   convention in `modules/secrets`, so a fresh environment has nine empty
   secrets and several resources that cannot start without them. The
@@ -705,31 +718,50 @@ one.
 **Hands over:** a working environment on a temporary hostname, ready for
 the DNS cutover.
 
-## Batch 5 — Mark: cut the hostname over
+## Batch 5 — Claude and Mark: cut the hostname over
 
-The tfvars edits here are small enough to make alongside the apply rather
-than as a separate branch; splitting them out would mean a branch that
-cannot be verified until you apply it anyway.
+The DNS zone is **`quill-medical-zone` in the `quill-medical-production`
+project**, not in teaching. Its nameservers, `ns-cloud-c*`, are what
+`quill-medical.com` actually delegates to. There is a second zone named
+`quill-medical` in `quill-medical-staging` for the same domain, on
+`ns-cloud-b*` nameservers, which nothing delegates to and which serves
+nothing: editing that one changes no answers anybody receives.
 
-- [ ] Release `app.quill-medical.com` from
-      `infra/environments/prod/terraform.tfvars`, which claims it today.
-      Production is shut down so nothing clashes now, but it would on
-      restore.
+That the live zone sits in a shut-down project is worth knowing. A
+shut-down project is recoverable, but deleting it would take DNS for the
+whole domain with it.
 
-- [ ] Set `lb_domains`, `app_domain` and `monitored_hostnames` in the new
-      environment's tfvars. Put the canonical host first in `lb_domains` —
+- [x] **(Claude)** Release `app.quill-medical.com` from
+      `infra/environments/prod/terraform.tfvars`, which claimed it.
+      Production is the clinical environment, so it now claims
+      `ehr.quill-medical.com`, the name Phase 3 settled for clinical.
+      Production is shut down so nothing clashed today, but two projects
+      naming one hostname would have collided on restore.
+
+- [x] **(Claude)** Set `lb_domains`, `app_domain` and
+      `monitored_hostnames` in the new environment's tfvars. Done in
+      Batch 3: the canonical host is first in `lb_domains`, because
       `FRONTEND_URL` takes `lb_domains[0]` and feeds password-reset
       emails.
 
-- [ ] Serve both hostnames during the change rather than cutting over.
-      Changing `managed.domains` on the certificate forces a replacement,
-      and a Google-managed certificate only goes active once every domain
-      on it validates — so a straight swap can break TLS on the existing
-      hostname for up to an hour.
+- [x] **(Claude)** Serve one hostname per project rather than putting
+      both on one certificate. The plan originally said to serve both
+      during the change; that applies to moving a hostname *within* one
+      load balancer. Here each project has its own certificate, so
+      `teaching.` stays on the old one and `app.` goes on the new one,
+      and neither validation can block the other.
 
-- [ ] Create the DNS A record for the new hostname in the
-      `quill-medical-zone` by hand. The `infra/modules/dns` module is not
-      wired into `infra/main.tf`, so DNS is not under Terraform.
+- [x] **(Claude)** Create the DNS A record for the new hostname in
+      `quill-medical-zone`, pointing `app.quill-medical.com` at
+      `34.49.99.83`. The `infra/modules/dns` module is not wired into
+      `infra/main.tf`, so DNS is not under Terraform.
+
+- [ ] **(Mark)** Wait for `quill-cert-v5-app` to leave `PROVISIONING`.
+      A Google-managed certificate cannot validate until the DNS record
+      exists, so it sat pending from the apply until the record above was
+      created, and takes fifteen to sixty minutes from that point. Until
+      it is `ACTIVE`, the hostname resolves and the browser shows a
+      certificate warning.
 
 - [ ] Point `teaching.quill-medical.com` at the new project as a redirect,
       rather than leaving it served by the old one. It has to move before
