@@ -35,6 +35,7 @@ from app.models import (
 )
 from app.organisations import add_org_unit_member
 from app.security import hash_password
+from tests.places import administers
 
 
 def _user(db: Session, username: str, *, profession: str) -> User:
@@ -163,6 +164,7 @@ class TestOrganisationMembershipStillWorks:
             db_session, "trust_admin", profession="system_administrator"
         )
         add_org_unit_member(db_session, org.id, user.id, "staff")
+        administers(db_session, user.id, org.id)
         db_session.commit()
         return user
 

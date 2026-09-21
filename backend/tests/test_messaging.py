@@ -14,6 +14,7 @@ from app.models import (
 )
 from app.organisations import add_org_unit_member
 from app.security import hash_password
+from tests.places import administers
 
 # ---------------------------------------------------------------------------
 # Additional fixtures
@@ -1361,8 +1362,10 @@ class TestRemoveStaffFromOrg:
         db_session: Session,
     ):
         """Admin can remove a staff member from an org."""
-        # Add admin to org so they pass the membership check
+        # At the org, and authorised to administer it: membership says
+        # they are here, a manage_users row says they may act here.
         add_org_unit_member(db_session, test_org.id, test_admin.id, "staff")
+        administers(db_session, test_admin.id, test_org.id)
         db_session.commit()
 
         authenticated_client.post(
@@ -1409,10 +1412,12 @@ class TestRemovePatientFromOrg:
         `manage_users`, which is authority over accounts rather than over
         which patients a place cares for.
         """
-        # Add them to the org so they pass the membership check
+        # At the org, and authorised to administer it: membership says
+        # they are here, a manage_users row says they may act here.
         add_org_unit_member(
             db_session, test_org.id, test_patient_manager.id, "staff"
         )
+        administers(db_session, test_patient_manager.id, test_org.id)
         db_session.commit()
 
         authenticated_client.post(

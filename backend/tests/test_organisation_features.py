@@ -9,6 +9,7 @@ from app.models import (
 )
 from app.organisations import add_org_unit_member
 from app.security import hash_password
+from tests.places import administers
 
 # ---------------------------------------------------------------------------
 # Model tests
@@ -172,6 +173,7 @@ def _make_admin(db_session, org: OrgUnit | None = None) -> User:
     db_session.flush()
     if org:
         add_org_unit_member(db_session, org.id, user.id, "trainee")
+        administers(db_session, user.id, org.id)
     db_session.commit()
     db_session.refresh(user)
     return user

@@ -35,6 +35,7 @@ from app.models import (
     ExternalPatientAccess,
     OrgUnit,
     OrgUnitLink,
+    PractisingCompetency,
     User,
     org_unit_member,
     org_unit_patient_member,
@@ -42,10 +43,16 @@ from app.models import (
 )
 from app.org_units.relations import relation_grants_reach
 from app.org_units.tree import (
-    descendant_ids,
     organisation_org_unit_ids,
     root_ids_of,
 )
+
+#: The competency whose presence at a place says somebody administers
+#: it. Named here rather than spelled at the use site, because a typo
+#: would fail silently: an unknown id simply matches no rows, and the
+#: caller would administer nothing with no error anywhere.
+ADMINISTERS = "manage_users"
+
 
 # ------------------------------------------------------------------
 # Organisation membership, read from the merged table
@@ -145,15 +152,30 @@ def get_member_org_unit_ids(
 def org_units_administered_by(db: Session, user: User) -> set[int] | None:
     """Return the org_units *user* may administer, or None for all of them.
 
-    An admin administers the organisations they belong to and everything
-    beneath them, at any depth. An operator gets None rather than a set
-    holding every id in the table, because "all of them" and "these
-    thousands" are different answers and only the first stays true as
-    the table grows.
+    One row per person and place in ``practising_competency``, carrying
+    ``manage_users``, is what says somebody administers a place. An
+    operator gets None rather than a set holding every id in the table,
+    because "all of them" and "these thousands" are different answers
+    and only the first stays true as the table grows.
 
-    Reach is deliberately not part of this. Reach is why somebody sees
-    teaching content at an org_unit they visit; it is not authority over that
-    org_unit.
+    **Nothing is inherited**, which is the point of reading rows. A row
+    at a trust says nothing about its wards and a row at a ward says
+    nothing about its trust, so a ward manager can administer their ward
+    without trust-wide authority, and "why could this person do that?"
+    is answered by one row rather than by replaying a hierarchy.
+
+    This used to answer from membership: the organisations somebody
+    belonged to, plus every org_unit beneath them at any depth. That
+    could only ever say "all of this trust or none of it", and it meant a
+    competency granted anywhere was a competency everywhere. The rows
+    were seeded from exactly those memberships by migration
+    ``b4c2e7a91f38``, so the answer on the day it deployed was the
+    answer the day before. See
+    ``docs/docs/plans/2026-09-21-practising-competencies-enforcement-plan.md``.
+
+    Reach is deliberately not part of this, and never was. Reach is why
+    somebody sees teaching content at an org_unit they visit; it is not
+    authority over that org_unit.
 
     Args:
         db: Core database session.
@@ -165,8 +187,18 @@ def org_units_administered_by(db: Session, user: User) -> set[int] | None:
     if user.platform_role == "superadmin":
         return None
 
-    roots = get_member_org_unit_ids(db, user.id)
-    return set(roots) | descendant_ids(db, roots)
+    return {
+        int(org_unit_id)
+        for org_unit_id in db.execute(
+            select(PractisingCompetency.org_unit_id).where(
+                PractisingCompetency.user_id == user.id,
+                PractisingCompetency.competency == ADMINISTERS,
+            )
+        )
+        .scalars()
+        .all()
+        if org_unit_id is not None
+    }
 
 
 def get_reachable_org_unit_ids(
@@ -188,9 +220,10 @@ def get_reachable_org_unit_ids(
 
     **Reach is not membership and is not authority.** Nothing here makes
     anybody a member of anything, and nothing here lets them administer
-    it: the admin checks ask :func:`get_member_org_unit_ids`, which does not
-    follow links. That separation is the whole reason the two functions
-    exist rather than one.
+    it: the admin checks ask :func:`org_units_administered_by`, which
+    reads ``practising_competency`` rows and does not follow links. That
+    separation is the whole reason the two functions exist rather than
+    one.
 
     Prefer :func:`get_member_org_unit_ids` where the question is *is this
     person a member of this organisation* rather than *can they reach

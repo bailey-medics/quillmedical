@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from app.models import OrgUnit, User, org_unit_member
 from app.organisations import add_org_unit_member
 from app.security import hash_password
+from tests.places import administers
 
 
 @pytest.fixture
@@ -125,6 +126,7 @@ class TestCreating:
     ) -> None:
         """404, so the answer does not confirm that the place exists."""
         add_org_unit_member(db_session, org.id, test_admin.id, "staff")
+        administers(db_session, test_admin.id, org.id)
         db_session.commit()
 
         resp = authenticated_admin_client.post(
@@ -204,6 +206,10 @@ class TestChanging:
         could not even read.
         """
         add_org_unit_member(db_session, org.id, test_admin.id, "staff")
+        administers(db_session, test_admin.id, org.id)
+        # And at the ward itself, which is the place assigned below:
+        # nothing is inherited from the trust above it.
+        administers(db_session, test_admin.id, ward.id)
         # The person is in both trusts. The admin can see one of them.
         add_org_unit_member(db_session, org.id, person.id, "staff")
         db_session.execute(

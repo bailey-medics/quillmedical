@@ -225,7 +225,7 @@ refactor removes without noticing.
 
 ## Phase 4: Switch `manage_users` onto the rows
 
-- [ ] **Change the `manage_users` endpoints in
+- [x] **Change the `manage_users` endpoints in
       `backend/app/org_units/router.py` from `DEP_REQUIRE_MANAGE_USERS` to the new
       place-aware dependency**, one route at a time, starting with the read-only
       `GET` routes so a mistake is visible before it can deny a write. There are
@@ -238,24 +238,60 @@ refactor removes without noticing.
   `places_administered_by`, which is a change to `_visible_ids` rather than to
   the dependency.
 
-- [ ] **Point `_visible_ids` at practising rows.** It currently delegates
+  **Departed from the plan: no route changed its dependency.** All ten
+  `unit_id` routes already call `_require_visible`, which calls
+  `_visible_ids`, and `create_org_unit` calls it for the parent it is given.
+  So repointing that one function switched every route at once, and swapping
+  `DEP_REQUIRE_MANAGE_USERS` for `has_competency_at` on each would have been
+  a second check of the same thing. `has_competency_at` from Phase 1 stays
+  as the tool for routes whose place check is not already routed through
+  `_require_visible`.
+
+- [x] **Point `_visible_ids` at practising rows.** It currently delegates
       straight to `places_administered_by`, which answers from membership plus every
       descendant. Reading rows instead is what makes "administer this ward but not
       the trust above it" expressible, and that non-inheritance is the property
       `models.py` calls out as the whole point of the table. Keep the operator branch
       returning `None`.
 
-- [ ] **Leave `grant_staff_competencies` alone, and say why here.** It runs
+  Changed in `org_units_administered_by` itself rather than in
+  `_visible_ids`, because `main.py` asks the same question in two places:
+  `_require_org_units_the_caller_administers`, and the membership-clearing
+  branch of the user update. Two surfaces disagreeing about who administers
+  a place is worse than either answer, so both moved together.
+
+  `descendant_ids` is no longer imported there, and the docstring on
+  `get_reachable_org_unit_ids` that named `get_member_org_unit_ids` as the
+  admin check now names this function.
+
+- [x] **Leave `grant_staff_competencies` alone, and say why here.** It runs
       inside `add_org_unit_member` and writes to the _ceiling_ — base profession and
       additional competencies — not to practising rows. That is correct: adding
       somebody as staff should make them qualified, and authorising them to practise
       at that place is the separate decision Phase 2 gives a surface to. Changing it
       to write rows would collapse the two halves of the model back into one.
 
-- [ ] **Run the backend suite for the routes touched**, `just ub -k
+- [x] **Run the backend suite for the routes touched**, `just ub -k
 "org_unit"`, plus the new tests from phases 1 and 2. This phase changes live
       authorisation, so it is the one place in this plan where a wider local run is
       justified under the test-tier rule in `CLAUDE.md`.
+
+  Run, and it found 41 failures across 11 files, every one a fixture that
+  granted membership and expected administration. That is the change
+  working rather than a regression, so an `administers()` helper was added
+  to `conftest.py` and the fixtures now say both facts. Worth naming:
+  `test_manage_staff_membership.py` needed a `manage_users` row for an
+  admin whose competency under test is `manage_staff_membership`, because
+  seeing a place and acting at it are separate checks.
+
+  `test_practising_competency_backfill.py` had to stop asking
+  `org_units_administered_by` what membership implies, which became
+  circular the moment this unit repointed it. It asks
+  `get_member_org_unit_ids` and `descendant_ids` directly now.
+
+  One unrelated flake: `test_security_pentest.py::test_wrong_password_rejected`
+  failed once in a full run and passes on its own. Password hashing, nothing
+  to do with this.
 
 ## Phase 5: Make it visible
 
