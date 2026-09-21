@@ -768,10 +768,14 @@ class AssessorRevokeOut(BaseModel):
 
     user_id: int
     place: NonEmptyText
-    #: A place id whichever kind ``place`` says. It used to hold the
-    #: organisation's own id when ``place`` was ``organisation``, which
-    #: the name never said and no caller could have told apart.
+    #: The older name for ``org_unit_id``, carrying the same value. It
+    #: is kept for one release so a tab open across the deploy keeps
+    #: working, and retires once that release has shipped.
     place_id: int
+    #: The org_unit the membership was held at, whichever kind ``place``
+    #: says. It used to hold the organisation's own id when ``place``
+    #: was ``organisation``, which the name never said.
+    org_unit_id: int
     sign_offs_kept: int
 
 
@@ -788,4 +792,8 @@ class AssessorInviteAcceptOut(BaseModel):
     status: NonEmptyText
     user_id: int
     place: NonEmptyText
+    #: The older name for ``org_unit_id``, carrying the same value and
+    #: retiring a release later.
     place_id: int
+    #: The org_unit the assessor now holds a membership at.
+    org_unit_id: int

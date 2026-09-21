@@ -1282,9 +1282,9 @@ class TestAcceptingAnInvitation:
         body = response.json()
 
         assert body["place"] == "organisation"
-        # ``place_id`` is still the wire name: the response field is
-        # renamed with the rest of the API, not with the internals.
-        assert body["place_id"] == org.id
+        # Both names carry the same id while ``place_id`` is retired.
+        assert body["org_unit_id"] == org.id
+        assert body["place_id"] == body["org_unit_id"]
 
         capacity = db_session.scalar(
             select(organisation_org_unit_member.c.capacity).where(
@@ -1329,7 +1329,8 @@ class TestAcceptingAnInvitation:
         body = response.json()
 
         assert body["place"] == "site"
-        assert body["place_id"] == site.id
+        assert body["org_unit_id"] == site.id
+        assert body["place_id"] == body["org_unit_id"]
 
         capacity = db_session.scalar(
             select(org_unit_member.c.capacity).where(
