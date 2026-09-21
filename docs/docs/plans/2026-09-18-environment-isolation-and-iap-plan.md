@@ -491,16 +491,26 @@ here because the next environment will want the same list:
       `slack_channel_display_name` in the app tfvars. Until then the new
       environment has email, SMS and PagerDuty alerting but no Slack.
 
-- [ ] **(Mark)** Apply Batch 3's Terraform to the new workspace, and let
-      it build the environment from nothing. Around thirty resources take
-      their names from `var.environment`, so they come out named `app`
-      without any being renamed by hand.
+- [x] **(Claude and Mark)** Apply Batch 3's Terraform to the new
+      workspace. Done on 2026-09-21, on the fifth attempt: 16 added, 0
+      changed, 1 destroyed, the destroy being a half-built backend
+      service replaced after an earlier failed apply. The environment now
+      has `quill-backend-app` and `quill-frontend-app`, `quill-core-app`
+      on Postgres 18, the admin, caption and transcode jobs, the VPC, the
+      buckets and a load balancer on `34.49.99.83`.
 
-- [ ] **(Mark)** Create the three secrets in the new project. Generate a
-      fresh video signing key rather than copying the old one: it signs
-      cookies for a specific origin, nothing has been issued against the
-      new project, and a fresh key means the old one dies with the old
-      project.
+- [x] **(Claude)** Put a value in every secret Terraform created. The
+      apply creates nine secret containers and no versions, so anything
+      reading one fails until a value is added: the backend would not
+      start without `resend-api-key` and `teaching-sync-token`, and the
+      alerting channels read `pagerduty-service-key` and
+      `alert-sms-number`. `teaching-sync-token` was generated fresh for
+      this project rather than copied.
+
+- [x] **(Claude)** Create the three secrets in the new project. Done as
+      part of the apply above: Terraform creates the containers, and the
+      video signing key is generated fresh for this project rather than
+      copied, so the old one dies with the old project.
 
 - [ ] **(Mark)** Re-run the teaching pipeline against the new project so
       the content buckets refill from `eoeeta-teaching` and
@@ -655,6 +665,36 @@ one.
   value as a string, and the environments endpoint rejects `"false"`
   where it wants `false`, with a message that names the type rather than
   the cause.
+
+- **Terraform creates secret containers and never versions**, by the
+  convention in `modules/secrets`, so a fresh environment has nine empty
+  secrets and several resources that cannot start without them. The
+  backend service fails to create at all while `resend-api-key` or
+  `teaching-sync-token` is empty, and the message names the secret path
+  rather than saying the value is missing. Fill every secret before the
+  apply rather than discovering them one failed apply at a time.
+
+- **`roles/editor` does not include changing a project's IAM policy.**
+  The apply failed on "Policy update access denied" creating the Cloud
+  Run secret-accessor binding, despite the service account holding
+  editor. It needed `roles/resourcemanager.projectIamAdmin`, plus
+  `roles/servicenetworking.networksAdmin` and
+  `roles/compute.networkAdmin` for the VPC peering that private Cloud SQL
+  requires. The teaching service account never needed these because that
+  project was built before Terraform managed it.
+
+- **Cloud SQL with private networking takes ten to fifteen minutes** on a
+  first create, because the VPC peering has to be established before
+  provisioning starts. Everything downstream waits on it, so an apply
+  that looks stuck at twelve minutes is usually working.
+
+- **A secret version added while an apply is running is a race.** Cloud
+  Run resolves `versions/latest` when a container starts, not when
+  Terraform runs, so a service created sixteen seconds before a new
+  version was added kept the old one. Forcing a new revision picks it up;
+  the label used to force it has to be removed afterwards, because
+  `modules/cloud-run` only ignores image drift and would otherwise plan
+  the label away.
 
 - **`roles/editor` on the CI service account is worth questioning.** It
   was copied from teaching, where it sits beside `run.admin` and
