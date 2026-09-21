@@ -556,6 +556,21 @@ one.
   authentication that succeeds and then cannot do anything, which reads
   as a permissions problem rather than a missing binding.
 
+- **A workflow change cannot trigger its own workflow here.** Merging the
+  matrix change ran nothing, because `terraform.yml` triggers on
+  `infra/**` and the change was to the workflow file and the plan. The
+  new environment therefore stayed empty, and the only signal was the
+  absence of a run, which is easy to read as "it is still starting". The
+  workflow now also takes `workflow_dispatch`, so it can be started by
+  hand from the Actions tab, choosing `all`, `teaching` or `app`.
+
+- **`actionlint` is installed locally and worth running before pushing a
+  workflow change.** The first attempt at the dispatch input used an
+  empty string as a choice option, meaning "every environment", and
+  `actionlint` rejects that: "string should not be empty". CI caught it,
+  but `actionlint .github/workflows/terraform.yml` would have caught it
+  in a second. A named `all` option is clearer than a blank one anyway.
+
 - **CI decides which environments exist, not the tfvars.** Adding
   `infra/environments/app/terraform.tfvars` and merging it did nothing:
   `terraform.yml` named the `teaching` workspace and teaching's tfvars in
