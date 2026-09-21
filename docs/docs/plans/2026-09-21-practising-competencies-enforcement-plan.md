@@ -341,15 +341,36 @@ refactor removes without noticing.
 ## Phase 6: Close the loop on clinical competencies
 
 - [ ] **Apply the dependency to the first clinical endpoint that needs it, when
-      one exists.** No endpoint carries a clinical competency check today. The
+      one exists.** Still open, and deliberately. The only route gating on a
+      clinical competency is `prescribe_controlled_schedule_2` in `main.py`,
+      whose own docstring calls it an example endpoint: it creates no
+      prescription and takes no place in its request, so scoping it would
+      mean inventing a route shape for a demo rather than closing the gap
+      this phase names. That is a design decision for whoever builds the
+      real prescribing surface.
+
+      The original point stands: No endpoint carries a clinical competency check today. The
       surgeon case is unenforceable not because the model is wrong but because Quill
       does not yet ask the question anywhere, and this phase exists so that gap is
       recorded rather than forgotten.
 
-- [ ] **Write the suspended-surgeon case as a test when that endpoint lands**:
+- [x] **Write the suspended-surgeon case as a test when that endpoint lands**:
       ceiling keeps the competency, one place has a row and the other does not, and
       the same person is allowed at one and refused at the other. That is the case
       this whole model exists for, and it should be pinned by a test naming it.
+
+  Written now rather than waiting, in
+  `backend/tests/test_clinical_endpoints_ask_where.py`, as
+  `xfail(strict=True)`. Two of its four cases pass today: the competency
+  survives the suspension, and the surgeon still works at the hospital that
+  kept them. Two fail on purpose, because no clinical route asks where, so
+  Hospital B allows a surgeon it has suspended.
+
+  Strict, so the build fails the moment somebody scopes a clinical route and
+  the case starts passing. That turns the gap from a note nobody reads into
+  a test that speaks up, which is the same choice
+  `test_org_scoped_access_criteria.py` made and the reason its cases were
+  adopted rather than forgotten.
 
 ## Decisions
 
