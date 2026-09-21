@@ -37,7 +37,7 @@ import MultiStepForm, {
 import DirtyFormNavigation from "@/components/warnings";
 import PageHeader from "@/components/page-header";
 import type { BaseProfessionId, CompetencyId, Competency } from "@/types/cbac";
-import { getBaseProfessionDetails } from "@/types/cbac";
+import { getBaseProfessionDetails, ACTIVE_COMPETENCIES } from "@/types/cbac";
 import competenciesData from "@/generated/competencies.json";
 import baseProfessionsData from "@/generated/base-professions.json";
 import { api } from "@/lib/api";
@@ -273,12 +273,13 @@ function Step2Competencies({
   formData: UserFormData;
   setFormData: (data: UserFormData) => void;
 }) {
-  const competencyOptions = competenciesData.competencies.map(
-    (c: Competency) => ({
-      value: c.id,
-      label: c.display_name,
-    }),
-  );
+  // Current only. The lookups further down still read the whole
+  // catalogue, because a competency already granted has to keep
+  // rendering its name after it is retired.
+  const competencyOptions = ACTIVE_COMPETENCIES.map((c: Competency) => ({
+    value: c.id,
+    label: c.display_name,
+  }));
 
   // Get base profession competencies
   const profession = formData.baseProfession

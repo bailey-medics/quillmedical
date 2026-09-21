@@ -37,7 +37,7 @@
 
 import { useMemo } from "react";
 import { SelectField } from "@components/form";
-import competenciesData from "@/generated/competencies.json";
+import { ACTIVE_COMPETENCIES } from "@/types/cbac";
 
 /** One competency, as the generated catalogue holds it. */
 interface CatalogueEntry {
@@ -88,7 +88,9 @@ export default function CompetencyPicker({
   disabled = false,
 }: CompetencyPickerProps) {
   const data = useMemo(() => {
-    const catalogue = competenciesData.competencies as CatalogueEntry[];
+    // Current only: a retired competency cannot be signed off
+    // against, and the API refuses it at the write boundary.
+    const catalogue = ACTIVE_COMPETENCIES as CatalogueEntry[];
     const shortlisted = new Set(commonlyUsedHere);
 
     const toOption = (entry: CatalogueEntry) => ({
