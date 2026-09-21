@@ -142,7 +142,7 @@ def get_member_org_unit_ids(
     return sorted({int(r[0]) for r in db.execute(stmt).all()})
 
 
-def places_administered_by(db: Session, user: User) -> set[int] | None:
+def org_units_administered_by(db: Session, user: User) -> set[int] | None:
     """Return the places *user* may administer, or None for all of them.
 
     An admin administers the organisations they belong to and everything

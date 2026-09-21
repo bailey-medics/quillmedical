@@ -222,7 +222,7 @@ def organisation_org_unit_ids() -> Select[tuple[int]]:
     return select(OrgUnit.id).where(OrgUnit.type.in_(ROOT_TYPE_IDS))
 
 
-def organisation_places_of_sites(
+def organisation_org_units_of_sites(
     db: Session, site_ids: list[int]
 ) -> dict[int, int]:
     """Return the organisation's place above each of *site_ids*.
@@ -264,7 +264,7 @@ def organisation_places_of_sites(
     }
 
 
-def organisation_place_of_site(db: Session, site_id: int) -> int | None:
+def organisation_org_unit_of_site(db: Session, site_id: int) -> int | None:
     """Return the place of the organisation accountable for *site_id*.
 
     Walks up to the root and checks it is a kind of place a tree starts
@@ -279,4 +279,4 @@ def organisation_place_of_site(db: Session, site_id: int) -> int | None:
     Returns:
         The organisation's place id, or None.
     """
-    return organisation_places_of_sites(db, [site_id]).get(site_id)
+    return organisation_org_units_of_sites(db, [site_id]).get(site_id)

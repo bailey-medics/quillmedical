@@ -917,6 +917,8 @@ So the remaining steps land as:
 - [x] 12d-i-e — `org_unit_ids` beside `place_ids` on the users API
 - [x] 12d-i-f — the frontend sends and reads `org_unit_ids`
 - [x] 12d-ii — retire `place_ids`
+- [ ] 12d-iii — say `org_unit` everywhere `place` still stands in for it
+  - [x] 12d-iii-a — the nine helper functions named for a place
 
 #### 10a — write both names for the place column
 
@@ -2047,6 +2049,38 @@ gate.
 name its levels that way is a question about the model rather than about
 naming, and changing them is a data migration. It is not part of this
 step.
+
+#### 12d-iii — say `org_unit` everywhere `place` still stands in for it
+
+12d-i renamed the API surface and the helpers it touched. It did not
+reach the rest, so the word survives inside the code: roughly 770 uses
+in `backend/` and 240 in `frontend/src`, in local variables, parameters,
+helper names, docstrings and comments. A reader now meets `place` and
+`org_unit` describing one thing, with nothing saying which is current.
+
+Rename every one of those where the thing meant is an `org_unit` or its
+id. Where `place` means an ordinary English place — a comment about
+somewhere a person is, a string a clinician reads — leave it, and the
+judgement of which is which is the work.
+
+**No migration follows.** The tables and columns were renamed in
+12c-iii-d and 12d-i, so nothing in the database still carries the name.
+
+**Two fields are wire-visible** and go first, behind their own
+decision files and the `api-breaking-change-review` gate:
+`AssessorInviteAcceptOut.place_id` and `AssessorRevokeOut.place_id` in
+`schemas/passport.py`, with the matching fields in
+`frontend/src/lib/passport/types.ts`. They were held back from 12d-i-d
+for exactly this reason, and they retire the same way `place_ids` did:
+expand, a release, then contract.
+
+**Split it by seam, not by file.** 12d-i split one unit of 450
+occurrences into five because one reviewer cannot hold more than that at
+once, and this is twice the size again. The seams that worked there were
+the writers, the readers, the subquery, the locals, then the API.
+
+**The `type` values stay out of it**, for the reason above: that is a
+question about the model and a data migration, not a rename.
 
 ## Risks
 

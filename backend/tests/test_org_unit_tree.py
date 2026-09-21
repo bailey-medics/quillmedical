@@ -29,8 +29,8 @@ from app.org_units.tree import (
     MAX_TREE_DEPTH,
     descendant_ids,
     organisation_org_unit_ids,
-    organisation_place_of_site,
-    organisation_places_of_sites,
+    organisation_org_unit_of_site,
+    organisation_org_units_of_sites,
     root_id_of,
 )
 from app.org_units.types import ROOT_TYPE_IDS
@@ -113,7 +113,7 @@ class TestWalkingUp:
         room = _under(db_session, ward.id, "Room", "room")
 
         assert root_id_of(db_session, room.id) == org.id
-        assert organisation_place_of_site(db_session, room.id) == org.id
+        assert organisation_org_unit_of_site(db_session, room.id) == org.id
 
     def test_a_place_with_no_parent_at_all_has_no_organisation(
         self, db_session
@@ -122,7 +122,7 @@ class TestWalkingUp:
         loose = _under(db_session, None, "Loose Ward", "ward")
 
         assert root_id_of(db_session, loose.id) == loose.id
-        assert organisation_place_of_site(db_session, loose.id) is None
+        assert organisation_org_unit_of_site(db_session, loose.id) is None
 
     def test_a_place_that_does_not_exist_has_no_root(self, db_session):
         assert root_id_of(db_session, 999999) is None
@@ -136,7 +136,7 @@ class TestWalkingUp:
         db_session.commit()
 
         assert root_id_of(db_session, a.id) is None
-        assert organisation_place_of_site(db_session, a.id) is None
+        assert organisation_org_unit_of_site(db_session, a.id) is None
 
     def test_a_chain_longer_than_the_cap_gives_up(self, db_session):
         org = _org(db_session, "Trust")
@@ -200,7 +200,7 @@ class TestNamingTheOrganisationForManyPlaces:
         their_ward = _under(db_session, theirs.id, "Ward", "ward")
         loose = _under(db_session, None, "Loose", "ward")
 
-        assert organisation_places_of_sites(
+        assert organisation_org_units_of_sites(
             db_session, [my_ward.id, their_ward.id, loose.id]
         ) == {
             my_ward.id: mine.id,
@@ -253,7 +253,7 @@ class TestDeletingAnOrganisation:
 
         db_session.refresh(ward)
         assert ward.parent_id is None
-        assert organisation_place_of_site(db_session, ward.id) is None
+        assert organisation_org_unit_of_site(db_session, ward.id) is None
 
 
 class TestEachWalkIsOneQuery:
@@ -324,7 +324,7 @@ class TestEachWalkIsOneQuery:
 
         asked = self._count_queries(
             db_session,
-            lambda: organisation_places_of_sites(
+            lambda: organisation_org_units_of_sites(
                 db_session, [room_id, their_ward_id]
             ),
         )

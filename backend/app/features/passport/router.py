@@ -2474,7 +2474,7 @@ def _decoded_invite(
     return invite, str(payload["email"])
 
 
-def _holder_place(db: Session, passport_id: str) -> tuple[str, int]:
+def _holder_org_unit(db: Session, passport_id: str) -> tuple[str, int]:
     """Where the assessor should become a member, and at what level.
 
     The narrowest place the holder belongs to: a site if they have one,
@@ -2725,7 +2725,7 @@ def accept_assessor_invite(
         db.flush()
         status = "registered"
 
-    place, org_unit_id = _holder_place(db, invite.passport_id)
+    place, org_unit_id = _holder_org_unit(db, invite.passport_id)
 
     if place == "site":
         already = db.scalar(

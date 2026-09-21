@@ -32,7 +32,7 @@ from sqlalchemy.sql.elements import ColumnElement
 from app.models import PractisingCompetency, User
 
 
-def _place_clause(org_unit_id: int) -> ColumnElement[bool]:
+def _org_unit_clause(org_unit_id: int) -> ColumnElement[bool]:
     """Build the where-clause for one place.
 
     One column on the row, one argument here. This used to take an
@@ -73,7 +73,7 @@ def competencies_at(
         db.execute(
             select(PractisingCompetency.competency).where(
                 PractisingCompetency.user_id == user.id,
-                _place_clause(org_unit_id),
+                _org_unit_clause(org_unit_id),
             )
         )
         .scalars()
@@ -109,7 +109,7 @@ def can_practise_at(
         select(PractisingCompetency.id).where(
             PractisingCompetency.user_id == user.id,
             PractisingCompetency.competency == competency,
-            _place_clause(org_unit_id),
+            _org_unit_clause(org_unit_id),
         )
     ).first()
     return row is not None
@@ -145,7 +145,7 @@ def who_can_practise_at(
         for uid in db.execute(
             select(PractisingCompetency.user_id).where(
                 PractisingCompetency.competency == competency,
-                _place_clause(org_unit_id),
+                _org_unit_clause(org_unit_id),
             )
         )
         .scalars()

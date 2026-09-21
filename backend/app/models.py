@@ -926,7 +926,7 @@ class OrgUnitLink(Base):
 
 
 @event.listens_for(OrgUnit, "before_delete")
-def _clear_what_hangs_off_a_place(
+def _clear_what_hangs_off_an_org_unit(
     _mapper: Mapper[OrgUnit],
     connection: Connection,
     target: OrgUnit,

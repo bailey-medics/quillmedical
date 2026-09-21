@@ -117,7 +117,7 @@ from app.org_units.router import router as org_units_router
 from app.org_units.tree import (
     descendant_ids,
     organisation_org_unit_ids,
-    organisation_place_of_site,
+    organisation_org_unit_of_site,
     root_ids_of,
 )
 from app.organisations import (
@@ -127,9 +127,9 @@ from app.organisations import (
     get_org_unit_staff_ids,
     get_patient_org_unit_ids,
     get_shared_org_unit_ids,
+    org_units_administered_by,
     organisation_org_unit_member,
     organisation_org_units_of,
-    places_administered_by,
 )
 from app.push import router as push_router
 from app.push_send import router as push_send_router
@@ -1187,7 +1187,7 @@ def register(
         if site is None or site.type in ROOT_TYPE_IDS:
             raise HTTPException(status_code=400, detail="Site not found")
         if (
-            organisation_place_of_site(db, payload.site_id)
+            organisation_org_unit_of_site(db, payload.site_id)
             != payload.org_unit_id
         ):
             raise HTTPException(status_code=400, detail="Site not found")
@@ -1542,7 +1542,7 @@ def _capacity_at(place: OrgUnit) -> str:
     return "staff" if place.type in ROOT_TYPE_IDS else "trainee"
 
 
-def _require_places_the_caller_administers(
+def _require_org_units_the_caller_administers(
     db: Session, current_user: User, place_ids: list[int]
 ) -> list[OrgUnit]:
     """Load the places named, refusing any the caller may not administer.
@@ -1551,7 +1551,7 @@ def _require_places_the_caller_administers(
     the place surface: the answer must not confirm that a place exists to
     somebody who cannot see it.
     """
-    allowed = places_administered_by(db, current_user)
+    allowed = org_units_administered_by(db, current_user)
 
     places: list[OrgUnit] = []
     for org_unit_id in place_ids:
@@ -1626,7 +1626,7 @@ def create_user_with_cbac(
     if existing:
         raise HTTPException(status_code=400, detail="Email already exists")
 
-    places = _require_places_the_caller_administers(
+    places = _require_org_units_the_caller_administers(
         db, current_user, payload.org_unit_ids or []
     )
 
@@ -1861,10 +1861,10 @@ def update_user(
     # theirs are cleared. Places outside their organisations are left
     # alone, because somebody else's tree is not theirs to empty.
     if payload.org_unit_ids is not None:
-        places = _require_places_the_caller_administers(
+        places = _require_org_units_the_caller_administers(
             db, current_user, payload.org_unit_ids
         )
-        theirs = places_administered_by(db, current_user)
+        theirs = org_units_administered_by(db, current_user)
         clearing = org_unit_member.delete().where(
             org_unit_member.c.user_id == user_id
         )
