@@ -243,3 +243,96 @@ class TestReading:
         resp = authenticated_superadmin_client.get(f"/api/users/{user_id}")
 
         assert set(resp.json()["place_ids"]) == {org.id, ward.id}
+
+
+class TestBothVocabularies:
+    """`org_unit_ids` is the new name for `place_ids`, added beside it.
+
+    Both carry the same list while the older name is retired, so a tab
+    open across the deploy keeps working. A request sends one or the
+    other: applying both would make the answer depend on which was
+    applied last.
+    """
+
+    def test_org_unit_ids_records_the_membership(
+        self,
+        authenticated_superadmin_client: TestClient,
+        db_session: Session,
+        org: OrgUnit,
+        ward: OrgUnit,
+    ) -> None:
+        created = authenticated_superadmin_client.post(
+            "/api/users",
+            json=_new_user(org_unit_ids=[org.id, ward.id]),
+        )
+
+        assert created.status_code == 200, created.text
+        user_id = created.json()["id"]
+        recorded = set(
+            db_session.scalars(
+                select(org_unit_member.c.org_unit_id).where(
+                    org_unit_member.c.user_id == user_id
+                )
+            ).all()
+        )
+        assert recorded == {org.id, ward.id}
+
+    def test_sending_both_is_refused(
+        self,
+        authenticated_superadmin_client: TestClient,
+        org: OrgUnit,
+        ward: OrgUnit,
+    ) -> None:
+        response = authenticated_superadmin_client.post(
+            "/api/users",
+            json=_new_user(place_ids=[org.id], org_unit_ids=[ward.id]),
+        )
+
+        assert response.status_code == 422, response.text
+
+    def test_an_update_takes_org_unit_ids(
+        self,
+        authenticated_superadmin_client: TestClient,
+        db_session: Session,
+        org: OrgUnit,
+        ward: OrgUnit,
+    ) -> None:
+        created = authenticated_superadmin_client.post(
+            "/api/users",
+            json=_new_user(place_ids=[org.id]),
+        )
+        user_id = created.json()["id"]
+
+        updated = authenticated_superadmin_client.patch(
+            f"/api/users/{user_id}",
+            json={"org_unit_ids": [ward.id]},
+        )
+
+        assert updated.status_code == 200, updated.text
+        recorded = set(
+            db_session.scalars(
+                select(org_unit_member.c.org_unit_id).where(
+                    org_unit_member.c.user_id == user_id
+                )
+            ).all()
+        )
+        assert recorded == {ward.id}
+
+    def test_the_response_carries_both_names(
+        self,
+        authenticated_superadmin_client: TestClient,
+        org: OrgUnit,
+        ward: OrgUnit,
+    ) -> None:
+        created = authenticated_superadmin_client.post(
+            "/api/users",
+            json=_new_user(org_unit_ids=[org.id, ward.id]),
+        )
+        user_id = created.json()["id"]
+
+        body = authenticated_superadmin_client.get(
+            f"/api/users/{user_id}"
+        ).json()
+
+        assert set(body["org_unit_ids"]) == {org.id, ward.id}
+        assert body["place_ids"] == body["org_unit_ids"]
