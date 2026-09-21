@@ -45,6 +45,20 @@ The order matters. Batch 6's code must not merge before Batch 5 has cut
 the DNS over, or the deploy smoke test starts hitting a hostname that is
 not serving yet and every deploy goes red.
 
+**Merging a Terraform change applies it.**
+`.github/workflows/terraform.yml` runs on every push to `main` that
+touches `infra/**`, against the live `teaching` workspace, with no human
+step in between. So every Terraform change in this plan must plan as a
+no-op for `teaching` until the `app` workspace exists and has been
+applied. Widen a condition to accept both names, never swap one name for
+the other: `var.environment` gates fifteen resources in `infra/main.tf`,
+most of them through `count`, and a `count` that falls from one to zero
+is a destroy. The old names come out in Batch 8, when the old project is
+deliberately retired. Closing the ingress broke the deploy pipeline
+because a step was written as though somebody would apply it by hand;
+this is the same mistake with the Cloud SQL instance and the video
+buckets on the other end of it.
+
 ## Batch 1 — Claude: the security fixes
 
 These two phases are live today and depend on none of the naming
@@ -283,10 +297,24 @@ certificate and move the DNS record for nothing.
       `environment = "app"`. Leave `lb_domains` on a temporary hostname;
       the cutover is Batch 5.
 
-- [ ] Rewrite the eleven `var.environment == "teaching"` conditions in
-      `infra/main.tf` to test for `app`. They gate the teaching video
-      pipeline, the teaching buckets, the sync token secret and
-      `CLINICAL_SERVICES_ENABLED`.
+- [ ] Widen the fifteen `var.environment == "teaching"` conditions in
+      `infra/main.tf` to accept either name, using
+      `contains(["teaching", "app"], var.environment)`. They gate the
+      teaching video pipeline, the teaching buckets, the sync token
+      secret and `CLINICAL_SERVICES_ENABLED`.
+
+- [ ] Do not swap `"teaching"` for `"app"` in those conditions. Most are
+      `count = ... ? 1 : 0`, so against the live `teaching` workspace the
+      swapped condition is false, the count falls to zero, and Terraform
+      destroys the resource. That list includes the Cloud SQL instance at
+      `infra/main.tf:224` and the video pipeline buckets, some of which
+      carry `force_destroy`, so they go even when they hold objects.
+
+- [ ] Confirm the widening is a no-op before merging, by reading the plan
+      output on the pull request. `terraform.yml` posts a plan for the
+      `teaching` workspace, and it should show no changes at all. A plan
+      proposing to destroy anything means a condition was swapped rather
+      than widened.
 
 - [ ] Add `app` to the validation condition in `infra/variables.tf`, which
       allows only `prod`, `staging` and `teaching` today. Keep `teaching`
@@ -306,8 +334,10 @@ certificate and move the DNS record for nothing.
       time.
 
 **Hands over:** branches that describe the new environment but do not
-build it. Nothing here takes effect until Batch 4 creates the project and
-applies them.
+build it. They apply to the live `teaching` workspace on merge, as every
+Terraform change here does, and plan as no-ops there because the
+conditions were widened rather than swapped. Nothing new is created until
+Batch 4 makes the project and the `app` workspace.
 
 ## Batch 4 — Mark: build the project
 
@@ -492,6 +522,12 @@ secret renames are yours, because Claude cannot write repository secrets.
 - [ ] Delete the workspace afterwards, and remove `teaching` from the
       validation condition in `infra/variables.tf`.
 
+- [ ] Narrow the fifteen widened conditions in `infra/main.tf` back to
+      `app` alone. This is the contract half of the expand-contract
+      Batch 3 started, and it is safe only now: the `teaching` workspace
+      is gone, so there is no live environment for the conditions to turn
+      off. Doing it any earlier destroys the resources it names.
+
 - [ ] Remove `infra/environments/teaching/`.
 
 - [ ] Shut the old project down rather than deleting it outright. A
@@ -625,6 +661,16 @@ lookalike names were cheap enough that waiting saved nothing.
   gate above it. The cookie fix was as small as expected. The ingress one
   was not: it took the deploy pipeline down and is now blocked behind
   Phase D.
+
+- **Terraform changes expand before they contract** — every condition that
+  names an environment accepts both `teaching` and `app` from Batch 3
+  until Batch 8, rather than being swapped from one to the other. The
+  reason is that merging applies, so a swapped condition is evaluated
+  against the live workspace, where it reads as an instruction to destroy
+  whatever it gated. This is the pattern `.claude/rules/backend.md`
+  already requires for breaking API changes, applied to infrastructure for
+  the same reason: the old and the new have to be true at once while
+  something is still using the old.
 
 - **The deploy keeps checking a revision before it serves traffic** — the
   cheapest way to close the ingress would be to drop that check, promote
