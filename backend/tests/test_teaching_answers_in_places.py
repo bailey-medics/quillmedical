@@ -100,6 +100,56 @@ class TestTheSettingsAnswer:
         assert "organisation_id" not in body
 
 
+class TestBothAddresses:
+    """The routes answer at ``org-units`` as well as ``places``.
+
+    ``places`` is kept for one release so a tab open across the deploy
+    keeps working, then it retires the way the organisation-keyed
+    addresses did before it.
+    """
+
+    def test_settings_can_be_set_at_the_org_unit_address(
+        self,
+        test_client: TestClient,
+        db_session: Session,
+        org: OrgUnit,
+        educator: User,
+    ) -> None:
+        _seed_bank(db_session, org, educator)
+        headers = _login(test_client)
+
+        resp = test_client.put(
+            f"/api/teaching/admin/banks/test-bank"
+            f"/org-units/{org.id}/settings",
+            json={"is_live": True, "site_registration": False},
+            headers=headers,
+        )
+
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["is_live"] is True
+
+    def test_a_version_is_promoted_at_the_org_unit_address(
+        self,
+        test_client: TestClient,
+        db_session: Session,
+        org: OrgUnit,
+        educator: User,
+    ) -> None:
+        _seed_bank(db_session, org, educator)
+        headers = _login(test_client)
+
+        resp = test_client.put(
+            f"/api/teaching/admin/banks/test-bank"
+            f"/org-units/{org.id}/active-version",
+            json={"version": "v1"},
+            headers=headers,
+        )
+
+        # The version may not exist in this fixture; what matters is
+        # that the address is served rather than 404 for being unknown.
+        assert resp.status_code != 404, resp.text
+
+
 class TestThePlaceKeyedPaths:
     def test_settings_can_be_set_by_place(
         self,

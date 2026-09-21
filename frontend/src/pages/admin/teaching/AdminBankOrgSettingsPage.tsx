@@ -140,7 +140,7 @@ export default function AdminBankOrgSettingsPage() {
   ): Promise<FormSubmitResult> {
     try {
       await api.put(
-        `/teaching/admin/banks/${bankId}/places/${orgId}/settings`,
+        `/teaching/admin/banks/${bankId}/org-units/${orgId}/settings`,
         {
           is_live: data.isLive,
           site_registration: data.siteRegistration,

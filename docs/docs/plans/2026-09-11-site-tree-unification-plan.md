@@ -922,6 +922,7 @@ So the remaining steps land as:
   - [x] 12d-iii-b — the locals and parameters named for a place
   - [x] 12d-iii-c-i — `exclude_org_unit` beside `exclude_place`
   - [x] 12d-iii-c-ii — `org_unit_id` beside `place_id` on the passport replies
+  - [x] 12d-iii-c-iii — the teaching bank routes answer at `/org-units/`
 
 #### 10a — write both names for the place column
 
