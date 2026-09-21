@@ -78,7 +78,7 @@ See the `Justfile` if you want to know more.
 - **API**: Use `api.ts` client for all backend calls (auto-retry on 401, CSRF, credentials) — never raw `fetch` (sole exception: `checkHealth()` in `ConnectivityContext.tsx`)
 - **Auth**: `AuthContext.tsx` provides `state`, `login`, `logout`, `reload`
 - **Routing**: React Router v7 with `createBrowserRouter` in `src/main.tsx`
-- **Protection**: `<RequireAuth>` for authenticated routes, `<GuestOnly>` for login/register, `<RequirePermission level="admin">` for admin routes, `<RequireClinical>` for FHIR/EHRbase-dependent routes, `<RequireFeature feature="teaching">` for feature-gated routes (all in `src/auth/`)
+- **Protection**: `<RequireAuth>` for authenticated routes, `<GuestOnly>` for login/register, `<RequireOperator>` for Quill-operator routes, `<RequireCompetency competency="manage_users">` for CBAC-gated routes, `<RequireClinical>` for FHIR/EHRbase-dependent routes, `<RequireFeature feature="teaching">` for feature-gated routes (all in `src/auth/`). All default to a 404 rather than a 403, hiding a route from somebody who may not use it.
 - **Path aliases**: Defined in `frontend/tsconfig.json` under `compilerOptions.paths` — always use `@/`, `@lib/`, `@components/`, `@test/`, `@domains/` prefixes instead of relative paths
 - **Styling**: Mantine 8.3 + CSS modules, no inline styles
 - **Button alignment**: Right-justify buttons on desktop (`<Group justify="flex-end">`). Action pairs (submit/cancel) go full-width stacked on mobile — use `ButtonPair`/`ButtonPairRed` which handle this via CSS. Page-header actions (`AddButton`) stay fixed-width at all sizes.
@@ -140,77 +140,151 @@ All icons come from `@tabler/icons-react` and MUST be wrapped in the `<Icon>` co
 - **FHIR**: `fhirclient` library (`backend/app/fhir_client.py`) for patient demographics
 - **OpenEHR**: HTTP requests to EHRbase (`backend/app/ehrbase_client.py`) for all other clinical data.
 - Each FHIR patient gets corresponding EHR in EHRbase via `subject_id` (idempotent `get_or_create_ehr` pattern)
-- **Three-database architecture**: core DB (users/roles/permissions/teaching and other non-patient facing features), FHIR DB (demographics via HAPI), EHRbase DB (clinical documents)
+- **Three-database architecture**: core DB (users/competencies/org units/teaching and other non-patient facing features), FHIR DB (demographics via HAPI), EHRbase DB (clinical documents)
 
 ### Authorisation
 
-Two orthogonal layers control access:
+Three layers control access, and they answer different questions:
 
-| Layer | Controls | Mechanism |
-|-------|----------|-----------|
-| **System permissions** | Platform management (users, orgs, dashboards) | 4-level hierarchy |
-| **CBAC** | All data access — clinical actions and feature admin | Competency set per user |
+- **Platform role** — *may this person operate Quill itself?* One value,
+  `superadmin`, and its absence. True everywhere or nowhere.
+- **Competencies (CBAC)** — *what is this person qualified to do at all?*
+  A set resolved per user. This is the ceiling.
+- **Practising competencies** — *where may they do it?* One row per person,
+  place and competency.
 
-#### System permissions
+What somebody may actually do at a place is the **intersection** of the last
+two. Healthcare draws the same line as credentialing versus privileging:
+what you are qualified for, then what you are authorised to do here.
 
-4-level hierarchy for platform management authority: `single-user < staff < admin < superadmin`
+#### Platform role
 
-| Level | Meaning |
-|-------|---------|
-| `single-user` | Can manage own profile/settings. No system management. |
-| `staff` | Staff dashboards, team visibility |
-| `admin` | User/org management (scoped to own orgs) |
-| `superadmin` | Global platform management |
+`User.platform_role` is `superadmin` or absent — operating the deployment, not
+administering any organisation. Its one consumer sends a test push to every
+subscribed client, which no organisation bounds.
 
-System permissions have **nothing to do with clinical data access** — that is solely CBAC's responsibility. A patient, teaching delegate, and external HCP, are all `single-user`; their clinical access differs only via CBAC competencies and base profession.
+- Backend: `require_operator` / `DEP_REQUIRE_OPERATOR` in `backend/app/deps.py`
+- Frontend: `<RequireOperator>` in `src/auth/RequireOperator.tsx`
+- Vocabulary: `PLATFORM_ROLES` in `models.py`, validated by
+  `validate_platform_role` rather than a database enum, so it grows without a
+  migration
 
-**Practical coupling**: Clinical practitioners require `staff` or above to access clinical workflows (patient lists, dashboards). CBAC then scopes which actions they can perform within those workflows. Each base profession in `shared/base-professions.yaml` declares a `default_system_permission` — a soft default applied at user provisioning that admins can freely override. Both system permissions and CBAC competencies are independently adjustable per user after creation.
+**This replaced a four-rung `system_permissions` hierarchy**
+(`single-user < staff < admin < superadmin`). Three of those rungs described a
+person at a *place* and moved to membership and competencies; by the end only
+`superadmin` was ever passed. There is no `backend/app/system_permissions/`
+module, no `check_permission_level`, no `RequirePermission` guard and no
+`default_system_permission` on a base profession. See
+`docs/docs/plans/2026-09-09-platform-role-plan.md`.
 
-- Backend: `backend/app/system_permissions/` — `check_permission_level(user_permission, required)` for hierarchy checks
-- Frontend: `<RequirePermission level="admin">` guard in `src/auth/RequirePermission.tsx`
-- Admin gate pattern in routes: `if current_user.system_permissions not in ["admin", "superadmin"]: raise HTTPException(403)`
+**Administering a place is not this question** — that is the `manage_users`
+competency.
 
 #### CBAC (competency-based access control)
 
-Controls **all data access and actions** — clinical and feature admin. Competencies are categorised by purpose:
+Controls all data access and actions, clinical and feature admin alike.
+Resolution per user: `(base_profession_competencies + additional) − removed`,
+via `resolve_user_competencies` behind `User.get_final_competencies`.
 
-| Category | Examples | Risk |
-|----------|----------|------|
-| **Clinical** | `prescribe_controlled_schedule_2`, `request_ct_scan`, `access_patient_records` | medium–high |
-| **Feature admin** | `manage_teaching_content`, `view_teaching_analytics`, `approve_clinical_letters` | low–medium |
+- **Catalogue**: `shared/competency-definitions/` — `clinical.yaml`,
+  `clinical-admin.yaml`, `admin.yaml`, `oncology.yaml`, `teaching.yaml`,
+  `passport.yaml`. All merged into one catalogue at load, so **ids must be
+  unique across the directory**, not just within a file. Which file an entry
+  lives in carries no meaning to the code; it is for the reader.
+- **Professions**: `shared/base-professions.yaml` — `id`, `display_name`,
+  `description`, `requires_clinical_services`, `base_competencies`
+- **Backend**: `backend/app/cbac/` — `has_competency("competency_id")` from
+  `app.deps` as a FastAPI dependency
+- **Frontend**: types at `src/types/cbac.ts`, hooks at `src/lib/cbac/hooks.ts`
+  (`useHasCompetency`, `useHasAnyCompetency`, `useHasAllCompetencies`), guard
+  `<RequireCompetency competency="manage_users">`
+- **Generated JSON**: `src/generated/` from the shared YAML via
+  `yarn generate:types`
+- Route pattern: `Depends(has_competency("prescribe_controlled_schedule_2"))`
 
-Resolution formula per user: `(base_profession_competencies + additional) − removed`
+**`has_competency` checks the ceiling only, never the place.** Endpoints that
+need *where* scope separately on membership. A route guard has no place to
+scope to, so it gates on the competency alone and lets the API refuse
+anything out of scope.
 
-- **Shared config** (consumed by both backend via PyYAML and frontend via `yarn generate:types`): `shared/competency-definitions/` (capability definitions, split by kind into `clinical.yaml` and `feature-admin.yaml` and merged into one catalogue at load — ids must be unique across the directory) and `shared/base-professions.yaml` (profession templates with base competencies and `default_system_permission`)
-- **Backend**: `backend/app/cbac/` — `has_competency("competency_id")` FastAPI dependency, resolves competencies per user
-- **Frontend**: Types at `src/types/cbac.ts`, hooks at `src/lib/cbac/hooks.ts` (`useHasCompetency`, `useHasAnyCompetency`, `useHasAllCompetencies` — check `state.user.competencies` from AuthContext)
-- **Generated JSON**: `src/generated/competencies.json` and `src/generated/base-professions.json` auto-generated from shared YAML (`yarn generate:types`)
-- CBAC-protected route pattern: `Depends(has_competency("prescribe_controlled_schedule_2"))`
+**`manage_users` is the root competency — grant it rarely.** Because
+`update_user` writes `additional_competencies` wholesale with no check on
+which ids are granted, a holder can mint any competency in the catalogue,
+including `manage_users` itself. That is accepted rather than overlooked; the
+reasoning is in `admin.yaml`.
 
-#### Role composition examples
+#### Practising competencies — where
 
-| Scenario | System permission | CBAC profile |
-|----------|------------------|--------------|
-| Teaching delegate | `single-user` | `view_teaching_cases` only |
-| Teaching coordinator | `staff` | `manage_teaching_content` + `view_teaching_analytics` |
-| Junior doctor | `staff` | Standard clinical set |
-| IT admin | `admin` | No clinical CBACs at least |
-| Clinical lead | `admin` | Full clinical set |
+`backend/app/cbac/scoped.py` over the `practising_competency` table. Every
+read of a place goes through this module.
 
-#### Organisations
+- `competencies_at(db, user, org_unit_id=...)` — what they may practise there,
+  narrowed to their ceiling
+- `can_practise_at(db, user, competency, org_unit_id=...)` — the single check
+- `who_can_practise_at(db, competency, org_unit_id=...)` — the other direction.
+  It deliberately does **not** apply ceilings, because that would mean loading
+  every user; it is a candidate list, so check `can_practise_at` before acting
+  on a name from it.
 
-- Backend model `Organisation` in `models.py` with staff/patient membership via association tables
-- API endpoints under `/api/organisations` (admin/superadmin only)
-- Admin pages at `pages/admin/organisations/`
+- **A row means authorised. There is no boolean** — absence is the
+  unauthorised state, so practice cannot be withdrawn without removing the row
+  that says who authorised it.
+- **Nothing is inherited.** A row at an organisation says nothing about its
+  wards, and one at a ward says nothing about its organisation. So a ward
+  manager can administer their ward without trust-wide authority, and "why
+  could this person do that?" is answered by one row rather than by replaying
+  a hierarchy.
+- **A row beyond somebody's ceiling has no effect**, so a lapsed
+  qualification narrows every place at once without a row being touched — and
+  a ceiling with no row behind it authorises nothing.
 
-#### Sites
+#### Org units — one tree for every place
 
-- Backend model `Site` in `models.py` — a physical or virtual location forming a self-referential hierarchy (hospital > building > ward > room; `type` one of hospital/building/ward/room/clinic/department/virtual)
-- Linked to organisations many-to-many via the `organisation_site` association table; staff belong to a site with a `role` (`clinical_lead`, `staff`, `trainee`) via `site_staff_member`
-- Underpins teaching governance — clinical-lead resolution runs via the site → organisation linkage
-- API endpoints under `/api/sites` (CRUD), `/api/organisations/{org_id}/sites/{site_id}` (link/unlink), and `/api/sites/{site_id}/staff` (staff membership) — admin/superadmin only
-- Admin pages at `pages/admin/sites/` (plus `AddSiteToOrgPage` under `pages/admin/organisations/`)
+`OrgUnit` in `models.py` is one node of the governance tree: a trust, a site,
+a ward. There is no separate `Organisation` or `Site` model, and no
+`organisation_site` or `site_staff_member` table.
 
+**An org unit's `type` is the only thing that says what it is — never its
+position in the tree.** An organisation is a node whose type says
+"organisation", not a node that happens to have no parent.
+
+- **Type vocabulary**: `shared/org-unit-types.yaml`, validated in code by
+  `validate_org_unit_type` rather than a database enum so it grows without a
+  migration. Read via `type_can_hold_features`, `type_can_hold_positions`,
+  `type_can_hold_competencies` in `backend/app/org_units/types.py`.
+- **Capability flags, not hardcoded name lists.** Each type declares
+  `requires_parent`, `can_hold_features`, `can_hold_positions`,
+  `can_hold_competencies` and `can_have_members`. Rules ask "can this type
+  hold positions?" instead of each carrying its own list of type names.
+  Nobody is clinical lead of room four.
+- **Membership**: `org_unit_member` and `org_unit_patient_member`, with a
+  capacity from `MEMBER_CAPACITIES` (`staff`, `trainee`, `external`,
+  `patient`). A capacity is never a ranking and never a permission check — it
+  says only how somebody comes to be at a place.
+- **Reach flows downward**, and is distinct from membership: organisation
+  membership reaches the organisation and its sites, site membership reaches
+  the organisations that site is linked to. `get_member_org_unit_ids` versus
+  `get_reachable_org_unit_ids` in `backend/app/organisations.py`.
+- **API**: `/api/org-units` (`backend/app/org_units/router.py`)
+- **Admin pages**: `pages/admin/organisations/`, `pages/admin/sites/`
+- See `docs/docs/plans/2026-09-11-site-tree-unification-plan.md`.
+
+#### Positions
+
+A position is a slot a place has, in `models.py` as `Position` and
+`PositionHolding`, managed by `backend/app/cbac/positions.py`.
+
+- **It exists whether or not anyone fills it**, which separates it from a
+  competency: "this site has no clinical lead" is a state worth chasing,
+  where a competency nobody holds is simply absent.
+- **Holding is dated rows, not a column**, so the post outlives its holders
+  and its history stays queryable — "who was Caldicott Guardian in March?"
+- **Appointment checks `can_practise_at`**: holding a competency somewhere is
+  not enough, it must be authorised where the post is. A post with no place
+  fails closed.
+- **Acting cover does not fill a vacancy** and does not count against
+  `max_holders`, because covering leave must not be blocked by the person
+  being covered for.
 ### Web Push notifications
 
 - Backend: `push.py` (subscription management), `push_send.py` (notification sending) — VAPID keys via `just vapid-key`
@@ -281,26 +355,29 @@ Resolution formula per user: `(base_profession_competencies + additional) − re
 
 **CBAC-protected endpoint**: Add `Depends(has_competency("competency_id"))` to route params — raises 403 if user lacks competency
 
-**Admin-only endpoint**: Check `if current_user.system_permissions not in ["admin", "superadmin"]: raise HTTPException(403)` in route body
+**Operator-only endpoint**: Add `DEP_REQUIRE_OPERATOR` to the route params — gates on `platform_role`, for operating Quill itself
+
+**Place-administration endpoint**: Add `Depends(has_competency("manage_users"))`, then scope to the caller's own org units in the route body — the competency says *what*, membership says *where*
 
 **Frontend API**: Use `api` from `@/lib/api.ts` (never raw `fetch`)
 
 **Database models**: Define in `backend/app/models.py`, then `just migrate "description"`
 
-**New base profession**: Add entry to `shared/base-professions.yaml` with `id`, `display_name`, `description`, `default_system_permission`, `base_competencies`, and `notes`. Then run `yarn generate:types` in `frontend/`.
+**New base profession**: Add entry to `shared/base-professions.yaml` with `id`, `display_name`, `description`, `requires_clinical_services` and `base_competencies` (the model forbids extra fields, so nothing else). Then run `yarn generate:types` in `frontend/`.
 
 ## Key Files
 
 - `backend/app/main.py`: FastAPI routes and dependency constants
-- `backend/app/models.py`: SQLAlchemy models (User, Role, Organisation, teaching)
+- `backend/app/models.py`: SQLAlchemy models (User, OrgUnit, PractisingCompetency, Position, teaching)
 - `backend/app/security.py`: JWT, CSRF, TOTP, Argon2 password utilities
 - `backend/app/config.py`: Pydantic Settings (DB URLs, JWT config, FHIR/EHRbase URLs)
 - `backend/app/db/`: Database session management (`get_core_db`)
 - `backend/app/cbac/`: Competency-based access control module
-- `backend/app/system_permissions/`: 4-level permission hierarchy
+- `backend/app/org_units/`: the place tree — router, and type capability flags
+- `backend/app/cbac/scoped.py`: what somebody may practise at one place
 - `backend/app/schemas/`: Pydantic request/response models (`auth.py`, `cbac.py`)
 - `frontend/src/main.tsx`: Router config with `createBrowserRouter` and all route definitions
-- `frontend/src/auth/`: AuthContext, RequireAuth, GuestOnly, RequirePermission, RequireClinical, RequireFeature
+- `frontend/src/auth/`: AuthContext, RequireAuth, GuestOnly, RequireOperator, RequireCompetency, RequireClinical, RequireFeature
 - `frontend/src/lib/api.ts`: API client (auto-retry 401, CSRF, credential cookies)
 - `frontend/src/types/cbac.ts`: CBAC type definitions
 - `frontend/src/RootLayout.tsx`: Root layout with patient context provider
