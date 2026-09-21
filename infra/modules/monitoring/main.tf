@@ -172,7 +172,7 @@ resource "google_monitoring_alert_policy" "uptime" {
 
       The two monitored hosts fail for different reasons:
 
-      - **teaching.quill-medical.com** is the application — Cloud Run behind
+      - **$${var.app_domain}** is the application — Cloud Run behind
         the load balancer, probed at `/api/health`. A failure points at the
         backend, the load balancer, or Cloud Run itself.
       - **quill-medical.com** is the public site — static files served from a

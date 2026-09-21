@@ -39,7 +39,7 @@ createRoot(document.getElementById("root")!).render(
               who teach them.
             </PublicBodyText>
             <Group mt="lg" justify="center">
-              <PublicButton href="https://teaching.quill-medical.com">
+              <PublicButton href="https://app.quill-medical.com">
                 Teaching
               </PublicButton>
               <PublicButton variant="outline" disabled>
