@@ -66,3 +66,25 @@ competencies:
   # routes carrying it keep their place check beside them.
   - id: manage_staff_membership
     display_name: "Manage Staff Membership of an Organisation or Site"
+
+  # Who may practise what, at one place. Distinct from holding a
+  # competency at all, which is the person's ceiling and is written by
+  # manage_users.
+  #
+  # Separate from manage_users because authorising practice and creating
+  # an account are two decisions. manage_users already writes
+  # additional_competencies wholesale, so its holder can mint any
+  # competency in the catalogue; folding privileging into it would mean
+  # the person who opens an account can also authorise it to operate
+  # anywhere, with nothing recording that as its own act. The existing
+  # breadth of manage_users is a reason to keep new authority out of it
+  # rather than a reason to add more.
+  #
+  # It mirrors manage_staff_membership, which separated *who is here*
+  # from *who exists* for the same reason. This separates *what they may
+  # do here* from *what they are qualified for*.
+  #
+  # Like every competency here it answers *what*, never *where*: the
+  # routes carrying it keep their place check beside them.
+  - id: manage_practising_competencies
+    display_name: "Authorise Practice at an Organisation or Site"

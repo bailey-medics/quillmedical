@@ -58,7 +58,7 @@ class TestItIsDeliberatelyNarrow:
         assert "access_patient_records" not in granted
 
     def test_it_grants_only_administrative_competencies(self):
-        """Two now, both administrative, so the blast radius stays visible.
+        """Three now, all administrative, so the blast radius stays visible.
 
         `manage_staff_membership` was split out of `manage_users` — who
         belongs to a place, as opposed to who has an account at all — and
@@ -66,6 +66,13 @@ class TestItIsDeliberatelyNarrow:
         included. Without it an operator could not add staff to an
         organisation, and `has_competency` has no rank bypass to fall
         back on, which is the refusal this profession exists to prevent.
+
+        `manage_practising_competencies` follows the same pattern: who may
+        practise what at a place, as opposed to what they are qualified
+        for anywhere. It went to the four professions already holding
+        `manage_staff_membership`, superadmin among them, so the routes
+        authorising practice are reachable by somebody on the day they
+        ship.
 
         The narrowness this class defends is *clinical*. That line is
         held by the test above, not by this one; this is a snapshot, so
@@ -75,6 +82,7 @@ class TestItIsDeliberatelyNarrow:
         assert get_profession_base_competencies("superadmin_profession") == [
             "manage_users",
             "manage_staff_membership",
+            "manage_practising_competencies",
         ]
 
 

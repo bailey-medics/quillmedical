@@ -103,7 +103,7 @@ refactor removes without noticing.
 
 ## Phase 2: Grant and withdraw, before anything depends on rows existing
 
-- [ ] **Add a `manage_practising_competencies` competency to
+- [x] **Add a `manage_practising_competencies` competency to
       `shared/competency-definitions/admin.yaml`.** Authorising somebody to practise
       is not the same act as creating a user, and `manage_users` is already the root
       competency this repository warns about: because `update_user` writes
@@ -113,7 +113,15 @@ refactor removes without noticing.
       those are two decisions. Run `yarn generate:types` in `frontend/` afterwards so
       the id reaches `src/generated/competencies.json`.
 
-- [ ] **Add three endpoints to `backend/app/org_units/router.py`**, following the
+  Granted to the same four professions that already hold
+  `manage_staff_membership`: `clinic_manager`, `system_administrator`,
+  `superadmin_profession` and `teaching_manager`. That was the precedent when
+  `manage_staff_membership` was split out of `manage_users`, and without it
+  Phase 5's screen would be unreachable for every administrator who exists
+  today. Authorising practice still has to be granted deliberately to anybody
+  outside those four.
+
+- [x] **Add three endpoints to `backend/app/org_units/router.py`**, following the
       shape of the membership endpoints already there
       (`/{unit_id}/members`): `GET /{unit_id}/practising-competencies` to list who
       may practise what at a place, `POST` to authorise, and
@@ -127,13 +135,20 @@ refactor removes without noticing.
   `add_org_unit_member` does rather than failing. The `DELETE` deletes the row
   and records nothing.
 
-- [ ] **Refuse a grant at a place whose type cannot hold competencies.**
+  Built returning `authorised`, `unchanged` and `withdrawn`. Two behaviours
+  were settled while writing them. Authorising a competency beyond somebody's
+  ceiling is **allowed**, because the row does nothing until they are
+  qualified and refusing it would stop a place recording a decision it has
+  already made. Withdrawing something never authorised **succeeds**, because
+  the caller asked for it to be unauthorised here and it is.
+
+- [x] **Refuse a grant at a place whose type cannot hold competencies.**
       `shared/org-unit-types.yaml` carries `can_hold_competencies` per type and
       `type_can_hold_competencies` in `app/org_units/types.py` reads it. Nobody
       practises anything at a room, and the membership endpoint already sets this
       precedent by refusing with a 422 when `type_can_have_members` is false.
 
-- [ ] **Test the endpoints** in `backend/tests/test_practising_competency_api.py`:
+- [x] **Test the endpoints** in `backend/tests/test_practising_competency_api.py`:
       grant, list, withdraw, repeat grant is idempotent, a grant at a room is
       refused, a grant naming a retired competency id is refused, a grant at an
       invisible place is a 404, and withdrawing something not granted is not an

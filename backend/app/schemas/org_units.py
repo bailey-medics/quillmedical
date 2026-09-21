@@ -336,6 +336,76 @@ class OrgUnitStatusOut(BaseModel):
     status: str
 
 
+class PractisingCompetencyItem(BaseModel):
+    """Somebody authorised to practise one competency at a place.
+
+    One row per person and competency, so a person authorised for three
+    things here appears three times. Flattened rather than grouped because
+    withdrawal is per competency: the screen that lists these needs
+    something to withdraw, not a person to edit.
+
+    Attributes:
+        user_id: The person.
+        username: Their username.
+        full_name: Their name, possibly empty.
+        competency: The competency id they may practise here.
+        authorised_at: When practice here was authorised, as an ISO
+            timestamp.
+        authorised_by: Who authorised it, or None once that person is
+            deleted. The fact it was authorised outlives them.
+    """
+
+    user_id: int
+    username: str
+    full_name: str
+    competency: str
+    authorised_at: str
+    authorised_by: int | None = None
+
+
+class PractisingCompetenciesOut(BaseModel):
+    """Who may practise what at one place.
+
+    Attributes:
+        practising_competencies: The authorisations, in no meaningful
+            order beyond username then competency.
+    """
+
+    practising_competencies: list[PractisingCompetencyItem]
+
+
+class AuthorisePractisingCompetencyIn(BaseModel):
+    """Request to authorise somebody to practise a competency here.
+
+    Deliberately not called a grant. The organisation does not confer the
+    competency: that is held by the person, earned through training and
+    sign-off. This records only that they may exercise it at this place.
+
+    Attributes:
+        user_id: The person being authorised.
+        competency: A competency id from
+            ``shared/competency-definitions/``. Validated here so a
+            misspelling is refused with a message naming the catalogue,
+            rather than stored as a row that authorises nothing.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    user_id: int
+    competency: str
+
+    @field_validator("competency")
+    @classmethod
+    def _competency_exists(cls, value: str) -> str:
+        """Reject an unknown or retired competency id.
+
+        Retired is refused as well as unknown, and the two are reported
+        differently: one is a typo, the other is a competency that exists
+        and may no longer be newly authorised.
+        """
+        return validate_competency_ids([value])[0]
+
+
 class SetClinicalLeadIn(BaseModel):
     """Request to name a place's clinical lead, or leave the post vacant.
 

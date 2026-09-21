@@ -320,6 +320,7 @@ base_professions:
       - access_clinic_admin
       - manage_users  # Staff account management
       - manage_staff_membership
+      - manage_practising_competencies
 
   # Whose caseload an organisation carries, as opposed to how a clinic is
   # run day to day. Deliberately thin: it exists so that
@@ -343,6 +344,7 @@ base_professions:
       - access_clinic_admin
       - manage_users
       - manage_staff_membership
+      - manage_practising_competencies
 
   # ==========================================================================
   # SUPERADMIN
@@ -373,6 +375,7 @@ base_professions:
     base_competencies:
       - manage_users
       - manage_staff_membership
+      - manage_practising_competencies
 
   # ==========================================================================
   # TEACHING PROFESSIONS
@@ -416,6 +419,7 @@ base_professions:
       - view_teaching_analytics
       - manage_users
       - manage_staff_membership
+      - manage_practising_competencies
 
   # ==========================================================================
   # EXTERNAL ASSESSORS

@@ -33,6 +33,7 @@ from app.models import (
     OrgUnit,
     OrgUnitFeature,
     OrgUnitLink,
+    PractisingCompetency,
     User,
     org_unit_member,
     org_unit_patient_member,
@@ -50,6 +51,7 @@ from app.org_units.types import (
     ORG_UNIT_TYPE_IDS,
     get_org_unit_type,
     type_can_have_members,
+    type_can_hold_competencies,
     type_can_hold_features,
     type_can_hold_positions,
     type_requires_parent,
@@ -59,6 +61,7 @@ from app.organisations import org_units_administered_by
 from app.schemas.org_units import (
     AddOrgUnitMemberIn,
     AddOrgUnitPatientIn,
+    AuthorisePractisingCompetencyIn,
     CreateOrgUnitIn,
     OrgUnitDetailOut,
     OrgUnitFeaturesOut,
@@ -66,6 +69,7 @@ from app.schemas.org_units import (
     OrgUnitMembersOut,
     OrgUnitsListOut,
     OrgUnitStatusOut,
+    PractisingCompetenciesOut,
     SetClinicalLeadIn,
     ToggleOrgUnitActiveIn,
     ToggleOrgUnitFeatureIn,
@@ -97,6 +101,9 @@ DEP_REQUIRE_MANAGE_USERS = Depends(has_competency("manage_users"))
 DEP_REQUIRE_MANAGE_STAFF = Depends(has_competency("manage_staff_membership"))
 DEP_REQUIRE_MANAGE_PATIENTS = Depends(
     has_competency("manage_patient_membership")
+)
+DEP_REQUIRE_MANAGE_PRACTISING = Depends(
+    has_competency("manage_practising_competencies")
 )
 
 
@@ -768,6 +775,163 @@ def set_org_unit_clinical_lead(
     set_clinical_lead(db, unit, lead, appointed_by=current_user)
     db.flush()
     return OrgUnitStatusOut(status="vacant" if lead is None else "set")
+
+
+# ------------------------------------------------------------------
+# Who may practise what, here
+# ------------------------------------------------------------------
+
+
+@router.get(
+    "/{unit_id}/practising-competencies",
+    response_model=PractisingCompetenciesOut,
+    dependencies=[DEP_REQUIRE_MANAGE_PRACTISING],
+)
+def list_practising_competencies(
+    unit_id: int,
+    current_user: User = DEP_CURRENT_USER,
+    db: Session = _DEP_SESSION,
+) -> PractisingCompetenciesOut:
+    """Who may practise what at one place.
+
+    The rows as stored, not narrowed to anybody's ceiling. A row beyond
+    somebody's ceiling authorises nothing, but it is still a row somebody
+    wrote and the person reviewing authorisations here needs to see it —
+    narrowing silently would hide an authorisation that looks live in the
+    database.
+
+    Requires ``manage_practising_competencies``.
+    """
+    _require_visible(db, current_user, unit_id)
+
+    rows = db.execute(
+        select(
+            User.id,
+            User.username,
+            User.full_name,
+            PractisingCompetency.competency,
+            PractisingCompetency.authorised_at,
+            PractisingCompetency.authorised_by,
+        )
+        .join(PractisingCompetency, PractisingCompetency.user_id == User.id)
+        .where(PractisingCompetency.org_unit_id == unit_id)
+        .order_by(User.username, PractisingCompetency.competency)
+    ).all()
+
+    return PractisingCompetenciesOut(
+        practising_competencies=[
+            {
+                "user_id": row.id,
+                "username": row.username,
+                "full_name": row.full_name or "",
+                "competency": row.competency,
+                "authorised_at": row.authorised_at.isoformat(),
+                "authorised_by": row.authorised_by,
+            }
+            for row in rows
+        ]
+    )
+
+
+@router.post(
+    "/{unit_id}/practising-competencies",
+    response_model=OrgUnitStatusOut,
+    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_PRACTISING],
+)
+def authorise_practising_competency(
+    unit_id: int,
+    body: AuthorisePractisingCompetencyIn,
+    current_user: User = DEP_CURRENT_USER,
+    db: Session = _DEP_SESSION,
+) -> OrgUnitStatusOut:
+    """Authorise somebody to practise a competency at a place.
+
+    Not a grant of the competency itself: that is the person's ceiling,
+    earned through training and sign-off, and written elsewhere. This says
+    only that they may exercise it here. Authorising something outside
+    their ceiling is allowed and does nothing until the ceiling catches up,
+    which is what lets a place record its decision without waiting on
+    somebody's paperwork.
+
+    Authorising the same thing twice is not an error. The unique
+    constraint makes the second write a no-op, and a surface that fails on
+    a repeat would make a double-click look like a problem.
+
+    Requires ``manage_practising_competencies``.
+    """
+    unit = _require_visible(db, current_user, unit_id)
+
+    if not type_can_hold_competencies(unit.type):
+        raise HTTPException(
+            status_code=422,
+            detail=f"Nobody practises anything at a {unit.type}.",
+        )
+
+    person = db.get(User, body.user_id)
+    if person is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    existing = db.scalar(
+        select(PractisingCompetency.id).where(
+            PractisingCompetency.user_id == body.user_id,
+            PractisingCompetency.org_unit_id == unit_id,
+            PractisingCompetency.competency == body.competency,
+        )
+    )
+    if existing is not None:
+        return OrgUnitStatusOut(status="unchanged")
+
+    db.add(
+        PractisingCompetency(
+            user_id=body.user_id,
+            org_unit_id=unit_id,
+            competency=body.competency,
+            authorised_by=current_user.id,
+        )
+    )
+    db.flush()
+    return OrgUnitStatusOut(status="authorised")
+
+
+@router.delete(
+    "/{unit_id}/practising-competencies/{user_id}/{competency}",
+    response_model=OrgUnitStatusOut,
+    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_PRACTISING],
+)
+def withdraw_practising_competency(
+    unit_id: int,
+    user_id: int,
+    competency: str,
+    current_user: User = DEP_CURRENT_USER,
+    db: Session = _DEP_SESSION,
+) -> OrgUnitStatusOut:
+    """Stop somebody practising a competency at a place.
+
+    The row is deleted and nothing is recorded in its place. Absence is
+    already the unauthorised state, which is why the row carries no
+    boolean: practice cannot be withdrawn without removing the thing that
+    said who authorised it.
+
+    Withdrawing something that was not authorised is not an error. The
+    caller asked for it to be unauthorised here and it is, so refusing
+    would report a problem where there is none.
+
+    Their competency itself is untouched. Somebody suspended at one place
+    stays qualified, and stays authorised everywhere else they hold a row.
+
+    Requires ``manage_practising_competencies``.
+    """
+    _require_visible(db, current_user, unit_id)
+
+    db.execute(
+        delete(PractisingCompetency).where(
+            PractisingCompetency.user_id == user_id,
+            PractisingCompetency.org_unit_id == unit_id,
+            PractisingCompetency.competency == competency,
+        )
+    )
+    db.flush()
+    return OrgUnitStatusOut(status="withdrawn")
 
 
 # ------------------------------------------------------------------
