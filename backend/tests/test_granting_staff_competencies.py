@@ -37,6 +37,7 @@ from app.organisations import (
     organisation_org_unit_member,
 )
 from app.security import hash_password
+from tests.places import administers
 
 
 def _user(db: Session, username: str, *, profession: str) -> User:
@@ -71,9 +72,15 @@ def _place(db: Session, org: OrgUnit, user: User) -> None:
 
 @pytest.fixture
 def admin(db_session: Session, org: OrgUnit) -> User:
-    """Holds ``manage_users`` at the organisation."""
+    """Holds ``manage_users`` at the organisation.
+
+    Which is now a ``practising_competency`` row saying so, on top of the
+    membership. Membership puts somebody at a place; a row is what
+    authorises them to administer it.
+    """
     user = _user(db_session, "the_admin", profession="system_administrator")
     _place(db_session, org, user)
+    administers(db_session, user.id, org.id)
     return user
 
 
@@ -295,7 +302,12 @@ class TestTheSameAtASite:
     """
 
     @pytest.fixture
-    def site(self, db_session: Session, org: OrgUnit) -> OrgUnit:
+    def site(self, db_session: Session, org: OrgUnit, admin: User) -> OrgUnit:
+        """A ward inside the trust, which the admin may administer.
+
+        Authorised at the ward itself: a row at the trust says nothing
+        about its wards, so administering one has to be said here.
+        """
         site = OrgUnit(name="Ward 9", type="ward")
         db_session.add(site)
         db_session.commit()
@@ -306,6 +318,7 @@ class TestTheSameAtASite:
             .values(parent_id=org.id)
         )
         db_session.commit()
+        administers(db_session, admin.id, site.id)
         return site
 
     def test_a_profession_is_granted_with_the_membership(

@@ -31,6 +31,7 @@ from app.models import (
 )
 from app.organisations import add_org_unit_member
 from app.security import hash_password
+from tests.places import administers
 
 
 def _user(db: Session, username: str, **kwargs: object) -> User:
@@ -205,6 +206,9 @@ class TestTheListingsHideOperatorsByTheNewColumn:
         )
         for person in (test_admin, operator):
             add_org_unit_member(db_session, org.id, person.id, "staff")
+        # Only the admin administers it; the listing is scoped to the
+        # places they hold a manage_users row at.
+        administers(db_session, test_admin.id, org.id)
         db_session.commit()
 
         resp = authenticated_admin_client.get("/api/users")
@@ -232,6 +236,9 @@ class TestTheListingsHideOperatorsByTheNewColumn:
         )
         for person in (test_admin, colleague):
             add_org_unit_member(db_session, org.id, person.id, "staff")
+        # Only the admin administers it; the listing is scoped to the
+        # places they hold a manage_users row at.
+        administers(db_session, test_admin.id, org.id)
         db_session.commit()
 
         resp = authenticated_admin_client.get("/api/users")
@@ -269,6 +276,9 @@ class TestScopingAsksTheNewColumn:
         db.refresh(org)
         for person in members:
             add_org_unit_member(db, org.id, person.id, "staff")
+            # Membership puts them here; a manage_users row is what lets
+            # them administer it. These tests want both.
+            administers(db, person.id, org.id)
         db.commit()
         org_unit_id = org.id
         return int(org_unit_id)

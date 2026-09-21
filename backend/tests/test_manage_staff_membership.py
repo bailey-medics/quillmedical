@@ -33,6 +33,7 @@ from app.models import (
 )
 from app.organisations import add_org_unit_member
 from app.security import hash_password
+from tests.places import administers
 
 
 def _user(
@@ -74,6 +75,12 @@ def org(db_session: Session) -> OrgUnit:
 
 @pytest.fixture
 def site(db_session: Session, org: OrgUnit) -> OrgUnit:
+    """A ward inside the trust.
+
+    Whoever a test authorises here has to be authorised at the ward
+    itself, not only at the trust: a row at a trust says nothing about
+    its wards.
+    """
     site = OrgUnit(name="Ward 9", type="ward")
     db_session.add(site)
     db_session.commit()
@@ -86,7 +93,14 @@ def site(db_session: Session, org: OrgUnit) -> OrgUnit:
 
 
 def _place(db: Session, org: OrgUnit, user: User) -> None:
+    """Put *user* at *org* and authorise them to administer it.
+
+    Two facts, not one: membership says they are here, and a
+    ``practising_competency`` row carrying ``manage_users`` says they may
+    administer it. These tests want somebody who can do both.
+    """
     add_org_unit_member(db, org.id, user.id, "staff")
+    administers(db, user.id, org.id)
     db.commit()
 
 
@@ -126,13 +140,25 @@ class TestThePlaceSurfaceSaysTheSame:
         return user
 
     @pytest.fixture
-    def membership_admin(self, db_session: Session, org: OrgUnit) -> User:
+    def membership_admin(
+        self, db_session: Session, org: OrgUnit, site: OrgUnit
+    ) -> User:
+        """Holds ``manage_staff_membership`` and nothing wider.
+
+        Also authorised to administer both the trust and the ward,
+        because seeing a place and acting at it are separate checks: the
+        routes below gate on ``manage_staff_membership``, but
+        ``_require_visible`` first asks for a ``manage_users`` row at the
+        place named. Without the row at the ward the refusal would be a
+        404 about visibility rather than the 200 this class is testing.
+        """
         user = _user(
             db_session,
             "place_membership_admin",
             competencies=["manage_staff_membership"],
         )
         _place(db_session, org, user)
+        administers(db_session, user.id, site.id)
         return user
 
     def test_managing_accounts_does_not_put_somebody_at_a_place(

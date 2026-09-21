@@ -29,6 +29,7 @@ from sqlalchemy.orm import Session
 from app.models import OrgUnit, User
 from app.organisations import add_org_unit_member
 from app.security import hash_password
+from tests.places import administers
 
 
 def _user(
@@ -63,7 +64,13 @@ def org(db_session: Session) -> OrgUnit:
 
 
 def _place(db: Session, org: OrgUnit, user: User) -> None:
+    """Put *user* at *org* and authorise them to administer it.
+
+    Membership says they are here; a ``practising_competency`` row
+    carrying ``manage_users`` says they may administer it.
+    """
     add_org_unit_member(db, org.id, user.id, "staff")
+    administers(db, user.id, org.id)
     db.commit()
 
 

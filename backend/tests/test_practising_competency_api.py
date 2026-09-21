@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from app.models import OrgUnit, PractisingCompetency, User
 from app.organisations import add_org_unit_member
 from app.security import hash_password
+from tests.places import administers
 
 COMPETENCY = "perform_venepuncture"
 OTHER_COMPETENCY = "certify_death"
@@ -30,6 +31,7 @@ def own_org(db_session: Session, test_admin: User) -> OrgUnit:
     db_session.add(org)
     db_session.commit()
     add_org_unit_member(db_session, org.id, test_admin.id, "staff")
+    administers(db_session, test_admin.id, org.id)
     db_session.commit()
     return org
 
@@ -44,10 +46,17 @@ def other_org(db_session: Session) -> OrgUnit:
 
 
 @pytest.fixture
-def ward(db_session: Session, own_org: OrgUnit) -> OrgUnit:
+def ward(db_session: Session, own_org: OrgUnit, test_admin: User) -> OrgUnit:
+    """A ward the admin may administer.
+
+    Authorised at the ward itself, not inherited from the trust: a row at
+    a trust says nothing about its wards, which is the property the whole
+    model turns on.
+    """
     unit = OrgUnit(name="Ward A", type="ward", parent_id=own_org.id)
     db_session.add(unit)
     db_session.commit()
+    administers(db_session, test_admin.id, unit.id)
     return unit
 
 
@@ -68,11 +77,34 @@ def surgeon(db_session: Session) -> User:
     return user
 
 
+def _listed(resp: object) -> list[dict[str, object]]:
+    """The listed authorisations, minus the fixture's own.
+
+    Same reason as `_rows`: the admin's `manage_users` row is what let
+    them call the route, and counting it would make every assertion one
+    out.
+    """
+    return [
+        row
+        for row in resp.json()["practising_competencies"]  # type: ignore[attr-defined]
+        if row["competency"] != "manage_users"
+    ]
+
+
 def _rows(db: Session, unit_id: int) -> list[PractisingCompetency]:
+    """The rows at *unit_id*, minus the fixture's own authorisation.
+
+    The `ward` fixture holds a `manage_users` row, because that is what
+    lets the admin reach these routes at all. Counting it would make
+    every assertion here one out, so it is excluded: these tests are
+    about the competencies they authorise, not about the one that let
+    them in.
+    """
     return list(
         db.execute(
             select(PractisingCompetency).where(
-                PractisingCompetency.org_unit_id == unit_id
+                PractisingCompetency.org_unit_id == unit_id,
+                PractisingCompetency.competency != "manage_users",
             )
         )
         .scalars()
@@ -172,12 +204,15 @@ class TestAuthorisingPractice:
 
 class TestWhatCannotBeAuthorised:
     def test_a_room_cannot_hold_competencies(
-        self, authenticated_admin_client, db_session, ward, surgeon
+        self, authenticated_admin_client, db_session, ward, surgeon, test_admin
     ):
         """Nobody practises anything at a room."""
         room = OrgUnit(name="Room 4", type="room", parent_id=ward.id)
         db_session.add(room)
         db_session.commit()
+        # Authorised here, so the refusal below is about a room holding
+        # no competencies rather than about not seeing the room.
+        administers(db_session, test_admin.id, room.id)
 
         resp = authenticated_admin_client.post(
             f"/api/org-units/{room.id}/practising-competencies",
@@ -259,7 +294,11 @@ class TestListingWhoMayPractise:
         )
 
         assert resp.status_code == 200
-        listed = resp.json()["practising_competencies"]
+        listed = [
+            row
+            for row in resp.json()["practising_competencies"]
+            if row["competency"] != "manage_users"
+        ]
         assert len(listed) == 2
         assert {row["competency"] for row in listed} == {
             COMPETENCY,
@@ -277,15 +316,22 @@ class TestListingWhoMayPractise:
         )
 
         assert resp.status_code == 200
-        assert resp.json()["practising_competencies"] == []
+        assert _listed(resp) == []
 
     def test_another_places_authorisations_do_not_appear(
-        self, authenticated_admin_client, db_session, own_org, ward, surgeon
+        self,
+        authenticated_admin_client,
+        db_session,
+        own_org,
+        ward,
+        surgeon,
+        test_admin,
     ):
         """Nothing is inherited, in either direction."""
         sibling = OrgUnit(name="Ward B", type="ward", parent_id=own_org.id)
         db_session.add(sibling)
         db_session.commit()
+        administers(db_session, test_admin.id, sibling.id)
 
         authenticated_admin_client.post(
             f"/api/org-units/{ward.id}/practising-competencies",
@@ -296,7 +342,7 @@ class TestListingWhoMayPractise:
             f"/api/org-units/{sibling.id}/practising-competencies"
         )
 
-        assert resp.json()["practising_competencies"] == []
+        assert _listed(resp) == []
 
 
 class TestWithdrawingPractice:
@@ -338,12 +384,19 @@ class TestWithdrawingPractice:
         assert COMPETENCY in surgeon.get_final_competencies()
 
     def test_withdrawing_at_one_place_leaves_another_alone(
-        self, authenticated_admin_client, db_session, own_org, ward, surgeon
+        self,
+        authenticated_admin_client,
+        db_session,
+        own_org,
+        ward,
+        surgeon,
+        test_admin,
     ):
         """The case the model exists for: stopped here, still working there."""
         elsewhere = OrgUnit(name="Ward C", type="ward", parent_id=own_org.id)
         db_session.add(elsewhere)
         db_session.commit()
+        administers(db_session, test_admin.id, elsewhere.id)
 
         for unit in (ward, elsewhere):
             authenticated_admin_client.post(

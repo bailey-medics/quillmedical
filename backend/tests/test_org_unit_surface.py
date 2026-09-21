@@ -37,6 +37,7 @@ from app.organisations import (
     organisation_org_units_of,
 )
 from app.security import hash_password
+from tests.places import administers
 
 
 def _org(db: Session, name: str = "Trust") -> OrgUnit:
@@ -117,9 +118,13 @@ class TestListing:
         mine = _org(db_session, "My Trust")
         theirs = _org(db_session, "Their Trust")
         add_org_unit_member(db_session, mine.id, test_admin.id, "staff")
+        administers(db_session, test_admin.id, mine.id)
         db_session.commit()
         my_ward = _ward(db_session, mine.id, "My Ward")
         _ward(db_session, theirs.id, "Their Ward")
+        # A row of its own: a row at the trust says nothing about its
+        # wards, so the ward is listed only if authorised there too.
+        administers(db_session, test_admin.id, my_ward.id)
 
         resp = authenticated_admin_client.get("/api/org-units")
 
@@ -255,6 +260,7 @@ class TestCreating:
         mine = _org(db_session, "My Trust")
         theirs = _org(db_session, "Their Trust")
         add_org_unit_member(db_session, mine.id, test_admin.id, "staff")
+        administers(db_session, test_admin.id, mine.id)
         db_session.commit()
 
         resp = authenticated_admin_client.post(
@@ -484,6 +490,7 @@ class TestChanging:
     ):
         mine = _org(db_session, "My Trust")
         add_org_unit_member(db_session, mine.id, test_admin.id, "staff")
+        administers(db_session, test_admin.id, mine.id)
         db_session.commit()
 
         resp = authenticated_admin_client.delete(f"/api/org-units/{mine.id}")
@@ -610,6 +617,7 @@ class TestFeatures:
         """
         mine = _org(db_session, "My Trust")
         add_org_unit_member(db_session, mine.id, test_admin.id, "staff")
+        administers(db_session, test_admin.id, mine.id)
         db_session.commit()
 
         resp = authenticated_admin_client.put(
@@ -626,6 +634,7 @@ class TestFeatures:
         mine = _org(db_session, "My Trust")
         theirs = _org(db_session, "Their Trust")
         add_org_unit_member(db_session, mine.id, test_admin.id, "staff")
+        administers(db_session, test_admin.id, mine.id)
         db_session.commit()
 
         resp = authenticated_admin_client.put(
@@ -661,6 +670,7 @@ class TestPatients:
         add_org_unit_member(
             db_session, org.id, test_patient_manager.id, "staff"
         )
+        administers(db_session, test_patient_manager.id, org.id)
         db_session.commit()
         authenticated_superadmin_client = authenticated_patient_manager_client
 
@@ -692,8 +702,12 @@ class TestPatients:
         add_org_unit_member(
             db_session, org.id, test_patient_manager.id, "staff"
         )
+        administers(db_session, test_patient_manager.id, org.id)
         db_session.commit()
         ward = _ward(db_session, org.id)
+        # Authorised at the ward too, so the refusal below is about a
+        # ward keeping no patient list rather than about not seeing it.
+        administers(db_session, test_patient_manager.id, ward.id)
 
         resp = authenticated_patient_manager_client.post(
             f"/api/org-units/{ward.id}/patients",
@@ -1052,6 +1066,7 @@ class TestWhatTheAnswerLeavesOut:
         """A place under nothing is an anomaly, not a commons."""
         mine = _org(db_session, "My Trust")
         add_org_unit_member(db_session, mine.id, test_admin.id, "staff")
+        administers(db_session, test_admin.id, mine.id)
         db_session.commit()
         orphan = OrgUnit(name="Orphan Ward", type="ward")
         db_session.add(orphan)
@@ -1106,6 +1121,7 @@ class TestNestingStaysInsideOneOrganisation:
         mine = _org(db_session, "My Trust")
         theirs = _org(db_session, "Their Trust")
         add_org_unit_member(db_session, mine.id, test_admin.id, "staff")
+        administers(db_session, test_admin.id, mine.id)
         db_session.commit()
         my_ward = _ward(db_session, mine.id, "My Ward")
         their_ward = _ward(db_session, theirs.id, "Their Ward")
@@ -1126,6 +1142,7 @@ class TestNestingStaysInsideOneOrganisation:
         mine = _org(db_session, "My Trust")
         theirs = _org(db_session, "Their Trust")
         add_org_unit_member(db_session, mine.id, test_admin.id, "staff")
+        administers(db_session, test_admin.id, mine.id)
         db_session.commit()
         their_ward = _ward(db_session, theirs.id, "Their Ward")
 
@@ -1146,6 +1163,7 @@ class TestNestingStaysInsideOneOrganisation:
         """An orphan is not a shared place to hang things off."""
         mine = _org(db_session, "My Trust")
         add_org_unit_member(db_session, mine.id, test_admin.id, "staff")
+        administers(db_session, test_admin.id, mine.id)
         db_session.commit()
         orphan = OrgUnit(name="Orphan Ward", type="ward")
         db_session.add(orphan)
@@ -1163,9 +1181,14 @@ class TestNestingStaysInsideOneOrganisation:
     ):
         mine = _org(db_session, "My Trust")
         add_org_unit_member(db_session, mine.id, test_admin.id, "staff")
+        administers(db_session, test_admin.id, mine.id)
         db_session.commit()
         first = _ward(db_session, mine.id, "Ward 1")
         second = _ward(db_session, mine.id, "Ward 2")
+        # Both, because the move is an act at each: nothing inherits
+        # from the trust they sit in.
+        administers(db_session, test_admin.id, first.id)
+        administers(db_session, test_admin.id, second.id)
 
         resp = authenticated_admin_client.put(
             f"/api/org-units/{first.id}", json={"parent_id": second.id}

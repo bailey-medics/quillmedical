@@ -6,10 +6,15 @@ model metadata rather than from the migration chain. What these tests pin
 is the thing the SQL has to agree with, which is where the rows come from
 in the first place.
 
-`org_units_administered_by` is the set today's routes scope on. After the
-switch they will scope on rows instead, so the backfill has to produce
-exactly this set or somebody's access changes on the day it deploys. If
-this file's expectations and the migration's `WITH RECURSIVE` ever
+The set the backfill has to produce is the one membership used to imply:
+the organisations somebody belongs to, plus every place beneath them.
+`org_units_administered_by` answered exactly that until the branch above
+repointed it at rows, so these ask `get_member_org_unit_ids` and
+`descendant_ids` directly instead. Naming the membership resolvers rather
+than the helper is what keeps the test meaningful: asking the helper now
+would be asking whether rows contain rows.
+
+If this file's expectations and the migration's `WITH RECURSIVE` ever
 disagree, the migration is wrong.
 
 The migration itself is exercised against real Postgres by running
@@ -28,7 +33,12 @@ from sqlalchemy.orm import Session
 
 from app.cbac.base_professions import get_profession_base_competencies
 from app.models import OrgUnit, User
-from app.organisations import add_org_unit_member, org_units_administered_by
+from app.org_units.tree import descendant_ids
+from app.organisations import (
+    add_org_unit_member,
+    get_member_org_unit_ids,
+    org_units_administered_by,
+)
 from app.security import hash_password
 
 MIGRATION = (
@@ -37,6 +47,18 @@ MIGRATION = (
     / "versions"
     / "2026_09_21_1500-b4c2e7a91f38_backfill_practising_competencies_from_.py"
 )
+
+
+def _membership_implies(db: Session, user: User) -> set[int]:
+    """The places membership used to confer administration of.
+
+    What `org_units_administered_by` returned before it was repointed at
+    `practising_competency` rows, and therefore what migration
+    `b4c2e7a91f38` has to reproduce as rows: direct organisation
+    membership, plus every place beneath it at any depth.
+    """
+    roots = get_member_org_unit_ids(db, user.id)
+    return set(roots) | descendant_ids(db, roots)
 
 
 def _admin(
@@ -142,7 +164,7 @@ class TestWhatTheBackfillMustReproduce:
         add_org_unit_member(db_session, org.id, admin.id, "staff")
         db_session.commit()
 
-        assert org_units_administered_by(db_session, admin) == {org.id}
+        assert _membership_implies(db_session, admin) == {org.id}
 
     def test_everything_beneath_comes_too(self, db_session: Session) -> None:
         """At any depth, which is why the migration recurses."""
@@ -153,7 +175,7 @@ class TestWhatTheBackfillMustReproduce:
         add_org_unit_member(db_session, org.id, admin.id, "staff")
         db_session.commit()
 
-        assert org_units_administered_by(db_session, admin) == {
+        assert _membership_implies(db_session, admin) == {
             org.id,
             ward.id,
             room.id,
@@ -176,7 +198,7 @@ class TestWhatTheBackfillMustReproduce:
         add_org_unit_member(db_session, ward.id, admin.id, "staff")
         db_session.commit()
 
-        assert org_units_administered_by(db_session, admin) == set()
+        assert _membership_implies(db_session, admin) == set()
 
     def test_a_detached_ward_is_not_an_organisation(
         self, db_session: Session
@@ -195,7 +217,7 @@ class TestWhatTheBackfillMustReproduce:
         add_org_unit_member(db_session, stray.id, admin.id, "staff")
         db_session.commit()
 
-        assert org_units_administered_by(db_session, admin) == set()
+        assert _membership_implies(db_session, admin) == set()
 
     def test_another_organisation_is_not_included(
         self, db_session: Session
@@ -206,7 +228,7 @@ class TestWhatTheBackfillMustReproduce:
         add_org_unit_member(db_session, mine.id, admin.id, "staff")
         db_session.commit()
 
-        assert org_units_administered_by(db_session, admin) == {mine.id}
+        assert _membership_implies(db_session, admin) == {mine.id}
 
     def test_an_administrator_with_no_membership_administers_nothing(
         self, db_session: Session
@@ -215,20 +237,25 @@ class TestWhatTheBackfillMustReproduce:
         admin = _admin(db_session, "homeless-admin")
         _org(db_session, "Trust")
 
-        assert org_units_administered_by(db_session, admin) == set()
+        assert _membership_implies(db_session, admin) == set()
 
     def test_an_operator_is_not_backfilled(self, db_session: Session) -> None:
-        """None means "all of them", and no row would add to that.
+        """Rows would add nothing to what an operator already has.
 
-        The migration excludes operators for this reason: they bypass the
-        place check wherever it is asked, so rows would authorise nothing
-        they do not already have.
+        `org_units_administered_by` returns None for an operator, meaning
+        "all of them", and a row cannot improve on that. The migration
+        excludes them by name for this reason, which is what this asserts:
+        membership would otherwise have implied a row, so the exclusion
+        has to be deliberate rather than incidental.
         """
         operator = _admin(db_session, "operator", platform_role="superadmin")
         org = _org(db_session, "Trust")
         add_org_unit_member(db_session, org.id, operator.id, "staff")
         db_session.commit()
 
+        # Membership alone would have implied one.
+        assert _membership_implies(db_session, operator) == {org.id}
+        # The helper still answers "all of them", so the row is redundant.
         assert org_units_administered_by(db_session, operator) is None
 
 

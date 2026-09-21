@@ -21,6 +21,7 @@ from app.models import (
     OrgUnit,
     OrgUnitLink,
     User,
+    org_unit_member,
 )
 from app.org_units.relations import (
     ORG_UNIT_RELATION_IDS,
@@ -29,6 +30,7 @@ from app.org_units.relations import (
     validate_org_unit_relation,
 )
 from app.organisations import add_org_unit_member
+from tests.places import administers
 
 
 @pytest.fixture
@@ -37,6 +39,7 @@ def own_org(db_session: Session, test_admin: User) -> OrgUnit:
     db_session.add(org)
     db_session.commit()
     add_org_unit_member(db_session, org.id, test_admin.id, "staff")
+    administers(db_session, test_admin.id, org.id)
     db_session.commit()
     return org
 
@@ -49,11 +52,33 @@ def other_org(db_session: Session) -> OrgUnit:
     return org
 
 
-def _site_of(db: Session, org: OrgUnit, name: str) -> OrgUnit:
+def _site_of(
+    db: Session, org: OrgUnit, name: str, admin: bool = False
+) -> OrgUnit:
+    """A ward inside *org*, administered by *org*'s members if asked.
+
+    The row is written here rather than inherited from the trust,
+    because nothing is inherited: a row at a trust says nothing about
+    its wards, so a test acting on a ward has to authorise it there.
+    That is the property the whole model turns on, so these tests carry
+    it explicitly rather than letting a fixture hide it.
+
+    Wards of another organisation are created without it, which is what
+    the refusals in this file rest on.
+    """
     site = OrgUnit(name=name, type="ward", parent_id=org.id)
     db.add(site)
     db.commit()
     db.refresh(site)
+
+    if admin:
+        for user_id in db.execute(
+            select(org_unit_member.c.user_id).where(
+                org_unit_member.c.org_unit_id == org.id
+            )
+        ).scalars():
+            administers(db, int(user_id), site.id)
+
     return site
 
 
@@ -95,8 +120,8 @@ class TestTheModelRefusesBadRows:
     def test_an_unknown_relation_cannot_be_stored(
         self, db_session, own_org
     ) -> None:
-        a = _site_of(db_session, own_org, "A")
-        b = _site_of(db_session, own_org, "B")
+        a = _site_of(db_session, own_org, "A", admin=True)
+        b = _site_of(db_session, own_org, "B", admin=True)
         with pytest.raises(ValueError):
             db_session.add(
                 OrgUnitLink(source_id=a.id, target_id=b.id, relation="owns")
@@ -108,7 +133,7 @@ class TestRecordingALink:
         self, authenticated_admin_client, db_session, own_org, other_org
     ):
         """The relationships worth recording cross between organisations."""
-        mine = _site_of(db_session, own_org, "My Ward")
+        mine = _site_of(db_session, own_org, "My Ward", admin=True)
         theirs = _site_of(db_session, other_org, "Their Ward")
 
         resp = authenticated_admin_client.post(
@@ -132,7 +157,7 @@ class TestRecordingALink:
         other_org,
         test_admin,
     ):
-        mine = _site_of(db_session, own_org, "My Ward")
+        mine = _site_of(db_session, own_org, "My Ward", admin=True)
         theirs = _site_of(db_session, other_org, "Their Ward")
 
         authenticated_admin_client.post(
@@ -150,7 +175,7 @@ class TestRecordingALink:
     def test_recording_the_same_link_twice_adds_one_row(
         self, authenticated_admin_client, db_session, own_org, other_org
     ):
-        mine = _site_of(db_session, own_org, "My Ward")
+        mine = _site_of(db_session, own_org, "My Ward", admin=True)
         theirs = _site_of(db_session, other_org, "Their Ward")
         body = {"target_id": theirs.id, "relation": "partners_with"}
 
@@ -168,7 +193,7 @@ class TestRecordingALink:
         self, authenticated_superadmin_client, db_session, own_org, other_org
     ):
         """A school teaching at a trust is not the trust teaching at it."""
-        mine = _site_of(db_session, own_org, "My Ward")
+        mine = _site_of(db_session, own_org, "My Ward", admin=True)
         theirs = _site_of(db_session, other_org, "Their Ward")
 
         authenticated_superadmin_client.post(
@@ -186,7 +211,7 @@ class TestRecordingALink:
     def test_linking_a_place_to_itself_is_refused(
         self, authenticated_admin_client, db_session, own_org
     ):
-        mine = _site_of(db_session, own_org, "My Ward")
+        mine = _site_of(db_session, own_org, "My Ward", admin=True)
 
         resp = authenticated_admin_client.post(
             f"/api/org-units/{mine.id}/links",
@@ -198,7 +223,7 @@ class TestRecordingALink:
     def test_an_unknown_relation_is_refused(
         self, authenticated_admin_client, db_session, own_org, other_org
     ):
-        mine = _site_of(db_session, own_org, "My Ward")
+        mine = _site_of(db_session, own_org, "My Ward", admin=True)
         theirs = _site_of(db_session, other_org, "Their Ward")
 
         resp = authenticated_admin_client.post(
@@ -212,7 +237,7 @@ class TestRecordingALink:
     def test_a_missing_target_is_refused(
         self, authenticated_admin_client, db_session, own_org
     ):
-        mine = _site_of(db_session, own_org, "My Ward")
+        mine = _site_of(db_session, own_org, "My Ward", admin=True)
 
         resp = authenticated_admin_client.post(
             f"/api/org-units/{mine.id}/links",
@@ -224,7 +249,7 @@ class TestRecordingALink:
     def test_linking_from_a_place_that_is_not_yours_is_refused(
         self, authenticated_admin_client, db_session, own_org, other_org
     ):
-        mine = _site_of(db_session, own_org, "My Ward")
+        mine = _site_of(db_session, own_org, "My Ward", admin=True)
         theirs = _site_of(db_session, other_org, "Their Ward")
 
         resp = authenticated_admin_client.post(
@@ -240,7 +265,7 @@ class TestReadingLinks:
     def test_both_directions_are_listed(
         self, authenticated_superadmin_client, db_session, own_org, other_org
     ):
-        mine = _site_of(db_session, own_org, "My Ward")
+        mine = _site_of(db_session, own_org, "My Ward", admin=True)
         theirs = _site_of(db_session, other_org, "Their Ward")
         authenticated_superadmin_client.post(
             f"/api/org-units/{theirs.id}/links",
@@ -260,7 +285,7 @@ class TestReadingLinks:
     def test_a_place_with_no_links_reads_empty(
         self, authenticated_admin_client, db_session, own_org
     ):
-        mine = _site_of(db_session, own_org, "My Ward")
+        mine = _site_of(db_session, own_org, "My Ward", admin=True)
 
         resp = authenticated_admin_client.get(
             f"/api/org-units/{mine.id}/links"
@@ -285,7 +310,7 @@ class TestRemovingALink:
     def test_the_place_that_recorded_it_may_remove_it(
         self, authenticated_admin_client, db_session, own_org, other_org
     ):
-        mine = _site_of(db_session, own_org, "My Ward")
+        mine = _site_of(db_session, own_org, "My Ward", admin=True)
         theirs = _site_of(db_session, other_org, "Their Ward")
         created = authenticated_admin_client.post(
             f"/api/org-units/{mine.id}/links",
@@ -303,7 +328,7 @@ class TestRemovingALink:
         self, authenticated_superadmin_client, db_session, own_org, other_org
     ):
         """A claim about your place is yours to withdraw."""
-        mine = _site_of(db_session, own_org, "My Ward")
+        mine = _site_of(db_session, own_org, "My Ward", admin=True)
         theirs = _site_of(db_session, other_org, "Their Ward")
         created = authenticated_superadmin_client.post(
             f"/api/org-units/{theirs.id}/links",
@@ -322,7 +347,7 @@ class TestRemovingALink:
     ):
         a = _site_of(db_session, other_org, "A")
         b = _site_of(db_session, other_org, "B")
-        unrelated = _site_of(db_session, own_org, "Unrelated")
+        unrelated = _site_of(db_session, own_org, "Unrelated", admin=True)
         created = authenticated_superadmin_client.post(
             f"/api/org-units/{a.id}/links",
             json={"target_id": b.id, "relation": "hosts"},
@@ -341,7 +366,7 @@ class TestALinkConfersNothing:
         self, authenticated_admin_client, db_session, own_org, other_org
     ):
         """Reach is a later step, and admin rights never follow a link."""
-        mine = _site_of(db_session, own_org, "My Ward")
+        mine = _site_of(db_session, own_org, "My Ward", admin=True)
         theirs = _site_of(db_session, other_org, "Their Ward")
         authenticated_admin_client.post(
             f"/api/org-units/{mine.id}/links",

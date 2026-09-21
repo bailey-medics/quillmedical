@@ -116,11 +116,13 @@ router = APIRouter(prefix="/org-units", tags=["org-units"])
 
 
 def _visible_ids(db: Session, user: User) -> set[int] | None:
-    """Return the org_units *user* may see, or None for all of them.
+    """Return the org_units *user* may administer, or None for all of them.
 
-    An admin sees the organisations they belong to and everything beneath
-    them, at any depth. A superadmin sees the estate, and gets None rather
-    than a set of every id in the table.
+    Answered from ``practising_competency`` rows now rather than from
+    membership, which is a change in ``org_units_administered_by``
+    itself: the same question is asked by the user routes in ``main``,
+    and two surfaces disagreeing about who administers an org_unit is worse
+    than either answer.
 
     Reach is deliberately not used here. Reach is why somebody sees
     teaching content at an org_unit they visit; it is not authority to
