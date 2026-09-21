@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Stack, Group, Skeleton } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
+import { PractisingCompetenciesCard } from "@/components/practising-competencies";
 import { BodyTextInline, BodyTextBold, Heading } from "@/components/typography";
 import { IconPencil, IconUserMinus } from "@components/icons/appIcons";
 import PageHeader from "@/components/page-header";
@@ -235,6 +236,17 @@ export default function SiteAdminPage() {
           />
         </Stack>
       </BaseCard>
+
+      {/* Who may practise here */}
+      <PractisingCompetenciesCard
+        orgUnitId={Number(id)}
+        members={site.members}
+        onChanged={(title) => {
+          showMessage({ variant: "success", title });
+          void fetchSite();
+        }}
+        onError={(title) => showMessage({ variant: "error", title })}
+      />
 
       <ConfirmModal
         opened={removingStaff !== null}
