@@ -479,6 +479,18 @@ here because the next environment will want the same list:
       `environment: ${{ matrix.environment }}`, and a job naming an
       environment that does not exist fails before it runs a step.
 
+- [x] **(Claude)** Prepare the things the Terraform expects to find
+      already there, before the first apply: grant the new service
+      account `roles/storage.objectAdmin` on the state bucket, create the
+      `teaching-sync-token` secret and the `quill-admin-app` job for the
+      two import blocks, and add versions to `pagerduty-service-key` and
+      `alert-sms-number`.
+
+- [ ] **(Mark)** Create a Slack notification channel in the new project
+      through the console's OAuth flow, then set
+      `slack_channel_display_name` in the app tfvars. Until then the new
+      environment has email, SMS and PagerDuty alerting but no Slack.
+
 - [ ] **(Mark)** Apply Batch 3's Terraform to the new workspace, and let
       it build the environment from nothing. Around thirty resources take
       their names from `var.environment`, so they come out named `app`
@@ -555,6 +567,42 @@ one.
   it. Creating the first two and forgetting the third produces
   authentication that succeeds and then cannot do anything, which reads
   as a permissions problem rather than a missing binding.
+
+- **The Terraform describes a built environment, not an empty one.** Five
+  things in it assume a project somebody has already prepared by hand, and
+  copying teaching's tfvars copied those assumptions along with the
+  values. The first apply against an empty project fails on them one
+  after another:
+
+  - Two `import` blocks, for `teaching-sync-token` and the
+    `quill-admin-<env>` Cloud Run job. Both adopted resources that
+    predated Terraform in the teaching project, and an import of
+    something that does not exist is an error rather than a no-op. Fixed
+    by creating both by hand in the new project so the import finds them:
+    the secret container with no version, the job on
+    `gcr.io/cloudrun/hello:latest`.
+
+  - Two secret *versions* read through
+    `google_secret_manager_secret_version`, `pagerduty-service-key` and
+    `alert-sms-number`. Terraform creates secret containers but never
+    versions, by the convention in `modules/secrets`, so the value has to
+    be put there first. Both were copied across from teaching, since it
+    is the same PagerDuty service and the same phone number.
+
+  - A Slack notification channel, looked up by display name. This is the
+    one that cannot be scripted at all: the channel's `auth_token` comes
+    from Slack's OAuth consent screen and only the console flow produces
+    it. The new environment starts with
+    `slack_channel_display_name = ""`, which switches the data source
+    off, and gains Slack alerting when somebody runs that flow.
+
+- **The Terraform state bucket is in its own project**, and access to it
+  is granted per service account. `github-actions@quill-medical-teaching`,
+  `-staging` and `-production` each hold `roles/storage.objectAdmin` on
+  `gs://quill-medical-terraform-state`, granted individually. A new
+  environment's service account needs the same binding or `terraform
+  init` fails with a 403 on `storage.objects.list`, which reads like a
+  missing bucket rather than a missing grant.
 
 - **A workflow change cannot trigger its own workflow here.** Merging the
   matrix change ran nothing, because `terraform.yml` triggers on

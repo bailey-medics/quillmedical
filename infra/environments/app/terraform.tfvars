@@ -37,8 +37,16 @@ caption_image   = "gcr.io/cloudrun/hello:latest"
 monitored_hostnames        = ["app.quill-medical.com"]
 app_domain                 = "app.quill-medical.com"
 alert_email                = "info@quill-medical.com"
-slack_channel_display_name = "quill-medical-cicd"
 cloud_run_services         = ["quill-backend-app", "quill-frontend-app"]
+
+# No slack_channel_display_name yet. The monitoring module looks a Slack
+# channel up by display name, and a Slack channel can only be created
+# through the console's OAuth consent flow, which produces an auth_token
+# nothing else can mint. Teaching's was made that way. Until the same is
+# done for this project, an empty value switches the data source off; set
+# it to "quill-medical-cicd" once the channel exists here.
+slack_channel_display_name = ""
+
 
 # Whether this environment should have these alert channels at all. Static
 # config rather than a test on whether the secret holds a value: a `count`
