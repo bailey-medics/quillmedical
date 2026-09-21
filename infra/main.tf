@@ -299,10 +299,11 @@ module "cloud_run_backend" {
 
   env_vars = merge(
     {
-      BACKEND_ENV     = "production"
-      SECURE_COOKIES  = "true"
-      COOKIE_DOMAIN   = ".${var.domain}"
-      FRONTEND_URL    = "https://${var.lb_domains[0]}"
+      BACKEND_ENV    = "production"
+      SECURE_COOKIES = "true"
+      # No COOKIE_DOMAIN: unset means host-only, so a cookie set by this
+      # host is never sent to another subdomain of quill-medical.com.
+      FRONTEND_URL = "https://${var.lb_domains[0]}"
       CORE_DB_HOST    = module.cloud_sql_core.private_ip
       CORE_DB_NAME    = module.cloud_sql_core.database_name
       CORE_DB_USER    = module.cloud_sql_core.database_user
