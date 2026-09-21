@@ -78,7 +78,7 @@ def caption_object_path(org_id: int, module_id: str, asset_id: str) -> str:
 
     The caption job writes ``{asset_id}.vtt`` beside the renditions, and
     ``_resolve_video_filename`` returns that name to the player, so this
-    is the one place the spelling is stated for the admin path too.
+    is the one org_unit the spelling is stated for the admin path too.
 
     Built on ``media_object_path`` so the same validation guards it: a
     traversal here would let a caller read or overwrite another

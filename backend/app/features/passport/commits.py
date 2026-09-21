@@ -23,7 +23,7 @@ record says, and a caller passing a newline has a bug worth surfacing.
 
 **No narrative and no patient data.** A commit message names an action, a
 competency id and who acted. A passport holds no patient data by design,
-and a message is the one place a careless summary could smuggle some in,
+and a message is the one org_unit a careless summary could smuggle some in,
 so the summary is built from structured values rather than free text.
 """
 

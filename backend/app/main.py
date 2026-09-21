@@ -741,13 +741,13 @@ def require_csrf(
 DEP_REQUIRE_ROLES_CLINICIAN = Depends(require_roles("Clinician"))
 DEP_REQUIRE_CSRF = Depends(require_csrf)
 
-#: Administering the users of a place. Replaces the
+#: Administering the users of an org_unit. Replaces the
 #: ``system_permissions in ("admin", "superadmin")`` string comparisons,
 #: which said what someone is on the platform rather than what they may
 #: do — a rank that was global in the column and scoped in practice.
 #:
 #: It answers *what*, never *where*. Every route carrying it keeps the
-#: place check beside it: ``_require_shared_org_with_user``,
+#: org_unit check beside it: ``_require_shared_org_with_user``,
 #: ``_require_site_in_own_org``, ``_require_shared_org_with_user`` or
 #: ``_require_shared_org_with_patient``. Without one of those this
 #: competency is global, which is strictly weaker than the rank it
@@ -763,12 +763,12 @@ DEP_REQUIRE_MANAGE_USERS = Depends(has_competency("manage_users"))
 #:
 #: It mirrors ``DEP_REQUIRE_MANAGE_PATIENT_MEMBERSHIP`` below, which made
 #: the same separation for patients. Like the rest it answers *what*,
-#: never *where*, so the four routes carrying it keep their place check.
+#: never *where*, so the four routes carrying it keep their org_unit check.
 DEP_REQUIRE_MANAGE_STAFF_MEMBERSHIP = Depends(
     has_competency("manage_staff_membership")
 )
 
-#: Which patients are cared for at a place. Separate from
+#: Which patients are cared for at an org_unit. Separate from
 #: ``DEP_REQUIRE_MANAGE_USERS`` because a patient is not a user: a user is
 #: an account here, a patient is a record FHIR owns, and the two are
 #: linked through ``User.fhir_patient_id`` only where the same human is
@@ -777,7 +777,7 @@ DEP_REQUIRE_MANAGE_STAFF_MEMBERSHIP = Depends(
 #:
 #: It grants no access to a patient's record — that is
 #: ``access_patient_records``. Like the rest it answers *what*, never
-#: *where*, so the routes carrying it keep their place check.
+#: *where*, so the routes carrying it keep their org_unit check.
 DEP_REQUIRE_MANAGE_PATIENT_MEMBERSHIP = Depends(
     has_competency("manage_patient_membership")
 )
@@ -887,12 +887,12 @@ def list_organisations_public(
 ) -> OrganisationsOut:
     """List organisations for registration.
 
-    Public endpoint that returns organisation names and place ids for
+    Public endpoint that returns organisation names and org_unit ids for
     the registration form dropdown. No authentication required. Only
     exposes the minimum fields needed.
 
-    An organisation is a place at the top of a tree, so the id is a
-    place id — the same number the registration this feeds sends back.
+    An organisation is an org_unit at the top of a tree, so the id is a
+    org_unit id — the same number the registration this feeds sends back.
 
     Returns:
         dict with key ``organisations`` containing a list of
@@ -1013,8 +1013,8 @@ def validate_clinical_lead(
     if not user:
         return ValidateClinicalLeadOut(valid=False)
 
-    # The places offering this bank for site registration. Counted in
-    # place ids, which is what the table holds.
+    # The org_units offering this bank for site registration. Counted in
+    # org_unit ids, which is what the table holds.
     place_ids = (
         db.execute(
             select(QuestionBankOrgStatus.org_unit_id).where(
@@ -1029,7 +1029,7 @@ def validate_clinical_lead(
     if not offering:
         return ValidateClinicalLeadOut(valid=False)
 
-    # Every place beneath them, at any depth. The offering places are
+    # Every org_unit beneath them, at any depth. The offering org_units are
     # organisations' own rows, so they are roots and excluded — a lead
     # holds their post at a ward, not at the trust.
     site_ids = sorted(descendant_ids(db, offering))
@@ -1054,7 +1054,7 @@ def validate_clinical_lead(
         .first()
     )
 
-    # The place accountable for this one, if it offers the bank
+    # The org_unit accountable for this one, if it offers the bank
     accountable = root_ids_of(db, [matched_site_id]).get(matched_site_id)
     org_unit_for_site = accountable if accountable in offering else None
 
@@ -1156,7 +1156,7 @@ def register(
     db.add(user)
     db.flush()  # Assigns user.id so we can create memberships
 
-    # Add the user to the place they named. It has to be an
+    # Add the user to the org_unit they named. It has to be an
     # organisation: registration offers the tops of trees, and a
     # membership of a ward is what the site branch below writes.
     if payload.org_unit_id is not None:
@@ -1179,7 +1179,7 @@ def register(
                 status_code=400,
                 detail="org_unit_id required when site_id is provided",
             )
-        # Verify the place exists AND sits beneath the organisation given
+        # Verify the org_unit exists AND sits beneath the organisation given
         site = db.get(OrgUnit, payload.site_id)
         # There is more than one kind of organisation — a practice and a
         # teaching establishment are both tops of trees — so the test is
@@ -1531,9 +1531,9 @@ class AdminUserUpdateIn(BaseModel):
 
 
 def _capacity_at(place: OrgUnit) -> str:
-    """What a person added through the user form is at a place.
+    """What a person added through the user form is at an org_unit.
 
-    Staff at an organisation and a trainee at a place inside one, which
+    Staff at an organisation and a trainee at an org_unit inside one, which
     is what the two older lists each did. Keeping the difference means
     this step widens the request without changing who counts as staff
     anywhere; settling on one answer is a separate decision from
@@ -1545,10 +1545,10 @@ def _capacity_at(place: OrgUnit) -> str:
 def _require_org_units_the_caller_administers(
     db: Session, current_user: User, place_ids: list[int]
 ) -> list[OrgUnit]:
-    """Load the places named, refusing any the caller may not administer.
+    """Load the org_units named, refusing any the caller may not administer.
 
-    404 rather than 403 for a place outside their organisations, matching
-    the place surface: the answer must not confirm that a place exists to
+    404 rather than 403 for an org_unit outside their organisations, matching
+    the org_unit surface: the answer must not confirm that an org_unit exists to
     somebody who cannot see it.
     """
     allowed = org_units_administered_by(db, current_user)
@@ -1645,7 +1645,7 @@ def create_user_with_cbac(
     db.add(user)
     db.flush()
 
-    # The one list, in place ids. Organisations and the places inside
+    # The one list, in org_unit ids. Organisations and the org_units inside
     # them are rows in the same table, so there is nothing to split.
     for place in places:
         db.execute(
@@ -1856,9 +1856,9 @@ def update_user(
             )
             user.additional_competencies = sorted(granted)
 
-    # The one list, in place ids. It settles membership of every place
-    # the caller may administer: the places named are kept, the rest of
-    # theirs are cleared. Places outside their organisations are left
+    # The one list, in org_unit ids. It settles membership of every org_unit
+    # the caller may administer: the org_units named are kept, the rest of
+    # theirs are cleared. org_units outside their organisations are left
     # alone, because somebody else's tree is not theirs to empty.
     if payload.org_unit_ids is not None:
         places = _require_org_units_the_caller_administers(
@@ -2553,13 +2553,13 @@ def list_users(
             )
         )
 
-        # Anyone but an operator sees only users at their own places;
+        # Anyone but an operator sees only users at their own org_units;
         # operators see everyone.
     if current_user.platform_role != "superadmin":
         admin_org_units = get_member_org_unit_ids(db, current_user.id)
         org_scoped_ids = get_org_unit_staff_ids(db, admin_org_units)
 
-        # Also include site-only members beneath the admin's places
+        # Also include site-only members beneath the admin's org_units
         site_ids_for_orgs = descendant_ids(db, list(admin_org_units))
         site_scoped_ids: set[int] = set()
         if site_ids_for_orgs:
@@ -2585,9 +2585,9 @@ def list_users(
 
         # Batch-load organisation and site memberships
         user_ids = [user.id for user in users]
-        # Joined on the place, which is what the membership row holds.
+        # Joined on the org_unit, which is what the membership row holds.
         # This read ``Organisation.id == ...org_unit_id`` for a release:
-        # an organisation id compared against a place id, which matches
+        # an organisation id compared against an org_unit id, which matches
         # on a small installation because the two sequences agree, and
         # stops matching the moment a ward is created between two
         # organisations. A user's organisations then came back empty, or
@@ -2883,7 +2883,7 @@ def list_patients(
         # Determine which patients are accessible.
         #
         # Seeing every patient in the deployment is not an administrative
-        # act at a place — it is reach unbounded by any place, which is
+        # act at an org_unit — it is reach unbounded by any org_unit, which is
         # what the platform role records. An admin at one trust is
         # confined to the patients they share an organisation with, the
         # same as anyone else.
@@ -3712,7 +3712,7 @@ async def update_my_competencies(
     """
     # Self-granting, so only an operator may use it. Everyone else asks
     # another holder of `manage_users`, through `PATCH /users/{id}`,
-    # which does the same job with a place check and a second person.
+    # which does the same job with an org_unit check and a second person.
     #
     # Gating this on `manage_users` was considered and rejected: holding
     # the competency would then be what lets a holder keep granting it to
@@ -3753,7 +3753,7 @@ async def update_my_competencies(
     response_model=OrganisationsListOut,
 )
 def list_organisations() -> OrganisationsListOut:
-    """Retired. Places live at ``/api/org-units``.
+    """Retired. org_units live at ``/api/org-units``.
 
     The request it always took is still declared, so a caller
     sending what it always sent is told the address has gone
@@ -3769,7 +3769,7 @@ def list_organisations() -> OrganisationsListOut:
 def get_organisation(
     org_id: int,
 ) -> OrganisationDetailOut:
-    """Retired. Places live at ``/api/org-units``.
+    """Retired. org_units live at ``/api/org-units``.
 
     The request it always took is still declared, so a caller
     sending what it always sent is told the address has gone
@@ -3786,7 +3786,7 @@ def update_organisation(
     org_id: int,
     body: UpdateOrganisationIn,
 ) -> OrganisationOut:
-    """Retired. Places live at ``/api/org-units``.
+    """Retired. org_units live at ``/api/org-units``.
 
     The request it always took is still declared, so a caller
     sending what it always sent is told the address has gone
@@ -3802,7 +3802,7 @@ def update_organisation(
 def create_organisation(
     body: CreateOrganisationIn,
 ) -> OrganisationOut:
-    """Retired. Places live at ``/api/org-units``.
+    """Retired. org_units live at ``/api/org-units``.
 
     The request it always took is still declared, so a caller
     sending what it always sent is told the address has gone
@@ -3818,7 +3818,7 @@ def create_organisation(
 def delete_organisation(
     org_id: int,
 ) -> DetailResponse:
-    """Retired. Places live at ``/api/org-units``.
+    """Retired. org_units live at ``/api/org-units``.
 
     The request it always took is still declared, so a caller
     sending what it always sent is told the address has gone
@@ -3835,7 +3835,7 @@ def add_staff_to_organisation(
     org_id: int,
     body: AddStaffIn,
 ) -> OrgStaffAddResponse:
-    """Retired. Places live at ``/api/org-units``.
+    """Retired. org_units live at ``/api/org-units``.
 
     The request it always took is still declared, so a caller
     sending what it always sent is told the address has gone
@@ -3852,7 +3852,7 @@ def add_patient_to_organisation(
     org_id: int,
     body: AddPatientIn,
 ) -> OrgPatientAddResponse:
-    """Retired. Places live at ``/api/org-units``.
+    """Retired. org_units live at ``/api/org-units``.
 
     The request it always took is still declared, so a caller
     sending what it always sent is told the address has gone
@@ -3869,7 +3869,7 @@ def remove_staff_from_organisation(
     org_id: int,
     user_id: int,
 ) -> StatusResponse:
-    """Retired. Places live at ``/api/org-units``.
+    """Retired. org_units live at ``/api/org-units``.
 
     The request it always took is still declared, so a caller
     sending what it always sent is told the address has gone
@@ -3886,7 +3886,7 @@ def remove_patient_from_organisation(
     org_id: int,
     patient_id: str,
 ) -> StatusResponse:
-    """Retired. Places live at ``/api/org-units``.
+    """Retired. org_units live at ``/api/org-units``.
 
     The request it always took is still declared, so a caller
     sending what it always sent is told the address has gone
@@ -3902,7 +3902,7 @@ def remove_patient_from_organisation(
 def list_org_features(
     org_id: int,
 ) -> FeaturesListOut:
-    """Retired. Places live at ``/api/org-units``.
+    """Retired. org_units live at ``/api/org-units``.
 
     The request it always took is still declared, so a caller
     sending what it always sent is told the address has gone
@@ -3920,7 +3920,7 @@ def toggle_org_feature(
     feature_key: str,
     body: FeatureToggleIn,
 ) -> FeatureToggleResponse:
-    """Retired. Places live at ``/api/org-units``.
+    """Retired. org_units live at ``/api/org-units``.
 
     The request it always took is still declared, so a caller
     sending what it always sent is told the address has gone
@@ -3933,7 +3933,7 @@ def _gone() -> NoReturn:
     """Say that an address has been retired, and where to go instead.
 
     Both the sites surface and the organisations surface are views over
-    one table now, and the places answer at ``/api/org-units``. A retired
+    one table now, and the org_units answer at ``/api/org-units``. A retired
     address answers 410 rather than 404 so a caller can tell "this never
     existed" from "this used to be here and has gone".
     """
@@ -3951,7 +3951,7 @@ def _gone() -> NoReturn:
     response_model=SitesListOut,
 )
 def list_sites() -> SitesListOut:
-    """Retired. Places live at ``/api/org-units``.
+    """Retired. org_units live at ``/api/org-units``.
 
     Answers 410 to anybody who asks, without a permission check:
     a retired address holds nothing to protect, and saying that it
@@ -3967,7 +3967,7 @@ def list_sites() -> SitesListOut:
 def create_site(
     body: CreateSiteIn,
 ) -> SiteOut:
-    """Retired. Places live at ``/api/org-units``.
+    """Retired. org_units live at ``/api/org-units``.
 
     Answers 410 to anybody who asks, without a permission check:
     a retired address holds nothing to protect, and saying that it
@@ -3981,13 +3981,13 @@ def _require_shared_org_with_patient(
 ) -> None:
     """Refuse a patient the admin shares no organisation with.
 
-    The place check for the admin routes that act on one patient by id.
+    The org_unit check for the admin routes that act on one patient by id.
     Deliberately *not* ``check_user_patient_access``, whose first line
     returns ``True`` for any admin: called from an admin-gated route it
-    would read as a place check and permit exactly what it appears to
+    would read as an org_unit check and permit exactly what it appears to
     forbid.
 
-    404 rather than 403, matching the other place checks, so the response
+    404 rather than 403, matching the other org_unit checks, so the response
     does not confirm that a patient exists to an admin who may not see
     them. Patient existence is worth more care than most: the id is a
     clinical identifier.
@@ -4011,7 +4011,7 @@ def _require_shared_org_with_user(
 ) -> None:
     """Refuse a user the admin shares no organisation with.
 
-    The place check for the admin routes that act on one user by id. Being
+    The org_unit check for the admin routes that act on one user by id. Being
     an admin says what someone may do, never where: the column is global
     and the authority is not, so without this an admin at one trust can
     act on a user at another by naming their id.
@@ -4020,7 +4020,7 @@ def _require_shared_org_with_user(
     everyone's, so a record that has slipped out of the membership tables
     fails closed.
 
-    404 rather than 403, matching the place checks, so the response does
+    404 rather than 403, matching the org_unit checks, so the response does
     not confirm that a user exists to somebody who may not see them.
 
     Args:
@@ -4048,7 +4048,7 @@ def _require_shared_org_with_user(
 def get_site(
     site_id: int,
 ) -> SiteDetailOut:
-    """Retired. Places live at ``/api/org-units``.
+    """Retired. org_units live at ``/api/org-units``.
 
     Answers 410 to anybody who asks, without a permission check:
     a retired address holds nothing to protect, and saying that it
@@ -4065,7 +4065,7 @@ def update_site(
     site_id: int,
     body: UpdateSiteIn,
 ) -> SiteOut:
-    """Retired. Places live at ``/api/org-units``.
+    """Retired. org_units live at ``/api/org-units``.
 
     Answers 410 to anybody who asks, without a permission check:
     a retired address holds nothing to protect, and saying that it
@@ -4082,7 +4082,7 @@ def toggle_site_active(
     site_id: int,
     body: ToggleSiteActiveIn,
 ) -> SiteOut:
-    """Retired. Places live at ``/api/org-units``.
+    """Retired. org_units live at ``/api/org-units``.
 
     Answers 410 to anybody who asks, without a permission check:
     a retired address holds nothing to protect, and saying that it
@@ -4098,7 +4098,7 @@ def toggle_site_active(
 def delete_site(
     site_id: int,
 ) -> StatusResponse:
-    """Retired. Places live at ``/api/org-units``.
+    """Retired. org_units live at ``/api/org-units``.
 
     Answers 410 to anybody who asks, without a permission check:
     a retired address holds nothing to protect, and saying that it
@@ -4115,7 +4115,7 @@ def link_site_to_org(
     org_id: int,
     site_id: int,
 ) -> StatusResponse:
-    """Retired. Places live at ``/api/org-units``.
+    """Retired. org_units live at ``/api/org-units``.
 
     Answers 410 to anybody who asks, without a permission check:
     a retired address holds nothing to protect, and saying that it
@@ -4132,7 +4132,7 @@ def unlink_site_from_org(
     org_id: int,
     site_id: int,
 ) -> StatusResponse:
-    """Retired. Places live at ``/api/org-units``.
+    """Retired. org_units live at ``/api/org-units``.
 
     Answers 410 to anybody who asks, without a permission check:
     a retired address holds nothing to protect, and saying that it
@@ -4148,7 +4148,7 @@ def unlink_site_from_org(
 def list_site_links(
     site_id: int,
 ) -> OrgUnitLinksOut:
-    """Retired. Places live at ``/api/org-units``.
+    """Retired. org_units live at ``/api/org-units``.
 
     Answers 410 to anybody who asks, without a permission check:
     a retired address holds nothing to protect, and saying that it
@@ -4165,7 +4165,7 @@ def create_site_link(
     site_id: int,
     body: CreateOrgUnitLinkIn,
 ) -> OrgUnitLinksOut:
-    """Retired. Places live at ``/api/org-units``.
+    """Retired. org_units live at ``/api/org-units``.
 
     Answers 410 to anybody who asks, without a permission check:
     a retired address holds nothing to protect, and saying that it
@@ -4182,7 +4182,7 @@ def delete_site_link(
     site_id: int,
     link_id: int,
 ) -> OrgUnitLinksOut:
-    """Retired. Places live at ``/api/org-units``.
+    """Retired. org_units live at ``/api/org-units``.
 
     Answers 410 to anybody who asks, without a permission check:
     a retired address holds nothing to protect, and saying that it
@@ -4199,7 +4199,7 @@ def add_site_staff(
     site_id: int,
     body: AddSiteStaffIn,
 ) -> AddSiteStaffResponse:
-    """Retired. Places live at ``/api/org-units``.
+    """Retired. org_units live at ``/api/org-units``.
 
     Answers 410 to anybody who asks, without a permission check:
     a retired address holds nothing to protect, and saying that it
@@ -4216,7 +4216,7 @@ def remove_site_staff(
     site_id: int,
     user_id: int,
 ) -> StatusResponse:
-    """Retired. Places live at ``/api/org-units``.
+    """Retired. org_units live at ``/api/org-units``.
 
     Answers 410 to anybody who asks, without a permission check:
     a retired address holds nothing to protect, and saying that it
@@ -5080,13 +5080,13 @@ def ci_teaching_sync(
             synced=[], errors=[], message="No banks found"
         )
 
-        # Resolve the place to sync into — the one an existing bank is
+        # Resolve the org_unit to sync into — the one an existing bank is
         # already held by, or the first organisation in the system.
         #
         # It used to fall back to the literal 1, which was a guess that
         # happened to be right while organisations were numbered from one
         # and nothing else shared their numbering. Teaching answers in
-        # place ids now, where 1 may well be a ward.
+        # org_unit ids now, where 1 may well be a ward.
     from app.features.teaching.models import QuestionBankConfig
 
     existing_config = db.execute(
@@ -5265,7 +5265,7 @@ def ci_transcode_complete(
         raise HTTPException(404, "No such media asset")
 
         # The job reports filenames; the suffix-to-column mapping lives here,
-        # in the one place that already owns it. A job that knew column names
+        # in the one org_unit that already owns it. A job that knew column names
         # would need redeploying whenever one was renamed.
     names = set(body.outputs)
     set_flags: list[str] = []

@@ -143,7 +143,7 @@ _DEP_VIEW_CASES = Depends(has_competency("view_teaching_cases"))
 
 
 def _get_user_org_ids(user: User, db: Session) -> list[int]:
-    """Return the places the user can reach, or raise 403.
+    """Return the org_units the user can reach, or raise 403.
 
     Teaching used to carry its own copy of this, walking site membership
     up into organisation membership because that was the available fudge
@@ -185,14 +185,14 @@ def _get_user_org_id(user: User, db: Session) -> int:
     place_ids = get_member_org_unit_ids(db, user.id)
     if not place_ids:
         # Deliberately not "no organisation": somebody at a ward of the
-        # trust has a place, and saying otherwise would send them looking
+        # trust has an org_unit, and saying otherwise would send them looking
         # for the wrong fix.
         raise HTTPException(403, "User is not a member of any organisation")
     return place_ids[0]
 
 
 def resolve_visible_module(user: User, db: Session, module_id: str) -> int:
-    """Return a place id that makes ``module_id`` visible to ``user``.
+    """Return an org_unit id that makes ``module_id`` visible to ``user``.
 
     A module is visible when any of the user's organisations — reached
     directly or through a site — has a ``QuestionBankOrgStatus`` row for
@@ -231,7 +231,7 @@ def resolve_visible_module(user: User, db: Session, module_id: str) -> int:
     )
 
     for status in statuses:
-        # A null place means a row written before the column existed and
+        # A null org_unit means a row written before the column existed and
         # not touched since; the migration backfilled every one, so this
         # is belt and braces rather than an expected state.
         if status.is_live and status.org_unit_id is not None:
@@ -1638,12 +1638,12 @@ def _maybe_enqueue_certificate_emails(
         if coord_template:
             from app.org_units.tree import descendant_ids
 
-            # Whoever holds the clinical lead post at a place beneath this
+            # Whoever holds the clinical lead post at an org_unit beneath this
             # organisation. Read from the post rather than a role on a
             # staff row: a post can be vacant, and a vacancy must mean
             # nobody is emailed rather than the wrong person.
             #
-            # An exact match on one place, with no walk up the tree: a
+            # An exact match on one org_unit, with no walk up the tree: a
             # ward does not inherit its hospital's lead, and implying it
             # did would email the wrong person without raising anything.
             org_org_unit_id = assessment.org_unit_id
@@ -2175,7 +2175,7 @@ def create_media_upload_url(
 ) -> MediaUploadUrlOut:
     """Mint a resumable upload URL for one media file.
 
-    The only place the backend holds real GCS write credentials, and it
+    The only org_unit the backend holds real GCS write credentials, and it
     writes to the source bucket alone. Releasing a video to a learner is
     an HMAC over a shared secret, so the processed bucket needs no
     credential here at all.
@@ -2213,8 +2213,8 @@ def create_media_upload_url(
     org_id = _get_user_org_id(user, db)
     # Media objects live at {prefix}/{module}/{asset} in the bucket, so
     # that number addresses a real file rather than filtering a table.
-    # The place records which one, because the objects already written
-    # are under the organisation id the place used to have.
+    # The org_unit records which one, because the objects already written
+    # are under the organisation id the org_unit used to have.
     storage_prefix_id = media_prefix_of(db, org_id)
     if storage_prefix_id is None:
         raise HTTPException(404, "Module not found")
@@ -3128,9 +3128,9 @@ def _promote_bank_version(
     user: User,
     db: Session,
 ) -> PromoteBankVersionOut:
-    """Move which version of a bank a place's candidates receive.
+    """Move which version of a bank an org_unit's candidates receive.
 
-    The place is the one the caller named, and they must be a member of
+    The org_unit is the one the caller named, and they must be a member of
     it. Not inferred from the caller: ``_get_user_org_id`` returns
     whichever membership happens to come back first, so a person
     teaching for two would silently promote for the wrong one.
@@ -3226,7 +3226,7 @@ def update_bank_org_unit_settings(
     """Set a bank live or closed for an org_unit.
 
     Served at two addresses while the older one is retired. The
-    ``places`` spelling is kept for one release so a tab open across the
+    ``org_units`` spelling is kept for one release so a tab open across the
     deploy keeps working; ``org-units`` is the name the tree uses.
     """
     return _update_bank_org_settings(bank_id, org_unit_id, body, user, db)
@@ -3283,7 +3283,7 @@ def update_bank_org_settings_retired(
     org_id: int,
     body: QuestionBankOrgSettingsIn,
 ) -> QuestionBankOrgSettingsOut:
-    """Retired. Settings are set at ``/places/{org_unit_id}/settings``.
+    """Retired. Settings are set at ``/org_units/{org_unit_id}/settings``.
 
     No permission check, as with the other retired addresses: there is
     nothing behind it to protect, and saying it has gone discloses
@@ -3303,7 +3303,7 @@ def promote_bank_version_retired(
     org_id: int,
     body: PromoteBankVersionIn,
 ) -> PromoteBankVersionOut:
-    """Retired. Versions are promoted at ``/places/{org_unit_id}``."""
+    """Retired. Versions are promoted at ``/org_units/{org_unit_id}``."""
     _retired(
         "/api/teaching/admin/banks/{bank_id}/places/{org_unit_id}"
         "/active-version"
@@ -3317,9 +3317,9 @@ def _update_bank_org_settings(
     user: User,
     db: Session,
 ) -> QuestionBankOrgSettingsOut:
-    """Update settings (status) for a bank at a place.
+    """Update settings (status) for a bank at an org_unit.
 
-    The caller must be a member of the place named. Without that, anyone
+    The caller must be a member of the org_unit named. Without that, anyone
     holding ``manage_teaching_content`` could set a bank live or closed
     anywhere at all — and closing one mid-cohort locks its candidates
     out of an assessment they are part-way through.
@@ -3703,7 +3703,7 @@ def put_media_captions(
     wrong file entirely — without pretending to validate a format this
     endpoint has no business parsing. A player given a malformed track
     shows no captions and says nothing about why, so the cheap check
-    earns its place.
+    earns its org_unit.
     """
     from app.config import settings
     from app.features.teaching.storage import write_caption_object

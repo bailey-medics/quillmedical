@@ -1,7 +1,7 @@
 """The sign-off lifecycle: request, sign, decline, withdraw, supersede.
 
 Where the two-party act lives. Everything else in a passport is the
-holder recording something about themselves; this is the one place a
+holder recording something about themselves; this is the one org_unit a
 second named person accepts accountability for a judgement, and the
 rules here exist to protect that.
 

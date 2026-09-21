@@ -4,8 +4,8 @@ Provides functions for querying organisation membership and access
 control. Used throughout the application to enforce org-scoped
 visibility boundaries.
 
-**Everything here counts in place ids** — an organisation is named by
-its own row in the tree, the row every place beneath it walks up to.
+**Everything here counts in org_unit ids** — an organisation is named by
+its own row in the tree, the row every org_unit beneath it walks up to.
 That is the id the membership table holds, the id the patient list
 holds, and the id the screens put back into URLs. The organisation's own
 id is on its way out and nothing here speaks it.
@@ -52,7 +52,7 @@ from app.org_units.tree import (
 # ------------------------------------------------------------------
 
 #: Who is at an organisation, and in what capacity — the membership
-#: table, narrowed to the rows naming an organisation's own place.
+#: table, narrowed to the rows naming an organisation's own org_unit.
 #:
 #: A membership of a ward is not in here; that is a membership of the
 #: ward, and asking for it means asking about the ward. Reading
@@ -79,20 +79,20 @@ def organisation_org_units_of(
     """Return the organisation's own org_unit above each of *org_unit_ids*.
 
     The replacement for "which organisation is accountable here",
-    answered in the same id space as the question. A place is its own
+    answered in the same id space as the question. An org_unit is its own
     root, so an organisation's row answers itself.
 
     A root that no organisation stands for contributes nothing rather
-    than itself. Such a place is detached from every tree — the test
+    than itself. Such an org_unit is detached from every tree — the test
     fixtures make one deliberately — and treating it as an organisation
-    would give its members the run of a place nobody is accountable for.
+    would give its members the run of an org_unit nobody is accountable for.
 
     Args:
         db: Core database session.
-        org_unit_ids: The places to resolve.
+        org_unit_ids: The org_units to resolve.
 
     Returns:
-        The places of the organisations above them.
+        The org_units of the organisations above them.
     """
     if not org_unit_ids:
         return set()
@@ -129,7 +129,7 @@ def get_member_org_unit_ids(
             most access checks are really asking.
 
     Returns:
-        Place IDs, ascending.
+        org_unit IDs, ascending.
     """
     stmt = select(organisation_org_unit_member.c.org_unit_id).where(
         organisation_org_unit_member.c.user_id == user_id
@@ -143,7 +143,7 @@ def get_member_org_unit_ids(
 
 
 def org_units_administered_by(db: Session, user: User) -> set[int] | None:
-    """Return the places *user* may administer, or None for all of them.
+    """Return the org_units *user* may administer, or None for all of them.
 
     An admin administers the organisations they belong to and everything
     beneath them, at any depth. An operator gets None rather than a set
@@ -152,15 +152,15 @@ def org_units_administered_by(db: Session, user: User) -> set[int] | None:
     the table grows.
 
     Reach is deliberately not part of this. Reach is why somebody sees
-    teaching content at a place they visit; it is not authority over that
-    place.
+    teaching content at an org_unit they visit; it is not authority over that
+    org_unit.
 
     Args:
         db: Core database session.
         user: The caller.
 
     Returns:
-        The place ids, or None for an operator.
+        The org_unit ids, or None for an operator.
     """
     if user.platform_role == "superadmin":
         return None
@@ -174,7 +174,7 @@ def get_reachable_org_unit_ids(
 ) -> list[int]:
     """Return the organisations' org_units the user can reach, by any membership.
 
-    One resolver, replacing two that disagreed. Membership of a place
+    One resolver, replacing two that disagreed. Membership of an org_unit
     reaches the organisation accountable for it, because content is
     delivered downward and a trainee on a ward receives what the trust
     made available there.
@@ -200,13 +200,13 @@ def get_reachable_org_unit_ids(
         db: Core database session.
         user_id: The user to resolve.
         capacity: When given, only memberships of that capacity count, at
-            every kind of place alike.
+            every kind of org_unit alike.
 
     Returns:
-        Place IDs, ascending.
+        org_unit IDs, ascending.
     """
-    # Which places the user belongs to, then the root each of them walks
-    # up to. Walking rather than joining on a column, because a place
+    # Which org_units the user belongs to, then the root each of them walks
+    # up to. Walking rather than joining on a column, because an org_unit
     # several levels down still reaches its organisation and a join on
     # the parent would not see it.
     member_org_units = select(org_unit_member.c.org_unit_id).where(
@@ -228,16 +228,16 @@ def get_reachable_org_unit_ids(
 
 
 def _reached_through_links(db: Session, place_ids: set[int]) -> set[int]:
-    """Return the organisations' places reached from *place_ids* by a link.
+    """Return the organisations' org_units reached from *place_ids* by a link.
 
-    Only links pointing *away* from a place the person is actually at,
+    Only links pointing *away* from an org_unit the person is actually at,
     and only relations that say they grant reach. Two limits, both
     deliberate:
 
     - **A link is a claim its source makes about itself** — "we teach
       there" — so following it the other way would let anybody name a
       school and be let into it.
-    - **A link belongs to the place that made it**, not to everything
+    - **A link belongs to the org_unit that made it**, not to everything
       above it. One ward recording a relationship must not quietly open it
       to everybody at the trust, which is a wider promise than the ward
       made. An organisation that means it for all of its people records
@@ -249,10 +249,10 @@ def _reached_through_links(db: Session, place_ids: set[int]) -> set[int]:
 
     Args:
         db: Core database session.
-        place_ids: Places the person is at, and the roots they reach.
+        place_ids: org_units the person is at, and the roots they reach.
 
     Returns:
-        The places of organisations reached through a link, if any.
+        The org_units of organisations reached through a link, if any.
     """
     if not place_ids:
         return set()
@@ -382,13 +382,13 @@ def get_org_unit_patient_ids(db: Session, org_unit_ids: list[int]) -> set[str]:
 def get_org_unit_member_ids(
     db: Session, org_unit_ids: list[int], *, capacity: str | None = None
 ) -> set[int]:
-    """Return user IDs who are members of the given organisations' places.
+    """Return user IDs who are members of the given organisations' org_units.
 
     Args:
         db: Core database session.
-        org_unit_ids: The places to look in. An empty list returns nothing
+        org_unit_ids: The org_units to look in. An empty list returns nothing
             rather than everything, so a caller that resolved to no
-            place cannot accidentally see the whole estate.
+            org_unit cannot accidentally see the whole estate.
         capacity: When given, only members of that capacity are returned.
 
     Returns:
@@ -408,7 +408,7 @@ def get_org_unit_member_ids(
 
 
 def get_org_unit_staff_ids(db: Session, org_unit_ids: list[int]) -> set[int]:
-    """Return every member of the given places, in any capacity.
+    """Return every member of the given org_units, in any capacity.
 
     Deprecated in favour of :func:`get_org_unit_member_ids`, which makes the
     capacity explicit. The name says staff and the behaviour never was —
@@ -417,7 +417,7 @@ def get_org_unit_staff_ids(db: Session, org_unit_ids: list[int]) -> set[int]:
 
     Kept returning everyone, deliberately. Narrowing it here would change
     what every existing caller means in one edit, and at least one of them
-    (admin user listing) genuinely wants everybody at the place.
+    (admin user listing) genuinely wants everybody at the org_unit.
     Callers that mean staff should say
     ``get_org_unit_member_ids(db, org_unit_ids, capacity="staff")``.
     """
@@ -453,8 +453,8 @@ def get_accessible_patient_ids(db: Session, user: User) -> set[str]:
     # ------------------------------------------------------------------
     #
     # Membership at an organisation and membership at a ward are the same
-    # fact about the same person, and are now one table keyed on a place in
-    # the tree. An organisation's place is its own row — its root.
+    # fact about the same person, and are now one table keyed on an org_unit in
+    # the tree. An organisation's org_unit is its own row — its root.
     #
     # These three functions are the only code that writes an organisation
     # membership. They were what made switching every reader over a change in
@@ -462,24 +462,24 @@ def get_accessible_patient_ids(db: Session, user: User) -> set[str]:
 
 
 def media_prefix_of(db: Session, org_unit_id: int) -> int | None:
-    """Return the number this place's media objects are filed under.
+    """Return the number this org_unit's media objects are filed under.
 
     Media lives at ``{prefix}/{module}/{asset}`` in a bucket and the
     signed cookie covers that path, so every object of one module at one
-    place has to share a prefix. That number was the organisation's own
+    org_unit has to share a prefix. That number was the organisation's own
     id; ``org_unit.media_prefix_id`` records it, so the objects already
     written stay addressable once the organisations table is gone.
 
-    A place with nothing recorded files under its own id — which is what
-    a place created from here onwards does, there being no second number
+    An org_unit with nothing recorded files under its own id — which is what
+    an org_unit created from here onwards does, there being no second number
     for it to have.
 
     Args:
         db: Core database session.
-        org_unit_id: The place.
+        org_unit_id: The org_unit.
 
     Returns:
-        The prefix, or None if there is no such place.
+        The prefix, or None if there is no such org_unit.
     """
     row = db.execute(
         select(OrgUnit.id, OrgUnit.media_prefix_id).where(
@@ -568,18 +568,18 @@ def remove_org_unit_memberships(
 
     Removes every one of them when *org_unit_ids* is None, which is what a
     superadmin replacing somebody's memberships wants. An admin passes
-    the places they are entitled to act on, so the edit cannot reach a
+    the org_units they are entitled to act on, so the edit cannot reach a
     membership they cannot see.
 
     Only memberships *of organisations* go, even when a ward is named: a
-    membership of a ward is a different fact about a different place,
+    membership of a ward is a different fact about a different org_unit,
     and an admin editing which trusts somebody belongs to should not
     silently take them off a ward.
 
     Args:
         db: Core database session. The caller commits.
         user_id: The person.
-        org_unit_ids: Which places to clear, or None for every organisation.
+        org_unit_ids: Which org_units to clear, or None for every organisation.
     """
     roots = organisation_org_unit_ids()
     if org_unit_ids is not None:

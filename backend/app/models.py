@@ -139,7 +139,7 @@ class User(Base):
     # System Permissions: Administrative and system-level access control.
     #: Whether this person operates Quill itself. One value and its
     #: absence, because that is the only question the old four-level
-    #: ``system_permissions`` column asked that was not about a place.
+    #: ``system_permissions`` column asked that was not about an org_unit.
     #:
     #: That column is gone. ``admin`` and ``staff`` described a person
     #: *somewhere* and became membership plus competencies; only
@@ -217,9 +217,9 @@ org_unit_patient_member = Table(
     Column("org_unit_id", ForeignKey("org_unit.id"), primary_key=True),
     Column("patient_id", String(255), primary_key=True),
 )
-"""Association table: which patients a place is responsible for.
+"""Association table: which patients an org_unit is responsible for.
 
-The place is an organisation's own row in the tree. Whether a patient
+The org_unit is an organisation's own row in the tree. Whether a patient
 list may ever hang below a root is a product decision rather than a
 schema one; nothing stops it here.
 """
@@ -234,7 +234,7 @@ class OrgUnitFeature(Base):
 
     Attributes:
         id: Primary key.
-        org_unit_id: FK to the place the feature is enabled at, which is
+        org_unit_id: FK to the org_unit the feature is enabled at, which is
             an organisation's own row in the tree. Nullable in the column
             type only: the check constraint requires it, which is how a
             required column is added to a populated table without a
@@ -299,12 +299,12 @@ message_org_unit = Table(
         primary_key=True,
     ),
 )
-"""Association table linking conversations to places.
+"""Association table linking conversations to org_units.
 
-The place is an organisation's own row in the tree. The column was
+The org_unit is an organisation's own row in the tree. The column was
 renamed rather than repointed in silence: it holds a different number
 than it used to, and a call site that had not been moved across would
-otherwise have matched a different place without saying so.
+otherwise have matched a different org_unit without saying so.
 """
 
 
@@ -423,9 +423,9 @@ class Conversation(Base):
         back_populates="conversation",
         cascade="all, delete-orphan",
     )
-    # The places a conversation belongs to: an organisation's own row in
-    # the tree. Named ``places`` rather than ``organisations`` because the
-    # rows hold a place id now, and a name that still said organisation
+    # The org_units a conversation belongs to: an organisation's own row in
+    # the tree. Named ``org_units`` rather than ``organisations`` because the
+    # rows hold an org_unit id now, and a name that still said organisation
     # would be a set of numbers that do not mean what the name says.
     places: Mapped[list[OrgUnit]] = relationship(
         secondary=message_org_unit,
@@ -592,7 +592,7 @@ class PushSubscription(Base):
     # ------------------------------------------------------------------
 
 
-# In what capacity someone is at a place, whether that place is an
+# In what capacity someone is at an org_unit, whether that org_unit is an
 # organisation or a site. Deliberately open-ended: more are expected —
 # volunteer, contractor, honorary, visiting — so this is a string validated
 # against a list in code rather than a database enum, which would need a
@@ -600,16 +600,16 @@ class PushSubscription(Base):
 # mistake competency ids made.
 #
 # **One list, not one per table.** An organisation and a site are different
-# places, but a trainee is the same kind of member at either. Two lists would
+# org_units, but a trainee is the same kind of member at either. Two lists would
 # be two meanings of one word waiting to drift apart, which is exactly what
 # `site_staff_member.role` did.
 #
 # **Not a ranking, and never a permission check.** A trainee on placement and
-# a substantive staff member are different relationships to a place, not rungs
+# a substantive staff member are different relationships to an org_unit, not rungs
 # of a ladder. What someone may *do* there is a practising competency; if a
 # rule ever needs "contractors cannot do X", that belongs there, not here, or
 # this column becomes the access-control-shaped field its predecessor was.
-#: What a person is to Quill itself, as opposed to at a place.
+#: What a person is to Quill itself, as opposed to at an org_unit.
 #:
 #: Two values, not a ladder. ``superadmin`` operates the platform;
 #: ``standard`` is everyone else, and says nothing about what they may do —
@@ -648,11 +648,11 @@ def validate_platform_role(value: str) -> str:
         )
     return value
 
-    #: What relationship a person has to a place. Never a ranking and never a
+    #: What relationship a person has to an org_unit. Never a ranking and never a
     #: permission check: what somebody may do comes from their competencies,
     #: and this says only how they come to be here at all.
     #:
-    #: ``external`` is for somebody who belongs to another place entirely and
+    #: ``external`` is for somebody who belongs to another org_unit entirely and
     #: is here for one purpose — a consultant from another trust invited to
     #: sign off a trainee's competency. It has to be its own word rather than
     #: reusing ``staff``: ``staff`` carries a live behavioural check, letting
@@ -724,9 +724,9 @@ org_unit_member = Table(
     # quietly lost that behaviour.
     Column("capacity", String(50), nullable=False, server_default="trainee"),
 )
-"""Association table: who is at a place, and in what capacity.
+"""Association table: who is at an org_unit, and in what capacity.
 
-Keyed on a place in the tree, so a membership at an organisation is a row
+Keyed on an org_unit in the tree, so a membership at an organisation is a row
 against that organisation's own row — the root — and a membership at a
 ward is a row against the ward. One table for both, because a trainee is
 the same kind of member at either, and two tables were two meanings of
@@ -761,7 +761,7 @@ class OrgUnit(Base):
     ``type = "organisation"`` and no parent. What a row is comes from its
     type and never from its position, so a body sitting above today's
     organisations would need no schema change. The accountable organisation
-    for any place is found by walking up to the root; see
+    for any org_unit is found by walking up to the root; see
     ``app/org_units/tree.py``.
 
     Attributes:
@@ -790,8 +790,8 @@ class OrgUnit(Base):
         index=True,
     )
     location: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    #: The number this place's media objects are filed under in the
-    #: bucket, when it is not the place's own id.
+    #: The number this org_unit's media objects are filed under in the
+    #: bucket, when it is not the org_unit's own id.
     #:
     #: Media lives at ``{prefix}/{module}/{asset}`` and the signed
     #: cookie covers that path, so every object of one module at one
@@ -801,9 +801,9 @@ class OrgUnit(Base):
     #: recorded here instead of being derived from a table that will not
     #: be there.
     #:
-    #: Null for a place created since, which files under its own id.
+    #: Null for an org_unit created since, which files under its own id.
     #: Read through :func:`app.organisations.media_prefix_of` rather than
-    #: directly, so the fallback is in one place.
+    #: directly, so the fallback is in one org_unit.
     media_prefix_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_active: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default="true", nullable=False
@@ -827,7 +827,7 @@ class OrgUnit(Base):
 
 
 class OrgUnitLink(Base):
-    """A relationship between two places that is not ownership.
+    """A relationship between two org_units that is not ownership.
 
     Ownership is the parent column: one parent each, no cycles, and one
     answer to who is accountable. A medical school teaching on a trust's
@@ -848,12 +848,12 @@ class OrgUnitLink(Base):
 
     **Direction matters.** ``teaches_at`` from a school to a trust is not
     the same fact as the reverse, so the pair is ordered and the same two
-    places may hold a link each way.
+    org_units may hold a link each way.
 
     Attributes:
         id: Primary key.
-        source_id: The place the relationship is *from*.
-        target_id: The place the relationship is *to*.
+        source_id: The org_unit the relationship is *from*.
+        target_id: The org_unit the relationship is *to*.
         relation: A relation id from ``app/org_units/relations.py``.
         created_by: Who recorded the link. Null once that user is deleted,
             so the fact that somebody recorded it outlives the person.
@@ -904,7 +904,7 @@ class OrgUnitLink(Base):
         """Refuse a relation the code does not define.
 
         The list is in code rather than a database enum so it can grow
-        without a migration, which means the model is the only place that
+        without a migration, which means the model is the only org_unit that
         can refuse an unknown value before it is stored.
         """
         return validate_org_unit_relation(value)
@@ -913,7 +913,7 @@ class OrgUnitLink(Base):
         # Every organisation is a row in the tree as well
         # ------------------------------------------------------------------
         #
-        # An organisation is the root of its own tree: the row every place beneath
+        # An organisation is the root of its own tree: the row every org_unit beneath
         # it walks up to, and the thing that answers "who is accountable here". An
         # organisation without one is invisible to the whole permission system —
         # its sites reach no root, so nobody can administer them and nothing can be
@@ -931,14 +931,14 @@ def _clear_what_hangs_off_an_org_unit(
     connection: Connection,
     target: OrgUnit,
 ) -> None:
-    """Take everything that hangs off a place away with it.
+    """Take everything that hangs off an org_unit away with it.
 
     Its members, its features, its patient list, its conversations, who
     may practise there, the posts it holds and the links it made.
 
-    The places beneath it are detached rather than deleted, which is
+    The org_units beneath it are detached rather than deleted, which is
     what deleting an organisation did before the tree existed. The
-    delete route refuses a place that still has children, so this is the
+    delete route refuses an org_unit that still has children, so this is the
     net rather than the rule.
 
     All of it is written out rather than left to the foreign keys, which
@@ -948,7 +948,7 @@ def _clear_what_hangs_off_an_org_unit(
     nobody notices is missing.
 
     This was a listener on ``Organisation`` until that table went. It
-    already did its work through the place the organisation stood for,
+    already did its work through the org_unit the organisation stood for,
     so moving it here asks the same of the row that actually holds the
     rest.
     """
@@ -987,13 +987,13 @@ def _clear_what_hangs_off_an_org_unit(
 
 
 class PractisingCompetency(Base):
-    """Whether a person may practise a competency at certain place.
+    """Whether a person may practise a competency at certain org_unit.
 
     Named as the question it answers: can this person practise this
     competency here? Deliberately not a "grant" — the organisation does not
     confer the competency. That is held by the person, earned through
     training and sign-off. A row here only records that they are authorised
-    to exercise it at this place.
+    to exercise it at this org_unit.
 
     Healthcare draws the same line as credentialing versus privileging:
     verifying what someone is qualified for, then authorising specific work
@@ -1005,16 +1005,16 @@ class PractisingCompetency(Base):
     state, so practice cannot be silently withdrawn without removing the row
     that says who authorised it.
 
-    **One place column, and it is required**, enforced by
+    **One org_unit column, and it is required**, enforced by
     ``ck_practising_competency_place_required``. It used to be a pair of
     columns with exactly one of them set, because organisations and sites
     were different tables. They are one table now, so the pair, the check
     that policed it and the two partial unique indexes it forced all go.
 
-    The objection once raised against a shared "places" table — that it
+    The objection once raised against a shared "org_units" table — that it
     would need a row for every organisation and site forever, and a missed
-    one makes that place invisible to the whole permission system — does
-    not apply: every place is a row by construction, because there is
+    one makes that org_unit invisible to the whole permission system — does
+    not apply: every org_unit is a row by construction, because there is
     nowhere else for it to be.
 
     Nothing is inherited. A row at an organisation says nothing about its
@@ -1026,7 +1026,7 @@ class PractisingCompetency(Base):
     Attributes:
         id: Primary key.
         user_id: The person.
-        org_unit_id: The place. An organisation's place is its own row in
+        org_unit_id: The org_unit. An organisation's org_unit is its own row in
             the tree. Nullable in the column type only: the check
             constraint requires it, which is how a required column is
             added to a populated table without a server default that would
@@ -1044,9 +1044,9 @@ class PractisingCompetency(Base):
             "org_unit_id IS NOT NULL",
             name="ck_practising_competency_place_required",
         ),
-        # One ordinary unique constraint now that there is one place
+        # One ordinary unique constraint now that there is one org_unit
         # column. It used to be two partial unique indexes, because one of
-        # the two place columns was always NULL and SQL treats NULLs as
+        # the two org_unit columns was always NULL and SQL treats NULLs as
         # distinct, so a constraint over all of them never fired.
         UniqueConstraint(
             "user_id",
@@ -1110,7 +1110,7 @@ POSITION_KINDS: tuple[str, ...] = (
 
 
 class Position(Base):
-    """A slot a place has, which may be vacant.
+    """A slot an org_unit has, which may be vacant.
 
     The test that separates this from a competency is **can it be vacant?**
     "This site has no clinical lead" is a real and actionable state; a
@@ -1129,19 +1129,19 @@ class Position(Base):
     Holding is recorded separately, in ``PositionHolding``, so the slot
     outlives whoever fills it and the post's history is queryable.
 
-    **One place column, and it is required**, matching
+    **One org_unit column, and it is required**, matching
     ``PractisingCompetency`` and enforced the same way.
 
     Attributes:
         id: Primary key.
-        org_unit_id: The place. An organisation's place is its own row in
+        org_unit_id: The org_unit. An organisation's org_unit is its own row in
             the tree.
         kind: One of ``POSITION_KINDS``.
         title: What this organisation calls it, for display.
         requires_competency: A competency the holder must have authorised at
-            this place, or None where the post needs no particular one.
+            this org_unit, or None where the post needs no particular one.
         max_holders: How many people may hold it substantively, or None for
-            no limit. A fact about this place — one site may job-share a post
+            no limit. A fact about this org_unit — one site may job-share a post
             another treats as singular — so it lives here rather than on the
             kind.
     """

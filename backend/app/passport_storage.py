@@ -8,7 +8,7 @@ by tooling that has no application around it — no settings, no database,
 no FastAPI. See ``tests/test_features_import_boundary.py``.
 
 So the package takes a bucket or a directory as an argument, and this
-module is the only place that knows how that argument is chosen.
+module is the only org_unit that knows how that argument is chosen.
 
 **One setting decides it.** ``PASSPORT_GCS_BUCKET`` set means the bucket
 backend; unset means a local directory under ``PASSPORT_LOCAL_ROOT``.

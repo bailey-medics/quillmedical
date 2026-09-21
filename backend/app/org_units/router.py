@@ -1,9 +1,9 @@
 # backend/app/org_units/router.py
-"""One surface for every place.
+"""One surface for every org_unit.
 
 ``/api/organisations`` and ``/api/sites`` grew up as two surfaces over two
 tables. There is one table now, so there is one surface: every route here
-takes a place id, and what a place *is* comes from its ``type``.
+takes an org_unit id, and what an org_unit *is* comes from its ``type``.
 
 The two older surfaces stay until the frontend has moved across. They are
 not views over this one — they answer in organisation ids and site ids,
@@ -11,7 +11,7 @@ which are different numbers — so both are served side by side and the old
 pair is retired once nothing reads it.
 
 **Nothing here is inherited.** A ward does not take on its trust's
-features, members or patient list; each is a fact about one place. Only
+features, members or patient list; each is a fact about one org_unit. Only
 scoping walks the tree, which is what decides who may see and edit what.
 """
 
@@ -116,24 +116,24 @@ router = APIRouter(prefix="/org-units", tags=["org-units"])
 
 
 def _visible_ids(db: Session, user: User) -> set[int] | None:
-    """Return the places *user* may see, or None for all of them.
+    """Return the org_units *user* may see, or None for all of them.
 
     An admin sees the organisations they belong to and everything beneath
     them, at any depth. A superadmin sees the estate, and gets None rather
     than a set of every id in the table.
 
     Reach is deliberately not used here. Reach is why somebody sees
-    teaching content at a place they visit; it is not authority to
-    administer that place, and these are the administration routes.
+    teaching content at an org_unit they visit; it is not authority to
+    administer that org_unit, and these are the administration routes.
     """
     return org_units_administered_by(db, user)
 
 
 def _require_visible(db: Session, user: User, unit_id: int) -> OrgUnit:
-    """Return the place, or refuse with a 404.
+    """Return the org_unit, or refuse with a 404.
 
     404 rather than 403 throughout, so a refusal does not confirm that a
-    place exists to somebody who may not see it.
+    org_unit exists to somebody who may not see it.
     """
     unit = db.get(OrgUnit, unit_id)
     if unit is None:
@@ -179,7 +179,7 @@ def _known_capacity(value: str) -> str:
 
 
 def _is_root(unit: OrgUnit) -> bool:
-    """Whether this place is the top of a tree.
+    """Whether this org_unit is the top of a tree.
 
     Declared by the type, never inferred from having no parent. That is
     the one piece of future-proofing the design pays for: the day a body
@@ -190,7 +190,7 @@ def _is_root(unit: OrgUnit) -> bool:
 
 
 def _item(unit: OrgUnit) -> OrgUnitItem:
-    """Build the list entry for one place."""
+    """Build the list entry for one org_unit."""
     definition = get_org_unit_type(unit.type)
     return OrgUnitItem(
         id=unit.id,
@@ -211,7 +211,7 @@ def _item(unit: OrgUnit) -> OrgUnitItem:
 def _names_of(db: Session, user_ids: set[int]) -> dict[int, str]:
     """Return a readable name for each of *user_ids*.
 
-    Resolved in one query so a list of places does not cost one request
+    Resolved in one query so a list of org_units does not cost one request
     per row to say who leads it.
     """
     if not user_ids:
@@ -227,7 +227,7 @@ def _names_of(db: Session, user_ids: set[int]) -> dict[int, str]:
 
 
 def _members_of(db: Session, unit_id: int) -> OrgUnitMembersOut:
-    """Return everybody at one place, by username."""
+    """Return everybody at one org_unit, by username."""
     rows = db.execute(
         select(
             User.id,
@@ -255,7 +255,7 @@ def _members_of(db: Session, unit_id: int) -> OrgUnitMembersOut:
 
 
 # ------------------------------------------------------------------
-# Places
+# org_units
 # ------------------------------------------------------------------
 
 
@@ -270,11 +270,11 @@ def list_org_units(
     current_user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> OrgUnitsListOut:
-    """List the places the caller may administer.
+    """List the org_units the caller may administer.
 
     ``roots=true`` returns the organisations and ``roots=false`` the
-    places inside them; ``parent_id`` narrows to one place's children.
-    Given neither, every place the caller may administer comes back.
+    org_units inside them; ``parent_id`` narrows to one org_unit's children.
+    Given neither, every org_unit the caller may administer comes back.
 
     Requires ``manage_users``.
     """
@@ -307,12 +307,12 @@ def create_org_unit(
     current_user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> OrgUnitItem:
-    """Create a place.
+    """Create an org_unit.
 
     Naming no parent creates the top of a tree, which only an operator may
     do: a new organisation is not something an admin of one other
     organisation should be able to conjure. Naming a parent creates a
-    place inside it, and the parent has to be one the caller may
+    org_unit inside it, and the parent has to be one the caller may
     administer.
 
     The type decides which of the two is allowed, so neither can be
@@ -371,10 +371,10 @@ def get_org_unit(
     current_user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> OrgUnitDetailOut:
-    """One place, with who is here and what is inside it.
+    """One org_unit, with who is here and what is inside it.
 
     Features and the patient list come back empty for anything but the top
-    of a tree, because that is the only kind of place that carries them.
+    of a tree, because that is the only kind of org_unit that carries them.
 
     Requires ``manage_users``.
     """
@@ -469,9 +469,9 @@ def update_org_unit(
     current_user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> OrgUnitItem:
-    """Change a place. Only the fields given are changed.
+    """Change an org_unit. Only the fields given are changed.
 
-    Moving a place is refused if it would put the place inside itself, at
+    Moving an org_unit is refused if it would put the org_unit inside itself, at
     any depth, and if the new parent is one the caller may not administer.
 
     Requires ``manage_users``.
@@ -498,7 +498,7 @@ def update_org_unit(
         unit.location = body.location.strip() or None
 
     if body.parent_id is not None:
-        # The type says whether a place sits inside another. An
+        # The type says whether an org_unit sits inside another. An
         # organisation given a parent would be a top of tree with
         # something above it: `is_root` would keep saying yes while
         # every walk up found somebody else's trust.
@@ -534,7 +534,7 @@ def set_org_unit_active(
     current_user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> OrgUnitItem:
-    """Put a place in or out of use. Requires ``manage_users``."""
+    """Put an org_unit in or out of use. Requires ``manage_users``."""
     unit = _require_visible(db, current_user, unit_id)
     unit.is_active = body.is_active
     db.flush()
@@ -552,7 +552,7 @@ def delete_org_unit(
     current_user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> OrgUnitStatusOut:
-    """Delete a place. Requires ``manage_users``.
+    """Delete an org_unit. Requires ``manage_users``.
 
     Deleting the top of a tree is an operator's job, matching what
     deleting an organisation has always required.
@@ -564,7 +564,7 @@ def delete_org_unit(
             status_code=403, detail="Requires superadmin permissions"
         )
 
-    # A place with something inside it is refused rather than emptied.
+    # An org_unit with something inside it is refused rather than emptied.
     # The column says ``SET NULL``, so deleting a ward would leave its
     # rooms belonging nowhere: invisible to every list, reachable by
     # nobody, and impossible to tell from rooms that were always loose.
@@ -584,7 +584,7 @@ def delete_org_unit(
             ),
         )
 
-    # Deleting the place clears everything hanging off it, through the
+    # Deleting the org_unit clears everything hanging off it, through the
     # listener on the model.
     db.delete(unit)
     db.flush()
@@ -606,7 +606,7 @@ def list_org_unit_members(
     current_user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> OrgUnitMembersOut:
-    """Everybody at one place. Requires ``manage_users``."""
+    """Everybody at one org_unit. Requires ``manage_users``."""
     _require_visible(db, current_user, unit_id)
     return _members_of(db, unit_id)
 
@@ -622,7 +622,7 @@ def add_org_unit_member(
     current_user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> OrgUnitStatusOut:
-    """Record that somebody is at a place, in a given capacity.
+    """Record that somebody is at an org_unit, in a given capacity.
 
     The grant goes in the same request as the membership. Adding somebody
     and then separately remembering to give them competencies is two steps
@@ -692,11 +692,11 @@ def remove_org_unit_member(
     current_user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> OrgUnitStatusOut:
-    """Take somebody off a place.
+    """Take somebody off an org_unit.
 
     Anything they hold here goes with them. Naming a clinical lead
-    requires the person to be at the place, so leaving them holding the
-    post after taking them off it would leave the place in a state the
+    requires the person to be at the org_unit, so leaving them holding the
+    post after taking them off it would leave the org_unit in a state the
     same surface refuses to create. The post is vacated rather than
     deleted, so the handover is recorded.
 
@@ -731,7 +731,7 @@ def set_org_unit_clinical_lead(
     current_user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> OrgUnitStatusOut:
-    """Name the clinical lead of a place, or leave the post vacant.
+    """Name the clinical lead of an org_unit, or leave the post vacant.
 
     A post is not a competency: it can be vacant, and "this ward has no
     clinical lead" is a real and actionable state. Passing no person
@@ -741,7 +741,7 @@ def set_org_unit_clinical_lead(
     Whoever holds it substantively is stood down first, so a handover is
     recorded rather than the previous holder simply vanishing.
 
-    The person has to be at the place already. Naming somebody who is not
+    The person has to be at the org_unit already. Naming somebody who is not
     would make the post say they are involved here when nothing else does.
 
     Requires ``manage_staff_membership``.
@@ -935,7 +935,7 @@ def withdraw_practising_competency(
 
 
 # ------------------------------------------------------------------
-# What a place carries
+# What an org_unit carries
 # ------------------------------------------------------------------
 
 
@@ -949,7 +949,7 @@ def list_org_unit_features(
     current_user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> OrgUnitFeaturesOut:
-    """Which features are on at a place. Requires ``manage_users``."""
+    """Which features are on at an org_unit. Requires ``manage_users``."""
     _require_visible(db, current_user, unit_id)
 
     rows = list(
@@ -988,13 +988,13 @@ def set_org_unit_feature(
     current_user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> OrgUnitStatusOut:
-    """Switch a feature on or off at a place.
+    """Switch a feature on or off at an org_unit.
 
     Only the top of a tree carries features. Refusing here rather than
     writing a row nothing would ever read: a feature quietly enabled on a
     ward that does nothing is worse than being told it cannot be.
 
-    Requires ``manage_users`` at a place the caller may administer, which
+    Requires ``manage_users`` at an org_unit the caller may administer, which
     is what the organisations surface has always asked. An operator-only
     gate here would have taken a working thing away from every admin the
     day that surface was retired.
@@ -1049,10 +1049,10 @@ def add_org_unit_patient(
     current_user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> OrgUnitStatusOut:
-    """Record that a place is responsible for a patient.
+    """Record that an org_unit is responsible for a patient.
 
     Only the top of a tree keeps a patient list, for the same reason it is
-    the only place that carries features.
+    the only org_unit that carries features.
 
     Requires ``manage_patient_membership``.
     """
@@ -1097,7 +1097,7 @@ def remove_org_unit_patient(
     current_user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> OrgUnitStatusOut:
-    """Stop a place being responsible for a patient.
+    """Stop an org_unit being responsible for a patient.
 
     Requires ``manage_patient_membership``.
     """
@@ -1131,10 +1131,10 @@ def list_org_unit_links(
     current_user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> OrgUnitLinksOut:
-    """Every relationship this place is either end of.
+    """Every relationship this org_unit is either end of.
 
     Both directions. A school teaching at a trust is one fact and the
-    reverse is another, so a place has to see the links pointing at it as
+    reverse is another, so an org_unit has to see the links pointing at it as
     well as the ones it made.
 
     Requires ``manage_users``.
@@ -1154,14 +1154,14 @@ def create_org_unit_link(
     current_user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> OrgUnitLinksOut:
-    """Record a relationship from this place to another.
+    """Record a relationship from this org_unit to another.
 
-    **The place at the other end is not checked for ownership**, and that
+    **The org_unit at the other end is not checked for ownership**, and that
     is the point: the relationships worth recording cross between
     organisations, and requiring both ends would make this useless for
     exactly those.
 
-    Requires ``manage_users``, and the place the link is *from* must be
+    Requires ``manage_users``, and the org_unit the link is *from* must be
     one the caller may administer.
     """
     _require_visible(db, current_user, unit_id)
@@ -1217,10 +1217,10 @@ def delete_org_unit_link(
     current_user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> OrgUnitLinksOut:
-    """Remove a relationship this place is either end of.
+    """Remove a relationship this org_unit is either end of.
 
     Either end may remove it. A relationship somebody else recorded about
-    your place is still a claim about your place.
+    your org_unit is still a claim about your org_unit.
 
     Requires ``manage_users``.
     """
@@ -1236,7 +1236,7 @@ def delete_org_unit_link(
 
 
 def _links_out(db: Session, unit_id: int) -> OrgUnitLinksOut:
-    """Build the response listing every link a place is an end of."""
+    """Build the response listing every link an org_unit is an end of."""
     links = list(
         db.execute(
             select(OrgUnitLink)

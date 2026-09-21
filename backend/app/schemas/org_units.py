@@ -1,14 +1,14 @@
 # backend/app/schemas/org_units.py
 """Request and response shapes for the org_unit surface.
 
-One surface for every place, because there is one table of them. An
-organisation is a place with no parent, a ward is a place inside one, and
+One surface for every org_unit, because there is one table of them. An
+organisation is an org_unit with no parent, a ward is an org_unit inside one, and
 the only thing that says which is the ``type``.
 
 The two older surfaces — ``/api/organisations`` and ``/api/sites`` — stay
 until the frontend has moved across, then go. They answer in
 *organisation* ids and *site* ids respectively; everything here answers in
-place ids, which is what makes them different surfaces rather than one
+org_unit ids, which is what makes them different surfaces rather than one
 surface with two names.
 """
 
@@ -19,12 +19,12 @@ from app.cbac.competencies import validate_competency_ids
 
 
 class CreateOrgUnitIn(BaseModel):
-    """Request to create a place.
+    """Request to create an org_unit.
 
     Attributes:
         name: What it is called.
         type: One of the types in ``shared/org-unit-types.yaml``.
-        parent_id: The place it sits inside, or None for the top of a
+        parent_id: The org_unit it sits inside, or None for the top of a
             tree. Whether None is allowed comes from the type: a type that
             requires a parent may not be a root, and a type that does not
             may not have one.
@@ -44,7 +44,7 @@ class CreateOrgUnitIn(BaseModel):
         """Refuse a name that is only spaces.
 
         The routes strip a name before storing it, so a name of spaces
-        became a place called nothing: a row that cannot be searched for,
+        became an org_unit called nothing: a row that cannot be searched for,
         picked out of a list, or asked about. Refusing is the kinder
         answer, and the same one a missing name already gets.
         """
@@ -54,12 +54,12 @@ class CreateOrgUnitIn(BaseModel):
 
 
 class UpdateOrgUnitIn(BaseModel):
-    """Request to change a place. Only the fields given are changed.
+    """Request to change an org_unit. Only the fields given are changed.
 
     Attributes:
         name: New name.
         type: New type.
-        parent_id: Where it sits. Refused if it would put the place
+        parent_id: Where it sits. Refused if it would put the org_unit
             inside itself.
         location: New location.
     """
@@ -74,14 +74,14 @@ class UpdateOrgUnitIn(BaseModel):
     @field_validator("name")
     @classmethod
     def _name_says_something(cls, value: str | None) -> str | None:
-        """Refuse renaming a place to nothing, for the same reason."""
+        """Refuse renaming an org_unit to nothing, for the same reason."""
         if value is not None and not value.strip():
             raise ValueError("A place needs a name.")
         return value
 
 
 class ToggleOrgUnitActiveIn(BaseModel):
-    """Request to activate or deactivate a place.
+    """Request to activate or deactivate an org_unit.
 
     Attributes:
         is_active: Whether it is in use.
@@ -93,16 +93,16 @@ class ToggleOrgUnitActiveIn(BaseModel):
 
 
 class OrgUnitItem(BaseModel):
-    """One place, as it appears in a list.
+    """One org_unit, as it appears in a list.
 
     Attributes:
-        id: Place ID.
+        id: org_unit ID.
         name: What it is called.
         type: Its type.
         type_display_name: What a person is shown for the type.
         is_root: Whether it is the top of a tree — an organisation.
             Declared by the type, never inferred from having no parent.
-        parent_id: The place it sits inside, or None.
+        parent_id: The org_unit it sits inside, or None.
         location: Free text, possibly empty.
         is_active: Whether it is in use.
         created_at: ISO timestamp when created.
@@ -122,17 +122,17 @@ class OrgUnitItem(BaseModel):
 
 
 class OrgUnitsListOut(BaseModel):
-    """A list of places.
+    """A list of org_units.
 
     Attributes:
-        org_units: The places, by name.
+        org_units: The org_units, by name.
     """
 
     org_units: list[OrgUnitItem]
 
 
 class OrgUnitMemberItem(BaseModel):
-    """Somebody at a place, and in what capacity.
+    """Somebody at an org_unit, and in what capacity.
 
     Attributes:
         id: User ID.
@@ -150,7 +150,7 @@ class OrgUnitMemberItem(BaseModel):
 
 
 class OrgUnitMembersOut(BaseModel):
-    """Everybody at a place.
+    """Everybody at an org_unit.
 
     Attributes:
         members: The people, by username.
@@ -160,7 +160,7 @@ class OrgUnitMembersOut(BaseModel):
 
 
 class AddOrgUnitMemberIn(BaseModel):
-    """Request to record that somebody is at a place.
+    """Request to record that somebody is at an org_unit.
 
     Attributes:
         user_id: The person.
@@ -204,16 +204,16 @@ class AddOrgUnitMemberIn(BaseModel):
 
 
 class OrgUnitChildItem(BaseModel):
-    """A place directly inside another.
+    """An org_unit directly inside another.
 
     Attributes:
-        id: Place ID.
+        id: org_unit ID.
         name: What it is called.
         type: Its type.
         is_active: Whether it is in use.
         clinical_lead_id: Who holds its clinical lead post, or None when
             the post is vacant.
-        clinical_lead_name: That person's name, so a list of places can be
+        clinical_lead_name: That person's name, so a list of org_units can be
             read without a second request per row. Empty when the post is
             vacant, which is a real state and not a missing value.
     """
@@ -227,19 +227,19 @@ class OrgUnitChildItem(BaseModel):
 
 
 class OrgUnitDetailOut(BaseModel):
-    """One place and what hangs off it.
+    """One org_unit and what hangs off it.
 
     Attributes:
-        id: Place ID.
+        id: org_unit ID.
         name: What it is called.
         type: Its type.
         type_display_name: What a person is shown for the type.
         is_root: Whether it is the top of a tree.
-        parent_id: The place it sits inside, or None.
-        parent_name: What that place is called, so a page can say where
+        parent_id: The org_unit it sits inside, or None.
+        parent_name: What that org_unit is called, so a page can say where
             this one sits without a second request. Empty at the top of a
             tree.
-        parent_is_root: Whether the place above is an organisation. A
+        parent_is_root: Whether the org_unit above is an organisation. A
             screen that links to it has to know which of the two pages to
             send somebody to, and asking the server is cheaper than
             fetching the parent to find out.
@@ -248,10 +248,10 @@ class OrgUnitDetailOut(BaseModel):
         created_at: ISO timestamp when created.
         updated_at: ISO timestamp when last changed.
         members: Who is here.
-        children: The places directly inside this one.
+        children: The org_units directly inside this one.
         features: Feature keys enabled here. Only the top of a tree
             carries any.
-        patient_ids: The patients this place is responsible for. Only the
+        patient_ids: The patients this org_unit is responsible for. Only the
             top of a tree carries any.
         clinical_lead_id: Who holds the clinical lead post here, or None
             when it is vacant. Read this rather than scanning members: the
@@ -279,7 +279,7 @@ class OrgUnitDetailOut(BaseModel):
 
 
 class OrgUnitFeatureItem(BaseModel):
-    """A feature enabled at a place.
+    """A feature enabled at an org_unit.
 
     Attributes:
         feature_key: Which feature.
@@ -293,7 +293,7 @@ class OrgUnitFeatureItem(BaseModel):
 
 
 class OrgUnitFeaturesOut(BaseModel):
-    """Every feature enabled at a place.
+    """Every feature enabled at an org_unit.
 
     Attributes:
         features: The features.
@@ -303,7 +303,7 @@ class OrgUnitFeaturesOut(BaseModel):
 
 
 class ToggleOrgUnitFeatureIn(BaseModel):
-    """Request to switch a feature on or off at a place.
+    """Request to switch a feature on or off at an org_unit.
 
     Attributes:
         enabled: Whether the feature should be on.
@@ -315,7 +315,7 @@ class ToggleOrgUnitFeatureIn(BaseModel):
 
 
 class AddOrgUnitPatientIn(BaseModel):
-    """Request to record that a place is responsible for a patient.
+    """Request to record that an org_unit is responsible for a patient.
 
     Attributes:
         patient_id: FHIR Patient resource ID.
@@ -407,7 +407,7 @@ class AuthorisePractisingCompetencyIn(BaseModel):
 
 
 class SetClinicalLeadIn(BaseModel):
-    """Request to name a place's clinical lead, or leave the post vacant.
+    """Request to name an org_unit's clinical lead, or leave the post vacant.
 
     Attributes:
         user_id: Who holds the post, or None to vacate it. A vacancy is a

@@ -225,7 +225,7 @@ class Profile(PassportModel):
 
     Regenerated whenever the holder's details change rather than frozen
     at creation, because it is the *current* answer to "whose is this".
-    The one place the passport says so, which is why no record repeats
+    The one org_unit the passport says so, which is why no record repeats
     it — copying a name into every record would leave dozens of stale
     ones behind the first time somebody marries.
     """

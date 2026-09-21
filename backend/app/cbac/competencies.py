@@ -100,7 +100,7 @@ def _load_competencies(directory: Path) -> list[CompetencyEntry]:
         FileNotFoundError: If the directory holds no definition files at
             all, which means a missing mount or a bad path rather than an
             empty catalogue.
-        ValueError: If an id is defined in more than one place. Ids are
+        ValueError: If an id is defined in more than one org_unit. Ids are
             referenced from stored records, so a duplicate makes which
             definition applies depend on filename order.
     """
@@ -198,7 +198,7 @@ def is_valid_competency(competency_id: str) -> bool:
 def unknown_competency_ids(ids: Iterable[str]) -> list[str]:
     """Return the ids the catalogue has never defined.
 
-    A competency id is a bare string in three unconnected places — this
+    A competency id is a bare string in three unconnected org_units — this
     catalogue, the JSON columns on ``users``, and ``practising_competency``
     — with no foreign key between them. Nothing reports a misspelt one, so
     it silently becomes a competency nobody holds.

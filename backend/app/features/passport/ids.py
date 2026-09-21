@@ -9,7 +9,7 @@ this module exists to prevent.
   VPR's ``TimestampId``.
 - **A write-time filename or folder name** is what a human reads in a
   directory listing. Generated here too, so the naming rules live in one
-  place, but never used as identity.
+  org_unit, but never used as identity.
 
 The distinction matters because **a timestamp gives chronology, not
 identity**. Two records written in the same millisecond are still two

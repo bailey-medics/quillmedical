@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 #: Outputs the job writes, and the link column each one sets. The names
 #: are deterministic — the player addresses them directly rather than
-#: listing the bucket — so this is the one place the mapping lives.
+#: listing the bucket — so this is the one org_unit the mapping lives.
 RENDITION_FLAGS: tuple[tuple[str, str], ...] = (
     ("has_1080p", "-1080p.mp4"),
     ("has_poster", "-poster.jpg"),

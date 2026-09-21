@@ -45,7 +45,7 @@ from app.features.passport.schemas import (
 )
 
 # The enums are imported rather than restated. They are the same closed
-# vocabularies in both places, and a second copy would drift: a new CPD
+# vocabularies in both org_units, and a second copy would drift: a new CPD
 # activity type added to the record model and forgotten here would be
 # accepted on disk and refused at the door, or the reverse.
 
@@ -482,7 +482,7 @@ class ReflectionIn(_In):
     proceedings, so the narrower default is the safer one.
 
     ``anonymised_confirmed`` must be true: reflections are written about
-    real cases and are one of only two places patient data could enter a
+    real cases and are one of only two org_units patient data could enter a
     passport.
     """
 
@@ -751,8 +751,8 @@ class RegistrationVerificationOut(BaseModel):
     registration_number: NonEmptyText
     verified_by_name: NonEmptyText
     verified_at: datetime
-    #: The place of the organisation whose admin checked it. Named for
-    #: the place because that is the id it holds; ``organisation_id``,
+    #: The org_unit of the organisation whose admin checked it. Named for
+    #: the org_unit because that is the id it holds; ``organisation_id``,
     #: which it replaces, counted in the organisations table's own ids.
     org_unit_id: int
 
@@ -772,8 +772,8 @@ class AssessorRevokeOut(BaseModel):
     #: is kept for one release so a tab open across the deploy keeps
     #: working, and retires once that release has shipped.
     place_id: int
-    #: The org_unit the membership was held at, whichever kind ``place``
-    #: says. It used to hold the organisation's own id when ``place``
+    #: The org_unit the membership was held at, whichever kind ``org_unit``
+    #: says. It used to hold the organisation's own id when ``org_unit``
     #: was ``organisation``, which the name never said.
     org_unit_id: int
     sign_offs_kept: int
@@ -784,7 +784,7 @@ class AssessorInviteAcceptOut(BaseModel):
 
     ``status`` is ``registered`` when an account was created and
     ``linked`` when an existing one was used. Both end with the assessor
-    holding a membership at the holder's place with capacity
+    holding a membership at the holder's org_unit with capacity
     ``external``, which is what ``requires_feature("passport")`` then
     resolves through.
     """

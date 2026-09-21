@@ -198,7 +198,7 @@ class BlobStore:
         try:
             target.parent.mkdir(parents=True, exist_ok=True)
 
-            # Write beside the target and move into place, so a failure
+            # Write beside the target and move into org_unit, so a failure
             # part-way through cannot leave a truncated file under a name
             # that asserts its own hash. A reader finding a short file at
             # a valid hash would have no way to tell it was incomplete.

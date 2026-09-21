@@ -314,7 +314,7 @@ class CreateSiteIn(BaseModel):
 
     ``organisation_id`` is required. A site created without one belongs
     nowhere, and nothing can scope it afterwards: it is invisible to
-    ``list_sites``, and every site place check asks which organisation a
+    ``list_sites``, and every site org_unit check asks which organisation a
     site belongs to. The route links it in the same transaction, so a site
     is never briefly ownerless.
 
@@ -557,14 +557,14 @@ class AddSiteStaffResponse(BaseModel):
 
 
 class CreateOrgUnitLinkIn(BaseModel):
-    """Request to record a relationship between two places.
+    """Request to record a relationship between two org_units.
 
     Ownership is not a relationship you record here — that is the parent
     of a site, and it has its own routes. This is for everything else: a
     school teaching on a trust's wards, two trusts sharing a laboratory.
 
     Attributes:
-        target_id: The place the relationship is *to*.
+        target_id: The org_unit the relationship is *to*.
         relation: One of the relations defined in
             ``app/org_units/relations.py``.
     """
@@ -576,18 +576,18 @@ class CreateOrgUnitLinkIn(BaseModel):
 
 
 class OrgUnitLinkItem(BaseModel):
-    """One recorded relationship between two places.
+    """One recorded relationship between two org_units.
 
     Both ends are named as well as numbered, because a link is read from
-    either side and an id alone tells the reader nothing about the place
+    either side and an id alone tells the reader nothing about the org_unit
     at the other end.
 
     Attributes:
         id: Link ID.
-        source_id: The place the relationship is from.
-        source_name: That place's name.
-        target_id: The place the relationship is to.
-        target_name: That place's name.
+        source_id: The org_unit the relationship is from.
+        source_name: That org_unit's name.
+        target_id: The org_unit the relationship is to.
+        target_name: That org_unit's name.
         relation: The relation id.
         relation_display_name: What a person is shown for the relation.
         created_at: ISO timestamp when the link was recorded.
@@ -604,7 +604,7 @@ class OrgUnitLinkItem(BaseModel):
 
 
 class OrgUnitLinksOut(BaseModel):
-    """Every relationship a place is either end of.
+    """Every relationship an org_unit is either end of.
 
     Attributes:
         links: The relationships, oldest first.

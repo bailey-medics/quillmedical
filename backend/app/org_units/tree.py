@@ -1,7 +1,7 @@
 # backend/app/org_units/tree.py
 """Walking the governance tree, up and down.
 
-Ownership is one parent per place and no cycles, so every place has one
+Ownership is one parent per org_unit and no cycles, so every org_unit has one
 root and one accountable body above it. Everything in this module is a
 walk of that single parent column, and each walk is one recursive query
 rather than one query per level — scoping runs on every admin request.
@@ -33,15 +33,15 @@ MAX_TREE_DEPTH = 10
 def root_ids_of(db: Session, unit_ids: list[int]) -> dict[int, int]:
     """Return the root above each of *unit_ids*, in one query.
 
-    Walks the parent column up from every place at once, carrying where
-    it started, and keeps the rows that reached a place with no parent.
+    Walks the parent column up from every org_unit at once, carrying where
+    it started, and keeps the rows that reached an org_unit with no parent.
 
     Args:
         db: Core database session.
-        unit_ids: The places to resolve.
+        unit_ids: The org_units to resolve.
 
     Returns:
-        A mapping of place id to root id, leaving out any place that does
+        A mapping of org_unit id to root id, leaving out any org_unit that does
         not exist and any whose chain does not end — which is what a cycle
         looks like from below.
     """
@@ -78,22 +78,22 @@ def root_ids_of(db: Session, unit_ids: list[int]) -> dict[int, int]:
 def root_id_of(db: Session, unit_id: int) -> int | None:
     """Return the id of the root above *unit_id*, or None if there is none.
 
-    A place with no parent is its own root, which is the answer for an
+    An org_unit with no parent is its own root, which is the answer for an
     organisation.
 
     Args:
         db: Core database session.
-        unit_id: The place to resolve.
+        unit_id: The org_unit to resolve.
 
     Returns:
-        The root's id, or None if the place does not exist or its chain
+        The root's id, or None if the org_unit does not exist or its chain
         does not reach one.
     """
     return root_ids_of(db, [unit_id]).get(unit_id)
 
 
 def ancestor_ids(db: Session, unit_id: int) -> list[int]:
-    """Return every place above *unit_id*, nearest first.
+    """Return every org_unit above *unit_id*, nearest first.
 
     The same upward walk root resolution performs, exposed on its own so
     the cycle guard and the root lookup cannot disagree about what "above"
@@ -105,7 +105,7 @@ def ancestor_ids(db: Session, unit_id: int) -> list[int]:
 
     Args:
         db: Core database session.
-        unit_id: The place to walk up from. Not included in the result.
+        unit_id: The org_unit to walk up from. Not included in the result.
 
     Returns:
         The ids of its ancestors, closest first.
@@ -135,7 +135,7 @@ def ancestor_ids(db: Session, unit_id: int) -> list[int]:
             continue
         if int(ancestor_id) == unit_id:
             # The chain has come back round to where it started, which is
-            # a cycle. Stop rather than report the place as its own
+            # a cycle. Stop rather than report the org_unit as its own
             # ancestor, which nothing above here would know what to do
             # with.
             break
@@ -158,11 +158,11 @@ def would_make_a_cycle(db: Session, unit_id: int, parent_id: int) -> bool:
 
     Args:
         db: Core database session.
-        unit_id: The place being moved.
+        unit_id: The org_unit being moved.
         parent_id: Where it is being moved to.
 
     Returns:
-        True if the move would put a place inside itself.
+        True if the move would put an org_unit inside itself.
     """
     if unit_id == parent_id:
         return True
@@ -170,7 +170,7 @@ def would_make_a_cycle(db: Session, unit_id: int, parent_id: int) -> bool:
 
 
 def descendant_ids(db: Session, root_ids: list[int]) -> set[int]:
-    """Return every place below *root_ids*, at any depth, in one query.
+    """Return every org_unit below *root_ids*, at any depth, in one query.
 
     A subtree query rather than a join on ``parent_id``, even though
     today's tree is two levels deep, so that a third level needs no
@@ -178,10 +178,10 @@ def descendant_ids(db: Session, root_ids: list[int]) -> set[int]:
 
     Args:
         db: Core database session.
-        root_ids: The places to descend from. Not included in the result.
+        root_ids: The org_units to descend from. Not included in the result.
 
     Returns:
-        The ids of every place beneath them.
+        The ids of every org_unit beneath them.
     """
     if not root_ids:
         return set()
@@ -207,9 +207,9 @@ def descendant_ids(db: Session, root_ids: list[int]) -> set[int]:
 
 
 def organisation_org_unit_ids() -> Select[tuple[int]]:
-    """A selectable of every place that is an organisation.
+    """A selectable of every org_unit that is an organisation.
 
-    An organisation is a place at the top of a tree, and what makes it
+    An organisation is an org_unit at the top of a tree, and what makes it
     one is its *type*: the kinds that need no parent are exactly the
     kinds a tree starts with. Not "has no parent", which a detached ward
     also satisfies — the test fixtures make one on purpose, and treating
@@ -225,18 +225,18 @@ def organisation_org_unit_ids() -> Select[tuple[int]]:
 def organisation_org_units_of_sites(
     db: Session, site_ids: list[int]
 ) -> dict[int, int]:
-    """Return the organisation's place above each of *site_ids*.
+    """Return the organisation's org_unit above each of *site_ids*.
 
     One walk up for the whole list, then one check that each root
-    reached is a kind of place a tree starts with.
+    reached is a kind of org_unit a tree starts with.
 
     Args:
         db: Core database session.
-        site_ids: The places to resolve.
+        site_ids: The org_units to resolve.
 
     Returns:
-        A mapping of place id to the id of the organisation's own place,
-        leaving out any place whose chain does not reach a root, and any
+        A mapping of org_unit id to the id of the organisation's own org_unit,
+        leaving out any org_unit whose chain does not reach a root, and any
         root that is not an organisation.
     """
     if not site_ids:
@@ -265,18 +265,18 @@ def organisation_org_units_of_sites(
 
 
 def organisation_org_unit_of_site(db: Session, site_id: int) -> int | None:
-    """Return the place of the organisation accountable for *site_id*.
+    """Return the org_unit of the organisation accountable for *site_id*.
 
-    Walks up to the root and checks it is a kind of place a tree starts
-    with. A place whose chain does not reach one — one that has been
+    Walks up to the root and checks it is a kind of org_unit a tree starts
+    with. An org_unit whose chain does not reach one — one that has been
     detached, or whose parent is missing — has no accountable body, and
     the answer is None rather than a guess.
 
     Args:
         db: Core database session.
-        site_id: The place to resolve.
+        site_id: The org_unit to resolve.
 
     Returns:
-        The organisation's place id, or None.
+        The organisation's org_unit id, or None.
     """
     return organisation_org_units_of_sites(db, [site_id]).get(site_id)

@@ -1904,7 +1904,7 @@ def add_reflection(
 
     The anonymisation confirmation is required rather than defaulted.
     Reflections are written about real cases and are one of only two
-    places patient data could enter a passport.
+    org_units patient data could enter a passport.
     """
     row = _require_writer(db, passport_id, user)
 
@@ -2232,7 +2232,7 @@ INVITES_PER_DAY = 100
 #
 # The admin's authority comes from *membership* of the organisation
 # rather than reach into it, so a trainee at a ward does not administer
-# the trust above them. The assessor's place is resolved by *reach*,
+# the trust above them. The assessor's org_unit is resolved by *reach*,
 # because the accept endpoint may have put them at a site.
 
 
@@ -2242,7 +2242,7 @@ def _require_org_admin_over(
     """Require that *admin* administers somebody at a shared organisation.
 
     Returns:
-        The place of the organisation the authority runs through, so the
+        The org_unit of the organisation the authority runs through, so the
         verification row can record whose assurance it is.
 
     Raises:
@@ -2261,7 +2261,7 @@ def _require_org_admin_over(
         raise HTTPException(404, "Assessor not found")
 
         # Membership for the admin, reach for the assessor. An admin is an
-        # admin of a place they belong to; an assessor put at a ward by the
+        # admin of an org_unit they belong to; an assessor put at a ward by the
         # accept endpoint is reachable from the organisation above it.
     admin_orgs = set(get_member_org_unit_ids(db, admin.id))
     assessor_orgs = set(get_reachable_org_unit_ids(db, assessor_user_id))
@@ -2373,8 +2373,8 @@ def revoke_assessor_membership(
 ) -> AssessorRevokeOut:
     """Remove an assessor's membership at this admin's organisation.
 
-    Which takes ``assess_clinician_passport`` at that place with it,
-    since competencies are granted per place.
+    Which takes ``assess_clinician_passport`` at that org_unit with it,
+    since competencies are granted per org_unit.
 
     **The sign-offs they already made stand**, and the count is returned
     so an admin sees that stated rather than having to trust it. A record
@@ -2401,7 +2401,7 @@ def revoke_assessor_membership(
     )
 
     # A site membership first: the accept endpoint prefers the narrowest
-    # place, so that is where an invited assessor usually sits.
+    # org_unit, so that is where an invited assessor usually sits.
     site_id = db.scalar(
         select(org_unit_member.c.org_unit_id).where(
             org_unit_member.c.user_id == assessor_user_id,
@@ -2527,16 +2527,16 @@ def _decoded_invite(
 def _holder_org_unit(db: Session, passport_id: str) -> tuple[str, int]:
     """Where the assessor should become a member, and at what level.
 
-    The narrowest place the holder belongs to: a site if they have one,
+    The narrowest org_unit the holder belongs to: a site if they have one,
     otherwise the organisation. A holder who sits only at organisation
     level is the ordinary case for a rotating trainee, not an exception.
 
     Returns:
-        ``("site", id)`` or ``("organisation", id)``, both place ids.
+        ``("site", id)`` or ``("organisation", id)``, both org_unit ids.
 
     Raises:
         HTTPException: 409 if the holder belongs nowhere. Nothing can be
-            derived then, and inventing a place would be worse than
+            derived then, and inventing an org_unit would be worse than
             saying so.
     """
     passport = db.get(Passport, passport_id)
@@ -2544,11 +2544,11 @@ def _holder_org_unit(db: Session, passport_id: str) -> tuple[str, int]:
     if passport is None:
         raise HTTPException(400, "This invitation is no longer valid.")
 
-        # A place *inside* an organisation. Organisations are rows in the
+        # An org_unit *inside* an organisation. Organisations are rows in the
         # same table now, and a membership of one is a row here too, so
         # without this every holder would look as though they had a site and
         # the organisation branch below would never be reached.
-    # Every place the holder belongs to, narrowest first. A holder can
+    # Every org_unit the holder belongs to, narrowest first. A holder can
     # be in several: a rotating trainee sits at the hospital they are
     # at now, one they were at before, and the trust above both.
     member_ids = [
@@ -2564,7 +2564,7 @@ def _holder_org_unit(db: Session, passport_id: str) -> tuple[str, int]:
 
     # Only those that reach an organisation where the passport is
     # switched on. Adding the assessor anywhere else leaves them a
-    # member of a real place that still cannot open a passport, which
+    # member of a real org_unit that still cannot open a passport, which
     # is the failure this resolves: `requires_feature` rolls a member
     # up to their root organisations and looks for the feature there.
     with_feature = [
@@ -2572,9 +2572,9 @@ def _holder_org_unit(db: Session, passport_id: str) -> tuple[str, int]:
         for unit_id in member_ids
         if db.scalar(
             select(OrgUnitFeature.id).where(
-                # The same walk `requires_feature` makes, so a place that
+                # The same walk `requires_feature` makes, so an org_unit that
                 # passes here is one the gate will accept. Anything else
-                # leaves the assessor a member of a real place that still
+                # leaves the assessor a member of a real org_unit that still
                 # cannot open a passport.
                 OrgUnitFeature.org_unit_id.in_(
                     organisation_org_units_of(db, [unit_id])
@@ -2837,7 +2837,7 @@ def _export_filename(passport_id: str, suffix: str) -> str:
     """A download name that says what the file is.
 
     The passport id rather than the holder's name: a downloads folder is
-    not a place to scatter somebody's name, and the id is what the
+    not an org_unit to scatter somebody's name, and the id is what the
     record is addressed by everywhere else.
     """
     return f"passport-{passport_id}{suffix}"

@@ -31,10 +31,10 @@ class RegisterIn(BaseModel):
         full_name: User's full display name (optional).
         email: Email address (must be unique).
         password: Desired password (min 8 characters).
-        org_unit_id: The place to join, which for a registration is the
+        org_unit_id: The org_unit to join, which for a registration is the
             organisation's own row in the tree (optional).
         site_id: ID of the site to join as trainee (optional). Already a
-            place id: a site is a place.
+            org_unit id: a site is an org_unit.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -200,7 +200,7 @@ class MeOut(BaseModel):
     # Which record is this person's own. The interface needs it to decide
     # whether someone is messaging about their own health, and to name
     # the record when they are; the backend answers the same question
-    # this way in three places.
+    # this way in three org_units.
     #
     # `access_own_patient_records` does not replace this, now that it
     # exists and belongs to the `patient` profession alone. The two
@@ -290,10 +290,10 @@ class ValidateClinicalLeadOut(BaseModel):
     Attributes:
         valid: Whether the email is a clinical lead for the bank.
         site_name: Name of the site if valid, else None.
-        org_unit_id: The organisation, as a place id — what the
+        org_unit_id: The organisation, as an org_unit id — what the
             registration that follows sends back.
-        site_id: ID of the site if valid, else None. Already a place id:
-            a site is a place.
+        site_id: ID of the site if valid, else None. Already an org_unit id:
+            a site is an org_unit.
     """
 
     valid: bool

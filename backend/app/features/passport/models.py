@@ -417,10 +417,10 @@ class SiteCommonCompetency(Base):
     It lives outside the passport for the same reason: an exported record
     must not carry one trust's opinion of what matters into another.
 
-    **One place column, not a pair.** This carried ``site_id`` and
+    **One org_unit column, not a pair.** This carried ``site_id`` and
     ``organisation_id`` with a check constraint saying exactly one was
     set — a ward list, with the trust's as a fallback. A trust is a
-    place now, so the two collapse: the fallback is the parent's row in
+    org_unit now, so the two collapse: the fallback is the parent's row in
     the same tree, and "exactly one" is what a single column says by
     existing.
     """

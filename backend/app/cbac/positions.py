@@ -9,7 +9,7 @@ Holding is recorded as dated rows rather than a column on the position, so
 the post outlives its holders and its history stays queryable — "who was
 Caldicott Guardian in March?" is a question about the slot over time.
 
-Appointment is checked against the person's competency at that place, using
+Appointment is checked against the person's competency at that org_unit, using
 ``can_practise_at``: holding the competency somewhere is not enough, it has
 to be authorised where the post is.
 """
@@ -123,7 +123,7 @@ def appoint(
 
     Raises:
         ValueError: If the post requires a competency the person is not
-            authorised to practise at that place, or if filling it
+            authorised to practise at that org_unit, or if filling it
             substantively would exceed ``max_holders``. Acting cover does
             not count against the limit, because covering leave must not be
             blocked by the person being covered for.
@@ -131,7 +131,7 @@ def appoint(
     start = started_on or _today()
 
     if position.requires_competency is not None:
-        # A post with no place has no place to be authorised at, so
+        # A post with no org_unit has no org_unit to be authorised at, so
         # nobody qualifies for it. Failing closed rather than raising:
         # the column is nullable, so the state is representable, and a
         # post nobody can fill is safer than one anybody can.

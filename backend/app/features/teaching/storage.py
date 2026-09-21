@@ -491,7 +491,7 @@ def download_bank_from_gcs(
         bank_dir,
     )
 
-    # Place module.yaml in the parent directory so that
+    # org_unit module.yaml in the parent directory so that
     # _load_module_metadata(bank_dir) can find it at bank_dir.parent
     module_blob = bucket.blob(f"{module_prefix(bank_id)}module.yaml")
     if module_blob.exists():
@@ -660,7 +660,7 @@ def download_module_from_gcs(
 
 
 #: What the admin upload accepts. Deliberately narrow: this is the one
-#: place the backend holds real GCS write credentials, so the allow-list
+#: org_unit the backend holds real GCS write credentials, so the allow-list
 #: is the boundary rather than a convenience.
 ALLOWED_MEDIA_TYPES: dict[str, str] = {
     ".mp4": "video/mp4",
@@ -681,7 +681,7 @@ def create_resumable_upload_url(
     Resumable because a lecture is large enough that a dropped
     connection mid-upload is a real event, and starting again from zero
     is what pushed media out of the content repository in the first
-    place.
+    org_unit.
 
     Writes only to the source bucket. The processed bucket needs no
     credential here at all: releasing a video is an HMAC over a shared

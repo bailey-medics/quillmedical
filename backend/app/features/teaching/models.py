@@ -64,7 +64,7 @@ class QuestionBankConfig(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    #: Which place this row belongs to. The only id it has.
+    #: Which org_unit this row belongs to. The only id it has.
     org_unit_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("org_unit.id", ondelete="CASCADE"),
@@ -118,7 +118,7 @@ class QuestionBankItem(Base):
     __tablename__ = "question_bank_items"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    #: Which place this row belongs to. The only id it has.
+    #: Which org_unit this row belongs to. The only id it has.
     org_unit_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("org_unit.id", ondelete="CASCADE"),
@@ -174,7 +174,7 @@ class Assessment(Base):
         nullable=False,
         index=True,
     )
-    #: Which place this row belongs to. The only id it has.
+    #: Which org_unit this row belongs to. The only id it has.
     org_unit_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("org_unit.id", ondelete="CASCADE"),
@@ -267,7 +267,7 @@ class TeachingOrgSettings(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    #: Which place this row belongs to. The only id it has.
+    #: Which org_unit this row belongs to. The only id it has.
     org_unit_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("org_unit.id", ondelete="CASCADE"),
@@ -307,7 +307,7 @@ class QuestionBankOrgStatus(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    #: Which place this row belongs to. The only id it has.
+    #: Which org_unit this row belongs to. The only id it has.
     org_unit_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("org_unit.id", ondelete="CASCADE"),
@@ -351,7 +351,7 @@ class QuestionBankSync(Base):
     __tablename__ = "question_bank_syncs"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    #: Which place this row belongs to. The only id it has.
+    #: Which org_unit this row belongs to. The only id it has.
     org_unit_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("org_unit.id", ondelete="CASCADE"),
@@ -426,9 +426,9 @@ class ModuleMediaLink(Base):
 
     __tablename__ = "module_media_link"
     __table_args__ = (
-        # One video per reference, per place. Not per
+        # One video per reference, per org_unit. Not per
         # ``organisation_id``: that column is the object's address in the
-        # bucket, and the place is what every query here reads.
+        # bucket, and the org_unit is what every query here reads.
         UniqueConstraint(
             "org_unit_id",
             "question_bank_id",
@@ -450,18 +450,18 @@ class ModuleMediaLink(Base):
     #: No foreign key, because there is no longer a table to point at.
     #: It is an address, and an address is not a reference — the number
     #: stays valid whether or not anything else still knows it. Which
-    #: number a place uses is ``org_unit.media_prefix_id``, read through
+    #: number an org_unit uses is ``org_unit.media_prefix_id``, read through
     #: ``app.organisations.media_prefix_of``.
     organisation_id: Mapped[int] = mapped_column(
         Integer,
         nullable=False,
         index=True,
     )
-    #: Which place this row belongs to, and what every query here uses.
+    #: Which org_unit this row belongs to, and what every query here uses.
     #:
     #: ``organisation_id`` above is an address, not an owner: every
     #: question this table is asked — is this module complete, whose
-    #: upload is this — is answered by the place.
+    #: upload is this — is answered by the org_unit.
     org_unit_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("org_unit.id", ondelete="CASCADE"),
@@ -567,20 +567,20 @@ class ModuleMediaLink(Base):
 def _fill_the_storage_address(
     _mapper: Mapper[Any], connection: Connection, target: ModuleMediaLink
 ) -> None:
-    """Derive a media link's bucket prefix from the place it belongs to.
+    """Derive a media link's bucket prefix from the org_unit it belongs to.
 
     The one column of this group that outlives the organisations table
     is ``ModuleMediaLink.organisation_id``, because it is where the
-    object sits rather than who owns it. A writer names the place, as
+    object sits rather than who owns it. A writer names the org_unit, as
     everything else here does, and the address follows from it.
 
-    Read from the place's own ``media_prefix_id``, falling back to its
+    Read from the org_unit's own ``media_prefix_id``, falling back to its
     id, rather than from the organisations table: the objects already in
-    the bucket sit under the organisation id the place used to have, and
-    that number is recorded on the place so it survives the table.
+    the bucket sit under the organisation id the org_unit used to have, and
+    that number is recorded on the org_unit so it survives the table.
 
     A listener rather than a line at each write for the same reason the
-    pair of ids had one: the writers are not only the places the
+    pair of ids had one: the writers are not only the org_units the
     application creates these rows, and a row with the wrong prefix
     points at a file that is not there.
     """

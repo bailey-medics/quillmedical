@@ -1,10 +1,10 @@
-"""Resolving what a person may practise at one place.
+"""Resolving what a person may practise at one org_unit.
 
 Two facts, kept separate:
 
 - The **ceiling** — what a person is qualified for at all. Lives on the user,
   resolved by ``User.get_final_competencies``.
-- **Where they may practise it** — one row per person, place and competency
+- **Where they may practise it** — one row per person, org_unit and competency
   in ``practising_competency``.
 
 Healthcare draws the same line as credentialing versus privileging: what
@@ -12,12 +12,12 @@ someone is qualified for, then what they are authorised to do at a particular
 site. What they may actually do here is the intersection of the two.
 
 - A row beyond someone's ceiling has no effect, so a lapsed qualification
-  narrows every place at once without a single row being touched.
+  narrows every org_unit at once without a single row being touched.
 - A ceiling with no row behind it does nothing, so being qualified is not the
   same as being authorised to practise here.
 
-Every read of a place goes through this module. That is deliberate, and it
-paid for itself: the place used to be two nullable columns and is now one,
+Every read of an org_unit goes through this module. That is deliberate, and it
+paid for itself: the org_unit used to be two nullable columns and is now one,
 and confining the branch here meant the storage could change without
 touching a single call site. See
 ``docs/docs/plans/2026-09-06-org-scoped-access-findings.md``.
@@ -33,17 +33,17 @@ from app.models import PractisingCompetency, User
 
 
 def _org_unit_clause(org_unit_id: int) -> ColumnElement[bool]:
-    """Build the where-clause for one place.
+    """Build the where-clause for one org_unit.
 
     One column on the row, one argument here. This used to take an
     organisation id or a site id and translate the first, because an
-    organisation was a row in another table; an organisation is a place
+    organisation was a row in another table; an organisation is an org_unit
     now, so the two collapse and there is nothing left to mistake one
     for the other.
 
     Args:
-        org_unit_id: The place — an organisation's own row in the tree, or
-            any place beneath one.
+        org_unit_id: The org_unit — an organisation's own row in the tree, or
+            any org_unit beneath one.
 
     Returns:
         The matching column comparison.
@@ -57,16 +57,16 @@ def competencies_at(
     *,
     org_unit_id: int,
 ) -> set[str]:
-    """Return what ``user`` may practise at one place.
+    """Return what ``user`` may practise at one org_unit.
 
     Args:
         db: Database session.
         user: The person asked about.
-        org_unit_id: The place — an organisation's own row in the tree, or
-            any place beneath one.
+        org_unit_id: The org_unit — an organisation's own row in the tree, or
+            any org_unit beneath one.
 
     Returns:
-        The competencies authorised at that place, narrowed to the user's own
+        The competencies authorised at that org_unit, narrowed to the user's own
         ceiling. Empty when nothing is authorised there.
     """
     authorised = set(
@@ -89,14 +89,14 @@ def can_practise_at(
     *,
     org_unit_id: int,
 ) -> bool:
-    """Whether ``user`` may practise ``competency`` at one place.
+    """Whether ``user`` may practise ``competency`` at one org_unit.
 
     Args:
         db: Database session.
         user: The person asked about.
         competency: A competency id from ``shared/competency-definitions/``.
-        org_unit_id: The place — an organisation's own row in the tree, or
-            any place beneath one.
+        org_unit_id: The org_unit — an organisation's own row in the tree, or
+            any org_unit beneath one.
 
     Returns:
         True only if the competency is authorised there *and* within the
@@ -121,10 +121,10 @@ def who_can_practise_at(
     *,
     org_unit_id: int,
 ) -> list[int]:
-    """Return the ids of everyone authorised for ``competency`` at one place.
+    """Return the ids of everyone authorised for ``competency`` at one org_unit.
 
     The other direction the design has to answer — "who here can act as
-    clinical lead?" — and the reason the place is carried on the row rather
+    clinical lead?" — and the reason the org_unit is carried on the row rather
     than reached through a membership.
 
     Ceilings are deliberately not applied here: this is a candidate list, and
@@ -134,8 +134,8 @@ def who_can_practise_at(
     Args:
         db: Database session.
         competency: A competency id from ``shared/competency-definitions/``.
-        org_unit_id: The place — an organisation's own row in the tree, or
-            any place beneath one.
+        org_unit_id: The org_unit — an organisation's own row in the tree, or
+            any org_unit beneath one.
 
     Returns:
         User ids, in no particular order.
