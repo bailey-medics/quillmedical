@@ -1,7 +1,7 @@
 {
   "version": 1,
   "generatedBy": "/sync-copilot-config",
-  "lastRun": "2026-09-12T00:00:00Z",
+  "lastRun": "2026-09-21T00:00:00Z",
   "notes": [
     "Prompt targets live under .claude/skills/<name>/SKILL.md (a skill is a directory, not a single file). A skill's invocable /name comes from the directory name, never the SKILL.md filename and never a name: frontmatter field (that only sets a display label for personal/project skills).",
     "Targets marked targetRenamed:true deliberately do not use the default source-derived directory name. Copilot's 'name:' frontmatter values were used as the directory names to preserve /crp, /e, and /read-project-instructions.",
@@ -24,22 +24,25 @@
     "2026-09-06: the workflows back-port recorded on 2026-09-04 has largely landed - the source now carries 'Readability: one idea per line' and 'Testing scripts with bats', and is 121 lines to the target's 125. Two bullets remain Claude-only, both covering the containerised local run: `just test-scripts` (alias `ts`) running bats inside ubuntu:24.04, and the warning not to judge a script by a bare bats run on macOS. Still DIVERGED and still not written to; hashes deliberately NOT refreshed so the remainder keeps being reported.",
     "2026-09-08: CLAUDE.md target drift is the hand-written '## Claude-specific' section again, which this skill never writes into. A subsection was added recording that `git checkout -b feature/x origin/main` sets the new branch's upstream to refs/heads/main, so the first push must be `git push -u origin feature/x` or a bare push aims at the protected branch. Source unchanged this run and all 38 of its headings are present in CLAUDE.md, so nothing was merged; the target hash is refreshed to mean 'last state reconciled'. Consider whether that rule belongs in copilot-instructions.md's Critical Rules > Git instead, which would make it apply to Copilot too - it is git behaviour, not a Claude platform feature.",
     "2026-09-08: .claude/rules/ci.md and .claude/rules/workflows.md are both still DIVERGED and were NOT written to, exactly as the 2026-09-06 notes describe. Re-verified this run rather than assumed: ci.md (161 lines) still describes the merge queue while its source (57 lines) still describes rebase-before-merge, so the target is ahead; workflows.md differs only by the applyTo/paths frontmatter conversion this skill performs and the same two Claude-only bullets about `just test-scripts` and not judging a script by a bare bats run on macOS. Hashes deliberately NOT refreshed for either, so both keep being reported until the back-port to .github/ lands.",
-    "2026-09-12: crp gained a 'Branch merged and deleted at origin' section on BOTH sides in the same commit (.github/prompts/commit-rebase-push.prompt.md remains the source of truth; the Claude copy was updated in step, not synced over). Step 1 now detects a feature branch whose pull request has merged and whose remote branch is gone, and moves the next batch of work onto a fresh feature/* branch named for that work before committing; a run that starts on main creates its branch the same way instead of asking, pushing it with `git push -u`. The Claude copy additionally allows `git switch` and `git stash` in its frontmatter. crpf, which has no Copilot counterpart, carries the same section with part-two-specific wording. Hashes refreshed to record the reconciled state - not outstanding drift."
+    "2026-09-12: crp gained a 'Branch merged and deleted at origin' section on BOTH sides in the same commit (.github/prompts/commit-rebase-push.prompt.md remains the source of truth; the Claude copy was updated in step, not synced over). Step 1 now detects a feature branch whose pull request has merged and whose remote branch is gone, and moves the next batch of work onto a fresh feature/* branch named for that work before committing; a run that starts on main creates its branch the same way instead of asking, pushing it with `git push -u`. The Claude copy additionally allows `git switch` and `git stash` in its frontmatter. crpf, which has no Copilot counterpart, carries the same section with part-two-specific wording. Hashes refreshed to record the reconciled state - not outstanding drift.",
+    "2026-09-21: the authorisation model was corrected on BOTH sides. copilot-instructions.md's '### Authorisation' section described a four-rung `system_permissions` hierarchy, an `Organisation` and a `Site` model, `organisation_site`/`site_staff_member` tables, a `default_system_permission` on each base profession and a `feature-admin.yaml` competency file. None of that exists: the hierarchy became `platform_role` (superadmin or absent, see docs/docs/plans/2026-09-09-platform-role-plan.md), organisations and sites became one `OrgUnit` tree whose `type` carries capability flags (2026-09-11-site-tree-unification-plan.md), and practising competencies at a place arrived in backend/app/cbac/scoped.py. The section was rewritten in the source and the same content spliced into CLAUDE.md, replacing the four stale synced subsections (System permissions, Role composition examples, Organisations, Sites) with Platform role, CBAC, Practising competencies, Org units and Positions. Six stale references outside that section were corrected too: the RequirePermission guard (now RequireOperator and RequireCompetency), the three-database description, the admin-gate Quick Pattern, the new-base-profession field list, and two Key Files lines. CLAUDE.md's hand-written '## Claude-specific' section is byte-identical - prettier reformatted two lines inside it and both were reverted.",
+    "2026-09-21: .claude/rules/backend.md and its source both lost the dead `ix_site_staff_one_clinical_lead` example, since `site_staff_member` no longer exists. The partial/expression-index rule itself stands, but NO model in backend/app uses `postgresql_where`/`sqlite_where` any more (grep confirms zero hits), so the bullet now says there is no live example to copy rather than naming a table that is gone. Bodies match apart from the applyTo/paths conversion.",
+    "2026-09-21: .claude/rules/ci.md is STILL DIVERGED and was not written to - re-verified, not assumed: the target (180 lines) describes the merge queue while its source (57 lines) still describes rebase-before-merge, so the target is ahead and syncing source over it would reinstate a superseded process. .claude/rules/workflows.md is now only 4 lines ahead of its source (125 vs 121) - the same two Claude-only bullets about `just test-scripts` running bats in ubuntu:24.04 and not judging a script by a bare bats run on macOS. The source hash moved this run for reasons unrelated to those bullets, so its recorded source hash is refreshed while the target hash is deliberately NOT, keeping the remainder reported. ci.md's hashes are both left stale on purpose."
   ],
   "files": [
     {
       "source": ".github/copilot-instructions.md",
       "target": "CLAUDE.md",
-      "sourceSha256": "4aa598b163ec81ee92d680a4f1ed68888bd07f2d1696534aa4c91497ec756031",
-      "targetSha256": "3241f9ffb7e7e0af7e6e27dc3857e6458793f9edcc91a2924c5346de981aae23",
-      "syncedAt": "2026-09-08T18:14:48Z"
+      "sourceSha256": "26b75a4b8f45ef028ab1c076523eb1e0c8cddb95ffc8f5ebe514bd7aa8bb4cdc",
+      "targetSha256": "69c3f941bfb23d96920d8282fe43f4de5867a6fe30dec706653bd91c63ee5531",
+      "syncedAt": "2026-09-21T00:00:00Z"
     },
     {
       "source": ".github/instructions/backend.instructions.md",
       "target": ".claude/rules/backend.md",
-      "sourceSha256": "153f80eefb5048c31f9ffeae58e890c0d8b82cbd30f51aead9ffb8bd560dc18b",
-      "targetSha256": "fefd82b0dbc955b1b07f7bdedb98f380033070a44ba816434058c8e0a79cbe19",
-      "syncedAt": "2026-08-30T07:01:57Z"
+      "sourceSha256": "6a55cea70e380adb74fd7884c5042981080e26e07f9b94b38992069e76c48b1d",
+      "targetSha256": "a6a31d767a03b2da1b4c30b13ff90b7e5e8851d5c1b4b5d583156b6f371909f7",
+      "syncedAt": "2026-09-21T00:00:00Z"
     },
     {
       "source": ".github/instructions/ci.instructions.md",
@@ -74,7 +77,7 @@
     {
       "source": ".github/instructions/workflows.instructions.md",
       "target": ".claude/rules/workflows.md",
-      "sourceSha256": "2b675f3c90ee0f6f48fe73b50b7f0001175493582434ccb379b7b30f058d2f39",
+      "sourceSha256": "6f19c2c199282f8b01eede2131b8d881be42d7002e2ced419fa49fc65cb4cb5d",
       "targetSha256": "ee5c53c46cc928b25afc9b48dd6e35e6d7bf4b310b92006c45fa188518a552fd",
       "syncedAt": "2026-08-22T20:32:02Z"
     },

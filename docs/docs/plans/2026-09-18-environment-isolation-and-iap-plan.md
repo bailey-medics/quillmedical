@@ -45,6 +45,20 @@ The order matters. Batch 6's code must not merge before Batch 5 has cut
 the DNS over, or the deploy smoke test starts hitting a hostname that is
 not serving yet and every deploy goes red.
 
+**Merging a Terraform change applies it.**
+`.github/workflows/terraform.yml` runs on every push to `main` that
+touches `infra/**`, against the live `teaching` workspace, with no human
+step in between. So every Terraform change in this plan must plan as a
+no-op for `teaching` until the `app` workspace exists and has been
+applied. Widen a condition to accept both names, never swap one name for
+the other: `var.environment` gates fifteen resources in `infra/main.tf`,
+most of them through `count`, and a `count` that falls from one to zero
+is a destroy. The old names come out in Batch 8, when the old project is
+deliberately retired. Closing the ingress broke the deploy pipeline
+because a step was written as though somebody would apply it by hand;
+this is the same mistake with the Cloud SQL instance and the video
+buckets on the other end of it.
+
 ## Batch 1 — Claude: the security fixes
 
 These two phases are live today and depend on none of the naming
@@ -53,30 +67,129 @@ the rename ever happens.
 
 ### Phase 1: Close the load balancer bypass
 
+**Attempted and reverted on 2026-09-21.** Closing the ingress broke every
+deploy, because the deploy checks a new revision at the address the
+closed ingress rejects. The bypass is open again and stays open until
+Phase D solves that. Do not re-apply the ingress setting before then: it
+looks like a one-line change and takes the deploy pipeline down.
+
 - [x] Set `ingress = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"` on the
       backend and frontend Cloud Run services in `infra/main.tf`. The
       module already takes the variable (`infra/modules/cloud-run/variables.tf`),
-      defaulting to `INGRESS_TRAFFIC_ALL`; nothing overrides it today.
+      defaulting to `INGRESS_TRAFFIC_ALL`.
 
 - [x] Leave `roles/run.invoker` granted to `allUsers` in
       `infra/modules/cloud-run/main.tf`. Once ingress is closed the load
       balancer still calls the service as an anonymous caller, so
-      removing it would break the site rather than harden it.
-
-- [ ] Apply to teaching, which is the only environment deployed and the
-      one currently exposed. This step is Batch 2.
+      removing it would break the site rather than harden it. This turned
+      out not to be what rejected the deploy's health check: the request
+      never reached the service at all.
 
 - [x] Confirmed the three Cloud Run *jobs* need no equivalent. Admin,
       transcode and caption use `modules/cloud-run-job`, which creates a
       `google_cloud_run_v2_job`, and a job has no ingress setting because
       it is not reachable over HTTP.
 
-- [ ] Verify the service's `*.run.app` URL now refuses the request, and
+- [x] Reverted both services to the module default of
+      `INGRESS_TRAFFIC_ALL`, with a comment in `infra/main.tf` saying why
+      and pointing at Phase D.
+
+- [ ] Re-apply the ingress setting, once Phase D has moved the deploy's
+      health check onto a route the closed ingress accepts. Everything
+      below waits on that.
+
+- [ ] Verify the service's `*.run.app` URL then refuses the request, and
       that the public hostname still serves normally.
 
-- [ ] Verify Cloud Armor now sees the traffic — the throttle rule at
+- [ ] Verify Cloud Armor then sees the traffic — the throttle rule at
       `infra/modules/load-balancer/main.tf` should be reachable on every
       request rather than skippable.
+
+### Phase D: Let the deploy check a revision it cannot reach directly
+
+Phase 1 cannot be finished until this is. What follows is what was learnt
+on 2026-09-21, written down because none of it is visible from the code
+and the next person to read Phase 1 will otherwise repeat it.
+
+**What broke.** `.github/scripts/deploy/deploy-tagged.sh` releases each
+new revision with `--no-traffic` and a traffic tag, then smoke-tests that
+revision at its own tagged `*.run.app` URL, and only promotes it to
+serve traffic once it answers 200. Closing the ingress rejects that
+request before it reaches the service, so the smoke test got 404 five
+times and the deploy stopped with traffic left on the previous revision.
+The site stayed up throughout, which is the script working as designed.
+
+**That design is worth keeping.** Checking a revision before it serves
+anybody is the whole reason the script exists, and the alternative of
+promoting first and checking afterwards means a bad revision reaches
+users before anything notices.
+
+**The 404 was the ingress, not permissions.** `roles/run.invoker` is
+granted to `allUsers` and `/api/health` is public, so it is worth being
+clear that no IAM change would have helped. Cloud Run rejected the
+request at the ingress layer before any authorisation ran, which is why
+it answered 404 rather than 403.
+
+Two approaches were considered and ruled out. Both look reasonable and
+neither works.
+
+- [x] **A Cloud Run job running the smoke test from inside the project.**
+      Rejected. The jobs in `infra/modules/cloud-run-job` set
+      `egress = "PRIVATE_RANGES_ONLY"`, so traffic to a `*.run.app`
+      address leaves over the public internet, as `infra/main.tf` already
+      notes at the transcode job. The job would be rejected exactly as a
+      GitHub-hosted runner is. Setting `egress = "ALL_TRAFFIC"` does not
+      rescue it: `INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER` accepts traffic
+      from the load balancer, not from the VPC generally, and the setting
+      that would accept VPC traffic, `INGRESS_TRAFFIC_INTERNAL_ONLY`,
+      rejects the load balancer and takes the site down.
+
+- [x] **Smoke-testing the public hostname instead.** Rejected, and worse
+      than doing nothing. The new revision carries no traffic at that
+      point, so a request to `teaching.quill-medical.com` reaches the
+      *old* revision and passes whatever the new one does. It would look
+      like a working check while testing nothing.
+
+**The approach that should work** is to route the tagged revision through
+the load balancer, so the smoke test reaches it at the public hostname
+and the ingress rule is satisfied. Google's serverless NEGs support this:
+`--cloud-run-tag` is documented as "the named revision to provide
+additional fine-grained traffic routing configuration", and it "may be
+provided explicitly or in the URL mask", where a URL mask is "a template
+of your URL schema" that parses service and tag from the request URL.
+Explicitly is no use here, because the tag is `rev-<sha>` and changes
+every deploy, so the URL mask is the part that matters.
+
+- [ ] Find out the URL mask syntax for extracting a tag, and whether it
+      can come from a path prefix or only from the hostname. This decides
+      the size of the whole job: a path such as
+      `/_rev/rev-abc123/api/health` needs only a URL map rule, while a
+      hostname such as `rev-abc123.teaching.quill-medical.com` needs a
+      wildcard certificate and DNS to match, which is a much larger
+      change.
+
+- [ ] Add a second serverless NEG with the URL mask, and a backend
+      service for it, in `infra/modules/load-balancer/main.tf`. Validate
+      with a real `terraform plan` before touching the URL map.
+
+- [ ] Add the routing rule to the URL map **last, and carefully**. That
+      resource already carries a comment recording that a dynamic block
+      mistake once planned `/api/*` to null and took the API down. The
+      new rule goes in the same `concat` list as the existing ones, never
+      as a static rule beside the dynamic block.
+
+- [ ] Make sure the tagged route cannot be used to reach anything else.
+      It exposes a revision by name at the public hostname, so it should
+      match the health path only, and a request for any other path
+      through that prefix should not reach the service.
+
+- [ ] Point `run_smoke_test` in `deploy-tagged.sh` at the new route
+      rather than the tagged `*.run.app` URL. The function is already
+      isolated so tests can stub it, so this is a small change once the
+      route exists.
+
+- [ ] Only then re-apply Phase 1's ingress setting, and watch the first
+      deploy.
 
 ### Phase 2: Host-only auth cookies
 
@@ -115,8 +228,17 @@ Batch 2.
 
 ## Batch 2 — Mark: apply the security fixes
 
-- [ ] Apply Batch 1's Terraform to the teaching project, ingress first,
-      then the cookie change at a quiet moment.
+**Terraform applies itself.** `.github/workflows/terraform.yml` runs on
+every push to `main` that touches `infra/**`, so merging a Claude batch
+that changes Terraform deploys it with no further step. This batch was
+written assuming a manual apply, and that assumption was wrong: both
+Batch 1 changes went live on merge. Every later batch touching `infra/`
+behaves the same way, so read "hands over" as "merging this applies it".
+
+- [x] The cookie change applied on merge and is live.
+
+- [x] The ingress change applied on merge, broke the deploy, and was
+      reverted. See Phase D.
 
 - [ ] Verify the `*.run.app` URL now refuses the request and the public
       hostname still serves.
@@ -141,26 +263,26 @@ move the environment into a new GCP project and rename it there — doing
 it twice, once on the old project and once on the new, would rebuild the
 certificate and move the DNS record for nothing.
 
-- [ ] Adopt `app.quill-medical.com` for teaching and passport — the
+- [x] Adopt `app.quill-medical.com` for teaching and passport — the
       product that is actually live — and `ehr.quill-medical.com` for
       clinical when it exists.
 
-- [ ] Name the environment `app` too, not just the hostname. The
+- [x] Name the environment `app` too, not just the hostname. The
       Terraform workspace, `var.environment` and the directory
       `infra/environments/teaching/` all carry `teaching` today, and
       `var.environment` is interpolated into around thirty resource names.
 
-- [ ] Name environments after their regulatory class and audience, not
+- [x] Name environments after their regulatory class and audience, not
       their current feature list. `teaching.` has already outgrown itself
       once by acquiring the clinician passport.
 
-- [ ] Leave the teaching feature named `teaching` throughout — the content
+- [x] Leave the teaching feature named `teaching` throughout — the content
       repositories, `teaching-pipeline.yml`, the video pipeline module and
       the three secrets. They are about teaching. Only the environment is
       renamed, and renaming both would leave nothing to distinguish the
       deployment from the feature it serves.
 
-- [ ] Note that the subdomain says EHR while the application still says
+- [x] Note that the subdomain says EHR while the application still says
       EPR — the nav link in
       `frontend/src/components/ribbon/publicNavLinks.ts`, the two landing
       page buttons and the marketing copy. Nothing user-facing depends on
@@ -170,36 +292,69 @@ certificate and move the DNS record for nothing.
 
 ### Phase 4: The new environment's Terraform
 
-- [ ] Add `infra/environments/app/terraform.tfvars`, copied from the
+- [x] Add `infra/environments/app/terraform.tfvars`, copied from the
       teaching one, with `project_id = "quill-medical-app"` and
       `environment = "app"`. Leave `lb_domains` on a temporary hostname;
       the cutover is Batch 5.
 
-- [ ] Rewrite the eleven `var.environment == "teaching"` conditions in
-      `infra/main.tf` to test for `app`. They gate the teaching video
-      pipeline, the teaching buckets, the sync token secret and
-      `CLINICAL_SERVICES_ENABLED`.
+- [x] Widen the fifteen `var.environment == "teaching"` conditions in
+      `infra/main.tf` to accept either name, using
+      `contains(["teaching", "app"], var.environment)`. They gate the
+      teaching video pipeline, the teaching buckets, the sync token
+      secret and `CLINICAL_SERVICES_ENABLED`.
 
-- [ ] Add `app` to the validation condition in `infra/variables.tf`, which
+- [x] Do not swap `"teaching"` for `"app"` in those conditions. Most are
+      `count = ... ? 1 : 0`, so against the live `teaching` workspace the
+      swapped condition is false, the count falls to zero, and Terraform
+      destroys the resource. That list includes the Cloud SQL instance at
+      `infra/main.tf:224` and the video pipeline buckets, some of which
+      carry `force_destroy`, so they go even when they hold objects.
+
+- [ ] Confirm the widening is a no-op before merging, by reading the plan
+      output on the pull request. `terraform.yml` posts a plan for the
+      `teaching` workspace, and it should show no changes at all. A plan
+      proposing to destroy anything means a condition was swapped rather
+      than widened.
+
+- [x] Add `app` to the validation condition in `infra/variables.tf`, which
       allows only `prod`, `staging` and `teaching` today. Keep `teaching`
       accepted until the old project goes in Batch 8.
 
-- [ ] Keep the three secret names as they are —
+- [x] Keep the three secret names as they are —
       `teaching-video-signing-key`, `teaching-sync-token` and
       `teaching-transcode-callback-token`. They are teaching feature
       secrets rather than environment labels, and renaming them means
       touching `infra/main.tf`, the transcode job, the caption job and the
       pipeline workflow for no gain.
 
-- [ ] Check the CORS origin on the video buckets follows `var.app_domain`.
+- [x] Check the CORS origin on the video buckets follows `var.app_domain`.
       The module takes `app_origin` from it, so it tracks the hostname
-      automatically, but the upload goes cross-origin to
-      `storage.googleapis.com` and a wrong value fails only at upload
-      time.
+      automatically. `app_domain` is `app.quill-medical.com` in the new
+      tfvars, so uploads there will be allowed from that origin and no
+      other.
+
+- [x] Widened through one `local` rather than fifteen inline `contains`
+      calls. `local.is_teaching_product` in `infra/main.tf` names the idea
+      once, and Batch 8's narrowing becomes a one-line edit to the list
+      above it rather than fifteen edits that have to agree.
+
+- [x] Verified the widening is a no-op for `teaching` by evaluating the
+      local directly: `teaching` and `app` are both true, `prod` and
+      `staging` both false. The live workspace therefore sees no change.
+      The plan posted on this pull request should confirm it.
+
+- [x] Gave the new environment `app.quill-medical.com` and nothing else,
+      rather than copying teaching's hostnames. Two projects claiming
+      `teaching.quill-medical.com` and the apex would leave the new
+      project's Google-managed certificate pending for ever, because
+      certificates validate by DNS and the DNS still points at the old
+      project. `landing_domain` is null there for the same reason.
 
 **Hands over:** branches that describe the new environment but do not
-build it. Nothing here takes effect until Batch 4 creates the project and
-applies them.
+build it. They apply to the live `teaching` workspace on merge, as every
+Terraform change here does, and plan as no-ops there because the
+conditions were widened rather than swapped. Nothing new is created until
+Batch 4 makes the project and the `app` workspace.
 
 ## Batch 4 — Mark: build the project
 
@@ -384,6 +539,12 @@ secret renames are yours, because Claude cannot write repository secrets.
 - [ ] Delete the workspace afterwards, and remove `teaching` from the
       validation condition in `infra/variables.tf`.
 
+- [ ] Narrow the fifteen widened conditions in `infra/main.tf` back to
+      `app` alone. This is the contract half of the expand-contract
+      Batch 3 started, and it is safe only now: the `teaching` workspace
+      is gone, so there is no live environment for the conditions to turn
+      off. Doing it any earlier destroys the resources it names.
+
 - [ ] Remove `infra/environments/teaching/`.
 
 - [ ] Shut the old project down rather than deleting it outright. A
@@ -512,9 +673,28 @@ lookalike names were cheap enough that waiting saved nothing.
 ## Decisions
 
 - **Ingress and cookies come before naming and IAP** — the bypass is live
-  on the only deployed environment, and both fixes are small and depend on
-  no decision still open. The bypass in particular makes every other
-  access control conditional, so it is not worth building a gate above it.
+  on the only deployed environment, and the bypass in particular makes
+  every other access control conditional, so it is not worth building a
+  gate above it. The cookie fix was as small as expected. The ingress one
+  was not: it took the deploy pipeline down and is now blocked behind
+  Phase D.
+
+- **Terraform changes expand before they contract** — every condition that
+  names an environment accepts both `teaching` and `app` from Batch 3
+  until Batch 8, rather than being swapped from one to the other. The
+  reason is that merging applies, so a swapped condition is evaluated
+  against the live workspace, where it reads as an instruction to destroy
+  whatever it gated. This is the pattern `.claude/rules/backend.md`
+  already requires for breaking API changes, applied to infrastructure for
+  the same reason: the old and the new have to be true at once while
+  something is still using the old.
+
+- **The deploy keeps checking a revision before it serves traffic** — the
+  cheapest way to close the ingress would be to drop that check, promote
+  each revision straight to traffic and test the public hostname
+  afterwards. That trades a real safety property for a configuration
+  convenience: a bad revision would reach users before anything noticed.
+  Phase D moves the check instead of removing it.
 
 - **A new project rather than a rename** — a GCP project ID is immutable
   after creation, so there is no rename to do. The choice is between a new

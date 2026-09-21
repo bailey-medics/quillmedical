@@ -72,9 +72,11 @@ the baseline included — is held to the full standard below.
 - A partial or expression index created in a migration (e.g.
   `postgresql_where=`) must also be declared in the model metadata as an
   `Index(...)` with the same predicate, otherwise autogenerate cannot see
-  it and repeatedly proposes to drop it. Example:
-  `ix_site_staff_one_clinical_lead` is declared on the `site_staff_member`
-  table in `models.py`.
+  it and repeatedly proposes to drop it. Declare it in the model's
+  `__table_args__` with the same predicate as the migration. (No model
+  currently uses one — the last, `ix_site_staff_one_clinical_lead` on
+  `site_staff_member`, went out with the org-unit tree unification, so there
+  is no live example to copy.)
 - Declare the predicate for **both** dialects — `postgresql_where=` *and*
   `sqlite_where=`. The unit-test database is SQLite, built from the model
   metadata via `create_all()`, and `postgresql_where` is silently ignored
