@@ -33,14 +33,25 @@ there are no users, the teaching content rebuilds itself from its own
 repositories, and the databases hold seed data. The same work after
 launch needs a downtime window and a real data migration.
 
-This plan closes the load balancer bypass first, because it applies to
-the live environment and depends on none of the naming decisions. It then
-makes the cookies host-only, settles the names, moves the environment
-into its new project, retires the old hostname, and finally sets out what
-to do about Identity-Aware Proxy when a non-production environment exists
-again.
+The phases below alternate between work that is code in this repository
+and work that happens in the GCP and GitHub consoles. Each is headed
+**Claude** or **Mark** accordingly, and ends by saying what the next batch
+needs from it. A Claude batch is a run of `/st-follow-the-plan-document`
+producing stacked branches; a Mark batch is console and command-line work
+against live infrastructure, which Claude cannot do and should not
+attempt.
 
-## Phase 1: Close the load balancer bypass
+The order matters. Batch 6's code must not merge before Batch 5 has cut
+the DNS over, or the deploy smoke test starts hitting a hostname that is
+not serving yet and every deploy goes red.
+
+## Batch 1 — Claude: the security fixes
+
+These two phases are live today and depend on none of the naming
+decisions. They are the only work here that is worth doing whether or not
+the rename ever happens.
+
+### Phase 1: Close the load balancer bypass
 
 - [ ] Set `ingress = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"` on the
       backend and frontend Cloud Run services in `infra/main.tf`. The
@@ -62,7 +73,7 @@ again.
       `infra/modules/load-balancer/main.tf` should be reachable on every
       request rather than skippable.
 
-## Phase 2: Host-only auth cookies
+### Phase 2: Host-only auth cookies
 
 - [ ] Remove `COOKIE_DOMAIN = ".${var.domain}"` from `infra/main.tf`.
 
@@ -86,9 +97,34 @@ again.
       requires host-only, `Secure` and `Path=/`, all of which this phase
       establishes, and it makes the browser enforce them.
 
-## Phase 3: Settle the names
+**Hands over:** two stacked branches to review and merge. The Terraform
+changes need `terraform apply` against the teaching project, which is
+Batch 2.
 
-Naming only. The work that applies these names is Phases 4 to 8, which
+## Batch 2 — Mark: apply the security fixes
+
+- [ ] Apply Batch 1's Terraform to the teaching project, ingress first,
+      then the cookie change at a quiet moment.
+
+- [ ] Verify the `*.run.app` URL now refuses the request and the public
+      hostname still serves.
+
+- [ ] Verify Cloud Armor sees the traffic, using the throttle rule at
+      `infra/modules/load-balancer/main.tf`.
+
+**Hands over:** a confirmed-working live environment, and a decision to
+proceed with the rename.
+
+## Batch 3 — Claude: the naming decisions and the new environment's code
+
+Phase 3 is decisions only, written down so the code that follows has
+something to be consistent with. Phase 4 is every code change the new
+project needs, written before the project exists so that it is ready to
+apply the moment it does.
+
+### Phase 3: Settle the names
+
+Naming only. The work that applies these names is Batches 3 to 7, which
 move the environment into a new GCP project and rename it there — doing
 it twice, once on the old project and once on the new, would rebuild the
 certificate and move the DNS record for nothing.
@@ -120,12 +156,44 @@ certificate and move the DNS record for nothing.
       links is disabled, so the mismatch costs nothing today. Renaming
       them is separate work, out of scope here.
 
-## Phase 4: Stand the new project up
+### Phase 4: The new environment's Terraform
 
-A GCP project ID cannot be changed after creation, so renaming the
-environment means a new project. This is affordable now and will not be
-later: there are no users, the teaching content rebuilds itself from its
-own repositories, and the databases hold seed data.
+- [ ] Add `infra/environments/app/terraform.tfvars`, copied from the
+      teaching one, with `project_id = "quill-medical-app"` and
+      `environment = "app"`. Leave `lb_domains` on a temporary hostname;
+      the cutover is Batch 5.
+
+- [ ] Rewrite the eleven `var.environment == "teaching"` conditions in
+      `infra/main.tf` to test for `app`. They gate the teaching video
+      pipeline, the teaching buckets, the sync token secret and
+      `CLINICAL_SERVICES_ENABLED`.
+
+- [ ] Add `app` to the validation condition in `infra/variables.tf`, which
+      allows only `prod`, `staging` and `teaching` today. Keep `teaching`
+      accepted until the old project goes in Batch 8.
+
+- [ ] Keep the three secret names as they are —
+      `teaching-video-signing-key`, `teaching-sync-token` and
+      `teaching-transcode-callback-token`. They are teaching feature
+      secrets rather than environment labels, and renaming them means
+      touching `infra/main.tf`, the transcode job, the caption job and the
+      pipeline workflow for no gain.
+
+- [ ] Check the CORS origin on the video buckets follows `var.app_domain`.
+      The module takes `app_origin` from it, so it tracks the hostname
+      automatically, but the upload goes cross-origin to
+      `storage.googleapis.com` and a wrong value fails only at upload
+      time.
+
+**Hands over:** branches that describe the new environment but do not
+build it. Nothing here takes effect until Batch 4 creates the project and
+applies them.
+
+## Batch 4 — Mark: build the project
+
+Everything in this batch is console and command-line work against live
+infrastructure. Claude has no credentials for it and should not attempt
+it.
 
 - [ ] Create `quill-medical-app` and set its display name to something a
       human reads, rather than leaving it matching the ID.
@@ -148,47 +216,15 @@ own repositories, and the databases hold seed data.
       so the new environment starts with empty state and needs no state
       surgery.
 
-- [ ] Add `infra/environments/app/terraform.tfvars`, copied from the
-      teaching one, with `project_id = "quill-medical-app"` and
-      `environment = "app"`. Leave `lb_domains` on a temporary hostname;
-      the cutover is Phase 7.
+- [ ] Apply Batch 3's Terraform, and let it build the environment from
+      nothing. Around thirty resources take their names from
+      `var.environment`, so they come out named `app` without any being
+      renamed by hand.
 
-- [ ] Rewrite the eleven `var.environment == "teaching"` conditions in
-      `infra/main.tf` to test for `app`. They gate the teaching video
-      pipeline, the teaching buckets, the sync token secret and
-      `CLINICAL_SERVICES_ENABLED`.
-
-- [ ] Add `app` to the validation condition in `infra/variables.tf`, which
-      allows only `prod`, `staging` and `teaching` today. Keep `teaching`
-      accepted until the old project goes in Phase 9.
-
-- [ ] Apply, and let Terraform build the environment from nothing. Around
-      thirty resources take their names from `var.environment`, so they
-      come out named `app` without any being renamed by hand.
-
-## Phase 5: Secrets and the video signing key
-
-- [ ] Recreate the three secrets the environment declares:
-      `teaching-video-signing-key`, `teaching-sync-token` and
-      `teaching-transcode-callback-token`.
-
-- [ ] Keep those secret names as they are. They are teaching feature
-      secrets rather than environment labels, and renaming them means
-      touching `infra/main.tf`, the transcode job, the caption job and the
-      pipeline workflow for no gain.
-
-- [ ] Generate a fresh video signing key rather than copying the old one.
-      It signs cookies for a specific origin, nothing has been issued
-      against the new project, and a fresh key means the old one dies with
-      the old project.
-
-- [ ] Check the CORS origin on the video buckets. The module takes
-      `app_origin` from `var.app_domain`, so it follows the hostname
-      automatically, but the upload goes cross-origin to
-      `storage.googleapis.com` and a wrong value fails only at upload
-      time.
-
-## Phase 6: Content and data
+- [ ] Create the three secrets in the new project. Generate a fresh video
+      signing key rather than copying the old one: it signs cookies for a
+      specific origin, nothing has been issued against the new project,
+      and a fresh key means the old one dies with the old project.
 
 - [ ] Re-run the teaching pipeline against the new project so the content
       buckets refill from `eoeeta-teaching` and `respiratory-teaching`.
@@ -208,7 +244,14 @@ own repositories, and the databases hold seed data.
       the new project, and what is in the old one is test data. Revisit
       this if a real passport is uploaded before the move.
 
-## Phase 7: Cut the hostname over
+**Hands over:** a working environment on a temporary hostname, ready for
+the DNS cutover.
+
+## Batch 5 — Mark: cut the hostname over
+
+The tfvars edits here are small enough to make alongside the apply rather
+than as a separate branch; splitting them out would mean a branch that
+cannot be verified until you apply it anyway.
 
 - [ ] Release `app.quill-medical.com` from
       `infra/environments/prod/terraform.tfvars`, which claims it today.
@@ -232,20 +275,27 @@ own repositories, and the databases hold seed data.
 
 - [ ] Point `teaching.quill-medical.com` at the new project as a redirect,
       rather than leaving it served by the old one. It has to move before
-      the old project is shut down in Phase 9, or the redirect dies with
+      the old project is shut down in Batch 8, or the redirect dies with
       it.
 
 - [ ] Exercise the new environment yourself before going further: sign in,
       load a question bank, play a video, upload one. There are no users
       whose traffic would prove it works, so the check has to be
       deliberate. Everything up to here is reversible by leaving DNS
-      alone; after Phase 9 it is not.
+      alone; after Batch 8 it is not.
 
-## Phase 8: Move everything off the old hostname
+**Hands over:** `app.quill-medical.com` serving, `teaching.` redirecting
+to it, and both verified by hand. Batch 6 must not merge before this.
+
+## Batch 6 — Claude: move everything off the old hostname
 
 Retiring `teaching.quill-medical.com` is a list with an end, and this is
 it. Nobody is stranded if it breaks — Quill has no users — so this is
 about not breaking our own wiring.
+
+**Do not start this batch until Batch 5 is done.** The deploy smoke test
+moves to `app.quill-medical.com` here, so if it merges first, it points at
+a hostname that is not serving yet and every deploy fails.
 
 - [ ] Move the CI references first: the ZAP scan target in
       `.github/workflows/zap-scan.yml` and the deploy smoke test in
@@ -282,10 +332,32 @@ about not breaking our own wiring.
       `docs/docs/infrastructure/gcp.md`.
 
 - [ ] Drop `teaching.quill-medical.com` from `lb_domains` and
-      `monitored_hostnames`, then delete its DNS A record. Do this last,
-      once nothing above still names it.
+      `monitored_hostnames`. The DNS A record is deleted by hand in
+      Batch 7.
 
-## Phase 9: Retire the old project
+**Hands over:** branches to review and merge, then apply. The GitHub
+secret renames are yours, because Claude cannot write repository secrets.
+
+## Batch 7 — Mark: the secrets and the old DNS record
+
+- [ ] Create `GCP_APP_PROJECT_ID`, `GCP_APP_WIF_PROVIDER` and
+      `GCP_APP_SERVICE_ACCOUNT`, pointing at the new project, and delete
+      the `GCP_TEACHING_*` originals once Batch 6's workflow changes have
+      merged.
+
+- [ ] Scope them to this repository rather than leaving them
+      organisation-visible, as the secrets rule in `CLAUDE.md` requires.
+
+- [ ] Point `BACKEND_SYNC_URL` in the teaching pipeline at the new
+      hostname, or the content sync succeeds against an environment that
+      is about to be deleted.
+
+- [ ] Delete the `teaching.quill-medical.com` A record, once nothing
+      names it.
+
+**Hands over:** CI running entirely against the new project.
+
+## Batch 8 — Mark: retire the old project
 
 - [ ] Leave `quill-medical-teaching` running until the new environment has
       been exercised for long enough to trust. It costs money, and that is
@@ -306,7 +378,13 @@ about not breaking our own wiring.
       shut-down project is recoverable for thirty days; a deleted one is
       not, and nothing is gained by being final on the same day.
 
-## Phase 10: Take the health path off the gate
+## Batch 9 — waiting: a second environment, and launch
+
+Nothing in this batch can start yet. The three phases are kept rather than
+deleted because the reasoning was expensive to work out and costs nothing
+to store.
+
+### Phase A: Take the health path off the gate
 
 Waiting on a non-production environment existing. Nothing here is worth
 doing until something needs gating, because the health exemption exists
@@ -324,7 +402,7 @@ only to keep probes working through a gate.
 - [ ] Confirm the exemption is genuinely narrow. It must match the health
       path only, not a prefix that would expose the rest of the API.
 
-## Phase 11: Identity-Aware Proxy on non-production
+### Phase B: Identity-Aware Proxy on non-production
 
 Waiting on a non-production environment existing. Staging was shut down
 on cost, so there is currently nothing to gate: teaching is the live
@@ -357,7 +435,7 @@ product and must stay reachable without a sign-in wall.
 
 - [ ] Decide what happens to uptime checks for gated environments.
       Cloud Monitoring's probers cannot authenticate to IAP, so without
-      Phase 10 the check sits at nought per cent forever — the same
+      Phase A the check sits at nought per cent forever — the same
       permanently-open false incident already documented in
       `infra/modules/monitoring/main.tf`.
 
@@ -368,7 +446,7 @@ product and must stay reachable without a sign-in wall.
       401-refresh path in `frontend/src/lib/api.ts` never fires and the
       failure looks like a parse error. A reload clears it.
 
-## Phase 12: Second registrable domain
+### Phase C: Second registrable domain
 
 Waiting on launch. This is brand protection rather than isolation, and a
 lookalike domain needs people who recognise the name well enough to be
@@ -427,7 +505,7 @@ fooled by it. Quill has no users yet, so the risk starts when it does.
 
 - **The phases needing a second environment are kept, not deleted** —
   staging was shut down on cost and may come back, and production was shut
-  down when clinical work stopped. The reasoning in Phases 4 and 5 was
+  down when clinical work stopped. The reasoning in Phases A and B was
   expensive to work out and cheap to store, so it is marked as waiting
   rather than thrown away and rediscovered later.
 
