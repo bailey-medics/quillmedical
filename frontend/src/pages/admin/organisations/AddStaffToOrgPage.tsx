@@ -200,7 +200,7 @@ export default function AddStaffToOrgPage() {
           // organisation id, so it excluded the members of a different
           // organisation once the two id sequences diverged. It has
           // since gone with the organisations table.
-          `/users?exclude_place=${id}`,
+          `/users?exclude_org_unit=${id}`,
         );
         setUsers(response.users);
       } catch (err) {
