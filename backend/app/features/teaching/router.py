@@ -11,7 +11,7 @@ import random
 import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, NoReturn
+from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.responses import Response
@@ -3244,59 +3244,6 @@ def promote_bank_version_at_org_unit(
     settings route beside it.
     """
     return _promote_bank_version(bank_id, org_unit_id, body, user, db)
-
-
-def _retired(org_unit_path: str) -> NoReturn:
-    """Say that an organisation-keyed address has been retired.
-
-    410 rather than 404, for the same reason the retired sites and
-    organisations addresses answer 410: a caller can tell "this never
-    existed" from "this used to be here". The replacement is named, so a
-    stale tab's error reaches somebody who can act on it.
-    """
-    raise HTTPException(
-        status_code=410,
-        detail=(
-            "This address has been retired. Name the org_unit instead: "
-            f"{org_unit_path}."
-        ),
-    )
-
-
-@teaching_router.put(
-    "/admin/banks/{bank_id}/organisations/{org_id}/settings",
-    response_model=QuestionBankOrgSettingsOut,
-)
-def update_bank_org_settings_retired(
-    bank_id: str,
-    org_id: int,
-    body: QuestionBankOrgSettingsIn,
-) -> QuestionBankOrgSettingsOut:
-    """Retired. Settings are set at ``/org_units/{org_unit_id}/settings``.
-
-    No permission check, as with the other retired addresses: there is
-    nothing behind it to protect, and saying it has gone discloses
-    nothing.
-    """
-    _retired(
-        "/api/teaching/admin/banks/{bank_id}/org-units/{org_unit_id}/settings"
-    )
-
-
-@teaching_router.put(
-    "/admin/banks/{bank_id}/organisations/{org_id}/active-version",
-    response_model=PromoteBankVersionOut,
-)
-def promote_bank_version_retired(
-    bank_id: str,
-    org_id: int,
-    body: PromoteBankVersionIn,
-) -> PromoteBankVersionOut:
-    """Retired. Versions are promoted at ``/org_units/{org_unit_id}``."""
-    _retired(
-        "/api/teaching/admin/banks/{bank_id}/org-units/{org_unit_id}"
-        "/active-version"
-    )
 
 
 def _update_bank_org_settings(

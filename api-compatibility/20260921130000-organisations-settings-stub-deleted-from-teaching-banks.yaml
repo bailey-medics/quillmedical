@@ -1,0 +1,4 @@
+"generation": !!int "1"
+"forces_reload": !!bool "false"
+change: "api-path-removed-without-deprecation PUT /api/teaching/admin/banks/{bank_id}/organisations/{org_id}/settings api path removed without deprecation"
+reason: "A retired address answers 410 and names where the route moved to, which lets a caller tell \"this never existed\" from \"this used to be here\". That is a courtesy with an end date, and 12a-iii said so when it retired `/api/sites`: deleting the paths outright is a later step. This address has pointed at its replacement since the organisations table was dropped, several releases ago. No forced reload: the replacement has been serving throughout, nothing this repository ships calls the old address, and bumping the generation would stop every open tab sending any mutation until it reloaded, including the login POST."

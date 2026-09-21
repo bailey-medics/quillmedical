@@ -929,6 +929,7 @@ So the remaining steps land as:
   - [x] 12d-iv-a — retire `exclude_place`
   - [x] 12d-iv-b — retire `place_id` on the passport replies
   - [x] 12d-iv-c — retire the `/places/` teaching paths
+- [x] 12d-v — delete the retired 410 stubs
 
 #### 10a — write both names for the place column
 
@@ -2116,6 +2117,30 @@ that is a change to the database rather than to a name in the code.
 
 **The `type` values stay out of it**, for the reason above: that is a
 question about the model and a data migration, not a rename.
+
+#### 12d-v — delete the retired 410 stubs
+
+A retired address answers 410 and names where the route moved to, which
+is kinder than a 404: a caller can tell "this never existed" from "this
+used to be here". That is a courtesy with an end date, and 12a-iii said
+so when it retired `/api/sites`: "deleting the paths outright is a later
+step, and a visible one". This is that step.
+
+**The `/api/sites` stubs have already gone.** What is left is two in the
+teaching router, both keyed on an organisation id rather than an
+`org_unit` id:
+
+- `PUT /api/teaching/admin/banks/{bank_id}/organisations/{org_id}/settings`
+- `PUT /api/teaching/admin/banks/{bank_id}/organisations/{org_id}/active-version`
+
+They have pointed at the replacement since the organisations table was
+dropped in 12c-iii-d, which is several releases ago. `_retired`, the
+helper that raises the 410, goes with them.
+
+**This was invisible until somebody went looking.** The sentence
+promising it sat in prose with no checkbox, so a count of the plan's
+boxes said the work was finished while this remained. Anything deferred
+gets a box, even when the box is only a reminder.
 
 #### 12d-iv — the three contracts
 

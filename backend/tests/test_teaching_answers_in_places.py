@@ -3,9 +3,10 @@
 The contract step for the API itself. The place-shaped answer and the
 place-keyed paths arrived first and the screens moved across, so the
 organisation-shaped ones go here: ``organisation_id`` leaves the
-responses, and the organisation-keyed addresses answer 410 naming their
-replacement rather than quietly doing the work under an id that no
-longer means what it says.
+responses, and the organisation-keyed addresses are gone. They answered
+410 naming their replacement for several releases first, so a caller had
+somewhere to be sent rather than the work being done quietly under an id
+that no longer means what it says.
 """
 
 from __future__ import annotations
@@ -171,19 +172,22 @@ class TestTheOrgUnitKeyedPaths:
         assert resp.status_code == 200, resp.text
         assert resp.json()["is_live"] is True
 
-    def test_the_older_path_says_it_has_gone(
+    def test_the_older_path_is_gone(
         self,
         test_client: TestClient,
         db_session: Session,
         org: OrgUnit,
         educator: User,
     ) -> None:
-        """410, not 404, and not silently doing the work either.
+        """404: the address is gone, not merely redirected.
 
-        The two id spaces overlap for small installations, so an
-        organisation id would often name a real place. Answering the
-        request under the old address is how a caller would go on
-        believing the number means an organisation.
+        It answered 410 naming its replacement for several releases,
+        which is the courtesy a retired address owes a caller. That
+        courtesy has an end, and this is it. What must never happen is
+        the request being served: the two id spaces overlap for small
+        installations, so an organisation id would often name a real
+        org_unit, and answering would leave the caller believing the
+        number still means an organisation.
         """
         _seed_bank(db_session, org, educator)
         headers = _login(test_client)
@@ -195,10 +199,9 @@ class TestTheOrgUnitKeyedPaths:
             headers=headers,
         )
 
-        assert resp.status_code == 410, resp.text
-        assert "org-units" in resp.json()["detail"]
+        assert resp.status_code == 404, resp.text
 
-    def test_the_older_promote_path_says_it_has_gone(
+    def test_the_older_promote_path_is_gone(
         self,
         test_client: TestClient,
         db_session: Session,
@@ -215,7 +218,7 @@ class TestTheOrgUnitKeyedPaths:
             headers=headers,
         )
 
-        assert resp.status_code == 410, resp.text
+        assert resp.status_code == 404, resp.text
 
     def test_a_place_that_is_not_an_organisation_is_refused(
         self,
