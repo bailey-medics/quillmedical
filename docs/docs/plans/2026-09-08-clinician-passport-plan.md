@@ -4064,12 +4064,25 @@ later joins a paying organisation gains the second, which is consistent
 with `external` naming a relationship to a place rather than a kind of
 person.
 
-**A new feature flag is needed, distinct from `passport`.** The existing
-`OrgUnitFeature` key `passport` now means "assessors can be placed
-here", which is what an accepted assessor's placement resolves against
-(see Phase 9). Reusing it to mean "this organisation buys writing"
-would re-merge exactly what this phase separates, and would quietly buy
-seats for every assessor hosted there.
+**No organisation flag, and nothing to check at request time.**
+Corrected on 21 September, having first written the opposite here.
+`passport_write` is granted to the person, at the door, when they are
+onboarded to an organisation that pays for it. It lands in
+`additional_competencies` on the user and is theirs from then on.
+
+So the gate asks one question, of the person: do they hold
+`passport_write`? It never asks an organisation anything. An
+`OrgUnitFeature` key would make the organisation the holder of the
+entitlement rather than the occasion for granting it, and the two come
+apart the moment somebody leaves: the person keeps a competency until
+it is removed, whereas a flag would revoke everyone at once, including
+people who also bought it individually.
+
+It also keeps the business model open. Buying for a hospital, a
+department or an individual are all the same grant arriving by a
+different route, and none of them needs a new column. **Seat counting
+is deliberately not being built**, so nothing here counts how many
+people an organisation has granted it to.
 
 ### Granting it needs no seed, but the pickers were offering a retired id
 
@@ -4194,15 +4207,16 @@ and likely a different price.
       the CI seed, so the feature is testable after the split.
       **Found on doing it that no seeding was needed, and a real bug
       was in the way instead.** See below.
-- [ ] Add the organisation feature flag that grants `passport_write` at
-      onboarding, distinct from the existing `passport` key.
+- [ ] Grant `passport_write` to the person at onboarding, where an
+      organisation pays for it. No organisation flag: the gate asks the
+      person, never the place.
 - [ ] Gate every passport write path on `passport_write`, and gate no
       read or export path on it.
 - [ ] Give the entitlement an end date, and have the write gate report
       why and until when.
 - [ ] Warn on entry to the passport from two weeks out, repeating every
       five days.
-- [ ] Route the navigation link by competency: `passport_write` to the
+- [x] Route the navigation link by competency: `passport_write` to the
       holder's passport, `assess_clinician_passport` to the sign-off
       request queue. This is what makes an assessor's landing correct
       without the sidebar fetching anything or guessing.
