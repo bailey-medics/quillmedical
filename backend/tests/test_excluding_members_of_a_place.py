@@ -101,6 +101,60 @@ class TestExcludingByPlace:
         assert elsewhere.username in names
 
 
+class TestBothNames:
+    """`exclude_org_unit` is the new name; `exclude_place` still works.
+
+    Both name the same org_unit while the older one is retired, so a tab
+    open across the deploy keeps working. A request sends one or the
+    other: applying both would depend on which was read last.
+    """
+
+    def test_the_new_name_leaves_a_member_out(
+        self,
+        authenticated_superadmin_client: TestClient,
+        db_session: Session,
+        org: OrgUnit,
+    ) -> None:
+        here = _member(db_session, org, "already_here")
+
+        names = _usernames(
+            authenticated_superadmin_client,
+            f"exclude_org_unit={org.id}",
+        )
+
+        assert here.username not in names
+
+    def test_both_names_give_the_same_answer(
+        self,
+        authenticated_superadmin_client: TestClient,
+        db_session: Session,
+        org: OrgUnit,
+    ) -> None:
+        _member(db_session, org, "already_here")
+
+        old = _usernames(
+            authenticated_superadmin_client,
+            f"exclude_place={org.id}",
+        )
+        new = _usernames(
+            authenticated_superadmin_client,
+            f"exclude_org_unit={org.id}",
+        )
+
+        assert old == new
+
+    def test_sending_both_is_refused(
+        self,
+        authenticated_superadmin_client: TestClient,
+        org: OrgUnit,
+    ) -> None:
+        response = authenticated_superadmin_client.get(
+            f"/api/users?exclude_org_unit={org.id}&exclude_place={org.id}"
+        )
+
+        assert response.status_code == 422, response.text
+
+
 class TestNothingIsGiven:
     def test_everybody_the_caller_may_see_is_listed(
         self,

@@ -920,6 +920,7 @@ So the remaining steps land as:
 - [ ] 12d-iii — say `org_unit` everywhere `place` still stands in for it
   - [x] 12d-iii-a — the nine helper functions named for a place
   - [x] 12d-iii-b — the locals and parameters named for a place
+  - [x] 12d-iii-c-i — `exclude_org_unit` beside `exclude_place`
 
 #### 10a — write both names for the place column
 

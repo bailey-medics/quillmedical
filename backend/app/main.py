@@ -2449,6 +2449,7 @@ def update_profile(
 )
 def list_users(
     patient_id: str | None = None,
+    exclude_org_unit: int | None = None,
     exclude_place: int | None = None,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
@@ -2460,16 +2461,23 @@ def list_users(
     used by the message participant picker.
 
     Without ``patient_id``, returns all users the caller may administer.
-    Use ``exclude_place`` to exclude people who are already members of
-    the place being added to.
+    Use ``exclude_org_unit`` to exclude people who are already members
+    of the org_unit being added to.
 
-    ``exclude_org`` was the older spelling and counted in organisation
-    ids. It went with the table those ids belonged to; a caller still
-    sending it now excludes nobody rather than being quietly misread.
+    ``exclude_place`` is the older spelling of ``exclude_org_unit`` and
+    names the same thing. It is kept for one release so a tab open
+    across the deploy keeps working, and a request sends one or the
+    other: sending both would make the answer depend on which was read
+    last.
+
+    ``exclude_org`` was older still and counted in organisation ids. It
+    went with the table those ids belonged to; a caller still sending it
+    now excludes nobody rather than being quietly misread.
 
     Args:
         patient_id: Optional FHIR patient ID to filter by shared org.
-        exclude_place: Optional place ID to exclude members of.
+        exclude_org_unit: Optional org_unit id to exclude members of.
+        exclude_place: The older name for ``exclude_org_unit``.
         current_user: Currently authenticated user.
         db: Database session.
 
@@ -2522,13 +2530,25 @@ def list_users(
         # Unfiltered mode: admin/superadmin only
     stmt = select(User)
 
-    # Exclude people who are already members of the place being added
-    # to. A caller sending nothing excludes nobody.
-    if exclude_place is not None:
+    # Exclude people who are already members of the org_unit being
+    # added to. A caller sending nothing excludes nobody.
+    if exclude_org_unit is not None and exclude_place is not None:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Send exclude_org_unit or exclude_place, not both: they "
+                "name the same thing, and applying both would depend on "
+                "the order."
+            ),
+        )
+    excluded = (
+        exclude_org_unit if exclude_org_unit is not None else exclude_place
+    )
+    if excluded is not None:
         stmt = stmt.where(
             User.id.notin_(
                 select(org_unit_member.c.user_id).where(
-                    org_unit_member.c.org_unit_id == exclude_place
+                    org_unit_member.c.org_unit_id == excluded
                 )
             )
         )
