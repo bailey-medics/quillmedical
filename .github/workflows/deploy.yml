@@ -215,12 +215,23 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v3
 
+      # Which services are still on the placeholder image, and so need
+      # deploying whatever the paths filter decided. See the script for why
+      # that filter cannot answer this on its own.
+      - name: Find services still on the placeholder image
+        id: placeholder
+        run: |
+          bash .github/scripts/deploy/find-placeholder-services.sh \
+            ${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }} \
+            ${{ env.GCP_REGION }} \
+            ${{ matrix.environment }}
+
       # Runs once against the shared core DB, before the new backend revision
       # is created — removes the multi-instance migration race and gives a
       # clean pass/fail signal separate from app boot (see
       # docs/docs/backend/alembic-migration-safety.md).
       - name: Run database migrations
-        if: ${{ needs.prepare.outputs.backend_changed == 'true' }}
+        if: ${{ needs.prepare.outputs.backend_changed == 'true' || steps.placeholder.outputs.backend == 'true' }}
         run: |
           bash .github/scripts/deploy/run-migrations.sh \
             quill-admin-${{ matrix.environment }} \
@@ -245,7 +256,7 @@ jobs:
       # and clear_args but no image, so the image cannot be chosen per
       # execution. It is a property of the job, set here once per deploy.
       - name: Point the transcode job at this build
-        if: ${{ needs.prepare.outputs.backend_changed == 'true' }}
+        if: ${{ needs.prepare.outputs.backend_changed == 'true' || steps.placeholder.outputs.backend == 'true' }}
         run: |
           gcloud run jobs update quill-transcode-${{ matrix.environment }} \
             --project=${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }} \
@@ -257,7 +268,7 @@ jobs:
       # business in the image the API serves from. It is pointed at the
       # same way regardless.
       - name: Point the caption job at this build
-        if: ${{ needs.prepare.outputs.backend_changed == 'true' }}
+        if: ${{ needs.prepare.outputs.backend_changed == 'true' || steps.placeholder.outputs.backend == 'true' }}
         run: |
           gcloud run jobs update quill-caption-${{ matrix.environment }} \
             --project=${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }} \
@@ -265,7 +276,7 @@ jobs:
             --image=${{ env.AR_REGISTRY }}/${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }}/quill/caption:${{ needs.prepare.outputs.sha }}
 
       - name: Deploy backend
-        if: ${{ needs.prepare.outputs.backend_changed == 'true' }}
+        if: ${{ needs.prepare.outputs.backend_changed == 'true' || steps.placeholder.outputs.backend == 'true' }}
         run: |
           SHA="${{ needs.prepare.outputs.sha }}"
           # Cloud Run caps combined tag + service name at 46 chars, so a
@@ -279,7 +290,7 @@ jobs:
             /api/health
 
       - name: Deploy frontend
-        if: ${{ needs.prepare.outputs.frontend_changed == 'true' }}
+        if: ${{ needs.prepare.outputs.frontend_changed == 'true' || steps.placeholder.outputs.frontend == 'true' }}
         run: |
           gcloud run services update quill-frontend-${{ matrix.environment }} \
             --project=${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }} \
