@@ -55,7 +55,7 @@ from app.org_units.types import (
     type_requires_parent,
     validate_org_unit_type,
 )
-from app.organisations import places_administered_by
+from app.organisations import org_units_administered_by
 from app.schemas.org_units import (
     AddOrgUnitMemberIn,
     AddOrgUnitPatientIn,
@@ -119,7 +119,7 @@ def _visible_ids(db: Session, user: User) -> set[int] | None:
     teaching content at a place they visit; it is not authority to
     administer that place, and these are the administration routes.
     """
-    return places_administered_by(db, user)
+    return org_units_administered_by(db, user)
 
 
 def _require_visible(db: Session, user: User, unit_id: int) -> OrgUnit:

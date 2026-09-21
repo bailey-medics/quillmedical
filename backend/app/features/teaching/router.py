@@ -176,7 +176,7 @@ def _get_user_org_id(user: User, db: Session) -> int:
     **Which organisation it returns is still arbitrary**, and that is a
     separate, known bug rather than something this fixes. With two
     memberships it picks whichever comes back first — see
-    ``promote_bank_version_at_place``, which takes ``org_unit_id`` in the
+    ``promote_bank_version_at_org_unit``, which takes ``org_unit_id`` in the
     path for that reason, and the test named
     ``test_a_bank_held_only_by_your_second_organisation_is_found``.
     Narrowing to membership shrinks the set it chooses from without
@@ -3211,7 +3211,7 @@ def _promote_bank_version(
     response_model=QuestionBankOrgSettingsOut,
     dependencies=[_DEP_MANAGE],
 )
-def update_bank_place_settings(
+def update_bank_org_unit_settings(
     bank_id: str,
     org_unit_id: int,
     body: QuestionBankOrgSettingsIn,
@@ -3231,7 +3231,7 @@ def update_bank_place_settings(
     response_model=PromoteBankVersionOut,
     dependencies=[_DEP_MANAGE],
 )
-def promote_bank_version_at_place(
+def promote_bank_version_at_org_unit(
     bank_id: str,
     org_unit_id: int,
     body: PromoteBankVersionIn,
