@@ -30,7 +30,7 @@ export default function TeachingMainNav({
 }: TeachingMainNavProps) {
   const { logout } = useAuth();
 
-  // The same entries the main sidebar shows. Teaching is not a place
+  // The same entries the main sidebar shows. Teaching is not an org_unit
   // apart: somebody on a teaching page still has a passport, and used
   // to watch the link disappear because this file kept its own list.
   const featureItems = useFeatureNavItems();

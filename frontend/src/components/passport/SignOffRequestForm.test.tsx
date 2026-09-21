@@ -443,7 +443,7 @@ describe("SignOffRequestForm", () => {
 
   describe("Anonymisation", () => {
     it("reminds the holder not to write about a patient", () => {
-      // Reflections are one of only two places patient data could enter
+      // Reflections are one of only two org_units patient data could enter
       // a passport.
       renderForm();
       expect(

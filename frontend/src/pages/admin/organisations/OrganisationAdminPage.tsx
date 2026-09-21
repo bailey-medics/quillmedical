@@ -88,7 +88,7 @@ export default function OrganisationAdminPage() {
     if (!id) return;
 
     try {
-      // One request now: a place carries its own people, the places
+      // One request now: an org_unit carries its own people, the org_units
       // inside it and the features switched on there.
       const place = await orgUnits.get(Number(id));
       setOrg(place);
@@ -134,7 +134,7 @@ export default function OrganisationAdminPage() {
   async function confirmRemoveSite() {
     if (!id || !removingSite) return;
     try {
-      // Taking a place out of an organisation is deleting it: a place
+      // Taking an org_unit out of an organisation is deleting it: an org_unit
       // that belongs nowhere is invisible to every list and reachable by
       // nobody, which is worse than saying it has gone.
       await orgUnits.remove(removingSite.id);
@@ -187,8 +187,8 @@ export default function OrganisationAdminPage() {
     };
   }, []);
 
-  // The place sends patient ids; the table wants a row each.
-  // A page promising staff keeps that promise. The place answers with
+  // The org_unit sends patient ids; the table wants a row each.
+  // A page promising staff keeps that promise. The org_unit answers with
   // everybody who is here and what each of them is, which is right for
   // the answer and wrong for this heading: a teaching delegate listed
   // under "staff members" is how the old page came to be wrong about

@@ -2,7 +2,7 @@
 #
 # PLACE ADMINISTRATION COMPETENCY DEFINITIONS FOR QUILL MEDICAL
 #
-# Competencies for administering a *place* — the organisation or site a
+# Competencies for administering a *org_unit* — the organisation or site a
 # person is at. Distinct from clinical-admin.yaml, which is for
 # administration that is patient centric, and from the feature files
 # teaching.yaml and passport.yaml.
@@ -10,7 +10,7 @@
 # These say nothing about where the holder may administer. That is
 # membership, answered by _require_own_org and _require_site_in_own_org
 # in backend/app/main.py: the competency says *what* may be done, the
-# place check says *where*. Holding one of these confers no authority
+# org_unit check says *where*. Holding one of these confers no authority
 # over an organisation the holder does not belong to.
 #
 # Operating Quill itself is not in here. That is the platform role, one
@@ -37,7 +37,7 @@ competencies:
   #
   # That is accepted rather than overlooked. Capping a holder to
   # competencies they already hold was considered and rejected: it
-  # encodes a seniority model in the wrong place, and the people who
+  # encodes a seniority model in the wrong org_unit, and the people who
   # provision users are not always the people who practise. What
   # constrains this competency is that it is given to few.
   #
@@ -63,7 +63,7 @@ competencies:
   # that competency's existing breadth.
   #
   # Like every competency here it answers *what*, never *where*: the four
-  # routes carrying it keep their place check beside them.
+  # routes carrying it keep their org_unit check beside them.
   - id: manage_staff_membership
     display_name: "Manage Staff Membership of an Organisation or Site"
 

@@ -68,7 +68,7 @@ describe("ModuleMediaCard", () => {
 
   it("warns that an incomplete module is hidden from learners", () => {
     // The gate fails safe but would otherwise fail invisibly: this
-    // line is the only place an admin learns the module is hidden.
+    // line is the only org_unit an admin learns the module is hidden.
     renderWithMantine(<ModuleMediaCard media={incomplete} />);
 
     expect(screen.getByText("1 video is missing")).toBeInTheDocument();

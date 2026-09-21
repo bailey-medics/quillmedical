@@ -6,7 +6,7 @@
  *
  * Showing only the rare case is deliberate. The alternative — a STANDARD
  * pill on every row of every user list — is noise that says nothing,
- * because almost nobody is an operator. The badge earns its place by
+ * because almost nobody is an operator. The badge earns its org_unit by
  * appearing seldom.
  *
  * This replaces `PermissionBadge`, which rendered one of four rungs of

@@ -7,7 +7,7 @@
  *
  * `useParams` reads the params of the deepest match, not of the route the
  * caller sits on, so it returns the full set even from the wrapper above every
- * tree. That is what lets this be declared in one place.
+ * tree. That is what lets this be declared in one org_unit.
  *
  * It used to be called in `RootLayout`, which turned out to cover only part of
  * the application: `RootLayout` sits inside `RequireAuth`, so the sign-in and

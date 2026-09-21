@@ -1,7 +1,7 @@
 /**
  * Shared fixtures for passport component stories and tests.
  *
- * Kept in one place so a story and its test describe the same sign-off,
+ * Kept in one org_unit so a story and its test describe the same sign-off,
  * and so a change to the API types surfaces here once rather than in a
  * dozen inline literals.
  *

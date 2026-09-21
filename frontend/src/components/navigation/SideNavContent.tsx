@@ -200,10 +200,10 @@ export default function SideNavContent({
 
       // Both branches read the same address, because an organisation and
       // a site are the same kind of thing now. The old code asked
-      // `/organisations/{id}` with what is a place id, which answered
+      // `/organisations/{id}` with what is an org_unit id, which answered
       // about whichever organisation happened to hold that number.
       const placeId = orgId ?? siteId;
-      // "new" is a page, not a place. Asking about it used to produce a
+      // "new" is a page, not an org_unit. Asking about it used to produce a
       // failed request on every visit to the create form.
       if (!placeId || !/^\d+$/.test(placeId)) {
         setOrgNavChildren(undefined);
@@ -228,7 +228,7 @@ export default function SideNavContent({
             : undefined,
         };
 
-        // The place above may be a building rather than the trust, so
+        // The org_unit above may be a building rather than the trust, so
         // which page to link to comes from the server rather than from
         // assuming everything hangs straight off an organisation.
         if (place.parent_id !== null && place.parent_name) {

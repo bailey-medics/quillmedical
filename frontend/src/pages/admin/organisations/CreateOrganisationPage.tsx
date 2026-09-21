@@ -87,7 +87,7 @@ export default function CreateOrganisationPage() {
     try {
       // No parent: this is the top of a new tree. Which types may be
       // one is declared by the type itself, so the server refuses a
-      // kind of place that has to sit inside something.
+      // kind of org_unit that has to sit inside something.
       await orgUnits.create({
         name: data.name.trim(),
         type: data.type as string,

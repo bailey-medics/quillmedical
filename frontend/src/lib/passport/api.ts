@@ -300,7 +300,7 @@ export function exportBundle(passportId: string): Promise<Blob> {
  * otherwise say `application/json` over a `FormData` body.
  *
  * The response is passed straight back into the record being written —
- * it is the only place the filename and media type exist, since a blob
+ * it is the only org_unit the filename and media type exist, since a blob
  * is bytes at a path named by their hash and nothing beside it says what
  * the file was called.
  */
@@ -428,7 +428,7 @@ export function removeLogbookEntry(
 
 /**
  * Writes a reflection. `anonymised_confirmed` must be true — reflections
- * are one of only two places patient data could enter a passport.
+ * are one of only two org_units patient data could enter a passport.
  */
 export function addReflection(
   passportId: string,

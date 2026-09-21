@@ -206,7 +206,7 @@ export default function EditSitePage() {
 
       // Naming a clinical lead is two things: the person is here, and
       // the person holds the post. Standing somebody down leaves the post
-      // vacant without taking them off the place, which is what the old
+      // vacant without taking them off the org_unit, which is what the old
       // "remove the staff row" did and should not have.
       const currentLead = siteData?.members.find(
         (member) => member.id === siteData?.clinical_lead_id,

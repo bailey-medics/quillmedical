@@ -49,9 +49,9 @@ import ErrorState from "@/components/error-state/ErrorState";
 import { orgUnits, type OrgUnit } from "@/domains/orgUnit";
 
 /**
- * An organisation and the places inside it, all in place ids.
+ * An organisation and the org_units inside it, all in place ids.
  *
- * Organisations and the places inside them are rows in one table, so
+ * Organisations and the org_units inside them are rows in one table, so
  * there is one kind of id here. There used to be two, counted against
  * two tables, and the form was the last thing still telling them apart.
  */
@@ -74,11 +74,11 @@ interface UserFormData {
   removedCompetencies: CompetencyId[];
   platformRole: PlatformRole;
   /**
-   * Every place the person belongs to, organisations included.
+   * Every org_unit the person belongs to, organisations included.
    *
    * One list, because the backend now takes one. The two controls on
    * screen are a view of it: one offers the organisations, the other the
-   * places inside them.
+   * org_units inside them.
    */
   orgUnitIds: string[];
 }
@@ -213,7 +213,7 @@ function Step2Organisation({
     })),
   );
 
-  // Two controls over one list. Which control a place belongs in is
+  // Two controls over one list. Which control an org_unit belongs in is
   // decided by what it is, not by the person having put it there.
   const validOrgIds = new Set(orgOptions.map((o) => o.value));
   const validSiteIds = new Set(siteOptions.map((s) => s.value));
@@ -657,7 +657,7 @@ export default function UserInfoUpdatePage() {
     fetchUser();
   }, [isEditMode, userId]);
 
-  // Fetch every place the person may be put in, in one request
+  // Fetch every org_unit the person may be put in, in one request
   useEffect(() => {
     async function fetchPlaces() {
       try {
@@ -666,11 +666,11 @@ export default function UserInfoUpdatePage() {
         const byId = new Map(places.map((place) => [place.id, place]));
 
         /**
-         * The organisation a place belongs to.
+         * The organisation an org_unit belongs to.
          *
          * Walked rather than read off the parent, because a ward can sit
          * inside a building inside a hospital, and it is still that
-         * trust's ward. The walk is bounded by the number of places, so
+         * trust's ward. The walk is bounded by the number of org_units, so
          * a chain that somehow loops cannot hang the page.
          */
         function rootOf(place: OrgUnit): OrgUnit | undefined {
@@ -698,7 +698,7 @@ export default function UserInfoUpdatePage() {
         for (const place of places) {
           if (place.is_root) continue;
           const root = rootOf(place);
-          // A place whose organisation is not in the answer is one the
+          // An org_unit whose organisation is not in the answer is one the
           // person may administer without administering the tree above
           // it. It has nowhere to be listed, so it is left out rather
           // than shown under a name we do not have.

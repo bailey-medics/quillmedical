@@ -531,8 +531,8 @@ describe("SideNavContent Component", () => {
 
   describe("Where you are", () => {
     // The breadcrumb used to ask `/organisations/{id}` with what is now
-    // a place id, so it named whichever organisation happened to hold
-    // that number. Both kinds of place come from one address now.
+    // an org_unit id, so it named whichever organisation happened to hold
+    // that number. Both kinds of org_unit come from one address now.
     function place(over: Record<string, unknown> = {}) {
       return {
         id: 5,
@@ -556,7 +556,7 @@ describe("SideNavContent Component", () => {
       };
     }
 
-    /** Render at a route, answering /auth/me and the place address. */
+    /** Render at a route, answering /auth/me and the org_unit address. */
     function renderAt(route: string, body: Record<string, unknown>) {
       const asked: string[] = [];
       const user = mockUsers.admin;
@@ -625,15 +625,15 @@ describe("SideNavContent Component", () => {
       });
       await user.click(screen.getByText("Main building"));
 
-      // A building is a place, not an organisation, so going up lands on
-      // the place page rather than the organisation one.
+      // A building is an org_unit, not an organisation, so going up lands on
+      // the org_unit page rather than the organisation one.
       await waitFor(() => {
         expect(asked.some((url) => url.endsWith("/org-units/11"))).toBe(true);
       });
     });
 
     it("asks about nothing on the create page", async () => {
-      // "new" is a page, not a place.
+      // "new" is a page, not an org_unit.
       const asked = renderAt("/admin/sites/new", place());
 
       await waitFor(() => {

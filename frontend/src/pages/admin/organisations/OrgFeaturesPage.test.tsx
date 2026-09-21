@@ -15,7 +15,7 @@ vi.mock("@/auth/AuthContext", () => ({
 }));
 
 describe("OrgFeaturesPage", () => {
-  // One request now: a place carries the features switched on there.
+  // One request now: an org_unit carries the features switched on there.
   const mockOrg = {
     id: 3,
     name: "Test Hospital",

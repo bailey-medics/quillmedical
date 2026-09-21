@@ -3,12 +3,12 @@
  *
  * Creating a site used to be possible only from the organisation it sits
  * in, which quietly decided the answer to "what does it sit inside?"
- * before the question was asked. Here the place above is picked like any
+ * before the question was asked. Here the org_unit above is picked like any
  * other field, so a ward can be put inside a building rather than only
  * inside a trust.
  *
  * Who leads the site is deliberately not asked here. The person has to be
- * at the place before they can hold the post there, and both are one act
+ * at the org_unit before they can hold the post there, and both are one act
  * on the site's own pages once it exists.
  */
 
@@ -47,7 +47,7 @@ function CreateSiteFields({
   const navigate = useNavigate();
   const { methods } = useFormContext();
 
-  // A place is offered by name and kind together, because two wards in
+  // An org_unit is offered by name and kind together, because two wards in
   // different hospitals are often called the same thing.
   const parentOptions = useMemo(
     () =>

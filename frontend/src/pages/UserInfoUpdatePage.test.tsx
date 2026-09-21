@@ -304,7 +304,7 @@ describe("UserInfoUpdatePage", () => {
   });
 
   describe("Where the person belongs", () => {
-    /** Walk to step 2, where the two place controls are. */
+    /** Walk to step 2, where the two org_unit controls are. */
     async function toThePlacesStep(user: ReturnType<typeof userEvent.setup>) {
       await user.type(screen.getByLabelText(/full name/i), "Dr Jane Smith");
       await user.type(
@@ -346,7 +346,7 @@ describe("UserInfoUpdatePage", () => {
 
     it("sends the org_units chosen, in org_unit ids", async () => {
       // One list, whichever control they came from: an organisation and
-      // the places inside it are rows in the same table.
+      // the org_units inside it are rows in the same table.
       const user = userEvent.setup();
       const mockPost = vi.fn().mockResolvedValue({ data: { id: 1 } });
       (apiModule.api.post as ReturnType<typeof vi.fn>) = mockPost;

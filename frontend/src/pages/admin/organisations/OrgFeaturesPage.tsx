@@ -164,7 +164,7 @@ export default function OrgFeaturesPage() {
       }
 
       try {
-        // One request: a place carries the features switched on there.
+        // One request: an org_unit carries the features switched on there.
         const place = await orgUnits.get(Number(id));
         setOrgName(place.name);
         setSavedKeys(new Set(place.features));

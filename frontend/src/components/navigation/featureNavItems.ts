@@ -1,7 +1,7 @@
 /**
  * Cross-feature navigation entries.
  *
- * The one place that decides which features appear in the sidebar. Both
+ * The one org_unit that decides which features appear in the sidebar. Both
  * the main sidebar and the teaching one render what this returns, so a
  * feature added here shows up in both — and, more to the point, cannot
  * show up in one and not the other.

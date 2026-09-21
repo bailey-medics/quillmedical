@@ -194,7 +194,7 @@ export default function AddStaffToOrgPage() {
     async function fetchUsers() {
       try {
         const response = await api.get<{ users: ApiUser[] }>(
-          // A place id, which is what this route's `id` is: the
+          // An org_unit id, which is what this route's `id` is: the
           // membership added below names one too. The older
           // `exclude_org` parameter read the same number as an
           // organisation id, so it excluded the members of a different
@@ -240,7 +240,7 @@ export default function AddStaffToOrgPage() {
     try {
       await orgUnits.addMember(Number(id), {
         user_id: Number(data.userId),
-        // The old route assumed this; the new one asks, because a place
+        // The old route assumed this; the new one asks, because an org_unit
         // takes trainees and external assessors too.
         capacity: "staff",
         // Omitted rather than sent as null, so the request says nothing

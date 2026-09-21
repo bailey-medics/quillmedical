@@ -2,7 +2,7 @@
  * Passport API client and types.
  *
  * Import from `@lib/passport` rather than reaching into `./api` or
- * `./types` directly, so the module's surface is one place and a later
+ * `./types` directly, so the module's surface is one org_unit and a later
  * reshuffle of the files inside it stays invisible to callers.
  */
 

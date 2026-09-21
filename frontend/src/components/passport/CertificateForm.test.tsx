@@ -97,7 +97,7 @@ describe("CertificateForm", () => {
   });
 
   it("carries the attachment through to the record", async () => {
-    // The upload response is the only place the filename and media type
+    // The upload response is the only org_unit the filename and media type
     // exist: a blob is bytes at a path named by their hash, and nothing
     // beside it records what the file was called.
     const user = userEvent.setup();

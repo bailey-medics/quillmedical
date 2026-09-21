@@ -213,7 +213,7 @@ describe("AddStaffToOrgPage", () => {
         expect(post).toHaveBeenCalledWith("/org-units/1/members", {
           user_id: 1,
           // The old address assumed this; the new one asks, because a
-          // place takes trainees and external assessors too.
+          // org_unit takes trainees and external assessors too.
           capacity: "staff",
         });
       });

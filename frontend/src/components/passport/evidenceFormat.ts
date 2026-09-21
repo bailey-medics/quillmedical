@@ -10,7 +10,7 @@
  * What evidence may be, mirroring `ALLOWED_EVIDENCE_TYPES` on the
  * backend.
  *
- * Checked in both places deliberately. This one spares the holder an
+ * Checked in both org_units deliberately. This one spares the holder an
  * upload that was never going to be accepted; the backend's is the one
  * that decides, because a caller controls this list and the store must
  * not admit whatever it is handed.

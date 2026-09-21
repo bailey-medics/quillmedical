@@ -188,7 +188,7 @@ describe("AdminBankDetailPage media card", () => {
   });
 
   it("warns that an incomplete module is hidden from learners", async () => {
-    // The gate hides such a module, and this line is the only place an
+    // The gate hides such a module, and this line is the only org_unit an
     // admin finds out. Asserted through the page so the wiring is
     // covered, not just the card in isolation.
     routeGets({

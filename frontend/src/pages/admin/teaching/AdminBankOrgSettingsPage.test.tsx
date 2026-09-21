@@ -15,7 +15,7 @@ vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual("react-router-dom");
   return {
     ...actual,
-    // The route carries a place id now, not an organisation id.
+    // The route carries an org_unit id now, not an organisation id.
     useParams: () => ({ bankId: "test-bank", orgId: "11" }),
   };
 });
@@ -35,7 +35,7 @@ const mockBank = {
   student_email_template: null,
 };
 
-// Place ids that no organisation id would match, so a row found by
+// org_unit ids that no organisation id would match, so a row found by
 // number alone would be the wrong one.
 const mockOrgs = [
   {

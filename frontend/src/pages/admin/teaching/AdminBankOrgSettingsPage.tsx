@@ -108,7 +108,7 @@ export default function AdminBankOrgSettingsPage() {
       ]);
       setBank(bankData);
 
-      // The URL carries a place id now, so the row is matched on the
+      // The URL carries an org_unit id now, so the row is matched on the
       // same thing rather than on the organisation id beside it.
       const thisOrg = orgsData.find((o) => o.org_unit_id === Number(orgId));
       if (!thisOrg) {

@@ -328,7 +328,7 @@ export interface Verification {
  * A file that has been stored, and the hash a record names it by.
  *
  * Passed straight back into the record being written: this is the only
- * place the filename and media type exist, because a blob is bytes at a
+ * org_unit the filename and media type exist, because a blob is bytes at a
  * path named by their hash and nothing beside it records what the file
  * was called.
  */
@@ -424,7 +424,7 @@ export interface Logbook {
  *
  * Holder-only, and excluded from every other reader including
  * organisation admins. `anonymised_confirmed` must be true: reflections
- * are written about real cases and are one of only two places patient
+ * are written about real cases and are one of only two org_units patient
  * data could enter a passport.
  */
 export interface ReflectionInput {
@@ -593,7 +593,7 @@ export interface RegistrationVerification {
   verified_by_name: string;
   verified_at: IsoDateTime;
   /**
-   * The place of the organisation whose admin checked it. Replaces
+   * The org_unit of the organisation whose admin checked it. Replaces
    * `organisation_id`, which counted in the organisations table's own
    * ids; membership answers in place ids now.
    */
@@ -613,8 +613,8 @@ export interface AssessorRevoke {
   /** The older name for `org_unit_id`, retiring a release later. */
   place_id: number;
   /**
-   * The org_unit the membership was held at, whichever kind `place`
-   * says. It used to hold the organisation's own id when `place` was
+   * The org_unit the membership was held at, whichever kind `org_unit`
+   * says. It used to hold the organisation's own id when `org_unit` was
    * `organisation`, which the name never said.
    */
   org_unit_id: number;

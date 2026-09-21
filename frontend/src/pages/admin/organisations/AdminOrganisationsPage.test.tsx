@@ -186,8 +186,8 @@ describe("AdminOrganisationsPage", () => {
 
       await waitFor(() => {
         // The server names the type now. The page used to guess at it by
-        // title-casing the stored value, which meant two places could
-        // disagree about what a kind of place is called.
+        // title-casing the stored value, which meant two org_units could
+        // disagree about what a kind of org_unit is called.
         expect(screen.getByText("General practice")).toBeInTheDocument();
       });
     });
