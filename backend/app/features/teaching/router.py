@@ -3207,6 +3207,11 @@ def _promote_bank_version(
 
 
 @teaching_router.put(
+    "/admin/banks/{bank_id}/org-units/{org_unit_id}/settings",
+    response_model=QuestionBankOrgSettingsOut,
+    dependencies=[_DEP_MANAGE],
+)
+@teaching_router.put(
     "/admin/banks/{bank_id}/places/{org_unit_id}/settings",
     response_model=QuestionBankOrgSettingsOut,
     dependencies=[_DEP_MANAGE],
@@ -3218,14 +3223,20 @@ def update_bank_org_unit_settings(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
 ) -> QuestionBankOrgSettingsOut:
-    """Set a bank live or closed for a place.
+    """Set a bank live or closed for an org_unit.
 
-    The only path for this now, and no translation left in it:
-    membership answers in place ids too.
+    Served at two addresses while the older one is retired. The
+    ``places`` spelling is kept for one release so a tab open across the
+    deploy keeps working; ``org-units`` is the name the tree uses.
     """
     return _update_bank_org_settings(bank_id, org_unit_id, body, user, db)
 
 
+@teaching_router.put(
+    "/admin/banks/{bank_id}/org-units/{org_unit_id}/active-version",
+    response_model=PromoteBankVersionOut,
+    dependencies=[_DEP_MANAGE],
+)
 @teaching_router.put(
     "/admin/banks/{bank_id}/places/{org_unit_id}/active-version",
     response_model=PromoteBankVersionOut,
@@ -3238,10 +3249,10 @@ def promote_bank_version_at_org_unit(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
 ) -> PromoteBankVersionOut:
-    """Move which version a place's candidates receive.
+    """Move which version an org_unit's candidates receive.
 
-    The only path for this now, and no translation left in it, as with
-    the settings route beside it.
+    Served at two addresses while the older one is retired, as with the
+    settings route beside it.
     """
     return _promote_bank_version(bank_id, org_unit_id, body, user, db)
 
