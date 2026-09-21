@@ -591,3 +591,47 @@ EOF
   run bash -c "source '${BATS_TEST_DIRNAME}/validate-compat-files.sh' 'oasdiff.json' 2>/dev/null; echo \"\$COMPAT_DIR\""
   [[ "$output" == "./api-compatibility" ]]
 }
+
+# ---------------------------------------------------------------------------
+# COMPAT_BASE: which commit the decision-file diffs start from
+#
+# oasdiff diffs the pull request against the commit it branched from, which on
+# a stacked pull request is the branch below rather than main. These diffs have
+# to start from that same commit, or a decision file belonging to a branch
+# underneath counts as new here while its change is not flagged there, and
+# rule 11 fails it.
+# ---------------------------------------------------------------------------
+
+@test "COMPAT_BASE: defaults to origin/main when nothing is set" {
+  run bash -c "unset COMPAT_BASE_REF GIT_MAIN_BRANCH; source '${BATS_TEST_DIRNAME}/validate-compat-files.sh' 'oasdiff.json' 2>/dev/null; echo \"\$COMPAT_BASE\""
+  [[ "$output" == "origin/main" ]]
+}
+
+@test "COMPAT_BASE: follows GIT_MAIN_BRANCH when that is set" {
+  run bash -c "unset COMPAT_BASE_REF; GIT_MAIN_BRANCH=trunk source '${BATS_TEST_DIRNAME}/validate-compat-files.sh' 'oasdiff.json' 2>/dev/null; echo \"\$COMPAT_BASE\""
+  [[ "$output" == "origin/trunk" ]]
+}
+
+@test "COMPAT_BASE: COMPAT_BASE_REF wins, and is used verbatim so a SHA works" {
+  run bash -c "COMPAT_BASE_REF=abc1234 GIT_MAIN_BRANCH=main source '${BATS_TEST_DIRNAME}/validate-compat-files.sh' 'oasdiff.json' 2>/dev/null; echo \"\$COMPAT_BASE\""
+  [[ "$output" == "abc1234" ]]
+}
+
+@test "COMPAT_BASE: the file diffs run against it rather than origin/main" {
+  cd "$TEST_REPO"
+  git init -q .
+  git config user.email t@t.t
+  git config user.name t
+  mkdir -p api-compatibility
+  echo "first" > api-compatibility/aaa.yaml
+  git add -A && git commit -qm first
+  local base_sha
+  base_sha="$(git rev-parse HEAD)"
+  echo "second" > api-compatibility/bbb.yaml
+  git add -A && git commit -qm second
+
+  # From the first commit, only the second file is new.
+  run bash -c "cd '$TEST_REPO' && COMPAT_BASE_REF='$base_sha' source '${BATS_TEST_DIRNAME}/validate-compat-files.sh' 'oasdiff.json' 2>/dev/null; get_new_compat_files"
+  [[ "$output" == *"bbb.yaml"* ]]
+  [[ "$output" != *"aaa.yaml"* ]]
+}

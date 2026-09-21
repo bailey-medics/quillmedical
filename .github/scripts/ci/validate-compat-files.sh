@@ -10,6 +10,18 @@
 #
 # Environment:
 #   GIT_MAIN_BRANCH      Name of the main branch to check against (default: main).
+#   COMPAT_BASE_REF      The commit this branch actually started from, as a ref
+#                        or a SHA. Overrides GIT_MAIN_BRANCH when set.
+#
+#                        On a stacked pull request the base is the branch
+#                        below, not main. oasdiff already diffs against that
+#                        commit, so it flags only this branch's own changes;
+#                        comparing decision files against main instead counts
+#                        the ones belonging to the branches underneath as new,
+#                        and every one of those fails rule 11 for referencing
+#                        a change oasdiff did not flag. Both halves have to
+#                        start from the same commit or they disagree about
+#                        what the pull request contains.
 #
 # Performs 11 validation rules:
 #   1. (Skipped - oasdiff already ran)
@@ -35,6 +47,10 @@ source "$(dirname "${BASH_SOURCE[0]}")/../shared/logging.sh" "validate-compat-fi
 OASDIFF_JSON="${1:-}"
 COMPAT_DIR="${2:-./api-compatibility}"
 GIT_MAIN_BRANCH="${GIT_MAIN_BRANCH:-main}"
+# What the diffs below compare against. COMPAT_BASE_REF is used verbatim, so
+# it may be a SHA; the GIT_MAIN_BRANCH fallback keeps the older behaviour for
+# callers that pass a bare branch name.
+COMPAT_BASE="${COMPAT_BASE_REF:-origin/$GIT_MAIN_BRANCH}"
 
 # State
 # Plain assignment (no declare/local) so these stay global even when this
@@ -159,7 +175,7 @@ get_new_compat_files() {
   if [ -n "${GET_NEW_COMPAT_FILES_OVERRIDE:-}" ]; then
     eval "$GET_NEW_COMPAT_FILES_OVERRIDE"
   else
-    git diff --name-only --diff-filter=A "origin/$GIT_MAIN_BRANCH"...HEAD -- "$COMPAT_DIR" 2>/dev/null || true
+    git diff --name-only --diff-filter=A "$COMPAT_BASE"...HEAD -- "$COMPAT_DIR" 2>/dev/null || true
   fi
 }
 
@@ -169,7 +185,7 @@ get_modified_compat_files() {
   if [ -n "${GET_MODIFIED_COMPAT_FILES_OVERRIDE:-}" ]; then
     eval "$GET_MODIFIED_COMPAT_FILES_OVERRIDE"
   else
-    git diff --name-only --diff-filter=M "origin/$GIT_MAIN_BRANCH"...HEAD -- "$COMPAT_DIR" 2>/dev/null || true
+    git diff --name-only --diff-filter=M "$COMPAT_BASE"...HEAD -- "$COMPAT_DIR" 2>/dev/null || true
   fi
 }
 
@@ -179,7 +195,7 @@ get_deleted_compat_files() {
   if [ -n "${GET_DELETED_COMPAT_FILES_OVERRIDE:-}" ]; then
     eval "$GET_DELETED_COMPAT_FILES_OVERRIDE"
   else
-    git diff --name-only --diff-filter=D "origin/$GIT_MAIN_BRANCH"...HEAD -- "$COMPAT_DIR" 2>/dev/null || true
+    git diff --name-only --diff-filter=D "$COMPAT_BASE"...HEAD -- "$COMPAT_DIR" 2>/dev/null || true
   fi
 }
 
@@ -197,7 +213,7 @@ get_main_file_content() {
   if [ -n "${GET_MAIN_FILE_CONTENT_OVERRIDE:-}" ]; then
     "$GET_MAIN_FILE_CONTENT_OVERRIDE" "$file"
   else
-    git show "origin/$GIT_MAIN_BRANCH:$file" 2>/dev/null || echo ""
+    git show "$COMPAT_BASE:$file" 2>/dev/null || echo ""
   fi
 }
 

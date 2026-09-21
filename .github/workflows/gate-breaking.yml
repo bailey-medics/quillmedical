@@ -186,9 +186,17 @@ jobs:
         if: steps.diff.outputs.breaking == 'true'
         run: bash pr/.github/scripts/ci/extract-breaking-summary.sh oasdiff-report.json
 
+      # Same commit oasdiff diffed against, so both halves agree on where
+      # this branch starts. On a stacked pull request that is the branch
+      # below rather than main, and comparing decision files against main
+      # instead counts the ones belonging to the branches underneath as
+      # new, failing every one of them for referencing a change oasdiff
+      # did not flag.
       - name: Validate api-compatibility decision files
         id: validate
         working-directory: pr
+        env:
+          COMPAT_BASE_REF: ${{ steps.base.outputs.base_sha }}
         run: bash .github/scripts/ci/run-compat-validation.sh ../oasdiff-report.json api-compatibility
 
       - name: Write breaking changes summary to job summary
