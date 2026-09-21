@@ -302,10 +302,17 @@ refactor removes without noticing.
       and an authorisation model nobody can see is one nobody will maintain.
 
   Built as `PractisingCompetenciesCard` in
-  `frontend/src/components/practising-competencies/`, mounted on
-  `OrganisationAdminPage`. A component rather than page code, because the
-  same card belongs on every org_unit's screen: nothing is inherited, so a
-  ward's authorisations are only visible at the ward.
+  `frontend/src/components/practising-competencies/`, mounted on **both**
+  `OrganisationAdminPage` and `SiteAdminPage`. A component rather than page
+  code, because the same card belongs on every org_unit's screen: nothing is
+  inherited, so a ward's authorisations are only visible at the ward.
+
+  Both, not just the organisation. It was mounted on the organisation page
+  first and that was wrong: a ward manager administering their ward without
+  trust-wide authority is the case the whole model exists for, and with no
+  card at the ward there was no way to authorise anybody there. Those are
+  the only two screens that show one org_unit's members; the rest are
+  forms.
 
   It renders nothing at all, rather than an empty card, for somebody
   without `manage_practising_competencies`. A heading over a table they
