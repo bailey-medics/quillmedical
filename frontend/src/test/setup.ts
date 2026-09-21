@@ -10,16 +10,81 @@ import { cleanup } from "@testing-library/react";
 import { afterEach } from "vitest";
 import { act } from "react";
 
+/**
+ * Timers still pending when a test ends.
+ *
+ * Mantine's `Transition` schedules `setStatus` on the transition
+ * duration — 100ms or more — from inside two nested
+ * `requestAnimationFrame` callbacks, so the timer does not even exist
+ * until two frames after the transition starts. It clears itself on
+ * unmount, but only once React runs that cleanup.
+ *
+ * When a suite ends while a transition is mid-flight, the timer can
+ * outlive the jsdom environment. It then fires against a torn-down
+ * `window`, React tries to schedule an update, and vitest reports
+ * `ReferenceError: window is not defined` as an unhandled error. Every
+ * test passes and the run still exits non-zero, which is how this
+ * arrived: a repository-wide failure attributed to whichever file
+ * happened to be running.
+ *
+ * Waiting the duration out in `afterEach` would add that delay to every
+ * one of thousands of tests, so the pending ids are tracked and any
+ * that survive cleanup are cleared instead.
+ */
+const pendingTimers = new Set<ReturnType<typeof setTimeout>>();
+
+type SetTimeout = typeof globalThis.setTimeout;
+type ClearTimeout = typeof globalThis.clearTimeout;
+
+const realSetTimeout: SetTimeout = globalThis.setTimeout;
+const realClearTimeout: ClearTimeout = globalThis.clearTimeout;
+
+// Cast through `unknown`: the wrapper takes and returns what the real
+// one does, but `setTimeout` carries overloads and a `__promisify__`
+// member that a plain arrow function cannot satisfy structurally.
+globalThis.setTimeout = ((
+  handler: TimerHandler,
+  timeout?: number,
+  ...args: unknown[]
+) => {
+  const id = realSetTimeout(
+    (...called: unknown[]) => {
+      pendingTimers.delete(id);
+      if (typeof handler === "function") {
+        (handler as (...a: unknown[]) => void)(...called);
+      }
+    },
+    timeout,
+    ...args,
+  );
+  pendingTimers.add(id);
+  return id;
+}) as unknown as SetTimeout;
+
+globalThis.clearTimeout = ((id?: ReturnType<SetTimeout>) => {
+  if (id !== undefined) {
+    pendingTimers.delete(id);
+  }
+  realClearTimeout(id);
+}) as unknown as ClearTimeout;
+
 // Cleanup after each test automatically
 afterEach(async () => {
-  // Cleanup React components
+  // Cleanup React components. Unmounting is what gives Mantine's own
+  // `useEffect` cleanup the chance to clear its transition timers.
   cleanup();
 
-  // Flush pending timers and promises to prevent "window is not defined" errors
-  // This ensures Mantine transitions and animations complete before test teardown
+  // Let unmount effects and resolved promises run, so anything that
+  // clears itself gets the chance to.
   await act(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => realSetTimeout(resolve, 0));
   });
+
+  // Anything still scheduled would fire after this environment is gone.
+  for (const id of pendingTimers) {
+    realClearTimeout(id);
+  }
+  pendingTimers.clear();
 });
 
 // Mock scrollIntoView (required for Mantine Select/Combobox)
