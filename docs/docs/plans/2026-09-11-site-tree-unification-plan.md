@@ -915,6 +915,7 @@ So the remaining steps land as:
 - [x] 12d-i-c — the membership subquery names an org_unit
 - [x] 12d-i-d — the locals and parameters name an org_unit
 - [x] 12d-i-e — `org_unit_ids` beside `place_ids` on the users API
+- [x] 12d-i-f — the frontend sends and reads `org_unit_ids`
 - [ ] 12d-ii — retire `place_ids`
 
 #### 10a — write both names for the place column
@@ -2021,6 +2022,18 @@ five units along the seams the names themselves make:
 
 `exclude_place` is a query parameter rather than an internal name, so it
 belongs with the API step and not with the locals.
+
+#### 12d-i-f — the frontend sends and reads `org_unit_ids`
+
+The step between the expand and the contract, which the plan first
+missed. `UserInfoUpdatePage` both sends `place_ids` and reads it back, so
+retiring the field server-side would break the page however long the wait
+between deploys. The page moves to `org_unit_ids` while both names still
+work, which is the "switch reads" deploy the backend rules describe.
+
+It reads `org_unit_ids` with `place_ids` as a fallback, so the page is
+correct against a server from either side of the expand. The fallback goes
+with `place_ids` itself in 12d-ii.
 
 #### 12d-ii — retire `place_ids`
 

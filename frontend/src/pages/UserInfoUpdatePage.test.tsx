@@ -344,7 +344,7 @@ describe("UserInfoUpdatePage", () => {
       ).toBeInTheDocument();
     }, 30000);
 
-    it("sends the places chosen, in place ids", async () => {
+    it("sends the org_units chosen, in org_unit ids", async () => {
       // One list, whichever control they came from: an organisation and
       // the places inside it are rows in the same table.
       const user = userEvent.setup();
@@ -377,7 +377,7 @@ describe("UserInfoUpdatePage", () => {
       await waitFor(() => {
         expect(mockPost).toHaveBeenCalledWith(
           "/users",
-          expect.objectContaining({ place_ids: [1, 10] }),
+          expect.objectContaining({ org_unit_ids: [1, 10] }),
         );
       });
     }, 30000);
