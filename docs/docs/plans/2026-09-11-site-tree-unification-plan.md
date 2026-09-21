@@ -919,6 +919,7 @@ So the remaining steps land as:
 - [x] 12d-ii — retire `place_ids`
 - [ ] 12d-iii — say `org_unit` everywhere `place` still stands in for it
   - [x] 12d-iii-a — the nine helper functions named for a place
+  - [x] 12d-iii-b — the locals and parameters named for a place
 
 #### 10a — write both names for the place column
 
@@ -2078,6 +2079,31 @@ expand, a release, then contract.
 occurrences into five because one reviewer cannot hold more than that at
 once, and this is twice the size again. The seams that worked there were
 the writers, the readers, the subquery, the locals, then the API.
+
+The count is lower than it first looked. A plain search for "place" also
+matches `replace`, `placeholder`, `placement` and `placed`, which are
+nothing to do with the tree. The real figure is roughly 840 in `backend/`
+and 240 in `frontend/src`, and most of it is prose rather than code.
+
+The seams here, in order:
+
+- **12d-iii-a** the nine helper functions, done.
+- **12d-iii-b** the locals and parameters: `user_place_ids`,
+  `conv_place_ids`, `organisation_place_id`, `member_places` and the
+  rest. Internal, so no gate.
+- **12d-iii-c** the wire surface, which carries decision files and the
+  `api-breaking-change-review` gate: `exclude_place`, a query parameter
+  the add-staff screen sends; `place_id` on the two passport response
+  schemas; and the two teaching routes whose paths hold `/places/`.
+- **12d-iii-d** the docstrings and comments, which is the bulk of it and
+  the part needing judgement rather than a regex.
+
+**Three names stay as they are.** `uq_teaching_org_settings_place`,
+`uq_site_common_competency_place` and
+`ck_practising_competency_place_required` are database constraints named
+in migrations that have already merged. A merged migration's code is
+frozen, so renaming one means a new migration rather than an edit, and
+that is a change to the database rather than to a name in the code.
 
 **The `type` values stay out of it**, for the reason above: that is a
 question about the model and a data migration, not a rename.

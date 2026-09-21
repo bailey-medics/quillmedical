@@ -209,22 +209,22 @@ def get_reachable_org_unit_ids(
     # up to. Walking rather than joining on a column, because a place
     # several levels down still reaches its organisation and a join on
     # the parent would not see it.
-    member_places = select(org_unit_member.c.org_unit_id).where(
+    member_org_units = select(org_unit_member.c.org_unit_id).where(
         org_unit_member.c.user_id == user_id
     )
     if capacity is not None:
-        member_places = member_places.where(
+        member_org_units = member_org_units.where(
             org_unit_member.c.capacity == validate_member_capacity(capacity)
         )
 
-    org_unit_ids = [int(r[0]) for r in db.execute(member_places).all()]
+    org_unit_ids = [int(r[0]) for r in db.execute(member_org_units).all()]
     if not org_unit_ids:
         return []
 
     roots = organisation_org_units_of(db, org_unit_ids)
 
-    own_places = set(org_unit_ids) | roots
-    return sorted(roots | _reached_through_links(db, own_places))
+    own_org_units = set(org_unit_ids) | roots
+    return sorted(roots | _reached_through_links(db, own_org_units))
 
 
 def _reached_through_links(db: Session, place_ids: set[int]) -> set[int]:
@@ -293,9 +293,9 @@ def get_shared_org_unit_ids(
     db: Session, user_id: int, patient_id: str
 ) -> list[int]:
     """Return the org_units shared between a staff user and a patient."""
-    user_places = set(get_member_org_unit_ids(db, user_id))
-    patient_places = set(get_patient_org_unit_ids(db, patient_id))
-    return sorted(user_places & patient_places)
+    user_org_units = set(get_member_org_unit_ids(db, user_id))
+    patient_org_units = set(get_patient_org_unit_ids(db, patient_id))
+    return sorted(user_org_units & patient_org_units)
 
 
 def check_user_patient_access(
@@ -433,9 +433,9 @@ def get_accessible_patient_ids(db: Session, user: User) -> set[str]:
     result: set[str] = set()
 
     # Org-based access
-    user_places = get_member_org_unit_ids(db, user.id)
-    if user_places:
-        result |= get_org_unit_patient_ids(db, user_places)
+    user_org_units = get_member_org_unit_ids(db, user.id)
+    if user_org_units:
+        result |= get_org_unit_patient_ids(db, user_org_units)
 
         # External access grants
     rows = db.execute(
