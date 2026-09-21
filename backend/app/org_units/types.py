@@ -3,7 +3,7 @@
 
 Read from ``shared/org-unit-types.yaml`` at import, the same way base
 professions and competencies are read, so the vocabulary is one file rather
-than a list repeated at every place that validates it.
+than a list repeated at every org_unit that validates it.
 
 Nothing here enforces anything yet. The flags are read by the tree rules as
 they are written; until then this module answers questions and validates a
@@ -36,7 +36,7 @@ class OrgUnitTypeEntry(BaseModel):
     Attributes:
         id: The value stored in the ``type`` column.
         display_name: What a person is shown.
-        description: What this kind of place is, in a sentence.
+        description: What this kind of org_unit is, in a sentence.
         requires_parent: Whether a node of this type must sit under
             another. False only for the top of a tree.
         can_hold_features: Whether features may be enabled here.
@@ -74,7 +74,7 @@ def _load_org_unit_types(path: Path) -> list[OrgUnitTypeEntry]:
         ValueError: If the file declares no types, or declares one id
             twice. A duplicate id makes which definition applies depend on
             file order, and the definitions carry capability flags, so the
-            wrong one silently changes what a place may hold.
+            wrong one silently changes what an org_unit may hold.
     """
     with open(path) as f:
         data: Any = yaml.safe_load(f)
@@ -113,7 +113,7 @@ ORG_UNIT_TYPE_IDS: tuple[str, ...] = tuple(t.id for t in ORG_UNIT_TYPES)
 #: Read from the flag rather than compared against one name, because
 #: there is more than one kind of organisation: a GP practice and a
 #: teaching establishment are both tops of trees. A query asking for the
-#: places *inside* organisations excludes all of these, and asking it any
+#: org_units *inside* organisations excludes all of these, and asking it any
 #: other way quietly loses a kind the day another is added.
 ROOT_TYPE_IDS: frozenset[str] = frozenset(
     t.id for t in ORG_UNIT_TYPES if not t.requires_parent
@@ -162,8 +162,8 @@ def _capability(type_id: str, flag: str) -> bool:
     """Return one capability flag of *type_id*.
 
     Raises rather than returning False for an unknown type. False would
-    read as a settled answer — "this place may not hold positions" —
-    when in truth nothing is known about the place at all, and a caller
+    read as a settled answer — "this org_unit may not hold positions" —
+    when in truth nothing is known about the org_unit at all, and a caller
     acting on it would refuse legitimate work without saying why.
 
     Args:

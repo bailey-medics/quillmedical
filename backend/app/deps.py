@@ -110,7 +110,7 @@ def require_operator(current_user: User = DEP_CURRENT_USER) -> User:
 
     Its one consumer sends a test push notification to every subscribed
     client in the deployment, which is unbounded by any organisation —
-    the platform question rather than an administrative act at a place.
+    the platform question rather than an administrative act at an org_unit.
     See docs/docs/plans/2026-09-09-platform-role-plan.md.
 
     Raises:
@@ -188,15 +188,15 @@ def has_competency_at(
 
     ``has_competency`` asks only what somebody is qualified for, which is
     their ceiling and true everywhere at once. This asks the second half:
-    are they authorised to practise it at the place this request is about?
+    are they authorised to practise it at the org_unit this request is about?
     A row in ``practising_competency`` says they are, and
     ``can_practise_at`` requires both, so a lapsed qualification narrows
-    every place without a row being touched.
+    every org_unit without a row being touched.
 
-    Use it wherever the place is named in the path. Where a route has no
-    place to scope to — a listing that *discovers* which places somebody
+    Use it wherever the org_unit is named in the path. Where a route has no
+    org_unit to scope to — a listing that *discovers* which org_units somebody
     may administer — scope the query instead, because there is no single
-    place to check.
+    org_unit to check.
 
     **Operators bypass the row check.** ``platform_role == "superadmin"``
     means operating Quill itself, which is true everywhere or nowhere, and
@@ -207,7 +207,7 @@ def has_competency_at(
 
     Refusal is **404, not 403**, matching ``_require_visible`` in
     ``app.org_units.router`` and the frontend guards: a refusal must not
-    confirm that a place exists to somebody who may not see it. The
+    confirm that an org_unit exists to somebody who may not see it. The
     competency is not named in the detail either, for the same reason.
 
     Usage Example:
@@ -222,14 +222,14 @@ def has_competency_at(
 
     Args:
         competency: Competency ID required (e.g. ``"manage_users"``).
-        place_param: The path parameter naming the place. Defaults to
+        place_param: The path parameter naming the org_unit. Defaults to
             ``unit_id``, which is what the org-unit routes call it.
 
     Returns:
         Callable: FastAPI dependency function that validates both halves.
 
     Raises:
-        HTTPException: 404 if the place is not named, is not a place, or
+        HTTPException: 404 if the org_unit is not named, is not an org_unit, or
             the caller may not practise the competency there.
     """
 
@@ -238,7 +238,7 @@ def has_competency_at(
         user: User = DEP_CURRENT_USER,
         db: Session = DEP_GET_SESSION,
     ) -> User:
-        """Check the caller may practise the competency at this place."""
+        """Check the caller may practise the competency at this org_unit."""
         if user.platform_role == "superadmin":
             return user
 

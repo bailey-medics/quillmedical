@@ -41,7 +41,7 @@ from pathlib import PurePosixPath
 MANIFEST = PurePosixPath("manifest.yaml")
 
 #: Who the passport belongs to — the holder's name and current
-#: registrations, regenerated whenever they change. The one place the
+#: registrations, regenerated whenever they change. The one org_unit the
 #: passport says whose it is, which is why no record repeats it.
 PROFILE = PurePosixPath("profile.yaml")
 

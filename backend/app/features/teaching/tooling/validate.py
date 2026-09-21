@@ -427,7 +427,7 @@ def _check_image_naming(
     result: ValidationResult,
     inventory: ImageInventory | None,
 ) -> None:
-    """Image filenames must be safe to place in a URL path."""
+    """Image filenames must be safe to org_unit in a URL path."""
     for name in _image_files_in(question_dir, inventory):
         if not IMAGE_FILENAME_PATTERN.match(Path(name).stem):
             result.add_error(

@@ -57,7 +57,7 @@ def build_url_prefix(base_url: str, org_id: int, module_id: str) -> str:
 
     Args:
         base_url: Where video is served from, without a trailing slash.
-        org_id: The number the place's media is filed under, from
+        org_id: The number the org_unit's media is filed under, from
             ``media_prefix_of``. An integer, so it is checked for
             positivity rather than against the identifier pattern,
             which would happily accept ``-1`` and ``0``.

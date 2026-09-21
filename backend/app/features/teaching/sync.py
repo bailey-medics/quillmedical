@@ -178,7 +178,7 @@ def sync_question_bank(
     bank_dir:
         Path to the question bank directory.
     org_unit_id:
-        The place that owns the bank — the organisation's own row in the
+        The org_unit that owns the bank — the organisation's own row in the
         tree.
     user_id:
         User triggering the sync (for audit).

@@ -1,6 +1,6 @@
 """What media a module references, and which of it is present.
 
-One question asked in three places — the admin card listing what is
+One question asked in three org_units — the admin card listing what is
 missing, the learner gate hiding an incomplete module, and the merge gate
 warning about a reference nothing has uploaded. One function answers it,
 because three implementations would drift and the most permissive one
@@ -309,7 +309,7 @@ def get_media_inventory(
 
     Args:
         db: Core database session.
-        organisation_id: Whose uploads to consider, as a place id.
+        organisation_id: Whose uploads to consider, as an org_unit id.
             Two organisations
             running the same module hold separate copies, so this is not
             optional.

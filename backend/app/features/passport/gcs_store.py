@@ -98,7 +98,7 @@ class _Blob(Protocol):
 
     A protocol rather than the real type so the tests can drive a fake
     without the library installed, and so what this module depends on is
-    visible in one place.
+    visible in one org_unit.
     """
 
     @property

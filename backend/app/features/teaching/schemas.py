@@ -393,7 +393,7 @@ class TeachingOrgSettingsOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    #: The organisation, as a place id.
+    #: The organisation, as an org_unit id.
     org_unit_id: int | None = None
     coordinator_email: str
     institution_name: str
@@ -532,7 +532,7 @@ class AdminBankDetailOut(BaseModel):
 class BankOrgRow(BaseModel):
     """One organisation's status for a question bank."""
 
-    #: The organisation, as a place id.
+    #: The organisation, as an org_unit id.
     org_unit_id: int | None = None
     organisation_name: str
     is_live: bool = False
@@ -630,7 +630,7 @@ class MediaAssetOut(BaseModel):
     #: learner relying on captions cannot tell the difference.
     captions_reviewed_at: datetime | None = None
     #: How far through processing this upload is, and what is happening
-    #: now. Derived server-side rather than in the card, so one place
+    #: now. Derived server-side rather than in the card, so one org_unit
     #: decides what the states mean and the two cannot drift.
     progress: MediaProgressOut | None = None
 
@@ -674,7 +674,7 @@ class TranscodeCompleteIn(BaseModel):
 
     Filenames rather than flags, deliberately. The job knows what it
     uploaded; the backend holds the mapping from suffix to column
-    (``RENDITION_FLAGS``), and keeping that mapping in one place is what
+    (``RENDITION_FLAGS``), and keeping that mapping in one org_unit is what
     stops the two drifting apart. A job that learns column names is a
     job that has to be redeployed when a column is renamed.
 

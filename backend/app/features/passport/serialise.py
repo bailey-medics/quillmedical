@@ -38,7 +38,7 @@ from .schemas import PassportModel, Reflection
 
 # A TypeVar rather than PEP 695 type parameters: mypy in this repo does
 # not yet parse the newer syntax, and a module the whole passport depends
-# on is the wrong place to be first.
+# on is the wrong org_unit to be first.
 Model = TypeVar("Model", bound=PassportModel)
 
 #: What separates a reflection's frontmatter from its prose.

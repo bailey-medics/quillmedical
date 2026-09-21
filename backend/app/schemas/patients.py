@@ -319,7 +319,7 @@ class SharedOrganisationSummary(BaseModel):
         org_unit_id: The organisation's own row in the tree. Replaces
             ``id``, which counted in the organisations table's own ids.
         name: Organisation name.
-        type: The kind of place it is.
+        type: The kind of org_unit it is.
     """
 
     org_unit_id: int
