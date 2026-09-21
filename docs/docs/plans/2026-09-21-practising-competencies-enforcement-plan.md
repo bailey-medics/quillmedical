@@ -156,7 +156,7 @@ refactor removes without noticing.
 
 ## Phase 3: Backfill, so the switch locks nobody out
 
-- [ ] **Write a migration that creates a `practising_competency` row for every
+- [x] **Write a migration that creates a `practising_competency` row for every
       existing place-and-competency pair that membership currently implies.** This
       must land before Phase 4 and be deployed separately from it. Everybody who
       administers a place today does so through membership; the moment the
@@ -171,15 +171,55 @@ refactor removes without noticing.
   message about backfilling practising competencies from membership, then
   read the generated `upgrade()` before committing, as the rule requires.
 
-- [ ] **Make the backfill idempotent and give it a real `downgrade()`.** Every
+  Written by hand in the end. There is no model change here, so autogenerate
+  produces an empty `upgrade()` and `just migrate` correctly refuses to keep
+  it. The migration is `b4c2e7a91f38`.
+
+  Two things were wrong on the first attempt and running it caught both. A
+  bare `NULL` in a `SELECT` is typed as text, so Postgres refused the insert
+  into an integer foreign key and it needs `CAST(NULL AS integer)`. More
+  importantly, **only membership of an organisation confers administration**:
+  `get_member_org_unit_ids` reads `organisation_org_unit_member`, which is
+  `org_unit_member` narrowed to places whose _type_ can start a tree. A
+  membership of a ward reaches nothing, not even the ward. The first version
+  joined `org_unit_member` directly and would have written rows for people
+  who administer nothing today, widening access rather than copying it
+  faithfully.
+
+  The type test matters rather than `parent_id IS NULL`: a detached ward has
+  no parent either, and treating it as an organisation would give its members
+  the run of somewhere nobody is accountable for.
+
+- [x] **Make the backfill idempotent and give it a real `downgrade()`.** Every
       migration here must ship one. Deleting only the rows the backfill itself
       created is the honest reverse, which means the migration should be able to
       recognise its own rows: consider a distinct `authorised_by` of `NULL` plus a
       known `authorised_at`, or record the ids. Decide when writing it and note it in
       the migration's docstring.
 
+  `authorised_by IS NULL` is the marker. Every row the API writes names the
+  person who authorised it; these name nobody, because nobody did. A row whose
+  authoriser was later deleted also has NULL and a downgrade would remove it,
+  which is accepted: it is the same competency at a place that person
+  administers anyway, and the alternative is a marker column carried forever
+  for one migration's benefit.
+
+  Idempotency comes from a `NOT EXISTS` clause rather than the unique
+  constraint, so a second run adds nothing instead of failing. Verified by
+  running `upgrade head`, `downgrade -1` and `upgrade head` again against a
+  real Postgres from `compose.migrate.yml`.
+
 - [ ] **Verify the backfill against a copy of production data before Phase 4 is
-      deployed.** The count of rows created should equal the number of
+      deployed.** Left for a human with access to that data. What stands in
+      for it here is `backend/tests/test_practising_competency_backfill.py`,
+      which pins the set the SQL must reproduce against
+      `org_units_administered_by`, and two guards that fail if
+      `shared/base-professions.yaml` grows a profession granting `manage_users`,
+      or `shared/org-unit-types.yaml` grows a root type, that the migration's
+      frozen literals do not name.
+
+      The original point stands: the count of rows created should equal the
+      number of
       administrator-and-place pairs that exist today. A backfill that silently
       produces zero rows would make Phase 4 lock out every administrator at once.
 
