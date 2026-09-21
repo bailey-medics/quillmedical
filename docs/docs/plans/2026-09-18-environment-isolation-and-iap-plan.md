@@ -356,60 +356,183 @@ Terraform change here does, and plan as no-ops there because the
 conditions were widened rather than swapped. Nothing new is created until
 Batch 4 makes the project and the `app` workspace.
 
-## Batch 4 — Mark: build the project
+## Batch 4 — Claude and Mark: build the project
 
-Everything in this batch is console and command-line work against live
-infrastructure. Claude has no credentials for it and should not attempt
-it.
+Console and command-line work against live infrastructure, with
+`gcloud` as `mark@quill-medical.com`. Claude runs the steps marked
+**(Claude)** and reports each result; the ones marked **(Mark)** need a
+human at the console.
 
-- [ ] Create `quill-medical-app` and set its display name to something a
-      human reads, rather than leaving it matching the ID.
+What the existing project looks like, read on 2026-09-21 and recorded
+here because the next environment will want the same list:
 
-- [ ] Copy the organisation policies from `quill-medical-teaching`. The
-      policy file and the command are recorded at
-      `docs/docs/infrastructure/gcp.md`.
+- **There is a Google Cloud organisation**, `quill-medical.com`, id
+  `826360329716`. `quill-medical-teaching` sits directly under it, with
+  project number `113172935409`. This also answers the open question in
+  Phase B: `google_iap_brand` can create Internal brands, because that
+  needs an organisation and there is one.
 
-- [ ] Enable the same APIs the teaching project has. Terraform will fail
-      on the first apply otherwise, one service at a time, which is slow
-      to work through.
+- **One billing account**, `01E8B4-2EFA4B-61EF08`, open.
 
-- [ ] Create a new Workload Identity Federation pool and provider, and a
-      service account for CI. This must not be shared with the old
-      project: two environments authenticating through one provider is how
-      a deploy reaches the wrong place.
+- **One organisation policy is set on the project**,
+  `constraints/iam.allowedPolicyMemberDomains`, with `allValues: ALLOW`.
+  That is domain-restricted sharing turned off, which is what lets
+  `allUsers` hold `roles/run.invoker` on the Cloud Run services.
 
-- [ ] Create the Terraform workspace `app`. State is separated by
-      workspace under `gs://quill-medical-terraform-state/terraform/state/`,
-      so the new environment starts with empty state and needs no state
-      surgery.
+- **Forty APIs are enabled**, though most come on by default with any
+  project. The ones this stack genuinely needs are `run`, `sqladmin`,
+  `compute`, `vpcaccess`, `secretmanager`, `artifactregistry`,
+  `servicenetworking`, `monitoring`, `logging`, `dns`, `storage`,
+  `iamcredentials` and `orgpolicy`.
 
-- [ ] Apply Batch 3's Terraform, and let it build the environment from
-      nothing. Around thirty resources take their names from
-      `var.environment`, so they come out named `app` without any being
-      renamed by hand.
+- **The Workload Identity pool is `github-pool`**, with one provider,
+  `github-provider`, mapping `google.subject` to `assertion.sub` and
+  `attribute.repository` to `assertion.repository`. Its attribute
+  condition names four repositories explicitly:
+  `bailey-medics/quillmedical`, `bailey-medics/quill-question-bank`,
+  `bailey-medics/respiratory-teaching` and
+  `bailey-medics/eoeeta-teaching`. The service account it impersonates is
+  `github-actions@quill-medical-teaching.iam.gserviceaccount.com`.
 
-- [ ] Create the three secrets in the new project. Generate a fresh video
-      signing key rather than copying the old one: it signs cookies for a
-      specific origin, nothing has been issued against the new project,
-      and a fresh key means the old one dies with the old project.
+### Steps
 
-- [ ] Re-run the teaching pipeline against the new project so the content
-      buckets refill from `eoeeta-teaching` and `respiratory-teaching`.
-      The content is version-controlled and the pipeline syncs it on every
-      push to main, so nothing is copied between buckets by hand.
+- [x] **(Claude)** Create `quill-medical-app` under the organisation, with
+      a display name a human reads rather than the bare id. Done on
+      2026-09-21: display name "Quill App", project number
+      `45814277366`, active, parented on the organisation.
 
-- [ ] Run the migrations against the new Cloud SQL instance and seed it.
-      There are no real users, so this is a schema creation and a seed
-      rather than a dump and restore.
+- [x] **(Claude)** Link it to billing account `01E8B4-2EFA4B-61EF08`.
+      Nothing else works until billing is on: API enablement fails, and
+      the failure does not obviously say why. Done, `billingEnabled: true`.
 
-- [ ] Confirm that is still true before relying on it. If anyone has
-      registered on the live environment, this becomes a data migration
-      and the cutover needs a maintenance window.
+- [x] **(Claude)** Enable the APIs listed above. Do this before the
+      Terraform apply rather than discovering them one failure at a time.
+      Done: fifteen named explicitly, 38 enabled in total once Google's
+      own defaults are counted.
 
-- [ ] Leave the clinician passport files behind. The passport bucket is
-      not gated on the environment, so Terraform creates an empty one in
-      the new project, and what is in the old one is test data. Revisit
-      this if a real passport is uploaded before the move.
+- [x] **(Claude)** Set `constraints/iam.allowedPolicyMemberDomains` to
+      `allValues: ALLOW` on the new project, matching teaching. Without
+      it the `allUsers` invoker binding is refused and the site returns
+      403 from behind the load balancer. Done.
+
+- [x] **(Claude)** Create the Workload Identity pool, provider and CI
+      service account in the new project. Done: pool `github-pool` and
+      provider `github-provider` under project `45814277366`, with the
+      same attribute mapping as teaching and the same issuer.
+
+- [x] **(Claude)** Narrow the attribute condition to
+      `assertion.repository == 'bailey-medics/quillmedical'`, rather than
+      copying teaching's list of four. The other three are teaching
+      content repositories that sync to buckets in the old project, and
+      nothing in the new one needs them yet. Adding a repository later is
+      one command; noticing an unnecessary one is nobody's job.
+
+- [x] **(Claude)** Bind
+      `github-actions@quill-medical-app.iam.gserviceaccount.com` to that
+      principal set with `roles/iam.workloadIdentityUser`, so only a
+      token from that repository can impersonate it.
+
+- [x] **(Claude)** Grant the new service account the six roles
+      `github-actions@quill-medical-teaching` holds: `editor`,
+      `iam.serviceAccountAdmin`, `iam.serviceAccountUser`,
+      `logging.configWriter`, `run.admin` and `secretmanager.admin`.
+
+- [ ] **(Mark)** Review the roles above, and decide whether `editor`
+      should stay. It subsumes `run.admin` and `secretmanager.admin`
+      entirely and grants much besides, so the three together say less
+      than they appear to. It was copied rather than chosen, because the
+      first apply builds around thirty resources and a missing permission
+      fails it partway with things half-created. Worth narrowing once a
+      successful apply has shown what is genuinely used, on both
+      projects.
+
+- [ ] **(Claude)** Create the Terraform workspace `app`, once #884 is
+      merged. State is separated by workspace under
+      `gs://quill-medical-terraform-state/terraform/state/`, so it starts
+      empty.
+
+- [ ] **(Mark)** Apply Batch 3's Terraform to the new workspace, and let
+      it build the environment from nothing. Around thirty resources take
+      their names from `var.environment`, so they come out named `app`
+      without any being renamed by hand.
+
+- [ ] **(Mark)** Create the three secrets in the new project. Generate a
+      fresh video signing key rather than copying the old one: it signs
+      cookies for a specific origin, nothing has been issued against the
+      new project, and a fresh key means the old one dies with the old
+      project.
+
+- [ ] **(Mark)** Re-run the teaching pipeline against the new project so
+      the content buckets refill from `eoeeta-teaching` and
+      `respiratory-teaching`. The content is version-controlled and the
+      pipeline syncs it on every push to main, so nothing is copied
+      between buckets by hand.
+
+- [ ] **(Mark)** Run the migrations against the new Cloud SQL instance and
+      seed it. There are no real users, so this is a schema creation and a
+      seed rather than a dump and restore.
+
+- [ ] **(Mark)** Confirm that is still true before relying on it. If
+      anyone has registered on the live environment, this becomes a data
+      migration and the cutover needs a maintenance window.
+
+- [x] **Leave the clinician passport files behind.** The passport bucket
+      is not gated on the environment, so Terraform creates an empty one
+      in the new project, and what is in the old one is test data.
+      Revisit this if a real passport is uploaded before the move.
+
+### What was learnt building it
+
+Filled in as the steps run, so the next environment is quicker than this
+one.
+
+- **The four setup steps took about six minutes**, nearly all of it
+  waiting for API enablement. Everything else returned immediately.
+
+- **Enable the APIs in one command, not fifteen.** `gcloud services
+  enable` accepts a list and enables them concurrently. It ran well past
+  two minutes, so expect to wait rather than assuming it has hung, and
+  poll `gcloud services list --enabled` rather than watching the command.
+
+- **A new project starts with about 22 APIs already on.** Google enables
+  a default set, which is why the count goes to 38 rather than to
+  fifteen. The count alone tells you nothing; compare the list against
+  what you asked for.
+
+- **Billing must be linked before enabling anything.** An unlinked
+  project refuses API enablement with an error that does not mention
+  billing, which is a slow thing to diagnose.
+
+- **`gcloud projects create` takes `--name` for the display name**, and
+  it is the only chance to set it conveniently. `--organization` takes
+  the numeric id, not the domain.
+
+- **The organisation policy is set per project, not inherited usefully.**
+  `constraints/iam.allowedPolicyMemberDomains` had to be set again on the
+  new project with `allValues: ALLOW`. Without it, granting
+  `roles/run.invoker` to `allUsers` is refused, and the symptom is the
+  load balancer getting 403 from a service that looks correctly
+  deployed.
+
+- **A new Workload Identity pool is not readable the moment it is
+  created.** `create` returned success and the next `describe` answered
+  `NOT_FOUND`. It settled within ten seconds. Poll rather than treating
+  the first failure as real, and do not create the provider until the
+  describe answers, because the provider needs the pool to exist.
+
+- **The pool, the provider and the binding are three separate things**,
+  and only the third decides who may act. The provider says which
+  repository may present a token; the `roles/iam.workloadIdentityUser`
+  binding on the service account says which principal set may impersonate
+  it. Creating the first two and forgetting the third produces
+  authentication that succeeds and then cannot do anything, which reads
+  as a permissions problem rather than a missing binding.
+
+- **`roles/editor` on the CI service account is worth questioning.** It
+  was copied from teaching, where it sits beside `run.admin` and
+  `secretmanager.admin` and makes both redundant. Nothing here needed it
+  to be that broad; it was kept only so the first apply would not fail
+  partway on a missing permission.
 
 **Hands over:** a working environment on a temporary hostname, ready for
 the DNS cutover.
