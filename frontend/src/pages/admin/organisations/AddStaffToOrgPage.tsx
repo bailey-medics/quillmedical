@@ -41,7 +41,7 @@ import { orgUnits } from "@/domains/orgUnit";
 import { useAuth } from "@/auth/AuthContext";
 import ErrorState from "@/components/error-state/ErrorState";
 import { holdsStaffLikeCompetency } from "@/lib/cbac/staffLike";
-import competenciesData from "@/generated/competencies.json";
+import { ACTIVE_COMPETENCIES } from "@/types/cbac";
 import baseProfessionsData from "@/generated/base-professions.json";
 
 interface ApiUser {
@@ -85,7 +85,7 @@ function AddStaffFields({
 
   const competencyOptions = useMemo(
     () =>
-      competenciesData.competencies.map((c) => ({
+      ACTIVE_COMPETENCIES.map((c) => ({
         value: c.id,
         label: c.display_name,
       })),

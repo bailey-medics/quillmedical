@@ -48,6 +48,29 @@ export function getCompetencyDetails(id: CompetencyId): Competency | undefined {
   return competenciesData.competencies.find((c: Competency) => c.id === id);
 }
 
+/**
+ * Every competency, retired ones included.
+ *
+ * Reads and lookups use this, so nothing already granted becomes
+ * unreadable when a competency is retired. Mirrors `COMPETENCY_IDS` in
+ * `backend/app/cbac/competencies.py`.
+ */
+export const ALL_COMPETENCIES: Competency[] =
+  competenciesData.competencies as Competency[];
+
+/**
+ * The competencies still available to grant.
+ *
+ * Anything offering a choice uses this. The API refuses a retired id at
+ * the write boundary, so listing one gives an admin something they can
+ * select and cannot save, with a validation error they can do nothing
+ * about. Mirrors `ACTIVE_COMPETENCY_IDS` in
+ * `backend/app/cbac/competencies.py`.
+ */
+export const ACTIVE_COMPETENCIES: Competency[] = ALL_COMPETENCIES.filter(
+  (competency) => competency.retired_on === undefined,
+);
+
 // Profession lookup
 export function getBaseProfessionDetails(
   id: BaseProfessionId,

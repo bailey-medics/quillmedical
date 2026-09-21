@@ -4071,6 +4071,40 @@ here", which is what an accepted assessor's placement resolves against
 would re-merge exactly what this phase separates, and would quietly buy
 seats for every assessor hosted there.
 
+### Granting it needs no seed, but the pickers were offering a retired id
+
+Found on 21 September, doing the seeding item above.
+
+**No seed was needed.** Competencies resolve from the base profession at
+request time, with ``additional_competencies`` on the user as an
+override, and the admin pages already write that column through
+``PUT /api/users/{id}``. So granting ``passport_write`` to a dev or UAT
+account is an admin action that already works, and a seed script would
+have been a second way to do something the product does.
+
+The CI seed creates no passport user at all, only the teaching educator,
+so there was nothing there to grant it to either. A passport account in
+``seed_ci.py`` belongs with the end-to-end test in phase 7, which is
+what would use it.
+
+**What was actually broken.** Every competency picker listed the whole
+catalogue, retired entries included, while
+``validate_competency_ids`` refuses a retired id at the write boundary.
+So an admin could select ``access_clinician_passport``, save, and get a
+validation error they could do nothing about. Four places did this: the
+user admin page, the two add-staff pages, and the passport's own
+``CompetencyPicker``.
+
+This was latent before the split and impossible to hit, because nothing
+had ever been retired. Retiring the first competency made it reachable.
+
+**Fixed with one pair of helpers** in ``frontend/src/types/cbac.ts``,
+mirroring the backend split that already existed:
+``ALL_COMPETENCIES`` for reading, so a granted competency keeps
+rendering its name after retirement, and ``ACTIVE_COMPETENCIES`` for
+anything offering a choice. The display lookups on the user admin page
+deliberately still read the full catalogue.
+
 ### Three entitlement states, not two
 
 A single on/off gives "may write" and "cannot see it at all". The
@@ -4156,8 +4190,10 @@ and likely a different price.
       the first; `passport_write` is left to the entitlement.
       **Cheap now, while nobody is in production; expensive once
       anybody is.**
-- [ ] Seed a `passport_write` entitlement on the dev stack and in
+- [x] Seed a `passport_write` entitlement on the dev stack and in
       the CI seed, so the feature is testable after the split.
+      **Found on doing it that no seeding was needed, and a real bug
+      was in the way instead.** See below.
 - [ ] Add the organisation feature flag that grants `passport_write` at
       onboarding, distinct from the existing `passport` key.
 - [ ] Gate every passport write path on `passport_write`, and gate no
