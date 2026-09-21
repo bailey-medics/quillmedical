@@ -190,7 +190,16 @@ def _require_csrf(request: Request, db: Session = _DEP_SESSION) -> None:
 
 _DEP_USER = Depends(_get_current_user)
 _DEP_REQUIRE_CSRF = Depends(_require_csrf)
-_DEP_PASSPORT = Depends(has_competency("access_clinician_passport"))
+#: Reaching the passport feature at all. Every route carries it today,
+#: including the ones that write.
+#:
+#: **Writing will move to ``passport_write``**, which is sold and can
+#: lapse, while this one stays free so an assessor never meets a wall.
+#: That split is a later unit: this one renames the competency and
+#: establishes that no base profession grants ``passport_write``.
+#: Moving thirty-six routes onto the right side of the line is a change
+#: to who may write, and it belongs in its own reviewable diff.
+_DEP_PASSPORT = Depends(has_competency("assess_clinician_passport"))
 _DEP_STORE = Depends(get_passport_store)
 _DEP_BLOBS = Depends(get_blob_store)
 
@@ -2327,7 +2336,7 @@ def revoke_assessor_membership(
 ) -> AssessorRevokeOut:
     """Remove an assessor's membership at this admin's organisation.
 
-    Which takes ``access_clinician_passport`` at that place with it,
+    Which takes ``assess_clinician_passport`` at that place with it,
     since competencies are granted per place.
 
     **The sign-offs they already made stand**, and the count is returned
@@ -2665,7 +2674,7 @@ def accept_assessor_invite(
         status = "linked"
         # Nothing about an existing account is changed: not their
         # profession, not their competencies. All fourteen clinical
-        # professions already carry access_clinician_passport, and what
+        # professions already carry assess_clinician_passport, and what
         # they may act on is resolved from the request rows naming them.
     else:
         if not body.username or not body.password:

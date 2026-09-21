@@ -32,7 +32,7 @@ vi.mock("@/auth/AuthContext", () => ({
       user: {
         username: "test-user",
         enabled_features: ["teaching", "passport"],
-        competencies: ["access_clinician_passport"],
+        competencies: ["assess_clinician_passport"],
       },
     },
     logout: vi.fn(),

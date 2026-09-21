@@ -18,15 +18,52 @@
 # code — it is for the reader.
 
 competencies:
-  # One competency gates the whole feature, deliberately. Holding a
-  # passport and signing someone else's are not separate privileges,
-  # because they are not separate people: a consultant of thirty years
-  # still needs new competencies signed off, and a registrar signed off
-  # for a procedure last year is often the right person to sign off a
-  # junior this year. Splitting them would encode a seniority model that
-  # does not match how clinical training works.
+  # Two competencies, because assessing and holding have opposite
+  # economics once the passport is sold. Assessing is a favour to
+  # somebody else's record: the holder's organisation gets the benefit
+  # and the assessor gets nothing, so an assessor who meets a price
+  # simply declines and the holder cannot be signed off at all. Holding
+  # is the product.
   #
-  # What actually constrains a sign-off is not this flag: self-sign-off
-  # is refused at the API, and that is the only hard rule.
+  # This is NOT a seniority split, which an earlier single competency
+  # was right to refuse: a consultant of thirty years still needs new
+  # competencies signed off, and a registrar signed off for a procedure
+  # last year is often the right person to sign off a junior this year.
+  # Both competencies are held by most clinicians at a paying
+  # organisation, and neither implies the other is beneath it.
+  #
+  # What constrains a sign-off is still not a flag here: self-sign-off
+  # is refused at the API, and that remains the only hard rule.
+
+  # Retired on 21 September 2026, superseded by the two below. It was
+  # one competency doing two jobs: reaching the passport at all, and
+  # holding one of your own. Those are the same thing only while the
+  # passport is free.
+  #
+  # Kept rather than deleted because deleting revokes nothing. Anybody
+  # holding it keeps whatever it granted, and the id stops being
+  # describable — which is what an audit trail needs in order to say
+  # what somebody was authorised to do at the time.
   - id: access_clinician_passport
     display_name: "Use the Clinician Passport"
+    retired_on: 2026-09-21
+
+  # Free, and granted by base profession at provisioning. An assessor
+  # must never meet a price or a lapse, because a wall here stalls
+  # somebody else's sign-off and breaks the clinical workflow to
+  # protect revenue.
+  - id: assess_clinician_passport
+    display_name: "Sign Off Clinician Passport Competencies"
+
+  # The product. Deliberately granted by NO base profession: it comes
+  # from an organisation's enablement or an individual subscription,
+  # and nowhere else. A profession granting it would hand every
+  # clinician the paid feature at provisioning and make the split
+  # cosmetic.
+  #
+  # It gates writing only. Reading and exporting a passport you already
+  # hold are derived from owning it, never from paying, so a lapsed
+  # holder keeps their record in full and loses only the ability to add
+  # to it.
+  - id: passport_write
+    display_name: "Hold and Write a Clinician Passport"

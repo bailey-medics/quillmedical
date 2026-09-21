@@ -108,7 +108,7 @@ def _make_user(
     profession: str = "consultant",
     registrations: dict[str, str] | None = None,
 ) -> User:
-    """A user who holds ``access_clinician_passport`` by profession."""
+    """A user who holds ``assess_clinician_passport`` by profession."""
     user = User(
         username=username,
         email=f"{username}@example.nhs.uk",
@@ -1194,7 +1194,7 @@ class TestAcceptingAnInvitation:
         assert user is not None
         assert user.base_profession == "external_assessor"
         assert user.professional_registrations == {"GMC": "7654321"}
-        assert "access_clinician_passport" in user.get_final_competencies()
+        assert "assess_clinician_passport" in user.get_final_competencies()
         assert "access_patient_records" not in user.get_final_competencies()
 
     def test_the_assessor_states_their_own_name_and_registration(
@@ -1434,7 +1434,7 @@ class TestTheGateResolvesForAnAcceptedAssessor:
     it is a property of code in another module that could change
     without anybody thinking about assessors.
 
-    A passport route also demands ``access_clinician_passport``, which
+    A passport route also demands ``assess_clinician_passport``, which
     for a new account comes from the ``external_assessor`` profession.
     Both halves have to hold for an assessor to reach anything, so both
     are exercised together through a real route.

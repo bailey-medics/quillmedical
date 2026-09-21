@@ -88,11 +88,16 @@ def test_clinicians_hold_the_passport_and_others_do_not() -> None:
     whether the profession practises and accumulates assessed
     competencies.
 
-    Every clinical one of these is both holder and assessor. The passport
-    has a single competency precisely because they are not separate
-    people — a consultant still gets signed off on new things, and a
-    registrar signed off last year is often who signs off a junior this
-    year.
+    Every clinical one of these is an assessor, and this is the free
+    half: assessing is a favour to somebody else's record, so it arrives
+    with the profession and never lapses. Holding a passport is the sold
+    half and is granted by entitlement, which is why ``passport_write``
+    appears on no profession here.
+
+    The split is not seniority. A consultant still gets signed off on
+    new things, and a registrar signed off last year is often who signs
+    off a junior this year; most clinicians at a paying organisation
+    hold both competencies.
 
     ``external_assessor`` is the one exception, and belongs to the set
     for the opposite reason: it is the *only* thing that profession can
@@ -105,7 +110,7 @@ def test_clinicians_hold_the_passport_and_others_do_not() -> None:
     holders = {
         p.id
         for p in BASE_PROFESSIONS
-        if "access_clinician_passport" in p.base_competencies
+        if "assess_clinician_passport" in p.base_competencies
     }
 
     assert holders == {
@@ -136,8 +141,33 @@ def test_the_external_assessor_can_reach_nothing_but_the_passport() -> None:
     """
     assessor = next(p for p in BASE_PROFESSIONS if p.id == "external_assessor")
 
-    assert assessor.base_competencies == ["access_clinician_passport"]
+    assert assessor.base_competencies == ["assess_clinician_passport"]
     assert not assessor.requires_clinical_services
+
+
+def test_no_profession_grants_the_right_to_write_a_passport() -> None:
+    """The sold half must not arrive free with an account.
+
+    ``passport_write`` is what a clinician or their organisation pays
+    for. It comes from an organisation enabling it or from an individual
+    subscription, and from nowhere else — so a base profession granting
+    it would hand every clinician the paid feature at provisioning and
+    make the split between assessing and holding cosmetic.
+
+    Pinned rather than left to review because the failure is silent:
+    everything works, nobody is refused, and the only symptom is that
+    the product was given away.
+    """
+    grantors = {
+        profession.id
+        for profession in BASE_PROFESSIONS
+        if "passport_write" in profession.base_competencies
+    }
+
+    assert grantors == set(), (
+        "passport_write is sold, so no base profession may grant it: "
+        f"{sorted(grantors)}"
+    )
 
 
 def test_the_passport_is_not_a_default_for_patients_or_back_office() -> None:
@@ -161,5 +191,5 @@ def test_the_passport_is_not_a_default_for_patients_or_back_office() -> None:
     ):
         competencies = get_profession_base_competencies(profession_id)
         assert (
-            "access_clinician_passport" not in competencies
+            "assess_clinician_passport" not in competencies
         ), f"{profession_id} should not hold the passport by default"

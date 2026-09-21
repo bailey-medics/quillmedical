@@ -46,7 +46,7 @@ export function useFeatureNavItems(): NavItem[] {
   // so both are asked here. Teaching gates its entry on the feature
   // alone, matching its own routes.
   const passportEnabled = useHasFeature("passport");
-  const canUsePassport = useHasCompetency("access_clinician_passport");
+  const canUsePassport = useHasCompetency("assess_clinician_passport");
   const hasPassport = passportEnabled && canUsePassport;
 
   const items: NavItem[] = [];

@@ -51,7 +51,7 @@ const mockUsers: Record<string, User> = {
     username: "passport.holder",
     email: "passport@example.com",
     roles: ["Clinician"],
-    competencies: ["access_clinician_passport"],
+    competencies: ["assess_clinician_passport"],
     enabled_features: ["passport"],
     clinical_services_enabled: true,
   },

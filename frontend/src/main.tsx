@@ -216,7 +216,7 @@ const routes: RouteObject[] = [
       {
         element: (
           <RequireFeature feature="passport">
-            <RequireCompetency competency="access_clinician_passport">
+            <RequireCompetency competency="assess_clinician_passport">
               <Outlet />
             </RequireCompetency>
           </RequireFeature>
