@@ -77,7 +77,7 @@ class TestExcludingByPlace:
 
         names = _usernames(
             authenticated_superadmin_client,
-            f"exclude_place={org.id}",
+            f"exclude_org_unit={org.id}",
         )
 
         assert here.username not in names
@@ -95,21 +95,37 @@ class TestExcludingByPlace:
 
         names = _usernames(
             authenticated_superadmin_client,
-            f"exclude_place={org.id}",
+            f"exclude_org_unit={org.id}",
         )
 
         assert elsewhere.username in names
 
 
-class TestBothNames:
-    """`exclude_org_unit` is the new name; `exclude_place` still works.
+class TestTheRetiredName:
+    """`exclude_place` has gone, a release after `exclude_org_unit` came.
 
-    Both name the same org_unit while the older one is retired, so a tab
-    open across the deploy keeps working. A request sends one or the
-    other: applying both would depend on which was read last.
+    It is ignored rather than refused. A query parameter nobody declares
+    is simply not read, and the failure that causes is a list longer
+    than it should be rather than shorter, which is the safer way round
+    for a screen that offers people to add.
     """
 
-    def test_the_new_name_leaves_a_member_out(
+    def test_the_old_name_no_longer_excludes_anybody(
+        self,
+        authenticated_superadmin_client: TestClient,
+        db_session: Session,
+        org: OrgUnit,
+    ) -> None:
+        here = _member(db_session, org, "already_here")
+
+        names = _usernames(
+            authenticated_superadmin_client,
+            f"exclude_place={org.id}",
+        )
+
+        assert here.username in names
+
+    def test_the_new_name_still_excludes(
         self,
         authenticated_superadmin_client: TestClient,
         db_session: Session,
@@ -123,36 +139,6 @@ class TestBothNames:
         )
 
         assert here.username not in names
-
-    def test_both_names_give_the_same_answer(
-        self,
-        authenticated_superadmin_client: TestClient,
-        db_session: Session,
-        org: OrgUnit,
-    ) -> None:
-        _member(db_session, org, "already_here")
-
-        old = _usernames(
-            authenticated_superadmin_client,
-            f"exclude_place={org.id}",
-        )
-        new = _usernames(
-            authenticated_superadmin_client,
-            f"exclude_org_unit={org.id}",
-        )
-
-        assert old == new
-
-    def test_sending_both_is_refused(
-        self,
-        authenticated_superadmin_client: TestClient,
-        org: OrgUnit,
-    ) -> None:
-        response = authenticated_superadmin_client.get(
-            f"/api/users?exclude_org_unit={org.id}&exclude_place={org.id}"
-        )
-
-        assert response.status_code == 422, response.text
 
 
 class TestNothingIsGiven:

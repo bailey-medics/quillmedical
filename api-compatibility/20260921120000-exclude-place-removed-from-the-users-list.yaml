@@ -1,0 +1,4 @@
+"generation": !!int "1"
+"forces_reload": !!bool "false"
+change: "request-parameter-removed GET /api/users deleted the `query` request parameter `exclude_place`"
+reason: "`exclude_org_unit` arrived beside it a release ago and names the same org_unit, and the add-staff-to-organisation screen moved to the new name then, so nothing this repository ships still sends the old one. No forced reload: a removed query parameter is simply not read, so a stale tab gets a list longer than it should be rather than shorter, which is the safer way round for a screen offering people to add. Bumping the generation would also stop every open tab sending any mutation until it reloaded, and a logged-out person could not then sign in, because the login POST is itself a mutation."

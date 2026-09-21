@@ -925,6 +925,10 @@ So the remaining steps land as:
   - [x] 12d-iii-c-iii — the teaching bank routes answer at `/org-units/`
   - [x] 12d-iii-d-i — the backend comments and docstrings say `org_unit`
   - [x] 12d-iii-d-ii — the frontend comments say `org_unit`
+- [ ] 12d-iv — the three contracts, each a release after its expand
+  - [x] 12d-iv-a — retire `exclude_place`
+  - [ ] 12d-iv-b — retire `place_id` on the passport replies
+  - [ ] 12d-iv-c — retire the `/places/` teaching paths
 
 #### 10a — write both names for the place column
 
@@ -2112,6 +2116,41 @@ that is a change to the database rather than to a name in the code.
 
 **The `type` values stay out of it**, for the reason above: that is a
 question about the model and a data migration, not a rename.
+
+#### 12d-iv — the three contracts
+
+Three names were added beside older ones rather than replacing them, so a
+tab open across the deploy kept working. Each older name now has to go,
+and each goes on its own, a full release after the expand that introduced
+its replacement.
+
+**None of these may ship in the same release as its expand.** The rule is
+in `.claude/rules/backend.md`, and this stack has already paid for
+ignoring it once: `place_ids` and `org_unit_ids` went out together, and
+the forced reload that followed blocked the login request, because login
+is a mutation and the client stops sending mutations when it believes it
+is stale. Every end-to-end test failed on it.
+
+- **12d-iv-a — retire `exclude_place`.** The query parameter on
+  `GET /api/users`. Its expand is PR #891, merged. The add-staff-to-
+  organisation screen already sends `exclude_org_unit`, so nothing in
+  this repository still asks by the old name.
+- **12d-iv-b — retire `place_id` on the passport replies.** The field on
+  `AssessorRevokeOut` and `AssessorInviteAcceptOut`, with the matching
+  fields in `frontend/src/lib/passport/types.ts`. Its expand is PR #892,
+  merged.
+- **12d-iv-c — retire the `/places/` teaching paths.** The two question
+  bank routes. Its expand is PR #899. They become `_retired` stubs
+  pointing at the `/org-units/` address, the way the organisation-keyed
+  addresses in that file already did, rather than disappearing: an old
+  caller then gets "410, this has moved" rather than a bare 404.
+
+Each carries a decision file under `api-compatibility/` and needs the
+`api-breaking-change-review` approval. Take `forces_reload` seriously
+rather than by habit: `true` stops every open tab sending any mutation
+until it reloads, and a logged-out person cannot then sign in, because
+the login POST is itself a mutation. Prefer `false` unless a stale tab
+would actually do damage.
 
 **What is deliberately left when 12d-iii finishes.** Three kinds of
 "place" survive, each for a reason rather than by omission:
