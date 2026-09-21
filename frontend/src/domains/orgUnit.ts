@@ -80,6 +80,26 @@ export type OrgUnitMember = {
   capacity: string;
 };
 
+/**
+ * Somebody authorised to practise one competency at an org_unit.
+ *
+ * One row per person and competency, so somebody authorised for three
+ * things here appears three times. Flattened rather than grouped because
+ * withdrawal is per competency: the screen needs something to withdraw,
+ * not a person to edit.
+ */
+export type PractisingCompetency = {
+  user_id: number;
+  username: string;
+  full_name: string;
+  /** A competency id from `shared/competency-definitions/`. */
+  competency: string;
+  /** ISO timestamp of when practice here was authorised. */
+  authorised_at: string;
+  /** Who authorised it, or null once that person is deleted. */
+  authorised_by: number | null;
+};
+
 /** An org_unit directly inside another. */
 export type OrgUnitChild = {
   id: number;
@@ -147,6 +167,9 @@ export type OrgUnitLink = {
 
 type ListResponse = { org_units: OrgUnit[] };
 type MembersResponse = { members: OrgUnitMember[] };
+type PractisingCompetenciesResponse = {
+  practising_competencies: PractisingCompetency[];
+};
 type FeaturesResponse = { features: OrgUnitFeature[] };
 type LinksResponse = { links: OrgUnitLink[] };
 type StatusResponse = { status: string };
@@ -233,6 +256,47 @@ export const orgUnits = {
   /** Take somebody off an org_unit. */
   removeMember: (id: number, userId: number) =>
     api.del<StatusResponse>(`/org-units/${id}/members/${userId}`),
+
+  /**
+   * Who may practise what at an org_unit.
+   *
+   * The rows as stored, not narrowed to anybody's competencies. A row
+   * beyond somebody's competencies authorises nothing, but somebody
+   * wrote it, and whoever reviews authorisations here needs to see it.
+   */
+  practisingCompetencies: async (
+    id: number,
+  ): Promise<PractisingCompetency[]> => {
+    const data = await api.get<PractisingCompetenciesResponse>(
+      `/org-units/${id}/practising-competencies`,
+    );
+    return data.practising_competencies ?? [];
+  },
+
+  /**
+   * Authorise somebody to practise a competency at an org_unit.
+   *
+   * Not a grant of the competency itself: that is held by the person,
+   * earned through training and sign-off. This records only that they
+   * may exercise it here. Asking twice changes nothing.
+   */
+  authorisePractising: (
+    id: number,
+    body: { user_id: number; competency: string },
+  ) =>
+    api.post<StatusResponse>(`/org-units/${id}/practising-competencies`, body),
+
+  /**
+   * Stop somebody practising a competency at an org_unit.
+   *
+   * Their competency itself is untouched: somebody stopped at one place
+   * stays qualified, and stays authorised everywhere else they hold a
+   * row.
+   */
+  withdrawPractising: (id: number, userId: number, competency: string) =>
+    api.del<StatusResponse>(
+      `/org-units/${id}/practising-competencies/${userId}/${competency}`,
+    ),
 
   /**
    * Name the clinical lead of an org_unit, or leave the post vacant.
