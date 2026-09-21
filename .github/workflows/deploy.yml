@@ -1,5 +1,10 @@
 # Unified build-once-promote deployment pipeline.
-# Teaching: auto-deploys on merge to main.
+# Teaching and app: both auto-deploy on merge to main. They are the same
+#            product in two projects while it moves between them; teaching
+#            is retired in Batch 8 of
+#            docs/docs/plans/2026-09-18-environment-isolation-and-iap-plan.md.
+#            Each image is pushed to both projects' Artifact Registry so
+#            neither depends on the other's registry surviving.
 # Production: promotes the SAME image via GitHub Environment approval gate.
 #            Currently OFFLINE to save GCP costs (promote-to-production has
 #            `if: false`). Remove that guard to re-enable production.
@@ -116,6 +121,8 @@ jobs:
           tags: |
             ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/${{ matrix.service }}:${{ needs.prepare.outputs.sha }}
             ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/${{ matrix.service }}:latest
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/${{ matrix.service }}:${{ needs.prepare.outputs.sha }}
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/${{ matrix.service }}:latest
           build-args: |
             VITE_VAPID_PUBLIC=${{ env.VITE_VAPID_PUBLIC }}
             VITE_CLINICAL_SERVICES_ENABLED=false
@@ -134,6 +141,8 @@ jobs:
           tags: |
             ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/admin:${{ needs.prepare.outputs.sha }}
             ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/admin:latest
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/admin:${{ needs.prepare.outputs.sha }}
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/admin:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -148,6 +157,8 @@ jobs:
           tags: |
             ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/transcode:${{ needs.prepare.outputs.sha }}
             ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/transcode:latest
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/transcode:${{ needs.prepare.outputs.sha }}
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/transcode:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -164,12 +175,14 @@ jobs:
           tags: |
             ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/caption:${{ needs.prepare.outputs.sha }}
             ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/caption:latest
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/caption:${{ needs.prepare.outputs.sha }}
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/caption:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
   # ---------- Deploy to teaching ----------
-  deploy-teaching:
-    name: Deploy to teaching
+  deploy:
+    name: Deploy to ${{ matrix.environment }}
     runs-on: ubuntu-24.04
     # A healthy run finishes in a few minutes. The ceiling stops a stalled
     # Cloud Run operation from holding the serialised deploy queue for an
@@ -177,7 +190,15 @@ jobs:
     timeout-minutes: 30
     needs: [prepare, build]
     if: always() && !failure() && !cancelled()
-    environment: teaching
+    environment: ${{ matrix.environment }}
+    strategy:
+      # Never in parallel. Both deploys run the same migrations against
+      # their own database, and serialising keeps one failure from landing
+      # half a release in each project.
+      max-parallel: 1
+      fail-fast: false
+      matrix:
+        environment: [teaching, app]
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -185,11 +206,11 @@ jobs:
 
       # actions/checkout must run before auth — it cleans $GITHUB_WORKSPACE,
       # which would otherwise wipe the credential file auth just wrote there.
-      - name: Authenticate to GCP (teaching)
+      - name: Authenticate to GCP
         uses: google-github-actions/auth@v3.0.0
         with:
-          workload_identity_provider: ${{ secrets.GCP_TEACHING_WIF_PROVIDER }}
-          service_account: ${{ secrets.GCP_TEACHING_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ secrets[format('GCP_{0}_WIF_PROVIDER', matrix.environment)] }}
+          service_account: ${{ secrets[format('GCP_{0}_SERVICE_ACCOUNT', matrix.environment)] }}
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v3
@@ -202,10 +223,10 @@ jobs:
         if: ${{ needs.prepare.outputs.backend_changed == 'true' }}
         run: |
           bash .github/scripts/deploy/run-migrations.sh \
-            quill-admin-teaching \
-            ${{ secrets.GCP_TEACHING_PROJECT_ID }} \
+            quill-admin-${{ matrix.environment }} \
+            ${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }} \
             ${{ env.GCP_REGION }} \
-            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/admin:${{ needs.prepare.outputs.sha }}
+            ${{ env.AR_REGISTRY }}/${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }}/quill/admin:${{ needs.prepare.outputs.sha }}
 
       # A Cloud Run job cannot be created without naming some image, and at
       # `terraform apply` time ours has not been built yet — so every image
@@ -226,10 +247,10 @@ jobs:
       - name: Point the transcode job at this build
         if: ${{ needs.prepare.outputs.backend_changed == 'true' }}
         run: |
-          gcloud run jobs update quill-transcode-teaching \
-            --project=${{ secrets.GCP_TEACHING_PROJECT_ID }} \
+          gcloud run jobs update quill-transcode-${{ matrix.environment }} \
+            --project=${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }} \
             --region=${{ env.GCP_REGION }} \
-            --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/transcode:${{ needs.prepare.outputs.sha }}
+            --image=${{ env.AR_REGISTRY }}/${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }}/quill/transcode:${{ needs.prepare.outputs.sha }}
 
       # The caption image is built from its own Dockerfile rather than a
       # target of the shared one, because Whisper pulls torch and has no
@@ -238,10 +259,10 @@ jobs:
       - name: Point the caption job at this build
         if: ${{ needs.prepare.outputs.backend_changed == 'true' }}
         run: |
-          gcloud run jobs update quill-caption-teaching \
-            --project=${{ secrets.GCP_TEACHING_PROJECT_ID }} \
+          gcloud run jobs update quill-caption-${{ matrix.environment }} \
+            --project=${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }} \
             --region=${{ env.GCP_REGION }} \
-            --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/caption:${{ needs.prepare.outputs.sha }}
+            --image=${{ env.AR_REGISTRY }}/${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }}/quill/caption:${{ needs.prepare.outputs.sha }}
 
       - name: Deploy backend
         if: ${{ needs.prepare.outputs.backend_changed == 'true' }}
@@ -250,25 +271,30 @@ jobs:
           # Cloud Run caps combined tag + service name at 46 chars, so a
           # full 40-char SHA won't fit alongside the service name.
           bash .github/scripts/deploy/deploy-tagged.sh \
-            quill-backend-teaching \
-            ${{ secrets.GCP_TEACHING_PROJECT_ID }} \
+            quill-backend-${{ matrix.environment }} \
+            ${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }} \
             ${{ env.GCP_REGION }} \
-            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/backend:${SHA} \
+            ${{ env.AR_REGISTRY }}/${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }}/quill/backend:${SHA} \
             "rev-${SHA:0:12}" \
             /api/health
 
       - name: Deploy frontend
         if: ${{ needs.prepare.outputs.frontend_changed == 'true' }}
         run: |
-          gcloud run services update quill-frontend-teaching \
-            --project=${{ secrets.GCP_TEACHING_PROJECT_ID }} \
+          gcloud run services update quill-frontend-${{ matrix.environment }} \
+            --project=${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }} \
             --region=${{ env.GCP_REGION }} \
-            --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/frontend:${{ needs.prepare.outputs.sha }}
+            --image=${{ env.AR_REGISTRY }}/${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }}/quill/frontend:${{ needs.prepare.outputs.sha }}
 
       # Public-edge check, complementing (not replacing) the tagged-revision
       # smoke test above — confirms the live edge is serving correctly too.
+      # Public-edge hostnames, one per environment. teaching. is retired in
+      # Batch 8, at which point this map loses its first entry along with
+      # the environment itself.
       - name: Smoke test
-        run: bash .github/scripts/deploy/smoke-test.sh "https://teaching.quill-medical.com/api/health"
+        env:
+          HOSTNAME: ${{ matrix.environment == 'app' && 'app.quill-medical.com' || 'teaching.quill-medical.com' }}
+        run: bash .github/scripts/deploy/smoke-test.sh "https://${HOSTNAME}/api/health"
 
   # ---------- Promote to production ----------
   # NOTE: Production (clinical) environment is currently offline to save GCP costs.
@@ -284,7 +310,7 @@ jobs:
     name: Promote to production
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    needs: [prepare, deploy-teaching]
+    needs: [prepare, deploy]
     # Only runs after teaching succeeds; requires manual approval via environment
     environment: production
     steps:
@@ -398,15 +424,15 @@ jobs:
           git push origin "$NEXT_TAG"
 
   # ---------- Slack notifications ----------
-  notify-teaching-failure:
-    name: Notify teaching deploy failure
-    needs: [prepare, build, deploy-teaching]
-    if: ${{ always() && (needs.prepare.result == 'failure' || needs.build.result == 'failure' || needs.deploy-teaching.result == 'failure') }}
+  notify-deploy-failure:
+    name: Notify deploy failure
+    needs: [prepare, build, deploy]
+    if: ${{ always() && (needs.prepare.result == 'failure' || needs.build.result == 'failure' || needs.deploy.result == 'failure') }}
     uses: ./.github/workflows/slack-notify.yml
     with:
       channel: teaching
       text: |
-        *❌ Teaching deploy failed*
+        *❌ Deploy failed*
 
         *Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>
         *Author:* ${{ github.actor }}
