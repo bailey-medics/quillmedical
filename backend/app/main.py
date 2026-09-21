@@ -1056,12 +1056,12 @@ def validate_clinical_lead(
 
     # The place accountable for this one, if it offers the bank
     accountable = root_ids_of(db, [matched_site_id]).get(matched_site_id)
-    place_for_site = accountable if accountable in offering else None
+    org_unit_for_site = accountable if accountable in offering else None
 
     return ValidateClinicalLeadOut(
         valid=True,
         site_name=site.name if site else None,
-        org_unit_id=place_for_site,
+        org_unit_id=org_unit_for_site,
         site_id=matched_site_id,
     )
 
@@ -2536,11 +2536,11 @@ def list_users(
         # Anyone but an operator sees only users at their own places;
         # operators see everyone.
     if current_user.platform_role != "superadmin":
-        admin_places = get_member_org_unit_ids(db, current_user.id)
-        org_scoped_ids = get_org_unit_staff_ids(db, admin_places)
+        admin_org_units = get_member_org_unit_ids(db, current_user.id)
+        org_scoped_ids = get_org_unit_staff_ids(db, admin_org_units)
 
         # Also include site-only members beneath the admin's places
-        site_ids_for_orgs = descendant_ids(db, list(admin_places))
+        site_ids_for_orgs = descendant_ids(db, list(admin_org_units))
         site_scoped_ids: set[int] = set()
         if site_ids_for_orgs:
             site_scoped_ids = {
@@ -3561,12 +3561,12 @@ def shared_organisations_endpoint(
     Returns:
         dict: ``organisations`` list with id/name/type for each shared org.
     """
-    shared_places = get_shared_org_unit_ids(db, current_user.id, patient_id)
-    if not shared_places:
+    shared_org_units = get_shared_org_unit_ids(db, current_user.id, patient_id)
+    if not shared_org_units:
         return SharedOrganisationsOut(organisations=[])
 
     orgs = (
-        db.execute(select(OrgUnit).where(OrgUnit.id.in_(shared_places)))
+        db.execute(select(OrgUnit).where(OrgUnit.id.in_(shared_org_units)))
         .scalars()
         .all()
     )

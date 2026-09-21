@@ -135,8 +135,8 @@ class NotInMessageOrganisation(MessagingError):
 
 def _snowball_orgs(db: Session, conversation_id: int, user_id: int) -> None:
     """Add a user's org(s) to a conversation (org snowball effect)."""
-    user_places = get_member_org_unit_ids(db, user_id)
-    if not user_places:
+    user_org_units = get_member_org_unit_ids(db, user_id)
+    if not user_org_units:
         return
         # Get existing conversation org IDs
     existing = db.execute(
@@ -144,9 +144,9 @@ def _snowball_orgs(db: Session, conversation_id: int, user_id: int) -> None:
             message_org_unit.c.conversation_id == conversation_id
         )
     ).all()
-    existing_place_ids = {r.org_unit_id for r in existing}
-    for org_unit_id in user_places:
-        if org_unit_id not in existing_place_ids:
+    existing_org_unit_ids = {r.org_unit_id for r in existing}
+    for org_unit_id in user_org_units:
+        if org_unit_id not in existing_org_unit_ids:
             db.execute(
                 message_org_unit.insert().values(
                     conversation_id=conversation_id,
@@ -171,9 +171,9 @@ def _user_has_conversation_access(
         return True
 
         # Org overlap check
-    user_places = set(get_member_org_unit_ids(db, user.id))
-    conv_place_ids = {place.id for place in conv.places}
-    if user_places & conv_place_ids:
+    user_org_units = set(get_member_org_unit_ids(db, user.id))
+    conv_org_unit_ids = {place.id for place in conv.places}
+    if user_org_units & conv_org_unit_ids:
         return True
 
         # External access grant (see ALL messages for granted patients)
@@ -376,7 +376,7 @@ def list_conversations(
     query = query.order_by(Conversation.updated_at.desc())
     conversations = query.all()
 
-    user_place_ids = set(get_member_org_unit_ids(db, user.id))
+    user_org_unit_ids = set(get_member_org_unit_ids(db, user.id))
 
     # Get per-patient access grants (for users with external patient access)
     external_patient_ids: set[str] = set()
@@ -394,8 +394,8 @@ def list_conversations(
         is_participant = cp is not None
 
         # Access check: participant OR org overlap OR external grant
-        conv_place_ids = {place.id for place in conv.places}
-        has_org_access = bool(user_place_ids & conv_place_ids)
+        conv_org_unit_ids = {place.id for place in conv.places}
+        has_org_access = bool(user_org_unit_ids & conv_org_unit_ids)
         has_external_access = conv.patient_id in external_patient_ids
 
         if not (is_participant or has_org_access or has_external_access):
@@ -622,7 +622,7 @@ def list_patient_conversations(
     query = query.order_by(Conversation.updated_at.desc())
     conversations = query.all()
 
-    user_place_ids = set(get_member_org_unit_ids(db, user.id))
+    user_org_unit_ids = set(get_member_org_unit_ids(db, user.id))
 
     # Get per-patient access grants
     ext_rows = db.execute(
@@ -640,8 +640,8 @@ def list_patient_conversations(
 
         # Access check: participant OR org overlap OR per-patient grant
         if not is_participant:
-            conv_place_ids = {place.id for place in conv.places}
-            has_org_access = bool(user_place_ids & conv_place_ids)
+            conv_org_unit_ids = {place.id for place in conv.places}
+            has_org_access = bool(user_org_unit_ids & conv_org_unit_ids)
             has_grant = conv.patient_id in granted_patient_ids
             if not has_org_access and not has_grant:
                 continue
@@ -694,11 +694,11 @@ def join_conversation(
     if conv is None:
         raise ConversationNotFound()
 
-    staff_place_ids = set(
+    staff_org_unit_ids = set(
         get_member_org_unit_ids(db, user.id, capacity="staff")
     )
-    conv_place_ids = {place.id for place in conv.places}
-    if not (staff_place_ids & conv_place_ids):
+    conv_org_unit_ids = {place.id for place in conv.places}
+    if not (staff_org_unit_ids & conv_org_unit_ids):
         raise NotInMessageOrganisation()
 
     existing = (

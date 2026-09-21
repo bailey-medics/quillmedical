@@ -53,7 +53,7 @@ def requires_feature(feature_key: str) -> Callable[..., User]:
         # Every organisation a membership reaches: the ones they belong
         # to directly, and the one accountable for any ward or clinic
         # they belong to. One walk up answers both.
-        user_place_ids = organisation_org_units_of(
+        user_org_unit_ids = organisation_org_units_of(
             db,
             [
                 int(org_unit_id)
@@ -67,7 +67,7 @@ def requires_feature(feature_key: str) -> Callable[..., User]:
             ],
         )
 
-        if not user_place_ids:
+        if not user_org_unit_ids:
             raise HTTPException(
                 status_code=403,
                 detail="User has no organisation",
@@ -75,7 +75,7 @@ def requires_feature(feature_key: str) -> Callable[..., User]:
 
         enabled = db.scalar(
             select(OrgUnitFeature.id).where(
-                OrgUnitFeature.org_unit_id.in_(user_place_ids),
+                OrgUnitFeature.org_unit_id.in_(user_org_unit_ids),
                 OrgUnitFeature.feature_key == feature_key,
             )
         )

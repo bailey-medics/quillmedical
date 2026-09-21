@@ -1646,10 +1646,10 @@ def _maybe_enqueue_certificate_emails(
             # An exact match on one place, with no walk up the tree: a
             # ward does not inherit its hospital's lead, and implying it
             # did would email the wrong person without raising anything.
-            org_place_id = assessment.org_unit_id
+            org_org_unit_id = assessment.org_unit_id
             org_site_ids = (
-                sorted(descendant_ids(db, [org_place_id]))
-                if org_place_id is not None
+                sorted(descendant_ids(db, [org_org_unit_id]))
+                if org_org_unit_id is not None
                 else []
             )
             lead_ids = set(clinical_leads_of(db, org_site_ids).values())
@@ -3246,7 +3246,7 @@ def promote_bank_version_at_org_unit(
     return _promote_bank_version(bank_id, org_unit_id, body, user, db)
 
 
-def _retired(place_path: str) -> NoReturn:
+def _retired(org_unit_path: str) -> NoReturn:
     """Say that an organisation-keyed address has been retired.
 
     410 rather than 404, for the same reason the retired sites and
@@ -3258,7 +3258,7 @@ def _retired(place_path: str) -> NoReturn:
         status_code=410,
         detail=(
             "This address has been retired. Name the place instead: "
-            f"{place_path}."
+            f"{org_unit_path}."
         ),
     )
 
@@ -3317,8 +3317,8 @@ def _update_bank_org_settings(
     # and reaching a trust from a ward is not belonging to it. Closing a
     # bank is the operation this protects: it locks candidates out of an
     # assessment they are part-way through.
-    org_place_ids = get_member_org_unit_ids(db, user.id)
-    if org_unit_id not in org_place_ids:
+    org_org_unit_ids = get_member_org_unit_ids(db, user.id)
+    if org_unit_id not in org_org_unit_ids:
         raise HTTPException(
             403, "You cannot change settings for that organisation"
         )
@@ -3334,7 +3334,7 @@ def _update_bank_org_settings(
     config_row = (
         db.execute(
             select(QuestionBankConfig).where(
-                QuestionBankConfig.org_unit_id.in_(org_place_ids),
+                QuestionBankConfig.org_unit_id.in_(org_org_unit_ids),
                 QuestionBankConfig.question_bank_id == bank_id,
             )
         )

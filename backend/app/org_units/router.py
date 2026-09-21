@@ -753,13 +753,13 @@ def set_org_unit_clinical_lead(
         if lead is None:
             raise HTTPException(status_code=404, detail="User not found")
 
-        at_this_place = db.scalar(
+        at_this_org_unit = db.scalar(
             select(org_unit_member.c.user_id).where(
                 org_unit_member.c.org_unit_id == unit_id,
                 org_unit_member.c.user_id == body.user_id,
             )
         )
-        if at_this_place is None:
+        if at_this_org_unit is None:
             raise HTTPException(
                 status_code=422,
                 detail="That person is not at this place.",

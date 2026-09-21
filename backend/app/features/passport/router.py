@@ -2335,7 +2335,9 @@ def revoke_assessor_membership(
     of who assessed somebody is not undone by that person later losing
     their access — the assessment happened.
     """
-    organisation_place_id = _require_org_admin_over(db, user, assessor_user_id)
+    organisation_org_unit_id = _require_org_admin_over(
+        db, user, assessor_user_id
+    )
 
     if assessor_user_id == user.id:
         raise HTTPException(400, "You cannot revoke your own access this way.")
@@ -2359,7 +2361,7 @@ def revoke_assessor_membership(
             org_unit_member.c.user_id == assessor_user_id,
             org_unit_member.c.capacity == "external",
             org_unit_member.c.org_unit_id.in_(
-                descendant_ids(db, [organisation_place_id])
+                descendant_ids(db, [organisation_org_unit_id])
             ),
         )
     )
@@ -2391,7 +2393,7 @@ def revoke_assessor_membership(
     external = db.scalar(
         select(organisation_org_unit_member.c.user_id).where(
             organisation_org_unit_member.c.org_unit_id
-            == organisation_place_id,
+            == organisation_org_unit_id,
             organisation_org_unit_member.c.user_id == assessor_user_id,
             organisation_org_unit_member.c.capacity == "external",
         )
@@ -2402,13 +2404,13 @@ def revoke_assessor_membership(
             404, "That person has no external assessor access here."
         )
 
-    remove_org_unit_member(db, organisation_place_id, assessor_user_id)
+    remove_org_unit_member(db, organisation_org_unit_id, assessor_user_id)
     db.flush()
 
     return AssessorRevokeOut(
         user_id=assessor_user_id,
         place="organisation",
-        place_id=organisation_place_id,
+        place_id=organisation_org_unit_id,
         sign_offs_kept=int(sign_offs_kept),
     )
 
@@ -2550,14 +2552,14 @@ def _holder_org_unit(db: Session, passport_id: str) -> tuple[str, int]:
     if site_id is not None:
         return "site", int(site_id)
 
-    organisation_place_id = db.scalar(
+    organisation_org_unit_id = db.scalar(
         select(organisation_org_unit_member.c.org_unit_id).where(
             organisation_org_unit_member.c.user_id == passport.user_id
         )
     )
 
-    if organisation_place_id is not None:
-        return "organisation", int(organisation_place_id)
+    if organisation_org_unit_id is not None:
+        return "organisation", int(organisation_org_unit_id)
 
     raise HTTPException(
         409,
