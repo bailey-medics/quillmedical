@@ -59,3 +59,4 @@
 - [Accessibility](2026-09-20-accessibility-plan.md)
 - [User Feedback](2026-09-20-user-feedback-plan.md)
 - [Internationalisation](2026-09-20-internationalisation-plan.md)
+- [Practising Competencies Enforcement](2026-09-21-practising-competencies-enforcement-plan.md)

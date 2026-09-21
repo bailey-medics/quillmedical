@@ -11,6 +11,19 @@
 name: Terraform
 
 on:
+  # Run it by hand, from the Actions tab. Two reasons it is needed: a change
+  # that teaches CI about an environment is a workflow edit rather than an
+  # `infra/**` one, so it cannot trigger itself; and an apply that fails
+  # partway otherwise needs an unrelated `infra/` push to retry.
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Which environment to apply"
+        required: true
+        type: choice
+        default: all
+        options: [all, teaching, app]
+
   push:
     branches: [main]
     paths:
@@ -91,7 +104,9 @@ jobs:
   apply:
     name: Apply (${{ matrix.environment }})
     runs-on: ubuntu-24.04
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+      || github.event_name == 'workflow_dispatch'
     environment: ${{ matrix.environment }}
     strategy:
       # Never in parallel: both environments share one state bucket, and a
@@ -122,7 +137,24 @@ jobs:
         working-directory: infra
         run: terraform workspace select -or-create ${{ matrix.environment }}
 
+      # A dispatch naming one environment still starts both matrix jobs, so
+      # the other one stops here rather than applying something nobody asked
+      # for. `all`, and any push, applies every environment.
+      - name: Skip environments this run did not ask for
+        id: scope
+        env:
+          CHOSEN: ${{ github.event.inputs.environment || 'all' }}
+          THIS: ${{ matrix.environment }}
+        run: |
+          if [ "${CHOSEN}" != "all" ] && [ "${CHOSEN}" != "${THIS}" ]; then
+            echo "Skipping ${THIS}: this run asked for ${CHOSEN}."
+            echo "skip=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "skip=false" >> "${GITHUB_OUTPUT}"
+          fi
+
       - name: Terraform apply
+        if: steps.scope.outputs.skip != 'true'
         working-directory: infra
         run: |
           terraform apply \
