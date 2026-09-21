@@ -8,7 +8,7 @@
 import BurgerButton from "@/components/button/BurgerButton";
 import { Anchor, Group } from "@mantine/core";
 import classes from "./PublicTopRibbon.module.scss";
-import publicNavLinks from "./publicNavLinks";
+import publicNavLinks, { LOGIN_URL } from "./publicNavLinks";
 
 type Props = {
   /** Callback when hamburger menu is clicked (opens drawer) */
@@ -73,6 +73,19 @@ export default function PublicTopRibbon({
               ),
             )}
           </Group>
+          {/*
+            Outside the nav group, hard right. Logging in leaves the public
+            site for the application, so it is an action rather than another
+            page, and a returning visitor looks for it in the corner.
+          */}
+          <Anchor
+            href={LOGIN_URL}
+            className={classes.login}
+            underline="never"
+            fw={600}
+          >
+            Log in
+          </Anchor>
         </>
       )}
     </div>

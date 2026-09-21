@@ -40,13 +40,7 @@ createRoot(document.getElementById("root")!).render(
             </PublicBodyText>
             <Group mt="lg" justify="center">
               <PublicButton href="https://app.quill-medical.com">
-                Teaching
-              </PublicButton>
-              <PublicButton variant="outline" disabled>
-                EPR Staging
-              </PublicButton>
-              <PublicButton variant="outline" disabled>
-                EPR Live
+                Log in
               </PublicButton>
             </Group>
           </Stack>

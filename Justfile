@@ -1507,16 +1507,20 @@ yarn-install:
 
 _gcp_env_project env:
     #!/usr/bin/env bash
+    # `app` and `teaching` are the same product in two projects while it
+    # moves between them. `teaching` is retired in Batch 8 of
+    # docs/docs/plans/2026-09-18-environment-isolation-and-iap-plan.md.
     case "{{env}}" in
+        app)      echo "quill-medical-app"      ;;
         staging)  echo "quill-medical-staging"  ;;
         teaching) echo "quill-medical-teaching" ;;
         prod)     echo "quill-medical-production" ;;
-        *)        echo "ERROR: env must be staging, teaching, or prod" >&2; exit 1 ;;
+        *)        echo "ERROR: env must be app, staging, teaching, or prod" >&2; exit 1 ;;
     esac
 
 
 alias ba := build-admin
-# Build and push the admin Docker image to a remote environment (staging/teaching/prod)
+# Build and push the admin Docker image to a remote environment (app/staging/teaching/prod)
 build-admin env:
     #!/usr/bin/env bash
     {{initialise}} "build-admin ({{env}})"

@@ -802,7 +802,18 @@ whole domain with it.
       the old project is shut down in Batch 8, or the redirect dies with
       it.
 
-- [ ] Exercise the new environment yourself before going further: sign in,
+- [x] **(Claude)** Confirm the new environment serves the real
+      application. On 2026-09-21 `app.quill-medical.com` returned
+      `<title>Quill Medical</title>`, both services ran images built from
+      this repository rather than `gcr.io/cloudrun/hello`, and
+      `/api/health` reported `core_db.available: true`. The status is
+      `degraded` because FHIR and EHRbase are off by configuration, the
+      same as teaching. The deploy that did it touched only workflow
+      files and shell scripts, so the paths filter said the frontend had
+      not changed; the placeholder check forced it anyway, which is what
+      it was written for.
+
+- [ ] **(Mark)** Exercise the new environment yourself before going further: sign in,
       load a question bank, play a video, upload one. There are no users
       whose traffic would prove it works, so the check has to be
       deliberate. Everything up to here is reversible by leaving DNS
