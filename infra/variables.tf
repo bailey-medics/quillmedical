@@ -12,12 +12,17 @@ variable "region" {
 }
 
 variable "environment" {
-  description = "Environment name: prod, staging, or teaching"
+  description = "Environment name: prod, staging, teaching, or app"
   type        = string
 
+  # `teaching` and `app` are the same product in two projects while it moves
+  # between them. `teaching` is removed once the old project is retired; see
+  # Batch 8 of docs/docs/plans/2026-09-18-environment-isolation-and-iap-plan.md.
   validation {
-    condition     = contains(["prod", "staging", "teaching"], var.environment)
-    error_message = "Environment must be prod, staging, or teaching."
+    condition = contains(
+      ["prod", "staging", "teaching", "app"], var.environment
+    )
+    error_message = "Environment must be prod, staging, teaching, or app."
   }
 }
 
