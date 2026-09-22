@@ -24,9 +24,18 @@ enable_ha   = false
 cloud_run_max_instances = 5
 
 lb_domains     = ["app.quill-medical.com"]
-# No landing_domain: the apex is served by the teaching project until
-# Batch 5, and naming it here would add it to this certificate too.
-landing_domain = null
+# The public marketing site, served from a GCS bucket behind this load
+# balancer. Adding it here puts quill-medical.com and www on this
+# environment's certificate alongside app.quill-medical.com, which is
+# what has to happen before the teaching project can be destroyed: that
+# project serves the apex today, and its certificate covers it.
+#
+# The certificate only goes active once every domain on it validates, and
+# validation resolves the domain, so the DNS for the apex moves after
+# this applies rather than before. Until it does, this environment holds
+# a certificate request for a name it does not yet serve, which is
+# harmless.
+landing_domain = "quill-medical.com"
 
 backend_image   = "gcr.io/cloudrun/hello:latest"
 frontend_image  = "gcr.io/cloudrun/hello:latest"
@@ -34,7 +43,10 @@ admin_image     = "gcr.io/cloudrun/hello:latest"
 transcode_image = "gcr.io/cloudrun/hello:latest"
 caption_image   = "gcr.io/cloudrun/hello:latest"
 
-monitored_hostnames        = ["app.quill-medical.com"]
+# The apex joins this once it is served from here. The uptime check
+# probes app_domain at /api/health and everything else at /, which is
+# right: the landing site is static and has no API.
+monitored_hostnames        = ["app.quill-medical.com", "quill-medical.com"]
 app_domain                 = "app.quill-medical.com"
 alert_email                = "info@quill-medical.com"
 cloud_run_services         = ["quill-backend-app", "quill-frontend-app"]

@@ -1,4 +1,8 @@
 # Deploy public marketing site to the GCS landing bucket.
+#
+# The app project, not teaching: the apex moves there before the teaching
+# project is retired. The bucket name is derived from the project id as
+# `<project>-landing`, so changing the secret changes the target.
 # Builds the public_pages Vite workspace once and syncs it to the teaching
 # project's landing bucket, which serves the apex quill-medical.com domain.
 name: Deploy public site
@@ -69,16 +73,16 @@ jobs:
       - name: Authenticate with Google Cloud
         uses: google-github-actions/auth@v3.0.0
         with:
-          workload_identity_provider: ${{ secrets.GCP_TEACHING_WIF_PROVIDER }}
-          service_account: ${{ secrets.GCP_TEACHING_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ secrets.GCP_APP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_APP_SERVICE_ACCOUNT }}
 
       - uses: google-github-actions/setup-gcloud@v3.0.1
 
       - name: Upload to GCS
-        run: bash .github/scripts/public-site/deploy-to-gcs.sh "${{ secrets.GCP_TEACHING_PROJECT_ID }}"
+        run: bash .github/scripts/public-site/deploy-to-gcs.sh "${{ secrets.GCP_APP_PROJECT_ID }}"
 
       - name: List deployed files
-        run: bash .github/scripts/public-site/list-files.sh "${{ secrets.GCP_TEACHING_PROJECT_ID }}"
+        run: bash .github/scripts/public-site/list-files.sh "${{ secrets.GCP_APP_PROJECT_ID }}"
 
   notify-teaching-failure:
     name: Notify teaching deploy failure
