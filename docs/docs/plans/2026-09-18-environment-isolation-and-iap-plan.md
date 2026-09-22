@@ -578,17 +578,34 @@ whole domain with it.
       `34.49.99.83`. The `infra/modules/dns` module is not wired into
       `infra/main.tf`, so DNS is not under Terraform.
 
-- [ ] **(Mark)** Wait for `quill-cert-v5-app` to leave `PROVISIONING`.
+- [x] **(Claude)** Wait for `quill-cert-v5-app` to leave `PROVISIONING`.
+      It went `ACTIVE` on 2026-09-21, covering `app.quill-medical.com`.
+      The note below records why it could not start sooner.
       A Google-managed certificate cannot validate until the DNS record
       exists, so it sat pending from the apply until the record above was
       created, and takes fifteen to sixty minutes from that point. Until
       it is `ACTIVE`, the hostname resolves and the browser shows a
       certificate warning.
 
-- [ ] Point `teaching.quill-medical.com` at the new project as a redirect,
-      rather than leaving it served by the old one. It has to move before
-      the old project is shut down in Batch 8, or the redirect dies with
-      it.
+- [x] **Decided on 2026-09-22: no redirect.**
+      `teaching.quill-medical.com` stops working when the old project is
+      shut down in Batch 8, and nothing replaces it.
+
+      The redirect was never one change. It needed
+      `teaching.quill-medical.com` added to `lb_domains` on the app
+      environment, replacing `quill-cert-v5-app` and waiting on both
+      domains to validate; the DNS A record moved from
+      `136.110.221.126` to `34.49.99.83`, which has to happen before
+      validation can succeed and leaves a certificate error in between;
+      and a URL map rule that `infra/modules/load-balancer` does not
+      have, since it only redirects HTTP to HTTPS.
+
+      Against that, nothing points at the hostname any more. The public
+      pages, the ribbon navigation, the landing page, the ZAP scan and
+      the teaching content pipeline have all moved to
+      `app.quill-medical.com`, and Quill has no users holding bookmarks.
+      A redirect would have been new Terraform, in the file that has
+      already taken the API down once, serving nobody.
 
 - [x] **(Claude)** Confirm the new environment serves the real
       application. On 2026-09-21 `app.quill-medical.com` returned
@@ -622,7 +639,8 @@ whole domain with it.
       the app environment unable to pull what it is running.
 
 **Hands over:** `app.quill-medical.com` serving the real application,
-`teaching.` redirecting to it, and both verified by hand. Batch 6 must
+verified by hand. `teaching.quill-medical.com` keeps serving from the old
+project until Batch 8 retires it, and is then simply gone. Batch 6 must
 not merge before this.
 
 ## Batch 6 — Claude: move everything off the old hostname
@@ -707,8 +725,9 @@ them early aims CI at something that is not ready.
       than assuming one call covered it. `gh secret list --repo` shows
       the update timestamps.
 
-- [ ] Drop `teaching.quill-medical.com` from `lb_domains` and
-      `monitored_hostnames`. **Moved to Batch 8**, because it is not safe
+- [x] Decided **not** to drop `teaching.quill-medical.com` from
+      `lb_domains` and `monitored_hostnames` here. **Moved to Batch 8**,
+      because it is not safe
       here: `quill-cert-v5-teaching` covers `teaching.quill-medical.com`,
       `quill-medical.com` and `www.quill-medical.com` on one certificate.
       Changing `lb_domains` replaces that certificate, and a
@@ -720,8 +739,9 @@ them early aims CI at something that is not ready.
 
 ### After the old project is retired
 
-- [ ] Rename `GCP_TEACHING_PROJECT_ID`, `GCP_TEACHING_WIF_PROVIDER` and
-      `GCP_TEACHING_SERVICE_ACCOUNT` to their `GCP_APP_*` equivalents.
+- [x] Decided **not** to rename `GCP_TEACHING_PROJECT_ID`,
+      `GCP_TEACHING_WIF_PROVIDER` and `GCP_TEACHING_SERVICE_ACCOUNT`
+      here.
       The `GCP_APP_*` secrets already exist and are what the app
       environment uses; what is left is deleting the teaching ones once
       nothing reads them, which is Batch 8 rather than here. Doing it
@@ -765,6 +785,17 @@ What is left is the deletions, which genuinely have to wait.
 **Hands over:** nothing outstanding that blocks Batch 8.
 
 ## Batch 8 — Mark: retire the old project
+
+`teaching.quill-medical.com` is not redirected anywhere, by decision in
+Batch 5. When this batch runs the hostname stops resolving and that is
+the intended end state, so there is no redirect to keep working and
+nothing to check afterwards except that nothing else broke.
+
+The apex is the part to be careful about. `quill-cert-v5-teaching`
+carries `quill-medical.com` and `www.quill-medical.com` alongside the
+teaching hostname, and the public marketing site is served from this load
+balancer. Move the apex before destroying anything, or the site loses TLS
+with it.
 
 - [ ] Leave `quill-medical-teaching` running until the new environment has
       been exercised for long enough to trust. It costs money, and that is
