@@ -766,7 +766,7 @@ class OrgUnit(Base):
 
     Attributes:
         id: Primary key.
-        name: Site name (e.g. "Addenbrooke's Hospital").
+        name: Site name (e.g. "Faroff Hospital").
         type: Site type (hospital, building, ward, room, clinic,
             department, virtual).
         parent_id: FK to parent site (nullable for top-level sites).

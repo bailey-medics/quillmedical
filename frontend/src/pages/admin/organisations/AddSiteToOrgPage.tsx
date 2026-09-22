@@ -61,7 +61,7 @@ function AddSiteFields({
             render={({ field, fieldState }) => (
               <TextField
                 label="Name"
-                placeholder="e.g. Addenbrooke's Hospital"
+                placeholder="e.g. Angel's Hospital"
                 value={field.value as string}
                 onChange={field.onChange}
                 error={fieldState.error?.message}
@@ -93,7 +93,7 @@ function AddSiteFields({
             render={({ field }) => (
               <TextField
                 label="Location"
-                placeholder="e.g. Hills Road, Cambridge"
+                placeholder="e.g. 42 Example Lane, Exampletown EX1 2AB"
                 value={field.value as string}
                 onChange={field.onChange}
               />
