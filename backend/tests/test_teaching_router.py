@@ -2659,6 +2659,56 @@ class TestModuleMedia:
     def _captions_url(self, asset: str) -> str:
         return f"/api/teaching/admin/modules/test-bank/media/{asset}/captions"
 
+    def test_the_endpoint_carries_is_final(
+        self, test_client, db_session, monkeypatch, tmp_path
+    ):
+        """Through the API, not just out of ``describe_progress``.
+
+        ``MediaProgressOut`` is built field by field from the dataclass,
+        so a field added to one and not the other is silently dropped
+        and arrives at the card as its default. That is exactly what
+        happened to ``is_final``: the backend computed it, the response
+        left it out, and the card went on drawing a bar on a row that
+        was finished.
+        """
+        monkeypatch.setattr("app.config.settings.TEACHING_TRANSCODE_JOB", None)
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        self._upload(
+            db_session, org.id, "lecture-01", "asset-1", transcoded=False
+        )
+        db_session.commit()
+        self._use(monkeypatch, self._content(tmp_path, "lecture-01"))
+
+        resp = self._get(test_client, self._login(test_client))
+
+        assert resp.status_code == 200
+        progress = resp.json()["references"][0]["asset"]["progress"]
+        assert progress["is_final"] is True
+        assert progress["label"] == "Uploaded — plays without processing"
+
+    def test_the_endpoint_leaves_is_final_false_while_working(
+        self, test_client, db_session, monkeypatch, tmp_path
+    ):
+        """The other half: a row still being worked on keeps its bar."""
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_TRANSCODE_JOB",
+            "projects/p/locations/l/jobs/quill-transcode-teaching",
+        )
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        self._upload(
+            db_session, org.id, "lecture-01", "asset-1", transcoded=False
+        )
+        db_session.commit()
+        self._use(monkeypatch, self._content(tmp_path, "lecture-01"))
+
+        resp = self._get(test_client, self._login(test_client))
+
+        assert resp.status_code == 200
+        progress = resp.json()["references"][0]["asset"]["progress"]
+        assert progress["is_final"] is False
+
     def test_a_reference_without_an_upload_reads_as_missing(
         self, test_client, db_session, monkeypatch, tmp_path
     ):
