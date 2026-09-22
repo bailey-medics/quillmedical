@@ -940,25 +940,26 @@ for the same name would leave both pending.
       steps below are reordered accordingly: the DNS moves before the
       domain joins the certificate, not after.
 
-- [ ] **(Mark)** Run the public site workflow, so
-      `gs://quill-medical-app-landing` holds the site. The bucket already
-      exists; it is empty. Nothing serves it yet, so this can be checked
-      at leisure with `gcloud storage ls`.
+- [x] **(Claude)** Run the public site workflow, so
+      `gs://quill-medical-app-landing` holds the site. Done on
+      2026-09-22: 81 objects.
+
+- [x] **(Claude)** Restore `landing_domain` and the apex in
+      `monitored_hostnames`, so the certificate requests all three
+      domains.
 
 - [ ] **(Mark)** Move the DNS for `quill-medical.com` and
       `www.quill-medical.com` from `136.110.221.126` to `34.49.99.83`.
-      The apex is then served by the app project, on teaching's
-      certificate, which still covers both names. Nothing is down: the
-      certificate follows the name, not the load balancer.
 
-- [ ] **(Mark)** Confirm the apex serves the site from the new project.
-      Reversible by moving the records back.
+      **The apex loses HTTPS until the certificate validates**, minutes
+      to an hour. That is unavoidable and was agreed rather than
+      overlooked. Validation runs over HTTP on port 80, so moving the
+      record is what lets it finish; leaving the record where it is
+      leaves the certificate pending for ever.
 
-- [ ] **(Claude)** Only then set `landing_domain = "quill-medical.com"`
-      in the app tfvars, and add the apex back to `monitored_hostnames`.
-      Every domain on the new certificate can validate by that point, so
-      the replacement is not an outage. This is the step that was done
-      first on 2026-09-22 and took `app.quill-medical.com` down.
+- [ ] **(Mark)** Watch `quill-cert-app-*` reach `ACTIVE`, then check the
+      apex, `www` and `app.quill-medical.com` all serve. All three are on
+      one certificate, so they come back together.
 
 - [ ] **(Mark)** Remove the apex from teaching's `lb_domains` once the
       app certificate is active, so the old project stops claiming a
@@ -1325,11 +1326,19 @@ again. None of it is visible from the code.
   is true of the certificate, which is replaced rather than edited, and
   false of the proxy, which is pointed at the new one immediately.
 
-  The order that works is the reverse of what was attempted: populate the
-  landing bucket, move the apex DNS to the new load balancer, and only
-  then add the domain to the certificate. The apex is served on
-  teaching's certificate in the gap, which still covers it, so nothing is
-  down at any point.
+  The order first written here as the fix was also wrong: it said to move
+  the apex DNS before adding the domain to the certificate, and that the
+  apex would be served on teaching's certificate in the gap. A
+  certificate is attached to a proxy, not to a hostname. Moving the DNS
+  sends traffic to the app project's proxy, whose certificate does not
+  carry the apex, so the handshake fails. Tested with `curl --resolve`
+  before it was attempted: `http=000`.
+
+  There is no order with no gap, because validation resolves the domain
+  and the certificate cannot cover a name whose DNS points elsewhere.
+  What makes it survivable is that validation runs over HTTP on port 80,
+  so the sequence is: name the domains, move the DNS, wait. The apex has
+  no HTTPS in between.
 
 - **A doubled dollar means Google substitutes it, not Terraform.** The
   alert template in `infra/modules/monitoring/main.tf` uses
