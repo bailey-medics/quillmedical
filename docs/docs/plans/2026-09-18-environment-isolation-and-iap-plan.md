@@ -274,15 +274,26 @@ every deploy, so the URL mask is the part that matters.
       match the health path only, and a request for any other path
       through that prefix should not reach the service.
 
-- [ ] Point `run_smoke_test` in `deploy-tagged.sh` at the admin job
-      rather than `curl`, now the job is proven to reach a closed-ingress
-      service. `run-migrations.sh` shows the shape: execute the job with
-      `--wait` and let its exit code stand for the result. The function
-      is already isolated so tests can stub it.
+- [x] **(Claude)** Point `run_smoke_test` in `deploy-tagged.sh` at the
+      admin job rather than `curl`. Not at a load balancer route: the
+      VPC test on 2026-09-22 showed a job reaches a closed-ingress
+      service directly, so the route this step first imagined is not
+      needed.
 
-      This is the one change left before the ingress can close, and it
-      rewrites the step that stops a bad revision reaching anyone, so it
-      wants its own unit and a watched first deploy.
+      Behind `SMOKE_TEST_JOB`, which nothing sets yet. Unset, the
+      function curls exactly as before, so every environment keeps its
+      current behaviour and merging this changes no deploy. Set, it
+      executes the job with `--wait` and the job's exit code is the
+      result, the same shape `run-migrations.sh` already uses.
+
+      Two things still have to be true before the ingress can close, and
+      neither is done here: the admin job needs
+      `vpc_egress = "ALL_TRAFFIC"`, and the workflow has to pass
+      `SMOKE_TEST_JOB`, `SMOKE_TEST_PROJECT` and `SMOKE_TEST_REGION` for
+      the environment being closed. Both are deliberate: turning this on
+      changes the step that stops a bad revision reaching anybody, and it
+      should be one watched deploy rather than a side effect of this
+      merge.
 
 - [ ] Only then re-apply Phase 1's ingress setting, and watch the first
       deploy.
