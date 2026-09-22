@@ -676,7 +676,13 @@ prune-branches scope="":
         if [ -z "$MERGED_UNTRACKED" ]; then
             echo "No merged untracked branches to remove."
         else
-            echo $MERGED_UNTRACKED | xargs git branch -d
+            # -D, not -d, because the merge check has already been made above
+            # and made against the right branch. A branch with no upstream
+            # sends `git branch -d` to compare against HEAD instead of main,
+            # so pruning from a feature branch made it refuse every branch
+            # whose commits main has but that branch does not — which is all
+            # of them. It failed the whole recipe on the last one.
+            echo $MERGED_UNTRACKED | xargs git branch -D
         fi
     }
 
@@ -1237,44 +1243,114 @@ stack-submit:
 
 
 alias stsy := stack-sync
-# Drop merged branches, re-target the rest, and redraw the stack
-stack-sync:
+# Drop merged branches, re-target the rest, and redraw the stack. Pass 'a' to sweep every worktree.
+stack-sync scope="":
     #!/usr/bin/env bash
     {{initialise}} "stack-sync"
-    set -euo pipefail
-    just _stack-guard
-    # Run this after a pull request merges: it notices the merge, deletes the
-    # branch, cascade-rebases what sat above it and pushes the result.
-    #
-    # --prune answers the "delete N merged branches?" prompt in advance.
-    # Tidying up after a merge is the whole reason this recipe exists, and a
-    # merged branch's commits are on main and its pull request is on GitHub,
-    # so there is nothing in one to lose.
-    gh stack sync --prune
-    # `--prune` deletes the local branch of a merged pull request, which is
-    # the half that frees the name — but it leaves the branch's entry in the
-    # stack. Those entries are not only clutter: an entry whose branch is
-    # gone costs `gh stack rebase` the base it should be rebasing onto, and
-    # it replays the trunk's own history instead. So the record is tidied
-    # here, where the branches were just deleted, rather than left to
-    # surprise the next rebase.
-    python3 scripts/stack-forget-merged.py
-    # Exit 1 means "no stack here". That is the ordinary ending for a sync —
-    # the last branch merging deletes the stack, so the run that tidies it up
-    # is the one guaranteed to find nothing left to draw. The script's own
-    # message advises starting a new stack, which is not the point here, so
-    # its output is held back and the outcome is reported instead. Any other
-    # exit code is a real fault and is left to fail the recipe.
-    drawn=""
-    status=0
-    drawn=$(python3 scripts/stack-status.py --prs --colour 2>&1) || status=$?
-    if [ "${status}" -eq 0 ]; then
-        printf '%s\n' "${drawn}"
-    elif [ "${status}" -eq 1 ]; then
-        echo "  Stack fully merged — nothing left to draw."
-    else
-        printf '%s\n' "${drawn}" >&2
-        exit "${status}"
+    set -uo pipefail
+
+    # One function, called once per worktree, so a sweep gives each checkout
+    # exactly the same treatment as a single run rather than a second, more
+    # hastily written copy of it. It returns rather than exits: in a sweep a
+    # worktree that has nothing to do must not stop the ones after it.
+    sync_one() {
+        cd "$1" || return 0
+
+        # Not `just _stack-guard`: that collapses "no stack here" and "this
+        # stack spans worktrees" into the same exit 1, which is the right
+        # answer for a single run and the wrong one inside a loop. Both are
+        # ordinary outcomes of a sweep and each deserves its own line.
+        local status=0
+        python3 scripts/stack-status.py --check >/dev/null 2>&1 || status=$?
+        if [ "${status}" -eq 1 ]; then
+            echo "  No stack here — nothing to sync."
+            return 0
+        fi
+        if [ "${status}" -eq 2 ]; then
+            echo "  ✗ Skipped: this stack spans more than one worktree." >&2
+            echo "    Free the branches above, or sync it from the worktree" >&2
+            echo "    that owns it." >&2
+            return 0
+        fi
+
+        # Run this after a pull request merges: it notices the merge, deletes
+        # the branch, cascade-rebases what sat above it and pushes the result.
+        #
+        # --prune answers the "delete N merged branches?" prompt in advance.
+        # Tidying up after a merge is the whole reason this recipe exists, and
+        # a merged branch's commits are on main and its pull request is on
+        # GitHub, so there is nothing in one to lose.
+        if ! gh stack sync --prune; then
+            echo "  ✗ gh stack sync failed here; leaving this worktree alone." >&2
+            return 1
+        fi
+
+        # `--prune` deletes the local branch of a merged pull request, which is
+        # the half that frees the name — but it leaves the branch's entry in
+        # the stack. Those entries are not only clutter: an entry whose branch
+        # is gone costs `gh stack rebase` the base it should be rebasing onto,
+        # and it replays the trunk's own history instead. So the record is
+        # tidied here, where the branches were just deleted, rather than left
+        # to surprise the next rebase.
+        #
+        # The record is per worktree — stack-forget-merged.py resolves it with
+        # `git rev-parse --git-path gh-stack` — so this tidies the checkout it
+        # is run from and no other. That is exactly why a sweep has to visit
+        # each one rather than tidying up centrally.
+        python3 scripts/stack-forget-merged.py || return 1
+
+        # Exit 1 means "no stack here". That is the ordinary ending for a sync
+        # — the last branch merging deletes the stack, so the run that tidies
+        # it up is the one guaranteed to find nothing left to draw. The
+        # script's own message advises starting a new stack, which is not the
+        # point here, so its output is held back and the outcome is reported
+        # instead. Any other exit code is a real fault.
+        local drawn=""
+        local draw_status=0
+        drawn=$(python3 scripts/stack-status.py --prs --colour 2>&1) || draw_status=$?
+        if [ "${draw_status}" -eq 0 ]; then
+            printf '%s\n' "${drawn}"
+        elif [ "${draw_status}" -eq 1 ]; then
+            echo "  Stack fully merged — nothing left to draw."
+        else
+            printf '%s\n' "${drawn}" >&2
+            return "${draw_status}"
+        fi
+        return 0
+    }
+
+    if [ "{{scope}}" != "a" ]; then
+        sync_one "$(pwd)"
+        exit $?
+    fi
+
+    # A sweep. Unlike `prune-branches a`, which only deletes local refs, this
+    # cascade-rebases and force-pushes in every worktree it visits, so it says
+    # what it is about to do and names each worktree as it goes.
+    ROOT=$(git rev-parse --path-format=absolute --git-common-dir)
+    ROOT=$(dirname "${ROOT}")
+    PARENT=$(dirname "${ROOT}")
+
+    failed=0
+    while IFS= read -r WT; do
+        # Worktrees outside the checkout's own parent directory are not part
+        # of the working set: agent sessions leave detached ones under
+        # /private/tmp, and a sweep that force-pushed from one of those would
+        # be acting on a checkout nobody is watching.
+        case "${WT}" in
+            "${PARENT}"/*) ;;
+            *) continue ;;
+        esac
+        echo ""
+        echo "▸ $(basename "${WT}")"
+        # A subshell, so sync_one's `cd` cannot leak into the next iteration.
+        ( sync_one "${WT}" ) || failed=1
+    done < <(git worktree list --porcelain | awk '/^worktree /{print $2}')
+
+    if [ "${failed}" -ne 0 ]; then
+        echo ""
+        echo "✗ At least one worktree did not sync cleanly — see above." >&2
+        exit 1
     fi
 
 
