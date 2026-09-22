@@ -2069,6 +2069,101 @@ because the individual findings above do not show the pattern.
   not work", against server-side evidence that looked healthy. Confidence in
   a diagnosis was, twice, worth less than one more attempt at the real thing.
 
+### Leaving the page mid-upload, and failing cleanly when it breaks
+
+**[done 2026-09-22]** An admin started an upload, navigated away, came back
+and found it gone. The reported fault was the navigation; the investigation
+found two different faults wearing one symptom, and only one of them was the
+one reported.
+
+- **A route change does not stop the upload.** The `XMLHttpRequest` lives in
+  a closure in `use-module-media.ts`, not in the page, so React unmounting
+  the card does not abort it. The bytes keep going, the `link` call still
+  fires, and the asset is recorded. What is actually lost is the progress bar
+  and anywhere to report a failure, which is why the upload looked stopped.
+
+- **Closing or reloading the tab does stop it.** That kills the request
+  part-way, the `link` call never runs, and nothing on the server knows the
+  upload was attempted: `upload-url` mints an `asset_id` and writes no row.
+  This is the case that genuinely loses the file.
+
+- **Both are guarded, from one flag.** `useBlocker` covers the route change
+  and a `beforeunload` listener covers the tab close, both reading
+  `uploading` on the hook. That flag is derived from `uploadProgress` rather
+  than tracked separately, so an upload that throws cannot leave it set and
+  trap the admin on the page.
+
+- **The warning does not claim the upload is cancelled**, because on a route
+  change it is not. It says the admin will not see whether it finishes. A
+  warning that overstates what happens teaches people to ignore warnings.
+
+- **A failed upload now says so on the row it failed on.** `uploadErrors` is
+  keyed by reference key, so one broken video does not mark a module's others
+  as broken, and the message is cleared when that key is retried. Before
+  this, the row simply emptied, which looked the same as never having tried.
+
+### Decision: a failed upload starts over, it does not resume
+
+**[decided 2026-09-22]** Resuming an interrupted upload is possible — a GCS
+resumable session answers `Content-Range: bytes */SIZE` with how far it got,
+so only the remainder need be sent. It was considered and rejected.
+
+- **Resume needs state that nothing else needs.** A row written when the URL
+  is minted, a reaper for the rows nobody finishes, and a retry path. All
+  three exist only to serve resume.
+
+- **The browser cannot reopen the file anyway.** File handles do not survive
+  a tab close, so resume still means "pick the same file again, and we will
+  skip what landed". That is worth real money on a 900MB lecture over a poor
+  connection, and close to nothing otherwise.
+
+- **So the contract is that a failed upload leaves nothing behind**, and the
+  dropzone that replaces it is a genuine clean slate. That is what the card
+  now says in as many words.
+
+- **On a developer's machine the cleanup had to be written.** The local route
+  streams chunks straight to disk, so a dropped connection left a truncated
+  video that nothing would ever remove — no row points at it, and the admin
+  never sees it. It is now unlinked on the way out. In the teaching
+  environment the bytes never reach this application, and GCS materialises no
+  object at all from an incomplete session, so there was nothing to fix.
+
+### The source bucket keeps raw uploads for a day, not a week
+
+**[changed 2026-09-22]** `source_retention_days` went from 7 to 1, so an
+abandoned upload does not outlive the admin's memory of making it.
+
+- **Two hours was asked for and is not expressible.** A lifecycle condition
+  is measured in whole days, minimum one, and evaluated asynchronously, so
+  deletion lands somewhere in the 24 to 48 hour range. Hitting two hours
+  needs a scheduled sweeper job listing the bucket, which is a job to own for
+  a gain nobody had yet measured.
+
+- **The cost is the re-transcode window.** A rendition fault found the next
+  morning can no longer be fixed by re-running the job over the original,
+  because the original has gone. The admin re-uploads instead.
+
+- **Which makes the processed bucket's versioning load-bearing**, where
+  before it was a second line of defence. Its comment now says so.
+
+### Decision: a stalled job is deleted and redone, not retried
+
+**[decided 2026-09-22]** `describe_progress` already tells an admin when a
+transcode or caption job has failed rather than merely being slow, but the
+row offers no way to act on it beyond deleting the video.
+
+- **Delete and re-upload is the whole recovery path**, and it is enough
+  unless these jobs start failing often. Nobody has yet seen one fail in
+  normal use.
+
+- **A retry action would fight the retention change above.** Re-firing
+  `start_transcode` reads the original from the source bucket, which is gone
+  after a day, so the action would work on the first day and silently not
+  afterwards. Two features landing in the same week already disagree.
+
+- **Revisit if outages become common.** The label exists now, so the evidence
+  will be there.
+
 ## Local development
 
 Video files never enter this repository. They live in the gitignored
