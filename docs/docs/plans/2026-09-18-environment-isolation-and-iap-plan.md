@@ -533,221 +533,9 @@ here because the next environment will want the same list:
 
 ### What was learnt building it
 
-Filled in as the steps run, so the next environment is quicker than this
-one.
-
-- **The four setup steps took about six minutes**, nearly all of it
-  waiting for API enablement. Everything else returned immediately.
-
-- **Enable the APIs in one command, not fifteen.** `gcloud services
-  enable` accepts a list and enables them concurrently. It ran well past
-  two minutes, so expect to wait rather than assuming it has hung, and
-  poll `gcloud services list --enabled` rather than watching the command.
-
-- **A new project starts with about 22 APIs already on.** Google enables
-  a default set, which is why the count goes to 38 rather than to
-  fifteen. The count alone tells you nothing; compare the list against
-  what you asked for.
-
-- **Billing must be linked before enabling anything.** An unlinked
-  project refuses API enablement with an error that does not mention
-  billing, which is a slow thing to diagnose.
-
-- **`gcloud projects create` takes `--name` for the display name**, and
-  it is the only chance to set it conveniently. `--organization` takes
-  the numeric id, not the domain.
-
-- **The organisation policy is set per project, not inherited usefully.**
-  `constraints/iam.allowedPolicyMemberDomains` had to be set again on the
-  new project with `allValues: ALLOW`. Without it, granting
-  `roles/run.invoker` to `allUsers` is refused, and the symptom is the
-  load balancer getting 403 from a service that looks correctly
-  deployed.
-
-- **A new Workload Identity pool is not readable the moment it is
-  created.** `create` returned success and the next `describe` answered
-  `NOT_FOUND`. It settled within ten seconds. Poll rather than treating
-  the first failure as real, and do not create the provider until the
-  describe answers, because the provider needs the pool to exist.
-
-- **The pool, the provider and the binding are three separate things**,
-  and only the third decides who may act. The provider says which
-  repository may present a token; the `roles/iam.workloadIdentityUser`
-  binding on the service account says which principal set may impersonate
-  it. Creating the first two and forgetting the third produces
-  authentication that succeeds and then cannot do anything, which reads
-  as a permissions problem rather than a missing binding.
-
-- **The Terraform describes a built environment, not an empty one.** Five
-  things in it assume a project somebody has already prepared by hand, and
-  copying teaching's tfvars copied those assumptions along with the
-  values. The first apply against an empty project fails on them one
-  after another:
-
-  - Two `import` blocks, for `teaching-sync-token` and the
-    `quill-admin-<env>` Cloud Run job. Both adopted resources that
-    predated Terraform in the teaching project, and an import of
-    something that does not exist is an error rather than a no-op. Fixed
-    by creating both by hand in the new project so the import finds them:
-    the secret container with no version, the job on
-    `gcr.io/cloudrun/hello:latest`.
-
-  - Two secret *versions* read through
-    `google_secret_manager_secret_version`, `pagerduty-service-key` and
-    `alert-sms-number`. Terraform creates secret containers but never
-    versions, by the convention in `modules/secrets`, so the value has to
-    be put there first. Both were copied across from teaching, since it
-    is the same PagerDuty service and the same phone number.
-
-  - A Slack notification channel, looked up by display name. This is the
-    one that cannot be scripted at all: the channel's `auth_token` comes
-    from Slack's OAuth consent screen and only the console flow produces
-    it. The new environment starts with
-    `slack_channel_display_name = ""`, which switches the data source
-    off, and gains Slack alerting when somebody runs that flow.
-
-- **The Terraform state bucket is in its own project**, and access to it
-  is granted per service account. `github-actions@quill-medical-teaching`,
-  `-staging` and `-production` each hold `roles/storage.objectAdmin` on
-  `gs://quill-medical-terraform-state`, granted individually. A new
-  environment's service account needs the same binding or `terraform
-  init` fails with a 403 on `storage.objects.list`, which reads like a
-  missing bucket rather than a missing grant.
-
-- **A workflow change cannot trigger its own workflow here.** Merging the
-  matrix change ran nothing, because `terraform.yml` triggers on
-  `infra/**` and the change was to the workflow file and the plan. The
-  new environment therefore stayed empty, and the only signal was the
-  absence of a run, which is easy to read as "it is still starting". The
-  workflow now also takes `workflow_dispatch`, so it can be started by
-  hand from the Actions tab, choosing `all`, `teaching` or `app`.
-
-- **`actionlint` is installed locally and worth running before pushing a
-  workflow change.** The first attempt at the dispatch input used an
-  empty string as a choice option, meaning "every environment", and
-  `actionlint` rejects that: "string should not be empty". CI caught it,
-  but `actionlint .github/workflows/terraform.yml` would have caught it
-  in a second. A named `all` option is clearer than a blank one anyway.
-
-- **CI decides which environments exist, not the tfvars.** Adding
-  `infra/environments/app/terraform.tfvars` and merging it did nothing:
-  `terraform.yml` named the `teaching` workspace and teaching's tfvars in
-  four places, all hardcoded. A new environment is not real until the
-  workflow knows about it, and the failure mode is silence rather than an
-  error, because the workflow keeps succeeding against the old
-  environment.
-
-- **A matrix beats a second job.** The plan and apply jobs now loop over
-  the environment list, so retiring `teaching` in Batch 8 is one edit
-  rather than deleting a duplicated pair of jobs and hoping nothing else
-  referenced them. The applies run with `max-parallel: 1`, because both
-  environments share one state bucket.
-
-- **A GitHub Environment is a separate thing from a GitHub secret**, and
-  both are needed. The apply job names an environment, and a job naming
-  one that does not exist fails before its first step, which reads as a
-  workflow syntax problem rather than missing configuration.
-
-- **Read the environment you are copying before creating its twin.**
-  `teaching` restricts deployments to `main` through a custom branch
-  policy. Creating `app` with the defaults would have produced an
-  environment that looks equivalent in the workflow and accepts a deploy
-  from any branch.
-
-- **The same secret can exist at two scopes, and teaching uses both.**
-  `GCP_TEACHING_*` are set at repository level and again on the
-  `teaching` environment, where the environment copy wins for jobs
-  running there. Setting only the repository copy for `app` would work
-  until somebody added an environment-scoped override to one environment
-  and not the other.
-
-- **`gh api` needs `--input -` for boolean fields.** `-f` sends every
-  value as a string, and the environments endpoint rejects `"false"`
-  where it wants `false`, with a message that names the type rather than
-  the cause.
-
-- **The paths filter answers a repository question, not an environment
-  one.** `dorny/paths-filter` in the prepare job decides whether the
-  frontend changed *in this commit*, which is the right question for an
-  environment that is already current and the wrong one for an
-  environment that has never had a frontend at all. The first deploy to
-  the app project touched only workflow files, so it deployed the backend,
-  skipped the frontend, and reported success while the hostname served
-  Google's placeholder over a valid certificate. The deploy job now asks
-  each service what image it is running and forces a deploy for anything
-  still on `gcr.io/cloudrun/hello`, which is self-healing rather than
-  special-cased to one environment. The logic lives in
-  `.github/scripts/deploy/find-placeholder-services.sh` with its own
-  `.bats` tests, following the convention the other deploy scripts set:
-  a `run:` block of any size is checked by neither shellcheck nor a
-  test, and this one decides whether a deploy happens.
-
-- **A successful `terraform apply` is not a working environment.**
-  Terraform builds infrastructure; `deploy.yml` builds and ships the
-  application. Every image variable starts as `gcr.io/cloudrun/hello`
-  because a Cloud Run service cannot be created without naming an image,
-  and CI replaces it on the first deploy. So the new environment answered
-  on its hostname, with a valid certificate, serving Google's placeholder
-  page, and everything looked healthy in the console.
-
-- **The build job authenticates as one project and pushes to both.**
-  Teaching's CI service account was granted
-  `roles/artifactregistry.writer` on the app project's repository, which
-  is simpler than authenticating twice in one job. That grant is
-  teaching's to lose in Batch 8, so the images must already be in the app
-  project by then, which is why both are pushed rather than one pulled.
-
-- **The DNS zone is in the production project, which is shut down.** Two
-  managed zones exist for `quill-medical.com`, one in
-  `quill-medical-production` and one in `quill-medical-staging`, and only
-  the production one is delegated to. Check the nameservers against `dig
-  +short NS quill-medical.com` before editing a zone, because writing to
-  the wrong one succeeds and changes nothing.
-
-- **A managed certificate cannot validate before its DNS record exists.**
-  `quill-cert-v5-app` was created by the apply and sat in `PROVISIONING`
-  with nothing wrong, because validation resolves the domain and the
-  record was not written until later. Creating the record starts the
-  clock rather than the apply doing so.
-
-- **Terraform creates secret containers and never versions**, by the
-  convention in `modules/secrets`, so a fresh environment has nine empty
-  secrets and several resources that cannot start without them. The
-  backend service fails to create at all while `resend-api-key` or
-  `teaching-sync-token` is empty, and the message names the secret path
-  rather than saying the value is missing. Fill every secret before the
-  apply rather than discovering them one failed apply at a time.
-
-- **`roles/editor` does not include changing a project's IAM policy.**
-  The apply failed on "Policy update access denied" creating the Cloud
-  Run secret-accessor binding, despite the service account holding
-  editor. It needed `roles/resourcemanager.projectIamAdmin`, plus
-  `roles/servicenetworking.networksAdmin` and
-  `roles/compute.networkAdmin` for the VPC peering that private Cloud SQL
-  requires. The teaching service account never needed these because that
-  project was built before Terraform managed it.
-
-- **Cloud SQL with private networking takes ten to fifteen minutes** on a
-  first create, because the VPC peering has to be established before
-  provisioning starts. Everything downstream waits on it, so an apply
-  that looks stuck at twelve minutes is usually working.
-
-- **A secret version added while an apply is running is a race.** Cloud
-  Run resolves `versions/latest` when a container starts, not when
-  Terraform runs, so a service created sixteen seconds before a new
-  version was added kept the old one. Forcing a new revision picks it up;
-  the label used to force it has to be removed afterwards, because
-  `modules/cloud-run` only ignores image drift and would otherwise plan
-  the label away.
-
-- **`roles/editor` on the CI service account is worth questioning.** It
-  was copied from teaching, where it sits beside `run.admin` and
-  `secretmanager.admin` and makes both redundant. Nothing here needed it
-  to be that broad; it was kept only so the first apply would not fail
-  partway on a missing permission.
-
-**Hands over:** a working environment on a temporary hostname, ready for
-the DNS cutover.
+Moved to "What was learnt" at the foot of this plan, because the list
+outgrew this batch: the certificate, the paths filter and the DNS zone
+were all found later, in Batches 5 and 6.
 
 ## Batch 5 — Claude and Mark: cut the hostname over
 
@@ -891,18 +679,44 @@ none of it can break a deploy.
 Each of these points a check or a deploy at the new environment, so doing
 them early aims CI at something that is not ready.
 
-- [ ] Move the ZAP scan target in `.github/workflows/zap-scan.yml`. It
-      should scan whichever environment is real, and until the app
-      environment has had a successful deploy that is still teaching.
+- [x] Move the ZAP scan target in `.github/workflows/zap-scan.yml` to
+      `app.quill-medical.com`, now that the app environment serves the
+      real application.
 
-- [ ] Point `BACKEND_SYNC_URL` in the teaching pipeline at the new
-      hostname, or the content sync succeeds against an environment that
-      is about to be deleted. This one needs a repository secret changed,
-      so it is Mark's.
+- [x] **(Claude)** Point the teaching content pipeline at the new
+      environment. Three secrets, not one, and they live in the content
+      repositories `eoeeta-teaching` and `respiratory-teaching` rather
+      than in `quillmedical`, because `teaching-pipeline.yml` is a
+      reusable workflow those repositories call:
+
+      - `BACKEND_SYNC_URL` to `https://app.quill-medical.com`, so the
+        sync lands in the new project's database rather than the old
+        one's.
+      - `GCP_TEACHING_GCS_BUCKET` to `quill-images-app`. The backend
+        reads `quill-images-<environment>`, set from
+        `module.cloud_storage` in `infra/main.tf`, so leaving this
+        pointed at `quill-images-teaching` would upload content the new
+        backend never looks at.
+      - `BACKEND_SYNC_TOKEN` to the new project's `teaching-sync-token`.
+        This one is easy to miss: the token was deliberately generated
+        fresh for the new project rather than copied, so changing only
+        the URL authenticates against the new backend with the old
+        project's token and gets a 401.
+
+- [x] **(Claude)** Confirm all three changed in both repositories rather
+      than assuming one call covered it. `gh secret list --repo` shows
+      the update timestamps.
 
 - [ ] Drop `teaching.quill-medical.com` from `lb_domains` and
-      `monitored_hostnames`. The DNS A record is deleted by hand in
-      Batch 7.
+      `monitored_hostnames`. **Moved to Batch 8**, because it is not safe
+      here: `quill-cert-v5-teaching` covers `teaching.quill-medical.com`,
+      `quill-medical.com` and `www.quill-medical.com` on one certificate.
+      Changing `lb_domains` replaces that certificate, and a
+      Google-managed certificate only goes active once every domain on it
+      validates, so removing the teaching hostname would put the public
+      marketing site at risk of a TLS failure for up to an hour. It costs
+      nothing to leave the hostname served until the project is retired,
+      and at that point the certificate goes with it.
 
 ### After the old project is retired
 
@@ -917,24 +731,38 @@ them early aims CI at something that is not ready.
 **Hands over:** branches to review and merge. The secret changes are
 Mark's, because Claude cannot write repository secrets.
 
-## Batch 7 — Mark: the secrets and the old DNS record
+## Batch 7 — the secrets and the old DNS record
 
-- [ ] Create `GCP_APP_PROJECT_ID`, `GCP_APP_WIF_PROVIDER` and
-      `GCP_APP_SERVICE_ACCOUNT`, pointing at the new project, and delete
-      the `GCP_TEACHING_*` originals once Batch 6's workflow changes have
-      merged.
+Most of this batch was done earlier than planned, because each piece
+turned out to block something in Batch 4 or 5 rather than following them.
+What is left is the deletions, which genuinely have to wait.
 
-- [ ] Scope them to this repository rather than leaving them
+- [x] **(Claude)** Create `GCP_APP_PROJECT_ID`, `GCP_APP_WIF_PROVIDER`
+      and `GCP_APP_SERVICE_ACCOUNT`, pointing at the new project. Done in
+      Batch 4: `terraform.yml` could not apply the new environment at all
+      until they existed, so this came before building the project rather
+      than after.
+
+- [x] **(Claude)** Scope them to this repository rather than leaving them
       organisation-visible, as the secrets rule in `CLAUDE.md` requires.
+      Set at both repository and `app` environment scope, matching what
+      `GCP_TEACHING_*` does.
 
-- [ ] Point `BACKEND_SYNC_URL` in the teaching pipeline at the new
-      hostname, or the content sync succeeds against an environment that
-      is about to be deleted.
+- [x] **(Claude)** Point the teaching content pipeline at the new
+      environment. Done in Batch 6, and it was three secrets rather than
+      the one named here; see that batch for which and why.
 
-- [ ] Delete the `teaching.quill-medical.com` A record, once nothing
-      names it.
+- [ ] **(Mark)** Delete the `GCP_TEACHING_*` secrets, once nothing reads
+      them. Not yet: the matrix in `deploy.yml` and `terraform.yml` still
+      names `teaching`, and the build job authenticates as teaching's
+      service account to push images to both registries. These go in
+      Batch 8 with the environment itself.
 
-**Hands over:** CI running entirely against the new project.
+- [ ] **(Mark)** Delete the `teaching.quill-medical.com` A record, once
+      nothing names it. Also Batch 8: the hostname still serves, and the
+      certificate that covers it also covers the apex.
+
+**Hands over:** nothing outstanding that blocks Batch 8.
 
 ## Batch 8 — Mark: retire the old project
 
@@ -943,6 +771,14 @@ Mark's, because Claude cannot write repository secrets.
       the price of a reversible cutover — though with staging already shut
       down on cost, decide deliberately how long that is worth paying for
       rather than leaving it indefinitely.
+
+- [ ] Move the apex off the teaching load balancer first. Check where
+      `quill-medical.com` and `www.quill-medical.com` point before
+      destroying anything: `quill-cert-v5-teaching` covers them alongside
+      `teaching.quill-medical.com`, so destroying that environment takes
+      the public marketing site's TLS with it unless the apex has been
+      moved somewhere else. This is why dropping `teaching.` from
+      `lb_domains` was left out of Batch 6.
 
 - [ ] Destroy the teaching workspace with Terraform rather than deleting
       the project in the console, so the state is emptied rather than
@@ -1081,6 +917,233 @@ lookalike names were cheap enough that waiting saved nothing.
       Phase 2 already close the shared-jar problem; what a separate
       registrable domain adds is that `SameSite` treats the environments
       as genuinely cross-site.
+
+## What was learnt
+
+Findings from building this, in the order they were found. Each one cost
+time here and is written down so the next environment does not pay for it
+again. None of it is visible from the code.
+
+- **The four setup steps took about six minutes**, nearly all of it
+  waiting for API enablement. Everything else returned immediately.
+
+- **Enable the APIs in one command, not fifteen.** `gcloud services
+  enable` accepts a list and enables them concurrently. It ran well past
+  two minutes, so expect to wait rather than assuming it has hung, and
+  poll `gcloud services list --enabled` rather than watching the command.
+
+- **A new project starts with about 22 APIs already on.** Google enables
+  a default set, which is why the count goes to 38 rather than to
+  fifteen. The count alone tells you nothing; compare the list against
+  what you asked for.
+
+- **Billing must be linked before enabling anything.** An unlinked
+  project refuses API enablement with an error that does not mention
+  billing, which is a slow thing to diagnose.
+
+- **`gcloud projects create` takes `--name` for the display name**, and
+  it is the only chance to set it conveniently. `--organization` takes
+  the numeric id, not the domain.
+
+- **The organisation policy is set per project, not inherited usefully.**
+  `constraints/iam.allowedPolicyMemberDomains` had to be set again on the
+  new project with `allValues: ALLOW`. Without it, granting
+  `roles/run.invoker` to `allUsers` is refused, and the symptom is the
+  load balancer getting 403 from a service that looks correctly
+  deployed.
+
+- **A new Workload Identity pool is not readable the moment it is
+  created.** `create` returned success and the next `describe` answered
+  `NOT_FOUND`. It settled within ten seconds. Poll rather than treating
+  the first failure as real, and do not create the provider until the
+  describe answers, because the provider needs the pool to exist.
+
+- **The pool, the provider and the binding are three separate things**,
+  and only the third decides who may act. The provider says which
+  repository may present a token; the `roles/iam.workloadIdentityUser`
+  binding on the service account says which principal set may impersonate
+  it. Creating the first two and forgetting the third produces
+  authentication that succeeds and then cannot do anything, which reads
+  as a permissions problem rather than a missing binding.
+
+- **The Terraform describes a built environment, not an empty one.** Five
+  things in it assume a project somebody has already prepared by hand, and
+  copying teaching's tfvars copied those assumptions along with the
+  values. The first apply against an empty project fails on them one
+  after another:
+
+  - Two `import` blocks, for `teaching-sync-token` and the
+    `quill-admin-<env>` Cloud Run job. Both adopted resources that
+    predated Terraform in the teaching project, and an import of
+    something that does not exist is an error rather than a no-op. Fixed
+    by creating both by hand in the new project so the import finds them:
+    the secret container with no version, the job on
+    `gcr.io/cloudrun/hello:latest`.
+
+  - Two secret *versions* read through
+    `google_secret_manager_secret_version`, `pagerduty-service-key` and
+    `alert-sms-number`. Terraform creates secret containers but never
+    versions, by the convention in `modules/secrets`, so the value has to
+    be put there first. Both were copied across from teaching, since it
+    is the same PagerDuty service and the same phone number.
+
+  - A Slack notification channel, looked up by display name. This is the
+    one that cannot be scripted at all: the channel's `auth_token` comes
+    from Slack's OAuth consent screen and only the console flow produces
+    it. The new environment starts with
+    `slack_channel_display_name = ""`, which switches the data source
+    off, and gains Slack alerting when somebody runs that flow.
+
+- **The Terraform state bucket is in its own project**, and access to it
+  is granted per service account. `github-actions@quill-medical-teaching`,
+  `-staging` and `-production` each hold `roles/storage.objectAdmin` on
+  `gs://quill-medical-terraform-state`, granted individually. A new
+  environment's service account needs the same binding or `terraform
+  init` fails with a 403 on `storage.objects.list`, which reads like a
+  missing bucket rather than a missing grant.
+
+- **A workflow change cannot trigger its own workflow here.** Merging the
+  matrix change ran nothing, because `terraform.yml` triggers on
+  `infra/**` and the change was to the workflow file and the plan. The
+  new environment therefore stayed empty, and the only signal was the
+  absence of a run, which is easy to read as "it is still starting". The
+  workflow now also takes `workflow_dispatch`, so it can be started by
+  hand from the Actions tab, choosing `all`, `teaching` or `app`.
+
+- **`actionlint` is installed locally and worth running before pushing a
+  workflow change.** The first attempt at the dispatch input used an
+  empty string as a choice option, meaning "every environment", and
+  `actionlint` rejects that: "string should not be empty". CI caught it,
+  but `actionlint .github/workflows/terraform.yml` would have caught it
+  in a second. A named `all` option is clearer than a blank one anyway.
+
+- **CI decides which environments exist, not the tfvars.** Adding
+  `infra/environments/app/terraform.tfvars` and merging it did nothing:
+  `terraform.yml` named the `teaching` workspace and teaching's tfvars in
+  four places, all hardcoded. A new environment is not real until the
+  workflow knows about it, and the failure mode is silence rather than an
+  error, because the workflow keeps succeeding against the old
+  environment.
+
+- **A matrix beats a second job.** The plan and apply jobs now loop over
+  the environment list, so retiring `teaching` in Batch 8 is one edit
+  rather than deleting a duplicated pair of jobs and hoping nothing else
+  referenced them. The applies run with `max-parallel: 1`, because both
+  environments share one state bucket.
+
+- **A GitHub Environment is a separate thing from a GitHub secret**, and
+  both are needed. The apply job names an environment, and a job naming
+  one that does not exist fails before its first step, which reads as a
+  workflow syntax problem rather than missing configuration.
+
+- **Read the environment you are copying before creating its twin.**
+  `teaching` restricts deployments to `main` through a custom branch
+  policy. Creating `app` with the defaults would have produced an
+  environment that looks equivalent in the workflow and accepts a deploy
+  from any branch.
+
+- **The same secret can exist at two scopes, and teaching uses both.**
+  `GCP_TEACHING_*` are set at repository level and again on the
+  `teaching` environment, where the environment copy wins for jobs
+  running there. Setting only the repository copy for `app` would work
+  until somebody added an environment-scoped override to one environment
+  and not the other.
+
+- **`gh api` needs `--input -` for boolean fields.** `-f` sends every
+  value as a string, and the environments endpoint rejects `"false"`
+  where it wants `false`, with a message that names the type rather than
+  the cause.
+
+- **The teaching certificate is not only teaching's.**
+  `quill-cert-v5-teaching` carries `teaching.quill-medical.com`,
+  `quill-medical.com` and `www.quill-medical.com`, because the apex
+  marketing site is served from the same load balancer. Anything that
+  edits `lb_domains` on that environment therefore risks the public site,
+  not just the hostname being retired. Read a certificate's domain list
+  before changing the variable that builds it.
+
+- **The paths filter answers a repository question, not an environment
+  one.** `dorny/paths-filter` in the prepare job decides whether the
+  frontend changed *in this commit*, which is the right question for an
+  environment that is already current and the wrong one for an
+  environment that has never had a frontend at all. The first deploy to
+  the app project touched only workflow files, so it deployed the backend,
+  skipped the frontend, and reported success while the hostname served
+  Google's placeholder over a valid certificate. The deploy job now asks
+  each service what image it is running and forces a deploy for anything
+  still on `gcr.io/cloudrun/hello`, which is self-healing rather than
+  special-cased to one environment. The logic lives in
+  `.github/scripts/deploy/find-placeholder-services.sh` with its own
+  `.bats` tests, following the convention the other deploy scripts set:
+  a `run:` block of any size is checked by neither shellcheck nor a
+  test, and this one decides whether a deploy happens.
+
+- **A successful `terraform apply` is not a working environment.**
+  Terraform builds infrastructure; `deploy.yml` builds and ships the
+  application. Every image variable starts as `gcr.io/cloudrun/hello`
+  because a Cloud Run service cannot be created without naming an image,
+  and CI replaces it on the first deploy. So the new environment answered
+  on its hostname, with a valid certificate, serving Google's placeholder
+  page, and everything looked healthy in the console.
+
+- **The build job authenticates as one project and pushes to both.**
+  Teaching's CI service account was granted
+  `roles/artifactregistry.writer` on the app project's repository, which
+  is simpler than authenticating twice in one job. That grant is
+  teaching's to lose in Batch 8, so the images must already be in the app
+  project by then, which is why both are pushed rather than one pulled.
+
+- **The DNS zone is in the production project, which is shut down.** Two
+  managed zones exist for `quill-medical.com`, one in
+  `quill-medical-production` and one in `quill-medical-staging`, and only
+  the production one is delegated to. Check the nameservers against `dig
+  +short NS quill-medical.com` before editing a zone, because writing to
+  the wrong one succeeds and changes nothing.
+
+- **A managed certificate cannot validate before its DNS record exists.**
+  `quill-cert-v5-app` was created by the apply and sat in `PROVISIONING`
+  with nothing wrong, because validation resolves the domain and the
+  record was not written until later. Creating the record starts the
+  clock rather than the apply doing so.
+
+- **Terraform creates secret containers and never versions**, by the
+  convention in `modules/secrets`, so a fresh environment has nine empty
+  secrets and several resources that cannot start without them. The
+  backend service fails to create at all while `resend-api-key` or
+  `teaching-sync-token` is empty, and the message names the secret path
+  rather than saying the value is missing. Fill every secret before the
+  apply rather than discovering them one failed apply at a time.
+
+- **`roles/editor` does not include changing a project's IAM policy.**
+  The apply failed on "Policy update access denied" creating the Cloud
+  Run secret-accessor binding, despite the service account holding
+  editor. It needed `roles/resourcemanager.projectIamAdmin`, plus
+  `roles/servicenetworking.networksAdmin` and
+  `roles/compute.networkAdmin` for the VPC peering that private Cloud SQL
+  requires. The teaching service account never needed these because that
+  project was built before Terraform managed it.
+
+- **Cloud SQL with private networking takes ten to fifteen minutes** on a
+  first create, because the VPC peering has to be established before
+  provisioning starts. Everything downstream waits on it, so an apply
+  that looks stuck at twelve minutes is usually working.
+
+- **A secret version added while an apply is running is a race.** Cloud
+  Run resolves `versions/latest` when a container starts, not when
+  Terraform runs, so a service created sixteen seconds before a new
+  version was added kept the old one. Forcing a new revision picks it up;
+  the label used to force it has to be removed afterwards, because
+  `modules/cloud-run` only ignores image drift and would otherwise plan
+  the label away.
+
+- **`roles/editor` on the CI service account is worth questioning.** It
+  was copied from teaching, where it sits beside `run.admin` and
+  `secretmanager.admin` and makes both redundant. Nothing here needed it
+  to be that broad; it was kept only so the first apply would not fail
+  partway on a missing permission.
+
+**Hands over:** a working environment on a temporary hostname, ready for
+the DNS cutover.
 
 ## Decisions
 
