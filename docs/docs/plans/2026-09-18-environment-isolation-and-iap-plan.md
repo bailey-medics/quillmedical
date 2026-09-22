@@ -1026,19 +1026,78 @@ for the same name would leave both pending.
       `github-actions@quill-medical-teaching` today; the app one changes
       when those secrets move.
 
-- [ ] Leave `quill-medical-teaching` running until the new environment has
-      been exercised for long enough to trust. It costs money, and that is
-      the price of a reversible cutover — though with staging already shut
-      down on cost, decide deliberately how long that is worth paying for
-      rather than leaving it indefinitely.
+- [x] Decide how long to keep `quill-medical-teaching` as a rollback.
+      Settled on 2026-09-22: no rollback value, so there is no waiting
+      period. It stays running only until nothing authenticates against
+      it, which the steps below arrange, and is then shut down.
 
-- [ ] Move the apex off the teaching load balancer first. Check where
-      `quill-medical.com` and `www.quill-medical.com` point before
-      destroying anything: `quill-cert-v5-teaching` covers them alongside
-      `teaching.quill-medical.com`, so destroying that environment takes
-      the public marketing site's TLS with it unless the apex has been
-      moved somewhere else. This is why dropping `teaching.` from
-      `lb_domains` was left out of Batch 6.
+      This does not make the order below optional. The reason to keep it
+      alive is no longer rollback, it is that five workflows still
+      authenticate as its service account, and one of them builds every
+      image this repository deploys.
+
+- [x] Move the apex off the teaching load balancer first. Done on
+      2026-09-22: `quill-medical.com` and `www.quill-medical.com` resolve
+      to `34.49.99.83`, the app load balancer, not teaching's
+      `136.110.221.126`. Destroying teaching no longer takes the
+      marketing site's TLS with it.
+
+      Teaching's tfvars still carries `landing_domain =
+      "quill-medical.com"` and `quill-cert-teaching-852eaebb` still lists
+      the apex and `www` beside `teaching.quill-medical.com`. Harmless
+      while DNS points elsewhere, but drop `landing_domain` from
+      `infra/environments/teaching/terraform.tfvars` before the destroy
+      so Terraform is not holding a claim on a hostname it does not
+      serve.
+
+      Why this came first: teaching's certificate covers the apex and
+      `www` alongside `teaching.quill-medical.com`, so destroying that
+      environment would have taken the public marketing site's TLS with
+      it had the apex not moved. This is also why dropping `teaching.`
+      from `lb_domains` was left out of Batch 6.
+
+- [ ] Move image build and push off `quill-medical-teaching`. This is the
+      blocker, and it is not a teaching concern at all: `deploy.yml:105`
+      authenticates as `GCP_TEACHING_SERVICE_ACCOUNT` and pushes the
+      backend, frontend, admin, transcode and caption images to
+      teaching's Artifact Registry, for **both** environments. Shutting
+      the project down without moving this stops every deploy, including
+      the app project's own.
+
+      `deploy.yml:333` is the same dependency from the other end: the
+      production promotion job pulls from teaching's registry as its
+      source before copying to the production one.
+
+      Point both at `quill-medical-app`'s registry, using the
+      `GCP_APP_*` secrets that already exist. Worth its own pull request,
+      separate from the smaller repointing below, because a mistake here
+      breaks deployment rather than one scheduled job.
+
+- [ ] Repoint the remaining three workflows that authenticate as
+      teaching. None of them is teaching work; the account simply became
+      the default identity.
+
+      `teaching-pipeline.yml:201` syncs question bank content and uses
+      the older unprefixed `GCP_SERVICE_ACCOUNT` and
+      `GCP_WORKLOAD_IDENTITY_PROVIDER` secrets rather than the
+      `GCP_TEACHING_*` pair, so it is easy to miss when grepping for the
+      prefixed names. `ci.yml:340` authenticates for a validator step on
+      ordinary CI runs. `stale-incidents.yml:48` is a scheduled job that
+      also reads `GCP_TEACHING_PROJECT_ID`.
+
+      Change `content_ci_service_account` in
+      `infra/environments/app/terraform.tfvars` to
+      `github-actions@quill-medical-app.iam.gserviceaccount.com` in the
+      same unit. It currently names the teaching account, which is what
+      writes to the app project's bucket, so the bucket grant Terraform
+      manages has to move with it.
+
+- [ ] Run a full deploy with `quill-medical-teaching` still alive but
+      unused, and confirm it passes. This is the step that makes the
+      teardown safe rather than brave: anything that still depends on the
+      old project surfaces here, while the project is still there to
+      answer. Skipping it means finding out after the shutdown, when the
+      evidence is gone.
 
 - [ ] Destroy the teaching workspace with Terraform rather than deleting
       the project in the console, so the state is emptied rather than
