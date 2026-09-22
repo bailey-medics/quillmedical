@@ -17,7 +17,7 @@
  * authorisation to work and there is no undo.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Group, Select, Stack } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import { Heading } from "@/components/typography";
@@ -80,14 +80,28 @@ export default function PractisingCompetenciesCard({
     null,
   );
 
+  // The callbacks are held rather than depended on. The pages render
+  // this card with inline arrows, so both props are new functions on
+  // every render, and a function's identity is not news about the
+  // org_unit. Depending on them made `load` new each time, which ran the
+  // effect, which set state, which rendered again: hundreds of requests
+  // for one page view, until the server rate-limited them and the
+  // refusal surfaced as an error nobody could act on.
+  const onErrorRef = useRef(onError);
+  const onChangedRef = useRef(onChanged);
+  useEffect(() => {
+    onErrorRef.current = onError;
+    onChangedRef.current = onChanged;
+  });
+
   const load = useCallback(async () => {
     try {
       setRows(await orgUnits.practisingCompetencies(orgUnitId));
     } catch {
       setRows([]);
-      onError?.("Could not load who may practise here.");
+      onErrorRef.current?.("Could not load who may practise here.");
     }
-  }, [orgUnitId, onError]);
+  }, [orgUnitId]);
 
   useEffect(() => {
     if (!mayManage) return;
@@ -129,11 +143,11 @@ export default function PractisingCompetenciesCard({
       setPerson(null);
       setCompetency(null);
       await load();
-      onChanged?.("Authorised.");
+      onChangedRef.current?.("Authorised.");
     } catch {
-      onError?.("Could not authorise that.");
+      onErrorRef.current?.("Could not authorise that.");
     }
-  }, [person, competency, orgUnitId, load, onChanged, onError]);
+  }, [person, competency, orgUnitId, load]);
 
   const confirmWithdraw = useCallback(async () => {
     if (!withdrawing) return;
@@ -145,11 +159,11 @@ export default function PractisingCompetenciesCard({
       );
       setWithdrawing(null);
       await load();
-      onChanged?.("Withdrawn.");
+      onChangedRef.current?.("Withdrawn.");
     } catch {
-      onError?.("Could not withdraw that.");
+      onErrorRef.current?.("Could not withdraw that.");
     }
-  }, [withdrawing, orgUnitId, load, onChanged, onError]);
+  }, [withdrawing, orgUnitId, load]);
 
   const columns: Column<PractisingCompetency>[] = [
     {
