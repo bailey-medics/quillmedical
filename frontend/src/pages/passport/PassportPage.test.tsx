@@ -111,6 +111,44 @@ describe("PassportPage", () => {
     expect(screen.getByText("My passport")).toBeInTheDocument();
   });
 
+  it("shows neither the record nor the empty state while loading", async () => {
+    // The bug this pins: with no loading state the page fell through
+    // to the ordinary layout, drew the action cards, and swapped them
+    // for "you do not have a passport yet" once the 404 arrived. A
+    // holder saw somebody else's page flash past on the way to their
+    // own.
+    let resolve: (value: unknown) => void = () => {};
+    fetchMyPassport.mockReturnValue(
+      new Promise((r) => {
+        resolve = r;
+      }),
+    );
+    renderWithRouter(<PassportPage />);
+
+    // The ways in belong to a passport that is known to exist.
+    expect(screen.queryByText("Open logbook")).not.toBeInTheDocument();
+    // And so does the offer to start one, to a passport known not to.
+    expect(
+      screen.queryByText("You do not have a passport yet"),
+    ).not.toBeInTheDocument();
+
+    resolve(detail);
+
+    expect(await screen.findByText("Open logbook")).toBeInTheDocument();
+  });
+
+  it("stands the action cards in with skeletons while loading", () => {
+    // Shaped like what replaces them, so the page settles rather than
+    // changing shape. A skeleton swapped for something of a different
+    // size is a flicker of its own.
+    fetchMyPassport.mockReturnValue(new Promise(() => {}));
+    const { container } = renderWithRouter(<PassportPage />);
+
+    expect(
+      container.querySelectorAll(".mantine-Skeleton-root").length,
+    ).toBeGreaterThan(0);
+  });
+
   it("explains a failed load rather than rendering an empty passport", async () => {
     // An empty passport and an unreachable one look identical without
     // this, and they mean very different things to a holder.
