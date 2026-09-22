@@ -326,6 +326,11 @@ initialise-repo:
     # The only package.json is the frontend's; the repository root has none.
     (cd frontend && yarn install)
     just aj
+    # Without this the Stop-hook banner still works, but shows the
+    # default osascript icon, so a failure here is not worth stopping the
+    # setup for. macOS only; the script exits cleanly elsewhere.
+    just notifier-app || echo "Notifier not built; banners will use the default icon."
+
 
 
 alias kp := kill-port-8000
@@ -1851,3 +1856,13 @@ migrate-remote env:
         --region="$REGION" \
         --update-env-vars "ADMIN_ACTION=run-migrations" \
         --wait
+
+
+alias na := notifier-app
+# Build the Quill-branded macOS notifier used by the Stop-hook banner (macOS only, one-off)
+notifier-app:
+    #!/usr/bin/env bash
+    {{initialise}} "notifier-app"
+    set -euo pipefail
+
+    ./scripts/build-notifier-app.sh
