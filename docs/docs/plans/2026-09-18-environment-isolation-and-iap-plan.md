@@ -869,6 +869,44 @@ teaching hostname, and the public marketing site is served from this load
 balancer. Move the apex before destroying anything, or the site loses TLS
 with it.
 
+### Moving the public marketing site
+
+The app environment could not take the apex until now, because
+`landing_domain` was deliberately null there: two certificates competing
+for the same name would leave both pending.
+
+- [x] **(Claude)** Set `landing_domain = "quill-medical.com"` in the app
+      tfvars, and add the apex to `monitored_hostnames`. Applying this
+      creates `quill-medical-app-landing` and puts the apex and `www` on
+      `quill-cert-v5-app` alongside `app.quill-medical.com`.
+
+- [x] **(Claude)** Point `.github/workflows/public-site.yml` at the app
+      project. It named `GCP_TEACHING_*` in three places, and
+      `deploy-to-gcs.sh` derives the bucket as `<project>-landing`, so
+      the secret is what chooses the target.
+
+- [ ] **(Mark)** Merge, and let Terraform create the bucket. The
+      certificate will sit in `PROVISIONING` because the apex still
+      resolves to the teaching load balancer and validation resolves the
+      domain. That is expected: `app.quill-medical.com` keeps working on
+      the existing certificate until the new one replaces it.
+
+- [ ] **(Mark)** Run the public site workflow so the content lands in the
+      new bucket. Nothing serves it yet, so this can be checked at
+      leisure with `gcloud storage ls`.
+
+- [ ] **(Mark)** Move the DNS for `quill-medical.com` and
+      `www.quill-medical.com` from `136.110.221.126` to `34.49.99.83`.
+      This is the cutover, and the certificate validates once the records
+      move, so expect a certificate warning on the apex until it goes
+      active.
+
+- [ ] **(Mark)** Confirm the apex serves from the new project before
+      going further. Everything to this point is reversible by moving the
+      DNS records back.
+
+### Retiring the project
+
 - [x] **(Claude)** Put the images bucket's IAM into Terraform, so the two
       grants made by hand on 2026-09-22 survive a rebuild.
       `infra/modules/cloud-storage` now grants the backend
