@@ -3420,11 +3420,31 @@ async def upload_media_content_locally(
     # Streamed rather than read whole: a lecture is hundreds of
     # megabytes and holding one in memory to write it out again is a
     # needless way to run a developer's machine out of it.
+    #
+    # A dropped connection part-way leaves a truncated file that nothing
+    # would ever clean up: the link call never runs, so no row points at
+    # it and the admin never sees it. The bucket path has a lifecycle
+    # rule for exactly this; on disk there is nothing but this except
+    # clause. Removed rather than kept, because a half-written video is
+    # not a partial success to resume — it is a file that would play as
+    # a broken one if anything later picked it up by name.
     written = 0
-    with destination.open("wb") as handle:
-        async for chunk in request.stream():
-            written += len(chunk)
-            handle.write(chunk)
+    try:
+        with destination.open("wb") as handle:
+            async for chunk in request.stream():
+                written += len(chunk)
+                handle.write(chunk)
+    except Exception:
+        destination.unlink(missing_ok=True)
+        logger.warning(
+            "media upload interrupted, partial file removed "
+            "user=%s module=%s asset=%s bytes=%s",
+            user.id,
+            module_id,
+            asset_id,
+            written,
+        )
+        raise
 
     logger.info(
         "media stored locally user=%s module=%s asset=%s bytes=%s",

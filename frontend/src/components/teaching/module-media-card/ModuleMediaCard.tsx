@@ -53,6 +53,15 @@ export interface ModuleMediaCardProps {
    * say something is on its way, not what.
    */
   uploadNames?: Record<string, string>;
+  /**
+   * Why the last upload against a reference key failed, if it did.
+   *
+   * Per key rather than one message for the whole card, so the row
+   * that failed is the row that says so. Without it a failed upload
+   * silently returns the row to an empty dropzone, which looks
+   * identical to never having tried.
+   */
+  uploadErrors?: Record<string, string>;
   /** Called with the file dropped against a reference key. */
   onUpload?: (key: string, file: File) => void;
   /** Called once the admin has confirmed removing an asset. */
@@ -89,6 +98,7 @@ export default function ModuleMediaCard({
   liveOrganisations = [],
   uploadProgress = {},
   uploadNames = {},
+  uploadErrors = {},
   onUpload,
   onDelete,
   onEditCaptions,
@@ -165,13 +175,27 @@ export default function ModuleMediaCard({
               header: "File",
               render: (row) => {
                 const percent = uploadProgress[row.key];
+                const failed = uploadErrors[row.key];
 
                 // Nothing uploaded and nothing on its way.
                 if (!row.asset && percent === undefined) {
+                  // A failed upload leaves nothing behind — no partial
+                  // file, no half-made asset — so the dropzone below is
+                  // a genuine clean slate. What it is not is
+                  // self-explanatory: an empty row looks the same
+                  // whether the upload failed or was never attempted,
+                  // which is how a 503 came to look like a dead button.
                   return (
-                    <MediaDropzone
-                      onDrop={(file) => onUpload?.(row.key, file)}
-                    />
+                    <Stack gap={4}>
+                      {failed ? (
+                        <BodyTextInline c="var(--alert-color)">
+                          {failed} Nothing was saved — try again.
+                        </BodyTextInline>
+                      ) : null}
+                      <MediaDropzone
+                        onDrop={(file) => onUpload?.(row.key, file)}
+                      />
+                    </Stack>
                   );
                 }
 

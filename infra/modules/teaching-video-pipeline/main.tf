@@ -50,9 +50,10 @@ resource "google_storage_bucket" "source" {
 }
 
 # ---------- Processed bucket: what learners are served ----------
-# Renditions, poster frames and WebVTT captions. Versioned, because losing a
-# transcode means re-running a job over a source that the lifecycle rule above
-# may already have deleted.
+# Renditions, poster frames and WebVTT captions. Versioned, and that matters
+# more since the source retention came down to a day: losing a rendition means
+# re-running a job over a source that has almost certainly gone, so the old
+# version here is the only thing standing between a mistake and a re-upload.
 resource "google_storage_bucket" "processed" {
   project  = var.project_id
   name     = "quill-teaching-videos-processed-${var.environment}"

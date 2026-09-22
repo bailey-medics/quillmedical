@@ -52,6 +52,7 @@ export default function AdminBankDetailPage() {
     uploadProgress,
     uploadNames,
     uploading,
+    uploadErrors,
     upload,
     remove,
     loadCaptions,
@@ -315,6 +316,7 @@ export default function AdminBankDetailPage() {
             .map((o) => o.organisation_name)}
           uploadProgress={uploadProgress}
           uploadNames={uploadNames}
+          uploadErrors={uploadErrors}
           onUpload={upload}
           onDelete={remove}
           onEditCaptions={openCaptions}

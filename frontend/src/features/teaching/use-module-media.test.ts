@@ -415,6 +415,43 @@ describe("useModuleMedia", () => {
     expect(result.current.uploading).toBe(false);
   });
 
+  it("records which reference key failed, and clears it on a retry", async () => {
+    // A failed upload returns the row to an empty dropzone, which looks
+    // identical to never having tried. The key is what lets the row
+    // that failed be the row that says so.
+    stubFailingUpload(500, "error");
+    (api.get as Mock).mockResolvedValue(media);
+    (api.post as Mock).mockResolvedValue({
+      upload_url: "https://storage.example/upload",
+      asset_id: "asset-1",
+    });
+
+    const { result } = renderHook(() => useModuleMedia("mod-1", 20));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    await act(async () => {
+      await result.current.upload(
+        "lecture-01",
+        new File(["x"], "lecture.mp4", { type: "video/mp4" }),
+      );
+    });
+
+    expect(result.current.uploadErrors["lecture-01"]).toBe(
+      "Could not start upload",
+    );
+
+    // The retry succeeds, and must not carry the old message with it.
+    stubUpload();
+    await act(async () => {
+      await result.current.upload(
+        "lecture-01",
+        new File(["x"], "lecture.mp4", { type: "video/mp4" }),
+      );
+    });
+
+    expect(result.current.uploadErrors["lecture-01"]).toBeUndefined();
+  });
+
   it("deletes an asset and reloads", async () => {
     (api.get as Mock).mockResolvedValue(media);
     (api.del as Mock).mockResolvedValue(undefined);

@@ -228,6 +228,36 @@ export const UploadFailed: Story = {
   ),
 };
 
+export const OneRowsUploadFailed: Story = {
+  args: {
+    media: {
+      module_id: "echocardiography-interpretation",
+      references: [
+        { key: "lecture-01", asset: null },
+        { key: "debrief", asset: null },
+      ],
+      unattached: [],
+      is_complete: false,
+    },
+    uploadErrors: {
+      "lecture-01":
+        "The server could not accept the upload (500). This is not a problem with your file — try again shortly.",
+    },
+  },
+  render: (args) => (
+    <Stack gap="sm">
+      <ModuleMediaCard {...args} />
+      <StoryNote>
+        The row that failed is the row that says so, and the dropzone stays
+        beneath it. A failed upload leaves nothing behind — no partial file and
+        no half-made asset — so trying again is a clean slate rather than a
+        resume. The second row is untouched, which is the point of keeping this
+        per reference key rather than one message for the card.
+      </StoryNote>
+    </Stack>
+  ),
+};
+
 export const UploadFailedOnACompleteModule: Story = {
   args: {
     media: complete,
