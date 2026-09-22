@@ -78,6 +78,54 @@ export const Interactive: Story = {
   args: {},
 };
 
+/**
+ * A caller blocking on something other than a form supplies its own
+ * wording. The admin media card blocks on a video still going up,
+ * where "unsaved changes" would send the admin looking for a save
+ * button that does not exist.
+ */
+export const CustomMessage: Story = {
+  render: () => {
+    const [isBlocked, setIsBlocked] = useState(false);
+
+    const blocker = isBlocked
+      ? {
+          state: "blocked" as const,
+          reset: () => setIsBlocked(false),
+          proceed: () => setIsBlocked(false),
+          location: mockLocation,
+        }
+      : {
+          state: "unblocked" as const,
+          reset: undefined,
+          proceed: undefined,
+          location: undefined,
+        };
+
+    return (
+      <div style={{ padding: "2rem" }}>
+        <StoryNote>
+          The same modal, blocking on an upload in flight rather than an unsaved
+          form.
+        </StoryNote>
+        <div style={{ width: 300 }}>
+          <ActionCardButton
+            label="Leave during upload"
+            onClick={() => setIsBlocked(true)}
+          />
+        </div>
+        <DirtyFormNavigation
+          blocker={blocker}
+          message="A video is still uploading. If you leave this page you will not see whether it finishes."
+          acceptLabel="Leave anyway"
+        />
+      </div>
+    );
+  },
+  // @ts-expect-error: Custom render function doesn't use args
+  args: {},
+};
+
 export const DarkMode: Story = {
   ...Interactive,
   globals: { colorScheme: "dark" },

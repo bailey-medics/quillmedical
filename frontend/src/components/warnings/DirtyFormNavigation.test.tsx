@@ -40,6 +40,36 @@ describe("DirtyFormNavigation", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows a caller's own message and leave label", () => {
+    // A page blocking on something other than a form says so: "unsaved
+    // changes" sends the admin hunting for a save button that is not
+    // there.
+    const blocker: Blocker = {
+      state: "blocked",
+      reset: vi.fn(),
+      proceed: vi.fn(),
+      location: mockLocation,
+    };
+
+    renderWithMantine(
+      <DirtyFormNavigation
+        blocker={blocker}
+        message="A video is still uploading. If you leave this page you will not see whether it finishes."
+        acceptLabel="Leave anyway"
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        "A video is still uploading. If you leave this page you will not see whether it finishes.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /leave anyway/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/unsaved changes/i)).not.toBeInTheDocument();
+  });
+
   it("does not render modal when blocker state is unblocked", () => {
     const blocker: Blocker = {
       state: "unblocked",
