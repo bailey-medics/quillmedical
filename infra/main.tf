@@ -762,3 +762,27 @@ module "analytics" {
   landing_domain = var.landing_domain
   app_domain     = var.app_domain
 }
+
+# ---------- Adopt the app certificate Terraform never recorded ----------
+#
+# `quill-cert-app-6bc99c16` exists in `quill-medical-app` and serves all
+# three app domains, but it is not in state, so every apply tries to
+# create it and fails with a 409. It got that way on 2026-09-22: adding
+# `landing_domain` forced a replacement, the create half succeeded, and
+# the apply then failed on an unrelated alert policy before the new
+# certificate was written to state.
+#
+# Importing adopts it rather than recreating it. That matters because a
+# managed certificate takes fifteen to sixty minutes to validate, and
+# this one is already `ACTIVE` on all three domains. Recreating would
+# mean another outage on a site that is currently serving.
+#
+# Guarded to `app` because the module is shared. Teaching's certificate
+# is already in state, and an unguarded block would try to import this
+# id over the top of it.
+import {
+  for_each = var.environment == "app" ? toset(["6bc99c16"]) : toset([])
+
+  to = module.load_balancer.google_compute_managed_ssl_certificate.cert
+  id = "projects/${var.project_id}/global/sslCertificates/quill-cert-${var.environment}-${each.key}"
+}

@@ -948,18 +948,57 @@ for the same name would leave both pending.
       `monitored_hostnames`, so the certificate requests all three
       domains.
 
-- [ ] **(Mark)** Move the DNS for `quill-medical.com` and
-      `www.quill-medical.com` from `136.110.221.126` to `34.49.99.83`.
+- [x] **(Claude)** Move the DNS for `quill-medical.com` to
+      `34.49.99.83`. Done at 20:00 UTC on 2026-09-22. One record, not
+      two: `www.quill-medical.com` is a CNAME to the apex and follows it.
 
-      **The apex loses HTTPS until the certificate validates**, minutes
-      to an hour. That is unavoidable and was agreed rather than
-      overlooked. Validation runs over HTTP on port 80, so moving the
-      record is what lets it finish; leaving the record where it is
-      leaves the certificate pending for ever.
+- [x] **(Claude)** Replace the poisoned certificates by hand.
+      `quill-cert-app-6bc99c16` and `quill-cert-app-ad3cda62` both held
+      `FAILED_NOT_VISIBLE`, which never retries, so neither could
+      validate however correct the DNS became.
+      `quill-cert-app-retry1` was created with the same three domains and
+      attached to `quill-https-proxy-app`.
 
-- [ ] **(Mark)** Watch `quill-cert-app-*` reach `ACTIVE`, then check the
-      apex, `www` and `app.quill-medical.com` all serve. All three are on
-      one certificate, so they come back together.
+- [x] **(Claude)** Watch `quill-cert-app-retry1` reach `ACTIVE`, then
+      check the apex, `www` and `app.quill-medical.com` all serve.
+      `ACTIVE` on all three domains about 14 minutes after creation, and
+      all three served `200` shortly after. The served certificate lists
+      all three names and expires 21 December 2026.
+
+      It served about a minute after going `ACTIVE`, not instantly;
+      see the learning on that below.
+
+- [x] **(Claude)** Re-check the failed deploy for commit `3f2f9998`.
+      The deploy itself was fine — build passed, teaching deployed, and
+      the app backend reached revision `quill-backend-app-00039-wuj`,
+      which answered `200` directly on its `run.app` URL. Only the final
+      smoke test failed, curling `https://app.quill-medical.com/api/health`
+      and getting `000` five times, because no certificate was serving
+      yet. Re-run the deploy now that the hostname resolves and serves.
+
+      **`000` from the smoke test is not a deploy failure.** It is curl
+      failing to establish TLS at all, so it says nothing about whether
+      the revision is healthy. Check the service directly on its
+      `run.app` URL before treating a red deploy as a broken build.
+
+- [x] **(Claude)** Reconcile Terraform with the app certificate.
+      `quill-cert-app-6bc99c16` exists and is `ACTIVE` on all three
+      domains, but it is not in Terraform's state, so the apply on
+      2026-09-22 failed with `Error 409: The resource
+      'quill-cert-app-6bc99c16' already exists`. An `import` block at the
+      foot of `infra/main.tf` adopts it.
+
+      **Importing rather than recreating is the point.** The certificate
+      is already validated and serving; recreating it would mean another
+      fifteen to sixty minutes of downtime on a site that is currently
+      up. The block is guarded with `for_each` on
+      `var.environment == "app"` because the `load_balancer` module is
+      shared — teaching's certificate is already in state, and an
+      unguarded block would try to import the app id over the top of it.
+
+      Validated with `terraform validate` under 1.15.8 in Docker, the
+      version CI uses. The local binary is 1.15.0 and `versions.tf`
+      requires `>= 1.15.2`, so it cannot plan this config at all.
 
 - [ ] **(Mark)** Remove the apex from teaching's `lb_domains` once the
       app certificate is active, so the old project stops claiming a
@@ -1339,6 +1378,34 @@ again. None of it is visible from the code.
   What makes it survivable is that validation runs over HTTP on port 80,
   so the sequence is: name the domains, move the DNS, wait. The apex has
   no HTTPS in between.
+
+- **`FAILED_NOT_VISIBLE` is not always permanent — do not write a
+  certificate off.** A domain shows `FAILED_NOT_VISIBLE` while Google
+  cannot reach it, and the natural reading is that the certificate is
+  dead and needs replacing. That was recorded here as fact on
+  2026-09-22 and it was wrong. `quill-cert-app-6bc99c16` showed the apex
+  as `FAILED_NOT_VISIBLE` at 18:07, because DNS still pointed at
+  teaching; once the apex moved to `34.49.99.83` at 20:00 it validated
+  on its own and went `ACTIVE` on all three domains. Google does retry.
+
+  The cost of believing otherwise was a hand-made `quill-cert-app-retry1`
+  and an afternoon of drift, none of which was needed. Treat the status
+  as "not yet", check the DNS actually resolves to the load balancer
+  serving it, and wait. `quill-cert-app-ad3cda62` is the one that stayed
+  stuck, and it only ever covered `app.quill-medical.com`.
+
+  The order that still avoids the whole problem: move the DNS first,
+  then create the certificate, so validation has something to find.
+
+- **A certificate reaching `ACTIVE` does not mean the site serves yet.**
+  For a few minutes afterwards the load balancer accepted the TCP
+  connection on 443 and closed it mid-handshake, sending no certificate
+  at all: `curl` reported `000`, `openssl` reported "no peer certificate
+  available". Every part of the chain was already correct. It was the
+  edge catching up and cleared within a minute. Confirm the chain once,
+  then wait — and compare against a known-good host on the same machine
+  (`teaching.quill-medical.com` answered `200` throughout) to rule out a
+  local network or TLS problem rather than re-reading the config.
 
 - **Setting `landing_domain` back to null cannot be applied.** Terraform
   reads it as "delete the backend bucket and its uptime check", and
