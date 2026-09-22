@@ -39,6 +39,14 @@ app_domain                 = "app.quill-medical.com"
 alert_email                = "info@quill-medical.com"
 cloud_run_services         = ["quill-backend-app", "quill-frontend-app"]
 
+# The teaching project's CI account, not this project's. The content
+# pipeline in eoeeta-teaching and respiratory-teaching authenticates with
+# GCP_SERVICE_ACCOUNT, which still names the old project, so that is the
+# identity writing to this bucket. Change it to
+# github-actions@quill-medical-app.iam.gserviceaccount.com when those
+# secrets move, which is Batch 8.
+content_ci_service_account = "github-actions@quill-medical-teaching.iam.gserviceaccount.com"
+
 # No slack_channel_display_name yet. The monitoring module looks a Slack
 # channel up by display name, and a Slack channel can only be created
 # through the console's OAuth consent flow, which produces an auth_token
