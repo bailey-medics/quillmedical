@@ -252,4 +252,65 @@ describe("PractisingCompetenciesCard", () => {
       );
     });
   });
+
+  describe("How often it loads", () => {
+    it("reads the rows once, though the caller passes new callbacks", async () => {
+      // The pages render this card with inline arrows, so `onError` and
+      // `onChanged` are new functions on every render. Nothing about the
+      // org_unit has changed, so nothing should be read again: a
+      // callback's identity is not a reason to ask the server anything.
+      //
+      // When the load effect depended on those props, each answer set
+      // state, each render made new arrows, and the effect ran again:
+      // hundreds of requests for one page view, which is what this pins.
+      const list = vi
+        .spyOn(orgUnits, "practisingCompetencies")
+        .mockResolvedValue(rows);
+
+      const Host = () => (
+        <PractisingCompetenciesCard
+          orgUnitId={1}
+          members={members}
+          onChanged={() => {}}
+          onError={() => {}}
+        />
+      );
+
+      const { rerender } = renderWithRouter(<Host />);
+      expect(await screen.findByText("Anita Patel")).toBeInTheDocument();
+
+      rerender(<Host />);
+      rerender(<Host />);
+
+      await waitFor(() => expect(list).toHaveBeenCalledTimes(1));
+    });
+
+    it("reads again when the org_unit changes", async () => {
+      // The other half of the same rule: identity of the callbacks is
+      // not a reason to re-read, but a different place certainly is.
+      const list = vi
+        .spyOn(orgUnits, "practisingCompetencies")
+        .mockResolvedValue(rows);
+
+      const { rerender } = renderWithRouter(
+        <PractisingCompetenciesCard
+          orgUnitId={1}
+          members={members}
+          onError={() => {}}
+        />,
+      );
+      await waitFor(() => expect(list).toHaveBeenCalledWith(1));
+
+      rerender(
+        <PractisingCompetenciesCard
+          orgUnitId={2}
+          members={members}
+          onError={() => {}}
+        />,
+      );
+
+      await waitFor(() => expect(list).toHaveBeenCalledWith(2));
+      expect(list).toHaveBeenCalledTimes(2);
+    });
+  });
 });
