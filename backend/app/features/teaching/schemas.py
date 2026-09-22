@@ -605,6 +605,10 @@ class MediaProgressOut(BaseModel):
     #: Set when a started job has overrun what it plausibly needs. The
     #: card says so rather than showing a bar that will never move.
     stalled: bool = False
+    #: Nothing further is expected, so the card drops the bar and keeps
+    #: only the label. Defaulted false, so the change is additive and an
+    #: older client simply keeps drawing the bar it drew before.
+    is_final: bool = False
 
 
 class MediaAssetOut(BaseModel):

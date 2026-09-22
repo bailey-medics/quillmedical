@@ -9,11 +9,28 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+import pytest
 from sqlalchemy.orm import Session
 
 from app.features.teaching.media import get_media_inventory
 from app.features.teaching.models import ModuleMediaLink
 from app.models import OrgUnit
+
+
+@pytest.fixture
+def transcode_configured(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A deployment that has a transcode job, as teaching does.
+
+    The settings default is None, which is development — and there an
+    upload is servable on its own, because nothing is coming to
+    transcode it. These tests are about the gate that waits, so they
+    have to say which of the two environments they are in rather than
+    inheriting whichever the default happens to be.
+    """
+    monkeypatch.setattr(
+        "app.config.settings.TEACHING_TRANSCODE_JOB",
+        "projects/p/locations/l/jobs/quill-transcode-teaching",
+    )
 
 
 def _org(db: Session, name: str) -> OrgUnit:
@@ -156,7 +173,7 @@ class TestServableVersusComplete:
     """
 
     def test_an_upload_awaiting_transcode_is_present_not_servable(
-        self, db_session: Session
+        self, db_session: Session, transcode_configured: None
     ):
         org = _org(db_session, "Trust Waiting")
         _upload(
@@ -177,6 +194,57 @@ class TestServableVersusComplete:
         # The learner cannot play it, so the module stays hidden.
         assert not inv.is_servable
         assert inv.awaiting_transcode_keys == ["lecture-01"]
+
+    def test_without_a_transcode_job_an_upload_is_servable(
+        self, db_session: Session, monkeypatch: pytest.MonkeyPatch
+    ):
+        """Development, where the renditions are never coming.
+
+        The playback resolver already falls back to serving the original
+        upload where ``transcoded_at`` is null. Before this, the gate hid
+        the module first, so that fallback could not run on the only
+        machines it was written for — an uploaded video sat at
+        "Preparing the video" forever.
+        """
+        monkeypatch.setattr("app.config.settings.TEACHING_TRANSCODE_JOB", None)
+        org = _org(db_session, "Trust Local")
+        _upload(
+            db_session,
+            org.id,
+            "lecture-01",
+            "asset-1",
+            transcoded=False,
+        )
+
+        inv = get_media_inventory(
+            db_session, org.id, "test-bank", ["lecture-01"]
+        )
+
+        assert inv.is_complete
+        assert inv.is_servable
+        # Still reported as awaiting one: the admin card's row is about
+        # what has happened to the file, not about whether a learner can
+        # reach it, and the two genuinely differ here.
+        assert inv.awaiting_transcode_keys == ["lecture-01"]
+
+    def test_without_a_transcode_job_a_missing_upload_is_still_not_servable(
+        self, db_session: Session, monkeypatch: pytest.MonkeyPatch
+    ):
+        """The relaxation is about transcoding, not about uploading.
+
+        A reference with no file behind it has nothing to play in any
+        environment, so the gate must still hide the module.
+        """
+        monkeypatch.setattr("app.config.settings.TEACHING_TRANSCODE_JOB", None)
+        org = _org(db_session, "Trust Local Empty")
+
+        inv = get_media_inventory(
+            db_session, org.id, "test-bank", ["lecture-01"]
+        )
+
+        assert not inv.is_complete
+        assert not inv.is_servable
+        assert inv.missing_keys == ["lecture-01"]
 
     def test_a_transcoded_upload_is_both(self, db_session: Session):
         org = _org(db_session, "Trust Ready")
@@ -208,7 +276,7 @@ class TestServableVersusComplete:
         assert inv.awaiting_transcode_keys == []
 
     def test_one_awaiting_transcode_of_two_blocks_the_module(
-        self, db_session: Session
+        self, db_session: Session, transcode_configured: None
     ):
         """Every reference, not any: a half-ready module is not served."""
         org = _org(db_session, "Trust Partial")

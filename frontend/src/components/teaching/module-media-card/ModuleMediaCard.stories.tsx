@@ -332,6 +332,24 @@ export const EveryProgressState: Story = {
           },
         },
         {
+          key: "plays-without-processing",
+          asset: {
+            ...lecture,
+            asset_id: "s1b",
+            progress: {
+              // Development, where no transcode job is configured. The
+              // upload plays as it is and nothing further is coming, so
+              // the row is finished and shows no bar.
+              stage: 1,
+              total_stages: 4,
+              label: "Uploaded — plays without processing",
+              in_progress: false,
+              stalled: false,
+              is_final: true,
+            },
+          },
+        },
+        {
           key: "not-started",
           asset: {
             ...lecture,

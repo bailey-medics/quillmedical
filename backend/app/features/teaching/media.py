@@ -41,6 +41,28 @@ _CAPTION_PATIENCE = timedelta(minutes=70)
 _TOTAL_STAGES = 4
 
 
+def transcode_is_configured() -> bool:
+    """Whether a transcode job exists to produce renditions at all.
+
+    False is the development case, not a fault: ``compose.dev.yml`` sets
+    no job, so ``start_transcode`` logs "not configured" and returns
+    without firing anything. Two things then have to know, and both read
+    this rather than settings directly, so they cannot disagree about
+    what environment they are in:
+
+    * the learner gate, which otherwise waits forever for renditions
+      nothing is producing, and
+    * the link call, which otherwise records a start time for a job that
+      was never started.
+
+    Read at call time rather than captured at import, because the tests
+    set the job on a live ``settings`` object.
+    """
+    from app.config import settings
+
+    return bool(settings.TEACHING_TRANSCODE_JOB)
+
+
 @dataclass(frozen=True)
 class MediaProgress:
     """How far one upload has got, and what is happening now."""
@@ -50,6 +72,16 @@ class MediaProgress:
     label: str
     in_progress: bool
     stalled: bool
+    #: Nothing further is expected, so the card drops the bar and leaves
+    #: the label alone. The row an admin sees for the rest of the
+    #: video's life should not carry a bar: a full one reads as work
+    #: still running, and an unfilled one as work still owed.
+    #:
+    #: Stated here rather than inferred from the stage count, because
+    #: the two genuinely differ. A stalled job is on its last stage and
+    #: is not final, and "captions have not started" is idle without
+    #: being finished — captions are still owed, so the bar stays.
+    is_final: bool = False
 
 
 def describe_progress(
@@ -89,6 +121,7 @@ def describe_progress(
             label="Ready — captions checked",
             in_progress=False,
             stalled=False,
+            is_final=True,
         )
 
     if link.has_captions:
@@ -129,6 +162,24 @@ def describe_progress(
         )
 
     if link.transcode_started_at is None:
+        # No job configured is development, where nothing is coming and
+        # the video plays from the upload itself. Saying "processing has
+        # not started" there describes a wait that is not happening.
+        #
+        # Final, so the card drops the bar rather than drawing one a
+        # quarter full for the rest of the video's life. The stage count
+        # stays at the production four: with no bar to scale, a second
+        # scale would be a difference between environments earning
+        # nothing.
+        if not transcode_is_configured():
+            return MediaProgress(
+                stage=1,
+                total_stages=_TOTAL_STAGES,
+                label="Uploaded — plays without processing",
+                in_progress=False,
+                stalled=False,
+                is_final=True,
+            )
         return MediaProgress(
             stage=1,
             total_stages=_TOTAL_STAGES,
@@ -231,8 +282,21 @@ class MediaReference:
         people. An admin who has uploaded needs to be told the job is
         still running, not that their file is missing; a learner needs
         the module hidden either way.
+
+        **Where no transcode job is configured, an upload is enough.**
+        That is development, where the renditions are never coming: the
+        playback resolver already falls back to serving the original
+        upload as ``src`` for exactly this case, and without this branch
+        the gate hides the module before that fallback can run — so the
+        fallback was unreachable on the only machines it was written
+        for. Nothing changes in teaching, where a job is configured and
+        ``transcoded_at`` remains the whole question.
         """
-        return self.link is not None and self.link.transcoded_at is not None
+        if self.link is None:
+            return False
+        if self.link.transcoded_at is not None:
+            return True
+        return not transcode_is_configured()
 
     @property
     def is_awaiting_transcode(self) -> bool:

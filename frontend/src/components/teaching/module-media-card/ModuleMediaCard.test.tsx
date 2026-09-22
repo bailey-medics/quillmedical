@@ -275,6 +275,49 @@ describe("ModuleMediaCard", () => {
     ).toBeInTheDocument();
   });
 
+  it("drops the bar where the upload plays without processing", () => {
+    // Development, where no transcode job is configured. Nothing
+    // further is coming, so the row is finished and carries no bar —
+    // the same treatment a video whose captions have been signed off
+    // gets, and for the same reason.
+    renderWithMantine(
+      <ModuleMediaCard
+        media={{
+          module_id: "mod-1",
+          references: [
+            {
+              key: "lecture-01",
+              asset: {
+                ...lecture,
+                progress: {
+                  stage: 1,
+                  total_stages: 4,
+                  label: "Uploaded — plays without processing",
+                  in_progress: false,
+                  stalled: false,
+                  is_final: true,
+                },
+              },
+            },
+          ],
+          unattached: [],
+          is_complete: true,
+        }}
+      />,
+    );
+
+    const cell = screen.getByText(lecture.original_filename).closest("td");
+    expect(cell).not.toBeNull();
+    expect(
+      within(cell as HTMLElement).queryByRole("progressbar"),
+    ).not.toBeInTheDocument();
+    expect(
+      within(cell as HTMLElement).getByText(
+        "Uploaded — plays without processing",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("keeps the bar while the captions await checking", () => {
     // Stage 3 is not the end: nobody has read the machine output yet,
     // so there is still something outstanding to show.

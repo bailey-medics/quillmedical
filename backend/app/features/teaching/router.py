@@ -2356,6 +2356,7 @@ def link_module_media(
     first. The previous asset stays in the bucket and reappears as
     unattached, so nothing is lost by re-pointing.
     """
+    from app.features.teaching.media import transcode_is_configured
     from app.features.teaching.storage import ALLOWED_MEDIA_TYPES
     from app.features.teaching.transcode import start_transcode
 
@@ -2433,8 +2434,15 @@ def link_module_media(
     # saying "nothing is running" over a job that is would be the worse
     # of the two errors. An overstated start shows as "running a long
     # time", which prompts a look; an understated one shows as nothing.
-    link.transcode_started_at = datetime.now(UTC)
-    db.flush()
+    # Only where a job exists to start. Recording a start time for one
+    # that was never configured is what had the card report "Preparing
+    # the video" on a developer's machine until the patience ran out and
+    # it became "Processing seems to have failed" — a failure that never
+    # happened, over a job that was never fired. Asked of the same
+    # helper the learner gate uses, so the two cannot disagree.
+    if transcode_is_configured():
+        link.transcode_started_at = datetime.now(UTC)
+        db.flush()
 
     start_transcode(org_id, module_id, body.asset_id)
 

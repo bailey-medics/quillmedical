@@ -15,6 +15,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
+import pytest
+
 from app.features.teaching.media import describe_progress
 from app.features.teaching.models import ModuleMediaLink
 
@@ -41,16 +43,47 @@ def _link(**overrides: object) -> ModuleMediaLink:
 class TestNothingHasStarted:
     """Uploaded, and no job invoked."""
 
-    def test_it_says_processing_has_not_started(self) -> None:
+    def test_it_says_processing_has_not_started(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         # The state that produced two days of silence. It is not "in
         # progress": nothing is running, and saying otherwise is the
         # error this whole feature exists to correct.
+        #
+        # A job has to be configured for this to be the right words: it
+        # means "something should have started and has not". Where none
+        # is configured there is nothing to wait for, which is the test
+        # below.
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_TRANSCODE_JOB",
+            "projects/p/locations/l/jobs/quill-transcode-teaching",
+        )
         p = describe_progress(_link(), now=NOW)
 
         assert p.stage == 1
         assert p.in_progress is False
         assert p.stalled is False
         assert "not started" in p.label
+
+    def test_without_a_job_it_says_the_video_plays_as_uploaded(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Development, where no transcode is coming and none is needed.
+
+        "Processing has not started" describes a wait that is not
+        happening: the learner gate serves the upload itself here, so
+        the card should say the video works rather than imply it is
+        stuck behind a job nobody configured.
+        """
+        monkeypatch.setattr("app.config.settings.TEACHING_TRANSCODE_JOB", None)
+        p = describe_progress(_link(), now=NOW)
+
+        assert p.in_progress is False
+        assert p.stalled is False
+        assert "without processing" in p.label
+        # Final, so the card drops the bar rather than drawing one a
+        # quarter full for the rest of the video's life.
+        assert p.is_final is True
 
 
 class TestTranscodeRunning:
@@ -76,6 +109,9 @@ class TestTranscodeRunning:
         assert p.in_progress is False
         assert p.stalled is True
         assert "failed" in p.label
+        # Not final, though nothing is running: a job that should have
+        # finished and did not is unfinished work, and the bar says so.
+        assert p.is_final is False
 
 
 class TestCaptionsOutstanding:
@@ -122,6 +158,9 @@ class TestCaptionsOutstanding:
         assert p.in_progress is False
         assert p.stalled is True
         assert "failed" in p.label
+        # Not final, though nothing is running: a job that should have
+        # finished and did not is unfinished work, and the bar says so.
+        assert p.is_final is False
 
     def test_the_video_is_described_as_ready_either_way(self) -> None:
         # Renditions exist, so a learner can watch it. Whatever the
@@ -148,6 +187,9 @@ class TestFinished:
         assert p.stage == 3
         assert p.in_progress is False
         assert "need checking" in p.label
+        # Not final: somebody still has to read what Whisper wrote, so
+        # the bar stays to say the row is not done with.
+        assert p.is_final is False
 
     def test_captions_checked_is_the_last_stage(self) -> None:
         # Whisper mishears clinical terminology, so a reviewed track is
@@ -164,6 +206,9 @@ class TestFinished:
         assert p.stage == p.total_stages
         assert p.in_progress is False
         assert p.stalled is False
+        # The one production state where nothing further is expected,
+        # so the card drops the bar.
+        assert p.is_final is True
 
 
 class TestNaiveTimestamps:
