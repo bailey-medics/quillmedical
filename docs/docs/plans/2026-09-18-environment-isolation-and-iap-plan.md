@@ -138,11 +138,19 @@ neither works.
       `egress = "PRIVATE_RANGES_ONLY"`, so traffic to a `*.run.app`
       address leaves over the public internet, as `infra/main.tf` already
       notes at the transcode job. The job would be rejected exactly as a
-      GitHub-hosted runner is. Setting `egress = "ALL_TRAFFIC"` does not
-      rescue it: `INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER` accepts traffic
-      from the load balancer, not from the VPC generally, and the setting
-      that would accept VPC traffic, `INGRESS_TRAFFIC_INTERNAL_ONLY`,
-      rejects the load balancer and takes the site down.
+      GitHub-hosted runner is.
+
+      **The next sentence used to say `egress = "ALL_TRAFFIC"` would not
+      rescue it, and that was wrong.** It claimed
+      `INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER` accepts load balancer
+      traffic but not VPC traffic. Google's ingress documentation says
+      that setting allows everything "Internal" allows, which includes
+      same-project VPC networks, plus external load balancer traffic. So
+      routing the job's egress through the VPC connector should work,
+      and it is worth testing before anything larger is built. The
+      correction is written up in the open steps below rather than only
+      here, because this paragraph is the one that sent the plan towards
+      a wildcard certificate.
 
 - [x] **Smoke-testing the public hostname instead.** Rejected, and worse
       than doing nothing. The new revision carries no traffic at that
@@ -160,13 +168,53 @@ of your URL schema" that parses service and tag from the request URL.
 Explicitly is no use here, because the tag is `rev-<sha>` and changes
 every deploy, so the URL mask is the part that matters.
 
-- [ ] Find out the URL mask syntax for extracting a tag, and whether it
-      can come from a path prefix or only from the hostname. This decides
-      the size of the whole job: a path such as
-      `/_rev/rev-abc123/api/health` needs only a URL map rule, while a
-      hostname such as `rev-abc123.teaching.quill-medical.com` needs a
-      wildcard certificate and DNS to match, which is a much larger
-      change.
+- [x] **Researched on 2026-09-22, and the answer is the expensive one.**
+      A URL mask can capture a `<service>` from a path: Google's own
+      example is `example.com/<service>`. The only documented example
+      capturing a **tag** is a subdomain, `<tag>-<service>.preview.<domain>`,
+      and no path form for a tag is documented anywhere in the serverless
+      NEG guidance.
+
+      So the cheap shape this step hoped for, a `/_rev/rev-abc123/…`
+      path rule, is not supported. Routing a tagged revision through the
+      load balancer needs a wildcard certificate for
+      `*.app.quill-medical.com`, a DNS record to match, and a second NEG
+      and backend service, to give the deploy one health check it can
+      reach.
+
+- [ ] **Decide whether Phase D is worth building at all**, now its size
+      is known. What it buys is closing the `*.run.app` bypass while
+      keeping the deploy's check on a revision before that revision
+      serves anybody. What it costs is a wildcard certificate, wildcard
+      DNS, new Terraform in `infra/modules/load-balancer/main.tf`, and a
+      URL map rule in the resource that has already taken the API down
+      once.
+
+      Worth weighing against the bypass itself, which has been open for
+      months and is a rate-limit bypass rather than an authentication
+      one: `*.run.app` reaches the same service with the same auth, it
+      just skips Cloud Armor.
+
+- [ ] **Try the Cloud Run job again first. This plan rules it out on a
+      claim that is wrong.** The note above says
+      `INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER` accepts traffic from the
+      load balancer and not from the VPC. Google's own ingress
+      documentation says otherwise: that setting allows everything
+      "Internal" allows, which includes same-project VPC networks, plus
+      external load balancer traffic. So a caller inside the VPC can
+      reach the service.
+
+      What actually defeated the job was its egress, not the ingress
+      rule. `infra/modules/cloud-run-job` sets
+      `egress = "PRIVATE_RANGES_ONLY"`, so traffic to a `*.run.app`
+      address leaves over the public internet and arrives as an external
+      request. Setting `egress = "ALL_TRAFFIC"` on a job whose only
+      purpose is the smoke test would route it through the VPC connector
+      instead, and the ingress rule should then accept it.
+
+      That is a variable on one module against a wildcard certificate,
+      wildcard DNS, a second NEG and a URL map rule. Test it before
+      building anything larger.
 
 - [ ] Add a second serverless NEG with the URL mask, and a backend
       service for it, in `infra/modules/load-balancer/main.tf`. Validate
