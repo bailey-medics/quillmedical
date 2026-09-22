@@ -704,6 +704,51 @@ describe("SideNavContent Component", () => {
       expect(screen.queryByText("Sign-off requests")).not.toBeInTheDocument();
     });
 
+    it("hangs Inbox under Passport for a holder", async () => {
+      // A holder's own record is what `/passport` shows, so the
+      // requests naming them as an assessor had no way in short of
+      // typing the address.
+      // Rendered on the inbox itself, because a nested link is only
+      // drawn once its parent is the active route.
+      renderWithAuth(<SideNavContent />, "passport_holder", {
+        initialRoute: "/passport/inbox",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("Passport")).toBeInTheDocument();
+      });
+
+      expect(screen.getByText("Inbox")).toBeInTheDocument();
+    });
+
+    it("drops Inbox again once the holder is on their passport", async () => {
+      // The passport is a destination, not a heading, so landing on it
+      // should not reveal a page the person did not ask for.
+      renderWithAuth(<SideNavContent />, "passport_holder", {
+        initialRoute: "/passport",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("Passport")).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText("Inbox")).not.toBeInTheDocument();
+    });
+
+    it("gives an assessor no Inbox child, because that is their own link", async () => {
+      // "Sign-off requests" already points at `/passport/inbox`.
+      // A child of the same address would offer the page twice.
+      renderWithAuth(<SideNavContent />, "passport_assessor_only", {
+        initialRoute: "/passport/inbox",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("Sign-off requests")).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText("Inbox")).not.toBeInTheDocument();
+    });
+
     it("hides Passport when the feature is on but the competency is missing", async () => {
       // The link asks both questions the route asks. Showing it on the
       // feature alone would offer a route that answers 404.
