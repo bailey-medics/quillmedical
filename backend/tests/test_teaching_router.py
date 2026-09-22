@@ -3837,6 +3837,50 @@ class TestLocalMediaUpload:
         )
         assert (learning / "abc123.webm").is_file()
 
+    def test_an_interrupted_upload_leaves_no_partial_file(
+        self, test_client, db_session, monkeypatch, tmp_path
+    ):
+        # A dropped connection part-way used to leave a truncated video
+        # on disk that nothing would ever remove: the link call never
+        # runs, so no row points at it and the admin never sees it. The
+        # bucket has a lifecycle rule for this; on disk there is only
+        # the cleanup being tested here.
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        db_session.commit()
+        base = self._module_on_disk(tmp_path)
+        self._use_local(monkeypatch, base)
+
+        # Logged in before the stream is broken: patching it earlier
+        # would break the login request too, which reads its own body.
+        headers = {
+            **self._login(test_client),
+            "Content-Type": "video/mp4",
+        }
+
+        def _die_after_one_chunk(self):
+            async def _stream():
+                yield b"the first part of a lecture"
+                raise ConnectionError("the tab was closed")
+
+            return _stream()
+
+        monkeypatch.setattr(
+            "starlette.requests.Request.stream", _die_after_one_chunk
+        )
+
+        with pytest.raises(ConnectionError):
+            test_client.put(
+                self._url(),
+                content=b"unused, the stub supplies the body",
+                headers=headers,
+            )
+
+        learning = (
+            tmp_path / "content-repo" / "modules" / "test-bank" / "learning"
+        )
+        assert not (learning / "abc123.mp4").exists()
+
     def test_an_unlisted_type_is_refused(
         self, test_client, db_session, monkeypatch, tmp_path
     ):

@@ -48,6 +48,15 @@ export interface ModuleMediaState {
    * pointing at it, and the admin sees an empty row.
    */
   uploading: boolean;
+  /**
+   * Why the last upload against a reference key failed, if it did.
+   *
+   * Per key rather than one message for the card, so the row that
+   * failed is the row that says so. Cleared when that key is tried
+   * again, which is what makes the retry a clean slate rather than a
+   * second attempt haunted by the first one's message.
+   */
+  uploadErrors: Record<string, string>;
   upload: (key: string, file: File) => Promise<void>;
   remove: (assetId: string) => Promise<void>;
   /**
@@ -222,6 +231,7 @@ export function useModuleMedia(
     {},
   );
   const [uploadNames, setUploadNames] = useState<Record<string, string>>({});
+  const [uploadErrors, setUploadErrors] = useState<Record<string, string>>({});
 
   const refresh = useCallback(async () => {
     if (!moduleId) return;
@@ -300,6 +310,13 @@ export function useModuleMedia(
     async (key: string, file: File) => {
       if (!moduleId) return;
       setError(null);
+      // The previous failure goes before the new attempt starts, so a
+      // retry shows its own outcome rather than the last one's.
+      setUploadErrors((e) => {
+        const next = { ...e };
+        delete next[key];
+        return next;
+      });
       setUploadProgress((p) => ({ ...p, [key]: 0 }));
       setUploadNames((n) => ({ ...n, [key]: file.name }));
 
@@ -333,7 +350,12 @@ export function useModuleMedia(
 
         await refresh();
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Upload failed");
+        const message = err instanceof Error ? err.message : "Upload failed";
+        // Recorded against the key as well as on the card. The card
+        // message is transient and easy to miss; the row keeps saying
+        // so until the admin tries again.
+        setError(message);
+        setUploadErrors((e) => ({ ...e, [key]: message }));
       } finally {
         // Cleared whether it worked or not, so a failed upload returns
         // the row to a dropzone rather than a bar stuck at 60%.
@@ -421,6 +443,7 @@ export function useModuleMedia(
       uploadProgress: {},
       uploadNames: {},
       uploading: false,
+      uploadErrors: {},
       upload,
       remove,
       loadCaptions,
@@ -435,6 +458,7 @@ export function useModuleMedia(
     uploadProgress,
     uploadNames,
     uploading,
+    uploadErrors,
     upload,
     remove,
     loadCaptions,

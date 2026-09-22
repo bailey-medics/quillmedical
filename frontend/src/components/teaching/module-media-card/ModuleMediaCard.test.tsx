@@ -373,6 +373,46 @@ describe("ModuleMediaCard", () => {
     expect(screen.getByText("Sending the file…")).toBeInTheDocument();
   });
 
+  it("says the upload failed on the row it failed on", async () => {
+    // Without this the row simply returns to an empty dropzone, which
+    // looks the same as never having tried — and the admin is left
+    // guessing whether anything happened.
+    renderWithMantine(
+      <ModuleMediaCard
+        media={{
+          module_id: "mod-1",
+          references: [{ key: "lecture-01", asset: null }],
+          unattached: [],
+          is_complete: false,
+        }}
+        uploadErrors={{ "lecture-01": "Upload failed (500)." }}
+      />,
+    );
+
+    expect(screen.getByText(/Upload failed \(500\)\./)).toBeInTheDocument();
+    expect(screen.getByText(/Nothing was saved/)).toBeInTheDocument();
+  });
+
+  it("still offers the dropzone after a failure", async () => {
+    // A failed upload leaves nothing behind, so the retry is a genuine
+    // clean slate rather than a resume.
+    renderWithMantine(
+      <ModuleMediaCard
+        media={{
+          module_id: "mod-1",
+          references: [{ key: "lecture-01", asset: null }],
+          unattached: [],
+          is_complete: false,
+        }}
+        uploadErrors={{ "lecture-01": "Upload failed (500)." }}
+      />,
+    );
+
+    expect(
+      screen.getByText(/Drop a video or click to browse/),
+    ).toBeInTheDocument();
+  });
+
   it("shows what went wrong", () => {
     // An upload that fails silently is indistinguishable from a button
     // that does nothing — which is exactly how a 503 from an
