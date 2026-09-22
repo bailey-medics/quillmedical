@@ -199,21 +199,30 @@ export default function ModuleMediaCard({
                   );
                 }
 
-                // The bar goes once the captions are signed off: that
+                // The bar goes once nothing further is expected: that
                 // is the end of the job, and a full bar left on a
                 // finished row reads as something still running. It is
                 // the row an admin sees for the rest of the video's
                 // life, so only the transient states earn a bar.
                 //
                 // The label stays, because it is the only thing left
-                // saying the video has captions and that someone has
-                // read them. Whisper mishears clinical terminology, so
-                // that is worth knowing without opening the editor.
+                // saying what state the video ended in. Whisper
+                // mishears clinical terminology, so "someone has read
+                // the captions" is worth knowing without opening the
+                // editor.
                 //
-                // Keyed on the review timestamp rather than on the
-                // stage reaching the total, so adding a fifth stage
-                // later cannot quietly bring the bar back.
-                const done = row.asset?.captions_reviewed_at != null;
+                // `is_final` is the backend saying so, not this card
+                // inferring it from the stage count: a stalled job is
+                // on its last stage and is not finished, and a video
+                // whose captions have not started is idle without being
+                // done. Two states set it — captions signed off, and,
+                // where no transcode job is configured, an upload that
+                // plays as it is. The review timestamp is still read
+                // here so an older backend, which sends no `is_final`,
+                // keeps hiding the bar on a reviewed video.
+                const done =
+                  row.asset?.progress?.is_final === true ||
+                  row.asset?.captions_reviewed_at != null;
                 const progress = row.asset?.progress;
 
                 return (

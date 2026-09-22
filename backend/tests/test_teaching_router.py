@@ -418,7 +418,15 @@ class TestQuestionBanks:
         side throughout it. Serving it here would put a learner on a
         slide whose video is not in the bucket yet, with nothing to
         explain the failure.
+
+        Needs a transcode job configured to be that window at all. With
+        none — development — there is no job to wait for and the upload
+        is served as it is, which the media inventory tests cover.
         """
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_TRANSCODE_JOB",
+            "projects/p/locations/l/jobs/quill-transcode-teaching",
+        )
         org = _make_teaching_org(db_session)
         educator = _make_educator(db_session, org)
         _seed_bank(db_session, org.id, educator.id)

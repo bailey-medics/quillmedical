@@ -404,6 +404,16 @@ export interface MediaProgress {
    * than showing a bar that will never move.
    */
   stalled?: boolean;
+  /**
+   * Nothing further is expected, so the card drops the bar.
+   *
+   * Distinct from `in_progress` being false, which is also true of a
+   * stalled job and of one waiting on a stage nobody has started. This
+   * one means the row is finished: a bar left on it reads as work still
+   * running, and it is the row an admin sees for the rest of the
+   * video's life.
+   */
+  is_final?: boolean;
 }
 
 /** One asset's WebVTT, as the caption editor loads and saves it. */
