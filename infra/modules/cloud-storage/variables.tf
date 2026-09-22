@@ -20,3 +20,21 @@ variable "bucket_suffix" {
   type        = string
   default     = "images"
 }
+
+variable "project_number" {
+  description = "Project number, for the default compute service account the backend runs as"
+  type        = string
+}
+
+variable "ci_service_account" {
+  description = <<-EOT
+    The service account the content pipeline uploads as, or "" to grant
+    nothing.
+
+    Not derivable from the project number: while the environment is moving
+    between projects the pipeline still authenticates as the old project's
+    account, so this is passed in rather than assumed.
+  EOT
+  type        = string
+  default     = ""
+}

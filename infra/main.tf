@@ -669,11 +669,18 @@ module "load_balancer" {
 
 # ---------- Cloud Storage: teaching images (teaching only) ----------
 module "cloud_storage" {
-  count       = local.is_teaching_product ? 1 : 0
-  source      = "./modules/cloud-storage"
-  project_id  = var.project_id
-  region      = var.region
-  environment = var.environment
+  count          = local.is_teaching_product ? 1 : 0
+  source         = "./modules/cloud-storage"
+  project_id     = var.project_id
+  project_number = data.google_project.project.number
+  region         = var.region
+  environment    = var.environment
+
+  # Who uploads content here. While the environment is moving between
+  # projects this is the old project's CI account, because the teaching
+  # content pipeline still authenticates as it: see
+  # docs/docs/plans/2026-09-18-environment-isolation-and-iap-plan.md.
+  ci_service_account = var.content_ci_service_account
 }
 
 # ---------- Cloud Storage: clinician passports (all environments) ----------

@@ -26,6 +26,10 @@ alert_email                = "info@quill-medical.com"
 slack_channel_display_name = "quill-medical-cicd"
 cloud_run_services         = ["quill-backend-teaching", "quill-frontend-teaching"]
 
+# Matches the grant already on gs://quill-images-teaching, so this adopts
+# what is live rather than changing it.
+content_ci_service_account = "github-actions@quill-medical-teaching.iam.gserviceaccount.com"
+
 # Whether this environment should have these alert channels at all. Static
 # config rather than a test on whether the secret holds a value: a `count`
 # must be known at plan time, and those values are read from Secret Manager.

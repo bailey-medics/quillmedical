@@ -138,3 +138,16 @@ variable "enable_pagerduty_channel" {
   type        = bool
   default     = false
 }
+
+variable "content_ci_service_account" {
+  description = <<-EOT
+    The service account the teaching content pipeline uploads as, granted
+    write access to the images bucket. Empty grants nothing.
+
+    Passed in rather than derived: while the environment moves between
+    projects the pipeline still authenticates as the old project's account,
+    so the writer and the bucket are in different projects.
+  EOT
+  type        = string
+  default     = ""
+}

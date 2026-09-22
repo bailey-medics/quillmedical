@@ -869,18 +869,25 @@ teaching hostname, and the public marketing site is served from this load
 balancer. Move the apex before destroying anything, or the site loses TLS
 with it.
 
-- [ ] Put the images bucket's IAM into Terraform before the old project
-      goes, so the grants are not lost with it.
-      `infra/modules/cloud-storage` creates the bucket and grants nothing
-      on it, which is why three bindings had to be added by hand on
-      2026-09-22. `infra/modules/teaching-video-pipeline` shows the
-      shape: `google_storage_bucket_iam_member` for each account that
-      needs it. Two are needed here, the CI service account as
-      `objectAdmin` to upload and the backend's own service account as
-      `objectViewer` to read. Doing this now means the next environment
-      does not repeat the same hour of debugging, and it makes the
-      grants visible to anyone reading the Terraform rather than only to
-      someone running `get-iam-policy`.
+- [x] **(Claude)** Put the images bucket's IAM into Terraform, so the two
+      grants made by hand on 2026-09-22 survive a rebuild.
+      `infra/modules/cloud-storage` now grants the backend
+      `objectViewer` and the content pipeline `objectAdmin`, following
+      the pattern `modules/teaching-video-pipeline` already used.
+
+      **Expect four additions in the plan, and no changes.** All four
+      bindings already exist in both projects, verified with
+      `get-iam-policy`, but `google_storage_bucket_iam_member` is not in
+      state, so Terraform proposes creating them. That is adoption
+      rather than drift: the resource is additive and creating a binding
+      that exists is idempotent. Anything proposing a *deletion* means a
+      member was spelled wrong and should not be applied.
+
+      The writer is named per environment rather than derived, because
+      the content pipeline still authenticates as the teaching project's
+      account while writing to the app project's bucket. Both tfvars name
+      `github-actions@quill-medical-teaching` today; the app one changes
+      when those secrets move.
 
 - [ ] Leave `quill-medical-teaching` running until the new environment has
       been exercised for long enough to trust. It costs money, and that is
