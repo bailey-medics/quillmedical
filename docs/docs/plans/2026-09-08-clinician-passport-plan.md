@@ -4220,10 +4220,18 @@ and likely a different price.
       holder's passport, `assess_clinician_passport` to the sign-off
       request queue. This is what makes an assessor's landing correct
       without the sidebar fetching anything or guessing.
-- [ ] Tests: an assessor with no `passport_write` can complete a
+- [x] Tests: an assessor with no `passport_write` can complete a
       sign-off end to end and is never shown a price; a lapsed holder
       can read, render and export but cannot write; a sign-off raised
       before a lapse still lands after it.
+
+      **Audited on 22 September rather than written from scratch.** The
+      lapsed holder was already covered by
+      `TestALapsedHolderKeepsTheirRecord` and
+      `TestAnEntitlementThatHasRunOut`. Two claims had no test and
+      now do: that an assessor signs without ever holding the sold
+      competency, and that a request raised before a lapse still lands
+      after it.
 
 ### Open questions
 
