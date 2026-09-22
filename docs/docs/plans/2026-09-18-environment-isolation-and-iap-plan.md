@@ -1338,6 +1338,30 @@ again. None of it is visible from the code.
   to be that broad; it was kept only so the first apply would not fail
   partway on a missing permission.
 
+- **None of the CI service account's nine roles is in Terraform.** They
+  were all granted by hand, the six copied from teaching plus the three
+  added when the first apply failed:
+  `resourcemanager.projectIamAdmin`, `servicenetworking.networksAdmin`
+  and `compute.networkAdmin`. So a project rebuilt from this repository
+  would have a CI account that cannot deploy, and the list of what it
+  needs exists only in a `get-iam-policy` output and in this plan.
+
+  Putting them in Terraform is not the same job as the bucket grants,
+  and it is worth being clear why before somebody tries it. The bucket
+  bindings grant the *backend* access to something. These grant the
+  account that *runs Terraform* its own permissions, so Terraform would
+  be managing the credential it authenticates with. A wrong edit removes
+  the permission needed to make the next edit, and the only way back is
+  an owner fixing it by hand.
+
+  That is survivable here, because Mark holds `roles/owner` and can
+  always repair it, but it means the change wants a deliberate sitting
+  rather than being folded into other work. The safer shape is to
+  declare the roles Terraform can prove are needed, leave
+  `resourcemanager.projectIamAdmin` out of Terraform's own management so
+  the account cannot revoke its own ability to grant, and apply it once
+  against a project that is not serving anything.
+
 **Hands over:** a working environment on a temporary hostname, ready for
 the DNS cutover.
 
