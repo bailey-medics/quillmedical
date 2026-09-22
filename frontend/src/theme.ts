@@ -162,6 +162,13 @@ export const layoutTokens = {
    * two-column layout.
    */
   actionCardTwoColumnMinWidth: "60rem",
+
+  /**
+   * Height of the skeleton that stands in for an ActionCard while a
+   * page is loading. Matched to the card so the page settles into
+   * place rather than changing shape when the real content arrives.
+   */
+  actionCardSkeletonHeight: "9.5rem",
 } as const;
 
 /**

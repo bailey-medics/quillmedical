@@ -12,7 +12,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { Group, SimpleGrid, Stack } from "@mantine/core";
+import { Group, SimpleGrid, Skeleton, Stack } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { useNavigate } from "react-router-dom";
 import PageHeader from "@/components/page-header";
@@ -135,6 +135,12 @@ export function Component() {
   // was treated as a failed load until somebody opened the page on a
   // fresh account and was told to try again, which could never work.
   const [absent, setAbsent] = useState(false);
+  // Starts true, because on the first render the answer is not known
+  // yet. Without it the page fell through to the ordinary layout,
+  // drew the action cards, and then swapped them for "you do not have
+  // a passport yet" when the 404 arrived — a flash of somebody else's
+  // page on the way to your own.
+  const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   // How many sign-off requests name this person as assessor. Fetched
   // separately from the passport because it is separate: an external
@@ -169,6 +175,12 @@ export function Component() {
           }
 
           setError("Your passport could not be loaded. Please try again.");
+        })
+        // Every outcome resolves the question, including the failure:
+        // an error has its own branch below, and leaving this true
+        // would hold the page on a skeleton for ever.
+        .finally(() => {
+          if (!isCancelled()) setLoading(false);
         }),
     [],
   );
@@ -227,6 +239,39 @@ export function Component() {
           onInbox={() => navigate("/passport/inbox")}
         />
         <ErrorState message={error} />
+      </Stack>
+    );
+  }
+
+  // Until the fetch answers, neither "here is your passport" nor "you
+  // do not have one" is known, and guessing shows somebody a page that
+  // is about to be replaced.
+  //
+  // The header is drawn first and stays put, because it is common to
+  // every branch below and its sign-off count comes from a separate
+  // request: an assessor with a queue and no passport sees their
+  // button immediately rather than after a round trip.
+  //
+  // The skeleton is shaped like the action cards it stands in for, so
+  // the page settles rather than changes shape. A skeleton replaced by
+  // something of a different size reads as a flicker of its own, which
+  // is why `CompetencySummary` has none.
+  if (loading) {
+    return (
+      <Stack gap="lg">
+        <PassportHeader
+          waiting={waiting}
+          onInbox={() => navigate("/passport/inbox")}
+        />
+        <SimpleGrid cols={twoColumns ? 2 : 1}>
+          {SECTIONS.map((section) => (
+            <Skeleton
+              key={section.to}
+              height={layoutTokens.actionCardSkeletonHeight}
+              radius="md"
+            />
+          ))}
+        </SimpleGrid>
       </Stack>
     );
   }
