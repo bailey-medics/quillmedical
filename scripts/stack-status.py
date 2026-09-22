@@ -689,6 +689,14 @@ def main() -> int:
         help="leave out branches that have already merged",
     )
     parser.add_argument(
+        "--rebuild-order",
+        action="store_true",
+        help=(
+            "print this stack's unmerged branches, bottom to top, one per "
+            "line, for `gh stack init` to adopt them again"
+        ),
+    )
+    parser.add_argument(
         "--no-colour", action="store_true", help="disable ANSI colour"
     )
     parser.add_argument(
@@ -709,6 +717,19 @@ def main() -> int:
     if stack is None:
         draw_no_stack(palette)
         return 1
+
+    if args.rebuild_order:
+        # `just stack-refresh` rebuilds the record by removing it and
+        # adopting the branches again, so it needs them in the order
+        # `gh stack init` expects: bottom first, merged ones left out
+        # because they are no longer part of the stack to rebuild.
+        for entry in stack_entries(stack):
+            if entry.get("isMerged"):
+                continue
+            name = str(entry.get("name", ""))
+            if name:
+                print(name)
+        return 0
 
     occupied = read_worktrees()
     branch_names = [

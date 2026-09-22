@@ -1116,8 +1116,74 @@ stack-rebase:
         echo "✗ Branches still need a rebase after gh stack rebase." >&2
         echo "  It reports success even when it skips a branch." >&2
         echo "  Run 'just stack-log' to see which." >&2
+        echo "" >&2
+        echo "  If it instead conflicted in files this branch never" >&2
+        echo "  touched, the record's trunk.head is stale: run" >&2
+        echo "  'just stack-refresh'. See that recipe for why." >&2
         exit 1
     fi
+    python3 scripts/stack-status.py
+
+
+alias stre := stack-refresh
+# Repoint a stale stack record at today's trunk, fixing runaway rebases
+stack-refresh:
+    #!/usr/bin/env bash
+    {{initialise}} "stack-refresh"
+    set -euo pipefail
+    # The record in .git/gh-stack stores trunk.head: the commit main sat
+    # at when the stack was started. `gh stack rebase` works out "your
+    # commits" from that point, and nothing refreshes it as the branches
+    # below merge. Once it is stale, everything merged into main since
+    # then looks like unpushed work of yours, and the rebase replays it
+    # onto a main that already has it — conflicting against history in
+    # files the branch never touched. Measured here at 75 commits stale
+    # on a live stack and 144 on an older one.
+    #
+    # `stack-sync` does not fix this. It prunes merged branches and
+    # redraws, leaving trunk.head exactly as it was; that was tested
+    # against a record aged to 79 behind, which stayed at 79. Only
+    # unstack-then-init rewrites it.
+    #
+    # No commit is touched: unstack removes the local record, init
+    # adopts the same branches again against today's trunk. Branches
+    # that have merged are left out, so a stack part-way through landing
+    # rebuilds as the units still in flight, based on main.
+    branch="$(git branch --show-current)"
+    if [ -z "${branch}" ] || [ "${branch}" = "main" ]; then
+        echo "✗ Run this from a branch in the stack, not main." >&2
+        exit 1
+    fi
+
+    # Bottom to top, which is the order `gh stack init` adopts them in.
+    # Naming only the current branch would drop the rest of the stack
+    # from the record, which is not a repair.
+    branches="$(python3 scripts/stack-status.py --rebuild-order)"
+    if [ -z "${branches}" ]; then
+        echo "✗ No unmerged branches in this stack to rebuild." >&2
+        exit 1
+    fi
+
+    # unstack deletes the record, so keep a copy: if init then fails the
+    # stack would otherwise be gone with nothing to put back.
+    record="$(git rev-parse --git-dir)/gh-stack"
+    backup="$(mktemp)"
+    cp "${record}" "${backup}"
+    restore() {
+        if [ ! -s "${record}" ] && [ -s "${backup}" ]; then
+            cp "${backup}" "${record}"
+            echo "✗ Refresh failed — the stack record was restored." >&2
+        fi
+        rm -f "${backup}"
+    }
+    trap restore EXIT
+
+    git fetch origin main --quiet
+    echo "Rebuilding the stack record for:"
+    echo "${branches}" | sed 's/^/  /'
+    gh stack unstack
+    # shellcheck disable=SC2086
+    gh stack init ${branches}
     python3 scripts/stack-status.py
 
 
