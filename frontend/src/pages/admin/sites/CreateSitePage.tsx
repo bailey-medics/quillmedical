@@ -121,7 +121,7 @@ function CreateSiteFields({
             render={({ field }) => (
               <TextField
                 label="Location"
-                placeholder="e.g. Hills Road, Cambridge"
+                placeholder="e.g. 42 Example Lane, Exampletown EX1 2AB"
                 value={field.value as string}
                 onChange={field.onChange}
               />
