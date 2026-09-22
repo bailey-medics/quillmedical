@@ -3713,7 +3713,11 @@ its own.
       is half typed, and only an exact address counts as a match — the
       search matches anywhere in an address, so a near miss would
       otherwise report a colleague the holder had not found.
-- [ ] Decide what becomes of `passport_assessor_invite`. Its routes
+- [x] Decide what becomes of `passport_assessor_invite`. **Settled on 22
+      September: the table stays, its dead columns go.** The single-use
+      link is a credential and has to survive, and the row is what a
+      token is spent against. What went is the three columns nothing
+      read; see phase 9. Its routes
       serve a rate-limit count, an invite list and token redemption;
       only the single-use link has to survive, and it is a credential
       rather than an assessor. Retiring it is a destructive migration
@@ -3848,9 +3852,13 @@ anonymous holding a link.
       /{passport_id}/assessor-invites` are superseded by the request
       route and called by no screen.
 
-- [ ] **Then drop the three dead columns**, once the accept flow no
-      longer reads them. Destructive migration, in its own contract
-      migration, needing approval on
+- [x] **Then drop the three dead columns. Done on 22 September.**
+      `name`, `registration_authority` and `registration_number` were
+      written as empty strings on every invitation and read by nothing:
+      the invite form asks for an address and nothing else, and the
+      assessor states their own name and registration when they accept.
+      A contract migration of its own, carrying the
+      `allow-destructive` marker, still needing approval on
       `db-destructive-migration-review`.
 
 ## Phase 10: who else may read a passport
@@ -3973,22 +3981,36 @@ access and why, in the way a new starter would be told in person.
 
 ### Open questions
 
-- [ ] **A lawful basis needs stating, by a human.** A passport holds no
-      patient data but is professional performance data about an
-      identifiable person, so UK GDPR applies. An employer processing it
-      for workforce planning is defensible; a deanery reading individual
-      records across trusts needs a clearer basis. Worth a DPO view
-      rather than a guess.
+- [x] **A lawful basis. Settled on 22 September: local trust reading
+      only, for now.** A passport holds no patient data but is
+      professional performance data about an identifiable person, so UK
+      GDPR applies. An employer reading the record of somebody it
+      employs, for workforce planning, is the defensible case and is
+      the only one being built.
 
-- [ ] **Do declined sign-offs follow somebody unfairly?** They are
-      visible under "everything except reflections". A pattern of
-      declines is exactly what a supervisor needs to see, and exactly
-      what could follow a struggling trainee between posts. Not an
-      argument against, but it deserves a deliberate answer.
+      **Deanery-level reading across trusts is explicitly out of
+      scope.** It is the case that needs a clearer basis, and it is not
+      being designed for now. Whoever picks it up should treat it as a
+      new question rather than an extension of this one, and get a DPO
+      view before writing any code.
 
-- [ ] **Is the fifty-versus-five rule local or national?** If it varies
-      by department, strictness belongs as a setting on the place rather
-      than hard-coded.
+- [x] **Do declined sign-offs follow somebody unfairly? Settled on 22
+      September: shown like any other sign-off.** No hiding, no ageing
+      out, no separate treatment.
+
+      A decline is a record of an assessor's judgement in the same way
+      a sign-off is, and a passport that quietly omitted the ones that
+      went badly would not be a record of competence at all. The
+      concern that a pattern follows a struggling trainee between posts
+      is real, and the answer is that a supervisor seeing it is the
+      point rather than the hazard.
+
+- [x] **Is the fifty-versus-five rule local or national? Dropped on 22
+      September.** The numbers were invented to illustrate a question
+      about how narrowly a supervisor's reach should be drawn, not
+      drawn from any real governance rule, so there is nothing here to
+      settle. If a real constraint turns up, it arrives with its own
+      numbers.
 
 ## Phase 11: assessing is free, holding is sold
 
@@ -4227,15 +4249,19 @@ and likely a different price.
 
 ### Open questions
 
-- [ ] **Unlimited writing or a number of seats?** A flag is trivial;
-      seats mean counting, and a rule for what happens when a paying
-      organisation's fifty-first clinician tries to create a passport.
-      It changes the data model, so it wants settling before this is
-      built.
+- [x] **Unlimited writing or a number of seats? Settled on 22
+      September: no seats.** An organisation that pays grants
+      `passport_write` to whoever it onboards, with no count and no rule
+      for a fifty-first clinician. Nothing in the schema counts seats,
+      and adding counting later is additive rather than a rewrite, so
+      this can change if the business model needs it to.
 
-- [ ] **What the individual continuation costs.** A product decision,
-      not a design one, but the grant mechanism cannot be finished
-      without it.
+- [x] **What the individual continuation costs. Settled on 22
+      September: £39.99 a year**, subject to change as the business
+      needs. That is the offer made to somebody whose organisation
+      stops paying, and it is why `source` on an entitlement
+      distinguishes `individual` from `organisation`: renewing one is a
+      different conversation from renewing the other.
 
 ## Future items, deliberately deferred
 

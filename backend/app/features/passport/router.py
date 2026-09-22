@@ -776,13 +776,11 @@ def _email_sign_off_request(
             id=str(uuid.uuid4()),
             passport_id=passport_id,
             invited_by_user_id=invited_by_user_id,
-            email=assessor_email,
             # The holder gave an address and nothing else. The assessor
             # states their own name and registration when they accept,
-            # which is the more trustworthy source for both.
-            name="",
-            registration_authority="",
-            registration_number="",
+            # which is the more trustworthy source for both, and is why
+            # this row no longer carries columns for them.
+            email=assessor_email,
             # So the accept page can say what they were asked to judge.
             # Not what they may sign: that is still resolved from the
             # request rows naming them.
