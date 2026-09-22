@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy.orm import Session
@@ -399,3 +399,91 @@ class TestVerifyEmail:
             result = verify_email()
 
         assert result == 1
+
+
+class TestSmokeTest:
+    """The smoke-test action, which runs the deploy's health check.
+
+    It exists so the check can come from inside the VPC: a Cloud Run
+    service set to INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER accepts
+    same-project VPC traffic but refuses a request from a GitHub runner.
+    """
+
+    def test_passes_when_the_url_returns_200(self) -> None:
+        from scripts.admin_cli import smoke_test
+
+        response = MagicMock()
+        response.status = 200
+        response.__enter__ = lambda self: self
+        response.__exit__ = lambda *args: False
+
+        with patch.dict(os.environ, {"SMOKE_URL": "http://example.test/h"}):
+            with patch("urllib.request.urlopen", return_value=response):
+                assert smoke_test() == 0
+
+    def test_retries_then_passes_once_healthy(self) -> None:
+        """A revision just created may not be serving on the first ask."""
+        from scripts.admin_cli import smoke_test
+
+        def response_with(status: int) -> MagicMock:
+            r = MagicMock()
+            r.status = status
+            r.__enter__ = lambda self: self
+            r.__exit__ = lambda *args: False
+            return r
+
+        attempts = [response_with(503), response_with(503), response_with(200)]
+
+        env = {
+            "SMOKE_URL": "http://example.test/h",
+            "SMOKE_RETRIES": "5",
+            "SMOKE_INTERVAL": "0",
+        }
+        with patch.dict(os.environ, env):
+            with patch("urllib.request.urlopen", side_effect=attempts):
+                assert smoke_test() == 0
+
+    def test_fails_once_every_attempt_is_exhausted(self) -> None:
+        from scripts.admin_cli import smoke_test
+
+        response = MagicMock()
+        response.status = 500
+        response.__enter__ = lambda self: self
+        response.__exit__ = lambda *args: False
+
+        env = {
+            "SMOKE_URL": "http://example.test/h",
+            "SMOKE_RETRIES": "2",
+            "SMOKE_INTERVAL": "0",
+        }
+        with patch.dict(os.environ, env):
+            with patch("urllib.request.urlopen", return_value=response):
+                assert smoke_test() == 1
+
+    def test_a_connection_failure_is_retried_not_fatal(self) -> None:
+        """DNS or a refused connection is the shape of "not ready yet"."""
+        from scripts.admin_cli import smoke_test
+
+        ok = MagicMock()
+        ok.status = 200
+        ok.__enter__ = lambda self: self
+        ok.__exit__ = lambda *args: False
+
+        env = {
+            "SMOKE_URL": "http://example.test/h",
+            "SMOKE_RETRIES": "3",
+            "SMOKE_INTERVAL": "0",
+        }
+        with patch.dict(os.environ, env):
+            with patch(
+                "urllib.request.urlopen",
+                side_effect=[OSError("connection refused"), ok],
+            ):
+                assert smoke_test() == 0
+
+    def test_requires_a_url(self) -> None:
+        from scripts.admin_cli import smoke_test
+
+        with patch.dict(os.environ, {}, clear=True):
+            with pytest.raises(SystemExit):
+                smoke_test()

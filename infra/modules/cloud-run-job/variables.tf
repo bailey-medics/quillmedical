@@ -43,6 +43,32 @@ variable "timeout" {
   default     = "300s"
 }
 
+variable "vpc_egress" {
+  description = <<-EOT
+    Which traffic leaves through the VPC connector.
+
+    PRIVATE_RANGES_ONLY, the default, sends only private-range traffic
+    through the connector and lets public traffic leave directly. That is
+    what the transcode and caption jobs need: they reach the public GCS
+    endpoint and call back to the app's public domain.
+
+    ALL_TRAFFIC routes everything through the connector, so requests
+    arrive as internal VPC traffic. A job that has to reach a Cloud Run
+    service set to INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER needs this,
+    because that setting accepts same-project VPC traffic but not a
+    request that has been out to the internet and back.
+  EOT
+  type        = string
+  default     = "PRIVATE_RANGES_ONLY"
+
+  validation {
+    condition = contains(
+      ["PRIVATE_RANGES_ONLY", "ALL_TRAFFIC"], var.vpc_egress
+    )
+    error_message = "vpc_egress must be PRIVATE_RANGES_ONLY or ALL_TRAFFIC."
+  }
+}
+
 variable "vpc_connector_id" {
   description = "Serverless VPC connector ID for private database access"
   type        = string
