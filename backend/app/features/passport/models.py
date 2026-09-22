@@ -250,23 +250,12 @@ class PassportAssessorInvite(Base):
     #: redeemed by whoever happened to receive it.
     email: Mapped[str] = mapped_column(String(255), nullable=False)
 
-    #: The assessor's name as the holder gave it, for the email and for
-    #: the invitation list. The name on the eventual sign-off comes from
-    #: the account, not from here.
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
-
-    #: Self-declared at invite: "GMC", "NMC", "HCPC" and so on, with the
-    #: number alongside. A plain string rather than an enumeration —
-    #: the registers a visiting assessor might hold are not Quill's list
-    #: to close, and refusing an unfamiliar one would block a legitimate
-    #: sign-off.
-    registration_authority: Mapped[str] = mapped_column(
-        String(50), nullable=False
-    )
-
-    registration_number: Mapped[str] = mapped_column(
-        String(50), nullable=False
-    )
+    # `name`, `registration_authority` and `registration_number` were
+    # here, and were retired on 22 September. The holder gave an address
+    # and nothing else, so all three were written as empty strings on
+    # every invitation and read by nothing: the assessor states their
+    # own name and registration when they accept, which is the more
+    # trustworthy source and is what the sign-off records.
 
     #: What the assessor was asked to sign off, so the accept page can
     #: name it. Nullable because an invitation can precede a request: a

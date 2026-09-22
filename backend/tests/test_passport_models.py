@@ -282,9 +282,6 @@ class TestAssessorInvite:
             passport_id=PASSPORT_ID,
             invited_by_user_id=holder.id,
             email=email,
-            name="Dr Amara Okafor",
-            registration_authority="GMC",
-            registration_number="1234567",
             token_hash=token_hash,
             expires_at=datetime.now(UTC) + timedelta(days=14),
         )
@@ -352,9 +349,6 @@ class TestAssessorInvite:
                 passport_id=PASSPORT_ID,
                 invited_by_user_id=first.invited_by_user_id,
                 email="other@example.nhs.uk",
-                name="Dr Someone Else",
-                registration_authority="NMC",
-                registration_number="99AB1234",
                 token_hash="shared-hash",
                 expires_at=datetime.now(UTC) + timedelta(days=14),
             )
@@ -382,26 +376,32 @@ class TestAssessorInvite:
         assert invite.accepted_at is not None
         assert invite.accepted_user_id == assessor.id
 
-    def test_the_declared_registration_is_kept(
-        self, db_session: Session
-    ) -> None:
-        """Self-declared at invite, and stored because the sign-off has
-        to say on what standing somebody signed. Quill has not checked
-        it here, and no column claims otherwise."""
-        invite = self._invite(
-            db_session, invite_id="inv-5", token_hash="hash-5"
-        )
-        db_session.add(invite)
-        db_session.flush()
-        db_session.refresh(invite)
+    def test_it_records_no_assessor_details(self) -> None:
+        """The holder gives an address and nothing else.
 
-        assert invite.registration_authority == "GMC"
-        assert invite.registration_number == "1234567"
+        ``name``, ``registration_authority`` and ``registration_number``
+        were here until 22 September and were written as empty strings
+        on every invitation, because the invite form never asked for
+        them. The assessor states their own name and registration when
+        they accept, which is the more trustworthy source and is what
+        the sign-off records.
 
+        ``registration_verified`` has never been here, and must not be:
+        an invitation is how somebody was reached, and a column
+        claiming their registration had been checked would say Quill
+        had done something it had not.
+        """
         columns = {
             column.name for column in inspect(PassportAssessorInvite).columns
         }
-        assert "registration_verified" not in columns
+
+        for absent in (
+            "name",
+            "registration_authority",
+            "registration_number",
+            "registration_verified",
+        ):
+            assert absent not in columns
 
     def test_expiry_is_stored_as_well_as_signed(
         self, db_session: Session
