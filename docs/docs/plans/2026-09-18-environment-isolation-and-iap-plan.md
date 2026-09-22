@@ -1331,6 +1331,30 @@ again. None of it is visible from the code.
   teaching's certificate in the gap, which still covers it, so nothing is
   down at any point.
 
+- **Setting `landing_domain` back to null cannot be applied.** Terraform
+  reads it as "delete the backend bucket and its uptime check", and
+  attempts both before removing the things that point at them. Google
+  refuses, twice, with `The backend_bucket 'quill-landing-app' is already
+  being used by urlMaps/quill-url-map-app` and `please ensure all
+  associated Alert Policies are deleted`.
+
+  Re-running does not help, because nothing about the plan changes
+  between attempts. The URL map is a single resource whose `dynamic`
+  blocks both hold the reference and are being removed in the same apply,
+  so Terraform has no ordering available to it.
+
+  Two ways out, and the second is why this plan went forward rather than
+  back on 2026-09-22. Either remove the URL map's apex host rule and its
+  `landing` path matcher in their own apply, then delete the bucket in a
+  second one, which means editing the file that has already taken the API
+  down once. Or stop reverting: restore `landing_domain`, at which point
+  Terraform wants to delete nothing and the errors disappear.
+
+  The practical lesson is narrower than it sounds. Adding a domain to
+  this environment is easy to undo on paper and not in practice, so
+  `landing_domain` is worth treating as a one-way door and setting only
+  when the DNS is ready to follow.
+
 - **A doubled dollar means Google substitutes it, not Terraform.** The
   alert template in `infra/modules/monitoring/main.tf` uses
   `$${resource.label.host}`, and the doubling is what lets that reach
