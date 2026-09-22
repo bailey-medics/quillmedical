@@ -10,6 +10,7 @@
 import { IconAlertTriangle } from "@/components/icons/appIcons";
 import type { Blocker } from "react-router-dom";
 import { useRef } from "react";
+import type { ReactNode } from "react";
 import { ConfirmModal } from "@/components/confirm-modal";
 
 /**
@@ -20,6 +21,17 @@ interface DirtyFormNavigationProps {
   blocker: Blocker;
   /** Callback function to execute before proceeding with navigation (e.g., clear dirty flag) */
   onProceed?: () => void;
+  /**
+   * What is about to be lost.
+   *
+   * Defaults to unsaved form changes, which is what most callers block
+   * on. A page blocking on something else — a file still uploading —
+   * says so here, because "unsaved changes" sends the admin looking
+   * for a save button that is not there.
+   */
+  message?: ReactNode;
+  /** Label on the leave button. */
+  acceptLabel?: string;
 }
 
 /**
@@ -49,6 +61,8 @@ interface DirtyFormNavigationProps {
 export default function DirtyFormNavigation({
   blocker,
   onProceed,
+  message = "You have unsaved changes. Are you sure you want to leave this page?",
+  acceptLabel = "Leave page",
 }: DirtyFormNavigationProps) {
   const proceededRef = useRef(false);
 
@@ -74,11 +88,11 @@ export default function DirtyFormNavigation({
       opened={blocker.state === "blocked"}
       onClose={handleClose}
       onAccept={handleProceed}
-      acceptLabel="Leave page"
+      acceptLabel={acceptLabel}
       cancelLabel="Stay"
       icon={<IconAlertTriangle />}
     >
-      You have unsaved changes. Are you sure you want to leave this page?
+      {message}
     </ConfirmModal>
   );
 }

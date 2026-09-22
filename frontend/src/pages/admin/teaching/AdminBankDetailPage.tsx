@@ -6,13 +6,14 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useBlocker, useNavigate, useParams } from "react-router-dom";
 import { Group, Paper, Skeleton, Stack } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import BaseCard from "@/components/base-card/BaseCard";
 import ActiveStatusBadge from "@/components/badge/ActiveStatusBadge";
 import DataTable from "@/components/tables/DataTable";
 import { StateMessage } from "@/components/message-cards";
+import DirtyFormNavigation from "@/components/warnings";
 import { IconAlertCircle } from "@/components/icons/appIcons";
 import {
   BodyText,
@@ -50,11 +51,41 @@ export default function AdminBankDetailPage() {
     error: mediaError,
     uploadProgress,
     uploadNames,
+    uploading,
     upload,
     remove,
     loadCaptions,
     saveCaptions,
   } = useModuleMedia(bankId ?? null);
+
+  // Leaving mid-upload loses the file, so both ways out are guarded.
+  //
+  // The two are not the same fault. A route change unmounts the page
+  // but not the XMLHttpRequest, which lives in a closure — the bytes
+  // keep going and the asset is recorded, so what is lost is only the
+  // progress bar and anywhere to report a failure. A tab close or
+  // reload kills the transfer itself, and the `link` call that records
+  // the asset never runs, so the part-uploaded object sits in the
+  // bucket with nothing pointing at it.
+  //
+  // The blocker covers the first and `beforeunload` the second. Both
+  // read the same flag, because from the admin's side it is one
+  // question: is a file still going up?
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      uploading && currentLocation.pathname !== nextLocation.pathname,
+  );
+
+  useEffect(() => {
+    if (!uploading) return;
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      // preventDefault is the whole API — the browser shows its own
+      // wording and ignores any message we set.
+      e.preventDefault();
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [uploading]);
 
   // Which asset's captions are open, and the text once fetched. Held
   // here rather than in the card so the card stays presentational and
@@ -114,9 +145,28 @@ export default function AdminBankDetailPage() {
     fetchData();
   }, [fetchData]);
 
+  // Rendered in every branch below, not just the happy one. An upload
+  // survives a refetch of the bank detail, so the page can be blocking
+  // navigation while showing its skeleton or its error — and a blocked
+  // navigation with no modal on screen leaves the router stuck with no
+  // way to answer it.
+  //
+  // The wording stops short of promising the upload is cancelled,
+  // because on a route change it is not: the request outlives the page
+  // and usually finishes. What the admin actually loses is sight of
+  // it, and that is what the modal says.
+  const uploadGuard = (
+    <DirtyFormNavigation
+      blocker={blocker}
+      message="A video is still uploading. If you leave this page you will not see whether it finishes."
+      acceptLabel="Leave anyway"
+    />
+  );
+
   if (loading) {
     return (
       <Stack gap="lg">
+        {uploadGuard}
         <Skeleton height={36} width={300} />
         <Skeleton height={100} />
         <Skeleton height={200} />
@@ -126,17 +176,21 @@ export default function AdminBankDetailPage() {
 
   if (error || !bank) {
     return (
-      <StateMessage
-        icon={<IconAlertCircle />}
-        title="Error loading data"
-        description={error ?? "Bank not found"}
-        colour="alert"
-      />
+      <>
+        {uploadGuard}
+        <StateMessage
+          icon={<IconAlertCircle />}
+          title="Error loading data"
+          description={error ?? "Bank not found"}
+          colour="alert"
+        />
+      </>
     );
   }
 
   return (
     <Stack gap="lg">
+      {uploadGuard}
       <PageHeader title={bank.title} />
 
       {/* Bank info */}

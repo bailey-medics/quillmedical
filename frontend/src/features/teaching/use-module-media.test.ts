@@ -331,6 +331,90 @@ describe("useModuleMedia", () => {
     expect(result.current.uploadProgress["lecture-01"]).toBeUndefined();
   });
 
+  it("reports an upload in flight, and stops once it lands", async () => {
+    // The page blocks navigation on this. A flag that stayed set would
+    // trap the admin on the page; one that never set would let them
+    // walk away from a transfer that dies with the tab.
+    let release: (() => void) | undefined;
+    class HeldXhr {
+      status = 200;
+      upload = { addEventListener: vi.fn() };
+      listeners: Record<string, () => void> = {};
+      method = "";
+      open(method: string) {
+        this.method = method;
+      }
+      setRequestHeader = vi.fn();
+      getResponseHeader = (name: string) =>
+        name === "Location" && this.method === "POST"
+          ? "https://storage.example/session-42"
+          : null;
+      addEventListener(name: string, cb: () => void) {
+        this.listeners[name] = cb;
+      }
+      send() {
+        // The opening POST answers at once; the PUT carrying the bytes
+        // is held open, which is the state being tested.
+        if (this.method === "POST") {
+          this.listeners.load?.();
+        } else {
+          release = () => this.listeners.load?.();
+        }
+      }
+    }
+    vi.stubGlobal("XMLHttpRequest", HeldXhr);
+
+    (api.get as Mock).mockResolvedValue(media);
+    (api.post as Mock).mockResolvedValue({
+      upload_url: "https://storage.example/upload",
+      asset_id: "asset-1",
+    });
+
+    const { result } = renderHook(() => useModuleMedia("mod-1", 20));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.uploading).toBe(false);
+
+    let pending: Promise<void>;
+    await act(async () => {
+      pending = result.current.upload(
+        "lecture-01",
+        new File(["x"], "lecture.mp4", { type: "video/mp4" }),
+      );
+    });
+
+    await waitFor(() => expect(result.current.uploading).toBe(true));
+
+    await act(async () => {
+      release?.();
+      await pending;
+    });
+
+    expect(result.current.uploading).toBe(false);
+  });
+
+  it("stops reporting an upload in flight after a failure", async () => {
+    // Otherwise a failed upload leaves the page blocking navigation
+    // over a transfer that is no longer happening.
+    stubFailingUpload(500, "error");
+    (api.get as Mock).mockResolvedValue(media);
+    (api.post as Mock).mockResolvedValue({
+      upload_url: "https://storage.example/upload",
+      asset_id: "asset-1",
+    });
+
+    const { result } = renderHook(() => useModuleMedia("mod-1", 20));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    await act(async () => {
+      await result.current.upload(
+        "lecture-01",
+        new File(["x"], "lecture.mp4", { type: "video/mp4" }),
+      );
+    });
+
+    expect(result.current.uploading).toBe(false);
+  });
+
   it("deletes an asset and reloads", async () => {
     (api.get as Mock).mockResolvedValue(media);
     (api.del as Mock).mockResolvedValue(undefined);

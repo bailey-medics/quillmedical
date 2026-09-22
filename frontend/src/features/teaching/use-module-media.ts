@@ -34,6 +34,20 @@ export interface ModuleMediaState {
    * it the row can only say that something is on its way, not what.
    */
   uploadNames: Record<string, string>;
+  /**
+   * Whether any file is still on its way to the bucket.
+   *
+   * Derived from `uploadProgress` rather than tracked separately, so
+   * there is one record of what is in flight and no second flag to be
+   * left set when an upload fails.
+   *
+   * The page guards navigation on this. The bytes go straight to GCS
+   * from an `XMLHttpRequest` held in a closure, so a full page load
+   * kills the transfer part-way and the `link` call that records the
+   * asset never runs — the object is left in the bucket with nothing
+   * pointing at it, and the admin sees an empty row.
+   */
+  uploading: boolean;
   upload: (key: string, file: File) => Promise<void>;
   remove: (assetId: string) => Promise<void>;
   /**
@@ -251,6 +265,12 @@ export function useModuleMedia(
     void refresh();
   }, [moduleId, refresh]);
 
+  // Whether bytes are still going to the bucket. Derived from the
+  // progress record rather than a flag of its own, so it cannot be
+  // left set by an upload that threw — `finally` clears the key either
+  // way.
+  const uploading = Object.keys(uploadProgress).length > 0;
+
   // Whether any row is waiting on a job. Derived from what the backend
   // says rather than guessed here: it owns the rules, and a second
   // opinion in the card would be the one that drifts.
@@ -400,6 +420,7 @@ export function useModuleMedia(
       error: null,
       uploadProgress: {},
       uploadNames: {},
+      uploading: false,
       upload,
       remove,
       loadCaptions,
@@ -413,6 +434,7 @@ export function useModuleMedia(
     error,
     uploadProgress,
     uploadNames,
+    uploading,
     upload,
     remove,
     loadCaptions,
