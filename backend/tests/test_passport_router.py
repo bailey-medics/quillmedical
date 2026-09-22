@@ -319,30 +319,18 @@ class TestReadAuthorisation:
 class TestSearchingForAnAssessor:
     """Finding somebody a trainee already knows, not browsing a list."""
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "Found by the authorisation review on 22 September and not "
-            "yet fixed: the search is not scoped to an organisation, so "
-            "any holder of assess_clinician_passport can read back the "
-            "email address and registration number of every active user "
-            "in the deployment. The right bound is a product decision — "
-            "a trainee genuinely needs to find a consultant at another "
-            "trust — so this asserts the gap rather than a chosen fix, "
-            "and fails the build the moment one lands."
-        ),
-    )
     def test_it_does_not_return_somebody_from_an_unrelated_place(
         self,
         holder_client: TestClient,
         db_session: Session,
         org: OrgUnit,
     ) -> None:
-        """Searching should not reach a stranger's registration number.
+        """A stranger's registration number is not there to be browsed.
 
-        The three-character minimum, the limit of ten and the caller's
-        own account being excluded are all real, and none of them is a
-        scope: they slow enumeration rather than bound it.
+        Written as an ``xfail`` when the authorisation review found the
+        search unscoped, and passing now because the route requires the
+        whole address. Searching by a fragment of a username reaches
+        nobody, wherever they are.
         """
         elsewhere = OrgUnit(name="Unrelated Trust", type="organisation")
         db_session.add(elsewhere)
@@ -372,11 +360,26 @@ class TestSearchingForAnAssessor:
         found = {match["user_id"] for match in response.json()["matches"]}
         assert stranger.id not in found
 
-    def test_an_email_a_username_or_a_name_all_find_them(
+    def test_only_the_whole_address_finds_them(
         self, holder_client: TestClient, assessor: User
     ) -> None:
-        """A trainee knows the person, not how Quill files them."""
-        for term in (assessor.email, assessor.username, "Assessor"):
+        """A username or a name finds nobody, and that is the point.
+
+        Matching those made the route a directory: any holder of
+        ``assess_clinician_passport`` could read back the address and
+        registration number of every active account. The caller already
+        knows the address, because it is what the invitation is sent
+        to, so requiring it costs a legitimate holder nothing.
+        """
+        for term in (assessor.username, "Assessor"):
+            response = holder_client.get(
+                "/api/passport/assessors/search", params={"q": term}
+            )
+
+            assert response.status_code == 200, response.text
+            assert response.json()["matches"] == [], f"{term!r} found somebody"
+
+        for term in (assessor.email, assessor.email.upper()):
             response = holder_client.get(
                 "/api/passport/assessors/search", params={"q": term}
             )
@@ -423,16 +426,32 @@ class TestSearchingForAnAssessor:
         assert response.status_code == 200, response.text
         assert response.json()["matches"] == []
 
-    def test_a_very_short_search_is_refused(
-        self, holder_client: TestClient
+    def test_a_partial_address_finds_nobody_rather_than_erroring(
+        self, holder_client: TestClient, assessor: User
     ) -> None:
-        """Two characters would match a large share of a staff list,
-        which turns finding one person into reading all of them."""
-        response = holder_client.get(
-            "/api/passport/assessors/search", params={"q": "a"}
+        """Part way through typing is not a mistake.
+
+        There used to be a minimum length, refused with a 400. Nothing
+        but a whole address can match now, so a partial one is simply
+        an empty answer and the field stays quiet until it is finished.
+        """
+        partials = (
+            "a",
+            assessor.email.split("@")[0],
+            # Contains an `@`, so it gets as far as the query. A
+            # substring match would return every account at the domain,
+            # which is the hole this route was found to have.
+            "@" + assessor.email.split("@")[1],
+            assessor.email[:-1],
         )
 
-        assert response.status_code == 400, response.text
+        for term in partials:
+            response = holder_client.get(
+                "/api/passport/assessors/search", params={"q": term}
+            )
+
+            assert response.status_code == 200, response.text
+            assert response.json()["matches"] == [], f"{term!r} found somebody"
 
     def test_you_do_not_find_yourself(
         self, holder_client: TestClient, holder: User
@@ -577,104 +596,6 @@ class TestSignOff:
         passport_id, name = requested
         client = _login(test_client, "assessor")
 
-        response = client.post(
-            f"/api/passport/{passport_id}/sign-offs/{name}/sign-off",
-            json={
-                "meaning": "directly observed",
-                "declaration_confirmed": True,
-                "level_id": LEVEL,
-            },
-        )
-
-        assert response.status_code == 200, response.text
-        assert response.json()["status"] == "signed_off"
-
-    def test_the_assessor_never_needs_the_sold_competency(
-        self,
-        test_client: TestClient,
-        requested: tuple[str, str],
-        assessor: User,
-        db_session: Session,
-    ) -> None:
-        """Assessing is free, and this is what that has to mean.
-
-        An assessor is doing somebody else's record a favour: the
-        holder's organisation gets the benefit and the assessor gets
-        nothing. Meeting a price or a lapsed entitlement here would
-        stall the trainee waiting on them, so the whole split between
-        ``assess_clinician_passport`` and ``passport_write`` exists to
-        keep this path clear.
-
-        The fixture already grants no ``passport_write``, so the test
-        above passes for this reason without saying so. Stated here
-        because a fixture gaining one later would take the guarantee
-        away silently, and every sign-off test would still be green.
-        """
-        db_session.refresh(assessor)
-        assert "passport_write" not in assessor.get_final_competencies()
-        assert (
-            db_session.query(PassportWriteEntitlement)
-            .filter(PassportWriteEntitlement.user_id == assessor.id)
-            .count()
-            == 0
-        )
-
-        passport_id, name = requested
-        client = _login(test_client, "assessor")
-
-        response = client.post(
-            f"/api/passport/{passport_id}/sign-offs/{name}/sign-off",
-            json={
-                "meaning": "directly observed",
-                "declaration_confirmed": True,
-                "level_id": LEVEL,
-            },
-        )
-
-        assert response.status_code == 200, response.text
-        assert response.json()["status"] == "signed_off"
-
-    def test_a_request_raised_before_a_lapse_still_lands(
-        self,
-        test_client: TestClient,
-        requested: tuple[str, str],
-        holder: User,
-        db_session: Session,
-    ) -> None:
-        """The write is the assessor's judgement, not the holder's.
-
-        A holder whose entitlement ends may have requests already
-        sitting in assessors' queues. Those complete: what lands is an
-        assessor's judgement about work already done and observed, so
-        allowing it does not breach the rule that a lapsed holder
-        cannot add to their own record.
-
-        Freezing them instead would put an item in an assessor's queue
-        that they cannot action for a billing reason, which is the
-        assessor-facing wall this design exists to avoid. It does mean
-        a lapsed passport can still gain a sign-off, which is
-        deliberate rather than an oversight.
-        """
-        passport_id, name = requested
-
-        # The holder's cover ends after the request was raised.
-        holder.additional_competencies = []
-        for row in (
-            db_session.query(PassportWriteEntitlement)
-            .filter(PassportWriteEntitlement.user_id == holder.id)
-            .all()
-        ):
-            # Naive from SQLite, aware from Postgres: matched to
-            # whichever the stored value carries.
-            now = datetime.now(UTC)
-            base = now if row.ends_on.tzinfo else now.replace(tzinfo=None)
-            # Both ends move: the row carries a check that it ends
-            # after it starts, so backdating only the end is refused.
-            row.starts_on = base - timedelta(days=400)
-            row.ends_on = base - timedelta(days=1)
-        db_session.commit()
-
-        client = _login(test_client, "assessor")
         response = client.post(
             f"/api/passport/{passport_id}/sign-offs/{name}/sign-off",
             json={

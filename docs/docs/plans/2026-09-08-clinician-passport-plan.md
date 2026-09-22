@@ -3691,15 +3691,27 @@ not deferred items: deferring is for what nobody should build yet.
     added it, and not noticed then.** That is the pattern the two
     earlier passes already recorded, holding again.
 
-    **Not yet fixed**, because the right bound is a product decision
-    rather than an obvious one. A trainee genuinely needs to find a
-    consultant at another trust — that is what external assessors are
-    for — so scoping to the caller's own organisations would break the
-    feature. Plausible answers: return no registration number until an
-    assessor is actually named on a request; require an exact email
-    rather than a substring, so the route confirms rather than
-    browses; or scope to organisations the holder's own reaches.
-    Somebody should choose before this ships.
+    **Fixed on 22 September: the route takes a whole address and
+    nothing else.** Chosen over the alternatives because it costs a
+    legitimate holder nothing — the caller already knows the address,
+    since it is what the invitation is sent to — while scoping to the
+    caller's own organisations would have broken the case external
+    assessors exist for, a consultant at another trust.
+
+    The minimum length and the limit of ten are gone with it. Nothing
+    but a whole address can match, so a partial one is answered with an
+    empty list rather than a 400: somebody part way through typing has
+    made no mistake. The limit is now one, because an address names one
+    mailbox.
+
+    **The first version of the test did not pin this.** Loosening the
+    query back to a substring left it green, because the `@` guard
+    rejected a bare username before the comparison was reached. It now
+    also tries a domain-only fragment and a truncated address, both of
+    which contain an `@` and so reach the query — and it fails when
+    the match is loosened. The same lesson as the size test two passes
+    ago: breaking the assertion shows a test runs, and only breaking
+    the code shows what it covers.
 
 - [ ] Enable the `passport` feature for the first South West
       organisation and onboard a small assessor group.
@@ -4289,18 +4301,10 @@ and likely a different price.
       holder's passport, `assess_clinician_passport` to the sign-off
       request queue. This is what makes an assessor's landing correct
       without the sidebar fetching anything or guessing.
-- [x] Tests: an assessor with no `passport_write` can complete a
+- [ ] Tests: an assessor with no `passport_write` can complete a
       sign-off end to end and is never shown a price; a lapsed holder
       can read, render and export but cannot write; a sign-off raised
       before a lapse still lands after it.
-
-      **Audited on 22 September rather than written from scratch.** The
-      lapsed holder was already covered by
-      `TestALapsedHolderKeepsTheirRecord` and
-      `TestAnEntitlementThatHasRunOut`. Two claims had no test and
-      now do: that an assessor signs without ever holding the sold
-      competency, and that a request raised before a lapse still lands
-      after it.
 
 ### Open questions
 

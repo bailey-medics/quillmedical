@@ -53,7 +53,7 @@ from fastapi import (
     Response,
     UploadFile,
 )
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -828,15 +828,10 @@ def _email_sign_off_request(
         )
 
 
-#: How many people a search will name at once. A trainee looking for
-#: their consultant needs a handful; anything longer is a directory, and
-#: a directory is not what this route is for.
-ASSESSOR_SEARCH_LIMIT = 10
-
-#: Below this, a search is refused rather than answered. Two characters
-#: would match a large share of any staff list, which turns a field for
-#: finding one known person into a way of reading the whole of it.
-ASSESSOR_SEARCH_MIN = 3
+#: How many people a lookup can name. One, because an address names one
+#: mailbox: this route confirms a person the caller already has an
+#: address for, and never offers a choice between candidates.
+ASSESSOR_SEARCH_LIMIT = 1
 
 
 @passport_router.get(
@@ -849,34 +844,35 @@ def search_assessors(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
 ) -> AssessorSearchOut:
-    """Find somebody who might be the assessor being named.
+    """Confirm whether an address already belongs to somebody on Quill.
 
-    Matches an email address, a username or a full name, because a
-    trainee knows the person rather than which identifier Quill files
-    them under.
+    **An exact email address, and nothing else.** It used to match a
+    substring of an address, a username or a full name, which made it a
+    directory: the authorisation review on 22 September found that any
+    holder of ``assess_clinician_passport`` — sixteen base professions,
+    and every external assessor ever invited — could read back the
+    address and professional registration number of every active
+    account in the deployment. A three-character minimum and a limit of
+    ten slowed that down; neither bounded it.
 
-    **Finding nobody is an ordinary answer.** The assessor who observed
-    the work is often at another trust or has never used Quill, and that
-    is the case this flow exists for — so an empty list is success, and
-    the caller goes on to ask by the address they typed.
+    Requiring the whole address closes it without narrowing who can be
+    named. The caller must already know the address, because that is
+    what the invitation is sent to, so nothing a holder could legitimately
+    do is lost. Scoping to the caller's own organisations would have cost
+    something real: the assessor who observed the work is often at another
+    trust, which is what external assessors are for.
 
-    **This is not a directory.** It answers a search somebody already
-    knows the answer to, and the guards say so: a minimum length, a hard
-    limit on how many come back, and the caller's own account excluded
-    because nobody assesses themselves.
+    **Finding nobody is an ordinary answer**, and the commonest one. The
+    caller goes on to ask by the address they typed, and an invitation
+    is emailed instead.
     """
     term = q.strip()
 
-    if len(term) < ASSESSOR_SEARCH_MIN:
-        raise HTTPException(
-            400,
-            (
-                f"Type at least {ASSESSOR_SEARCH_MIN} characters to "
-                "search for an assessor."
-            ),
-        )
-
-    like = f"%{term}%"
+    # Nothing that is not an address can match, so a partial one is
+    # answered with the empty list rather than an error: the caller is
+    # part way through typing, which is not a mistake.
+    if "@" not in term:
+        return AssessorSearchOut(matches=[])
 
     rows = (
         db.execute(
@@ -884,13 +880,10 @@ def search_assessors(
             .where(
                 User.is_active.is_(True),
                 User.id != user.id,
-                or_(
-                    User.email.ilike(like),
-                    User.username.ilike(like),
-                    User.full_name.ilike(like),
-                ),
+                # Whole address, compared without regard to case. An
+                # address typed with capitals is the same mailbox.
+                func.lower(User.email) == term.lower(),
             )
-            .order_by(User.username)
             .limit(ASSESSOR_SEARCH_LIMIT)
         )
         .unique()
