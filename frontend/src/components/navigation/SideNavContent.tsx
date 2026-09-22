@@ -79,6 +79,14 @@ export default function SideNavContent({
     state.status === "authenticated" &&
     (state.user.clinical_services_enabled ?? true);
 
+  // Operating Quill itself, which is true everywhere or nowhere. Read
+  // the same way `RequireOperator` reads it, so the link and the route
+  // it points at cannot disagree: a link to a page that 404s is worse
+  // than no link.
+  const isOperator =
+    state.status === "authenticated" &&
+    state.user.platform_role === "superadmin";
+
   // Don't render nav while auth is loading to avoid layout flicker
   // (Admin link appears after auth resolves, shifting Logout down)
   const isLoading = state.status === "loading";
@@ -348,11 +356,19 @@ export default function SideNavContent({
       // The sites of one organisation already hang under it above. This
       // is the way in for somebody who knows the site but not which
       // organisation owns it, which until now was no way in at all.
-      {
-        label: "Sites",
-        href: "/admin/sites",
-        icon: showIcons ? "building-hospital" : undefined,
-      } satisfies NavItem,
+      //
+      // Operator-only for now, matching the route guard: who may
+      // administer a site is not settled, so the pages are hidden
+      // rather than shown to somebody the answer might not include.
+      ...(isOperator
+        ? [
+            {
+              label: "Sites",
+              href: "/admin/sites",
+              icon: showIcons ? "building-hospital" : undefined,
+            } satisfies NavItem,
+          ]
+        : []),
       ...(hasTeaching
         ? [
             {
