@@ -48,8 +48,6 @@ deliberately not encoded centrally.
 
 ## Reaching the passport at all
 
-Two gates, both required, and they answer different questions:
-
 - **The `passport` feature flag** — is this switched on for the holder's
   organisation or site?
 - **The `assess_clinician_passport` competency** — a CBAC competency, so CBAC
@@ -59,6 +57,44 @@ Two gates, both required, and they answer different questions:
 Passing both says only that the passport exists for this person. Whether they
 may read a *particular* record is a third question, answered by whether they
 are the holder or are named on a request against them.
+
+## Assessing is free; holding is sold
+
+Signing off somebody else's competency and keeping a passport of your own are
+two different rights, because they have opposite economics.
+
+**Assessing is a favour to somebody else's record.** The holder's organisation
+gets the benefit and the assessor gets nothing, so an assessor who met a price
+would simply decline, and the trainee waiting on them could not be signed off
+at all. `assess_clinician_passport` is therefore granted by base
+profession, never sold, and never lapses for payment.
+
+**Holding is the product.** `passport_write` grants the right to create a
+passport and add to it. No base profession carries it: it reaches a person
+either through an organisation that pays, granted at onboarding, or through an
+individual subscription. Most clinicians at a paying organisation hold both
+competencies, and neither implies the other is beneath it — a consultant of
+thirty years still gets signed off on new things.
+
+**An entitlement ends on a date**, recorded in `passport_write_entitlement`
+rather than as a flag, so the holder can be warned before it does. Somebody may
+hold one from more than one source at once, and losing one does not end the
+other.
+
+## A record is never held hostage
+
+**Reading, rendering and exporting a passport are derived from owning it, never
+from paying.** An entitlement that has run out takes away the ability to add to
+the record and nothing else: the holder keeps their whole passport, and can
+still download it in full.
+
+Two consequences follow, both deliberate:
+
+- **A sign-off asked for before an entitlement ended still completes after
+  it.** What lands is the assessor's judgement about work already observed,
+  not the holder's own write.
+- **The warning comes on the way in**, not when a write is refused. Finding
+  out half way through typing a reflection is the worst possible moment.
 
 ## The deferred idea
 
