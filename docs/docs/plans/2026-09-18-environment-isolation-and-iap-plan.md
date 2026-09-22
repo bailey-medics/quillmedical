@@ -216,6 +216,31 @@ every deploy, so the URL mask is the part that matters.
       wildcard DNS, a second NEG and a URL map rule. Test it before
       building anything larger.
 
+- [x] **(Claude)** Make the egress a per-job variable rather than
+      flipping it for everything. `vpc_egress` on
+      `infra/modules/cloud-run-job` defaults to `PRIVATE_RANGES_ONLY`, so
+      nothing changes for the jobs that need it. The transcode job in
+      particular calls back to the app's public domain and its own
+      comment says the default is what makes that work, so flipping the
+      module wholesale would have broken a callback nobody was thinking
+      about.
+
+- [x] **(Claude)** Add a `smoke-test` action to
+      `backend/scripts/admin_cli.py`, which checks `SMOKE_URL` returns
+      200 with the same retry shape as `smoke-test.sh`. The admin job is
+      the right home: it already holds a VPC connector for Cloud SQL, so
+      giving it `ALL_TRAFFIC` egress affects nothing public, and
+      `run-migrations.sh` already shows how the deploy invokes it and
+      reads the result.
+
+- [ ] **Still to do, and this is where it gets real.** Set
+      `vpc_egress = "ALL_TRAFFIC"` on the admin job, point
+      `deploy-tagged.sh` at the job rather than `curl`, and try the
+      ingress setting again. None of that is worth doing until somebody
+      has confirmed by hand that a job with `ALL_TRAFFIC` can actually
+      reach a revision behind a closed ingress. The documentation says it
+      should; this plan has already been wrong once about exactly that.
+
 - [ ] Add a second serverless NEG with the URL mask, and a backend
       service for it, in `infra/modules/load-balancer/main.tf`. Validate
       with a real `terraform plan` before touching the URL map.

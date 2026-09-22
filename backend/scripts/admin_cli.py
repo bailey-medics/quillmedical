@@ -247,6 +247,59 @@ def run_migrations() -> int:
         return 1
 
 
+def smoke_test() -> int:
+    """Check a URL returns 200, from inside the VPC.
+
+    Exists so the deploy can health-check a revision that is not reachable
+    from a GitHub runner. A Cloud Run service set to
+    INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER accepts same-project VPC
+    traffic, so this job can reach a tagged revision's URL while the
+    public internet cannot, provided the job's `vpc_egress` is
+    ALL_TRAFFIC rather than the default.
+
+    Environment:
+        SMOKE_URL:      Required. The URL to check.
+        SMOKE_RETRIES:  Attempts before giving up (default 5).
+        SMOKE_INTERVAL: Seconds between attempts (default 10).
+    """
+    import time
+    import urllib.error
+    import urllib.request
+
+    env = _require_env("SMOKE_URL")
+    url = env["SMOKE_URL"]
+    retries = int(os.environ.get("SMOKE_RETRIES", "5"))
+    interval = float(os.environ.get("SMOKE_INTERVAL", "10"))
+
+    for attempt in range(1, retries + 1):
+        try:
+            with urllib.request.urlopen(url, timeout=10) as response:
+                status = response.status
+        except urllib.error.HTTPError as exc:
+            status = exc.code
+        except Exception as exc:
+            # Connection refused, DNS failure, timeout. Worth retrying:
+            # a revision that has just been created may not be serving yet.
+            print(f"Attempt {attempt}/{retries}: {type(exc).__name__}: {exc}")
+            status = None
+
+        if status == 200:
+            print(f"✓ Health check passed: {url}")
+            return 0
+
+        if status is not None:
+            print(f"Attempt {attempt}/{retries}: got {status}")
+
+        if attempt < retries:
+            time.sleep(interval)
+
+    print(
+        f"✗ Health check failed after {retries} attempts: {url}",
+        file=sys.stderr,
+    )
+    return 1
+
+
 ACTIONS: dict[str, tuple[Callable[[], int], str]] = {
     "create-superadmin": (
         create_superadmin,
@@ -263,6 +316,10 @@ ACTIONS: dict[str, tuple[Callable[[], int], str]] = {
     "run-migrations": (
         run_migrations,
         "Apply all pending Alembic migrations (alembic upgrade head)",
+    ),
+    "smoke-test": (
+        smoke_test,
+        "Check SMOKE_URL returns 200, from inside the VPC",
     ),
 }
 
