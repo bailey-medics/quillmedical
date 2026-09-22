@@ -195,8 +195,24 @@ every deploy, so the URL mask is the part that matters.
       one: `*.run.app` reaches the same service with the same auth, it
       just skips Cloud Armor.
 
-- [ ] **Try the Cloud Run job again first. This plan rules it out on a
-      claim that is wrong.** The note above says
+- [x] **Tested on 2026-09-22, and it works.** A Cloud Run job with
+      `ALL_TRAFFIC` egress reaches a service whose ingress is closed.
+
+      The experiment, on the live app environment and reversed within
+      minutes: set `vpc-egress=all-traffic` on `quill-admin-app`, run the
+      `smoke-test` action against the backend's own `*.run.app` URL, and
+      confirm it passes. Then set the backend to
+      `internal-and-cloud-load-balancing`, check the same URL returns 404
+      from the internet while `app.quill-medical.com` still returns 200,
+      and run the job again. It passed both times.
+
+      So the smoke test can move inside the VPC, the ingress can close,
+      and none of the wildcard certificate work below is needed. Both
+      settings were restored: the backend is back to `ingress=all` and
+      the job to `private-ranges-only`, verified by reading them back.
+
+- [x] **The claim this plan was built on was wrong, and is now
+      disproved by experiment rather than by documentation.** The note above says
       `INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER` accepts traffic from the
       load balancer and not from the VPC. Google's own ingress
       documentation says otherwise: that setting allows everything
@@ -241,25 +257,32 @@ every deploy, so the URL mask is the part that matters.
       reach a revision behind a closed ingress. The documentation says it
       should; this plan has already been wrong once about exactly that.
 
-- [ ] Add a second serverless NEG with the URL mask, and a backend
-      service for it, in `infra/modules/load-balancer/main.tf`. Validate
-      with a real `terraform plan` before touching the URL map.
+- [x] **Not needed.** Adding a second serverless NEG with a URL mask,
+      and the wildcard certificate it would require, is superseded by the
+      VPC test above. Kept as a record of what the expensive path would
+      have been.
 
-- [ ] Add the routing rule to the URL map **last, and carefully**. That
+- [x] **Not needed**, for the same reason. The note below stands as a
+      warning for anyone who does touch the URL map: that
       resource already carries a comment recording that a dynamic block
       mistake once planned `/api/*` to null and took the API down. The
       new rule goes in the same `concat` list as the existing ones, never
       as a static rule beside the dynamic block.
 
-- [ ] Make sure the tagged route cannot be used to reach anything else.
+- [x] **Not needed.** There is no tagged route.
       It exposes a revision by name at the public hostname, so it should
       match the health path only, and a request for any other path
       through that prefix should not reach the service.
 
-- [ ] Point `run_smoke_test` in `deploy-tagged.sh` at the new route
-      rather than the tagged `*.run.app` URL. The function is already
-      isolated so tests can stub it, so this is a small change once the
-      route exists.
+- [ ] Point `run_smoke_test` in `deploy-tagged.sh` at the admin job
+      rather than `curl`, now the job is proven to reach a closed-ingress
+      service. `run-migrations.sh` shows the shape: execute the job with
+      `--wait` and let its exit code stand for the result. The function
+      is already isolated so tests can stub it.
+
+      This is the one change left before the ingress can close, and it
+      rewrites the step that stops a bad revision reaching anyone, so it
+      wants its own unit and a watched first deploy.
 
 - [ ] Only then re-apply Phase 1's ingress setting, and watch the first
       deploy.
