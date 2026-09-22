@@ -27,6 +27,24 @@ vi.mock("@lib/passport", () => ({
 
 const PASSPORT_ID = "3f2a8c1e";
 
+/**
+ * Wait until no button is still showing its loading state.
+ *
+ * Clicking one of these buttons puts a Mantine `Loader` inside it, and
+ * Mantine mounts that behind a `Transition` whose exit is driven by a
+ * timer. A test that asserts on the mock and returns leaves that timer
+ * queued; Testing Library then unmounts the tree, jsdom goes with it,
+ * and the timer fires into a world with no `window` — which vitest
+ * reports as an unhandled error and fails the whole run, with every
+ * test passing. It failed two unrelated pull requests before it was
+ * tracked down, so the wait is deliberate rather than defensive.
+ */
+async function waitForLoadersToSettle(): Promise<void> {
+  await waitFor(() => {
+    expect(document.querySelector("[data-loading='true']")).toBeNull();
+  });
+}
+
 describe("PassportExportButtons", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -52,6 +70,7 @@ describe("PassportExportButtons", () => {
     await waitFor(() => {
       expect(exportMarkdown).toHaveBeenCalledWith(PASSPORT_ID);
     });
+    await waitForLoadersToSettle();
   });
 
   it("downloads the PDF", async () => {
@@ -64,6 +83,7 @@ describe("PassportExportButtons", () => {
     await waitFor(() => {
       expect(exportPdf).toHaveBeenCalledWith(PASSPORT_ID);
     });
+    await waitForLoadersToSettle();
   });
 
   it("downloads the full bundle", async () => {
@@ -76,6 +96,7 @@ describe("PassportExportButtons", () => {
     await waitFor(() => {
       expect(exportBundle).toHaveBeenCalledWith(PASSPORT_ID);
     });
+    await waitForLoadersToSettle();
   });
 
   it("names the saved file after the passport", async () => {
@@ -89,6 +110,7 @@ describe("PassportExportButtons", () => {
     await waitFor(() => {
       expect(click).toHaveBeenCalled();
     });
+    await waitForLoadersToSettle();
     click.mockRestore();
   });
 
@@ -104,6 +126,7 @@ describe("PassportExportButtons", () => {
     expect(
       await screen.findByText(/could not be prepared/),
     ).toBeInTheDocument();
+    await waitForLoadersToSettle();
   });
 
   it("offers no way to include reflections", async () => {
