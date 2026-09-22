@@ -163,6 +163,16 @@ resource "google_monitoring_alert_policy" "uptime" {
   display_name = "Uptime failure (${var.environment})"
   combiner     = "OR"
 
+  # One dollar on var.app_domain, two on resource.label.host.
+  #
+  # Terraform substitutes the first when it writes this policy, so the sent
+  # alert names the hostname. Google substitutes the second when it sends
+  # the alert, so that one has to reach Google untouched, which is what the
+  # doubled dollar does.
+  #
+  # Escaping var.app_domain hands Google a variable it has never heard of,
+  # and the alert arrives reading "Unrecognized variable: var.app_domain"
+  # rather than the host. That went out on 2026-09-22.
   documentation {
     mime_type = "text/markdown"
     subject   = "Uptime failing: $${resource.label.host}"
@@ -172,7 +182,7 @@ resource "google_monitoring_alert_policy" "uptime" {
 
       The two monitored hosts fail for different reasons:
 
-      - **$${var.app_domain}** is the application — Cloud Run behind
+      - **${var.app_domain}** is the application — Cloud Run behind
         the load balancer, probed at `/api/health`. A failure points at the
         backend, the load balancer, or Cloud Run itself.
       - **quill-medical.com** is the public site — static files served from a
