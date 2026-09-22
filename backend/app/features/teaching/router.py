@@ -2313,6 +2313,7 @@ def get_module_media(
             label=progress.label,
             in_progress=progress.in_progress,
             stalled=progress.stalled,
+            is_final=progress.is_final,
         )
         return out
 
