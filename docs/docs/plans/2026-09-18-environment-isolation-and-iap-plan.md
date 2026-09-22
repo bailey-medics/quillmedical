@@ -919,6 +919,22 @@ for the same name would leave both pending.
       `deploy-to-gcs.sh` derives the bucket as `<project>-landing`, so
       the secret is what chooses the target.
 
+- [x] **(Claude)** Fix the certificate so it can be replaced at all. The
+      apply that added `quill-medical.com` to the app environment failed
+      on 2026-09-22 with `Error 409: The resource
+      'quill-cert-v5-app' already exists`. A managed certificate's domain
+      list cannot be edited, so Terraform replaces the resource, and
+      `create_before_destroy` builds the new one while the old is still
+      there. With a fixed name that collides every time. An earlier
+      hotfix bumped `v4` to `v5` by hand for the same reason.
+
+      The name now carries an eight-character hash of the domain list, so
+      a domain change produces a new name and the two can exist side by
+      side for the minutes it takes to validate. Both environments' names
+      change, so both certificates are replaced: teaching's serves the
+      live marketing site, and that is safe because the HTTPS proxy keeps
+      serving the old certificate until the new one is attached.
+
 - [ ] **(Mark)** Merge, and let Terraform create the bucket. The
       certificate will sit in `PROVISIONING` because the apex still
       resolves to the teaching load balancer and validation resolves the

@@ -284,12 +284,39 @@ resource "google_compute_backend_bucket" "landing" {
 }
 
 # ---------- Google-managed SSL certificate ----------
+#
+# The name carries a hash of the domain list, so changing the domains
+# changes the name.
+#
+# A managed certificate's domain list cannot be edited: Terraform has to
+# replace the resource, and `create_before_destroy` means the new one is
+# created while the old is still there. With a fixed name that is a
+# guaranteed 409, `The resource 'quill-cert-v5-app' already exists`, which
+# is what stopped the apply that added `quill-medical.com` to the app
+# environment on 2026-09-22. An earlier hotfix bumped `v4` to `v5` by hand
+# for the same reason; a name that follows the domains needs no hand.
+#
+# `create_before_destroy` is the load-bearing half. A managed certificate
+# takes fifteen to sixty minutes to validate, and the HTTPS proxy keeps
+# serving the old one until the new one is attached, so replacing it this
+# way is not an outage. Destroying first would be.
+locals {
+  cert_domains = concat(
+    var.domains,
+    var.landing_domain != null ? [var.landing_domain, "www.${var.landing_domain}"] : []
+  )
+
+  # Eight characters is plenty to separate one domain list from the next,
+  # and the name has to stay inside Compute's 63-character limit.
+  cert_suffix = substr(sha256(join(",", local.cert_domains)), 0, 8)
+}
+
 resource "google_compute_managed_ssl_certificate" "cert" {
   project = var.project_id
-  name    = "quill-cert-v5-${var.environment}"
+  name    = "quill-cert-${var.environment}-${local.cert_suffix}"
 
   managed {
-    domains = concat(var.domains, var.landing_domain != null ? [var.landing_domain, "www.${var.landing_domain}"] : [])
+    domains = local.cert_domains
   }
 
   lifecycle {
