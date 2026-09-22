@@ -208,11 +208,32 @@ class CompetencyStateOut(BaseModel):
     certificates: list[str] = Field(default_factory=list)
 
 
+class EntitlementOut(BaseModel):
+    """When the holder's right to write runs out.
+
+    Carried on the passport itself rather than behind an endpoint of its
+    own, so the page that greets somebody can warn them on the way in
+    rather than at the moment a write is refused.
+    """
+
+    #: The day it ends. Null once nothing current remains, which is the
+    #: read-only state rather than an error.
+    ends_on: datetime | None = None
+
+    #: Days remaining, so the frontend decides whether to warn without
+    #: doing date arithmetic against a clock that may differ from the
+    #: server's. Null for the same reason ``ends_on`` is.
+    days_remaining: int | None = None
+
+
 class PassportDetailOut(BaseModel):
     """A passport with every competency it holds evidence for."""
 
     passport: PassportOut
     competencies: list[CompetencyStateOut] = Field(default_factory=list)
+
+    #: Optional, so a client built before this existed is unaffected.
+    entitlement: EntitlementOut | None = None
 
 
 # --------------------------------------------------------------------

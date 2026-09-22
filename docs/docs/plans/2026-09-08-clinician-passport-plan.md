@@ -4214,7 +4214,7 @@ and likely a different price.
       read or export path on it.
 - [x] Give the entitlement an end date, and have the write gate report
       why and until when.
-- [ ] Warn on entry to the passport from two weeks out, repeating every
+- [x] Warn on entry to the passport from two weeks out, repeating every
       five days.
 - [x] Route the navigation link by competency: `passport_write` to the
       holder's passport, `assess_clinician_passport` to the sign-off

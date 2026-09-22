@@ -173,9 +173,25 @@ export interface CompetencyState {
 }
 
 /** A passport with every competency it holds evidence for. */
+/**
+ * When the holder's right to write runs out.
+ *
+ * Carried on the passport rather than behind an endpoint of its own, so
+ * the page that greets somebody can warn them on the way in rather than
+ * at the moment a write is refused.
+ */
+export interface Entitlement {
+  /** The day it ends. Null once nothing current remains. */
+  ends_on?: IsoDateTime | null;
+  /** Days left, counted by the backend against its own clock. */
+  days_remaining?: number | null;
+}
+
 export interface PassportDetail {
   passport: Passport;
   competencies: CompetencyState[];
+  /** Optional: absent from a response built before this existed. */
+  entitlement?: Entitlement | null;
 }
 
 // ---------------------------------------------------------------------------

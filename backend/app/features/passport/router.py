@@ -90,6 +90,7 @@ from app.schemas.passport import (
     CompetencyStateOut,
     CpdEntryIn,
     CpdEntryOut,
+    EntitlementOut,
     EvidenceUploadOut,
     InboxItemOut,
     InvitePreviewOut,
@@ -519,7 +520,31 @@ def _passport_out(row: Passport, profile: Profile) -> PassportOut:
     )
 
 
-def _detail(row: Passport, store: PassportStore) -> PassportDetailOut:
+def _entitlement_out(db: Session, user_id: int) -> EntitlementOut:
+    """When this person's right to write runs out, for the page to warn on.
+
+    Carried on the passport rather than behind an endpoint of its own,
+    so somebody is told on the way in rather than at the moment a write
+    is refused. ``days_remaining`` is counted here so the frontend does
+    not have to do date arithmetic against a clock that may differ from
+    the server's.
+    """
+    ends_on = current_entitlement_end(db, user_id)
+
+    if ends_on is None:
+        return EntitlementOut()
+
+    # The stored value comes back naive from SQLite and aware from
+    # Postgres, so the comparison is made on whichever the row gives.
+    now = _now() if ends_on.tzinfo else _now().replace(tzinfo=None)
+    remaining = (ends_on - now).days
+
+    return EntitlementOut(ends_on=ends_on, days_remaining=max(remaining, 0))
+
+
+def _detail(
+    db: Session, row: Passport, store: PassportStore
+) -> PassportDetailOut:
     """A passport and every competency it holds evidence for."""
     profile = _read_profile(store, row.id)
     index = _read_index(store, row.id)
@@ -530,6 +555,9 @@ def _detail(row: Passport, store: PassportStore) -> PassportDetailOut:
             CompetencyStateOut.model_validate(entry.model_dump(mode="json"))
             for entry in index.competencies
         ],
+        # The holder's own term, not the reader's: an assessor reading
+        # somebody else's passport is told about that passport.
+        entitlement=_entitlement_out(db, row.user_id),
     )
 
 
@@ -599,7 +627,7 @@ def get_my_passport(
     if row is None:
         raise HTTPException(404, "You do not have a passport yet")
 
-    return _detail(row, store)
+    return _detail(db, row, store)
 
 
 @passport_router.get(
@@ -681,7 +709,7 @@ def get_passport(
     """A passport the caller may read."""
     row = _require_reader(db, passport_id, user)
 
-    return _detail(row, store)
+    return _detail(db, row, store)
 
 
 def _requests_today(db: Session, passport_id: str) -> int:
