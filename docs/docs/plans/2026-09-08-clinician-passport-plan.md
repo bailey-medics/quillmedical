@@ -3654,6 +3654,53 @@ not deferred items: deferring is for what nobody should build yet.
     it is and that it is waiting: what a named assessor has been asked
     to judge, not what the holder has collected.
 
+  - **Third pass, 22 September: the authorisation matrix, which the
+    two earlier passes did not cover.** Both of those looked at
+    uploads. This one walked every route in the router and asked what
+    guard it carries.
+
+    **What holds.** Thirty-six routes carry a competency dependency,
+    and the only two without one are on the public router, where a
+    signed token is the credential: the preview and the accept.
+    `_decoded_invite` checks signature, existence and expiry; accept
+    additionally refuses a second use and binds the new account to the
+    token's own email, so a forwarded link cannot be redeemed by
+    whoever receives it. Reflections and all three exports are
+    holder-only for reading and `_require_writer` for writing, and
+    both guards check ownership before anything else. The two
+    `/assessors/...` admin routes take a user id from the caller and
+    are guarded by `_require_org_admin_over`, which requires
+    `manage_users`, requires a shared organisation, and answers 404
+    rather than 403 so a refusal does not confirm the person exists.
+    `TestWhatAnExternalAssessorCannotReach` holds eleven tests
+    pinning what an invited outsider cannot reach.
+
+  - **Finding: `GET /api/passport/assessors/search` is not scoped to
+    an organisation.** It gates on `assess_clinician_passport` and
+    nothing else, so any holder of that competency — sixteen base
+    professions, plus every external assessor ever invited — can search
+    **every active user in the deployment** and read back their email
+    address and professional registration number.
+
+    The guards that are there are a three-character minimum, a limit of
+    ten results and the caller's own account excluded. None of those
+    is a scope: they slow enumeration down rather than bound it, and
+    ten results per query is ample for looking somebody up by name.
+
+    **Written by the same author as the route, in the session that
+    added it, and not noticed then.** That is the pattern the two
+    earlier passes already recorded, holding again.
+
+    **Not yet fixed**, because the right bound is a product decision
+    rather than an obvious one. A trainee genuinely needs to find a
+    consultant at another trust — that is what external assessors are
+    for — so scoping to the caller's own organisations would break the
+    feature. Plausible answers: return no registration number until an
+    assessor is actually named on a request; require an exact email
+    rather than a substring, so the route confirms rather than
+    browses; or scope to organisations the holder's own reaches.
+    Somebody should choose before this ships.
+
 - [ ] Enable the `passport` feature for the first South West
       organisation and onboard a small assessor group.
 - [x] Document the module under `docs/docs/backend/passport/index.md`
