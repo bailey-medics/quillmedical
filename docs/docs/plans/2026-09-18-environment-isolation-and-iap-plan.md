@@ -935,25 +935,34 @@ for the same name would leave both pending.
       live marketing site, and that is safe because the HTTPS proxy keeps
       serving the old certificate until the new one is attached.
 
-- [ ] **(Mark)** Merge, and let Terraform create the bucket. The
-      certificate will sit in `PROVISIONING` because the apex still
-      resolves to the teaching load balancer and validation resolves the
-      domain. That is expected: `app.quill-medical.com` keeps working on
-      the existing certificate until the new one replaces it.
+- [x] **Reverted on 2026-09-22.** `landing_domain` is null again on the
+      app environment, and the apex is out of `monitored_hostnames`. The
+      steps below are reordered accordingly: the DNS moves before the
+      domain joins the certificate, not after.
 
-- [ ] **(Mark)** Run the public site workflow so the content lands in the
-      new bucket. Nothing serves it yet, so this can be checked at
-      leisure with `gcloud storage ls`.
+- [ ] **(Mark)** Run the public site workflow, so
+      `gs://quill-medical-app-landing` holds the site. The bucket already
+      exists; it is empty. Nothing serves it yet, so this can be checked
+      at leisure with `gcloud storage ls`.
 
 - [ ] **(Mark)** Move the DNS for `quill-medical.com` and
       `www.quill-medical.com` from `136.110.221.126` to `34.49.99.83`.
-      This is the cutover, and the certificate validates once the records
-      move, so expect a certificate warning on the apex until it goes
-      active.
+      The apex is then served by the app project, on teaching's
+      certificate, which still covers both names. Nothing is down: the
+      certificate follows the name, not the load balancer.
 
-- [ ] **(Mark)** Confirm the apex serves from the new project before
-      going further. Everything to this point is reversible by moving the
-      DNS records back.
+- [ ] **(Mark)** Confirm the apex serves the site from the new project.
+      Reversible by moving the records back.
+
+- [ ] **(Claude)** Only then set `landing_domain = "quill-medical.com"`
+      in the app tfvars, and add the apex back to `monitored_hostnames`.
+      Every domain on the new certificate can validate by that point, so
+      the replacement is not an outage. This is the step that was done
+      first on 2026-09-22 and took `app.quill-medical.com` down.
+
+- [ ] **(Mark)** Remove the apex from teaching's `lb_domains` once the
+      app certificate is active, so the old project stops claiming a
+      hostname it no longer serves.
 
 ### Retiring the project
 
@@ -1299,6 +1308,44 @@ again. None of it is visible from the code.
   authenticated `curl` to the endpoint printed the real message and
   settled it. The endpoint is reachable and the token is in Secret
   Manager, so this was always one command away.
+
+- **Adding a domain to a certificate takes the hostname down, if that
+  domain cannot validate yet.** Setting `landing_domain` on the app
+  environment put `quill-medical.com` and `www` on
+  `quill-cert-app-6bc99c16` alongside `app.quill-medical.com`.
+  `create_before_destroy` created it, attached it to the HTTPS proxy and
+  destroyed the certificate that was serving `app.`. The new one cannot
+  serve anything until every domain on it validates, and the two new ones
+  cannot validate while their DNS still points at the teaching project.
+  So `app.quill-medical.com` had a certificate it could not use and no
+  fallback, and went down on 2026-09-22.
+
+  This plan said the opposite: that `app.quill-medical.com` would keep
+  working on the existing certificate until the new one validated. That
+  is true of the certificate, which is replaced rather than edited, and
+  false of the proxy, which is pointed at the new one immediately.
+
+  The order that works is the reverse of what was attempted: populate the
+  landing bucket, move the apex DNS to the new load balancer, and only
+  then add the domain to the certificate. The apex is served on
+  teaching's certificate in the gap, which still covers it, so nothing is
+  down at any point.
+
+- **A doubled dollar means Google substitutes it, not Terraform.** The
+  alert template in `infra/modules/monitoring/main.tf` uses
+  `$${resource.label.host}`, and the doubling is what lets that reach
+  Google untouched so Google can fill it in when the alert fires. When
+  the prose was changed to name the environment's own hostname, it was
+  written `$${var.app_domain}` by copying the line above it. Terraform
+  then left it alone and Google could not resolve it, so the first alert
+  to fire read "Unrecognized variable: var.app_domain" where the hostname
+  should have been. A Terraform variable takes one dollar; only Google's
+  own placeholders take two.
+
+  Nothing catches this: the policy applies cleanly, and the mistake is
+  visible only in an alert somebody receives. That first alert was a
+  false alarm from the certificate swap, so the bug arrived with a
+  message that was itself wrong.
 
 - **The teaching certificate is not only teaching's.**
   `quill-cert-v5-teaching` carries `teaching.quill-medical.com`,

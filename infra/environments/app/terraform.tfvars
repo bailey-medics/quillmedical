@@ -24,18 +24,26 @@ enable_ha   = false
 cloud_run_max_instances = 5
 
 lb_domains     = ["app.quill-medical.com"]
-# The public marketing site, served from a GCS bucket behind this load
-# balancer. Adding it here puts quill-medical.com and www on this
-# environment's certificate alongside app.quill-medical.com, which is
-# what has to happen before the teaching project can be destroyed: that
-# project serves the apex today, and its certificate covers it.
+# Null again, after 2026-09-22 showed why the order matters.
 #
-# The certificate only goes active once every domain on it validates, and
-# validation resolves the domain, so the DNS for the apex moves after
-# this applies rather than before. Until it does, this environment holds
-# a certificate request for a name it does not yet serve, which is
-# harmless.
-landing_domain = "quill-medical.com"
+# Naming the apex here puts quill-medical.com and www on this
+# environment's certificate. A Google-managed certificate serves nothing
+# until every domain on it validates, and validation resolves the domain,
+# so those two cannot pass while their DNS still points at the teaching
+# project. Meanwhile `create_before_destroy` had already attached the new
+# certificate and destroyed the old one, so app.quill-medical.com lost
+# the certificate that was serving it and went down.
+#
+# The apex has to move in this order instead:
+#
+#   1. Populate gs://quill-medical-app-landing, so the apex has something
+#      to serve when it arrives.
+#   2. Move the DNS for quill-medical.com and www to 34.49.99.83. The
+#      apex is then served by this project on teaching's certificate,
+#      which still covers it.
+#   3. Only then set this back to "quill-medical.com". Every domain can
+#      validate, so the certificate replacement is not an outage.
+landing_domain = null
 
 backend_image   = "gcr.io/cloudrun/hello:latest"
 frontend_image  = "gcr.io/cloudrun/hello:latest"
@@ -43,10 +51,10 @@ admin_image     = "gcr.io/cloudrun/hello:latest"
 transcode_image = "gcr.io/cloudrun/hello:latest"
 caption_image   = "gcr.io/cloudrun/hello:latest"
 
-# The apex joins this once it is served from here. The uptime check
-# probes app_domain at /api/health and everything else at /, which is
-# right: the landing site is static and has no API.
-monitored_hostnames        = ["app.quill-medical.com", "quill-medical.com"]
+# The apex joins this when this project actually serves it, which is
+# step 2 above. Monitoring a host served by another project would alert
+# this one about a failure it cannot cause and cannot fix.
+monitored_hostnames        = ["app.quill-medical.com"]
 app_domain                 = "app.quill-medical.com"
 alert_email                = "info@quill-medical.com"
 cloud_run_services         = ["quill-backend-app", "quill-frontend-app"]
