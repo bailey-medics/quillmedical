@@ -23,6 +23,7 @@ import CompetencySummary from "@/components/passport/CompetencySummary";
 import StateMessage from "@/components/message-cards/StateMessage";
 import ErrorState from "@/components/error-state/ErrorState";
 import {
+  IconAlertTriangle,
   IconBook,
   IconCheck,
   IconDownload,
@@ -32,6 +33,7 @@ import {
 } from "@/components/icons/appIcons";
 import { layoutTokens } from "@/theme";
 import { createPassport, fetchInbox, fetchMyPassport } from "@lib/passport";
+import { entitlementWarning } from "@lib/passport/entitlementWarning";
 import type { PassportDetail } from "@lib/passport";
 
 /**
@@ -258,12 +260,25 @@ export function Component() {
     );
   }
 
+  const warning = entitlementWarning(passport?.entitlement);
+
   return (
     <Stack gap="lg">
       <PassportHeader
         waiting={waiting}
         onInbox={() => navigate("/passport/inbox")}
       />
+      {/* On the way in, not at the point of refusal. Finding out that
+          the record has gone read-only half way through typing a
+          reflection is the worst possible moment to learn it. */}
+      {warning && (
+        <StateMessage
+          colour="warning"
+          icon={<IconAlertTriangle />}
+          title={warning.title}
+          description={warning.description}
+        />
+      )}
       {/* The ways in come first, and the list of competencies after.
           Somebody opening their passport has come to record something
           or to chase a sign-off; what they are already competent at is

@@ -47,6 +47,56 @@ describe("PassportPage", () => {
     fetchInbox.mockResolvedValue([]);
   });
 
+  describe("The entitlement warning", () => {
+    it("warns on the way in when the end is close", async () => {
+      // Shown here rather than at the point of refusal: finding out
+      // half way through typing a reflection is the worst moment.
+      fetchMyPassport.mockResolvedValue({
+        ...detail,
+        entitlement: { ends_on: "2026-10-05T00:00:00Z", days_remaining: 14 },
+      });
+      renderWithRouter(<PassportPage />);
+
+      expect(
+        await screen.findByText(/becomes read-only in 14 days/),
+      ).toBeInTheDocument();
+    });
+
+    it("says the record can still be read and downloaded", async () => {
+      // The guarantee that matters: a lapse never locks somebody out
+      // of their own professional record.
+      fetchMyPassport.mockResolvedValue({
+        ...detail,
+        entitlement: { ends_on: "2026-09-22T00:00:00Z", days_remaining: 0 },
+      });
+      renderWithRouter(<PassportPage />);
+
+      expect(
+        await screen.findByText(/read your record and download it/),
+      ).toBeInTheDocument();
+    });
+
+    it("stays quiet while the end is far off", async () => {
+      fetchMyPassport.mockResolvedValue({
+        ...detail,
+        entitlement: { ends_on: "2027-09-01T00:00:00Z", days_remaining: 344 },
+      });
+      renderWithRouter(<PassportPage />);
+
+      await screen.findByText("Perform bronchoscopy");
+      expect(screen.queryByText(/read-only/)).not.toBeInTheDocument();
+    });
+
+    it("stays quiet when the response carries no entitlement", async () => {
+      // An older backend, or a reader who is not the holder.
+      fetchMyPassport.mockResolvedValue(detail);
+      renderWithRouter(<PassportPage />);
+
+      await screen.findByText("Perform bronchoscopy");
+      expect(screen.queryByText(/read-only/)).not.toBeInTheDocument();
+    });
+  });
+
   it("renders the holder's competencies once loaded", async () => {
     fetchMyPassport.mockResolvedValue(detail);
     renderWithRouter(<PassportPage />);
