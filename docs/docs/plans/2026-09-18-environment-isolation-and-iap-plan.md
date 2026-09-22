@@ -691,11 +691,10 @@ whole domain with it.
       not changed; the placeholder check forced it anyway, which is what
       it was written for.
 
-- [ ] **(Mark)** Exercise the new environment yourself before going further: sign in,
-      load a question bank, play a video, upload one. There are no users
-      whose traffic would prove it works, so the check has to be
-      deliberate. Everything up to here is reversible by leaving DNS
-      alone; after Batch 8 it is not.
+- [x] **(Mark)** Exercised the new environment by hand on 2026-09-22 and
+      it works: signed in, both question banks visible, a video uploaded,
+      transcoded and played back. That is the whole product path through
+      a project that was empty the day before.
 
 - [x] **(Claude)** Make `deploy.yml` deploy the application to both
       environments. Terraform builds infrastructure and nothing else, so
@@ -869,6 +868,19 @@ carries `quill-medical.com` and `www.quill-medical.com` alongside the
 teaching hostname, and the public marketing site is served from this load
 balancer. Move the apex before destroying anything, or the site loses TLS
 with it.
+
+- [ ] Put the images bucket's IAM into Terraform before the old project
+      goes, so the grants are not lost with it.
+      `infra/modules/cloud-storage` creates the bucket and grants nothing
+      on it, which is why three bindings had to be added by hand on
+      2026-09-22. `infra/modules/teaching-video-pipeline` shows the
+      shape: `google_storage_bucket_iam_member` for each account that
+      needs it. Two are needed here, the CI service account as
+      `objectAdmin` to upload and the backend's own service account as
+      `objectViewer` to read. Doing this now means the next environment
+      does not repeat the same hour of debugging, and it makes the
+      grants visible to anyone reading the Terraform rather than only to
+      someone running `get-iam-policy`.
 
 - [ ] Leave `quill-medical-teaching` running until the new environment has
       been exercised for long enough to trust. It costs money, and that is
@@ -1157,6 +1169,41 @@ again. None of it is visible from the code.
   value as a string, and the environments endpoint rejects `"false"`
   where it wants `false`, with a message that names the type rather than
   the cause.
+
+- **Three bucket permissions existed only as manual grants on the old
+  project, and nothing in Terraform creates them.** Each was invisible
+  until something broke, and each broke differently:
+
+  - `github-actions@quill-medical-teaching` needed
+    `roles/storage.objectAdmin` on `gs://quill-images-app`. Without it
+    the content pipeline fails loudly, a 403 on `storage.objects.list`
+    while running `rsync`.
+  - The backend's own service account,
+    `45814277366-compute@developer.gserviceaccount.com`, needed
+    `roles/storage.objectViewer` on the same bucket. Without it the
+    pipeline succeeds, the files are in the bucket, and the sync returns
+    `200 {"synced": [], "message": "No banks found"}`, because
+    `list_banks_in_gcs` lists an empty bucket and cannot tell "nothing
+    there" from "cannot see". That one cost an hour.
+  - `github-actions@quill-medical-app` needed
+    `roles/storage.objectAdmin` on
+    `gs://quill-medical-terraform-state`, which is in its own project,
+    or `terraform init` fails with a 403 that reads like a missing
+    bucket.
+
+  The video buckets, by contrast, were created correctly by Terraform,
+  CDN service account and CORS origin included. The difference is that
+  `modules/cloud-storage` creates the images bucket but grants nothing
+  on it, while `modules/teaching-video-pipeline` does both. Worth
+  closing, so the next environment does not need the same three
+  discoveries.
+
+- **Read the response before theorising about the cause.** The sync
+  returning "No banks found" was diagnosed twice from the code, wrongly
+  both times, the second guess being that no organisation existed. One
+  authenticated `curl` to the endpoint printed the real message and
+  settled it. The endpoint is reachable and the token is in Secret
+  Manager, so this was always one command away.
 
 - **The teaching certificate is not only teaching's.**
   `quill-cert-v5-teaching` carries `teaching.quill-medical.com`,
