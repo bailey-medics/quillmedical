@@ -319,6 +319,59 @@ class TestReadAuthorisation:
 class TestSearchingForAnAssessor:
     """Finding somebody a trainee already knows, not browsing a list."""
 
+    @pytest.mark.xfail(
+        strict=True,
+        reason=(
+            "Found by the authorisation review on 22 September and not "
+            "yet fixed: the search is not scoped to an organisation, so "
+            "any holder of assess_clinician_passport can read back the "
+            "email address and registration number of every active user "
+            "in the deployment. The right bound is a product decision — "
+            "a trainee genuinely needs to find a consultant at another "
+            "trust — so this asserts the gap rather than a chosen fix, "
+            "and fails the build the moment one lands."
+        ),
+    )
+    def test_it_does_not_return_somebody_from_an_unrelated_place(
+        self,
+        holder_client: TestClient,
+        db_session: Session,
+        org: OrgUnit,
+    ) -> None:
+        """Searching should not reach a stranger's registration number.
+
+        The three-character minimum, the limit of ten and the caller's
+        own account being excluded are all real, and none of them is a
+        scope: they slow enumeration rather than bound it.
+        """
+        elsewhere = OrgUnit(name="Unrelated Trust", type="organisation")
+        db_session.add(elsewhere)
+        db_session.commit()
+        db_session.refresh(elsewhere)
+
+        stranger = _make_user(
+            db_session,
+            "stranger_elsewhere",
+            registrations={"GMC": "7654321"},
+        )
+        db_session.execute(
+            org_unit_member.insert().values(
+                org_unit_id=elsewhere.id,
+                user_id=stranger.id,
+                capacity="staff",
+            )
+        )
+        db_session.commit()
+
+        response = holder_client.get(
+            "/api/passport/assessors/search",
+            params={"q": "stranger_elsewhere"},
+        )
+
+        assert response.status_code == 200, response.text
+        found = {match["user_id"] for match in response.json()["matches"]}
+        assert stranger.id not in found
+
     def test_an_email_a_username_or_a_name_all_find_them(
         self, holder_client: TestClient, assessor: User
     ) -> None:
