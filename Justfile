@@ -128,6 +128,12 @@ _worktree-guard container:
         exit 1
     fi
     owner=$(dirname "${mount}")
+    # Docker Desktop reports a bind mount's source with a `/host_mnt`
+    # prefix — the path as the VM sees it, not as the host wrote it. The
+    # two name the same directory, so a raw string comparison refused
+    # every guarded recipe on a Mac with the stack serving this very
+    # worktree.
+    owner="${owner#/host_mnt}"
     here="{{justfile_directory()}}"
     if [ "${owner}" != "${here}" ]; then
         echo "" >&2
@@ -476,7 +482,24 @@ migrate-local:
     # touched the database the dev stack is actually serving. Without
     # this the symptom is a column or table that exists in the models
     # and not in Postgres, which surfaces as a 500 far from its cause.
+    #
+    # `just st` now does this on every start, so running it by hand is
+    # for the case where the stack is already up and `main` has moved
+    # underneath it.
     just _worktree-guard quill_backend
+    just _migrate-running-stack
+
+
+# Bring the running stack's database to head, and say what happened.
+#
+# Shared by `migrate-local` and by `start-teaching`, so the two cannot
+# drift: one is the same step run on demand rather than at start-up.
+# Deliberately without the worktree guard — `start-teaching` has just
+# brought this very stack up, so there is nothing to disagree with, and
+# `migrate-local` checks before calling this.
+_migrate-running-stack:
+    #!/usr/bin/env bash
+    set -euo pipefail
 
     before=$(docker exec quill_postgres_core \
         psql -U core_user -d quill_core -tAc \
@@ -492,9 +515,9 @@ migrate-local:
     # nothing to do, and a silent success is indistinguishable from a
     # command that did not run.
     if [ "${before}" = "${after}" ]; then
-        echo "Already at ${after} — nothing to apply."
+        echo "Database already at ${after} — nothing to apply."
     else
-        echo "Migrated ${before} → ${after}"
+        echo "Database migrated ${before} → ${after}"
     fi
 
 
@@ -1441,15 +1464,36 @@ start-teaching build="":
     echo "Access the frontend at: http://$(ipconfig getifaddr en0)"
     echo "Clinical services (FHIR/EHRbase) disabled"
 
-    if [ "{{build}}" = "b" ]; then \
+    build_args=""
+    if [ "{{build}}" = "b" ]; then
         docker compose -f compose.dev.yml down
         docker volume rm -f quillmedical_frontend_node_modules >/dev/null 2>&1 || true
         cd frontend && yarn install && cd ..
         cd backend && poetry lock && poetry install && cd ..
-        CLINICAL_SERVICES_ENABLED=false docker compose -f compose.dev.yml up --build --pull missing; \
-    else \
-        CLINICAL_SERVICES_ENABLED=false docker compose -f compose.dev.yml up; \
+        build_args="--build --pull missing"
     fi
+
+    # Detached first, so the migrations can run before the logs are
+    # attached. `--wait` holds until every service reports healthy,
+    # which is what makes the `alembic` call below safe: postgres-core
+    # has a health check and the backend depends on it.
+    #
+    # Without this step the stack came up against whatever schema the
+    # database happened to have. A migration that arrived from `main`,
+    # or one written in another worktree, had never touched it, and the
+    # symptom was a 500 from a column that exists in the models and not
+    # in Postgres — a long way from its cause.
+    # shellcheck disable=SC2086
+    CLINICAL_SERVICES_ENABLED=false docker compose -f compose.dev.yml up \
+        --detach --wait --wait-timeout 180 ${build_args}
+
+    just _migrate-running-stack
+
+    # Now follow the logs, which is what this recipe looked like before
+    # and what anybody running it expects to be left with. Ctrl-C stops
+    # following; the stack keeps running, as `up` in the foreground
+    # would not.
+    docker compose -f compose.dev.yml logs --follow
 
 alias sc := stop
 # Stop the containers
