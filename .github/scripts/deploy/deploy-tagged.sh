@@ -30,8 +30,39 @@ source "$(dirname "${BASH_SOURCE[0]}")/../shared/logging.sh" "deploy-tagged"
 
 # Runs the smoke test against the tagged revision's own URL. Isolated in its
 # own function (rather than inlined in main) so tests can stub it.
+#
+# Through a Cloud Run job rather than curl from the runner, when
+# SMOKE_TEST_JOB names one. A tagged revision's *.run.app URL is the only
+# address that reaches one specific revision, and closing the ingress on
+# the service closes it to the internet, which is what broke every deploy
+# on 2026-09-21. A job in the same project and VPC still reaches it: that
+# was tested on 2026-09-22 against a service set to
+# internal-and-cloud-load-balancing, and is written up in Phase D of
+# docs/docs/plans/2026-09-18-environment-isolation-and-iap-plan.md.
+#
+# The job needs ALL_TRAFFIC egress, or its request leaves over the public
+# internet and arrives as an external caller. `vpc_egress` on
+# modules/cloud-run-job sets that per job.
+#
+# Unset SMOKE_TEST_JOB and this falls back to curl, which is what every
+# environment does until its ingress is closed.
 run_smoke_test() {
-  bash "$(dirname "${BASH_SOURCE[0]}")/smoke-test.sh" "$1"
+  local url="$1"
+
+  if [ -z "${SMOKE_TEST_JOB:-}" ]; then
+    bash "$(dirname "${BASH_SOURCE[0]}")/smoke-test.sh" "$url"
+    return
+  fi
+
+  log "Checking through ${SMOKE_TEST_JOB}, which can reach a closed ingress"
+
+  # --wait, so the job's exit code is this function's result. The action
+  # retries internally, so one execution is one smoke test.
+  gcloud run jobs execute "${SMOKE_TEST_JOB}" \
+    --project="${SMOKE_TEST_PROJECT}" \
+    --region="${SMOKE_TEST_REGION}" \
+    --wait \
+    --update-env-vars="ADMIN_ACTION=smoke-test,SMOKE_URL=${url}"
 }
 
 # Prints the service's current state as JSON.

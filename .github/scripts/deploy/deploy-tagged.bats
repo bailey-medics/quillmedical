@@ -275,3 +275,51 @@ is_update_traffic() {
   run promotion_settled <<< 'not json'
   [ "$status" -ne 0 ]
 }
+
+@test "run_smoke_test curls directly when no job is named" {
+  # The fallback every environment uses until its ingress is closed.
+  unset SMOKE_TEST_JOB
+  called=""
+  # shellcheck disable=SC2317
+  bash() { called="bash $*"; return 0; }
+  run_smoke_test "https://example.test/api/health"
+  [[ "$called" == *"smoke-test.sh https://example.test/api/health"* ]]
+}
+
+@test "run_smoke_test goes through the job when one is named" {
+  # A tagged revision behind a closed ingress is unreachable from the
+  # runner, so the check runs inside the VPC instead.
+  export SMOKE_TEST_JOB="quill-admin-app"
+  export SMOKE_TEST_PROJECT="quill-medical-app"
+  export SMOKE_TEST_REGION="europe-west2"
+  args=""
+  # shellcheck disable=SC2317
+  gcloud() { args="$*"; return 0; }
+
+  run run_smoke_test "https://rev-abc---svc.a.run.app/api/health"
+  [ "$status" -eq 0 ]
+}
+
+@test "run_smoke_test passes the url to the job as SMOKE_URL" {
+  export SMOKE_TEST_JOB="quill-admin-app"
+  export SMOKE_TEST_PROJECT="quill-medical-app"
+  export SMOKE_TEST_REGION="europe-west2"
+  # shellcheck disable=SC2317
+  gcloud() { echo "$*"; return 0; }
+
+  run run_smoke_test "https://rev-abc---svc.a.run.app/api/health"
+  [[ "$output" == *"ADMIN_ACTION=smoke-test"* ]]
+  [[ "$output" == *"SMOKE_URL=https://rev-abc---svc.a.run.app/api/health"* ]]
+  [[ "$output" == *"--wait"* ]]
+}
+
+@test "a failing job fails the smoke test, leaving traffic where it was" {
+  export SMOKE_TEST_JOB="quill-admin-app"
+  export SMOKE_TEST_PROJECT="quill-medical-app"
+  export SMOKE_TEST_REGION="europe-west2"
+  # shellcheck disable=SC2317
+  gcloud() { return 1; }
+
+  run run_smoke_test "https://rev-abc---svc.a.run.app/api/health"
+  [ "$status" -ne 0 ]
+}
