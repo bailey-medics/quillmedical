@@ -608,6 +608,104 @@ class TestSignOff:
         assert response.status_code == 200, response.text
         assert response.json()["status"] == "signed_off"
 
+    def test_the_assessor_never_needs_the_sold_competency(
+        self,
+        test_client: TestClient,
+        requested: tuple[str, str],
+        assessor: User,
+        db_session: Session,
+    ) -> None:
+        """Assessing is free, and this is what that has to mean.
+
+        An assessor is doing somebody else's record a favour: the
+        holder's organisation gets the benefit and the assessor gets
+        nothing. Meeting a price or a lapsed entitlement here would
+        stall the trainee waiting on them, so the whole split between
+        ``assess_clinician_passport`` and ``passport_write`` exists to
+        keep this path clear.
+
+        The fixture already grants no ``passport_write``, so the test
+        above passes for this reason without saying so. Stated here
+        because a fixture gaining one later would take the guarantee
+        away silently, and every sign-off test would still be green.
+        """
+        db_session.refresh(assessor)
+        assert "passport_write" not in assessor.get_final_competencies()
+        assert (
+            db_session.query(PassportWriteEntitlement)
+            .filter(PassportWriteEntitlement.user_id == assessor.id)
+            .count()
+            == 0
+        )
+
+        passport_id, name = requested
+        client = _login(test_client, "assessor")
+
+        response = client.post(
+            f"/api/passport/{passport_id}/sign-offs/{name}/sign-off",
+            json={
+                "meaning": "directly observed",
+                "declaration_confirmed": True,
+                "level_id": LEVEL,
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json()["status"] == "signed_off"
+
+    def test_a_request_raised_before_a_lapse_still_lands(
+        self,
+        test_client: TestClient,
+        requested: tuple[str, str],
+        holder: User,
+        db_session: Session,
+    ) -> None:
+        """The write is the assessor's judgement, not the holder's.
+
+        A holder whose entitlement ends may have requests already
+        sitting in assessors' queues. Those complete: what lands is an
+        assessor's judgement about work already done and observed, so
+        allowing it does not breach the rule that a lapsed holder
+        cannot add to their own record.
+
+        Freezing them instead would put an item in an assessor's queue
+        that they cannot action for a billing reason, which is the
+        assessor-facing wall this design exists to avoid. It does mean
+        a lapsed passport can still gain a sign-off, which is
+        deliberate rather than an oversight.
+        """
+        passport_id, name = requested
+
+        # The holder's cover ends after the request was raised.
+        holder.additional_competencies = []
+        for row in (
+            db_session.query(PassportWriteEntitlement)
+            .filter(PassportWriteEntitlement.user_id == holder.id)
+            .all()
+        ):
+            # Naive from SQLite, aware from Postgres: matched to
+            # whichever the stored value carries.
+            now = datetime.now(UTC)
+            base = now if row.ends_on.tzinfo else now.replace(tzinfo=None)
+            # Both ends move: the row carries a check that it ends
+            # after it starts, so backdating only the end is refused.
+            row.starts_on = base - timedelta(days=400)
+            row.ends_on = base - timedelta(days=1)
+        db_session.commit()
+
+        client = _login(test_client, "assessor")
+        response = client.post(
+            f"/api/passport/{passport_id}/sign-offs/{name}/sign-off",
+            json={
+                "meaning": "directly observed",
+                "declaration_confirmed": True,
+                "level_id": LEVEL,
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json()["status"] == "signed_off"
+
     def test_signing_without_the_declaration_is_refused(
         self, test_client: TestClient, requested: tuple[str, str]
     ) -> None:
