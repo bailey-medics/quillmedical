@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "api-path-removed-without-deprecation DELETE /api/sites/{site_id}/links/{link_id} api path removed without deprecation"
+reason: "The sites and organisations surfaces became views over one table, then answered 410 naming /api/org-units as their replacement. A retired address is a courtesy with an end, and the plan said so when it retired them: they keep working for a deploy cycle, then return 410, then go. This is the going. The tables they read no longer exist, so an answer could only be wrong, and every screen in this repository moved to /api/org-units several releases ago. No forced reload: nothing here calls these addresses, and bumping the generation would stop every open tab sending any mutation until it reloaded, including the login POST, which would lock out anybody logged out at the time."
