@@ -25,6 +25,43 @@ inconsistent.
 `/st-follow-the-plan-document` calls this once per unit. It is also useful on
 its own, to finish a stacked branch by hand.
 
+## The authorisation ends with the run
+
+**Everything this skill does — committing, amending, branching, rebasing,
+pushing, opening a pull request — is authorised only while this skill is
+running.** The moment its report is written, that authorisation is spent.
+
+So after a run finishes:
+
+- **Do not amend the branch** because the work changed. Not with
+  `git commit --amend`, and not with `just stack-update` or `just stu`,
+  which is the same act behind a recipe.
+- **Do not push** the branch again. `just stack-submit` and `git push`
+  are both out.
+- **Do not open or update the pull request**, and do not take it out of
+  draft.
+
+The branch this skill made is not an open workspace. A later fix on it
+needs the user to run `/st-crpd` again, or to ask for a commit in their
+own words.
+
+**Confirming that a change works is not asking for it to be landed.**
+"That works", "great", "yes", "perfect" are verification. The right
+response to them is to stop, leave the tree dirty, and say plainly what
+is uncommitted. So is silence about git: a message that does not mention
+committing is not asking for one.
+
+**This is how the rule gets broken, every time.** The user runs
+`/st-crpd`, the branch lands, work continues, they confirm the next fix
+— and amending "the branch we are already landing" feels like tidying
+rather than a new commit. It is a new commit. In the session that
+produced this section it happened five times in a row, each one reading
+as housekeeping, and the user's correction was "stop doing commits and
+pushes without st-crpd".
+
+If the work genuinely needs to be in git to be testable, commit it, show
+what was committed, and stop there. Never push on top of that.
+
 ## Never
 
 These hold on every run.
@@ -679,3 +716,9 @@ The stopping conditions in this command are all of the first kind: no
 stack, a stack spanning worktrees, a failing test, an ambiguous pull
 request. None of them is about what the work is, where it lives, or
 whether it looks ready. Those are settled by the command having been run.
+
+**Writing the report ends the run, and ends what it authorised.** From
+that point the branch is the user's, not yours: no further commit, no
+amend, no push, no pull request edit, however small the change or however
+clearly it belongs to the unit just landed. See "The authorisation ends
+with the run" above.
