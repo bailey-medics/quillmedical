@@ -12,7 +12,7 @@ Usage (inside the backend container):
 
 Or via the Justfile:
 
-    just csu
+    just csl
 """
 
 from __future__ import annotations

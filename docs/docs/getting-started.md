@@ -37,7 +37,7 @@
 4. Create a superadmin user:
 
    ```bash
-   just create-super-user
+   just create-superadmin-local
    ```
 
 ## Claude Code on the web
