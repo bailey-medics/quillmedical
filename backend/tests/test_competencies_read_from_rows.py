@@ -1,10 +1,7 @@
-"""What somebody holds is read from ``user_competency``, not from JSON.
+"""What somebody holds is read from ``user_competency`` rows.
 
-The ``additional_competencies`` and ``removed_competencies`` columns on
-``users`` are neither read nor written. These pin the switch
-from the reading side: a value in a column grants nothing, a current row
-does, a closed row does not, and the places that report somebody's
-competencies report the rows.
+A current row grants, a closed row does not, and the places that report
+somebody's competencies report the rows.
 
 See ``docs/docs/plans/2026-09-23-user-competency-table-plan.md``.
 """
@@ -56,16 +53,6 @@ def _login(client: TestClient, username: str) -> TestClient:
 
 
 class TestWhatIsHeld:
-    def test_a_value_in_the_json_column_grants_nothing(
-        self, db_session: Session
-    ) -> None:
-        """The column is retired: nothing reads it."""
-        user = _user(db_session, "json_only")
-        user.additional_competencies = ["certify_death"]
-        db_session.commit()
-
-        assert "certify_death" not in user.get_final_competencies()
-
     def test_a_current_grant_row_is_held(self, db_session: Session) -> None:
         user = _user(db_session, "row_held")
         hold(user, "certify_death")
@@ -161,7 +148,6 @@ class TestWhatIsReported:
         add_org_unit_member(db_session, org.id, target.id, "staff")
         hold(target, "certify_death")
         withhold(target, "access_own_patient_records")
-        target.additional_competencies = ["a_stale_json_value"]
         db_session.commit()
 
         client = _login(test_client, "the_admin")
