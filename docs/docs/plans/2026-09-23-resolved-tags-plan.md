@@ -71,12 +71,20 @@ switch-reads, contract order in
 
 ## Phase 3: Backfill
 
-- [ ] **Copy every answer's `resolved_tags` into rows in one hand-written
+- [x] **Copy every answer's `resolved_tags` into rows in one hand-written
       migration**, using `json_array_elements_text` guarded against a value
       that is not an array. Skip answers that already have rows, so
       anything dual-written is not copied twice. Test it against Postgres in
       the `alembic_drift_check` job, as
       `backend/tests/test_user_competency_backfill.py` does.
+
+      Written as `83c3b5af3ea7`, tested in
+      `backend/tests/test_answer_tag_backfill.py`. A tag repeated within
+      one list is copied once, as the unique constraint requires. Its
+      `downgrade()` empties the table: its rows cannot be told from the
+      ones the application wrote, and need not be, because at that
+      revision every row is a copy of `resolved_tags`, which is still
+      written and still read.
 
 ## Phase 4: Switch reads
 
