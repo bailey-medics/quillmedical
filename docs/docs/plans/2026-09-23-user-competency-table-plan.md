@@ -552,13 +552,20 @@ out rather than stored.
       grant rows. They no longer write removal rows, and `clear` leaves the
       seeded profession rows alone.
 
-- [ ] **Relabel the edit page to say what the lists now mean**, in
+- [x] **Relabel the edit page to say what the lists now mean**, in
       `frontend/src/pages/UserInfoUpdatePage.tsx`. "Default competencies"
       becomes the profession's template, what a new person with it is
       given. "Removed competencies" becomes "In the profession, not held",
       because after a YAML change a competency can appear there for an
       existing person without anybody having removed it. Stories and tests
       for the step change with it.
+
+      The two lists are now "Held beyond the profession" and "In the
+      profession, not held", on the edit page, its review step and the user
+      page at `/admin/users/{id}`, which showed the same two headings.
+      The template's heading is "What it gives a new user". Neither page has
+      stories of its own, as pages are not stories here, so only their
+      tests changed.
 
 - [ ] **Close the removal rows**, in a data migration, once nothing reads or
       writes them. A current `granted: false` row now means only that no
