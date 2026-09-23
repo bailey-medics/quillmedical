@@ -1,10 +1,8 @@
-"""Every competency write lands in ``user_competency`` as well as in JSON.
+"""Every competency write lands in ``user_competency``, and only there.
 
-The rows are what is read, and the JSON lists on ``users`` are still
-written beside them until they are dropped. What these pin is that every
-writer keeps the rows in line: after any save, a person's current rows
-match the lists that save settled on. A writer that forgot would leave a
-grant in JSON that nothing reads, and take it away.
+What these pin is that every writer keeps the rows in line: after any
+save, a person's current rows match the lists that save settled on, and
+the retired JSON columns on ``users`` are left alone.
 
 See ``docs/docs/plans/2026-09-23-user-competency-table-plan.md``.
 """
@@ -217,15 +215,17 @@ class TestTheHelper:
 
         assert len(_rows(db_session, user.id)) == 2
 
-    def test_passport_write_is_never_opened_without_a_term(
+    def test_passport_write_is_opened_with_its_term(
         self, db_session: Session
     ) -> None:
-        """An undated ``passport_write`` row would never lapse.
+        """Granting the competency and granting its term are one row.
 
-        Its rows come only from the entitlement, which carries the end
-        date. The rest of the list is written as normal.
+        An undated ``passport_write`` row would never lapse, so the row
+        carries a year's end date, and a source saying who pays for it.
+        The rest of the list is written as normal.
         """
-        user = _user(db_session, "no_term")
+        user = _user(db_session, "with_term")
+        before = datetime.now(UTC)
 
         sync_competency_rows(
             user,
@@ -235,15 +235,41 @@ class TestTheHelper:
         )
         db_session.commit()
 
-        assert _current(db_session, user.id, granted=True) == {"certify_death"}
+        assert _current(db_session, user.id, granted=True) == {
+            "passport_write",
+            "certify_death",
+        }
+        (termed,) = [
+            row
+            for row in _rows(db_session, user.id)
+            if row.competency_id == "passport_write"
+        ]
+        assert termed.source == "organisation"
+        assert termed.ends_on is not None
+        ends_on = termed.ends_on.replace(tzinfo=UTC)
+        assert before + timedelta(
+            days=364
+        ) < ends_on and ends_on < before + timedelta(days=366)
+
+    def test_saving_again_does_not_extend_a_running_term(
+        self, db_session: Session
+    ) -> None:
+        """A term is a fact about an agreement, not about form saves."""
+        user = _user(db_session, "same_term")
+        for _ in range(2):
+            sync_competency_rows(
+                user, additional=["passport_write"], removed=[], source="admin"
+            )
+            db_session.commit()
+
+        assert len(_rows(db_session, user.id)) == 1
 
     def test_passport_write_is_still_closed_when_taken_off_the_list(
         self, db_session: Session
     ) -> None:
         """Taking it off the list is how an administrator takes it away.
 
-        That is what removing it from ``additional_competencies`` does
-        today, so the rows must agree.
+        The dated row is closed like any other, before its term is up.
         """
         user = _user(db_session, "term_closed")
         user.competency_grants.append(
@@ -355,8 +381,8 @@ class TestEveryWriterWritesRows:
         """The rows follow the lists as finally settled, not the payload.
 
         Changing profession carries the old profession's competencies
-        into ``additional_competencies``. Rows written from the payload
-        alone would miss them.
+        over as grants. Rows written from the payload alone would miss
+        them.
         """
         client = _login(test_client, "the_admin")
 
@@ -367,10 +393,10 @@ class TestEveryWriterWritesRows:
         )
 
         assert response.status_code == 200, response.text
-        db_session.refresh(target)
-        assert target.additional_competencies
-        assert _current(db_session, target.id, granted=True) == set(
-            target.additional_competencies
+        # A patient holds this by profession, a teaching delegate does
+        # not, so it is carried over as a grant.
+        assert "access_own_patient_records" in _current(
+            db_session, target.id, granted=True
         )
 
     def test_taking_a_competency_away_closes_its_row(
@@ -480,17 +506,13 @@ class TestEveryWriterWritesRows:
         ]
         assert rows[0].granted_by == membership_admin.id
 
-    def test_onboarding_with_passport_write_mirrors_the_term(
+    def test_onboarding_with_passport_write_writes_one_dated_row(
         self,
         test_client: TestClient,
         db_session: Session,
         org: OrgUnit,
     ) -> None:
-        """The dated row carries exactly what the entitlement carries.
-
-        The backfill recognises an entitlement as already copied by its
-        end date and source, so the two must agree to the microsecond.
-        """
+        """The term is on the grant, with nothing written anywhere else."""
         membership_admin = _user(
             db_session,
             "membership_admin",
@@ -512,18 +534,99 @@ class TestEveryWriterWritesRows:
         )
 
         assert response.status_code == 200, response.text
-        entitlement = db_session.scalars(
-            select(PassportWriteEntitlement).where(
-                PassportWriteEntitlement.user_id == starter.id
-            )
-        ).one()
         rows = _rows(db_session, starter.id)
         assert len(rows) == 1
         row = rows[0]
         assert row.competency_id == "passport_write"
-        assert row.granted is True
-        assert row.ends_on == entitlement.ends_on
-        assert row.starts_on == entitlement.starts_on
-        assert row.source == entitlement.source == "organisation"
+        assert row.ends_on is not None
+        assert row.source == "organisation"
         assert row.org_unit_id == org.id
         assert row.granted_by == membership_admin.id
+        assert (
+            db_session.scalars(
+                select(PassportWriteEntitlement).where(
+                    PassportWriteEntitlement.user_id == starter.id
+                )
+            ).all()
+            == []
+        )
+
+    def test_the_admin_editor_grants_passport_write_with_a_term(
+        self,
+        test_client: TestClient,
+        db_session: Session,
+        admin: User,
+        target: User,
+    ) -> None:
+        """The gap this plan was written after.
+
+        The user editor could grant ``passport_write`` and not its term,
+        leaving somebody holding a competency no interface could make
+        usable. Now the one save writes both.
+        """
+        client = _login(test_client, "the_admin")
+
+        response = client.patch(
+            f"/api/users/{target.id}",
+            json={"additional_competencies": ["passport_write"]},
+            headers=_csrf(client),
+        )
+
+        assert response.status_code == 200, response.text
+        (row,) = _rows(db_session, target.id)
+        assert row.competency_id == "passport_write"
+        assert row.ends_on is not None
+
+
+class TestTheJsonIsNoLongerWritten:
+    """The retired columns keep whatever they held, and gain nothing."""
+
+    def test_editing_a_user_leaves_the_json_alone(
+        self,
+        test_client: TestClient,
+        db_session: Session,
+        admin: User,
+        target: User,
+    ) -> None:
+        client = _login(test_client, "the_admin")
+
+        response = client.patch(
+            f"/api/users/{target.id}",
+            json={
+                "additional_competencies": ["certify_death"],
+                "removed_competencies": ["access_own_patient_records"],
+            },
+            headers=_csrf(client),
+        )
+
+        assert response.status_code == 200, response.text
+        db_session.refresh(target)
+        assert target.additional_competencies == []
+        assert target.removed_competencies == []
+
+    def test_creating_a_user_leaves_the_json_empty(
+        self,
+        test_client: TestClient,
+        db_session: Session,
+        admin: User,
+        org: OrgUnit,
+    ) -> None:
+        client = _login(test_client, "the_admin")
+
+        response = client.post(
+            "/api/users",
+            json={
+                "name": "Json Free",
+                "username": "json_free",
+                "email": "json_free@example.test",
+                "password": "Password123!",
+                "additional_competencies": ["certify_death"],
+                "org_unit_ids": [org.id],
+            },
+            headers=_csrf(client),
+        )
+
+        assert response.status_code == 200, response.text
+        created = db_session.get(User, response.json()["id"])
+        assert created is not None
+        assert created.additional_competencies == []

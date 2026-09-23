@@ -1613,8 +1613,6 @@ def create_user_with_cbac(
         email=email,
         password_hash=hash_password(password),
         base_profession=payload.base_profession,
-        additional_competencies=payload.additional_competencies,
-        removed_competencies=payload.removed_competencies,
         platform_role=payload.platform_role,
         email_verified=True,
     )
@@ -1779,8 +1777,8 @@ def update_user(
         user.password_hash = hash_password(payload.password)
 
         # Update CBAC fields if provided
-    # Both lists start from the rows, which are what is read, and are
-    # settled here before anything is written.
+    # Both lists start from the person's current rows, and are settled
+    # here before anything is written.
     additional = user.additional_competency_ids
     removed = user.removed_competency_ids
 
@@ -1845,11 +1843,7 @@ def update_user(
             additional = sorted(granted)
 
     # Written once, from the lists as finally settled above: after the
-    # profession carry-over and the superadmin promotion, not before. The
-    # rows are what is read; the JSON columns are still written beside
-    # them until they are dropped. See the user competency table plan.
-    user.additional_competencies = additional
-    user.removed_competencies = removed
+    # profession carry-over and the superadmin promotion, not before.
     sync_competency_rows(
         user,
         additional=additional,
@@ -3722,8 +3716,6 @@ async def update_my_competencies(
         if data.removed_competencies is not None
         else user.removed_competency_ids
     )
-    user.additional_competencies = additional
-    user.removed_competencies = removed
     sync_competency_rows(
         user,
         additional=additional,

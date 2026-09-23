@@ -10,25 +10,32 @@ it.
 **Rows are inserted or closed, never deleted.** Closing sets ``ends_on`` to
 now, so the row still says who held what, and until when.
 
-The rows are what is read. The JSON columns are still written beside them
-until they are dropped, and callers pass the lists they have just settled,
-never the JSON as stored. See
+**A competency that is sold carries its term on the row.** Granting
+``passport_write`` writes its end date in the same act, so there is no
+second table to remember and no state in which somebody holds the
+competency with no term. See
 ``docs/docs/plans/2026-09-23-user-competency-table-plan.md``.
 """
 
 from __future__ import annotations
 
 from collections.abc import Iterable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
+from app.features.passport.models import PASSPORT_ENTITLEMENT_DAYS
 from app.models import User, UserCompetency
 
-#: Competencies whose grant must carry a term, so this module never opens
-#: one. An undated row would be current forever, and ``passport_write`` is
-#: sold: its rows come only from the entitlement that says until when. It
-#: is still *closed* here like anything else, because taking it off the
-#: list is how an administrator takes it away.
-TERMED_COMPETENCIES: frozenset[str] = frozenset({"passport_write"})
+#: Competencies whose grant must carry a term, and how long a fresh one
+#: lasts. An undated row would be current forever, and ``passport_write``
+#: is sold. Its ``source`` is ``organisation`` whoever grants it here,
+#: because what the value records for a term is who pays, and every route
+#: that calls this acts for an organisation.
+TERMS: dict[str, timedelta] = {
+    "passport_write": timedelta(days=PASSPORT_ENTITLEMENT_DAYS),
+}
+
+#: What a termed row records as its source. See ``TERMS``.
+TERM_SOURCE = "organisation"
 
 
 def sync_competency_rows(
@@ -47,9 +54,10 @@ def sync_competency_rows(
     id in the list with no current row gets one. A current row whose id is
     no longer in the list is closed.
 
-    Somebody with no rows yet — anybody not saved since the table arrived
-    — gets a row for every id in both lists, so after one save their rows
-    match their lists exactly.
+    A grant of a competency in ``TERMS`` is dated, and only a *current*
+    row suppresses a new one. So saving the lists again, or adding
+    somebody to a second org_unit, does not quietly extend a term that is
+    running, while a term that has ended is granted afresh.
 
     The rows are added through ``user.competency_grants``, so they are
     visible on the same object straight away and are saved with it. The
@@ -79,14 +87,14 @@ def sync_competency_rows(
                 current.setdefault(row.competency_id, []).append(row)
 
         for competency_id in sorted(wanted_ids - current.keys()):
-            if granted and competency_id in TERMED_COMPETENCIES:
-                continue
+            term = TERMS.get(competency_id) if granted else None
             user.competency_grants.append(
                 UserCompetency(
                     competency_id=competency_id,
                     granted=granted,
                     starts_on=now,
-                    source=source,
+                    ends_on=now + term if term else None,
+                    source=TERM_SOURCE if term else source,
                     granted_by=granted_by,
                     org_unit_id=org_unit_id,
                 )

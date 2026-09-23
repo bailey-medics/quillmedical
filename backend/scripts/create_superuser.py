@@ -113,9 +113,7 @@ def main() -> int:
             granted.update(
                 get_profession_base_competencies(SUPERADMIN_PROFESSION)
             )
-            u.additional_competencies = sorted(granted)
-            # The rows are what is read; the JSON column is still written
-            # beside them. Nobody is signed in to be named as granting.
+            # Nobody is signed in to be named as granting them.
             sync_competency_rows(
                 u,
                 additional=sorted(granted),
