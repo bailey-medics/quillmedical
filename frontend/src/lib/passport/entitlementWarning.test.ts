@@ -71,6 +71,22 @@ describe("entitlementWarning", () => {
     expect(warning?.title).toContain("read-only");
   });
 
+  it("warns somebody who has no entitlement at all", () => {
+    // No date to count down to, so the days-remaining branches say
+    // nothing. This used to fall through to null, leaving the page
+    // silent and its "Add an entry" button live.
+    const warning = entitlementWarning({ can_write: false });
+
+    expect(warning?.title).toContain("read-only");
+  });
+
+  it("stays quiet for a response that predates the field", () => {
+    // `can_write` undefined means an older server, not a refusal. The
+    // server rejects the write either way, and warning somebody who
+    // may in fact write is the worse of the two failures.
+    expect(entitlementWarning({})).toBeNull();
+  });
+
   it("always says the record can still be read and downloaded", () => {
     // The guarantee that matters: an entitlement ending never locks
     // somebody out of their own professional record.

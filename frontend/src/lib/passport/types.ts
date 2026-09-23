@@ -185,6 +185,17 @@ export interface Entitlement {
   ends_on?: IsoDateTime | null;
   /** Days left, counted by the backend against its own clock. */
   days_remaining?: number | null;
+  /**
+   * Whether a write would be accepted.
+   *
+   * Stated by the server rather than worked out from `ends_on`, which
+   * is null both for somebody with no current entitlement and for a
+   * response built before these fields existed. Undefined means the
+   * latter, and is read as true: the server refuses the write either
+   * way, and hiding a button from somebody who may use it is the worse
+   * of the two failures.
+   */
+  can_write?: boolean;
 }
 
 export interface PassportDetail {

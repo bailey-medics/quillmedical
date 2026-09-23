@@ -39,13 +39,19 @@ export function Component() {
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // Read from the passport this page already fetches. False only where
+  // the server said so, so a response built before the field existed
+  // still offers the button.
+  const [canWrite, setCanWrite] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
 
     fetchMyPassport()
       .then((detail) => {
-        if (!cancelled) setPassportId(detail.passport.passport_id);
+        if (cancelled) return;
+        setPassportId(detail.passport.passport_id);
+        setCanWrite(detail.entitlement?.can_write !== false);
       })
       .catch(() => {
         if (!cancelled) {
@@ -130,7 +136,11 @@ export function Component() {
         />
       ) : (
         <Group justify="flex-end">
-          <AddButton label="Add an activity" onClick={() => setAdding(true)} />
+          <AddButton
+            label="Add an activity"
+            onClick={() => setAdding(true)}
+            disabled={!canWrite}
+          />
         </Group>
       )}
 

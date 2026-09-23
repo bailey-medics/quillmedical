@@ -45,6 +45,10 @@ export function Component() {
   const [attachment, setAttachment] = useState<AttachmentInput | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Read from the passport this page already fetches. False only where
+  // the server said so, so a response built before the field existed
+  // still offers the button.
+  const [canWrite, setCanWrite] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -54,6 +58,7 @@ export function Component() {
         const id = detail.passport.passport_id;
         if (cancelled) return;
         setPassportId(id);
+        setCanWrite(detail.entitlement?.can_write !== false);
         return fetchCertificates(id);
       })
       .then((result) => {
@@ -128,6 +133,7 @@ export function Component() {
         <AddButton
           label="Record a certificate"
           onClick={() => setRecording(true)}
+          disabled={!canWrite}
         />
       )}
 
