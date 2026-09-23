@@ -79,6 +79,10 @@ export function Component() {
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // Read from the passport this page already fetches, rather than
+  // asking again. False only where the server said so, so a response
+  // built before the field existed still offers the button.
+  const [canWrite, setCanWrite] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -88,6 +92,7 @@ export function Component() {
         const id = detail.passport.passport_id;
         if (cancelled) return;
         setPassportId(id);
+        setCanWrite(detail.entitlement?.can_write !== false);
         return fetchWholeLogbook(id);
       })
       .then((result) => {
@@ -162,7 +167,14 @@ export function Component() {
           />
         ) : (
           <Group justify="flex-end">
-            <AddButton label="Add an entry" onClick={() => setAdding(true)} />
+            {/* Disabled where the server says a write would be
+                refused, rather than offering a button that fails on
+                submit. See `useCanWrite`. */}
+            <AddButton
+              label="Add an entry"
+              onClick={() => setAdding(true)}
+              disabled={!canWrite}
+            />
           </Group>
         ))}
 

@@ -47,14 +47,30 @@ export function shouldWarn(daysRemaining: number): boolean {
 /**
  * The warning to show, or null when there is nothing to say.
  *
- * Null covers three ordinary cases: no entitlement information at all
- * (an older response), one that has already ended, and one far enough
- * off that saying so would be noise.
+ * Null covers two ordinary cases: no entitlement information at all
+ * (an older response), and one far enough off that saying so would be
+ * noise. A response that says ``can_write`` is false is answered
+ * first, whether or not it carries a date.
  */
 export function entitlementWarning(
   entitlement: Entitlement | null | undefined,
 ): { title: string; description: string } | null {
   const days = entitlement?.days_remaining;
+
+  // Read-only with no end date to count down to: somebody who has
+  // never held an entitlement, or whose competency to write was
+  // withdrawn. Said plainly, because the alternative was silence — the
+  // null below covers a response built before these fields existed as
+  // well, so this case used to fall through it and leave a live "Add
+  // an entry" button that refused every save.
+  if (entitlement?.can_write === false) {
+    return {
+      title: "Your passport is read-only",
+      description:
+        "You can still read your record and download it in full. " +
+        "Adding to it needs an active entitlement.",
+    };
+  }
 
   if (days === undefined || days === null) {
     return null;
