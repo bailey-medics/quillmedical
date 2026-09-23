@@ -109,23 +109,23 @@ def main() -> int:
             u.platform_role = "superadmin"
             # An existing user keeps the profession they practise under;
             # the operator competencies are added alongside it.
-            granted = set(u.additional_competencies or [])
+            granted = set(u.additional_competency_ids)
             granted.update(
                 get_profession_base_competencies(SUPERADMIN_PROFESSION)
             )
             u.additional_competencies = sorted(granted)
+            # The rows are what is read; the JSON column is still written
+            # beside them. Nobody is signed in to be named as granting.
+            sync_competency_rows(
+                u,
+                additional=sorted(granted),
+                removed=u.removed_competency_ids,
+                source="bootstrap",
+            )
             u.is_active = True
             u.is_totp_enabled = False
             u.email_verified = True
             action = "updated"
-        # Rows beside the JSON, which nothing reads yet. Nobody is signed
-        # in to be named as granting them.
-        sync_competency_rows(
-            u,
-            additional=u.additional_competencies,
-            removed=u.removed_competencies,
-            source="bootstrap",
-        )
         db.commit()
         print(f"Successfully {action} superadmin user: {username}")
         return 0

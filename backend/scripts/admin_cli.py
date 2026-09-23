@@ -119,21 +119,19 @@ def create_superadmin() -> int:
             # An existing user keeps the profession they practise under —
             # overwriting it would strip a clinician's clinical
             # competencies — so the operator ones are added alongside.
-            granted = set(user.additional_competencies or [])
+            granted = set(user.additional_competency_ids)
             granted.update(
                 get_profession_base_competencies(SUPERADMIN_PROFESSION)
             )
             user.additional_competencies = sorted(granted)
-
-        # Rows beside the JSON, which nothing reads yet. Nobody is signed
-        # in to be named as granting them. See the user competency table
-        # plan.
-        sync_competency_rows(
-            user,
-            additional=user.additional_competencies,
-            removed=user.removed_competencies,
-            source="bootstrap",
-        )
+            # The rows are what is read; the JSON column is still written
+            # beside them. Nobody is signed in to be named as granting.
+            sync_competency_rows(
+                user,
+                additional=sorted(granted),
+                removed=user.removed_competency_ids,
+                source="bootstrap",
+            )
 
         # Add System Administrator role if it exists and not already assigned
         role = (

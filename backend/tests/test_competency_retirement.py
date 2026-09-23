@@ -34,6 +34,7 @@ from app.cbac.competencies import (
 )
 from app.models import OrgUnit, PractisingCompetency, User
 from app.security import hash_password
+from tests.competencies import hold
 
 REAL = "access_patient_records"
 MADE_UP = "prescribe_moonbeams"
@@ -294,7 +295,7 @@ class TestTheCleanupQueue:
         self, db_session, monkeypatch
     ):
         person = self._user(db_session, "long_server")
-        person.additional_competencies = [REAL, RETIRABLE]
+        hold(person, REAL, RETIRABLE)
         db_session.commit()
 
         retired = _retire(monkeypatch)
@@ -303,7 +304,7 @@ class TestTheCleanupQueue:
 
     def test_nothing_is_listed_when_nothing_is_retired(self, db_session):
         person = self._user(db_session, "current_staff")
-        person.additional_competencies = [REAL]
+        hold(person, REAL)
         db_session.commit()
 
         assert retired_ids_on_users(db_session) == {}

@@ -20,6 +20,7 @@ from app.features.passport.models import PassportWriteEntitlement
 from app.models import OrgUnit, User
 from app.organisations import add_org_unit_member
 from app.security import hash_password
+from tests.competencies import hold
 from tests.places import administers
 
 
@@ -31,9 +32,9 @@ def _user(db: Session, username: str, *, competencies: list[str]) -> User:
         is_active=True,
         email_verified=True,
         base_profession="patient",
-        additional_competencies=competencies,
         platform_role="standard",
     )
+    hold(user, *competencies)
     db.add(user)
     db.commit()
     db.refresh(user)

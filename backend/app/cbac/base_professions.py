@@ -67,7 +67,7 @@ def grant_staff_competencies(
     user: Any,
     base_profession: str | None,
     additional_competencies: list[str] | None,
-) -> None:
+) -> list[str]:
     """Grant a profession and competencies to somebody becoming staff.
 
     Called when a person is added as staff of an organisation or a site.
@@ -96,24 +96,34 @@ def grant_staff_competencies(
         base_profession: Profession to move them to, or None to leave
             their profession alone.
         additional_competencies: Competencies to grant on top, or None.
+
+    Returns:
+        Everything they now hold beyond their profession, for the caller
+        to bring their ``user_competency`` rows into line with.
     """
+    # Started from the rows, which is what is read, and written back to
+    # the JSON column, which is still written beside them. The caller
+    # brings the rows into line from what this returns.
+    granted = set(user.additional_competency_ids)
+
     if base_profession is not None:
         carried_over = set(
             get_profession_base_competencies(user.base_profession)
         )
         user.base_profession = base_profession
         if carried_over:
-            granted = set(user.additional_competencies or [])
             granted.update(carried_over)
             granted.difference_update(
                 get_profession_base_competencies(base_profession)
             )
-            user.additional_competencies = sorted(granted)
 
     if additional_competencies:
-        granted = set(user.additional_competencies or [])
         granted.update(additional_competencies)
+
+    if base_profession is not None or additional_competencies:
         user.additional_competencies = sorted(granted)
+
+    return sorted(granted)
 
 
 def resolve_user_competencies(

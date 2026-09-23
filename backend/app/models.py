@@ -176,8 +176,8 @@ class User(Base):
     #: row each, current and closed alike. Loaded with the user rather
     #: than on demand because ``get_final_competencies`` takes no
     #: session, and ``selectin`` loads a whole list of users' rows in one
-    #: query rather than one per user. Nothing reads it yet: the JSON
-    #: columns above stay authoritative until reads move across.
+    #: query rather than one per user. This is what is read; the JSON
+    #: columns above are still written beside it until they are dropped.
     competency_grants: Mapped[list[UserCompetency]] = relationship(
         foreign_keys="UserCompetency.user_id",
         back_populates="user",
@@ -186,16 +186,50 @@ class User(Base):
         passive_deletes=True,
     )
 
+    def _current_competency_ids(self, *, granted: bool) -> list[str]:
+        """Competency ids with a current row of the given kind, sorted."""
+        now = datetime.now(UTC)
+        return sorted(
+            {
+                row.competency_id
+                for row in self.competency_grants
+                if row.granted == granted and row.is_current(now)
+            }
+        )
+
+    @property
+    def additional_competency_ids(self) -> list[str]:
+        """What this person holds beyond their base profession, from rows.
+
+        The competencies with a current grant row. This, not the
+        ``additional_competencies`` JSON column, is what every reader
+        uses; the column is only still written.
+        """
+        return self._current_competency_ids(granted=True)
+
+    @property
+    def removed_competency_ids(self) -> list[str]:
+        """What their profession gives them that they do not hold, from rows.
+
+        The competencies with a current removal row. This, not the
+        ``removed_competencies`` JSON column, is what every reader uses.
+        """
+        return self._current_competency_ids(granted=False)
+
     def get_final_competencies(self) -> list[str]:
         """Compute final competencies for this user.
+
+        Base profession, plus every current grant row, minus every current
+        removal row. A grant whose ``ends_on`` has passed is not held,
+        which is how ``passport_write`` lapses.
 
         Returns:
             List of competency IDs this user has.
         """
         return resolve_user_competencies(
             base_profession=self.base_profession,
-            additional_competencies=self.additional_competencies,
-            removed_competencies=self.removed_competencies,
+            additional_competencies=self.additional_competency_ids,
+            removed_competencies=self.removed_competency_ids,
         )
 
 
@@ -1223,6 +1257,26 @@ class UserCompetency(Base):
     user: Mapped[User] = relationship(
         foreign_keys=[user_id], back_populates="competency_grants"
     )
+
+    def is_current(self, now: datetime) -> bool:
+        """Whether this row is still in force at ``now``.
+
+        Current means no end, or an end still in the future. SQLite hands
+        back naive datetimes where Postgres hands back aware ones, so a
+        naive value is read as UTC, which is what every writer stores.
+
+        Args:
+            now: An aware datetime to check against.
+
+        Returns:
+            True while the row is in force.
+        """
+        if self.ends_on is None:
+            return True
+        ends_on = self.ends_on
+        if ends_on.tzinfo is None:
+            ends_on = ends_on.replace(tzinfo=UTC)
+        return ends_on > now
 
     @validates("source")
     def _source_known(self, _key: str, value: str) -> str:
