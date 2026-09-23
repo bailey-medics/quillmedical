@@ -172,6 +172,20 @@ class User(Base):
         lazy="joined",
     )
 
+    #: Every competency this person has been granted or had removed, one
+    #: row each, current and closed alike. Loaded with the user rather
+    #: than on demand because ``get_final_competencies`` takes no
+    #: session, and ``selectin`` loads a whole list of users' rows in one
+    #: query rather than one per user. Nothing reads it yet: the JSON
+    #: columns above stay authoritative until reads move across.
+    competency_grants: Mapped[list[UserCompetency]] = relationship(
+        foreign_keys="UserCompetency.user_id",
+        back_populates="user",
+        lazy="selectin",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
     def get_final_competencies(self) -> list[str]:
         """Compute final competencies for this user.
 
@@ -1099,6 +1113,126 @@ class PractisingCompetency(Base):
         # YAML catalogue is not earned yet at this size. Display names live on the
         # row, so an organisation can call its clinical lead something else without
         # the code losing track of what the post is.
+
+
+#: How a ``user_competency`` row came to exist. Checked in code rather than
+#: by a database enum or check constraint, so a new way of granting needs no
+#: migration — the choice ``validate_org_unit_type`` made for org unit types.
+COMPETENCY_GRANT_SOURCES: tuple[str, ...] = (
+    # A holder of `manage_users`, through the user editor or by adding
+    # somebody to an org_unit.
+    "admin",
+    # An operator editing their own competencies.
+    "operator",
+    # The command-line scripts that create the first superadmin, where
+    # nobody is signed in to be `granted_by`.
+    "bootstrap",
+    # A term of `passport_write` paid for by an organisation, or bought by
+    # the person. The two values `passport_write_entitlement` uses.
+    "organisation",
+    "individual",
+    # Copied from the JSON columns and the entitlement table when this
+    # table was introduced.
+    "migrated",
+)
+
+
+class UserCompetency(Base):
+    """One grant, or one removal, of a competency to one person.
+
+    Replaces ``User.additional_competencies`` and
+    ``User.removed_competencies``, two JSON lists of ids that could say
+    nothing about an entry beyond its name: not when it started, not when
+    it ends, not who made it. See
+    ``docs/docs/plans/2026-09-23-user-competency-table-plan.md``.
+
+    **``granted`` false is a removal**: this person does not hold something
+    their base profession would give them. It keeps the subtraction
+    ``resolve_user_competencies`` performs, and unlike a string in a list it
+    can say who removed it and when.
+
+    **No foreign key on ``competency_id``.** The catalogue is
+    ``shared/competency-definitions/``, not a table, and a retired
+    competency has to stay readable on the rows that name it — the position
+    ``PassportSignOffRequest.competency_id`` takes for the same reason.
+    Validation happens at the write boundary, in the request schemas.
+
+    **No unique constraint on the person and competency.** Somebody may
+    hold ``passport_write`` from their trust and from a subscription of
+    their own at once, with different end dates, and losing one must not
+    end the other. The question asked is whether *any* row is current.
+
+    **Rows are inserted or closed, never deleted.** Taking a competency
+    away sets ``ends_on``, so what somebody could do last year stays
+    answerable.
+
+    Attributes:
+        id: Primary key.
+        user_id: The person.
+        competency_id: A competency id from
+            ``shared/competency-definitions/``.
+        granted: True for a grant, false for a removal.
+        starts_on: When it took effect. Null on rows copied from the JSON
+            lists, which never recorded it.
+        ends_on: When it stops, or stopped. Null for a grant with no end.
+        source: How it came to exist, one of ``COMPETENCY_GRANT_SOURCES``.
+        org_unit_id: The org_unit it was granted through, where there was
+            one. Null once that org_unit is deleted.
+        granted_by: Who made it. Null for a migrated or scripted row, and
+            once that user is deleted.
+        created_at: When the row was written.
+    """
+
+    __tablename__ = "user_competency"
+    __table_args__ = (
+        CheckConstraint(
+            "ends_on IS NULL OR starts_on IS NULL OR ends_on >= starts_on",
+            name="ck_user_competency_ends_after_start",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    competency_id: Mapped[str] = mapped_column(
+        String(100), nullable=False, index=True
+    )
+    granted: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    starts_on: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    ends_on: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    source: Mapped[str] = mapped_column(String(20), nullable=False)
+    org_unit_id: Mapped[int | None] = mapped_column(
+        ForeignKey("org_unit.id", ondelete="SET NULL"), nullable=True
+    )
+    granted_by: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+
+    user: Mapped[User] = relationship(
+        foreign_keys=[user_id], back_populates="competency_grants"
+    )
+
+    @validates("source")
+    def _source_known(self, _key: str, value: str) -> str:
+        """Reject a source outside ``COMPETENCY_GRANT_SOURCES``."""
+        if value not in COMPETENCY_GRANT_SOURCES:
+            raise ValueError(
+                f"Unknown competency grant source: {value}. Known sources "
+                "are " + ", ".join(COMPETENCY_GRANT_SOURCES) + "."
+            )
+        return value
 
 
 POSITION_KINDS: tuple[str, ...] = (

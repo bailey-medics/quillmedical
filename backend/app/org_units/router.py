@@ -20,6 +20,7 @@ from sqlalchemy import delete, func, insert, select
 from sqlalchemy.orm import Session
 
 from app.cbac.base_professions import grant_staff_competencies
+from app.cbac.grants import sync_competency_rows
 from app.cbac.positions import clinical_leads_of, set_clinical_lead
 from app.db import get_core_db
 from app.deps import (
@@ -682,6 +683,14 @@ def add_org_unit_member(
     grant_staff_competencies(
         person, body.base_profession, body.additional_competencies
     )
+    sync_competency_rows(
+        person,
+        additional=person.additional_competencies,
+        removed=person.removed_competencies,
+        source="admin",
+        granted_by=current_user.id,
+        org_unit_id=unit_id,
+    )
 
     # The term comes with the grant, for the reason the grant comes with
     # the membership: a new starter holding `passport_write` and no
@@ -689,9 +698,10 @@ def add_org_unit_member(
     # reads as a broken page rather than an arrangement nobody set up.
     grant_entitlement_at_onboarding(
         db,
-        person.id,
+        person,
         unit_id,
         body.additional_competencies or [],
+        granted_by=current_user.id,
     )
 
     db.flush()

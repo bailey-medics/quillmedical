@@ -56,6 +56,7 @@ def main() -> int:
             SUPERADMIN_PROFESSION,
             get_profession_base_competencies,
         )
+        from app.cbac.grants import sync_competency_rows
         from app.db import CoreSessionLocal
         from app.models import User
         from app.security import hash_password
@@ -117,6 +118,14 @@ def main() -> int:
             u.is_totp_enabled = False
             u.email_verified = True
             action = "updated"
+        # Rows beside the JSON, which nothing reads yet. Nobody is signed
+        # in to be named as granting them.
+        sync_competency_rows(
+            u,
+            additional=u.additional_competencies,
+            removed=u.removed_competencies,
+            source="bootstrap",
+        )
         db.commit()
         print(f"Successfully {action} superadmin user: {username}")
         return 0
