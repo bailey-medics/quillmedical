@@ -257,13 +257,28 @@ every deploy, so the URL mask is the part that matters.
       `run-migrations.sh` already shows how the deploy invokes it and
       reads the result.
 
-- [ ] **Still to do, and this is where it gets real.** Set
+- [x] **Still to do, and this is where it gets real.** Set
       `vpc_egress = "ALL_TRAFFIC"` on the admin job, point
       `deploy-tagged.sh` at the job rather than `curl`, and try the
       ingress setting again. None of that is worth doing until somebody
       has confirmed by hand that a job with `ALL_TRAFFIC` can actually
       reach a revision behind a closed ingress. The documentation says it
       should; this plan has already been wrong once about exactly that.
+
+      The first two done on 2026-09-23: `infra/main.tf` sets the admin
+      job's egress, and `deploy.yml` passes `SMOKE_TEST_JOB`,
+      `SMOKE_TEST_PROJECT` and `SMOKE_TEST_REGION` to the backend deploy.
+      `terraform plan` showed that one change and nothing else. The
+      ingress is the step below, deliberately a separate pull request:
+      it must merge only after one backend deploy has passed through the
+      job, or a failure there is the #880 breakage again.
+
+      **Safe to merge in either order against the ingress as it is.**
+      `terraform.yml` and `deploy.yml` both run on the same push to
+      `main`, so the deploy can reach the job before the apply has
+      changed its egress. With ingress still `all` the job reaches the
+      revision over the public internet regardless, so the smoke test
+      passes either way.
 
 - [x] **Not needed.** Adding a second serverless NEG with a URL mask,
       and the wildcard certificate it would require, is superseded by the
