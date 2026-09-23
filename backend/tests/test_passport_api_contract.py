@@ -439,6 +439,44 @@ class TestAnEntitlementThatHasRunOut:
             row.ends_on = datetime.now(UTC) - timedelta(days=1)
         db_session.commit()
 
+    def test_the_passport_says_a_write_would_be_refused(
+        self,
+        passport: str,
+        test_client: TestClient,
+        holder: User,
+        db_session: Session,
+    ) -> None:
+        """So the page can disable the control rather than offer one
+        that fails on submit.
+
+        A null ``ends_on`` alone could not carry this: it means both
+        "no current entitlement" and "this response was built before
+        these fields existed", and a page cannot tell those apart. A
+        holder who never had an entitlement therefore got no warning
+        and a live "Add an entry" button that refused every save.
+        """
+        self._expire(db_session, holder)
+        client = _login(test_client, "holder")
+
+        response = client.get(f"/api/passport/{passport}")
+
+        assert response.status_code == 200
+        assert response.json()["entitlement"]["can_write"] is False
+
+    def test_a_current_entitlement_says_a_write_would_be_accepted(
+        self,
+        passport: str,
+        test_client: TestClient,
+        holder: User,
+    ) -> None:
+        """The other direction, so the flag is not simply always false."""
+        client = _login(test_client, "holder")
+
+        response = client.get(f"/api/passport/{passport}")
+
+        assert response.status_code == 200
+        assert response.json()["entitlement"]["can_write"] is True
+
     def test_writing_is_refused_once_it_has_ended(
         self,
         passport: str,

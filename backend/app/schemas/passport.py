@@ -225,6 +225,19 @@ class EntitlementOut(BaseModel):
     #: server's. Null for the same reason ``ends_on`` is.
     days_remaining: int | None = None
 
+    #: Whether a write would be accepted, stated rather than inferred.
+    #: A null ``ends_on`` means two different things to a client: this
+    #: person has no current entitlement, or the response was built
+    #: before these fields existed. The page cannot tell those apart,
+    #: so somebody who never had an entitlement got no warning and a
+    #: live "Add an entry" button that refused every save.
+    #:
+    #: Defaults true, so a client reading an older response behaves as
+    #: it did before: the server refuses the write either way, and the
+    #: worse failure is a page that hides a button from somebody who
+    #: may in fact use it.
+    can_write: bool = True
+
 
 class PassportDetailOut(BaseModel):
     """A passport with every competency it holds evidence for."""

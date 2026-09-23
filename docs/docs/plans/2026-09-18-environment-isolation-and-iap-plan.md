@@ -619,19 +619,25 @@ here because the next environment will want the same list:
       video signing key is generated fresh for this project rather than
       copied, so the old one dies with the old project.
 
-- [ ] **(Mark)** Re-run the teaching pipeline against the new project so
+- [x] **(Mark)** Re-run the teaching pipeline against the new project so
       the content buckets refill from `eoeeta-teaching` and
-      `respiratory-teaching`. The content is version-controlled and the
+      `respiratory-teaching`. Done on 2026-09-22.
+      `quill-images-app/modules/` holds both banks and
+      `quill-teaching-videos-processed-app` holds the transcoded video. The content is version-controlled and the
       pipeline syncs it on every push to main, so nothing is copied
       between buckets by hand.
 
-- [ ] **(Mark)** Run the migrations against the new Cloud SQL instance and
+- [x] **(Mark)** Run the migrations against the new Cloud SQL instance and
       seed it. There are no real users, so this is a schema creation and a
-      seed rather than a dump and restore.
+      seed rather than a dump and restore. Done on 2026-09-22: the app
+      backend answers `/api/health`, two organisations exist, and a
+      module was uploaded, transcoded and played back.
 
-- [ ] **(Mark)** Confirm that is still true before relying on it. If
+- [x] **(Mark)** Confirm that is still true before relying on it. If
       anyone has registered on the live environment, this becomes a data
-      migration and the cutover needs a maintenance window.
+      migration and the cutover needs a maintenance window. Confirmed:
+      teaching's database was destroyed on 2026-09-23 with its backups,
+      on the explicit instruction that nothing in it was wanted.
 
 - [x] **Leave the clinician passport files behind.** The passport bucket
       is not gated on the environment, so Terraform creates an empty one
@@ -878,15 +884,44 @@ What is left is the deletions, which genuinely have to wait.
       environment. Done in Batch 6, and it was three secrets rather than
       the one named here; see that batch for which and why.
 
-- [ ] **(Mark)** Delete the `GCP_TEACHING_*` secrets, once nothing reads
-      them. Not yet: the matrix in `deploy.yml` and `terraform.yml` still
-      names `teaching`, and the build job authenticates as teaching's
-      service account to push images to both registries. These go in
-      Batch 8 with the environment itself.
+- [x] **(Mark)** Delete the `GCP_TEACHING_*` secrets, once nothing reads
+      them. Done on 2026-09-23, after #992 removed the last reference.
 
-- [ ] **(Mark)** Delete the `teaching.quill-medical.com` A record, once
-      nothing names it. Also Batch 8: the hostname still serves, and the
-      certificate that covers it also covers the apex.
+      **They existed twice over.** Three at repository level, and three
+      more inside a GitHub environment also called `teaching`, which
+      `deploy.yml` named through `environment: ${{ matrix.environment
+      }}`. Deleting the repository secrets leaves the environment ones
+      in place and invisible to `gh secret list` without `--env`, so the
+      environment was deleted as well and took its copies with it.
+
+      `GCP_TEACHING_GCS_BUCKET` looks like a fourth and is not: it is
+      read by `teaching-pipeline.yml`, which runs as a `workflow_call`
+      from the content repositories and inherits their secrets, not this
+      repository's.
+
+      One reference survived #992: the `workflow_dispatch` choice list in
+      `terraform.yml` still offered `teaching` as an environment to
+      apply. A matrix leg and a dispatch option are separate lists in the
+      same file, and grepping for the matrix pattern does not find the
+      other.
+
+- [x] **(Mark)** Delete the `teaching.quill-medical.com` A record, once
+      nothing names it. Done on 2026-09-23. It had pointed at
+      `136.110.221.126`, the load balancer destroyed earlier that day.
+      The apex, `app` and `www` all still resolve to `34.49.99.83`.
+
+      **The zone is not in the project you would expect.**
+      `quill-medical-zone` lives in `quill-medical-production`, not in
+      `quill-medical-app` or `quill-medical-teaching`, and no Terraform
+      manages it: `infra/modules/dns` exists but `infra/main.tf` never
+      instantiates it. Removing the record is a `gcloud dns
+      record-sets` call against that third project, naming the zone and
+      the `A` type.
+
+      Nothing else in the zone is affected. The apex and
+      `app.quill-medical.com` both point at `34.49.99.83`, and the
+      Proton mail, DKIM, DMARC and Resend entries are unrelated to this
+      migration.
 
 **Hands over:** nothing outstanding that blocks Batch 8.
 
@@ -1000,9 +1035,11 @@ for the same name would leave both pending.
       version CI uses. The local binary is 1.15.0 and `versions.tf`
       requires `>= 1.15.2`, so it cannot plan this config at all.
 
-- [ ] **(Mark)** Remove the apex from teaching's `lb_domains` once the
+- [x] **(Mark)** Remove the apex from teaching's `lb_domains` once the
       app certificate is active, so the old project stops claiming a
-      hostname it no longer serves.
+      hostname it no longer serves. Overtaken by the teardown on
+      2026-09-23: the load balancer, its certificate and the tfvars file
+      naming the apex are all gone, so there is nothing left to claim it.
 
 ### Retiring the project
 
@@ -1026,34 +1063,263 @@ for the same name would leave both pending.
       `github-actions@quill-medical-teaching` today; the app one changes
       when those secrets move.
 
-- [ ] Leave `quill-medical-teaching` running until the new environment has
-      been exercised for long enough to trust. It costs money, and that is
-      the price of a reversible cutover — though with staging already shut
-      down on cost, decide deliberately how long that is worth paying for
-      rather than leaving it indefinitely.
+- [x] Decide how long to keep `quill-medical-teaching` as a rollback.
+      Settled on 2026-09-22: no rollback value, so there is no waiting
+      period. It stays running only until nothing authenticates against
+      it, which the steps below arrange, and is then shut down.
 
-- [ ] Move the apex off the teaching load balancer first. Check where
-      `quill-medical.com` and `www.quill-medical.com` point before
-      destroying anything: `quill-cert-v5-teaching` covers them alongside
-      `teaching.quill-medical.com`, so destroying that environment takes
-      the public marketing site's TLS with it unless the apex has been
-      moved somewhere else. This is why dropping `teaching.` from
-      `lb_domains` was left out of Batch 6.
+      This does not make the order below optional. The reason to keep it
+      alive is no longer rollback, it is that five workflows still
+      authenticate as its service account, and one of them builds every
+      image this repository deploys.
 
-- [ ] Destroy the teaching workspace with Terraform rather than deleting
+- [x] Move the apex off the teaching load balancer first. Done on
+      2026-09-22: `quill-medical.com` and `www.quill-medical.com` resolve
+      to `34.49.99.83`, the app load balancer, not teaching's
+      `136.110.221.126`. Destroying teaching no longer takes the
+      marketing site's TLS with it.
+
+      Teaching's tfvars still carries `landing_domain =
+      "quill-medical.com"` and `quill-cert-teaching-852eaebb` still lists
+      the apex and `www` beside `teaching.quill-medical.com`. Harmless
+      while DNS points elsewhere, but drop `landing_domain` from
+      `infra/environments/teaching/terraform.tfvars` before the destroy
+      so Terraform is not holding a claim on a hostname it does not
+      serve.
+
+      Why this came first: teaching's certificate covers the apex and
+      `www` alongside `teaching.quill-medical.com`, so destroying that
+      environment would have taken the public marketing site's TLS with
+      it had the apex not moved. This is also why dropping `teaching.`
+      from `lb_domains` was left out of Batch 6.
+
+- [x] Move image build and push off `quill-medical-teaching`. Done in
+      #974. The build job and the production promotion job now
+      authenticate as the app project. The push tags to teaching's
+      registry stay, because each environment's deploy pulls from its own
+      registry and teaching is still deploying.
+
+      **This needed an IAM grant that no Terraform manages.**
+      `github-actions@quill-medical-app` held only
+      `roles/artifactregistry.reader` on teaching's `quill` repository,
+      so authenticating as app and pushing teaching's tags would have
+      failed. `roles/artifactregistry.writer` was granted by hand on
+      2026-09-23 and goes when the project does.
+
+      **The deploy that merged this proved nothing.** #974 changed only a
+      workflow and a plan document, so `dorny/paths-filter` set
+      `services` to empty and the build job was skipped. The run went
+      green without ever exercising the change. The first real test is
+      the next pull request that touches `backend/` or `frontend/`.
+
+- [x] Repoint the two workflows that can be repointed from this
+      repository. Done in #980. `stale-incidents.yml` authenticates as
+      the app project and reads `GCP_APP_PROJECT_ID`, so the stale
+      incident warning watches the project that is live.
+      `ci.yml`'s published bank sweep reads `quill-images-app`, and its
+      environment variable was renamed from `TEACHING_BUCKET` to
+      `IMAGES_BUCKET` to match.
+
+- [ ] Move the content pipeline's secrets, in the content repositories.
+      Partly done on 2026-09-23. `teaching-pipeline.yml` cannot be fixed
+      from this repository: it is a `workflow_call` with
+      `secrets: inherit`, so `GCP_SERVICE_ACCOUNT`,
+      `GCP_WORKLOAD_IDENTITY_PROVIDER` and `GCP_TEACHING_GCS_BUCKET` come
+      from `eoeeta-teaching` and `respiratory-teaching`.
+
+      **The blocker was workload identity, not the secrets.** Teaching's
+      provider accepts four repositories; the app project's accepted only
+      `bailey-medics/quillmedical`, so pointing the content repositories
+      at the app project would have been refused at authentication,
+      before any bucket was touched. Neither project's workload identity
+      is in Terraform, so all of this is `gcloud` work:
+
+      ```bash
+      gcloud iam workload-identity-pools providers describe github-provider \
+        --workload-identity-pool=github-pool --location=global \
+        --project=quill-medical-teaching --format="value(attributeCondition)"
+      ```
+
+      **A new account rather than a copy of teaching's.** The content
+      pipeline authenticates as `github-actions@quill-medical-teaching`,
+      which holds `roles/editor` on the whole project. The sync script
+      does one thing, `rsync --delete` of `question_bank_content/modules`
+      into a single bucket, so it was given its own account scoped to
+      that bucket. Retiring teaching is the moment to drop a permission
+      that was always wider than the job, rather than carry it across.
+
+      Done so far:
+
+      ```bash
+      gcloud iam service-accounts create content-sync \
+        --project=quill-medical-app --display-name="Content sync" \
+        --description="Publishes teaching question banks to quill-images-app from the content repositories. Scoped to that bucket only."
+
+      gcloud iam workload-identity-pools providers update-oidc github-provider \
+        --workload-identity-pool=github-pool --location=global \
+        --project=quill-medical-app \
+        --attribute-condition="assertion.repository == 'bailey-medics/quillmedical' || assertion.repository == 'bailey-medics/eoeeta-teaching' || assertion.repository == 'bailey-medics/respiratory-teaching'"
+
+      gcloud storage buckets add-iam-policy-binding gs://quill-images-app \
+        --member="serviceAccount:content-sync@quill-medical-app.iam.gserviceaccount.com" \
+        --role="roles/storage.objectAdmin" --project=quill-medical-app
+      ```
+
+      The impersonation bindings, run by Mark on 2026-09-23 because the
+      harness refuses IAM grants:
+
+      ```bash
+      for R in eoeeta-teaching respiratory-teaching; do
+        gcloud iam service-accounts add-iam-policy-binding \
+          content-sync@quill-medical-app.iam.gserviceaccount.com \
+          --project=quill-medical-app --role="roles/iam.workloadIdentityUser" \
+          --member="principalSet://iam.googleapis.com/projects/45814277366/locations/global/workloadIdentityPools/github-pool/attribute.repository/bailey-medics/${R}"
+      done
+      ```
+
+      All six secrets were then set, three in each content repository,
+      at 07:47 on 2026-09-23:
+
+      ```bash
+      gh secret set GCP_SERVICE_ACCOUNT --repo bailey-medics/eoeeta-teaching \
+        --body "content-sync@quill-medical-app.iam.gserviceaccount.com"
+      gh secret set GCP_WORKLOAD_IDENTITY_PROVIDER --repo bailey-medics/eoeeta-teaching \
+        --body "projects/45814277366/locations/global/workloadIdentityPools/github-pool/providers/github-provider"
+      gh secret set GCP_TEACHING_GCS_BUCKET --repo bailey-medics/eoeeta-teaching \
+        --body "quill-images-app"
+      ```
+
+      …and the same three against
+      `bailey-medics/respiratory-teaching`. `gh secret set` prints
+      nothing on success, so the check is the `updatedAt` timestamp in
+      `gh secret list`, not the absence of an error.
+
+      **This is now live and unverified.** The next content publish from
+      either repository authenticates as `content-sync` and writes to
+      `quill-images-app`. If workload identity is wrong the publish
+      fails at the authentication step, which is loud and harmless; the
+      previous secrets are gone, so rolling back means setting them
+      again by hand.
+
+      Only after a content publish has been seen to land in
+      `quill-images-app`, change `content_ci_service_account` in
+      `infra/environments/app/terraform.tfvars` to the new account. It
+      still names the teaching account because that is the identity
+      writing to the bucket today, and moving it early removes the grant
+      the pipeline is using. That is a code change, so it goes in a pull
+      request rather than by hand.
+
+      **The sweep risk turned out not to bite.** Both buckets hold the
+      same 33 objects and 3.95MiB, and `quill-images-app` is the newer
+      of the two (2026-09-22 against 2026-09-11 in
+      `quill-images-teaching`), so `GCP_TEACHING_GCS_BUCKET` was already
+      pointing at the app bucket before any of this. The sweep in
+      `ci.yml` has been reading current content all along.
+
+      **Nothing here can be triggered from this repository.**
+      `eoeeta-teaching`'s workflow fires on `push` and `pull_request`
+      only, with no `workflow_dispatch`, so proving the new identity
+      needs a real content change in one of the two repositories.
+
+- [x] Run a full deploy with `quill-medical-teaching` still alive but
+      unused, and confirm it passes. Done at 06:30 on 2026-09-23, run
+      35827064925 for #979: `Build frontend` and `Build backend` both
+      passed on the app project's identity, pushing to both registries,
+      and both environments deployed.
+
+      **It was easy to miss that this had happened.** The build job is
+      skipped whenever a merge touches no `backend/` or `frontend/`
+      source, so the two deploys either side of it reported green
+      without exercising the change at all. Read the build job's own
+      conclusion, not the run's. This is the step that makes the
+      teardown safe rather than brave: anything that still depends on the
+      old project surfaces here, while the project is still there to
+      answer. Skipping it means finding out after the shutdown, when the
+      evidence is gone.
+
+- [x] Destroy the teaching workspace with Terraform rather than deleting
       the project in the console, so the state is emptied rather than
-      orphaned.
+      orphaned. Done on 2026-09-23. 92 of 95 resources destroyed,
+      including `quill-core-teaching` and its backups.
+      `teaching.quill-medical.com` stopped answering; the app and the
+      marketing site served `200` throughout.
 
-- [ ] Delete the workspace afterwards, and remove `teaching` from the
-      validation condition in `infra/variables.tf`.
+      **Skipped the `landing_domain` step above deliberately.** Dropping
+      it from teaching's tfvars is the operation this plan already
+      records as impossible, because the URL map still references the
+      backend bucket. Destroying the whole workspace removes both in one
+      pass, so the ordering problem does not arise.
 
-- [ ] Narrow the fifteen widened conditions in `infra/main.tf` back to
-      `app` alone. This is the contract half of the expand-contract
-      Batch 3 started, and it is safe only now: the `teaching` workspace
-      is gone, so there is no live environment for the conditions to turn
-      off. Doing it any earlier destroys the resources it names.
+      **A destroy of a real environment does not complete in one pass.**
+      Three resources refused, and each stranded everything beneath it:
 
-- [ ] Remove `infra/environments/teaching/`.
+      - `quill-teaching-videos-processed-teaching` held a transcoded
+        MP4 and the bucket has no `force_destroy`
+      - the BigQuery dataset `quill_analytics_teaching` still held its
+        `requests` table
+      - the SQL user `quill` could not be dropped, because 59 objects
+        in `quill_core` depend on the role
+
+      Emptying the bucket and dropping the dataset cleared the first
+      two. For the third, the user was removed from state rather than
+      from the database: it lives inside the instance being destroyed,
+      so the instance takes it, and untangling 59 object dependencies
+      would have been work in service of nothing.
+
+      ```bash
+      gcloud storage rm -r "gs://quill-teaching-videos-processed-teaching/**"
+      bq rm -r -f --dataset quill-medical-teaching:quill_analytics_teaching
+      terraform state rm 'module.cloud_sql_core.google_sql_user.user'
+      ```
+
+- [ ] Remove the last three networking resources: the VPC, its global
+      address, and the service networking connection between them.
+      Terraform refuses the connection with `Producer services (e.g.
+      CloudSQL, Cloud Memstore, etc.) are still using this connection`,
+      and nothing is: `gcloud sql instances list` returns nothing and
+      the Redis API is not enabled on the project.
+
+      Google holds the peering open for a while after a Cloud SQL
+      instance is deleted, so this is a wait rather than a fault. Two
+      passes over about ten minutes both refused. Shutting the project
+      down removes all three anyway, so this step is optional and the
+      shutdown below is the simpler route.
+
+- [x] Remove `teaching` from the validation in `infra/variables.tf`, so
+      the only environments the configuration accepts are `prod`,
+      `staging` and `app`.
+
+- [x] Narrow the widened conditions in `infra/main.tf` back to `app`
+      alone. This is the contract half of the expand-contract Batch 3
+      started, and it was safe only once the workspace was gone: the
+      conditions are mostly `count`, so doing it while the old project
+      ran would have read as an instruction to destroy the Cloud SQL
+      instance and the video and content buckets.
+
+      The list is one local used sixteen times, so narrowing it is a
+      one-line change rather than sixteen edits. It stays a list rather
+      than becoming a bare comparison, because a second project running
+      this product is what the migration just did and may do again.
+
+- [x] Remove `infra/environments/teaching/`.
+
+- [x] Take `teaching` out of the three workflow matrices, in
+      `terraform.yml` twice and `deploy.yml` once. **The tfvars file and
+      the matrices have to move together**: a matrix leg naming an
+      environment whose `terraform.tfvars` has been deleted fails on a
+      missing file, and it fails on every run rather than once.
+
+- [x] Stop pushing images to teaching's Artifact Registry. Eight tag
+      lines in `deploy.yml`, four images in two forms each, pointed at a
+      registry inside the project being shut down. The
+      `roles/artifactregistry.writer` grant made on 2026-09-23 so the app
+      account could write there is now unnecessary and goes with the
+      project.
+
+- [ ] Remove the three orphaned networking resources, or let the
+      shutdown take them. See the step above: Terraform cannot delete the
+      service networking connection while Google still holds the peering
+      open, and the VPC and its global address sit behind it.
 
 - [ ] Shut the old project down rather than deleting it outright. A
       shut-down project is recoverable for thirty days; a deleted one is

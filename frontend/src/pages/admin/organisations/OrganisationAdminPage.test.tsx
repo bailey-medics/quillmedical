@@ -78,6 +78,84 @@ describe("OrganisationAdminPage", () => {
     });
   });
 
+  describe("Sites are operator-only for now", () => {
+    const withSite = {
+      id: 1,
+      name: "Test Hospital",
+      type: "hospital",
+      location: "London, UK",
+      created_at: "2024-01-15T10:00:00Z",
+      updated_at: "2024-01-15T10:00:00Z",
+      staff_count: 0,
+      members: [],
+      patient_ids: [],
+      patient_count: 0,
+      children: [
+        {
+          id: 7,
+          name: "Ward B",
+          type: "ward",
+          clinical_lead_name: null,
+        },
+      ],
+    };
+
+    function renderPage() {
+      renderWithRouter(<OrganisationAdminPage />, {
+        routePath: "/admin/organisations/:id",
+        initialRoute: "/admin/organisations/1",
+      });
+    }
+
+    it("does not take an ordinary administrator to a site page", async () => {
+      // `/admin/sites/:id` 404s for them, so a row that navigated there
+      // would be a dead end. The site is still listed, because knowing
+      // the organisation holds it is useful on its own.
+      mockOrgApi(withSite);
+      renderPage();
+
+      await waitFor(() => {
+        expect(screen.getByText("Ward B")).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByText("Ward B"));
+      expect(mockNavigate).not.toHaveBeenCalledWith("/admin/sites/7");
+    });
+
+    it("hides Add site from an ordinary administrator", async () => {
+      mockOrgApi(withSite);
+      renderPage();
+
+      await waitFor(() => {
+        expect(screen.getByText("Ward B")).toBeInTheDocument();
+      });
+      expect(
+        screen.queryByRole("button", { name: /add site/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("takes an operator to the site page", async () => {
+      vi.spyOn(authContext, "useAuth").mockReturnValue({
+        state: {
+          status: "authenticated",
+          user: { ...mockAdminUser, platform_role: "superadmin" },
+        },
+        login: vi.fn(),
+        logout: vi.fn(),
+        reload: vi.fn(),
+      });
+      mockOrgApi(withSite);
+      renderPage();
+
+      await waitFor(() => {
+        expect(screen.getByText("Ward B")).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByText("Ward B"));
+      expect(mockNavigate).toHaveBeenCalledWith("/admin/sites/7");
+    });
+  });
+
   describe("Organisation details display", () => {
     it("displays organisation name", async () => {
       const mockOrganisation = {

@@ -437,22 +437,54 @@ const routes: RouteObject[] = [
             element: <AddPatientToOrgPage />,
           },
           {
+            // Creating a site is site administration, so it is held to
+            // the same operator-only rule as the pages below, even
+            // though its address sits under an organisation.
             path: "organisations/:id/add-site",
-            element: <AddSiteToOrgPage />,
+            element: (
+              <RequireOperator>
+                <AddSiteToOrgPage />
+              </RequireOperator>
+            ),
           },
+          // Operator-only for now. The pages work, but who may
+          // administer a site is not settled, so they are hidden rather
+          // than shown to somebody the answer might not include.
+          // `RequireOperator` 404s, so a site is not merely refused to
+          // them but invisible.
+          //
+          // The guard is on the routes alone. `/api/org-units`, which
+          // these pages read and write, is shared with the
+          // organisations pages, the user editor and practising
+          // competencies, so gating it would take those down with it.
+          // Somebody who knows the endpoint can still call it; that is
+          // the same access they had before this change, and no data is
+          // newly exposed.
           {
-            path: "sites",
-            element: <AdminSitesPage />,
-            handle: { safeForReload: true },
+            element: (
+              <RequireOperator>
+                <Outlet />
+              </RequireOperator>
+            ),
+            children: [
+              {
+                path: "sites",
+                element: <AdminSitesPage />,
+                handle: { safeForReload: true },
+              },
+              { path: "sites/new", element: <CreateSitePage /> },
+              {
+                path: "sites/:id",
+                element: <SiteAdminPage />,
+                handle: { safeForReload: true },
+              },
+              { path: "sites/:id/edit", element: <EditSitePage /> },
+              {
+                path: "sites/:id/add-staff",
+                element: <AddStaffToSitePage />,
+              },
+            ],
           },
-          { path: "sites/new", element: <CreateSitePage /> },
-          {
-            path: "sites/:id",
-            element: <SiteAdminPage />,
-            handle: { safeForReload: true },
-          },
-          { path: "sites/:id/edit", element: <EditSitePage /> },
-          { path: "sites/:id/add-staff", element: <AddStaffToSitePage /> },
           {
             path: "organisations/:id/features",
             element: <OrgFeaturesPage />,

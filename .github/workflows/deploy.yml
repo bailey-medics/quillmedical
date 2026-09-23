@@ -89,7 +89,7 @@ jobs:
     runs-on: ubuntu-24.04
     needs: prepare
     if: ${{ needs.prepare.outputs.services != '[]' }}
-    environment: teaching
+    environment: app
     strategy:
       matrix:
         # One leg per changed service (JSON array from the prepare job).
@@ -99,11 +99,14 @@ jobs:
         with:
           ref: ${{ needs.prepare.outputs.sha }}
 
-      - name: Authenticate to GCP (teaching)
+      # Authenticates as the app project. The teaching project was
+      # retired on 2026-09-23 and its registry went with it, so images
+      # are pushed to one registry now rather than two.
+      - name: Authenticate to GCP (app)
         uses: google-github-actions/auth@v3.0.0
         with:
-          workload_identity_provider: ${{ secrets.GCP_TEACHING_WIF_PROVIDER }}
-          service_account: ${{ secrets.GCP_TEACHING_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ secrets.GCP_APP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_APP_SERVICE_ACCOUNT }}
 
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ env.AR_REGISTRY }} --quiet
@@ -119,8 +122,6 @@ jobs:
           target: prod
           push: true
           tags: |
-            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/${{ matrix.service }}:${{ needs.prepare.outputs.sha }}
-            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/${{ matrix.service }}:latest
             ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/${{ matrix.service }}:${{ needs.prepare.outputs.sha }}
             ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/${{ matrix.service }}:latest
           build-args: |
@@ -139,8 +140,6 @@ jobs:
           target: admin
           push: true
           tags: |
-            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/admin:${{ needs.prepare.outputs.sha }}
-            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/admin:latest
             ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/admin:${{ needs.prepare.outputs.sha }}
             ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/admin:latest
           cache-from: type=gha
@@ -155,8 +154,6 @@ jobs:
           target: transcode
           push: true
           tags: |
-            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/transcode:${{ needs.prepare.outputs.sha }}
-            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/transcode:latest
             ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/transcode:${{ needs.prepare.outputs.sha }}
             ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/transcode:latest
           cache-from: type=gha
@@ -173,8 +170,6 @@ jobs:
           file: ./backend/Dockerfile.caption
           push: true
           tags: |
-            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/caption:${{ needs.prepare.outputs.sha }}
-            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/caption:latest
             ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/caption:${{ needs.prepare.outputs.sha }}
             ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/caption:latest
           cache-from: type=gha
@@ -198,7 +193,7 @@ jobs:
       max-parallel: 1
       fail-fast: false
       matrix:
-        environment: [teaching, app]
+        environment: [app]
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -326,12 +321,12 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@v7.0.1
-      - name: Authenticate to GCP (teaching — source registry)
-        id: auth-teaching
+      - name: Authenticate to GCP (app, the source registry)
+        id: auth-app
         uses: google-github-actions/auth@v3.0.0
         with:
-          workload_identity_provider: ${{ secrets.GCP_TEACHING_WIF_PROVIDER }}
-          service_account: ${{ secrets.GCP_TEACHING_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ secrets.GCP_APP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_APP_SERVICE_ACCOUNT }}
           token_format: access_token
 
       - name: Authenticate to GCP (production — target registry)
@@ -351,12 +346,12 @@ jobs:
 
       - name: Copy images to production registry
         run: |
-          SRC_REGISTRY="${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill"
+          SRC_REGISTRY="${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill"
           DST_REGISTRY="${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROD_PROJECT_ID }}/quill"
           SHA="${{ needs.prepare.outputs.sha }}"
 
           # Configure credentials for both registries
-          echo '${{ steps.auth-teaching.outputs.access_token }}' | \
+          echo '${{ steps.auth-app.outputs.access_token }}' | \
             gcrane auth login "${{ env.AR_REGISTRY }}" --username=oauth2accesstoken --password-stdin
 
           if [ "${{ needs.prepare.outputs.backend_changed }}" = "true" ]; then

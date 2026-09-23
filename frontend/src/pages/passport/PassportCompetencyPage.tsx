@@ -92,6 +92,10 @@ export function Component() {
         <AddButton
           label="Request a sign-off"
           onClick={() => setRequesting(true)}
+          // Asking for a sign-off goes through `_require_writer`, so a
+          // read-only holder would be offered a button that refuses.
+          // Read off the detail this page already holds.
+          disabled={passport?.entitlement?.can_write === false}
         />
       )}
 

@@ -30,6 +30,10 @@ const mockUsers: Record<string, User> = {
     email: "superadmin@example.com",
     roles: ["Clinician", "Administrator"],
     competencies: ["manage_users"],
+    // Operating Quill itself, which is what `RequireOperator` and the
+    // Sites link both read. Without it this fixture was a name only,
+    // indistinguishable from `admin`.
+    platform_role: "superadmin",
     clinical_services_enabled: true,
   },
   patient: {
@@ -643,6 +647,28 @@ describe("SideNavContent Component", () => {
     });
   });
 
+  describe("Sites", () => {
+    it("offers Sites to somebody who operates Quill", async () => {
+      renderWithAuth(<SideNavContent />, "superadmin");
+
+      await waitFor(() => {
+        expect(screen.getByText("Sites")).toBeInTheDocument();
+      });
+    });
+
+    it("hides Sites from an administrator who does not operate Quill", async () => {
+      // Administering an organisation is not operating Quill, and who
+      // may administer a site is not settled. The link goes rather than
+      // pointing at a page that would 404 on arrival.
+      renderWithAuth(<SideNavContent />, "admin");
+
+      await waitFor(() => {
+        expect(screen.getByText("Organisations")).toBeInTheDocument();
+      });
+      expect(screen.queryByText("Sites")).not.toBeInTheDocument();
+    });
+  });
+
   describe("Passport", () => {
     it("shows Passport to somebody holding the feature and the competency", async () => {
       renderWithAuth(<SideNavContent />, "passport_holder");
@@ -676,6 +702,51 @@ describe("SideNavContent Component", () => {
       });
 
       expect(screen.queryByText("Sign-off requests")).not.toBeInTheDocument();
+    });
+
+    it("hangs Inbox under Passport for a holder", async () => {
+      // A holder's own record is what `/passport` shows, so the
+      // requests naming them as an assessor had no way in short of
+      // typing the address.
+      // Rendered on the inbox itself, because a nested link is only
+      // drawn once its parent is the active route.
+      renderWithAuth(<SideNavContent />, "passport_holder", {
+        initialRoute: "/passport/inbox",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("Passport")).toBeInTheDocument();
+      });
+
+      expect(screen.getByText("Inbox")).toBeInTheDocument();
+    });
+
+    it("drops Inbox again once the holder is on their passport", async () => {
+      // The passport is a destination, not a heading, so landing on it
+      // should not reveal a page the person did not ask for.
+      renderWithAuth(<SideNavContent />, "passport_holder", {
+        initialRoute: "/passport",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("Passport")).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText("Inbox")).not.toBeInTheDocument();
+    });
+
+    it("gives an assessor no Inbox child, because that is their own link", async () => {
+      // "Sign-off requests" already points at `/passport/inbox`.
+      // A child of the same address would offer the page twice.
+      renderWithAuth(<SideNavContent />, "passport_assessor_only", {
+        initialRoute: "/passport/inbox",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("Sign-off requests")).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText("Inbox")).not.toBeInTheDocument();
     });
 
     it("hides Passport when the feature is on but the competency is missing", async () => {

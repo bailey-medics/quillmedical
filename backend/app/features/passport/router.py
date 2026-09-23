@@ -528,18 +528,33 @@ def _entitlement_out(db: Session, user_id: int) -> EntitlementOut:
     is refused. ``days_remaining`` is counted here so the frontend does
     not have to do date arithmetic against a clock that may differ from
     the server's.
+
+    ``can_write`` answers both halves of what ``_require_writer`` asks,
+    the competency and the entitlement, so the page can disable a
+    control rather than offer one that always refuses. Stated rather
+    than left for the client to infer from a null ``ends_on``, which
+    also means "this response predates these fields".
     """
+    holder = db.get(User, user_id)
+    has_competency_to_write = holder is not None and (
+        "passport_write" in holder.get_final_competencies()
+    )
+
     ends_on = current_entitlement_end(db, user_id)
 
     if ends_on is None:
-        return EntitlementOut()
+        return EntitlementOut(can_write=False)
 
     # The stored value comes back naive from SQLite and aware from
     # Postgres, so the comparison is made on whichever the row gives.
     now = _now() if ends_on.tzinfo else _now().replace(tzinfo=None)
     remaining = (ends_on - now).days
 
-    return EntitlementOut(ends_on=ends_on, days_remaining=max(remaining, 0))
+    return EntitlementOut(
+        ends_on=ends_on,
+        days_remaining=max(remaining, 0),
+        can_write=has_competency_to_write,
+    )
 
 
 def _detail(
