@@ -67,6 +67,40 @@ describe("ErrorState", () => {
     expect(onClick).toHaveBeenCalledOnce();
   });
 
+  it("offers a second action beside the first", async () => {
+    const user = userEvent.setup();
+    const onClick = vi.fn();
+    const onSecondary = vi.fn();
+    renderWithMantine(
+      <ErrorState
+        message="Could not load."
+        action={{ label: "Try again", onClick }}
+        secondaryAction={{
+          label: "Tell us what happened",
+          icon: "feedback",
+          onClick: onSecondary,
+        }}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: /tell us what happened/i }),
+    );
+    expect(onSecondary).toHaveBeenCalledOnce();
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it("offers no second action without a first", () => {
+    renderWithMantine(
+      <ErrorState
+        message="Could not load."
+        secondaryAction={{ label: "Tell us what happened", onClick: vi.fn() }}
+      />,
+    );
+
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
   it("announces itself to assistive technology when inline", () => {
     // A section failing inside a page is easy to miss without this.
     renderWithMantine(<ErrorState message="Could not load." />);

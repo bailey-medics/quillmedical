@@ -76,6 +76,34 @@ describe("buildFeedbackBody", () => {
   });
 });
 
+describe("sending from the error boundary", () => {
+  it("carries the error's name and code", () => {
+    const body = buildFeedbackBody(
+      { category: null, message: "x" },
+      { name: "TypeError", code: "BANK_NOT_FOUND" },
+    );
+
+    expect(body.error_name).toBe("TypeError");
+    expect(body.error_code).toBe("BANK_NOT_FOUND");
+  });
+
+  it("sanitises the code the way the error report does", () => {
+    const body = buildFeedbackBody(
+      { category: null, message: "x" },
+      { name: "Error", code: "CODE 943 476 5919" },
+    );
+
+    expect(body.error_code ?? "").not.toMatch(/943/);
+  });
+
+  it("leaves both out when not sent from an error", () => {
+    const body = buildFeedbackBody({ category: null, message: "x" });
+
+    expect(body).not.toHaveProperty("error_name");
+    expect(body).not.toHaveProperty("error_code");
+  });
+});
+
 describe("sendFeedback", () => {
   it("posts to /feedback through the api client", async () => {
     vi.mocked(api.post).mockResolvedValue({ id: 7 });
