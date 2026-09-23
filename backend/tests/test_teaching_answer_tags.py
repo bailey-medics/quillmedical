@@ -127,3 +127,41 @@ class TestSetTags:
 
         db_session.refresh(answer)
         assert sorted(row.tag for row in answer.tags) == ["b", "c"]
+
+
+class TestScoringReadsTheRows:
+    def test_completing_scores_the_rows_not_the_json(
+        self, test_client: TestClient, db_session: Session
+    ) -> None:
+        """The column is still written, and read by nothing.
+
+        Every answer here is high confidence in its rows. Their JSON is
+        overwritten to say otherwise, and the result still counts them as
+        high confidence, so the result came from the rows.
+        """
+        assessment_id, headers = _start(test_client, db_session)
+        for _ in range(3):
+            resp = test_client.post(
+                f"/api/teaching/assessments/{assessment_id}/answer",
+                json={"selected_option": "high_a"},
+                headers=headers,
+            )
+            assert resp.status_code == 200, resp.text
+        for answer in db_session.query(AssessmentAnswer).filter(
+            AssessmentAnswer.assessment_id == assessment_id
+        ):
+            answer.resolved_tags = ["low_confidence"]
+        db_session.commit()
+
+        resp = test_client.post(
+            f"/api/teaching/assessments/{assessment_id}/complete",
+            headers=headers,
+        )
+
+        assert resp.status_code == 200, resp.text
+        rate = next(
+            c
+            for c in resp.json()["criteria"]
+            if c["name"] == "High confidence rate"
+        )
+        assert rate["value"] == 1.0

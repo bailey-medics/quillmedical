@@ -1739,11 +1739,14 @@ def complete_assessment(
         .all()
     )
 
+    # Tags from the `assessment_answer_tag` rows, the copy taken when each
+    # answer was given. The `resolved_tags` column is still written beside
+    # them, and no longer read.
     answer_dicts = [
         {
             "selected_option": a.selected_option,
             "is_correct": a.is_correct,
-            "resolved_tags": a.resolved_tags,
+            "resolved_tags": sorted(row.tag for row in a.tags),
         }
         for a in answers
     ]

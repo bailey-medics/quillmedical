@@ -88,13 +88,16 @@ switch-reads, contract order in
 
 ## Phase 4: Switch reads
 
-- [ ] **Build the answer dicts in `complete_assessment` from rows**
+- [x] **Build the answer dicts in `complete_assessment` from rows**
       (`router.py:1736-1743`). `evaluate_pass_criteria` keeps its signature
       and its tests in `backend/tests/test_teaching_scoring.py`, which pass
       dicts directly and need no change.
 
-- [ ] **Move `test_answer_persists_scoring_fields`**
+- [x] **Move `test_answer_persists_scoring_fields`**
       (`backend/tests/test_teaching_router.py:605`) to assert on the rows.
+      A new test in `backend/tests/test_teaching_answer_tags.py` overwrites
+      every answer's JSON and checks the result is still scored on the
+      rows, so a read left on the column would fail it.
 
 ## Phase 5: Stop writing JSON
 

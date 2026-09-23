@@ -249,9 +249,9 @@ class AssessmentAnswer(Base):
     )
     item: Mapped[QuestionBankItem] = relationship(lazy="joined")
 
-    #: The tags of the option chosen, one row each. The same snapshot as
-    #: ``resolved_tags``, which is still what scoring reads, stored where the
-    #: database can see into it. See
+    #: The tags of the option chosen, one row each: what scoring reads. The
+    #: same snapshot as ``resolved_tags``, which is still written beside it,
+    #: stored where the database can see into it. See
     #: ``docs/docs/plans/2026-09-23-resolved-tags-plan.md``.
     tags: Mapped[list[AssessmentAnswerTag]] = relationship(
         back_populates="answer",
