@@ -1,8 +1,7 @@
-"""Every competency write lands in ``user_competency``, and only there.
+"""Every competency write lands in ``user_competency``.
 
 What these pin is that every writer keeps the rows in line: after any
-save, a person's current rows match the lists that save settled on, and
-the retired JSON columns on ``users`` are left alone.
+save, a person's current rows match the lists that save settled on.
 
 See ``docs/docs/plans/2026-09-23-user-competency-table-plan.md``.
 """
@@ -17,7 +16,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.cbac.grants import sync_competency_rows
-from app.features.passport.models import PassportWriteEntitlement
 from app.models import OrgUnit, User, UserCompetency
 from app.organisations import add_org_unit_member
 from app.security import hash_password
@@ -342,7 +340,7 @@ class TestIsCurrent:
 
 
 class TestEveryWriterWritesRows:
-    """Each route that sets the JSON lists writes the rows beside them."""
+    """Each route that changes competencies writes rows."""
 
     def test_editing_a_user_writes_rows_naming_the_admin(
         self,
@@ -542,14 +540,6 @@ class TestEveryWriterWritesRows:
         assert row.source == "organisation"
         assert row.org_unit_id == org.id
         assert row.granted_by == membership_admin.id
-        assert (
-            db_session.scalars(
-                select(PassportWriteEntitlement).where(
-                    PassportWriteEntitlement.user_id == starter.id
-                )
-            ).all()
-            == []
-        )
 
     def test_the_admin_editor_grants_passport_write_with_a_term(
         self,
@@ -576,57 +566,3 @@ class TestEveryWriterWritesRows:
         (row,) = _rows(db_session, target.id)
         assert row.competency_id == "passport_write"
         assert row.ends_on is not None
-
-
-class TestTheJsonIsNoLongerWritten:
-    """The retired columns keep whatever they held, and gain nothing."""
-
-    def test_editing_a_user_leaves_the_json_alone(
-        self,
-        test_client: TestClient,
-        db_session: Session,
-        admin: User,
-        target: User,
-    ) -> None:
-        client = _login(test_client, "the_admin")
-
-        response = client.patch(
-            f"/api/users/{target.id}",
-            json={
-                "additional_competencies": ["certify_death"],
-                "removed_competencies": ["access_own_patient_records"],
-            },
-            headers=_csrf(client),
-        )
-
-        assert response.status_code == 200, response.text
-        db_session.refresh(target)
-        assert target.additional_competencies == []
-        assert target.removed_competencies == []
-
-    def test_creating_a_user_leaves_the_json_empty(
-        self,
-        test_client: TestClient,
-        db_session: Session,
-        admin: User,
-        org: OrgUnit,
-    ) -> None:
-        client = _login(test_client, "the_admin")
-
-        response = client.post(
-            "/api/users",
-            json={
-                "name": "Json Free",
-                "username": "json_free",
-                "email": "json_free@example.test",
-                "password": "Password123!",
-                "additional_competencies": ["certify_death"],
-                "org_unit_ids": [org.id],
-            },
-            headers=_csrf(client),
-        )
-
-        assert response.status_code == 200, response.text
-        created = db_session.get(User, response.json()["id"])
-        assert created is not None
-        assert created.additional_competencies == []

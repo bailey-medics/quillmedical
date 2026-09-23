@@ -405,7 +405,7 @@ its own readers and its own migration.
       statement a create and an update send, and fails if either name
       appears.
 
-- [ ] **Drop `additional_competencies`, `removed_competencies` and the
+- [x] **Drop `additional_competencies`, `removed_competencies` and the
       `passport_write_entitlement` table** in their own migration, carrying
       `# migration-check: allow-destructive`. It goes through the
       `db-destructive-migration-review` environment, and it is not bundled
@@ -417,6 +417,11 @@ its own readers and its own migration.
       table is safe to drop in the same migration without a step like the
       one above: since Phase 5 no code queries it, and a mapped class that
       is never queried sends nothing.
+
+      Migration `113dbf80612e`. Its `downgrade()` recreates both columns
+      and the table empty, because everything they held is in
+      `user_competency`. The `eager_defaults` setting the step above needed
+      goes with the columns.
 
 ## Decisions
 
