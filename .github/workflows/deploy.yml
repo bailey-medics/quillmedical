@@ -99,15 +99,9 @@ jobs:
         with:
           ref: ${{ needs.prepare.outputs.sha }}
 
-      # Authenticates as the app project, not teaching, which is being
-      # retired. The build pushes every image to both registries, so this
-      # identity is the only thing that tied the job to teaching.
-      #
-      # `github-actions@quill-medical-app` needs
-      # `roles/artifactregistry.writer` on teaching's `quill` repository
-      # for the teaching tags below to push; it holds only `reader` by
-      # default. Those tags go when teaching stops deploying, and this
-      # grant goes with the project.
+      # Authenticates as the app project. The teaching project was
+      # retired on 2026-09-23 and its registry went with it, so images
+      # are pushed to one registry now rather than two.
       - name: Authenticate to GCP (app)
         uses: google-github-actions/auth@v3.0.0
         with:
@@ -128,8 +122,6 @@ jobs:
           target: prod
           push: true
           tags: |
-            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/${{ matrix.service }}:${{ needs.prepare.outputs.sha }}
-            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/${{ matrix.service }}:latest
             ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/${{ matrix.service }}:${{ needs.prepare.outputs.sha }}
             ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/${{ matrix.service }}:latest
           build-args: |
@@ -148,8 +140,6 @@ jobs:
           target: admin
           push: true
           tags: |
-            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/admin:${{ needs.prepare.outputs.sha }}
-            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/admin:latest
             ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/admin:${{ needs.prepare.outputs.sha }}
             ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/admin:latest
           cache-from: type=gha
@@ -164,8 +154,6 @@ jobs:
           target: transcode
           push: true
           tags: |
-            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/transcode:${{ needs.prepare.outputs.sha }}
-            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/transcode:latest
             ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/transcode:${{ needs.prepare.outputs.sha }}
             ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/transcode:latest
           cache-from: type=gha
@@ -182,8 +170,6 @@ jobs:
           file: ./backend/Dockerfile.caption
           push: true
           tags: |
-            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/caption:${{ needs.prepare.outputs.sha }}
-            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/caption:latest
             ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/caption:${{ needs.prepare.outputs.sha }}
             ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/caption:latest
           cache-from: type=gha
@@ -207,7 +193,7 @@ jobs:
       max-parallel: 1
       fail-fast: false
       matrix:
-        environment: [teaching, app]
+        environment: [app]
     steps:
       - uses: actions/checkout@v7.0.1
         with:

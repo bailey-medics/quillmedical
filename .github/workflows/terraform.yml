@@ -55,7 +55,7 @@ jobs:
       # One environment's plan failing should not hide the other's.
       fail-fast: false
       matrix:
-        environment: [teaching, app]
+        environment: [app]
     steps:
       - uses: actions/checkout@v7.0.1
 
@@ -114,7 +114,7 @@ jobs:
       max-parallel: 1
       fail-fast: false
       matrix:
-        environment: [teaching, app]
+        environment: [app]
     steps:
       - uses: actions/checkout@v7.0.1
 

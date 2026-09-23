@@ -1191,20 +1191,89 @@ for the same name would leave both pending.
       answer. Skipping it means finding out after the shutdown, when the
       evidence is gone.
 
-- [ ] Destroy the teaching workspace with Terraform rather than deleting
+- [x] Destroy the teaching workspace with Terraform rather than deleting
       the project in the console, so the state is emptied rather than
-      orphaned.
+      orphaned. Done on 2026-09-23. 92 of 95 resources destroyed,
+      including `quill-core-teaching` and its backups.
+      `teaching.quill-medical.com` stopped answering; the app and the
+      marketing site served `200` throughout.
 
-- [ ] Delete the workspace afterwards, and remove `teaching` from the
-      validation condition in `infra/variables.tf`.
+      **Skipped the `landing_domain` step above deliberately.** Dropping
+      it from teaching's tfvars is the operation this plan already
+      records as impossible, because the URL map still references the
+      backend bucket. Destroying the whole workspace removes both in one
+      pass, so the ordering problem does not arise.
 
-- [ ] Narrow the fifteen widened conditions in `infra/main.tf` back to
-      `app` alone. This is the contract half of the expand-contract
-      Batch 3 started, and it is safe only now: the `teaching` workspace
-      is gone, so there is no live environment for the conditions to turn
-      off. Doing it any earlier destroys the resources it names.
+      **A destroy of a real environment does not complete in one pass.**
+      Three resources refused, and each stranded everything beneath it:
 
-- [ ] Remove `infra/environments/teaching/`.
+      - `quill-teaching-videos-processed-teaching` held a transcoded
+        MP4 and the bucket has no `force_destroy`
+      - the BigQuery dataset `quill_analytics_teaching` still held its
+        `requests` table
+      - the SQL user `quill` could not be dropped, because 59 objects
+        in `quill_core` depend on the role
+
+      Emptying the bucket and dropping the dataset cleared the first
+      two. For the third, the user was removed from state rather than
+      from the database: it lives inside the instance being destroyed,
+      so the instance takes it, and untangling 59 object dependencies
+      would have been work in service of nothing.
+
+      ```bash
+      gcloud storage rm -r "gs://quill-teaching-videos-processed-teaching/**"
+      bq rm -r -f --dataset quill-medical-teaching:quill_analytics_teaching
+      terraform state rm 'module.cloud_sql_core.google_sql_user.user'
+      ```
+
+- [ ] Remove the last three networking resources: the VPC, its global
+      address, and the service networking connection between them.
+      Terraform refuses the connection with `Producer services (e.g.
+      CloudSQL, Cloud Memstore, etc.) are still using this connection`,
+      and nothing is: `gcloud sql instances list` returns nothing and
+      the Redis API is not enabled on the project.
+
+      Google holds the peering open for a while after a Cloud SQL
+      instance is deleted, so this is a wait rather than a fault. Two
+      passes over about ten minutes both refused. Shutting the project
+      down removes all three anyway, so this step is optional and the
+      shutdown below is the simpler route.
+
+- [x] Remove `teaching` from the validation in `infra/variables.tf`, so
+      the only environments the configuration accepts are `prod`,
+      `staging` and `app`.
+
+- [x] Narrow the widened conditions in `infra/main.tf` back to `app`
+      alone. This is the contract half of the expand-contract Batch 3
+      started, and it was safe only once the workspace was gone: the
+      conditions are mostly `count`, so doing it while the old project
+      ran would have read as an instruction to destroy the Cloud SQL
+      instance and the video and content buckets.
+
+      The list is one local used sixteen times, so narrowing it is a
+      one-line change rather than sixteen edits. It stays a list rather
+      than becoming a bare comparison, because a second project running
+      this product is what the migration just did and may do again.
+
+- [x] Remove `infra/environments/teaching/`.
+
+- [x] Take `teaching` out of the three workflow matrices, in
+      `terraform.yml` twice and `deploy.yml` once. **The tfvars file and
+      the matrices have to move together**: a matrix leg naming an
+      environment whose `terraform.tfvars` has been deleted fails on a
+      missing file, and it fails on every run rather than once.
+
+- [x] Stop pushing images to teaching's Artifact Registry. Eight tag
+      lines in `deploy.yml`, four images in two forms each, pointed at a
+      registry inside the project being shut down. The
+      `roles/artifactregistry.writer` grant made on 2026-09-23 so the app
+      account could write there is now unnecessary and goes with the
+      project.
+
+- [ ] Remove the three orphaned networking resources, or let the
+      shutdown take them. See the step above: Terraform cannot delete the
+      service networking connection while Google still holds the peering
+      open, and the VPC and its global address sit behind it.
 
 - [ ] Shut the old project down rather than deleting it outright. A
       shut-down project is recoverable for thirty days; a deleted one is
