@@ -1,12 +1,15 @@
 /**
  * Passport Logbook Page Tests
  *
- * The competency is chosen on the page rather than taken from the route,
- * so the page has a state the others do not: nothing chosen yet.
+ * Two controls that were once one: a filter for narrowing the view, and
+ * a picker for saying what a new entry counts towards. They were split
+ * because narrowing is reading and choosing is writing, so a read-only
+ * holder must keep the first and lose the second.
  */
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import { Component as PassportLogbookPage } from "./PassportLogbookPage";
 
@@ -83,22 +86,89 @@ describe("PassportLogbookPage", () => {
     expect(await screen.findByText("Nothing logged yet")).toBeInTheDocument();
   });
 
-  it("offers no way to add an entry before a competency is chosen", async () => {
-    // An entry counts towards a competency, so there is nothing to
-    // record until the page knows which one.
+  it("keeps the picker out of the way until an entry is being added", async () => {
+    // It answers one question, asked at one moment. On the page it read
+    // as a second filter beside the real one.
     renderWithRouter(<PassportLogbookPage />);
 
-    await screen.findByText("Which competency?");
+    await screen.findByRole("button", { name: "Add an entry" });
 
-    expect(
-      screen.queryByRole("button", { name: "Add an entry" }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Which competency?")).not.toBeInTheDocument();
   });
 
-  it("offers the picker", async () => {
+  it("asks which competency once an entry is being added", async () => {
     renderWithRouter(<PassportLogbookPage />);
 
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Add an entry" }),
+    );
+
     expect(await screen.findByText("Which competency?")).toBeInTheDocument();
+  });
+
+  it("disables adding where the passport is read-only", async () => {
+    // Adding goes through `_require_writer`, so the button would answer
+    // 403. The filter below is untouched: narrowing the view is
+    // reading, which a read-only holder keeps.
+    fetchMyPassport.mockResolvedValue({
+      ...detail,
+      entitlement: { can_write: false },
+    });
+    renderWithRouter(<PassportLogbookPage />);
+
+    expect(
+      await screen.findByRole("button", { name: "Add an entry" }),
+    ).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("leaves the filter usable where the passport is read-only", async () => {
+    // The point of splitting the two controls. A holder whose
+    // entitlement has ended keeps every read, and narrowing a long
+    // logbook is reading.
+    fetchMyPassport.mockResolvedValue({
+      ...detail,
+      entitlement: { can_write: false },
+    });
+    fetchWholeLogbook.mockResolvedValue({
+      count: 2,
+      competencies: [
+        {
+          competency: "perform_venepuncture",
+          count: 1,
+          entries: [
+            {
+              filename: "a",
+              competency: "perform_venepuncture",
+              performed_on: "2026-03-01",
+            },
+          ],
+        },
+        {
+          competency: "certify_death",
+          count: 1,
+          entries: [
+            {
+              filename: "b",
+              competency: "certify_death",
+              performed_on: "2026-03-02",
+            },
+          ],
+        },
+      ],
+    });
+    renderWithRouter(<PassportLogbookPage />);
+
+    // Both entries are shown, and the filter is there to narrow them.
+    // `FilterSelect` takes no `disabled` prop, so the thing worth
+    // asserting is that the page still offers it and still renders
+    // what it would narrow.
+    expect(await screen.findByText("Perform Venepuncture")).toBeInTheDocument();
+    expect(screen.getByText("Certify Death")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "Filter the logbook by competency",
+      }),
+    ).toBeInTheDocument();
   });
 
   it("explains a failed passport load", async () => {

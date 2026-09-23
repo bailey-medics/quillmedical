@@ -1,18 +1,26 @@
 /**
  * Passport Logbook Page
  *
- * A competency's logbook, chosen with the picker.
+ * Everything logged, narrowed by a filter, with a picker for adding.
  *
- * The competency is chosen here rather than taken from the route,
- * because a holder browsing their logbook thinks in terms of "show me my
- * bronchoscopies" rather than in terms of a URL.
+ * The two were one control until a read-only holder needed the first
+ * and could not be given the second. Narrowing the view is reading, and
+ * a holder whose entitlement has ended keeps every read; choosing what
+ * an entry counts towards is writing, and they have lost that. One
+ * control cannot be both enabled and disabled, so there are two.
+ *
+ * The filter is `FilterSelect`, the same component the tables use, so
+ * narrowing a logbook looks like narrowing any other list. The picker
+ * is `CompetencyPicker`, and it appears only while an entry is being
+ * written, because that is the only moment it is asked anything.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Group, Stack } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import AddButton from "@/components/button/AddButton";
 import CompetencyPicker from "@/components/passport/CompetencyPicker";
+import FilterSelect from "@/components/form/FilterSelect";
 import LogbookEntryForm from "@/components/passport/LogbookEntryForm";
 import LogbookTable from "@/components/passport/LogbookTable";
 import ErrorState from "@/components/error-state/ErrorState";
@@ -71,6 +79,11 @@ function competencyForForm(
 
 export function Component() {
   const [passportId, setPassportId] = useState<string | null>(null);
+  // What the view is narrowed to. Empty means everything, which is what
+  // a holder opening their logbook wants to see first.
+  const [shown, setShown] = useState<string[]>([]);
+  // What a new entry would count towards. Only ever set while the form
+  // is open, and never used to narrow the view.
   const [competencyId, setCompetencyId] = useState<string | null>(null);
   const [whole, setWhole] = useState<WholeLogbook>({
     competencies: [],
@@ -125,13 +138,46 @@ export function Component() {
     }
   }
 
-  // Everything logged, narrowed by the picker rather than chosen by
-  // it. A holder opening their logbook wants to see what is in it; the
-  // picker says which part to look at, and says nothing when left
-  // alone.
-  const groups = competencyId
-    ? whole.competencies.filter((group) => group.competency === competencyId)
-    : whole.competencies;
+  // Everything logged, narrowed by the filter. Empty shows the lot.
+  const groups =
+    shown.length > 0
+      ? whole.competencies.filter((group) => shown.includes(group.competency))
+      : whole.competencies;
+
+  // One option per competency already in the logbook, named from the
+  // catalogue. Built from what is there rather than from the whole
+  // catalogue, because a filter offering competencies with nothing
+  // behind them only ever produces an empty list.
+  // Display names, from the shared catalogue. Used by the filter and by
+  // each table's heading, which until now printed the raw id: the page
+  // showed "certify_death" where the picker beside it said "Certify
+  // death", and only the picker's wording was ever read by a test.
+  const nameOf = useMemo(() => {
+    const catalogue = competenciesData.competencies as {
+      id: string;
+      display_name: string;
+    }[];
+    const byId = new Map(catalogue.map((item) => [item.id, item.display_name]));
+    return (id: string) => byId.get(id) ?? id;
+  }, []);
+
+  const filterOptions = useMemo(() => {
+    const catalogue = competenciesData.competencies as {
+      id: string;
+      display_name: string;
+    }[];
+    return [
+      {
+        group: "Competency",
+        items: whole.competencies.map((entry) => ({
+          value: entry.competency,
+          label:
+            catalogue.find((item) => item.id === entry.competency)
+              ?.display_name ?? entry.competency,
+        })),
+      },
+    ];
+  }, [whole.competencies]);
 
   return (
     <Stack gap="lg">
@@ -148,38 +194,63 @@ export function Component() {
         />
       )}
 
-      <CompetencyPicker
-        value={competencyId}
-        onChange={setCompetencyId}
-        label="Which competency?"
-        description="Choose one to add an entry, or to see only its own."
-      />
-
-      {/* Only once a competency is chosen: an entry counts towards one,
-          so there is nothing to record until the page knows which. */}
-      {competencyId &&
-        (adding ? (
-          <LogbookEntryForm
-            competency={competencyForForm(competencyId, groups[0] ?? null)}
-            onSubmit={handleSubmit}
-            onCancel={() => setAdding(false)}
-            isSubmitting={submitting}
+      {/* Narrowing the view, which is reading. Offered whatever the
+          entitlement says, and only where there is more than one
+          competency to choose between. */}
+      {whole.competencies.length > 1 && (
+        <Group justify="flex-end">
+          <FilterSelect
+            data={filterOptions}
+            value={shown}
+            onChange={setShown}
+            label="Competency"
+            aria-label="Filter the logbook by competency"
           />
-        ) : (
-          <Group justify="flex-end">
-            {/* Disabled where the server says a write would be
-                refused, rather than offering a button that fails on
-                submit. See `useCanWrite`. */}
-            <AddButton
-              label="Add an entry"
-              onClick={() => setAdding(true)}
-              disabled={!canWrite}
+        </Group>
+      )}
+
+      {adding ? (
+        <Stack gap="md">
+          {/* Choosing what the entry counts towards, which is writing.
+              Inside the form rather than above the page, because this
+              is the only moment it is asked anything. */}
+          <CompetencyPicker
+            value={competencyId}
+            onChange={setCompetencyId}
+            label="Which competency?"
+            description="The entry will count towards this one."
+          />
+
+          {competencyId && (
+            <LogbookEntryForm
+              competency={competencyForForm(competencyId, groups[0] ?? null)}
+              onSubmit={handleSubmit}
+              onCancel={() => {
+                setAdding(false);
+                setCompetencyId(null);
+              }}
+              isSubmitting={submitting}
             />
-          </Group>
-        ))}
+          )}
+        </Stack>
+      ) : (
+        <Group justify="flex-end">
+          {/* Disabled where the server says a write would be refused,
+              rather than offering a control that fails on submit. */}
+          <AddButton
+            label="Add an entry"
+            onClick={() => setAdding(true)}
+            disabled={!canWrite}
+          />
+        </Group>
+      )}
 
       {groups.map((group) => (
-        <LogbookTable key={group.competency} logbook={group} />
+        <LogbookTable
+          key={group.competency}
+          logbook={group}
+          competencyName={nameOf(group.competency)}
+        />
       ))}
     </Stack>
   );
