@@ -110,7 +110,7 @@ def sync_competency_rows(
 
     current: dict[str, list[UserCompetency]] = {}
     for row in user.competency_grants:
-        if row.granted and row.is_current(now):
+        if row.is_current(now):
             current.setdefault(row.competency_id, []).append(row)
 
     for competency_id in sorted(wanted_ids - current.keys()):
@@ -122,7 +122,6 @@ def sync_competency_rows(
         user.competency_grants.append(
             UserCompetency(
                 competency_id=competency_id,
-                granted=True,
                 starts_on=now,
                 ends_on=now + term if term else None,
                 source=row_source,

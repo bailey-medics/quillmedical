@@ -43,7 +43,6 @@ def passport_write_ends_on(db: Session, user_id: int) -> datetime | None:
         select(UserCompetency.ends_on).where(
             UserCompetency.user_id == user_id,
             UserCompetency.competency_id == "passport_write",
-            UserCompetency.granted.is_(True),
             (UserCompetency.ends_on.is_(None))
             | (UserCompetency.ends_on > now),
         )

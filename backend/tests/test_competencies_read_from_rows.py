@@ -82,7 +82,6 @@ class TestWhatIsHeld:
         user.competency_grants.append(
             UserCompetency(
                 competency_id="certify_death",
-                granted=True,
                 source="admin",
                 ends_on=datetime.now(UTC) + timedelta(days=1),
             )
@@ -112,7 +111,6 @@ class TestWhatIsHeld:
         user.competency_grants.append(
             UserCompetency(
                 competency_id="passport_write",
-                granted=True,
                 source="individual",
                 starts_on=datetime.now(UTC),
                 ends_on=datetime.now(UTC) + timedelta(days=30),
