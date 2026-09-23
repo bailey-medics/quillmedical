@@ -572,8 +572,9 @@ here because the next environment will want the same list:
       `iam.serviceAccountAdmin`, `iam.serviceAccountUser`,
       `logging.configWriter`, `run.admin` and `secretmanager.admin`.
 
-- [ ] **(Mark)** Review the roles above, and decide whether `editor`
-      should stay. It subsumes `run.admin` and `secretmanager.admin`
+- [x] **(Mark)** Review the roles above, and decide whether `editor`
+      should stay. Decided on 2026-09-23: it goes, as the last step of
+      Batch 9's least-privilege work, which carries the detail. It subsumes `run.admin` and `secretmanager.admin`
       entirely and grants much besides, so the three together say less
       than they appear to. It was copied rather than chosen, because the
       first apply builds around thirty resources and a missing permission
@@ -622,10 +623,12 @@ here because the next environment will want the same list:
       two import blocks, and add versions to `pagerduty-service-key` and
       `alert-sms-number`.
 
-- [ ] **(Mark)** Create a Slack notification channel in the new project
+- [x] **(Mark)** Create a Slack notification channel in the new project
       through the console's OAuth flow, then set
       `slack_channel_display_name` in the app tfvars. Until then the new
       environment has email, SMS and PagerDuty alerting but no Slack.
+      Done on 2026-09-23 as `quill-medical-cicd`, applied in #1000 and
+      proven by a test alert that reached the channel.
 
 - [x] **(Claude and Mark)** Apply Batch 3's Terraform to the new
       workspace. Done on 2026-09-21, on the fifth attempt: 16 added, 0
@@ -1579,14 +1582,45 @@ older project, because the organisation policy stops that automatic
 grant, but it is the same problem one layer down: a compromise of the
 least important workload reaches the most important secrets.
 
-- [ ] **(Claude)** Add a service account per workload to Terraform,
-      `run-backend`, `run-frontend`, `run-admin`, `run-transcode` and
-      `run-caption`, and set `service_account` on each service and job.
+Split expand-then-contract, because switching the identity a live service
+runs as breaks it on apply if a single permission is missed. The inventory,
+taken from the code on 2026-09-23: the backend reads its thirteen secrets,
+reads the question bank bucket, manages the passports bucket, writes the
+video uploads bucket and starts the transcode and caption jobs; the admin
+job reads the Cloud SQL password and JWT key; transcode reads uploads and
+writes renditions; caption reads and writes renditions; both jobs read the
+callback token; the frontend reads nothing. The backend's only Google APIs
+are Cloud Storage and Cloud Run jobs.
 
-- [ ] **(Claude)** Replace the project-wide `secretAccessor` with a
-      binding per secret, to the accounts that read it. The frontend gets
-      none. The storage bucket grants that name the default account move
-      to whichever workload actually reads each bucket.
+- [x] **(Claude)** Create an account per workload, `run-backend`,
+      `run-frontend`, `run-admin`, `run-transcode` and `run-caption`, and
+      grant each exactly the inventory above, in
+      `infra/runtime-identities.tf`. Nothing runs as them yet, so it
+      changes nothing that serves traffic: `terraform plan` showed 24
+      additions and no change or destruction.
+
+      Each workload's secret list now lives once, in `locals`, read both
+      by the module that mounts the secrets and by the grants, so a
+      secret added to a workload cannot be forgotten in its grants. Moving
+      the backend's list there produced no diff, which is the check that
+      nothing was copied wrongly. Secret grants go through
+      `module.secrets.secret_ids`, so naming a secret the module does not
+      create fails the plan rather than the apply.
+
+- [ ] **(Claude)** Point each service and job at its account, with
+      `service_account` on the Cloud Run services and a new variable on
+      `modules/cloud-run-job`. The default account keeps its grants
+      meanwhile, so a missed permission shows as a failed revision while
+      the old one keeps serving, not an outage. Merge only after the step
+      above has applied.
+
+- [ ] **(Claude)** Remove the default account's grants: the project-wide
+      `secretAccessor`, its bucket bindings, the job invokers and
+      `cloudrun_token_creator`, once the step above has run live. The
+      token creator looks unused already: nothing in `backend/app`
+      calls `generate_signed_url`, and the video pipeline signs CDN
+      cookies with an HMAC rather than through IAM. This is the step
+      where the frontend actually stops being able to read the secrets.
 
 - [ ] **(Mark)** Narrow the deploy account from Phase 1 to
       `roles/iam.serviceAccountUser` on the five runtime accounts rather
