@@ -120,6 +120,7 @@ import LoginPage from "./pages/LoginPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import Settings from "./pages/Settings";
+import YourFeedbackPage from "./pages/feedback/YourFeedbackPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 import VerifyEmailPendingPage from "./pages/VerifyEmailPendingPage";
 import HomeRedirect from "./pages/HomeRedirect";
@@ -549,6 +550,13 @@ const routes: RouteObject[] = [
         ],
       },
 
+      // What the user has sent through Send feedback, and its status.
+      // Any signed-in user; the API returns only their own.
+      {
+        path: "/feedback",
+        element: <YourFeedbackPage />,
+        handle: { safeForReload: true },
+      },
       // Settings
       {
         path: "/settings",

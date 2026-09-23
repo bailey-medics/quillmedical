@@ -29,6 +29,7 @@
 import { Modal, Stack } from "@mantine/core";
 import { useState } from "react";
 import { Controller } from "react-hook-form";
+import { useInRouterContext } from "react-router-dom";
 import ButtonPair from "@/components/button/ButtonPair";
 import {
   Form,
@@ -42,11 +43,13 @@ import TextAreaField from "@/components/form/TextAreaField";
 import ResultMessage from "@/components/message-cards/ResultMessage";
 import BodyText from "@/components/typography/BodyText";
 import Heading from "@/components/typography/Heading";
+import TextLink from "@/components/typography/TextLink";
 import {
   FEEDBACK_CATEGORY_OPTIONS,
   type FeedbackCategory,
   type FeedbackInput,
 } from "@/lib/feedback/sendFeedback";
+import { YOUR_FEEDBACK_PATH } from "@/lib/feedback/myFeedback";
 
 export interface FeedbackModalProps {
   /** Whether the modal is open */
@@ -60,6 +63,27 @@ export interface FeedbackModalProps {
 interface FeedbackFormValues {
   category: FeedbackCategory | null;
   message: string;
+}
+
+/**
+ * A link to the sender's own feedback, closing the modal as it is followed.
+ *
+ * Only inside a router: the modal is also offered from the error boundary,
+ * which should not have to assume anything above it still works.
+ */
+function YourFeedbackLink({
+  onClose,
+  children,
+}: {
+  onClose: () => void;
+  children: string;
+}) {
+  if (!useInRouterContext()) return null;
+  return (
+    <TextLink to={YOUR_FEEDBACK_PATH} onClick={onClose}>
+      {children}
+    </TextLink>
+  );
 }
 
 /** Inner fields — needs the Form context to reach React Hook Form. */
@@ -105,6 +129,9 @@ function FeedbackFields({ onClose }: { onClose: () => void }) {
 
       <FormStatusNarrow />
       <SubmitButton onCancel={onClose} cancelLabel="Cancel" />
+      <YourFeedbackLink onClose={onClose}>
+        Your previous feedback
+      </YourFeedbackLink>
     </Stack>
   );
 }
@@ -115,6 +142,7 @@ export default function FeedbackModal({
   onSubmit,
 }: FeedbackModalProps) {
   const [sent, setSent] = useState(false);
+  const inRouter = useInRouterContext();
 
   const handleClose = () => {
     setSent(false);
@@ -156,6 +184,15 @@ export default function FeedbackModal({
             title="Feedback sent"
             subtitle="Thank you for telling us."
           />
+          {inRouter && (
+            <BodyText>
+              We&apos;ll post the outcome in{" "}
+              <YourFeedbackLink onClose={handleClose}>
+                Your feedback
+              </YourFeedbackLink>
+              .
+            </BodyText>
+          )}
           <ButtonPair acceptLabel="Close" onAccept={handleClose} />
         </Stack>
       ) : (

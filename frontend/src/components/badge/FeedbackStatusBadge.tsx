@@ -16,10 +16,16 @@ import {
   type BadgeColourConfig,
 } from "./badgeColours";
 import BadgeSkeleton from "./BadgeSkeleton";
+import { FEEDBACK_STATUS_SENDER_LABELS } from "@/lib/feedback/myFeedback";
 
 type Props = {
   /** The feedback status to display */
   status: FeedbackStatus;
+  /**
+   * Who is reading: an operator sees the triage word, the sender sees
+   * what it means for them (defaults to "operator")
+   */
+  audience?: "operator" | "sender";
   /** Show loading skeleton instead of badge */
   isLoading?: boolean;
 };
@@ -33,6 +39,7 @@ const STATUS_COLOURS: Record<FeedbackStatus, BadgeColourConfig> = {
 
 export default function FeedbackStatusBadge({
   status,
+  audience = "operator",
   isLoading = false,
 }: Props) {
   if (isLoading) {
@@ -43,7 +50,9 @@ export default function FeedbackStatusBadge({
 
   return (
     <Badge color={colour.bg} c={colour.text} variant={BADGE_VARIANT}>
-      {FEEDBACK_STATUS_LABELS[status]}
+      {audience === "sender"
+        ? FEEDBACK_STATUS_SENDER_LABELS[status]
+        : FEEDBACK_STATUS_LABELS[status]}
     </Badge>
   );
 }

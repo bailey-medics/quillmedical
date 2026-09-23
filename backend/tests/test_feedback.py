@@ -425,3 +425,73 @@ class TestChangingStatus:
         assert resp.status_code == 403
         db_session.refresh(row)
         assert row.status == "new"
+
+
+class TestReadingYourOwn:
+    MINE = f"{ENDPOINT}/mine"
+
+    def test_returns_only_the_callers_own_newest_first(
+        self,
+        authenticated_client: TestClient,
+        db_session: Session,
+        test_user: User,
+        test_admin: User,
+    ) -> None:
+        older = add_feedback(
+            db_session, test_user, "older", created_at=datetime(2026, 1, 1)
+        )
+        newer = add_feedback(
+            db_session,
+            test_user,
+            "newer",
+            status="resolved",
+            created_at=datetime(2026, 2, 1),
+        )
+        add_feedback(db_session, test_admin, "somebody else's")
+
+        resp = authenticated_client.get(self.MINE)
+
+        assert resp.status_code == 200
+        items = resp.json()["items"]
+        assert [i["id"] for i in items] == [newer.id, older.id]
+        assert items[0]["status"] == "resolved"
+        assert items[0]["message"] == "newer"
+
+    def test_leaves_out_the_captured_context(
+        self,
+        authenticated_client: TestClient,
+        db_session: Session,
+        test_user: User,
+    ) -> None:
+        add_feedback(db_session, test_user, "x")
+
+        resp = authenticated_client.get(self.MINE)
+
+        assert set(resp.json()["items"][0]) == {
+            "id",
+            "status",
+            "category",
+            "message",
+            "created_at",
+        }
+
+    def test_is_empty_for_somebody_who_has_sent_nothing(
+        self, authenticated_client: TestClient
+    ) -> None:
+        resp = authenticated_client.get(self.MINE)
+
+        assert resp.json() == {"items": []}
+
+    def test_refuses_a_signed_out_caller(
+        self, test_client: TestClient
+    ) -> None:
+        assert test_client.get(self.MINE).status_code == 401
+
+    def test_is_not_mistaken_for_an_id(
+        self, authenticated_superadmin_client: TestClient
+    ) -> None:
+        """Even an operator, who may read by id, gets their own list."""
+        resp = authenticated_superadmin_client.get(self.MINE)
+
+        assert resp.status_code == 200
+        assert "items" in resp.json()

@@ -40,6 +40,8 @@ from app.schemas.feedback import (
     FeedbackListOut,
     FeedbackStatus,
     FeedbackStatusIn,
+    MyFeedbackItemOut,
+    MyFeedbackListOut,
 )
 
 logger = logging.getLogger(__name__)
@@ -160,6 +162,40 @@ def list_feedback(
     if status is not None:
         query = query.where(Feedback.status == status)
     return FeedbackListOut(items=[_item(f) for f in db.scalars(query)])
+
+
+# Declared before `/{feedback_id}`, so "mine" is matched here rather than
+# parsed as an id and refused with a 422.
+@router.get("/mine", response_model=MyFeedbackListOut)
+def list_my_feedback(
+    current_user: User = DEP_CURRENT_USER,
+    db: Session = _DEP_SESSION,
+) -> MyFeedbackListOut:
+    """The caller's own feedback, newest first, with where each has got to.
+
+    This is what closes the loop for the sender: somebody who reported a
+    broken case can see it was fixed, and so has a reason to report the
+    next one. Any signed-in user, and only ever their own rows.
+    """
+    rows = db.scalars(
+        select(Feedback)
+        .where(Feedback.user_id == current_user.id)
+        .order_by(Feedback.created_at.desc(), Feedback.id.desc())
+    )
+    return MyFeedbackListOut(
+        items=[
+            MyFeedbackItemOut.model_validate(
+                {
+                    "id": row.id,
+                    "status": row.status,
+                    "category": row.category,
+                    "message": row.message,
+                    "created_at": row.created_at,
+                }
+            )
+            for row in rows
+        ]
+    )
 
 
 def _require_feedback(db: Session, feedback_id: int) -> Feedback:

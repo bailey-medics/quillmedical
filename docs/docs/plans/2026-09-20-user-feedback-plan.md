@@ -176,27 +176,33 @@ log pipe it was meant to improve on.
 The operator page closes the loop for us; this closes it for the sender, which
 is the reason the plan exists. Read-only — replying is deferred.
 
-- [ ] Add `GET /api/feedback/mine` to the feedback router, behind
+- [x] Add `GET /api/feedback/mine` to the feedback router, behind
       `DEP_CURRENT_USER` and filtered to the caller's `user_id` from the
       session, newest first. It returns the caller's own message, category,
       status and date, and nothing captured automatically — the only text it
       exposes is text they wrote. Declare it before `/{id}` routes so the
       path is not parsed as an id. Tests: returns only the caller's
       submissions, and refuses unauthenticated callers.
-- [ ] Add a page at `frontend/src/pages/feedback/`, routed at `/feedback`
+- [x] Add a page at `frontend/src/pages/feedback/`, routed at `/feedback`
       inside `<RequireAuth>` with no further gate. List each submission with
       its message and a sender-facing status label: `new` shows as
       `Received`, `acknowledged` as `Being looked at`, `resolved` as `Fixed`,
       `wont_fix` as `Won't fix`. Map these in one place so the stored values
       never reach the screen. An empty state for somebody who has sent
-      nothing.
-- [ ] Give the page no sidebar entry. `Send feedback` is an action, so it
+      nothing. The sender labels live in `lib/feedback/myFeedback.ts`,
+      and `FeedbackStatusBadge` takes an `audience` of `operator` or
+      `sender` to choose between the two sets.
+- [x] Give the page no sidebar entry. `Send feedback` is an action, so it
       cannot carry children the way Teaching does, and a separate `Feedback`
       destination would sit beside it saying almost the same thing. Instead
       link to `/feedback` from two places in `FeedbackModal`: a `Your
       previous feedback` link under the form, and the success state, which
       reads `We'll post the outcome in Your feedback.` Following either link
-      closes the modal. Test both links.
+      closes the modal. Test both links. `TextLink` gained an optional
+      `onClick` for this, since the modal belongs to the sidebar link and
+      stays mounted across the navigation. Both links render only inside a
+      router, so the modal still works from the error boundary in Phase 6
+      without assuming anything above it survived.
 
 ## Phase 6: Error boundary button
 
