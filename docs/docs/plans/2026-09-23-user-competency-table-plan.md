@@ -149,23 +149,33 @@ column rename, for the same reason: expand, dual-write, backfill, switch reads.
 
 ## Phase 3: Backfill
 
-- [ ] **Run `python -m app.cbac.audit` against teaching before this deploys
-      and record the count of unknown ids.** The JSON columns may name
+- [ ] **Run the audit against teaching before this deploys and record the
+      count of unknown ids.** `backend/app/cbac/audit.py` has no
+      command-line entry point, so from the backend container:
+      `python -c "from app.db import CoreSessionLocal; from app.cbac.audit
+      import unknown_ids_on_users; print(unknown_ids_on_users(CoreSessionLocal()))"`. The JSON columns may name
       competencies the catalogue no longer has. The backfill carries them
       across rather than dropping them: losing a grant silently during a
       storage change is worse than carrying a stale one, and the audit
       report is what tells you how many there are before and after. This is
-      an operational step for whoever merges, not something a branch can do.
+      an operational step for whoever merges, not something a branch can do,
+      so it is left unticked.
 
-- [ ] **Write one migration that reads every user's two lists and writes a
+- [x] **Write one migration that reads every user's two lists and writes a
       row per entry** — `granted` true for `additional_competencies`, false
       for `removed_competencies`, a `source` of `migrated`, null dates. In the
       same migration, turn every `passport_write_entitlement` row into a
       `passport_write` row carrying its `starts_on`, `ends_on`, `source` and
       `org_unit_id`. Plain SQL throughout, not the ORM models, since those
-      models will change after this migration is frozen.
+      models will change after this migration is frozen. Written by hand as
+      `61e9c9b15ac6`, since there is no model change for `just migrate` to
+      find.
 
-- [ ] **Skip `passport_write` when copying `additional_competencies`.** A
+      A list that is not a JSON array copies nothing rather than failing:
+      `json_array_elements_text` raises on anything else, and one bad row
+      would otherwise block the deploy for everybody.
+
+- [x] **Skip `passport_write` when copying `additional_competencies`.** A
       holder has it in the JSON *and* in an entitlement row, so copying both
       writes one row with no end date beside one with a date. Phase 4 asks
       whether any row is current, and an undated row is current forever, so
@@ -177,26 +187,48 @@ column rename, for the same reason: expand, dual-write, backfill, switch reads.
       `passport_write` in `removed_competencies` is still copied: a removal
       has no term to lose.
 
-- [ ] **Make it idempotent and give it a real `downgrade()`.** Re-running
+- [x] **Copy an entitlement closed when the lists do not grant
+      `passport_write`.** Found while writing the migration. Somebody can
+      hold an entitlement with `passport_write` no longer in their
+      `additional_competencies`, because an administrator took it off them
+      after onboarding. Today they cannot write, since the gate asks for the
+      competency as well as the term. A copy left open would hand the
+      competency back the moment Phase 4 reads rows; a copy left out would
+      lose the record of the term when Phase 7 drops the entitlement table.
+      So it is copied with `ends_on` brought forward to the moment the
+      migration runs, which keeps both facts.
+
+- [x] **Make it idempotent and give it a real `downgrade()`.** Re-running
       must add nothing, and Phase 2 means the table is not empty when this
       runs. So a JSON entry is copied only when the user has no current row
       for that competency with the same `granted`, which also skips every
       user the dual-write has already brought into line. An entitlement is
-      copied only when no `passport_write` row carries the same `ends_on`
-      and `source`, which skips the ones the dual-write mirrored.
+      copied only when no `passport_write` row carries the same `starts_on`
+      and `source`, which skips the ones the dual-write mirrored. The start
+      rather than the end, because a copy closed by the step above no longer
+      carries the entitlement's end.
 
       The downgrade deletes rows whose `granted_by` is null and whose
       `source` is `migrated`, `organisation` or `individual`. That is
       exactly what this migration writes: a dual-written row either names
       the administrator who made it or carries `operator` or `bootstrap`.
 
+- [x] **Test the migration against a real Postgres.** It is Postgres SQL
+      and cannot run on the SQLite unit database.
+      `backend/tests/test_user_competency_backfill.py` is marked
+      `integration`, steps the database back to the revision before, seeds
+      users and entitlements, steps forward and reads the rows. It runs in
+      the `alembic_drift_check` CI job, which already has a migrated
+      Postgres, and locally through `compose.migrate.yml`.
+
 - [ ] **Verify the row count against the JSON before moving on.** For every
       user, the current `granted: true` rows other than `passport_write`
       match `additional_competencies` less any `passport_write`, and the
       current `granted: false` rows match `removed_competencies`. Every
       `passport_write_entitlement` row has a `passport_write` row with the
-      same `ends_on`. A mismatch means the backfill dropped something. Like
-      the audit, this is run against teaching after the deploy.
+      same `starts_on`. A mismatch means the backfill dropped something. Like
+      the audit, this is run against teaching after the deploy, and is left
+      unticked for whoever merges.
 
 ## Phase 4: Switch reads
 
