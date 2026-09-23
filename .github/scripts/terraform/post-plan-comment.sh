@@ -58,21 +58,27 @@ plan_summary() {
   printf '%s' "${summary%:}"
 }
 
-# Build the PR comment markdown from the summary ($1) and the job URL ($2).
+# Build the PR comment markdown from the summary ($1), the job URL ($2) and
+# the environment ($3).
 #
 # An empty summary means Terraform reached no conclusion — almost always a
 # failed plan. That is reported as a single line too: the failure needs to be
 # visible, not verbose, and the reason is in the job log the link points at.
+#
+# The environment was hardcoded to "teaching" until 2026-09-23, from before
+# the workflow ran a matrix. Every `Plan (app)` comment since then has been
+# headed `teaching`, which a green check never reveals.
 build_body() {
   local summary="$1"
   local job_url="$2"
+  local environment="${3:-unknown}"
 
   if [ -z "$summary" ]; then
     summary="$NO_SUMMARY_TEXT"
   fi
 
   cat <<EOF
-### Terraform Plan: \`teaching\`
+### Terraform Plan: \`${environment}\`
 
 \`\`\`
 ${summary}
@@ -120,6 +126,26 @@ resolve_job_url() {
   printf '%s' "$run_url"
 }
 
+# The environment this plan covers, read from JOB_NAME ("Plan (app)" gives
+# "app"). The runner exposes the job's config key rather than its display
+# name, so JOB_NAME is what the workflow passes and what the job link is
+# resolved by; taking the environment from the same place keeps the heading
+# and the link describing one job.
+plan_environment() {
+  local job_name="${JOB_NAME:-}"
+  local environment=""
+
+  # The pattern lives in a variable: a backslash inside [[ =~ ]] is taken
+  # literally by bash, so an inline \( would not mean a bracket.
+  local pattern='\(([^)]+)\)'
+
+  if [[ "$job_name" =~ $pattern ]]; then
+    environment="${BASH_REMATCH[1]}"
+  fi
+
+  printf '%s' "${environment:-unknown}"
+}
+
 main() {
   set -euo pipefail
 
@@ -149,10 +175,18 @@ main() {
   summary="$(plan_summary <"$PLAN_FILE")"
   job_url="$(resolve_job_url "$run_url")"
 
-  body="$(build_body "$summary" "$job_url")"
+  body="$(build_body "$summary" "$job_url" "$(plan_environment)")"
 
   log "Posting plan comment to PR #$pr_number"
-  printf '%s' "$body" | gh pr comment "$pr_number" --body-file -
+
+  # A failed post does not fail the job. The comment is a convenience: the
+  # plan has already run and its result is in the log the comment would have
+  # linked to. GitHub returned a 502 here on 2026-09-23, after a clean plan,
+  # and took the whole check red with it, which is a poor trade for a
+  # courtesy comment.
+  if ! printf '%s' "$body" | gh pr comment "$pr_number" --body-file -; then
+    log "Could not post the plan comment; the plan itself is unaffected" >&2
+  fi
 }
 
 # Only run when executed directly, so bats can source the pure functions.
