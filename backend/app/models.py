@@ -46,7 +46,10 @@ from sqlalchemy.orm import (
     validates,
 )
 
-from app.cbac.base_professions import resolve_user_competencies
+from app.cbac.base_professions import (
+    get_profession_base_competencies,
+    resolve_user_competencies,
+)
 from app.cbac.competencies import validate_competency_ids
 from app.org_units.relations import validate_org_unit_relation
 
@@ -194,10 +197,18 @@ class User(Base):
     def additional_competency_ids(self) -> list[str]:
         """What this person holds beyond their base profession, from rows.
 
-        The competencies with a current grant row. Replaces the
-        ``additional_competencies`` JSON column, now dropped.
+        The competencies with a current grant row, less those their
+        profession's template grants. Worked out rather than read, because
+        a grant row may have been seeded from the profession, and those are
+        not "additional". Replaces the ``additional_competencies`` JSON
+        column, now dropped.
         """
-        return self._current_competency_ids(granted=True)
+        template = set(get_profession_base_competencies(self.base_profession))
+        return [
+            competency_id
+            for competency_id in self._current_competency_ids(granted=True)
+            if competency_id not in template
+        ]
 
     @property
     def removed_competency_ids(self) -> list[str]:
@@ -1153,6 +1164,9 @@ COMPETENCY_GRANT_SOURCES: tuple[str, ...] = (
     # The command-line scripts that create the first superadmin, where
     # nobody is signed in to be `granted_by`.
     "bootstrap",
+    # Seeded from the person's base profession when they were given it, so
+    # what they hold no longer depends on the profession's template.
+    "profession",
     # A term of `passport_write` paid for by an organisation, or bought by
     # the person. The two values the retired `passport_write_entitlement`
     # table used.

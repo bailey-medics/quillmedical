@@ -10,6 +10,11 @@ it.
 **Rows are inserted or closed, never deleted.** Closing sets ``ends_on`` to
 now, so the row still says who held what, and until when.
 
+**The base profession seeds rows.** Whatever somebody's profession grants
+is written as rows with ``source`` ``profession`` when they are given it,
+so what they hold is recorded against them rather than read from the
+template on every request.
+
 **A competency that is sold carries its term on the row.** Granting
 ``passport_write`` writes its end date in the same act, so there is no
 second table to remember and no state in which somebody holds the
@@ -22,6 +27,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
 
+from app.cbac.base_professions import get_profession_base_competencies
 from app.features.passport.models import PASSPORT_ENTITLEMENT_DAYS
 from app.models import User, UserCompetency
 
@@ -37,6 +43,9 @@ TERMS: dict[str, timedelta] = {
 #: What a termed row records as its source. See ``TERMS``.
 TERM_SOURCE = "organisation"
 
+#: What a row seeded from somebody's base profession records as its source.
+PROFESSION_SOURCE = "profession"
+
 
 def sync_competency_rows(
     user: User,
@@ -49,10 +58,22 @@ def sync_competency_rows(
 ) -> None:
     """Bring a person's current rows into line with a pair of lists.
 
-    Each list is compared with the person's current rows of the matching
-    kind: grants against ``additional``, removals against ``removed``. An
-    id in the list with no current row gets one. A current row whose id is
-    no longer in the list is closed.
+    The two lists are read against the person's base profession, as the
+    edit page presents them: ``additional`` is what they hold beyond it,
+    ``removed`` what it gives that they do not hold. So the competencies
+    they should hold are the profession's template, plus ``additional``,
+    minus ``removed``, and their current grant rows are brought into line
+    with that: an id with no current row gets one, a current row whose id
+    is no longer held is closed.
+
+    **The profession seeds rows.** A row opened for a competency in the
+    template, and not asked for in ``additional``, has ``source``
+    ``profession``. Changing somebody's profession therefore adds rows for
+    what the new one grants and closes nothing, and somebody with no rows
+    yet gets the whole template as rows on their first save.
+
+    Removal rows are brought into line with ``removed`` the same way,
+    because the resolver still adds the template on top of the rows.
 
     A grant of a competency in ``TERMS`` is dated, and only a *current*
     row suppresses a new one. So saving the lists again, or adding
@@ -64,7 +85,8 @@ def sync_competency_rows(
     caller commits.
 
     Args:
-        user: The person, modified in place.
+        user: The person, modified in place. Their ``base_profession``
+            must already be the one the lists are read against.
         additional: Every competency they should hold beyond their base
             profession. None is read as empty.
         removed: Every competency their profession gives them that they
@@ -76,10 +98,13 @@ def sync_competency_rows(
         org_unit_id: The org_unit the change was made through, if any.
     """
     now = datetime.now(UTC)
+    template = set(get_profession_base_competencies(user.base_profession))
+    asked = set(additional or [])
+    withheld = set(removed or [])
 
     for granted, wanted_ids in (
-        (True, set(additional or [])),
-        (False, set(removed or [])),
+        (True, (template | asked) - withheld),
+        (False, withheld),
     ):
         current: dict[str, list[UserCompetency]] = {}
         for row in user.competency_grants:
@@ -88,13 +113,19 @@ def sync_competency_rows(
 
         for competency_id in sorted(wanted_ids - current.keys()):
             term = TERMS.get(competency_id) if granted else None
+            if term:
+                row_source = TERM_SOURCE
+            elif granted and competency_id not in asked:
+                row_source = PROFESSION_SOURCE
+            else:
+                row_source = source
             user.competency_grants.append(
                 UserCompetency(
                     competency_id=competency_id,
                     granted=granted,
                     starts_on=now,
                     ends_on=now + term if term else None,
-                    source=TERM_SOURCE if term else source,
+                    source=row_source,
                     granted_by=granted_by,
                     org_unit_id=org_unit_id,
                 )

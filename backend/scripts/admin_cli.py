@@ -115,6 +115,11 @@ def create_superadmin() -> int:
         # actually ask for.
         if is_new:
             user.base_profession = SUPERADMIN_PROFESSION
+            # Seeds the profession's competencies as rows. Nobody is
+            # signed in to be named as granting them.
+            sync_competency_rows(
+                user, additional=[], removed=[], source="bootstrap"
+            )
         else:
             # An existing user keeps the profession they practise under —
             # overwriting it would strip a clinician's clinical
