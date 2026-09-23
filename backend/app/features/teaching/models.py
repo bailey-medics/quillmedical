@@ -237,8 +237,12 @@ class AssessmentAnswer(Base):
         String(255), nullable=True
     )
     is_correct: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    # Retired: `assessment_answer_tag` rows replaced it, and a later change
+    # drops it. Deferred, so no SELECT names it, and never set, so no
+    # INSERT does: a revision still serving while that drop runs sends
+    # nothing the drop could break.
     resolved_tags: Mapped[list[str] | None] = mapped_column(
-        JSON, nullable=True
+        JSON, nullable=True, deferred=True
     )
     answered_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -249,9 +253,9 @@ class AssessmentAnswer(Base):
     )
     item: Mapped[QuestionBankItem] = relationship(lazy="joined")
 
-    #: The tags of the option chosen, one row each: what scoring reads. The
-    #: same snapshot as ``resolved_tags``, which is still written beside it,
-    #: stored where the database can see into it. See
+    #: The tags of the option chosen, one row each: what scoring reads.
+    #: Replaced the ``resolved_tags`` JSON column, which the database could
+    #: not see into. See
     #: ``docs/docs/plans/2026-09-23-resolved-tags-plan.md``.
     tags: Mapped[list[AssessmentAnswerTag]] = relationship(
         back_populates="answer",
