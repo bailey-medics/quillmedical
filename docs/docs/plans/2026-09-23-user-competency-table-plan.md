@@ -336,40 +336,52 @@ of one attempt whose shape depends on the exam that produced it. Two are not,
 and each gets its own plan rather than being bundled here, because each has
 its own readers and its own migration.
 
-- [ ] **Look into `users.professional_registrations`, then write
-      `docs/docs/plans/<date>-professional-registrations-plan.md`.** It holds
-      a GMC or NMC number as `{"GMC": "1234567"}`. A registration is not a
-      number: it has an issuing body, an expiry and a date somebody verified
-      it, and none of those has anywhere to go. The passport already reads
-      the blob at four places in
-      `backend/app/features/passport/router.py` and comments at line 301 that
-      it is "free-form JSON, so anything" — a warning rather than a design.
-      Registrations expire, so the argument that drove this plan applies
-      directly. What the investigation has to settle first is whether the
-      verification an assessor's registration goes through
-      (`AssessorRegistrationVerification`) should hold the registration
-      itself, rather than a second table pointing at the same fact.
+- [x] **Look into `users.professional_registrations`, then write
+      [Professional registrations](2026-09-23-professional-registrations-plan.md).**
+      It holds a GMC or NMC number as `{"GMC": "1234567"}`. A registration
+      is not a number: it has an issuing body, an expiry and a date somebody
+      verified it, and none of those has anywhere to go. The passport reads
+      the blob at three places in `backend/app/features/passport/router.py`
+      and writes it at a fourth, when an assessor accepts an invite. It
+      comments that the blob is "free-form JSON, so anything", a warning
+      rather than a design.
 
-- [ ] **Look into `assessment_answers.resolved_tags`, then write
-      `docs/docs/plans/<date>-resolved-tags-plan.md`.** It records which
-      topics a question turned out to cover, per answer.
-      `backend/app/features/teaching/scoring.py` loops over it in Python at
-      lines 100 and 118, `if tag in a["resolved_tags"]`, because the column
-      cannot be queried. That is the same smell as the competency columns,
-      and it means a question like "how do trainees perform on cardiology
-      across every attempt" cannot be asked of the database at all. What the
-      investigation has to settle is whether the tags belong to the answer or
-      to the question item: if a tag is a property of the item, the answer
-      does not need its own copy, and the fix is a join rather than a new
-      table.
+      The question to settle first was whether
+      `AssessorRegistrationVerification` should hold the registration
+      itself. It should not. A verification is one organisation's check of
+      a registration, per `org_unit`, and a registration is the person's
+      declaration. They are two facts, and the new plan keeps two tables. It
+      stops the verification copying the authority and number, and gives it
+      a foreign key to a registration row that is closed rather than edited.
+      The investigation also found the verification route writes rows that
+      nothing displays, and an invite form posting to a route that no longer
+      exists. The new plan lists both.
 
-- [ ] **Leave `images`, `options` and `metadata_json` on question items
+- [x] **Look into `assessment_answers.resolved_tags`, then write
+      [Resolved tags](2026-09-23-resolved-tags-plan.md).** The first draft
+      of this step described the column as "which topics a question turned
+      out to cover", and asked whether the tags belong to the answer or to
+      the question item. Neither premise held. Tags live only on answer
+      options, and `resolved_tags` copies the tags of the option the
+      candidate chose, such as `high_confidence` or `adenoma`, not topics
+      of the item.
+
+      The copy is deliberate: sync updates items and options in place
+      within a bank version, so a join would re-score finished assessments
+      against today's options. The new plan keeps the snapshot and moves it
+      into an `assessment_answer_tag` table, so it can be queried across
+      attempts.
+
+- [x] **Leave `images`, `options` and `metadata_json` on question items
       alone, and record why here if that changes.** `options` looks
       relational — each option has an id, and `correct_option_id` points at
       one — but question items are a cache of the synced git question bank,
       which is the source of truth. Normalising a cache buys constraints on
       data this system does not own. `metadata_json` is the one to watch: if
       specific keys start being read by name, those keys want columns.
+      Nothing changed during this plan. The resolved tags investigation
+      confirmed that option tags are read only at answer time, and copied
+      from there.
 
 ## Phase 7: Drop the columns
 
