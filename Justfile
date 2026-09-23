@@ -1474,15 +1474,47 @@ start-dev build="":
     just _start-docker-daemon
     echo "Access the frontend at: http://$(ipconfig getifaddr en0)"
 
-    if [ "{{build}}" = "b" ]; then \
+    # Ctrl-C takes the stack down, the same as `just st` and the same as
+    # `just sc` would. A foreground `up` already stops the containers on
+    # its own, but it leaves them stopped rather than removed, so the
+    # next `up` reuses them and a `down` is still owed. Doing it here
+    # means one interrupt leaves nothing behind either way.
+    #
+    # `COMPOSE_PROFILES=clinical` because the clinical services are
+    # behind a profile and a `down` without it leaves them running.
+    trap 'echo; echo "Stopping the stack..."; \
+        COMPOSE_PROFILES=clinical \
+        docker compose -f compose.dev.yml down' INT TERM
+
+    build_args=""
+    if [ "{{build}}" = "b" ]; then
         COMPOSE_PROFILES=clinical docker compose -f compose.dev.yml down
         docker volume rm -f quillmedical_frontend_node_modules >/dev/null 2>&1 || true
         cd frontend && yarn install && cd ..
         cd backend && poetry lock && poetry install && cd ..
-        COMPOSE_PROFILES=clinical docker compose -f compose.dev.yml up --build --pull missing; \
-    else \
-        COMPOSE_PROFILES=clinical docker compose -f compose.dev.yml up; \
+        build_args="--build --pull missing"
     fi
+
+    # Detached first, so the migrations can run before the logs are
+    # attached, exactly as `start-teaching` does it. `--wait` holds until
+    # every service reports healthy, which is what makes the `alembic`
+    # call below safe.
+    #
+    # Without this step the stack came up against whatever schema the
+    # database happened to have. A migration that arrived from `main`, or
+    # one written in another worktree, had never touched it, and the
+    # symptom was a 500 from a column that exists in the models and not
+    # in Postgres, a long way from its cause.
+    # shellcheck disable=SC2086
+    COMPOSE_PROFILES=clinical docker compose -f compose.dev.yml up \
+        --detach --wait --wait-timeout 180 ${build_args}
+
+    just _migrate-running-stack
+
+    # Then follow the logs, which is what a foreground `up` left you
+    # with and what anybody running this expects. The trap above turns
+    # Ctrl-C back into a full `down`.
+    COMPOSE_PROFILES=clinical docker compose -f compose.dev.yml logs --follow
 
 
 # Check if Docker daemon is running, start Docker Desktop if not (macOS)
@@ -1571,9 +1603,27 @@ start-teaching build="":
     just _migrate-running-stack
 
     # Now follow the logs, which is what this recipe looked like before
-    # and what anybody running it expects to be left with. Ctrl-C stops
-    # following; the stack keeps running, as `up` in the foreground
-    # would not.
+    # and what anybody running it expects to be left with.
+    #
+    # Ctrl-C stops the stack, matching `just sd` and matching what a
+    # foreground command is expected to do. The containers belong to the
+    # Docker daemon rather than to this shell, so nothing here owns them
+    # and nothing is cleaned up on the way out: without this trap the
+    # log follower died and the stack was left running, which is how a
+    # forgotten stack came to serve another worktree.
+    #
+    # On the trap rather than on `up` in the foreground, because the
+    # migrations have to run between the stack becoming healthy and the
+    # logs being followed, and a foreground `up` leaves no moment to run
+    # them in.
+    # `COMPOSE_PROFILES=clinical` for the same reason `just sc` carries
+    # it: the clinical services are behind a profile, and a `down`
+    # without it leaves them running. This recipe never starts them, but
+    # an earlier `just sd` in the same worktree may have.
+    trap 'echo; echo "Stopping the stack..."; \
+        COMPOSE_PROFILES=clinical \
+        docker compose -f compose.dev.yml down' INT TERM
+
     docker compose -f compose.dev.yml logs --follow
 
 alias sc := stop

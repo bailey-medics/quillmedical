@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.models import User
+from tests.competencies import hold
 
 PRESCRIPTION_BODY = {
     "patient_id": "patient-123",
@@ -36,7 +37,7 @@ class TestPrescribeControlled:
         test_user: User,
         db_session: Session,
     ):
-        test_user.additional_competencies = ["prescribe_controlled_schedule_2"]
+        hold(test_user, "prescribe_controlled_schedule_2")
         db_session.commit()
 
         resp = authenticated_client.post(

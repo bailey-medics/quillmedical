@@ -101,8 +101,10 @@ class User(Base):
         is_active: Whether the account is active (for soft delete).
         roles: List of roles assigned to this user.
         base_profession: Base profession template (e.g., "consultant", "patient").
-        additional_competencies: Extra competencies beyond base profession.
-        removed_competencies: Competencies removed from base profession.
+        additional_competencies: Retired; see ``competency_grants``.
+        removed_competencies: Retired; see ``competency_grants``.
+        competency_grants: Competencies granted beyond, or removed from,
+            the base profession, one ``user_competency`` row each.
         professional_registrations: Professional registration details (GMC, NMC, etc.).
     """
 
@@ -156,6 +158,9 @@ class User(Base):
     base_profession: Mapped[str] = mapped_column(
         String(100), nullable=False, default="patient"
     )
+    # Retired: `user_competency` rows replaced both lists. Neither is read
+    # or written; they stay only until the migration that drops them, and
+    # a new row gets the empty default.
     additional_competencies: Mapped[list[str]] = mapped_column(
         JSON, nullable=False, default=lambda: []
     )
@@ -172,16 +177,65 @@ class User(Base):
         lazy="joined",
     )
 
+    #: Every competency this person has been granted or had removed, one
+    #: row each, current and closed alike. Loaded with the user rather
+    #: than on demand because ``get_final_competencies`` takes no
+    #: session, and ``selectin`` loads a whole list of users' rows in one
+    #: query rather than one per user. The JSON columns above are neither
+    #: read nor written any more, and are dropped in a later change.
+    competency_grants: Mapped[list[UserCompetency]] = relationship(
+        foreign_keys="UserCompetency.user_id",
+        back_populates="user",
+        lazy="selectin",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    def _current_competency_ids(self, *, granted: bool) -> list[str]:
+        """Competency ids with a current row of the given kind, sorted."""
+        now = datetime.now(UTC)
+        return sorted(
+            {
+                row.competency_id
+                for row in self.competency_grants
+                if row.granted == granted and row.is_current(now)
+            }
+        )
+
+    @property
+    def additional_competency_ids(self) -> list[str]:
+        """What this person holds beyond their base profession, from rows.
+
+        The competencies with a current grant row. The
+        ``additional_competencies`` JSON column it replaces is no longer
+        read or written.
+        """
+        return self._current_competency_ids(granted=True)
+
+    @property
+    def removed_competency_ids(self) -> list[str]:
+        """What their profession gives them that they do not hold, from rows.
+
+        The competencies with a current removal row. The
+        ``removed_competencies`` JSON column it replaces is no longer read
+        or written.
+        """
+        return self._current_competency_ids(granted=False)
+
     def get_final_competencies(self) -> list[str]:
         """Compute final competencies for this user.
+
+        Base profession, plus every current grant row, minus every current
+        removal row. A grant whose ``ends_on`` has passed is not held,
+        which is how ``passport_write`` lapses.
 
         Returns:
             List of competency IDs this user has.
         """
         return resolve_user_competencies(
             base_profession=self.base_profession,
-            additional_competencies=self.additional_competencies,
-            removed_competencies=self.removed_competencies,
+            additional_competencies=self.additional_competency_ids,
+            removed_competencies=self.removed_competency_ids,
         )
 
 
@@ -1099,6 +1153,146 @@ class PractisingCompetency(Base):
         # YAML catalogue is not earned yet at this size. Display names live on the
         # row, so an organisation can call its clinical lead something else without
         # the code losing track of what the post is.
+
+
+#: How a ``user_competency`` row came to exist. Checked in code rather than
+#: by a database enum or check constraint, so a new way of granting needs no
+#: migration — the choice ``validate_org_unit_type`` made for org unit types.
+COMPETENCY_GRANT_SOURCES: tuple[str, ...] = (
+    # A holder of `manage_users`, through the user editor or by adding
+    # somebody to an org_unit.
+    "admin",
+    # An operator editing their own competencies.
+    "operator",
+    # The command-line scripts that create the first superadmin, where
+    # nobody is signed in to be `granted_by`.
+    "bootstrap",
+    # A term of `passport_write` paid for by an organisation, or bought by
+    # the person. The two values `passport_write_entitlement` uses.
+    "organisation",
+    "individual",
+    # Copied from the JSON columns and the entitlement table when this
+    # table was introduced.
+    "migrated",
+)
+
+
+class UserCompetency(Base):
+    """One grant, or one removal, of a competency to one person.
+
+    Replaces ``User.additional_competencies`` and
+    ``User.removed_competencies``, two JSON lists of ids that could say
+    nothing about an entry beyond its name: not when it started, not when
+    it ends, not who made it. See
+    ``docs/docs/plans/2026-09-23-user-competency-table-plan.md``.
+
+    **``granted`` false is a removal**: this person does not hold something
+    their base profession would give them. It keeps the subtraction
+    ``resolve_user_competencies`` performs, and unlike a string in a list it
+    can say who removed it and when.
+
+    **No foreign key on ``competency_id``.** The catalogue is
+    ``shared/competency-definitions/``, not a table, and a retired
+    competency has to stay readable on the rows that name it — the position
+    ``PassportSignOffRequest.competency_id`` takes for the same reason.
+    Validation happens at the write boundary, in the request schemas.
+
+    **No unique constraint on the person and competency.** Somebody may
+    hold ``passport_write`` from their trust and from a subscription of
+    their own at once, with different end dates, and losing one must not
+    end the other. The question asked is whether *any* row is current.
+
+    **Rows are inserted or closed, never deleted.** Taking a competency
+    away sets ``ends_on``, so what somebody could do last year stays
+    answerable.
+
+    Attributes:
+        id: Primary key.
+        user_id: The person.
+        competency_id: A competency id from
+            ``shared/competency-definitions/``.
+        granted: True for a grant, false for a removal.
+        starts_on: When it took effect. Null on rows copied from the JSON
+            lists, which never recorded it.
+        ends_on: When it stops, or stopped. Null for a grant with no end.
+        source: How it came to exist, one of ``COMPETENCY_GRANT_SOURCES``.
+        org_unit_id: The org_unit it was granted through, where there was
+            one. Null once that org_unit is deleted.
+        granted_by: Who made it. Null for a migrated or scripted row, and
+            once that user is deleted.
+        created_at: When the row was written.
+    """
+
+    __tablename__ = "user_competency"
+    __table_args__ = (
+        CheckConstraint(
+            "ends_on IS NULL OR starts_on IS NULL OR ends_on >= starts_on",
+            name="ck_user_competency_ends_after_start",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    competency_id: Mapped[str] = mapped_column(
+        String(100), nullable=False, index=True
+    )
+    granted: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    starts_on: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    ends_on: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    source: Mapped[str] = mapped_column(String(20), nullable=False)
+    org_unit_id: Mapped[int | None] = mapped_column(
+        ForeignKey("org_unit.id", ondelete="SET NULL"), nullable=True
+    )
+    granted_by: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+
+    user: Mapped[User] = relationship(
+        foreign_keys=[user_id], back_populates="competency_grants"
+    )
+
+    def is_current(self, now: datetime) -> bool:
+        """Whether this row is still in force at ``now``.
+
+        Current means no end, or an end still in the future. SQLite hands
+        back naive datetimes where Postgres hands back aware ones, so a
+        naive value is read as UTC, which is what every writer stores.
+
+        Args:
+            now: An aware datetime to check against.
+
+        Returns:
+            True while the row is in force.
+        """
+        if self.ends_on is None:
+            return True
+        ends_on = self.ends_on
+        if ends_on.tzinfo is None:
+            ends_on = ends_on.replace(tzinfo=UTC)
+        return ends_on > now
+
+    @validates("source")
+    def _source_known(self, _key: str, value: str) -> str:
+        """Reject a source outside ``COMPETENCY_GRANT_SOURCES``."""
+        if value not in COMPETENCY_GRANT_SOURCES:
+            raise ValueError(
+                f"Unknown competency grant source: {value}. Known sources "
+                "are " + ", ".join(COMPETENCY_GRANT_SOURCES) + "."
+            )
+        return value
 
 
 POSITION_KINDS: tuple[str, ...] = (

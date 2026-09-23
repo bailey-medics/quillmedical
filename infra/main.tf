@@ -19,18 +19,19 @@ provider "google-beta" {
 locals {
   # Which environments run the teaching product: the teaching buckets, the
   # video pipeline, the sync token secret, and clinical services switched
-  # off. `teaching` is the live project; `app` is the renamed one it is
-  # moving to, and both are listed while the move is in progress.
+  # off.
   #
-  # Deliberately a list rather than a swap from "teaching" to "app".
-  # Terraform applies on merge, and most of the conditions below are
-  # `count`, so dropping `teaching` from this list before the old project
-  # is retired reads to Terraform as an instruction to destroy what those
-  # conditions gate: the Cloud SQL instance, the video buckets and the
-  # content bucket among them. `teaching` comes out in Batch 8 of
-  # docs/docs/plans/2026-09-18-environment-isolation-and-iap-plan.md, once
-  # the workspace is gone and there is nothing live for it to turn off.
-  teaching_product_environments = ["teaching", "app"]
+  # `teaching` was removed on 2026-09-23, once its workspace had been
+  # destroyed and there was nothing live for these conditions to turn
+  # off. It stayed in the list until then because most of the conditions
+  # below are `count`: dropping it while the old project was still
+  # running would have read to Terraform as an instruction to destroy
+  # what they gate, the Cloud SQL instance and the video and content
+  # buckets among them.
+  #
+  # Still a list rather than a bare comparison, because a second project
+  # running this product is what the migration just did and may do again.
+  teaching_product_environments = ["app"]
 
   is_teaching_product = contains(
     local.teaching_product_environments, var.environment
@@ -460,6 +461,14 @@ module "cloud_run_admin_job" {
   job_name         = "admin"
   image            = var.admin_image
   vpc_connector_id = module.networking.vpc_connector_id
+
+  # All egress through the VPC, so the deploy's smoke test, which runs in
+  # this job, reaches a revision's *.run.app URL as internal traffic. That
+  # is what lets the backend's ingress close without the check going blind:
+  # closing it on 2026-09-21 broke every deploy because the smoke test
+  # curled that URL from the internet. Public calls still leave, through
+  # the Cloud NAT in modules/networking.
+  vpc_egress = "ALL_TRAFFIC"
 
   env_vars = {
     CORE_DB_HOST = module.cloud_sql_core.private_ip

@@ -459,10 +459,26 @@ PASSPORT_ENTITLEMENT_DAYS = 365
 class PassportWriteEntitlement(Base):
     """Until when somebody may add to their own passport.
 
-    ``passport_write`` is sold, so unlike every other competency it ends.
-    A competency is a string in a JSON list with nowhere to put a date,
-    which is why this is a table rather than a flag: the warning has to
-    name the day, and a boolean cannot say when.
+    ``passport_write`` is sold, so it ends. A competency is a string in
+    a JSON list with nowhere to put a date, which is why this is a table
+    rather than a flag: the warning has to name the day, and a boolean
+    cannot say when.
+
+    **It is the first competency to carry an end date, not the only one
+    that will.** Nothing about expiry is peculiar to a thing being sold.
+    A clinical competency expires too, and for reasons that arrive far
+    more often than a lapsed subscription: resuscitation certification,
+    safeguarding training, an appraisal that has not been repeated. None
+    of those is implemented yet, which is the only sense in which this
+    one is unusual.
+
+    So a second competency needing a date is a question about *this*
+    table, not a reason for another beside it. The generic shape is a
+    row per grant keyed on the person and the competency, with
+    ``passport_write`` as one value among many; what this one already
+    gets right, and any generalisation has to keep, is the two points
+    below — overlapping grants from different sources, and expired rows
+    retained for the audit trail.
 
     **This never gates reading.** A passport is somebody's professional
     record, and reading, rendering and exporting it are derived from

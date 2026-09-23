@@ -80,6 +80,7 @@ def create_superadmin() -> int:
         SUPERADMIN_PROFESSION,
         get_profession_base_competencies,
     )
+    from app.cbac.grants import sync_competency_rows
     from app.db.core_db import CoreSessionLocal
     from app.models import Role, User
     from app.security import hash_password
@@ -118,11 +119,17 @@ def create_superadmin() -> int:
             # An existing user keeps the profession they practise under —
             # overwriting it would strip a clinician's clinical
             # competencies — so the operator ones are added alongside.
-            granted = set(user.additional_competencies or [])
+            granted = set(user.additional_competency_ids)
             granted.update(
                 get_profession_base_competencies(SUPERADMIN_PROFESSION)
             )
-            user.additional_competencies = sorted(granted)
+            # Nobody is signed in to be named as granting them.
+            sync_competency_rows(
+                user,
+                additional=sorted(granted),
+                removed=user.removed_competency_ids,
+                source="bootstrap",
+            )
 
         # Add System Administrator role if it exists and not already assigned
         role = (

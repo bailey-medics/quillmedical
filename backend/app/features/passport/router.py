@@ -414,18 +414,14 @@ def _require_writer(db: Session, passport_id: str, user: User) -> Passport:
     """
     row = _require_holder(db, passport_id, user)
 
+    # One question, where it used to be two. A `passport_write` grant is
+    # a dated row, so holding the competency now *is* having a current
+    # term: a lapsed row is simply not held.
     if "passport_write" not in user.get_final_competencies():
         raise HTTPException(
             403,
             "Your passport is read-only. You can still read and export "
             "it; adding to it needs an active entitlement.",
-        )
-
-    if current_entitlement_end(db, user.id) is None:
-        raise HTTPException(
-            403,
-            "Your passport is read-only because your entitlement has "
-            "ended. You can still read and export it.",
         )
 
     return row

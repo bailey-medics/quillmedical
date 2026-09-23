@@ -56,21 +56,20 @@ app_domain                 = "app.quill-medical.com"
 alert_email                = "info@quill-medical.com"
 cloud_run_services         = ["quill-backend-app", "quill-frontend-app"]
 
-# The teaching project's CI account, not this project's. The content
-# pipeline in eoeeta-teaching and respiratory-teaching authenticates with
-# GCP_SERVICE_ACCOUNT, which still names the old project, so that is the
-# identity writing to this bucket. Change it to
-# github-actions@quill-medical-app.iam.gserviceaccount.com when those
-# secrets move, which is Batch 8.
-content_ci_service_account = "github-actions@quill-medical-teaching.iam.gserviceaccount.com"
+# The content pipeline in eoeeta-teaching and respiratory-teaching
+# authenticates as this account and publishes question banks into
+# quill-images-app. It is scoped to that bucket and holds nothing else,
+# unlike the teaching CI account it replaced on 2026-09-23, which carried
+# roles/editor across the whole project.
+content_ci_service_account = "content-sync@quill-medical-app.iam.gserviceaccount.com"
 
-# No slack_channel_display_name yet. The monitoring module looks a Slack
-# channel up by display name, and a Slack channel can only be created
-# through the console's OAuth consent flow, which produces an auth_token
-# nothing else can mint. Teaching's was made that way. Until the same is
-# done for this project, an empty value switches the data source off; set
-# it to "quill-medical-cicd" once the channel exists here.
-slack_channel_display_name = ""
+# The monitoring module looks a Slack channel up by display name rather
+# than creating one, because a Slack channel can only be made through the
+# console's OAuth consent flow, which produces an auth_token nothing else
+# can mint. This one was made that way on 2026-09-23 and posts to the same
+# #quill-medical-cicd channel as the deploy notifications. The name has to
+# match the console's display name exactly.
+slack_channel_display_name = "quill-medical-cicd"
 
 
 # Whether this environment should have these alert channels at all. Static

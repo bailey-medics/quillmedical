@@ -51,7 +51,6 @@ from app.features.passport.models import (
     Passport,
     PassportAssessorInvite,
     PassportSignOffRequest,
-    PassportWriteEntitlement,
 )
 from app.features.passport.store import LocalPassportStore
 from app.main import app
@@ -67,6 +66,7 @@ from app.organisations import (
 )
 from app.passport_storage import get_blob_store, get_passport_store
 from app.security import PASSPORT_INVITE_TYPE, hash_password
+from tests.competencies import hold, lapse
 
 #: From the oncology set drafted in Phase 0. Chosen because it declares
 #: the UK SACT Board's four levels, so the level paths are exercised
@@ -114,9 +114,9 @@ def _make_user(
 
     ``writes`` grants ``passport_write`` as well, which no profession
     carries: it is sold, and reaches a person through onboarding or an
-    individual subscription. It goes in ``additional_competencies``
-    because that is the column the admin pages write, so a fixture
-    holder is granted it exactly as a real one is.
+    individual subscription, and always with a term. So a fixture
+    holder gets a dated ``passport_write`` row, exactly as a real one
+    does.
     """
     user = User(
         username=username,
@@ -126,25 +126,13 @@ def _make_user(
         is_active=True,
         email_verified=True,
         base_profession=profession,
-        additional_competencies=["passport_write"] if writes else [],
         professional_registrations=registrations or {"GMC": "1234567"},
     )
+    if writes:
+        hold(user, "passport_write")
     db.add(user)
     db.commit()
     db.refresh(user)
-
-    if writes:
-        # The competency says they may write; the entitlement says until
-        # when. Both are needed, exactly as they are for a real holder.
-        db.add(
-            PassportWriteEntitlement(
-                user_id=user.id,
-                source="organisation",
-                ends_on=datetime.now(UTC) + timedelta(days=365),
-            )
-        )
-        db.commit()
-
     return user
 
 
@@ -631,11 +619,9 @@ class TestSignOff:
         """
         db_session.refresh(assessor)
         assert "passport_write" not in assessor.get_final_competencies()
-        assert (
-            db_session.query(PassportWriteEntitlement)
-            .filter(PassportWriteEntitlement.user_id == assessor.id)
-            .count()
-            == 0
+        assert not any(
+            row.competency_id == "passport_write"
+            for row in assessor.competency_grants
         )
 
         passport_id, name = requested
@@ -677,20 +663,7 @@ class TestSignOff:
         passport_id, name = requested
 
         # The holder's cover ends after the request was raised.
-        holder.additional_competencies = []
-        for row in (
-            db_session.query(PassportWriteEntitlement)
-            .filter(PassportWriteEntitlement.user_id == holder.id)
-            .all()
-        ):
-            # Naive from SQLite, aware from Postgres: matched to
-            # whichever the stored value carries.
-            now = datetime.now(UTC)
-            base = now if row.ends_on.tzinfo else now.replace(tzinfo=None)
-            # Both ends move: the row carries a check that it ends
-            # after it starts, so backdating only the end is refused.
-            row.starts_on = base - timedelta(days=400)
-            row.ends_on = base - timedelta(days=1)
+        lapse(holder, "passport_write")
         db_session.commit()
 
         client = _login(test_client, "assessor")
@@ -1905,7 +1878,7 @@ class TestAdminVerifyAndRevoke:
     def admin(self, db_session: Session, org: OrgUnit) -> User:
         """An admin of the holder's organisation."""
         user = _make_user(db_session, "orgadmin", profession="consultant")
-        user.additional_competencies = ["manage_users"]
+        hold(user, "manage_users")
         add_org_unit_member(db_session, org.id, user.id, "staff")
         db_session.commit()
         db_session.refresh(user)
@@ -1918,7 +1891,7 @@ class TestAdminVerifyAndRevoke:
         The case a check on ``manage_users`` alone would wrongly allow.
         """
         user = _make_user(db_session, "otheradmin", profession="consultant")
-        user.additional_competencies = ["manage_users"]
+        hold(user, "manage_users")
 
         other = OrgUnit(name="Unrelated Trust", type="hospital_team")
         db_session.add(other)

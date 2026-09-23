@@ -109,6 +109,10 @@ export function Component() {
   const [asking, setAsking] = useState(false);
   const [chosen, setChosen] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Read from the passport this page already fetches. Asking for a
+  // sign-off goes through `_require_writer`, the same gate as adding a
+  // logbook entry, so the button has to answer the same question.
+  const [canWrite, setCanWrite] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -118,6 +122,7 @@ export function Component() {
         if (cancelled) return;
         setCompetencies(detail.competencies);
         setPassportId(detail.passport.passport_id);
+        setCanWrite(detail.entitlement?.can_write !== false);
       })
       .catch(() => {
         if (!cancelled) {
@@ -239,6 +244,7 @@ export function Component() {
           <AddButton
             label="Ask for a sign-off"
             onClick={() => setAsking(true)}
+            disabled={!canWrite}
           />
         </Group>
       )}
