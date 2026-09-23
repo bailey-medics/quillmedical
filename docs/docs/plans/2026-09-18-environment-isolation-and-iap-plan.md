@@ -1,3 +1,4 @@
+<!-- cspell:words cloudaudit Factivity -->
 # Environment isolation and renaming plan
 
 Teaching is the only environment running, and it has one open back door
@@ -96,7 +97,9 @@ looks like a one-line change and takes the deploy pipeline down.
 
 - [ ] Re-apply the ingress setting, once Phase D has moved the deploy's
       health check onto a route the closed ingress accepts. Everything
-      below waits on that.
+      below waits on that. Still open on 2026-09-23: both
+      `quill-backend-app` and `quill-frontend-app` have ingress `all`, and
+      the backend's `*.run.app` URL answers `/api/health` with `200`.
 
 - [ ] Verify the service's `*.run.app` URL then refuses the request, and
       that the public hostname still serves normally.
@@ -182,13 +185,18 @@ every deploy, so the URL mask is the part that matters.
       and backend service, to give the deploy one health check it can
       reach.
 
-- [ ] **Decide whether Phase D is worth building at all**, now its size
+- [x] **Decide whether Phase D is worth building at all**, now its size
       is known. What it buys is closing the `*.run.app` bypass while
       keeping the deploy's check on a revision before that revision
       serves anybody. What it costs is a wildcard certificate, wildcard
       DNS, new Terraform in `infra/modules/load-balancer/main.tf`, and a
       URL map rule in the resource that has already taken the API down
-      once.
+      once. **Settled on 2026-09-22: not built.** The experiment below
+      showed a Cloud Run job with `ALL_TRAFFIC` egress reaches a
+      closed-ingress service, so the smoke test moves inside the VPC and
+      no wildcard certificate is needed. This box was left unticked when
+      that was recorded, and read on 2026-09-23 as a decision still
+      owed.
 
       Worth weighing against the bypass itself, which has been open for
       months and is a rate-limit bypass rather than an authentication
@@ -310,9 +318,11 @@ every deploy, so the URL mask is the part that matters.
       current domain", and `backend/app/main.py` passes it straight
       through to every `set_cookie` and `delete_cookie` call.
 
-- [ ] Announce that the deploy logs everyone out once. The old
+- [x] Announce that the deploy logs everyone out once. The old
       `.quill-medical.com` cookies stop matching the host-only ones, so
-      existing sessions end. Ship it at a quiet time.
+      existing sessions end. Ship it at a quiet time. Moot: host-only
+      cookies are live (`COOKIE_DOMAIN` is unset on `quill-backend-app`,
+      checked 2026-09-23) and there were no real users to log out.
 
 - [x] Check nothing depends on a session surviving a hop between
       `teaching.` and the apex. The landing page at
@@ -417,8 +427,11 @@ certificate and move the DNS record for nothing.
       `infra/main.tf:224` and the video pipeline buckets, some of which
       carry `force_destroy`, so they go even when they hold objects.
 
-- [ ] Confirm the widening is a no-op before merging, by reading the plan
-      output on the pull request. `terraform.yml` posts a plan for the
+- [x] Confirm the widening is a no-op before merging, by reading the plan
+      output on the pull request. Overtaken: the widening merged, the
+      `teaching` workspace applied cleanly for days afterwards, and the
+      workspace was destroyed on 2026-09-23 with the conditions narrowed
+      back to `app` in #992. `terraform.yml` posts a plan for the
       `teaching` workspace, and it should show no changes at all. A plan
       proposing to destroy anything means a condition was swapped rather
       than widened.
@@ -550,8 +563,9 @@ here because the next environment will want the same list:
       than they appear to. It was copied rather than chosen, because the
       first apply builds around thirty resources and a missing permission
       fails it partway with things half-created. Worth narrowing once a
-      successful apply has shown what is genuinely used, on both
-      projects.
+      successful apply has shown what is genuinely used. Only the app
+      project is left to narrow, since teaching was destroyed on
+      2026-09-23.
 
 - [x] **(Claude)** Make CI able to apply the new environment at all.
       `.github/workflows/terraform.yml` selected the `teaching` workspace
@@ -1120,8 +1134,11 @@ for the same name would leave both pending.
       environment variable was renamed from `TEACHING_BUCKET` to
       `IMAGES_BUCKET` to match.
 
-- [ ] Move the content pipeline's secrets, in the content repositories.
-      Partly done on 2026-09-23. `teaching-pipeline.yml` cannot be fixed
+- [x] Move the content pipeline's secrets, in the content repositories.
+      Done on 2026-09-23, and `content_ci_service_account` followed in
+      #984. Still unproven by a real publish: neither content repository
+      has a `workflow_dispatch`, so the first content change pushed to
+      either is the test. `teaching-pipeline.yml` cannot be fixed
       from this repository: it is a `workflow_call` with
       `secrets: inherit`, so `GCP_SERVICE_ACCOUNT`,
       `GCP_WORKLOAD_IDENTITY_PROVIDER` and `GCP_TEACHING_GCS_BUCKET` come
@@ -1272,7 +1289,7 @@ for the same name would leave both pending.
       terraform state rm 'module.cloud_sql_core.google_sql_user.user'
       ```
 
-- [ ] Remove the last three networking resources: the VPC, its global
+- [x] Remove the last three networking resources: the VPC, its global
       address, and the service networking connection between them.
       Terraform refuses the connection with `Producer services (e.g.
       CloudSQL, Cloud Memstore, etc.) are still using this connection`,
@@ -1316,16 +1333,205 @@ for the same name would leave both pending.
       account could write there is now unnecessary and goes with the
       project.
 
-- [ ] Remove the three orphaned networking resources, or let the
-      shutdown take them. See the step above: Terraform cannot delete the
-      service networking connection while Google still holds the peering
-      open, and the VPC and its global address sit behind it.
-
-- [ ] Shut the old project down rather than deleting it outright. A
+- [x] Shut the old project down rather than deleting it outright. Done
+      on 2026-09-23: `quill-medical-teaching` shows `DELETE_REQUESTED`,
+      and Google deletes it permanently thirty days later. A
       shut-down project is recoverable for thirty days; a deleted one is
       not, and nothing is gained by being final on the same day.
 
-## Batch 9 — waiting: a second environment
+      Ready as of 2026-09-23. `gcloud projects delete
+      quill-medical-teaching` is the shutdown: despite the verb, it marks
+      the project for deletion and holds it for thirty days, during which
+      `gcloud projects undelete` restores it.
+
+      **Checked first: the Terraform state bucket is not in it.**
+      `quill-medical-terraform-state` holds the state for every
+      environment, `app` included, and shutting down the project that
+      owned it would take all of them. It lives in
+      `quill-medical-production`, alongside `quill-medical-zone`. The
+      teaching project holds no buckets and no Cloud Run services or
+      Compute instances; the three orphaned networking resources above
+      are all that is left, and the shutdown takes them.
+
+      **No lien blocks it.** Private service access, the peering behind
+      those networking resources, can leave a lien that makes project
+      deletion fail. The Resource Manager API showed none on 2026-09-23.
+      `gcloud resource-manager liens` needs the `alpha` component, which
+      is not installed here, so the check was a direct `GET` on
+      `cloudresourcemanager.googleapis.com/v3/liens` with the project
+      number as the parent.
+
+      **There is no faster route to a full delete.** Google keeps a
+      shut-down project for thirty days and then deletes it permanently
+      on its own, and offers no way to skip the wait. Billing stops at
+      shutdown, and the project id `quill-medical-teaching` can never be
+      reused, even after the permanent deletion.
+
+## Batch 9 — Claude and Mark: least privilege for the CI accounts
+
+One service account, `github-actions@quill-medical-app`, does three jobs
+with three very different needs, and holds `roles/editor` for all of them.
+This batch splits it by job and narrows each to what that job uses. It
+comes before Batch 10 because it can start now; Batch 10 waits on a second
+environment.
+
+**Taking `editor` away on its own achieves almost nothing.** The account
+also holds `resourcemanager.projectIamAdmin`, which lets it grant itself
+any role, owner included, and Terraform needs that role because it
+manages IAM bindings. So the account is owner-equivalent whatever else is
+removed. The gain comes from not handing that token to jobs that do not
+need it, which is why the steps are ordered by how often each job runs
+and how little it needs, with the `editor` swap last.
+
+**The evidence, from the Admin Activity audit log on 2026-09-23.** Over
+the project's life the account has written to thirteen services: Cloud
+Run (159 calls), IAM (155), Compute (69), Monitoring (29), Secret Manager
+(20), Storage (18), Logging (18), BigQuery (12), Service Networking (9),
+Resource Manager (3), Cloud SQL (2), Artifact Registry (2) and Serverless
+VPC Access (1). Admin Activity records configuration changes only, so
+image pushes to Artifact Registry do not appear in it; the deploy
+account's push permission comes from reading the workflow instead.
+
+```bash
+gcloud logging read \
+  'protoPayload.authenticationInfo.principalEmail="github-actions@quill-medical-app.iam.gserviceaccount.com" AND logName:"cloudaudit.googleapis.com%2Factivity"' \
+  --project=quill-medical-app --freshness=10d --limit=5000 \
+  --format="value(protoPayload.serviceName)" | sort | uniq -c | sort -rn
+```
+
+Service accounts and role grants are made by Mark: the harness refuses
+IAM grants, and did so throughout Batch 8. Workflow and Terraform changes
+are Claude's, each in its own pull request.
+
+### Phase 1: A deploy account
+
+The deploy runs on every merge to `main`, so it is the job that uses the
+token most. Its needs are small and can be read off the workflow: every
+`gcloud` call in `deploy.yml` and `.github/scripts/deploy/` is `run
+services describe`, `run services update`, `run services
+update-traffic`, `run jobs update`, `run jobs execute`, or `auth
+configure-docker` followed by a Docker push.
+
+- [ ] **(Mark)** Create `github-deploy@quill-medical-app` with
+      `roles/run.developer` on the project, `roles/artifactregistry.writer`
+      on the `quill` repository only, and `roles/iam.serviceAccountUser`
+      on the runtime service accounts only, not on the project. A Cloud
+      Run deploy must act as the service's runtime identity, and granting
+      that per account rather than project-wide stops the deploy acting
+      as anything else, the Terraform account included.
+
+- [ ] **(Mark)** Grant it `roles/iam.workloadIdentityUser` for
+      `bailey-medics/quillmedical`, and add a `GCP_APP_DEPLOY_SERVICE_ACCOUNT`
+      secret to the `app` GitHub environment.
+
+- [ ] **(Claude)** Point the build and deploy jobs in `deploy.yml` at the
+      new secret. The build job pushes images, so it moves too.
+
+- [ ] Merge a change that touches `backend/` or `frontend/`, so the
+      build job actually runs, and watch the deploy pass. A workflow-only
+      change skips the build and proves nothing, which is how #974 went
+      green without being tested.
+
+### Phase 2: A read-only account for pull-request plans
+
+`terraform.yml` runs `terraform plan` on every pull request with the
+same owner-equivalent token as the apply on `main`. A plan changes
+nothing, so it does not need it.
+
+- [ ] **(Mark)** Create `github-plan@quill-medical-app` with
+      `roles/viewer` and `roles/iam.securityReviewer` on the project, the
+      second because `roles/viewer` cannot read every IAM policy and
+      Terraform refreshes each `*_iam_member` it manages.
+
+- [ ] **(Mark)** Grant it `roles/secretmanager.secretAccessor`. A plan
+      refreshes the `google_secret_manager_secret_version` resources and
+      reads the `alert_sms_number` and `pagerduty_service_key` data
+      sources, all of which return secret payloads. That makes this
+      account less read-only than its name; it is still unable to change
+      anything.
+
+- [ ] **(Claude)** Decide how the plan takes the state lock. `terraform
+      plan` writes a lock object to the state bucket, so a strictly
+      read-only account fails there. Either run PR plans with
+      `-lock=false`, accepting that two concurrent plans are harmless
+      because neither writes state, or grant the account object create
+      and delete on the lock file alone. The first is simpler and the
+      recommendation; write the reasoning into the workflow comment.
+
+- [ ] **(Claude)** Point the `plan` job in `terraform.yml` at the new
+      account through a `GCP_APP_PLAN_SERVICE_ACCOUNT` secret.
+
+### Phase 3: Lock the apply account to `main`
+
+The workload identity provider accepts any run from the three trusted
+repositories, on any branch. So a workflow edited on a feature branch
+can obtain the apply account's token today. Only Mark can push, so the
+risk is small, but it is the gap this batch exists for.
+
+- [ ] **(Mark)** Add an attribute mapping that joins repository and ref,
+      `attribute.repo_ref = assertion.repository + '@' + assertion.ref`,
+      on `github-provider` in `quill-medical-app`. The two cannot be
+      bound separately: the content repositories also push to their own
+      `main`, so a binding on `attribute.ref/refs/heads/main` alone would
+      let `eoeeta-teaching` and `respiratory-teaching` take the apply
+      token.
+
+- [ ] **(Mark)** Replace the apply account's `workloadIdentityUser`
+      binding on `attribute.repository/bailey-medics/quillmedical` with one
+      on `attribute.repo_ref/bailey-medics/quillmedical@refs/heads/main`.
+      A `workflow_dispatch` run from `main` still carries that ref, so
+      manual applies keep working. Do the same for the deploy account from
+      Phase 1, which also only ever runs on `main`.
+
+- [ ] Prove it both ways. A `workflow_dispatch` apply from `main` must
+      authenticate; the same workflow dispatched from a feature branch
+      must be refused at the authentication step.
+
+### Phase 4: Narrow the state bucket
+
+- [ ] **(Mark)** Remove the dangling
+      `github-actions@quill-medical-teaching` binding on
+      `quill-medical-terraform-state`. The account was deleted with its
+      project, and after thirty days the binding shows as
+      `deleted:serviceAccount:…` rather than disappearing.
+
+- [ ] **(Mark)** Scope each environment's account to its own state file
+      with an IAM condition on the object name, for example
+      `resource.name.startsWith("projects/_/buckets/quill-medical-terraform-state/objects/terraform/state/app.tfstate")`
+      for the app account. Today every CI account, production and staging
+      included, holds `roles/storage.objectAdmin` on the whole bucket, so
+      each can read every other environment's state, and state holds
+      secrets in plain text: `random_password.jwt_secret` and the Cloud
+      SQL password among them. The lock file sits beside the state and
+      needs the same prefix.
+
+### Phase 5: Replace `editor` on the apply account
+
+Last, because it is the smallest gain once Phase 3 has locked the token
+to `main`, and the riskiest: a permission missed here fails an apply
+partway, with some resources changed and others not.
+
+- [ ] Look at the 155 IAM writes before choosing roles. That is a lot
+      for a project three days old, and IAM is where a missed permission
+      is most likely. Group them by `protoPayload.methodName` to see
+      whether they are Terraform setting bindings on each apply or the
+      one-off setup.
+
+- [ ] **(Mark)** Add a specific role for each service in the audit log,
+      alongside `editor`: `roles/cloudsql.admin`, `roles/storage.admin`,
+      `roles/compute.loadBalancerAdmin`, `roles/compute.securityAdmin`,
+      `roles/monitoring.editor`, `roles/bigquery.admin`,
+      `roles/artifactregistry.admin` and `roles/vpcaccess.admin`, beside
+      the `run.admin`, `compute.networkAdmin`, `secretmanager.admin`,
+      `logging.configWriter`, `servicenetworking.networksAdmin` and three
+      IAM roles it already holds.
+
+- [ ] **(Mark)** Remove `editor`, then run `terraform plan` at once. A
+      plan exercises every read permission without changing anything, so
+      a missing read fails there safely. A missing write only shows at
+      the next apply, so make the next infrastructure change a small one.
+
+## Batch 10 — waiting: a second environment
 
 Phases A and B wait on a non-production environment existing, and are kept
 rather than deleted because the reasoning was expensive to work out and
@@ -1418,7 +1624,28 @@ lookalike names were cheap enough that waiting saved nothing.
       nothing and adds no infrastructure. A typo then lands on the real
       site instead of nowhere.
 
-- [ ] Do not add them to our load balancer's managed certificate. Serving
+      **Not done as of 2026-09-23.** All six names resolve to GoDaddy's
+      parking addresses, `15.197.148.33` and `3.33.130.190`, and answer
+      HTTPS with a `200` parking page and no redirect.
+
+      **GoDaddy plays two different roles here, which is easy to
+      confuse.** For `quill-medical.com` it is only the registrar: the
+      name's nameservers are delegated to Google Cloud DNS
+      (`ns-cloud-c*.googledomains.com`, zone `quill-medical-zone` in
+      `quill-medical-production`), so GoDaddy forwards nothing and the
+      traffic goes straight to our load balancer. The six new names are
+      different: they still use GoDaddy's own nameservers
+      (`ns*.domaincontrol.com`), which is why they show GoDaddy's parking
+      page, and why GoDaddy's forwarding feature can serve the redirect
+      without any record of ours. Set a permanent (301) forward to
+      `https://quill-medical.com` on each of the five, in GoDaddy.
+
+      **Deferred by Mark on 2026-09-23.** Not being done yet.
+
+- [x] Do not add them to our load balancer's managed certificate.
+      Holds as of 2026-09-23: `quill-cert-app-6bc99c16` lists only
+      `app.quill-medical.com`, `quill-medical.com` and
+      `www.quill-medical.com`. Serving
       the redirect ourselves would mean five more domains on
       `quill-medical.com`'s certificate, and a Google-managed certificate
       only goes active once every domain on it validates, so a name that
@@ -1429,7 +1656,13 @@ lookalike names were cheap enough that waiting saved nothing.
       first.
 
 - [ ] Set auto-renew and registrar lock on all six, with a company card
-      and a shared billing address. Domains are lost to lapsed renewals
+      and a shared billing address.
+
+      Partly visible from outside. `quill-medical.me` already shows
+      `clientTransferProhibited`, which is the registrar lock, and expires
+      2027-09-21. `whois` returned nothing for `.net` and `.dev`, so their
+      lock state has to be read in the GoDaddy dashboard, and auto-renew
+      is never visible in `whois` at all. Domains are lost to lapsed renewals
       far more often than to anyone taking them deliberately. `.dev` is
       paid to 2031, so the first real renewal risk is `.net` and `.me` in
       September 2027.
