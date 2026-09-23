@@ -1,10 +1,8 @@
 """Test helpers for giving somebody competencies beyond their profession.
 
 What somebody holds beyond their base profession is a current
-``user_competency`` row, not an entry in the ``additional_competencies``
-JSON column. The column is still written by the routes, and read by
-nothing, so a test that sets it and expects a competency to follow is
-describing storage that has been retired.
+``user_competency`` row. These write the rows a test needs, in the shapes
+the routes write them.
 
 Kept out of ``conftest.py`` for the reason ``tests/places.py`` is:
 importing from there would give mypy the same file under two module names.
