@@ -18,6 +18,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.cbac.audit import unseeded_profession_competencies
 from app.cbac.base_professions import get_profession_base_competencies
 from app.cbac.grants import sync_competency_rows
 from app.models import OrgUnit, User, UserCompetency
@@ -236,3 +237,34 @@ class TestEveryRouteSeeds:
         assert set(after_first) <= set(after_second)
         assert after_second["view_teaching_cases"] == "profession"
         assert "access_own_patient_records" in after_second
+
+
+class TestTheCheckBeforeTheSwitch:
+    """``unseeded_profession_competencies`` names who the switch would change."""
+
+    def test_somebody_with_no_rows_is_named(self, db_session: Session) -> None:
+        user = _user(db_session, "unseeded")
+
+        assert unseeded_profession_competencies(db_session) == {
+            user.id: ["access_own_patient_records"]
+        }
+
+    def test_seeded_rows_satisfy_it(self, db_session: Session) -> None:
+        user = _user(db_session, "seeded")
+        sync_competency_rows(user, additional=[], removed=[], source="admin")
+        db_session.commit()
+
+        assert unseeded_profession_competencies(db_session) == {}
+
+    def test_a_removal_row_satisfies_it(self, db_session: Session) -> None:
+        """Removed means not held, before and after the switch alike."""
+        user = _user(db_session, "removed")
+        sync_competency_rows(
+            user,
+            additional=[],
+            removed=["access_own_patient_records"],
+            source="admin",
+        )
+        db_session.commit()
+
+        assert unseeded_profession_competencies(db_session) == {}

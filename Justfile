@@ -1916,6 +1916,26 @@ build-transcode env:
     echo "✓ Cloud Run Job deployed"
 
 
+alias ccs := check-competency-seeding
+# List users who would lose a competency when only their rows count (should list nobody)
+check-competency-seeding env:
+    #!/usr/bin/env bash
+    {{initialise}} "check-competency-seeding ({{env}})"
+    set -euo pipefail
+
+    PROJECT=$(just _gcp_env_project "{{env}}")
+    REGION="europe-west2"
+
+    echo "Check competency seeding on ${PROJECT}"
+    echo "─────────────────────────────────"
+
+    gcloud run jobs execute "quill-admin-{{env}}" \
+        --project="$PROJECT" \
+        --region="$REGION" \
+        --update-env-vars "ADMIN_ACTION=check-competency-seeding" \
+        --wait
+
+
 alias cs := create-superadmin
 # Create a superadmin on a remote environment via Cloud Run Job
 create-superadmin env:

@@ -487,3 +487,49 @@ class TestSmokeTest:
         with patch.dict(os.environ, {}, clear=True):
             with pytest.raises(SystemExit):
                 smoke_test()
+
+
+class TestCheckCompetencySeeding:
+    """The check to run before only competency rows count."""
+
+    @pytest.mark.usefixtures("_patch_session")
+    def test_passes_when_every_profession_competency_is_a_row(
+        self, db_session: Session
+    ) -> None:
+        from app.cbac.grants import sync_competency_rows
+        from scripts.admin_cli import check_competency_seeding
+
+        user = User(
+            username="seeded",
+            email="seeded@example.com",
+            password_hash=hash_password("SecurePass123!"),
+            base_profession="patient",
+        )
+        db_session.add(user)
+        db_session.commit()
+        sync_competency_rows(user, additional=[], removed=[], source="admin")
+        db_session.commit()
+
+        assert check_competency_seeding() == 0
+
+    @pytest.mark.usefixtures("_patch_session")
+    def test_fails_naming_anybody_who_would_lose_one(
+        self, db_session: Session, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        from scripts.admin_cli import check_competency_seeding
+
+        user = User(
+            username="unseeded",
+            email="unseeded@example.com",
+            password_hash=hash_password("SecurePass123!"),
+            base_profession="patient",
+        )
+        # Somebody created before seeding existed: no rows at all.
+        user.competency_grants = []
+        db_session.add(user)
+        db_session.commit()
+
+        assert check_competency_seeding() == 1
+        err = capsys.readouterr().err
+        assert f"user {user.id}: access_own_patient_records" in err
+        assert "unseeded" not in err

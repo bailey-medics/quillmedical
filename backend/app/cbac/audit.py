@@ -17,12 +17,15 @@ from datetime import UTC, datetime
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from app.cbac.base_professions import BASE_PROFESSIONS
+from app.cbac.base_professions import (
+    BASE_PROFESSIONS,
+    get_profession_base_competencies,
+)
 from app.cbac.competencies import (
     retired_competency_ids,
     unknown_competency_ids,
 )
-from app.models import PractisingCompetency, UserCompetency
+from app.models import PractisingCompetency, User, UserCompetency
 
 
 def unknown_ids_in_base_professions() -> dict[str, list[str]]:
@@ -152,4 +155,36 @@ def retired_ids_on_users(db: Session) -> dict[int, list[str]]:
         retired = retired_competency_ids(ids)
         if retired:
             found[user_id] = retired
+    return found
+
+
+def unseeded_profession_competencies(db: Session) -> dict[int, list[str]]:
+    """Return what users hold only through their profession's template.
+
+    The check to run before the resolver stops reading the template. For
+    each user, every competency their base profession grants that they have
+    no current row for, neither a grant nor a removal. Today they hold it,
+    because the template is added on top of the rows. Once only the rows
+    count, they would not. An empty result means the switch changes nobody.
+
+    Args:
+        db: Database session.
+
+    Returns:
+        User id to the template competencies with no row behind them.
+    """
+    now = datetime.now(UTC)
+    found: dict[int, list[str]] = {}
+    for user in db.scalars(select(User)).unique():
+        covered = {
+            row.competency_id
+            for row in user.competency_grants
+            if row.is_current(now)
+        }
+        missing = sorted(
+            set(get_profession_base_competencies(user.base_profession))
+            - covered
+        )
+        if missing:
+            found[user.id] = missing
     return found

@@ -169,7 +169,7 @@ jobs:
 
       - name: Run drift-check regression tests
         working-directory: backend
-        run: poetry run pytest -q -m integration tests/test_alembic_check.py tests/test_user_competency_backfill.py
+        run: poetry run pytest -q -m integration tests/test_alembic_check.py tests/test_user_competency_backfill.py tests/test_profession_seed_backfill.py
 
 
 
