@@ -29,9 +29,6 @@ from app.deps import (
     get_current_user,
     has_competency,
 )
-from app.features.passport.entitlements import (
-    grant_entitlement_at_onboarding,
-)
 from app.models import (
     MEMBER_CAPACITIES,
     OrgUnit,
@@ -683,6 +680,10 @@ def add_org_unit_member(
     additional = grant_staff_competencies(
         person, body.base_profession, body.additional_competencies
     )
+    # The term comes with the grant, for the reason the grant comes with
+    # the membership: `passport_write` is written with its end date in
+    # the same row, so a new starter is never left holding it with no
+    # term, able to open their passport and not write to it.
     sync_competency_rows(
         person,
         additional=additional,
@@ -690,18 +691,6 @@ def add_org_unit_member(
         source="admin",
         granted_by=current_user.id,
         org_unit_id=unit_id,
-    )
-
-    # The term comes with the grant, for the reason the grant comes with
-    # the membership: a new starter holding `passport_write` and no
-    # entitlement can open their passport and not write to it, which
-    # reads as a broken page rather than an arrangement nobody set up.
-    grant_entitlement_at_onboarding(
-        db,
-        person,
-        unit_id,
-        body.additional_competencies or [],
-        granted_by=current_user.id,
     )
 
     db.flush()

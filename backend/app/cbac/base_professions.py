@@ -79,20 +79,21 @@ def grant_staff_competencies(
 
     **Additive, not replacing** — the same rule a profession change
     follows on ``update_user``. Whatever the person already held is
-    carried into ``additional_competencies`` before the new profession is
-    written, minus anything the new profession grants anyway, so nothing
-    is lost and nothing is recorded twice. A patient becoming a
-    healthcare assistant keeps ``access_own_patient_records`` for their
-    own record, which a replacing grant would take away on their first
-    day at work.
+    carried into what they hold beyond their profession before the new
+    profession is written, minus anything the new profession grants
+    anyway, so nothing is lost and nothing is recorded twice. A patient
+    becoming a healthcare assistant keeps ``access_own_patient_records``
+    for their own record, which a replacing grant would take away on
+    their first day at work.
 
     Both arguments are optional and either may be given alone. Somebody
     already staff elsewhere needs no grant, and passing neither leaves
     the user untouched.
 
     Args:
-        user: The ``User`` being added as staff, modified in place. The
-            caller commits.
+        user: The ``User`` being added as staff. Their profession is
+            changed in place; their competency rows are the caller's to
+            write, from what this returns. The caller commits.
         base_profession: Profession to move them to, or None to leave
             their profession alone.
         additional_competencies: Competencies to grant on top, or None.
@@ -101,9 +102,8 @@ def grant_staff_competencies(
         Everything they now hold beyond their profession, for the caller
         to bring their ``user_competency`` rows into line with.
     """
-    # Started from the rows, which is what is read, and written back to
-    # the JSON column, which is still written beside them. The caller
-    # brings the rows into line from what this returns.
+    # Started from the person's current rows. The caller brings the rows
+    # into line with what this returns.
     granted = set(user.additional_competency_ids)
 
     if base_profession is not None:
@@ -119,9 +119,6 @@ def grant_staff_competencies(
 
     if additional_competencies:
         granted.update(additional_competencies)
-
-    if base_profession is not None or additional_competencies:
-        user.additional_competencies = sorted(granted)
 
     return sorted(granted)
 

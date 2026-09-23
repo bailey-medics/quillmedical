@@ -299,17 +299,33 @@ column rename, for the same reason: expand, dual-write, backfill, switch reads.
 
 ## Phase 5: Stop writing JSON
 
-- [ ] **Remove the JSON writes from every writer Phase 2 listed**, one
+- [x] **Remove the JSON writes from every writer Phase 2 listed**, one
       deploy after Phase 4, leaving the rows as the only thing written.
-      `grant_staff_competencies` stops merging into JSON and calls the
-      Phase 2 helper instead.
+      `grant_staff_competencies` stops merging into JSON and returns the
+      list it settled, which `add_org_unit_member` hands to the Phase 2
+      helper. The two columns keep their model definitions and their empty
+      default, so a new user still gets `[]` until Phase 7 drops them.
 
-- [ ] **Delete `grant_entitlement_at_onboarding`
+- [x] **Delete `grant_entitlement_at_onboarding`
       (`backend/app/features/passport/entitlements.py:55`).** Granting a
       competency and granting its term are now one row. This also closes the
       gap the plan was written after: the admin user editor could grant
       `passport_write` and could not grant an entitlement, so an admin could
       put somebody in a state no interface could get them out of.
+
+      `sync_competency_rows` now opens `passport_write` itself, dated a year
+      ahead from `PASSPORT_ENTITLEMENT_DAYS`, where until now it refused to
+      open it at all. `TERMS` in `backend/app/cbac/grants.py` maps each
+      termed competency to how long a fresh grant lasts. The rule that made
+      onboarding idempotent carries over unchanged, because only a current
+      row suppresses a new one: saving again does not extend a running
+      term, and a term that has ended is granted afresh.
+
+      A termed row's `source` is `organisation` whoever grants it, not the
+      caller's `admin` or `operator`. For a term the value records who
+      pays, as it did on `passport_write_entitlement`, and every route that
+      grants one acts for an organisation. `passport_write_entitlement` is
+      now neither written nor read.
 
 ## Phase 6: Look at the other two JSON columns worth moving
 

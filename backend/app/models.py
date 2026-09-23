@@ -101,8 +101,10 @@ class User(Base):
         is_active: Whether the account is active (for soft delete).
         roles: List of roles assigned to this user.
         base_profession: Base profession template (e.g., "consultant", "patient").
-        additional_competencies: Extra competencies beyond base profession.
-        removed_competencies: Competencies removed from base profession.
+        additional_competencies: Retired; see ``competency_grants``.
+        removed_competencies: Retired; see ``competency_grants``.
+        competency_grants: Competencies granted beyond, or removed from,
+            the base profession, one ``user_competency`` row each.
         professional_registrations: Professional registration details (GMC, NMC, etc.).
     """
 
@@ -156,6 +158,9 @@ class User(Base):
     base_profession: Mapped[str] = mapped_column(
         String(100), nullable=False, default="patient"
     )
+    # Retired: `user_competency` rows replaced both lists. Neither is read
+    # or written; they stay only until the migration that drops them, and
+    # a new row gets the empty default.
     additional_competencies: Mapped[list[str]] = mapped_column(
         JSON, nullable=False, default=lambda: []
     )
@@ -176,8 +181,8 @@ class User(Base):
     #: row each, current and closed alike. Loaded with the user rather
     #: than on demand because ``get_final_competencies`` takes no
     #: session, and ``selectin`` loads a whole list of users' rows in one
-    #: query rather than one per user. This is what is read; the JSON
-    #: columns above are still written beside it until they are dropped.
+    #: query rather than one per user. The JSON columns above are neither
+    #: read nor written any more, and are dropped in a later change.
     competency_grants: Mapped[list[UserCompetency]] = relationship(
         foreign_keys="UserCompetency.user_id",
         back_populates="user",
@@ -201,9 +206,9 @@ class User(Base):
     def additional_competency_ids(self) -> list[str]:
         """What this person holds beyond their base profession, from rows.
 
-        The competencies with a current grant row. This, not the
-        ``additional_competencies`` JSON column, is what every reader
-        uses; the column is only still written.
+        The competencies with a current grant row. The
+        ``additional_competencies`` JSON column it replaces is no longer
+        read or written.
         """
         return self._current_competency_ids(granted=True)
 
@@ -211,8 +216,9 @@ class User(Base):
     def removed_competency_ids(self) -> list[str]:
         """What their profession gives them that they do not hold, from rows.
 
-        The competencies with a current removal row. This, not the
-        ``removed_competencies`` JSON column, is what every reader uses.
+        The competencies with a current removal row. The
+        ``removed_competencies`` JSON column it replaces is no longer read
+        or written.
         """
         return self._current_competency_ids(granted=False)
 
