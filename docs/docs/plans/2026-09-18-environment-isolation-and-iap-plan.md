@@ -1607,12 +1607,33 @@ are Cloud Storage and Cloud Run jobs.
       `module.secrets.secret_ids`, so naming a secret the module does not
       create fails the plan rather than the apply.
 
-- [ ] **(Claude)** Point each service and job at its account, with
+- [x] **(Claude)** Point each service and job at its account, with
       `service_account` on the Cloud Run services and a new variable on
       `modules/cloud-run-job`. The default account keeps its grants
       meanwhile, so a missed permission shows as a failed revision while
       the old one keeps serving, not an outage. Merge only after the step
       above has applied.
+
+      Built on 2026-09-23. `terraform plan` showed the five workloads
+      updated in place with `service_account` the only attribute
+      changing, and nothing destroyed.
+
+      **No `actAs` needed for the backend to start the jobs.** Checked
+      against Google's Cloud Run IAM reference rather than assumed:
+      executing a job needs `run.jobs.run`, or `run.jobs.runWithOverrides`
+      for overrides, both in `roles/run.jobsExecutorWithOverrides`;
+      `iam.serviceAccounts.actAs` on the runtime identity is a deployment
+      permission, needed to create or update a job, not to run one
+      (https://docs.cloud.google.com/run/docs/reference/iam/roles).
+
+      After it applies, exercise each workload once before the next step:
+      sync the question banks, which proves `run-backend` reads the images
+      bucket; upload a video, which proves the source bucket write, the
+      job invocation and both jobs' bucket access; and let one deploy run
+      its migrations and smoke test through `run-admin`. The frontend is
+      proven by the site loading. A failure here is recoverable while the
+      default account still holds its grants, which is why removing them
+      is a separate step.
 
 - [ ] **(Claude)** Remove the default account's grants: the project-wide
       `secretAccessor`, its bucket bindings, the job invokers and

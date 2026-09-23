@@ -296,10 +296,13 @@ resource "google_secret_manager_secret_version" "vapid_private" {
 
 # ---------- Cloud Run: backend ----------
 module "cloud_run_backend" {
-  source      = "./modules/cloud-run"
-  project_id  = var.project_id
-  region      = var.region
-  environment = var.environment
+  source = "./modules/cloud-run"
+
+  # Its own identity; see infra/runtime-identities.tf.
+  service_account_email = google_service_account.runtime["backend"].email
+  project_id            = var.project_id
+  region                = var.region
+  environment           = var.environment
 
   service_name      = "backend"
   image             = var.backend_image
@@ -433,10 +436,13 @@ import {
 }
 
 module "cloud_run_admin_job" {
-  source      = "./modules/cloud-run-job"
-  project_id  = var.project_id
-  region      = var.region
-  environment = var.environment
+  source = "./modules/cloud-run-job"
+
+  # Its own identity; see infra/runtime-identities.tf.
+  service_account_email = google_service_account.runtime["admin"].email
+  project_id            = var.project_id
+  region                = var.region
+  environment           = var.environment
 
   job_name         = "admin"
   image            = var.admin_image
@@ -479,11 +485,14 @@ module "cloud_run_admin_job" {
 # for the admin job. The module's `ignore_changes` on the image is what makes
 # that safe.
 module "cloud_run_transcode_job" {
-  count       = local.is_teaching_product ? 1 : 0
-  source      = "./modules/cloud-run-job"
-  project_id  = var.project_id
-  region      = var.region
-  environment = var.environment
+  count  = local.is_teaching_product ? 1 : 0
+  source = "./modules/cloud-run-job"
+
+  # Its own identity; see infra/runtime-identities.tf.
+  service_account_email = google_service_account.runtime["transcode"].email
+  project_id            = var.project_id
+  region                = var.region
+  environment           = var.environment
 
   job_name         = "transcode"
   image            = var.transcode_image
@@ -584,11 +593,14 @@ resource "google_cloud_run_v2_job_iam_member" "backend_invokes_caption" {
 # job's 4. The hour-long timeout is the plan's figure and deliberate — a
 # transcription that has not finished in an hour has gone wrong.
 module "cloud_run_caption_job" {
-  count       = local.is_teaching_product ? 1 : 0
-  source      = "./modules/cloud-run-job"
-  project_id  = var.project_id
-  region      = var.region
-  environment = var.environment
+  count  = local.is_teaching_product ? 1 : 0
+  source = "./modules/cloud-run-job"
+
+  # Its own identity; see infra/runtime-identities.tf.
+  service_account_email = google_service_account.runtime["caption"].email
+  project_id            = var.project_id
+  region                = var.region
+  environment           = var.environment
 
   job_name         = "caption"
   image            = var.caption_image
@@ -616,10 +628,13 @@ module "cloud_run_caption_job" {
 
 # ---------- Cloud Run: frontend ----------
 module "cloud_run_frontend" {
-  source      = "./modules/cloud-run"
-  project_id  = var.project_id
-  region      = var.region
-  environment = var.environment
+  source = "./modules/cloud-run"
+
+  # Its own identity; see infra/runtime-identities.tf.
+  service_account_email = google_service_account.runtime["frontend"].email
+  project_id            = var.project_id
+  region                = var.region
+  environment           = var.environment
 
   service_name      = "frontend"
   image             = var.frontend_image
