@@ -231,17 +231,15 @@ class TestTheHelper:
 
         assert len(_rows(db_session, user.id)) == 1
 
-    def test_passport_write_is_opened_with_its_term(
+    def test_passport_write_from_an_organisation_has_no_end(
         self, db_session: Session
     ) -> None:
-        """Granting the competency and granting its term are one row.
+        """Given through a site or organisation, the passport is kept.
 
-        An undated ``passport_write`` row would never lapse, so the row
-        carries a year's end date, and a source saying who pays for it.
-        The rest of the list is written as normal.
+        Only a subscription somebody buys for themselves runs out, and
+        nothing here writes one. The rest of the list is written as normal.
         """
-        user = _user(db_session, "with_term")
-        before = datetime.now(UTC)
+        user = _user(db_session, "no_end")
 
         sync_competency_rows(
             user,
@@ -255,22 +253,39 @@ class TestTheHelper:
             "passport_write",
             "certify_death",
         }
-        (termed,) = [
+        (grant,) = [
             row
             for row in _rows(db_session, user.id)
             if row.competency_id == "passport_write"
         ]
-        assert termed.source == "organisation"
-        assert termed.ends_on is not None
-        ends_on = termed.ends_on.replace(tzinfo=UTC)
-        assert before + timedelta(
-            days=364
-        ) < ends_on and ends_on < before + timedelta(days=366)
+        assert grant.source == "admin"
+        assert grant.ends_on is None
 
-    def test_saving_again_does_not_extend_a_running_term(
+    def test_an_individual_grant_carries_a_year(
         self, db_session: Session
     ) -> None:
-        """A term is a fact about an agreement, not about form saves."""
+        """A subscription somebody buys for themselves runs out."""
+        user = _user(db_session, "subscriber")
+        before = datetime.now(UTC)
+
+        sync_competency_rows(
+            user,
+            additional=["passport_write"],
+            removed=[],
+            source="individual",
+        )
+        db_session.commit()
+
+        (grant,) = _rows(db_session, user.id)
+        assert grant.ends_on is not None
+        ends_on = grant.ends_on.replace(tzinfo=UTC)
+        assert before + timedelta(days=364) < ends_on
+        assert ends_on < before + timedelta(days=366)
+
+    def test_saving_again_writes_no_second_grant(
+        self, db_session: Session
+    ) -> None:
+        """A grant is a fact about an arrangement, not about form saves."""
         user = _user(db_session, "same_term")
         for _ in range(2):
             sync_competency_rows(
@@ -526,13 +541,13 @@ class TestEveryWriterWritesRows:
         ]
         assert rows[0].granted_by == membership_admin.id
 
-    def test_onboarding_with_passport_write_writes_one_dated_row(
+    def test_onboarding_with_passport_write_writes_one_row(
         self,
         test_client: TestClient,
         db_session: Session,
         org: OrgUnit,
     ) -> None:
-        """The term is on the grant, with nothing written anywhere else."""
+        """One row, with no end: the site's grant does not lapse."""
         membership_admin = _user(
             db_session,
             "membership_admin",
@@ -558,12 +573,12 @@ class TestEveryWriterWritesRows:
         assert len(rows) == 1
         row = rows[0]
         assert row.competency_id == "passport_write"
-        assert row.ends_on is not None
-        assert row.source == "organisation"
+        assert row.ends_on is None
+        assert row.source == "admin"
         assert row.org_unit_id == org.id
         assert row.granted_by == membership_admin.id
 
-    def test_the_admin_editor_grants_passport_write_with_a_term(
+    def test_the_admin_editor_grants_a_usable_passport_write(
         self,
         test_client: TestClient,
         db_session: Session,
@@ -572,9 +587,9 @@ class TestEveryWriterWritesRows:
     ) -> None:
         """The gap this plan was written after.
 
-        The user editor could grant ``passport_write`` and not its term,
-        leaving somebody holding a competency no interface could make
-        usable. Now the one save writes both.
+        The user editor could grant ``passport_write`` and not the
+        entitlement it needed, leaving somebody holding a competency no
+        interface could make usable. Now the one row is the whole grant.
         """
         client = _login(test_client, "the_admin")
 
@@ -587,4 +602,6 @@ class TestEveryWriterWritesRows:
         assert response.status_code == 200, response.text
         (row,) = _rows(db_session, target.id)
         assert row.competency_id == "passport_write"
-        assert row.ends_on is not None
+        assert row.ends_on is None
+        db_session.refresh(target)
+        assert "passport_write" in target.get_final_competencies()

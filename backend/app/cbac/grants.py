@@ -15,10 +15,10 @@ is written as rows with ``source`` ``profession`` when they are given it,
 so what they hold is recorded against them rather than read from the
 template on every request.
 
-**A competency that is sold carries its term on the row.** Granting
-``passport_write`` writes its end date in the same act, so there is no
-second table to remember and no state in which somebody holds the
-competency with no term. See
+**A term, where there is one, is on the row.** A grant through a site or
+organisation has none. A subscription somebody buys for themselves would
+carry its end date on the same row as the grant, so there is no second
+table to remember. See
 ``docs/docs/plans/2026-09-23-user-competency-table-plan.md``.
 """
 
@@ -34,17 +34,15 @@ from app.cbac.base_professions import (
 from app.features.passport.models import PASSPORT_ENTITLEMENT_DAYS
 from app.models import User, UserCompetency
 
-#: Competencies whose grant must carry a term, and how long a fresh one
-#: lasts. An undated row would be current forever, and ``passport_write``
-#: is sold. Its ``source`` is ``organisation`` whoever grants it here,
-#: because what the value records for a term is who pays, and every route
-#: that calls this acts for an organisation.
+#: How long a grant lasts, by who pays for it. A grant through a site or an
+#: organisation has no end: somebody given ``passport_write`` by the trust
+#: they work at keeps it. A subscription somebody buys for themselves
+#: (``source`` ``individual``) runs for a year and then lapses. Nothing
+#: writes individual grants yet; the term is here so the first thing that
+#: does gets it without a second rule.
 TERMS: dict[str, timedelta] = {
-    "passport_write": timedelta(days=PASSPORT_ENTITLEMENT_DAYS),
+    "individual": timedelta(days=PASSPORT_ENTITLEMENT_DAYS),
 }
-
-#: What a termed row records as its source. See ``TERMS``.
-TERM_SOURCE = "organisation"
 
 #: What a row seeded from somebody's base profession records as its source.
 PROFESSION_SOURCE = "profession"
@@ -79,10 +77,10 @@ def sync_competency_rows(
     simply has no current grant row for it, and taking one away closes its
     row, as everything else is taken away.
 
-    A grant of a competency in ``TERMS`` is dated, and only a *current*
-    row suppresses a new one. So saving the lists again, or adding
-    somebody to a second org_unit, does not quietly extend a term that is
-    running, while a term that has ended is granted afresh.
+    A grant whose ``source`` is in ``TERMS`` is dated, and only a
+    *current* row suppresses a new one. So saving the lists again does not
+    quietly extend a term that is running, while a term that has ended is
+    granted afresh.
 
     The rows are added through ``user.competency_grants``, so they are
     visible on the same object straight away and are saved with it. The
@@ -116,13 +114,11 @@ def sync_competency_rows(
             current.setdefault(row.competency_id, []).append(row)
 
     for competency_id in sorted(wanted_ids - current.keys()):
-        term = TERMS.get(competency_id)
-        if term:
-            row_source = TERM_SOURCE
-        elif competency_id in template and competency_id not in asked:
+        if competency_id in template and competency_id not in asked:
             row_source = PROFESSION_SOURCE
         else:
             row_source = source
+        term = TERMS.get(row_source)
         user.competency_grants.append(
             UserCompetency(
                 competency_id=competency_id,
