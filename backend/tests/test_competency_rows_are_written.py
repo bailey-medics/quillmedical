@@ -63,11 +63,20 @@ def _csrf(client: TestClient) -> dict[str, str]:
 
 
 def _rows(db: Session, user_id: int) -> list[UserCompetency]:
+    """The rows a save's two lists asked for, oldest first.
+
+    Rows seeded from the person's base profession are left out: every save
+    writes them, whatever the lists say, and
+    ``tests/test_profession_seeds_rows.py`` is where they are pinned.
+    """
     db.expire_all()
     return list(
         db.scalars(
             select(UserCompetency)
-            .where(UserCompetency.user_id == user_id)
+            .where(
+                UserCompetency.user_id == user_id,
+                UserCompetency.source != "profession",
+            )
             .order_by(UserCompetency.id)
         )
     )
