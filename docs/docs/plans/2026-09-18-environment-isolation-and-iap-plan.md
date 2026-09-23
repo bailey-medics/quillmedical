@@ -1056,41 +1056,133 @@ for the same name would leave both pending.
       it had the apex not moved. This is also why dropping `teaching.`
       from `lb_domains` was left out of Batch 6.
 
-- [ ] Move image build and push off `quill-medical-teaching`. This is the
-      blocker, and it is not a teaching concern at all: `deploy.yml:105`
-      authenticates as `GCP_TEACHING_SERVICE_ACCOUNT` and pushes the
-      backend, frontend, admin, transcode and caption images to
-      teaching's Artifact Registry, for **both** environments. Shutting
-      the project down without moving this stops every deploy, including
-      the app project's own.
+- [x] Move image build and push off `quill-medical-teaching`. Done in
+      #974. The build job and the production promotion job now
+      authenticate as the app project. The push tags to teaching's
+      registry stay, because each environment's deploy pulls from its own
+      registry and teaching is still deploying.
 
-      `deploy.yml:333` is the same dependency from the other end: the
-      production promotion job pulls from teaching's registry as its
-      source before copying to the production one.
+      **This needed an IAM grant that no Terraform manages.**
+      `github-actions@quill-medical-app` held only
+      `roles/artifactregistry.reader` on teaching's `quill` repository,
+      so authenticating as app and pushing teaching's tags would have
+      failed. `roles/artifactregistry.writer` was granted by hand on
+      2026-09-23 and goes when the project does.
 
-      Point both at `quill-medical-app`'s registry, using the
-      `GCP_APP_*` secrets that already exist. Worth its own pull request,
-      separate from the smaller repointing below, because a mistake here
-      breaks deployment rather than one scheduled job.
+      **The deploy that merged this proved nothing.** #974 changed only a
+      workflow and a plan document, so `dorny/paths-filter` set
+      `services` to empty and the build job was skipped. The run went
+      green without ever exercising the change. The first real test is
+      the next pull request that touches `backend/` or `frontend/`.
 
-- [ ] Repoint the remaining three workflows that authenticate as
-      teaching. None of them is teaching work; the account simply became
-      the default identity.
+- [x] Repoint the two workflows that can be repointed from this
+      repository. Done in #980. `stale-incidents.yml` authenticates as
+      the app project and reads `GCP_APP_PROJECT_ID`, so the stale
+      incident warning watches the project that is live.
+      `ci.yml`'s published bank sweep reads `quill-images-app`, and its
+      environment variable was renamed from `TEACHING_BUCKET` to
+      `IMAGES_BUCKET` to match.
 
-      `teaching-pipeline.yml:201` syncs question bank content and uses
-      the older unprefixed `GCP_SERVICE_ACCOUNT` and
-      `GCP_WORKLOAD_IDENTITY_PROVIDER` secrets rather than the
-      `GCP_TEACHING_*` pair, so it is easy to miss when grepping for the
-      prefixed names. `ci.yml:340` authenticates for a validator step on
-      ordinary CI runs. `stale-incidents.yml:48` is a scheduled job that
-      also reads `GCP_TEACHING_PROJECT_ID`.
+- [ ] Move the content pipeline's secrets, in the content repositories.
+      Partly done on 2026-09-23. `teaching-pipeline.yml` cannot be fixed
+      from this repository: it is a `workflow_call` with
+      `secrets: inherit`, so `GCP_SERVICE_ACCOUNT`,
+      `GCP_WORKLOAD_IDENTITY_PROVIDER` and `GCP_TEACHING_GCS_BUCKET` come
+      from `eoeeta-teaching` and `respiratory-teaching`.
 
-      Change `content_ci_service_account` in
-      `infra/environments/app/terraform.tfvars` to
-      `github-actions@quill-medical-app.iam.gserviceaccount.com` in the
-      same unit. It currently names the teaching account, which is what
-      writes to the app project's bucket, so the bucket grant Terraform
-      manages has to move with it.
+      **The blocker was workload identity, not the secrets.** Teaching's
+      provider accepts four repositories; the app project's accepted only
+      `bailey-medics/quillmedical`, so pointing the content repositories
+      at the app project would have been refused at authentication,
+      before any bucket was touched. Neither project's workload identity
+      is in Terraform, so all of this is `gcloud` work:
+
+      ```bash
+      gcloud iam workload-identity-pools providers describe github-provider \
+        --workload-identity-pool=github-pool --location=global \
+        --project=quill-medical-teaching --format="value(attributeCondition)"
+      ```
+
+      **A new account rather than a copy of teaching's.** The content
+      pipeline authenticates as `github-actions@quill-medical-teaching`,
+      which holds `roles/editor` on the whole project. The sync script
+      does one thing, `rsync --delete` of `question_bank_content/modules`
+      into a single bucket, so it was given its own account scoped to
+      that bucket. Retiring teaching is the moment to drop a permission
+      that was always wider than the job, rather than carry it across.
+
+      Done so far:
+
+      ```bash
+      gcloud iam service-accounts create content-sync \
+        --project=quill-medical-app --display-name="Content sync" \
+        --description="Publishes teaching question banks to quill-images-app from the content repositories. Scoped to that bucket only."
+
+      gcloud iam workload-identity-pools providers update-oidc github-provider \
+        --workload-identity-pool=github-pool --location=global \
+        --project=quill-medical-app \
+        --attribute-condition="assertion.repository == 'bailey-medics/quillmedical' || assertion.repository == 'bailey-medics/eoeeta-teaching' || assertion.repository == 'bailey-medics/respiratory-teaching'"
+
+      gcloud storage buckets add-iam-policy-binding gs://quill-images-app \
+        --member="serviceAccount:content-sync@quill-medical-app.iam.gserviceaccount.com" \
+        --role="roles/storage.objectAdmin" --project=quill-medical-app
+      ```
+
+      The impersonation bindings, run by Mark on 2026-09-23 because the
+      harness refuses IAM grants:
+
+      ```bash
+      for R in eoeeta-teaching respiratory-teaching; do
+        gcloud iam service-accounts add-iam-policy-binding \
+          content-sync@quill-medical-app.iam.gserviceaccount.com \
+          --project=quill-medical-app --role="roles/iam.workloadIdentityUser" \
+          --member="principalSet://iam.googleapis.com/projects/45814277366/locations/global/workloadIdentityPools/github-pool/attribute.repository/bailey-medics/${R}"
+      done
+      ```
+
+      All six secrets were then set, three in each content repository,
+      at 07:47 on 2026-09-23:
+
+      ```bash
+      gh secret set GCP_SERVICE_ACCOUNT --repo bailey-medics/eoeeta-teaching \
+        --body "content-sync@quill-medical-app.iam.gserviceaccount.com"
+      gh secret set GCP_WORKLOAD_IDENTITY_PROVIDER --repo bailey-medics/eoeeta-teaching \
+        --body "projects/45814277366/locations/global/workloadIdentityPools/github-pool/providers/github-provider"
+      gh secret set GCP_TEACHING_GCS_BUCKET --repo bailey-medics/eoeeta-teaching \
+        --body "quill-images-app"
+      ```
+
+      …and the same three against
+      `bailey-medics/respiratory-teaching`. `gh secret set` prints
+      nothing on success, so the check is the `updatedAt` timestamp in
+      `gh secret list`, not the absence of an error.
+
+      **This is now live and unverified.** The next content publish from
+      either repository authenticates as `content-sync` and writes to
+      `quill-images-app`. If workload identity is wrong the publish
+      fails at the authentication step, which is loud and harmless; the
+      previous secrets are gone, so rolling back means setting them
+      again by hand.
+
+      Only after a content publish has been seen to land in
+      `quill-images-app`, change `content_ci_service_account` in
+      `infra/environments/app/terraform.tfvars` to the new account. It
+      still names the teaching account because that is the identity
+      writing to the bucket today, and moving it early removes the grant
+      the pipeline is using. That is a code change, so it goes in a pull
+      request rather than by hand.
+
+      **The sweep risk turned out not to bite.** Both buckets hold the
+      same 33 objects and 3.95MiB, and `quill-images-app` is the newer
+      of the two (2026-09-22 against 2026-09-11 in
+      `quill-images-teaching`), so `GCP_TEACHING_GCS_BUCKET` was already
+      pointing at the app bucket before any of this. The sweep in
+      `ci.yml` has been reading current content all along.
+
+      **Nothing here can be triggered from this repository.**
+      `eoeeta-teaching`'s workflow fires on `push` and `pull_request`
+      only, with no `workflow_dispatch`, so proving the new identity
+      needs a real content change in one of the two repositories.
 
 - [ ] Run a full deploy with `quill-medical-teaching` still alive but
       unused, and confirm it passes. This is the step that makes the
