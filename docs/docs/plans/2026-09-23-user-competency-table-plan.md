@@ -385,15 +385,38 @@ its own readers and its own migration.
 
 ## Phase 7: Drop the columns
 
+- [x] **Take the two columns out of every statement first, in a deploy of
+      their own.** Found while building this phase. Stopping the writes in
+      Phase 5 was not enough to make the drop safe. The model still mapped
+      both columns, so every `SELECT` of `users` named them, and so did
+      every `INSERT`, through the Python default. Migrations run before the
+      new revision takes traffic, so the revision still serving while the
+      drop ran would fail on every query of `users` until it was replaced.
+      `.claude/rules/backend.md` asks for an app that no longer uses a
+      column to be live before the migration that drops it.
+
+      So migration `26434c1eb0a4` gives both columns a server default of
+      `'[]'`, which is additive. The model defers them, keeping them out of
+      every `SELECT`, and drops their Python default, keeping them out of
+      every `INSERT`. `User` also sets `eager_defaults` off. Without that,
+      SQLAlchemy adds a `RETURNING` naming every column with a server
+      default, and both retired columns would be back in the statement.
+      `backend/tests/test_retired_competency_columns.py` records every
+      statement a create and an update send, and fails if either name
+      appears.
+
 - [ ] **Drop `additional_competencies`, `removed_competencies` and the
       `passport_write_entitlement` table** in their own migration, carrying
       `# migration-check: allow-destructive`. It goes through the
       `db-destructive-migration-review` environment, and it is not bundled
-      with additive work.
+      with additive work. Approved on 23 September 2026.
 
       Last, and after the investigations in Phase 6, because it is the one
       step that cannot be undone and it needs a human's approval. Nothing
-      else in this plan depends on it, so nothing waits behind it.
+      else in this plan depends on it, so nothing waits behind it. The
+      table is safe to drop in the same migration without a step like the
+      one above: since Phase 5 no code queries it, and a mapped class that
+      is never queried sends nothing.
 
 ## Decisions
 
