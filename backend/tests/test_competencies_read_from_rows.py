@@ -120,14 +120,13 @@ class TestWhatIsHeld:
         )
         db_session.commit()
 
-        organisation_term = next(
+        site_grant = next(
             row
             for row in user.competency_grants
-            if row.competency_id == "passport_write"
-            and row.source == "organisation"
+            if row.competency_id == "passport_write" and row.source == "admin"
         )
-        organisation_term.starts_on = datetime.now(UTC) - timedelta(days=400)
-        organisation_term.ends_on = datetime.now(UTC) - timedelta(days=1)
+        site_grant.starts_on = datetime.now(UTC) - timedelta(days=400)
+        site_grant.ends_on = datetime.now(UTC) - timedelta(days=1)
         db_session.commit()
 
         assert "passport_write" in user.get_final_competencies()

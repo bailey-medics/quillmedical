@@ -138,7 +138,7 @@ from .blobs import (
     BlobStore,
 )
 from .commits import Actor
-from .entitlements import current_entitlement_end
+from .entitlements import passport_write_ends_on
 from .gcs_store import GcsBlobStore
 from .models import (
     AssessorRegistrationVerification,
@@ -525,21 +525,24 @@ def _entitlement_out(db: Session, user_id: int) -> EntitlementOut:
     not have to do date arithmetic against a clock that may differ from
     the server's.
 
-    ``can_write`` answers both halves of what ``_require_writer`` asks,
-    the competency and the entitlement, so the page can disable a
-    control rather than offer one that always refuses. Stated rather
+    ``can_write`` answers what ``_require_writer`` asks, whether they hold
+    ``passport_write``, so the page can disable a control rather than
+    offer one that always refuses. A grant with no end carries no date. Stated rather
     than left for the client to infer from a null ``ends_on``, which
     also means "this response predates these fields".
     """
     holder = db.get(User, user_id)
-    has_competency_to_write = holder is not None and (
-        "passport_write" in holder.get_final_competencies()
-    )
-
-    ends_on = current_entitlement_end(db, user_id)
-
-    if ends_on is None:
+    if holder is None or (
+        "passport_write" not in holder.get_final_competencies()
+    ):
         return EntitlementOut(can_write=False)
+
+    ends_on = passport_write_ends_on(db, user_id)
+
+    # Held with no end: given through a site or an organisation, which
+    # does not lapse. Nothing to count down to, and nothing to warn about.
+    if ends_on is None:
+        return EntitlementOut(can_write=True)
 
     # The stored value comes back naive from SQLite and aware from
     # Postgres, so the comparison is made on whichever the row gives.
@@ -549,7 +552,7 @@ def _entitlement_out(db: Session, user_id: int) -> EntitlementOut:
     return EntitlementOut(
         ends_on=ends_on,
         days_remaining=max(remaining, 0),
-        can_write=has_competency_to_write,
+        can_write=True,
     )
 
 

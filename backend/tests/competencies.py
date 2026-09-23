@@ -14,27 +14,26 @@ from datetime import UTC, datetime, timedelta
 
 from app.models import User, UserCompetency
 
-#: How long a test's ``passport_write`` lasts: the year onboarding gives.
+#: How far back ``lapse`` moves a grant: a year, the length of a
+#: subscription somebody buys for themselves.
 PASSPORT_TERM = timedelta(days=365)
 
 
 def hold(user: User, *competency_ids: str) -> None:
     """Give *user* each competency, as a current grant row.
 
-    ``passport_write`` is dated, a year from now, because it is sold and
-    every real grant of it carries a term. Anything else is undated, as an
-    administrator's grant is. The caller commits.
+    Undated, as an administrator's grant is. ``passport_write`` too:
+    given through a site or organisation it does not lapse. A test that
+    needs it to run out calls ``lapse``. The caller commits.
     """
     now = datetime.now(UTC)
     for competency_id in competency_ids:
-        termed = competency_id == "passport_write"
         user.competency_grants.append(
             UserCompetency(
                 competency_id=competency_id,
                 granted=True,
                 starts_on=now,
-                ends_on=now + PASSPORT_TERM if termed else None,
-                source="organisation" if termed else "admin",
+                source="admin",
             )
         )
 

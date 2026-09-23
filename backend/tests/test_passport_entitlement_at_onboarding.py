@@ -53,23 +53,6 @@ def _login(client: TestClient, username: str) -> TestClient:
     return client
 
 
-def _still_current(when: datetime | None) -> bool:
-    """Whether a stored end date is still in the future.
-
-    A ``passport_write`` grant always carries an end, so a missing one
-    fails here rather than passing as a grant that never lapses.
-
-    The unit-test database is SQLite, which stores a timezone-aware
-    column and hands back a naive datetime, so comparing it to an aware
-    ``now()`` raises rather than answering. Postgres keeps the offset
-    and the gate's own comparison happens in SQL, so this is a fact
-    about the test database and not about the column.
-    """
-    assert when is not None, "a passport_write grant must carry an end"
-    now = datetime.now(UTC)
-    return when > (now if when.tzinfo else now.replace(tzinfo=None))
-
-
 def _entitlements(db: Session, user: User) -> list[UserCompetency]:
     """Every ``passport_write`` grant, each carrying its term."""
     return (
@@ -156,9 +139,9 @@ class TestOnboardingGrantsTheTerm:
 
         rows = _entitlements(db_session, starter)
         assert len(rows) == 1
-        assert rows[0].source == "organisation"
         assert rows[0].org_unit_id == org.id
-        assert _still_current(rows[0].ends_on)
+        # Given through the organisation, so it does not lapse.
+        assert rows[0].ends_on is None
 
     def test_an_ordinary_onboarding_grants_no_term(
         self,
@@ -188,7 +171,7 @@ class TestOnboardingGrantsTheTerm:
         assert response.status_code == 200, response.text
         assert _entitlements(db_session, starter) == []
 
-    def test_a_second_onboarding_does_not_extend_the_term(
+    def test_a_second_onboarding_writes_no_second_grant(
         self,
         test_client: TestClient,
         db_session: Session,
@@ -197,10 +180,10 @@ class TestOnboardingGrantsTheTerm:
         admin: User,
         starter: User,
     ) -> None:
-        """The term is a fact about an agreement, not about form saves.
+        """A grant is a fact about an arrangement, not about form saves.
 
         Somebody added to a ward as well as its trust, or whose capacity
-        is corrected, must not silently gain another year each time.
+        is corrected, gets no second grant each time.
         """
         # Nothing is inherited, so administering the trust says nothing
         # about the ward inside it.
@@ -231,7 +214,7 @@ class TestOnboardingGrantsTheTerm:
 
         rows = _entitlements(db_session, starter)
         assert len(rows) == 1
-        assert rows[0].ends_on == original_end
+        assert rows[0].ends_on == original_end is None
 
     def test_a_term_that_has_ended_is_granted_afresh(
         self,
@@ -273,4 +256,5 @@ class TestOnboardingGrantsTheTerm:
 
         rows = _entitlements(db_session, starter)
         assert len(rows) == 2
-        assert any(_still_current(row.ends_on) for row in rows)
+        # The returner's new grant, through the organisation, has no end.
+        assert any(row.ends_on is None for row in rows)

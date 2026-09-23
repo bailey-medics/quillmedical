@@ -447,12 +447,11 @@ class SiteCommonCompetency(Base):
     )
 
 
-#: How long a fresh grant of ``passport_write`` runs for. Read by
-#: ``TERMS`` in ``app.cbac.grants``.
+#: How long a ``passport_write`` subscription somebody buys for themselves
+#: runs for. Read by ``TERMS`` in ``app.cbac.grants``. A grant through a
+#: site or organisation has no end.
 #:
-#: A year, because that is the shape of the arrangements being sold and
-#: because a renewal somebody has to think about once a year is the
-#: point of having an end date at all. It is a default, not a rule: a
-#: row can be written with any ``ends_on``, and a longer agreement is a
-#: further-off date rather than a special case.
+#: A year, because that is the shape of an individual subscription and
+#: because a renewal somebody has to think about once a year is the point
+#: of having an end date at all.
 PASSPORT_ENTITLEMENT_DAYS = 365

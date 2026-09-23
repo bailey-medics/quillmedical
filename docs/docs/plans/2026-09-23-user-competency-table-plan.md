@@ -584,6 +584,41 @@ out rather than stored.
       `db-destructive-migration-review` environment, like Phase 7. It needs
       a human's approval before it is built.
 
+## Phase 9: Organisation passport grants do not lapse
+
+Decided on 23 September 2026, after Phase 5 was built: somebody given the
+passport through a site or organisation, such as oncology at
+Gloucestershire, keeps it indefinitely. Only a subscription somebody buys
+for themselves runs out, after a year. Phases 2, 3 and 5 gave every grant
+a year, because `passport_write_entitlement` had, so this phase takes it
+off the grants that should not carry it. It sits on top rather than
+rewriting those phases: nothing it replaces lapses before it lands.
+
+- [x] **Key `TERMS` by who pays, not by competency.** `TERMS` in
+      `backend/app/cbac/grants.py` now maps a `source` to a term, and only
+      `individual` has one. So `sync_competency_rows` writes a
+      `passport_write` grant from an administrator, onboarding or an
+      operator with no end, and with the caller's `source` rather than
+      `organisation`. Nothing writes an `individual` grant yet; the term is
+      ready for the first thing that does.
+
+- [x] **Take the end date off existing organisation grants.** Migration
+      `57deea9f9ea6` clears `ends_on` on every current `passport_write`
+      grant whose `source` is `organisation`: the ones onboarding and the
+      backfill wrote. `individual` grants keep theirs. Its `downgrade()`
+      puts back `starts_on` plus a year, which is what each was written
+      with. Tested against Postgres in
+      `backend/tests/test_organisation_passport_grants_do_not_lapse.py`.
+
+- [x] **Let the passport page accept a grant with no end.**
+      `current_entitlement_end` answered "no current entitlement" for an
+      undated grant, and the page would have shown the passport as
+      read-only. It is now `passport_write_ends_on`: a current grant with
+      no end means it never runs out, whatever else the person holds, so
+      `EntitlementOut` carries no date, no countdown and `can_write` true.
+      The frontend already said nothing for that case, and a test now pins
+      it.
+
 ## Decisions
 
 - **The API shape does not change** — `additional_competencies` and
@@ -592,8 +627,9 @@ out rather than stored.
   client and keeps this a storage change rather than an API one. Exposing
   expiry dates is a separate piece of work.
 
-- **Nothing but `passport_write` gets an end date here** — the table can hold
-  `ends_on` for anything, and nothing sets it. Which clinical competencies
+- **Only an individual passport subscription gets an end date** — the
+  table can hold `ends_on` for anything, and nothing else sets it. A grant
+  through a site or organisation has none (Phase 9). Which clinical competencies
   expire, how long they last and what lapsing does are per-competency
   questions, and `shared/competency-definitions/` would need to say which
   competencies expire at all before any of them could be answered.

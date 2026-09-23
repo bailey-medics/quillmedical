@@ -216,8 +216,9 @@ class EntitlementOut(BaseModel):
     rather than at the moment a write is refused.
     """
 
-    #: The day it ends. Null once nothing current remains, which is the
-    #: read-only state rather than an error.
+    #: The day it ends. Null when it never does, which is a grant through
+    #: a site or organisation, and null once nothing current remains, the
+    #: read-only state. ``can_write`` tells the two apart.
     ends_on: datetime | None = None
 
     #: Days remaining, so the frontend decides whether to warn without
