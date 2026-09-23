@@ -762,3 +762,72 @@ resource "google_monitoring_alert_policy" "uptime_critical" {
     auto_close = "86400s" # 24 hours; a call-worthy outage is not a blip
   }
 }
+
+# ---------- Alert route test: one policy per notification channel ----------
+#
+# Proves each route still reaches a person. On 2026-09-23 two of the four
+# had quietly broken, an unverified SMS number and a lapsed PagerDuty trial,
+# and Google reported both alerts as raised; only the person holding the
+# phone could tell. .github/workflows/alert-route-test.yml writes one line to
+# the `alert-route-test` log every fourth Thursday, and every policy here
+# fires from it.
+#
+# One policy per channel rather than one aimed at all of them, so each
+# message names its route and a missing one is obvious. Permanent rather
+# than created for each test, because a new policy is not live for several
+# minutes and a trigger written before then is lost.
+#
+# The keys depend only on input variables, never on channel ids, so they
+# are known at plan time. Keying on an id would reintroduce the "Invalid
+# count argument" failure the PagerDuty channel above was restructured to
+# avoid.
+locals {
+  alert_route_test_channels = merge(
+    { "email" = google_monitoring_notification_channel.email.id },
+    var.slack_channel_display_name != "" ? { "Slack" = data.google_monitoring_notification_channel.slack[0].id } : {},
+    var.enable_sms_channel ? { "SMS" = google_monitoring_notification_channel.sms[0].id } : {},
+    var.enable_pagerduty_channel ? { "PagerDuty" = google_monitoring_notification_channel.pagerduty[0].id } : {},
+  )
+}
+
+resource "google_monitoring_alert_policy" "alert_route_test" {
+  for_each = local.alert_route_test_channels
+
+  project      = var.project_id
+  display_name = "Four-weekly alert test: ${each.key} (${var.environment})"
+  combiner     = "OR"
+
+  documentation {
+    mime_type = "text/markdown"
+    subject   = "Scheduled alert test, no action needed"
+    content   = <<-EOT
+      This is the four-weekly test of every alert route, not an outage.
+
+      You should receive four messages at about the same time: Slack, SMS,
+      email and a PagerDuty phone call. If any one is missing, that route is
+      broken and a real alert would not reach you either. Tell Mark.
+
+      It closes itself after 30 minutes, which also resolves the PagerDuty
+      incident.
+    EOT
+  }
+
+  conditions {
+    display_name = "Alert route test line written"
+
+    condition_matched_log {
+      filter = "logName=\"projects/${var.project_id}/logs/alert-route-test\""
+    }
+  }
+
+  alert_strategy {
+    # Required for a log-match condition. One notification per five minutes
+    # is ample for a line written once every four weeks.
+    notification_rate_limit {
+      period = "300s"
+    }
+    auto_close = "1800s"
+  }
+
+  notification_channels = [each.value]
+}
