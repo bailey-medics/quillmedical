@@ -1559,7 +1559,7 @@ an outage.
 window was set by Mark as 1pm to 2pm; 1:15pm leaves 45 minutes for
 GitHub starting a scheduled run late, which it does at busy times.
 
-- [ ] **(Claude)** Add four permanent alert policies to
+- [x] **(Claude)** Add four permanent alert policies to
       `infra/modules/monitoring`, one per route: Slack, SMS, email and
       PagerDuty. Each is a `conditionMatchedLog` condition on a single
       log, `alert-route-test`, and notifies exactly one channel, so a
@@ -1576,7 +1576,7 @@ GitHub starting a scheduled run late, which it does at busy times.
       Set `autoClose` to 30 minutes, which also resolves the PagerDuty
       incident, so nobody has to.
 
-- [ ] **(Claude)** Add `.github/workflows/alert-route-test.yml` and
+- [x] **(Claude)** Add `.github/workflows/alert-route-test.yml` and
       `.github/scripts/monitoring/alert-route-test.sh`, with a `.bats`
       beside it following `stale-incidents.sh`. The script writes one line
       to `alert-route-test` with `gcloud logging write`, and all four
@@ -1598,6 +1598,25 @@ GitHub starting a scheduled run late, which it does at busy times.
 
       A `workflow_dispatch` run skips both guards, so a route can be
       tested by hand after a change.
+
+      **Built on 2026-09-23, with the time check changed.** The script
+      decides by *which schedule fired*, from `github.event.schedule`,
+      against London's current UTC offset, not by the clock when it
+      starts. GitHub can start a scheduled run late; a clock check at the
+      start would then see 14:xx on the one run that should have fired,
+      skip it along with its partner, and miss the cycle entirely. This
+      way a late run still fires, only late.
+
+      The four policies are one `for_each` over the channels the module
+      actually creates, keyed by static names so the keys are known at
+      plan time. `terraform plan` showed exactly four created. The
+      script's negative tests were proved able to fail by breaking both
+      guards and watching five go red.
+
+      **Interim identity.** The workflow authenticates as the app
+      project's existing CI account until the narrow one below exists,
+      so the first scheduled run on 2026-10-01 works whether or not
+      that step is done by then.
 
 - [ ] **(Mark)** Give the workflow an identity holding
       `roles/logging.logWriter` and nothing else. It is the narrowest job
