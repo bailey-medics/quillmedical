@@ -40,19 +40,21 @@ def hold(user: User, *competency_ids: str) -> None:
 
 
 def withhold(user: User, *competency_ids: str) -> None:
-    """Take each competency away from *user*, as a current removal row.
+    """Take each competency away from *user*, closing its grant rows.
 
-    What ``removed_competencies`` used to say: their profession grants it
-    and they do not hold it. The caller commits.
+    Somebody who does not hold a competency has no current grant row for
+    it, whatever their profession grants, so this is how a test says
+    "their profession gives it and they do not hold it". The caller
+    commits.
     """
-    for competency_id in competency_ids:
-        user.competency_grants.append(
-            UserCompetency(
-                competency_id=competency_id,
-                granted=False,
-                source="admin",
-            )
-        )
+    now = datetime.now(UTC)
+    for row in user.competency_grants:
+        if (
+            row.competency_id in competency_ids
+            and row.granted
+            and row.is_current(now)
+        ):
+            row.ends_on = now
 
 
 def lapse(user: User, competency_id: str) -> None:
@@ -73,12 +75,12 @@ def lapse(user: User, competency_id: str) -> None:
 
 
 def clear(user: User) -> None:
-    """End every current grant and removal *user* has, now.
+    """End every grant *user* holds beyond what their profession seeded.
 
-    For a test that used to empty ``additional_competencies``: nothing
-    beyond their profession is held afterwards. The caller commits.
+    For a test that used to empty ``additional_competencies``: afterwards
+    they hold only what came with their profession. The caller commits.
     """
     now = datetime.now(UTC)
     for row in user.competency_grants:
-        if row.is_current(now):
+        if row.source != "profession" and row.is_current(now):
             row.ends_on = now

@@ -1,10 +1,8 @@
 """Giving somebody a profession writes its competencies as rows.
 
-The first step of seeding from the profession and then letting it go:
-every route that gives somebody a profession writes a ``profession`` row
-for each competency it grants, so that what they hold is recorded against
-them. The resolver still adds the template on top, so nothing anybody can
-do changes yet; these pin that the rows are there for when it stops.
+Every way somebody is given a profession writes a ``profession`` row for
+each competency it grants, and from then on only their rows count: the
+profession's template is not read again.
 
 See Phase 8 of ``docs/docs/plans/2026-09-23-user-competency-table-plan.md``.
 """
@@ -27,7 +25,15 @@ from app.security import hash_password
 from tests.places import administers
 
 
-def _user(db: Session, username: str, *, profession: str = "patient") -> User:
+def _user(
+    db: Session,
+    username: str,
+    *,
+    profession: str = "patient",
+    seeded: bool = True,
+) -> User:
+    """A user. ``seeded=False`` strips the rows the constructor writes,
+    standing in for somebody created before seeding existed."""
     user = User(
         username=username,
         email=f"{username}@example.test",
@@ -37,6 +43,8 @@ def _user(db: Session, username: str, *, profession: str = "patient") -> User:
         base_profession=profession,
         platform_role="standard",
     )
+    if not seeded:
+        user.competency_grants = []
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -92,7 +100,12 @@ class TestTheHelperSeeds:
     def test_a_first_save_writes_the_whole_template(
         self, db_session: Session
     ) -> None:
-        user = _user(db_session, "fresh", profession="healthcare_assistant")
+        user = _user(
+            db_session,
+            "fresh",
+            profession="healthcare_assistant",
+            seeded=False,
+        )
 
         sync_competency_rows(
             user, additional=["certify_death"], removed=[], source="admin"
@@ -133,7 +146,7 @@ class TestTheHelperSeeds:
         self, db_session: Session
     ) -> None:
         """Named in ``additional``, it is the administrator's grant."""
-        user = _user(db_session, "asked")
+        user = _user(db_session, "asked", seeded=False)
 
         sync_competency_rows(
             user,
@@ -160,10 +173,10 @@ class TestTheHelperSeeds:
 
         assert user.additional_competency_ids == ["certify_death"]
 
-    def test_what_anybody_can_do_does_not_change(
+    def test_saving_empty_lists_keeps_the_profession(
         self, db_session: Session
     ) -> None:
-        """The resolver still adds the template, so seeding is invisible."""
+        """Empty lists mean "just the profession", not "nothing"."""
         user = _user(
             db_session, "unchanged", profession="healthcare_assistant"
         )
@@ -173,6 +186,33 @@ class TestTheHelperSeeds:
         db_session.commit()
 
         assert sorted(user.get_final_competencies()) == before
+
+
+class TestEveryUserIsSeeded:
+    def test_constructing_a_user_seeds_their_profession(
+        self, db_session: Session
+    ) -> None:
+        """Every way a user comes to exist, not only the admin routes."""
+        user = _user(db_session, "constructed", profession="teaching_delegate")
+
+        assert _current_grants(db_session, user.id) == {
+            "view_teaching_cases": "profession"
+        }
+
+    def test_the_profession_is_not_read_afterwards(
+        self, db_session: Session
+    ) -> None:
+        """Changing the label alone grants nothing.
+
+        What somebody holds is their rows. A profession changed without
+        going through a route that writes rows changes nothing they can do,
+        which is what a later edit to the template does too.
+        """
+        user = _user(db_session, "relabelled")
+        user.base_profession = "teaching_delegate"
+        db_session.commit()
+
+        assert user.get_final_competencies() == ["access_own_patient_records"]
 
 
 class TestEveryRouteSeeds:
@@ -243,27 +283,31 @@ class TestTheCheckBeforeTheSwitch:
     """``unseeded_profession_competencies`` names who the switch would change."""
 
     def test_somebody_with_no_rows_is_named(self, db_session: Session) -> None:
-        user = _user(db_session, "unseeded")
+        user = _user(db_session, "unseeded", seeded=False)
 
         assert unseeded_profession_competencies(db_session) == {
             user.id: ["access_own_patient_records"]
         }
 
     def test_seeded_rows_satisfy_it(self, db_session: Session) -> None:
-        user = _user(db_session, "seeded")
+        user = _user(db_session, "seeded", seeded=False)
         sync_competency_rows(user, additional=[], removed=[], source="admin")
         db_session.commit()
 
         assert unseeded_profession_competencies(db_session) == {}
 
     def test_a_removal_row_satisfies_it(self, db_session: Session) -> None:
-        """Removed means not held, before and after the switch alike."""
-        user = _user(db_session, "removed")
-        sync_competency_rows(
-            user,
-            additional=[],
-            removed=["access_own_patient_records"],
-            source="admin",
+        """A removal row, as the lists wrote them before the switch.
+
+        Removed means not held, so the switch changes nothing for them.
+        """
+        user = _user(db_session, "removed", seeded=False)
+        user.competency_grants.append(
+            UserCompetency(
+                competency_id="access_own_patient_records",
+                granted=False,
+                source="admin",
+            )
         )
         db_session.commit()
 

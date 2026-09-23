@@ -120,12 +120,14 @@ class TestWhatIsHeld:
         )
         db_session.commit()
 
-        user.competency_grants[0].starts_on = datetime.now(UTC) - timedelta(
-            days=400
+        organisation_term = next(
+            row
+            for row in user.competency_grants
+            if row.competency_id == "passport_write"
+            and row.source == "organisation"
         )
-        user.competency_grants[0].ends_on = datetime.now(UTC) - timedelta(
-            days=1
-        )
+        organisation_term.starts_on = datetime.now(UTC) - timedelta(days=400)
+        organisation_term.ends_on = datetime.now(UTC) - timedelta(days=1)
         db_session.commit()
 
         assert "passport_write" in user.get_final_competencies()
@@ -165,7 +167,9 @@ class TestWhatIsReported:
         hold(current, "a_made_up_competency")
         hold(closed, "another_made_up_competency")
         db_session.commit()
-        closed.competency_grants[0].ends_on = datetime.now(UTC)
+        for row in closed.competency_grants:
+            if row.competency_id == "another_made_up_competency":
+                row.ends_on = datetime.now(UTC)
         db_session.commit()
 
         assert unknown_ids_on_users(db_session) == {

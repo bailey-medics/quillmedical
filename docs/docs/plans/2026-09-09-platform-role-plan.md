@@ -1413,6 +1413,15 @@ is no case to carve out, and no "public modules" branch to maintain.
 
 ## Decided: `base_profession` stays stored against a person
 
+> **Superseded in part, 23 September 2026.** The field stays, as decided
+> here, but only as a label and a seed. Phase 8 of
+> [User competency table](2026-09-23-user-competency-table-plan.md) writes a
+> profession's competencies as rows when somebody is given it, and reads
+> only the rows afterwards. This decision answered changing a *person's*
+> profession; it did not answer changing the *profession itself* in
+> `shared/base-professions.yaml`, which granted or revoked a competency for
+> everybody holding it at once. That is the case Phase 8 closes.
+
 Surfaced while deciding how a superadmin comes to hold `manage_users`, and argued
 below for removing the field. **That argument was not taken.** The field stays,
 and the reasoning against it is left standing so the next reader can see both

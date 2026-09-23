@@ -27,6 +27,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import insert, select
 from sqlalchemy.orm import Session
 
+from app.cbac.base_professions import get_profession_base_competencies
 from app.models import (
     ExternalPatientAccess,
     OrgUnit,
@@ -35,6 +36,7 @@ from app.models import (
 )
 from app.organisations import add_org_unit_member
 from app.security import hash_password
+from tests.competencies import hold
 
 OUTSIDE_PATIENT = "fhir-patient-other-trust"
 OWN_PATIENT = "fhir-patient-own-trust"
@@ -215,6 +217,12 @@ class TestTheGateIsACompetencyNotARank:
         that check and this test fails while the one above still passes.
         """
         test_user.base_profession = "system_administrator"
+        # The label grants nothing by itself: a profession's competencies
+        # are rows, written when somebody is given it.
+        hold(
+            test_user,
+            *get_profession_base_competencies("system_administrator"),
+        )
         add_org_unit_member(db_session, admin_org.id, test_user.id, "staff")
         db_session.commit()
 
