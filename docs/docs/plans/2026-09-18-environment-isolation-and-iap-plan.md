@@ -1526,11 +1526,29 @@ Last, because it is the smallest gain once Phase 3 has locked the token
 to `main`, and the riskiest: a permission missed here fails an apply
 partway, with some resources changed and others not.
 
-- [ ] Look at the 155 IAM writes before choosing roles. That is a lot
+- [x] Look at the 155 IAM writes before choosing roles. That is a lot
       for a project three days old, and IAM is where a missed permission
       is most likely. Group them by `protoPayload.methodName` to see
       whether they are Terraform setting bindings on each apply or the
       one-off setup.
+
+      Done on 2026-09-23, and they are neither. All but one are
+      `iam.serviceAccounts.actAs` on
+      `45814277366-compute@developer.gserviceaccount.com`, the default
+      Compute Engine account: one per deploy, because updating a Cloud
+      Run service or job means acting as its runtime identity. The
+      remaining one is the `SetIAMPolicy` behind
+      `google_service_account_iam_member.cloudrun_token_creator`. So the
+      apply account needs `roles/iam.serviceAccountUser` on that one
+      account, not project-wide, and nothing about IAM churn stands in
+      the way of narrowing it.
+
+      ```bash
+      gcloud logging read \
+        'protoPayload.authenticationInfo.principalEmail="github-actions@quill-medical-app.iam.gserviceaccount.com" AND protoPayload.serviceName="iam.googleapis.com" AND logName:"cloudaudit.googleapis.com%2Factivity"' \
+        --project=quill-medical-app --freshness=10d --limit=500 \
+        --format="value(protoPayload.methodName,protoPayload.resourceName)"
+      ```
 
 - [ ] **(Mark)** Add a specific role for each service in the audit log,
       alongside `editor`: `roles/cloudsql.admin`, `roles/storage.admin`,
@@ -1545,6 +1563,34 @@ partway, with some resources changed and others not.
       plan exercises every read permission without changing anything, so
       a missing read fails there safely. A missing write only shows at
       the next apply, so make the next infrastructure change a small one.
+
+### Phase 6: Give each workload its own runtime identity
+
+Found while checking the IAM writes above. Every workload in the app
+project runs as the default Compute Engine account: `quill-backend-app`
+and `quill-frontend-app` name it, and the three jobs name no account and
+fall back to it. That account holds `roles/secretmanager.secretAccessor`
+on the whole project, through `google_project_iam_member.cloudrun_secret_accessor`.
+
+So the frontend, which serves static files and needs no secret at all,
+can read the Cloud SQL password and the JWT signing key, and so can the
+caption job. It is not the `roles/editor` a default account has in an
+older project, because the organisation policy stops that automatic
+grant, but it is the same problem one layer down: a compromise of the
+least important workload reaches the most important secrets.
+
+- [ ] **(Claude)** Add a service account per workload to Terraform,
+      `run-backend`, `run-frontend`, `run-admin`, `run-transcode` and
+      `run-caption`, and set `service_account` on each service and job.
+
+- [ ] **(Claude)** Replace the project-wide `secretAccessor` with a
+      binding per secret, to the accounts that read it. The frontend gets
+      none. The storage bucket grants that name the default account move
+      to whichever workload actually reads each bucket.
+
+- [ ] **(Mark)** Narrow the deploy account from Phase 1 to
+      `roles/iam.serviceAccountUser` on the five runtime accounts rather
+      than on the default Compute Engine one, once they exist.
 
 ## Batch 10 — Claude and Mark: test every alert route every four weeks
 
