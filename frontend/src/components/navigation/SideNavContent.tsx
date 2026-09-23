@@ -18,6 +18,7 @@ import { useHasCompetency } from "@/lib/cbac/hooks";
 import { api } from "@/lib/api";
 import { orgUnits } from "@/domains/orgUnit";
 import NavIcon from "../icons/NavIcon";
+import SendFeedbackNavLink from "@/components/feedback/SendFeedbackNavLink";
 import NestedNavLink, { type NavItem } from "./NestedNavLink";
 import { useFeatureNavItems } from "./featureNavItems";
 import { navLinkStyles } from "./navStyles";
@@ -496,6 +497,7 @@ export default function SideNavContent({
           showIcons={showIcons}
         />
       ))}
+      <SendFeedbackNavLink showIcons={showIcons} />
       <NavLink
         label="Logout"
         styles={navLinkStyles}
