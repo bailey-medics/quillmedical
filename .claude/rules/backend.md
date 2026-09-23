@@ -5,6 +5,46 @@ paths:
 
 # Backend conventions
 
+## Relational storage, and asking before departing from it
+
+**Ask a human before storing anything non-relationally.** A `JSON` or
+`JSONB` column, an array column, a delimited string, or any other field
+holding a list of things the database cannot see into needs an explicit
+decision from a person before it is written. Propose it, say what it
+would hold and why a table does not fit, and wait for an answer. Do not
+add one because it is quicker, because the shape is still settling, or
+because the data "is just a blob for now".
+
+**The test is whether anything needs to point at what is inside.** A
+document read back whole — a synced config file, the errors from one
+validation run, a snapshot of how somebody scored on one attempt — is
+genuinely a document, and JSON is right for it. A list of references to
+other entities is not: competencies, registrations, tags and memberships
+are all relationships wearing a document's clothes, and each one wants a
+table with a foreign key.
+
+**Four things a JSON column costs**, all of which this repository has
+already paid on `users.additional_competencies`:
+
+- **No constraint on what goes in.** A misspelled id is accepted and
+  silently does nothing. `backend/app/cbac/audit.py` exists only to scan
+  for these after the fact, which is a report rather than a rule.
+- **No way to ask the question backwards.** "Who holds this?" reads every
+  row and filters in Python. A `JSON` column cannot be indexed inside at
+  all, and `JSONB` only with work.
+- **Nowhere to record anything about the entry.** A string carries an id
+  and nothing else: not when it started, not when it ends, not who
+  granted it. This is what forced `passport_write_entitlement` into
+  existence as a second table beside the first.
+- **Whole-value writes.** Saving one element rewrites the array, so two
+  concurrent edits mean last-write-wins across every element rather than
+  the one that changed.
+
+See
+[User competency table plan](../../docs/docs/plans/2026-09-23-user-competency-table-plan.md)
+for the migration away from two such columns, and for which of the
+repository's remaining JSON columns are genuine documents.
+
 ## Database migrations (Alembic)
 
 These rules are enforced statically by

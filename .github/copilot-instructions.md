@@ -389,6 +389,18 @@ A position is a slot a place has, in `models.py` as `Position` and
 
 ## Critical Rules
 
+### Database storage
+
+- **Ask a human before storing anything non-relationally.** A `JSON` or
+  `JSONB` column, an array column or a delimited string needs an explicit
+  decision from a person before it is written, not a note in a pull
+  request. Propose it, say what it would hold and why a table does not
+  fit, and wait.
+- The test is whether anything needs to point at what is inside. A
+  document read back whole is genuinely a document; a list of references
+  to other entities is a relationship, and wants a table with a foreign
+  key. See `.claude/rules/backend.md` for what a JSON column costs.
+
 ### Security
 
 - Never log PHI in errors/logs/notifications

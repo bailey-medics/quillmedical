@@ -670,6 +670,7 @@
     "tickbox",
     "tiering",
     "timedelta",
+    "timestamptz",
     "timeupdate",
     "timezone",
     "timezones",

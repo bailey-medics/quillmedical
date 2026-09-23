@@ -60,3 +60,4 @@
 - [User Feedback](2026-09-20-user-feedback-plan.md)
 - [Internationalisation](2026-09-20-internationalisation-plan.md)
 - [Practising Competencies Enforcement](2026-09-21-practising-competencies-enforcement-plan.md)
+- [User Competency Table](2026-09-23-user-competency-table-plan.md)
