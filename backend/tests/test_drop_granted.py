@@ -19,7 +19,7 @@ from sqlalchemy import text
 from alembic import command
 from app.db.core_db import core_engine
 
-pytestmark = pytest.mark.integration
+pytestmark = [pytest.mark.integration, pytest.mark.migration]
 
 BEFORE = "8dc3af3202f4"
 DROP = "7774a15142c1"

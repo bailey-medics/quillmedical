@@ -167,9 +167,9 @@ jobs:
         working-directory: backend
         run: poetry run alembic check
 
-      - name: Run drift-check regression tests
+      - name: Run migration tests
         working-directory: backend
-        run: poetry run pytest -q -m integration tests/test_alembic_check.py tests/test_user_competency_backfill.py tests/test_profession_seed_backfill.py tests/test_close_removal_rows.py tests/test_organisation_passport_grants_do_not_lapse.py tests/test_answer_tag_backfill.py tests/test_drop_granted.py
+        run: poetry run pytest -q -m migration
 
 
 

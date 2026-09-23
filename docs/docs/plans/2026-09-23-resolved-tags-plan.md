@@ -114,9 +114,14 @@ switch-reads, contract order in
 
 ## Phase 6: Drop the column
 
-- [ ] **Drop `assessment_answers.resolved_tags`** in its own destructive
+- [x] **Drop `assessment_answers.resolved_tags`** in its own destructive
       migration with the `allow-destructive` marker, through the
       `db-destructive-migration-review` environment.
+
+      Migration `2a0640755949`, approved on 23 September 2026. Its
+      `downgrade()` fills the column back from the rows, which hold the
+      same tags, so going back loses nothing. Tested against Postgres in
+      `backend/tests/test_drop_resolved_tags.py`.
 
 ## Decisions
 

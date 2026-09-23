@@ -13,7 +13,7 @@ locally against the throwaway database ``compose.migrate.yml`` provides:
 
     docker compose -p quill-migrate-<worktree> -f compose.migrate.yml \\
         run --rm migrate sh -lc \\
-        'alembic upgrade head && pytest -m integration \\
+        'alembic upgrade head && pytest -m migration \\
          tests/test_user_competency_backfill.py'
 
 Each test leaves the database at head with its seed removed, because the
@@ -37,7 +37,7 @@ from sqlalchemy.engine import Connection
 from alembic import command
 from app.db.core_db import core_engine
 
-pytestmark = pytest.mark.integration
+pytestmark = [pytest.mark.integration, pytest.mark.migration]
 
 BEFORE = "baff1a11eeb2"
 BACKFILL = "61e9c9b15ac6"
