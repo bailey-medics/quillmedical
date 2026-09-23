@@ -680,13 +680,13 @@ def add_org_unit_member(
         )
         status = "updated"
 
-    grant_staff_competencies(
+    additional = grant_staff_competencies(
         person, body.base_profession, body.additional_competencies
     )
     sync_competency_rows(
         person,
-        additional=person.additional_competencies,
-        removed=person.removed_competencies,
+        additional=additional,
+        removed=person.removed_competency_ids,
         source="admin",
         granted_by=current_user.id,
         org_unit_id=unit_id,

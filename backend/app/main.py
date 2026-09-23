@@ -1779,6 +1779,11 @@ def update_user(
         user.password_hash = hash_password(payload.password)
 
         # Update CBAC fields if provided
+    # Both lists start from the rows, which are what is read, and are
+    # settled here before anything is written.
+    additional = user.additional_competency_ids
+    removed = user.removed_competency_ids
+
     if payload.base_profession is not None:
         # A profession is a template, not state: `additional` and
         # `removed` exist precisely so reality can diverge from it. So
@@ -1799,23 +1804,23 @@ def update_user(
         carried_over = set()
 
     if payload.additional_competencies is not None:
-        user.additional_competencies = payload.additional_competencies
+        additional = list(payload.additional_competencies)
 
     if carried_over:
         # Applied after any explicit `additional_competencies`, so a
         # payload carrying both fields does not discard what the old
         # profession granted.
-        granted = set(user.additional_competencies or [])
+        granted = set(additional)
         granted.update(carried_over)
         # Anything the new profession grants in its own right needs no
         # entry here; this carries only what would otherwise be lost.
         granted.difference_update(
             get_profession_base_competencies(user.base_profession)
         )
-        user.additional_competencies = sorted(granted)
+        additional = sorted(granted)
 
     if payload.removed_competencies is not None:
-        user.removed_competencies = payload.removed_competencies
+        removed = list(payload.removed_competencies)
 
     if payload.platform_role is not None:
         # Only an operator may make another. The competency that opens
@@ -1833,19 +1838,22 @@ def update_user(
         # Same reasoning as the promotion below: an operator holding no
         # profession competencies would be refused by every gate.
         if payload.platform_role == "superadmin":
-            granted = set(user.additional_competencies or [])
+            granted = set(additional)
             granted.update(
                 get_profession_base_competencies(SUPERADMIN_PROFESSION)
             )
-            user.additional_competencies = sorted(granted)
+            additional = sorted(granted)
 
-    # Rows beside the JSON, from the lists as finally settled above: after
-    # the profession carry-over and the superadmin promotion, not before.
-    # Nothing reads them yet. See the user competency table plan.
+    # Written once, from the lists as finally settled above: after the
+    # profession carry-over and the superadmin promotion, not before. The
+    # rows are what is read; the JSON columns are still written beside
+    # them until they are dropped. See the user competency table plan.
+    user.additional_competencies = additional
+    user.removed_competencies = removed
     sync_competency_rows(
         user,
-        additional=user.additional_competencies,
-        removed=user.removed_competencies,
+        additional=additional,
+        removed=removed,
         source="admin",
         granted_by=current_user.id,
     )
@@ -2694,8 +2702,8 @@ def get_user(
         email=user.email,
         name=user.full_name or user.username,
         base_profession=user.base_profession,
-        additional_competencies=user.additional_competencies or [],
-        removed_competencies=user.removed_competencies or [],
+        additional_competencies=user.additional_competency_ids,
+        removed_competencies=user.removed_competency_ids,
         platform_role=user.platform_role,
         is_active=user.is_active,
         # Every org_unit they belong to, organisations included, in
@@ -3601,8 +3609,8 @@ async def get_my_competencies(
         user_id=user.id,
         username=user.username,
         base_profession=user.base_profession,
-        additional_competencies=user.additional_competencies or [],
-        removed_competencies=user.removed_competencies or [],
+        additional_competencies=user.additional_competency_ids,
+        removed_competencies=user.removed_competency_ids,
         final_competencies=user.get_final_competencies(),
     )
 
@@ -3703,14 +3711,23 @@ async def update_my_competencies(
             ),
         )
         # Update user's competencies
-    if data.additional_competencies is not None:
-        user.additional_competencies = data.additional_competencies
-    if data.removed_competencies is not None:
-        user.removed_competencies = data.removed_competencies
+    # A list left out of the request keeps what the rows hold now.
+    additional = (
+        list(data.additional_competencies)
+        if data.additional_competencies is not None
+        else user.additional_competency_ids
+    )
+    removed = (
+        list(data.removed_competencies)
+        if data.removed_competencies is not None
+        else user.removed_competency_ids
+    )
+    user.additional_competencies = additional
+    user.removed_competencies = removed
     sync_competency_rows(
         user,
-        additional=user.additional_competencies,
-        removed=user.removed_competencies,
+        additional=additional,
+        removed=removed,
         source="operator",
         granted_by=user.id,
     )
@@ -3722,8 +3739,8 @@ async def update_my_competencies(
         user_id=user.id,
         username=user.username,
         base_profession=user.base_profession,
-        additional_competencies=user.additional_competencies or [],
-        removed_competencies=user.removed_competencies or [],
+        additional_competencies=user.additional_competency_ids,
+        removed_competencies=user.removed_competency_ids,
         final_competencies=user.get_final_competencies(),
     )
 

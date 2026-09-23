@@ -10,8 +10,9 @@ it.
 **Rows are inserted or closed, never deleted.** Closing sets ``ends_on`` to
 now, so the row still says who held what, and until when.
 
-While the JSON columns remain the source of truth, the lists passed here are
-the ones just written to them, and nothing reads the rows yet. See
+The rows are what is read. The JSON columns are still written beside them
+until they are dropped, and callers pass the lists they have just settled,
+never the JSON as stored. See
 ``docs/docs/plans/2026-09-23-user-competency-table-plan.md``.
 """
 
@@ -28,28 +29,6 @@ from app.models import User, UserCompetency
 #: is still *closed* here like anything else, because taking it off the
 #: list is how an administrator takes it away.
 TERMED_COMPETENCIES: frozenset[str] = frozenset({"passport_write"})
-
-
-def is_current(row: UserCompetency, now: datetime) -> bool:
-    """Whether a row is still in force at ``now``.
-
-    Current means no end, or an end still in the future. SQLite hands back
-    naive datetimes where Postgres hands back aware ones, so a naive value
-    is read as UTC, which is what every writer stores.
-
-    Args:
-        row: The grant or removal to check.
-        now: An aware datetime to check against.
-
-    Returns:
-        True while the row is in force.
-    """
-    if row.ends_on is None:
-        return True
-    ends_on = row.ends_on
-    if ends_on.tzinfo is None:
-        ends_on = ends_on.replace(tzinfo=UTC)
-    return ends_on > now
 
 
 def sync_competency_rows(
@@ -96,7 +75,7 @@ def sync_competency_rows(
     ):
         current: dict[str, list[UserCompetency]] = {}
         for row in user.competency_grants:
-            if row.granted == granted and is_current(row, now):
+            if row.granted == granted and row.is_current(now):
                 current.setdefault(row.competency_id, []).append(row)
 
         for competency_id in sorted(wanted_ids - current.keys()):

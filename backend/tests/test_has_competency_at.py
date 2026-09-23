@@ -24,6 +24,7 @@ from app.db import get_core_db
 from app.deps import get_current_user, has_competency_at
 from app.models import OrgUnit, PractisingCompetency, User
 from app.security import hash_password
+from tests.competencies import withhold
 
 COMPETENCY = "perform_venepuncture"
 
@@ -136,7 +137,7 @@ class TestBothHalvesAreRequired:
         ward = _ward(db_session, "Ward C")
         _authorise(db_session, user, ward)
 
-        user.removed_competencies = [COMPETENCY]
+        withhold(user, COMPETENCY)
         db_session.commit()
 
         response = _client(db_session, user).get(f"/places/{ward.id}/thing")

@@ -40,6 +40,7 @@ from app.organisations import (
     check_user_patient_access,
 )
 from app.security import hash_password
+from tests.competencies import hold
 
 THEIR_OWN = "fhir-patient-themselves"
 A_PATIENT_HERE = "fhir-patient-at-the-trust"
@@ -323,7 +324,7 @@ class TestSomeoneWhoIsBoth:
             profession="specialty_trainee_1_2",
             fhir_patient_id=THEIR_OWN,
         )
-        clinician.additional_competencies = ["access_own_patient_records"]
+        hold(clinician, "access_own_patient_records")
         db_session.commit()
         _place(db_session, org, clinician)
 

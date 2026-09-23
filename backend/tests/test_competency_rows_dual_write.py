@@ -1,12 +1,10 @@
 """Every competency write lands in ``user_competency`` as well as in JSON.
 
-The JSON lists on ``users`` stay the source of truth while storage moves,
-so nothing here asks what anybody *may do*. What these pin is that the
-rows keep pace: after any save, a person's current rows match their lists
-exactly, and nothing a route writes to the lists is missing from the rows.
-A writer that forgot would leave a grant that exists in JSON and not in
-rows, and the change that switches reads to rows would silently take it
-away.
+The rows are what is read, and the JSON lists on ``users`` are still
+written beside them until they are dropped. What these pin is that every
+writer keeps the rows in line: after any save, a person's current rows
+match the lists that save settled on. A writer that forgot would leave a
+grant in JSON that nothing reads, and take it away.
 
 See ``docs/docs/plans/2026-09-23-user-competency-table-plan.md``.
 """
@@ -20,11 +18,12 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.cbac.grants import is_current, sync_competency_rows
+from app.cbac.grants import sync_competency_rows
 from app.features.passport.models import PassportWriteEntitlement
 from app.models import OrgUnit, User, UserCompetency
 from app.organisations import add_org_unit_member
 from app.security import hash_password
+from tests.competencies import hold, withhold
 from tests.places import administers
 
 
@@ -44,10 +43,10 @@ def _user(
         is_active=True,
         email_verified=True,
         base_profession=profession,
-        additional_competencies=additional or [],
-        removed_competencies=removed or [],
         platform_role=platform_role,
     )
+    hold(user, *(additional or []))
+    withhold(user, *(removed or []))
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -83,7 +82,7 @@ def _current(db: Session, user_id: int, *, granted: bool) -> set[str]:
     return {
         row.competency_id
         for row in _rows(db, user_id)
-        if row.granted == granted and is_current(row, now)
+        if row.granted == granted and row.is_current(now)
     }
 
 
@@ -295,7 +294,7 @@ class TestIsCurrent:
         row = UserCompetency(
             competency_id="certify_death", granted=True, source="admin"
         )
-        assert is_current(row, datetime.now(UTC))
+        assert row.is_current(datetime.now(UTC))
 
     def test_a_naive_end_is_read_as_utc(self) -> None:
         """SQLite hands back naive datetimes; comparing must not raise."""
@@ -312,8 +311,8 @@ class TestIsCurrent:
             source="admin",
             ends_on=(now - timedelta(hours=1)).replace(tzinfo=None),
         )
-        assert is_current(future, now)
-        assert not is_current(past, now)
+        assert future.is_current(now)
+        assert not past.is_current(now)
 
 
 class TestEveryWriterWritesRows:

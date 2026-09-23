@@ -1,10 +1,10 @@
 # backend/app/features/passport/entitlements.py
 """Granting and resolving the right to write to a passport.
 
-``passport_write`` is the competency; an entitlement row is until when.
-Both are needed to write, and they answer different questions: the
-competency is whether somebody may hold a passport at all, the
-entitlement is whether the arrangement that paid for it is still
+``passport_write`` is the competency, and a ``user_competency`` row
+granting it carries its term: it is held until that row's ``ends_on``. One
+row answers both questions that used to take two tables, whether somebody
+may write at all and whether the arrangement that paid for it is still
 running.
 
 The two are granted together, in one request, for the same reason the
@@ -30,6 +30,10 @@ from app.models import User, UserCompetency
 def current_entitlement_end(db: Session, user_id: int) -> datetime | None:
     """When this person's right to write runs out, or None if it has.
 
+    Read from the dated ``passport_write`` rows in ``user_competency``,
+    which is where the term now lives. ``passport_write_entitlement`` is
+    still written beside them, and read by nothing.
+
     Somebody may hold the entitlement from more than one source at once,
     so the question is whether *any* row is still current and the answer
     is the latest end date among those that are. Losing one source must
@@ -44,12 +48,14 @@ def current_entitlement_end(db: Session, user_id: int) -> datetime | None:
         nothing current remains.
     """
     return db.scalar(
-        select(PassportWriteEntitlement.ends_on)
+        select(UserCompetency.ends_on)
         .where(
-            PassportWriteEntitlement.user_id == user_id,
-            PassportWriteEntitlement.ends_on > datetime.now(UTC),
+            UserCompetency.user_id == user_id,
+            UserCompetency.competency_id == "passport_write",
+            UserCompetency.granted.is_(True),
+            UserCompetency.ends_on > datetime.now(UTC),
         )
-        .order_by(PassportWriteEntitlement.ends_on.desc())
+        .order_by(UserCompetency.ends_on.desc())
         .limit(1)
     )
 

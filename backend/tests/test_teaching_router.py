@@ -33,6 +33,7 @@ from app.organisations import (
     remove_org_unit_memberships,
 )
 from app.security import hash_password
+from tests.competencies import hold
 
 # ------------------------------------------------------------------
 # Fixtures
@@ -2316,7 +2317,7 @@ class TestLearningRoutesRequireTheViewCompetency:
         educator = _make_educator(db_session, org)
         _seed_bank(db_session, org.id, educator.id)
         consultant = self._consultant_in(db_session, org)
-        consultant.additional_competencies = ["view_teaching_cases"]
+        hold(consultant, "view_teaching_cases")
         db_session.commit()
 
         test_client.post(

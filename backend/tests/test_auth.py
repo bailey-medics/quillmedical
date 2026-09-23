@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.models import User
 from app.security import generate_totp_secret
+from tests.competencies import hold
 
 
 class TestRegister:
@@ -220,7 +221,7 @@ class TestAuthMe:
         db_session: Session,
     ):
         """Test /auth/me returns additional competencies when set."""
-        test_user.additional_competencies = ["manage_teaching_content"]
+        hold(test_user, "manage_teaching_content")
         db_session.commit()
 
         response = authenticated_client.get("/api/auth/me")

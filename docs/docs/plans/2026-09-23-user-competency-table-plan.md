@@ -232,30 +232,70 @@ column rename, for the same reason: expand, dual-write, backfill, switch reads.
 
 ## Phase 4: Switch reads
 
-- [ ] **Rebuild `resolve_user_competencies`
+- [x] **Rebuild `resolve_user_competencies`
       (`backend/app/cbac/base_professions.py:119`) from rows.** It keeps its
       `(base | additional) - removed` shape and its signature; the additions
       become the current rows with `granted` true, the removals the current
       rows with `granted` false, and "current" means `ends_on` is null or in
       the future. `User.get_final_competencies()` passes it the rows from the
       `competency_grants` relationship added in Phase 1, so none of its 28
-      callers changes.
+      callers changes. The two lists are `User.additional_competency_ids`
+      and `User.removed_competency_ids`, properties over the current rows,
+      and "current" is `UserCompetency.is_current`.
 
-- [ ] **Turn `backend/app/cbac/audit.py` into a query.** It currently scans
+- [x] **Report the rows wherever a response carries the lists.**
+      `GET /api/users/{id}`, `GET /api/cbac/my-competencies` and the
+      response of `PATCH /api/cbac/my-competencies` all return
+      `additional_competencies` and `removed_competencies`. They now build
+      them from the two properties, so the fields keep their names and
+      shape and become a view over rows, as the decision below requires.
+
+- [x] **Move the writers' own reads across too.** Found while doing this
+      phase. `update_user`, `update_my_competencies`,
+      `grant_staff_competencies` and both superadmin scripts start from the
+      person's current lists and merge into them: the profession carry-over,
+      the superadmin promotion, onboarding's additive grant. They read the
+      JSON to get that starting point. Left there, a person whose rows and
+      JSON ever disagreed would have their rows brought into line with the
+      JSON on the next save, which is the old store overwriting the new
+      one. So every writer now starts from the rows, settles the lists, then
+      writes both. `grant_staff_competencies` returns the list it settled,
+      so `add_org_unit_member` brings the rows into line with that rather
+      than with the column.
+
+- [x] **Turn `backend/app/cbac/audit.py` into a query.** It currently scans
       every user's JSON to find ids the catalogue does not have. Against rows
-      that is a `SELECT DISTINCT competency_id`, which is the point of the
-      change.
+      that is a `SELECT DISTINCT` over `user_competency`, which is the point
+      of the change. Only current rows are reported: a closed row records
+      what somebody could once do and misleads nobody about what they can
+      do now.
 
-- [ ] **Collapse the two questions in `_require_writer`
+      The module has no command-line entry point, so the
+      `python -m app.cbac.audit` the Phase 3 steps once named does nothing.
+      Those steps now give the call to make instead.
+
+- [x] **Collapse the two questions in `_require_writer`
       (`backend/app/features/passport/router.py:415`) into one.** It asks
       whether the caller holds `passport_write` and then whether
       `current_entitlement_end` is non-null. Against rows those are the same
-      question, because a current row is both.
+      question, because a current row is both. `current_entitlement_end`
+      stays, for the end date the passport page shows, and reads the dated
+      `passport_write` rows rather than `passport_write_entitlement`, which
+      is still written and now read by nothing.
 
-- [ ] **Move reads in one change, not file by file.** A test that sets JSON
+      One consequence reaches the navigation. A holder whose term has lapsed
+      no longer holds `passport_write` at all, where before they held the
+      competency and lacked the term. `featureNavItems.ts` sends somebody
+      who can assess and cannot write to the sign-off queue rather than
+      their own record, so a lapsed holder who is also an assessor now lands
+      on the queue. Their record is one click away and still fully readable.
+
+- [x] **Move reads in one change, not file by file.** A test that sets JSON
       the new code no longer reads will still pass, so a partial switch hides
       its own failures. Twenty backend test files read these columns
-      directly and are rewritten as rows in this phase.
+      directly and are rewritten as rows in this phase, through
+      `backend/tests/competencies.py`: `hold`, `withhold`, `lapse` and
+      `clear` write the rows a test used to express as JSON.
 
 ## Phase 5: Stop writing JSON
 
