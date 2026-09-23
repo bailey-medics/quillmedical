@@ -315,7 +315,7 @@ jobs:
     env:
       # Not a secret — a bucket name identifies, it does not authorise, and
       # the access it fronts is granted by workload identity below.
-      TEACHING_BUCKET: quill-images-teaching
+      IMAGES_BUCKET: quill-images-app
     steps:
       - uses: actions/checkout@v7.0.1
 
@@ -337,8 +337,8 @@ jobs:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v3.0.0
         with:
-          workload_identity_provider: ${{ secrets.GCP_TEACHING_WIF_PROVIDER }}
-          service_account: ${{ secrets.GCP_TEACHING_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ secrets.GCP_APP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_APP_SERVICE_ACCOUNT }}
 
       - name: Set up gcloud CLI
         uses: google-github-actions/setup-gcloud@v3.0.1
@@ -347,7 +347,7 @@ jobs:
         id: sweep
         run: |
           bash .github/scripts/ci/sweep-live-banks.sh \
-            "$TEACHING_BUCKET" sweep-report.txt
+            "$IMAGES_BUCKET" sweep-report.txt
 
       - name: Report the affected banks on the pull request
         if: failure() && steps.sweep.outcome == 'failure'
