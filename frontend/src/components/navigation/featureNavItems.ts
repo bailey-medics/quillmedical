@@ -22,6 +22,8 @@
  * app offers, so they stay with the sidebar that knows about them.
  */
 
+import { useLocation } from "react-router-dom";
+
 import { useHasFeature } from "@/lib/features";
 import { useHasCompetency } from "@/lib/cbac/hooks";
 import type { NavItem } from "./NestedNavLink";
@@ -39,6 +41,10 @@ export function useFeatureNavItems(): NavItem[] {
   // whose gate is looser than its route's leads to a 404, which is a
   // worse experience than not offering the link at all.
   const hasAdminAccess = useHasCompetency("manage_users");
+
+  // Where the user is, so the passport entry can hang its Inbox child
+  // only while the inbox is open. See the comment on that child.
+  const { pathname } = useLocation();
 
   const hasTeaching = useHasFeature("teaching");
 
@@ -81,6 +87,27 @@ export function useFeatureNavItems(): NavItem[] {
       label: assessesOnly ? "Sign-off requests" : "Passport",
       href: assessesOnly ? "/passport/inbox" : "/passport",
       icon: "passport",
+      // Only for somebody with a passport of their own, and only while
+      // they are on the inbox. An assessor without a passport already
+      // lands on the inbox — it is the whole of their top-level link —
+      // so hanging the same address beneath itself would offer them the
+      // page twice.
+      //
+      // A holder reaches `/passport` instead, and their inbox is the
+      // requests naming them as an assessor. That is not a thing they
+      // have no use for: a trainee who assesses a more junior colleague
+      // is ordinary, and until now the page had no way in for them
+      // short of typing the address.
+      //
+      // Attached by route rather than left to the nav to expand,
+      // because `isActiveOrParent` expands a branch when the parent's
+      // own address matches. That is right for Admin, where landing on
+      // `/admin` should reveal what is under it, and wrong here, where
+      // the passport itself is a destination rather than a heading.
+      children:
+        !assessesOnly && pathname.startsWith("/passport/inbox")
+          ? [{ label: "Inbox", href: "/passport/inbox" }]
+          : undefined,
     });
   }
 
