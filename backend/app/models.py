@@ -34,6 +34,7 @@ from sqlalchemy import (
     UniqueConstraint,
     delete,
     event,
+    text,
     update,
 )
 from sqlalchemy.engine import Connection
@@ -109,6 +110,12 @@ class User(Base):
     """
 
     __tablename__ = "users"
+    # Server-generated values are read back on first access rather than
+    # with RETURNING on every INSERT. With RETURNING, SQLAlchemy names every
+    # column that has a server default, which would put the two retired
+    # competency columns below back into the statement they must stay out
+    # of. The cost is one SELECT, only if a default is read afterwards.
+    __mapper_args__ = {"eager_defaults": False}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     username: Mapped[str] = mapped_column(
@@ -158,14 +165,18 @@ class User(Base):
     base_profession: Mapped[str] = mapped_column(
         String(100), nullable=False, default="patient"
     )
-    # Retired: `user_competency` rows replaced both lists. Neither is read
-    # or written; they stay only until the migration that drops them, and
-    # a new row gets the empty default.
+    # Retired: `user_competency` rows replaced both lists, and the next
+    # change drops them. Until then the application must not mention them
+    # in any statement, because a revision still serving while that drop
+    # runs would fail on every query of `users`. So they are deferred,
+    # which keeps them out of every SELECT, and they carry no Python
+    # default, which keeps them out of every INSERT: the database fills
+    # them from its own default instead.
     additional_competencies: Mapped[list[str]] = mapped_column(
-        JSON, nullable=False, default=lambda: []
+        JSON, nullable=False, server_default=text("'[]'"), deferred=True
     )
     removed_competencies: Mapped[list[str]] = mapped_column(
-        JSON, nullable=False, default=lambda: []
+        JSON, nullable=False, server_default=text("'[]'"), deferred=True
     )
     professional_registrations: Mapped[dict[str, Any] | None] = mapped_column(
         JSON, nullable=True
