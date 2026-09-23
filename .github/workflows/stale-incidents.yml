@@ -45,8 +45,8 @@ jobs:
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v3.0.0
         with:
-          workload_identity_provider: ${{ secrets.GCP_TEACHING_WIF_PROVIDER }}
-          service_account: ${{ secrets.GCP_TEACHING_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ secrets.GCP_APP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_APP_SERVICE_ACCOUNT }}
 
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@v3.0.1
@@ -54,7 +54,7 @@ jobs:
       - name: Check for stale incidents
         id: check
         env:
-          GCP_PROJECT: ${{ secrets.GCP_TEACHING_PROJECT_ID }}
+          GCP_PROJECT: ${{ secrets.GCP_APP_PROJECT_ID }}
           STALE_HOURS: ${{ inputs.stale_hours || '24' }}
         run: bash .github/scripts/monitoring/stale-incidents.sh
 
