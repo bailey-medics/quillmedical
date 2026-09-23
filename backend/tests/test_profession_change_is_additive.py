@@ -33,6 +33,7 @@ from sqlalchemy.orm import Session
 from app.models import OrgUnit, User
 from app.organisations import add_org_unit_member
 from app.security import hash_password
+from tests.competencies import hold
 
 
 def _user(
@@ -49,9 +50,9 @@ def _user(
         is_active=True,
         email_verified=True,
         base_profession=profession,
-        additional_competencies=additional or [],
         platform_role="standard",
     )
+    hold(user, *(additional or []))
     db.add(user)
     db.commit()
     db.refresh(user)

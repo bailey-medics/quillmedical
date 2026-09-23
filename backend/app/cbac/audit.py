@@ -12,7 +12,9 @@ what to do about a stale id is a decision, not a cleanup.
 
 from __future__ import annotations
 
-from sqlalchemy import select
+from datetime import UTC, datetime
+
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.cbac.base_professions import BASE_PROFESSIONS
@@ -20,7 +22,7 @@ from app.cbac.competencies import (
     retired_competency_ids,
     unknown_competency_ids,
 )
-from app.models import PractisingCompetency, User
+from app.models import PractisingCompetency, UserCompetency
 
 
 def unknown_ids_in_base_professions() -> dict[str, list[str]]:
@@ -41,33 +43,49 @@ def unknown_ids_in_base_professions() -> dict[str, list[str]]:
     return found
 
 
-def unknown_ids_on_users(db: Session) -> dict[int, list[str]]:
-    """Return users whose stored competency lists name unknown ids.
+def _current_ids_by_user(db: Session) -> dict[int, list[str]]:
+    """Every competency id on a current ``user_competency`` row, per user.
 
-    Covers both JSON columns, since a stale id in ``removed_competencies``
-    is as misleading as one in ``additional_competencies`` — it silently
-    removes nothing.
+    Grants and removals alike, since a stale id on a removal is as
+    misleading as one on a grant — it silently removes nothing. Closed rows
+    are left out: they record what somebody could once do, and mislead
+    nobody about what they can do now.
+
+    One query over the rows, which is what the JSON columns this replaced
+    could not offer: there, every user had to be read and each list parsed
+    in Python.
+    """
+    now = datetime.now(UTC)
+    rows = db.execute(
+        select(UserCompetency.user_id, UserCompetency.competency_id)
+        .where(
+            or_(
+                UserCompetency.ends_on.is_(None),
+                UserCompetency.ends_on > now,
+            )
+        )
+        .distinct()
+    ).all()
+    found: dict[int, list[str]] = {}
+    for user_id, competency_id in rows:
+        found.setdefault(int(user_id), []).append(competency_id)
+    return {user_id: sorted(ids) for user_id, ids in found.items()}
+
+
+def unknown_ids_on_users(db: Session) -> dict[int, list[str]]:
+    """Return users whose current competency rows name unknown ids.
 
     Args:
         db: Database session.
 
     Returns:
-        User id to the unrecognised ids stored against them.
+        User id to the unrecognised ids held against them.
     """
     found: dict[int, list[str]] = {}
-    rows = db.execute(
-        select(
-            User.id,
-            User.additional_competencies,
-            User.removed_competencies,
-        )
-    ).all()
-    for user_id, additional, removed in rows:
-        unknown = unknown_competency_ids(
-            list(additional or []) + list(removed or [])
-        )
+    for user_id, ids in _current_ids_by_user(db).items():
+        unknown = unknown_competency_ids(ids)
         if unknown:
-            found[int(user_id)] = unknown
+            found[user_id] = unknown
     return found
 
 
@@ -119,28 +137,19 @@ def retired_ids_in_practising_competencies(db: Session) -> dict[int, str]:
 
 
 def retired_ids_on_users(db: Session) -> dict[int, list[str]]:
-    """Return users whose stored competency lists hold retired ids.
+    """Return users whose current competency rows hold retired ids.
 
-    The same cleanup queue, for the two JSON columns on ``users``.
+    The same cleanup queue, for ``user_competency``.
 
     Args:
         db: Database session.
 
     Returns:
-        User id to the retired ids stored against them.
+        User id to the retired ids held against them.
     """
     found: dict[int, list[str]] = {}
-    rows = db.execute(
-        select(
-            User.id,
-            User.additional_competencies,
-            User.removed_competencies,
-        )
-    ).all()
-    for user_id, additional, removed in rows:
-        retired = retired_competency_ids(
-            list(additional or []) + list(removed or [])
-        )
+    for user_id, ids in _current_ids_by_user(db).items():
+        retired = retired_competency_ids(ids)
         if retired:
-            found[int(user_id)] = retired
+            found[user_id] = retired
     return found

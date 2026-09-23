@@ -33,6 +33,7 @@ from app.models import (
 )
 from app.organisations import add_org_unit_member
 from app.security import hash_password
+from tests.competencies import hold
 from tests.places import administers
 
 
@@ -55,9 +56,9 @@ def _user(
         is_active=True,
         email_verified=True,
         base_profession="patient",
-        additional_competencies=competencies,
         platform_role="standard",
     )
+    hold(user, *competencies)
     db.add(user)
     db.commit()
     db.refresh(user)

@@ -33,17 +33,18 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.features.passport.models import PassportWriteEntitlement
 from app.features.passport.store import LocalPassportStore
 from app.main import app
 from app.models import (
     OrgUnit,
     OrgUnitFeature,
     User,
+    UserCompetency,
 )
 from app.organisations import add_org_unit_member
 from app.passport_storage import get_passport_store
 from app.security import hash_password
+from tests.competencies import clear, hold, lapse
 
 COMPETENCY = "prescribe_sact"
 LEVEL = "review_and_authorise"
@@ -118,10 +119,9 @@ def _make_user(
     """A user, optionally holding ``passport_write``.
 
     No profession grants ``passport_write``: it is sold, and reaches a
-    person through onboarding or an individual subscription. It goes in
-    ``additional_competencies`` because that is the column the admin
-    pages write, so a fixture holder is granted it exactly as a real
-    one is.
+    person through onboarding or an individual subscription, and always
+    with a term. So a fixture holder gets a dated ``passport_write`` row,
+    exactly as a real one does.
     """
     user = User(
         username=username,
@@ -131,25 +131,13 @@ def _make_user(
         is_active=True,
         email_verified=True,
         base_profession=profession,
-        additional_competencies=["passport_write"] if writes else [],
         professional_registrations={"GMC": "1234567"},
     )
+    if writes:
+        hold(user, "passport_write")
     db.add(user)
     db.commit()
     db.refresh(user)
-
-    if writes:
-        # The competency says they may write; the entitlement says until
-        # when. Both are needed, exactly as they are for a real holder.
-        db.add(
-            PassportWriteEntitlement(
-                user_id=user.id,
-                source="organisation",
-                ends_on=datetime.now(UTC) + timedelta(days=365),
-            )
-        )
-        db.commit()
-
     return user
 
 
@@ -335,7 +323,7 @@ class TestALapsedHolderKeepsTheirRecord:
         self, passport: str, test_client: TestClient, holder: User
     ) -> None:
         """The one thing a lapse takes away."""
-        holder.additional_competencies = []
+        clear(holder)
         client = _login(test_client, "holder")
 
         response = client.post(
@@ -357,7 +345,7 @@ class TestALapsedHolderKeepsTheirRecord:
         Reading is derived from owning the passport, so this must not
         consult the entitlement at all.
         """
-        holder.additional_competencies = []
+        clear(holder)
         client = _login(test_client, "holder")
 
         assert client.get(f"/api/passport/{passport}").status_code == 200
@@ -370,7 +358,7 @@ class TestALapsedHolderKeepsTheirRecord:
         Somebody whose organisation stopped paying needs their record
         more than ever, not less.
         """
-        holder.additional_competencies = []
+        clear(holder)
         client = _login(test_client, "holder")
 
         response = client.get(f"/api/passport/{passport}/export.md")
@@ -420,23 +408,16 @@ class TestALapsedHolderKeepsTheirRecord:
 
 
 class TestAnEntitlementThatHasRunOut:
-    """The competency says they may write; the entitlement says until when.
+    """A ``passport_write`` grant carries its term, and ends with it.
 
-    Both are needed, and they fail differently: losing the competency is
-    somebody's access being changed, while an entitlement running out is
-    the ordinary end of an arrangement nobody renewed.
+    Losing the competency is somebody's access being changed, while a
+    term running out is the ordinary end of an arrangement nobody
+    renewed. Both are now the same row: one taken away, one lapsed.
     """
 
     def _expire(self, db_session: Session, user: User) -> None:
-        """Move every entitlement this person holds into the past."""
-        rows = (
-            db_session.query(PassportWriteEntitlement)
-            .filter(PassportWriteEntitlement.user_id == user.id)
-            .all()
-        )
-        for row in rows:
-            row.starts_on = datetime.now(UTC) - timedelta(days=400)
-            row.ends_on = datetime.now(UTC) - timedelta(days=1)
+        """Move every term of ``passport_write`` this person holds into the past."""
+        lapse(user, "passport_write")
         db_session.commit()
 
     def test_the_passport_says_a_write_would_be_refused(
@@ -542,11 +523,13 @@ class TestAnEntitlementThatHasRunOut:
         should never notice it happened.
         """
         self._expire(db_session, holder)
-        db_session.add(
-            PassportWriteEntitlement(
-                user_id=holder.id,
-                source="individual",
+        holder.competency_grants.append(
+            UserCompetency(
+                competency_id="passport_write",
+                granted=True,
+                starts_on=datetime.now(UTC),
                 ends_on=datetime.now(UTC) + timedelta(days=30),
+                source="individual",
             )
         )
         db_session.commit()

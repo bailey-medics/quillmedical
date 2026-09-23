@@ -56,6 +56,7 @@ def main() -> int:
             SUPERADMIN_PROFESSION,
             get_profession_base_competencies,
         )
+        from app.cbac.grants import sync_competency_rows
         from app.db import CoreSessionLocal
         from app.models import User
         from app.security import hash_password
@@ -108,11 +109,17 @@ def main() -> int:
             u.platform_role = "superadmin"
             # An existing user keeps the profession they practise under;
             # the operator competencies are added alongside it.
-            granted = set(u.additional_competencies or [])
+            granted = set(u.additional_competency_ids)
             granted.update(
                 get_profession_base_competencies(SUPERADMIN_PROFESSION)
             )
-            u.additional_competencies = sorted(granted)
+            # Nobody is signed in to be named as granting them.
+            sync_competency_rows(
+                u,
+                additional=sorted(granted),
+                removed=u.removed_competency_ids,
+                source="bootstrap",
+            )
             u.is_active = True
             u.is_totp_enabled = False
             u.email_verified = True

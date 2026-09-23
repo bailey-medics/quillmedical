@@ -257,13 +257,28 @@ every deploy, so the URL mask is the part that matters.
       `run-migrations.sh` already shows how the deploy invokes it and
       reads the result.
 
-- [ ] **Still to do, and this is where it gets real.** Set
+- [x] **Still to do, and this is where it gets real.** Set
       `vpc_egress = "ALL_TRAFFIC"` on the admin job, point
       `deploy-tagged.sh` at the job rather than `curl`, and try the
       ingress setting again. None of that is worth doing until somebody
       has confirmed by hand that a job with `ALL_TRAFFIC` can actually
       reach a revision behind a closed ingress. The documentation says it
       should; this plan has already been wrong once about exactly that.
+
+      The first two done on 2026-09-23: `infra/main.tf` sets the admin
+      job's egress, and `deploy.yml` passes `SMOKE_TEST_JOB`,
+      `SMOKE_TEST_PROJECT` and `SMOKE_TEST_REGION` to the backend deploy.
+      `terraform plan` showed that one change and nothing else. The
+      ingress is the step below, deliberately a separate pull request:
+      it must merge only after one backend deploy has passed through the
+      job, or a failure there is the #880 breakage again.
+
+      **Safe to merge in either order against the ingress as it is.**
+      `terraform.yml` and `deploy.yml` both run on the same push to
+      `main`, so the deploy can reach the job before the apply has
+      changed its egress. With ingress still `all` the job reaches the
+      revision over the public internet regardless, so the smoke test
+      passes either way.
 
 - [x] **Not needed.** Adding a second serverless NEG with a URL mask,
       and the wildcard certificate it would require, is superseded by the
@@ -1372,7 +1387,7 @@ for the same name would leave both pending.
 One service account, `github-actions@quill-medical-app`, does three jobs
 with three very different needs, and holds `roles/editor` for all of them.
 This batch splits it by job and narrows each to what that job uses. It
-comes before Batch 10 because it can start now; Batch 10 waits on a second
+comes before Batch 11 because it can start now; Batch 11 waits on a second
 environment.
 
 **Taking `editor` away on its own achieves almost nothing.** The account
@@ -1511,11 +1526,29 @@ Last, because it is the smallest gain once Phase 3 has locked the token
 to `main`, and the riskiest: a permission missed here fails an apply
 partway, with some resources changed and others not.
 
-- [ ] Look at the 155 IAM writes before choosing roles. That is a lot
+- [x] Look at the 155 IAM writes before choosing roles. That is a lot
       for a project three days old, and IAM is where a missed permission
       is most likely. Group them by `protoPayload.methodName` to see
       whether they are Terraform setting bindings on each apply or the
       one-off setup.
+
+      Done on 2026-09-23, and they are neither. All but one are
+      `iam.serviceAccounts.actAs` on
+      `45814277366-compute@developer.gserviceaccount.com`, the default
+      Compute Engine account: one per deploy, because updating a Cloud
+      Run service or job means acting as its runtime identity. The
+      remaining one is the `SetIAMPolicy` behind
+      `google_service_account_iam_member.cloudrun_token_creator`. So the
+      apply account needs `roles/iam.serviceAccountUser` on that one
+      account, not project-wide, and nothing about IAM churn stands in
+      the way of narrowing it.
+
+      ```bash
+      gcloud logging read \
+        'protoPayload.authenticationInfo.principalEmail="github-actions@quill-medical-app.iam.gserviceaccount.com" AND protoPayload.serviceName="iam.googleapis.com" AND logName:"cloudaudit.googleapis.com%2Factivity"' \
+        --project=quill-medical-app --freshness=10d --limit=500 \
+        --format="value(protoPayload.methodName,protoPayload.resourceName)"
+      ```
 
 - [ ] **(Mark)** Add a specific role for each service in the audit log,
       alongside `editor`: `roles/cloudsql.admin`, `roles/storage.admin`,
@@ -1531,7 +1564,124 @@ partway, with some resources changed and others not.
       a missing read fails there safely. A missing write only shows at
       the next apply, so make the next infrastructure change a small one.
 
-## Batch 10 — waiting: a second environment
+### Phase 6: Give each workload its own runtime identity
+
+Found while checking the IAM writes above. Every workload in the app
+project runs as the default Compute Engine account: `quill-backend-app`
+and `quill-frontend-app` name it, and the three jobs name no account and
+fall back to it. That account holds `roles/secretmanager.secretAccessor`
+on the whole project, through `google_project_iam_member.cloudrun_secret_accessor`.
+
+So the frontend, which serves static files and needs no secret at all,
+can read the Cloud SQL password and the JWT signing key, and so can the
+caption job. It is not the `roles/editor` a default account has in an
+older project, because the organisation policy stops that automatic
+grant, but it is the same problem one layer down: a compromise of the
+least important workload reaches the most important secrets.
+
+- [ ] **(Claude)** Add a service account per workload to Terraform,
+      `run-backend`, `run-frontend`, `run-admin`, `run-transcode` and
+      `run-caption`, and set `service_account` on each service and job.
+
+- [ ] **(Claude)** Replace the project-wide `secretAccessor` with a
+      binding per secret, to the accounts that read it. The frontend gets
+      none. The storage bucket grants that name the default account move
+      to whichever workload actually reads each bucket.
+
+- [ ] **(Mark)** Narrow the deploy account from Phase 1 to
+      `roles/iam.serviceAccountUser` on the five runtime accounts rather
+      than on the default Compute Engine one, once they exist.
+
+## Batch 10 — Claude and Mark: test every alert route every four weeks
+
+An alert route can break without anything noticing, and on 2026-09-23 two
+of the four had: the SMS number was unverified and the PagerDuty free trial
+had lapsed. Google reported both alerts as raised. Only a person holding
+the phone could tell they never arrived. This batch makes that check
+routine, so a broken route is found on a quiet Thursday rather than during
+an outage.
+
+**Every fourth Thursday at 1:15pm UK time**, starting 2026-10-01. The
+window was set by Mark as 1pm to 2pm; 1:15pm leaves 45 minutes for
+GitHub starting a scheduled run late, which it does at busy times.
+
+- [x] **(Claude)** Add four permanent alert policies to
+      `infra/modules/monitoring`, one per route: Slack, SMS, email and
+      PagerDuty. Each is a `conditionMatchedLog` condition on a single
+      log, `alert-route-test`, and notifies exactly one channel, so a
+      missing message names the broken route.
+
+      **Permanent, not made fresh each time.** A newly created alert
+      policy is not live for a few minutes, and a trigger written before
+      then is lost; that cost two failed attempts on 2026-09-23. A policy
+      that already exists fires on the first line.
+
+      Title them `Four-weekly alert test: <route>`, with documentation
+      reading "Scheduled test. No action needed. You should receive four:
+      Slack, SMS, email and a phone call; tell Mark if any is missing."
+      Set `autoClose` to 30 minutes, which also resolves the PagerDuty
+      incident, so nobody has to.
+
+- [x] **(Claude)** Add `.github/workflows/alert-route-test.yml` and
+      `.github/scripts/monitoring/alert-route-test.sh`, with a `.bats`
+      beside it following `stale-incidents.sh`. The script writes one line
+      to `alert-route-test` with `gcloud logging write`, and all four
+      policies fire from it.
+
+      **Two guards, because cron can express neither.**
+
+      - *Every fourth week.* Cron has no "every four weeks". The workflow
+        runs every Thursday, and the script carries on only when the whole
+        weeks since 2026-10-01 divide by four. Counting from a fixed date
+        rather than the ISO week number avoids a double or skipped run
+        across a 53-week year.
+      - *1:15pm UK all year.* GitHub schedules in UTC, and 1pm to 2pm UK
+        is 12:00 to 13:00 UTC in summer but 13:00 to 14:00 UTC in winter,
+        so no single time stays in the window. The workflow is scheduled
+        at both `15 12 * * 4` and `15 13 * * 4`, and the script carries on
+        only when `TZ=Europe/London date +%H` reads `13`. Exactly one of
+        the two passes, whichever the season.
+
+      A `workflow_dispatch` run skips both guards, so a route can be
+      tested by hand after a change.
+
+      **Built on 2026-09-23, with the time check changed.** The script
+      decides by *which schedule fired*, from `github.event.schedule`,
+      against London's current UTC offset, not by the clock when it
+      starts. GitHub can start a scheduled run late; a clock check at the
+      start would then see 14:xx on the one run that should have fired,
+      skip it along with its partner, and miss the cycle entirely. This
+      way a late run still fires, only late.
+
+      The four policies are one `for_each` over the channels the module
+      actually creates, keyed by static names so the keys are known at
+      plan time. `terraform plan` showed exactly four created. The
+      script's negative tests were proved able to fail by breaking both
+      guards and watching five go red.
+
+      **Interim identity.** The workflow authenticates as the app
+      project's existing CI account until the narrow one below exists,
+      so the first scheduled run on 2026-10-01 works whether or not
+      that step is done by then.
+
+- [ ] **(Mark)** Give the workflow an identity holding
+      `roles/logging.logWriter` and nothing else. It is the narrowest job
+      any CI account does, and a natural first user of the Batch 9 split:
+      either its own service account, or the deploy account from Batch 9
+      Phase 1 with that one role added.
+
+- [ ] **(Mark)** Check the PagerDuty plan allows twelve or thirteen phone
+      calls a year. The free plan limits phone and SMS notifications, and
+      its trial lapsing is what broke the route on 2026-09-23.
+
+- [ ] **(Mark)** Decide about 2026-12-24. The fourth run falls on
+      Christmas Eve. Either accept it, or add a skip list of dates to the
+      script, which is a few lines and easier than moving the anchor.
+
+- [ ] Watch the first run on 2026-10-01 and confirm all four arrive. A
+      missing one is the finding, not a failure of the test.
+
+## Batch 11 — waiting: a second environment
 
 Phases A and B wait on a non-production environment existing, and are kept
 rather than deleted because the reasoning was expensive to work out and
@@ -2060,6 +2210,38 @@ again. None of it is visible from the code.
 
 **Hands over:** a working environment on a temporary hostname, ready for
 the DNS cutover.
+
+- **The console has no test button for a Slack notification channel,
+  so test it with a throwaway log-match alert.** Create an alert policy
+  whose only condition is `conditionMatchedLog` on a unique line, and
+  whose only channel is the Slack one; write that line with `gcloud
+  logging write`; watch for it; delete the policy. Done on 2026-09-23 and
+  the message reached `#quill-medical-cicd`.
+
+  **A new policy is not live for a few minutes.** Two lines written 8
+  seconds and 2 minutes after creation raised nothing; a third, four and
+  a half minutes after, raised an alert 72 seconds later. The
+  `v3/projects/<id>/alerts` endpoint shows whether an alert was raised at
+  all, which separates "the policy never fired" from "Slack did not
+  deliver". Only the first is worth waiting on.
+
+  **All four routes were proven the same way on 2026-09-23**, one
+  throwaway policy per channel so each message could be told apart:
+  Slack to `#quill-medical-cicd`, SMS to the verified number, email to
+  `info@quill-medical.com`, and PagerDuty, which phoned. Each policy was
+  created, left five minutes, triggered once and deleted after the
+  message was confirmed.
+
+  **While an alert is open, a second matching line does not raise
+  another.** It folds into the open one, so re-triggering a policy that
+  has already fired sends nothing new. A re-test needs the policy deleted,
+  which closes its alert, and a fresh one made.
+
+  **PagerDuty failing looks the same as Google failing, from Google's
+  side.** The first PagerDuty test was raised and never rang, because the
+  PagerDuty free trial had lapsed and the account had to be cut back to a
+  single escalation policy. Google reported the alert raised either way;
+  only the phone could tell the difference.
 
 ## Decisions
 

@@ -270,8 +270,16 @@ jobs:
             --region=${{ env.GCP_REGION }} \
             --image=${{ env.AR_REGISTRY }}/${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }}/quill/caption:${{ needs.prepare.outputs.sha }}
 
+      # The smoke test runs inside the admin job rather than from this
+      # runner, because a tagged revision's *.run.app URL is only reachable
+      # from the VPC once the backend's ingress is closed. Unset, the
+      # script falls back to curl; see run_smoke_test in deploy-tagged.sh.
       - name: Deploy backend
         if: ${{ needs.prepare.outputs.backend_changed == 'true' || steps.placeholder.outputs.backend == 'true' }}
+        env:
+          SMOKE_TEST_JOB: quill-admin-${{ matrix.environment }}
+          SMOKE_TEST_PROJECT: ${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }}
+          SMOKE_TEST_REGION: ${{ env.GCP_REGION }}
         run: |
           SHA="${{ needs.prepare.outputs.sha }}"
           # Cloud Run caps combined tag + service name at 46 chars, so a
@@ -294,12 +302,9 @@ jobs:
 
       # Public-edge check, complementing (not replacing) the tagged-revision
       # smoke test above — confirms the live edge is serving correctly too.
-      # Public-edge hostnames, one per environment. teaching. is retired in
-      # Batch 8, at which point this map loses its first entry along with
-      # the environment itself.
       - name: Smoke test
         env:
-          HOSTNAME: ${{ matrix.environment == 'app' && 'app.quill-medical.com' || 'teaching.quill-medical.com' }}
+          HOSTNAME: app.quill-medical.com
         run: bash .github/scripts/deploy/smoke-test.sh "https://${HOSTNAME}/api/health"
 
   # ---------- Promote to production ----------

@@ -31,6 +31,7 @@ from sqlalchemy.orm import Session
 from app.models import OrgUnit, PractisingCompetency, User
 from app.organisations import add_org_unit_member
 from app.security import hash_password
+from tests.competencies import hold
 
 #: The competency the surgeon holds. A stand-in: there is no hernia
 #: repair competency in the catalogue, and what is asserted is that the
@@ -52,9 +53,9 @@ def surgeon(db_session: Session) -> User:
         is_active=True,
         email_verified=True,
         base_profession="consultant",
-        additional_competencies=[COMPETENCY],
         full_name="A Surgeon",
     )
+    hold(user, COMPETENCY)
     db_session.add(user)
     db_session.commit()
     db_session.refresh(user)

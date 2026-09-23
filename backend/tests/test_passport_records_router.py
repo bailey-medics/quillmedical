@@ -23,14 +23,12 @@ are and nothing resembling a target.
 from __future__ import annotations
 
 from collections.abc import Iterator
-from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.features.passport.models import PassportWriteEntitlement
 from app.features.passport.store import LocalPassportStore
 from app.main import app
 from app.models import (
@@ -41,6 +39,7 @@ from app.models import (
 from app.organisations import add_org_unit_member
 from app.passport_storage import get_passport_store
 from app.security import hash_password
+from tests.competencies import hold
 
 COMPETENCY = "prescribe_sact"
 LEVEL = "review_and_authorise"
@@ -61,9 +60,8 @@ def _make_user(
     """A user, optionally holding ``passport_write``.
 
     No profession grants ``passport_write``: it is sold, and reaches a
-    person through onboarding or an individual subscription. It goes in
-    ``additional_competencies`` because that is the column the admin
-    pages write.
+    person through onboarding or an individual subscription, and always
+    with a term, so a fixture holder gets a dated ``passport_write`` row.
     """
     user = User(
         username=username,
@@ -73,25 +71,13 @@ def _make_user(
         is_active=True,
         email_verified=True,
         base_profession=profession,
-        additional_competencies=["passport_write"] if writes else [],
         professional_registrations={"GMC": "1234567"},
     )
+    if writes:
+        hold(user, "passport_write")
     db.add(user)
     db.commit()
     db.refresh(user)
-
-    if writes:
-        # The competency says they may write; the entitlement says until
-        # when. Both are needed, exactly as they are for a real holder.
-        db.add(
-            PassportWriteEntitlement(
-                user_id=user.id,
-                source="organisation",
-                ends_on=datetime.now(UTC) + timedelta(days=365),
-            )
-        )
-        db.commit()
-
     return user
 
 

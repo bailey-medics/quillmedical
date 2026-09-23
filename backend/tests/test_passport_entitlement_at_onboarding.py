@@ -1,10 +1,10 @@
 """Onboarding grants the term as well as the competency.
 
-``passport_write`` says somebody may hold a passport; an entitlement row
-says until when. Granting one without the other produces a new starter
-who can open their passport and not write to it, which reads as a broken
-page rather than as an arrangement nobody set up — so the two are
-written in the same request.
+``passport_write`` says somebody may hold a passport, and the row granting
+it says until when. Granting one without the other produced a new starter
+who could open their passport and not write to it, which reads as a
+broken page rather than as an arrangement nobody set up — so the grant is
+written dated, as one row.
 """
 
 from __future__ import annotations
@@ -16,10 +16,10 @@ from fastapi.testclient import TestClient
 from sqlalchemy import update
 from sqlalchemy.orm import Session
 
-from app.features.passport.models import PassportWriteEntitlement
-from app.models import OrgUnit, User
+from app.models import OrgUnit, User, UserCompetency
 from app.organisations import add_org_unit_member
 from app.security import hash_password
+from tests.competencies import hold
 from tests.places import administers
 
 
@@ -31,9 +31,9 @@ def _user(db: Session, username: str, *, competencies: list[str]) -> User:
         is_active=True,
         email_verified=True,
         base_profession="patient",
-        additional_competencies=competencies,
         platform_role="standard",
     )
+    hold(user, *competencies)
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -53,8 +53,11 @@ def _login(client: TestClient, username: str) -> TestClient:
     return client
 
 
-def _still_current(when: datetime) -> bool:
+def _still_current(when: datetime | None) -> bool:
     """Whether a stored end date is still in the future.
+
+    A ``passport_write`` grant always carries an end, so a missing one
+    fails here rather than passing as a grant that never lapses.
 
     The unit-test database is SQLite, which stores a timezone-aware
     column and hands back a naive datetime, so comparing it to an aware
@@ -62,14 +65,20 @@ def _still_current(when: datetime) -> bool:
     and the gate's own comparison happens in SQL, so this is a fact
     about the test database and not about the column.
     """
+    assert when is not None, "a passport_write grant must carry an end"
     now = datetime.now(UTC)
     return when > (now if when.tzinfo else now.replace(tzinfo=None))
 
 
-def _entitlements(db: Session, user: User) -> list[PassportWriteEntitlement]:
+def _entitlements(db: Session, user: User) -> list[UserCompetency]:
+    """Every ``passport_write`` grant, each carrying its term."""
     return (
-        db.query(PassportWriteEntitlement)
-        .filter(PassportWriteEntitlement.user_id == user.id)
+        db.query(UserCompetency)
+        .filter(
+            UserCompetency.user_id == user.id,
+            UserCompetency.competency_id == "passport_write",
+            UserCompetency.granted.is_(True),
+        )
         .all()
     )
 
@@ -237,9 +246,10 @@ class TestOnboardingGrantsTheTerm:
         Only a *current* term suppresses a new one, so a lapsed row does
         not leave a returner permanently read-only.
         """
-        db_session.add(
-            PassportWriteEntitlement(
-                user_id=starter.id,
+        starter.competency_grants.append(
+            UserCompetency(
+                competency_id="passport_write",
+                granted=True,
                 source="organisation",
                 org_unit_id=org.id,
                 starts_on=datetime.now(UTC) - timedelta(days=400),
