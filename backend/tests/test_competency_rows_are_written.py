@@ -82,6 +82,14 @@ def _rows(db: Session, user_id: int) -> list[UserCompetency]:
     )
 
 
+def _held(db: Session, user_id: int) -> set[str]:
+    """What the person holds, read from their rows afresh."""
+    db.expire_all()
+    user = db.get(User, user_id)
+    assert user is not None
+    return set(user.get_final_competencies())
+
+
 def _current(db: Session, user_id: int, *, granted: bool) -> set[str]:
     now = datetime.now(UTC)
     return {
@@ -144,9 +152,10 @@ class TestTheHelper:
             "prescribe_non_controlled",
             "certify_death",
         }
-        assert _current(db_session, user.id, granted=False) == {
-            "access_own_patient_records"
-        }
+        # Removed means not held: its profession row is closed, and no
+        # removal row is written in its place.
+        assert "access_own_patient_records" not in _held(db_session, user.id)
+        assert _current(db_session, user.id, granted=False) == set()
 
     def test_a_later_save_adds_and_closes_only_what_changed(
         self, db_session: Session
@@ -220,7 +229,7 @@ class TestTheHelper:
             )
             db_session.commit()
 
-        assert len(_rows(db_session, user.id)) == 2
+        assert len(_rows(db_session, user.id)) == 1
 
     def test_passport_write_is_opened_with_its_term(
         self, db_session: Session
@@ -295,20 +304,28 @@ class TestTheHelper:
 
         assert _current(db_session, user.id, granted=True) == set()
 
-    def test_a_removal_of_passport_write_is_written(
+    def test_a_removal_writes_no_removal_row(
         self, db_session: Session
     ) -> None:
-        """A removal has no term to lose, so nothing holds it back."""
-        user = _user(db_session, "removal_written")
+        """Somebody who does not hold a competency has no row for it.
+
+        Removal rows were how the lists said "the profession gives this
+        and they do not hold it" while the profession was read on every
+        request. Now that only grant rows count, the absence of one says
+        it, and no removal row is written.
+        """
+        user = _user(db_session, "no_removal_row")
 
         sync_competency_rows(
-            user, additional=[], removed=["passport_write"], source="admin"
+            user,
+            additional=[],
+            removed=["access_own_patient_records", "passport_write"],
+            source="admin",
         )
         db_session.commit()
 
-        assert _current(db_session, user.id, granted=False) == {
-            "passport_write"
-        }
+        assert _current(db_session, user.id, granted=False) == set()
+        assert _held(db_session, user.id) == set()
 
     def test_an_unknown_source_is_refused(self, db_session: Session) -> None:
         user = _user(db_session, "bad_source")
@@ -373,8 +390,8 @@ class TestEveryWriterWritesRows:
         rows = _rows(db_session, target.id)
         assert {(r.competency_id, r.granted) for r in rows} == {
             ("certify_death", True),
-            ("access_own_patient_records", False),
         }
+        assert "access_own_patient_records" not in _held(db_session, target.id)
         assert {r.source for r in rows} == {"admin"}
         assert {r.granted_by for r in rows} == {admin.id}
 
@@ -401,10 +418,8 @@ class TestEveryWriterWritesRows:
 
         assert response.status_code == 200, response.text
         # A patient holds this by profession, a teaching delegate does
-        # not, so it is carried over as a grant.
-        assert "access_own_patient_records" in _current(
-            db_session, target.id, granted=True
-        )
+        # not. Their seeded row stays open, so they keep it.
+        assert "access_own_patient_records" in _held(db_session, target.id)
 
     def test_taking_a_competency_away_closes_its_row(
         self,
@@ -452,9 +467,7 @@ class TestEveryWriterWritesRows:
         assert response.status_code == 200, response.text
         new_id = response.json()["id"]
         assert _current(db_session, new_id, granted=True) == {"certify_death"}
-        assert _current(db_session, new_id, granted=False) == {
-            "access_own_patient_records"
-        }
+        assert "access_own_patient_records" not in _held(db_session, new_id)
         assert {r.granted_by for r in _rows(db_session, new_id)} == {admin.id}
 
     def test_an_operator_editing_themselves_writes_operator_rows(

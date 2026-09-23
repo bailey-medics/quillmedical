@@ -26,9 +26,9 @@ from app.cbac.competencies import (
     unknown_competency_ids,
     validate_competency_ids,
 )
-from app.models import OrgUnit, PractisingCompetency, User
+from app.models import OrgUnit, PractisingCompetency, User, UserCompetency
 from app.security import hash_password
-from tests.competencies import hold, withhold
+from tests.competencies import hold
 
 REAL = "access_patient_records"
 MADE_UP = "prescribe_moonbeams"
@@ -183,8 +183,18 @@ class TestTheAuditWalksWhatIsStored:
         assert unknown_ids_on_users(db_session) == {person.id: [MADE_UP]}
 
     def test_a_stale_id_in_removed_competencies_is_reported(self, db_session):
+        """A removal row, from before removals became closed grants.
+
+        No longer written, but the rows written before that stay until
+        they are closed, and a stale id on one is as misleading as on a
+        grant.
+        """
         person = _user(db_session, "veteran")
-        withhold(person, MADE_UP)
+        person.competency_grants.append(
+            UserCompetency(
+                competency_id=MADE_UP, granted=False, source="admin"
+            )
+        )
         db_session.commit()
 
         assert unknown_ids_on_users(db_session) == {person.id: [MADE_UP]}

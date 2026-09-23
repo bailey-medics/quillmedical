@@ -27,7 +27,10 @@ from __future__ import annotations
 from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
 
-from app.cbac.base_professions import get_profession_base_competencies
+from app.cbac.base_professions import (
+    get_profession_base_competencies,
+    resolve_user_competencies,
+)
 from app.features.passport.models import PASSPORT_ENTITLEMENT_DAYS
 from app.models import User, UserCompetency
 
@@ -72,8 +75,9 @@ def sync_competency_rows(
     what the new one grants and closes nothing, and somebody with no rows
     yet gets the whole template as rows on their first save.
 
-    Removal rows are brought into line with ``removed`` the same way,
-    because the resolver still adds the template on top of the rows.
+    No removal row is written. Somebody who does not hold a competency
+    simply has no current grant row for it, and taking one away closes its
+    row, as everything else is taken away.
 
     A grant of a competency in ``TERMS`` is dated, and only a *current*
     row suppresses a new one. So saving the lists again, or adding
@@ -100,37 +104,37 @@ def sync_competency_rows(
     now = datetime.now(UTC)
     template = set(get_profession_base_competencies(user.base_profession))
     asked = set(additional or [])
-    withheld = set(removed or [])
+    wanted_ids = set(
+        resolve_user_competencies(
+            user.base_profession, sorted(asked), list(removed or [])
+        )
+    )
 
-    for granted, wanted_ids in (
-        (True, (template | asked) - withheld),
-        (False, withheld),
-    ):
-        current: dict[str, list[UserCompetency]] = {}
-        for row in user.competency_grants:
-            if row.granted == granted and row.is_current(now):
-                current.setdefault(row.competency_id, []).append(row)
+    current: dict[str, list[UserCompetency]] = {}
+    for row in user.competency_grants:
+        if row.granted and row.is_current(now):
+            current.setdefault(row.competency_id, []).append(row)
 
-        for competency_id in sorted(wanted_ids - current.keys()):
-            term = TERMS.get(competency_id) if granted else None
-            if term:
-                row_source = TERM_SOURCE
-            elif granted and competency_id not in asked:
-                row_source = PROFESSION_SOURCE
-            else:
-                row_source = source
-            user.competency_grants.append(
-                UserCompetency(
-                    competency_id=competency_id,
-                    granted=granted,
-                    starts_on=now,
-                    ends_on=now + term if term else None,
-                    source=row_source,
-                    granted_by=granted_by,
-                    org_unit_id=org_unit_id,
-                )
+    for competency_id in sorted(wanted_ids - current.keys()):
+        term = TERMS.get(competency_id)
+        if term:
+            row_source = TERM_SOURCE
+        elif competency_id in template and competency_id not in asked:
+            row_source = PROFESSION_SOURCE
+        else:
+            row_source = source
+        user.competency_grants.append(
+            UserCompetency(
+                competency_id=competency_id,
+                granted=True,
+                starts_on=now,
+                ends_on=now + term if term else None,
+                source=row_source,
+                granted_by=granted_by,
+                org_unit_id=org_unit_id,
             )
+        )
 
-        for competency_id in current.keys() - wanted_ids:
-            for row in current[competency_id]:
-                row.ends_on = now
+    for competency_id in current.keys() - wanted_ids:
+        for row in current[competency_id]:
+            row.ends_on = now

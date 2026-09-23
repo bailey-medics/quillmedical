@@ -514,7 +514,7 @@ out rather than stored.
       `check-competency-seeding` action of the admin Cloud Run job and
       fails if anybody is listed.
 
-- [ ] **Switch the resolver to the rows alone, and work out the two lists.**
+- [x] **Switch the resolver to the rows alone, and work out the two lists.**
       `get_final_competencies` becomes the competency ids of the user's
       current grant rows, and the YAML is consulted only when a profession
       is given to somebody. This is the step that changes behaviour. After
@@ -534,6 +534,23 @@ out rather than stored.
       is how everything else is already taken away. The same unit adds a
       pointer from the Platform role plan's decision, "`base_profession`
       stays stored against a person", to this phase.
+
+      **Seeding moved into the `User` constructor.** Found while switching.
+      Once the template stopped counting, every path that creates a user
+      without calling `sync_competency_rows` created somebody who held
+      nothing. That covers self-registration, an accepted assessor invite,
+      `seed_ci.py` and the other scripts, and more than a hundred tests. So
+      `User.__init__` writes the profession's rows itself, and every way a
+      user comes to exist gets them. A route that removes some of them at
+      creation closes those rows straight after, which records honestly
+      that the profession gave them and an administrator took them away.
+
+      `add_org_unit_member` now reads the person's removed list before
+      `grant_staff_competencies` changes their profession. Read afterwards,
+      the new profession's competencies would all count as "not held" and
+      be kept from them. The `withhold` and `clear` test helpers now close
+      grant rows. They no longer write removal rows, and `clear` leaves the
+      seeded profession rows alone.
 
 - [ ] **Relabel the edit page to say what the lists now mean**, in
       `frontend/src/pages/UserInfoUpdatePage.tsx`. "Default competencies"

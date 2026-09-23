@@ -46,10 +46,7 @@ from sqlalchemy.orm import (
     validates,
 )
 
-from app.cbac.base_professions import (
-    get_profession_base_competencies,
-    resolve_user_competencies,
-)
+from app.cbac.base_professions import get_profession_base_competencies
 from app.cbac.competencies import validate_competency_ids
 from app.org_units.relations import validate_org_unit_relation
 
@@ -182,58 +179,89 @@ class User(Base):
         passive_deletes=True,
     )
 
-    def _current_competency_ids(self, *, granted: bool) -> list[str]:
-        """Competency ids with a current row of the given kind, sorted."""
+    def __init__(self, **kwargs: Any) -> None:
+        """Create a user, holding what their base profession grants.
+
+        The profession is a starting point, not a template read on every
+        request: its competencies are written as ``profession`` rows here,
+        once, and from then on only the rows count. Seeding in the
+        constructor rather than in each route is what makes it true of every
+        way a user comes to exist — the admin routes, self-registration, an
+        accepted invite, the command-line scripts and the seed data alike.
+        A route that removes some of those competencies at creation closes
+        the rows straight after, which records honestly that the profession
+        gave them and an administrator took them away.
+        """
+        super().__init__(**kwargs)
+        if self.base_profession is None:
+            self.base_profession = "patient"
+        now = datetime.now(UTC)
+        for competency_id in get_profession_base_competencies(
+            self.base_profession
+        ):
+            self.competency_grants.append(
+                UserCompetency(
+                    competency_id=competency_id,
+                    granted=True,
+                    starts_on=now,
+                    source="profession",
+                )
+            )
+
+    def _current_grant_ids(self) -> list[str]:
+        """Competency ids with a current grant row, sorted."""
         now = datetime.now(UTC)
         return sorted(
             {
                 row.competency_id
                 for row in self.competency_grants
-                if row.granted == granted and row.is_current(now)
+                if row.granted and row.is_current(now)
             }
         )
 
     @property
     def additional_competency_ids(self) -> list[str]:
-        """What this person holds beyond their base profession, from rows.
+        """What this person holds that their profession does not grant.
 
-        The competencies with a current grant row, less those their
-        profession's template grants. Worked out rather than read, because
-        a grant row may have been seeded from the profession, and those are
-        not "additional". Replaces the ``additional_competencies`` JSON
-        column, now dropped.
+        Their current grant rows, less the profession's template as it
+        stands in ``shared/base-professions.yaml`` now. A comparison, worked
+        out when asked, so the edit page can show where somebody differs
+        from their profession.
         """
         template = set(get_profession_base_competencies(self.base_profession))
         return [
             competency_id
-            for competency_id in self._current_competency_ids(granted=True)
+            for competency_id in self._current_grant_ids()
             if competency_id not in template
         ]
 
     @property
     def removed_competency_ids(self) -> list[str]:
-        """What their profession gives them that they do not hold, from rows.
+        """What their profession grants that this person does not hold.
 
-        The competencies with a current removal row. Replaces the
-        ``removed_competencies`` JSON column, now dropped.
+        The profession's template as it stands now, less their current
+        grant rows. After the template gains a competency, it appears here
+        for everybody who already had the profession, because none of them
+        was given it. Nobody need have removed anything.
         """
-        return self._current_competency_ids(granted=False)
+        held = set(self._current_grant_ids())
+        return sorted(
+            set(get_profession_base_competencies(self.base_profession)) - held
+        )
 
     def get_final_competencies(self) -> list[str]:
         """Compute final competencies for this user.
 
-        Base profession, plus every current grant row, minus every current
-        removal row. A grant whose ``ends_on`` has passed is not held,
-        which is how ``passport_write`` lapses.
+        Their current grant rows, and nothing else. The profession is not
+        consulted: it seeded rows when they were given it, so an edit to
+        ``shared/base-professions.yaml`` changes only people given the
+        profession afterwards. A grant whose ``ends_on`` has passed is not
+        held, which is how ``passport_write`` lapses.
 
         Returns:
             List of competency IDs this user has.
         """
-        return resolve_user_competencies(
-            base_profession=self.base_profession,
-            additional_competencies=self.additional_competency_ids,
-            removed_competencies=self.removed_competency_ids,
-        )
+        return self._current_grant_ids()
 
 
 class PatientMetadata(Base):
