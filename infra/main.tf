@@ -462,6 +462,14 @@ module "cloud_run_admin_job" {
   image            = var.admin_image
   vpc_connector_id = module.networking.vpc_connector_id
 
+  # All egress through the VPC, so the deploy's smoke test, which runs in
+  # this job, reaches a revision's *.run.app URL as internal traffic. That
+  # is what lets the backend's ingress close without the check going blind:
+  # closing it on 2026-09-21 broke every deploy because the smoke test
+  # curled that URL from the internet. Public calls still leave, through
+  # the Cloud NAT in modules/networking.
+  vpc_egress = "ALL_TRAFFIC"
+
   env_vars = {
     CORE_DB_HOST = module.cloud_sql_core.private_ip
     CORE_DB_NAME = module.cloud_sql_core.database_name

@@ -20,6 +20,7 @@ from sqlalchemy import delete, func, insert, select
 from sqlalchemy.orm import Session
 
 from app.cbac.base_professions import grant_staff_competencies
+from app.cbac.grants import sync_competency_rows
 from app.cbac.positions import clinical_leads_of, set_clinical_lead
 from app.db import get_core_db
 from app.deps import (
@@ -27,9 +28,6 @@ from app.deps import (
     DEP_REQUIRE_CLINICAL,
     get_current_user,
     has_competency,
-)
-from app.features.passport.entitlements import (
-    grant_entitlement_at_onboarding,
 )
 from app.models import (
     MEMBER_CAPACITIES,
@@ -679,19 +677,20 @@ def add_org_unit_member(
         )
         status = "updated"
 
-    grant_staff_competencies(
+    additional = grant_staff_competencies(
         person, body.base_profession, body.additional_competencies
     )
-
     # The term comes with the grant, for the reason the grant comes with
-    # the membership: a new starter holding `passport_write` and no
-    # entitlement can open their passport and not write to it, which
-    # reads as a broken page rather than an arrangement nobody set up.
-    grant_entitlement_at_onboarding(
-        db,
-        person.id,
-        unit_id,
-        body.additional_competencies or [],
+    # the membership: `passport_write` is written with its end date in
+    # the same row, so a new starter is never left holding it with no
+    # term, able to open their passport and not write to it.
+    sync_competency_rows(
+        person,
+        additional=additional,
+        removed=person.removed_competency_ids,
+        source="admin",
+        granted_by=current_user.id,
+        org_unit_id=unit_id,
     )
 
     db.flush()

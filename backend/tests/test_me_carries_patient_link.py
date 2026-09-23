@@ -30,6 +30,7 @@ from sqlalchemy.orm import Session
 
 from app.models import User
 from app.security import hash_password
+from tests.competencies import hold
 
 PATIENT_RECORD = "fhir-patient-their-own"
 
@@ -120,7 +121,7 @@ class TestTheCompetencyDoesNotServeInstead:
             profession="specialty_trainee_1_2",
             fhir_patient_id=PATIENT_RECORD,
         )
-        clinician.additional_competencies = ["access_own_patient_records"]
+        hold(clinician, "access_own_patient_records")
         db_session.commit()
 
         client = _login(test_client, "treats_and_is_treated")

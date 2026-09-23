@@ -28,6 +28,7 @@ from app.cbac.competencies import (
 )
 from app.models import OrgUnit, PractisingCompetency, User
 from app.security import hash_password
+from tests.competencies import hold, withhold
 
 REAL = "access_patient_records"
 MADE_UP = "prescribe_moonbeams"
@@ -176,21 +177,21 @@ class TestTheAuditWalksWhatIsStored:
         """Written before the catalogue changed, so no write check saw it."""
         person = _user(db_session, "veteran")
         # Set past the validator, as a catalogue removal would leave it.
-        person.additional_competencies = [REAL, MADE_UP]
+        hold(person, REAL, MADE_UP)
         db_session.commit()
 
         assert unknown_ids_on_users(db_session) == {person.id: [MADE_UP]}
 
     def test_a_stale_id_in_removed_competencies_is_reported(self, db_session):
         person = _user(db_session, "veteran")
-        person.removed_competencies = [MADE_UP]
+        withhold(person, MADE_UP)
         db_session.commit()
 
         assert unknown_ids_on_users(db_session) == {person.id: [MADE_UP]}
 
     def test_clean_data_reports_nothing(self, db_session):
         person = _user(db_session, "veteran")
-        person.additional_competencies = [REAL]
+        hold(person, REAL)
         db_session.commit()
 
         assert unknown_ids_on_users(db_session) == {}
