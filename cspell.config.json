@@ -628,6 +628,7 @@
     "startswith",
     "stdlib",
     "stll",
+    "strd",
     "stre",
     "strerror",
     "stringtype",
