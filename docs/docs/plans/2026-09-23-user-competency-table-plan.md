@@ -19,7 +19,7 @@ so that granting a competency and granting its term become one act.
 
 ## Phase 1: Add the table
 
-- [ ] **Add a `UserCompetency` model to `backend/app/models.py`** with
+- [x] **Add a `UserCompetency` model to `backend/app/models.py`** with
       `user_id` (FK `users.id`, `ON DELETE CASCADE`, indexed), `competency_id`
       (`varchar(100)`, indexed), `granted` (boolean), `starts_on` and `ends_on`
       (`timestamptz`, both nullable), `source` (`varchar(20)`), `org_unit_id`
@@ -40,57 +40,163 @@ so that granting a competency and granting its term become one act.
       The same is true of a qualification renewed before the old one lapsed.
       The resolver asks whether *any* row is current rather than reading one.
 
-- [ ] **Use `granted: false` where `removed_competencies` holds an id.** A row
+- [x] **Use `granted: false` where `removed_competencies` holds an id.** A row
       saying this person does not hold something their base profession would
       give them keeps the subtraction `resolve_user_competencies` already
       performs, and unlike a string in a list it can say who removed it and
       when.
 
-- [ ] **Create the table with `just migrate "add user_competency table"`.**
+- [x] **Give `User` a `competency_grants` relationship to the rows, loaded
+      with `lazy="selectin"`.** `User.get_final_competencies()` takes no
+      session and has 28 call sites across `backend/app`, so Phase 4 can only
+      rebuild the resolver from rows without touching every one of them if
+      the rows arrive with the user. `selectin` loads them for a whole list
+      of users in one extra query rather than one per user. Declared now,
+      beside the model, so nothing in Phase 4 changes the model's shape;
+      nothing reads it until then.
+
+- [x] **Create the table with `just migrate "add user_competency table"`.**
       Additive and empty; nothing reads it yet. Read the generated
       `upgrade()` and `downgrade()` before committing, per
       `.claude/rules/backend.md`.
 
-## Phase 2: Backfill
+## Phase 2: Dual-write
 
-- [ ] **Run `python -m app.cbac.audit` first and record the count of unknown
-      ids.** The JSON columns may name competencies the catalogue no longer
-      has. The backfill carries them across rather than dropping them: losing
-      a grant silently during a storage change is worse than carrying a stale
-      one, and the audit report is what tells you how many there are before
-      and after.
+This phase comes before the backfill, not after it. The first draft had them
+the other way round, and that order loses writes: each unit merges and deploys
+on its own, so a backfill that lands before anything dual-writes copies the
+JSON as it stands on that day, and every grant an administrator makes between
+that deploy and the dual-write deploy exists in JSON and never in rows. Phase 4
+would then take it away. `.claude/rules/backend.md` gives the same order for a
+column rename, for the same reason: expand, dual-write, backfill, switch reads.
+
+- [x] **Write one helper that brings a user's rows into line with a pair of
+      lists, and call it from every writer.** A new
+      `backend/app/cbac/grants.py` takes the user, the new
+      `additional_competencies` and `removed_competencies`, a `source` and
+      `granted_by`, and diffs them against the user's current rows. An id
+      that has appeared gets a new row. An id that has gone has its current
+      rows **closed by setting `ends_on` to now**, never deleted: rows are
+      only ever inserted or closed, which is what keeps "what could they do
+      last year?" answerable. Writing it once means the diff rule cannot
+      drift between writers.
+
+      A user nobody has saved since this deployed has no rows at all, so
+      their first save writes a row for every id in both lists. That is
+      correct rather than noisy: after any save a user's current rows match
+      their JSON exactly, which is what lets the backfill in Phase 3 skip
+      them safely.
+
+      **`passport_write` is closed like anything else but never opened
+      here.** An undated `passport_write` row would never lapse, so its rows
+      come only from the entitlement step below, which carries the term.
+      Taking it off the list still closes its rows, because that is what
+      taking it out of `additional_competencies` does today: the competency
+      goes, and `_require_writer` refuses.
+
+- [x] **Give `source` a vocabulary checked in code, not a database enum.**
+      The open question at the foot of this plan needed an answer before
+      anything could write a row. The values, in `COMPETENCY_GRANT_SOURCES`
+      beside the model and checked by a `@validates` hook the way
+      `validate_org_unit_type` checks org unit types, so the list grows
+      without a migration:
+
+      - **`admin`** — granted or removed by a holder of `manage_users`
+        through `POST /api/users`, `PATCH /api/users/{id}` or
+        `POST /api/org-units/{id}/members`.
+      - **`operator`** — an operator editing their own competencies through
+        `PATCH /api/cbac/my-competencies`.
+      - **`bootstrap`** — the command-line scripts that create the first
+        superadmin, where nobody is signed in to be `granted_by`.
+      - **`organisation`** and **`individual`** — a term of
+        `passport_write`, the two values `passport_write_entitlement`
+        already uses.
+      - **`migrated`** — the Phase 3 backfill.
+
+      A clinical competency granted on evidence will want its own value when
+      that is built. Adding it is one line.
+
+- [x] **Call it from `update_user`** (`backend/app/main.py:1793`), after
+      the existing profession carry-over and superadmin promotion have
+      settled the final lists. The route sets both `additional_competencies`
+      and `removed_competencies` wholesale, so the diff is what turns a
+      whole-list save into rows that change one at a time.
+
+- [x] **Call it from the four writers the first draft of this plan missed.**
+      `create_user_with_cbac` (`backend/app/main.py:1549`, `POST
+      /api/users`) sets both lists on a new user. `update_my_competencies`
+      (`backend/app/main.py:3640`, `PATCH /api/cbac/my-competencies`)
+      sets both on the caller. `create_superadmin` in
+      `backend/scripts/admin_cli.py` and `backend/scripts/create_superuser.py`
+      both merge into `additional_competencies`. A writer left out here is a
+      grant that exists in JSON and not in rows, and Phase 4 would silently
+      take it away.
+
+- [x] **Call it from `add_org_unit_member`**
+      (`backend/app/org_units/router.py:683`) after
+      `grant_staff_competencies` has merged the new grants into the JSON,
+      with the org unit as the row's `org_unit_id`.
+      `grant_entitlement_at_onboarding` still writes its
+      `passport_write_entitlement` row, and now writes the matching
+      `passport_write` row in `user_competency` beside it, with the same
+      `starts_on`, `ends_on`, `source` and `org_unit_id`. That is the only
+      place a `passport_write` row is created until Phase 5 removes the
+      function.
+
+- [x] **Leave every reader on JSON.** Readers do not move until Phase 4, so
+      a rollback to the previous revision loses nothing: the JSON columns
+      remain the source of truth throughout this phase.
+
+## Phase 3: Backfill
+
+- [ ] **Run `python -m app.cbac.audit` against teaching before this deploys
+      and record the count of unknown ids.** The JSON columns may name
+      competencies the catalogue no longer has. The backfill carries them
+      across rather than dropping them: losing a grant silently during a
+      storage change is worse than carrying a stale one, and the audit
+      report is what tells you how many there are before and after. This is
+      an operational step for whoever merges, not something a branch can do.
 
 - [ ] **Write one migration that reads every user's two lists and writes a
       row per entry** — `granted` true for `additional_competencies`, false
       for `removed_competencies`, a `source` of `migrated`, null dates. In the
       same migration, turn every `passport_write_entitlement` row into a
-      `passport_write` row carrying its `ends_on`, `source` and `org_unit_id`.
+      `passport_write` row carrying its `starts_on`, `ends_on`, `source` and
+      `org_unit_id`. Plain SQL throughout, not the ORM models, since those
+      models will change after this migration is frozen.
 
-- [ ] **Make it idempotent and give it a real `downgrade()`.** Re-running must
-      add nothing, so the insert checks for an existing row rather than
-      assuming an empty table. The downgrade deletes the rows it created,
-      which is safe because nothing writes to the table until Phase 3.
+- [ ] **Skip `passport_write` when copying `additional_competencies`.** A
+      holder has it in the JSON *and* in an entitlement row, so copying both
+      writes one row with no end date beside one with a date. Phase 4 asks
+      whether any row is current, and an undated row is current forever, so
+      the entitlement would never lapse. The entitlement rows are the only
+      thing that says `passport_write` is held, and the only thing copied for
+      it. Anybody with `passport_write` in the JSON and no entitlement row
+      ends up with no grant, which is what the entitlement gate in
+      `_require_writer` already enforces for them today.
+      `passport_write` in `removed_competencies` is still copied: a removal
+      has no term to lose.
+
+- [ ] **Make it idempotent and give it a real `downgrade()`.** Re-running
+      must add nothing, and Phase 2 means the table is not empty when this
+      runs. So a JSON entry is copied only when the user has no current row
+      for that competency with the same `granted`, which also skips every
+      user the dual-write has already brought into line. An entitlement is
+      copied only when no `passport_write` row carries the same `ends_on`
+      and `source`, which skips the ones the dual-write mirrored.
+
+      The downgrade deletes rows whose `granted_by` is null and whose
+      `source` is `migrated`, `organisation` or `individual`. That is
+      exactly what this migration writes: a dual-written row either names
+      the administrator who made it or carries `operator` or `bootstrap`.
 
 - [ ] **Verify the row count against the JSON before moving on.** For every
-      user, the number of `granted: true` rows equals the length of
-      `additional_competencies`, and `granted: false` equals
-      `removed_competencies`. A mismatch means the backfill dropped something.
-
-## Phase 3: Dual-write
-
-- [ ] **Write rows alongside JSON in `update_user`**
-      (`backend/app/main.py:1793`), which sets both
-      `additional_competencies` and `removed_competencies` wholesale.
-
-- [ ] **Write rows alongside JSON in `add_org_unit_member`**
-      (`backend/app/org_units/router.py:683`), which calls
-      `grant_staff_competencies` and then
-      `grant_entitlement_at_onboarding`. Both still run; the second is
-      removed in Phase 5.
-
-- [ ] **Leave every reader on JSON.** Readers do not move until Phase 4, so
-      a rollback to the previous revision loses nothing: the JSON columns
-      remain the source of truth throughout this phase.
+      user, the current `granted: true` rows other than `passport_write`
+      match `additional_competencies` less any `passport_write`, and the
+      current `granted: false` rows match `removed_competencies`. Every
+      `passport_write_entitlement` row has a `passport_write` row with the
+      same `ends_on`. A mismatch means the backfill dropped something. Like
+      the audit, this is run against teaching after the deploy.
 
 ## Phase 4: Switch reads
 
@@ -99,7 +205,9 @@ so that granting a competency and granting its term become one act.
       `(base | additional) - removed` shape and its signature; the additions
       become the current rows with `granted` true, the removals the current
       rows with `granted` false, and "current" means `ends_on` is null or in
-      the future.
+      the future. `User.get_final_competencies()` passes it the rows from the
+      `competency_grants` relationship added in Phase 1, so none of its 28
+      callers changes.
 
 - [ ] **Turn `backend/app/cbac/audit.py` into a query.** It currently scans
       every user's JSON to find ids the catalogue does not have. Against rows
@@ -114,14 +222,15 @@ so that granting a competency and granting its term become one act.
 
 - [ ] **Move reads in one change, not file by file.** A test that sets JSON
       the new code no longer reads will still pass, so a partial switch hides
-      its own failures. Nineteen backend test files read these columns
+      its own failures. Twenty backend test files read these columns
       directly and are rewritten as rows in this phase.
 
 ## Phase 5: Stop writing JSON
 
-- [ ] **Remove the JSON writes from `update_user` and
-      `add_org_unit_member`**, one deploy after Phase 4, leaving the rows as
-      the only thing written.
+- [ ] **Remove the JSON writes from every writer Phase 2 listed**, one
+      deploy after Phase 4, leaving the rows as the only thing written.
+      `grant_staff_competencies` stops merging into JSON and calls the
+      Phase 2 helper instead.
 
 - [ ] **Delete `grant_entitlement_at_onboarding`
       (`backend/app/features/passport/entitlements.py:55`).** Granting a
@@ -130,15 +239,7 @@ so that granting a competency and granting its term become one act.
       `passport_write` and could not grant an entitlement, so an admin could
       put somebody in a state no interface could get them out of.
 
-## Phase 6: Drop the columns
-
-- [ ] **Drop `additional_competencies`, `removed_competencies` and the
-      `passport_write_entitlement` table** in their own migration, carrying
-      `# migration-check: allow-destructive`. It goes through the
-      `db-destructive-migration-review` environment, and it is not bundled
-      with additive work.
-
-## Phase 7: Look at the other two JSON columns worth moving
+## Phase 6: Look at the other two JSON columns worth moving
 
 Eleven JSON columns exist across the models. Most are genuine documents and
 should stay: `config_yaml` is a synced config file read back whole, `errors`
@@ -182,6 +283,18 @@ its own readers and its own migration.
       data this system does not own. `metadata_json` is the one to watch: if
       specific keys start being read by name, those keys want columns.
 
+## Phase 7: Drop the columns
+
+- [ ] **Drop `additional_competencies`, `removed_competencies` and the
+      `passport_write_entitlement` table** in their own migration, carrying
+      `# migration-check: allow-destructive`. It goes through the
+      `db-destructive-migration-review` environment, and it is not bundled
+      with additive work.
+
+      Last, and after the investigations in Phase 6, because it is the one
+      step that cannot be undone and it needs a human's approval. Nothing
+      else in this plan depends on it, so nothing waits behind it.
+
 ## Decisions
 
 - **The API shape does not change** — `additional_competencies` and
@@ -210,6 +323,6 @@ its own readers and its own migration.
   a competency that does not expire, and prompt for one on a competency that
   does. Probably yes, before any clinical competency gets a date.
 
-- **What does `source` hold once it is general?** Today's values come from the
-  entitlement table, `organisation` and `individual`, plus `migrated` for the
-  backfill. A clinical competency granted on evidence is none of those.
+- **What does `source` hold once it is general?** Answered in Phase 2 for
+  what exists today. A clinical competency granted on evidence is none of
+  those values and will need its own.

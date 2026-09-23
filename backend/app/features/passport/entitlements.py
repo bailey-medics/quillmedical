@@ -24,6 +24,7 @@ from app.features.passport.models import (
     PASSPORT_ENTITLEMENT_DAYS,
     PassportWriteEntitlement,
 )
+from app.models import User, UserCompetency
 
 
 def current_entitlement_end(db: Session, user_id: int) -> datetime | None:
@@ -55,9 +56,11 @@ def current_entitlement_end(db: Session, user_id: int) -> datetime | None:
 
 def grant_entitlement_at_onboarding(
     db: Session,
-    user_id: int,
+    user: User,
     org_unit_id: int,
     competencies: list[str],
+    *,
+    granted_by: int | None = None,
 ) -> None:
     """Give somebody a term of writing, where the grant includes it.
 
@@ -71,25 +74,48 @@ def grant_entitlement_at_onboarding(
     not about how many times a form was saved. A fresh term is written
     only when nothing current remains.
 
+    **The term is written twice while storage moves.** Once as a
+    ``passport_write_entitlement`` row, which is what the gate reads
+    today, and once as a dated ``passport_write`` row in
+    ``user_competency``, which is where the gate will read it. The two
+    carry the same dates, source and org_unit, so the backfill can
+    recognise the second as already copied. See the user competency
+    table plan.
+
     Args:
         db: Core database session.
-        user_id: The person being onboarded.
+        user: The person being onboarded.
         org_unit_id: The org_unit whose arrangement pays for it.
         competencies: What they are being granted in this request.
+        granted_by: The administrator doing the onboarding.
     """
     if "passport_write" not in competencies:
         return
 
-    if current_entitlement_end(db, user_id) is not None:
+    if current_entitlement_end(db, user.id) is not None:
         return
+
+    starts_on = datetime.now(UTC)
+    ends_on = starts_on + timedelta(days=PASSPORT_ENTITLEMENT_DAYS)
 
     db.add(
         PassportWriteEntitlement(
-            user_id=user_id,
+            user_id=user.id,
             source="organisation",
             org_unit_id=org_unit_id,
-            ends_on=datetime.now(UTC)
-            + timedelta(days=PASSPORT_ENTITLEMENT_DAYS),
+            starts_on=starts_on,
+            ends_on=ends_on,
+        )
+    )
+    user.competency_grants.append(
+        UserCompetency(
+            competency_id="passport_write",
+            granted=True,
+            starts_on=starts_on,
+            ends_on=ends_on,
+            source="organisation",
+            org_unit_id=org_unit_id,
+            granted_by=granted_by,
         )
     )
     db.flush()

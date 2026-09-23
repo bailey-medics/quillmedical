@@ -54,6 +54,7 @@ from app.cbac.base_professions import (
     get_profession_base_competencies,
 )
 from app.cbac.competencies import validate_competency_ids
+from app.cbac.grants import sync_competency_rows
 from app.cbac.positions import (
     clinical_leads_of,
 )
@@ -1617,6 +1618,13 @@ def create_user_with_cbac(
         platform_role=payload.platform_role,
         email_verified=True,
     )
+    sync_competency_rows(
+        user,
+        additional=payload.additional_competencies,
+        removed=payload.removed_competencies,
+        source="admin",
+        granted_by=current_user.id,
+    )
     db.add(user)
     db.flush()
 
@@ -1830,6 +1838,17 @@ def update_user(
                 get_profession_base_competencies(SUPERADMIN_PROFESSION)
             )
             user.additional_competencies = sorted(granted)
+
+    # Rows beside the JSON, from the lists as finally settled above: after
+    # the profession carry-over and the superadmin promotion, not before.
+    # Nothing reads them yet. See the user competency table plan.
+    sync_competency_rows(
+        user,
+        additional=user.additional_competencies,
+        removed=user.removed_competencies,
+        source="admin",
+        granted_by=current_user.id,
+    )
 
     # The one list, in org_unit ids. It settles membership of every org_unit
     # the caller may administer: the org_units named are kept, the rest of
@@ -3688,6 +3707,13 @@ async def update_my_competencies(
         user.additional_competencies = data.additional_competencies
     if data.removed_competencies is not None:
         user.removed_competencies = data.removed_competencies
+    sync_competency_rows(
+        user,
+        additional=user.additional_competencies,
+        removed=user.removed_competencies,
+        source="operator",
+        granted_by=user.id,
+    )
 
     db.flush()
     db.refresh(user)

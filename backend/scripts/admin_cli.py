@@ -80,6 +80,7 @@ def create_superadmin() -> int:
         SUPERADMIN_PROFESSION,
         get_profession_base_competencies,
     )
+    from app.cbac.grants import sync_competency_rows
     from app.db.core_db import CoreSessionLocal
     from app.models import Role, User
     from app.security import hash_password
@@ -123,6 +124,16 @@ def create_superadmin() -> int:
                 get_profession_base_competencies(SUPERADMIN_PROFESSION)
             )
             user.additional_competencies = sorted(granted)
+
+        # Rows beside the JSON, which nothing reads yet. Nobody is signed
+        # in to be named as granting them. See the user competency table
+        # plan.
+        sync_competency_rows(
+            user,
+            additional=user.additional_competencies,
+            removed=user.removed_competencies,
+            source="bootstrap",
+        )
 
         # Add System Administrator role if it exists and not already assigned
         role = (
