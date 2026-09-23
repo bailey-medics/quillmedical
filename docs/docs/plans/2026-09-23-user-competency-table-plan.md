@@ -483,7 +483,7 @@ out rather than stored.
       ones, which `backend/tests/test_profession_seeds_rows.py` pins
       instead.
 
-- [ ] **Seed every existing user's profession competencies as rows**, in a
+- [x] **Seed every existing user's profession competencies as rows**, in a
       hand-written migration. For each user, write a `profession` row for
       each competency their profession grants, unless they already have a
       current grant for it or a current removal of it. A removal means the
@@ -493,16 +493,26 @@ out rather than stored.
       migration has to keep meaning what it meant. So the profession to
       competency mapping is frozen into it as literals, as
       `b4c2e7a91f38` froze the professions that granted `manage_users`.
-      Tested against Postgres like
-      `backend/tests/test_user_competency_backfill.py`.
+      Written as `56f3ad035100`. Its seeded rows have a null `starts_on`,
+      because nothing recorded when somebody was given their profession,
+      which also marks them for `downgrade()`: a row the application seeds
+      carries the moment it was written. Tested against Postgres in
+      `backend/tests/test_profession_seed_backfill.py`, added to the
+      `alembic_drift_check` CI job.
 
-- [ ] **Give the check before the switch a function to call.**
+- [x] **Give the check before the switch a function to call.**
       `unseeded_profession_competencies` in `backend/app/cbac/audit.py` lists,
       per user, every competency their profession grants that they hold
       only through the template: not removed, and with no current grant row.
       An empty result means the switch below changes nobody's
       competencies. It is run against teaching after the backfill deploys
-      and before the switch merges.
+      and before the switch merges, from the backend container:
+      `python -c "from app.db import CoreSessionLocal; from app.cbac.audit
+      import unseeded_profession_competencies as u;
+      print(u(CoreSessionLocal()))"`. Or, against a deployed environment,
+      `just check-competency-seeding teaching`, which runs it as the
+      `check-competency-seeding` action of the admin Cloud Run job and
+      fails if anybody is listed.
 
 - [ ] **Switch the resolver to the rows alone, and work out the two lists.**
       `get_final_competencies` becomes the competency ids of the user's
