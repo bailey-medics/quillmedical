@@ -603,7 +603,7 @@ class TestAssessmentLifecycle:
         # But only adenoma items are correct — depends on item diagnoses.
 
     def test_answer_persists_scoring_fields(self, test_client, db_session):
-        """Per-answer scoring: is_correct and resolved_tags set."""
+        """Per-answer scoring: is_correct and the tag rows set."""
         org = _make_teaching_org(db_session)
         educator = _make_educator(db_session, org)
         _seed_bank(db_session, org.id, educator.id)
@@ -637,8 +637,7 @@ class TestAssessmentLifecycle:
         )
         assert answer is not None
         assert answer.is_correct is not None
-        assert answer.resolved_tags is not None
-        assert "high_confidence" in answer.resolved_tags
+        assert "high_confidence" in {row.tag for row in answer.tags}
 
     def test_resume_after_disconnect(self, test_client, db_session):
         """GET /current returns next unanswered item."""
