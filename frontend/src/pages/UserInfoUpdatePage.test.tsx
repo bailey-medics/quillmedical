@@ -242,10 +242,10 @@ describe("UserInfoUpdatePage", () => {
         ).toBeInTheDocument();
       });
       expect(
-        screen.getAllByLabelText(/additional competencies/i)[0],
+        screen.getAllByLabelText(/held beyond the profession/i)[0],
       ).toBeInTheDocument();
       expect(
-        screen.getAllByLabelText(/removed competencies/i)[0],
+        screen.getAllByLabelText(/in the profession, not held/i)[0],
       ).toBeInTheDocument();
     }, 30000);
 
@@ -258,6 +258,8 @@ describe("UserInfoUpdatePage", () => {
       await waitFor(() => {
         expect(screen.getByText(/base profession:/i)).toBeInTheDocument();
       });
+      // The profession seeds a new user once; it is not what they hold.
+      expect(screen.getByText(/what it gives a new user/i)).toBeInTheDocument();
     }, 30000);
 
     it("navigates back to organisation step", async () => {

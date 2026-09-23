@@ -291,7 +291,9 @@ function Step2Competencies({
     <Stack gap="md">
       <Heading>Competency configuration</Heading>
       <BodyText>
-        Configure additional or removed competencies for this user.
+        Where this user differs from their base profession. The profession gives
+        a new user its competencies once; after that, only what this user holds
+        counts.
       </BodyText>
 
       {profession && (
@@ -300,7 +302,7 @@ function Step2Competencies({
             Base profession: {profession.display_name}
           </BodyTextBold>
           <BodyText>
-            Default competencies ({baseCompetencyIds.length}):
+            What it gives a new user ({baseCompetencyIds.length}):
           </BodyText>
           <ul style={{ margin: 0, paddingLeft: "1.5rem" }}>
             {baseCompetencyIds.map((id) => {
@@ -318,8 +320,8 @@ function Step2Competencies({
       )}
 
       <MultiSelectField
-        label="Additional competencies"
-        description="Add competencies beyond the base profession"
+        label="Held beyond the profession"
+        description="Competencies this user holds that their base profession does not give"
         placeholder="Select additional competencies"
         data={competencyOptions.filter(
           (c: { value: string; label: string }) =>
@@ -336,9 +338,9 @@ function Step2Competencies({
       />
 
       <MultiSelectField
-        label="Removed competencies"
-        description="Remove competencies from the base profession"
-        placeholder="Select competencies to remove"
+        label="In the profession, not held"
+        description="Competencies the profession gives that this user does not hold. One the profession gains later appears here until somebody grants it."
+        placeholder="Select competencies not held"
         data={competencyOptions.filter((c: { value: string; label: string }) =>
           baseCompetencyIds.includes(c.value as CompetencyId),
         )}
@@ -493,7 +495,7 @@ function Step4Review({
           )}
           {formData.additionalCompetencies.length > 0 && (
             <Box>
-              <BodyTextBold>Additional competencies:</BodyTextBold>
+              <BodyTextBold>Held beyond the profession:</BodyTextBold>
               <Group gap="xs">
                 {formData.additionalCompetencies.map((id) => (
                   <CompetencyBadge
@@ -510,7 +512,7 @@ function Step4Review({
           )}
           {formData.removedCompetencies.length > 0 && (
             <Box>
-              <BodyTextBold>Removed competencies:</BodyTextBold>
+              <BodyTextBold>In the profession, not held:</BodyTextBold>
               <Group gap="xs">
                 {formData.removedCompetencies.map((id) => (
                   <CompetencyBadge

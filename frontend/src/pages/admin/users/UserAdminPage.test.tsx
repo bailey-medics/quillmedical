@@ -201,6 +201,9 @@ describe("UserAdminPage", () => {
       await waitFor(() => {
         expect(screen.getByText("cardiology")).toBeInTheDocument();
         expect(screen.getByText("surgery")).toBeInTheDocument();
+        expect(
+          screen.getByText("Held beyond the profession:"),
+        ).toBeInTheDocument();
       });
     });
 
@@ -214,6 +217,11 @@ describe("UserAdminPage", () => {
 
       await waitFor(() => {
         expect(screen.getByText("dermatology")).toBeInTheDocument();
+        // Not "removed": a competency the profession gained later shows
+        // here without anybody having taken it away.
+        expect(
+          screen.getByText("In the profession, not held:"),
+        ).toBeInTheDocument();
       });
     });
 

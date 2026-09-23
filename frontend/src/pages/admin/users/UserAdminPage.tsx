@@ -159,7 +159,7 @@ export default function UserAdminPage() {
 
             {user.additional_competencies.length > 0 && (
               <Stack gap="xs">
-                <BodyTextBold>Additional competencies:</BodyTextBold>
+                <BodyTextBold>Held beyond the profession:</BodyTextBold>
                 <Group gap="xs">
                   {user.additional_competencies.map((comp) => (
                     <CompetencyBadge
@@ -176,7 +176,7 @@ export default function UserAdminPage() {
 
             {user.removed_competencies.length > 0 && (
               <Stack gap="xs">
-                <BodyTextBold>Removed competencies:</BodyTextBold>
+                <BodyTextBold>In the profession, not held:</BodyTextBold>
                 <Group gap="xs">
                   {user.removed_competencies.map((comp) => (
                     <CompetencyBadge
