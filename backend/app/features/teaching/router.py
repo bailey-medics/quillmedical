@@ -1385,9 +1385,6 @@ def submit_answer(
         # Persist
     current.selected_option = body.selected_option
     current.is_correct = is_correct
-    current.resolved_tags = resolved_tags
-    # Rows beside the JSON, which scoring still reads. See the resolved
-    # tags plan.
     current.set_tags(resolved_tags)
     current.answered_at = now
     db.flush()
@@ -1487,9 +1484,6 @@ def update_answer(
 
     answer.selected_option = body.selected_option
     answer.is_correct = is_correct
-    answer.resolved_tags = resolved_tags
-    # Rows beside the JSON, which scoring still reads. See the resolved
-    # tags plan.
     answer.set_tags(resolved_tags)
     answer.answered_at = now
 
@@ -1740,8 +1734,7 @@ def complete_assessment(
     )
 
     # Tags from the `assessment_answer_tag` rows, the copy taken when each
-    # answer was given. The `resolved_tags` column is still written beside
-    # them, and no longer read.
+    # answer was given.
     answer_dicts = [
         {
             "selected_option": a.selected_option,

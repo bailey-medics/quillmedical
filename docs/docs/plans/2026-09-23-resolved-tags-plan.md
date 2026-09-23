@@ -101,7 +101,16 @@ switch-reads, contract order in
 
 ## Phase 5: Stop writing JSON
 
-- [ ] **Remove the JSON writes** from `submit_answer` and `update_answer`.
+- [x] **Remove the JSON writes** from `submit_answer` and `update_answer`.
+
+- [x] **Take the column out of every statement, in the same change.**
+      Found while building the competency plan's contract phase: a column
+      still mapped is named in every `SELECT`, and a revision still serving
+      while the drop runs would fail on every query of `assessment_answers`.
+      `resolved_tags` is nullable with no default, so deferring it keeps it
+      out of every `SELECT`, and no longer setting it keeps it out of every
+      `INSERT`, with no migration needed. A test records every statement an
+      answer and a completion send, and fails if the column is named.
 
 ## Phase 6: Drop the column
 
