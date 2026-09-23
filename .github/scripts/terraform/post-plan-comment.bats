@@ -108,7 +108,7 @@ PLAN
 
 @test "build_body posts the outcome line and the job link, not the whole plan" {
   run build_body "Plan: 0 to add, 1 to change, 0 to destroy." \
-    "https://github.com/o/r/actions/runs/42/job/99"
+    "https://github.com/o/r/actions/runs/42/job/99" "teaching"
   [ "$status" -eq 0 ]
   [[ "$output" == *'### Terraform Plan: `teaching`'* ]]
   [[ "$output" == *'Plan: 0 to add, 1 to change, 0 to destroy.'* ]]
@@ -116,6 +116,34 @@ PLAN
   # The point of the change: none of the refresh noise or diff reaches the PR.
   [[ "$output" != *'Refreshing state'* ]]
   [[ "$output" != *'google_monitoring_dashboard'* ]]
+}
+
+@test "build_body heads the comment with the environment it was given" {
+  run build_body "Plan: 1 to add, 0 to change, 0 to destroy." \
+    "https://github.com/o/r/actions/runs/42/job/99" "app"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'### Terraform Plan: `app`'* ]]
+  # The heading was hardcoded to teaching until 2026-09-23, so every app
+  # plan comment was headed with the wrong environment.
+  [[ "$output" != *'`teaching`'* ]]
+}
+
+@test "plan_environment reads the environment out of the job name" {
+  JOB_NAME="Plan (app)" run plan_environment
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "app" ]
+}
+
+@test "plan_environment says unknown rather than guessing" {
+  # An unset or unparseable JOB_NAME must not silently name an environment
+  # the plan did not cover.
+  JOB_NAME="" run plan_environment
+  [ "$output" = "unknown" ]
+
+  JOB_NAME="Plan" run plan_environment
+  [ "$output" = "unknown" ]
 }
 
 @test "build_body stays short — every comment is a handful of lines" {
@@ -199,4 +227,39 @@ PLAN
   [ "$status" -eq 0 ]
   [ "$output" = "https://github.com/o/r/actions/runs/42" ]
   [[ "$stderr" == *"Could not resolve the job URL"* ]]
+}
+
+@test "a failed comment post does not fail the job" {
+  # GitHub returned a 502 here on 2026-09-23, after a clean plan, and the
+  # whole required check went red over a courtesy comment.
+  stub_gh "502 Bad Gateway" 1
+
+  GH_TOKEN="t"
+  GITHUB_SERVER_URL="https://github.com"
+  JOB_NAME="Plan (app)"
+
+  mkdir -p "$BATS_TEST_TMPDIR/infra"
+  printf 'Plan: 1 to add, 0 to change, 0 to destroy.\n' \
+    >"$BATS_TEST_TMPDIR/infra/plan-output.txt"
+
+  cd "$BATS_TEST_TMPDIR"
+  run main 984
+
+  [ "$status" -eq 0 ]
+}
+
+@test "a missing plan file still fails the job" {
+  # The opposite case: the comment is optional, the plan is not. This must
+  # stay red, or the previous test would have made every failure silent.
+  stub_gh "" 0
+
+  GH_TOKEN="t"
+  GITHUB_SERVER_URL="https://github.com"
+  JOB_NAME="Plan (app)"
+
+  mkdir -p "$BATS_TEST_TMPDIR/empty"
+  cd "$BATS_TEST_TMPDIR/empty"
+  run main 984
+
+  [ "$status" -ne 0 ]
 }
