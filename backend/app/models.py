@@ -1471,3 +1471,102 @@ class PositionHolding(Base):
     appointed_by: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
+
+
+# ------------------------------------------------------------------
+# Feedback
+# ------------------------------------------------------------------
+
+
+#: Where a piece of feedback has got to. A closed set, because each state
+#: is a step in reading and closing a report rather than a label that grows:
+#: a fifth one means rethinking the admin page, not extending a list.
+FEEDBACK_STATUSES: tuple[str, ...] = (
+    "new",
+    "acknowledged",
+    "resolved",
+    "wont_fix",
+)
+
+#: What the sender said it was about, when they said. Validated in the
+#: request schema rather than the database, because the plan expects this
+#: set to change once real submissions show which options earn a place.
+FEEDBACK_CATEGORIES: tuple[str, ...] = (
+    "broken",
+    "inaccurate",
+    "suggestion",
+    "other",
+)
+
+
+class Feedback(Base):
+    """One message a signed-in user sent about the application.
+
+    A table rather than a log line, because the question asked of feedback
+    is "what is still outstanding?", and a log line cannot be marked
+    resolved. ``status`` is what makes this a workflow rather than a pile.
+
+    **``message`` may contain patient data.** Somebody describing a bug
+    pastes what they were looking at. It is stored as typed, since
+    redacting prose destroys the report, so the controls are on who may
+    read it and on never logging it. See
+    ``docs/docs/plans/2026-09-20-user-feedback-plan.md``.
+
+    Attributes:
+        id: Primary key.
+        user_id: Who sent it, from the session rather than the request
+            body. Null once that user is deleted.
+        category: One of ``FEEDBACK_CATEGORIES``, or None if not chosen.
+        message: What they typed.
+        route: The matched route pattern they were on, never a resolved
+            URL.
+        release: The frontend build they were running.
+        viewport: Width by height, as ``390x844``.
+        user_agent: The browser's user agent, bounded.
+        breadcrumbs: The recent route changes, API calls and sign-in
+            events, as the error reports carry them. A snapshot read back
+            whole, which is why it is JSON rather than a table.
+        error_name: The error just reported, when sent from the error
+            boundary.
+        error_code: That error's code, when it had one.
+        status: One of ``FEEDBACK_STATUSES``.
+        created_at: When it was sent.
+    """
+
+    __tablename__ = "feedback"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ("
+            + ", ".join(f"'{s}'" for s in FEEDBACK_STATUSES)
+            + ")",
+            name="ck_feedback_status_known",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    category: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    message: Mapped[str] = mapped_column(String(5000), nullable=False)
+    route: Mapped[str] = mapped_column(String(200), nullable=False)
+    release: Mapped[str] = mapped_column(String(100), nullable=False)
+    viewport: Mapped[str] = mapped_column(String(20), nullable=False)
+    user_agent: Mapped[str] = mapped_column(String(300), nullable=False)
+    breadcrumbs: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON, nullable=False, default=lambda: []
+    )
+    error_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    error_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="new", index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+
+    user: Mapped[User | None] = relationship(foreign_keys=[user_id])
