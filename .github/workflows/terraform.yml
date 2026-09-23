@@ -22,7 +22,7 @@ on:
         required: true
         type: choice
         default: all
-        options: [all, teaching, app]
+        options: [all, app]
 
   push:
     branches: [main]

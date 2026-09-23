@@ -619,19 +619,25 @@ here because the next environment will want the same list:
       video signing key is generated fresh for this project rather than
       copied, so the old one dies with the old project.
 
-- [ ] **(Mark)** Re-run the teaching pipeline against the new project so
+- [x] **(Mark)** Re-run the teaching pipeline against the new project so
       the content buckets refill from `eoeeta-teaching` and
-      `respiratory-teaching`. The content is version-controlled and the
+      `respiratory-teaching`. Done on 2026-09-22.
+      `quill-images-app/modules/` holds both banks and
+      `quill-teaching-videos-processed-app` holds the transcoded video. The content is version-controlled and the
       pipeline syncs it on every push to main, so nothing is copied
       between buckets by hand.
 
-- [ ] **(Mark)** Run the migrations against the new Cloud SQL instance and
+- [x] **(Mark)** Run the migrations against the new Cloud SQL instance and
       seed it. There are no real users, so this is a schema creation and a
-      seed rather than a dump and restore.
+      seed rather than a dump and restore. Done on 2026-09-22: the app
+      backend answers `/api/health`, two organisations exist, and a
+      module was uploaded, transcoded and played back.
 
-- [ ] **(Mark)** Confirm that is still true before relying on it. If
+- [x] **(Mark)** Confirm that is still true before relying on it. If
       anyone has registered on the live environment, this becomes a data
-      migration and the cutover needs a maintenance window.
+      migration and the cutover needs a maintenance window. Confirmed:
+      teaching's database was destroyed on 2026-09-23 with its backups,
+      on the explicit instruction that nothing in it was wanted.
 
 - [x] **Leave the clinician passport files behind.** The passport bucket
       is not gated on the environment, so Terraform creates an empty one
@@ -878,15 +884,44 @@ What is left is the deletions, which genuinely have to wait.
       environment. Done in Batch 6, and it was three secrets rather than
       the one named here; see that batch for which and why.
 
-- [ ] **(Mark)** Delete the `GCP_TEACHING_*` secrets, once nothing reads
-      them. Not yet: the matrix in `deploy.yml` and `terraform.yml` still
-      names `teaching`, and the build job authenticates as teaching's
-      service account to push images to both registries. These go in
-      Batch 8 with the environment itself.
+- [x] **(Mark)** Delete the `GCP_TEACHING_*` secrets, once nothing reads
+      them. Done on 2026-09-23, after #992 removed the last reference.
 
-- [ ] **(Mark)** Delete the `teaching.quill-medical.com` A record, once
-      nothing names it. Also Batch 8: the hostname still serves, and the
-      certificate that covers it also covers the apex.
+      **They existed twice over.** Three at repository level, and three
+      more inside a GitHub environment also called `teaching`, which
+      `deploy.yml` named through `environment: ${{ matrix.environment
+      }}`. Deleting the repository secrets leaves the environment ones
+      in place and invisible to `gh secret list` without `--env`, so the
+      environment was deleted as well and took its copies with it.
+
+      `GCP_TEACHING_GCS_BUCKET` looks like a fourth and is not: it is
+      read by `teaching-pipeline.yml`, which runs as a `workflow_call`
+      from the content repositories and inherits their secrets, not this
+      repository's.
+
+      One reference survived #992: the `workflow_dispatch` choice list in
+      `terraform.yml` still offered `teaching` as an environment to
+      apply. A matrix leg and a dispatch option are separate lists in the
+      same file, and grepping for the matrix pattern does not find the
+      other.
+
+- [x] **(Mark)** Delete the `teaching.quill-medical.com` A record, once
+      nothing names it. Done on 2026-09-23. It had pointed at
+      `136.110.221.126`, the load balancer destroyed earlier that day.
+      The apex, `app` and `www` all still resolve to `34.49.99.83`.
+
+      **The zone is not in the project you would expect.**
+      `quill-medical-zone` lives in `quill-medical-production`, not in
+      `quill-medical-app` or `quill-medical-teaching`, and no Terraform
+      manages it: `infra/modules/dns` exists but `infra/main.tf` never
+      instantiates it. Removing the record is a `gcloud dns
+      record-sets` call against that third project, naming the zone and
+      the `A` type.
+
+      Nothing else in the zone is affected. The apex and
+      `app.quill-medical.com` both point at `34.49.99.83`, and the
+      Proton mail, DKIM, DMARC and Resend entries are unrelated to this
+      migration.
 
 **Hands over:** nothing outstanding that blocks Batch 8.
 
@@ -1000,9 +1035,11 @@ for the same name would leave both pending.
       version CI uses. The local binary is 1.15.0 and `versions.tf`
       requires `>= 1.15.2`, so it cannot plan this config at all.
 
-- [ ] **(Mark)** Remove the apex from teaching's `lb_domains` once the
+- [x] **(Mark)** Remove the apex from teaching's `lb_domains` once the
       app certificate is active, so the old project stops claiming a
-      hostname it no longer serves.
+      hostname it no longer serves. Overtaken by the teardown on
+      2026-09-23: the load balancer, its certificate and the tfvars file
+      naming the apex are all gone, so there is nothing left to claim it.
 
 ### Retiring the project
 
@@ -1184,8 +1221,17 @@ for the same name would leave both pending.
       only, with no `workflow_dispatch`, so proving the new identity
       needs a real content change in one of the two repositories.
 
-- [ ] Run a full deploy with `quill-medical-teaching` still alive but
-      unused, and confirm it passes. This is the step that makes the
+- [x] Run a full deploy with `quill-medical-teaching` still alive but
+      unused, and confirm it passes. Done at 06:30 on 2026-09-23, run
+      35827064925 for #979: `Build frontend` and `Build backend` both
+      passed on the app project's identity, pushing to both registries,
+      and both environments deployed.
+
+      **It was easy to miss that this had happened.** The build job is
+      skipped whenever a merge touches no `backend/` or `frontend/`
+      source, so the two deploys either side of it reported green
+      without exercising the change at all. Read the build job's own
+      conclusion, not the run's. This is the step that makes the
       teardown safe rather than brave: anything that still depends on the
       old project surfaces here, while the project is still there to
       answer. Skipping it means finding out after the shutdown, when the
