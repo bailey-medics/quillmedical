@@ -370,6 +370,18 @@ export default function SideNavContent({
             } satisfies NavItem,
           ]
         : []),
+      // Operator-only, matching the route guard and the API: feedback
+      // spans every organisation. "Feedback" is a noun here because under
+      // Admin it plainly means the submissions, not the act of sending.
+      ...(isOperator
+        ? [
+            {
+              label: "Feedback",
+              href: "/admin/feedback",
+              icon: showIcons ? "feedback" : undefined,
+            } satisfies NavItem,
+          ]
+        : []),
       ...(hasTeaching
         ? [
             {

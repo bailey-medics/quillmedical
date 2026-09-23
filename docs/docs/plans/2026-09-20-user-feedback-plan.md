@@ -146,17 +146,30 @@ The feature becomes usable here.
 This closes the loop; without it the table is write-only and decays into the
 log pipe it was meant to improve on.
 
-- [ ] Add `GET /api/feedback` (newest first) and `PATCH /api/feedback/{id}`
-      (status only) to the feedback router, both behind
-      `DEP_REQUIRE_OPERATOR`. Tests: both refuse non-operators; the patch
-      rejects an unknown status.
-- [ ] Add a page under `frontend/src/pages/admin/feedback/`, following the
-      existing admin list pages and wrapped in `<RequireOperator>` in
-      `main.tsx`. List status, category, sender, time and route; filter by
-      status so `new` can be isolated; change status inline. Add it as a
-      `Feedback` child of `adminNavItem` in `SideNavContent.tsx`; under Admin
-      the noun plainly means the submissions, so it does not collide with the
-      `Send feedback` action.
+- [x] Add `GET /api/feedback` (newest first, with an optional `status`
+      filter), `GET /api/feedback/{id}` and `PATCH /api/feedback/{id}`
+      (status only) to the feedback router, all behind
+      `DEP_REQUIRE_OPERATOR`. The single-item read was added for the detail
+      page below. The patch logs who changed the status, and never the
+      message. Tests: all three refuse non-operators, including a holder of
+      `manage_users`; the patch rejects an unknown status and any other
+      field; a deleted sender reads as no sender.
+- [x] Add `frontend/src/pages/admin/feedback/AdminFeedbackPage.tsx`,
+      following the existing admin list pages and wrapped in
+      `<RequireOperator>` in `main.tsx`. Lists status, received date,
+      sender, category, the start of the message and the route; filters by
+      status so `new` can be isolated. Statuses show through a new
+      `components/badge/FeedbackStatusBadge.tsx`, which holds the labels in
+      one place. Add it as a `Feedback` child of `adminNavItem` in
+      `SideNavContent.tsx`, operator-only like the Sites link; under Admin
+      the noun plainly means the submissions, so it does not collide with
+      the `Send feedback` action.
+- [x] Change status on a detail page, `FeedbackDetailPage.tsx` at
+      `/admin/feedback/:id`, rather than inline in the list as first
+      planned. Deciding what to do about a message means reading all of it,
+      which a table cell cannot show, and a select in a clickable row
+      fights the row's own click. The page shows the whole message, the
+      captured context, and a status select that saves on change.
 
 ## Phase 5: Your feedback
 

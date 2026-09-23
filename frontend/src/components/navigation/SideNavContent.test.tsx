@@ -772,6 +772,23 @@ describe("SideNavContent Component", () => {
     });
   });
 
+  describe("Feedback under Admin", () => {
+    it("offers it to somebody who operates Quill", async () => {
+      renderWithAuth(<SideNavContent />, "superadmin", {
+        initialRoute: "/admin",
+      });
+
+      expect(await screen.findByText("Feedback")).toBeInTheDocument();
+    });
+
+    it("hides it from an administrator who does not operate Quill", async () => {
+      renderWithAuth(<SideNavContent />, "admin", { initialRoute: "/admin" });
+
+      await screen.findByText("Admin");
+      expect(screen.queryByText("Feedback")).not.toBeInTheDocument();
+    });
+  });
+
   describe("Send feedback", () => {
     it.each(["staff", "patient", "staff_no_clinical", "superadmin"] as const)(
       "offers it to %s, ungated",

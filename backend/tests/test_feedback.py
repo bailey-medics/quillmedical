@@ -2,14 +2,19 @@
 
 import logging
 import typing
+from datetime import datetime
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import FEEDBACK_CATEGORIES, Feedback, User
-from app.schemas.feedback import MAX_MESSAGE, FeedbackCategory
+from app.models import FEEDBACK_CATEGORIES, FEEDBACK_STATUSES, Feedback, User
+from app.schemas.feedback import (
+    MAX_MESSAGE,
+    FeedbackCategory,
+    FeedbackStatus,
+)
 
 ENDPOINT = "/api/feedback"
 
@@ -212,3 +217,211 @@ class TestLogging:
 
 def test_schema_categories_match_the_model() -> None:
     assert set(typing.get_args(FeedbackCategory)) == set(FEEDBACK_CATEGORIES)
+
+
+def test_schema_statuses_match_the_model() -> None:
+    assert set(typing.get_args(FeedbackStatus)) == set(FEEDBACK_STATUSES)
+
+
+def add_feedback(
+    db: Session,
+    user: User | None,
+    message: str,
+    status: str = "new",
+    created_at: datetime | None = None,
+) -> Feedback:
+    row = Feedback(
+        user_id=user.id if user else None,
+        category="broken",
+        message=message,
+        route="/teaching",
+        release="abc1234",
+        viewport="390x844",
+        user_agent="Mozilla/5.0",
+        breadcrumbs=[],
+        status=status,
+    )
+    if created_at is not None:
+        row.created_at = created_at
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+class TestListing:
+    def test_lists_newest_first_with_the_sender(
+        self,
+        authenticated_superadmin_client: TestClient,
+        db_session: Session,
+        test_user: User,
+    ) -> None:
+        older = add_feedback(
+            db_session, test_user, "older", created_at=datetime(2026, 1, 1)
+        )
+        newer = add_feedback(
+            db_session, test_user, "newer", created_at=datetime(2026, 2, 1)
+        )
+
+        resp = authenticated_superadmin_client.get(ENDPOINT)
+
+        assert resp.status_code == 200
+        items = resp.json()["items"]
+        assert [i["id"] for i in items] == [newer.id, older.id]
+        assert items[0]["message"] == "newer"
+        assert items[0]["sender"] == test_user.username
+        assert items[0]["status"] == "new"
+
+    def test_filters_by_status(
+        self,
+        authenticated_superadmin_client: TestClient,
+        db_session: Session,
+        test_user: User,
+    ) -> None:
+        add_feedback(db_session, test_user, "open")
+        add_feedback(db_session, test_user, "done", status="resolved")
+
+        resp = authenticated_superadmin_client.get(
+            ENDPOINT, params={"status": "resolved"}
+        )
+
+        assert [i["message"] for i in resp.json()["items"]] == ["done"]
+
+    def test_shows_no_sender_once_they_are_deleted(
+        self,
+        authenticated_superadmin_client: TestClient,
+        db_session: Session,
+    ) -> None:
+        add_feedback(db_session, None, "orphaned")
+
+        resp = authenticated_superadmin_client.get(ENDPOINT)
+
+        assert resp.json()["items"][0]["sender"] is None
+
+    def test_refuses_an_unknown_status_filter(
+        self, authenticated_superadmin_client: TestClient
+    ) -> None:
+        resp = authenticated_superadmin_client.get(
+            ENDPOINT, params={"status": "closed"}
+        )
+
+        assert resp.status_code == 422
+
+    def test_refuses_somebody_who_is_not_an_operator(
+        self, authenticated_admin_client: TestClient, db_session: Session
+    ) -> None:
+        """``manage_users`` is not enough: it is scoped to a place."""
+        add_feedback(db_session, None, "private")
+
+        resp = authenticated_admin_client.get(ENDPOINT)
+
+        assert resp.status_code == 403
+        assert "private" not in resp.text
+
+    def test_refuses_a_signed_out_caller(
+        self, test_client: TestClient
+    ) -> None:
+        assert test_client.get(ENDPOINT).status_code == 401
+
+
+class TestReadingOne:
+    def test_returns_one_in_full(
+        self,
+        authenticated_superadmin_client: TestClient,
+        db_session: Session,
+        test_user: User,
+    ) -> None:
+        row = add_feedback(db_session, test_user, "Captions lag")
+
+        resp = authenticated_superadmin_client.get(f"{ENDPOINT}/{row.id}")
+
+        assert resp.status_code == 200
+        assert resp.json()["message"] == "Captions lag"
+        assert resp.json()["user_agent"] == "Mozilla/5.0"
+
+    def test_says_not_found_for_a_missing_id(
+        self, authenticated_superadmin_client: TestClient
+    ) -> None:
+        resp = authenticated_superadmin_client.get(f"{ENDPOINT}/9999")
+
+        assert resp.status_code == 404
+
+    def test_refuses_somebody_who_is_not_an_operator(
+        self, authenticated_admin_client: TestClient, db_session: Session
+    ) -> None:
+        row = add_feedback(db_session, None, "private")
+
+        resp = authenticated_admin_client.get(f"{ENDPOINT}/{row.id}")
+
+        assert resp.status_code == 403
+
+
+class TestChangingStatus:
+    def test_changes_the_status_and_nothing_else(
+        self,
+        authenticated_superadmin_client: TestClient,
+        db_session: Session,
+        test_user: User,
+    ) -> None:
+        row = add_feedback(db_session, test_user, "Captions lag")
+
+        resp = authenticated_superadmin_client.patch(
+            f"{ENDPOINT}/{row.id}", json={"status": "resolved"}
+        )
+
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "resolved"
+        db_session.refresh(row)
+        assert row.status == "resolved"
+        assert row.message == "Captions lag"
+
+    def test_refuses_an_unknown_status(
+        self,
+        authenticated_superadmin_client: TestClient,
+        db_session: Session,
+    ) -> None:
+        row = add_feedback(db_session, None, "x")
+
+        resp = authenticated_superadmin_client.patch(
+            f"{ENDPOINT}/{row.id}", json={"status": "closed"}
+        )
+
+        assert resp.status_code == 422
+
+    def test_refuses_changing_anything_but_the_status(
+        self,
+        authenticated_superadmin_client: TestClient,
+        db_session: Session,
+    ) -> None:
+        row = add_feedback(db_session, None, "original")
+
+        resp = authenticated_superadmin_client.patch(
+            f"{ENDPOINT}/{row.id}",
+            json={"status": "resolved", "message": "edited"},
+        )
+
+        assert resp.status_code == 422
+        db_session.refresh(row)
+        assert row.message == "original"
+
+    def test_says_not_found_for_a_missing_id(
+        self, authenticated_superadmin_client: TestClient
+    ) -> None:
+        resp = authenticated_superadmin_client.patch(
+            f"{ENDPOINT}/9999", json={"status": "resolved"}
+        )
+
+        assert resp.status_code == 404
+
+    def test_refuses_somebody_who_is_not_an_operator(
+        self, authenticated_admin_client: TestClient, db_session: Session
+    ) -> None:
+        row = add_feedback(db_session, None, "x")
+
+        resp = authenticated_admin_client.patch(
+            f"{ENDPOINT}/{row.id}", json={"status": "resolved"}
+        )
+
+        assert resp.status_code == 403
+        db_session.refresh(row)
+        assert row.status == "new"

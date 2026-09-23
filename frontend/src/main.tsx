@@ -75,6 +75,8 @@ import AddStaffToOrgPage from "./pages/admin/organisations/AddStaffToOrgPage";
 import AddPatientToOrgPage from "./pages/admin/organisations/AddPatientToOrgPage";
 import AddSiteToOrgPage from "./pages/admin/organisations/AddSiteToOrgPage";
 import AdminSitesPage from "./pages/admin/sites/AdminSitesPage";
+import AdminFeedbackPage from "./pages/admin/feedback/AdminFeedbackPage";
+import FeedbackDetailPage from "./pages/admin/feedback/FeedbackDetailPage";
 import CreateSitePage from "./pages/admin/sites/CreateSitePage";
 import SiteAdminPage from "./pages/admin/sites/SiteAdminPage";
 import EditSitePage from "./pages/admin/sites/EditSitePage";
@@ -482,6 +484,28 @@ const routes: RouteObject[] = [
               {
                 path: "sites/:id/add-staff",
                 element: <AddStaffToSitePage />,
+              },
+            ],
+          },
+          // Operator-only: feedback comes from every organisation and may
+          // hold patient data, so reading it is operating the deployment
+          // rather than administering a place. The API refuses the same.
+          {
+            element: (
+              <RequireOperator>
+                <Outlet />
+              </RequireOperator>
+            ),
+            children: [
+              {
+                path: "feedback",
+                element: <AdminFeedbackPage />,
+                handle: { safeForReload: true },
+              },
+              {
+                path: "feedback/:id",
+                element: <FeedbackDetailPage />,
+                handle: { safeForReload: true },
               },
             ],
           },
