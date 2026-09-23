@@ -1215,10 +1215,12 @@ class UserCompetency(Base):
     it ends, not who made it. See
     ``docs/docs/plans/2026-09-23-user-competency-table-plan.md``.
 
-    **``granted`` false is a removal**: this person does not hold something
-    their base profession would give them. It keeps the subtraction
-    ``resolve_user_competencies`` performs, and unlike a string in a list it
-    can say who removed it and when.
+    **``granted`` false was a removal, and is retired.** It said this
+    person did not hold something their base profession gave, while the
+    profession was added to their rows on every request. Now only grant rows
+    count, and not holding a competency is having no current grant row for
+    it. No removal row is written, the ones that were are closed, and the
+    column goes in a later change.
 
     **No foreign key on ``competency_id``.** The catalogue is
     ``shared/competency-definitions/``, not a table, and a retired
@@ -1240,7 +1242,7 @@ class UserCompetency(Base):
         user_id: The person.
         competency_id: A competency id from
             ``shared/competency-definitions/``.
-        granted: True for a grant, false for a removal.
+        granted: True for a grant. False only on retired removal rows.
         starts_on: When it took effect. Null on rows copied from the JSON
             lists, which never recorded it.
         ends_on: When it stops, or stopped. Null for a grant with no end.
