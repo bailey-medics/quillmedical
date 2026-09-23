@@ -62,7 +62,10 @@ function competency(
   };
 }
 
-function detailWith(competencies: CompetencyState[]) {
+function detailWith(
+  competencies: CompetencyState[],
+  entitlement?: { can_write?: boolean },
+) {
   return {
     passport: {
       passport_id: "3f2a8c1e",
@@ -73,6 +76,7 @@ function detailWith(competencies: CompetencyState[]) {
       head_commit: null,
     },
     competencies,
+    ...(entitlement ? { entitlement } : {}),
   };
 }
 
@@ -82,6 +86,39 @@ describe("PassportSignOffsPage", () => {
     // Nobody on Quill by default, which is the ordinary case: the
     // request form then accepts the address as typed.
     searchAssessors.mockResolvedValue({ matches: [] });
+  });
+
+  it("disables asking for a sign-off where the passport is read-only", async () => {
+    // Requesting one goes through `_require_writer` on the server, the
+    // same gate as adding a logbook entry, so a read-only holder was
+    // being offered a button that answered 403.
+    fetchMyPassport.mockResolvedValue(
+      detailWith([competency("a", "Perform bronchoscopy", "requested")], {
+        can_write: false,
+      }),
+    );
+    renderWithRouter(<PassportSignOffsPage />);
+
+    await screen.findByText("Perform bronchoscopy");
+
+    expect(
+      screen.getByRole("button", { name: /ask for a sign-off/i }),
+    ).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("leaves it enabled for a holder who may write", async () => {
+    fetchMyPassport.mockResolvedValue(
+      detailWith([competency("a", "Perform bronchoscopy", "requested")], {
+        can_write: true,
+      }),
+    );
+    renderWithRouter(<PassportSignOffsPage />);
+
+    await screen.findByText("Perform bronchoscopy");
+
+    expect(
+      screen.getByRole("button", { name: /ask for a sign-off/i }),
+    ).not.toHaveAttribute("aria-disabled");
   });
 
   it("puts each competency under the heading for its status", async () => {
