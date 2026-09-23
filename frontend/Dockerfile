@@ -9,7 +9,7 @@
 # ============================================================
 # Pin by digest for reproducible builds. To update, run:
 #   docker pull node:24.13.0-bookworm-slim && docker inspect --format='{{index .RepoDigests 0}}' node:24.13.0-bookworm-slim
-FROM node:24.21.0-bookworm-slim@sha256:2fe369e969550cde8e867afc3fe370b260140cab4a23d467074295b42163d553 AS deps
+FROM node:24.21.0-bookworm-slim@sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6 AS deps
 
 RUN corepack enable
 
@@ -67,7 +67,7 @@ RUN yarn build
 # ============================================================
 # Pin by digest for reproducible builds. To update, run:
 #   docker pull caddy:2-alpine && docker inspect --format='{{index .RepoDigests 0}}' caddy:2-alpine
-FROM caddy:2-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648 AS prod
+FROM caddy:2-alpine@sha256:de23def33b17fb5d1290b0f6c2add1d70780e52341896c00a4c8a2a2fe9d355e AS prod
 
 # Copy production Caddyfile (created in Step 1.2)
 COPY caddy/prod/Caddyfile /etc/caddy/Caddyfile
