@@ -46,20 +46,28 @@ switch-reads, contract order in
 
 ## Phase 2: Add the table and write it beside the JSON
 
-- [ ] **Add an `AssessmentAnswerTag` model** in
+- [x] **Add an `AssessmentAnswerTag` model** in
       `backend/app/features/teaching/models.py`, with `answer_id` (FK
       `assessment_answers.id`, `ON DELETE CASCADE`), `tag`
       (`varchar(100)`), a unique constraint on the pair, and an index on
       `tag` for the cross-attempt questions this exists to answer. Add a
       `tags` relationship on `AssessmentAnswer`, loaded with `selectin`.
 
-- [ ] **Write rows beside the JSON in `submit_answer` and `update_answer`**
+- [x] **Write rows beside the JSON in `submit_answer` and `update_answer`**
       (`backend/app/features/teaching/router.py:1386` and `:1485`). An
       answer can be changed before the assessment is completed, and each
       change re-resolves its tags. So the rows for that answer are replaced
       rather than diffed. That is safe where it would not be for
       competencies: until completion, an answer is being edited, not
       recorded, and the completed answer is what the audit trail keeps.
+
+      `AssessmentAnswer.set_tags` keeps the rows for tags that stay and
+      swaps only the rest. Deleting everything and writing afresh would
+      collide on the unique constraint, because the unit of work inserts
+      before it deletes. `tag` is `varchar(255)`, matching
+      `selected_option`, rather than the 100 first planned: the question
+      bank validator sets no limit on a tag's length, and a longer one
+      would have failed the answer.
 
 ## Phase 3: Backfill
 

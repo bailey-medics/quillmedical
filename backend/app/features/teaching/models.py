@@ -249,6 +249,67 @@ class AssessmentAnswer(Base):
     )
     item: Mapped[QuestionBankItem] = relationship(lazy="joined")
 
+    #: The tags of the option chosen, one row each. The same snapshot as
+    #: ``resolved_tags``, which is still what scoring reads, stored where the
+    #: database can see into it. See
+    #: ``docs/docs/plans/2026-09-23-resolved-tags-plan.md``.
+    tags: Mapped[list[AssessmentAnswerTag]] = relationship(
+        back_populates="answer",
+        lazy="selectin",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    def set_tags(self, tags: list[str]) -> None:
+        """Make this answer's tag rows exactly ``tags``.
+
+        Rows for tags that stay are kept rather than deleted and written
+        again, because the unit of work inserts before it deletes, and a
+        fresh row for the same tag would collide with the old one on
+        ``uq_assessment_answer_tag_answer_tag``.
+        """
+        wanted = set(tags)
+        for row in list(self.tags):
+            if row.tag not in wanted:
+                self.tags.remove(row)
+        held = {row.tag for row in self.tags}
+        for tag in sorted(wanted - held):
+            self.tags.append(AssessmentAnswerTag(tag=tag))
+
+
+class AssessmentAnswerTag(Base):
+    """One tag of the option a candidate chose, on one answer.
+
+    A copy taken when they answer, not a join to the question bank. Within
+    one bank version, sync rewrites items and options in place, so reading
+    the chosen option's tags afterwards would re-score a finished attempt
+    against today's options. The copy is what the attempt was scored on.
+
+    While an assessment is in progress an answer can be changed, and its
+    tags are replaced with the new option's. Once it is completed they are
+    a record.
+    """
+
+    __tablename__ = "assessment_answer_tag"
+    __table_args__ = (
+        UniqueConstraint(
+            "answer_id", "tag", name="uq_assessment_answer_tag_answer_tag"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    answer_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("assessment_answers.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    #: Indexed for the questions this table exists to answer, across
+    #: attempts: how often is a tag chosen, and how often is it right.
+    tag: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+
+    answer: Mapped[AssessmentAnswer] = relationship(back_populates="tags")
+
 
 # ------------------------------------------------------------------
 # TeachingOrgSettings
