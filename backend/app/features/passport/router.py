@@ -128,6 +128,7 @@ from . import (
     ids,
     paths,
     pdf,
+    reconcile,
     records,
     render,
     service,
@@ -393,7 +394,12 @@ def _require_holder(db: Session, passport_id: str, user: User) -> Passport:
     return row
 
 
-def _require_writer(db: Session, passport_id: str, user: User) -> Passport:
+def _require_writer(
+    db: Session,
+    passport_id: str,
+    user: User,
+    store: PassportStore | None = None,
+) -> Passport:
     """Require that the caller owns this passport *and* may write to it.
 
     **Ownership is checked first, and that order is the point.** Somebody
@@ -411,6 +417,24 @@ def _require_writer(db: Session, passport_id: str, user: User) -> Passport:
     keeps everything they can read: the record, its rendering and its
     export are derived from owning it, never from paying. What they lose
     is the ability to add to it.
+
+    Args:
+        db: Core database session.
+        passport_id: The passport being written to.
+        user: The caller.
+        store: The store, where the caller is about to write to the
+            repository. Passing it adds the divergence check — see
+            :func:`_reconcile_before_writing`. Omitted by the one writer
+            that does not move HEAD, evidence upload, which writes a
+            blob addressed by its own hash and commits nothing.
+
+    Returns:
+        The passport row.
+
+    Raises:
+        HTTPException: 404 if the caller is not the holder, 403 if they
+            may not write, 409 if the record and the repository disagree
+            in a way that cannot be healed.
     """
     row = _require_holder(db, passport_id, user)
 
@@ -424,7 +448,54 @@ def _require_writer(db: Session, passport_id: str, user: User) -> Passport:
             "it; adding to it needs an active entitlement.",
         )
 
+    if store is not None:
+        _reconcile_before_writing(db, store, row)
+
     return row
+
+
+def _reconcile_before_writing(
+    db: Session, store: PassportStore, row: Passport
+) -> None:
+    """Refuse to build on a head the repository disagrees with.
+
+    Checked before every repository write rather than after, because a
+    write is built on the head that was read: starting from a stale one
+    either fails the store's own fast-forward rule with a confusing
+    error, or succeeds and buries the divergence one commit deeper.
+
+    **A row merely behind is healed and the write proceeds.** That is
+    the recoverable case — a commit landed and the request died before
+    the row caught up — and the holder should not be stopped by a
+    previous request's accident.
+
+    **Anything else is refused with a 409.** A row naming a commit the
+    repository does not have means history was rewritten, which nothing
+    here may paper over; and an unreadable repository means there is no
+    record to append to. Both need a person, so the write stops rather
+    than writing into an unknown state.
+
+    Args:
+        db: Core database session.
+        store: The store holding the repository.
+        row: The passport being written to.
+
+    Raises:
+        HTTPException: 409 where the divergence cannot be healed.
+    """
+    divergence = reconcile.heal(db, store, row)
+
+    if divergence.is_aligned or divergence.is_healable:
+        return
+
+    raise HTTPException(
+        409,
+        (
+            "Your passport could not be written to because its record "
+            "and its history disagree. Nothing has been changed. Please "
+            "report this."
+        ),
+    )
 
 
 def _require_reader(db: Session, passport_id: str, user: User) -> Passport:
@@ -948,7 +1019,7 @@ def request_sign_off(
     the assessor is emailed; they sign in or register, and the account
     is joined to the request when they sign.
     """
-    row = _require_writer(db, passport_id, user)
+    row = _require_writer(db, passport_id, user, store)
 
     assessor_email = body.assessor_email.strip().lower()
 
@@ -1209,7 +1280,7 @@ def withdraw_sign_off(
     store: PassportStore = _DEP_STORE,
 ) -> SignOffResultOut:
     """Withdraw a request the holder no longer wants assessed."""
-    passport = _require_writer(db, passport_id, user)
+    passport = _require_writer(db, passport_id, user, store)
     request_row = db.scalar(
         select(PassportSignOffRequest).where(
             PassportSignOffRequest.passport_id == passport.id,
@@ -1552,7 +1623,7 @@ def add_certificate(
     to several competencies at once, which is why they are filed flat
     rather than under one.
     """
-    row = _require_writer(db, passport_id, user)
+    row = _require_writer(db, passport_id, user, store)
 
     # The service's generator, not a second one: the monotonic guarantee
     # holds per instance, so two would each be monotonic alone and could
@@ -1625,7 +1696,7 @@ def amend_certificate(
     is the handle the index refers to, and renaming would orphan every
     reference to it.
     """
-    row = _require_writer(db, passport_id, user)
+    row = _require_writer(db, passport_id, user, store)
     existing = _existing_certificate(store, row.id, name)
 
     certificate = Certificate(
@@ -1681,7 +1752,7 @@ def remove_certificate(
 
     The file goes; the history keeps it, as it keeps everything.
     """
-    row = _require_writer(db, passport_id, user)
+    row = _require_writer(db, passport_id, user, store)
 
     try:
         commit = records.remove_certificate(store, row.id, _actor(user), name)
@@ -1716,7 +1787,7 @@ def add_logbook_entry(
     evening. The filename records when it was written; the clinical date
     lives inside the file.
     """
-    row = _require_writer(db, passport_id, user)
+    row = _require_writer(db, passport_id, user, store)
     _competency_refs([competency_id])
 
     entry = LogbookEntry(
@@ -1866,7 +1937,7 @@ def amend_logbook_entry(
     store: PassportStore = _DEP_STORE,
 ) -> RecordResultOut:
     """Correct a logged procedure."""
-    row = _require_writer(db, passport_id, user)
+    row = _require_writer(db, passport_id, user, store)
 
     entry = LogbookEntry(
         performed_on=body.performed_on,
@@ -1907,7 +1978,7 @@ def remove_logbook_entry(
     store: PassportStore = _DEP_STORE,
 ) -> RecordResultOut:
     """Remove a logged procedure recorded in error."""
-    row = _require_writer(db, passport_id, user)
+    row = _require_writer(db, passport_id, user, store)
 
     try:
         commit = records.remove_logbook_entry(
@@ -1947,7 +2018,7 @@ def add_reflection(
     Reflections are written about real cases and are one of only two
     org_units patient data could enter a passport.
     """
-    row = _require_writer(db, passport_id, user)
+    row = _require_writer(db, passport_id, user, store)
 
     if not body.anonymised_confirmed:
         raise HTTPException(
@@ -2025,7 +2096,7 @@ def amend_reflection(
     store: PassportStore = _DEP_STORE,
 ) -> RecordResultOut:
     """Rewrite a reflection."""
-    row = _require_writer(db, passport_id, user)
+    row = _require_writer(db, passport_id, user, store)
 
     if not body.anonymised_confirmed:
         raise HTTPException(
@@ -2067,7 +2138,7 @@ def remove_reflection(
     store: PassportStore = _DEP_STORE,
 ) -> RecordResultOut:
     """Remove a reflection."""
-    row = _require_writer(db, passport_id, user)
+    row = _require_writer(db, passport_id, user, store)
 
     try:
         commit = records.remove_reflection(store, row.id, _actor(user), name)
@@ -2100,7 +2171,7 @@ def add_cpd_entry(
     what you did this year — the grouping matches how the record is used
     rather than being file management.
     """
-    row = _require_writer(db, passport_id, user)
+    row = _require_writer(db, passport_id, user, store)
 
     entry = CpdEntry(
         activity_on=body.activity_on,
@@ -2175,7 +2246,7 @@ def amend_cpd_entry(
     store: PassportStore = _DEP_STORE,
 ) -> RecordResultOut:
     """Correct a CPD activity."""
-    row = _require_writer(db, passport_id, user)
+    row = _require_writer(db, passport_id, user, store)
 
     entry = CpdEntry(
         activity_on=body.activity_on,
@@ -2215,7 +2286,7 @@ def remove_cpd_entry(
     store: PassportStore = _DEP_STORE,
 ) -> RecordResultOut:
     """Remove a CPD activity recorded in error."""
-    row = _require_writer(db, passport_id, user)
+    row = _require_writer(db, passport_id, user, store)
 
     try:
         commit = records.remove_cpd_entry(

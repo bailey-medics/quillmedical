@@ -228,6 +228,89 @@ class TestRead:
             )
 
 
+class TestContains:
+    """Whether a repository holds a given commit.
+
+    The question reconciliation asks to tell "the row is behind" from
+    "the row names history that is gone", so the distinction between an
+    absent commit and a malformed id matters: both answer False, and
+    neither may raise.
+    """
+
+    def test_finds_a_commit_it_made(
+        self, passport_store: LocalPassportStore, actor: Actor
+    ) -> None:
+        commit = _created(passport_store, actor)
+
+        assert passport_store.contains(PASSPORT_ID, commit)
+
+    def test_finds_an_earlier_commit_after_a_later_one(
+        self, passport_store: LocalPassportStore, actor: Actor
+    ) -> None:
+        """The behind case: the row's commit is still in the history."""
+        first = _created(passport_store, actor)
+        passport_store.write(
+            PASSPORT_ID,
+            {PurePosixPath("later.yaml"): "a: 1\n"},
+            _message("a later change"),
+            actor,
+            PassportHead(commit=first),
+        )
+
+        assert passport_store.contains(PASSPORT_ID, first)
+
+    def test_does_not_find_a_commit_from_another_repository(
+        self, passport_store: LocalPassportStore, actor: Actor
+    ) -> None:
+        """The ahead case: a well-formed id this repository never had.
+
+        The second repository is given different contents on purpose.
+        Two passports created from identical files by the same actor in
+        the same second produce the *same* commit id, git being content
+        addressed — which is correct, and would make this assert nothing.
+        """
+        _created(passport_store, actor)
+        _created(passport_store, actor, passport_id=OTHER_ID)
+        elsewhere = passport_store.write(
+            OTHER_ID,
+            {PurePosixPath("only-here.yaml"): "distinct: yes\n"},
+            _message("a change only the other passport has"),
+            actor,
+            passport_store.head(OTHER_ID),
+        )
+
+        assert not passport_store.contains(PASSPORT_ID, elsewhere)
+
+    def test_a_malformed_id_is_false_rather_than_an_error(
+        self, passport_store: LocalPassportStore, actor: Actor
+    ) -> None:
+        _created(passport_store, actor)
+
+        assert not passport_store.contains(PASSPORT_ID, "not-a-commit-id")
+
+    def test_a_tree_id_is_not_a_commit(
+        self, passport_store: LocalPassportStore, actor: Actor, tmp_path: Path
+    ) -> None:
+        """A real object of the wrong type answers False.
+
+        The check is "does this repository hold this *commit*", so an id
+        that resolves to a tree must not pass for one.
+        """
+        commit = _created(passport_store, actor)
+        repository = pygit2.Repository(
+            str(tmp_path / paths.shard(PASSPORT_ID))
+        )
+        tree = str(repository.get(commit).tree.id)
+
+        assert not passport_store.contains(PASSPORT_ID, tree)
+
+    def test_refuses_when_there_is_no_repository(
+        self, passport_store: LocalPassportStore
+    ) -> None:
+        with pytest.raises(PassportNotFoundError):
+            passport_store.contains(PASSPORT_ID, "a" * 40)
+
+
 class TestListDir:
     def test_lists_what_is_there(
         self, passport_store: LocalPassportStore, actor: Actor

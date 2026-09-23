@@ -179,6 +179,10 @@ class PassportStore(ABC):
         """Where the repository is now."""
 
     @abstractmethod
+    def contains(self, passport_id: str, commit: str) -> bool:
+        """Whether the repository holds this commit."""
+
+    @abstractmethod
     def write(
         self,
         passport_id: str,
@@ -279,6 +283,40 @@ class LocalPassportStore(PassportStore):
             return PassportHead(commit=None)
 
         return PassportHead(commit=str(repository.head.target))
+
+    def contains(self, passport_id: str, commit: str) -> bool:
+        """Whether the repository holds this commit.
+
+        Asked when the database names a commit and the repository's head
+        is a different one, to tell the two apart: a commit that is
+        present means the row is merely behind, and one that is absent
+        means the history the row was written against is gone.
+
+        A malformed id is False rather than an error. The question is
+        whether this repository holds that commit, and it does not hold
+        something that could never be a commit.
+
+        Args:
+            passport_id: The passport whose repository to look in.
+            commit: The commit id to look for.
+
+        Returns:
+            True if the repository contains it as a commit.
+
+        Raises:
+            PassportNotFoundError: If there is no repository.
+        """
+        repository = self._open(passport_id)
+
+        try:
+            found = repository.get(commit)
+        except ValueError:
+            # Not a well-formed object id.
+            return False
+
+        return (
+            found is not None and found.type == pygit2.enums.ObjectType.COMMIT
+        )
 
     def create(
         self,
