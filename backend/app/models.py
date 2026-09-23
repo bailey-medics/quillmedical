@@ -34,7 +34,6 @@ from sqlalchemy import (
     UniqueConstraint,
     delete,
     event,
-    text,
     update,
 )
 from sqlalchemy.engine import Connection
@@ -102,8 +101,8 @@ class User(Base):
         is_active: Whether the account is active (for soft delete).
         roles: List of roles assigned to this user.
         base_profession: Base profession template (e.g., "consultant", "patient").
-        competency_grants: Competencies granted beyond, or removed from,
-            the base profession, one ``user_competency`` row each.
+        competency_grants: Every competency granted to this person, one
+            ``user_competency`` row each, current and closed.
         professional_registrations: Professional registration details (GMC, NMC, etc.).
     """
 
@@ -167,8 +166,8 @@ class User(Base):
         lazy="joined",
     )
 
-    #: Every competency this person has been granted or had removed, one
-    #: row each, current and closed alike. Loaded with the user rather
+    #: Every competency this person has been granted, one row each,
+    #: current and closed alike. Loaded with the user rather
     #: than on demand because ``get_final_competencies`` takes no
     #: session, and ``selectin`` loads a whole list of users' rows in one
     #: query rather than one per user.
@@ -1215,12 +1214,11 @@ class UserCompetency(Base):
     it ends, not who made it. See
     ``docs/docs/plans/2026-09-23-user-competency-table-plan.md``.
 
-    **``granted`` false was a removal, and is retired.** It said this
-    person did not hold something their base profession gave, while the
-    profession was added to their rows on every request. Now only grant rows
-    count, and not holding a competency is having no current grant row for
-    it. No removal row is written, the ones that were are closed, and the
-    column goes in a later change.
+    **Every row is a grant.** Not holding a competency is having no
+    current row for it, so taking one away closes its row. There were once
+    removal rows as well, marked by a ``granted`` column, while the base
+    profession was added to everybody's rows on every request; they and
+    the column went once the profession only seeded rows.
 
     **No foreign key on ``competency_id``.** The catalogue is
     ``shared/competency-definitions/``, not a table, and a retired
@@ -1242,7 +1240,6 @@ class UserCompetency(Base):
         user_id: The person.
         competency_id: A competency id from
             ``shared/competency-definitions/``.
-        granted: True for a grant. False only on retired removal rows.
         starts_on: When it took effect. Null on rows copied from the JSON
             lists, which never recorded it.
         ends_on: When it stops, or stopped. Null for a grant with no end.
@@ -1255,11 +1252,6 @@ class UserCompetency(Base):
     """
 
     __tablename__ = "user_competency"
-    # Server-generated values are read back on first access rather than
-    # with RETURNING on every INSERT, which would name the retired
-    # ``granted`` column below and put it back into the statement it must
-    # stay out of.
-    __mapper_args__ = {"eager_defaults": False}
     __table_args__ = (
         CheckConstraint(
             "ends_on IS NULL OR starts_on IS NULL OR ends_on >= starts_on",
@@ -1275,14 +1267,6 @@ class UserCompetency(Base):
     )
     competency_id: Mapped[str] = mapped_column(
         String(100), nullable=False, index=True
-    )
-    # Retired, and dropped by the next change. Every current row is a grant,
-    # so nothing reads it; deferred and with no Python value, it appears in
-    # no SELECT and no INSERT, and the database fills it from its default.
-    # A revision still serving while the drop runs then sends nothing the
-    # drop could break.
-    granted: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true"), deferred=True
     )
     starts_on: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
