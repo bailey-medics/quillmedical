@@ -567,11 +567,17 @@ out rather than stored.
       stories of its own, as pages are not stories here, so only their
       tests changed.
 
-- [ ] **Close the removal rows**, in a data migration, once nothing reads or
+- [x] **Close the removal rows**, in a data migration, once nothing reads or
       writes them. A current `granted: false` row now means only that no
       grant row exists, which the seeding already made true. Closing rather
       than deleting keeps the history of who removed what. Not destructive:
       rows are closed, and the column stays.
+
+      Migration `2a2a7b1ea83a`. Every row it closes shares one `ends_on`,
+      the start of its transaction, which is how its `downgrade()` finds
+      them again. Tested against Postgres in
+      `backend/tests/test_close_removal_rows.py`, added to the
+      `alembic_drift_check` CI job.
 
 - [ ] **Drop the `granted` column**, in its own migration with the
       `allow-destructive` marker, through the
