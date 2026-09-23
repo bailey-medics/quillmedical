@@ -73,6 +73,13 @@ export default function OrganisationAdminPage() {
     state.status === "authenticated"
       ? state.user.clinical_services_enabled !== false
       : true;
+  // The site pages are operator-only for now, and they 404 for everybody
+  // else. Read here so this page does not offer a way into them that
+  // ends in a 404: the sites are still listed, they simply are not
+  // links.
+  const isOperator =
+    state.status === "authenticated" &&
+    state.user.platform_role === "superadmin";
   const [org, setOrg] = useState<OrgUnitDetail | null>(null);
   const [enabledFeatures, setEnabledFeatures] = useState<string[]>([]);
   // Without an id there is nothing to fetch, so the page does not begin in
@@ -420,16 +427,22 @@ export default function OrganisationAdminPage() {
         <Stack gap="md">
           <Group justify="space-between" align="center">
             <Heading>Sites</Heading>
-            <AddButton
-              label="Add site"
-              onClick={() => navigate(`/admin/organisations/${id}/add-site`)}
-            />
+            {isOperator && (
+              <AddButton
+                label="Add site"
+                onClick={() => navigate(`/admin/organisations/${id}/add-site`)}
+              />
+            )}
           </Group>
 
           <DataTableControlled<OrgUnitChild>
             data={org.children}
             columns={siteColumns}
-            onRowClick={(site) => navigate(`/admin/sites/${site.id}`)}
+            onRowClick={
+              isOperator
+                ? (site) => navigate(`/admin/sites/${site.id}`)
+                : undefined
+            }
             getRowKey={(site) => site.id}
             emptyMessage="No sites linked"
             searchFields={(s) => [s.name, s.type, s.clinical_lead_name]}

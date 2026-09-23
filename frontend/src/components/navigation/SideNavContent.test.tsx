@@ -30,6 +30,10 @@ const mockUsers: Record<string, User> = {
     email: "superadmin@example.com",
     roles: ["Clinician", "Administrator"],
     competencies: ["manage_users"],
+    // Operating Quill itself, which is what `RequireOperator` and the
+    // Sites link both read. Without it this fixture was a name only,
+    // indistinguishable from `admin`.
+    platform_role: "superadmin",
     clinical_services_enabled: true,
   },
   patient: {
@@ -640,6 +644,28 @@ describe("SideNavContent Component", () => {
         expect(screen.getByText("Admin")).toBeInTheDocument();
       });
       expect(asked.some((url) => url.includes("/org-units/"))).toBe(false);
+    });
+  });
+
+  describe("Sites", () => {
+    it("offers Sites to somebody who operates Quill", async () => {
+      renderWithAuth(<SideNavContent />, "superadmin");
+
+      await waitFor(() => {
+        expect(screen.getByText("Sites")).toBeInTheDocument();
+      });
+    });
+
+    it("hides Sites from an administrator who does not operate Quill", async () => {
+      // Administering an organisation is not operating Quill, and who
+      // may administer a site is not settled. The link goes rather than
+      // pointing at a page that would 404 on arrival.
+      renderWithAuth(<SideNavContent />, "admin");
+
+      await waitFor(() => {
+        expect(screen.getByText("Organisations")).toBeInTheDocument();
+      });
+      expect(screen.queryByText("Sites")).not.toBeInTheDocument();
     });
   });
 
