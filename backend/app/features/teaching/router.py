@@ -1386,6 +1386,9 @@ def submit_answer(
     current.selected_option = body.selected_option
     current.is_correct = is_correct
     current.resolved_tags = resolved_tags
+    # Rows beside the JSON, which scoring still reads. See the resolved
+    # tags plan.
+    current.set_tags(resolved_tags)
     current.answered_at = now
     db.flush()
 
@@ -1485,6 +1488,9 @@ def update_answer(
     answer.selected_option = body.selected_option
     answer.is_correct = is_correct
     answer.resolved_tags = resolved_tags
+    # Rows beside the JSON, which scoring still reads. See the resolved
+    # tags plan.
+    answer.set_tags(resolved_tags)
     answer.answered_at = now
 
     return _build_candidate_item(answer, config, config_row.type)
