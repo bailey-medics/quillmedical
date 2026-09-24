@@ -57,11 +57,13 @@ reason: each stacked unit deploys when it merges.
       jurisdiction in `shared/jurisdiction-config.yaml`, and the model's
       `@validates` hook refuses anything else as a last line of defence.
 
-- [ ] **Offer the listed bodies on the accept page.**
+- [x] **Offer the listed bodies on the accept page.**
       `PassportAcceptInvitePage.tsx` offers a free `TextField`. Change it to
       a `Select` over the default jurisdiction's bodies in
       `jurisdiction-config.json`, which `InviteAssessorForm.tsx` already
-      reads, so nobody types a body the backend then refuses.
+      reads, so nobody types a body the backend then refuses. The list moved
+      to `registrationAuthorities` in `frontend/src/lib/passport/`, shared
+      by both.
 
 ## Phase 2: Backfill
 

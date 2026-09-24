@@ -34,25 +34,8 @@ import StateMessage from "@/components/message-cards/StateMessage";
 import { IconInfoCircle } from "@/components/icons/appIcons";
 import ButtonPair from "@/components/button/ButtonPair";
 import CompetencyPicker from "./CompetencyPicker";
-import jurisdictionConfig from "@/generated/jurisdiction-config.json";
+import { registrationAuthorities } from "@lib/passport";
 import type { AssessorInviteInput } from "@lib/passport";
-
-/**
- * The registration bodies of the default jurisdiction. Read from the
- * shared config rather than hardcoded, so adding a body is a YAML change
- * as it is everywhere else.
- */
-function registrationAuthorities(): { value: string; label: string }[] {
-  const { jurisdictions, default_jurisdiction: defaultId } = jurisdictionConfig;
-
-  const registrations =
-    jurisdictions[defaultId]?.professional_registrations ?? [];
-
-  return registrations.map((registration) => ({
-    value: registration.id,
-    label: `${registration.id} — ${registration.display_name}`,
-  }));
-}
 
 export interface InviteAssessorFormProps {
   /** Called with the completed invitation */

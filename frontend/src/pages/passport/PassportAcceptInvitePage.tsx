@@ -18,13 +18,17 @@ import { Stack } from "@mantine/core";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import PageHeader from "@/components/page-header";
 import BaseCard from "@/components/base-card/BaseCard";
-import { PasswordField, TextField } from "@components/form";
+import { PasswordField, SelectField, TextField } from "@components/form";
 import ButtonPair from "@/components/button/ButtonPair";
 import ErrorState from "@/components/error-state/ErrorState";
 import StateMessage from "@/components/message-cards/StateMessage";
 import { IconCircleCheck, IconInfoCircle } from "@/components/icons/appIcons";
 import { BodyText, BodyTextInline } from "@/components/typography";
-import { acceptAssessorInvite, previewAssessorInvite } from "@lib/passport";
+import {
+  acceptAssessorInvite,
+  previewAssessorInvite,
+  registrationAuthorities,
+} from "@lib/passport";
 import type { InvitePreview } from "@lib/passport";
 
 export function Component() {
@@ -209,13 +213,13 @@ export function Component() {
                   onChange={(event) => setFullName(event.currentTarget.value)}
                   required
                 />
-                <TextField
+                <SelectField
                   label="Registering body"
-                  description="GMC, NMC, HCPC or whichever holds your registration."
-                  value={registrationBody}
-                  onChange={(event) =>
-                    setRegistrationBody(event.currentTarget.value)
-                  }
+                  description="The body that holds your registration."
+                  placeholder="Choose one"
+                  data={registrationAuthorities()}
+                  value={registrationBody || null}
+                  onChange={(value) => setRegistrationBody(value ?? "")}
                   required
                 />
                 <TextField

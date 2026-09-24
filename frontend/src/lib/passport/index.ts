@@ -96,3 +96,6 @@ export type {
   Supervision,
   Verification,
 } from "./types";
+
+export { registrationAuthorities } from "./registrationAuthorities";
+export type { RegistrationAuthorityOption } from "./registrationAuthorities";
