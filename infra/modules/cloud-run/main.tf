@@ -102,6 +102,14 @@ resource "google_cloud_run_v2_service" "service" {
       # on 2026-09-23 wiped a running deploy's tag and put an untested
       # revision live. See .github/scripts/deploy/deploy-tagged.sh.
       traffic,
+      # Set by `gcloud run deploy` on every release: the deploy names each
+      # revision, and gcloud stamps its own name and version. Terraform
+      # never sets them, so without this every apply cleared all three,
+      # showed five Cloud Run resources as changed when nothing had, and
+      # created a spare backend revision each time.
+      template[0].revision,
+      client,
+      client_version,
     ]
   }
 }

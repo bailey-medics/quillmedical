@@ -313,15 +313,13 @@ module "cloud_run_backend" {
   vpc_connector_id  = module.networking.vpc_connector_id
   health_check_path = "/api/health"
 
-  # Ingress is deliberately left at the module default of
-  # INGRESS_TRAFFIC_ALL, which leaves the *.run.app URL reachable and Cloud
-  # Armor's throttle rule bypassable. Closing it broke every deploy:
-  # deploy-tagged.sh releases a revision with --no-traffic and smoke-tests
-  # that revision's own tagged *.run.app URL before promoting it, and a
-  # closed ingress rejects that request before it reaches the service. A
-  # GitHub-hosted runner has no route to a tagged revision once ingress is
-  # closed, so the smoke test has to move inside the project first. See
-  # Phase D of docs/docs/plans/2026-09-18-environment-isolation-and-iap-plan.md.
+  # Only the load balancer and the VPC may reach it, so the *.run.app URL
+  # can no longer skip Cloud Armor. The deploy's smoke test still reaches a
+  # tagged revision because it runs inside quill-admin, whose egress goes
+  # through the VPC (see vpc_egress on that job below). Closing this before
+  # that existed broke every deploy on 2026-09-21. See Phase 1 and Phase D of
+  # docs/docs/plans/2026-09-18-environment-isolation-and-iap-plan.md.
+  ingress = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
 
   env_vars = merge(
     {
@@ -644,8 +642,10 @@ module "cloud_run_frontend" {
   max_instances     = var.cloud_run_max_instances
   health_check_path = "/healthz"
 
-  # As for the backend above: ingress stays open until the smoke test can
-  # reach a tagged revision from inside the project.
+  # As for the backend above. The frontend deploy has no tagged-revision
+  # smoke test to break: it updates the service directly, and the check
+  # after it goes through the public hostname.
+  ingress = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
 }
 
 # ---------- Global HTTPS Load Balancer ----------
