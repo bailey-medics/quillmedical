@@ -138,13 +138,32 @@ resource "google_storage_bucket_iam_member" "runtime_transcode_video_source" {
 }
 
 # Transcode writes the renditions; caption reads the 720p one and writes the
-# WebVTT file beside it.
+# WebVTT file beside it; the backend reads and saves that WebVTT file when an
+# admin reviews captions (read_caption_object and write_caption_object in
+# backend/app/features/teaching/storage.py). The backend was missed from the
+# first inventory and found on 2026-09-24 as a 403 reading a .vtt file.
 resource "google_storage_bucket_iam_member" "runtime_video_processed" {
-  for_each = local.is_teaching_product ? toset(["transcode", "caption"]) : toset([])
+  for_each = local.is_teaching_product ? toset(["backend", "transcode", "caption"]) : toset([])
 
   bucket = module.teaching_video_pipeline[0].processed_bucket_name
   role   = "roles/storage.objectAdmin"
   member = "serviceAccount:${google_service_account.runtime[each.key].email}"
+}
+
+# ---------- The backend signs its own URLs ----------
+# `backend/app/features/teaching/storage.py` issues V4 signed URLs for the
+# teaching images and uploads. Cloud Run has no private key to sign with, so
+# the storage library calls the IAM signBytes API as the service's own
+# account, which needs roles/iam.serviceAccountTokenCreator on itself.
+#
+# Missed from the first inventory, and found on 2026-09-24 when /teaching
+# returned 500 with "Error calling the IAM signBytes API" straight after the
+# switch. The default account had held the same grant, through
+# google_service_account_iam_member.cloudrun_token_creator in main.tf.
+resource "google_service_account_iam_member" "runtime_backend_signs_as_itself" {
+  service_account_id = google_service_account.runtime["backend"].name
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = "serviceAccount:${google_service_account.runtime["backend"].email}"
 }
 
 # ---------- The backend starts the transcode and caption jobs ----------

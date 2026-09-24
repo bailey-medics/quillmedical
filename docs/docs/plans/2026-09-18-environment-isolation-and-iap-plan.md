@@ -1661,10 +1661,30 @@ are Cloud Storage and Cloud Run jobs.
 
 - [ ] **(Claude)** Remove the default account's grants: the project-wide
       `secretAccessor`, its bucket bindings, the job invokers and
-      `cloudrun_token_creator`, once the step above has run live. The
-      token creator looks unused already: nothing in `backend/app`
-      calls `generate_signed_url`, and the video pipeline signs CDN
-      cookies with an HMAC rather than through IAM. This is the step
+      `cloudrun_token_creator`, once the step above has run live.
+
+      **The token creator is not unused, as this step first claimed.**
+      `backend/app/features/teaching/storage.py` calls
+      `generate_signed_url` in four places; the search that concluded
+      otherwise had its output cut to ten lines, before those matches. So
+      after the switch, `/api/teaching/question-banks` returned 500 on
+      2026-09-24 with `Error calling the IAM signBytes API`. `run-backend`
+      now holds `roles/iam.serviceAccountTokenCreator` on itself, first by
+      hand and then in `infra/runtime-identities.tf`. The default
+      account's copy can go with the rest; only the video CDN signing is
+      HMAC, not the images.
+
+      **A second gap from the same inventory:** the backend also reads and
+      writes caption files in `quill-teaching-videos-processed-app`, when
+      an admin reviews captions. `run-backend` had no grant there, so a
+      caption read returned 403. It now holds `roles/storage.objectAdmin`
+      on that bucket, again by hand and then in Terraform.
+
+      **The check that should have come first:** after both fixes, every
+      grant the default account holds was compared with the five new
+      accounts, bucket by bucket, at project level and on the account
+      itself. Each now has a match. Do that comparison before switching
+      identities next time, not after a user finds the 500. This is the step
       where the frontend actually stops being able to read the secrets.
 
 - [ ] **(Mark)** Narrow the deploy account from Phase 1 to
