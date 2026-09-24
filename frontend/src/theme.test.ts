@@ -10,7 +10,8 @@
 
 import { DEFAULT_THEME, mergeMantineTheme } from "@mantine/core";
 import { describe, expect, it } from "vitest";
-import { cssVariablesResolver, primaryScale, theme } from "./theme";
+import { AA_TEXT, contrastRatio } from "@lib/colour-contrast/contrast";
+import { cssVariablesResolver, greyScale, primaryScale, theme } from "./theme";
 
 const resolved = mergeMantineTheme(DEFAULT_THEME, theme);
 const vars = cssVariablesResolver(resolved);
@@ -105,5 +106,22 @@ describe("cssVariablesResolver", () => {
     // app overrides it with its accessible error token.
     expect(vars.light["--mantine-color-error"]).toBe("var(--error-color)");
     expect(vars.dark["--mantine-color-error"]).toBe("var(--error-color)");
+  });
+});
+
+describe("dimmed text contrast", () => {
+  // The surfaces dimmed text sits on in each scheme: body, striped rows
+  // and card backgrounds in light; body, card and input navy in dark.
+  const lightSurfaces = ["#ffffff", greyScale[0], greyScale[1], greyScale[2]];
+  const darkSurfaces = ["#001a36", "#042340", "#0a2f56"];
+
+  it.each(lightSurfaces)("passes WCAG AA on %s in light mode", (surface) => {
+    const dimmed = vars.light["--mantine-color-dimmed"];
+    expect(contrastRatio(dimmed, surface)).toBeGreaterThanOrEqual(AA_TEXT);
+  });
+
+  it.each(darkSurfaces)("passes WCAG AA on %s in dark mode", (surface) => {
+    const dimmed = vars.dark["--mantine-color-dimmed"];
+    expect(contrastRatio(dimmed, surface)).toBeGreaterThanOrEqual(AA_TEXT);
   });
 });

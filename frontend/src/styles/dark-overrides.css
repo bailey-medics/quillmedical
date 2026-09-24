@@ -30,13 +30,12 @@
 /**
  * Input description overrides
  *
- * Mantine defaults to `var(--mantine-color-dimmed)` which is too light
- * in light mode and wrong in dark mode. Override per colour scheme.
+ * Body size rather than Mantine's smaller default. The colour is the
+ * theme's `dimmed`, which `theme.ts` sets to pass WCAG AA contrast in
+ * both colour schemes.
  */
-
-/* Light mode — grey scale 6 (muted labels) */
 .mantine-InputWrapper-description {
-  color: #868e96 !important;
+  color: var(--mantine-color-dimmed) !important;
   font-size: var(--mantine-font-size-md) !important;
   margin-bottom: 0.25rem !important;
 }

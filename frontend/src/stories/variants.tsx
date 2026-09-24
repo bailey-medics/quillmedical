@@ -30,8 +30,7 @@ type VariantRowProps = {
   horizontal?: boolean;
 };
 
-export const STORY_LABEL_COLOR =
-  "light-dark(var(--mantine-color-gray-6), var(--mantine-color-gray-5))";
+export const STORY_LABEL_COLOR = "var(--mantine-color-dimmed)";
 
 /**
  * A single labelled row of variant content.
