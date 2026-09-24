@@ -1500,7 +1500,7 @@ class TestAcceptingAnInvitation:
         db_session: Session,
         sent: list[dict[str, str]],
     ) -> None:
-        """A row, and the retired JSON column left empty."""
+        """One row per registration declared."""
         passport_id = _create_passport(holder_client)
         self._invite(holder_client, passport_id)
 
@@ -1517,7 +1517,6 @@ class TestAcceptingAnInvitation:
         assert [
             (r.authority, r.number, r.ends_on) for r in user.registrations
         ] == [("NMC", "99AB1234", None)]
-        assert user.professional_registrations is None
 
     def test_a_body_in_any_case_is_stored_as_the_config_spells_it(
         self,

@@ -386,8 +386,9 @@ class TestCeilingsThatLapse:
 
     @pytest.mark.skip(
         reason=(
-            "nothing records how a competency was acquired; "
-            "User.professional_registrations is JSON that nothing reads"
+            "deferred: a lapsed registration is not linked to competencies "
+            "for now (decided 23 September 2026; see "
+            "docs/docs/plans/2026-09-23-professional-registrations-plan.md)"
         )
     )
     def test_a_lapsed_registration_drops_clinical_grants_not_memberships(

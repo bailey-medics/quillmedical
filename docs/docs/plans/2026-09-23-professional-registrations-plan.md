@@ -175,12 +175,18 @@ picks it up.
 
 ## Phase 6: Drop the columns
 
-- [ ] **Drop `users.professional_registrations`** in its own destructive
+- [x] **Drop `users.professional_registrations`** in its own destructive
       migration with the `allow-destructive` marker, through the
       `db-destructive-migration-review` environment. Approved on 24
       September 2026. The verification table's copied
       `registration_authority` and `registration_number` stay, because
       Phase 4 is deferred.
+
+      Migration `7c33ceaa4550`. Its `downgrade()` fills the column back
+      from the current rows, so going back loses nothing. Tested against
+      Postgres in `backend/tests/test_drop_professional_registrations.py`.
+      The skipped lapsed-registration test now gives the decision as its
+      reason, in place of the JSON it used to blame.
 
 ## Decisions
 
