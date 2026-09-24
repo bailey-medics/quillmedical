@@ -44,6 +44,7 @@ from sqlalchemy.orm import Session
 
 from app import main
 from app.config import settings
+from app.email_send import EmailNotAllowedError, EmailRateLimitError
 from app.features.passport import router
 from app.features.passport.blobs import BlobStore
 from app.features.passport.models import (
@@ -495,6 +496,95 @@ class TestRequestSignOff:
 
         assert response.status_code == 201, response.text
         assert response.json()["status"] == "requested"
+
+    def test_a_failed_email_makes_no_request(
+        self,
+        holder_client: TestClient,
+        assessor: User,
+        db_session: Session,
+        passport_store: LocalPassportStore,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """No mail, no request, and nothing left behind.
+
+        An assessor learns of a request only by email, so one that never
+        went out would leave the holder believing they had asked and the
+        assessor never knowing. The mail is therefore sent before
+        anything is written.
+        """
+        passport_id = _create_passport(holder_client)
+        before = passport_store.head(passport_id).commit
+
+        def _explode(**_kwargs: object) -> None:
+            raise RuntimeError("mail server unreachable")
+
+        monkeypatch.setattr(router, "send_email", _explode)
+
+        response = holder_client.post(
+            f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
+            json={
+                "assessor_email": assessor.email,
+                "observed_on": "2026-03-14",
+                "level_id": LEVEL,
+            },
+        )
+
+        assert response.status_code == 502, response.text
+
+        # The database has no row, and the repository has no commit:
+        # the two failure modes this ordering exists to prevent.
+        assert db_session.scalars(select(PassportSignOffRequest)).all() == []
+        assert passport_store.head(passport_id).commit == before
+
+    def test_a_rate_limited_address_is_a_429(
+        self,
+        holder_client: TestClient,
+        assessor: User,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Distinct from an outage: one waits, the other retries."""
+        passport_id = _create_passport(holder_client)
+
+        def _limited(**_kwargs: object) -> None:
+            raise EmailRateLimitError("too many")
+
+        monkeypatch.setattr(router, "send_email", _limited)
+
+        response = holder_client.post(
+            f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
+            json={
+                "assessor_email": assessor.email,
+                "observed_on": "2026-03-14",
+                "level_id": LEVEL,
+            },
+        )
+
+        assert response.status_code == 429, response.text
+
+    def test_a_disallowed_address_is_a_400(
+        self,
+        holder_client: TestClient,
+        assessor: User,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Only reachable where EMAIL_ALLOWED_RECIPIENTS is set."""
+        passport_id = _create_passport(holder_client)
+
+        def _refused(**_kwargs: object) -> None:
+            raise EmailNotAllowedError("not on the list")
+
+        monkeypatch.setattr(router, "send_email", _refused)
+
+        response = holder_client.post(
+            f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
+            json={
+                "assessor_email": assessor.email,
+                "observed_on": "2026-03-14",
+                "level_id": LEVEL,
+            },
+        )
+
+        assert response.status_code == 400, response.text
 
     def test_asking_yourself_is_refused(
         self, holder_client: TestClient, holder: User

@@ -23,6 +23,7 @@ os.environ.setdefault("CLINICAL_SERVICES_ENABLED", "false")
 # Force dry-run to prevent tests from sending real emails via Resend
 os.environ["EMAIL_DRY_RUN"] = "true"
 
+from app import email_send
 from app.db import get_core_db
 from app.deps import require_clinical_services
 from app.main import app, limiter
@@ -35,8 +36,16 @@ SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 
 @pytest.fixture(autouse=True)
 def _reset_rate_limiter() -> None:
-    """Reset slowapi rate limiter state between tests."""
+    """Reset the rate limiters between tests.
+
+    Both are module-level state that outlives a test. slowapi's guards
+    the HTTP routes; ``app.email_send``'s counts ten emails an hour to
+    one address, and several tests mail the same fixture assessor, so
+    without this the eleventh is refused and the failure lands on
+    whichever test happened to run last.
+    """
     limiter.reset()
+    email_send._rate_log.clear()
 
 
 engine = create_engine(

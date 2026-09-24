@@ -70,7 +70,11 @@ from app.ehrbase_client import (
     get_letter_composition,
     list_letters_for_patient,
 )
-from app.email_send import send_email
+from app.email_send import (
+    EmailNotAllowedError,
+    EmailRateLimitError,
+    send_email,
+)
 from app.features.teaching.schemas import (
     CaptionCompleteIn,
     CaptionCompleteOut,
@@ -1068,6 +1072,14 @@ def register(
     - Username must be unique across all users
     - Email must be unique across all users
 
+    **No verification email, no account.** The email is sent before the
+    commit, and a failure to send abandons the registration. An account
+    whose verification link never arrived cannot be recovered by the
+    person who made it: the address is taken, so registering again is
+    refused as a duplicate, and only somebody with database access can
+    undo it. Rolling back leaves the address free and the person able to
+    try again.
+
     Args:
         payload: Registration data (username, email, password).
         db: Database session for user creation.
@@ -1082,6 +1094,9 @@ def register(
             - "Password too short" if password < 6 characters
             - "Username already exists" if username taken
             - "Email already exists" if email taken
+        HTTPException: 429 if that address has had its hour's allowance.
+        HTTPException: 502 if the verification email could not be sent,
+            in which case no account was created.
     """
     if settings.CLINICAL_SERVICES_ENABLED:
         raise HTTPException(
@@ -1177,22 +1192,63 @@ def register(
             )
         )
 
-    db.commit()
-
-    # Send verification email
+    # The mail goes before the commit, and a failure abandons the whole
+    # registration. An account nobody can verify is worse than no
+    # account: the address is taken, so registering again is refused as
+    # a duplicate, and the only way out is somebody editing the database.
+    # Rolling back instead leaves the person able to simply try again.
+    #
+    # Nothing here needs the commit. The token is signed from the email
+    # address alone, so it can be minted before the row is durable.
     token = create_email_verify_token(email)
     verify_url = f"{settings.FRONTEND_URL}/verify-email?token={token}"
-    send_email(
-        to=email,
-        subject="Verify your Quill email address",
-        html_body=(
-            "<p>Welcome to Quill! Please verify your email address "
-            "to activate your account.</p>"
-            f'<p><a href="{verify_url}">Verify your email</a></p>'
-            f"<p>This link expires in {settings.EMAIL_VERIFY_TTL_MIN}"
-            " minutes.</p>"
-        ),
-    )
+
+    try:
+        send_email(
+            to=email,
+            subject="Verify your Quill email address",
+            html_body=(
+                "<p>Welcome to Quill! Please verify your email address "
+                "to activate your account.</p>"
+                f'<p><a href="{verify_url}">Verify your email</a></p>'
+                f"<p>This link expires in {settings.EMAIL_VERIFY_TTL_MIN}"
+                " minutes.</p>"
+            ),
+        )
+    except EmailRateLimitError:
+        # The address has had its hour's allowance, which on this route
+        # means somebody registering the same address repeatedly.
+        logger.warning("registration mail not sent: address rate limited")
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                "Too many attempts for that email address. Try again " "later."
+            ),
+        ) from None
+    except EmailNotAllowedError:
+        # Only reachable where EMAIL_ALLOWED_RECIPIENTS is set, which is
+        # a development machine.
+        logger.warning("registration mail not sent: recipient not allowed")
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "This environment may only email approved addresses. "
+                "Nothing has been saved."
+            ),
+        ) from None
+    except Exception:
+        # Unreachable, refused, timed out. The account is abandoned by
+        # raising before the commit, so the address stays free.
+        logger.exception("registration mail could not be sent")
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                "We could not send your verification email, so the "
+                "account has not been created. Please try again."
+            ),
+        ) from None
+
+    db.commit()
 
     return DetailResponse(detail="created")
 
