@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../fixtures/axe";
 
 test.describe("Settings page", () => {
   test("displays user profile information", async ({ page }) => {
@@ -9,7 +9,7 @@ test.describe("Settings page", () => {
     await expect(page.getByText("educator")).toBeVisible();
   });
 
-  test("password change section is accessible", async ({ page }) => {
+  test("password change section is accessible", async ({ page, scanPage }) => {
     await page.goto("/settings/account");
 
     await expect(page).toHaveURL(/\/settings\/account/);
@@ -17,5 +17,7 @@ test.describe("Settings page", () => {
       page.getByLabel(/current password|old password/i),
     ).toBeVisible();
     await expect(page.getByLabel(/new password/i).first()).toBeVisible();
+
+    await scanPage("settings-account");
   });
 });

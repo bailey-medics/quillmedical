@@ -434,17 +434,37 @@ the refresh token lasts `REFRESH_TTL_DAYS` (seven days), which is
 beyond WCAG 2.2.1's twenty-hour exception. This goes into the
 phase 6 conformance record as a pass by design
 
-- [ ] Add `@axe-core/playwright` and a `frontend/e2e/fixtures/axe.ts`
+- [x] Add `@axe-core/playwright` and a `frontend/e2e/fixtures/axe.ts`
       fixture that builds one `AxeBuilder` with the same tags as phase 1,
-      so the WCAG baseline lives in one place
-- [ ] Scan the pages each existing spec visits (`login`, `navigation`,
+      so the WCAG baseline lives in one place. The tags and the `target-size`
+      rule now live in `src/lib/accessibility/axeConfig.ts`, which
+      `.storybook/preview.tsx` reads too. One trap worth knowing:
+      `AxeBuilder.options()` replaces what `withTags()` set, so using the
+      two together silently ran axe's best-practice rules as well
+      (`region`, `landmark-unique` and others that are not WCAG); the
+      fixture passes `runOnly` and `rules` in one `options()` call
+- [x] Scan the pages each existing spec visits (`login`, `navigation`,
       `settings`, `teaching`, `auth-guard`) after their main assertions,
-      in both colour schemes
-- [ ] Assert on a fingerprint of `{ ruleId, selector }` pairs rather than
+      in both colour schemes. Six scans: login,
+      login after the auth-guard redirect, the teaching dashboard, the
+      teaching modules heading, settings and settings/account. Dark mode
+      is set through Mantine's stored scheme and a reload, so components
+      that pick colours in JavaScript render dark too. The scans found
+      one real fault the Storybook checks could not: in dark mode the
+      login page's links were `primary.4` on the card navy, 2.3:1,
+      because `TextLink`'s CSS module and Mantine's own `Anchor` colour
+      tie on specificity and the production build orders them the other
+      way from Storybook. `theme.ts` now points `--mantine-color-anchor`
+      at `--link-color`, so the order no longer matters. A scan also
+      retries if the page reloads itself under it, which the login page
+      did once
+- [x] Assert on a fingerprint of `{ ruleId, selector }` pairs rather than
       the full violations array, per the Playwright guidance, so an
       unrelated markup change does not break the scan
-- [ ] Attach the full axe report to the test via `testInfo.attach` so a
-      failure in CI is diagnosable from the artefact
+- [x] Attach the full axe report to the test via `testInfo.attach` so a
+      failure in CI is diagnosable from the artefact. Each failing node is also written
+      to the log as rule, selector and axe's summary, so the cause is
+      readable in the CI output without opening the artefact
 - [ ] Add a keyboard-only journey test for the two highest-risk flows:
       login with 2FA, and opening a teaching lecture from the list. These
       use Playwright's `keyboard.press("Tab")` and assert on

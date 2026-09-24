@@ -309,6 +309,11 @@ const appCssVariables = {
     // better on every dark surface. Hover goes lighter, not darker.
     "--link-color": primaryScale[1],
     "--link-hover-color": primaryScale[0],
+    // Mantine's own Anchor colour, pointed at the link token. TextLink's
+    // CSS module sets the same colour, but which of the two wins depends
+    // on stylesheet order, which differs between Storybook and the
+    // production build: the e2e scan caught primary.4 on the login page.
+    "--mantine-color-anchor": "var(--link-color)",
     // Chat bubble backgrounds. Mine is primary.5 rather than primary.4:
     // body text on primary.4 was 4.47:1, just under AA.
     "--bubble-mine-bg": primaryScale[5],
@@ -337,6 +342,7 @@ const appCssVariables = {
     // Links: primary.4 is 6.9:1 on white; hover darkens to the brand navy.
     "--link-color": primaryScale[4],
     "--link-hover-color": primaryScale[8],
+    "--mantine-color-anchor": "var(--link-color)",
     "--bubble-mine-bg": "#bdd2eb",
     "--bubble-theirs-bg": "#fae8cc",
     "--bubble-shadow": "0 1px 0 rgba(0,0,0,0.06)",
