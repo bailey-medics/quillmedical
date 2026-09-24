@@ -1,8 +1,12 @@
 """Tests for authentication endpoints."""
 
+import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app import main
+from app.email_send import EmailRateLimitError
 from app.models import User
 from app.security import generate_totp_secret
 from tests.competencies import hold
@@ -23,6 +27,88 @@ class TestRegister:
         )
         assert response.status_code == 200
         assert response.json() == {"detail": "created"}
+
+    def test_a_failed_email_creates_no_account(
+        self,
+        test_client: TestClient,
+        db_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """No verification email, no account, and the address stays free.
+
+        An account whose link never arrived cannot be recovered by the
+        person who made it: the address is taken, so registering again
+        is refused as a duplicate.
+        """
+
+        def _explode(**_kwargs: object) -> None:
+            raise RuntimeError("mail server unreachable")
+
+        monkeypatch.setattr(main, "send_email", _explode)
+
+        response = test_client.post(
+            "/api/auth/register",
+            json={
+                "username": "unreachable",
+                "email": "unreachable@example.com",
+                "password": "SecurePassword123!",
+            },
+        )
+
+        assert response.status_code == 502, response.text
+        assert (
+            db_session.scalar(
+                select(User).where(User.email == "unreachable@example.com")
+            )
+            is None
+        )
+
+    def test_the_address_can_be_registered_again_afterwards(
+        self, test_client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The point of rolling back: they can simply try again."""
+
+        def _explode(**_kwargs: object) -> None:
+            raise RuntimeError("down")
+
+        monkeypatch.setattr(main, "send_email", _explode)
+
+        payload = {
+            "username": "retrying",
+            "email": "retrying@example.com",
+            "password": "SecurePassword123!",
+        }
+        assert (
+            test_client.post("/api/auth/register", json=payload).status_code
+            == 502
+        )
+
+        # The outage ends.
+        monkeypatch.setattr(main, "send_email", lambda **_kwargs: None)
+
+        assert (
+            test_client.post("/api/auth/register", json=payload).status_code
+            == 200
+        )
+
+    def test_a_rate_limited_address_is_a_429(
+        self, test_client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        def _limited(**_kwargs: object) -> None:
+            raise EmailRateLimitError("too many")
+
+        monkeypatch.setattr(main, "send_email", _limited)
+
+        response = test_client.post(
+            "/api/auth/register",
+            json={
+                "username": "limited",
+                "email": "limited@example.com",
+                "password": "SecurePassword123!",
+            },
+        )
+
+        assert response.status_code == 429, response.text
 
     def test_register_duplicate_username(
         self, test_client: TestClient, test_user: User

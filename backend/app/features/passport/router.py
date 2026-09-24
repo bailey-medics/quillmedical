@@ -59,7 +59,11 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.db import get_core_db
 from app.deps import has_competency
-from app.email_send import EmailRateLimitError, send_email
+from app.email_send import (
+    EmailNotAllowedError,
+    EmailRateLimitError,
+    send_email,
+)
 from app.features.gating import requires_feature
 from app.models import (
     OrgUnit,
@@ -838,11 +842,19 @@ def _email_sign_off_request(
     is what an invitation row exists for — a token carries no record of
     having been spent, so the row is what makes it single-use.
 
-    **A failure here does not undo the request.** The record is written
-    and the row committed before this runs: the holder has asked, and
-    that stands whether or not the mail got out. Losing the ask because
-    a mail server was briefly unreachable would be worse than an
-    assessor who has to be told by other means.
+    **A failure here undoes the request, and this runs before anything
+    is written.** The email is the only way an assessor learns they have
+    been asked: there is no other notification, and somebody without a
+    Quill account has no inbox to find it in. So a request whose mail
+    never got out is invisible to everybody except the holder, who has
+    been told it was sent. That is worse than a clean failure they can
+    retry, which is what they get instead.
+
+    This reverses an earlier reading, which kept the request on the
+    grounds that the holder had asked and the ask should stand. It was
+    right that losing the ask costs something, and wrong about what
+    replaces it: "an assessor who has to be told by other means" assumed
+    somebody knows to tell them, and nothing here ever does.
     """
     try:
         competency_name: str | None = definitions.competency_ref(
@@ -905,12 +917,48 @@ def _email_sign_off_request(
             html_body=message["html_body"],
         )
     except EmailRateLimitError:
-        # Deliberately swallowed. See the docstring: the ask is already
-        # recorded, and throwing here would roll it back over a mail
-        # problem the holder cannot do anything about.
+        # 429 rather than the 502 below, because "too many already" and
+        # "the mail server is unreachable" need different things from
+        # the holder: one waits, the other retries or reports it.
         logger.warning(
             "sign-off request mail not sent: address rate limited",
         )
+        raise HTTPException(
+            429,
+            (
+                "That assessor has been emailed several times in the "
+                "last hour. Try again later."
+            ),
+        ) from None
+    except EmailNotAllowedError:
+        # Only reachable where EMAIL_ALLOWED_RECIPIENTS is set, which is
+        # a development machine. Said plainly so the tester sees the
+        # setting rather than a mail-server problem that is not one.
+        logger.warning(
+            "sign-off request mail not sent: recipient not allowed here",
+        )
+        raise HTTPException(
+            400,
+            (
+                "This environment may only email approved addresses. "
+                "Nothing has been saved."
+            ),
+        ) from None
+    except Exception:
+        # Every other mail failure: unreachable, refused, timed out.
+        # Caught broadly on purpose — what they have in common is that
+        # the assessor was not told, and none of them is something the
+        # holder can diagnose. The traceback is logged; the request is
+        # abandoned by raising, which leaves nothing written.
+        logger.exception("sign-off request mail could not be sent")
+        raise HTTPException(
+            502,
+            (
+                "We could not email that assessor, so the request has "
+                "not been made. Nothing has been saved. Please try "
+                "again."
+            ),
+        ) from None
 
 
 #: How many people a lookup can name. One, because an address names one
@@ -1015,9 +1063,15 @@ def request_sign_off(
 
     **The address need not belong to a Quill account.** That is the
     point: the consultant who observed the work is often at another
-    trust, or not on Quill at all. The request is written either way and
-    the assessor is emailed; they sign in or register, and the account
-    is joined to the request when they sign.
+    trust, or not on Quill at all. The assessor is emailed either way;
+    they sign in or register, and the account is joined to the request
+    when they sign.
+
+    **No mail, no request.** The email is sent before anything is
+    written, and a failure to send abandons the whole thing: a 502, with
+    nothing saved and nothing committed. An assessor learns of a request
+    only by email, so one that was never delivered would leave the
+    holder believing they had asked and the assessor never knowing.
     """
     row = _require_writer(db, passport_id, user, store)
 
@@ -1044,6 +1098,33 @@ def request_sign_off(
                 "Try again tomorrow."
             ),
         )
+
+    # Whether they already have an account decides what the email asks
+    # them to do, so it is looked up here. A missing account is not an
+    # error: the invitation below is what brings them in.
+    assessor = db.scalar(
+        select(User).where(func.lower(User.email) == assessor_email)
+    )
+
+    # The mail goes before the record, which is the whole shape of this
+    # route. A failed send must leave nothing behind, and only the
+    # database can be rolled back: the repository commit below cannot,
+    # because git takes no part in this transaction. Committing first
+    # and mailing second is what left a passport holding a request the
+    # database had no row for.
+    #
+    # Nothing here needs the commit. The invitation is a database row
+    # with an id this process generates, and the email names the
+    # competency and the holder, neither of which the write creates.
+    _email_sign_off_request(
+        holder=user,
+        assessor_email=assessor_email,
+        assessor=assessor,
+        competency_id=competency_id,
+        passport_id=row.id,
+        invited_by_user_id=user.id,
+        db=db,
+    )
 
     try:
         name, commit = service.request_sign_off(
@@ -1078,23 +1159,6 @@ def request_sign_off(
     )
     row.head_commit = commit
     db.flush()
-
-    # Whether they already have an account decides what the email asks
-    # them to do, so it is looked up here — but a missing account is not
-    # an error, and the request stands either way.
-    assessor = db.scalar(
-        select(User).where(func.lower(User.email) == assessor_email)
-    )
-
-    _email_sign_off_request(
-        holder=user,
-        assessor_email=assessor_email,
-        assessor=assessor,
-        competency_id=competency_id,
-        passport_id=row.id,
-        invited_by_user_id=user.id,
-        db=db,
-    )
 
     return SignOffResultOut(name=name, status="requested", commit=commit)
 

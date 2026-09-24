@@ -308,6 +308,16 @@ class Settings(BaseSettings):
             "Defaults to True for development safety."
         ),
     )
+    EMAIL_ALLOWED_RECIPIENTS: str = Field(
+        "",
+        description=(
+            "Comma-separated addresses email may be sent to. Empty, the "
+            "default, allows any, which is what production needs. Set it "
+            "in a development .env to your own addresses, so a test that "
+            "sends for real cannot reach anybody else. Parsed in "
+            "app.email_send, which is the only reader."
+        ),
+    )
 
     # --- Startup validation ---
     @model_validator(mode="after")

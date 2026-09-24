@@ -7,6 +7,7 @@ import pytest
 
 from app.email_send import (
     Attachment,
+    EmailNotAllowedError,
     EmailRateLimitError,
     _rate_log,
     send_email,
@@ -261,3 +262,164 @@ class TestEmailRateLimiting:
                 )
 
         assert "rate limit exceeded" in caplog.text.lower()
+
+
+class TestFailedSendsDoNotCountAgainstTheLimit:
+    """The allowance counts what was sent, not what was attempted.
+
+    Counting attempts meant an unreachable mail server spent the budget:
+    ten retries, nothing delivered, and the address locked for an hour.
+    """
+
+    def setup_method(self) -> None:
+        _rate_log.clear()
+
+    @patch("app.email_send.resend.Emails.send")
+    @patch("app.email_send.settings")
+    def test_a_failed_send_is_not_charged(
+        self, mock_settings: MagicMock, mock_send: MagicMock
+    ) -> None:
+        mock_settings.EMAIL_DRY_RUN = False
+        mock_settings.EMAIL_ALLOWED_RECIPIENTS = ""
+        mock_settings.RESEND_API_KEY = MagicMock()
+        mock_settings.RESEND_API_KEY.get_secret_value.return_value = "key"
+        mock_send.side_effect = RuntimeError("mail server unreachable")
+
+        for _ in range(20):
+            with pytest.raises(RuntimeError):
+                send_email(
+                    to="unreachable@example.com",
+                    subject="Nope",
+                    html_body="<p>x</p>",
+                )
+
+        assert _rate_log.get("unreachable@example.com", []) == []
+
+    @patch("app.email_send.resend.Emails.send")
+    @patch("app.email_send.settings")
+    def test_the_allowance_survives_an_outage(
+        self, mock_settings: MagicMock, mock_send: MagicMock
+    ) -> None:
+        """Retrying through an outage must not lock the address out."""
+        mock_settings.EMAIL_DRY_RUN = False
+        mock_settings.EMAIL_ALLOWED_RECIPIENTS = ""
+        mock_settings.RESEND_API_KEY = MagicMock()
+        mock_settings.RESEND_API_KEY.get_secret_value.return_value = "key"
+        mock_send.side_effect = RuntimeError("down")
+
+        for _ in range(15):
+            with pytest.raises(RuntimeError):
+                send_email(
+                    to="patient@example.com",
+                    subject="Retry",
+                    html_body="<p>x</p>",
+                )
+
+        # The outage ends. The next one must go out rather than be
+        # refused for an hour on the strength of failures alone.
+        mock_send.side_effect = None
+        send_email(
+            to="patient@example.com",
+            subject="At last",
+            html_body="<p>x</p>",
+        )
+
+        assert len(_rate_log["patient@example.com"]) == 1
+
+    @patch("app.email_send.settings")
+    def test_a_dry_run_is_charged(self, mock_settings: MagicMock) -> None:
+        """A dry run did everything but leave the machine."""
+        mock_settings.EMAIL_DRY_RUN = True
+        mock_settings.EMAIL_ALLOWED_RECIPIENTS = ""
+
+        send_email(to="logged@example.com", subject="x", html_body="<p>x</p>")
+
+        assert len(_rate_log["logged@example.com"]) == 1
+
+
+class TestAllowedRecipients:
+    """Which addresses this environment may write to at all."""
+
+    def setup_method(self) -> None:
+        _rate_log.clear()
+
+    @patch("app.email_send.settings")
+    def test_an_empty_list_allows_anybody(
+        self, mock_settings: MagicMock
+    ) -> None:
+        """Production sets nothing, and mails its users."""
+        mock_settings.EMAIL_DRY_RUN = True
+        mock_settings.EMAIL_ALLOWED_RECIPIENTS = ""
+
+        send_email(to="anybody@example.com", subject="x", html_body="<p>x</p>")
+
+    @patch("app.email_send.settings")
+    def test_an_address_on_the_list_is_allowed(
+        self, mock_settings: MagicMock
+    ) -> None:
+        mock_settings.EMAIL_DRY_RUN = True
+        mock_settings.EMAIL_ALLOWED_RECIPIENTS = (
+            "me@example.com, other@example.com"
+        )
+
+        send_email(to="me@example.com", subject="x", html_body="<p>x</p>")
+
+    @patch("app.email_send.settings")
+    def test_an_address_not_on_the_list_is_refused(
+        self, mock_settings: MagicMock
+    ) -> None:
+        mock_settings.EMAIL_DRY_RUN = True
+        mock_settings.EMAIL_ALLOWED_RECIPIENTS = "me@example.com"
+
+        with pytest.raises(EmailNotAllowedError):
+            send_email(
+                to="stranger@example.com",
+                subject="x",
+                html_body="<p>x</p>",
+            )
+
+    @patch("app.email_send.settings")
+    def test_matching_ignores_case_and_spacing(
+        self, mock_settings: MagicMock
+    ) -> None:
+        """An address typed into a form is not normalised for us."""
+        mock_settings.EMAIL_DRY_RUN = True
+        mock_settings.EMAIL_ALLOWED_RECIPIENTS = "  Me@Example.com ,, "
+
+        send_email(to="ME@EXAMPLE.COM", subject="x", html_body="<p>x</p>")
+
+    @patch("app.email_send.settings")
+    def test_a_refusal_is_not_charged(self, mock_settings: MagicMock) -> None:
+        """Refused before the limiter, so it costs nothing."""
+        mock_settings.EMAIL_DRY_RUN = True
+        mock_settings.EMAIL_ALLOWED_RECIPIENTS = "me@example.com"
+
+        with pytest.raises(EmailNotAllowedError):
+            send_email(
+                to="stranger@example.com",
+                subject="x",
+                html_body="<p>x</p>",
+            )
+
+        assert _rate_log.get("stranger@example.com", []) == []
+
+    @patch("app.email_send.settings")
+    def test_a_refusal_names_the_setting(
+        self,
+        mock_settings: MagicMock,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """So a tester reads a configuration problem, not an outage."""
+        mock_settings.EMAIL_DRY_RUN = True
+        mock_settings.EMAIL_ALLOWED_RECIPIENTS = "me@example.com"
+
+        with caplog.at_level(logging.WARNING, logger="app.email_send"):
+            with pytest.raises(EmailNotAllowedError) as caught:
+                send_email(
+                    to="stranger@example.com",
+                    subject="x",
+                    html_body="<p>x</p>",
+                )
+
+        assert "EMAIL_ALLOWED_RECIPIENTS" in str(caught.value)
+        assert "EMAIL_ALLOWED_RECIPIENTS" in caplog.text
