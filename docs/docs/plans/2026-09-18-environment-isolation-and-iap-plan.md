@@ -1635,6 +1635,30 @@ are Cloud Storage and Cloud Run jobs.
       default account still holds its grants, which is why removing them
       is a separate step.
 
+      **Applied on 2026-09-23, after one failed attempt.** #1026 and #1027
+      were merged in the same second, so a single apply created the grants
+      and immediately switched the workloads onto them. Google refused four
+      of the five switches with `Permission denied on secret ... for
+      Revision service account run-admin`: the grant existed, but IAM had
+      not propagated in the seconds between. The frontend, needing no
+      secret, switched; the backend's new revision was refused and the old
+      one kept serving, so nothing went down. Re-running the same apply a
+      few minutes later succeeded.
+
+      Rather than add a `time_sleep` between grants and workloads, which
+      would put a `depends_on` on every Cloud Run module and defer their
+      data sources to apply time, the lesson is procedural: **merge a grant
+      and the change that relies on it one at a time**, letting the first
+      apply before the second merges. The recovery is a re-run.
+
+      Proven since: `run-frontend` serves the site; `run-backend` answers
+      `/api/health` on revision `00036`, so it read its secrets at start;
+      `run-admin` ran the smoke-test action successfully. Still to prove,
+      by Mark: a question bank sync (`run-backend` reading the images
+      bucket) and a video upload (the source bucket write, the job
+      invocation, and `run-transcode` and `run-caption` on the video
+      buckets).
+
 - [ ] **(Claude)** Remove the default account's grants: the project-wide
       `secretAccessor`, its bucket bindings, the job invokers and
       `cloudrun_token_creator`, once the step above has run live. The
@@ -2297,6 +2321,32 @@ the DNS cutover.
   PagerDuty free trial had lapsed and the account had to be cut back to a
   single escalation policy. Google reported the alert raised either way;
   only the phone could tell the difference.
+
+- **Terraform and the deploy both owned the backend's traffic, and
+  that let an untested revision go live.** `modules/cloud-run` pinned
+  traffic to 100% of the latest revision, and `deploy-tagged.sh` promoted
+  with `--to-latest`. On 2026-09-23 a Terraform apply modified
+  `quill-backend-app` between 20:58:02 and 20:58:34, while the #1017
+  deploy was between tagging revision `00036` at 20:57:48 and looking the
+  tag up at 20:58:30. The apply rewrote traffic, the tag vanished, and the
+  deploy failed with `Could not resolve a tagged URL`. Worse, `00036` went
+  live through Terraform's "latest" rule without the smoke test ever
+  running against it. It happened to be healthy.
+
+  Fixed on 2026-09-24 so that only the smoke-tested deploy can route
+  traffic. `traffic` joins `ignore_changes` in `modules/cloud-run`, so
+  Terraform sets it once at creation and never again; `terraform plan`
+  showed no change from that. And `deploy-tagged.sh` promotes the tested
+  revision by name, `--to-revisions=<revision>=100`, removing its tag in
+  the same call, and waits for that revision, not the newest, to carry the
+  traffic. A revision Terraform creates by changing the template now gets
+  nothing until the next deploy builds from that template and tests it.
+  The cost is that a Terraform-only change to a service goes live at the
+  next backend deploy rather than at apply, which is the right way round.
+
+  The immediate trigger was a re-run of a failed apply started by hand
+  while a deploy was running, so the procedural lesson stands beside the
+  fix: check `deploy.yml` is idle before re-running `terraform.yml`.
 
 ## Decisions
 
