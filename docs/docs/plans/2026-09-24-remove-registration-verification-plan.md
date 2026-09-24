@@ -126,12 +126,22 @@ sat outside the thing it confirmed. That is also why nothing else depends on it.
       register and a reader relying on one should look it up there. Saying
       "not verified" implies verification is something that happens here.
 
-- [ ] **Remove `RegistrationVerification`, `verifyAssessorRegistration` and
+- [x] **Remove `RegistrationVerification`, `verifyAssessorRegistration` and
       the type's export** from `frontend/src/lib/passport/api.ts`, `types.ts`
       and `index.ts`.
 
-- [ ] **Remove `registration_verified` from
+- [x] **Remove `registration_verified` from
       `frontend/src/components/passport/fixtures.ts`.**
+
+- [x] **`RegistrationBadge` says "Declared" and nothing else.** Not in
+      the plan, and the most visible part of the change: the badge had a
+      verified state with a shield icon and a tooltip naming who checked
+      and when. It now always shows the info icon and "Declared", with a
+      tooltip saying Quill does not check the register and the reader
+      should look it up there. The `Verified` and `BothStates` stories go;
+      `verifiedRegistration` in the fixtures becomes `assessorRegistration`.
+      The `Registration` and `Assessor` types drop the fields too, so the
+      types match what the API now serves.
 
 ## Phase 4: The table
 
