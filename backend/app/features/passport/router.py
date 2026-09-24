@@ -2950,9 +2950,7 @@ def accept_assessor_invite(
             # The invitation went to this address and the token proves
             # they read it, which is the same thing verification asks.
             email_verified=True,
-            professional_registrations={authority: number},
         )
-        # The row is what is read; the JSON is still written beside it.
         user.registrations.append(
             ProfessionalRegistration(authority=authority, number=number)
         )

@@ -19,7 +19,6 @@ export {
   amendReflection,
   createPassport,
   declineSignOff,
-  fetchAssessorInvites,
   exportBundle,
   exportMarkdown,
   exportPdf,
@@ -33,7 +32,6 @@ export {
   fetchPassport,
   fetchReflections,
   fetchSignOff,
-  inviteAssessor,
   previewAssessorInvite,
   removeCertificate,
   removeCpdEntry,
@@ -50,10 +48,8 @@ export {
 
 export type {
   Assessor,
-  AssessorInvite,
   AssessorInviteAccept,
   AssessorInviteAcceptInput,
-  AssessorInviteInput,
   AssessorRevoke,
   Attachment,
   AttachmentInput,

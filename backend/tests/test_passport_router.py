@@ -1453,7 +1453,9 @@ class TestAcceptingAnInvitation:
         user = db_session.get(User, response.json()["user_id"])
         assert user is not None
         assert user.base_profession == "external_assessor"
-        assert user.professional_registrations == {"GMC": "7654321"}
+        assert [(r.authority, r.number) for r in user.registrations] == [
+            ("GMC", "7654321")
+        ]
         assert "assess_clinician_passport" in user.get_final_competencies()
         assert "access_patient_records" not in user.get_final_competencies()
 
@@ -1487,7 +1489,9 @@ class TestAcceptingAnInvitation:
         user = db_session.get(User, response.json()["user_id"])
         assert user is not None
         assert user.full_name == "Dr Winifred Achebe"
-        assert user.professional_registrations == {"NMC": "99AB1234"}
+        assert [(r.authority, r.number) for r in user.registrations] == [
+            ("NMC", "99AB1234")
+        ]
 
     def test_registering_writes_the_registration_as_a_row(
         self,
@@ -1496,7 +1500,7 @@ class TestAcceptingAnInvitation:
         db_session: Session,
         sent: list[dict[str, str]],
     ) -> None:
-        """A row beside the JSON, which nothing reads yet."""
+        """A row, and the retired JSON column left empty."""
         passport_id = _create_passport(holder_client)
         self._invite(holder_client, passport_id)
 
@@ -1513,6 +1517,7 @@ class TestAcceptingAnInvitation:
         assert [
             (r.authority, r.number, r.ends_on) for r in user.registrations
         ] == [("NMC", "99AB1234", None)]
+        assert user.professional_registrations is None
 
     def test_a_body_in_any_case_is_stored_as_the_config_spells_it(
         self,
@@ -1533,7 +1538,6 @@ class TestAcceptingAnInvitation:
         user = db_session.get(User, response.json()["user_id"])
         assert user is not None
         assert [r.authority for r in user.registrations] == ["GPhC"]
-        assert user.professional_registrations == {"GPhC": "7654321"}
 
     def test_a_body_the_jurisdiction_does_not_list_is_refused(
         self,

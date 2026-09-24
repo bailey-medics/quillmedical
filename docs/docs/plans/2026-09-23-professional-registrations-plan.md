@@ -146,16 +146,16 @@ picks it up.
 
 ## Phase 5: Stop writing JSON, and clear what is already dead
 
-- [ ] **Remove the JSON write** from `accept_assessor_invite`.
+- [x] **Remove the JSON write** from `accept_assessor_invite`.
 
-- [ ] **Take `users.professional_registrations` out of every statement
+- [x] **Take `users.professional_registrations` out of every statement
       in the same change.** As the competency plan found, a column the
       model still maps is named in every `SELECT`
       of `users`, and a revision still serving while the drop runs would
       fail on all of them. It is nullable with no default, so deferring it
       is enough, with no migration.
 
-- [ ] **Delete the dead code found during the investigation**, each named
+- [x] **Delete the dead code found during the investigation**, each named
       in the pull request with how it was shown to be unused:
       - `ProfessionalRegistration` in `backend/app/schemas/cbac.py:43-60`,
         a schema with expiry and status fields that nothing uses.
@@ -166,6 +166,12 @@ picks it up.
       - `verifyAssessorRegistration` in `frontend/src/lib/passport/api.ts`
         stays: it is the client for the verification route, which Phase 4
         may one day give a page.
+
+      Deleting them turned up two more of the same: `fetchAssessorInvites`
+      and its `AssessorInvite` type call a `GET` on the same missing route,
+      and the backend's `AssessorInviteOut` was the response of the route
+      that went. Both went too. Each was shown unused by a search of the
+      repository finding nothing outside its own file and tests.
 
 ## Phase 6: Drop the columns
 
