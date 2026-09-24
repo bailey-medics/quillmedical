@@ -490,7 +490,6 @@ class TestAnEntitlementThatHasRunOut:
         holder.competency_grants.append(
             UserCompetency(
                 competency_id="passport_write",
-                granted=True,
                 starts_on=datetime.now(UTC),
                 ends_on=datetime.now(UTC) + timedelta(days=30),
                 source="individual",
@@ -574,7 +573,6 @@ class TestAnEntitlementThatHasRunOut:
         holder.competency_grants.append(
             UserCompetency(
                 competency_id="passport_write",
-                granted=True,
                 starts_on=datetime.now(UTC),
                 ends_on=datetime.now(UTC) + timedelta(days=30),
                 source="individual",

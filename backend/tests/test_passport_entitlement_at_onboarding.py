@@ -60,7 +60,6 @@ def _entitlements(db: Session, user: User) -> list[UserCompetency]:
         .filter(
             UserCompetency.user_id == user.id,
             UserCompetency.competency_id == "passport_write",
-            UserCompetency.granted.is_(True),
         )
         .all()
     )
@@ -232,7 +231,6 @@ class TestOnboardingGrantsTheTerm:
         starter.competency_grants.append(
             UserCompetency(
                 competency_id="passport_write",
-                granted=True,
                 source="organisation",
                 org_unit_id=org.id,
                 starts_on=datetime.now(UTC) - timedelta(days=400),
