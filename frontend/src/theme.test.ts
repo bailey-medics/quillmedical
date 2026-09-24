@@ -91,6 +91,15 @@ describe("cssVariablesResolver", () => {
     expect(vars.dark["--mantine-color-body"]).toBe("#001a36");
   });
 
+  it("colours the current nav link brand amber", () => {
+    expect(vars.light["--nav-active-colour"]).toBe(
+      "var(--mantine-color-secondary-5)",
+    );
+    expect(vars.dark["--nav-active-colour"]).toBe(
+      "var(--mantine-color-secondary-5)",
+    );
+  });
+
   it("lets app overrides win over Mantine's values", () => {
     // Mantine's resolver sets --mantine-color-error to a red shade; the
     // app overrides it with its accessible error token.

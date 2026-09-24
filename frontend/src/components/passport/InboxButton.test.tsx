@@ -25,6 +25,28 @@ describe("InboxButton", () => {
     expect(screen.queryByTestId("inbox-count")).not.toBeInTheDocument();
   });
 
+  it("colours the envelope amber when something is waiting", () => {
+    const { container } = renderWithMantine(
+      <InboxButton count={2} onClick={vi.fn()} />,
+    );
+
+    expect(container.querySelector("svg")).toHaveAttribute(
+      "stroke",
+      "var(--brand-secondary)",
+    );
+  });
+
+  it("leaves the envelope its default colour when nothing is waiting", () => {
+    const { container } = renderWithMantine(
+      <InboxButton count={0} onClick={vi.fn()} />,
+    );
+
+    expect(container.querySelector("svg")).not.toHaveAttribute(
+      "stroke",
+      "var(--brand-secondary)",
+    );
+  });
+
   it("caps the badge at 9+", () => {
     // Above nine the exact figure stops mattering: what somebody does
     // about eleven and about forty is the same.

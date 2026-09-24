@@ -15,6 +15,9 @@
  * the two read as one idea. Above nine the exact figure stops mattering:
  * what a reader does about eleven and about forty is the same.
  *
+ * The envelope turns amber, the brand's secondary colour, while
+ * anything is waiting, and stays the default colour otherwise.
+ *
  * Nothing is drawn when the queue is empty. A zero is a fact nobody
  * needs and it makes an idle button look like it wants attention.
  *
@@ -58,7 +61,13 @@ export default function InboxButton({ count = 0, onClick }: InboxButtonProps) {
         onClick={onClick}
         aria-label={label}
       >
-        <Icon icon={<IconMail />} size="mlg" />
+        {/* Amber while anything is waiting, so the envelope itself
+            signals work and not just the number beside it. */}
+        <Icon
+          icon={<IconMail />}
+          size="mlg"
+          colour={count > 0 ? "var(--brand-secondary)" : undefined}
+        />
       </ActionIcon>
       {count > 0 && (
         <span className={classes.count} data-testid="inbox-count">
