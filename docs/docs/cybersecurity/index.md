@@ -47,7 +47,8 @@ Cookies are small pieces of data that the browser stores and sends back to the s
 - **SameSite=Lax** prevents the cookie from being sent on most cross-site requests.
 - **Secure** ensures the cookie is only sent over encrypted (HTTPS) connections.
 - `SECURE_COOKIES` defaults to `false` in development, explicitly set to `true` in production via `compose.prod.cloud-run.yml` and Terraform.
-- `COOKIE_DOMAIN` is configurable per environment (defaults to current domain).
+- `COOKIE_DOMAIN` is configurable per environment, and deliberately unset in every deployed one. Unset means host-only: a cookie set by `app.quill-medical.com` is never sent to another subdomain of `quill-medical.com`. `backend/tests/test_auth_cookies_are_host_only.py` pins this.
+- **Not yet done: the `__Host-` and `__Secure-` name prefixes.** A cookie named `__Host-…` is refused by the browser unless it is host-only, `Secure` and `Path=/`, so the rules above become enforced rather than merely configured. `access_token` and `XSRF-TOKEN` qualify. `refresh_token` does not, because its path is `/api/auth/refresh`, so it would take `__Secure-`, which enforces `Secure` only. Renaming a cookie logs everyone out once and needs the frontend's CSRF reader changed in step, which is why it is listed under recommended improvements below rather than done alongside host-only.
 
 ### Cross-site request forgery (CSRF) protection
 
@@ -281,10 +282,11 @@ Secret scanning prevents credentials from being committed to the repository, cat
 
 ### Recommended improvements
 
-| Priority | Item                            | Status                                    |
-| -------- | ------------------------------- | ----------------------------------------- |
-| Medium   | Migrate `python-jose` → `PyJWT` | Pending (eliminates ecdsa CVE-2024-23342) |
-| Low      | Encrypt TOTP secrets at rest    | Under consideration                       |
+| Priority | Item                                 | Status                                    |
+| -------- | ------------------------------------ | ----------------------------------------- |
+| Medium   | Migrate `python-jose` → `PyJWT`      | Pending (eliminates ecdsa CVE-2024-23342) |
+| Low      | Encrypt TOTP secrets at rest         | Under consideration                       |
+| Low      | `__Host-` / `__Secure-` cookie names | Pending (see cookie configuration)        |
 
 ## Healthcare-specific controls
 
