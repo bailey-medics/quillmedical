@@ -95,6 +95,7 @@ testpaths = ["tests"]
 pythonpath = ["."]
 markers = [
     "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
+    "migration: runs Alembic migrations against a real Postgres; run by the alembic_drift_check CI job with '-m migration'",
     "e2e: marks end-to-end tests requiring full stack",
     "pentest: marks security penetration tests (run with '-m pentest')",
     "slow: marks tests that should only run in the heavy tier",

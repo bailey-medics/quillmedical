@@ -171,6 +171,12 @@ the baseline included — is held to the full standard below.
   (`@pytest.mark.integration` — excluded from the normal `just ub` / `unit`
   CI task; run explicitly against a migrated Postgres, as the
   `alembic_drift_check` job does).
+- **A test that runs migrations against Postgres carries the `migration`
+  marker** as well as `integration`: `pytestmark = [pytest.mark.integration,
+  pytest.mark.migration]`. The `alembic_drift_check` job runs
+  `pytest -m migration`, so a new one is picked up without editing the
+  workflow. Locally, run them with `compose.migrate.yml`, as
+  `backend/tests/test_user_competency_backfill.py` describes.
 
 ### Renaming or retiring a column
 

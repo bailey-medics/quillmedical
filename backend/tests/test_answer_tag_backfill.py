@@ -19,7 +19,7 @@ from sqlalchemy import text
 from alembic import command
 from app.db.core_db import core_engine
 
-pytestmark = pytest.mark.integration
+pytestmark = [pytest.mark.integration, pytest.mark.migration]
 
 BEFORE = "aa35480f3d40"
 BACKFILL = "83c3b5af3ea7"

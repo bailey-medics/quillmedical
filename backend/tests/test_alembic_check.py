@@ -7,7 +7,7 @@ never exercise Alembic's autogenerate comparison. Run via the dedicated
 is migrated to head:
 
     docker exec quill_backend sh -lc \
-        "alembic upgrade head && pytest tests/test_alembic_check.py -m integration"
+        "alembic upgrade head && pytest tests/test_alembic_check.py -m migration"
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ from sqlalchemy import Column, Integer, Table
 from alembic import command
 from app.models import Base
 
-pytestmark = pytest.mark.integration
+pytestmark = [pytest.mark.integration, pytest.mark.migration]
 
 
 @pytest.fixture
