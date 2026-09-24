@@ -14,6 +14,10 @@ resource "google_cloud_run_v2_job" "job" {
       timeout     = var.timeout
       max_retries = 0
 
+      # Null falls back to the default Compute Engine account, which is what
+      # every job ran as before infra/runtime-identities.tf.
+      service_account = var.service_account_email != "" ? var.service_account_email : null
+
       vpc_access {
         connector = var.vpc_connector_id
         egress    = var.vpc_egress

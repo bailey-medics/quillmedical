@@ -149,7 +149,7 @@ column rename, for the same reason: expand, dual-write, backfill, switch reads.
 
 ## Phase 3: Backfill
 
-- [ ] **Run the audit against teaching before this deploys and record the
+- [x] **Run the audit against teaching before this deploys and record the
       count of unknown ids.** `backend/app/cbac/audit.py` has no
       command-line entry point, so from the backend container:
       `python -c "from app.db import CoreSessionLocal; from app.cbac.audit
@@ -158,8 +158,9 @@ column rename, for the same reason: expand, dual-write, backfill, switch reads.
       across rather than dropping them: losing a grant silently during a
       storage change is worse than carrying a stale one, and the audit
       report is what tells you how many there are before and after. This is
-      an operational step for whoever merges, not something a branch can do,
-      so it is left unticked.
+      an operational step for whoever merges, not something a branch can do.
+      Not needed in the end: there were no live users when this deployed,
+      so there was nothing for a stale id to have reached.
 
 - [x] **Write one migration that reads every user's two lists and writes a
       row per entry** — `granted` true for `additional_competencies`, false
@@ -221,14 +222,14 @@ column rename, for the same reason: expand, dual-write, backfill, switch reads.
       the `alembic_drift_check` CI job, which already has a migrated
       Postgres, and locally through `compose.migrate.yml`.
 
-- [ ] **Verify the row count against the JSON before moving on.** For every
+- [x] **Verify the row count against the JSON before moving on.** For every
       user, the current `granted: true` rows other than `passport_write`
       match `additional_competencies` less any `passport_write`, and the
       current `granted: false` rows match `removed_competencies`. Every
       `passport_write_entitlement` row has a `passport_write` row with the
       same `starts_on`. A mismatch means the backfill dropped something. Like
-      the audit, this is run against teaching after the deploy, and is left
-      unticked for whoever merges.
+      the audit, this is run against teaching after the deploy. Not needed
+      in the end, for the same reason: no live users.
 
 ## Phase 4: Switch reads
 
@@ -579,10 +580,26 @@ out rather than stored.
       `backend/tests/test_close_removal_rows.py`, added to the
       `alembic_drift_check` CI job.
 
-- [ ] **Drop the `granted` column**, in its own migration with the
+- [x] **Take `granted` out of every statement first, in a deploy of its
+      own.** The same step Phase 7 needed for the JSON columns. `granted`
+      is NOT NULL and was set on every insert, so the revision still
+      serving while the drop ran would fail on every competency write.
+      Migration `8dc3af3202f4` gives it a server default of true, the model
+      defers it and never sets it, and `UserCompetency` sets
+      `eager_defaults` off so no `RETURNING` names it. Nothing reads it
+      any more: every current row is a grant.
+
+- [x] **Drop the `granted` column**, in its own migration with the
       `allow-destructive` marker, through the
       `db-destructive-migration-review` environment, like Phase 7. It needs
       a human's approval before it is built.
+
+      Migration `7774a15142c1`, approved on 23 September 2026. It deletes
+      the old removal rows before dropping the column, rather than keeping
+      them: without `granted` to mark them, a closed removal row would read
+      as a grant that ran from its start to its end, which is the opposite
+      of what it recorded. Tested against Postgres in
+      `backend/tests/test_drop_granted.py`.
 
 ## Phase 9: Organisation passport grants do not lapse
 

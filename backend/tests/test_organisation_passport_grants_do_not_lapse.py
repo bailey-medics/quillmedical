@@ -20,7 +20,7 @@ from sqlalchemy import text
 from alembic import command
 from app.db.core_db import core_engine
 
-pytestmark = pytest.mark.integration
+pytestmark = [pytest.mark.integration, pytest.mark.migration]
 
 BEFORE = "2a2a7b1ea83a"
 CLEAR = "57deea9f9ea6"

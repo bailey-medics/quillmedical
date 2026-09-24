@@ -101,8 +101,8 @@ class User(Base):
         is_active: Whether the account is active (for soft delete).
         roles: List of roles assigned to this user.
         base_profession: Base profession template (e.g., "consultant", "patient").
-        competency_grants: Competencies granted beyond, or removed from,
-            the base profession, one ``user_competency`` row each.
+        competency_grants: Every competency granted to this person, one
+            ``user_competency`` row each, current and closed.
         professional_registrations: Professional registration details (GMC, NMC, etc.).
     """
 
@@ -166,8 +166,8 @@ class User(Base):
         lazy="joined",
     )
 
-    #: Every competency this person has been granted or had removed, one
-    #: row each, current and closed alike. Loaded with the user rather
+    #: Every competency this person has been granted, one row each,
+    #: current and closed alike. Loaded with the user rather
     #: than on demand because ``get_final_competencies`` takes no
     #: session, and ``selectin`` loads a whole list of users' rows in one
     #: query rather than one per user.
@@ -202,7 +202,6 @@ class User(Base):
             self.competency_grants.append(
                 UserCompetency(
                     competency_id=competency_id,
-                    granted=True,
                     starts_on=now,
                     source="profession",
                 )
@@ -215,7 +214,7 @@ class User(Base):
             {
                 row.competency_id
                 for row in self.competency_grants
-                if row.granted and row.is_current(now)
+                if row.is_current(now)
             }
         )
 
@@ -1215,12 +1214,11 @@ class UserCompetency(Base):
     it ends, not who made it. See
     ``docs/docs/plans/2026-09-23-user-competency-table-plan.md``.
 
-    **``granted`` false was a removal, and is retired.** It said this
-    person did not hold something their base profession gave, while the
-    profession was added to their rows on every request. Now only grant rows
-    count, and not holding a competency is having no current grant row for
-    it. No removal row is written, the ones that were are closed, and the
-    column goes in a later change.
+    **Every row is a grant.** Not holding a competency is having no
+    current row for it, so taking one away closes its row. There were once
+    removal rows as well, marked by a ``granted`` column, while the base
+    profession was added to everybody's rows on every request; they and
+    the column went once the profession only seeded rows.
 
     **No foreign key on ``competency_id``.** The catalogue is
     ``shared/competency-definitions/``, not a table, and a retired
@@ -1242,7 +1240,6 @@ class UserCompetency(Base):
         user_id: The person.
         competency_id: A competency id from
             ``shared/competency-definitions/``.
-        granted: True for a grant. False only on retired removal rows.
         starts_on: When it took effect. Null on rows copied from the JSON
             lists, which never recorded it.
         ends_on: When it stops, or stopped. Null for a grant with no end.
@@ -1271,7 +1268,6 @@ class UserCompetency(Base):
     competency_id: Mapped[str] = mapped_column(
         String(100), nullable=False, index=True
     )
-    granted: Mapped[bool] = mapped_column(Boolean, nullable=False)
     starts_on: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

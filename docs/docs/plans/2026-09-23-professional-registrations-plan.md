@@ -156,8 +156,12 @@ reason: each stacked unit deploys when it merges.
 ## Open questions
 
 - **What does a lapsed registration do?** `ends_on` makes lapsing
-  expressible. Whether it narrows clinical competencies, only stops somebody
-  signing off, or only warns is a clinical governance decision.
+  expressible. Decided on 23 September 2026 that it is **not linked to
+  competencies** for now: a lapsed registration narrows nothing anybody may
+  do. What it should do is left for another day, so the step in Phase 3
+  that would stop skipping
+  `test_a_lapsed_registration_drops_clinical_grants_not_memberships` stays
+  unbuilt.
 
 - **Where does `ends_on` come from?** Quill checks no register. Until one is
   integrated, an end date is either typed by an administrator or absent.
