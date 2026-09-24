@@ -95,6 +95,13 @@ resource "google_cloud_run_v2_service" "service" {
   lifecycle {
     ignore_changes = [
       template[0].containers[0].image,
+      # The deploy owns traffic: it tags a new revision, smoke-tests it and
+      # promotes that revision by name. The traffic block above only sets
+      # the initial state when the service is created. Managed here as
+      # well, every apply rewrote it to 100% of the newest revision, which
+      # on 2026-09-23 wiped a running deploy's tag and put an untested
+      # revision live. See .github/scripts/deploy/deploy-tagged.sh.
+      traffic,
     ]
   }
 }
