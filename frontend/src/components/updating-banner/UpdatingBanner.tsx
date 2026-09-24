@@ -38,8 +38,12 @@ export default function UpdatingBanner() {
       data-testid="updating-banner-blocking"
     >
       <Group gap="xs" justify="center" wrap="nowrap">
-        <Icon icon={<IconRefresh />} size="md" colour="var(--info-color)" />
-        <BodyTextInline c="var(--info-color)">
+        <Icon
+          icon={<IconRefresh />}
+          size="md"
+          colour="var(--info-text-color)"
+        />
+        <BodyTextInline c="var(--info-text-color)">
           Updating to the latest version…
         </BodyTextInline>
       </Group>

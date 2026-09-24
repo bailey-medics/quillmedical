@@ -34,10 +34,7 @@ import {
 import classes from "./StatusStrip.module.css";
 
 export type StatusStripVariant =
-  | "offline"
-  | "reconnected"
-  | "updating"
-  | "fallback";
+  "offline" | "reconnected" | "updating" | "fallback";
 
 export interface StatusStripProps {
   /** Which status condition this strip represents. */
@@ -80,21 +77,21 @@ function getVariantContent(
     case "reconnected":
       return {
         icon: <IconWifi />,
-        colour: "var(--success-color)",
+        colour: "var(--success-text-color)",
         message: "Reconnected",
         badgeLabel: "Reconnected",
       };
     case "updating":
       return {
         icon: <IconRefresh />,
-        colour: "var(--info-color)",
+        colour: "var(--info-text-color)",
         message: "Updating to the latest version\u2026",
         badgeLabel: "Updating",
       };
     case "fallback":
       return {
         icon: <IconAlertTriangle />,
-        colour: "var(--warning-color)",
+        colour: "var(--warning-text-color)",
         message:
           "An update is available but couldn't be applied automatically. Retrying in the background\u2026",
         badgeLabel: "Update pending",

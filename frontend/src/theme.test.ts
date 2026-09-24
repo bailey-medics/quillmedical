@@ -11,7 +11,14 @@
 import { DEFAULT_THEME, mergeMantineTheme } from "@mantine/core";
 import { describe, expect, it } from "vitest";
 import { AA_TEXT, contrastRatio } from "@lib/colour-contrast/contrast";
-import { cssVariablesResolver, greyScale, primaryScale, theme } from "./theme";
+import {
+  cssVariablesResolver,
+  greyScale,
+  primaryScale,
+  statusColourValues,
+  statusTextColourValues,
+  theme,
+} from "./theme";
 
 const resolved = mergeMantineTheme(DEFAULT_THEME, theme);
 const vars = cssVariablesResolver(resolved);
@@ -123,5 +130,65 @@ describe("dimmed text contrast", () => {
   it.each(darkSurfaces)("passes WCAG AA on %s in dark mode", (surface) => {
     const dimmed = vars.dark["--mantine-color-dimmed"];
     expect(contrastRatio(dimmed, surface)).toBeGreaterThanOrEqual(AA_TEXT);
+  });
+});
+
+describe("status colour contrast", () => {
+  // Fills that take white text, and the two pale fills that take the
+  // near-black `--status-text-dark`.
+  const whiteText = [
+    "success",
+    "warning",
+    "outstanding",
+    "info",
+    "accent",
+    "alert",
+  ] as const;
+  const darkText = ["neutral", "update"] as const;
+
+  it.each(whiteText)("white text passes WCAG AA on the %s fill", (name) => {
+    expect(
+      contrastRatio("#ffffff", statusColourValues[name]),
+    ).toBeGreaterThanOrEqual(AA_TEXT);
+  });
+
+  it.each(darkText)("dark text passes WCAG AA on the %s fill", (name) => {
+    expect(
+      contrastRatio(
+        vars.variables["--status-text-dark"],
+        statusColourValues[name],
+      ),
+    ).toBeGreaterThanOrEqual(AA_TEXT);
+  });
+
+  const lightSurfaces = ["#ffffff", greyScale[0], greyScale[1], greyScale[2]];
+  const darkSurfaces = ["#000d1f", "#001a36", "#042340", "#0a2f56"];
+  const names = Object.keys(
+    statusTextColourValues.light,
+  ) as (keyof typeof statusTextColourValues.light)[];
+
+  it.each(names)("%s text passes WCAG AA on every light surface", (name) => {
+    for (const surface of lightSurfaces) {
+      expect(
+        contrastRatio(statusTextColourValues.light[name], surface),
+      ).toBeGreaterThanOrEqual(AA_TEXT);
+    }
+  });
+
+  it.each(names)("%s text passes WCAG AA on every dark surface", (name) => {
+    for (const surface of darkSurfaces) {
+      expect(
+        contrastRatio(statusTextColourValues.dark[name], surface),
+      ).toBeGreaterThanOrEqual(AA_TEXT);
+    }
+  });
+
+  it("registers the text colours as scheme variables", () => {
+    expect(vars.light["--alert-text-color"]).toBe(
+      statusTextColourValues.light.alert,
+    );
+    expect(vars.dark["--alert-text-color"]).toBe(
+      statusTextColourValues.dark.alert,
+    );
   });
 });

@@ -187,7 +187,24 @@ once the addon is registered; no `test-runner.ts` hooks are needed.
         a lighter grey was chosen because it is already in the scale as
         "strong muted text"; GOV.UK's secondary text, `#505a5f`, is a
         near neighbour
-  - [ ] Status fills
+  - [x] Status fills. The status fills in `statusColourValues` that
+        take white text move to the first Mantine shade that clears
+        4.5:1: teal.9, cyan.9, pink.7, blue.8 and red.9; violet.6
+        already passed. Hue is unchanged, so the colour-blind separation
+        the palette was chosen for still holds. Darkening a fill broke
+        the places that used it as a word on the page in dark mode, so a
+        second, scheme-aware set of tokens, `--<status>-text-color` from
+        `statusTextColourValues`, now serves text: a darker shade in
+        light mode, which also clears 4.5:1 on `gray.2`, and Mantine's
+        shade 3 in dark. `statusColours` gains an `fg` beside `bg`, and
+        the text call sites (`StatusStrip`, `UpdatingBanner`,
+        `ModuleMediaCard`, `SyncResultsPanel`, `MarkdownView` links) use
+        it. Three fills that bypassed the tokens were fixed where they
+        stood: `ButtonPairRed` used Mantine's `red`, which this theme's
+        `primaryShade` of 5 makes `red.5`; `AssessmentTimer` put white
+        text on the yellow warning fill; the triage payment badge used
+        `gray`. `theme.test.ts` now holds every fill and text token to
+        AA on every surface
   - [ ] Dark-mode navy accents and the error colour on dark inputs
   - [ ] ARIA: progress bar names, `FilterSelect`'s `aria-expanded`,
         scrollable regions, `ProfilePic` alt text and the `DateField`

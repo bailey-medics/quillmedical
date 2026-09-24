@@ -106,19 +106,25 @@ export const greyScale = [
  * cssVariablesResolver. Shared across light and dark modes — these are
  * used as filled backgrounds with white/dark text.
  *
+ * Every fill that takes white text is dark enough for WCAG AA, 4.5:1,
+ * which is why most are shade 7 to 9 rather than Mantine's default 6: at
+ * shade 6, white on teal was 2.6:1 and white on cyan 2.8:1. The hues are
+ * unchanged, so colour-blind users still tell them apart as before, and
+ * each status still carries an icon. `theme.test.ts` holds them to it.
+ *
  * Note: `--error-color` (#f55142) is a separate token for form validation
  * borders (accessibility-tuned). `--error-focus-color` (#ffb3b3) is a lighter
- * variant used when an errored field receives focus. `--alert-color` (#fa5252)
+ * variant used when an errored field receives focus. `--alert-color`
  * is for status badges, destructive buttons, and notifications.
  */
 export const statusColourValues = {
-  success: "#12b886", // Teal — active, completed, pass (Mantine teal.6)
-  warning: "#15aabf", // Cyan — draft, pending (Mantine cyan.6)
-  outstanding: "#e64980", // Pink — deactivated, cancelled, fail (Mantine pink.6)
-  info: "#228be6", // Blue — upcoming, informational (Mantine blue.6)
-  neutral: "#ffd43b", // Yellow — staff, default (Mantine yellow.4)
-  accent: "#7950f2", // Violet — incomplete, special states (Mantine violet.6)
-  alert: "#fa5252", // Red — no-show, patient, attention (Mantine red.6)
+  success: "#087f5b", // Teal — active, completed, pass (Mantine teal.9, 5.0:1)
+  warning: "#0b7285", // Cyan — draft, pending (Mantine cyan.9, 5.6:1)
+  outstanding: "#d6336c", // Pink — deactivated, cancelled, fail (Mantine pink.7, 4.6:1)
+  info: "#1971c2", // Blue — upcoming, informational (Mantine blue.8, 5.0:1)
+  neutral: "#ffd43b", // Yellow — staff, default (Mantine yellow.4, dark text)
+  accent: "#7950f2", // Violet — incomplete, special states (Mantine violet.6, 5.0:1)
+  alert: "#c92a2a", // Red — no-show, patient, attention (Mantine red.9, 5.5:1)
   // The odd one out, deliberately: a pale wash rather than a saturated
   // fill, and the only status colour that takes dark text. The others
   // report that something has happened; this one says something has
@@ -126,6 +132,52 @@ export const statusColourValues = {
   // an empty passport look like a warning about an ordinary situation.
   update: "#e7f5ff", // Very light blue — nothing yet, gentle prompts (Mantine blue.0)
 } as const;
+
+/**
+ * Status colours used as text — the word itself in the status colour,
+ * with no fill behind it ("Fail" in red in a results table, "Updating" in
+ * blue in the status strip).
+ *
+ * A fill and a word need different shades. A fill takes white text, so
+ * it must be dark; a word sits on the page, so in dark mode it must be
+ * light. One token cannot do both, which is how the fills came to fail on
+ * navy once they were darkened for white text.
+ *
+ * Light values pass WCAG AA, 4.5:1, on white and on `gray.2`, the darkest
+ * grey surface text sits on; teal, cyan and red are a step darker than
+ * Mantine's shade 9 to get there. Dark values are Mantine's shade 3,
+ * which pass on every navy surface, `primary.9` included.
+ */
+export const statusTextColourValues = {
+  light: {
+    success: "#07704f",
+    warning: "#0b6b7a",
+    outstanding: "#a61e4d", // pink.9
+    info: "#1864ab", // blue.9
+    accent: "#6741d9", // violet.8
+    alert: "#b02525",
+  },
+  dark: {
+    success: "#63e6be", // teal.3
+    warning: "#66d9e8", // cyan.3
+    outstanding: "#faa2c1", // pink.3
+    info: "#74c0fc", // blue.3
+    accent: "#b197fc", // violet.3
+    alert: "#ff8787", // red.3
+  },
+} as const;
+
+/** `--success-text-color` etc., for one colour scheme's variables. */
+function statusTextVariables(
+  values: Record<keyof typeof statusTextColourValues.light, string>,
+): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(values).map(([name, value]) => [
+      `--${name}-text-color`,
+      value,
+    ]),
+  );
+}
 
 /**
  * Typography tokens — single source of truth for all font sizes.
@@ -260,6 +312,7 @@ const appCssVariables = {
     "--nav-active-colour": "var(--mantine-color-secondary-5)",
     // Nav link hover — Mantine's own non-active hover shade
     "--nav-hover-bg": "var(--mantine-color-dark-6)",
+    ...statusTextVariables(statusTextColourValues.dark),
   },
   light: {
     "--mantine-color-text": "#143f6b",
@@ -279,6 +332,7 @@ const appCssVariables = {
     // Current nav link — brand amber (only ~2.7:1 contrast on white)
     "--nav-active-colour": "var(--mantine-color-secondary-5)",
     "--nav-hover-bg": "var(--mantine-color-gray-0)",
+    ...statusTextVariables(statusTextColourValues.light),
   },
 };
 

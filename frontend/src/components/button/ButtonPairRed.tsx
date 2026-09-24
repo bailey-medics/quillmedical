@@ -54,7 +54,9 @@ export default function ButtonPairRed({
     <Group justify={justify} mt="xs" className={classes.group}>
       <Button
         type={acceptType}
-        color="red"
+        // The status alert red, not Mantine's "red": with this theme's
+        // primaryShade of 5 that is red.5, and white on it is 2.8:1.
+        color="var(--alert-color)"
         onClick={
           acceptDisabled
             ? (e: React.MouseEvent) => e.preventDefault()

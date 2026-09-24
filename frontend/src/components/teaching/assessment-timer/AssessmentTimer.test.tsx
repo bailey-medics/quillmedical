@@ -96,4 +96,39 @@ describe("AssessmentTimer", () => {
 
     expect(screen.getByText("00:30")).toBeInTheDocument();
   });
+
+  describe("text colour on the badge fill", () => {
+    /** The badge root carries the `c` colour as an inline style. */
+    function badgeRoot(text: string): HTMLElement {
+      const root = screen.getByText(text).closest(".mantine-Badge-root");
+      if (!(root instanceof HTMLElement)) {
+        throw new Error("badge root not found");
+      }
+      return root;
+    }
+
+    it("uses dark text on the yellow warning fill", () => {
+      // Four minutes left: inside the five-minute warning window.
+      const started = new Date(Date.now() - 71 * 60 * 1000).toISOString();
+      renderWithMantine(
+        <AssessmentTimer
+          timeLimitMinutes={75}
+          startedAt={started}
+          onExpire={() => {}}
+        />,
+      );
+      expect(badgeRoot("04:00").style.color).toBe("var(--status-text-dark)");
+    });
+
+    it("uses white text on the blue fill with time to spare", () => {
+      renderWithMantine(
+        <AssessmentTimer
+          timeLimitMinutes={75}
+          startedAt={new Date().toISOString()}
+          onExpire={() => {}}
+        />,
+      );
+      expect(badgeRoot("75:00").style.color).toBe("var(--mantine-color-white)");
+    });
+  });
 });
