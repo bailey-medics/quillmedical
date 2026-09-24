@@ -1691,6 +1691,34 @@ are Cloud Storage and Cloud Run jobs.
       `roles/iam.serviceAccountUser` on the five runtime accounts rather
       than on the default Compute Engine one, once they exist.
 
+## Batch 9a — Claude and Mark: unblock the Terraform apply
+
+Every apply on `main` failed from 2026-09-24. Version 8 of the google
+provider changed the default `load_balancing_scheme` from `EXTERNAL` (the
+classic Application Load Balancer) to `EXTERNAL_MANAGED` (the global one).
+Our load balancer never set the attribute, so each plan tried to move it
+across, and Google refused: "Cannot change the load balancing scheme until
+the migration state is set to TEST_ALL_TRAFFIC". A failed apply blocks every
+other infrastructure change, so fixing it comes before anything else here.
+
+- [x] Pin `load_balancing_scheme` to what is live, in
+      `infra/modules/load-balancer/main.tf`. The backend services and the
+      HTTPS forwarding rule are `EXTERNAL`. The HTTP forwarding rule is
+      already `EXTERNAL_MANAGED`, because the provider recreated it under the
+      new default before the others failed. It only redirects to HTTPS and
+      has no backend, so it stays as it is: pinning it back would replace the
+      rule for nothing. The plan after this should show no changes to the
+      load balancer.
+- [ ] **(Mark)** Confirm the next apply on `main` succeeds.
+- [ ] Migrate the whole load balancer to `EXTERNAL_MANAGED` through Google's
+      staged migration, as a piece of work of its own. Each backend service
+      moves through `external_managed_migration_state` `PREPARE`, then
+      `TEST_BY_PERCENTAGE`, then `TEST_ALL_TRAFFIC`, before its scheme can be
+      switched. Worth doing: classic is the older product, and new Cloud
+      Armor and routing features land on the global load balancer first.
+      Not urgent: classic is still supported, and nothing we use needs the
+      newer one.
+
 ## Batch 10 — Claude and Mark: test every alert route every four weeks
 
 An alert route can break without anything noticing, and on 2026-09-23 two
