@@ -1357,9 +1357,8 @@ class ProfessionalRegistration(Base):
     the old one is closed by setting ``ends_on``, so a row always means the
     registration it was written as.
 
-    **Declared, not checked.** Quill queries no register. A check an
-    organisation makes by hand is ``AssessorRegistrationVerification``, a
-    separate fact about a registration rather than part of it.
+    **Declared, not checked.** Quill queries no register, and records
+    nothing claiming that somebody did.
 
     Attributes:
         id: Primary key.

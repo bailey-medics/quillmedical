@@ -145,11 +145,11 @@ sat outside the thing it confirmed. That is also why nothing else depends on it.
 
 ## Phase 4: The table
 
-- [ ] **Delete the `AssessorRegistrationVerification` model** from
+- [x] **Delete the `AssessorRegistrationVerification` model** from
       `backend/app/features/passport/models.py`, and the line describing it in
       the module docstring.
 
-- [ ] **Drop the table with `just migrate "drop assessor registration
+- [x] **Drop the table with `just migrate "drop assessor registration
       verification"`.** A destructive migration, so it needs the
       `# migration-check: allow-destructive` marker and the
       `db-destructive-migration-review` environment approval, which is a human
@@ -164,19 +164,31 @@ sat outside the thing it confirmed. That is also why nothing else depends on it.
       is not edited or deleted; a merged migration's code is frozen, and this
       one supersedes it.
 
+      **Its `downgrade()` does not match `3530eb2d528b` exactly, and should
+      not.** Three revisions on 17 September moved the table from
+      `organisation_id` to `org_unit_id`, so going back one revision has to
+      restore the table as it stood then, which is what autogenerate
+      produced. Recreating the original would leave the chain inconsistent
+      with the revision below it.
+
 ## Phase 5: Tests
 
-- [ ] **Delete the tests that exercise the route, the model and the schema
+- [x] **Delete the tests that exercise the route, the model and the schema
       fields**, across `test_passport_router.py`, `test_passport_models.py`,
       `test_passport_api_schemas.py`, `test_passport_api_contract.py`,
       `test_passport_service.py` and `frontend/src/lib/passport/api.test.ts`.
 
-- [ ] **Check `test_passport_hashing.py` separately.** It asserts over
+- [x] **Check `test_passport_hashing.py` separately.** It asserts over
       `NON_CONTRIBUTING`, so removing an entry may change a count or a
       membership test. The assertion that matters, that `CONTRIBUTING` is
       unchanged, must still pass: it is what proves no stored hash moved.
 
-- [ ] **Run the full backend suite.** This touches `schemas.py` and
+      In the event it only checks the two maps do not overlap, which still
+      holds. The two tests that named the verification fields were
+      replaced in phase 2 by one proving a record written with them hashes
+      the same as one without.
+
+- [x] **Run the full backend suite.** This touches `schemas.py` and
       `models.py`, which `CLAUDE.md` names as wide blast radius, so the usual
       "only test what you touched" rule does not apply.
 
