@@ -6,6 +6,7 @@ takes the same bounds and shapes the error reports do, from
 anything the other would refuse.
 """
 
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -76,3 +77,44 @@ class FeedbackCreatedOut(BaseModel):
     """The id of the feedback just stored, so the sender can see it landed."""
 
     id: int
+
+
+#: Where a piece of feedback has got to. Kept in step with
+#: ``FEEDBACK_STATUSES`` in ``app.models`` by a test.
+FeedbackStatus = Literal["new", "acknowledged", "resolved", "wont_fix"]
+
+
+class FeedbackItemOut(BaseModel):
+    """One piece of feedback, as an operator reads it.
+
+    Carries the message, so only an operator route returns this shape.
+    ``sender`` is the username, or None once that user has been deleted.
+    """
+
+    id: int
+    status: FeedbackStatus
+    category: FeedbackCategory | None
+    message: str
+    sender: str | None
+    route: str
+    release: str
+    viewport: str
+    user_agent: str
+    breadcrumbs: list[dict[str, object]]
+    error_name: str | None
+    error_code: str | None
+    created_at: datetime
+
+
+class FeedbackListOut(BaseModel):
+    """Every piece of feedback, newest first."""
+
+    items: list[FeedbackItemOut]
+
+
+class FeedbackStatusIn(BaseModel):
+    """Move a piece of feedback to another status. Nothing else changes."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    status: FeedbackStatus

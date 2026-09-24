@@ -15,8 +15,9 @@ to undo the whole position. See
 
 import logging
 
-from fastapi import APIRouter, Depends, Request
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy import select
+from sqlalchemy.orm import Session, selectinload
 
 from app.analytics.router import (
     build_breadcrumbs,
@@ -25,10 +26,21 @@ from app.analytics.router import (
     redact_code,
 )
 from app.db import get_core_db
-from app.deps import DEP_CURRENT_USER, get_current_user
+from app.deps import (
+    DEP_CURRENT_USER,
+    DEP_REQUIRE_OPERATOR,
+    get_current_user,
+)
 from app.models import Feedback, User
 from app.rate_limit import limiter
-from app.schemas.feedback import FeedbackCreatedOut, FeedbackIn
+from app.schemas.feedback import (
+    FeedbackCreatedOut,
+    FeedbackIn,
+    FeedbackItemOut,
+    FeedbackListOut,
+    FeedbackStatus,
+    FeedbackStatusIn,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -98,3 +110,104 @@ def submit_feedback(
     # The id and nothing else. See the module docstring.
     logger.info("feedback received", extra={"feedback_id": feedback.id})
     return FeedbackCreatedOut(id=feedback.id)
+
+
+def _item(feedback: Feedback) -> FeedbackItemOut:
+    """Render one row for an operator."""
+    return FeedbackItemOut.model_validate(
+        {
+            "id": feedback.id,
+            "status": feedback.status,
+            "category": feedback.category,
+            "message": feedback.message,
+            "sender": feedback.user.username if feedback.user else None,
+            "route": feedback.route,
+            "release": feedback.release,
+            "viewport": feedback.viewport,
+            "user_agent": feedback.user_agent,
+            "breadcrumbs": feedback.breadcrumbs,
+            "error_name": feedback.error_name,
+            "error_code": feedback.error_code,
+            "created_at": feedback.created_at,
+        }
+    )
+
+
+@router.get(
+    "",
+    response_model=FeedbackListOut,
+    dependencies=[DEP_REQUIRE_OPERATOR],
+)
+def list_feedback(
+    status: FeedbackStatus | None = None,
+    db: Session = _DEP_SESSION,
+) -> FeedbackListOut:
+    """Every piece of feedback, newest first, optionally of one status.
+
+    Operator-only. Feedback comes from every organisation, so reading it
+    is operating the deployment rather than administering any one place,
+    and ``manage_users`` — which is scoped to a place — is the wrong
+    question.
+
+    Not paginated. Volumes are low, and the useful view is "everything
+    still ``new``", which the status filter already narrows to.
+    """
+    query = (
+        select(Feedback)
+        .options(selectinload(Feedback.user))
+        .order_by(Feedback.created_at.desc(), Feedback.id.desc())
+    )
+    if status is not None:
+        query = query.where(Feedback.status == status)
+    return FeedbackListOut(items=[_item(f) for f in db.scalars(query)])
+
+
+def _require_feedback(db: Session, feedback_id: int) -> Feedback:
+    """Return the feedback, or refuse with a 404."""
+    feedback = db.get(Feedback, feedback_id)
+    if feedback is None:
+        raise HTTPException(404, "Feedback not found")
+    return feedback
+
+
+@router.get(
+    "/{feedback_id}",
+    response_model=FeedbackItemOut,
+    dependencies=[DEP_REQUIRE_OPERATOR],
+)
+def get_feedback(
+    feedback_id: int,
+    db: Session = _DEP_SESSION,
+) -> FeedbackItemOut:
+    """One piece of feedback in full. Operator-only."""
+    return _item(_require_feedback(db, feedback_id))
+
+
+@router.patch(
+    "/{feedback_id}",
+    response_model=FeedbackItemOut,
+    dependencies=[DEP_REQUIRE_CSRF],
+)
+def update_feedback_status(
+    feedback_id: int,
+    body: FeedbackStatusIn,
+    operator: User = DEP_REQUIRE_OPERATOR,
+    db: Session = _DEP_SESSION,
+) -> FeedbackItemOut:
+    """Move a piece of feedback to another status. Operator-only.
+
+    The status is the only thing that changes: what somebody sent is
+    their record of it, and is never edited.
+    """
+    feedback = _require_feedback(db, feedback_id)
+    feedback.status = body.status
+    db.flush()
+    logger.info(
+        "feedback status changed",
+        extra={
+            "feedback_id": feedback.id,
+            "status": feedback.status,
+            "changed_by": operator.id,
+        },
+    )
+    return _item(feedback)
