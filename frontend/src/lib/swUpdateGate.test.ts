@@ -6,6 +6,7 @@ import {
   wirePreloadErrorRecovery,
   wireUpdateChecks,
   HOURLY_INTERVAL_MS,
+  PRELOAD_RELOAD_LOOP_WINDOW_MS,
   type RouteMatchLike,
   type RouterLike,
 } from "./swUpdateGate";
@@ -351,14 +352,20 @@ describe("decidePreloadFailureAction", () => {
     ).toBe("reload");
   });
 
-  it("records the reload-loop guard when it decides to reload", () => {
+  it("records when it reloaded, as the reload-loop guard", () => {
+    // Changed deliberately on 2026-09-24: the guard was a "1" flag that was
+    // never cleared, so a tab recovered from one deploy and never again.
     decidePreloadFailureAction({
       routeIsSafe: true,
       hasFlash: false,
       storage,
+      now: () => 1_000_000,
     });
 
-    expect(storage.setItem).toHaveBeenCalledWith("quill-preload-reloaded", "1");
+    expect(storage.setItem).toHaveBeenCalledWith(
+      "quill-preload-reloaded",
+      "1000000",
+    );
   });
 
   it("defers on an unsafe route rather than destroying work", () => {
@@ -407,6 +414,67 @@ describe("decidePreloadFailureAction", () => {
         storage,
       }),
     ).toBe("defer");
+  });
+
+  it("reloads again once the loop window has passed, for a later deploy", () => {
+    // The bug this guards against: after one recovery the tab could never
+    // recover again, so the next deploy's stale chunk crashed the page.
+    let clock = 1_000_000;
+    const now = () => clock;
+
+    expect(
+      decidePreloadFailureAction({
+        routeIsSafe: true,
+        hasFlash: false,
+        storage,
+        now,
+      }),
+    ).toBe("reload");
+
+    clock += PRELOAD_RELOAD_LOOP_WINDOW_MS;
+
+    expect(
+      decidePreloadFailureAction({
+        routeIsSafe: true,
+        hasFlash: false,
+        storage,
+        now,
+      }),
+    ).toBe("reload");
+  });
+
+  it("still defers just inside the loop window", () => {
+    let clock = 1_000_000;
+    const now = () => clock;
+
+    decidePreloadFailureAction({
+      routeIsSafe: true,
+      hasFlash: false,
+      storage,
+      now,
+    });
+    clock += PRELOAD_RELOAD_LOOP_WINDOW_MS - 1;
+
+    expect(
+      decidePreloadFailureAction({
+        routeIsSafe: true,
+        hasFlash: false,
+        storage,
+        now,
+      }),
+    ).toBe("defer");
+  });
+
+  it("treats a guard left by the old flag format as long expired", () => {
+    const legacy = makeStorage({ "quill-preload-reloaded": "1" });
+
+    expect(
+      decidePreloadFailureAction({
+        routeIsSafe: true,
+        hasFlash: false,
+        storage: legacy,
+      }),
+    ).toBe("reload");
   });
 
   it("uses a different guard key from the service-worker gate", () => {
@@ -524,7 +592,7 @@ describe("wirePreloadErrorRecovery", () => {
     expect(reload).not.toHaveBeenCalled();
   });
 
-  it("prevents default so Vite does not also rethrow the error", () => {
+  it("prevents default when it reloads, so Vite does not also rethrow", () => {
     wirePreloadErrorRecovery({
       router: makePreloadRouter(true),
       persist: vi.fn(),
@@ -536,7 +604,12 @@ describe("wirePreloadErrorRecovery", () => {
     expect(firePreloadError().defaultPrevented).toBe(true);
   });
 
-  it("prevents default on the deferred path too", () => {
+  it("lets the error through when it defers, so the import rejects", () => {
+    // Changed deliberately on 2026-09-24. Preventing default makes Vite
+    // resolve the failed import to undefined, and React.lazy then crashed
+    // with "Cannot read properties of undefined (reading 'default')".
+    // Letting it through makes the import reject, which the nearest
+    // ErrorBoundary catches and offers a reload for.
     wirePreloadErrorRecovery({
       router: makePreloadRouter(false),
       persist: vi.fn(),
@@ -545,7 +618,7 @@ describe("wirePreloadErrorRecovery", () => {
       storage,
     });
 
-    expect(firePreloadError().defaultPrevented).toBe(true);
+    expect(firePreloadError().defaultPrevented).toBe(false);
   });
 
   it("reloads only once, so a chunk missing from the current build cannot spin", () => {

@@ -58,6 +58,7 @@ import { installGlobalErrorReporting } from "@lib/error-reporting/globalHandlers
 import RouteTracking from "@lib/error-reporting/RouteTracking";
 
 import RootLayout from "./RootLayout";
+import ErrorBoundary from "@/components/error-boundary/ErrorBoundary";
 import AdminPage from "./pages/AdminPage";
 import AdminUsersPage from "./pages/admin/users/AdminUsersPage";
 import AdminPatientsPage from "./pages/admin/patients/AdminPatientsPage";
@@ -586,7 +587,13 @@ const routes: RouteObject[] = [
             </TeachingLayout>
           }
         >
-          <Outlet />
+          {/* The teaching pages sit outside RootLayout, so they need their
+              own boundary. Without it a crash here fell through to React
+              Router's built-in developer screen ("Hey developer"), shown in
+              production as well, rather than the app's own fallback. */}
+          <ErrorBoundary>
+            <Outlet />
+          </ErrorBoundary>
         </RequireFeature>
       </RequireAuth>
     ),

@@ -429,7 +429,7 @@ export const EveryProgressState: Story = {
             progress: {
               stage: 3,
               total_stages: 4,
-              label: "Ready — captions need checking",
+              label: "Captions need checking — hidden from learners until then",
               in_progress: false,
               stalled: false,
             },
