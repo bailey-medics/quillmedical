@@ -1970,9 +1970,24 @@ handover.
 The only step here with real risk, and the risk is mostly to email: a
 missing MX or DKIM record fails quietly, as mail that never arrives.
 
-- [ ] **(Claude)** Create the zone in `quill-medical-app`, in Terraform,
+- [x] **(Claude)** Create the zone in `quill-medical-app`, in Terraform,
       with every live record except the dead `staging` one. Google assigns
       the new zone its own nameserver set, which may not be the `c` set.
+
+      Built in `infra/dns.tf` on 2026-09-24, behind a `manage_dns_zone`
+      variable set only in `environments/app/terraform.tfvars`, so a later
+      `dev` or `ehr` environment built from the same configuration cannot
+      create a second copy. The apex and `app` records take
+      `module.load_balancer.lb_ip` rather than a literal address, and every
+      TTL is copied from the live zone. The zone carries
+      `prevent_destroy`: a recreated zone is not promised the same
+      nameservers, so losing it means repointing GoDaddy.
+
+      Checked before merging, by planning it and comparing every planned
+      record with the live zone's, name, type, TTL and values: all twelve
+      match, and only `staging` differs, as intended. The assigned
+      nameservers appear in the `dns_zone_name_servers` output once it
+      applies.
 - [ ] **(Claude)** Before anything is switched, query the new zone's
       nameservers directly for every record and compare them with the
       live zone's answers. Lower the TTL on the live NS and key records
