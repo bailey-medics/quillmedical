@@ -49,12 +49,3 @@ export const ForTheSender: Story = {
     </Group>
   ),
 };
-
-export const Loading: Story = {
-  args: { status: "new", isLoading: true },
-};
-
-export const DarkMode: Story = {
-  ...Default,
-  globals: { colorScheme: "dark" },
-};
