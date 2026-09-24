@@ -43,7 +43,6 @@ import {
   searchAssessors,
   revokeAssessorMembership,
   signOff,
-  verifyAssessorRegistration,
   verifySignOff,
   withdrawSignOff,
 } from "./api";
@@ -77,7 +76,6 @@ describe("passport paths", () => {
       "/api/passport/assessor-invites/accept",
       "/api/passport/assessor-invites/preview",
       "/api/passport/assessors/{assessor_user_id}/membership",
-      "/api/passport/assessors/{assessor_user_id}/registration-verification",
       "/api/passport/requests/inbox",
       "/api/passport/{passport_id}",
       "/api/passport/{passport_id}/assessor-invites",
@@ -366,18 +364,6 @@ describe("assessors", () => {
     expect(api.post).toHaveBeenCalledWith("/passport/assessor-invites/accept", {
       token: "tok123",
     });
-  });
-
-  it("records a by-hand registration check", async () => {
-    const body = {
-      registration_authority: "GMC",
-      registration_number: "1234567",
-    };
-    await verifyAssessorRegistration(42, body);
-    expect(api.post).toHaveBeenCalledWith(
-      "/passport/assessors/42/registration-verification",
-      body,
-    );
   });
 
   it("revokes a membership with DELETE", async () => {

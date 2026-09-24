@@ -30,18 +30,29 @@ sat outside the thing it confirmed. That is also why nothing else depends on it.
 
 ## Phase 1: The write path
 
-- [ ] **Delete `verify_assessor_registration`** and its route,
+- [x] **Delete `verify_assessor_registration`** and its route,
       `POST /assessors/{assessor_user_id}/registration-verification`, from
       `backend/app/features/passport/router.py`.
 
-- [ ] **Delete `RegistrationVerifyIn` and `RegistrationVerificationOut`** from
+- [x] **Delete `RegistrationVerifyIn` and `RegistrationVerificationOut`** from
       `backend/app/schemas/passport.py`, and their imports in the router.
 
-- [ ] **Write an api-compatibility decision file.** Removing a route is a
+- [x] **Write an api-compatibility decision file.** Removing a route is a
       breaking change and `oasdiff` will flag it. Use
       `python backend/scripts/new_compat_decision.py`, and answer
       `forces_reload: false`: no open tab calls this route, so no client needs
       to reload to stop using it.
+
+- [x] **Remove `verifyAssessorRegistration` and its two types from the
+      frontend client in the same unit.** Moved forward from phase 3:
+      `PASSPORT_PATHS` in `api.ts` mirrors the backend's `EXPECTED_PATHS`,
+      and `api.test.ts` compares the two, so the route and the client
+      function that calls it have to go together or one side's test fails.
+
+      `_require_org_admin_over` stays: the revoke route uses it too. The one
+      router test that proved a clinician without `manage_users` is refused
+      went through the verification route, so it now goes through revoke
+      rather than being lost.
 
 ## Phase 2: The record
 

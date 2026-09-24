@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "api-path-removed-without-deprecation POST /api/passport/assessors/{assessor_user_id}/registration-verification api path removed without deprecation"
+reason: "Registration verification is removed. The route let an organisation admin record that they had looked an assessor's number up on a register by hand; no page ever called it, and its table holds no rows. No forced reload: no open tab can call an address no screen offers, and bumping the generation would stop every tab sending any mutation until it reloaded."

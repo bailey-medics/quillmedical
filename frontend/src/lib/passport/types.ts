@@ -581,30 +581,6 @@ export interface AssessorInviteAccept {
   org_unit_id: number;
 }
 
-/** An admin recording that they checked a register by hand. */
-export interface RegistrationVerifyInput {
-  registration_authority: string;
-  registration_number: string;
-}
-
-/**
- * One recorded check. Who made it and when travel with the flag, because
- * a check that does not say who looked records only that somebody did.
- */
-export interface RegistrationVerification {
-  user_id: number;
-  registration_authority: string;
-  registration_number: string;
-  verified_by_name: string;
-  verified_at: IsoDateTime;
-  /**
-   * The org_unit of the organisation whose admin checked it. Replaces
-   * `organisation_id`, which counted in the organisations table's own
-   * ids; membership answers in place ids now.
-   */
-  org_unit_id: number;
-}
-
 /**
  * What removing an assessor's membership did.
  *

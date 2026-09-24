@@ -54,8 +54,6 @@ import type {
   RecordResult,
   Reflection,
   ReflectionInput,
-  RegistrationVerification,
-  RegistrationVerifyInput,
   SignOff,
   SignOffDeclineInput,
   SignOffInput,
@@ -79,7 +77,6 @@ export const PASSPORT_PATHS = [
   "/passport/assessor-invites/accept",
   "/passport/assessor-invites/preview",
   "/passport/assessors/{assessor_user_id}/membership",
-  "/passport/assessors/{assessor_user_id}/registration-verification",
   "/passport/requests/inbox",
   "/passport/{passport_id}",
   "/passport/{passport_id}/assessor-invites",
@@ -539,20 +536,6 @@ export function acceptAssessorInvite(
 ): Promise<AssessorInviteAccept> {
   return api.post<AssessorInviteAccept>(
     "/passport/assessor-invites/accept",
-    data,
-  );
-}
-
-/**
- * An organisation admin recording that they checked a register by hand.
- * Quill checks no register itself.
- */
-export function verifyAssessorRegistration(
-  assessorUserId: number,
-  data: RegistrationVerifyInput,
-): Promise<RegistrationVerification> {
-  return api.post<RegistrationVerification>(
-    `/passport/assessors/${segment(assessorUserId)}/registration-verification`,
     data,
   );
 }

@@ -109,8 +109,6 @@ from app.schemas.passport import (
     ReflectionIn,
     ReflectionOut,
     RegistrationOut,
-    RegistrationVerificationOut,
-    RegistrationVerifyIn,
     SignOffDeclineIn,
     SignOffIn,
     SignOffOut,
@@ -148,7 +146,6 @@ from .commits import Actor
 from .entitlements import passport_write_ends_on
 from .gcs_store import GcsBlobStore
 from .models import (
-    AssessorRegistrationVerification,
     Passport,
     PassportAssessorInvite,
     PassportSignOffRequest,
@@ -2383,7 +2380,7 @@ INVITES_PER_DAY = 100
 
 
 # --------------------------------------------------------------------
-# Organisation admins: verifying a registration, and revoking access
+# Organisation admins: revoking access
 # --------------------------------------------------------------------
 #
 # **"Admin of the holder's organisation" is two questions, not one.**
@@ -2405,8 +2402,8 @@ def _require_org_admin_over(
     """Require that *admin* administers somebody at a shared organisation.
 
     Returns:
-        The org_unit of the organisation the authority runs through, so the
-        verification row can record whose assurance it is.
+        The org_unit of the organisation the authority runs through, so
+        the caller acts at that place and nowhere else.
 
     Raises:
         HTTPException: 404 if they share no organisation, matching
@@ -2434,96 +2431,6 @@ def _require_org_admin_over(
         raise HTTPException(404, "Assessor not found")
 
     return shared_ids[0]
-
-
-@passport_router.post(
-    "/assessors/{assessor_user_id}/registration-verification",
-    response_model=RegistrationVerificationOut,
-    status_code=201,
-    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
-)
-def verify_assessor_registration(
-    assessor_user_id: int,
-    body: RegistrationVerifyIn,
-    user: User = _DEP_USER,
-    db: Session = _DEP_SESSION,
-) -> RegistrationVerificationOut:
-    """Record that an admin checked a registration against its register.
-
-    By hand in phase 1: Quill queries no register, so this records a
-    human act rather than an automated lookup, and the record says so.
-
-    **It does not reach back into sign-offs already written.** A sign-off
-    is a snapshot of what was known at the moment of signing, and the
-    flag applies to those signed after this point. Rewriting the earlier
-    ones would make the record claim a check that had not happened when
-    it was signed.
-    """
-    org_unit_id = _require_org_admin_over(db, user, assessor_user_id)
-
-    assessor = db.get(User, assessor_user_id)
-
-    if assessor is None or not assessor.is_active:
-        raise HTTPException(404, "Assessor not found")
-
-    authority = body.registration_authority.strip()
-    number = body.registration_number.strip()
-
-    # The number must be one they actually declared and still hold.
-    # Verifying a number the assessor never gave would record a check of
-    # something Quill has no reason to associate with them. The body is
-    # matched as the accept route stores it, so `gmc` finds `GMC`.
-    authority = canonical_authority(authority) or authority
-    declared = any(
-        row.authority == authority and row.number == number
-        for row in assessor.current_registrations
-    )
-
-    if not declared:
-        raise HTTPException(
-            400,
-            (
-                "That registration is not one this assessor declared, so "
-                "there is nothing to verify."
-            ),
-        )
-
-    existing = db.scalar(
-        select(AssessorRegistrationVerification).where(
-            AssessorRegistrationVerification.user_id == assessor_user_id,
-            AssessorRegistrationVerification.registration_authority
-            == authority,
-            AssessorRegistrationVerification.registration_number == number,
-            AssessorRegistrationVerification.org_unit_id == org_unit_id,
-        )
-    )
-
-    if existing is not None:
-        # Re-checking is an update of when it was last confirmed rather
-        # than a second fact, so the row moves instead of multiplying.
-        existing.verified_by_user_id = user.id
-        existing.verified_at = _now()
-        row = existing
-    else:
-        row = AssessorRegistrationVerification(
-            user_id=assessor_user_id,
-            registration_authority=authority,
-            registration_number=number,
-            verified_by_user_id=user.id,
-            org_unit_id=org_unit_id,
-        )
-        db.add(row)
-
-    db.flush()
-
-    return RegistrationVerificationOut(
-        user_id=assessor_user_id,
-        registration_authority=authority,
-        registration_number=number,
-        verified_by_name=user.full_name or user.username,
-        verified_at=_as_utc(row.verified_at),
-        org_unit_id=org_unit_id,
-    )
 
 
 @passport_router.delete(
