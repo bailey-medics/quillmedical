@@ -657,11 +657,6 @@ rewriting those phases: nothing it replaces lapses before it lands.
 
 ## Open questions
 
-- **Does `granted: false` need dates?** A removal that expires is a
-  suspension. The columns allow it; no step uses it. Phase 8 retires removal
-  rows altogether, so a suspension would become a grant row closed and
-  reopened, or a status of its own.
-
 - **How does a change to a profession reach the people who already hold
   it?** After Phase 8 it reaches nobody automatically, which is the point.
   When it should, for example a new mandatory competency for every nurse,
