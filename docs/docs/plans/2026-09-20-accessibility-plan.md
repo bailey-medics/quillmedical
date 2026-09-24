@@ -136,7 +136,7 @@ once the addon is registered; no `test-runner.ts` hooks are needed.
       this plan. Two findings from doing it. First, a Storybook dev server
       started before the addon was registered does not load it, and the
       test-runner then fails every story with `ReferenceError: Cannot
-  access 'StorybookTestRunnerError' before initialization` rather than
+access 'StorybookTestRunnerError' before initialization` rather than
       with a readable message; restart Storybook after changing
       `main.ts`. Second, the test-runner's failure message shows only the
       first violating element per story, which is too little to count
@@ -482,11 +482,23 @@ a screen magnifier and Dragon. For one developer on a Mac the realistic
 first pass is below; JAWS and Dragon are licensed and can wait for a
 commissioned audit.
 
-- [ ] Write four journey scripts in
+- [x] Write four journey scripts in
       `docs/docs/frontend/accessibility/journeys.md`: log in with 2FA,
       find and open a patient, open and complete a teaching lecture, sign
       off a passport competency. Each is a numbered list of steps with the
-      expected announcement or focus position at each
+      expected announcement or focus position at each. Written, each with who walks it (for
+      the phase 6 journey map), and with a zoom and a wrong-input step
+      where the journey has one
+- [x] Keep the results in
+      `docs/docs/frontend/accessibility/testing-log.md`, one entry per run
+      with date, tool, browser, journey and findings. This log is the
+      evidence DTAC D1 asks for and the "preparation" section of the
+      statement cites. Created, with its entry format and the two
+      automated runs so far (the keyboard journeys and the focus walk) as
+      its first entries, and a "not yet run" list naming every manual run
+      below, so the gap is on the record rather than implied. Both pages
+      are in the MkDocs navigation under Frontend, Accessibility. Moved up from after the runs, because the log is
+      created before the first run, not after
 - [ ] Run each journey with VoiceOver and Safari on macOS, and with
       VoiceOver on iOS. Record pass, fail or partial per step
 - [ ] Run each journey with NVDA and Firefox in a Windows virtual machine
@@ -494,11 +506,6 @@ commissioned audit.
       Reflow requires no horizontal scroll at 320px equivalent)
 - [ ] Run each journey with TalkBack on Android if a device is available;
       otherwise record it as untested in the statement
-- [ ] Keep the results in
-      `docs/docs/frontend/accessibility/testing-log.md`, one entry per run
-      with date, tool, browser, journey and findings. This log is the
-      evidence DTAC D1 asks for and the "preparation" section of the
-      statement cites
 - [ ] Recruit at least two people with access needs (a screen reader user
       and someone with a motor impairment or cognitive difference) to walk
       the teaching journey before the passport launches. Sole-developer
@@ -516,6 +523,10 @@ readable by someone who cannot yet log in.
       CI, the testing log, and the statement's location. Remove the ADA,
       Section 508, text size, density, phone line, timeout warning and
       mailbox claims
+      The runs below need a person with the device and the screen reader,
+      and cannot be automated or done by an unattended build. They stay open
+      until someone does them and logs the result.
+
 - [ ] Write the statement in the GOV.UK model format, in order: commitment
       referencing the 2018 regulations; scope (the app and the public
       site, by URL); compliance status, which will be **partially
