@@ -192,3 +192,38 @@ describe("status colour contrast", () => {
     );
   });
 });
+
+describe("error and link contrast", () => {
+  const lightSurfaces = ["#ffffff", greyScale[0], greyScale[1], greyScale[2]];
+  const darkSurfaces = ["#001a36", "#042340", "#0a2f56"];
+  const tokens = [
+    "--error-color",
+    "--link-color",
+    "--link-hover-color",
+  ] as const;
+
+  it.each(tokens)("%s passes WCAG AA on every light surface", (name) => {
+    for (const surface of lightSurfaces) {
+      expect(contrastRatio(vars.light[name], surface)).toBeGreaterThanOrEqual(
+        AA_TEXT,
+      );
+    }
+  });
+
+  it.each(tokens)("%s passes WCAG AA on every dark surface", (name) => {
+    for (const surface of darkSurfaces) {
+      expect(contrastRatio(vars.dark[name], surface)).toBeGreaterThanOrEqual(
+        AA_TEXT,
+      );
+    }
+  });
+
+  it("keeps body text readable on my chat bubble in dark mode", () => {
+    expect(
+      contrastRatio(
+        vars.dark["--mantine-color-text"],
+        vars.dark["--bubble-mine-bg"],
+      ),
+    ).toBeGreaterThanOrEqual(AA_TEXT);
+  });
+});

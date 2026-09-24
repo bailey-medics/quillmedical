@@ -42,6 +42,10 @@
 
 .root :global(.mantine-MultiSelect-input[data-disabled]) {
   background-color: var(--mantine-color-gray-3);
+
+  /* Mantine fades a disabled input to 60%, which took the pill text
+     below AA; the grey fill already says it is disabled. */
+  opacity: 1;
 }
 
 .disabledPill {
@@ -53,7 +57,7 @@
 }
 
 [data-mantine-color-scheme="dark"] .disabledPill {
-  color: var(--mantine-color-primary-4) !important;
+  color: var(--mantine-color-primary-8) !important;
 }
 
 .pill {

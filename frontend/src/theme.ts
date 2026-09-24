@@ -112,7 +112,7 @@ export const greyScale = [
  * unchanged, so colour-blind users still tell them apart as before, and
  * each status still carries an icon. `theme.test.ts` holds them to it.
  *
- * Note: `--error-color` (#f55142) is a separate token for form validation
+ * Note: `--error-color` is a separate token for form validation
  * borders (accessibility-tuned). `--error-focus-color` (#ffb3b3) is a lighter
  * variant used when an errored field receives focus. `--alert-color`
  * is for status badges, destructive buttons, and notifications.
@@ -299,12 +299,19 @@ const appCssVariables = {
     "--mantine-color-dark-2": "#0a2f56",
     // Stepper inactive circles, outline separator
     "--mantine-color-dark-5": "#042340",
-    // Error text/border — accessible orange-red for colour-blind users
+    // Error text/border — accessible orange-red for colour-blind users.
+    // A light coral in dark mode: 5.8:1 on the input navy, where the
+    // light-mode value is 3.9:1.
     "--mantine-color-error": "var(--error-color)",
-    "--error-color": "#f55142",
+    "--error-color": "#ff8a65",
     "--error-focus-color": "#ffb3b3",
-    // Chat bubble backgrounds
-    "--bubble-mine-bg": "#245d8f",
+    // Links: primary.4 is 2.3:1 on the card navy, primary.1 is 6.3:1 or
+    // better on every dark surface. Hover goes lighter, not darker.
+    "--link-color": primaryScale[1],
+    "--link-hover-color": primaryScale[0],
+    // Chat bubble backgrounds. Mine is primary.5 rather than primary.4:
+    // body text on primary.4 was 4.47:1, just under AA.
+    "--bubble-mine-bg": primaryScale[5],
     "--bubble-theirs-bg": "#0a2f56",
     "--bubble-shadow": "none",
     "--bubble-border-top": "1px solid #0a2f56",
@@ -321,10 +328,15 @@ const appCssVariables = {
     // white and 6.9:1 on gray.2.
     "--mantine-color-dimmed": greyScale[7],
     "--mantine-color-placeholder": "var(--mantine-color-gray-4)",
-    // Error text/border — accessible orange-red for colour-blind users
+    // Error text/border — accessible orange-red for colour-blind users.
+    // The same hue as before, darkened: the old #f55142 was 3.4:1 on
+    // white, #c4320a is 5.5:1 on white and 4.7:1 on gray.2.
     "--mantine-color-error": "var(--error-color)",
-    "--error-color": "#f55142",
+    "--error-color": "#c4320a",
     "--error-focus-color": "#ffb3b3",
+    // Links: primary.4 is 6.9:1 on white; hover darkens to the brand navy.
+    "--link-color": primaryScale[4],
+    "--link-hover-color": primaryScale[8],
     "--bubble-mine-bg": "#bdd2eb",
     "--bubble-theirs-bg": "#fae8cc",
     "--bubble-shadow": "0 1px 0 rgba(0,0,0,0.06)",

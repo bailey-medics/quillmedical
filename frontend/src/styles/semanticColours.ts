@@ -144,11 +144,11 @@ export const textColours: Record<string, TextColourConfig> = {
     usage: "BodyText — primary body text (inherits theme navy)",
   },
   error: {
-    value: "orange.8",
+    value: "var(--error-color)",
     usage: "ErrorMessage — validation and error messages",
   },
   placeholder: {
-    value: "gray.4",
+    value: "dimmed",
     usage: "EmptyState — empty field hints",
   },
 };

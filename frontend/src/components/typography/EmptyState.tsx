@@ -1,8 +1,10 @@
 /**
  * EmptyState Component
  *
- * Light grey text for empty-state hints and placeholder labels.
- * Uses `gray.4` from the grey design scale.
+ * Muted text for empty-state hints and placeholder labels. The theme's
+ * `dimmed` colour rather than the input placeholder grey: this is content
+ * a reader needs, so it must meet WCAG AA contrast, and `gray.4` on
+ * white is 1.5:1.
  */
 
 import { Text } from "@mantine/core";
@@ -14,14 +16,14 @@ export interface EmptyStateProps {
 }
 
 /**
- * Renders placeholder text in `gray.4` at body size (19px).
+ * Renders hint text in `dimmed` at body size (19px).
  *
  * @param props - Component props
  * @returns Light grey text element
  */
 export default function EmptyState({ children }: EmptyStateProps) {
   return (
-    <Text size="md" c="var(--mantine-color-placeholder)">
+    <Text size="md" c="dimmed">
       {children}
     </Text>
   );

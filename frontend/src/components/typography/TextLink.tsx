@@ -21,7 +21,8 @@ interface TextLinkProps {
 }
 
 /**
- * Renders an internal link with `primary-4` colour and hover darkening.
+ * Renders an internal link in the `--link-color` token, which is
+ * `primary-4` in light mode and `primary-1` in dark.
  *
  * @param props - Component props
  * @returns Styled anchor element wrapping a React Router Link
