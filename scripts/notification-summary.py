@@ -83,14 +83,41 @@ def summarise(message: str) -> str:
     return candidate
 
 
+def summarise_input(payload: dict) -> str:
+    """What Claude is waiting on, for the banner when it needs a reply.
+
+    Two hook payloads reach here. A PreToolUse hook on AskUserQuestion
+    carries the question in tool_input; a Notification hook for a
+    permission prompt carries Claude Code's own sentence in "message",
+    such as "Claude needs your permission to use Bash".
+    """
+    questions = (payload.get("tool_input") or {}).get("questions") or []
+    if questions and isinstance(questions[0], dict):
+        text = questions[0].get("question") or ""
+    else:
+        text = payload.get("message") or ""
+    if not isinstance(text, str):
+        return ""
+
+    text = _strip_markdown(text)
+    if len(text) > MAX_LEN:
+        text = text[: MAX_LEN - 1].rstrip() + "…"
+    return text
+
+
 def main() -> int:
+    # "--input" summarises what Claude is waiting on rather than what it
+    # finished; see summarise_input.
+    waiting = "--input" in sys.argv[1:]
     try:
         payload = json.load(sys.stdin)
-        message = payload.get("last_assistant_message") or ""
-        if isinstance(message, str):
-            summary = summarise(message)
-            if summary:
-                print(summary)
+        if waiting:
+            summary = summarise_input(payload)
+        else:
+            message = payload.get("last_assistant_message") or ""
+            summary = summarise(message) if isinstance(message, str) else ""
+        if summary:
+            print(summary)
     except Exception:
         pass  # No summary is a fine outcome; the caller names the branch.
     return 0
