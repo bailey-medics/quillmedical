@@ -518,29 +518,19 @@ The accessibility statement has a legally mandated structure. It is
 published on the public site, not inside the app, because it must be
 readable by someone who cannot yet log in.
 
-- [ ] Replace `docs/docs/frontend/accessibility.md` with a page that says
+- [x] Replace `docs/docs/frontend/accessibility.md` with a page that says
       only what is true: the design foundations, the checks that run in
       CI, the testing log, and the statement's location. Remove the ADA,
       Section 508, text size, density, phone line, timeout warning and
       mailbox claims
       The runs below need a person with the device and the screen reader,
       and cannot be automated or done by an unattended build. They stay open
-      until someone does them and logs the result.
-
-- [ ] Write the statement in the GOV.UK model format, in order: commitment
-      referencing the 2018 regulations; scope (the app and the public
-      site, by URL); compliance status, which will be **partially
-      compliant** until phase 5 is done and must stay honest after it;
-      non-accessible content under the three mandated headings
-      (non-compliance, disproportionate burden, out of scope); preparation
-      date, evaluation method and last review date; a feedback route; the
-      EHRC and EASS enforcement paragraph
-- [ ] Publish it at `/accessibility` on the public site
-      (`frontend/public_pages/`) and link it from the public footer and
-      from the app's ribbon or settings, so 3.2.6 Consistent help is met
-      in the same change
-- [ ] Choose the feedback route the statement names. A monitored email
-      address is the minimum; it must actually be read
+      until someone does them and logs the result.. Rewritten
+      from 615 lines to one short page: the design foundations, the checks
+      that run in CI, "nothing yet" for testing by people, the known gaps,
+      and where the statement will go. Every claim on it is backed by the
+      code, a test or the testing log, and it says so where people have
+      not checked something yet
 - [ ] Build the DTAC D1 evidence pack in
       `docs/docs/frontend/accessibility/dtac-d1.md`: the user journey map
       (the four journeys from phase 5 with the roles that walk them), the
@@ -554,6 +544,23 @@ readable by someone who cannot yet log in.
       flagged in the patient banner, and that it is designed but not built
       because there are no live patient records. Add the data model work
       as a checklist item in the clinical launch plan rather than here
+- [ ] Choose the feedback route the statement names. A monitored email
+      address is the minimum; it must actually be read. Moved ahead of the statement, which has
+      to name it, and the evidence pack and AIS note moved ahead of both,
+      because they need neither. This is a decision for a person: the
+      address has to be one somebody reads
+- [ ] Write the statement in the GOV.UK model format, in order: commitment
+      referencing the 2018 regulations; scope (the app and the public
+      site, by URL); compliance status, which will be **partially
+      compliant** until phase 5 is done and must stay honest after it;
+      non-accessible content under the three mandated headings
+      (non-compliance, disproportionate burden, out of scope); preparation
+      date, evaluation method and last review date; a feedback route; the
+      EHRC and EASS enforcement paragraph
+- [ ] Publish it at `/accessibility` on the public site
+      (`frontend/public_pages/`) and link it from the public footer and
+      from the app's ribbon or settings, so 3.2.6 Consistent help is met
+      in the same change
 - [ ] Set an annual review date for the statement and add it to the
       stale-incidents or a similar scheduled workflow so it cannot be
       forgotten
