@@ -15,7 +15,7 @@ The app uses [Atkinson Hyperlegible Next](https://brailleinstitute.org/freefont)
 
 ### Text colour
 
-Body text uses `#143f6b` (primary shade 6) instead of pure black. This reduces harsh contrast against white backgrounds, improving readability for extended use while maintaining a strong AA contrast ratio (~10:1).
+Body text uses `#143f6b` (primary shade 5) instead of pure black. This reduces harsh contrast against white backgrounds, improving readability for extended use while maintaining a strong AA contrast ratio (~10:1).
 
 The colour is set via both `theme.black` and `--mantine-color-text` in the CSS variables resolver to ensure all Mantine components inherit it.
 
@@ -36,8 +36,10 @@ The "Quill Medical" logo text uses [El Messiri](https://fonts.google.com/specime
 
 A 10-shade ramp derived from the brand navy, with cooler blue tones in the lighter shades (0–3) to avoid a lavender/pink cast that can appear against white backgrounds — particularly noticeable for users with colour vision deficiency.
 
-- `primaryShade: 6` — used for filled buttons and interactive elements (one shade lighter than the brand colour for better visual weight on screen)
-- Shades 7–9 are reserved for text, hover states, and the darkest brand applications
+- `primaryShade: 5` — used for filled buttons and interactive elements (lighter than the brand colour for better visual weight on screen)
+- Shades 7–9 are reserved for hover states and the darkest brand applications
+- Shades 0–1 are the dark-mode text accents: `primary.1` is the dark-mode muted text and link colour, `primary.0` the dark-mode link hover
+- `primaryShade: 5` also applies to every Mantine named colour, so `color="red"` gives `red.5`, which fails contrast with white text. Use the status tokens instead
 
 ### Secondary scale (amber)
 
@@ -59,7 +61,7 @@ This follows the modern pattern used by Notion, Linear, and NHS App: faint borde
 ## Buttons
 
 - Default variant: `"filled"` (navy background, white text)
-- Buttons use `primaryShade: 6` (`#143f6b`) globally — one shade lighter than the darkest navy for better readability against white text
+- Buttons use `primaryShade: 5` (`#143f6b`) globally, lighter than the darkest navy for better readability against white text
 - ActionCardButton defaults to filled, full-width
 
 ## Navigation icons
@@ -70,67 +72,69 @@ This follows the modern pattern used by Notion, Linear, and NHS App: faint borde
 
 ## Status colours
 
-Status colours communicate state in badges, alerts, and form validation. Each token defines a background and text colour pair. Colours were chosen for colour-blind accessibility — avoiding red/green pairs that are indistinguishable to users with protanopia or deuteranopia.
+Status colours communicate state in badges, alerts, and form validation. Colours were chosen for colour-blind accessibility, avoiding red/green pairs that are indistinguishable to users with protanopia or deuteranopia, and every status also carries an icon so colour is never the only signal.
 
-| Token       | Mantine value | Usage                             |
-| ----------- | ------------- | --------------------------------- |
-| success     | teal          | Active, completed, final, pass    |
-| warning     | cyan.6        | Draft, pending                    |
-| outstanding | pink          | Deactivated, cancelled            |
-| info        | blue          | Upcoming, amended, admin, unread  |
-| neutral     | yellow.4      | Staff, default                    |
-| accent      | violet        | Incomplete, special states        |
-| alert       | red           | No-show, patient, fail, attention |
+Each status has two colours, because a fill and a word need different shades:
+
+- **Fill (`bg`, `--<status>-color`)** — a background with white text on it, the same in both colour schemes. Every fill that takes white text is dark enough for WCAG AA (4.5:1).
+- **Word (`fg`, `--<status>-text-color`)** — the status written as text with no fill behind it, such as "Fail" in a results table. It changes with the colour scheme: a darker shade in light mode, which also passes on `gray.2`, and Mantine's shade 3 in dark mode, which passes on every navy surface. Never use a fill colour for text.
+
+The tokens, fill first and then the light and dark word colours:
+
+- **success** — teal. Fill `teal.9` `#087f5b`; word `#07704f` / `teal.3`. Active, completed, final, pass
+- **warning** — cyan. Fill `cyan.9` `#0b7285`; word `#0b6b7a` / `cyan.3`. Draft, pending
+- **outstanding** — pink. Fill `pink.7` `#d6336c`; word `pink.9` / `pink.3`. Deactivated, cancelled
+- **info** — blue. Fill `blue.8` `#1971c2`; word `blue.9` / `blue.3`. Upcoming, amended, admin, unread
+- **neutral** — yellow. Fill `yellow.4` `#ffd43b` with near-black text (`--status-text-dark`); word is body text. Staff, default
+- **accent** — violet. Fill `violet.6` `#7950f2`; word `violet.8` / `violet.3`. Incomplete, special states
+- **alert** — red. Fill `red.9` `#c92a2a`; word `#b02525` / `red.3`. No-show, patient, fail, attention
+- **update** — pale blue. Fill `blue.0` `#e7f5ff` with near-black text; word is body text. Nothing recorded yet, gentle prompts
+
+The values live in `statusColourValues` and `statusTextColourValues` in `theme.ts`; components read them through `statusColours` in `semanticColours.ts`.
 
 ## Grey scale
 
-The app uses Mantine's default grey scale (shades 0–4 only) for subtle backgrounds, dividers, and placeholder text. These are exported as `greyScale` from `theme.ts` alongside the brand colour scales.
+The app uses Mantine's default grey scale, shades 0–7, exported as `greyScale` from `theme.ts` alongside the brand colour scales.
 
-| Shade | Hex       | Usage                                |
-| ----- | --------- | ------------------------------------ |
-| 0     | `#f8f9fa` | Table striped rows, subtle fills     |
-| 1     | `#f1f3f5` | Light dividers, card backgrounds     |
-| 2     | `#e9ecef` | Borders, separators, BaseCard border |
-| 3     | `#dee2e6` | Disabled backgrounds                 |
-| 4     | `#ced4da` | Placeholder text                     |
+- **0 `#f8f9fa`** — table striped rows, subtle fills
+- **1 `#f1f3f5`** — light dividers, card backgrounds
+- **2 `#e9ecef`** — borders, separators, BaseCard border
+- **3 `#dee2e6`** — disabled backgrounds
+- **4 `#ced4da`** — input placeholder text (`--mantine-color-placeholder`), borders
+- **5 `#adb5bd`** — icons and borders only
+- **6 `#868e96`** — icons and graphics only
+- **7 `#495057`** — muted text, the light-mode `dimmed` colour
 
-The global Mantine placeholder colour (`--mantine-color-placeholder`) is overridden in the theme to use `gray.4` so all input placeholders use the design system grey.
+**Only grey 7 is for text.** Greys 4–6 fall below the WCAG AA 4.5:1 minimum for text on white (grey 6 is 3.3:1), so they are for icons, borders and placeholders, where WCAG 1.4.11 asks 3:1 or nothing.
 
 ## Text colours
 
-| Token       | Value                       | Usage                                             |
-| ----------- | --------------------------- | ------------------------------------------------- |
-| default     | inherits                    | Headings (HeaderText, PageHeader)                 |
-| body        | `var(--mantine-color-text)` | Body text (BodyText, BodyTextClamp, BodyTextBold) |
-| error       | orange.8                    | Validation and error messages (ErrorText)         |
-| placeholder | gray.4                      | Empty field hints (PlaceholderText)               |
+Every text colour meets WCAG AA (4.5:1) on the surfaces it is used on, in both colour schemes; `theme.test.ts` checks each one. The tokens are listed in `textColours` in `semanticColours.ts` and shown in **Foundations/Colours**.
 
-> **Accessibility note:** Error text uses `orange.8` with an alert circle icon rather than red, providing a distinct visual signal for users with red-green colour vision deficiency. The icon ensures error state is communicated by shape as well as colour.
+- **default** — inherits. Headings (`Heading`, `PageHeader`)
+- **body** — `var(--mantine-color-text)`, navy `#143f6b` in light and `#c9d1d9` in dark. Body text (`BodyText`, `BodyTextBold`, `BodyTextInline`, `BodyTextClamp`)
+- **muted** — `c="dimmed"` / `var(--mantine-color-dimmed)`: `gray.7` in light, `primary.1` in dark. `FieldDescription`, input descriptions, `EmptyState`, the messages in `ErrorState` and `NotFoundLayout`
+- **link** — `var(--link-color)`: `primary.4` in light, `primary.1` in dark, hovering to `primary.8` and `primary.0`. `TextLink` and inline links
+- **error** — `var(--error-color)`: orange-red `#c4320a` in light, `#ff8a65` in dark. `ErrorMessage`, input error text and error borders
+
+Input placeholders use `--mantine-color-placeholder`, `gray.4`. It is not a text colour for content and is not in `textColours`: at 1.5:1 on white it would fail the Storybook accessibility check anywhere it carried real text.
+
+> **Accessibility note:** Error text is an orange-red with an alert circle icon rather than red, giving a distinct signal for users with red-green colour vision deficiency. The icon ensures error state is communicated by shape as well as colour.
 
 ## Typography components
 
-All typography is wrapped in purpose-built components — raw Mantine `Text` or `Title` should not be used directly.
+All typography is wrapped in purpose-built components in `components/typography/`; raw Mantine `Text` or `Title` should not be used directly.
 
-| Component       | Wraps      | Size | Colour    | Weight |
-| --------------- | ---------- | ---- | --------- | ------ |
-| PageHeader      | Title (h1) | xl   | primary.6 | bold   |
-| HeaderText      | Title (h2) | lg   | inherits  | bold   |
-| BodyText        | Text       | lg   | text      | 500    |
-| BodyTextBold    | Text       | lg   | text      | 700    |
-| BodyTextInline  | Text/span  | lg   | text      | 500    |
-| BodyTextClamp   | Text       | lg   | text      | 500    |
-| BodyTextMuted   | Text       | lg   | dimmed    | 500    |
-| ErrorText       | Text       | lg   | orange.8  | 700    |
-| PlaceholderText | Text       | lg   | gray.4    | normal |
-| HyperlinkText   | Anchor     | lg   | primary.4 | normal |
-| MarkdownView    | div (HTML) | lg   | text      | 500    |
-
-Notes:
-
-- **PageHeader** uses `primary.6` via CSS module with responsive sizing (1.875rem mobile → 2.5rem desktop)
-- **ErrorText** includes an `IconAlertCircle` icon alongside the text for colour-blind accessibility
-- **HyperlinkText** has a permanent underline and darkens to `primary.8` on hover
-- **MarkdownView** renders sanitised HTML from markdown, styled via CSS module to match BodyText
+- **PageHeader** — `Title` h1, body text colour, responsive size (1.875rem mobile → 2.5rem desktop)
+- **Heading** — `Title` h2, inherits colour, bold
+- **BodyText**, **BodyTextInline**, **BodyTextClamp** — `Text`, `md` (19px), body colour, weight 500
+- **BodyTextBold** — as BodyText, weight 700
+- **FieldDescription** — `Text`, `md`, muted (`dimmed`), weight 500
+- **EmptyState** — `Text`, `md`, muted (`dimmed`). It was `gray.4` (1.5:1 on white), which is too faint for content a reader needs
+- **ErrorMessage** — `Text`, `md`, `--error-color`, bold, with an `IconAlertCircle` icon for colour-blind accessibility
+- **TextLink** — `Anchor` with a permanent underline, `--link-color`, hovering to `--link-hover-color`
+- **MarkdownView** — rendered HTML styled to match BodyText; its links use the `info` word colour (`--info-text-color`)
+- **PublicBodyText**, **PublicTitle** — for the public site, on the navy background
 
 ## Semantic colour tokens
 
@@ -145,7 +149,7 @@ Components should import from these files rather than hardcoding colour values. 
 
 The **Foundations/** category in Storybook provides visual references:
 
-- **Foundations/Colours** — brand swatches, status badges, text colour samples, grey scale, and 10-shade colour scale ramps (primary navy, secondary amber, neutral grey)
+- **Foundations/Colours** — brand swatches, status fills beside their word colours, text colour samples, and 10-shade colour scale ramps (primary navy, secondary amber, neutral grey). Switch the toolbar to dark to see the scheme-aware tokens change
 - **Foundations/Typography** — every typography component rendered with sample text, plus the responsive font size scale
 
 These are documentation-only stories with no associated test files.
@@ -189,6 +193,8 @@ Both wrap the `Icon` component with `containerVariant="filled"` and accept a `si
 - Created `SearchButton` atomic button component
 - Updated `ScoreBreakdown` to use `PassIcon`/`FailIcon` instead of inline Icon configuration
 - Added Colours section to component instructions for design system compliance
+
+- Brought every text and status colour to WCAG AA contrast in both colour schemes (accessibility plan, phase 1): muted text moved from `gray.6` to `dimmed`; status fills darkened; status word colours, link colours and a scheme-aware error colour added; every modal close button named "Close dialog"
 
 ## What is planned
 

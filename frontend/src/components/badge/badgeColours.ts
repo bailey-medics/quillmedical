@@ -27,10 +27,12 @@ export type BadgeColourConfig = {
 };
 
 /**
- * Maps semantic colour names to background and text colours.
+ * Maps semantic colour names to background and text colours. The fills
+ * are the status tokens from `theme.ts`, dark enough that white text on
+ * them meets WCAG AA; neutral is the one pale fill and takes dark text.
  *
- * - success: green — active, completed, final, pass
- * - warning: yellow — draft, pending
+ * - success: teal — active, completed, final, pass
+ * - warning: cyan — draft, pending
  * - outstanding: pink — deactivated, cancelled, fail
  * - info: blue — upcoming, amended, admin, unread
  * - neutral: yellow — staff, default

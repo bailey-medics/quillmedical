@@ -26,6 +26,8 @@ import { theme, cssVariablesResolver } from "../src/theme";
       name: "Mark Bailey",
       roles: ["Clinician"],
       system_permissions: "superadmin",
+      // Components gated on a competency render nothing without it.
+      competencies: ["manage_practising_competencies"],
     };
     return new Response(JSON.stringify(mockUser), {
       status: 200,

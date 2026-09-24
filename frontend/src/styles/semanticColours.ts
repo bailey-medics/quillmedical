@@ -134,6 +134,16 @@ type TextColourConfig = {
   usage: string;
 };
 
+/**
+ * Every text colour here meets WCAG AA, 4.5:1, on the surfaces it is
+ * used on, in both colour schemes; `theme.test.ts` holds them to it.
+ * `muted`, `link` and `error` change with the scheme, which the
+ * Foundations/Colours story shows by switching the toolbar.
+ *
+ * Input placeholders use `--mantine-color-placeholder` (`gray.4`, 1.5:1
+ * on white). It is deliberately not listed: it is never a colour for
+ * content, and the story's sample of it would fail its own a11y check.
+ */
 export const textColours: Record<string, TextColourConfig> = {
   default: {
     value: "inherit",
@@ -143,12 +153,16 @@ export const textColours: Record<string, TextColourConfig> = {
     value: "var(--mantine-color-text)",
     usage: "BodyText — primary body text (inherits theme navy)",
   },
+  muted: {
+    value: "var(--mantine-color-dimmed)",
+    usage: "FieldDescription, EmptyState — secondary text",
+  },
+  link: {
+    value: "var(--link-color)",
+    usage: "TextLink — links",
+  },
   error: {
     value: "var(--error-color)",
     usage: "ErrorMessage — validation and error messages",
-  },
-  placeholder: {
-    value: "dimmed",
-    usage: "EmptyState — empty field hints",
   },
 };
