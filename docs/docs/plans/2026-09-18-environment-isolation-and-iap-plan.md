@@ -115,12 +115,27 @@ looks like a one-line change and takes the deploy pipeline down.
       public hostnames, and the transcode job's callback goes to the
       public domain.
 
-- [ ] Verify the service's `*.run.app` URL then refuses the request, and
-      that the public hostname still serves normally.
+- [x] Verify the service's `*.run.app` URL then refuses the request, and
+      that the public hostname still serves normally. Checked on
+      2026-09-24, after #1062 applied: the backend's and the frontend's
+      `*.run.app` URLs both answer `404`, and `app.quill-medical.com`
+      answers `200` for `/` and for `/api/health`. Both services read back
+      ingress `internal-and-cloud-load-balancing`.
 
-- [ ] Verify Cloud Armor then sees the traffic — the throttle rule at
+      **Still to watch: the first backend deploy through the closed
+      ingress.** The deploy of #1062 changed no application code, so it
+      skipped the backend and never ran the smoke test through
+      `quill-admin-app`. The next merge that touches `backend/` is the
+      one that proves it. If its smoke test fails, traffic stays on the
+      previous revision and the site stays up; the fix is to revert #1062.
+
+- [x] Verify Cloud Armor then sees the traffic — the throttle rule at
       `infra/modules/load-balancer/main.tf` should be reachable on every
-      request rather than skippable.
+      request rather than skippable. The load balancer's request logs for
+      `/api/health` on 2026-09-24 carry `enforcedSecurityPolicy`
+      `quill-waf-app`, rule priority `1000`, which is the 500-a-minute
+      throttle, with outcome `ACCEPT`. With the `*.run.app` route closed,
+      that policy is now the only way in.
 
 ### Phase D: Let the deploy check a revision it cannot reach directly
 
@@ -1678,9 +1693,34 @@ are Cloud Storage and Cloud Run jobs.
       upload that works end to end on the live app environment. Every
       workload has now run on its own account.
 
-- [ ] **(Claude)** Remove the default account's grants: the project-wide
+- [x] **(Claude)** Remove the default account's grants: the project-wide
       `secretAccessor`, its bucket bindings, the job invokers and
       `cloudrun_token_creator`, once the step above has run live.
+
+      Built on 2026-09-24. First, the live grants were read back: the
+      default account holds exactly eight, every one of them from
+      Terraform, and no `roles/editor`. It holds project-level
+      `secretAccessor`, `serviceAccountTokenCreator` on itself, bindings on
+      the images, passports and both video buckets, and the executor role
+      on the transcode and caption jobs. No service or job still runs as
+      it. All eight are deleted from `infra/main.tf`,
+      `modules/cloud-storage`, `modules/passport-storage` and
+      `modules/teaching-video-pipeline`, and `terraform plan` (1.15.8, the
+      version CI uses) reads `0 to add, 0 to change, 8 to destroy` and
+      nothing else. The `jobsExecutorWithOverrides` note moved beside the
+      grant that now carries it, in `infra/runtime-identities.tf`.
+
+      The passport bucket's grant was in `modules/passport-storage` itself,
+      passed the default account's email. It is removed from the module
+      rather than repointed at `run-backend`, because
+      `runtime-identities.tf` already grants `run-backend` the identical
+      binding. Two resources owning one binding means whichever is
+      destroyed first removes it for both.
+
+      Merge this on its own pull request. If a workload turns out to have
+      been leaning on a default-account grant after all, the failure then
+      points at this change and nothing else, and reverting it restores the
+      grant.
 
       **The token creator is not unused, as this step first claimed.**
       `backend/app/features/teaching/storage.py` calls

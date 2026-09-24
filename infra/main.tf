@@ -230,23 +230,12 @@ module "compute_fhir" {
   ehrbase_admin_password_secret = "ehrbase-admin-password"
 }
 
-# ---------- IAM: Cloud Run → Secret Manager ----------
+# The project number names Google-managed service agents, such as the CDN's
+# fill account in modules/teaching-video-pipeline. No workload runs as the
+# default Compute Engine account any more, and it holds no grant here: each
+# has its own identity in runtime-identities.tf.
 data "google_project" "project" {
   project_id = var.project_id
-}
-
-resource "google_project_iam_member" "cloudrun_secret_accessor" {
-  project = var.project_id
-  role    = "roles/secretmanager.secretAccessor"
-  member  = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
-}
-
-# Cloud Run needs to sign its own tokens to generate GCS signed URLs
-resource "google_service_account_iam_member" "cloudrun_token_creator" {
-  count              = local.is_teaching_product ? 1 : 0
-  service_account_id = "projects/${var.project_id}/serviceAccounts/${data.google_project.project.number}-compute@developer.gserviceaccount.com"
-  role               = "roles/iam.serviceAccountTokenCreator"
-  member             = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
 }
 
 # ---------- Initial secret values (jwt-secret, vapid-private) ----------
@@ -422,7 +411,8 @@ module "cloud_run_backend" {
   depends_on = [
     google_secret_manager_secret_version.jwt_secret,
     google_secret_manager_secret_version.vapid_private,
-    google_project_iam_member.cloudrun_secret_accessor,
+    # Its own per-secret grants, in runtime-identities.tf.
+    google_secret_manager_secret_iam_member.runtime,
     module.cloud_sql_core, # writes core-db-password version
   ]
 }
@@ -463,7 +453,8 @@ module "cloud_run_admin_job" {
   secret_env_vars = local.admin_secret_env_vars
 
   depends_on = [
-    google_project_iam_member.cloudrun_secret_accessor,
+    # Its own per-secret grants, in runtime-identities.tf.
+    google_secret_manager_secret_iam_member.runtime,
     module.cloud_sql_core,
   ]
 }
@@ -523,58 +514,6 @@ module "cloud_run_transcode_job" {
   secret_env_vars = local.transcode_secret_env_vars
 
   depends_on = [module.teaching_video_pipeline]
-}
-
-# The backend invokes this job, so it needs permission to. Nothing else
-# grants it: the runtime service account holds only
-# `roles/secretmanager.secretAccessor` at project level, not the broad
-# editor role a default Compute Engine account is often assumed to carry.
-#
-# Scoped to this one job rather than granted project-wide, because the
-# backend has no business starting any other job — the admin job runs
-# migrations and is CI's to invoke, not the serving application's.
-#
-# Without this, `start_transcode` raises inside its own try/except, logs,
-# and returns None. The upload still succeeds and the module stays
-# hidden, which is the safe direction but an entirely silent failure.
-#
-# **`jobsExecutorWithOverrides`, not `invoker`.** Starting a job as
-# configured is `run.jobs.run`, which `roles/run.invoker` confers.
-# Starting one with container overrides — which is how the three ids
-# reach the job, and the only way they can, since each execution needs
-# different ones — is `run.jobs.runWithOverrides`, a separate permission
-# that `run.invoker` does not include. Granting the narrower role first
-# produced exactly the silent failure described above, with the
-# distinction visible only in the traceback:
-#
-#   PERMISSION_DENIED: Permission 'run.jobs.runWithOverrides' denied on
-#   resource '.../jobs/quill-transcode-teaching'
-#
-# `roles/run.developer` and `roles/run.admin` also carry it, and both
-# carry a great deal else besides. This role is the two permissions and
-# nothing more, which is what a serving application should hold.
-resource "google_cloud_run_v2_job_iam_member" "backend_invokes_transcode" {
-  count = local.is_teaching_product ? 1 : 0
-
-  project  = var.project_id
-  location = var.region
-  name     = module.cloud_run_transcode_job[0].job_name
-  role     = "roles/run.jobsExecutorWithOverrides"
-  member   = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
-}
-
-# The same grant for captions, needed for the same reason. The backend
-# fires this job too — from the transcode completion report rather than
-# from the upload, because Whisper transcribes the 720p rendition and
-# that does not exist until the transcode job has written it.
-resource "google_cloud_run_v2_job_iam_member" "backend_invokes_caption" {
-  count = local.is_teaching_product ? 1 : 0
-
-  project  = var.project_id
-  location = var.region
-  name     = module.cloud_run_caption_job[0].job_name
-  role     = "roles/run.jobsExecutorWithOverrides"
-  member   = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
 }
 
 # ---------- Cloud Run Job: video captions (teaching only) ----------
@@ -666,12 +605,11 @@ module "load_balancer" {
 
 # ---------- Cloud Storage: teaching images (teaching only) ----------
 module "cloud_storage" {
-  count          = local.is_teaching_product ? 1 : 0
-  source         = "./modules/cloud-storage"
-  project_id     = var.project_id
-  project_number = data.google_project.project.number
-  region         = var.region
-  environment    = var.environment
+  count       = local.is_teaching_product ? 1 : 0
+  source      = "./modules/cloud-storage"
+  project_id  = var.project_id
+  region      = var.region
+  environment = var.environment
 
   # Who uploads content here. While the environment is moving between
   # projects this is the old project's CI account, because the teaching
@@ -693,10 +631,8 @@ module "passport_storage" {
   region      = var.region
   environment = var.environment
 
-  # The Cloud Run default compute service account, as the bindings at the top
-  # of this file name it. It does not inherit object-level access from project
-  # editor, so the module grants it explicitly.
-  service_account_email = "${data.google_project.project.number}-compute@developer.gserviceaccount.com"
+  # The backend's access to the bucket is granted to run-backend in
+  # runtime-identities.tf, beside every other workload grant.
 }
 
 # ---------- Teaching video pipeline (teaching only) ----------

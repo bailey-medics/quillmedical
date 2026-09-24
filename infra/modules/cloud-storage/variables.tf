@@ -21,11 +21,6 @@ variable "bucket_suffix" {
   default     = "images"
 }
 
-variable "project_number" {
-  description = "Project number, for the default compute service account the backend runs as"
-  type        = string
-}
-
 variable "ci_service_account" {
   description = <<-EOT
     The service account the content pipeline uploads as, or "" to grant

@@ -75,31 +75,12 @@ resource "google_storage_bucket_iam_member" "cdn_fill" {
   member = "serviceAccount:service-${var.project_number}@cloud-cdn-fill.iam.gserviceaccount.com"
 }
 
-# ---------- The backend writes uploads to the source bucket ----------
-# `objectAdmin` on the source bucket only. It needs no role whatever on the
-# processed bucket: signing a CDN cookie is an HMAC over a shared secret, not a
-# GCP API call, so the backend never talks to GCS to release a video. That is a
-# real reduction in blast radius versus v4 signed URLs, which would need
-# `objectViewer` plus `serviceAccountTokenCreator`.
-resource "google_storage_bucket_iam_member" "backend_source_writer" {
-  bucket = google_storage_bucket.source.name
-  role   = "roles/storage.objectAdmin"
-  member = "serviceAccount:${var.project_number}-compute@developer.gserviceaccount.com"
-}
-
-# ---------- The transcode job writes renditions to the processed bucket ----------
-# The job runs as the same default compute service account as the backend —
-# `modules/cloud-run-job/` has no `service_account` variable — so this widens
-# that identity rather than granting a new one. It reads the source bucket
-# through the binding above and needs to write its output here.
-#
-# The CDN fill grant above is read-only and separate: it is how the edge
-# fetches, not how anything writes.
-resource "google_storage_bucket_iam_member" "transcode_processed_writer" {
-  bucket = google_storage_bucket.processed.name
-  role   = "roles/storage.objectAdmin"
-  member = "serviceAccount:${var.project_number}-compute@developer.gserviceaccount.com"
-}
+# ---------- Who writes and reads the two buckets ----------
+# Granted in infra/runtime-identities.tf, to each workload's own service
+# account: the backend and the transcode job on the source bucket, and the
+# backend, transcode and caption jobs on the processed one. They used to be
+# granted here to the default Compute Engine account, which every workload
+# once shared.
 
 # ---------- Backend bucket with CDN ----------
 resource "google_compute_backend_bucket" "videos" {
