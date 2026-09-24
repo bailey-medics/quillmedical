@@ -25,6 +25,29 @@ can be turned off on its own:
 Every platform branch is best-effort and the script always exits zero. A
 notification that cannot be shown is never worth failing a response over.
 
+## When Claude is waiting on you
+
+A question from `AskUserQuestion` opens a modal in VS Code with no sound and
+no banner, so a turn could sit blocked on one for as long as nobody looked.
+Two more hooks in `.claude/settings.json` run the same script with
+`needs-input` as its argument:
+
+- **`PreToolUse` on `AskUserQuestion`** fires just before the question
+  appears. The banner shows the question itself.
+- **`Notification` for `permission_prompt`** fires when a tool call is
+  waiting on your approval. The banner shows Claude Code's own sentence,
+  such as "Claude needs your permission to use Bash".
+
+The title and the voice are the same as for a finished turn, the worktree
+name; the banner's text is what tells them apart, showing the question
+rather than a summary. The banner uses its own group, `quill-claude-input`,
+so the finished banner that follows your reply does not replace it. Both hooks run with `async`, so the
+question appears straight away rather than waiting for the voice to finish.
+
+`idle_prompt` is deliberately left out. It fires after the input box has
+been idle for a while, which is after the finished notification has already
+told you, so it would only repeat it.
+
 ## Where the banner text comes from
 
 The payload carries `last_assistant_message`, the full text of the final

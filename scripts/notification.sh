@@ -2,6 +2,11 @@
 
 # Stop-hook notification: say which worktree just finished.
 #
+# With "needs-input" as its argument it says instead that Claude is waiting
+# for a reply: a question from AskUserQuestion (PreToolUse hook) or a
+# permission prompt (Notification hook). A question modal gives no signal of
+# its own in VS Code, so a turn could sit blocked on one unnoticed.
+#
 # Claude Code runs this when a response completes, passing the hook payload as
 # JSON on stdin. We read `cwd` from that payload — it follows Claude into the
 # worktree, whereas $CLAUDE_PROJECT_DIR stays at the session's start directory.
@@ -13,6 +18,8 @@
 # never worth failing a response over, so this always exits 0.
 
 set -u
+
+MODE="${1:-finished}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 AUDIO_FILE="$SCRIPT_DIR/level-completed.mp3"
@@ -46,18 +53,26 @@ branch="$(git -C "$cwd" rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
 # a regex over it goes wrong quietly. Any failure leaves $summary empty and
 # the branch line stands in, so a banner is never lost to a parse error.
 summary=""
+summary_flag=""
+[ "$MODE" = "needs-input" ] && summary_flag="--input"
 if [ -n "$payload" ] && command -v python3 >/dev/null 2>&1; then
     summary="$(printf '%s' "$payload" \
-        | python3 "$SCRIPT_DIR/notification-summary.py" 2>/dev/null || true)"
+        | python3 "$SCRIPT_DIR/notification-summary.py" ${summary_flag:+"$summary_flag"} \
+            2>/dev/null || true)"
 fi
 
-title="$worktree"
-if [ -n "$summary" ]; then
-    body="$summary"
-elif [ -n "$branch" ]; then
-    body="Claude finished on $branch"
+if [ "$MODE" = "needs-input" ]; then
+    title="$worktree"
+    body="${summary:-Claude is waiting for your reply}"
 else
-    body="Claude finished"
+    title="$worktree"
+    if [ -n "$summary" ]; then
+        body="$summary"
+    elif [ -n "$branch" ]; then
+        body="Claude finished on $branch"
+    else
+        body="Claude finished"
+    fi
 fi
 
 # Set QUILL_NOTIFY_DEBUG=1 to print what would be shown and stop; used by
@@ -137,8 +152,12 @@ case "$(uname -s 2>/dev/null || echo unknown)" in
                 # Notification Centre carries its stored command, so a
                 # click on a stale one fires that, which is easy to misread
                 # as a new banner firing on delivery rather than on click.
-                set -- -title "$title" -message "$body" \
-                    -group quill-claude-stop
+                # Its own group, so a question's banner is not replaced by
+                # the finished banner that follows the reply, or the other
+                # way round.
+                group="quill-claude-stop"
+                [ "$MODE" = "needs-input" ] && group="quill-claude-input"
+                set -- -title "$title" -message "$body" -group "$group"
                 if [ "${QUILL_NOTIFY_ACTIVATE-1}" != "" ] \
                     && [ -x "$SCRIPT_DIR/notification-focus.sh" ]; then
                     q() { printf "%s" "$1" | sed "s/'/'\\\\''/g"; }
