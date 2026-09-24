@@ -67,17 +67,21 @@ reason: each stacked unit deploys when it merges.
 
 ## Phase 2: Backfill
 
-- [ ] **Copy every user's JSON into rows in one hand-written migration.**
+- [x] **Copy every user's JSON into rows in one hand-written migration.**
       Use `json_each_text` over `professional_registrations`, guarded
       against a value that is not an object, like the competency backfill.
-      `declared_at` is the user's `created_at`, the nearest thing to a
-      declaration date the JSON can offer, and `ends_on` is null. An
+      `declared_at` was to be the user's `created_at`, but `users` has no
+      such column, so it is when the migration runs; `ends_on` is null. An
       authority not in the jurisdiction config is copied anyway and
       reported: losing a registration silently is worse than keeping one
       the list does not know.
 
-- [ ] **Test it against Postgres** in the `alembic_drift_check` job, the
+- [x] **Test it against Postgres** in the `alembic_drift_check` job, the
       way `backend/tests/test_user_competency_backfill.py` does.
+      Written as `f14aae5e8d17`, tested in
+      `backend/tests/test_professional_registration_backfill.py` under the
+      `migration` marker. A user who already has any row is skipped whole,
+      and an empty body or number copies nothing.
 
 ## Phase 3: Switch reads
 
