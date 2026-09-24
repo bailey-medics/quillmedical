@@ -143,12 +143,28 @@ once the addon is registered; no `test-runner.ts` hooks are needed.
       from, so the baseline was taken with a throwaway Playwright script
       that runs axe-core 4.13 with the same tags and rules against every
       story in both colour schemes and records every node
-- [ ] Run the checks in dark mode as well as light: either a second
+- [x] Run the checks in dark mode as well as light: either a second
       `colorScheme` pass in the test-runner or a `Dark` story variant on
       every component with a coloured surface. Contrast failures in dark
       mode will not show in light. Moved up from after the fixes: the
       baseline shows 327 dark-only contrast nodes, so the dark pass has to
-      be running before the fixes, or they cannot be seen to work
+      be running before the fixes, or they cannot be seen to work.
+      Built as a second pass in the test-runner, in
+      `frontend/.storybook/a11y-dark-mode.ts`: after each story's normal
+      visit it sets the `colorScheme` global to dark, waits for the
+      story to re-render (which re-runs the addon's axe check), reads the
+      a11y result off the `STORY_FINISHED` event, and treats it under the
+      story's own `parameters.a11y.test`. Stories that pin their own
+      scheme are skipped, having already been checked in it. It cannot
+      live in `.storybook/test-runner.ts`, the documented place for
+      hooks: Storybook 10 loads that file through a TypeScript loader it
+      installs with `module.register()`, and Jest 30.5 refuses that call
+      inside a test environment, so any config file there fails every
+      suite. It is added through an ejected
+      `frontend/test-runner-jest.config.js` as a `setupFilesAfterEnv`
+      entry instead, and sets the `__sbPostVisit` global the runner
+      calls. A `Dark` variant of every story was rejected as 656 more
+      stories to keep in step by hand
 - [ ] Fix the baseline component by component, the highest-count rule
       first. Each fix is a normal PR with a story change and a unit test
       where the fix is behaviour rather than markup
