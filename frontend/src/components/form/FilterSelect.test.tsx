@@ -82,4 +82,25 @@ describe("FilterSelect", () => {
     await user.click(screen.getByRole("button", { name: "Filter" }));
     expect(screen.getByText("Narrow results")).toBeInTheDocument();
   });
+
+  it("puts the popover state on the button itself", async () => {
+    // Popover.Target writes aria-expanded onto its child. On the button
+    // it tells a screen reader whether the filter is open; on a wrapping
+    // div it is not allowed and says nothing.
+    const user = userEvent.setup();
+    renderWithMantine(
+      <FilterSelect
+        data={options}
+        value={["trust:leeds"]}
+        onChange={() => {}}
+        aria-label="Filter"
+      />,
+    );
+
+    const button = screen.getByRole("button", { name: "Filter" });
+    expect(button).toHaveAttribute("aria-expanded", "false");
+    await user.click(button);
+    expect(button).toHaveAttribute("aria-expanded", "true");
+    expect(button.parentElement).not.toHaveAttribute("aria-expanded");
+  });
 });

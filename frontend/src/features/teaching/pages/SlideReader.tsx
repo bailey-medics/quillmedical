@@ -157,6 +157,7 @@ export default function SlideReader() {
       >
         {isSm && (
           <TeachingProgressBar
+            label="Slide progress"
             current={currentIndex + 1}
             total={slides.length}
           />

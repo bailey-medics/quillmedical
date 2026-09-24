@@ -11,6 +11,13 @@ import { BodyText } from "@/components/typography";
 import classes from "./TeachingProgressBar.module.css";
 
 interface TeachingProgressBarProps {
+  /**
+   * What the bar measures, read out by screen readers as the progress
+   * bar's name — "Question progress", "Upload progress". Required: an
+   * unnamed progress bar is announced only as "progress bar", and axe
+   * fails it under `aria-progressbar-name`.
+   */
+  label: string;
   /** Current position (1-based) */
   current: number;
   /** Total number of items */
@@ -42,6 +49,7 @@ interface TeachingProgressBarProps {
 }
 
 export function TeachingProgressBar({
+  label,
   current,
   total,
   fill,
@@ -55,12 +63,23 @@ export function TeachingProgressBar({
 
   return (
     <Group gap="sm" align="center" className={classes.root} wrap="nowrap">
-      <Progress
-        value={percentage}
-        size="xl"
-        radius="xl"
-        className={classes.bar}
-      />
+      {/* The section is the progress bar. Its ARIA is written here rather
+          than by Mantine, whose withAria always speaks the raw percentage
+          ("10.5%") over any aria-valuetext passed in. */}
+      <Progress.Root size="xl" radius="xl" className={classes.bar}>
+        <Progress.Section
+          value={percentage}
+          withAria={false}
+          role="progressbar"
+          aria-label={label}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={percentage}
+          aria-valuetext={
+            showCount ? `${current} of ${total}` : `${Math.round(percentage)}%`
+          }
+        />
+      </Progress.Root>
       {showCount && (
         <BodyText>
           {current} of {total}

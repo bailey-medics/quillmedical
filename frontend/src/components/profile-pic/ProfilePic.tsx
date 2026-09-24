@@ -127,7 +127,16 @@ export default function ProfilePic({
 
   // Case 2: Real picture
   if (src) {
-    const avatar = <Avatar radius="xl" size={avatarSize} src={src} />;
+    // A photo is an img, and needs alt text: the person's name where
+    // there is one, as the tooltip shows, so it is not read as a file.
+    const avatar = (
+      <Avatar
+        radius="xl"
+        size={avatarSize}
+        src={src}
+        alt={fullName || "Profile picture"}
+      />
+    );
     return fullName ? withTooltip(avatar, fullName) : avatar;
   }
 

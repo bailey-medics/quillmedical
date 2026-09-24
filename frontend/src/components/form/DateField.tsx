@@ -51,6 +51,7 @@ export default function DateField({
   error,
   valueFormat = "D MMMM YYYY",
   placeholder = "DD/MM/YYYY",
+  clearButtonProps,
   ...props
 }: DateInputProps) {
   return (
@@ -59,6 +60,9 @@ export default function DateField({
       // British reading order, matching the rest of the interface.
       valueFormat={valueFormat}
       placeholder={placeholder}
+      // Mantine's clear button is an icon with no name, so a screen
+      // reader announces only "button".
+      clearButtonProps={{ "aria-label": "Clear date", ...clearButtonProps }}
       description={
         description ? (
           <FieldDescription>{description}</FieldDescription>

@@ -5,17 +5,23 @@ import { TeachingProgressBar } from "./TeachingProgressBar";
 
 describe("TeachingProgressBar", () => {
   it("renders current and total", () => {
-    renderWithMantine(<TeachingProgressBar current={5} total={120} />);
+    renderWithMantine(
+      <TeachingProgressBar label="Progress" current={5} total={120} />,
+    );
     expect(screen.getByText("5 of 120")).toBeInTheDocument();
   });
 
   it("shows progress bar", () => {
-    renderWithMantine(<TeachingProgressBar current={60} total={120} />);
+    renderWithMantine(
+      <TeachingProgressBar label="Progress" current={60} total={120} />,
+    );
     expect(screen.getByRole("progressbar")).toBeInTheDocument();
   });
 
   it("fills the bar from the count by default", () => {
-    renderWithMantine(<TeachingProgressBar current={60} total={120} />);
+    renderWithMantine(
+      <TeachingProgressBar label="Progress" current={60} total={120} />,
+    );
 
     expect(screen.getByRole("progressbar")).toHaveAttribute(
       "aria-valuenow",
@@ -31,7 +37,9 @@ describe("TeachingProgressBar", () => {
     // Only the classes are checked: jsdom does not lay anything out,
     // so an assertion about actual width here would pass whatever the
     // stylesheet said. The widths themselves are a Storybook check.
-    renderWithMantine(<TeachingProgressBar current={1} total={4} />);
+    renderWithMantine(
+      <TeachingProgressBar label="Progress" current={1} total={4} />,
+    );
 
     // The bar's own element, then the row holding it. Walked from the
     // bar rather than from the container, whose first child is the
@@ -46,7 +54,12 @@ describe("TeachingProgressBar", () => {
     // person works through, so "0 of 4" only invites the question of
     // what the four are.
     renderWithMantine(
-      <TeachingProgressBar current={0} total={4} showCount={false} />,
+      <TeachingProgressBar
+        label="Progress"
+        current={0}
+        total={4}
+        showCount={false}
+      />,
     );
 
     expect(screen.queryByText("0 of 4")).toBeNull();
@@ -57,7 +70,12 @@ describe("TeachingProgressBar", () => {
     // A bar that only moves in whole stages looks stopped during a
     // long one, which is what a large video upload is.
     renderWithMantine(
-      <TeachingProgressBar current={0} total={4} fill={0.42} />,
+      <TeachingProgressBar
+        label="Progress"
+        current={0}
+        total={4}
+        fill={0.42}
+      />,
     );
 
     expect(screen.getByText("0 of 4")).toBeInTheDocument();
@@ -70,7 +88,9 @@ describe("TeachingProgressBar", () => {
   it("never overflows the track", () => {
     // The caller's arithmetic is not this component's to trust; a
     // percentage over 100 would otherwise run past the end.
-    renderWithMantine(<TeachingProgressBar current={0} total={4} fill={9} />);
+    renderWithMantine(
+      <TeachingProgressBar label="Progress" current={0} total={4} fill={9} />,
+    );
 
     expect(screen.getByRole("progressbar")).toHaveAttribute(
       "aria-valuenow",
@@ -79,11 +99,53 @@ describe("TeachingProgressBar", () => {
   });
 
   it("never draws a negative bar", () => {
-    renderWithMantine(<TeachingProgressBar current={0} total={4} fill={-3} />);
+    renderWithMantine(
+      <TeachingProgressBar label="Progress" current={0} total={4} fill={-3} />,
+    );
 
     expect(screen.getByRole("progressbar")).toHaveAttribute(
       "aria-valuenow",
       "0",
+    );
+  });
+
+  it("names the progress bar for screen readers", () => {
+    // axe fails an unnamed progress bar under aria-progressbar-name, and
+    // a screen reader announces it only as "progress bar".
+    renderWithMantine(
+      <TeachingProgressBar label="Question progress" current={3} total={10} />,
+    );
+
+    expect(
+      screen.getByRole("progressbar", { name: "Question progress" }),
+    ).toBeInTheDocument();
+  });
+
+  it("speaks the count rather than a percentage when it shows one", () => {
+    renderWithMantine(
+      <TeachingProgressBar label="Progress" current={3} total={10} />,
+    );
+
+    expect(screen.getByRole("progressbar")).toHaveAttribute(
+      "aria-valuetext",
+      "3 of 10",
+    );
+  });
+
+  it("speaks a whole percentage when the count is hidden", () => {
+    renderWithMantine(
+      <TeachingProgressBar
+        label="Upload progress"
+        current={0}
+        total={4}
+        fill={0.42}
+        showCount={false}
+      />,
+    );
+
+    expect(screen.getByRole("progressbar")).toHaveAttribute(
+      "aria-valuetext",
+      "11%",
     );
   });
 });

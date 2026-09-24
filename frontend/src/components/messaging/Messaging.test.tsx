@@ -74,6 +74,18 @@ describe("Messaging", () => {
   });
 
   describe("Message display", () => {
+    it("makes the thread a named, keyboard-reachable log", () => {
+      // The thread scrolls on its own, so it has to take focus for the
+      // keyboard to scroll it; role="log" announces new messages.
+      renderWithMantine(
+        <Messaging messages={mockMessages} currentUserId="dr-1" />,
+      );
+
+      const thread = screen.getByRole("log", { name: "Messages" });
+      expect(thread).toHaveAttribute("tabindex", "0");
+      expect(thread).toHaveTextContent("Can I take it with food?");
+    });
+
     it("renders all messages", () => {
       renderWithMantine(
         <Messaging messages={mockMessages} currentUserId="dr-1" />,

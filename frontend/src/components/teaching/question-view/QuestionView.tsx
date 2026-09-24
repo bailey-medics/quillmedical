@@ -146,7 +146,11 @@ export function QuestionView({
 
       {/* Progress bar */}
       {currentQuestion != null && totalQuestions != null && (
-        <TeachingProgressBar current={currentQuestion} total={totalQuestions} />
+        <TeachingProgressBar
+          label="Question progress"
+          current={currentQuestion}
+          total={totalQuestions}
+        />
       )}
 
       {/* Navigation buttons */}

@@ -18,8 +18,16 @@
  */
 
 import { Box, SegmentedControl } from "@mantine/core";
-import { lazy, Suspense, useCallback, useRef, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import classes from "./VideoPlayer.module.css";
+import { titleFrames, YOUTUBE_FRAME_TITLE } from "./titleFrames";
 
 const ReactPlayer = lazy(() => import("react-player"));
 
@@ -63,7 +71,7 @@ export default function VideoPlayer({
   onProgress,
   resumeAt,
 }: VideoPlayerProps) {
-  const playerRef = useRef<HTMLVideoElement>(null);
+  const playerRef = useRef<HTMLVideoElement | null>(null);
   const hasResumed = useRef(false);
   const [quality, setQuality] = useState<Quality>("720p");
   // Where the learner was when they changed quality. Swapping `src`
@@ -107,6 +115,19 @@ export default function VideoPlayer({
     }
   }, [resumeAt]);
 
+  // The player element's shadow root, where youtube-video-element puts
+  // its iframe. Caught by a callback ref because the player is lazy and
+  // arrives after the first render.
+  const [frameHost, setFrameHost] = useState<ShadowRoot | null>(null);
+  const attachPlayer = useCallback((node: HTMLVideoElement | null) => {
+    playerRef.current = node;
+    setFrameHost(node?.shadowRoot ?? null);
+  }, []);
+  useEffect(() => {
+    if (!youtubeId || !frameHost) return;
+    return titleFrames(frameHost, YOUTUBE_FRAME_TITLE);
+  }, [youtubeId, frameHost]);
+
   const handleTimeUpdate = useCallback(() => {
     if (onProgress && playerRef.current) {
       onProgress(playerRef.current.currentTime);
@@ -135,7 +156,7 @@ export default function VideoPlayer({
         */}
           {!youtubeId && captionsUrl ? (
             <ReactPlayer
-              ref={playerRef}
+              ref={attachPlayer}
               src={src}
               width="100%"
               height="100%"
@@ -158,7 +179,7 @@ export default function VideoPlayer({
             </ReactPlayer>
           ) : (
             <ReactPlayer
-              ref={playerRef}
+              ref={attachPlayer}
               src={src}
               width="100%"
               height="100%"

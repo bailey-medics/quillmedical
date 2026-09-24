@@ -257,6 +257,7 @@ export default function ModuleMediaCard({
                             that time is indistinguishable from one
                             that has stopped. */}
                         <TeachingProgressBar
+                          label="Upload progress"
                           current={0}
                           total={4}
                           fill={Math.min(percent, 100) / 100}
@@ -280,6 +281,7 @@ export default function ModuleMediaCard({
                             says what is happening in words they can
                             act on. */}
                         <TeachingProgressBar
+                          label="Processing progress"
                           current={progress.stage}
                           total={progress.total_stages}
                           showCount={false}
