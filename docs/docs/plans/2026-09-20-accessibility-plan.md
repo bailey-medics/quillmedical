@@ -220,9 +220,21 @@ once the addon is registered; no `test-runner.ts` hooks are needed.
         `EmptyState` uses `dimmed` rather than the input placeholder
         grey, because an empty-state hint is content a reader needs.
         After this, dark mode has no contrast failures in any story
-  - [ ] ARIA: progress bar names, `FilterSelect`'s `aria-expanded`,
+  - [x] ARIA: progress bar names, `FilterSelect`'s `aria-expanded`,
         scrollable regions, `ProfilePic` alt text and the `DateField`
-        clear button
+        clear button. `TeachingProgressBar` takes a required `label`
+        and writes its own ARIA, because Mantine's `withAria` offers no
+        name and always speaks the raw percentage ("10.5%"); it now
+        says "3 of 10" where it shows a count. `FilterSelect`'s popover
+        wraps the button alone, so `aria-expanded` lands on the button
+        instead of a `div`. The `Messaging` thread's scroll viewport is
+        a focusable, named `role="log"`. `ProfilePic` gives a photo the
+        person's name as `alt`, and `DateField` names its clear button.
+        A new finding on the way: youtube-video-element builds its
+        iframe with no title and no way to pass one, so `VideoPlayer`
+        titles it through the element's shadow root (`titleFrames`).
+        The layouts' `main` is not fixed here; see the phase 3 step on
+        the scroll container
   - [ ] Reference stories that show colours rather than use them
 - [ ] Switch `test: "todo"` to `test: "error"` once the baseline is clear,
       so violations fail the heavy tier
@@ -262,6 +274,17 @@ Things the survey found that no tool will fix on its own.
       element in `MainLayout`, `TeachingLayout` and `PublicLayout`,
       targeting the existing `main` landmark. Build it as a component in
       `components/navigation/` with a story and a test
+- [ ] Decide how a keyboard scrolls `main`. All three layouts make
+      `main`, not the window, the scroll container, so a page with nothing
+      focusable in it (a long slide, a long read) cannot be scrolled from
+      the keyboard in Safari; axe reports `scrollable-region-focusable`
+      on the long-read layout stories, which are `!test` and so not in
+      the CI run. Chrome (since 130) and Firefox make such a scroller
+      focusable themselves, and `tabIndex={-1}` on `main`, tried in
+      phase 1, switches that off. The candidates are `tabIndex={0}`
+      with a visible focus style, or letting the document scroll
+      instead of `main`. Settle it with the skip link below, which also
+      needs a focus target in `main`
 - [ ] Walk every page with Tab and Shift+Tab and confirm no focused element
       disappears under the sticky ribbon (2.4.11). Fix with
       `scroll-padding-top` on the scroll container where it does

@@ -4,6 +4,7 @@ import { TeachingProgressBar } from "./TeachingProgressBar";
 const meta: Meta<typeof TeachingProgressBar> = {
   title: "Teaching/Teaching progress bar",
   component: TeachingProgressBar,
+  args: { label: "Slide progress" },
 };
 
 export default meta;

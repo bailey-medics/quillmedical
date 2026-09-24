@@ -54,7 +54,11 @@ export default function TeachingLearningNav({
 }: TeachingLearningNavProps) {
   return (
     <Stack gap="xs" p="sm" pb={60}>
-      <TeachingProgressBar current={currentIndex + 1} total={slides.length} />
+      <TeachingProgressBar
+        label="Slide progress"
+        current={currentIndex + 1}
+        total={slides.length}
+      />
 
       {slides.map((slide) => (
         <NavLink

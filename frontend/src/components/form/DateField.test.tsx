@@ -105,4 +105,27 @@ describe("DateField", () => {
     );
     expect(screen.getByRole("textbox")).toBeDisabled();
   });
+
+  it("names the clear button for screen readers", () => {
+    renderWithMantine(
+      <DateField label="Observed on" defaultValue="2026-03-14" clearable />,
+    );
+    expect(
+      screen.getByRole("button", { name: "Clear date" }),
+    ).toBeInTheDocument();
+  });
+
+  it("lets a caller rename the clear button", () => {
+    renderWithMantine(
+      <DateField
+        label="Observed on"
+        defaultValue="2026-03-14"
+        clearable
+        clearButtonProps={{ "aria-label": "Clear observed date" }}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: "Clear observed date" }),
+    ).toBeInTheDocument();
+  });
 });

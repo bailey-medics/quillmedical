@@ -105,6 +105,14 @@ export default function Messaging({
           paddingBottom: 12,
         }}
         type="auto"
+        // The thread scrolls on its own. A focusable, named log lets the
+        // keyboard scroll it and tells a screen reader what it is; role
+        // "log" also announces new messages as they arrive.
+        viewportProps={{
+          tabIndex: 0,
+          role: "log",
+          "aria-label": "Messages",
+        }}
       >
         <div
           style={{

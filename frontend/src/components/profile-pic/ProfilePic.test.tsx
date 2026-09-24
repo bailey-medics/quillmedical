@@ -58,6 +58,31 @@ describe("ProfilePic Component", () => {
       const img = container.querySelector("img");
       expect(img).toHaveAttribute("src", "https://example.com/photo.jpg");
     });
+
+    it("gives the photo the person's name as alt text", () => {
+      const { container } = renderWithMantine(
+        <ProfilePic
+          givenName="John"
+          familyName="Smith"
+          src="https://example.com/photo.jpg"
+          gradientIndex={0}
+        />,
+      );
+      expect(container.querySelector("img")).toHaveAttribute(
+        "alt",
+        "John Smith",
+      );
+    });
+
+    it("falls back to generic alt text for a photo with no name", () => {
+      const { container } = renderWithMantine(
+        <ProfilePic src="https://example.com/photo.jpg" gradientIndex={0} />,
+      );
+      expect(container.querySelector("img")).toHaveAttribute(
+        "alt",
+        "Profile picture",
+      );
+    });
   });
 
   describe("Initials display", () => {

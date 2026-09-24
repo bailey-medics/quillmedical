@@ -43,16 +43,20 @@ export default function FilterSelect({
     "touchstart",
   ]);
 
+  // The popover wraps the button alone, not the button and its count:
+  // Popover.Target puts aria-expanded and aria-controls on its child, and
+  // on a plain div those attributes are not allowed (axe
+  // aria-allowed-attr) and tell a screen reader nothing.
   return (
-    <Popover
-      opened={opened}
-      onClose={close}
-      position="bottom-end"
-      shadow="none"
-      trapFocus={false}
-    >
-      <Popover.Target>
-        <div className={classes.trigger}>
+    <div className={classes.trigger}>
+      <Popover
+        opened={opened}
+        onClose={close}
+        position="bottom-end"
+        shadow="none"
+        trapFocus={false}
+      >
+        <Popover.Target>
           <ActionIcon
             variant="subtle"
             size="lg"
@@ -61,22 +65,22 @@ export default function FilterSelect({
           >
             <IconFilter2 size={32} stroke={2.5} />
           </ActionIcon>
-          {value.length > 0 && (
-            <span className={classes.count}>
-              <BodyText>{value.length >= 10 ? "9+" : value.length}</BodyText>
-            </span>
-          )}
-        </div>
-      </Popover.Target>
-      <Popover.Dropdown ref={dropdownRef} className={classes.dropdown}>
-        <FilterModal
-          data={data}
-          value={value}
-          onChange={onChange}
-          label={label}
-          placeholder={placeholder}
-        />
-      </Popover.Dropdown>
-    </Popover>
+        </Popover.Target>
+        <Popover.Dropdown ref={dropdownRef} className={classes.dropdown}>
+          <FilterModal
+            data={data}
+            value={value}
+            onChange={onChange}
+            label={label}
+            placeholder={placeholder}
+          />
+        </Popover.Dropdown>
+      </Popover>
+      {value.length > 0 && (
+        <span className={classes.count}>
+          <BodyText>{value.length >= 10 ? "9+" : value.length}</BodyText>
+        </span>
+      )}
+    </div>
   );
 }
