@@ -51,16 +51,12 @@ resource "google_storage_bucket" "bucket" {
 # bucket and granted nothing, so the same content pipeline that worked in
 # one project failed in the next.
 #
-# The backend reads. Without this the failure is silent rather than loud:
-# `list_banks_in_gcs` lists a bucket it may not see, gets nothing back, and
-# the sync returns `200 {"synced": [], "message": "No banks found"}`, which
-# is indistinguishable from an empty bucket.
-resource "google_storage_bucket_iam_member" "backend_reader" {
-  bucket = google_storage_bucket.bucket.name
-  role   = "roles/storage.objectViewer"
-  member = "serviceAccount:${var.project_number}-compute@developer.gserviceaccount.com"
-}
-
+# The backend reads, through `run-backend`'s grant in
+# infra/runtime-identities.tf. Without it the failure is silent rather than
+# loud: `list_banks_in_gcs` lists a bucket it may not see, gets nothing back,
+# and the sync returns `200 {"synced": [], "message": "No banks found"}`,
+# which is indistinguishable from an empty bucket.
+#
 # The content pipeline writes. This one fails loudly, a 403 on
 # `storage.objects.list` while `rsync` runs, so it is the easier of the two
 # to diagnose.

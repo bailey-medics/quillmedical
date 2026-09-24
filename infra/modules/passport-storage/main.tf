@@ -45,17 +45,9 @@ resource "google_storage_bucket" "passports" {
 }
 
 # ---------- The backend reads and writes passports ----------
-# `objectAdmin` rather than `objectViewer`: the backend creates bundles,
-# replaces them on every write, and uploads evidence blobs. It never deletes,
-# but the role is the smallest standard one covering create and overwrite.
-#
-# Explicit, because a Cloud Run service account does not inherit object-level
-# access from project editor — the symptom being a 403 on
-# `storage.objects.list` at the first request. See the Cloud Storage IAM note
-# in docs/docs/infrastructure/gcp.md, which asks for exactly this binding to
-# live in Terraform rather than being applied by hand on each new environment.
-resource "google_storage_bucket_iam_member" "backend" {
-  bucket = google_storage_bucket.passports.name
-  role   = "roles/storage.objectAdmin"
-  member = "serviceAccount:${var.service_account_email}"
-}
+# Granted to `run-backend` in infra/runtime-identities.tf, as
+# `roles/storage.objectAdmin`: the backend creates bundles, replaces them on
+# every write, and uploads evidence blobs. It never deletes, but that is the
+# smallest standard role covering create and overwrite. A Cloud Run service
+# account does not inherit object-level access from project editor, so without
+# that grant the first request fails with a 403 on `storage.objects.list`.

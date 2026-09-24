@@ -13,7 +13,9 @@
 #      yet, so it changes nothing that serves traffic.
 #   2. Point each workload at its account. The default account keeps its old
 #      grants meanwhile, as a safety net.
-#   3. Remove the default account's grants, once 2 has run live.
+#   3. Remove the default account's grants, once 2 has run live. Done on
+#      2026-09-24, after the bank sync and a video upload were proven on the
+#      new accounts.
 #
 # Batch 9, Phase 6 of
 # docs/docs/plans/2026-09-18-environment-isolation-and-iap-plan.md.
@@ -158,8 +160,7 @@ resource "google_storage_bucket_iam_member" "runtime_video_processed" {
 #
 # Missed from the first inventory, and found on 2026-09-24 when /teaching
 # returned 500 with "Error calling the IAM signBytes API" straight after the
-# switch. The default account had held the same grant, through
-# google_service_account_iam_member.cloudrun_token_creator in main.tf.
+# switch. The default account had held the same grant on itself.
 resource "google_service_account_iam_member" "runtime_backend_signs_as_itself" {
   service_account_id = google_service_account.runtime["backend"].name
   role               = "roles/iam.serviceAccountTokenCreator"
@@ -167,6 +168,27 @@ resource "google_service_account_iam_member" "runtime_backend_signs_as_itself" {
 }
 
 # ---------- The backend starts the transcode and caption jobs ----------
+# Scoped to these two jobs rather than granted project-wide: the admin job
+# runs migrations and is CI's to invoke, not the serving application's.
+# Without the grant, `start_transcode` raises inside its own try/except,
+# logs, and returns None, so the upload succeeds and the module stays hidden
+# with nothing to say why.
+#
+# **`jobsExecutorWithOverrides`, not `invoker`.** Starting a job as
+# configured is `run.jobs.run`, which `roles/run.invoker` confers.
+# Starting one with container overrides — which is how the three ids
+# reach the job, and the only way they can, since each execution needs
+# different ones — is `run.jobs.runWithOverrides`, a separate permission
+# that `run.invoker` does not include. Granting the narrower role first
+# produced exactly that silent failure, with the
+# distinction visible only in the traceback:
+#
+#   PERMISSION_DENIED: Permission 'run.jobs.runWithOverrides' denied on
+#   resource '.../jobs/quill-transcode-teaching'
+#
+# `roles/run.developer` and `roles/run.admin` also carry it, and both
+# carry a great deal else besides. This role is the two permissions and
+# nothing more, which is what a serving application should hold.
 resource "google_cloud_run_v2_job_iam_member" "runtime_backend_invokes" {
   for_each = local.is_teaching_product ? {
     transcode = module.cloud_run_transcode_job[0].job_name
