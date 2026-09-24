@@ -531,6 +531,15 @@ readable by someone who cannot yet log in.
       and where the statement will go. Every claim on it is backed by the
       code, a test or the testing log, and it says so where people have
       not checked something yet
+- [x] Give every page its own document title (WCAG 2.4.2 Page titled).
+      Found while going through the criteria for the conformance record
+      below: every route kept `index.html`'s "Quill Medical", so a screen
+      reader announced the same title on every page, and every tab and
+      history entry read the same. `useDocumentTitle` in
+      `src/lib/accessibility/` sets "Page – Quill Medical", the GOV.UK
+      pattern, and `PageHeader` and `Heading level={1}` call it, so a
+      page's h1 is also its title; phase 3 gave every page exactly one.
+      An e2e test checks the teaching dashboard's title
 - [ ] Build the DTAC D1 evidence pack in
       `docs/docs/frontend/accessibility/dtac-d1.md`: the user journey map
       (the four journeys from phase 5 with the roles that walk them), the
