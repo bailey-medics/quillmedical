@@ -27,7 +27,7 @@ from sqlalchemy.engine import Connection
 from alembic import command
 from app.db.core_db import core_engine
 
-pytestmark = pytest.mark.integration
+pytestmark = [pytest.mark.integration, pytest.mark.migration]
 
 BEFORE = "113dbf80612e"
 SEED = "56f3ad035100"

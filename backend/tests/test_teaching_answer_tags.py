@@ -1,18 +1,15 @@
 """An answer's resolved tags are rows in ``assessment_answer_tag``.
 
 The tags of the option a candidate chose, copied when they answer, one
-row per tag. These pin that the rows follow the answer, that scoring reads
-them, and that the retired ``resolved_tags`` column is left alone.
+row per tag. These pin that the rows follow the answer and that scoring
+reads them.
 
 See ``docs/docs/plans/2026-09-23-resolved-tags-plan.md``.
 """
 
 from __future__ import annotations
 
-from typing import Any
-
 from fastapi.testclient import TestClient
-from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 from app.features.teaching.models import AssessmentAnswer
@@ -127,65 +124,11 @@ class TestSetTags:
         assert sorted(row.tag for row in answer.tags) == ["b", "c"]
 
 
-class TestTheColumnIsRetired:
-    def test_answering_leaves_the_json_empty(
-        self, test_client: TestClient, db_session: Session
-    ) -> None:
-        """The tags go to rows only."""
-        assessment_id, headers = _start(test_client, db_session)
-
-        test_client.post(
-            f"/api/teaching/assessments/{assessment_id}/answer",
-            json={"selected_option": "high_a"},
-            headers=headers,
-        )
-
-        answer = _answered(db_session, assessment_id)
-        assert answer.resolved_tags is None
-        assert sorted(row.tag for row in answer.tags) == [
-            "adenoma",
-            "high_confidence",
-        ]
-
-    def test_no_statement_names_the_column(
-        self, test_client: TestClient, db_session: Session
-    ) -> None:
-        """The drop that follows cannot break a revision still serving."""
-        seen: list[str] = []
-
-        def record(*args: Any) -> None:
-            seen.append(args[2])
-
-        engine = db_session.get_bind()
-        event.listen(engine, "before_cursor_execute", record)
-        try:
-            assessment_id, headers = _start(test_client, db_session)
-            test_client.post(
-                f"/api/teaching/assessments/{assessment_id}/answer",
-                json={"selected_option": "high_a"},
-                headers=headers,
-            )
-            test_client.post(
-                f"/api/teaching/assessments/{assessment_id}/complete",
-                headers=headers,
-            )
-        finally:
-            event.remove(engine, "before_cursor_execute", record)
-
-        assert seen
-        assert [sql for sql in seen if "resolved_tags" in sql] == []
-
-
 class TestScoringReadsTheRows:
-    def test_completing_scores_the_rows_not_the_json(
+    def test_completing_scores_the_rows(
         self, test_client: TestClient, db_session: Session
     ) -> None:
-        """Nothing reads the column.
-
-        Every answer here is high confidence in its rows. Their JSON is
-        overwritten to say otherwise, and the result still counts them as
-        high confidence, so the result came from the rows.
-        """
+        """Every answer is high confidence, and the result says so."""
         assessment_id, headers = _start(test_client, db_session)
         for _ in range(3):
             resp = test_client.post(
@@ -194,11 +137,6 @@ class TestScoringReadsTheRows:
                 headers=headers,
             )
             assert resp.status_code == 200, resp.text
-        for answer in db_session.query(AssessmentAnswer).filter(
-            AssessmentAnswer.assessment_id == assessment_id
-        ):
-            answer.resolved_tags = ["low_confidence"]
-        db_session.commit()
 
         resp = test_client.post(
             f"/api/teaching/assessments/{assessment_id}/complete",
