@@ -2,7 +2,8 @@
  * ErrorMessage Component
  *
  * Validation and error message text with an alert icon.
- * Uses `orange.8` for colour-blind accessibility (avoids red/green ambiguity).
+ * Uses `--error-color`, an orange-red, for colour-blind accessibility
+ * (avoids red/green ambiguity).
  */
 
 import { Box, Group, Text } from "@mantine/core";
@@ -17,7 +18,7 @@ export interface ErrorMessageProps {
 }
 
 /**
- * Renders an error message with an alert circle icon in `orange.8`.
+ * Renders an error message with an alert circle icon in `--error-color`.
  *
  * @param props - Component props
  * @returns Inline group with icon and bold error text

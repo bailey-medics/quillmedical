@@ -205,7 +205,21 @@ once the addon is registered; no `test-runner.ts` hooks are needed.
         text on the yellow warning fill; the triage payment badge used
         `gray`. `theme.test.ts` now holds every fill and text token to
         AA on every surface
-  - [ ] Dark-mode navy accents and the error colour on dark inputs
+  - [x] Dark-mode navy accents and the error colour on dark inputs.
+        Links get `--link-color` and `--link-hover-color` tokens,
+        `primary.4` and `primary.8` in light as before, `primary.1` and
+        `primary.0` in dark, where `primary.4` was 2.3:1 on the card
+        navy and the old hover darkened to near-invisible. `TextLink`
+        and the `FilterModal` reset link use them. `--error-color` was
+        failing in light mode too, which the baseline had understated:
+        `#f55142` is 3.4:1 on white. It becomes `#c4320a` in light
+        (5.5:1, the same orange-red hue, kept for colour-blind users)
+        and `#ff8a65` in dark (5.8:1 on the input navy). The dark chat
+        bubble moves from `primary.4` to `primary.5`, the disabled
+        `MultiSelectField` no longer fades its pills below AA, and
+        `EmptyState` uses `dimmed` rather than the input placeholder
+        grey, because an empty-state hint is content a reader needs.
+        After this, dark mode has no contrast failures in any story
   - [ ] ARIA: progress bar names, `FilterSelect`'s `aria-expanded`,
         scrollable regions, `ProfilePic` alt text and the `DateField`
         clear button

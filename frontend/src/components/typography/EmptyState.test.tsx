@@ -17,12 +17,12 @@ describe("EmptyState", () => {
     expect(element).toHaveClass("mantine-Text-root");
   });
 
-  it("uses placeholder colour from CSS variable", () => {
+  it("uses the dimmed colour, which meets WCAG AA, not the placeholder grey", () => {
     renderWithMantine(<EmptyState>Grey text</EmptyState>);
 
     const element = screen.getByText("Grey text");
     expect(element).toHaveStyle({
-      color: "var(--mantine-color-placeholder)",
+      color: "var(--mantine-color-dimmed)",
     });
   });
 });
