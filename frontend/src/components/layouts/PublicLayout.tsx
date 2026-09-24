@@ -6,6 +6,7 @@
  */
 
 import NavigationDrawer from "@/components/drawers/NavigationDrawer";
+import { SkipLink, SkipLinkTarget } from "@/components/navigation/skip-link";
 import PublicFooter from "@/components/footer/PublicFooter";
 import PublicNavIcon from "@/components/icons/PublicNavIcon";
 import publicNavLinks, { LOGIN_URL } from "@/components/ribbon/publicNavLinks";
@@ -33,6 +34,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
 
   return (
     <Stack gap={0} className={classes.root}>
+      <SkipLink />
       <Box component="header">
         <PublicTopRibbon
           isNarrow={isNarrow}
@@ -87,7 +89,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
         </NavigationDrawer>
 
         <Box component="main" flex={1} style={{ overflowY: "auto" }}>
-          {children}
+          <SkipLinkTarget>{children}</SkipLinkTarget>
         </Box>
       </Flex>
 

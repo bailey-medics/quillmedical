@@ -374,6 +374,15 @@ export const theme = createTheme({
   primaryShade: 5,
 
   /**
+   * Focus ring on keyboard focus only (Mantine's default, set so it is
+   * a decision rather than an accident), and no animation for anyone
+   * whose system asks for reduced motion. Mantine defaults
+   * respectReducedMotion to false.
+   */
+  focusRing: "auto",
+  respectReducedMotion: true,
+
+  /**
    * Font sizes — handled in typography.css via CSS custom properties.
    * Fixed across all screen widths (no responsive scaling).
    */

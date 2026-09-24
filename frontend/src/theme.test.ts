@@ -232,3 +232,14 @@ describe("error and link contrast", () => {
     ).toBeGreaterThanOrEqual(AA_TEXT);
   });
 });
+
+describe("motion and focus", () => {
+  it("respects a system request for reduced motion", () => {
+    // Mantine defaults this to false, which ignores the OS setting.
+    expect(resolved.respectReducedMotion).toBe(true);
+  });
+
+  it("shows the focus ring for keyboard focus", () => {
+    expect(resolved.focusRing).toBe("auto");
+  });
+});

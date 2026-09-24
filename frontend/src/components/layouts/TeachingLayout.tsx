@@ -12,6 +12,7 @@
  */
 
 import { Box, Flex, useMantineTheme } from "@mantine/core";
+import { SkipLink, SkipLinkTarget } from "@/components/navigation/skip-link";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
@@ -90,6 +91,7 @@ export default function TeachingLayout({
         paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
+      <SkipLink />
       <Box
         component="header"
         pos="sticky"
@@ -156,7 +158,7 @@ export default function TeachingLayout({
             pt={LAYOUT_PADDING_TOP}
             pb={LAYOUT_PADDING_BOTTOM}
           >
-            {children}
+            <SkipLinkTarget>{children}</SkipLinkTarget>
           </Box>
           <Footer text={resolvedFooterText} loading={footerLoading} />
         </Flex>

@@ -150,4 +150,18 @@ describe("PublicLayout", () => {
       expect(drawer).toHaveStyle({ transform: "translateX(0)" });
     });
   });
+
+  it("offers a skip link that lands inside main", () => {
+    renderWithMantine(
+      <PublicLayout>
+        <p>Page body</p>
+      </PublicLayout>,
+    );
+
+    const link = screen.getByRole("link", { name: "Skip to main content" });
+    const target = document.getElementById("main-content");
+    expect(link).toHaveAttribute("href", "#main-content");
+    expect(target).toHaveTextContent("Page body");
+    expect(target?.closest("main")).not.toBeNull();
+  });
 });
