@@ -117,4 +117,28 @@ describe("DataTableControlled", () => {
 
     expect(screen.getByLabelText("Filter")).toBeInTheDocument();
   });
+
+  it("tells screen readers how many rows a search leaves", async () => {
+    const user = userEvent.setup();
+    renderWithRouter(
+      <DataTableControlled
+        data={items}
+        columns={columns}
+        getRowKey={(r) => r.id}
+        searchFields={(r) => [r.name, r.category]}
+        filterPredicate={() => () => true}
+      />,
+    );
+
+    const status = screen.getByRole("status");
+    expect(status).toBeEmptyDOMElement();
+
+    await user.click(screen.getByLabelText("Open search"));
+    await user.type(screen.getByLabelText("Search"), "Group A");
+    expect(status).toHaveTextContent("2 results");
+
+    await user.clear(screen.getByLabelText("Search"));
+    await user.type(screen.getByLabelText("Search"), "Beta");
+    expect(status).toHaveTextContent("1 result");
+  });
 });

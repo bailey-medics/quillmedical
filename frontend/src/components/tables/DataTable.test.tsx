@@ -157,6 +157,29 @@ describe("DataTable", () => {
   });
 
   describe("Loading state", () => {
+    it("announces loading, then goes quiet once loaded", () => {
+      const columns: Column<TestUser>[] = [
+        { header: "Name", render: (u) => u.name },
+      ];
+      const { rerender } = renderWithMantine(
+        <DataTable
+          data={[]}
+          columns={columns}
+          getRowKey={(u) => u.id}
+          loading
+        />,
+      );
+      const status = screen.getByRole("status");
+      expect(status).toHaveTextContent("Loading");
+
+      rerender(
+        <DataTable data={[]} columns={columns} getRowKey={(u) => u.id} />,
+      );
+      // The same region, still mounted, now empty
+      expect(screen.getByRole("status")).toBe(status);
+      expect(status).toBeEmptyDOMElement();
+    });
+
     it("shows skeleton loaders when loading", () => {
       const columns: Column<TestUser>[] = [
         { header: "Name", render: (u) => u.name },

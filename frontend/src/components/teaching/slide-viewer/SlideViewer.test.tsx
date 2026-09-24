@@ -50,6 +50,6 @@ describe("SlideViewer", () => {
 
   it("renders default layout with callout", () => {
     renderWithMantine(<SlideViewer slide={calloutSlide} />);
-    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(screen.getByRole("note")).toBeInTheDocument();
   });
 });

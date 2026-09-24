@@ -376,10 +376,27 @@ Things the survey found that no tool will fix on its own.
       `<PageHeader visuallyHidden />`, an h1 for screen readers only.
       The layouts' own stories still show no h1 where they render demo
       content without one; the phase 4 page scans check real routes
-- [ ] Loading and result states announce themselves: the eight existing
+- [x] Loading and result states announce themselves: the eight existing
       `aria-live` and `role="status"` uses should cover the table
       skeletons, form submission, search results and the notification
-      system. List the components that lack one and add it
+      system. List the components that lack one and add it. The survey
+      found live regions already on `FormStatus` (which also carries the
+      page-level flash messages), `StatusStrip`, `UpdatingBanner` and
+      `ErrorState`, and none on anything that loads. A new `LiveStatus`
+      component, a visually hidden polite `role="status"` that stays
+      mounted and changes its text, now says "Loading" while `DataTable`,
+      `DataTableWithResults`, `PatientsList` and `MainLayout` show
+      skeletons, and `DataTableControlled` says "3 results" once a search
+      or filter narrows it. Staying mounted matters: most screen readers
+      announce a change to a live region they already know, and many
+      ignore one that arrives already filled. The table wraps its view
+      so the region survives the switch between loading, empty and
+      loaded. One fix the other way: `Callout` had `role="alert"`, which
+      made a screen reader interrupt with every teaching callout as the
+      slide rendered; it is now `role="note"`. Not covered: the page-level
+      Mantine `Loader` spinners in `PatientMessages` and
+      `PatientMessageThread`, which have no text; they are short waits
+      and are left for the phase 5 screen reader run to judge
 - [ ] Target size sweep (2.5.8): table row actions, pagination controls,
       `SortHeader`, `CompetencyRow` buttons. Anything under 24px gets a
       larger hit area or spacing, not a bigger icon

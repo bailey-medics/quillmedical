@@ -23,6 +23,7 @@
  */
 
 import type { ReactNode } from "react";
+import LiveStatus from "@/components/live-status";
 import { useMemo, useState } from "react";
 import {
   Group,
@@ -94,6 +95,11 @@ export interface DataTableProps<T> {
   fullControls?: boolean;
   /** Optional controls (search, filter) rendered above the table, right-aligned. */
   controls?: ReactNode;
+  /**
+   * Announced to screen readers once loaded, e.g. "3 results" after a
+   * search. "Loading" is announced while `loading` is true regardless.
+   */
+  statusMessage?: string;
 }
 
 /**
@@ -115,7 +121,23 @@ export interface DataTableProps<T> {
  *
  * Used on admin pages for users, patients, and other resources.
  */
-export default function DataTable<T>({
+/**
+ * DataTable, with a live region that tells screen readers when it is
+ * loading and, if the caller says so, how many results it holds. Kept
+ * outside the view so the region stays mounted across the loading,
+ * empty and loaded states, which is what makes a change announced.
+ */
+export default function DataTable<T>(props: DataTableProps<T>) {
+  const { loading = false, statusMessage = "" } = props;
+  return (
+    <>
+      <LiveStatus message={loading ? "Loading" : statusMessage} />
+      <DataTableView {...props} />
+    </>
+  );
+}
+
+function DataTableView<T>({
   data,
   columns,
   onRowClick,

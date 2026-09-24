@@ -123,8 +123,16 @@ function DataTableControlledInner<T>({
     </>
   );
 
+  // Say how many rows are left once a search or filter narrows them,
+  // since a sighted user sees the table shrink and nobody else does.
+  const narrowed = query.trim() !== "" || filters.length > 0;
+  const statusMessage = narrowed
+    ? `${filteredData.length} ${filteredData.length === 1 ? "result" : "results"}`
+    : "";
+
   return (
     <DataTable
+      statusMessage={statusMessage}
       data={filteredData}
       columns={columns}
       onRowClick={onRowClick}
