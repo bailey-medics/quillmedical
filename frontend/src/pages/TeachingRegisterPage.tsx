@@ -9,6 +9,7 @@
 
 import { api } from "@/lib/api";
 import type { FormSubmitResult } from "@/components/form/Form";
+import { registrationError } from "@/lib/auth/registrationError";
 import {
   RegistrationForm,
   type RegistrationFormData,
@@ -41,19 +42,7 @@ export default function TeachingRegisterPage() {
       navigate("/verify-email-pending", { state: { email: data.email } });
       return { state: "success", message: { title: "Account created" } };
     } catch (err: unknown) {
-      let msg = "Registration failed";
-      if (err instanceof Error && err.message) msg = err.message;
-      else if (typeof err === "object" && err !== null) {
-        try {
-          msg = JSON.stringify(err);
-        } catch {
-          msg = String(err);
-        }
-      }
-      return {
-        state: "error",
-        message: { title: msg },
-      };
+      return { state: "error", message: registrationError(err) };
     }
   }
 
