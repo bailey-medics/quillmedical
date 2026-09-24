@@ -380,9 +380,13 @@ every deploy, so the URL mask is the part that matters.
       that login sets all three cookies, so the first assertion cannot
       pass by setting none.
 
-- [ ] Record the `__Host-` cookie prefix as a later hardening step. It
+- [x] Record the `__Host-` cookie prefix as a later hardening step. It
       requires host-only, `Secure` and `Path=/`, all of which this phase
-      establishes, and it makes the browser enforce them.
+      establishes, and it makes the browser enforce them. Recorded on
+      2026-09-24 in `docs/docs/cybersecurity/index.md`, under cookie
+      configuration and recommended improvements. One catch written down
+      there: `refresh_token` has `Path=/api/auth/refresh`, so it cannot take
+      `__Host-` and would take `__Secure-` instead.
 
 **Hands over:** two stacked branches to review and merge. The Terraform
 changes need `terraform apply` against the teaching project, which is
@@ -402,11 +406,13 @@ behaves the same way, so read "hands over" as "merging this applies it".
 - [x] The ingress change applied on merge, broke the deploy, and was
       reverted. See Phase D.
 
-- [ ] Verify the `*.run.app` URL now refuses the request and the public
-      hostname still serves.
+- [x] Verify the `*.run.app` URL now refuses the request and the public
+      hostname still serves. Done on 2026-09-24, once the ingress was
+      re-applied: see Phase 1.
 
-- [ ] Verify Cloud Armor sees the traffic, using the throttle rule at
-      `infra/modules/load-balancer/main.tf`.
+- [x] Verify Cloud Armor sees the traffic, using the throttle rule at
+      `infra/modules/load-balancer/main.tf`. Done on 2026-09-24: see
+      Phase 1.
 
 **Hands over:** a confirmed-working live environment, and a decision to
 proceed with the rename.
@@ -1879,6 +1885,96 @@ GitHub starting a scheduled run late, which it does at busy times.
 - [ ] Watch the first run on 2026-10-01 and confirm all four arrive. A
       missing one is the finding, not a failure of the test.
 
+## Batch 10a — Claude and Mark: make `quill-medical-app` the home of everything
+
+`quill-medical-production` and `quill-medical-staging` run nothing: no
+Cloud Run service, database or load balancer in either. But production still
+holds two things the live site depends on, and deleting it today would take
+the site and its email down and lose Terraform's record of the app project:
+
+- **The DNS zone.** GoDaddy, the registrar, delegates `quill-medical.com` to
+  Google's nameservers `ns-cloud-c1…c4.googledomains.com`, which serve
+  `quill-medical-zone` in `quill-medical-production`. It holds the site's
+  records (apex, `app` and `www`, all to `34.49.99.83`) and the email ones:
+  Proton Mail's MX, SPF, DKIM and DMARC, and Resend's sending records on
+  `send.` and `resend._domainkey`.
+- **The Terraform state bucket**, `gs://quill-medical-terraform-state`,
+  holding `app.tfstate` beside dead files for `production`, `staging`,
+  `teaching` and `default`.
+
+Settled by Mark on 2026-09-24: `quill-medical-app` is the landing space for
+everything shared, and any later environment (`dev`, `ehr`) is a new project
+branching from it. A GCP project ID can never be renamed, so neither old
+project can become one of those; keeping them buys nothing.
+
+Found while surveying, 2026-09-24: staging's own zone, `quill-medical`, is a
+dead copy that nothing delegates to (nameservers `ns-cloud-b*`), still
+pointing at the destroyed teaching load balancer. The live zone's
+`staging.quill-medical.com` record points at `35.186.223.130`, which does
+not answer. DNSSEC is off on the live zone, so moving it needs no key
+handover.
+
+### Phase 1: Move the Terraform state
+
+- [ ] **(Claude)** Create a versioned state bucket in `quill-medical-app`,
+      in Terraform's bootstrap rather than its own state, since a bucket
+      cannot hold the state that creates it. Copy `app.tfstate` only; the
+      four dead files are not carried over.
+- [ ] **(Claude)** Point `infra/backend.tf` at it, and grant the CI
+      accounts the same narrow access they hold on the old bucket (Batch 9
+      Phase 4). A plan must then read no changes, which proves the state
+      arrived whole.
+- [ ] Keep the old bucket until the projects are deleted in Phase 4; it
+      is the rollback.
+
+### Phase 2: Move the DNS zone
+
+The only step here with real risk, and the risk is mostly to email: a
+missing MX or DKIM record fails quietly, as mail that never arrives.
+
+- [ ] **(Claude)** Create the zone in `quill-medical-app`, in Terraform,
+      with every live record except the dead `staging` one. Google assigns
+      the new zone its own nameserver set, which may not be the `c` set.
+- [ ] **(Claude)** Before anything is switched, query the new zone's
+      nameservers directly for every record and compare them with the
+      live zone's answers. Lower the TTL on the live NS and key records
+      a day ahead, so a mistake is short-lived.
+- [ ] **(Mark)** Change the nameservers for `quill-medical.com` at
+      GoDaddy to the new set.
+- [ ] Leave the old zone serving for at least 48 hours, until every
+      resolver has moved. Check the site, a sent and a received email, and
+      a Resend message before it goes.
+
+### Phase 3: Forward the defensive domains
+
+Moved here from Batch 11 Phase C, where Mark deferred it on 2026-09-23, and
+un-deferred on 2026-09-24. Still true on that date: `quill-medical.net`,
+`.me`, `.xyz`, `.store` and `.online` use GoDaddy's own nameservers
+(`ns*.domaincontrol.com`) and show its parking page.
+
+- [ ] **(Mark)** Set a permanent (301) forward to
+      `https://quill-medical.com` on each of the five, in GoDaddy. Its own
+      forwarding, not records of ours, so GoDaddy supplies the certificate
+      and our load balancer's certificate is untouched.
+- [ ] **(Claude)** Check each answers `301` with that location, over
+      both HTTP and HTTPS.
+- [ ] Leave `quill-medical.dev` alone. It may be served for real, as the
+      `dev` environment.
+
+### Phase 4: Retire production and staging
+
+- [ ] **(Claude)** Remove what still names them: `infra/environments/prod`
+      and `infra/environments/staging`, the disabled
+      `promote-to-production` job in `.github/workflows/deploy.yml`, and
+      the comment in `infra/backend.tf` telling a reader to create the
+      state bucket in production.
+- [ ] **(Mark)** Delete the GitHub secrets `GCP_PROD_*` and
+      `GCP_STAGING_*`.
+- [ ] **(Mark)** Delete both projects, once Phase 2's 48 hours have passed.
+      Their Workload Identity pools, the dead staging zone and the old state
+      bucket go with them. Google keeps a deleted project recoverable for 30
+      days, which is the safety net.
+
 ## Batch 11 — waiting: a second environment
 
 Phases A and B wait on a non-production environment existing, and are kept
@@ -1988,7 +2084,8 @@ lookalike names were cheap enough that waiting saved nothing.
       without any record of ours. Set a permanent (301) forward to
       `https://quill-medical.com` on each of the five, in GoDaddy.
 
-      **Deferred by Mark on 2026-09-23.** Not being done yet.
+      **Deferred by Mark on 2026-09-23.** Moved to Batch 10a Phase 3 on
+      2026-09-24, and no longer deferred.
 
 - [x] Do not add them to our load balancer's managed certificate.
       Holds as of 2026-09-23: `quill-cert-app-6bc99c16` lists only
@@ -2468,6 +2565,14 @@ the DNS cutover.
   fix: check `deploy.yml` is idle before re-running `terraform.yml`.
 
 ## Decisions
+
+- **`quill-medical-app` is the home of everything shared** — the DNS zone,
+  the Terraform state, and whatever a later environment needs from the
+  whole account. A `dev` or `ehr` environment is a new project that
+  branches from it, not a rename of production or staging, because a GCP
+  project ID cannot be changed. Chosen by Mark on 2026-09-24 over a
+  separate DNS-only project, which would be one more thing to look after
+  for a separation nothing yet needs.
 
 - **Ingress and cookies come before naming and IAP** — the bypass is live
   on the only deployed environment, and the bypass in particular makes
