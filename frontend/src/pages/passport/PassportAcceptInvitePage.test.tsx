@@ -14,7 +14,9 @@ import { Component as PassportAcceptInvitePage } from "./PassportAcceptInvitePag
 const previewAssessorInvite = vi.fn();
 const acceptAssessorInvite = vi.fn();
 
-vi.mock("@lib/passport", () => ({
+vi.mock("@lib/passport", async (importOriginal) => ({
+  // The real list of bodies: it is config, not a network call.
+  ...(await importOriginal<typeof import("@lib/passport")>()),
   previewAssessorInvite: (...args: unknown[]) => previewAssessorInvite(...args),
   acceptAssessorInvite: (...args: unknown[]) => acceptAssessorInvite(...args),
 }));
@@ -135,7 +137,10 @@ describe("PassportAcceptInvitePage", () => {
     renderWithToken();
 
     expect(await screen.findByLabelText(/Your full name/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Registering body/)).toBeInTheDocument();
+    // A choice from the bodies the backend accepts, not free text.
+    expect(
+      screen.getByRole("combobox", { name: /Registering body/ }),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText(/Registration number/)).toBeInTheDocument();
   });
 
@@ -175,7 +180,13 @@ describe("PassportAcceptInvitePage", () => {
       await screen.findByLabelText(/Your full name/),
       "Dr Amara Okonkwo",
     );
-    await user.type(screen.getByLabelText(/Registering body/), "GMC");
+    // A choice from the bodies the backend accepts, not free text.
+    await user.click(
+      screen.getByRole("combobox", { name: /Registering body/ }),
+    );
+    await user.click(
+      screen.getByRole("option", { name: /GMC — General Medical Council/ }),
+    );
     await user.type(screen.getByLabelText(/Registration number/), "7654321");
     await user.type(screen.getByLabelText(/Choose a username/), "okonkwo");
     await user.type(
