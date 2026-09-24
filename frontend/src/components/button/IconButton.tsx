@@ -28,8 +28,12 @@ interface IconButtonProps {
   color?: MantineColor;
   /** Click handler */
   onClick?: MouseEventHandler<HTMLButtonElement>;
-  /** Accessibility label */
-  "aria-label"?: string;
+  /**
+   * What the button does, read out by screen readers. Required: the
+   * button shows only an icon, so without it a screen reader announces
+   * just "button" (WCAG 4.1.2).
+   */
+  "aria-label": string;
   /** Disabled state */
   disabled?: boolean;
   /** Additional class name */

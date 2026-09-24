@@ -34,6 +34,8 @@ export default tseslint.config(
         globals: globals.browser,
       },
       plugins: { regexp, react, "no-secrets": noSecrets },
+      // Lint `<Image>` (ours and Mantine's) as an img, so alt-text sees it
+      settings: { "jsx-a11y": { components: { Image: "img" } } },
       rules: {
         "regexp/no-super-linear-backtracking": "warn",
         "regexp/no-useless-quantifier": "warn",
@@ -59,6 +61,12 @@ export default tseslint.config(
                 message:
                   "Don't use MantineProvider directly. Tests: use renderWithMantine/renderWithRouter. Stories: use the preview decorator.",
               },
+              {
+                name: "@mantine/core",
+                importNames: ["ActionIcon"],
+                message:
+                  "Use IconButton from @/components/button: it requires an aria-label, which an icon-only button needs to be announced as more than 'button'.",
+              },
             ],
             patterns: [
               {
@@ -78,6 +86,22 @@ export default tseslint.config(
         "src/test/test-utils.tsx",
         "src/RootLayout.test.tsx",
         ".storybook/preview.tsx",
+      ],
+      rules: {
+        "no-restricted-imports": "off",
+      },
+    },
+    // The icon-button wrappers themselves, each of which takes or sets
+    // its own aria-label; everything else goes through them
+    {
+      files: [
+        "src/components/button/IconButton.tsx",
+        "src/components/button/BurgerButton.tsx",
+        "src/components/button/SearchButton.tsx",
+        "src/components/ellipsis-menu/EllipsisMenu.tsx",
+        "src/components/form/FilterSelect.tsx",
+        "src/components/passport/InboxButton.tsx",
+        "src/components/search/SearchFields.tsx",
       ],
       rules: {
         "no-restricted-imports": "off",
