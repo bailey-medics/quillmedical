@@ -3,8 +3,11 @@
 # Usage:
 #   cd infra/
 #   terraform init
-#   terraform plan -var-file=environments/staging/terraform.tfvars
-#   terraform apply -var-file=environments/staging/terraform.tfvars
+#   terraform workspace select app
+#   terraform plan -var-file=environments/app/terraform.tfvars
+#
+# CI applies on every push to main (.github/workflows/terraform.yml), so a
+# local apply is for emergencies only.
 
 provider "google" {
   project = var.project_id

@@ -2016,11 +2016,27 @@ un-deferred on 2026-09-24. Still true on that date: `quill-medical.net`,
 
 ### Phase 4: Retire production and staging
 
-- [ ] **(Claude)** Remove what still names them: `infra/environments/prod`
+- [x] **(Claude)** Remove what still names them: `infra/environments/prod`
       and `infra/environments/staging`, the disabled
       `promote-to-production` job in `.github/workflows/deploy.yml`, and
       the comment in `infra/backend.tf` telling a reader to create the
       state bucket in production.
+
+      Done on 2026-09-24, and wider than listed, because the search turned
+      up more:
+      - `notify-production-failure` went with the job it watched, and
+        `deploy.yml` drops to `contents: read`. Write was only ever for the
+        CalVer tag the production job created.
+      - `infra/modules/dns`, a zone module from the first Terraform
+        scaffold that nothing ever called, is deleted. `infra/dns.tf`
+        replaces it.
+      - The `Justfile`'s `_gcp_env_project` knew only `app`, `staging`,
+        `teaching` and `prod`, and `build-caption` and `build-transcode`
+        refused every environment except `teaching`, which no longer
+        exists. All three now take `app`.
+      - `docs/docs/infrastructure/gcp.md` lost its production hibernation
+        and restore section, and `docs/docs/cicd/index.md` its production
+        promotion step.
 - [ ] **(Mark)** Delete the GitHub secrets `GCP_PROD_*` and
       `GCP_STAGING_*`.
 - [ ] **(Mark)** Delete both projects, once Phase 2's 48 hours have passed.
