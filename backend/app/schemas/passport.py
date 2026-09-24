@@ -648,56 +648,6 @@ class CommonCompetenciesOut(BaseModel):
 # --------------------------------------------------------------------
 
 
-class AssessorInviteIn(_In):
-    """The holder bringing in somebody from outside.
-
-    The registration is what the holder was told, not something Quill
-    has checked. It is collected here so the invitation can say who is
-    being asked, and confirmed by the assessor themselves on acceptance;
-    an administrator verifies it separately, later.
-    """
-
-    email: EmailStr
-    name: NonEmptyText
-    registration_authority: NonEmptyText
-    registration_number: NonEmptyText
-
-    #: What the holder wants assessed, if they already know. Used to
-    #: write a more specific email and deliberately not stored: an
-    #: invitation brings a *person* onto the platform, and one assessor
-    #: goes on to sign off many competencies over months. A competency
-    #: recorded here would either force a second invitation for somebody
-    #: who already has an account, or sit there describing only the
-    #: first of the things they were eventually asked to assess. What
-    #: they were actually asked for is ``passport_signoff_request``,
-    #: which can only name them once they have accepted and have a user
-    #: id at all.
-    competency_id: CompetencyIdField | None = None
-
-
-class AssessorInviteOut(BaseModel):
-    """An invitation that has been issued.
-
-    No token and no link. The invitation goes to the assessor by email,
-    and returning the credential to the caller would let a holder hand it
-    on by any route they liked, defeating the point of sending it to a
-    verified address. ``expires_at`` is returned so the holder can see
-    when it lapses without being able to use it.
-
-    No competency either, for the reason ``AssessorInviteIn`` gives: the
-    invitation is about a person, and claiming otherwise would make a
-    listing that goes stale the moment the assessor signs off a second
-    thing.
-    """
-
-    id: NonEmptyText
-    email: EmailStr
-    name: NonEmptyText
-    created_at: datetime
-    expires_at: datetime
-    accepted_at: datetime | None = None
-
-
 class InvitePreviewOut(BaseModel):
     """What the accept page shows before anybody commits to anything.
 

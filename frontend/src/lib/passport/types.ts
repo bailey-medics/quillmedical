@@ -47,7 +47,10 @@ export type IsoDateTime = string;
  * of the history rather than a row that vanishes.
  */
 export type SignOffStatus =
-  "requested" | "signed_off" | "declined" | "superseded";
+  | "requested"
+  | "signed_off"
+  | "declined"
+  | "superseded";
 
 /**
  * Why a later sign-off exists. Only `correction` supersedes anything:
@@ -55,21 +58,30 @@ export type SignOffStatus =
  * had got something wrong when they had not.
  */
 export type SignOffKind =
-  "initial" | "progression" | "reassessment" | "correction";
+  | "initial"
+  | "progression"
+  | "reassessment"
+  | "correction";
 
 /**
  * What the assessor actually did. Three clinically different acts, and a
  * record that does not say which one happened is weaker than it looks.
  */
 export type SignOffMeaning =
-  "directly observed" | "reviewed evidence" | "countersigned";
+  | "directly observed"
+  | "reviewed evidence"
+  | "countersigned";
 
 /** Whether a logged procedure was supervised, from the holder's own view. */
 export type Supervision = "supervised" | "independent";
 
 /** What a CPD activity was. */
 export type CpdActivityType =
-  "conference" | "grand round" | "teaching day" | "course" | "other";
+  | "conference"
+  | "grand round"
+  | "teaching day"
+  | "course"
+  | "other";
 
 // ---------------------------------------------------------------------------
 // Shared pieces
@@ -508,38 +520,6 @@ export interface RecordResult {
 // ---------------------------------------------------------------------------
 // External assessors
 // ---------------------------------------------------------------------------
-
-/**
- * The holder bringing in somebody from outside.
- *
- * The registration is what the holder was told, not something Quill has
- * checked. `competency_id` writes a more specific email and is
- * deliberately not stored: an invitation brings a *person* onto the
- * platform, and one assessor goes on to sign off many competencies.
- */
-export interface AssessorInviteInput {
-  email: string;
-  name: string;
-  registration_authority: string;
-  registration_number: string;
-  competency_id?: string | null;
-}
-
-/**
- * An invitation that has been issued.
- *
- * No token and no link, deliberately: returning the credential would let
- * a holder pass it on by any route they liked, defeating the point of
- * sending it to a verified address.
- */
-export interface AssessorInvite {
-  id: string;
-  email: string;
-  name: string;
-  created_at: IsoDateTime;
-  expires_at: IsoDateTime;
-  accepted_at: IsoDateTime | null;
-}
 
 /**
  * What the accept page shows before anybody commits to anything.

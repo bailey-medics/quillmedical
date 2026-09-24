@@ -26,7 +26,6 @@ import {
   amendReflection,
   createPassport,
   declineSignOff,
-  fetchAssessorInvites,
   fetchCertificates,
   fetchCpdYear,
   fetchInbox,
@@ -35,7 +34,6 @@ import {
   fetchPassport,
   fetchReflections,
   fetchSignOff,
-  inviteAssessor,
   previewAssessorInvite,
   removeCertificate,
   removeCpdEntry,
@@ -349,28 +347,6 @@ describe("cpd", () => {
 });
 
 describe("assessors", () => {
-  const invite = {
-    email: "consultant@example.nhs.uk",
-    name: "Dr Amara Okonkwo",
-    registration_authority: "GMC",
-    registration_number: "1234567",
-  };
-
-  it("invites an assessor", async () => {
-    await inviteAssessor(PASSPORT_ID, invite);
-    expect(api.post).toHaveBeenCalledWith(
-      `/passport/${PASSPORT_ID}/assessor-invites`,
-      invite,
-    );
-  });
-
-  it("lists invitations", async () => {
-    await fetchAssessorInvites(PASSPORT_ID);
-    expect(api.get).toHaveBeenCalledWith(
-      `/passport/${PASSPORT_ID}/assessor-invites`,
-    );
-  });
-
   it("previews an invitation by token in the query string", async () => {
     await previewAssessorInvite("tok123");
     expect(api.get).toHaveBeenCalledWith(

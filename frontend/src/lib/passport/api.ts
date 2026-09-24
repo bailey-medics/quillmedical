@@ -37,10 +37,8 @@
 import { api } from "@lib/api";
 import type {
   AssessorSearch,
-  AssessorInvite,
   AssessorInviteAccept,
   AssessorInviteAcceptInput,
-  AssessorInviteInput,
   AssessorRevoke,
   Certificate,
   CertificateInput,
@@ -519,29 +517,6 @@ export function removeCpdEntry(
 // ---------------------------------------------------------------------------
 // External assessors
 // ---------------------------------------------------------------------------
-
-/**
- * Invites somebody from outside to assess. Rate limited by the backend,
- * which answers 429 once a passport has issued too many in a day.
- */
-export function inviteAssessor(
-  passportId: string,
-  data: AssessorInviteInput,
-): Promise<AssessorInvite> {
-  return api.post<AssessorInvite>(
-    `/passport/${segment(passportId)}/assessor-invites`,
-    data,
-  );
-}
-
-/** Invitations issued for this passport. Carries no token and no link. */
-export function fetchAssessorInvites(
-  passportId: string,
-): Promise<AssessorInvite[]> {
-  return api.get<AssessorInvite[]>(
-    `/passport/${segment(passportId)}/assessor-invites`,
-  );
-}
 
 /**
  * What an invitation link resolves to, before anybody commits to

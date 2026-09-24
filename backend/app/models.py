@@ -104,7 +104,7 @@ class User(Base):
         base_profession: Base profession template (e.g., "consultant", "patient").
         competency_grants: Every competency granted to this person, one
             ``user_competency`` row each, current and closed.
-        professional_registrations: Professional registration details (GMC, NMC, etc.).
+        professional_registrations: Retired; see ``registrations``.
     """
 
     __tablename__ = "users"
@@ -157,8 +157,12 @@ class User(Base):
     base_profession: Mapped[str] = mapped_column(
         String(100), nullable=False, default="patient"
     )
+    # Retired: `professional_registration` rows replaced it, and a later
+    # change drops it. Deferred, so no SELECT names it, and never set, so
+    # no INSERT does: a revision still serving while the drop runs sends
+    # nothing the drop could break.
     professional_registrations: Mapped[dict[str, Any] | None] = mapped_column(
-        JSON, nullable=True
+        JSON, nullable=True, deferred=True
     )
 
     roles: Mapped[list[Role]] = relationship(
@@ -183,8 +187,8 @@ class User(Base):
     #: Every professional registration this person has declared, current
     #: and closed alike. Loaded with the user for the reason
     #: ``competency_grants`` is: the passport reads them wherever it
-    #: describes somebody. This is what is read; the JSON column
-    #: ``professional_registrations`` above is still written beside it.
+    #: describes somebody. Replaces the retired
+    #: ``professional_registrations`` JSON column above.
     registrations: Mapped[list[ProfessionalRegistration]] = relationship(
         back_populates="user",
         lazy="selectin",
