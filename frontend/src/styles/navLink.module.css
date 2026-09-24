@@ -1,0 +1,10 @@
+/**
+ * NavLink theme overrides
+ *
+ * Mantine colours the current link's label via `--nl-color` (set in
+ * theme.ts), but nav icons carry their own stroke colour, so the
+ * current link's icon is recoloured here to match.
+ */
+.root:where([data-active], [aria-current="page"]) .section svg {
+  stroke: var(--nl-color);
+}

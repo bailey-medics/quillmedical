@@ -62,6 +62,6 @@ export const Counts: Story = {
 };
 
 export const DarkMode: Story = {
-  ...Default,
+  ...Counts,
   globals: { colorScheme: "dark" },
 };

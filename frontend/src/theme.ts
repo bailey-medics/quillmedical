@@ -26,10 +26,13 @@
 import {
   createTheme,
   deepMerge,
+  NavLink,
   v8CssVariablesResolver,
   type CSSVariablesResolver,
   type MantineColorsTuple,
 } from "@mantine/core";
+
+import navLinkClasses from "./styles/navLink.module.css";
 
 /**
  * Brand colour tokens — single source of truth.
@@ -249,6 +252,10 @@ const appCssVariables = {
     "--bubble-theirs-bg": "#0a2f56",
     "--bubble-shadow": "none",
     "--bubble-border-top": "1px solid #0a2f56",
+    // Current nav link — brand amber, ample contrast on navy
+    "--nav-active-colour": "var(--mantine-color-secondary-5)",
+    // Nav link hover — Mantine's own non-active hover shade
+    "--nav-hover-bg": "var(--mantine-color-dark-6)",
   },
   light: {
     "--mantine-color-text": "#143f6b",
@@ -261,6 +268,9 @@ const appCssVariables = {
     "--bubble-theirs-bg": "#fae8cc",
     "--bubble-shadow": "0 1px 0 rgba(0,0,0,0.06)",
     "--bubble-border-top": "1px solid rgba(0,0,0,0.06)",
+    // Current nav link — brand amber (only ~2.7:1 contrast on white)
+    "--nav-active-colour": "var(--mantine-color-secondary-5)",
+    "--nav-hover-bg": "var(--mantine-color-gray-0)",
   },
 };
 
@@ -336,6 +346,19 @@ export const theme = createTheme({
   },
 
   components: {
+    /** Current nav link — amber label and icon, no fill (see navLink.module.css) */
+    NavLink: NavLink.extend({
+      classNames: navLinkClasses,
+      vars: () => ({
+        root: {
+          "--nl-color": "var(--nav-active-colour)",
+          // No fill on the current link; hover matches the other links
+          "--nl-bg": "transparent",
+          "--nl-hover": "var(--nav-hover-bg)",
+        },
+        children: {},
+      }),
+    }),
     Badge: {
       defaultProps: {
         size: "lg",
