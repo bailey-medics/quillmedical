@@ -37,7 +37,7 @@ export const AcceptDisabled: Story = {
 export const Submitting: Story = {
   args: {
     acceptLabel: "Deactivate",
-    submittingLabel: "Deactivating…",
+    submittingLabel: "Submitting…",
     acceptLoading: true,
     acceptDisabled: true,
   },
