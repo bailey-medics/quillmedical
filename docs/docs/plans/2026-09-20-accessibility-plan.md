@@ -136,7 +136,7 @@ once the addon is registered; no `test-runner.ts` hooks are needed.
       this plan. Two findings from doing it. First, a Storybook dev server
       started before the addon was registered does not load it, and the
       test-runner then fails every story with `ReferenceError: Cannot
-      access 'StorybookTestRunnerError' before initialization` rather than
+    access 'StorybookTestRunnerError' before initialization` rather than
       with a readable message; restart Storybook after changing
       `main.ts`. Second, the test-runner's failure message shows only the
       first violating element per story, which is too little to count
@@ -257,10 +257,14 @@ once the addon is registered; no `test-runner.ts` hooks are needed.
       amber `secondary.5`, 2.66:1 on white, failing 18 nav stories. Light
       mode now uses `secondary.7` `#886223`, still amber and 5.5:1 on
       white; dark mode keeps `secondary.5`, which passes on navy
-- [ ] Add a `docs/docs/frontend/accessibility/` section to the Storybook
+- [x] Add a `docs/docs/frontend/accessibility/` section to the Storybook
       docs page describing how to read an axe failure in the a11y panel and
       where per-story rule overrides belong (`parameters.a11y.config.rules`,
-      never a global disable)
+      never a global disable). Written as the "Accessibility Testing"
+      section of `docs/docs/frontend/storybook/index.md`, replacing a
+      paragraph that said the addon was not yet configured; the
+      `docs/docs/frontend/accessibility/` directory is left for the
+      phase 5 and 6 evidence it names
 
 ## Phase 2: Lint at the keyboard
 
