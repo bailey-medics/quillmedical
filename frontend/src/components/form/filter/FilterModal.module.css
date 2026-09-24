@@ -23,7 +23,14 @@
   width: 100%;
 }
 
+/* WCAG 2.5.8 Target size: at least 24px (1.5rem) in both directions.
+   The pill's remove button and the Reset link were 21px and 23px tall. */
+.panel :global(.mantine-Pill-remove) {
+  min-height: 1.5rem;
+}
+
 .reset {
+  min-height: 1.5rem;
   color: var(--link-color);
 
   &:hover {

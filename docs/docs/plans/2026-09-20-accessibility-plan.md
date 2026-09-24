@@ -397,13 +397,28 @@ Things the survey found that no tool will fix on its own.
       Mantine `Loader` spinners in `PatientMessages` and
       `PatientMessageThread`, which have no text; they are short waits
       and are left for the phase 5 screen reader run to judge
-- [ ] Target size sweep (2.5.8): table row actions, pagination controls,
+- [x] Target size sweep (2.5.8): table row actions, pagination controls,
       `SortHeader`, `CompetencyRow` buttons. Anything under 24px gets a
-      larger hit area or spacing, not a bigger icon
-- [ ] Redundant entry check (3.3.7): confirm the multi-step form and
+      larger hit area or spacing, not a bigger icon. axe's `target-size` rule,
+      on in every story since phase 1, found nothing, and a Playwright
+      pass measured every button, link, checkbox, radio and switch in
+      every story. The four components named here were all 24px or more.
+      Two targets were under 24px: the remove button on a filter pill
+      (21px tall) and the filter panel's Reset link (23px), both in
+      `FilterModal`, now given a 1.5rem minimum height. Radios and
+      switches measure 16–20px but their labels are part of the target,
+      and the video player's time readout is media-chrome's own control
+- [x] Redundant entry check (3.3.7): confirm the multi-step form and
       registration carry earlier answers forward and that nothing asks for
-      an email or name twice
-- [ ] Session timeout: the access cookie lives fifteen minutes and refresh
+      an email or name twice. Both multi-step forms
+      (`NewPatientPage` and `UserInfoUpdatePage`) hold their answers in
+      page state above `MultiStepForm`, so a step that unmounts comes back
+      filled in, and the final step shows the answers for confirmation
+      rather than asking again; a `MultiStepForm` test now pins going
+      back to an earlier step. Registration's "Confirm password" is the
+      criterion's own named exception (re-entry for security), and no
+      form asks for an email or name twice
+- [x] Session timeout: the access cookie lives fifteen minutes and refresh
       is silent, so there is no timeout prompt and 2.2.1 Timing Adjustable
       passes by design. Note this in the conformance record rather than
       building the warning the docs page currently promises
@@ -413,7 +428,11 @@ Things the survey found that no tool will fix on its own.
 Components can each pass and still compose into a page with two `h1`s, a
 missing landmark, or a focus order that jumps. `just e2e` already brings up
 the CI stack and drives real pages; an axe scan per journey is a few lines
-on top.
+on top.. Confirmed in the code: the access cookie
+is fifteen minutes, `api.ts` refreshes it silently on a 401, and
+the refresh token lasts `REFRESH_TTL_DAYS` (seven days), which is
+beyond WCAG 2.2.1's twenty-hour exception. This goes into the
+phase 6 conformance record as a pass by design
 
 - [ ] Add `@axe-core/playwright` and a `frontend/e2e/fixtures/axe.ts`
       fixture that builds one `AxeBuilder` with the same tags as phase 1,
