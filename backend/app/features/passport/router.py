@@ -68,6 +68,7 @@ from app.features.gating import requires_feature
 from app.models import (
     OrgUnit,
     OrgUnitFeature,
+    ProfessionalRegistration,
     User,
     org_unit_member,
 )
@@ -82,6 +83,7 @@ from app.organisations import (
     remove_org_unit_member,
 )
 from app.passport_storage import get_blob_store, get_passport_store
+from app.registrations import REGISTRATION_AUTHORITIES, canonical_authority
 from app.schemas.passport import (
     AssessorInviteAcceptIn,
     AssessorInviteAcceptOut,
@@ -2926,6 +2928,22 @@ def accept_assessor_invite(
                 ),
             )
 
+        # A body the jurisdiction lists, in its own spelling: `gmc` is
+        # taken to mean `GMC`. Anything else is refused here rather than
+        # by the model, which would answer with a 500.
+        listed = canonical_authority(authority)
+        if listed is None:
+            raise HTTPException(
+                422,
+                (
+                    "That registering body is not one Quill recognises. "
+                    "Choose one of: "
+                    + ", ".join(REGISTRATION_AUTHORITIES)
+                    + "."
+                ),
+            )
+        authority = listed
+
         if db.scalar(
             select(User).where(User.username == body.username.strip())
         ):
@@ -2946,6 +2964,11 @@ def accept_assessor_invite(
             # they read it, which is the same thing verification asks.
             email_verified=True,
             professional_registrations={authority: number},
+        )
+        # The row beside the JSON, which nothing reads yet. See the
+        # professional registrations plan.
+        user.registrations.append(
+            ProfessionalRegistration(authority=authority, number=number)
         )
         db.add(user)
         db.flush()
