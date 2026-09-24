@@ -80,6 +80,7 @@ from app.features.teaching.schemas import (
     TranscodeCompleteIn,
     TranscodeCompleteOut,
 )
+from app.feedback.router import router as feedback_router
 from app.fhir_client import (
     FhirClientError,
     FhirCommunicationError,
@@ -234,6 +235,7 @@ DEV_MODE = settings.BACKEND_ENV.lower().startswith("dev")
 router = APIRouter(prefix=settings.API_PREFIX)
 
 router.include_router(analytics_router)
+router.include_router(feedback_router)
 router.include_router(push_router)
 
 # Permanent API-compatibility test harness (item 19) — always false in real

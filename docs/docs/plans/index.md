@@ -57,7 +57,7 @@
 - [Disaster Recovery](2026-09-17-disaster-recovery-plan.md)
 - [Environment Isolation and Renaming](2026-09-18-environment-isolation-and-iap-plan.md)
 - [Accessibility](2026-09-20-accessibility-plan.md)
-- [User Feedback](2026-09-20-user-feedback-plan.md)
+- [User feedback](2026-09-20-user-feedback-plan.md)
 - [Internationalisation](2026-09-20-internationalisation-plan.md)
 - [Practising Competencies Enforcement](2026-09-21-practising-competencies-enforcement-plan.md)
 - [VoiceMode Spoken Conversation](2026-09-23-voice-mode-plan.md)

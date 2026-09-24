@@ -23,6 +23,7 @@ import {
   IconCurrencyPound,
   IconDatabase,
   IconMail,
+  IconMessageReport,
 } from "@/components/icons/appIcons";
 
 /** Available icon types */
@@ -42,7 +43,8 @@ export type IconName =
   | "book"
   | "pricing"
   | "database"
-  | "mail";
+  | "mail"
+  | "feedback";
 
 /** Available icon sizes */
 type IconSize = "xs" | "sm" | "md" | "lg" | "xl";
@@ -75,6 +77,7 @@ const iconMap = {
   pricing: IconCurrencyPound,
   database: IconDatabase,
   mail: IconMail,
+  feedback: IconMessageReport,
 } as const;
 
 // Map size to icon pixel dimensions
