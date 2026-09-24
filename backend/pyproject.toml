@@ -7,7 +7,7 @@ build-backend = "poetry.core.masonry.api"
 # pin selects which Poetry CI and the image install; this rejects one that
 # cannot read the lock — including on a developer's machine, where no
 # repository file can install anything.
-requires-poetry = ">=2.4,<3"
+requires-poetry = ">=2.5,<3"
 name = "backend"
 version = "0.1.0"
 description = "Backend fastAPI and git services"

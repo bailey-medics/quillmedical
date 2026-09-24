@@ -94,7 +94,7 @@
   ],
   "extends": ["config:recommended"],
   "constraints": {
-    "poetry": "2.4.3"
+    "poetry": "2.5.0"
   },
   "timezone": "Europe/London",
   "schedule": ["on wednesday"],
