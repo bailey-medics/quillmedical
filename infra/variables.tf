@@ -151,3 +151,9 @@ variable "content_ci_service_account" {
   type        = string
   default     = ""
 }
+
+variable "manage_dns_zone" {
+  description = "Hold the quill-medical.com Cloud DNS zone in this environment. True in exactly one environment, the app one; see dns.tf."
+  type        = bool
+  default     = false
+}

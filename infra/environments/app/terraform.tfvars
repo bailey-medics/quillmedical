@@ -9,13 +9,17 @@
 # points at the old project. Listing them here would leave this
 # project's certificate pending for ever.
 #
-# The DNS record for app.quill-medical.com is created by hand in Batch 5,
-# which is also when teaching.quill-medical.com becomes a redirect.
+# The DNS record for app.quill-medical.com was created by hand in Batch 5.
+# From Batch 10a the whole quill-medical.com zone is in Terraform, held by
+# this environment: see manage_dns_zone below and infra/dns.tf.
 
 project_id  = "quill-medical-app"
 region      = "europe-west2"
 environment = "app"
 domain      = "quill-medical.com"
+
+# This environment holds the quill-medical.com zone. No other may set it.
+manage_dns_zone = true
 
 db_tier     = "db-f1-micro"
 enable_fhir = false # No FHIR/EHRbase — single auth DB + Cloud Storage
@@ -23,7 +27,7 @@ enable_ha   = false
 
 cloud_run_max_instances = 5
 
-lb_domains     = ["app.quill-medical.com"]
+lb_domains = ["app.quill-medical.com"]
 # The apex, served from gs://quill-medical-app-landing behind this load
 # balancer.
 #
@@ -51,10 +55,10 @@ caption_image   = "gcr.io/cloudrun/hello:latest"
 # The apex is monitored from here once this project serves it. The uptime
 # check probes app_domain at /api/health and everything else at /, which
 # suits a static landing site with no API.
-monitored_hostnames        = ["app.quill-medical.com", "quill-medical.com"]
-app_domain                 = "app.quill-medical.com"
-alert_email                = "info@quill-medical.com"
-cloud_run_services         = ["quill-backend-app", "quill-frontend-app"]
+monitored_hostnames = ["app.quill-medical.com", "quill-medical.com"]
+app_domain          = "app.quill-medical.com"
+alert_email         = "info@quill-medical.com"
+cloud_run_services  = ["quill-backend-app", "quill-frontend-app"]
 
 # The content pipeline in eoeeta-teaching and respiratory-teaching
 # authenticates as this account and publishes question banks into
