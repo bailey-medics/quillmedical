@@ -144,11 +144,11 @@ describe("TeachingMainNav", () => {
     expect(screen.queryByText("Colonoscopy opt…")).toBeNull();
   });
 
-  it("offers Send feedback directly above Logout", () => {
+  it("offers Feedback directly above Logout", () => {
     renderWithRouter(<TeachingMainNav />, {
       initialRoute: "/teaching",
     });
-    const feedback = screen.getByText("Send feedback");
+    const feedback = screen.getByText("Feedback");
     expect(feedback.closest("a, button")?.nextElementSibling?.textContent).toBe(
       "Logout",
     );

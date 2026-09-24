@@ -33,6 +33,11 @@ export const WithoutIcon: Story = {
   args: { showIcons: false },
 };
 
+/** On the sender's own feedback page, where a child appears beneath it */
+export const OnYourFeedbackPage: Story = {
+  parameters: { routerPath: "/feedback" },
+};
+
 export const DarkMode: Story = {
   ...Default,
   globals: { colorScheme: "dark" },

@@ -4,7 +4,7 @@
  * Sidebar navigation for teaching pages. Mirrors MainLayout's
  * SideNavContent pattern: uses NestedNavLink for route-based links,
  * determines admin access from auth state internally, and renders
- * Send feedback and Logout as standalone actions.
+ * Feedback and Logout as standalone actions.
  */
 
 import { NavLink, Stack } from "@mantine/core";
@@ -59,7 +59,7 @@ export default function TeachingMainNav({
           showIcons
         />
       ))}
-      <SendFeedbackNavLink />
+      <SendFeedbackNavLink onNavigate={onNavigate} />
       <NavLink
         label="Logout"
         leftSection={<NavIcon name="logout" />}
