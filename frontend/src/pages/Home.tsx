@@ -7,6 +7,7 @@
  */
 
 import PatientsList from "@/components/patients";
+import PageHeader from "@/components/page-header";
 import type { Patient } from "@/domains/patient";
 import { api } from "@/lib/api";
 import { FHIR_POLLING_TIME, FHIR_REFRESH_TIME } from "@/lib/constants";
@@ -330,6 +331,7 @@ export default function Home() {
 
   return (
     <Stack gap="lg">
+      <PageHeader title="Patients" />
       <PatientsList
         patients={patients ?? []}
         isLoading={isLoading}

@@ -7,6 +7,7 @@
  */
 
 import ActionCard from "@/components/action-card";
+import PageHeader from "@/components/page-header";
 import { usePatientLoader } from "@/hooks/usePatientLoader";
 import { ErrorMessage, TextLink } from "@/components/typography";
 import { SimpleGrid } from "@mantine/core";
@@ -39,42 +40,45 @@ export default function Patient() {
   }
 
   return (
-    <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
-      <ActionCard
-        icon={<IconMessage />}
-        title="Messaging"
-        subtitle="Send and receive secure messages with the care team"
-        buttonLabel="Open messages"
-        buttonUrl={`/patients/${id}/messages`}
-      />
-      <ActionCard
-        icon={<IconCalendarWeek />}
-        title="Appointments"
-        subtitle="View upcoming and past appointment history"
-        buttonLabel="View appointments"
-        buttonUrl={`/patients/${id}/appointments`}
-      />
-      <ActionCard
-        icon={<IconMail />}
-        title="Clinical letters"
-        subtitle="View referral letters, clinic letters, and discharge summaries"
-        buttonLabel="View letters"
-        buttonUrl={`/patients/${id}/letters`}
-      />
-      <ActionCard
-        icon={<IconFileText />}
-        title="Documents"
-        subtitle="Scanned documents and files"
-        buttonLabel="View documents"
-        buttonUrl={`/patients/${id}/documents`}
-      />
-      <ActionCard
-        icon={<IconBook />}
-        title="Clinical notes"
-        subtitle="View consultation notes, observations, and clinical records"
-        buttonLabel="View notes"
-        buttonUrl={`/patients/${id}/notes`}
-      />
-    </SimpleGrid>
+    <>
+      <PageHeader title={patient?.name ?? "Patient record"} />
+      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
+        <ActionCard
+          icon={<IconMessage />}
+          title="Messaging"
+          subtitle="Send and receive secure messages with the care team"
+          buttonLabel="Open messages"
+          buttonUrl={`/patients/${id}/messages`}
+        />
+        <ActionCard
+          icon={<IconCalendarWeek />}
+          title="Appointments"
+          subtitle="View upcoming and past appointment history"
+          buttonLabel="View appointments"
+          buttonUrl={`/patients/${id}/appointments`}
+        />
+        <ActionCard
+          icon={<IconMail />}
+          title="Clinical letters"
+          subtitle="View referral letters, clinic letters, and discharge summaries"
+          buttonLabel="View letters"
+          buttonUrl={`/patients/${id}/letters`}
+        />
+        <ActionCard
+          icon={<IconFileText />}
+          title="Documents"
+          subtitle="Scanned documents and files"
+          buttonLabel="View documents"
+          buttonUrl={`/patients/${id}/documents`}
+        />
+        <ActionCard
+          icon={<IconBook />}
+          title="Clinical notes"
+          subtitle="View consultation notes, observations, and clinical records"
+          buttonLabel="View notes"
+          buttonUrl={`/patients/${id}/notes`}
+        />
+      </SimpleGrid>
+    </>
   );
 }

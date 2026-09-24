@@ -6,9 +6,9 @@
  */
 
 import DocumentsList from "@/components/documents/DocumentsList";
+import PageHeader from "@/components/page-header";
 import { fakeDocuments } from "@/data/fakeDocuments";
 import { usePatientLoader } from "@/hooks/usePatientLoader";
-import { Heading } from "@/components/typography";
 import { Stack } from "@mantine/core";
 import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -29,7 +29,7 @@ export default function PatientDocuments() {
 
   return (
     <Stack gap="lg">
-      <Heading>Documents</Heading>
+      <PageHeader title="Documents" />
 
       <DocumentsList
         documents={fakeDocuments}

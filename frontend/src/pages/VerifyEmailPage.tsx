@@ -8,6 +8,7 @@
 // Auth pages use centred form layout, not Container
 
 import { useEffect, useState } from "react";
+import PageHeader from "@/components/page-header";
 import { Center, Stack } from "@mantine/core";
 import { useSearchParams } from "react-router-dom";
 import { api } from "@/lib/api";
@@ -36,6 +37,7 @@ export default function VerifyEmailPage() {
   if (status === "loading") {
     return (
       <Center mih="100vh">
+        <PageHeader title="Verify your email" />
         <StateMessage
           icon={<IconClock />}
           title="Verifying your email…"
@@ -49,6 +51,7 @@ export default function VerifyEmailPage() {
   if (status === "success") {
     return (
       <Center mih="100vh">
+        <PageHeader title="Verify your email" />
         <Stack align="center" gap="md">
           <ResultMessage variant="success" title="Email verified" />
           <BodyText>Your email has been verified. You can now log in.</BodyText>
@@ -60,6 +63,7 @@ export default function VerifyEmailPage() {
 
   return (
     <Center mih="100vh">
+      <PageHeader title="Verify your email" />
       <Stack align="center" gap="md">
         <StateMessage
           icon={<IconAlertCircle />}

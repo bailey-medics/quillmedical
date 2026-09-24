@@ -6,13 +6,13 @@
  */
 
 import { Skeleton, Stack } from "@mantine/core";
+import PageHeader from "@/components/page-header";
 import { StateMessage } from "@/components/message-cards";
 import { IconAlertCircle } from "@/components/icons/appIcons";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import { AssessmentHistoryTable } from "@/components/teaching/assessment-history-table/AssessmentHistoryTable";
-import { Heading } from "@/components/typography";
 import type { AssessmentHistory } from "@/features/teaching/types";
 
 export default function AssessmentHistoryPage() {
@@ -61,7 +61,7 @@ export default function AssessmentHistoryPage() {
 
   return (
     <Stack gap="lg">
-      <Heading>Assessment history</Heading>
+      <PageHeader title="Assessment history" />
       <AssessmentHistoryTable
         assessments={history}
         onSelect={(id) => navigate(`/teaching/assessment/${id}/result`)}

@@ -6,12 +6,13 @@
  */
 
 import { Badge, Skeleton, Stack, Table } from "@mantine/core";
+import PageHeader from "@/components/page-header";
 import TeachingLayout from "@/components/layouts/TeachingLayout";
 import { StateMessage } from "@/components/message-cards";
 import { IconAlertCircle } from "@/components/icons/appIcons";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { Heading, EmptyState } from "@/components/typography";
+import { EmptyState } from "@/components/typography";
 import type { SyncHistory } from "@/features/teaching/types";
 
 function formatDate(iso: string): string {
@@ -74,7 +75,7 @@ export default function SyncStatus() {
   return (
     <TeachingLayout>
       <Stack gap="lg">
-        <Heading>Sync status</Heading>
+        <PageHeader title="Sync status" />
 
         {syncs.length === 0 ? (
           <EmptyState>No syncs have been performed yet.</EmptyState>

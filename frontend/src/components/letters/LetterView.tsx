@@ -7,10 +7,11 @@
  */
 
 import { Group, Skeleton, Stack } from "@mantine/core";
+import PageHeader from "@/components/page-header";
 import Divider from "@/components/divider/Divider";
 import { IconArrowLeft } from "@/components/icons/appIcons";
 import IconButton from "@/components/button/IconButton";
-import { Heading, BodyTextInline, MarkdownView } from "@/components/typography";
+import { BodyTextInline, MarkdownView } from "@/components/typography";
 import type { ReactNode } from "react";
 
 /**
@@ -104,7 +105,7 @@ export default function LetterView({
             aria-label="Back"
           />
           <Stack gap={2} style={{ minWidth: 0 }}>
-            <Heading>{letter.subject}</Heading>
+            <PageHeader title={letter.subject} />
             <BodyTextInline>
               {letter.from}
               {formattedDate ? ` · ${formattedDate}` : ""}

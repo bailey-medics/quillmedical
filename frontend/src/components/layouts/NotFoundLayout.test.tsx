@@ -30,9 +30,10 @@ describe("NotFoundLayout Component", () => {
       expect(screen.getByText("Go to home")).toBeInTheDocument();
     });
 
-    it("uses heading level 2 for title", () => {
+    it("makes the title the page's h1", () => {
+      // It replaces the whole page, so its title is the page's only h1.
       renderWithMantine(<NotFoundLayout />);
-      const heading = screen.getByRole("heading", { level: 2 });
+      const heading = screen.getByRole("heading", { level: 1 });
       expect(heading).toHaveTextContent("404 — Page not found");
     });
   });

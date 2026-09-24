@@ -6,7 +6,8 @@
  */
 
 import { Center, Container, Stack } from "@mantine/core";
-import { Heading, BodyText } from "@/components/typography";
+import PageHeader from "@/components/page-header";
+import { BodyText } from "@/components/typography";
 import IconTextButton from "@/components/button/IconTextButton";
 
 /**
@@ -28,7 +29,7 @@ export default function NotFoundLayout() {
     <Container size="lg" pt="md" pb="xl">
       <Center mih="60vh">
         <Stack align="center" gap="lg">
-          <Heading>404 — Page not found</Heading>
+          <PageHeader title="404 — Page not found" />
           <BodyText c="dimmed">The page you requested does not exist.</BodyText>
           <IconTextButton
             icon="arrowLeft"

@@ -136,7 +136,7 @@ once the addon is registered; no `test-runner.ts` hooks are needed.
       this plan. Two findings from doing it. First, a Storybook dev server
       started before the addon was registered does not load it, and the
       test-runner then fails every story with `ReferenceError: Cannot
-  access 'StorybookTestRunnerError' before initialization` rather than
+access 'StorybookTestRunnerError' before initialization` rather than
       with a readable message; restart Storybook after changing
       `main.ts`. Second, the test-runner's failure message shows only the
       first violating element per story, which is too little to count
@@ -349,13 +349,33 @@ Things the survey found that no tool will fix on its own.
       stories, because it does not count a `tabIndex={-1}` element as a
       way in; making `main` a tab stop would silence it at the cost of
       an extra, invisible-feeling stop on every page, which is worse
-- [ ] Walk every page with Tab and Shift+Tab and confirm no focused element
+- [x] Walk every page with Tab and Shift+Tab and confirm no focused element
       disappears under the sticky ribbon (2.4.11). Fix with
-      `scroll-padding-top` on the scroll container where it does
-- [ ] Audit heading order: one `h1` per page, no skipped levels. There is
+      `scroll-padding-top` on the scroll container where it does. Walked with
+      Playwright over every layout and teaching-layout story at 1280px
+      and 390px, sixty Tab presses each, checking each focused element
+      against the ribbon's box: nothing was covered. The layouts make this
+      pass by construction, since the ribbon sits above `main` rather
+      than over it and `main` scrolls on its own, so there was no
+      `scroll-padding-top` to add. The skip link is the one thing drawn
+      over the ribbon, deliberately. Phase 5's manual keyboard runs
+      re-check it on real pages
+- [x] Audit heading order: one `h1` per page, no skipped levels. There is
       one `order={1}` use and three `Title`s without an `order` in the
       frontend; pages composed from `BaseCard` headings are the likely
-      offenders
+      offenders. Twenty-five routes had no `h1`: most led
+      with a `Heading`, which is always an h2, and a few had no heading
+      at all. `Heading` gains `level={1}`, which changes the element and
+      keeps the h2 size, and the pages and page-only components whose
+      first heading is the page title now use it (the patient lists,
+      notes and letters, the login, password and verify forms, the
+      teaching results and history pages, `NotFoundLayout`,
+      `LetterView`). Pages whose content already names them to a sighted
+      reader (a patient's record, a message thread, a slide, an
+      assessment question, the patient list) get
+      `<PageHeader visuallyHidden />`, an h1 for screen readers only.
+      The layouts' own stories still show no h1 where they render demo
+      content without one; the phase 4 page scans check real routes
 - [ ] Loading and result states announce themselves: the eight existing
       `aria-live` and `role="status"` uses should cover the table
       skeletons, form submission, search results and the notification

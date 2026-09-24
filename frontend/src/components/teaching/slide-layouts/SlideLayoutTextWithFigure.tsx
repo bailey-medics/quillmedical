@@ -7,7 +7,7 @@
  */
 
 import { Stack } from "@mantine/core";
-import Heading from "@/components/typography/Heading";
+import PageHeader from "@/components/page-header";
 import MarkdownView from "@/components/typography/MarkdownView";
 import Figure from "@/components/teaching/figure/Figure";
 import Callout from "@/components/teaching/callout/Callout";
@@ -32,7 +32,7 @@ export default function SlideLayoutTextWithFigure({
 
   return (
     <Stack gap="md">
-      <Heading>{slide.title}</Heading>
+      <PageHeader title={slide.title} />
       {slide.imagePosition === "above" ? (
         <>
           {figure}

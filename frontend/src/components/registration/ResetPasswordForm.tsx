@@ -6,10 +6,11 @@
  */
 
 import { Group, Stack } from "@mantine/core";
+import PageHeader from "@/components/page-header";
 import BaseCard from "@components/base-card/BaseCard";
 import { PasswordField } from "@components/form";
 import { QuillLogo } from "@components/images";
-import { Heading, TextLink } from "@components/typography";
+import { TextLink } from "@components/typography";
 import {
   Form,
   FormStatusNarrow,
@@ -33,7 +34,7 @@ function ResetPasswordFields() {
 
   return (
     <Stack>
-      <Heading>Reset password</Heading>
+      <PageHeader title="Reset password" />
       <PasswordField
         label="New password"
         {...methods.register("password", {

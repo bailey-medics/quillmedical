@@ -6,9 +6,9 @@
  */
 
 import { NotesList } from "@/components/notes";
+import PageHeader from "@/components/page-header";
 import { fakeNotes } from "@/data/fakeNotes";
 import { usePatientLoader } from "@/hooks/usePatientLoader";
-import { Heading } from "@/components/typography";
 import { Stack } from "@mantine/core";
 import { useEffect } from "react";
 import { useParams } from "react-router-dom";
@@ -28,7 +28,7 @@ export default function PatientNotes() {
 
   return (
     <Stack gap="lg">
-      <Heading>Clinical notes</Heading>
+      <PageHeader title="Clinical notes" />
       <NotesList notes={fakeNotes} />
     </Stack>
   );

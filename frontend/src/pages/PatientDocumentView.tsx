@@ -6,6 +6,7 @@
  */
 
 import { Document } from "@/components/documents/Document";
+import PageHeader from "@/components/page-header";
 import { fakeDocuments } from "@/data/fakeDocuments";
 import { usePatientLoader } from "@/hooks/usePatientLoader";
 import { ErrorMessage } from "@/components/typography";
@@ -38,5 +39,10 @@ export default function PatientDocumentView() {
     return <ErrorMessage>Document not found.</ErrorMessage>;
   }
 
-  return <Document {...doc} />;
+  return (
+    <>
+      <PageHeader title={doc.name} />
+      <Document {...doc} />
+    </>
+  );
 }

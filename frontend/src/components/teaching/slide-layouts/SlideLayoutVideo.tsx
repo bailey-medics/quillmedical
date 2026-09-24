@@ -10,8 +10,8 @@
  */
 
 import { Skeleton, Stack } from "@mantine/core";
+import PageHeader from "@/components/page-header";
 import ErrorState from "@/components/error-state/ErrorState";
-import Heading from "@/components/typography/Heading";
 import VideoPlayer from "@/components/teaching/video-player/VideoPlayer";
 import type { CompiledSlide } from "@/features/teaching/types";
 import { useVideoAccess } from "@/features/teaching/use-video-access";
@@ -80,7 +80,7 @@ export default function SlideLayoutVideo({
 
   return (
     <Stack gap="md">
-      <Heading>{slide.title}</Heading>
+      <PageHeader title={slide.title} />
       {(forceLoading || (needsAccess && loading)) && (
         <Skeleton height={320} radius="md" />
       )}

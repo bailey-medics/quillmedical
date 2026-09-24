@@ -13,4 +13,13 @@ describe("PageHeader", () => {
     renderWithMantine(<PageHeader title="Test" />);
     expect(screen.getByText("Test").tagName).toBe("H1");
   });
+
+  it("can keep the h1 for screen readers without showing it", () => {
+    renderWithMantine(<PageHeader title="Patient record" visuallyHidden />);
+    const heading = screen.getByRole("heading", {
+      level: 1,
+      name: "Patient record",
+    });
+    expect(heading.closest(".mantine-VisuallyHidden-root")).not.toBeNull();
+  });
 });

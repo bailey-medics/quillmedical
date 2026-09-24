@@ -6,7 +6,7 @@
  */
 
 import { Stack } from "@mantine/core";
-import Heading from "@/components/typography/Heading";
+import PageHeader from "@/components/page-header";
 import MarkdownView from "@/components/typography/MarkdownView";
 import Callout from "@/components/teaching/callout/Callout";
 import type { CompiledSlide } from "@/features/teaching/types";
@@ -18,7 +18,7 @@ export interface SlideLayoutDefaultProps {
 export default function SlideLayoutDefault({ slide }: SlideLayoutDefaultProps) {
   return (
     <Stack gap="md">
-      <Heading>{slide.title}</Heading>
+      <PageHeader title={slide.title} />
       {slide.body && <MarkdownView source={slide.body} />}
       {slide.calloutType && slide.calloutBody && (
         <Callout type={slide.calloutType}>{slide.calloutBody}</Callout>
