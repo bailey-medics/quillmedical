@@ -239,7 +239,8 @@ class TestTheFingerprintReachesThePage:
 
         assert "Dr Amara Okonkwo" in text
         assert "GMC 7654321" in text
-        assert "registration declared, not verified" in text
+        assert "registration as declared" in text
+        assert "verified" not in text
 
 
 class TestTheFooterCarriesTheCommit:

@@ -56,19 +56,19 @@ sat outside the thing it confirmed. That is also why nothing else depends on it.
 
 ## Phase 2: The record
 
-- [ ] **Remove `registration_verified` from the sign-off schema** in
+- [x] **Remove `registration_verified` from the sign-off schema** in
       `backend/app/features/passport/schemas.py`, and from
       `backend/app/schemas/passport.py`.
 
-- [ ] **Remove the `verified`, `verified_by` and `verified_on` fields from
+- [x] **Remove the `verified`, `verified_by` and `verified_on` fields from
       `Registration`**, along with the `_verification_names_who_and_when`
       validator that keeps them consistent. The validator exists only to stop
       a half-filled verification, and there is nothing left to half-fill.
 
-- [ ] **Drop the `registration_verified` argument from
+- [x] **Drop the `registration_verified` argument from
       `service.write_sign_off`** and stop passing it through.
 
-- [ ] **Remove `signed_off_by.registration_verified` from `NON_CONTRIBUTING`**
+- [x] **Remove `signed_off_by.registration_verified` from `NON_CONTRIBUTING`**
       in `hashing.py`. `CONTRIBUTING` is untouched, which is the point: no
       hash changes.
 
@@ -76,9 +76,41 @@ sat outside the thing it confirmed. That is also why nothing else depends on it.
       answer "what about X" for a reader, and naming a field that no longer
       exists sends them looking for it.
 
+- [x] **Keep old records readable.** Found while building, and the one
+      thing the plan missed. Records are serialised with
+      `exclude_none=True`, which keeps `False`, so every sign-off already
+      written carries `registration_verified: false` and every registration
+      in it carries `verified: false`. `PassportModel` forbids unknown
+      fields, so deleting the fields outright would have made every existing
+      sign-off and profile fail to load.
+
+      `Registration` and `Assessor` each gain a `mode="before"` validator
+      that drops those retired keys, and only those, before validation. Any
+      other unknown key is still refused. This is the tolerant reader
+      pattern ([Fowler](https://martinfowler.com/bliki/TolerantReader.html)),
+      narrowed to named keys so `extra="forbid"` keeps doing its job, and is
+      the approach Pydantic documents for reshaping input before field
+      validation
+      ([validators](https://docs.pydantic.dev/latest/concepts/validators/#model-validators)).
+      Bumping `SCHEMA_VERSION` was the alternative, and was rejected: the
+      change is a removal of fields nothing set, and a version bump would
+      mean a migration path for every record to say so.
+
+      The keys are dropped whatever their value. Nothing ever passed
+      `registration_verified=True`, and the only writer of `verified` wrote
+      `False`, so nothing true is lost.
+
+- [x] **Remove the fields from the API responses too.** `RegistrationOut`
+      and `AssessorOut` carried the same fields, served by the passport,
+      assessor search, inbox and sign-off routes. `oasdiff` flags each
+      property on each route separately, so this unit carries twenty
+      decision files, all `forces_reload: false`: the values were always
+      false or empty, and a stale tab missing them shows a registration as
+      declared, which is what it always showed.
+
 ## Phase 3: What people see
 
-- [ ] **Stop rendering the verified marker** in
+- [x] **Stop rendering the verified marker** in
       `backend/app/features/passport/render.py` and `pdf.py`. Both print it
       beside the assessor's registration on a signed-off competency.
 
@@ -86,6 +118,13 @@ sat outside the thing it confirmed. That is also why nothing else depends on it.
       somebody holds; nothing here reaches back into one. Since the flag was
       never set, every exported passport already shows an unverified
       registration, so no issued document becomes misleading.
+
+      **What they say instead.** A registration now reads "declared" and a
+      sign-off's assessor "registration as declared", where they read
+      "declared, not verified". The front-page paragraph, the export
+      README and the passport repository README now say Quill checks no
+      register and a reader relying on one should look it up there. Saying
+      "not verified" implies verification is something that happens here.
 
 - [ ] **Remove `RegistrationVerification`, `verifyAssessorRegistration` and
       the type's export** from `frontend/src/lib/passport/api.ts`, `types.ts`

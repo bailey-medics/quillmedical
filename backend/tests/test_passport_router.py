@@ -250,7 +250,7 @@ class TestCreate:
 
         registrations = response.json()["registrations"]
         assert registrations
-        assert all(not r["verified"] for r in registrations)
+        assert all(set(r) == {"body", "number"} for r in registrations)
 
 
 class TestReadAuthorisation:
@@ -396,7 +396,7 @@ class TestSearchingForAnAssessor:
         assert match["registrations"][0]["number"] == "1234567"
         # Declared, never checked by Quill. A screen that implied
         # otherwise would be claiming something nobody did.
-        assert match["registrations"][0]["verified"] is False
+        assert set(match["registrations"][0]) == {"body", "number"}
 
     def test_finding_nobody_is_not_an_error(
         self, holder_client: TestClient

@@ -247,7 +247,7 @@ class TestTheReadmeStandsAlone:
         ).decode()
 
         assert "not signatures" in readme
-        assert "verified" in readme
+        assert "Quill checks no" in readme
 
     def test_it_explains_why_reflections_are_not_in_the_pdf(
         self, populated: LocalPassportStore

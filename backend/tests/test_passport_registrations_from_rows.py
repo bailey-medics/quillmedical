@@ -40,9 +40,7 @@ def test_the_rows_are_described(db_session: Session) -> None:
     db_session.commit()
 
     assert _registration_strings(user) == ["NMC 99AB1234"]
-    assert _registration_dicts(user) == [
-        {"body": "NMC", "number": "99AB1234", "verified": False}
-    ]
+    assert _registration_dicts(user) == [{"body": "NMC", "number": "99AB1234"}]
 
 
 def test_a_closed_registration_is_not_described(db_session: Session) -> None:

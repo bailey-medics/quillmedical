@@ -314,12 +314,11 @@ def _registration_strings(user: User) -> list[str]:
 def _registration_dicts(user: User) -> list[dict[str, object]]:
     """Registrations as the record model stores them.
 
-    Always ``verified: false`` here. Quill checks no register, and an
-    organisation admin flips the flag by hand after checking one — so a
-    sign-off records what was declared, never implying more.
+    What was declared, and nothing more: Quill checks no register, so a
+    sign-off records the number without implying anybody looked it up.
     """
     return [
-        {"body": row.authority, "number": row.number, "verified": False}
+        {"body": row.authority, "number": row.number}
         for row in user.current_registrations
     ]
 
@@ -564,9 +563,6 @@ def _passport_out(row: Passport, profile: Profile) -> PassportOut:
             RegistrationOut(
                 body=registration.body,
                 number=registration.number,
-                verified=registration.verified,
-                verified_by=registration.verified_by,
-                verified_on=registration.verified_on,
             )
             for registration in profile.registrations
         ],

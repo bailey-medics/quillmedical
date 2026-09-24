@@ -129,7 +129,8 @@ class TestFrontPage:
         output = render.render(store, PASSPORT_ID)
 
         assert "GMC 1234567" in output
-        assert "declared, not verified" in output
+        assert "GMC 1234567 — _declared_" in output
+        assert "verified" not in output
 
     def test_an_empty_passport_still_renders(
         self, store: LocalPassportStore
@@ -367,7 +368,7 @@ class TestSignOffAppendix:
 
         assert "Dr Amara Okonkwo" in output
         assert "GMC 7654321" in output
-        assert "registration declared, not verified" in output
+        assert "(GMC 7654321) — _registration as declared_" in output
 
     def test_it_records_what_kind_of_act_the_sign_off_was(
         self,

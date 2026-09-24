@@ -115,45 +115,71 @@ class TestAttachment:
 
 
 class TestRegistration:
-    def test_declared_is_the_default(self) -> None:
-        """Quill checks no register, and the record must say so."""
+    def test_holds_what_was_declared_and_nothing_more(self) -> None:
+        """Quill checks no register, so the record claims no check."""
         registration = schemas.Registration(body="GMC", number="1234567")
 
-        assert registration.verified is False
-        assert registration.verified_by is None
+        assert registration.model_dump() == {
+            "body": "GMC",
+            "number": "1234567",
+        }
 
-    def test_a_verified_registration_names_who_and_when(self) -> None:
-        registration = schemas.Registration(
-            body="GMC",
-            number="1234567",
-            verified=True,
-            verified_by="dr.patel@example.nhs.uk",
-            verified_on=date(2026, 4, 2),
+    def test_a_record_written_with_the_retired_fields_still_reads(
+        self,
+    ) -> None:
+        """Records are write-once, so old files keep the old keys."""
+        registration = schemas.Registration.model_validate(
+            {
+                "body": "GMC",
+                "number": "1234567",
+                "verified": False,
+                "verified_by": None,
+                "verified_on": None,
+            }
         )
 
-        assert registration.verified is True
+        assert registration.model_dump() == {
+            "body": "GMC",
+            "number": "1234567",
+        }
 
-    def test_refuses_verified_without_a_checker(self) -> None:
-        with pytest.raises(ValidationError, match="verified_by"):
-            schemas.Registration(body="GMC", number="1234567", verified=True)
-
-    def test_refuses_verified_without_a_date(self) -> None:
-        with pytest.raises(ValidationError, match="verified_on"):
-            schemas.Registration(
-                body="GMC",
-                number="1234567",
-                verified=True,
-                verified_by="someone@example.nhs.uk",
+    def test_other_unknown_fields_are_still_refused(self) -> None:
+        """Only the retired keys are tolerated, not anything at all."""
+        with pytest.raises(ValidationError, match="checked_by"):
+            schemas.Registration.model_validate(
+                {"body": "GMC", "number": "1234567", "checked_by": "x"}
             )
 
-    def test_refuses_a_checker_without_the_flag(self) -> None:
-        """A check that confirmed nothing must not look like one that did."""
-        with pytest.raises(ValidationError, match="only meaningful"):
-            schemas.Registration(
-                body="GMC",
-                number="1234567",
-                verified_by="someone@example.nhs.uk",
-                verified_on=date(2026, 4, 2),
+
+class TestAssessor:
+    def test_a_sign_off_written_with_the_retired_flag_still_reads(
+        self,
+    ) -> None:
+        """Every signed record from before the removal carries it."""
+        assessor = schemas.Assessor.model_validate(
+            {
+                "user_id": "u-1",
+                "name": "Dr Amara Okonkwo",
+                "role": "Consultant",
+                "registrations": [
+                    {"body": "GMC", "number": "7654321", "verified": False}
+                ],
+                "registration_verified": False,
+            }
+        )
+
+        assert "registration_verified" not in assessor.model_dump()
+        assert assessor.registrations[0].number == "7654321"
+
+    def test_other_unknown_fields_are_still_refused(self) -> None:
+        with pytest.raises(ValidationError, match="registration_checked"):
+            schemas.Assessor.model_validate(
+                {
+                    "user_id": "u-1",
+                    "name": "Dr Amara Okonkwo",
+                    "role": "Consultant",
+                    "registration_checked": True,
+                }
             )
 
 

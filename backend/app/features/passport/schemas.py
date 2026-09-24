@@ -18,9 +18,9 @@ wording. The id stays authoritative and the label is a convenience copy,
 but the copy is what makes a record read years later when a definition
 has moved on. Where they disagree, the id wins.
 
-**Trust is recorded, never inferred.** A registration is `declared`
-until somebody checks a register, and the model says so with an explicit
-flag rather than by omission. The same applies to `meaning`: what kind
+**Trust is recorded, never inferred.** A registration is what the
+assessor declared, and nothing in the record claims that somebody
+checked it. The same applies to `meaning`: what kind
 of act a sign-off was is recorded, because "directly observed" and
 "reviewed evidence" are clinically different and a record that does not
 distinguish them is weaker than it looks.
@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import re
 from datetime import date, datetime
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import (
     BaseModel,
@@ -80,6 +80,28 @@ NonEmptyText = Annotated[str, Field(min_length=1)]
 
 CompetencyIdField = Annotated[str, Field(pattern=_COMPETENCY_ID.pattern)]
 
+#: Keys a record may carry from when an administrator could mark a
+#: registration verified by hand. That feature was removed before
+#: anything used it; records are write-once, so these keys stay in the
+#: files written before then and are dropped when those files are read.
+_RETIRED_REGISTRATION_KEYS = frozenset(
+    {"verified", "verified_by", "verified_on"}
+)
+_RETIRED_ASSESSOR_KEYS = frozenset({"registration_verified"})
+
+
+def _without(data: Any, keys: frozenset[str]) -> Any:
+    """A mapping with *keys* removed; anything else unchanged.
+
+    Only a mapping is touched. A model instance or a value of the wrong
+    type passes through, so validation still reports it as it would
+    have.
+    """
+    if not isinstance(data, dict):
+        return data
+
+    return {key: value for key, value in data.items() if key not in keys}
+
 
 class PassportModel(BaseModel):
     """Base for every passport record.
@@ -111,51 +133,27 @@ class Attachment(PassportModel):
 class Registration(PassportModel):
     """A professional registration, as declared.
 
-    Quill checks no register. ``verified`` is false until an
-    organisation admin has checked by hand, and the record says so
-    rather than implying otherwise — a printed passport that showed an
-    unchecked number as confirmed would be the false certainty this
-    design exists to avoid.
+    Quill checks no register, and the record claims nothing more than
+    what the assessor stated. A reader who needs to rely on the number
+    checks it on the register itself.
     """
 
     body: NonEmptyText
     number: NonEmptyText
-    verified: bool = False
-    verified_by: str | None = None
-    verified_on: date | None = None
 
-    @model_validator(mode="after")
-    def _verification_names_who_and_when(self) -> Registration:
-        """A verified registration must say who checked it, and when.
+    @model_validator(mode="before")
+    @classmethod
+    def _drop_retired_verification(cls, data: Any) -> Any:
+        """Accept a record written while verification existed.
 
-        Otherwise the flag asserts that somebody looked at a register
-        while recording nothing about who or when — which is the part
-        that makes it worth anything to a later reader. Refusing the
-        half-filled form here is what keeps ``verified`` meaningful.
-
-        Raises:
-            ValueError: If verified is set without both fields, or if
-                either field is set without verified.
+        Records are write-once, so every file written before the
+        verification fields were removed still carries ``verified``,
+        and possibly ``verified_by`` and ``verified_on``. Forbidding
+        unknown fields would make all of them unreadable. These three
+        keys, and only these, are dropped on read: nothing ever set the
+        flag, so what is dropped was always ``false`` and empty.
         """
-        if self.verified and (
-            self.verified_by is None or self.verified_on is None
-        ):
-            raise ValueError(
-                "A verified registration must name verified_by and "
-                "verified_on: a flag on its own records that somebody "
-                "checked without saying who or when."
-            )
-
-        if not self.verified and (
-            self.verified_by is not None or self.verified_on is not None
-        ):
-            raise ValueError(
-                "verified_by and verified_on are only meaningful with "
-                "verified set: a check that did not confirm anything "
-                "should not look like one that did."
-            )
-
-        return self
+        return _without(data, _RETIRED_REGISTRATION_KEYS)
 
 
 class CompetencyRef(PassportModel):
@@ -197,8 +195,18 @@ class Assessor(PassportModel):
     name: NonEmptyText
     role: NonEmptyText
     registrations: list[Registration] = Field(default_factory=list)
-    registration_verified: bool = False
     care_location: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _drop_retired_verification(cls, data: Any) -> Any:
+        """Accept a sign-off written while verification existed.
+
+        Every signed record from before its removal carries
+        ``registration_verified: false``. Dropped on read, for the
+        reason :class:`Registration` gives.
+        """
+        return _without(data, _RETIRED_ASSESSOR_KEYS)
 
 
 class Manifest(PassportModel):

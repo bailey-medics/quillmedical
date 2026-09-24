@@ -98,9 +98,9 @@ software to install and no internet connection.
 ## What this record does and does not claim
 
 Each sign-off names the person who made it, their role and their
-professional registration as *they declared it*. Registrations are
-marked verified only where somebody checked a register by hand — the
-record says which, and does not imply more than it knows.
+professional registration as *they declared it*. Quill checks no
+register, so anybody relying on a registration should look it up on
+the register itself.
 
 The fingerprints show a record has not been altered since it was
 written. They are not signatures, and they prove nothing to somebody who

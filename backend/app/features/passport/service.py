@@ -271,7 +271,6 @@ def sign_off(
     comments: str | None = None,
     assessment: str | None = None,
     registrations: list[object] | None = None,
-    registration_verified: bool = False,
     now: datetime | None = None,
 ) -> str:
     """Sign a requested sign-off.
@@ -289,7 +288,6 @@ def sign_off(
         comments: The assessor's remarks.
         assessment: Their narrative, written beside the record.
         registrations: Their registrations as declared, frozen here.
-        registration_verified: Whether an admin has checked a register.
         now: For tests.
 
     Returns:
@@ -344,7 +342,6 @@ def sign_off(
                 name=assessor.name,
                 role=assessor.role,
                 registrations=registrations or [],  # type: ignore[arg-type]
-                registration_verified=registration_verified,
                 care_location=assessor.care_location,
             ),
         }

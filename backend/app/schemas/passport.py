@@ -96,16 +96,12 @@ class LevelOptionOut(BaseModel):
 class RegistrationOut(BaseModel):
     """A professional registration, as declared.
 
-    ``verified`` is false until an organisation admin has checked a
-    register by hand. Quill checks none itself, and the response says so
-    rather than implying otherwise.
+    Quill checks no register, so this is what the person stated and
+    nothing more. A screen showing it must not present it as confirmed.
     """
 
     body: NonEmptyText
     number: NonEmptyText
-    verified: bool = False
-    verified_by: str | None = None
-    verified_on: date | None = None
 
 
 class AttachmentIn(_In):
@@ -154,7 +150,6 @@ class AssessorOut(BaseModel):
     name: NonEmptyText
     role: NonEmptyText
     registrations: list[RegistrationOut] = Field(default_factory=list)
-    registration_verified: bool = False
     care_location: str | None = None
 
 
@@ -310,10 +305,9 @@ class AssessorMatchOut(BaseModel):
     the moment it can still prevent a mistake.
 
     **It is what the person states, not what Quill checked.** Quill
-    verifies no register; an organisation admin does that by hand, and
-    ``verified`` says whether they have. A number shown beside a name
-    reads as confirmation unless the wording says otherwise, so any
-    screen rendering this must say which it is.
+    verifies no register. A number shown beside a name reads as
+    confirmation unless the wording says otherwise, so any screen
+    rendering this must say it was declared.
     """
 
     user_id: int
