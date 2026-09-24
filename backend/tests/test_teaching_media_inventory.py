@@ -396,3 +396,105 @@ class TestModuleMediaIsComplete:
         assert not media.module_media_is_complete(
             db_session, lacks.id, "test-bank"
         )
+
+
+@pytest.fixture
+def caption_configured(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A deployment with a caption job, as teaching has.
+
+    The settings default is None, which is development, where captions
+    never arrive and so cannot be asked to be checked. These tests are
+    about the gate that waits for a person to check them.
+    """
+    monkeypatch.setattr(
+        "app.config.settings.TEACHING_CAPTION_JOB",
+        "projects/p/locations/l/jobs/quill-caption-teaching",
+    )
+
+
+class TestCaptionsMustBeCheckedFirst:
+    """A video is not ready for learners until its captions are checked.
+
+    Whisper's transcript is a draft, and captions are a WCAG 2.1 AA
+    requirement for the learning centre, so a transcoded video whose
+    captions nobody has read is not yet servable, and neither is its
+    module.
+    """
+
+    def test_unchecked_captions_hide_the_video(
+        self,
+        db_session: Session,
+        transcode_configured: None,
+        caption_configured: None,
+    ):
+        org = _org(db_session, "Trust Unchecked")
+        link = _upload(db_session, org.id, "lecture-01", "asset-1")
+        link.has_captions = True
+        db_session.flush()
+
+        inv = get_media_inventory(
+            db_session, org.id, "test-bank", ["lecture-01"]
+        )
+
+        # Uploaded and transcoded, so nothing is missing for the admin...
+        assert inv.is_complete
+        # ...but a learner must not see it until a person has checked
+        # what the captions say.
+        assert not inv.is_servable
+
+    def test_checked_captions_make_the_video_servable(
+        self,
+        db_session: Session,
+        transcode_configured: None,
+        caption_configured: None,
+    ):
+        org = _org(db_session, "Trust Checked")
+        link = _upload(db_session, org.id, "lecture-01", "asset-1")
+        link.has_captions = True
+        link.captions_reviewed_at = datetime.now(UTC)
+        db_session.flush()
+
+        inv = get_media_inventory(
+            db_session, org.id, "test-bank", ["lecture-01"]
+        )
+
+        assert inv.is_servable
+
+    def test_one_unchecked_video_of_two_hides_the_module(
+        self,
+        db_session: Session,
+        transcode_configured: None,
+        caption_configured: None,
+    ):
+        """Every reference, not any, as for transcoding."""
+        org = _org(db_session, "Trust Half Checked")
+        checked = _upload(db_session, org.id, "lecture-01", "asset-1")
+        checked.captions_reviewed_at = datetime.now(UTC)
+        _upload(db_session, org.id, "lecture-02", "asset-2")
+        db_session.flush()
+
+        inv = get_media_inventory(
+            db_session,
+            org.id,
+            "test-bank",
+            ["lecture-01", "lecture-02"],
+        )
+
+        assert not inv.is_servable
+
+    def test_without_a_caption_job_no_check_is_required(
+        self, db_session: Session, transcode_configured: None
+    ):
+        """Development, where captions are never coming.
+
+        Requiring a check there would hide every module with a video on
+        every machine without the job, for good.
+        """
+        org = _org(db_session, "Trust Local Captions")
+        _upload(db_session, org.id, "lecture-01", "asset-1")
+
+        inv = get_media_inventory(
+            db_session, org.id, "test-bank", ["lecture-01"]
+        )
+
+        assert inv.is_servable

@@ -63,6 +63,18 @@ def transcode_is_configured() -> bool:
     return bool(settings.TEACHING_TRANSCODE_JOB)
 
 
+def caption_is_configured() -> bool:
+    """Whether a caption job exists to write captions for an upload.
+
+    The counterpart of ``transcode_is_configured`` for the caption gate:
+    where no job is configured, captions are never coming, so a person
+    cannot be asked to check them. Read at call time for the same reason.
+    """
+    from app.config import settings
+
+    return bool(settings.TEACHING_CAPTION_JOB)
+
+
 @dataclass(frozen=True)
 class MediaProgress:
     """How far one upload has got, and what is happening now."""
@@ -128,7 +140,7 @@ def describe_progress(
         return MediaProgress(
             stage=3,
             total_stages=_TOTAL_STAGES,
-            label="Ready — captions need checking",
+            label="Captions need checking — hidden from learners until then",
             in_progress=False,
             stalled=False,
         )
@@ -294,9 +306,27 @@ class MediaReference:
         """
         if self.link is None:
             return False
-        if self.link.transcoded_at is not None:
-            return True
-        return not transcode_is_configured()
+
+        transcoded = (
+            self.link.transcoded_at is not None
+            or not transcode_is_configured()
+        )
+        if not transcoded:
+            return False
+
+        # A video is not ready for learners until a person has checked its
+        # captions. Whisper's transcript is a draft: it mishears drug names
+        # and anatomy, and a learner relying on captions would be taught the
+        # mistake. Captions are also a WCAG 2.1 AA requirement for the
+        # learning centre, so an unchecked set is not yet an accessible one.
+        #
+        # Where no caption job is configured the captions are never coming,
+        # so there is nothing to check, the same reasoning as the transcode
+        # branch above; otherwise every video in development would hide its
+        # module for good.
+        if caption_is_configured():
+            return self.link.captions_reviewed_at is not None
+        return True
 
     @property
     def is_awaiting_transcode(self) -> bool:

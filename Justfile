@@ -1123,8 +1123,19 @@ stack-new name message:
     # init adopts the branch it creates as the bottom of a new stack, based
     # on the default branch. No guard here: there is no stack to span a
     # worktree yet, and this is the command that creates one.
-    git switch -c "${branch}"
-    gh stack init "${branch}"
+    #
+    # Safe to re-run, as `stack-add` is. A pre-commit hook that stops the
+    # commit below leaves the branch created and the stack initialised, so a
+    # second run must pick up from the commit rather than fail on
+    # `git switch -c` and leave only a hand-made `git commit` to finish it.
+    if git show-ref --verify --quiet "refs/heads/${branch}"; then
+        if [ "$(git branch --show-current)" != "${branch}" ]; then
+            git switch "${branch}"
+        fi
+    else
+        git switch -c "${branch}"
+        gh stack init "${branch}"
+    fi
     # -A stages everything, untracked files included, to match `stack-add`.
     # Splitting a dirty tree across branches is done by committing what is
     # ready and leaving the rest for the branch above — not by naming files

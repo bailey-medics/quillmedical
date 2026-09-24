@@ -90,6 +90,16 @@ export interface RouterLike {
 const PRELOAD_RELOADED_ONCE_KEY = "quill-preload-reloaded";
 
 /**
+ * How recently a recovery reload must have happened for another to count as
+ * a loop. The guard holds the time of the last reload, not a flag: a flag
+ * that was never cleared meant a tab could recover from one deploy and then
+ * never again, and the next stale chunk crashed the page instead. A reload
+ * that has not fixed things fails again within seconds; a new deploy hours
+ * later is a new problem, and reloading is still the right answer to it.
+ */
+export const PRELOAD_RELOAD_LOOP_WINDOW_MS = 60 * 1000;
+
+/**
  * What to do about a lazy chunk this tab could not fetch.
  *
  * - `reload` — the route is safe to reload, so fetch the current build and
@@ -104,6 +114,8 @@ export interface PreloadFailureOptions {
   routeIsSafe: boolean;
   hasFlash: boolean;
   storage?: Pick<Storage, "getItem" | "setItem">;
+  /** Milliseconds since the epoch; injectable so tests can move time. */
+  now?: () => number;
 }
 
 /**
@@ -130,15 +142,20 @@ export function decidePreloadFailureAction(
 ): PreloadFailureAction {
   const { routeIsSafe, hasFlash } = options;
   const storage = options.storage ?? sessionStorage;
+  const now = (options.now ?? Date.now)();
 
-  // Reloading twice for the same reason means the reload is not fixing it
-  // (a chunk missing from the *current* build, a broken deploy). A second
-  // attempt would spin.
-  if (storage.getItem(PRELOAD_RELOADED_ONCE_KEY)) return "defer";
+  // Failing again just after a reload means the reload is not fixing it (a
+  // chunk missing from the *current* build, a broken deploy), and another
+  // would spin. Outside the window it is a fresh stale chunk from a later
+  // deploy, which a reload does fix.
+  const lastReload = Number(storage.getItem(PRELOAD_RELOADED_ONCE_KEY));
+  if (lastReload && now - lastReload < PRELOAD_RELOAD_LOOP_WINDOW_MS) {
+    return "defer";
+  }
 
   if (!routeIsSafe || hasFlash) return "defer";
 
-  storage.setItem(PRELOAD_RELOADED_ONCE_KEY, "1");
+  storage.setItem(PRELOAD_RELOADED_ONCE_KEY, String(now));
   return "reload";
 }
 
@@ -159,9 +176,13 @@ export interface PreloadErrorWiring {
  * gate above.
  *
  * Vite fires this event on `window` when a dynamic import fails. Calling
- * `preventDefault()` tells Vite we have handled it and stops it rethrowing
- * — which we do in both branches, because an unhandled rethrow surfaces to
- * the user as an unexplained crash either way.
+ * `preventDefault()` stops Vite rethrowing, and it does more than that: the
+ * failed `import()` then *resolves to undefined*. So it is called only when
+ * this handler reloads the page. When it defers, the error is let through,
+ * so the import rejects and the nearest `ErrorBoundary` shows its fallback
+ * with a reload button. Suppressing it there handed `React.lazy` an
+ * undefined module and crashed the page with "Cannot read properties of
+ * undefined (reading 'default')" on 2026-09-24.
  *
  * Form state is persisted before reloading, reusing the same helper the
  * API-compatibility forced reload uses. That helper is best-effort and
@@ -174,9 +195,6 @@ export function wirePreloadErrorRecovery(wiring: PreloadErrorWiring): void {
   const pathname = wiring.currentPathname ?? (() => window.location.pathname);
 
   listen("vite:preloadError", (event: Event) => {
-    // Ours to handle now — Vite must not also rethrow it.
-    event.preventDefault();
-
     const hasFlash = Boolean(
       (wiring.router.state.location.state as { flash?: unknown } | null)?.flash,
     );
@@ -188,10 +206,13 @@ export function wirePreloadErrorRecovery(wiring: PreloadErrorWiring): void {
     });
 
     if (action === "defer") {
+      // Not prevented: the import must reject, not resolve to undefined.
       wiring.onDeferred?.();
       return;
     }
 
+    // Reloading, so ours to handle, and Vite must not also rethrow it.
+    event.preventDefault();
     wiring.persist(pathname());
     wiring.reload();
   });

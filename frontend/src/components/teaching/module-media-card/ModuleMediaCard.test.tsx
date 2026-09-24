@@ -335,7 +335,8 @@ describe("ModuleMediaCard", () => {
                 progress: {
                   stage: 3,
                   total_stages: 4,
-                  label: "Ready — captions need checking",
+                  label:
+                    "Captions need checking — hidden from learners until then",
                   in_progress: false,
                   stalled: false,
                 },
@@ -350,7 +351,9 @@ describe("ModuleMediaCard", () => {
 
     expect(screen.getByRole("progressbar")).toBeInTheDocument();
     expect(
-      screen.getByText("Ready — captions need checking"),
+      screen.getByText(
+        "Captions need checking — hidden from learners until then",
+      ),
     ).toBeInTheDocument();
     // No "3 of 4": the stages are our own machinery, and the words
     // underneath already say what is happening.
