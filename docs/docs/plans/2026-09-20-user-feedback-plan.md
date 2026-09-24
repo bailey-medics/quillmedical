@@ -116,14 +116,15 @@ The feature becomes usable here.
       `readViewport` and `readUserAgent` are exported from
       `lib/error-reporting/report.ts` so the two paths cannot drift.
 - [x] Add the link in `SideNavContent.tsx`, below the `featureItems` map and
-      directly above `Logout`. Label `Send feedback`, icon `"feedback"`,
-      opens the modal rather than navigating. Ungated — no
-      `hasClinicalServices` or competency check, because everyone can hit a
-      bug and a learner spotting a factual error is the report most worth
-      having. Every other entry is a noun naming a destination; this one is
-      a verb beside `Logout`, the sidebar's other verb. `Feedback` alone
-      reads as a destination and collides with the admin page; `Report a
-      problem` suppresses suggestions.
+      directly above `Logout`. Icon `"feedback"`, opens the modal rather
+      than navigating. Ungated — no `hasClinicalServices` or competency
+      check, because everyone can hit a bug and a learner spotting a
+      factual error is the report most worth having. First labelled `Send
+      feedback`, a verb beside `Logout`; renamed `Feedback` afterwards, to
+      sit with the other nouns in the sidebar. It shares that label with the
+      operator page under Admin, where the nesting says which is which. The
+      modal's title and submit button keep `Send feedback`, since that is
+      the act. `Report a problem` was rejected as suppressing suggestions.
 - [x] Add the same link to `TeachingMainNav.tsx`, found while building:
       teaching pages replace the main sidebar with that one, so without it
       the learners this feature is chiefly for could not reach the link
@@ -203,6 +204,12 @@ is the reason the plan exists. Read-only — replying is deferred.
       stays mounted across the navigation. Both links render only inside a
       router, so the modal still works from the error boundary in Phase 6
       without assuming anything above it survived.
+- [x] Later: while `/feedback` is open, a `Your feedback` child hangs
+      beneath the sidebar's `Feedback` link, marked active, and is gone on
+      every other page. `SendFeedbackNavLink` renders it with
+      `NestedNavLink`, so it looks like the children the other entries grow.
+      This became a rule for every new page, in
+      `.github/instructions/pages.instructions.md`.
 
 ## Phase 6: Error boundary button
 
@@ -269,9 +276,10 @@ Last, because rendering the modal inside a failed tree is the fiddliest part.
 - **Open: retention period.** The patient-data position needs one; ninety
   days unless use suggests otherwise.
 
-- **Open: learner and staff submissions together.** The link is ungated on
-  purpose, so the admin list mixes both, and they may deserve different
-  handling.
+- **Learner and staff submissions stay together.** The link is ungated on
+  purpose, and the admin list holds everyone's feedback in one place, with
+  one set of statuses. A report is judged on what it says, not on who
+  sent it, so there is no separate handling for learners.
 
 - **Open: the category set.** Four options is a guess. If everything arrives
   as `Something else`, drop the field rather than expand it.

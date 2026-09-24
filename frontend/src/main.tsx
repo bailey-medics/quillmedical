@@ -550,7 +550,7 @@ const routes: RouteObject[] = [
         ],
       },
 
-      // What the user has sent through Send feedback, and its status.
+      // What the user has sent through the Feedback link, and its status.
       // Any signed-in user; the API returns only their own.
       {
         path: "/feedback",

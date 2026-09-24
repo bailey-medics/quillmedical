@@ -371,8 +371,9 @@ export default function SideNavContent({
           ]
         : []),
       // Operator-only, matching the route guard and the API: feedback
-      // spans every organisation. "Feedback" is a noun here because under
-      // Admin it plainly means the submissions, not the act of sending.
+      // spans every organisation. Shares its label with the top-level
+      // Feedback link, which opens the modal; nested under Admin, this one
+      // plainly means the submissions.
       ...(isOperator
         ? [
             {
@@ -509,7 +510,7 @@ export default function SideNavContent({
           showIcons={showIcons}
         />
       ))}
-      <SendFeedbackNavLink showIcons={showIcons} />
+      <SendFeedbackNavLink showIcons={showIcons} onNavigate={onNavigate} />
       <NavLink
         label="Logout"
         styles={navLinkStyles}

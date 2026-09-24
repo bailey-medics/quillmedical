@@ -778,31 +778,36 @@ describe("SideNavContent Component", () => {
         initialRoute: "/admin",
       });
 
-      expect(await screen.findByText("Feedback")).toBeInTheDocument();
+      // Two: this one under Admin, and the top-level link that opens the
+      // modal.
+      expect(await screen.findAllByText("Feedback")).toHaveLength(2);
     });
 
     it("hides it from an administrator who does not operate Quill", async () => {
       renderWithAuth(<SideNavContent />, "admin", { initialRoute: "/admin" });
 
       await screen.findByText("Admin");
-      expect(screen.queryByText("Feedback")).not.toBeInTheDocument();
+      // Only the top-level link that opens the modal.
+      expect(screen.getAllByText("Feedback")).toHaveLength(1);
     });
   });
 
-  describe("Send feedback", () => {
+  describe("Feedback link", () => {
     it.each(["staff", "patient", "staff_no_clinical", "superadmin"] as const)(
       "offers it to %s, ungated",
       async (userType) => {
         renderWithAuth(<SideNavContent />, userType);
 
-        expect(await screen.findByText("Send feedback")).toBeInTheDocument();
+        expect((await screen.findAllByText("Feedback")).length).toBeGreaterThan(
+          0,
+        );
       },
     );
 
     it("sits directly above Logout", async () => {
       renderWithAuth(<SideNavContent />, "admin");
 
-      const feedback = await screen.findByText("Send feedback");
+      const feedback = await screen.findByText("Feedback");
       const logout = screen.getByText("Logout");
       expect(
         feedback.compareDocumentPosition(logout) &
@@ -818,7 +823,7 @@ describe("SideNavContent Component", () => {
       const onNavigate = vi.fn();
       renderWithAuth(<SideNavContent onNavigate={onNavigate} />);
 
-      await user.click(await screen.findByText("Send feedback"));
+      await user.click(await screen.findByText("Feedback"));
 
       expect(
         await screen.findByText("Do not include patient details."),

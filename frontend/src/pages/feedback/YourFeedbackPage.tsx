@@ -1,7 +1,7 @@
 /**
  * Your Feedback Page
  *
- * Everything the signed-in user has sent through `Send feedback`, newest
+ * Everything the signed-in user has sent through the `Feedback` link, newest
  * first, with where each has got to. This closes the loop for the sender:
  * somebody who reported a broken case can see it was fixed, and so has a
  * reason to report the next one.
@@ -66,8 +66,8 @@ export default function YourFeedbackPage() {
 
       {items.length === 0 ? (
         <EmptyState>
-          You have not sent any feedback yet. Use Send feedback in the menu
-          whenever something is wrong or could be better.
+          You have not sent any feedback yet. Use Feedback in the menu whenever
+          something is wrong or could be better.
         </EmptyState>
       ) : (
         items.map((item) => (
