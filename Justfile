@@ -1793,20 +1793,19 @@ yarn-install:
 
 _gcp_env_project env:
     #!/usr/bin/env bash
-    # `app` and `teaching` are the same product in two projects while it
-    # moves between them. `teaching` is retired in Batch 8 of
-    # docs/docs/plans/2026-09-18-environment-isolation-and-iap-plan.md.
+    # `app` is the only environment. teaching, staging and production were
+    # retired in Batches 8 and 10a of
+    # docs/docs/plans/2026-09-18-environment-isolation-and-iap-plan.md; a
+    # later dev or ehr environment is a new project, added here when it
+    # exists.
     case "{{env}}" in
-        app)      echo "quill-medical-app"      ;;
-        staging)  echo "quill-medical-staging"  ;;
-        teaching) echo "quill-medical-teaching" ;;
-        prod)     echo "quill-medical-production" ;;
-        *)        echo "ERROR: env must be app, staging, teaching, or prod" >&2; exit 1 ;;
+        app) echo "quill-medical-app" ;;
+        *)   echo "ERROR: env must be app" >&2; exit 1 ;;
     esac
 
 
 alias ba := build-admin
-# Build and push the admin Docker image to a remote environment (app/staging/teaching/prod)
+# Build and push the admin Docker image to a remote environment (app)
 build-admin env:
     #!/usr/bin/env bash
     {{initialise}} "build-admin ({{env}})"
@@ -1860,8 +1859,8 @@ build-caption env:
     {{initialise}} "build-caption ({{env}})"
     set -euo pipefail
 
-    if [ "{{env}}" != "teaching" ]; then
-        echo "ERROR: the caption job exists only in teaching — prod and staging have no video buckets" >&2
+    if [ "{{env}}" != "app" ]; then
+        echo "ERROR: the caption job exists only in app, the environment with the video buckets" >&2
         exit 1
     fi
 
@@ -1914,8 +1913,8 @@ build-transcode env:
     {{initialise}} "build-transcode ({{env}})"
     set -euo pipefail
 
-    if [ "{{env}}" != "teaching" ]; then
-        echo "ERROR: the transcode job exists only in teaching — prod and staging have no video buckets" >&2
+    if [ "{{env}}" != "app" ]; then
+        echo "ERROR: the transcode job exists only in app, the environment with the video buckets" >&2
         exit 1
     fi
 
@@ -2030,7 +2029,7 @@ add-role-remote env:
 
 
 alias mr := migrate-remote
-# Run pending Alembic migrations on a remote environment (teaching/prod do this automatically pre-deploy; use for staging or manual re-runs)
+# Run pending Alembic migrations on a remote environment (the deploy does this automatically; use for manual re-runs)
 migrate-remote env:
     #!/usr/bin/env bash
     {{initialise}} "migrate-remote ({{env}})"

@@ -95,18 +95,16 @@ The fast tier's `open-pr` job auto-creates a **draft** PR for `feature/*` and `c
 
 **Triggers:**
 
-- Push to `main` (auto-deploy to teaching)
+- Push to `main` (auto-deploy to app)
 - `workflow_dispatch` with optional `manual_commit` input — accepts a commit, branch, or tag (for hotfix deploys)
 
 **Jobs:**
 
 1. **Prepare** — resolve the input ref to a full commit SHA, detect changed services
 2. **Build** — build Docker images tagged with commit SHA, push to Artifact Registry (GHA layer cache)
-3. **Deploy teaching** — update Cloud Run services, smoke test `/api/health`
-4. **Create tag** — annotated CalVer tag after successful deploy
-5. **Promote to production** — copies the same image to production AR, deploys to production Cloud Run _(gated by GitHub Environment approval; currently disabled while production is spun down)_
+3. **Deploy app** — run migrations, release the backend as a tagged revision, smoke-test it from inside the VPC, promote it, then check `/api/health` at the public hostname
 
-**Key design:** build-once-promote. The same Docker image SHA deployed to teaching is promoted to production — no rebuild.
+The production promotion job and its CalVer tag were removed with the production project in 2026-09. A clinical environment will get its own, deliberate promotion step.
 
 ### Documentation (`docs.yml`)
 
