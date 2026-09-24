@@ -1947,7 +1947,7 @@ handover.
       `github-actions@quill-medical-app`. That closes Batch 9 Phase 4 by
       replacing the bucket rather than conditioning it.
 
-- [ ] **(Mark)** The switch, in this order, once the pull request pointing
+- [x] **(Mark)** The switch, in this order, once the pull request pointing
       `backend.tf` at the new bucket is otherwise ready. The order
       matters: CI's first run after the merge reads the new bucket, and if
       `app.tfstate` is not there it sees an empty state and plans to
@@ -1962,8 +1962,15 @@ handover.
       4. Check no `app.tflock` exists in the old bucket, so no apply was
          mid-flight during the copy.
       5. Merge. The Terraform run on `main` must plan no changes.
-- [ ] Keep the old bucket until the projects are deleted in Phase 4; it
-      is the rollback.
+
+      Done on 2026-09-24, steps 2 to 4 by Claude at Mark's word after
+      #1070 had applied. The copy's MD5 matched the original, the plan on
+      #1076 then read "No changes", and #1076 to #1078 merged together.
+      The first apply after them wrote `app.tfstate` to the new bucket at
+      19:44; the old bucket's copy last changed at 18:55, with #1070.
+- [x] Keep the old bucket until the projects are deleted in Phase 4; it
+      is the rollback. Nothing needs doing: it goes with
+      `quill-medical-production`.
 
 ### Phase 2: Move the DNS zone
 
@@ -1988,10 +1995,24 @@ missing MX or DKIM record fails quietly, as mail that never arrives.
       match, and only `staging` differs, as intended. The assigned
       nameservers appear in the `dns_zone_name_servers` output once it
       applies.
-- [ ] **(Claude)** Before anything is switched, query the new zone's
+- [x] **(Claude)** Before anything is switched, query the new zone's
       nameservers directly for every record and compare them with the
       live zone's answers. Lower the TTL on the live NS and key records
       a day ahead, so a mistake is short-lived.
+
+      The zone applied on 2026-09-24 with nameservers
+      `ns-cloud-e1…e4.googledomains.com`, a different set from the live
+      zone's `c` set, as expected. Each of the thirteen names was asked of
+      `ns-cloud-c1` and `ns-cloud-e1` directly, without recursion: twelve
+      answer identically, and `staging` answers only from the old zone,
+      as intended. All four `e` servers return the apex.
+
+      **The TTL step is not needed, and was skipped.** It guards against a
+      new zone that answers differently, and the check above shows it
+      does not. While resolvers move over, one asking either zone gets the
+      same answer, so there is no window in which a stale answer is a
+      wrong one. The delegation TTL that governs the move is set by the
+      `.com` registry, at 48 hours, not by either zone.
 - [ ] **(Mark)** Change the nameservers for `quill-medical.com` at
       GoDaddy to the new set.
 - [ ] Leave the old zone serving for at least 48 hours, until every
@@ -2005,14 +2026,32 @@ un-deferred on 2026-09-24. Still true on that date: `quill-medical.net`,
 `.me`, `.xyz`, `.store` and `.online` use GoDaddy's own nameservers
 (`ns*.domaincontrol.com`) and show its parking page.
 
-- [ ] **(Mark)** Set a permanent (301) forward to
+- [x] **(Mark)** Set a permanent (301) forward to
       `https://quill-medical.com` on each of the five, in GoDaddy. Its own
       forwarding, not records of ours, so GoDaddy supplies the certificate
       and our load balancer's certificate is untouched.
-- [ ] **(Claude)** Check each answers `301` with that location, over
+- [x] **(Claude)** Check each answers `301` with that location, over
       both HTTP and HTTPS.
-- [ ] Leave `quill-medical.dev` alone. It may be served for real, as the
+
+      Checked on 2026-09-24, minutes after Mark set them, on the bare name
+      and `www.` for each. Every bare name answers `301` to
+      `https://quill-medical.com/` over HTTP and HTTPS, and so does every
+      `www.` over HTTP. `https://www.` works on `.xyz` and `.dev` but not
+      yet on `.net`, `.me`, `.store` or `.online`, where GoDaddy's
+      forwarding server ends the TLS handshake with an internal error: it
+      has no certificate for those `www.` names yet. GoDaddy issues them
+      itself after forwarding is switched on, so this should clear without
+      any action.
+- [ ] **(Claude)** Re-check `https://www.` on `.net`, `.me`, `.store` and
+      `.online` a day later. If it still fails, the fix is in GoDaddy's
+      forwarding settings, not in anything of ours.
+- [x] Leave `quill-medical.dev` alone. It may be served for real, as the
       `dev` environment.
+
+      **Mark forwarded it too, on 2026-09-24**, with the other five. That
+      is easy to reverse: switching the forward off in GoDaddy frees the
+      name for a `dev` environment whenever one is built, at which point
+      it moves to its own zone in Terraform.
 
 ### Phase 4: Retire production and staging
 

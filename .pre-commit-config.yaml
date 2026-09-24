@@ -37,8 +37,19 @@ repos:
     rev: v2.3.1
     hooks:
       - id: mypy
+        # alembic and sqlalchemy are pinned to backend/poetry.lock. Unpinned,
+        # this environment took whatever PyPI had newest: SQLAlchemy 2.1.0,
+        # released 2026-09-24, arrived through alembic's SQLAlchemy>=2.0 and
+        # failed every PR on typing the locked 2.0.54 does not share. Bump
+        # these together with the lock file, never one without the other.
         additional_dependencies:
-          [alembic, types-requests, types-pyyaml, types-Markdown]
+          [
+            alembic==1.20.0,
+            sqlalchemy==2.0.54,
+            types-requests,
+            types-pyyaml,
+            types-Markdown,
+          ]
 
   - repo: https://github.com/PyCQA/bandit
     rev: 1.9.4
