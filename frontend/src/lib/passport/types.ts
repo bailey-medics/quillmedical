@@ -100,16 +100,12 @@ export interface LevelRef {
 }
 
 /**
- * A professional registration, as declared. `verified` is false until an
- * organisation admin has checked a register by hand — Quill checks none
- * itself, and the type says so rather than implying otherwise.
+ * A professional registration, as declared. Quill checks no register, so
+ * this is what the person stated and nothing more.
  */
 export interface Registration {
   body: string;
   number: string;
-  verified: boolean;
-  verified_by: string | null;
-  verified_on: IsoDate | null;
 }
 
 /**
@@ -133,7 +129,6 @@ export interface Assessor {
   name: string;
   role: string;
   registrations: Registration[];
-  registration_verified: boolean;
   care_location: string | null;
 }
 
@@ -286,10 +281,9 @@ export interface AttachmentInput {
 /**
  * Somebody on Quill who might be the assessor being named.
  *
- * `registrations` is what the person states, never what Quill checked —
- * `verified` says whether an organisation admin has looked at a
- * register. A screen showing a number beside a name must say which it
- * is, or it reads as confirmation nobody gave.
+ * `registrations` is what the person states, never what Quill checked.
+ * A screen showing a number beside a name must say it was declared, or
+ * it reads as confirmation nobody gave.
  */
 export interface AssessorMatch {
   user_id: number;

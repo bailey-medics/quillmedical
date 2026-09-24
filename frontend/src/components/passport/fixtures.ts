@@ -22,17 +22,11 @@ import type {
 export const declaredRegistration: Registration = {
   body: "GMC",
   number: "1234567",
-  verified: false,
-  verified_by: null,
-  verified_on: null,
 };
 
-export const verifiedRegistration: Registration = {
+export const assessorRegistration: Registration = {
   body: "GMC",
   number: "7654321",
-  verified: true,
-  verified_by: "dr.patel@example.nhs.uk",
-  verified_on: "2026-04-02",
 };
 
 export const signedOffCompetency: CompetencyState = {
@@ -97,8 +91,7 @@ export const signedOff: SignOff = {
     user_id: "42",
     name: "Dr Amara Okonkwo",
     role: "Consultant respiratory physician",
-    registrations: [verifiedRegistration],
-    registration_verified: true,
+    registrations: [assessorRegistration],
     care_location: "Bristol Royal Infirmary",
   },
   meaning: "directly observed",

@@ -1,15 +1,15 @@
 /**
  * RegistrationBadge Component Tests
  *
- * The verified/declared distinction is the whole point of the component,
- * so most of these guard it.
+ * Quill checks no register, so the badge must never read as confirmation.
  */
 
 import { describe, it, expect } from "vitest";
 import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@test/test-utils";
 import RegistrationBadge from "./RegistrationBadge";
-import { declaredRegistration, verifiedRegistration } from "./fixtures";
+import { declaredRegistration } from "./fixtures";
 
 describe("RegistrationBadge", () => {
   it("renders the body and number", () => {
@@ -19,33 +19,34 @@ describe("RegistrationBadge", () => {
     expect(screen.getByText("GMC 1234567")).toBeInTheDocument();
   });
 
-  it("says 'Declared' when nobody has checked the register", () => {
+  it("says 'Declared'", () => {
     renderWithMantine(
       <RegistrationBadge registration={declaredRegistration} />,
     );
     expect(screen.getByText("Declared")).toBeInTheDocument();
   });
 
-  it("says 'Verified' once an admin has checked by hand", () => {
-    renderWithMantine(
-      <RegistrationBadge registration={verifiedRegistration} />,
-    );
-    expect(screen.getByText("Verified")).toBeInTheDocument();
-  });
-
-  it("never claims verification for a declared registration", () => {
+  it("never claims verification", () => {
     // The false-certainty case: a reader must be able to tell that Quill
     // checked nothing.
     renderWithMantine(
       <RegistrationBadge registration={declaredRegistration} />,
     );
-    expect(screen.queryByText("Verified")).not.toBeInTheDocument();
+    expect(screen.queryByText(/verified/i)).not.toBeInTheDocument();
   });
 
-  it("does not label a verified registration as merely declared", () => {
+  it("tells the reader where to check it", async () => {
+    const user = userEvent.setup();
     renderWithMantine(
-      <RegistrationBadge registration={verifiedRegistration} />,
+      <RegistrationBadge registration={declaredRegistration} />,
     );
-    expect(screen.queryByText("Declared")).not.toBeInTheDocument();
+
+    await user.hover(screen.getByTestId("registration-badge"));
+
+    expect(
+      await screen.findByText(
+        "As declared. Quill does not check the GMC register, so look it up there before relying on it.",
+      ),
+    ).toBeInTheDocument();
   });
 });

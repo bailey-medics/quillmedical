@@ -1,66 +1,57 @@
 /**
  * RegistrationBadge Component
  *
- * Shows a professional registration — GMC, NMC, GPhC, HCPC — and whether
- * anybody has actually checked it against the register.
+ * Shows a professional registration — GMC, NMC, GPhC, HCPC — as the
+ * person declared it.
  *
- * The honesty is the point. Quill checks no register itself, so an
- * unverified registration says so plainly rather than rendering as though
- * it had been confirmed. Sealing an unverified number into something that
- * looks authoritative is the false certainty the passport plan warns
- * against, and a reader who cannot tell the difference is worse off than
+ * The honesty is the point. Quill checks no register, so the badge says
+ * "Declared" rather than rendering the number as though it had been
+ * confirmed. A number beside a name reads as confirmation unless the
+ * wording says otherwise, and a reader who cannot tell is worse off than
  * one who is simply told.
  *
  * @example
  * ```tsx
- * <RegistrationBadge registration={{ body: "GMC", number: "1234567", verified: false }} />
+ * <RegistrationBadge registration={{ body: "GMC", number: "1234567" }} />
  * ```
  */
 
 import { Group } from "@mantine/core";
 import Icon from "@/components/icons";
-import { IconShieldCheck, IconInfoCircle } from "@/components/icons/appIcons";
+import { IconInfoCircle } from "@/components/icons/appIcons";
 import { BodyTextInline } from "@/components/typography";
 import AppTooltip from "@/components/tooltip/AppTooltip";
 import type { Registration } from "@lib/passport";
 
 export interface RegistrationBadgeProps {
-  /** The registration as declared, with its verification state */
+  /** The registration as declared */
   registration: Registration;
 }
 
 /**
  * RegistrationBadge
  *
- * Renders "GMC 1234567" with a marker saying whether it was verified.
+ * Renders "GMC 1234567" with a marker saying it was declared.
  */
 export default function RegistrationBadge({
   registration,
 }: RegistrationBadgeProps) {
-  const { body, number, verified, verified_by, verified_on } = registration;
-
-  const tooltip = verified
-    ? `Checked against the ${body} register${
-        verified_by ? ` by ${verified_by}` : ""
-      }${verified_on ? ` on ${verified_on}` : ""}`
-    : "Declared by the holder. Nobody has checked this against the register.";
+  const { body, number } = registration;
 
   return (
-    <AppTooltip label={tooltip}>
+    <AppTooltip
+      label={`As declared. Quill does not check the ${body} register, so look it up there before relying on it.`}
+    >
       <Group gap="xs" wrap="nowrap" data-testid="registration-badge">
         <Icon
-          icon={verified ? <IconShieldCheck /> : <IconInfoCircle />}
+          icon={<IconInfoCircle />}
           size="sm"
-          colour={
-            verified ? "var(--success-color)" : "var(--mantine-color-gray-6)"
-          }
+          colour="var(--mantine-color-gray-6)"
         />
         <BodyTextInline>
           {body} {number}
         </BodyTextInline>
-        <BodyTextInline c="dimmed">
-          {verified ? "Verified" : "Declared"}
-        </BodyTextInline>
+        <BodyTextInline c="dimmed">Declared</BodyTextInline>
       </Group>
     </AppTooltip>
   );

@@ -321,7 +321,7 @@ describe("SignOffRequestForm", () => {
       username: "okonkwo",
       full_name: "Dr Amara Okonkwo",
       email: "amara.okonkwo@example.nhs.uk",
-      registrations: [{ body: "GMC", number: "7654321", verified: false }],
+      registrations: [{ body: "GMC", number: "7654321" }],
     };
 
     async function fillAndSend(
