@@ -16,6 +16,7 @@ import { Badge, Group, Text } from "@mantine/core";
 import { useEffect, useState } from "react";
 import Icon from "@/components/icons";
 import { IconClock } from "@/components/icons/appIcons";
+import { statusTextColour } from "@/styles/semanticColours";
 
 interface AssessmentTimerProps {
   /** Total time limit in minutes */
@@ -77,11 +78,15 @@ export function AssessmentTimer({
         ? "var(--neutral-color)"
         : "var(--info-color)";
 
+  // The yellow warning fill takes dark text; white on it is 1.4:1.
+  const textColour = isWarning ? statusTextColour("neutral") : "white";
+
   return (
     <Badge
       size="xl"
       variant="filled"
       color={colour}
+      c={textColour}
       leftSection={<Icon icon={<IconClock />} size="sm" />}
     >
       <Group gap={4}>

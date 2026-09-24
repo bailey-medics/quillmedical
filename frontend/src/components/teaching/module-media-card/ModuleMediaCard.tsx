@@ -188,7 +188,7 @@ export default function ModuleMediaCard({
                   return (
                     <Stack gap={4}>
                       {failed ? (
-                        <BodyTextInline c="var(--alert-color)">
+                        <BodyTextInline c="var(--alert-text-color)">
                           {failed} Nothing was saved — try again.
                         </BodyTextInline>
                       ) : null}
@@ -286,7 +286,9 @@ export default function ModuleMediaCard({
                         />
                         <BodyTextInline
                           c={
-                            progress.stalled ? "var(--alert-color)" : undefined
+                            progress.stalled
+                              ? "var(--alert-text-color)"
+                              : undefined
                           }
                         >
                           {progress.label}
@@ -322,7 +324,7 @@ export default function ModuleMediaCard({
                       {
                         label: "Delete",
                         icon: <IconTrash />,
-                        color: "var(--alert-color)",
+                        color: "var(--alert-text-color)",
                         onClick: () => setPendingDelete(asset),
                       },
                     ]}

@@ -221,7 +221,9 @@ export default function MessagingTriagePayment({
           }}
         >
           <Title order={4}>Messaging — Inline Triage & Offer Demo</Title>
-          <Badge color="gray">Assigned: {assignedTo ?? "triage"}</Badge>
+          <Badge color="var(--mantine-color-gray-7)">
+            Assigned: {assignedTo ?? "triage"}
+          </Badge>
         </Box>
       </Box>
 

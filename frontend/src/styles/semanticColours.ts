@@ -10,8 +10,9 @@
  * - Text: typography colour tokens
  *
  * Status colours use CSS variables (e.g. "var(--success-color)") defined
- * in theme.ts via cssVariablesResolver. These are identical in light and
- * dark modes — they are used as filled backgrounds with white/dark text.
+ * in theme.ts via cssVariablesResolver. `bg` is identical in light and
+ * dark modes, a filled background with white or dark text; `fg` is the
+ * status as a word on the page, and changes with the scheme.
  */
 
 import { brandColours } from "@/theme";
@@ -29,6 +30,11 @@ export const brand = brandColours;
 type StatusColourConfig = {
   /** Background colour (Mantine colour token or hex) */
   bg: string;
+  /**
+   * Colour for the status as a word on the page, with no fill: follows
+   * the colour scheme, where `bg` does not. Never use `bg` for text.
+   */
+  fg: string;
   /** Text colour for contrast on the background */
   text: string;
   /** When to use this colour */
@@ -48,41 +54,50 @@ export type StatusColourName =
 export const statusColours: Record<StatusColourName, StatusColourConfig> = {
   success: {
     bg: "var(--success-color)",
+    fg: "var(--success-text-color)",
     text: "white",
     usage: "Active, completed, final, pass",
   },
   warning: {
     bg: "var(--warning-color)",
+    fg: "var(--warning-text-color)",
     text: "white",
     usage: "Draft, pending",
   },
   outstanding: {
     bg: "var(--outstanding-color)",
+    fg: "var(--outstanding-text-color)",
     text: "white",
     usage: "Deactivated, cancelled, fail",
   },
   info: {
     bg: "var(--info-color)",
+    fg: "var(--info-text-color)",
     text: "white",
     usage: "Upcoming, amended, admin, unread",
   },
   neutral: {
     bg: "var(--neutral-color)",
+    // A yellow word is unreadable on white; neutral text is body text.
+    fg: "var(--mantine-color-text)",
     text: "dark",
     usage: "Staff, default",
   },
   accent: {
     bg: "var(--accent-color)",
+    fg: "var(--accent-text-color)",
     text: "white",
     usage: "Incomplete, special states",
   },
   alert: {
     bg: "var(--alert-color)",
+    fg: "var(--alert-text-color)",
     text: "white",
     usage: "No-show, patient, attention needed",
   },
   update: {
     bg: "var(--update-color)",
+    fg: "var(--mantine-color-text)",
     text: "dark",
     usage: "Nothing recorded yet, and gentle prompts to act",
   },

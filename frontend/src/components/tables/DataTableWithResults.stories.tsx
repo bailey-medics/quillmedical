@@ -31,9 +31,9 @@ const columns: ResultColumn<DemoRow>[] = [
     width: "35%",
     render: (r) =>
       r.outcome === "pass" ? (
-        <BodyTextInline c={statusColours.success.bg}>Pass</BodyTextInline>
+        <BodyTextInline c={statusColours.success.fg}>Pass</BodyTextInline>
       ) : (
-        <BodyTextInline c={statusColours.alert.bg}>Fail</BodyTextInline>
+        <BodyTextInline c={statusColours.alert.fg}>Fail</BodyTextInline>
       ),
   },
 ];
@@ -110,7 +110,7 @@ const withFailures: DemoRow[] = [
 
 const getSubRow = (row: DemoRow) =>
   row.reason ? (
-    <BodyTextInline c={statusColours.alert.bg}>{row.reason}</BodyTextInline>
+    <BodyTextInline c={statusColours.alert.fg}>{row.reason}</BodyTextInline>
   ) : null;
 
 const meta: Meta<typeof DataTableWithResults> = {

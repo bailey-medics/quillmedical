@@ -61,7 +61,7 @@
 }
 
 .markdown a {
-  color: var(--info-color);
+  color: var(--info-text-color);
   text-decoration: underline;
 }
 

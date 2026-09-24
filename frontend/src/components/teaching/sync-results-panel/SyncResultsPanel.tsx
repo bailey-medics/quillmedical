@@ -81,17 +81,17 @@ function getColumns(hasSynced: boolean): ResultColumn<SyncModuleRow>[] {
         }
         if (row.outcome === "up_to_date") {
           return (
-            <BodyTextInline c={statusColours.success.bg}>
+            <BodyTextInline c={statusColours.success.fg}>
               Up to date
             </BodyTextInline>
           );
         }
         return row.outcome === "imported" ? (
-          <BodyTextInline c={statusColours.success.bg}>
+          <BodyTextInline c={statusColours.success.fg}>
             Sync pass
           </BodyTextInline>
         ) : (
-          <BodyTextInline c={statusColours.alert.bg}>Sync fail</BodyTextInline>
+          <BodyTextInline c={statusColours.alert.fg}>Sync fail</BodyTextInline>
         );
       },
     },
@@ -102,7 +102,7 @@ function getSubRow(row: SyncModuleRow) {
   if (row.outcome === "imported" || row.outcome === "up_to_date" || !row.reason)
     return null;
   return (
-    <BodyTextInline c={statusColours.alert.bg}>{row.reason}</BodyTextInline>
+    <BodyTextInline c={statusColours.alert.fg}>{row.reason}</BodyTextInline>
   );
 }
 
