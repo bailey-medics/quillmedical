@@ -1,8 +1,7 @@
 """Test helper for giving somebody professional registrations.
 
 What somebody is registered with is their current
-``professional_registration`` rows, not the ``professional_registrations``
-JSON column, which is still written by the routes and read by nothing.
+``professional_registration`` rows.
 
 Kept out of ``conftest.py`` for the reason ``tests/places.py`` is:
 importing from there would give mypy the same file under two module names.
