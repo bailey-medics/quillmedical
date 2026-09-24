@@ -589,10 +589,17 @@ out rather than stored.
       `eager_defaults` off so no `RETURNING` names it. Nothing reads it
       any more: every current row is a grant.
 
-- [ ] **Drop the `granted` column**, in its own migration with the
+- [x] **Drop the `granted` column**, in its own migration with the
       `allow-destructive` marker, through the
       `db-destructive-migration-review` environment, like Phase 7. It needs
       a human's approval before it is built.
+
+      Migration `7774a15142c1`, approved on 23 September 2026. It deletes
+      the old removal rows before dropping the column, rather than keeping
+      them: without `granted` to mark them, a closed removal row would read
+      as a grant that ran from its start to its end, which is the opposite
+      of what it recorded. Tested against Postgres in
+      `backend/tests/test_drop_granted.py`.
 
 ## Phase 9: Organisation passport grants do not lapse
 

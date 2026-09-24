@@ -72,9 +72,7 @@ def _current_grants(db: Session, user_id: int) -> dict[str, str]:
         select(UserCompetency).where(UserCompetency.user_id == user_id)
     )
     return {
-        row.competency_id: row.source
-        for row in rows
-        if row.granted and row.is_current(now)
+        row.competency_id: row.source for row in rows if row.is_current(now)
     }
 
 
@@ -292,23 +290,6 @@ class TestTheCheckBeforeTheSwitch:
     def test_seeded_rows_satisfy_it(self, db_session: Session) -> None:
         user = _user(db_session, "seeded", seeded=False)
         sync_competency_rows(user, additional=[], removed=[], source="admin")
-        db_session.commit()
-
-        assert unseeded_profession_competencies(db_session) == {}
-
-    def test_a_removal_row_satisfies_it(self, db_session: Session) -> None:
-        """A removal row, as the lists wrote them before the switch.
-
-        Removed means not held, so the switch changes nothing for them.
-        """
-        user = _user(db_session, "removed", seeded=False)
-        user.competency_grants.append(
-            UserCompetency(
-                competency_id="access_own_patient_records",
-                granted=False,
-                source="admin",
-            )
-        )
         db_session.commit()
 
         assert unseeded_profession_competencies(db_session) == {}
