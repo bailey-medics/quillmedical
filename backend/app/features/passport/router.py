@@ -305,22 +305,13 @@ def _actor(user: User) -> Actor:
 def _registration_strings(user: User) -> list[str]:
     """Registrations as ``GMC 1234567`` strings for commit trailers.
 
-    ``professional_registrations`` is free-form JSON, so anything
-    unexpected is skipped rather than raising: a malformed registration
-    must not stop somebody recording clinical work.
+    From the person's current ``professional_registration`` rows, which
+    cannot hold a malformed registration the way the JSON they replaced
+    could.
     """
-    raw = user.professional_registrations or {}
-
-    if not isinstance(raw, dict):
-        return []
-
-    found: list[str] = []
-
-    for body, number in raw.items():
-        if isinstance(body, str) and isinstance(number, str | int):
-            found.append(f"{body} {number}")
-
-    return found
+    return [
+        f"{row.authority} {row.number}" for row in user.current_registrations
+    ]
 
 
 def _registration_dicts(user: User) -> list[dict[str, object]]:
@@ -330,15 +321,9 @@ def _registration_dicts(user: User) -> list[dict[str, object]]:
     organisation admin flips the flag by hand after checking one — so a
     sign-off records what was declared, never implying more.
     """
-    raw = user.professional_registrations or {}
-
-    if not isinstance(raw, dict):
-        return []
-
     return [
-        {"body": body, "number": str(number), "verified": False}
-        for body, number in raw.items()
-        if isinstance(body, str) and isinstance(number, str | int)
+        {"body": row.authority, "number": row.number, "verified": False}
+        for row in user.current_registrations
     ]
 
 
@@ -2484,15 +2469,17 @@ def verify_assessor_registration(
     authority = body.registration_authority.strip()
     number = body.registration_number.strip()
 
-    declared = assessor.professional_registrations or {}
+    # The number must be one they actually declared and still hold.
+    # Verifying a number the assessor never gave would record a check of
+    # something Quill has no reason to associate with them. The body is
+    # matched as the accept route stores it, so `gmc` finds `GMC`.
+    authority = canonical_authority(authority) or authority
+    declared = any(
+        row.authority == authority and row.number == number
+        for row in assessor.current_registrations
+    )
 
-    # The number must be one they actually declared. Verifying a number
-    # the assessor never gave would record a check of something Quill
-    # has no reason to associate with them.
-    if (
-        not isinstance(declared, dict)
-        or str(declared.get(authority, "")) != number
-    ):
+    if not declared:
         raise HTTPException(
             400,
             (
@@ -2965,8 +2952,7 @@ def accept_assessor_invite(
             email_verified=True,
             professional_registrations={authority: number},
         )
-        # The row beside the JSON, which nothing reads yet. See the
-        # professional registrations plan.
+        # The row is what is read; the JSON is still written beside it.
         user.registrations.append(
             ProfessionalRegistration(authority=authority, number=number)
         )
