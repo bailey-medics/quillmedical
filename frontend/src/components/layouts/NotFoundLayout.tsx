@@ -29,7 +29,7 @@ export default function NotFoundLayout() {
       <Center mih="60vh">
         <Stack align="center" gap="lg">
           <Heading>404 — Page not found</Heading>
-          <BodyText c="gray.5">The page you requested does not exist.</BodyText>
+          <BodyText c="dimmed">The page you requested does not exist.</BodyText>
           <IconTextButton
             icon="arrowLeft"
             label="Go to home"

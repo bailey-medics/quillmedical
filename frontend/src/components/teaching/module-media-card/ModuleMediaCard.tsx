@@ -269,7 +269,7 @@ export default function ModuleMediaCard({
                          happening and nothing is owed, so it reads as
                          settled rather than as something to attend
                          to. */
-                      <BodyTextInline c="gray.6">
+                      <BodyTextInline c="dimmed">
                         {progress.label}
                       </BodyTextInline>
                     ) : progress ? (

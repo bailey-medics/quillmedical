@@ -94,9 +94,9 @@ export const greyScale = [
   "#e9ecef", // 2 — borders, separators
   "#dee2e6", // 3 — disabled backgrounds
   "#ced4da", // 4 — placeholder text
-  "#adb5bd", // 5 — secondary text, icons
-  "#868e96", // 6 — muted labels
-  "#495057", // 7 — field descriptions, strong muted text
+  "#adb5bd", // 5 — icons, borders (2.1:1 on white, never text)
+  "#868e96", // 6 — icons, graphics (3.3:1 on white, never text)
+  "#495057", // 7 — muted text, `dimmed` in light mode (8.2:1 on white)
 ] as const;
 
 /**
@@ -223,6 +223,10 @@ const appCssVariables = {
   dark: {
     // Text — light grey on dark background (placeholder values, to be refined)
     "--mantine-color-text": "#c9d1d9",
+    // Muted text (`c="dimmed"`). Mantine's default is `dark-2`, which this
+    // theme repurposes as a navy surface, leaving dimmed text at 1.2:1.
+    // primary.1 is at least 6.3:1 on the body, card and input navies.
+    "--mantine-color-dimmed": primaryScale[1],
     "--mantine-color-placeholder": "#5c6370",
     // Body background — primary colour (#001a36, shade 8)
     "--mantine-color-body": "#001a36",
@@ -259,6 +263,10 @@ const appCssVariables = {
   },
   light: {
     "--mantine-color-text": "#143f6b",
+    // Muted text (`c="dimmed"`). Mantine's default gray.6 is 3.3:1 on
+    // white, under the WCAG AA 4.5:1 for body text; gray.7 is 8.2:1 on
+    // white and 6.9:1 on gray.2.
+    "--mantine-color-dimmed": greyScale[7],
     "--mantine-color-placeholder": "var(--mantine-color-gray-4)",
     // Error text/border — accessible orange-red for colour-blind users
     "--mantine-color-error": "var(--error-color)",

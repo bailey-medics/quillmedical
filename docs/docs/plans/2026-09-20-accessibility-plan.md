@@ -167,7 +167,32 @@ once the addon is registered; no `test-runner.ts` hooks are needed.
       stories to keep in step by hand
 - [ ] Fix the baseline component by component, the highest-count rule
       first. Each fix is a normal PR with a story change and a unit test
-      where the fix is behaviour rather than markup
+      where the fix is behaviour rather than markup. The baseline showed
+      that contrast failures cluster on a few theme tokens, so the
+      contrast work goes token by token rather than component by
+      component: fixing a token fixes every component that uses it
+  - [x] Muted text. `--mantine-color-dimmed` is set in `theme.ts` for
+        both schemes: `gray.7` `#495057` in light (8.2:1 on white, 6.9:1
+        on `gray.2`) and `primary.1` `#93b4d9` in dark (6.3:1 on the
+        input navy, more on the body and card). Mantine's own dark
+        dimmed is `dark-2`, which this theme repurposes as a surface
+        colour, so dimmed text in dark mode was near-invisible. The
+        components that hard-coded `gray.5` or `gray.6` for text
+        (`FieldDescription`, `ErrorState`, `NotFoundLayout`,
+        `ModuleMediaCard`, the input description override and the story
+        `VariantRow` labels) now use `dimmed`. `gray.5` and `gray.6`
+        stay for icons and borders, where WCAG 1.4.11 asks only 3:1.
+        `src/lib/colour-contrast/` computes WCAG ratios so `theme.test.ts`
+        holds the token to AA on every surface it sits on. `gray.7` over
+        a lighter grey was chosen because it is already in the scale as
+        "strong muted text"; GOV.UK's secondary text, `#505a5f`, is a
+        near neighbour
+  - [ ] Status fills
+  - [ ] Dark-mode navy accents and the error colour on dark inputs
+  - [ ] ARIA: progress bar names, `FilterSelect`'s `aria-expanded`,
+        scrollable regions, `ProfilePic` alt text and the `DateField`
+        clear button
+  - [ ] Reference stories that show colours rather than use them
 - [ ] Switch `test: "todo"` to `test: "error"` once the baseline is clear,
       so violations fail the heavy tier
 - [ ] Add a `docs/docs/frontend/accessibility/` section to the Storybook

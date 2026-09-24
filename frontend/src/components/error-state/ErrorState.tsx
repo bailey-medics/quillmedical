@@ -80,7 +80,7 @@ export default function ErrorState({
         colour="var(--alert-color)"
       />
       <Heading>{title}</Heading>
-      <BodyText c="gray.5">{message}</BodyText>
+      <BodyText c="dimmed">{message}</BodyText>
       {code ? <FieldDescription>Reference: {code}</FieldDescription> : null}
       {action ? (
         <Group gap="sm" justify={variant === "page" ? "center" : "flex-start"}>
