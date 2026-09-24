@@ -1543,13 +1543,15 @@ risk is small, but it is the gap this batch exists for.
 
 ### Phase 4: Narrow the state bucket
 
-- [ ] **(Mark)** Remove the dangling
+- [x] **(Mark)** Remove the dangling
       `github-actions@quill-medical-teaching` binding on
       `quill-medical-terraform-state`. The account was deleted with its
       project, and after thirty days the binding shows as
       `deleted:serviceAccount:…` rather than disappearing.
+      Moot once Batch 10a Phase 1 lands: the binding goes with the old
+      bucket, which is deleted with `quill-medical-production`.
 
-- [ ] **(Mark)** Scope each environment's account to its own state file
+- [x] **(Mark)** Scope each environment's account to its own state file
       with an IAM condition on the object name, for example
       `resource.name.startsWith("projects/_/buckets/quill-medical-terraform-state/objects/terraform/state/app.tfstate")`
       for the app account. Today every CI account, production and staging
@@ -1558,6 +1560,12 @@ risk is small, but it is the gap this batch exists for.
       secrets in plain text: `random_password.jwt_secret` and the Cloud
       SQL password among them. The lock file sits beside the state and
       needs the same prefix.
+
+      **Superseded on 2026-09-24 by Batch 10a Phase 1**, which moves the
+      state into a new bucket in `quill-medical-app` granting only that
+      environment's CI account. With one environment, a whole-bucket
+      grant is already scoped to its own state. A second environment
+      should get its own bucket rather than a condition on this one.
 
 ### Phase 5: Replace `editor` on the apply account
 
@@ -1916,14 +1924,44 @@ handover.
 
 ### Phase 1: Move the Terraform state
 
-- [ ] **(Claude)** Create a versioned state bucket in `quill-medical-app`,
+- [x] **(Claude)** Create a versioned state bucket in `quill-medical-app`,
       in Terraform's bootstrap rather than its own state, since a bucket
       cannot hold the state that creates it. Copy `app.tfstate` only; the
       four dead files are not carried over.
-- [ ] **(Claude)** Point `infra/backend.tf` at it, and grant the CI
+
+      There is no GCP bootstrap configuration in this repository
+      (`infra/github` manages GitHub, not GCP), so the bucket is created
+      by hand, as the old one was, and `infra/backend.tf` now holds the
+      exact commands. The name is `quill-medical-app-terraform-state`,
+      free as of 2026-09-24: bucket names are global, and the old name
+      cannot be reused while the old bucket exists.
+- [x] **(Claude)** Point `infra/backend.tf` at it, and grant the CI
       accounts the same narrow access they hold on the old bucket (Batch 9
       Phase 4). A plan must then read no changes, which proves the state
       arrived whole.
+
+      Narrower than the old bucket, not the same. The old one grants
+      `roles/storage.objectAdmin` to the CI accounts of all four projects,
+      teaching's now deleted, so any of them could read every
+      environment's state and the secrets in it. The new one grants only
+      `github-actions@quill-medical-app`. That closes Batch 9 Phase 4 by
+      replacing the bucket rather than conditioning it.
+
+- [ ] **(Mark)** The switch, in this order, once the pull request pointing
+      `backend.tf` at the new bucket is otherwise ready. The order
+      matters: CI's first run after the merge reads the new bucket, and if
+      `app.tfstate` is not there it sees an empty state and plans to
+      create everything that already exists.
+
+      1. Merge anything else touching `infra/` first and let it apply, so
+         the state copied is the final one.
+      2. Create the bucket and grant it, with the three commands in
+         `infra/backend.tf`.
+      3. Copy the state:
+         `gcloud storage cp gs://quill-medical-terraform-state/terraform/state/app.tfstate gs://quill-medical-app-terraform-state/terraform/state/app.tfstate`
+      4. Check no `app.tflock` exists in the old bucket, so no apply was
+         mid-flight during the copy.
+      5. Merge. The Terraform run on `main` must plan no changes.
 - [ ] Keep the old bucket until the projects are deleted in Phase 4; it
       is the rollback.
 

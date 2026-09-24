@@ -98,11 +98,17 @@ The following APIs were enabled on all three projects:
 
 ### Terraform state bucket (done)
 
-Remote state is stored in a versioned GCS bucket in the production project:
+Remote state is stored in a versioned GCS bucket in the app project:
 
 ```
-gs://quill-medical-terraform-state
+gs://quill-medical-app-terraform-state
 ```
+
+It moved there from `gs://quill-medical-terraform-state`, in the production
+project, on 2026-09-24, so that project could be deleted. The bucket is
+created by hand, and `infra/backend.tf` holds the commands. Only the app
+environment's CI account may read it, because state holds secrets in plain
+text.
 
 Terraform uses workspace prefixes to separate state per environment.
 
@@ -348,11 +354,11 @@ ns-cloud-c4.googledomains.com
 
 Each environment uses a separate Terraform workspace to isolate state:
 
-| Workspace    | Environment | State path in GCS                                                       |
-| ------------ | ----------- | ----------------------------------------------------------------------- |
-| `staging`    | Staging     | `gs://quill-medical-terraform-state/terraform/state/staging.tfstate`    |
-| `teaching`   | Teaching    | `gs://quill-medical-terraform-state/terraform/state/teaching.tfstate`   |
-| `production` | Production  | `gs://quill-medical-terraform-state/terraform/state/production.tfstate` |
+- **`app`** — the only live environment. State at
+  `gs://quill-medical-app-terraform-state/terraform/state/app.tfstate`.
+
+The `staging`, `teaching` and `production` workspaces were retired with
+their projects, and their state was not carried to the new bucket.
 
 Terraform and the `gh` CLI were installed via Homebrew on the admin account.
 

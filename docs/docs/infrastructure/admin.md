@@ -192,7 +192,7 @@ gcloud beta run jobs executions logs read {execution-name} --project={project} -
 **Fix:**
 
 ```bash
-gsutil rm gs://quill-medical-terraform-state/terraform/state/{env}.tflock
+gcloud storage rm gs://quill-medical-app-terraform-state/terraform/state/{env}.tflock
 ```
 
 Then re-run the Terraform apply (or re-trigger the CI workflow).
