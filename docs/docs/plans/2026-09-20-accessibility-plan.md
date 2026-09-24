@@ -540,19 +540,33 @@ readable by someone who cannot yet log in.
       pattern, and `PageHeader` and `Heading level={1}` call it, so a
       page's h1 is also its title; phase 3 gave every page exactly one.
       An e2e test checks the teaching dashboard's title
-- [ ] Build the DTAC D1 evidence pack in
+- [x] Build the DTAC D1 evidence pack in
       `docs/docs/frontend/accessibility/dtac-d1.md`: the user journey map
       (the four journeys from phase 5 with the roles that walk them), the
       WCAG 2.2 AA conformance record listing every A and AA criterion with
       pass, fail, not applicable, and how it was tested (use the NHS
       accessibility checklist's criterion list as the skeleton), and the
-      testing log
-- [ ] Write the Accessible Information Standard note the revised DTAC
+      testing log. In
+      `docs/docs/frontend/accessibility/dtac-d1.md`, in the MkDocs
+      navigation. The record lists all fifty-five A and AA criteria (4.1.1
+      Parsing omitted, as WCAG 2.2 removed it) with one of six statuses:
+      pass, pass by design, partial, fail, not applicable or not yet
+      assessed, each with its evidence. Honestly counted, most are partial
+      or not yet assessed, because they need the phase 5 runs; none is
+      marked fail today, but two were until this plan's own work
+      (keyboard access to the navigation, #1091, and page titles, #1094)
+- [x] Write the Accessible Information Standard note the revised DTAC
       requires: what Quill will record (the four AIS data subsets as
       SNOMED CT codes on the FHIR `Patient`), how a recorded need will be
       flagged in the patient banner, and that it is designed but not built
       because there are no live patient records. Add the data model work
-      as a checklist item in the clinical launch plan rather than here
+      as a checklist item in the clinical launch plan rather than here. A section of
+      `dtac-d1.md`: the four data subsets as SNOMED CT entries on the FHIR
+      `Patient`, a text-and-icon marker in the patient banner that is
+      announced to screen readers, and the reasoning for deferring. There
+      is no clinical launch plan yet, so the data model work went on the
+      project to-do list instead, beside the language preference
+      question the internationalisation plan raises
 - [ ] Choose the feedback route the statement names. A monitored email
       address is the minimum; it must actually be read. Moved ahead of the statement, which has
       to name it, and the evidence pack and AIS note moved ahead of both,

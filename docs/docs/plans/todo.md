@@ -56,6 +56,7 @@ clinical/NHS go-live.
 
 ## Application bugs and missing features
 
+- [ ] Record and flag patients' communication needs (Accessible Information Standard, DAPB1605) _(when FHIR demographics go live)_ — the four data subsets (communication support, communication professional, information format, contact method) as SNOMED CT coded entries on the FHIR `Patient`, each with who recorded it and when, and a marker in the patient banner, with text and an icon and announced to screen readers, that opens the list. Designed in `docs/docs/frontend/accessibility/dtac-d1.md`; deferred because the obligation only applies to real patient records. Do it with the patient language preference question in `2026-09-20-internationalisation-plan.md`, as the two are the same data model question
 - [ ] Eliminate teaching dashboard skeleton flash (~0.3s) — add caching layer or delay skeleton display; loading state in `AdminTeachingPage.tsx` (lines 96–113) passes directly to `DataTableWithResults.tsx` (line 83) which renders Skeleton immediately with no delay threshold
 - [ ] Implement automatic auth state refresh via `visibilitychange` listener in `AuthContext.tsx` — current reload only fires on mount (line ~138); add `document.addEventListener("visibilitychange", ...)` beside that effect
 - [ ] Wire up CBAC frontend hooks — `useHasCompetency` etc. are hardcoded to `false`, hiding entitled features _(clinical)_ — hooks at `frontend/src/lib/cbac/hooks.ts` lines 34–66; needs user competencies exposed in auth state or fetched from backend
