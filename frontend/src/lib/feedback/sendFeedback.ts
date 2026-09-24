@@ -16,7 +16,12 @@ import { api } from "@/lib/api";
 import { getBreadcrumbs } from "@/lib/error-reporting/breadcrumbs";
 import { getCurrentRoute } from "@/lib/error-reporting/currentRoute";
 import { readUserAgent, readViewport } from "@/lib/error-reporting/report";
-import { sanitiseRelease, sanitiseRoute } from "@/lib/error-reporting/sanitise";
+import {
+  sanitiseErrorCode,
+  sanitiseName,
+  sanitiseRelease,
+  sanitiseRoute,
+} from "@/lib/error-reporting/sanitise";
 
 /** What the sender may say the feedback is about. Matches the server's set. */
 export type FeedbackCategory = "broken" | "inaccurate" | "suggestion" | "other";
@@ -38,6 +43,17 @@ export interface FeedbackInput {
   message: string;
 }
 
+/**
+ * The error just reported, when feedback is sent from the error boundary.
+ *
+ * Lets the submission and the logged error be lined up. Name and code only:
+ * both are sanitised the way the error report sanitises them.
+ */
+export interface FeedbackErrorContext {
+  name: string;
+  code?: string | undefined;
+}
+
 /** What the server accepts: snake_case, and a fixed set of keys. */
 interface FeedbackWire {
   category: FeedbackCategory | null;
@@ -47,6 +63,8 @@ interface FeedbackWire {
   viewport: string;
   user_agent: string;
   breadcrumbs: ReturnType<typeof getBreadcrumbs>;
+  error_name?: string;
+  error_code?: string;
 }
 
 /** The server's answer: the id of the feedback it stored. */
@@ -59,8 +77,11 @@ export interface FeedbackCreated {
  *
  * Exported for tests; application code calls `sendFeedback`.
  */
-export function buildFeedbackBody(input: FeedbackInput): FeedbackWire {
-  return {
+export function buildFeedbackBody(
+  input: FeedbackInput,
+  error?: FeedbackErrorContext,
+): FeedbackWire {
+  const body: FeedbackWire = {
     category: input.category,
     message: input.message.trim(),
     route: sanitiseRoute(getCurrentRoute()),
@@ -69,11 +90,23 @@ export function buildFeedbackBody(input: FeedbackInput): FeedbackWire {
     user_agent: readUserAgent(),
     breadcrumbs: getBreadcrumbs(),
   };
+  if (error) {
+    body.error_name = sanitiseName(error.name);
+    const code = sanitiseErrorCode(error.code ?? "");
+    if (code) body.error_code = code;
+  }
+  return body;
 }
 
 /**
  * Send feedback. Rejects if it did not arrive, so the caller can say so.
  */
-export function sendFeedback(input: FeedbackInput): Promise<FeedbackCreated> {
-  return api.post<FeedbackCreated>("/feedback", buildFeedbackBody(input));
+export function sendFeedback(
+  input: FeedbackInput,
+  error?: FeedbackErrorContext,
+): Promise<FeedbackCreated> {
+  return api.post<FeedbackCreated>(
+    "/feedback",
+    buildFeedbackBody(input, error),
+  );
 }

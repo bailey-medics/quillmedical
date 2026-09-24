@@ -245,6 +245,24 @@ describe("FeedbackModal", () => {
       expect(onClose).toHaveBeenCalledOnce();
     });
 
+    it("offers no link when asked not to", async () => {
+      const user = userEvent.setup();
+      renderWithRouter(
+        <FeedbackModal
+          opened
+          onClose={vi.fn()}
+          onSubmit={vi.fn().mockResolvedValue({ id: 1 })}
+          showYourFeedbackLinks={false}
+        />,
+      );
+
+      expect(screen.queryByRole("link")).not.toBeInTheDocument();
+      await user.type(messageBox(), "Captions lag");
+      await user.click(screen.getByTestId("submit-button"));
+      await screen.findByText("Feedback sent");
+      expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    });
+
     it("offers no link outside a router", () => {
       renderModal();
 

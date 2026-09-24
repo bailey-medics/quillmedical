@@ -58,6 +58,12 @@ export interface FeedbackModalProps {
   onClose: () => void;
   /** Sends the feedback; rejecting shows the sender it did not arrive */
   onSubmit: (input: FeedbackInput) => Promise<unknown>;
+  /**
+   * Whether to link to the sender's own feedback (defaults to true). Off
+   * from the error boundary, which stays in its failed state however the
+   * address changes, so following the link would lead back to itself.
+   */
+  showYourFeedbackLinks?: boolean;
 }
 
 interface FeedbackFormValues {
@@ -65,12 +71,7 @@ interface FeedbackFormValues {
   message: string;
 }
 
-/**
- * A link to the sender's own feedback, closing the modal as it is followed.
- *
- * Only inside a router: the modal is also offered from the error boundary,
- * which should not have to assume anything above it still works.
- */
+/** A link to the sender's own feedback, closing the modal as it is followed. */
 function YourFeedbackLink({
   onClose,
   children,
@@ -78,7 +79,6 @@ function YourFeedbackLink({
   onClose: () => void;
   children: string;
 }) {
-  if (!useInRouterContext()) return null;
   return (
     <TextLink to={YOUR_FEEDBACK_PATH} onClick={onClose}>
       {children}
@@ -87,7 +87,13 @@ function YourFeedbackLink({
 }
 
 /** Inner fields — needs the Form context to reach React Hook Form. */
-function FeedbackFields({ onClose }: { onClose: () => void }) {
+function FeedbackFields({
+  onClose,
+  showLinks,
+}: {
+  onClose: () => void;
+  showLinks: boolean;
+}) {
   const { methods } = useFormContext();
   const { register, control } = methods;
 
@@ -129,9 +135,11 @@ function FeedbackFields({ onClose }: { onClose: () => void }) {
 
       <FormStatusNarrow />
       <SubmitButton onCancel={onClose} cancelLabel="Cancel" />
-      <YourFeedbackLink onClose={onClose}>
-        Your previous feedback
-      </YourFeedbackLink>
+      {showLinks && (
+        <YourFeedbackLink onClose={onClose}>
+          Your previous feedback
+        </YourFeedbackLink>
+      )}
     </Stack>
   );
 }
@@ -140,9 +148,13 @@ export default function FeedbackModal({
   opened,
   onClose,
   onSubmit,
+  showYourFeedbackLinks = true,
 }: FeedbackModalProps) {
   const [sent, setSent] = useState(false);
+  // Only inside a router: the links need one, and the modal should not
+  // assume one survived wherever it is opened from.
   const inRouter = useInRouterContext();
+  const showLinks = showYourFeedbackLinks && inRouter;
 
   const handleClose = () => {
     setSent(false);
@@ -184,7 +196,7 @@ export default function FeedbackModal({
             title="Feedback sent"
             subtitle="Thank you for telling us."
           />
-          {inRouter && (
+          {showLinks && (
             <BodyText>
               We&apos;ll post the outcome in{" "}
               <YourFeedbackLink onClose={handleClose}>
@@ -203,7 +215,7 @@ export default function FeedbackModal({
           submittingLabel={"Sending…"}
           blockNavigation={false}
         >
-          <FeedbackFields onClose={handleClose} />
+          <FeedbackFields onClose={handleClose} showLinks={showLinks} />
         </Form>
       )}
     </Modal>

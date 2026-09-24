@@ -208,13 +208,20 @@ is the reason the plan exists. Read-only — replying is deferred.
 
 Last, because rendering the modal inside a failed tree is the fiddliest part.
 
-- [ ] Add `Tell us what happened` beside `Reload page` in `ErrorFallback`
+- [x] Add `Tell us what happened` beside `Reload page` in `ErrorFallback`
       (`frontend/src/components/error-boundary/ErrorBoundary.tsx`), opening
       the same modal with the error name and code just reported, so the
       submission and the logged error can be lined up. Render the modal from
       the fallback itself, and do not let the submit path assume router
-      context is intact — the tree below has already failed.
-- [ ] Tests: the fallback offers both actions; a story for the
+      context is intact — the tree below has already failed. `ErrorState`
+      gained an optional `secondaryAction`, shown outlined beside the first,
+      to carry the button; `iconTextButtonIcons` gained a `feedback` icon.
+      The boundary keeps the caught error's sanitised name and code in its
+      state and passes them to `sendFeedback`. The modal's links to the
+      sender's own feedback are turned off here: the boundary stays in its
+      failed state whatever the address, so following one would lead
+      straight back to the fallback.
+- [x] Tests: the fallback offers both actions; a story for the
       error-boundary variant of the modal.
 
 ## Decisions
