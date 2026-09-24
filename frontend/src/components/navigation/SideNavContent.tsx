@@ -18,6 +18,7 @@ import { useHasCompetency } from "@/lib/cbac/hooks";
 import { api } from "@/lib/api";
 import { orgUnits } from "@/domains/orgUnit";
 import NavIcon from "../icons/NavIcon";
+import SendFeedbackNavLink from "@/components/feedback/SendFeedbackNavLink";
 import NestedNavLink, { type NavItem } from "./NestedNavLink";
 import { useFeatureNavItems } from "./featureNavItems";
 import { navLinkStyles } from "./navStyles";
@@ -369,6 +370,18 @@ export default function SideNavContent({
             } satisfies NavItem,
           ]
         : []),
+      // Operator-only, matching the route guard and the API: feedback
+      // spans every organisation. "Feedback" is a noun here because under
+      // Admin it plainly means the submissions, not the act of sending.
+      ...(isOperator
+        ? [
+            {
+              label: "Feedback",
+              href: "/admin/feedback",
+              icon: showIcons ? "feedback" : undefined,
+            } satisfies NavItem,
+          ]
+        : []),
       ...(hasTeaching
         ? [
             {
@@ -496,6 +509,7 @@ export default function SideNavContent({
           showIcons={showIcons}
         />
       ))}
+      <SendFeedbackNavLink showIcons={showIcons} />
       <NavLink
         label="Logout"
         styles={navLinkStyles}

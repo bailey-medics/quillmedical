@@ -75,6 +75,8 @@ import AddStaffToOrgPage from "./pages/admin/organisations/AddStaffToOrgPage";
 import AddPatientToOrgPage from "./pages/admin/organisations/AddPatientToOrgPage";
 import AddSiteToOrgPage from "./pages/admin/organisations/AddSiteToOrgPage";
 import AdminSitesPage from "./pages/admin/sites/AdminSitesPage";
+import AdminFeedbackPage from "./pages/admin/feedback/AdminFeedbackPage";
+import FeedbackDetailPage from "./pages/admin/feedback/FeedbackDetailPage";
 import CreateSitePage from "./pages/admin/sites/CreateSitePage";
 import SiteAdminPage from "./pages/admin/sites/SiteAdminPage";
 import EditSitePage from "./pages/admin/sites/EditSitePage";
@@ -118,6 +120,7 @@ import LoginPage from "./pages/LoginPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import Settings from "./pages/Settings";
+import YourFeedbackPage from "./pages/feedback/YourFeedbackPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 import VerifyEmailPendingPage from "./pages/VerifyEmailPendingPage";
 import HomeRedirect from "./pages/HomeRedirect";
@@ -485,6 +488,28 @@ const routes: RouteObject[] = [
               },
             ],
           },
+          // Operator-only: feedback comes from every organisation and may
+          // hold patient data, so reading it is operating the deployment
+          // rather than administering a place. The API refuses the same.
+          {
+            element: (
+              <RequireOperator>
+                <Outlet />
+              </RequireOperator>
+            ),
+            children: [
+              {
+                path: "feedback",
+                element: <AdminFeedbackPage />,
+                handle: { safeForReload: true },
+              },
+              {
+                path: "feedback/:id",
+                element: <FeedbackDetailPage />,
+                handle: { safeForReload: true },
+              },
+            ],
+          },
           {
             path: "organisations/:id/features",
             element: <OrgFeaturesPage />,
@@ -525,6 +550,13 @@ const routes: RouteObject[] = [
         ],
       },
 
+      // What the user has sent through Send feedback, and its status.
+      // Any signed-in user; the API returns only their own.
+      {
+        path: "/feedback",
+        element: <YourFeedbackPage />,
+        handle: { safeForReload: true },
+      },
       // Settings
       {
         path: "/settings",

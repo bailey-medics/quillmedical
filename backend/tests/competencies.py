@@ -1,10 +1,8 @@
 """Test helpers for giving somebody competencies beyond their profession.
 
 What somebody holds beyond their base profession is a current
-``user_competency`` row, not an entry in the ``additional_competencies``
-JSON column. The column is still written by the routes, and read by
-nothing, so a test that sets it and expects a competency to follow is
-describing storage that has been retired.
+``user_competency`` row. These write the rows a test needs, in the shapes
+the routes write them.
 
 Kept out of ``conftest.py`` for the reason ``tests/places.py`` is:
 importing from there would give mypy the same file under two module names.
@@ -16,45 +14,46 @@ from datetime import UTC, datetime, timedelta
 
 from app.models import User, UserCompetency
 
-#: How long a test's ``passport_write`` lasts: the year onboarding gives.
+#: How far back ``lapse`` moves a grant: a year, the length of a
+#: subscription somebody buys for themselves.
 PASSPORT_TERM = timedelta(days=365)
 
 
 def hold(user: User, *competency_ids: str) -> None:
     """Give *user* each competency, as a current grant row.
 
-    ``passport_write`` is dated, a year from now, because it is sold and
-    every real grant of it carries a term. Anything else is undated, as an
-    administrator's grant is. The caller commits.
+    Undated, as an administrator's grant is. ``passport_write`` too:
+    given through a site or organisation it does not lapse. A test that
+    needs it to run out calls ``lapse``. The caller commits.
     """
     now = datetime.now(UTC)
     for competency_id in competency_ids:
-        termed = competency_id == "passport_write"
         user.competency_grants.append(
             UserCompetency(
                 competency_id=competency_id,
                 granted=True,
                 starts_on=now,
-                ends_on=now + PASSPORT_TERM if termed else None,
-                source="organisation" if termed else "admin",
+                source="admin",
             )
         )
 
 
 def withhold(user: User, *competency_ids: str) -> None:
-    """Take each competency away from *user*, as a current removal row.
+    """Take each competency away from *user*, closing its grant rows.
 
-    What ``removed_competencies`` used to say: their profession grants it
-    and they do not hold it. The caller commits.
+    Somebody who does not hold a competency has no current grant row for
+    it, whatever their profession grants, so this is how a test says
+    "their profession gives it and they do not hold it". The caller
+    commits.
     """
-    for competency_id in competency_ids:
-        user.competency_grants.append(
-            UserCompetency(
-                competency_id=competency_id,
-                granted=False,
-                source="admin",
-            )
-        )
+    now = datetime.now(UTC)
+    for row in user.competency_grants:
+        if (
+            row.competency_id in competency_ids
+            and row.granted
+            and row.is_current(now)
+        ):
+            row.ends_on = now
 
 
 def lapse(user: User, competency_id: str) -> None:
@@ -75,12 +74,12 @@ def lapse(user: User, competency_id: str) -> None:
 
 
 def clear(user: User) -> None:
-    """End every current grant and removal *user* has, now.
+    """End every grant *user* holds beyond what their profession seeded.
 
-    For a test that used to empty ``additional_competencies``: nothing
-    beyond their profession is held afterwards. The caller commits.
+    For a test that used to empty ``additional_competencies``: afterwards
+    they hold only what came with their profession. The caller commits.
     """
     now = datetime.now(UTC)
     for row in user.competency_grants:
-        if row.is_current(now):
+        if row.source != "profession" and row.is_current(now):
             row.ends_on = now

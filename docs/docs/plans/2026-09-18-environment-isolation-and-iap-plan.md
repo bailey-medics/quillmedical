@@ -572,8 +572,9 @@ here because the next environment will want the same list:
       `iam.serviceAccountAdmin`, `iam.serviceAccountUser`,
       `logging.configWriter`, `run.admin` and `secretmanager.admin`.
 
-- [ ] **(Mark)** Review the roles above, and decide whether `editor`
-      should stay. It subsumes `run.admin` and `secretmanager.admin`
+- [x] **(Mark)** Review the roles above, and decide whether `editor`
+      should stay. Decided on 2026-09-23: it goes, as the last step of
+      Batch 9's least-privilege work, which carries the detail. It subsumes `run.admin` and `secretmanager.admin`
       entirely and grants much besides, so the three together say less
       than they appear to. It was copied rather than chosen, because the
       first apply builds around thirty resources and a missing permission
@@ -622,10 +623,12 @@ here because the next environment will want the same list:
       two import blocks, and add versions to `pagerduty-service-key` and
       `alert-sms-number`.
 
-- [ ] **(Mark)** Create a Slack notification channel in the new project
+- [x] **(Mark)** Create a Slack notification channel in the new project
       through the console's OAuth flow, then set
       `slack_channel_display_name` in the app tfvars. Until then the new
       environment has email, SMS and PagerDuty alerting but no Slack.
+      Done on 2026-09-23 as `quill-medical-cicd`, applied in #1000 and
+      proven by a test alert that reached the channel.
 
 - [x] **(Claude and Mark)** Apply Batch 3's Terraform to the new
       workspace. Done on 2026-09-21, on the fifth attempt: 16 added, 0
@@ -1579,14 +1582,90 @@ older project, because the organisation policy stops that automatic
 grant, but it is the same problem one layer down: a compromise of the
 least important workload reaches the most important secrets.
 
-- [ ] **(Claude)** Add a service account per workload to Terraform,
-      `run-backend`, `run-frontend`, `run-admin`, `run-transcode` and
-      `run-caption`, and set `service_account` on each service and job.
+Split expand-then-contract, because switching the identity a live service
+runs as breaks it on apply if a single permission is missed. The inventory,
+taken from the code on 2026-09-23: the backend reads its thirteen secrets,
+reads the question bank bucket, manages the passports bucket, writes the
+video uploads bucket and starts the transcode and caption jobs; the admin
+job reads the Cloud SQL password and JWT key; transcode reads uploads and
+writes renditions; caption reads and writes renditions; both jobs read the
+callback token; the frontend reads nothing. The backend's only Google APIs
+are Cloud Storage and Cloud Run jobs.
 
-- [ ] **(Claude)** Replace the project-wide `secretAccessor` with a
-      binding per secret, to the accounts that read it. The frontend gets
-      none. The storage bucket grants that name the default account move
-      to whichever workload actually reads each bucket.
+- [x] **(Claude)** Create an account per workload, `run-backend`,
+      `run-frontend`, `run-admin`, `run-transcode` and `run-caption`, and
+      grant each exactly the inventory above, in
+      `infra/runtime-identities.tf`. Nothing runs as them yet, so it
+      changes nothing that serves traffic: `terraform plan` showed 24
+      additions and no change or destruction.
+
+      Each workload's secret list now lives once, in `locals`, read both
+      by the module that mounts the secrets and by the grants, so a
+      secret added to a workload cannot be forgotten in its grants. Moving
+      the backend's list there produced no diff, which is the check that
+      nothing was copied wrongly. Secret grants go through
+      `module.secrets.secret_ids`, so naming a secret the module does not
+      create fails the plan rather than the apply.
+
+- [x] **(Claude)** Point each service and job at its account, with
+      `service_account` on the Cloud Run services and a new variable on
+      `modules/cloud-run-job`. The default account keeps its grants
+      meanwhile, so a missed permission shows as a failed revision while
+      the old one keeps serving, not an outage. Merge only after the step
+      above has applied.
+
+      Built on 2026-09-23. `terraform plan` showed the five workloads
+      updated in place with `service_account` the only attribute
+      changing, and nothing destroyed.
+
+      **No `actAs` needed for the backend to start the jobs.** Checked
+      against Google's Cloud Run IAM reference rather than assumed:
+      executing a job needs `run.jobs.run`, or `run.jobs.runWithOverrides`
+      for overrides, both in `roles/run.jobsExecutorWithOverrides`;
+      `iam.serviceAccounts.actAs` on the runtime identity is a deployment
+      permission, needed to create or update a job, not to run one
+      (https://docs.cloud.google.com/run/docs/reference/iam/roles).
+
+      After it applies, exercise each workload once before the next step:
+      sync the question banks, which proves `run-backend` reads the images
+      bucket; upload a video, which proves the source bucket write, the
+      job invocation and both jobs' bucket access; and let one deploy run
+      its migrations and smoke test through `run-admin`. The frontend is
+      proven by the site loading. A failure here is recoverable while the
+      default account still holds its grants, which is why removing them
+      is a separate step.
+
+      **Applied on 2026-09-23, after one failed attempt.** #1026 and #1027
+      were merged in the same second, so a single apply created the grants
+      and immediately switched the workloads onto them. Google refused four
+      of the five switches with `Permission denied on secret ... for
+      Revision service account run-admin`: the grant existed, but IAM had
+      not propagated in the seconds between. The frontend, needing no
+      secret, switched; the backend's new revision was refused and the old
+      one kept serving, so nothing went down. Re-running the same apply a
+      few minutes later succeeded.
+
+      Rather than add a `time_sleep` between grants and workloads, which
+      would put a `depends_on` on every Cloud Run module and defer their
+      data sources to apply time, the lesson is procedural: **merge a grant
+      and the change that relies on it one at a time**, letting the first
+      apply before the second merges. The recovery is a re-run.
+
+      Proven since: `run-frontend` serves the site; `run-backend` answers
+      `/api/health` on revision `00036`, so it read its secrets at start;
+      `run-admin` ran the smoke-test action successfully. Still to prove,
+      by Mark: a question bank sync (`run-backend` reading the images
+      bucket) and a video upload (the source bucket write, the job
+      invocation, and `run-transcode` and `run-caption` on the video
+      buckets).
+
+- [ ] **(Claude)** Remove the default account's grants: the project-wide
+      `secretAccessor`, its bucket bindings, the job invokers and
+      `cloudrun_token_creator`, once the step above has run live. The
+      token creator looks unused already: nothing in `backend/app`
+      calls `generate_signed_url`, and the video pipeline signs CDN
+      cookies with an HMAC rather than through IAM. This is the step
+      where the frontend actually stops being able to read the secrets.
 
 - [ ] **(Mark)** Narrow the deploy account from Phase 1 to
       `roles/iam.serviceAccountUser` on the five runtime accounts rather
@@ -2242,6 +2321,32 @@ the DNS cutover.
   PagerDuty free trial had lapsed and the account had to be cut back to a
   single escalation policy. Google reported the alert raised either way;
   only the phone could tell the difference.
+
+- **Terraform and the deploy both owned the backend's traffic, and
+  that let an untested revision go live.** `modules/cloud-run` pinned
+  traffic to 100% of the latest revision, and `deploy-tagged.sh` promoted
+  with `--to-latest`. On 2026-09-23 a Terraform apply modified
+  `quill-backend-app` between 20:58:02 and 20:58:34, while the #1017
+  deploy was between tagging revision `00036` at 20:57:48 and looking the
+  tag up at 20:58:30. The apply rewrote traffic, the tag vanished, and the
+  deploy failed with `Could not resolve a tagged URL`. Worse, `00036` went
+  live through Terraform's "latest" rule without the smoke test ever
+  running against it. It happened to be healthy.
+
+  Fixed on 2026-09-24 so that only the smoke-tested deploy can route
+  traffic. `traffic` joins `ignore_changes` in `modules/cloud-run`, so
+  Terraform sets it once at creation and never again; `terraform plan`
+  showed no change from that. And `deploy-tagged.sh` promotes the tested
+  revision by name, `--to-revisions=<revision>=100`, removing its tag in
+  the same call, and waits for that revision, not the newest, to carry the
+  traffic. A revision Terraform creates by changing the template now gets
+  nothing until the next deploy builds from that template and tests it.
+  The cost is that a Terraform-only change to a service goes live at the
+  next backend deploy rather than at apply, which is the right way round.
+
+  The immediate trigger was a re-run of a failed apply started by hand
+  while a deploy was running, so the procedural lesson stands beside the
+  fix: check `deploy.yml` is idle before re-running `terraform.yml`.
 
 ## Decisions
 

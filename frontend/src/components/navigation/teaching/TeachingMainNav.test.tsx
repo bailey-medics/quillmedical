@@ -143,4 +143,14 @@ describe("TeachingMainNav", () => {
     });
     expect(screen.queryByText("Colonoscopy opt…")).toBeNull();
   });
+
+  it("offers Send feedback directly above Logout", () => {
+    renderWithRouter(<TeachingMainNav />, {
+      initialRoute: "/teaching",
+    });
+    const feedback = screen.getByText("Send feedback");
+    expect(feedback.closest("a, button")?.nextElementSibling?.textContent).toBe(
+      "Logout",
+    );
+  });
 });

@@ -18,7 +18,7 @@
  * matched against in the logs.
  */
 
-import { Alert, Center, Stack } from "@mantine/core";
+import { Alert, Center, Group, Stack } from "@mantine/core";
 import { IconAlertTriangle } from "@/components/icons/appIcons";
 import Icon from "@/components/icons";
 import IconTextButton from "@/components/button/IconTextButton";
@@ -51,6 +51,11 @@ export interface ErrorStateProps {
   /** Optional recovery action. Omit when there is nothing useful to offer. */
   action?: ErrorStateAction;
   /**
+   * A second, lesser action beside the first, shown outlined. Only
+   * alongside `action`: a lone secondary action has nothing to defer to.
+   */
+  secondaryAction?: ErrorStateAction;
+  /**
    * `page` replaces the view and is right for a crash or a view that cannot
    * render at all. `inline` sits in the layout and is right for a section
    * that failed to load, or a form submission that failed — blanking the page
@@ -64,6 +69,7 @@ export default function ErrorState({
   title = "Something went wrong",
   code,
   action,
+  secondaryAction,
   variant = "inline",
 }: ErrorStateProps) {
   const body = (
@@ -77,11 +83,21 @@ export default function ErrorState({
       <BodyText c="gray.5">{message}</BodyText>
       {code ? <FieldDescription>Reference: {code}</FieldDescription> : null}
       {action ? (
-        <IconTextButton
-          icon={action.icon ?? "refresh"}
-          label={action.label}
-          onClick={action.onClick}
-        />
+        <Group gap="sm" justify={variant === "page" ? "center" : "flex-start"}>
+          <IconTextButton
+            icon={action.icon ?? "refresh"}
+            label={action.label}
+            onClick={action.onClick}
+          />
+          {secondaryAction ? (
+            <IconTextButton
+              icon={secondaryAction.icon ?? "refresh"}
+              label={secondaryAction.label}
+              onClick={secondaryAction.onClick}
+              variant="outline"
+            />
+          ) : null}
+        </Group>
       ) : null}
     </Stack>
   );

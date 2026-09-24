@@ -16,6 +16,8 @@ interface TextLinkProps {
   to: string;
   /** Link content */
   children: ReactNode;
+  /** Called when the link is followed, e.g. to close the modal it sits in */
+  onClick?: () => void;
 }
 
 /**
@@ -24,7 +26,7 @@ interface TextLinkProps {
  * @param props - Component props
  * @returns Styled anchor element wrapping a React Router Link
  */
-export default function TextLink({ to, children }: TextLinkProps) {
+export default function TextLink({ to, children, onClick }: TextLinkProps) {
   return (
     <Anchor
       component={Link}
@@ -32,6 +34,7 @@ export default function TextLink({ to, children }: TextLinkProps) {
       size="md"
       underline="always"
       className={classes.link}
+      onClick={onClick}
     >
       {children}
     </Anchor>

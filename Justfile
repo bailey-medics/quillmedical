@@ -1134,6 +1134,40 @@ stack-new name message:
     python3 scripts/stack-status.py
 
 
+alias strd := stack-ready
+# Take every open pull request in this worktree's stack out of draft
+stack-ready:
+    #!/usr/bin/env bash
+    {{initialise}} "stack-ready"
+    set -euo pipefail
+    just _stack-guard
+    # Marking ready is what starts the heavy CI tier (Storybook interaction
+    # tests, Semgrep, E2E): it fires on ready_for_review, never on opened. So
+    # this starts it on every branch at once — do not run it alongside
+    # `just e2e` or `just sbt` locally, which compete for the same machine.
+    #
+    # Bottom to top, the order `gh stack view` lists them, so the branch
+    # nearest main is ready first. Merged branches and branches with no pull
+    # request are skipped rather than failed: a stack part-way through
+    # merging is normal. This never merges anything; that stays a human act.
+    prs="$(gh stack view --json \
+        | jq -r '.branches[] | select(.isMerged | not) | .pr.number // empty')"
+    if [ -z "${prs}" ]; then
+        echo "No open pull requests in this stack."
+        exit 0
+    fi
+    for number in ${prs}; do
+        state="$(gh pr view "${number}" --json state,isDraft \
+            --jq '"\(.state) \(.isDraft)"')"
+        case "${state}" in
+            "OPEN true") gh pr ready "${number}" ;;
+            "OPEN false") echo "#${number} is already ready for review." ;;
+            *) echo "#${number} is not open (${state%% *}); skipped." ;;
+        esac
+    done
+    python3 scripts/stack-status.py --prs
+
+
 alias str := stack-rebase
 # Rebase the whole stack onto an updated trunk, refusing if it spans worktrees
 stack-rebase:
@@ -1914,6 +1948,26 @@ build-transcode env:
         --set-env-vars "TEACHING_VIDEOS_SOURCE_BUCKET=${SOURCE_BUCKET},TEACHING_VIDEOS_BUCKET=${PROCESSED_BUCKET}" \
         --quiet
     echo "✓ Cloud Run Job deployed"
+
+
+alias ccs := check-competency-seeding
+# List users who would lose a competency when only their rows count (should list nobody)
+check-competency-seeding env:
+    #!/usr/bin/env bash
+    {{initialise}} "check-competency-seeding ({{env}})"
+    set -euo pipefail
+
+    PROJECT=$(just _gcp_env_project "{{env}}")
+    REGION="europe-west2"
+
+    echo "Check competency seeding on ${PROJECT}"
+    echo "─────────────────────────────────"
+
+    gcloud run jobs execute "quill-admin-{{env}}" \
+        --project="$PROJECT" \
+        --region="$REGION" \
+        --update-env-vars "ADMIN_ACTION=check-competency-seeding" \
+        --wait
 
 
 alias cs := create-superadmin

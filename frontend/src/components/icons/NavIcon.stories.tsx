@@ -22,6 +22,7 @@ const iconNames = [
   "file",
   "adjustments",
   "building-community",
+  "feedback",
 ] as const;
 
 const sizes = ["xs", "sm", "md", "lg", "xl"] as const;

@@ -1385,7 +1385,7 @@ def submit_answer(
         # Persist
     current.selected_option = body.selected_option
     current.is_correct = is_correct
-    current.resolved_tags = resolved_tags
+    current.set_tags(resolved_tags)
     current.answered_at = now
     db.flush()
 
@@ -1484,7 +1484,7 @@ def update_answer(
 
     answer.selected_option = body.selected_option
     answer.is_correct = is_correct
-    answer.resolved_tags = resolved_tags
+    answer.set_tags(resolved_tags)
     answer.answered_at = now
 
     return _build_candidate_item(answer, config, config_row.type)
@@ -1733,11 +1733,13 @@ def complete_assessment(
         .all()
     )
 
+    # Tags from the `assessment_answer_tag` rows, the copy taken when each
+    # answer was given.
     answer_dicts = [
         {
             "selected_option": a.selected_option,
             "is_correct": a.is_correct,
-            "resolved_tags": a.resolved_tags,
+            "resolved_tags": sorted(row.tag for row in a.tags),
         }
         for a in answers
     ]

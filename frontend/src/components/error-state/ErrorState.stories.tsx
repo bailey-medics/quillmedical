@@ -55,6 +55,20 @@ export const Page: Story = {
   },
 };
 
+/** A crash, with a way to report it as well as recover from it */
+export const PageWithSecondaryAction: Story = {
+  args: {
+    variant: "page",
+    message: "An unexpected error occurred. Please try reloading the page.",
+    action: { label: "Reload page", onClick: () => {} },
+    secondaryAction: {
+      label: "Tell us what happened",
+      icon: "feedback",
+      onClick: () => {},
+    },
+  },
+};
+
 export const DarkMode: Story = {
   ...InlineWithCode,
   globals: { colorScheme: "dark" },

@@ -385,15 +385,239 @@ its own readers and its own migration.
 
 ## Phase 7: Drop the columns
 
-- [ ] **Drop `additional_competencies`, `removed_competencies` and the
+- [x] **Take the two columns out of every statement first, in a deploy of
+      their own.** Found while building this phase. Stopping the writes in
+      Phase 5 was not enough to make the drop safe. The model still mapped
+      both columns, so every `SELECT` of `users` named them, and so did
+      every `INSERT`, through the Python default. Migrations run before the
+      new revision takes traffic, so the revision still serving while the
+      drop ran would fail on every query of `users` until it was replaced.
+      `.claude/rules/backend.md` asks for an app that no longer uses a
+      column to be live before the migration that drops it.
+
+      So migration `26434c1eb0a4` gives both columns a server default of
+      `'[]'`, which is additive. The model defers them, keeping them out of
+      every `SELECT`, and drops their Python default, keeping them out of
+      every `INSERT`. `User` also sets `eager_defaults` off. Without that,
+      SQLAlchemy adds a `RETURNING` naming every column with a server
+      default, and both retired columns would be back in the statement.
+      `backend/tests/test_retired_competency_columns.py` records every
+      statement a create and an update send, and fails if either name
+      appears.
+
+- [x] **Drop `additional_competencies`, `removed_competencies` and the
       `passport_write_entitlement` table** in their own migration, carrying
       `# migration-check: allow-destructive`. It goes through the
       `db-destructive-migration-review` environment, and it is not bundled
-      with additive work.
+      with additive work. Approved on 23 September 2026.
 
       Last, and after the investigations in Phase 6, because it is the one
       step that cannot be undone and it needs a human's approval. Nothing
-      else in this plan depends on it, so nothing waits behind it.
+      else in this plan depends on it, so nothing waits behind it. The
+      table is safe to drop in the same migration without a step like the
+      one above: since Phase 5 no code queries it, and a mapped class that
+      is never queried sends nothing.
+
+      Migration `113dbf80612e`. Its `downgrade()` recreates both columns
+      and the table empty, because everything they held is in
+      `user_competency`. The `eager_defaults` setting the step above needed
+      goes with the columns.
+
+## Phase 8: Seed from the profession, then let it go
+
+Everything above keeps the base profession as a live template: what
+somebody holds is worked out on every request as
+`(profession | granted) - removed`, with the profession's list read from
+`shared/base-professions.yaml`. So editing that file grants or revokes a
+competency for everyone with that profession at once, with no row and nobody
+named as doing it. For a clinical competency that is the wrong way round.
+Credentialing is per person: a trust decides this doctor may prescribe
+controlled drugs, not every consultant because a file changed. This phase
+makes the profession what it first appears to be, a starting point. A new
+user's rows are seeded from it once, and after that only their rows count.
+
+The argument was made before, in
+[Platform role](2026-09-09-platform-role-plan.md) ("use a profession to
+initialise, then let it go"), and not taken. The decision recorded there
+answered changing a *person's* profession, which became additive. It did not
+answer changing the *profession itself*, which is the case this phase exists
+for. Its other reason, that the gap between template and person is worth
+seeing, survives: `base_profession` stays as a label, and the gap is worked
+out rather than stored.
+
+- [x] **Add `profession` to `COMPETENCY_GRANT_SOURCES`**, for a row seeded
+      from somebody's base profession. It is what lets the edit page, and
+      anyone auditing, tell "came with their profession" from "granted by an
+      administrator".
+
+- [x] **Seed rows wherever a user gets a profession, before the backfill.**
+      The first draft of this phase put the backfill first. That is the
+      order Phase 2 corrected once already: each unit deploys when it
+      merges, so anybody created between a backfill deploying and the
+      writers deploying would have no profession rows, and the resolver
+      switch would take their profession's competencies away.
+
+      `sync_competency_rows` takes on the seeding, so every writer that
+      already calls it seeds without a change of its own. It stops treating
+      `additional` as the whole of somebody's grant rows. It works out the
+      set they should hold, their profession's template plus `additional`
+      minus `removed`, and opens and closes grant rows to match. A row it
+      opens for a competency in the template, and not asked for in
+      `additional`, is `source` `profession`. Changing somebody's profession
+      then adds rows for the new one and closes nothing, which is the
+      carry-over rule stated as rows. Removal rows are still written, because
+      the resolver still adds the template until the switch below.
+
+      Once profession rows exist, a person's grant rows are no longer "what
+      they hold beyond their profession". So `User.additional_competency_ids`
+      becomes their current grants minus the template, worked out rather
+      than read. The pre-switch resolver, `(template | additional) - removed`,
+      gives the same answer either way, which is what makes this safe to
+      deploy alone.
+
+      The two superadmin scripts gave a *new* operator their profession and
+      wrote no rows, because they only called the helper for an existing
+      user. Both now seed a new user as well. Tests in
+      `backend/tests/test_competency_rows_are_written.py` that counted rows
+      now count the rows a save's lists asked for, leaving out seeded
+      ones, which `backend/tests/test_profession_seeds_rows.py` pins
+      instead.
+
+- [x] **Seed every existing user's profession competencies as rows**, in a
+      hand-written migration. For each user, write a `profession` row for
+      each competency their profession grants, unless they already have a
+      current grant for it or a current removal of it. A removal means the
+      competency is not held, so no row is seeded for it.
+
+      A migration cannot read the YAML, because the file moves on and the
+      migration has to keep meaning what it meant. So the profession to
+      competency mapping is frozen into it as literals, as
+      `b4c2e7a91f38` froze the professions that granted `manage_users`.
+      Written as `56f3ad035100`. Its seeded rows have a null `starts_on`,
+      because nothing recorded when somebody was given their profession,
+      which also marks them for `downgrade()`: a row the application seeds
+      carries the moment it was written. Tested against Postgres in
+      `backend/tests/test_profession_seed_backfill.py`, added to the
+      `alembic_drift_check` CI job.
+
+- [x] **Give the check before the switch a function to call.**
+      `unseeded_profession_competencies` in `backend/app/cbac/audit.py` lists,
+      per user, every competency their profession grants that they hold
+      only through the template: not removed, and with no current grant row.
+      An empty result means the switch below changes nobody's
+      competencies. It is run against teaching after the backfill deploys
+      and before the switch merges, from the backend container:
+      `python -c "from app.db import CoreSessionLocal; from app.cbac.audit
+      import unseeded_profession_competencies as u;
+      print(u(CoreSessionLocal()))"`. Or, against a deployed environment,
+      `just check-competency-seeding teaching`, which runs it as the
+      `check-competency-seeding` action of the admin Cloud Run job and
+      fails if anybody is listed.
+
+- [x] **Switch the resolver to the rows alone, and work out the two lists.**
+      `get_final_competencies` becomes the competency ids of the user's
+      current grant rows, and the YAML is consulted only when a profession
+      is given to somebody. This is the step that changes behaviour. After
+      it, an edit to `base-professions.yaml` affects only people given that
+      profession afterwards.
+
+      The API keeps `additional_competencies` and `removed_competencies`,
+      and the edit page at `/admin/users/{id}/edit` keeps both pickers. They
+      become a comparison against the profession's current YAML:
+
+      - **Additional** — held, and not in the profession.
+      - **Removed** — in the profession, and not held.
+
+      Saving still works out the held set as `profession + additional -
+      removed` and opens and closes grant rows to match. No `granted: false`
+      row is written any more: taking something away closes its row, which
+      is how everything else is already taken away. The same unit adds a
+      pointer from the Platform role plan's decision, "`base_profession`
+      stays stored against a person", to this phase.
+
+      **Seeding moved into the `User` constructor.** Found while switching.
+      Once the template stopped counting, every path that creates a user
+      without calling `sync_competency_rows` created somebody who held
+      nothing. That covers self-registration, an accepted assessor invite,
+      `seed_ci.py` and the other scripts, and more than a hundred tests. So
+      `User.__init__` writes the profession's rows itself, and every way a
+      user comes to exist gets them. A route that removes some of them at
+      creation closes those rows straight after, which records honestly
+      that the profession gave them and an administrator took them away.
+
+      `add_org_unit_member` now reads the person's removed list before
+      `grant_staff_competencies` changes their profession. Read afterwards,
+      the new profession's competencies would all count as "not held" and
+      be kept from them. The `withhold` and `clear` test helpers now close
+      grant rows. They no longer write removal rows, and `clear` leaves the
+      seeded profession rows alone.
+
+- [x] **Relabel the edit page to say what the lists now mean**, in
+      `frontend/src/pages/UserInfoUpdatePage.tsx`. "Default competencies"
+      becomes the profession's template, what a new person with it is
+      given. "Removed competencies" becomes "In the profession, not held",
+      because after a YAML change a competency can appear there for an
+      existing person without anybody having removed it. Stories and tests
+      for the step change with it.
+
+      The two lists are now "Held beyond the profession" and "In the
+      profession, not held", on the edit page, its review step and the user
+      page at `/admin/users/{id}`, which showed the same two headings.
+      The template's heading is "What it gives a new user". Neither page has
+      stories of its own, as pages are not stories here, so only their
+      tests changed.
+
+- [x] **Close the removal rows**, in a data migration, once nothing reads or
+      writes them. A current `granted: false` row now means only that no
+      grant row exists, which the seeding already made true. Closing rather
+      than deleting keeps the history of who removed what. Not destructive:
+      rows are closed, and the column stays.
+
+      Migration `2a2a7b1ea83a`. Every row it closes shares one `ends_on`,
+      the start of its transaction, which is how its `downgrade()` finds
+      them again. Tested against Postgres in
+      `backend/tests/test_close_removal_rows.py`, added to the
+      `alembic_drift_check` CI job.
+
+- [ ] **Drop the `granted` column**, in its own migration with the
+      `allow-destructive` marker, through the
+      `db-destructive-migration-review` environment, like Phase 7. It needs
+      a human's approval before it is built.
+
+## Phase 9: Organisation passport grants do not lapse
+
+Decided on 23 September 2026, after Phase 5 was built: somebody given the
+passport through a site or organisation, such as oncology at
+Gloucestershire, keeps it indefinitely. Only a subscription somebody buys
+for themselves runs out, after a year. Phases 2, 3 and 5 gave every grant
+a year, because `passport_write_entitlement` had, so this phase takes it
+off the grants that should not carry it. It sits on top rather than
+rewriting those phases: nothing it replaces lapses before it lands.
+
+- [x] **Key `TERMS` by who pays, not by competency.** `TERMS` in
+      `backend/app/cbac/grants.py` now maps a `source` to a term, and only
+      `individual` has one. So `sync_competency_rows` writes a
+      `passport_write` grant from an administrator, onboarding or an
+      operator with no end, and with the caller's `source` rather than
+      `organisation`. Nothing writes an `individual` grant yet; the term is
+      ready for the first thing that does.
+
+- [x] **Take the end date off existing organisation grants.** Migration
+      `57deea9f9ea6` clears `ends_on` on every current `passport_write`
+      grant whose `source` is `organisation`: the ones onboarding and the
+      backfill wrote. `individual` grants keep theirs. Its `downgrade()`
+      puts back `starts_on` plus a year, which is what each was written
+      with. Tested against Postgres in
+      `backend/tests/test_organisation_passport_grants_do_not_lapse.py`.
+
+- [x] **Let the passport page accept a grant with no end.**
+      `current_entitlement_end` answered "no current entitlement" for an
+      undated grant, and the page would have shown the passport as
+      read-only. It is now `passport_write_ends_on`: a current grant with
+      no end means it never runs out, whatever else the person holds, so
+      `EntitlementOut` carries no date, no countdown and `can_write` true.
+      The frontend already said nothing for that case, and a test now pins
+      it.
 
 ## Decisions
 
@@ -403,8 +627,9 @@ its own readers and its own migration.
   client and keeps this a storage change rather than an API one. Exposing
   expiry dates is a separate piece of work.
 
-- **Nothing but `passport_write` gets an end date here** — the table can hold
-  `ends_on` for anything, and nothing sets it. Which clinical competencies
+- **Only an individual passport subscription gets an end date** — the
+  table can hold `ends_on` for anything, and nothing else sets it. A grant
+  through a site or organisation has none (Phase 9). Which clinical competencies
   expire, how long they last and what lapsing does are per-competency
   questions, and `shared/competency-definitions/` would need to say which
   competencies expire at all before any of them could be answered.
@@ -416,7 +641,15 @@ its own readers and its own migration.
 ## Open questions
 
 - **Does `granted: false` need dates?** A removal that expires is a
-  suspension. The columns allow it; no step uses it.
+  suspension. The columns allow it; no step uses it. Phase 8 retires removal
+  rows altogether, so a suspension would become a grant row closed and
+  reopened, or a status of its own.
+
+- **How does a change to a profession reach the people who already hold
+  it?** After Phase 8 it reaches nobody automatically, which is the point.
+  When it should, for example a new mandatory competency for every nurse,
+  it needs a deliberate rollout: an admin action or a migration that writes
+  rows naming who approved it. Not built here.
 
 - **Should the catalogue declare which competencies expire?** A flag in
   `shared/competency-definitions/` would let the system refuse an `ends_on` on

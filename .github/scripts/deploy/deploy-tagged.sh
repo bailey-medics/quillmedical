@@ -76,16 +76,21 @@ describe_service() {
 }
 
 # Succeeds once the service JSON on stdin shows the promotion has landed:
-# the service is Ready, the newest revision is the one Cloud Run considers
-# ready, and that revision is actually carrying all of the traffic. Checks
-# status (what is live), not spec (what was asked for) — the stalled deploy
-# had spec at 100% LATEST while status still sat on the old revision.
+# the service is Ready and the given revision, the one that passed the smoke
+# test, is carrying all of the traffic. Checks status (what is live), not
+# spec (what was asked for) — the stalled deploy had spec at 100% while
+# status still sat on the old revision.
+#
+# Names the revision rather than asking whether the newest revision is
+# serving. Terraform can create a newer revision mid-deploy, by changing the
+# service's template, and that revision has not been tested; it must not be
+# what this waits for, and its existence must not stop this from settling.
 promotion_settled() {
-  jq -e '
+  local revision="$1"
+
+  jq -e --arg rev "$revision" '
     (.status.conditions // [] | map(select(.type == "Ready")) | .[0].status) == "True"
-    and .status.latestCreatedRevisionName == .status.latestReadyRevisionName
-    and (.status.latestReadyRevisionName as $rev
-         | [.status.traffic[]? | select(.revisionName == $rev) | .percent // 0]
+    and ([.status.traffic[]? | select(.revisionName == $rev) | .percent // 0]
          | add // 0) == 100
   ' > /dev/null
 }
@@ -93,13 +98,13 @@ promotion_settled() {
 # Polls the service until the promotion settles or the timeout passes.
 # Always polls at least once, so a zero timeout still checks the state.
 wait_for_promotion() {
-  local service="$1" project="$2" region="$3"
+  local service="$1" project="$2" region="$3" revision="$4"
   local timeout="${PROMOTE_TIMEOUT_SECONDS:-300}"
   local interval="${PROMOTE_POLL_INTERVAL_SECONDS:-10}"
   local deadline=$((SECONDS + timeout))
 
   while true; do
-    if describe_service "$service" "$project" "$region" | promotion_settled; then
+    if describe_service "$service" "$project" "$region" | promotion_settled "$revision"; then
       return 0
     fi
 
@@ -146,14 +151,24 @@ main() {
     exit 1
   fi
 
-  log "Resolving the tagged revision's own URL"
+  log "Resolving the tagged revision's own URL and name"
+  local service_json
   local tagged_url
-  tagged_url=$(describe_service "$service" "$project" "$region" \
-    | jq -r --arg TAG "$tag" \
-    '.status.traffic[] | select(.tag==$TAG) | .url')
+  local revision
+
+  service_json=$(describe_service "$service" "$project" "$region")
+  tagged_url=$(jq -r --arg TAG "$tag" \
+    '.status.traffic[] | select(.tag==$TAG) | .url' <<<"$service_json")
+  revision=$(jq -r --arg TAG "$tag" \
+    '.status.traffic[] | select(.tag==$TAG) | .revisionName' <<<"$service_json")
 
   if [ -z "$tagged_url" ] || [ "$tagged_url" = "null" ]; then
     error "Could not resolve a tagged URL for $tag on $service"
+    exit 1
+  fi
+
+  if [ -z "$revision" ] || [ "$revision" = "null" ]; then
+    error "Could not resolve the revision behind $tag on $service"
     exit 1
   fi
 
@@ -166,17 +181,29 @@ main() {
   local attempts="${PROMOTE_ATTEMPTS:-2}"
   local attempt
   for ((attempt = 1; attempt <= attempts; attempt++)); do
-    log "Promoting $tag — sending all traffic to the new revision (attempt $attempt/$attempts)"
+    # To the tested revision by name, not --to-latest. Latest would route
+    # to whatever revision is newest when the command lands, which can be
+    # one Terraform created mid-deploy that nobody smoke-tested. Pinning
+    # also means a later Terraform change to the template waits for the
+    # next deploy to carry it through this gate, rather than going live
+    # on its own.
+    #
+    # The tag goes in the same call: Cloud Run applies the tag change
+    # first, then the traffic, and the traffic names the revision rather
+    # than the tag, so the order is safe. Leaving it would keep the
+    # revision addressable at its tagged URL for good.
+    log "Promoting $tag ($revision) — sending it all traffic (attempt $attempt/$attempts)"
     if ! gcloud run services update-traffic "$service" \
       --project="$project" \
       --region="$region" \
-      --to-latest \
+      --to-revisions="${revision}=100" \
+      --remove-tags="$tag" \
       --async; then
       error "Cloud Run rejected the traffic update for $tag"
       continue
     fi
 
-    if wait_for_promotion "$service" "$project" "$region"; then
+    if wait_for_promotion "$service" "$project" "$region" "$revision"; then
       log "Promotion settled: $tag is serving all traffic"
       return 0
     fi

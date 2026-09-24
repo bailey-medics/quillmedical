@@ -46,7 +46,7 @@ from sqlalchemy.orm import (
     validates,
 )
 
-from app.cbac.base_professions import resolve_user_competencies
+from app.cbac.base_professions import get_profession_base_competencies
 from app.cbac.competencies import validate_competency_ids
 from app.org_units.relations import validate_org_unit_relation
 
@@ -101,8 +101,6 @@ class User(Base):
         is_active: Whether the account is active (for soft delete).
         roles: List of roles assigned to this user.
         base_profession: Base profession template (e.g., "consultant", "patient").
-        additional_competencies: Retired; see ``competency_grants``.
-        removed_competencies: Retired; see ``competency_grants``.
         competency_grants: Competencies granted beyond, or removed from,
             the base profession, one ``user_competency`` row each.
         professional_registrations: Professional registration details (GMC, NMC, etc.).
@@ -158,15 +156,6 @@ class User(Base):
     base_profession: Mapped[str] = mapped_column(
         String(100), nullable=False, default="patient"
     )
-    # Retired: `user_competency` rows replaced both lists. Neither is read
-    # or written; they stay only until the migration that drops them, and
-    # a new row gets the empty default.
-    additional_competencies: Mapped[list[str]] = mapped_column(
-        JSON, nullable=False, default=lambda: []
-    )
-    removed_competencies: Mapped[list[str]] = mapped_column(
-        JSON, nullable=False, default=lambda: []
-    )
     professional_registrations: Mapped[dict[str, Any] | None] = mapped_column(
         JSON, nullable=True
     )
@@ -181,8 +170,7 @@ class User(Base):
     #: row each, current and closed alike. Loaded with the user rather
     #: than on demand because ``get_final_competencies`` takes no
     #: session, and ``selectin`` loads a whole list of users' rows in one
-    #: query rather than one per user. The JSON columns above are neither
-    #: read nor written any more, and are dropped in a later change.
+    #: query rather than one per user.
     competency_grants: Mapped[list[UserCompetency]] = relationship(
         foreign_keys="UserCompetency.user_id",
         back_populates="user",
@@ -191,52 +179,89 @@ class User(Base):
         passive_deletes=True,
     )
 
-    def _current_competency_ids(self, *, granted: bool) -> list[str]:
-        """Competency ids with a current row of the given kind, sorted."""
+    def __init__(self, **kwargs: Any) -> None:
+        """Create a user, holding what their base profession grants.
+
+        The profession is a starting point, not a template read on every
+        request: its competencies are written as ``profession`` rows here,
+        once, and from then on only the rows count. Seeding in the
+        constructor rather than in each route is what makes it true of every
+        way a user comes to exist — the admin routes, self-registration, an
+        accepted invite, the command-line scripts and the seed data alike.
+        A route that removes some of those competencies at creation closes
+        the rows straight after, which records honestly that the profession
+        gave them and an administrator took them away.
+        """
+        super().__init__(**kwargs)
+        if self.base_profession is None:
+            self.base_profession = "patient"
+        now = datetime.now(UTC)
+        for competency_id in get_profession_base_competencies(
+            self.base_profession
+        ):
+            self.competency_grants.append(
+                UserCompetency(
+                    competency_id=competency_id,
+                    granted=True,
+                    starts_on=now,
+                    source="profession",
+                )
+            )
+
+    def _current_grant_ids(self) -> list[str]:
+        """Competency ids with a current grant row, sorted."""
         now = datetime.now(UTC)
         return sorted(
             {
                 row.competency_id
                 for row in self.competency_grants
-                if row.granted == granted and row.is_current(now)
+                if row.granted and row.is_current(now)
             }
         )
 
     @property
     def additional_competency_ids(self) -> list[str]:
-        """What this person holds beyond their base profession, from rows.
+        """What this person holds that their profession does not grant.
 
-        The competencies with a current grant row. The
-        ``additional_competencies`` JSON column it replaces is no longer
-        read or written.
+        Their current grant rows, less the profession's template as it
+        stands in ``shared/base-professions.yaml`` now. A comparison, worked
+        out when asked, so the edit page can show where somebody differs
+        from their profession.
         """
-        return self._current_competency_ids(granted=True)
+        template = set(get_profession_base_competencies(self.base_profession))
+        return [
+            competency_id
+            for competency_id in self._current_grant_ids()
+            if competency_id not in template
+        ]
 
     @property
     def removed_competency_ids(self) -> list[str]:
-        """What their profession gives them that they do not hold, from rows.
+        """What their profession grants that this person does not hold.
 
-        The competencies with a current removal row. The
-        ``removed_competencies`` JSON column it replaces is no longer read
-        or written.
+        The profession's template as it stands now, less their current
+        grant rows. After the template gains a competency, it appears here
+        for everybody who already had the profession, because none of them
+        was given it. Nobody need have removed anything.
         """
-        return self._current_competency_ids(granted=False)
+        held = set(self._current_grant_ids())
+        return sorted(
+            set(get_profession_base_competencies(self.base_profession)) - held
+        )
 
     def get_final_competencies(self) -> list[str]:
         """Compute final competencies for this user.
 
-        Base profession, plus every current grant row, minus every current
-        removal row. A grant whose ``ends_on`` has passed is not held,
-        which is how ``passport_write`` lapses.
+        Their current grant rows, and nothing else. The profession is not
+        consulted: it seeded rows when they were given it, so an edit to
+        ``shared/base-professions.yaml`` changes only people given the
+        profession afterwards. A grant whose ``ends_on`` has passed is not
+        held, which is how ``passport_write`` lapses.
 
         Returns:
             List of competency IDs this user has.
         """
-        return resolve_user_competencies(
-            base_profession=self.base_profession,
-            additional_competencies=self.additional_competency_ids,
-            removed_competencies=self.removed_competency_ids,
-        )
+        return self._current_grant_ids()
 
 
 class PatientMetadata(Base):
@@ -1167,8 +1192,12 @@ COMPETENCY_GRANT_SOURCES: tuple[str, ...] = (
     # The command-line scripts that create the first superadmin, where
     # nobody is signed in to be `granted_by`.
     "bootstrap",
+    # Seeded from the person's base profession when they were given it, so
+    # what they hold no longer depends on the profession's template.
+    "profession",
     # A term of `passport_write` paid for by an organisation, or bought by
-    # the person. The two values `passport_write_entitlement` uses.
+    # the person. The two values the retired `passport_write_entitlement`
+    # table used.
     "organisation",
     "individual",
     # Copied from the JSON columns and the entitlement table when this
@@ -1180,16 +1209,18 @@ COMPETENCY_GRANT_SOURCES: tuple[str, ...] = (
 class UserCompetency(Base):
     """One grant, or one removal, of a competency to one person.
 
-    Replaces ``User.additional_competencies`` and
+    Replaced ``User.additional_competencies`` and
     ``User.removed_competencies``, two JSON lists of ids that could say
     nothing about an entry beyond its name: not when it started, not when
     it ends, not who made it. See
     ``docs/docs/plans/2026-09-23-user-competency-table-plan.md``.
 
-    **``granted`` false is a removal**: this person does not hold something
-    their base profession would give them. It keeps the subtraction
-    ``resolve_user_competencies`` performs, and unlike a string in a list it
-    can say who removed it and when.
+    **``granted`` false was a removal, and is retired.** It said this
+    person did not hold something their base profession gave, while the
+    profession was added to their rows on every request. Now only grant rows
+    count, and not holding a competency is having no current grant row for
+    it. No removal row is written, the ones that were are closed, and the
+    column goes in a later change.
 
     **No foreign key on ``competency_id``.** The catalogue is
     ``shared/competency-definitions/``, not a table, and a retired
@@ -1211,7 +1242,7 @@ class UserCompetency(Base):
         user_id: The person.
         competency_id: A competency id from
             ``shared/competency-definitions/``.
-        granted: True for a grant, false for a removal.
+        granted: True for a grant. False only on retired removal rows.
         starts_on: When it took effect. Null on rows copied from the JSON
             lists, which never recorded it.
         ends_on: When it stops, or stopped. Null for a grant with no end.
@@ -1440,3 +1471,102 @@ class PositionHolding(Base):
     appointed_by: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
+
+
+# ------------------------------------------------------------------
+# Feedback
+# ------------------------------------------------------------------
+
+
+#: Where a piece of feedback has got to. A closed set, because each state
+#: is a step in reading and closing a report rather than a label that grows:
+#: a fifth one means rethinking the admin page, not extending a list.
+FEEDBACK_STATUSES: tuple[str, ...] = (
+    "new",
+    "acknowledged",
+    "resolved",
+    "wont_fix",
+)
+
+#: What the sender said it was about, when they said. Validated in the
+#: request schema rather than the database, because the plan expects this
+#: set to change once real submissions show which options earn a place.
+FEEDBACK_CATEGORIES: tuple[str, ...] = (
+    "broken",
+    "inaccurate",
+    "suggestion",
+    "other",
+)
+
+
+class Feedback(Base):
+    """One message a signed-in user sent about the application.
+
+    A table rather than a log line, because the question asked of feedback
+    is "what is still outstanding?", and a log line cannot be marked
+    resolved. ``status`` is what makes this a workflow rather than a pile.
+
+    **``message`` may contain patient data.** Somebody describing a bug
+    pastes what they were looking at. It is stored as typed, since
+    redacting prose destroys the report, so the controls are on who may
+    read it and on never logging it. See
+    ``docs/docs/plans/2026-09-20-user-feedback-plan.md``.
+
+    Attributes:
+        id: Primary key.
+        user_id: Who sent it, from the session rather than the request
+            body. Null once that user is deleted.
+        category: One of ``FEEDBACK_CATEGORIES``, or None if not chosen.
+        message: What they typed.
+        route: The matched route pattern they were on, never a resolved
+            URL.
+        release: The frontend build they were running.
+        viewport: Width by height, as ``390x844``.
+        user_agent: The browser's user agent, bounded.
+        breadcrumbs: The recent route changes, API calls and sign-in
+            events, as the error reports carry them. A snapshot read back
+            whole, which is why it is JSON rather than a table.
+        error_name: The error just reported, when sent from the error
+            boundary.
+        error_code: That error's code, when it had one.
+        status: One of ``FEEDBACK_STATUSES``.
+        created_at: When it was sent.
+    """
+
+    __tablename__ = "feedback"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ("
+            + ", ".join(f"'{s}'" for s in FEEDBACK_STATUSES)
+            + ")",
+            name="ck_feedback_status_known",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    category: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    message: Mapped[str] = mapped_column(String(5000), nullable=False)
+    route: Mapped[str] = mapped_column(String(200), nullable=False)
+    release: Mapped[str] = mapped_column(String(100), nullable=False)
+    viewport: Mapped[str] = mapped_column(String(20), nullable=False)
+    user_agent: Mapped[str] = mapped_column(String(300), nullable=False)
+    breadcrumbs: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON, nullable=False, default=lambda: []
+    )
+    error_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    error_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="new", index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+
+    user: Mapped[User | None] = relationship(foreign_keys=[user_id])

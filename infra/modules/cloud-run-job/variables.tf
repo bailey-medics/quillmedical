@@ -85,3 +85,9 @@ variable "secret_env_vars" {
   type        = map(string)
   default     = {}
 }
+
+variable "service_account_email" {
+  description = "Service account the job runs as. Empty uses the default Compute Engine account."
+  type        = string
+  default     = ""
+}

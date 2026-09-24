@@ -296,10 +296,13 @@ resource "google_secret_manager_secret_version" "vapid_private" {
 
 # ---------- Cloud Run: backend ----------
 module "cloud_run_backend" {
-  source      = "./modules/cloud-run"
-  project_id  = var.project_id
-  region      = var.region
-  environment = var.environment
+  source = "./modules/cloud-run"
+
+  # Its own identity; see infra/runtime-identities.tf.
+  service_account_email = google_service_account.runtime["backend"].email
+  project_id            = var.project_id
+  region                = var.region
+  environment           = var.environment
 
   service_name      = "backend"
   image             = var.backend_image
@@ -416,27 +419,7 @@ module "cloud_run_backend" {
     }
   )
 
-  secret_env_vars = merge(
-    {
-      JWT_SECRET       = "jwt-secret"
-      CORE_DB_PASSWORD = "core-db-password"
-      VAPID_PRIVATE    = "vapid-private"
-      RESEND_API_KEY   = "resend-api-key"
-    },
-    var.enable_fhir ? {
-      FHIR_DB_PASSWORD           = "fhir-db-password"
-      EHRBASE_DB_PASSWORD        = "ehrbase-db-password"
-      EHRBASE_API_PASSWORD       = "ehrbase-api-password"
-      EHRBASE_API_ADMIN_PASSWORD = "ehrbase-admin-password"
-    } : {},
-    local.is_teaching_product ? {
-      TEACHING_SYNC_TOKEN        = "teaching-sync-token"
-      TEACHING_VIDEO_SIGNING_KEY = "teaching-video-signing-key"
-      # The other end of the transcode job's completion report. Same
-      # secret on both sides — the job presents it, this verifies it.
-      TEACHING_TRANSCODE_CALLBACK_TOKEN = "teaching-transcode-callback-token"
-    } : {}
-  )
+  secret_env_vars = local.backend_secret_env_vars
 
   depends_on = [
     google_secret_manager_secret_version.jwt_secret,
@@ -453,10 +436,13 @@ import {
 }
 
 module "cloud_run_admin_job" {
-  source      = "./modules/cloud-run-job"
-  project_id  = var.project_id
-  region      = var.region
-  environment = var.environment
+  source = "./modules/cloud-run-job"
+
+  # Its own identity; see infra/runtime-identities.tf.
+  service_account_email = google_service_account.runtime["admin"].email
+  project_id            = var.project_id
+  region                = var.region
+  environment           = var.environment
 
   job_name         = "admin"
   image            = var.admin_image
@@ -476,10 +462,7 @@ module "cloud_run_admin_job" {
     CORE_DB_USER = module.cloud_sql_core.database_user
   }
 
-  secret_env_vars = {
-    CORE_DB_PASSWORD = "core-db-password"
-    JWT_SECRET       = "jwt-secret"
-  }
+  secret_env_vars = local.admin_secret_env_vars
 
   depends_on = [
     google_project_iam_member.cloudrun_secret_accessor,
@@ -502,11 +485,14 @@ module "cloud_run_admin_job" {
 # for the admin job. The module's `ignore_changes` on the image is what makes
 # that safe.
 module "cloud_run_transcode_job" {
-  count       = local.is_teaching_product ? 1 : 0
-  source      = "./modules/cloud-run-job"
-  project_id  = var.project_id
-  region      = var.region
-  environment = var.environment
+  count  = local.is_teaching_product ? 1 : 0
+  source = "./modules/cloud-run-job"
+
+  # Its own identity; see infra/runtime-identities.tf.
+  service_account_email = google_service_account.runtime["transcode"].email
+  project_id            = var.project_id
+  region                = var.region
+  environment           = var.environment
 
   job_name         = "transcode"
   image            = var.transcode_image
@@ -536,9 +522,7 @@ module "cloud_run_transcode_job" {
     TRANSCODE_CALLBACK_URL = "https://${var.app_domain}/api/ci/teaching/transcode-complete"
   }
 
-  secret_env_vars = {
-    TRANSCODE_CALLBACK_TOKEN = "teaching-transcode-callback-token"
-  }
+  secret_env_vars = local.transcode_secret_env_vars
 
   depends_on = [module.teaching_video_pipeline]
 }
@@ -609,11 +593,14 @@ resource "google_cloud_run_v2_job_iam_member" "backend_invokes_caption" {
 # job's 4. The hour-long timeout is the plan's figure and deliberate — a
 # transcription that has not finished in an hour has gone wrong.
 module "cloud_run_caption_job" {
-  count       = local.is_teaching_product ? 1 : 0
-  source      = "./modules/cloud-run-job"
-  project_id  = var.project_id
-  region      = var.region
-  environment = var.environment
+  count  = local.is_teaching_product ? 1 : 0
+  source = "./modules/cloud-run-job"
+
+  # Its own identity; see infra/runtime-identities.tf.
+  service_account_email = google_service_account.runtime["caption"].email
+  project_id            = var.project_id
+  region                = var.region
+  environment           = var.environment
 
   job_name         = "caption"
   image            = var.caption_image
@@ -634,19 +621,20 @@ module "cloud_run_caption_job" {
     CAPTION_CALLBACK_URL = "https://${var.app_domain}/api/ci/teaching/caption-complete"
   }
 
-  secret_env_vars = {
-    CAPTION_CALLBACK_TOKEN = "teaching-transcode-callback-token"
-  }
+  secret_env_vars = local.caption_secret_env_vars
 
   depends_on = [module.teaching_video_pipeline]
 }
 
 # ---------- Cloud Run: frontend ----------
 module "cloud_run_frontend" {
-  source      = "./modules/cloud-run"
-  project_id  = var.project_id
-  region      = var.region
-  environment = var.environment
+  source = "./modules/cloud-run"
+
+  # Its own identity; see infra/runtime-identities.tf.
+  service_account_email = google_service_account.runtime["frontend"].email
+  project_id            = var.project_id
+  region                = var.region
+  environment           = var.environment
 
   service_name      = "frontend"
   image             = var.frontend_image
