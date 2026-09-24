@@ -238,19 +238,18 @@ class TestIdentifiersTravelWithLabels:
 
 
 class TestRegistrationsAreHonest:
-    """Declared until somebody checks a register, and the wire says so."""
+    """What was declared, with no field claiming anybody checked it."""
 
-    def test_verified_defaults_to_false(self) -> None:
-        registration = api_schemas.RegistrationOut(
-            body="GMC", number="1234567"
-        )
+    def test_a_registration_is_its_body_and_number(self) -> None:
+        assert set(api_schemas.RegistrationOut.model_fields) == {
+            "body",
+            "number",
+        }
 
-        assert registration.verified is False
-
-    def test_an_assessor_reports_whether_anyone_checked(self) -> None:
+    def test_an_assessor_carries_no_verification_flag(self) -> None:
         fields = set(api_schemas.AssessorOut.model_fields)
 
-        assert "registration_verified" in fields
+        assert "registration_verified" not in fields
 
 
 class TestVerificationStatesItsLimits:

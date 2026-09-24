@@ -247,13 +247,10 @@ def _front_page(
     ]
 
     for registration in profile.registrations:
-        standing = (
-            "verified" if registration.verified else "declared, not verified"
-        )
         story.append(
             Paragraph(
                 f"{_text(registration.body)} {_text(registration.number)} "
-                f"— <i>{standing}</i>",
+                "— <i>declared</i>",
                 styles["body"],
             )
         )
@@ -269,9 +266,9 @@ def _front_page(
             Paragraph(
                 "This is a record of assessed clinical competence: what "
                 "this person has been signed off to do, by whom, and on "
-                "what evidence. Registrations are recorded as declared; "
-                "one is marked verified only where somebody has checked a "
-                "register by hand. The fingerprints printed against each "
+                "what evidence. Registrations are recorded as declared: "
+                "Quill checks no register, so a reader relying on one "
+                "should check it there. The fingerprints printed against each "
                 "sign-off show the record has not changed since it was "
                 "written — they do not prove a registration, and they "
                 "prove nothing to a reader who distrusts the system that "
@@ -730,17 +727,15 @@ def _one_sign_off(
             f"{_text(r.body)} {_text(r.number)}"
             for r in assessor.registrations
         )
-        standing = (
-            "registration verified"
-            if assessor.registration_verified
-            else "registration declared, not verified"
-        )
         block.append(
             Paragraph(
                 f"Signed off by {_text(assessor.name)}, "
                 f"{_text(assessor.role)}"
-                + (f" ({registrations})" if registrations else "")
-                + f" — <i>{standing}</i>",
+                + (
+                    f" ({registrations}) — <i>registration as declared</i>"
+                    if registrations
+                    else ""
+                ),
                 styles["body"],
             )
         )

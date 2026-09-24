@@ -273,11 +273,11 @@ EXPECTED_MARKDOWN = """\
 
 **Dr Priya Kapoor**
 
-- GMC 1234567 — _declared, not verified_
+- GMC 1234567 — _declared_
 
 Generated <date>.
 
-This is a record of assessed clinical competence: what this person has been signed off to do, by whom, and on what evidence. Registrations are recorded as declared; a registration is marked verified only where somebody has checked a register by hand.
+This is a record of assessed clinical competence: what this person has been signed off to do, by whom, and on what evidence. Registrations are recorded as declared. Quill checks no register, so a reader relying on one should check it on the register itself.
 
 ## Competencies
 
@@ -318,7 +318,7 @@ Self-declared: recorded by the holder, with nobody countersigning.
 - Observed: 2026-03-14
 - Signed: 2026-03-20
 - The assessor directly observed
-- Signed off by: Dr Amara Okonkwo, consultant (GMC 7654321) — _registration declared, not verified_
+- Signed off by: Dr Amara Okonkwo, consultant (GMC 7654321) — _registration as declared_
 - Evidence in view when signed: 0 logbook entries, 0 certificates
 
 Fingerprint: `sha256:<hash>`

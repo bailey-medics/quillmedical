@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "response-optional-property-removed POST /api/passport removed the optional property `registrations/items/verified_on` from the response with the `201` status"
+reason: "verified_on leaves the create response. Registration verification is removed, so no response carries a flag saying an admin checked a register. Nothing ever set it: every value served was false or empty. A stale tab missing it shows a registration as declared, which is what it always showed. No forced reload."

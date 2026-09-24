@@ -78,11 +78,6 @@ NON_CONTRIBUTING: dict[str, str] = {
         "A label for the reader. The user id identifies the assessor and "
         "does contribute."
     ),
-    "signed_off_by.registration_verified": (
-        "Verification happens after signing, by an administrator "
-        "checking a register. It must not invalidate the record it "
-        "confirms."
-    ),
     "comments": "Prose. Fixing a typo must leave the fingerprint alone.",
     "evidence": (
         "A snapshot of what was in view, not part of the decision. The "
@@ -192,9 +187,9 @@ def canonical_payload(record: SignOff) -> dict[str, Any]:
         if path == "signed_off_by.registrations":
             # Body and number only, and sorted. An assessor's
             # professional standing cannot be quietly rewritten after
-            # signing, which is the whole reason this contributes — but
-            # the verified flag is excluded, since verification happens
-            # afterwards and must not invalidate what it confirms.
+            # signing, which is the whole reason this contributes. The
+            # retired verification fields were never part of it, so
+            # records written while they existed still verify.
             registrations = value or []
             payload[path] = sorted(
                 f"{registration.body}:{registration.number}"
@@ -307,8 +302,8 @@ whom, and against which evidence. Recomputing it tells you the record
 has not changed since it was written.
 
 It does **not** prove the assessor's professional registration. Those are
-recorded as declared, and marked verified only where somebody checked a
-register by hand. And it proves nothing to anyone who distrusts the
+recorded as the assessor declared them, and Quill checks no register.
+And it proves nothing to anyone who distrusts the
 system that wrote it, since the same system computed the fingerprint and
 stored it. It is a check against accidental change and later editing,
 not a signature.

@@ -286,9 +286,8 @@ class TestSigning:
 
         _sign(passport, assessor, name)
 
-        record = service.read_sign_off(passport, PASSPORT_ID, name)
-        assert record.signed_off_by is not None
-        assert record.signed_off_by.registration_verified is False
+        raw = passport.read(PASSPORT_ID, paths.sign_off_file(name))
+        assert b"verified" not in raw
 
     def test_signing_twice_is_refused(
         self,

@@ -108,13 +108,8 @@ def _front_page(profile: Profile, index: Index) -> str:
 
     if profile.registrations:
         for registration in profile.registrations:
-            state = (
-                "verified"
-                if registration.verified
-                else "declared, not verified"
-            )
             lines.append(
-                f"- {registration.body} {registration.number} " f"— _{state}_"
+                f"- {registration.body} {registration.number} — _declared_"
             )
         lines.append("")
 
@@ -124,9 +119,9 @@ def _front_page(profile: Profile, index: Index) -> str:
             "",
             "This is a record of assessed clinical competence: what this "
             "person has been signed off to do, by whom, and on what "
-            "evidence. Registrations are recorded as declared; a "
-            "registration is marked verified only where somebody has "
-            "checked a register by hand.",
+            "evidence. Registrations are recorded as declared. Quill "
+            "checks no register, so a reader relying on one should "
+            "check it on the register itself.",
         ]
     )
 
@@ -431,15 +426,13 @@ def _one_sign_off(name: str, record: SignOff) -> list[str]:
         registrations = ", ".join(
             f"{r.body} {r.number}" for r in assessor.registrations
         )
-        standing = (
-            "registration verified"
-            if assessor.registration_verified
-            else "registration declared, not verified"
-        )
         lines.append(
             f"- Signed off by: {assessor.name}, {assessor.role}"
-            + (f" ({registrations})" if registrations else "")
-            + f" — _{standing}_"
+            + (
+                f" ({registrations}) — _registration as declared_"
+                if registrations
+                else ""
+            )
         )
 
     if record.expires_on:

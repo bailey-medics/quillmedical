@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "response-optional-property-removed GET /api/passport/me removed the optional property `passport/registrations/items/verified` from the response with the `200` status"
+reason: "verified leaves the my passport response. Registration verification is removed, so no response carries a flag saying an admin checked a register. Nothing ever set it: every value served was false or empty. A stale tab missing it shows a registration as declared, which is what it always showed. No forced reload."

@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "response-optional-property-removed GET /api/passport/requests/inbox removed the optional property `items/sign_off/signed_off_by/anyOf[subschema #1: AssessorOut]/registrations/items/verified_by` from the response with the `200` status"
+reason: "verified_by leaves the inbox response. Registration verification is removed, so no response carries a flag saying an admin checked a register. Nothing ever set it: every value served was false or empty. A stale tab missing it shows a registration as declared, which is what it always showed. No forced reload."

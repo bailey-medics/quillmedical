@@ -277,21 +277,25 @@ class TestWhatMustNotMoveTheHash:
             )
         ) == hashing.content_hash(_sign_off())
 
-    def test_verifying_a_registration_afterwards(self) -> None:
-        """Verification must not invalidate the record it confirms."""
-        verified = _registration(
-            verified=True,
-            verified_by="admin@example.nhs.uk",
-            verified_on=date(2026, 4, 2),
-        )
+    def test_the_retired_verification_fields_on_an_old_record(
+        self,
+    ) -> None:
+        """A record written before verification was removed still verifies.
+
+        Its file carries ``verified`` on each registration and
+        ``registration_verified`` on the assessor. Neither ever
+        contributed, so reading the file and recomputing must give the
+        hash stored when it was written.
+        """
+        old = _sign_off().model_dump(mode="json")
+        old["signed_off_by"]["registration_verified"] = False
+        for registration in old["signed_off_by"]["registrations"]:
+            registration.update(
+                verified=False, verified_by=None, verified_on=None
+            )
 
         assert hashing.content_hash(
-            _sign_off(signed_off_by=_assessor(registrations=[verified]))
-        ) == hashing.content_hash(_sign_off())
-
-    def test_the_registration_verified_flag_on_the_assessor(self) -> None:
-        assert hashing.content_hash(
-            _sign_off(signed_off_by=_assessor(registration_verified=True))
+            schemas.SignOff.model_validate(old)
         ) == hashing.content_hash(_sign_off())
 
     def test_an_attachments_filename(self) -> None:

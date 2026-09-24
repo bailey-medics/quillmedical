@@ -85,8 +85,8 @@ change, who made it, and when.
 
 A sign-off records that a named person accepted accountability for a
 judgement on a date. It does not prove that person's professional
-registration: registrations are recorded as declared, and marked
-verified only where somebody has checked a register by hand.
+registration: registrations are recorded as declared, and Quill checks
+no register.
 """
 
 
