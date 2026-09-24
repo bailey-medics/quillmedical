@@ -180,6 +180,22 @@ const preview: Preview = {
   parameters: {
     actions: { argTypesRegex: "^on[A-Z].*" },
     controls: { expanded: true },
+    // axe checks on every story. "todo" reports violations without failing
+    // the test-runner, so the first run produces a baseline rather than
+    // blocking every open pull request; it becomes "error" once clear.
+    a11y: {
+      test: "todo",
+      options: {
+        runOnly: {
+          type: "tag",
+          values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"],
+        },
+      },
+      // axe ships target-size (WCAG 2.5.8) disabled
+      config: {
+        rules: [{ id: "target-size", enabled: true }],
+      },
+    },
     layout: "padded",
     // Ensure stories are sorted alphabetically in the sidebar
     options: {

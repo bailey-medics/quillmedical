@@ -21,6 +21,7 @@ const config: StorybookConfig = {
         },
       },
     },
+    "@storybook/addon-a11y",
     "storybook-addon-pseudo-states",
   ],
   staticDirs: ["../public"],
