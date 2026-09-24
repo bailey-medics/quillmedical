@@ -13,7 +13,7 @@ import SearchField from "@/components/search";
 import { useSearch } from "@lib/search";
 import QuillName from "@components/images/QuillName";
 import ProfilePic from "@components/profile-pic/ProfilePic";
-import { Group, Skeleton, Text } from "@mantine/core";
+import { Group, Skeleton, Text, UnstyledButton } from "@mantine/core";
 import BurgerButton from "@/components/button/BurgerButton";
 import { Link } from "react-router-dom";
 import classes from "./TopRibbon.module.scss";
@@ -193,16 +193,18 @@ export default function TopRibbon({
           {isLoading ? (
             <RibbonSkeleton isNarrow={isNarrow} />
           ) : patient ? (
-            <div
+            // A button, so a keyboard can reach it: Enter scrolls to the
+            // top as a click does. Double-click, which opens the record,
+            // stays a mouse shortcut; the side navigation links there too.
+            <UnstyledButton
               className={classes.demographics}
               onClick={onPatientClick}
               onDoubleClick={onPatientDoubleClick}
-              style={{ cursor: "pointer" }}
             >
               {isNarrow
                 ? patientDetailsShort(patient, fontSize)
                 : patientDetailsLong(patient, fontSize)}
-            </div>
+            </UnstyledButton>
           ) : null}
         </div>
         {/* right: search — hidden by @container when narrow */}

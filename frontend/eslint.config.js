@@ -9,6 +9,7 @@ import tseslint from "typescript-eslint";
 import regexp from "eslint-plugin-regexp";
 import react from "eslint-plugin-react";
 import noSecrets from "eslint-plugin-no-secrets";
+import jsxA11y from "eslint-plugin-jsx-a11y";
 
 export default tseslint.config(
   [
@@ -22,6 +23,9 @@ export default tseslint.config(
         ...tseslint.configs.recommended,
         reactHooks.configs.flat["recommended-latest"],
         reactRefresh.configs.vite,
+        // The static half of accessibility: labels, alt text, roles and
+        // keyboard handlers, caught before a story renders.
+        jsxA11y.flatConfigs.recommended,
         // Keep Prettier LAST so it can turn off conflicting stylistic rules
         eslintConfigPrettier,
       ],

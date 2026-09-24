@@ -272,4 +272,18 @@ describe("MessagesList", () => {
       expect(screen.queryByText("Sarah Johnson")).not.toBeInTheDocument();
     });
   });
+
+  it("opens a thread from the keyboard", async () => {
+    // Each thread is a button, so Tab reaches it and Enter opens it.
+    const user = userEvent.setup();
+    const onThreadClick = vi.fn();
+    renderWithMantine(
+      <MessagesList threads={mockThreads} onThreadClick={onThreadClick} />,
+    );
+
+    await user.tab();
+    await user.keyboard("{Enter}");
+
+    expect(onThreadClick).toHaveBeenCalledWith(mockThreads[0]);
+  });
 });

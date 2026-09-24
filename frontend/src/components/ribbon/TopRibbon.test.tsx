@@ -444,4 +444,24 @@ describe("TopRibbon Component", () => {
       expect(avatar).toBeInTheDocument();
     });
   });
+
+  it("lets the keyboard reach the patient details", async () => {
+    // A button rather than a clickable div: Enter does what a click does.
+    const user = userEvent.setup();
+    const onPatientClick = vi.fn();
+    renderWithRouter(
+      <TopRibbon
+        onBurgerClick={vi.fn()}
+        patient={mockPatient}
+        isLoading={false}
+        onPatientClick={onPatientClick}
+      />,
+    );
+
+    const details = screen.getByRole("button", { name: /John Smith/ });
+    details.focus();
+    await user.keyboard("{Enter}");
+
+    expect(onPatientClick).toHaveBeenCalledTimes(1);
+  });
 });

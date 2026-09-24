@@ -46,6 +46,10 @@ export default function AppTooltip({
 
   if (isMobile) {
     return (
+      // Not an interaction of its own: stops a tap that opens the tooltip
+      // from also triggering a clickable parent. Keyboard focus shows the
+      // tooltip without a click, so there is no key event to mirror.
+      // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
       <span onClick={(e) => e.stopPropagation()}>
         <Tooltip
           label={tooltipLabel}
