@@ -82,7 +82,7 @@ Nothing user-visible yet; submissions can land before there is a form.
 
 The feature becomes usable here.
 
-- [ ] Build `frontend/src/components/feedback/FeedbackModal.tsx` with
+- [x] Build `frontend/src/components/feedback/FeedbackModal.tsx` with
       `.stories.tsx` and `.test.tsx`. A modal, not a page: routing away loses
       the screen being complained about and trips `DirtyFormNavigation`, and
       people describe better what they can still see. Contents:
@@ -94,18 +94,28 @@ The feature becomes usable here.
     `Something is wrong or inaccurate`, `Suggestion`, `Something else`.
   - **Message** — required, autofocused `Textarea`, with **Do not include
     patient details.** directly above it.
-  - **Actions** — `ButtonPair`, submit labelled `Send feedback` with
-    `IconSend`.
-- [ ] Submit through the `api` client, not `sendBeacon`, and show a success
+  - **Actions** — `ButtonPair`, submit labelled `Send feedback`.
+
+  Built on the existing `Form` wrapper (`components/form/Form`), which
+  brings the submitting, error and timeout states and is safe outside a
+  router — which Phase 6 needs. That wrapper's `SubmitButton` takes a text
+  label only, so the submit carries no `IconSend`; widening `Form` for one
+  icon was not worth it. The message label's description carries the
+  patient-data warning, which puts it directly above the textarea.
+- [x] Submit through the `api` client, not `sendBeacon`, and show a success
       state in place of the form rather than closing. `sendBeacon` suits a
       crash report where no answer is worth having; someone who has typed
       three sentences needs to see it landed, or they repeat themselves or
       give up.
-- [ ] Capture context at submit time: `route` from `getCurrentRoute()` (the
+- [x] Capture context at submit time: `route` from `getCurrentRoute()` (the
       matched pattern, never a resolved URL), `breadcrumbs` from
       `getBreadcrumbs()`, the same `release` error reports carry, and
       `viewport` and `user_agent` bounded as the error path bounds them.
-- [ ] Add the link in `SideNavContent.tsx`, below the `featureItems` map and
+      Lives in `frontend/src/lib/feedback/sendFeedback.ts`, and the modal
+      takes it as an `onSubmit` prop so stories and tests need no network.
+      `readViewport` and `readUserAgent` are exported from
+      `lib/error-reporting/report.ts` so the two paths cannot drift.
+- [x] Add the link in `SideNavContent.tsx`, below the `featureItems` map and
       directly above `Logout`. Label `Send feedback`, icon `"feedback"`,
       opens the modal rather than navigating. Ungated — no
       `hasClinicalServices` or competency check, because everyone can hit a
@@ -114,7 +124,17 @@ The feature becomes usable here.
       a verb beside `Logout`, the sidebar's other verb. `Feedback` alone
       reads as a destination and collides with the admin page; `Report a
       problem` suppresses suggestions.
-- [ ] Frontend tests, `just uf <path>`: the modal renders, requires the
+- [x] Add the same link to `TeachingMainNav.tsx`, found while building:
+      teaching pages replace the main sidebar with that one, so without it
+      the learners this feature is chiefly for could not reach the link
+      from a teaching page. Both sidebars render one
+      `components/feedback/SendFeedbackNavLink.tsx`, which owns the modal so
+      the two cannot drift. It does not call `onNavigate`: on mobile that
+      closes the drawer, which unmounts the drawer's contents and would take
+      the modal with it. The slide reader's `TeachingLearningNav` still has
+      no link; it is a table of contents with an exit, and has no Logout
+      either.
+- [x] Frontend tests, `just uf <path>`: the modal renders, requires the
       message, submits, shows success and handles failure — query the
       category as `role="combobox"`, and set unset handlers in stories to
       `undefined` so `argTypesRegex` does not inject spies. `SideNavContent`

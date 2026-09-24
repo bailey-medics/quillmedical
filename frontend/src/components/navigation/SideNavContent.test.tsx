@@ -771,4 +771,42 @@ describe("SideNavContent Component", () => {
       expect(screen.queryByText("Passport")).not.toBeInTheDocument();
     });
   });
+
+  describe("Send feedback", () => {
+    it.each(["staff", "patient", "staff_no_clinical", "superadmin"] as const)(
+      "offers it to %s, ungated",
+      async (userType) => {
+        renderWithAuth(<SideNavContent />, userType);
+
+        expect(await screen.findByText("Send feedback")).toBeInTheDocument();
+      },
+    );
+
+    it("sits directly above Logout", async () => {
+      renderWithAuth(<SideNavContent />, "admin");
+
+      const feedback = await screen.findByText("Send feedback");
+      const logout = screen.getByText("Logout");
+      expect(
+        feedback.compareDocumentPosition(logout) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(
+        feedback.closest("a, button")?.nextElementSibling?.textContent,
+      ).toBe("Logout");
+    });
+
+    it("opens the feedback modal without calling onNavigate", async () => {
+      const user = userEvent.setup();
+      const onNavigate = vi.fn();
+      renderWithAuth(<SideNavContent onNavigate={onNavigate} />);
+
+      await user.click(await screen.findByText("Send feedback"));
+
+      expect(
+        await screen.findByText("Do not include patient details."),
+      ).toBeInTheDocument();
+      expect(onNavigate).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -77,11 +77,13 @@ function makeSessionId(): string {
 /**
  * The viewport, as `390x844`, or empty when it cannot be read sensibly.
  *
+ * Exported so user feedback captures it the same way error reports do.
+ *
  * The server constrains this to two short runs of digits, so anything odd —
  * a zero-sized window during teardown, a fractional value under zoom — is
  * dropped rather than sent in a shape that would be rejected.
  */
-function readViewport(): string {
+export function readViewport(): string {
   try {
     const w = Math.round(window.innerWidth);
     const h = Math.round(window.innerHeight);
@@ -186,7 +188,8 @@ export function reportError(
   }
 }
 
-function readUserAgent(): string {
+/** The user agent, bounded as the server bounds it. */
+export function readUserAgent(): string {
   try {
     return (navigator.userAgent ?? "").slice(0, MAX_USER_AGENT);
   } catch {
