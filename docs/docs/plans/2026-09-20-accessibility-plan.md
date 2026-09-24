@@ -121,28 +121,39 @@ that keeps working after the person has moved on.
 ## Phase 1: Turn on the component checks
 
 The Storybook heavy tier already runs `@storybook/test-runner` against all
-173 stories on every non-draft pull request. Test-runner 0.24 on Storybook
-10 runs `addon-a11y` checks out of the box once the addon is registered;
-no `test-runner.ts` hooks are needed.
+656 stories, in 176 story files, on every non-draft pull request.
+Test-runner 0.24 on Storybook 10 runs `addon-a11y` checks out of the box
+once the addon is registered; no `test-runner.ts` hooks are needed.
 
-- [ ] Register `@storybook/addon-a11y` in the `addons` array in
+- [x] Register `@storybook/addon-a11y` in the `addons` array in
       `frontend/.storybook/main.ts`
-- [ ] Add `parameters.a11y` to `frontend/.storybook/preview.tsx`:
+- [x] Add `parameters.a11y` to `frontend/.storybook/preview.tsx`:
       `test: "todo"` for the first run, `options.runOnly` set to
       `["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]`, and
       `config.rules` enabling `target-size` (axe ships it disabled)
-- [ ] Run `just sbtci` locally and record the baseline: violations by rule
+- [x] Run `just sbtci` locally and record the baseline: violations by rule
       id and by component, in a `## Baseline` bullet list at the foot of
-      this plan
+      this plan. Two findings from doing it. First, a Storybook dev server
+      started before the addon was registered does not load it, and the
+      test-runner then fails every story with `ReferenceError: Cannot
+      access 'StorybookTestRunnerError' before initialization` rather than
+      with a readable message; restart Storybook after changing
+      `main.ts`. Second, the test-runner's failure message shows only the
+      first violating element per story, which is too little to count
+      from, so the baseline was taken with a throwaway Playwright script
+      that runs axe-core 4.13 with the same tags and rules against every
+      story in both colour schemes and records every node
+- [ ] Run the checks in dark mode as well as light: either a second
+      `colorScheme` pass in the test-runner or a `Dark` story variant on
+      every component with a coloured surface. Contrast failures in dark
+      mode will not show in light. Moved up from after the fixes: the
+      baseline shows 327 dark-only contrast nodes, so the dark pass has to
+      be running before the fixes, or they cannot be seen to work
 - [ ] Fix the baseline component by component, the highest-count rule
       first. Each fix is a normal PR with a story change and a unit test
       where the fix is behaviour rather than markup
 - [ ] Switch `test: "todo"` to `test: "error"` once the baseline is clear,
       so violations fail the heavy tier
-- [ ] Run the checks in dark mode as well as light: either a second
-      `colorScheme` pass in the test-runner or a `Dark` story variant on
-      every component with a coloured surface. Contrast failures in dark
-      mode will not show in light
 - [ ] Add a `docs/docs/frontend/accessibility/` section to the Storybook
       docs page describing how to read an axe failure in the a11y panel and
       where per-story rule overrides belong (`parameters.a11y.config.rules`,
@@ -328,8 +339,8 @@ readable by someone who cannot yet log in.
   every open PR on a backlog nobody has seen. One `todo` run produces the
   baseline; the switch to `error` is a one-line change once it is clear.
 
-- **Components first, pages second** — 173 stories cover 53 components,
-  and pages are composed from them. Fixing a component fixes every page
+- **Components first, pages second** — 656 stories in 176 files cover the
+  components, and pages are composed from them. Fixing a component fixes every page
   that uses it. The page-level scan then only has to catch composition
   faults, which are fewer and easier to reason about.
 
@@ -377,3 +388,50 @@ readable by someone who cannot yet log in.
 - [Playwright accessibility testing](https://playwright.dev/docs/accessibility-testing)
 - [axe-core rule descriptions](https://github.com/dequelabs/axe-core/blob/develop/doc/rule-descriptions.md)
 - [Are Mantine components accessible?](https://help.mantine.dev/q/are-mantine-components-accessible)
+
+## Baseline
+
+Taken on 24 September 2026 against `main` at the merge of #1051, with
+axe-core 4.13, the phase 1 tags and `target-size` enabled. 297 of 656
+stories fail in light mode and 190 in dark. `target-size` found nothing:
+Mantine's 28px `ActionIcon` and the app's 42px `IconButton` already clear
+24px.
+
+By rule, light then dark, as nodes (failing elements):
+
+- **`color-contrast`** — 809 light, 327 dark, across 112 story files.
+  Almost all of it comes from a few colour tokens rather than from
+  individual components:
+  - `#868e96` (Mantine `gray.6`, the `dimmed` text colour and the input
+    description override in `dark-overrides.css`) on white: 525 nodes,
+    3.32:1. `gray.5` `#adb5bd` adds nine more at 2.07:1.
+  - White text on the status fills in `statusColourValues`: `success`
+    teal 2.55:1 (101), `warning` cyan 2.78:1 (72), `alert` red 3.28:1
+    (13), `info` blue 3.55:1 (11), `outstanding` pink 3.73:1 (2). The
+    same fills used as text colours in `DataTableWithResults` fail on
+    white too.
+  - Dark mode's `dimmed` colour, `--mantine-color-dark-2` set to
+    `#0a2f56`, on the navy card and body backgrounds: 48 nodes at 1.17
+    to 1.29:1, which is effectively invisible.
+  - Dark mode navy links and accents, `primary.4` `#245d8f` on
+    `#042340` or `#001a36`: 27 nodes at 2.3 to 2.5:1.
+  - `--error-color` `#f55142` on the dark input background `#0a2f56`:
+    13 nodes at 3.95:1, and `#c9d1d9` on the `#245d8f` chat bubble at
+    4.47:1.
+  - Reference stories: `Colours.stories.tsx` renders its swatch hex
+    codes in the swatch colour (67 nodes) and `VariantRow` labels use
+    `dimmed`.
+- **`aria-progressbar-name`** — 51 nodes in both schemes, all teaching:
+  `ModuleMediaCard`, `TeachingProgressBar`, `QuestionView`,
+  `TeachingLearningNav` and the complete-page stories render a Mantine
+  `Progress` with no accessible name.
+- **`aria-allowed-attr`** — 23 nodes in both schemes: `FilterSelect`,
+  used by `TableControls`, `DataTableControlled` and `AllDelegates`,
+  carries `aria-expanded` on an element whose role does not allow it.
+- **`scrollable-region-focusable`** — 5 nodes in both schemes: the
+  message thread in `Messaging`, and the `main` of the complete-layout
+  long-read stories, scroll but cannot be reached by keyboard.
+- **`image-alt`** — 4 nodes in both schemes, `ProfilePic` with a real
+  picture renders an `img` with no `alt`.
+- **`button-name`** — 1 node in both schemes, the clear button on a
+  clearable `DateField`.
