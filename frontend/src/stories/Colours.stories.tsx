@@ -43,7 +43,7 @@ function ColourSwatch({
   description: string;
 }) {
   return (
-    <Group gap="md" align="center">
+    <Group gap="md" align="center" wrap="nowrap">
       <Box
         style={{
           width: 48,
@@ -67,10 +67,10 @@ function StatusSwatch({
   config,
 }: {
   name: StatusColourName;
-  config: { bg: string; text: string; usage: string };
+  config: { bg: string; fg: string; text: string; usage: string };
 }) {
   return (
-    <Group gap="md" align="center">
+    <Group gap="md" align="center" wrap="nowrap">
       <Badge
         color={config.bg}
         c={statusTextColour(name)}
@@ -79,6 +79,10 @@ function StatusSwatch({
       >
         {name}
       </Badge>
+      {/* The same status as a word on the page, in `fg` */}
+      <Text size="lg" fw={700} c={config.fg} miw="8rem">
+        {name}
+      </Text>
       <StoryNote mt={0}>{config.usage}</StoryNote>
     </Group>
   );
@@ -95,7 +99,7 @@ function TextSwatch({
   const isCssVar = config.value.startsWith("var(");
 
   return (
-    <Group gap="md" align="center">
+    <Group gap="md" align="center" wrap="nowrap">
       <Box
         style={{
           width: 48,
@@ -177,7 +181,12 @@ export const Overview: Story = {
       <div>
         <PageHeader title="Status colours" />
         <StoryNote>
-          Used in badges, alerts, and form validation to communicate state.
+          Used in badges, alerts, and form validation to communicate state. Each
+          status has two colours. The fill (<code>bg</code>, left) is dark
+          enough for white text and is the same in both schemes. The word (
+          <code>fg</code>, middle) is for the status written as text with no
+          fill behind it, and changes with the scheme: a darker shade in light
+          mode, a pale one in dark. Never use <code>bg</code> for text.
         </StoryNote>
         <Stack gap="sm" mt="xl">
           {statusEntries.map(([name, config]) => (
@@ -188,7 +197,12 @@ export const Overview: Story = {
 
       <div>
         <PageHeader title="Text colours" />
-        <Stack gap="md">
+        <StoryNote>
+          Every text colour meets WCAG AA contrast (4.5:1) in both schemes.
+          Muted, link and error change with the colour scheme; switch the
+          toolbar to see the dark values.
+        </StoryNote>
+        <Stack gap="md" mt="xl">
           {textEntries.map(([name, config]) => (
             <TextSwatch key={name} name={name} config={config} />
           ))}
@@ -264,6 +278,11 @@ export const Scales: Story = {
               scale={greyScale}
               primaryShade={0}
             />
+            <StoryNote>
+              Grey 7 is the only grey for text: it is the light-mode muted
+              colour, 8.2:1 on white. Greys 4 to 6 fall below the 4.5:1 text
+              minimum and are for icons, borders and placeholders only.
+            </StoryNote>
           </Stack>
         </div>
       </Stack>
