@@ -48,7 +48,6 @@ from app.email_send import EmailNotAllowedError, EmailRateLimitError
 from app.features.passport import router
 from app.features.passport.blobs import BlobStore
 from app.features.passport.models import (
-    AssessorRegistrationVerification,
     Passport,
     PassportAssessorInvite,
     PassportSignOffRequest,
@@ -2015,7 +2014,7 @@ class TestTheGateResolvesForAnAcceptedAssessor:
         assert response.status_code == 404
 
 
-class TestAdminVerifyAndRevoke:
+class TestAdminRevoke:
     """What an organisation's admin may do about an outside assessor.
 
     "Admin of the holder's organisation" is two questions. ``manage_users``
@@ -2103,60 +2102,7 @@ class TestAdminVerifyAndRevoke:
         assert accepted.status_code == 200, accepted.text
         return int(accepted.json()["user_id"])
 
-    def test_an_admin_can_verify_a_declared_registration(
-        self,
-        holder_client: TestClient,
-        test_client: TestClient,
-        db_session: Session,
-        admin: User,
-        sent: list[dict[str, str]],
-    ) -> None:
-        assessor_id = self._accept_an_assessor(
-            holder_client, test_client, sent
-        )
-
-        admin_client = _login(test_client, "orgadmin")
-        response = admin_client.post(
-            f"/api/passport/assessors/{assessor_id}/registration-verification",
-            json={
-                "registration_authority": "GMC",
-                "registration_number": "7654321",
-            },
-        )
-
-        assert response.status_code == 201, response.text
-        body = response.json()
-        assert body["verified_by_name"] == "Dr Orgadmin"
-        assert body["verified_at"] is not None
-
-    def test_an_admin_at_another_trust_cannot(
-        self,
-        holder_client: TestClient,
-        test_client: TestClient,
-        outsider_admin: User,
-        sent: list[dict[str, str]],
-    ) -> None:
-        """The whole reason a place check sits beside the competency.
-
-        A 404 rather than a 403, so the response does not confirm the
-        assessor exists to somebody who may not act on them.
-        """
-        assessor_id = self._accept_an_assessor(
-            holder_client, test_client, sent
-        )
-
-        admin_client = _login(test_client, "otheradmin")
-        response = admin_client.post(
-            f"/api/passport/assessors/{assessor_id}/registration-verification",
-            json={
-                "registration_authority": "GMC",
-                "registration_number": "7654321",
-            },
-        )
-
-        assert response.status_code == 404
-
-    def test_a_clinician_without_manage_users_cannot(
+    def test_a_clinician_without_manage_users_cannot_revoke(
         self,
         holder_client: TestClient,
         test_client: TestClient,
@@ -2167,110 +2113,11 @@ class TestAdminVerifyAndRevoke:
             holder_client, test_client, sent
         )
 
-        response = holder_client.post(
-            f"/api/passport/assessors/{assessor_id}/registration-verification",
-            json={
-                "registration_authority": "GMC",
-                "registration_number": "7654321",
-            },
+        response = holder_client.delete(
+            f"/api/passport/assessors/{assessor_id}/membership"
         )
 
         assert response.status_code == 404
-
-    def test_a_registration_that_has_ended_cannot_be_verified(
-        self,
-        holder_client: TestClient,
-        test_client: TestClient,
-        db_session: Session,
-        admin: User,
-        sent: list[dict[str, str]],
-    ) -> None:
-        """The check reads the current rows, not the JSON.
-
-        The JSON still holds the number; the row has been closed, so the
-        assessor no longer holds it and there is nothing to verify.
-        """
-        assessor_id = self._accept_an_assessor(
-            holder_client, test_client, sent
-        )
-        assessor = db_session.get(User, assessor_id)
-        assert assessor is not None
-        for row in assessor.registrations:
-            row.ends_on = datetime.now(UTC) - timedelta(days=1)
-        db_session.commit()
-
-        admin_client = _login(test_client, "orgadmin")
-        response = admin_client.post(
-            f"/api/passport/assessors/{assessor_id}/registration-verification",
-            json={
-                "registration_authority": "GMC",
-                "registration_number": "7654321",
-            },
-        )
-
-        assert response.status_code == 400, response.text
-
-    def test_a_number_the_assessor_never_declared_is_refused(
-        self,
-        holder_client: TestClient,
-        test_client: TestClient,
-        admin: User,
-        sent: list[dict[str, str]],
-    ) -> None:
-        """Otherwise the row records a check of something Quill has no
-        reason to associate with them."""
-        assessor_id = self._accept_an_assessor(
-            holder_client, test_client, sent
-        )
-
-        admin_client = _login(test_client, "orgadmin")
-        response = admin_client.post(
-            f"/api/passport/assessors/{assessor_id}/registration-verification",
-            json={
-                "registration_authority": "GMC",
-                "registration_number": "0000000",
-            },
-        )
-
-        assert response.status_code == 400
-
-    def test_verifying_twice_updates_rather_than_duplicates(
-        self,
-        holder_client: TestClient,
-        test_client: TestClient,
-        db_session: Session,
-        admin: User,
-        sent: list[dict[str, str]],
-    ) -> None:
-        """Re-checking is an update of when it was last confirmed."""
-        assessor_id = self._accept_an_assessor(
-            holder_client, test_client, sent
-        )
-
-        admin_client = _login(test_client, "orgadmin")
-        payload = {
-            "registration_authority": "GMC",
-            "registration_number": "7654321",
-        }
-
-        first = admin_client.post(
-            f"/api/passport/assessors/{assessor_id}/registration-verification",
-            json=payload,
-        )
-        second = admin_client.post(
-            f"/api/passport/assessors/{assessor_id}/registration-verification",
-            json=payload,
-        )
-
-        assert first.status_code == 201
-        assert second.status_code == 201, second.text
-
-        rows = db_session.scalars(
-            select(AssessorRegistrationVerification).where(
-                AssessorRegistrationVerification.user_id == assessor_id
-            )
-        ).all()
-        assert len(rows) == 1
 
     def test_revoking_removes_the_membership(
         self,
@@ -3095,13 +2942,13 @@ class TestWhatAnExternalAssessorCannotReach:
 
         assert assessor_client.get("/api/org-units").status_code == 403
 
-    def test_they_cannot_verify_or_revoke_anybody(
+    def test_they_cannot_revoke_anybody(
         self,
         holder_client: TestClient,
         test_client: TestClient,
         sent: list[dict[str, str]],
     ) -> None:
-        """The admin endpoints need ``manage_users``, which they lack.
+        """The admin endpoint needs ``manage_users``, which they lack.
 
         Worth its own test because an assessor *is* a member of the
         place, and a check that asked only about membership would let
@@ -3114,18 +2961,10 @@ class TestWhatAnExternalAssessorCannotReach:
 
         assessor_client = _login(test_client, "okafor")
 
-        verify = assessor_client.post(
-            f"/api/passport/assessors/{external_id}/registration-verification",
-            json={
-                "registration_authority": "GMC",
-                "registration_number": "7654321",
-            },
-        )
         revoke = assessor_client.delete(
             f"/api/passport/assessors/{external_id}/membership"
         )
 
-        assert verify.status_code == 404
         assert revoke.status_code == 404
 
     def _stale_invite(

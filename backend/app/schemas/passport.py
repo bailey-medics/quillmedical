@@ -708,40 +708,6 @@ class AssessorInviteAcceptIn(_In):
     registration_number: str | None = None
 
 
-class RegistrationVerifyIn(_In):
-    """An admin recording that they checked a register by hand.
-
-    The authority and number are given rather than inferred from the
-    assessor's profile, so the check is pinned to the number that was
-    actually looked at. Editing a number afterwards then cannot inherit
-    a verification of a different one.
-    """
-
-    registration_authority: NonEmptyText
-    registration_number: NonEmptyText
-
-
-class RegistrationVerificationOut(BaseModel):
-    """One recorded check.
-
-    ``verified_by_name`` and ``verified_at`` travel with the flag for
-    the reason ``Registration`` in the record model refuses a bare
-    boolean: a check that does not say who made it, and when, records
-    that somebody looked at a register without the part a later reader
-    needs.
-    """
-
-    user_id: int
-    registration_authority: NonEmptyText
-    registration_number: NonEmptyText
-    verified_by_name: NonEmptyText
-    verified_at: datetime
-    #: The org_unit of the organisation whose admin checked it. Named for
-    #: the org_unit because that is the id it holds; ``organisation_id``,
-    #: which it replaces, counted in the organisations table's own ids.
-    org_unit_id: int
-
-
 class AssessorRevokeOut(BaseModel):
     """What removing an assessor's membership did.
 

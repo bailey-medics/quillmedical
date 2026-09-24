@@ -41,7 +41,6 @@ export {
   searchAssessors,
   revokeAssessorMembership,
   signOff,
-  verifyAssessorRegistration,
   verifySignOff,
   withdrawSignOff,
 } from "./api";
@@ -77,8 +76,6 @@ export type {
   Reflection,
   ReflectionInput,
   Registration,
-  RegistrationVerification,
-  RegistrationVerifyInput,
   SignOff,
   SignOffDeclineInput,
   SignOffInput,
