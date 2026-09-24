@@ -49,6 +49,7 @@ from sqlalchemy.orm import (
 from app.cbac.base_professions import get_profession_base_competencies
 from app.cbac.competencies import validate_competency_ids
 from app.org_units.relations import validate_org_unit_relation
+from app.registrations import validate_registration_authority
 
 
 class Base(DeclarativeBase):
@@ -173,6 +174,18 @@ class User(Base):
     #: query rather than one per user.
     competency_grants: Mapped[list[UserCompetency]] = relationship(
         foreign_keys="UserCompetency.user_id",
+        back_populates="user",
+        lazy="selectin",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    #: Every professional registration this person has declared, current
+    #: and closed alike. Loaded with the user for the reason
+    #: ``competency_grants`` is: the passport reads them wherever it
+    #: describes somebody. The JSON column ``professional_registrations``
+    #: above is still written beside them and read by nothing new.
+    registrations: Mapped[list[ProfessionalRegistration]] = relationship(
         back_populates="user",
         lazy="selectin",
         cascade="all, delete-orphan",
@@ -1320,6 +1333,64 @@ class UserCompetency(Base):
                 "are " + ", ".join(COMPETENCY_GRANT_SOURCES) + "."
             )
         return value
+
+
+class ProfessionalRegistration(Base):
+    """One registration a person has declared with a professional body.
+
+    Replaces ``User.professional_registrations``, a JSON object of body to
+    number with nowhere to record when it was declared or when it lapsed.
+    See ``docs/docs/plans/2026-09-23-professional-registrations-plan.md``.
+
+    **Rows are never edited in place.** A changed number is a new row and
+    the old one is closed by setting ``ends_on``, so a row always means the
+    registration it was written as.
+
+    **Declared, not checked.** Quill queries no register. A check an
+    organisation makes by hand is ``AssessorRegistrationVerification``, a
+    separate fact about a registration rather than part of it.
+
+    Attributes:
+        id: Primary key.
+        user_id: The person.
+        authority: The registering body, one of the default jurisdiction's
+            in ``shared/jurisdiction-config.yaml``, such as ``GMC``.
+        number: The registration number, as the person gave it.
+        declared_at: When they declared it to Quill.
+        ends_on: When it stopped being theirs, or None while it is.
+        created_at: When the row was written.
+    """
+
+    __tablename__ = "professional_registration"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    authority: Mapped[str] = mapped_column(String(50), nullable=False)
+    number: Mapped[str] = mapped_column(String(50), nullable=False)
+    declared_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+    ends_on: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+
+    user: Mapped[User] = relationship(back_populates="registrations")
+
+    @validates("authority")
+    def _authority_known(self, _key: str, value: str) -> str:
+        """Reject a body the jurisdiction config does not list."""
+        return validate_registration_authority(value)
 
 
 POSITION_KINDS: tuple[str, ...] = (

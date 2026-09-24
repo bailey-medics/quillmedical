@@ -21,7 +21,7 @@ reason: each stacked unit deploys when it merges.
 
 ## Phase 1: Add the table and write it beside the JSON
 
-- [ ] **Add a `ProfessionalRegistration` model** in
+- [x] **Add a `ProfessionalRegistration` model** in
       `backend/app/models.py`. Columns: `user_id` (FK `users.id`, `ON DELETE
       CASCADE`, indexed), `authority` (`varchar(50)`), `number`
       (`varchar(50)`), `declared_at`, `ends_on` (`timestamptz`, nullable)
@@ -29,9 +29,9 @@ reason: each stacked unit deploys when it merges.
       like `competency_grants`.
 
       **Rows are never edited in place.** A changed number is a new row, and
-      the old one is closed by setting `ends_on`. That is what lets the
+      the old one is closed by setting `ends_on`. That is what would let the
       verification table in Phase 4 point at a row instead of copying its
-      contents: a verified row can never quietly become a different
+      contents: a verified row could never quietly become a different
       registration.
 
       `authority` is checked in code against the ids in
@@ -40,17 +40,28 @@ reason: each stacked unit deploys when it merges.
       so a new body needs no migration. Today nothing checks it: the accept
       page takes the authority as free text.
 
-- [ ] **Dual-write in `accept_assessor_invite`** (`router.py:2810`), the
+- [x] **Dual-write in `accept_assessor_invite`** (`router.py:2810`), the
       only place the JSON is written. It creates the user with
       `professional_registrations={authority: number}`, and now writes the
       row beside it.
 
-- [ ] **Validate the authority at that boundary.** `AssessorAcceptIn`
-      takes it as free text, and `PassportAcceptInvitePage.tsx` offers a
-      free `TextField`. Change the page to a `Select` over
+- [x] **Validate the authority at that boundary, in the same change.**
+      `AssessorInviteAcceptIn` takes it as free text. The model refuses an
+      authority the jurisdiction config does not list, so the route has to
+      refuse it first, with a 422 rather than a 500. It matches regardless
+      of case and stores the config's spelling, so `gmc` is accepted as
+      `GMC` rather than refused. Additive for the API: the field keeps its
+      name and type.
+
+      The list is read by `backend/app/registrations.py` from the default
+      jurisdiction in `shared/jurisdiction-config.yaml`, and the model's
+      `@validates` hook refuses anything else as a last line of defence.
+
+- [ ] **Offer the listed bodies on the accept page.**
+      `PassportAcceptInvitePage.tsx` offers a free `TextField`. Change it to
+      a `Select` over the default jurisdiction's bodies in
       `jurisdiction-config.json`, which `InviteAssessorForm.tsx` already
-      builds, and reject an unknown authority with a 422. Additive for the
-      API: the field keeps its name and type.
+      reads, so nobody types a body the backend then refuses.
 
 ## Phase 2: Backfill
 
@@ -74,18 +85,25 @@ reason: each stacked unit deploys when it merges.
 
 - [ ] **Rebuild the check in `verify_assessor_registration`**
       (`router.py:2347`) as a lookup of a current row with that authority
-      and number.
+      and number. This keeps an existing route working once the JSON goes;
+      it is not new verification work, which Phase 4 defers.
 
-- [ ] **Stop skipping `test_a_lapsed_registration_drops_clinical_grants_not_memberships`**
-      in `backend/tests/test_org_scoped_access_criteria.py:386`, if the
-      behaviour it describes is wanted. It is skipped because "the JSON is
-      something nothing reads". Rows remove that reason, but whether a lapsed
-      registration should narrow clinical grants is a policy question, which
-      the open questions below cover.
+- [ ] **Deferred: stop skipping
+      `test_a_lapsed_registration_drops_clinical_grants_not_memberships`**
+      in `backend/tests/test_org_scoped_access_criteria.py:386`. Rows remove
+      the reason it is skipped, but decided on 23 September 2026 that a
+      lapsed registration is not linked to competencies for now, so the test
+      stays skipped. Not built in this plan.
 
-## Phase 4: Point verification at the registration
+## Phase 4: Point verification at the registration (deferred)
 
-- [ ] **Answer the question this plan was asked to settle first.** Should
+Decided on 24 September 2026: no verification work now. Everything in this
+phase waits for a later decision, so `AssessorRegistrationVerification`
+keeps its own copy of the authority and number, as it does today, and
+Phase 6 leaves those two columns alone. The reasoning is kept for whoever
+picks it up.
+
+- [x] **Answer the question this plan was asked to settle first.** Should
       `AssessorRegistrationVerification` hold the registration itself?
       **No.** It records a different fact. A registration is the person's
       declaration. A verification is one organisation's act of checking it
@@ -102,12 +120,12 @@ reason: each stacked unit deploys when it merges.
       give the same guarantee by construction, so a foreign key replaces
       the copy.
 
-- [ ] **Add `registration_id`** (FK `professional_registration.id`,
+- [ ] **Deferred: add `registration_id`** (FK `professional_registration.id`,
       nullable) to the verification table, backfill it by matching user,
       authority and number, then switch the route to write it. Drop the two
       copied columns in Phase 6.
 
-- [ ] **Decide whether `verified` should start appearing.**
+- [ ] **Deferred: decide whether `verified` should start appearing.**
       `_registration_dicts` hardcodes `verified: False`, and the sign-off
       call never passes `registration_verified`. So the verification route
       writes rows that nothing shows, and `RegistrationBadge` never draws its
@@ -119,24 +137,33 @@ reason: each stacked unit deploys when it merges.
 
 - [ ] **Remove the JSON write** from `accept_assessor_invite`.
 
-- [ ] **Delete the dead code found during the investigation**, each in
-      its own commit so a reviewer can see it is unused:
+- [ ] **Take `users.professional_registrations` out of every statement
+      in the same change.** As the competency plan found, a column the
+      model still maps is named in every `SELECT`
+      of `users`, and a revision still serving while the drop runs would
+      fail on all of them. It is nullable with no default, so deferring it
+      is enough, with no migration.
+
+- [ ] **Delete the dead code found during the investigation**, each named
+      in the pull request with how it was shown to be unused:
       - `ProfessionalRegistration` in `backend/app/schemas/cbac.py:43-60`,
         a schema with expiry and status fields that nothing uses.
       - `AssessorInviteIn` (`backend/app/schemas/passport.py:650`) and
         `InviteAssessorForm.tsx`, with its `inviteAssessor` client call.
         They post to `/passport/{id}/assessor-invites`, a route that no
         longer exists. Invites are now raised inside the sign-off request.
-      - `verifyAssessorRegistration` in `frontend/src/lib/passport/api.ts`,
-        unless Phase 4 builds the admin page that calls it.
+      - `verifyAssessorRegistration` in `frontend/src/lib/passport/api.ts`
+        stays: it is the client for the verification route, which Phase 4
+        may one day give a page.
 
 ## Phase 6: Drop the columns
 
-- [ ] **Drop `users.professional_registrations`**, and the copied
-      `registration_authority` and `registration_number` on the
-      verification table, in one destructive migration with the
-      `allow-destructive` marker. It goes through the
-      `db-destructive-migration-review` environment.
+- [ ] **Drop `users.professional_registrations`** in its own destructive
+      migration with the `allow-destructive` marker, through the
+      `db-destructive-migration-review` environment. Approved on 24
+      September 2026. The verification table's copied
+      `registration_authority` and `registration_number` stay, because
+      Phase 4 is deferred.
 
 ## Decisions
 

@@ -1488,6 +1488,76 @@ class TestAcceptingAnInvitation:
         assert user.full_name == "Dr Winifred Achebe"
         assert user.professional_registrations == {"NMC": "99AB1234"}
 
+    def test_registering_writes_the_registration_as_a_row(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        db_session: Session,
+        sent: list[dict[str, str]],
+    ) -> None:
+        """A row beside the JSON, which nothing reads yet."""
+        passport_id = _create_passport(holder_client)
+        self._invite(holder_client, passport_id)
+
+        response = self._accept(
+            test_client,
+            self._token(sent),
+            registration_authority="NMC",
+            registration_number="99AB1234",
+        )
+        assert response.status_code == 200, response.text
+
+        user = db_session.get(User, response.json()["user_id"])
+        assert user is not None
+        assert [
+            (r.authority, r.number, r.ends_on) for r in user.registrations
+        ] == [("NMC", "99AB1234", None)]
+
+    def test_a_body_in_any_case_is_stored_as_the_config_spells_it(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        db_session: Session,
+        sent: list[dict[str, str]],
+    ) -> None:
+        """Somebody typing ``gphc`` means the GPhC."""
+        passport_id = _create_passport(holder_client)
+        self._invite(holder_client, passport_id)
+
+        response = self._accept(
+            test_client, self._token(sent), registration_authority=" gphc "
+        )
+        assert response.status_code == 200, response.text
+
+        user = db_session.get(User, response.json()["user_id"])
+        assert user is not None
+        assert [r.authority for r in user.registrations] == ["GPhC"]
+        assert user.professional_registrations == {"GPhC": "7654321"}
+
+    def test_a_body_the_jurisdiction_does_not_list_is_refused(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        db_session: Session,
+        sent: list[dict[str, str]],
+    ) -> None:
+        """Refused with a 422 naming the bodies, not a 500 from the model.
+
+        The invitation is not spent, so the assessor can try again.
+        """
+        passport_id = _create_passport(holder_client)
+        self._invite(holder_client, passport_id)
+        token = self._token(sent)
+
+        refused = self._accept(
+            test_client, token, registration_authority="General Medical"
+        )
+        assert refused.status_code == 422, refused.text
+        assert "GMC" in refused.json()["detail"]
+
+        accepted = self._accept(test_client, token)
+        assert accepted.status_code == 200, accepted.text
+
     def test_registering_without_a_name_is_refused(
         self,
         holder_client: TestClient,
