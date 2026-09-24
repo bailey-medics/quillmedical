@@ -10,7 +10,7 @@
 
 import { NavLink, Stack } from "@mantine/core";
 import Divider from "@/components/divider/Divider";
-import { useNavigate, useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { useHasFeature } from "@lib/features";
@@ -52,7 +52,6 @@ export default function SideNavContent({
   patientNav,
 }: Props) {
   const { logout, state } = useAuth();
-  const navigate = useNavigate();
   const location = useLocation();
   const [patientName, setPatientName] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
@@ -463,11 +462,12 @@ export default function SideNavContent({
       )}
       {hasClinicalServices && (
         <NavLink
+          component={Link}
+          to="/"
           label="Home"
           styles={navLinkStyles}
           active={location.pathname === "/"}
           onClick={() => {
-            navigate("/");
             if (onNavigate) onNavigate();
           }}
           leftSection={showIcons ? <NavIcon name="home" /> : undefined}
@@ -475,11 +475,12 @@ export default function SideNavContent({
       )}
       {hasClinicalServices && (
         <NavLink
+          component={Link}
+          to="/messages"
           label="Messages"
           styles={navLinkStyles}
           active={location.pathname.startsWith("/messages")}
           onClick={() => {
-            navigate("/messages");
             if (onNavigate) onNavigate();
           }}
           leftSection={showIcons ? <NavIcon name="message" /> : undefined}

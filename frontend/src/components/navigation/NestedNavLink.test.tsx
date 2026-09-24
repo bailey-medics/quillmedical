@@ -337,4 +337,28 @@ describe("NestedNavLink Component", () => {
       });
     });
   });
+
+  it("renders an item with an href as a real, focusable link", () => {
+    // Mantine draws an <a> with no href when navigation happens in an
+    // onClick, and that is unreachable from the keyboard.
+    renderWithRouter(
+      <NestedNavLink item={{ label: "Settings", href: "/settings" }} />,
+    );
+    const link = screen.getByRole("link", { name: "Settings" });
+    expect(link).toHaveAttribute("href", "/settings");
+    link.focus();
+    expect(link).toHaveFocus();
+  });
+
+  it("renders an item without an href as a button", () => {
+    renderWithRouter(
+      <NestedNavLink
+        item={{
+          label: "Admin",
+          children: [{ label: "Users", href: "/admin/users" }],
+        }}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Admin" })).toBeInTheDocument();
+  });
 });

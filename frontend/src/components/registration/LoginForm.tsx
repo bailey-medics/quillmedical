@@ -5,6 +5,7 @@
  * Displays connectivity warnings and handles authentication via the API.
  */
 
+import { useEffect, useRef } from "react";
 import { Group, Stack } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import BaseCard from "@components/base-card/BaseCard";
@@ -61,6 +62,20 @@ function LoginFields({
   const { methods } = useFormContext();
   const { isOnline } = useConnectivity();
 
+  // When the server asks for a second factor, the code field appears
+  // below the password. Move focus to it, so a keyboard or screen reader
+  // user lands where the next thing to type is, rather than having to
+  // find a field that was not there a moment ago.
+  // A ref of our own rather than react-hook-form's setFocus, which does
+  // not reach the input through TextField.
+  const totpRef = useRef<HTMLInputElement | null>(null);
+  const { ref: registerTotpRef, ...totpField } = methods.register("totp", {
+    required: requireTotp,
+  });
+  useEffect(() => {
+    if (requireTotp) totpRef.current?.focus();
+  }, [requireTotp]);
+
   return (
     <Stack>
       <PageHeader title={title} />
@@ -92,7 +107,11 @@ function LoginFields({
       {requireTotp && (
         <TextField
           label="Authenticator code"
-          {...methods.register("totp", { required: true })}
+          {...totpField}
+          ref={(element: HTMLInputElement | null) => {
+            registerTotpRef(element);
+            totpRef.current = element;
+          }}
           required
           autoComplete="one-time-code"
           maxLength={6}

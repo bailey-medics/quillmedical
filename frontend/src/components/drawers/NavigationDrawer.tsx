@@ -64,10 +64,17 @@ export default function NavigationDrawer({
       )}
 
       <FocusTrap active={opened}>
+        {/* Closed, the drawer is only slid off-screen, so it has to be
+            taken out of the tab order and the accessibility tree too:
+            inert does both. Otherwise its links are invisible tab stops,
+            and an always-present aria-modal dialog tells a screen reader
+            to ignore the rest of the page. */}
         <Paper
           id="app-navbar"
           role="dialog"
-          aria-modal="true"
+          aria-modal={opened ? "true" : undefined}
+          aria-label="Navigation"
+          inert={!opened}
           shadow="md"
           p="xs"
           withBorder

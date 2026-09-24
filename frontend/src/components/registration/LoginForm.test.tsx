@@ -74,6 +74,16 @@ describe("LoginForm", () => {
     expect(screen.getByText("Authenticator code")).toBeInTheDocument();
   });
 
+  it("moves focus to the code field when a second factor is asked for", () => {
+    // A keyboard user should land where the next thing to type is, not
+    // have to find a field that has just appeared.
+    renderWithRouter(
+      <LoginForm onSubmit={() => new Promise(() => {})} requireTotp />,
+    );
+    const code = screen.getByLabelText(/authenticator code/i);
+    expect(code).toHaveFocus();
+  });
+
   it("does not show TOTP input by default", () => {
     renderWithRouter(<LoginForm onSubmit={() => new Promise(() => {})} />);
 
