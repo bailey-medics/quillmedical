@@ -63,6 +63,11 @@ resource "google_cloud_run_v2_job" "job" {
   lifecycle {
     ignore_changes = [
       template[0].template[0].containers[0].image,
+      # Stamped by `gcloud run jobs update` on every deploy and never set
+      # here, so every apply cleared them and reported a change that was not
+      # one. See the same list in modules/cloud-run.
+      client,
+      client_version,
     ]
   }
 }

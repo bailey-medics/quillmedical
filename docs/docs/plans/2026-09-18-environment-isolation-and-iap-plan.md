@@ -95,11 +95,25 @@ looks like a one-line change and takes the deploy pipeline down.
       `INGRESS_TRAFFIC_ALL`, with a comment in `infra/main.tf` saying why
       and pointing at Phase D.
 
-- [ ] Re-apply the ingress setting, once Phase D has moved the deploy's
+- [x] Re-apply the ingress setting, once Phase D has moved the deploy's
       health check onto a route the closed ingress accepts. Everything
       below waits on that. Still open on 2026-09-23: both
       `quill-backend-app` and `quill-frontend-app` have ingress `all`, and
       the backend's `*.run.app` URL answers `/api/health` with `200`.
+
+      Re-applied in `infra/main.tf` on 2026-09-24, for both services, after
+      the deploy of #1053 and #1055 showed the precondition holds: its log
+      reads "Checking through quill-admin-app, which can reach a closed
+      ingress", the job execution passed, and the revision was promoted.
+      `quill-admin-app` reads back `vpc-access-egress: all-traffic`.
+
+      The frontend closes too, which the 2026-09-21 attempt also did. Its
+      deploy has no tagged-revision smoke test to break: it runs
+      `gcloud run services update` directly, and the check after it goes
+      to `app.quill-medical.com`. Nothing else calls either `*.run.app`
+      URL: the uptime checks in `infra/modules/monitoring` probe the
+      public hostnames, and the transcode job's callback goes to the
+      public domain.
 
 - [ ] Verify the service's `*.run.app` URL then refuses the request, and
       that the public hostname still serves normally.
@@ -318,8 +332,9 @@ every deploy, so the URL mask is the part that matters.
       should be one watched deploy rather than a side effect of this
       merge.
 
-- [ ] Only then re-apply Phase 1's ingress setting, and watch the first
-      deploy.
+- [x] Only then re-apply Phase 1's ingress setting, and watch the first
+      deploy. Re-applied on 2026-09-24; watching the first deploy is the
+      verification step in Phase 1.
 
 ### Phase 2: Host-only auth cookies
 
@@ -1659,6 +1674,10 @@ are Cloud Storage and Cloud Run jobs.
       invocation, and `run-transcode` and `run-caption` on the video
       buckets).
 
+      **Both proven by Mark on 2026-09-24**: the bank sync, and a video
+      upload that works end to end on the live app environment. Every
+      workload has now run on its own account.
+
 - [ ] **(Claude)** Remove the default account's grants: the project-wide
       `secretAccessor`, its bucket bindings, the job invokers and
       `cloudrun_token_creator`, once the step above has run live.
@@ -1709,7 +1728,19 @@ other infrastructure change, so fixing it comes before anything else here.
       has no backend, so it stays as it is: pinning it back would replace the
       rule for nothing. The plan after this should show no changes to the
       load balancer.
-- [ ] **(Mark)** Confirm the next apply on `main` succeeds.
+- [x] **(Mark)** Confirm the next apply on `main` succeeds. It did, on
+      the merge of #1055, with no change to the load balancer.
+- [x] Stop every apply rewriting what the deploy owns. That same apply
+      still changed all five Cloud Run services and jobs, although nothing
+      in the code had: `gcloud` stamps `client` and `client_version` on
+      each release, and the deploy names each backend revision
+      (`template[0].revision`). Terraform never sets them, so it cleared
+      them every time, and clearing the revision name created a spare
+      backend revision per apply (`00045-486` on 2026-09-24) with no
+      traffic. All three go in `ignore_changes` in
+      `infra/modules/cloud-run/main.tf`, and the two client fields in
+      `infra/modules/cloud-run-job/main.tf`. The harm was the noise: a
+      plan that always shows five changes hides the one that matters.
 - [ ] Migrate the whole load balancer to `EXTERNAL_MANAGED` through Google's
       staged migration, as a piece of work of its own. Each backend service
       moves through `external_managed_migration_state` `PREPARE`, then
