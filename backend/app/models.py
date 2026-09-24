@@ -34,6 +34,7 @@ from sqlalchemy import (
     UniqueConstraint,
     delete,
     event,
+    text,
     update,
 )
 from sqlalchemy.engine import Connection
@@ -202,7 +203,6 @@ class User(Base):
             self.competency_grants.append(
                 UserCompetency(
                     competency_id=competency_id,
-                    granted=True,
                     starts_on=now,
                     source="profession",
                 )
@@ -215,7 +215,7 @@ class User(Base):
             {
                 row.competency_id
                 for row in self.competency_grants
-                if row.granted and row.is_current(now)
+                if row.is_current(now)
             }
         )
 
@@ -1255,6 +1255,11 @@ class UserCompetency(Base):
     """
 
     __tablename__ = "user_competency"
+    # Server-generated values are read back on first access rather than
+    # with RETURNING on every INSERT, which would name the retired
+    # ``granted`` column below and put it back into the statement it must
+    # stay out of.
+    __mapper_args__ = {"eager_defaults": False}
     __table_args__ = (
         CheckConstraint(
             "ends_on IS NULL OR starts_on IS NULL OR ends_on >= starts_on",
@@ -1271,7 +1276,14 @@ class UserCompetency(Base):
     competency_id: Mapped[str] = mapped_column(
         String(100), nullable=False, index=True
     )
-    granted: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    # Retired, and dropped by the next change. Every current row is a grant,
+    # so nothing reads it; deferred and with no Python value, it appears in
+    # no SELECT and no INSERT, and the database fills it from its default.
+    # A revision still serving while the drop runs then sends nothing the
+    # drop could break.
+    granted: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true"), deferred=True
+    )
     starts_on: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

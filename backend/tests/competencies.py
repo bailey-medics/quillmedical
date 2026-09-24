@@ -31,7 +31,6 @@ def hold(user: User, *competency_ids: str) -> None:
         user.competency_grants.append(
             UserCompetency(
                 competency_id=competency_id,
-                granted=True,
                 starts_on=now,
                 source="admin",
             )
@@ -48,11 +47,7 @@ def withhold(user: User, *competency_ids: str) -> None:
     """
     now = datetime.now(UTC)
     for row in user.competency_grants:
-        if (
-            row.competency_id in competency_ids
-            and row.granted
-            and row.is_current(now)
-        ):
+        if row.competency_id in competency_ids and row.is_current(now):
             row.ends_on = now
 
 
@@ -64,11 +59,7 @@ def lapse(user: User, competency_id: str) -> None:
     """
     now = datetime.now(UTC)
     for row in user.competency_grants:
-        if (
-            row.competency_id == competency_id
-            and row.granted
-            and row.is_current(now)
-        ):
+        if row.competency_id == competency_id and row.is_current(now):
             row.starts_on = now - PASSPORT_TERM - timedelta(days=1)
             row.ends_on = now - timedelta(days=1)
 

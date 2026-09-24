@@ -8,11 +8,13 @@ See ``docs/docs/plans/2026-09-23-user-competency-table-plan.md``.
 
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import select
+from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 
 from app.cbac.grants import sync_competency_rows
@@ -90,12 +92,10 @@ def _held(db: Session, user_id: int) -> set[str]:
     return set(user.get_final_competencies())
 
 
-def _current(db: Session, user_id: int, *, granted: bool) -> set[str]:
+def _current(db: Session, user_id: int) -> set[str]:
     now = datetime.now(UTC)
     return {
-        row.competency_id
-        for row in _rows(db, user_id)
-        if row.granted == granted and row.is_current(now)
+        row.competency_id for row in _rows(db, user_id) if row.is_current(now)
     }
 
 
@@ -148,14 +148,13 @@ class TestTheHelper:
         )
         db_session.commit()
 
-        assert _current(db_session, user.id, granted=True) == {
+        assert _current(db_session, user.id) == {
             "prescribe_non_controlled",
             "certify_death",
         }
         # Removed means not held: its profession row is closed, and no
         # removal row is written in its place.
         assert "access_own_patient_records" not in _held(db_session, user.id)
-        assert _current(db_session, user.id, granted=False) == set()
 
     def test_a_later_save_adds_and_closes_only_what_changed(
         self, db_session: Session
@@ -182,7 +181,7 @@ class TestTheHelper:
         )
         db_session.commit()
 
-        assert _current(db_session, user.id, granted=True) == {
+        assert _current(db_session, user.id) == {
             "prescribe_non_controlled",
             "certify_cremation",
         }
@@ -214,7 +213,7 @@ class TestTheHelper:
         rows = _rows(db_session, user.id)
         assert [row.competency_id for row in rows] == ["certify_death"]
         assert rows[0].ends_on is not None
-        assert _current(db_session, user.id, granted=True) == set()
+        assert _current(db_session, user.id) == set()
 
     def test_saving_the_same_lists_twice_writes_nothing_new(
         self, db_session: Session
@@ -249,7 +248,7 @@ class TestTheHelper:
         )
         db_session.commit()
 
-        assert _current(db_session, user.id, granted=True) == {
+        assert _current(db_session, user.id) == {
             "passport_write",
             "certify_death",
         }
@@ -306,7 +305,6 @@ class TestTheHelper:
         user.competency_grants.append(
             UserCompetency(
                 competency_id="passport_write",
-                granted=True,
                 starts_on=datetime.now(UTC),
                 ends_on=datetime.now(UTC) + timedelta(days=365),
                 source="organisation",
@@ -317,7 +315,7 @@ class TestTheHelper:
         sync_competency_rows(user, additional=[], removed=[], source="admin")
         db_session.commit()
 
-        assert _current(db_session, user.id, granted=True) == set()
+        assert _current(db_session, user.id) == set()
 
     def test_a_removal_writes_no_removal_row(
         self, db_session: Session
@@ -339,8 +337,8 @@ class TestTheHelper:
         )
         db_session.commit()
 
-        assert _current(db_session, user.id, granted=False) == set()
         assert _held(db_session, user.id) == set()
+        assert _current(db_session, user.id) == set()
 
     def test_an_unknown_source_is_refused(self, db_session: Session) -> None:
         user = _user(db_session, "bad_source")
@@ -356,9 +354,7 @@ class TestTheHelper:
 
 class TestIsCurrent:
     def test_no_end_is_current(self) -> None:
-        row = UserCompetency(
-            competency_id="certify_death", granted=True, source="admin"
-        )
+        row = UserCompetency(competency_id="certify_death", source="admin")
         assert row.is_current(datetime.now(UTC))
 
     def test_a_naive_end_is_read_as_utc(self) -> None:
@@ -366,13 +362,11 @@ class TestIsCurrent:
         now = datetime.now(UTC)
         future = UserCompetency(
             competency_id="certify_death",
-            granted=True,
             source="admin",
             ends_on=(now + timedelta(hours=1)).replace(tzinfo=None),
         )
         past = UserCompetency(
             competency_id="certify_death",
-            granted=True,
             source="admin",
             ends_on=(now - timedelta(hours=1)).replace(tzinfo=None),
         )
@@ -403,9 +397,7 @@ class TestEveryWriterWritesRows:
 
         assert response.status_code == 200, response.text
         rows = _rows(db_session, target.id)
-        assert {(r.competency_id, r.granted) for r in rows} == {
-            ("certify_death", True),
-        }
+        assert {r.competency_id for r in rows} == {"certify_death"}
         assert "access_own_patient_records" not in _held(db_session, target.id)
         assert {r.source for r in rows} == {"admin"}
         assert {r.granted_by for r in rows} == {admin.id}
@@ -481,7 +473,7 @@ class TestEveryWriterWritesRows:
 
         assert response.status_code == 200, response.text
         new_id = response.json()["id"]
-        assert _current(db_session, new_id, granted=True) == {"certify_death"}
+        assert _current(db_session, new_id) == {"certify_death"}
         assert "access_own_patient_records" not in _held(db_session, new_id)
         assert {r.granted_by for r in _rows(db_session, new_id)} == {admin.id}
 
@@ -605,3 +597,54 @@ class TestEveryWriterWritesRows:
         assert row.ends_on is None
         db_session.refresh(target)
         assert "passport_write" in target.get_final_competencies()
+
+
+class TestTheGrantedColumnIsRetired:
+    """``user_competency.granted`` appears in no statement the app sends.
+
+    The next change drops it, and a revision still serving while that
+    drop runs must not name it, or every write of a competency fails
+    until the new revision takes over.
+    """
+
+    def test_creating_and_editing_a_user_never_names_it(
+        self,
+        test_client: TestClient,
+        db_session: Session,
+        admin: User,
+        org: OrgUnit,
+    ) -> None:
+        seen: list[str] = []
+
+        def record(*args: Any) -> None:
+            seen.append(args[2])
+
+        engine = db_session.get_bind()
+        event.listen(engine, "before_cursor_execute", record)
+        try:
+            client = _login(test_client, "the_admin")
+            created = client.post(
+                "/api/users",
+                json={
+                    "name": "No Granted",
+                    "username": "no_granted",
+                    "email": "no_granted@example.test",
+                    "password": "Password123!",
+                    "additional_competencies": ["certify_death"],
+                    "org_unit_ids": [org.id],
+                },
+                headers=_csrf(client),
+            )
+            assert created.status_code == 200, created.text
+            edited = client.patch(
+                f"/api/users/{created.json()['id']}",
+                json={"additional_competencies": []},
+                headers=_csrf(client),
+            )
+            assert edited.status_code == 200, edited.text
+        finally:
+            event.remove(engine, "before_cursor_execute", record)
+
+        assert seen
+        named = [sql for sql in seen if re.search(r"\bgranted\b", sql)]
+        assert named == []
