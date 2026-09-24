@@ -1,7 +1,8 @@
 /**
  * FeedbackStatus Badge Storybook Stories
  *
- * Demonstrates the FeedbackStatus badge across all statuses.
+ * Demonstrates the FeedbackStatus badge across all statuses, as an
+ * operator sees them and as the sender does.
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
@@ -33,6 +34,17 @@ export const Default: Story = {
     <Group gap="md">
       {FEEDBACK_STATUSES.map((status) => (
         <FeedbackStatusBadge key={status} status={status} />
+      ))}
+    </Group>
+  ),
+};
+
+/** As the sender sees them, on their own feedback page. */
+export const ForTheSender: Story = {
+  render: () => (
+    <Group gap="md">
+      {FEEDBACK_STATUSES.map((status) => (
+        <FeedbackStatusBadge key={status} status={status} audience="sender" />
       ))}
     </Group>
   ),

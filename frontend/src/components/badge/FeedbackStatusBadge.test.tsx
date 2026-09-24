@@ -18,6 +18,18 @@ describe("FeedbackStatusBadge", () => {
     expect(screen.getByText(label)).toBeInTheDocument();
   });
 
+  it.each([
+    ["new", "Received"],
+    ["acknowledged", "Being looked at"],
+    ["resolved", "Fixed"],
+    ["wont_fix", "Won't fix"],
+  ] as const)("shows %s to its sender as %s", (status, label) => {
+    renderWithMantine(
+      <FeedbackStatusBadge status={status} audience="sender" />,
+    );
+    expect(screen.getByText(label)).toBeInTheDocument();
+  });
+
   it("never shows the stored value", () => {
     renderWithMantine(<FeedbackStatusBadge status="wont_fix" />);
     expect(screen.queryByText("wont_fix")).not.toBeInTheDocument();

@@ -8,7 +8,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { renderWithMantine } from "@test/test-utils";
+import { renderWithMantine, renderWithRouter } from "@test/test-utils";
 import FeedbackModal from "./FeedbackModal";
 
 function renderModal(
@@ -197,6 +197,58 @@ describe("FeedbackModal", () => {
       await user.click(screen.getByRole("button", { name: "Cancel" }));
 
       expect(onClose).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe("Your feedback", () => {
+    function renderInRouter() {
+      const onClose = vi.fn();
+      renderWithRouter(
+        <FeedbackModal
+          opened
+          onClose={onClose}
+          onSubmit={vi.fn().mockResolvedValue({ id: 1 })}
+        />,
+      );
+      return { onClose };
+    }
+
+    it("links to previous feedback under the form", () => {
+      renderInRouter();
+
+      expect(
+        screen.getByRole("link", { name: "Your previous feedback" }),
+      ).toHaveAttribute("href", "/feedback");
+    });
+
+    it("closes the modal when that link is followed", async () => {
+      const user = userEvent.setup();
+      const { onClose } = renderInRouter();
+
+      await user.click(
+        screen.getByRole("link", { name: "Your previous feedback" }),
+      );
+
+      expect(onClose).toHaveBeenCalledOnce();
+    });
+
+    it("says where the outcome will appear once sent", async () => {
+      const user = userEvent.setup();
+      const { onClose } = renderInRouter();
+
+      await user.type(messageBox(), "Captions lag");
+      await user.click(screen.getByTestId("submit-button"));
+
+      const link = await screen.findByRole("link", { name: "Your feedback" });
+      expect(link).toHaveAttribute("href", "/feedback");
+      await user.click(link);
+      expect(onClose).toHaveBeenCalledOnce();
+    });
+
+    it("offers no link outside a router", () => {
+      renderModal();
+
+      expect(screen.queryByRole("link")).not.toBeInTheDocument();
     });
   });
 });

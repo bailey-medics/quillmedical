@@ -112,6 +112,26 @@ class FeedbackListOut(BaseModel):
     items: list[FeedbackItemOut]
 
 
+class MyFeedbackItemOut(BaseModel):
+    """One piece of the caller's own feedback, as they see it.
+
+    Only what they wrote and where it has got to. None of the context
+    captured alongside it: they did not type that, and do not need it back.
+    """
+
+    id: int
+    status: FeedbackStatus
+    category: FeedbackCategory | None
+    message: str
+    created_at: datetime
+
+
+class MyFeedbackListOut(BaseModel):
+    """The caller's own feedback, newest first."""
+
+    items: list[MyFeedbackItemOut]
+
+
 class FeedbackStatusIn(BaseModel):
     """Move a piece of feedback to another status. Nothing else changes."""
 

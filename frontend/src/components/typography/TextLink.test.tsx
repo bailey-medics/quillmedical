@@ -1,5 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@test/test-utils";
 import TextLink from "./TextLink";
 
@@ -20,5 +21,19 @@ describe("TextLink", () => {
     renderWithRouter(<TextLink to="/register">Sign up</TextLink>);
     const link = screen.getByRole("link", { name: "Sign up" });
     expect(link).toHaveClass("mantine-Anchor-root");
+  });
+
+  it("calls onClick when followed", async () => {
+    const user = userEvent.setup();
+    const onClick = vi.fn();
+    renderWithRouter(
+      <TextLink to="/feedback" onClick={onClick}>
+        Your feedback
+      </TextLink>,
+    );
+
+    await user.click(screen.getByRole("link", { name: "Your feedback" }));
+
+    expect(onClick).toHaveBeenCalledOnce();
   });
 });
