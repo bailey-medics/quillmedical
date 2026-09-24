@@ -85,14 +85,19 @@ reason: each stacked unit deploys when it merges.
 
 ## Phase 3: Switch reads
 
-- [ ] **Rebuild `_registration_strings` and `_registration_dicts`**
+- [x] **Rebuild `_registration_strings` and `_registration_dicts`**
       (`router.py:298-336`) from the current rows. The defensive parsing
       goes, because a row cannot hold a malformed registration.
 
-- [ ] **Rebuild the check in `verify_assessor_registration`**
+- [x] **Rebuild the check in `verify_assessor_registration`**
       (`router.py:2347`) as a lookup of a current row with that authority
       and number. This keeps an existing route working once the JSON goes;
       it is not new verification work, which Phase 4 defers.
+
+      Both read `User.current_registrations`, the rows with no end or an
+      end still ahead. The body is matched as the accept route stores it,
+      so an admin typing `gmc` finds `GMC`. Tests that built users with the
+      JSON now declare rows through `backend/tests/registrations.py`.
 
 - [ ] **Deferred: stop skipping
       `test_a_lapsed_registration_drops_clinical_grants_not_memberships`**

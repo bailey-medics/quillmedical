@@ -68,6 +68,7 @@ from app.organisations import (
 from app.passport_storage import get_blob_store, get_passport_store
 from app.security import PASSPORT_INVITE_TYPE, hash_password
 from tests.competencies import hold, lapse
+from tests.registrations import declare
 
 #: From the oncology set drafted in Phase 0. Chosen because it declares
 #: the UK SACT Board's four levels, so the level paths are exercised
@@ -127,8 +128,8 @@ def _make_user(
         is_active=True,
         email_verified=True,
         base_profession=profession,
-        professional_registrations=registrations or {"GMC": "1234567"},
     )
+    declare(user, registrations or {"GMC": "1234567"})
     if writes:
         hold(user, "passport_write")
     db.add(user)
@@ -2172,6 +2173,39 @@ class TestAdminVerifyAndRevoke:
         )
 
         assert response.status_code == 404
+
+    def test_a_registration_that_has_ended_cannot_be_verified(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        db_session: Session,
+        admin: User,
+        sent: list[dict[str, str]],
+    ) -> None:
+        """The check reads the current rows, not the JSON.
+
+        The JSON still holds the number; the row has been closed, so the
+        assessor no longer holds it and there is nothing to verify.
+        """
+        assessor_id = self._accept_an_assessor(
+            holder_client, test_client, sent
+        )
+        assessor = db_session.get(User, assessor_id)
+        assert assessor is not None
+        for row in assessor.registrations:
+            row.ends_on = datetime.now(UTC) - timedelta(days=1)
+        db_session.commit()
+
+        admin_client = _login(test_client, "orgadmin")
+        response = admin_client.post(
+            f"/api/passport/assessors/{assessor_id}/registration-verification",
+            json={
+                "registration_authority": "GMC",
+                "registration_number": "7654321",
+            },
+        )
+
+        assert response.status_code == 400, response.text
 
     def test_a_number_the_assessor_never_declared_is_refused(
         self,

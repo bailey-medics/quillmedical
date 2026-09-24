@@ -45,6 +45,7 @@ from app.organisations import add_org_unit_member
 from app.passport_storage import get_passport_store
 from app.security import hash_password
 from tests.competencies import clear, hold, lapse
+from tests.registrations import declare
 
 COMPETENCY = "prescribe_sact"
 LEVEL = "review_and_authorise"
@@ -131,8 +132,8 @@ def _make_user(
         is_active=True,
         email_verified=True,
         base_profession=profession,
-        professional_registrations={"GMC": "1234567"},
     )
+    declare(user, {"GMC": "1234567"})
     if writes:
         hold(user, "passport_write")
     db.add(user)

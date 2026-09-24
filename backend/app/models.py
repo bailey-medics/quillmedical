@@ -183,8 +183,8 @@ class User(Base):
     #: Every professional registration this person has declared, current
     #: and closed alike. Loaded with the user for the reason
     #: ``competency_grants`` is: the passport reads them wherever it
-    #: describes somebody. The JSON column ``professional_registrations``
-    #: above is still written beside them and read by nothing new.
+    #: describes somebody. This is what is read; the JSON column
+    #: ``professional_registrations`` above is still written beside it.
     registrations: Mapped[list[ProfessionalRegistration]] = relationship(
         back_populates="user",
         lazy="selectin",
@@ -219,6 +219,19 @@ class User(Base):
                     source="profession",
                 )
             )
+
+    @property
+    def current_registrations(self) -> list[ProfessionalRegistration]:
+        """The registrations this person holds now, oldest declared first.
+
+        Current means no end, or an end still in the future. A closed row
+        records a number they once held and no longer do.
+        """
+        now = datetime.now(UTC)
+        return sorted(
+            (row for row in self.registrations if row.is_current(now)),
+            key=lambda row: (row.authority, row.number),
+        )
 
     def _current_grant_ids(self) -> list[str]:
         """Competency ids with a current grant row, sorted."""
@@ -1386,6 +1399,18 @@ class ProfessionalRegistration(Base):
     )
 
     user: Mapped[User] = relationship(back_populates="registrations")
+
+    def is_current(self, now: datetime) -> bool:
+        """Whether this registration is still held at ``now``.
+
+        A naive ``ends_on``, as SQLite hands back, is read as UTC.
+        """
+        if self.ends_on is None:
+            return True
+        ends_on = self.ends_on
+        if ends_on.tzinfo is None:
+            ends_on = ends_on.replace(tzinfo=UTC)
+        return ends_on > now
 
     @validates("authority")
     def _authority_known(self, _key: str, value: str) -> str:
