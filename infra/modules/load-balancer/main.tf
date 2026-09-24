@@ -89,6 +89,13 @@ resource "google_compute_backend_service" "backend" {
   timeout_sec     = 30
   security_policy = google_compute_security_policy.waf.id
 
+  # Pinned to what is live. Provider v8 changed the default to
+  # EXTERNAL_MANAGED, and Google refuses that change on a backend service in
+  # use until its staged migration has reached TEST_ALL_TRAFFIC, so leaving
+  # it unset failed every apply. Moving to EXTERNAL_MANAGED is its own piece
+  # of work, done through that migration, not a side effect of a bump.
+  load_balancing_scheme = "EXTERNAL"
+
   backend {
     group = google_compute_region_network_endpoint_group.backend.id
   }
@@ -105,6 +112,9 @@ resource "google_compute_backend_service" "frontend" {
   protocol        = "HTTP"
   timeout_sec     = 30
   security_policy = google_compute_security_policy.waf.id
+
+  # Pinned to what is live; see the backend service above.
+  load_balancing_scheme = "EXTERNAL"
 
   backend {
     group = google_compute_region_network_endpoint_group.frontend.id
@@ -338,6 +348,9 @@ resource "google_compute_global_forwarding_rule" "https" {
   target     = google_compute_target_https_proxy.https.id
   port_range = "443"
   ip_address = google_compute_global_address.lb_ip.address
+
+  # Pinned to what is live; see the backend services.
+  load_balancing_scheme = "EXTERNAL"
 }
 
 # ---------- HTTP → HTTPS redirect ----------
@@ -364,4 +377,11 @@ resource "google_compute_global_forwarding_rule" "http" {
   target     = google_compute_target_http_proxy.http.id
   port_range = "80"
   ip_address = google_compute_global_address.lb_ip.address
+
+  # EXTERNAL_MANAGED, unlike every other part of this load balancer: the v8
+  # provider recreated this rule under its new default before anything was
+  # pinned. It carries only the HTTPS redirect, with no backend behind it,
+  # so the mismatch is harmless, and pinning it back to EXTERNAL would
+  # replace the rule for no gain. It joins the rest when they migrate.
+  load_balancing_scheme = "EXTERNAL_MANAGED"
 }
