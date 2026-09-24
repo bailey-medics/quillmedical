@@ -201,6 +201,15 @@ class GcsPassportStore(PassportStore):
         with self._checkout(passport_id) as checkout:
             return checkout.store.head(passport_id)
 
+    def contains(self, passport_id: str, commit: str) -> bool:
+        """Whether the repository holds this commit.
+
+        Raises:
+            PassportNotFoundError: If no bundle exists.
+        """
+        with self._checkout(passport_id) as checkout:
+            return checkout.store.contains(passport_id, commit)
+
     def read(self, passport_id: str, path: PurePosixPath) -> bytes:
         """Read one file at the current HEAD.
 

@@ -120,6 +120,14 @@ class _PendingView(PassportStore):
         """Where the repository is now, before the pending write."""
         return self._store.head(passport_id)
 
+    def contains(self, passport_id: str, commit: str) -> bool:
+        """Whether the repository holds this commit.
+
+        A question about committed history, which a pending write has
+        not joined yet, so it passes straight through.
+        """
+        return self._store.contains(passport_id, commit)
+
     def create(self, *args: object, **kwargs: object) -> str:
         """Not available: this view never writes."""
         raise NotImplementedError(
