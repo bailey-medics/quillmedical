@@ -8,6 +8,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn } from "storybook/test";
 import BurgerButton from "./BurgerButton";
 import { StateRow } from "@/stories/variants";
+import { NAVY_BACKDROP } from "@/stories/backdrops";
 import { Group } from "@mantine/core";
 
 const meta: Meta<typeof BurgerButton> = {
@@ -25,13 +26,9 @@ const meta: Meta<typeof BurgerButton> = {
     (Story) => (
       <div
         style={{
-          background: "var(--brand-primary)",
+          ...NAVY_BACKDROP,
           padding: "1rem",
           minHeight: "100vh",
-          // The state labels are dimmed text; on this navy backdrop that
-          // needs the dark-mode dimmed colour in both schemes.
-          ["--mantine-color-dimmed" as string]:
-            "var(--mantine-color-primary-1)",
         }}
       >
         <Story />

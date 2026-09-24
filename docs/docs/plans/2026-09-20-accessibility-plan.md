@@ -165,7 +165,7 @@ once the addon is registered; no `test-runner.ts` hooks are needed.
       entry instead, and sets the `__sbPostVisit` global the runner
       calls. A `Dark` variant of every story was rejected as 656 more
       stories to keep in step by hand
-- [ ] Fix the baseline component by component, the highest-count rule
+- [x] Fix the baseline component by component, the highest-count rule
       first. Each fix is a normal PR with a story change and a unit test
       where the fix is behaviour rather than markup. The baseline showed
       that contrast failures cluster on a few theme tokens, so the
@@ -235,9 +235,28 @@ once the addon is registered; no `test-runner.ts` hooks are needed.
         titles it through the element's shadow root (`titleFrames`).
         The layouts' `main` is not fixed here; see the phase 3 step on
         the scroll container
-  - [ ] Reference stories that show colours rather than use them
-- [ ] Switch `test: "todo"` to `test: "error"` once the baseline is clear,
-      so violations fail the heavy tier
+  - [x] Reference stories that show colours rather than use them. None
+        needed an override in the end: `Colours.stories.tsx` passed once
+        the status and muted tokens it renders were fixed. What was left
+        was of two other kinds. Stories on a navy backdrop
+        (`PublicButton`, `PublicNavIcon`, `PublicBodyText`,
+        `BurgerButton`) had variant labels in the light-mode `dimmed`
+        grey, unreadable on navy once that grey was darkened; they now
+        share `NAVY_BACKDROP` from `src/stories/backdrops.ts`, which
+        swaps in the dark-mode `dimmed`. And every Mantine modal's close
+        button had no name, which the baseline missed because the
+        throwaway scanner checked `#storybook-root` and modals render in
+        a portal outside it; the addon checks the whole document and
+        found it on the first `error` run. `theme.ts` now names it
+        "Close dialog" for every modal, not "Close", because several
+        modals end on a text button called "Close"
+- [x] Switch `test: "todo"` to `test: "error"` once the baseline is clear,
+      so violations fail the heavy tier. A full `test-storybook` run in
+      `error` mode passed, light and dark (624 passed, 3 skipped), until
+      #1071 merged to `main` mid-stack and made the current nav link brand
+      amber `secondary.5`, 2.66:1 on white, failing 18 nav stories. Light
+      mode now uses `secondary.7` `#886223`, still amber and 5.5:1 on
+      white; dark mode keeps `secondary.5`, which passes on navy
 - [ ] Add a `docs/docs/frontend/accessibility/` section to the Storybook
       docs page describing how to read an axe failure in the a11y panel and
       where per-story rule overrides belong (`parameters.a11y.config.rules`,
