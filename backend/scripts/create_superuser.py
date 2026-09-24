@@ -101,6 +101,11 @@ def main() -> int:
                 base_profession=SUPERADMIN_PROFESSION,
                 email_verified=True,
             )
+            # Seeds the profession's competencies as rows. Nobody is
+            # signed in to be named as granting them.
+            sync_competency_rows(
+                u, additional=[], removed=[], source="bootstrap"
+            )
             db.add(u)
             action = "created"
         else:

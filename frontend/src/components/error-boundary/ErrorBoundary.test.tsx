@@ -1,9 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@test/test-utils";
 import { resetReportingStateForTests } from "@lib/error-reporting/report";
+import { api } from "@/lib/api";
 import ErrorBoundary, { ErrorFallback } from "./ErrorBoundary";
+
+vi.mock("@/lib/api", () => ({
+  api: { post: vi.fn().mockResolvedValue({ id: 1 }) },
+}));
 
 /** Renders a component that throws, with React's own console noise silenced. */
 function renderThrowing(message: string): () => void {
@@ -157,6 +162,120 @@ describe("ErrorBoundary", () => {
       );
 
       expect(beacon).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("telling us what happened", () => {
+    it("offers it beside Reload page", () => {
+      renderWithMantine(<ErrorFallback onReload={() => {}} />);
+
+      expect(
+        screen.getByRole("button", { name: /reload page/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /tell us what happened/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("opens the feedback modal", async () => {
+      const user = userEvent.setup();
+      renderWithMantine(<ErrorFallback onReload={() => {}} />);
+
+      await user.click(
+        screen.getByRole("button", { name: /tell us what happened/i }),
+      );
+
+      expect(
+        await screen.findByText("Do not include patient details."),
+      ).toBeInTheDocument();
+    });
+
+    it("sends the feedback with the error it followed", async () => {
+      const user = userEvent.setup();
+      const onSendFeedback = vi.fn().mockResolvedValue({ id: 1 });
+      renderWithMantine(
+        <ErrorFallback
+          onReload={() => {}}
+          error={{ name: "TypeError", code: "BANK_NOT_FOUND" }}
+          onSendFeedback={onSendFeedback}
+        />,
+      );
+
+      await user.click(
+        screen.getByRole("button", { name: /tell us what happened/i }),
+      );
+      await user.type(
+        await screen.findByRole("textbox", { name: /message/i }),
+        "I pressed next and it broke",
+      );
+      await user.click(screen.getByTestId("submit-button"));
+
+      await waitFor(() =>
+        expect(onSendFeedback).toHaveBeenCalledWith(
+          { category: null, message: "I pressed next and it broke" },
+          { name: "TypeError", code: "BANK_NOT_FOUND" },
+        ),
+      );
+      expect(await screen.findByText("Feedback sent")).toBeInTheDocument();
+    });
+
+    it("carries the caught error's name and code to the server", async () => {
+      const user = userEvent.setup();
+      vi.stubGlobal("navigator", {
+        sendBeacon: beacon,
+        userAgent: "test",
+        onLine: true,
+      });
+      const consoleSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      function ThrowingComponent(): never {
+        const error = new Error("Not found") as Error & {
+          error_code: string;
+        };
+        error.error_code = "BANK_NOT_FOUND";
+        throw error;
+      }
+
+      renderWithMantine(
+        <ErrorBoundary>
+          <ThrowingComponent />
+        </ErrorBoundary>,
+      );
+
+      await user.click(
+        screen.getByRole("button", { name: /tell us what happened/i }),
+      );
+      await user.type(
+        await screen.findByRole("textbox", { name: /message/i }),
+        "It broke",
+      );
+      await user.click(screen.getByTestId("submit-button"));
+
+      await waitFor(() =>
+        expect(api.post).toHaveBeenCalledWith(
+          "/feedback",
+          expect.objectContaining({
+            message: "It broke",
+            error_name: "Error",
+            error_code: "BANK_NOT_FOUND",
+          }),
+        ),
+      );
+      consoleSpy.mockRestore();
+    });
+
+    it("does not link to your feedback, which would lead back here", async () => {
+      const user = userEvent.setup();
+      renderWithMantine(<ErrorFallback onReload={() => {}} />);
+
+      await user.click(
+        screen.getByRole("button", { name: /tell us what happened/i }),
+      );
+      await screen.findByText("Do not include patient details.");
+
+      expect(screen.queryByRole("link")).not.toBeInTheDocument();
     });
   });
 });

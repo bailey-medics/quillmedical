@@ -8,7 +8,8 @@ not available.
 
 Environment Variables:
     ADMIN_ACTION:     Required.  One of: create-superadmin, add-role,
-                      verify-email, run-migrations.
+                      verify-email, run-migrations,
+                      check-competency-seeding.
     ADMIN_USERNAME:   Required.  Target username.
     ADMIN_EMAIL:      Required for create-superadmin.
     ADMIN_PASSWORD:   Required for create-superadmin.
@@ -115,6 +116,11 @@ def create_superadmin() -> int:
         # actually ask for.
         if is_new:
             user.base_profession = SUPERADMIN_PROFESSION
+            # Seeds the profession's competencies as rows. Nobody is
+            # signed in to be named as granting them.
+            sync_competency_rows(
+                user, additional=[], removed=[], source="bootstrap"
+            )
         else:
             # An existing user keeps the profession they practise under —
             # overwriting it would strip a clinician's clinical
@@ -307,7 +313,47 @@ def smoke_test() -> int:
     return 1
 
 
+def check_competency_seeding() -> int:
+    """List users who hold a competency only through their profession.
+
+    The check to run before the resolver stops reading the profession's
+    template: anybody listed would lose those competencies when it does.
+    Prints user ids and competency ids only, never names. Exits 1 when
+    anybody is listed, so a job run fails visibly.
+    """
+    from app.cbac.audit import unseeded_profession_competencies
+    from app.db.core_db import CoreSessionLocal
+
+    db = CoreSessionLocal()
+    try:
+        found = unseeded_profession_competencies(db)
+    except Exception as exc:
+        print(f"✗ Database error: {exc}", file=sys.stderr)
+        return 1
+    finally:
+        db.close()
+
+    if not found:
+        print("✓ Every user's profession competencies are rows")
+        return 0
+
+    print(
+        f"✗ {len(found)} user(s) hold competencies only through their "
+        "profession:",
+        file=sys.stderr,
+    )
+    for user_id, competency_ids in sorted(found.items()):
+        print(
+            f"  user {user_id}: {', '.join(competency_ids)}", file=sys.stderr
+        )
+    return 1
+
+
 ACTIONS: dict[str, tuple[Callable[[], int], str]] = {
+    "check-competency-seeding": (
+        check_competency_seeding,
+        "List users who would lose a competency when only rows count",
+    ),
     "create-superadmin": (
         create_superadmin,
         "Create user with superadmin permissions",

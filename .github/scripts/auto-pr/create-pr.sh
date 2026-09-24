@@ -5,7 +5,10 @@
 #
 # Idempotent. When a pull request already exists it is left alone, except that
 # an empty description is filled in with the placeholder — a tool that opened
-# the pull request ahead of this workflow leaves one behind.
+# the pull request ahead of this workflow leaves one behind. A branch whose
+# pull request has merged or closed gets no new one, and a new pull request
+# waits AUTO_PR_WAIT_SECONDS (default 60) first, so a stacked branch is left
+# to gh-stack.
 # Handles the race condition where two workflow runs trigger simultaneously.
 set -euo pipefail
 
@@ -98,6 +101,20 @@ describe_existing() {
   gh pr edit "$number" --body "$new_body"
 }
 
+# How long to wait before opening a pull request, in seconds. See main().
+AUTO_PR_WAIT_SECONDS="${AUTO_PR_WAIT_SECONDS:-60}"
+
+# The number of open pull requests for the branch.
+open_count() {
+  gh pr list --head "$1" --state open --json number --jq length
+}
+
+# The number of pull requests for the branch that have merged or closed.
+finished_count() {
+  gh pr list --head "$1" --state all --json state \
+    --jq '[.[] | select(.state != "OPEN")] | length'
+}
+
 main() {
   local branch="${1:-}"
   local existing
@@ -108,7 +125,31 @@ main() {
     exit 1
   fi
 
-  existing=$(gh pr list --head "$branch" --state open --json number --jq length)
+  existing=$(open_count "$branch")
+  if [ "$existing" != "0" ]; then
+    describe_existing "$branch"
+    exit 0
+  fi
+
+  # A branch whose pull request has already merged or closed is finished.
+  # A push to it is not new work: it is what merging a stacked pull request
+  # into a base that had itself already merged looks like, and a pull
+  # request opened for it would carry the stack's commits to main in one
+  # lump, past the order they were meant to deploy in.
+  if [ "$(finished_count "$branch")" != "0" ]; then
+    log "A pull request for ${branch} has already merged or closed, skipping"
+    exit 0
+  fi
+
+  # `gh stack submit` pushes a branch and then opens its pull request against
+  # the branch below, a few seconds later. Opened first, a pull request here
+  # would be against main, and gh-stack cannot re-point a pull request it
+  # did not open. So wait, and leave the branch to gh-stack if it answered.
+  if [ "$AUTO_PR_WAIT_SECONDS" -gt 0 ]; then
+    log "Waiting ${AUTO_PR_WAIT_SECONDS}s in case a stack opens the pull request"
+    sleep "$AUTO_PR_WAIT_SECONDS"
+  fi
+  existing=$(open_count "$branch")
   if [ "$existing" != "0" ]; then
     describe_existing "$branch"
     exit 0
@@ -123,7 +164,7 @@ main() {
     --head "$branch" \
     --draft 2>&1; then
     # Check again — if a pull request now exists, a parallel run created it
-    recheck=$(gh pr list --head "$branch" --state open --json number --jq length)
+    recheck=$(open_count "$branch")
     if [ "$recheck" != "0" ]; then
       log "Pull request was created by a concurrent run, skipping"
     else

@@ -7,6 +7,8 @@
 
 # shellcheck disable=SC2329
 
+bats_require_minimum_version 1.5.0
+
 setup() {
   source "${BATS_TEST_DIRNAME}/deploy-tagged.sh"
   # No real waiting in tests: one poll per attempt unless a test says otherwise.
@@ -15,6 +17,8 @@ setup() {
 }
 
 TAGGED_URL="https://rev-abc123---quill-backend-teaching-xyz.a.run.app"
+# The revision behind the rev-abc123 tag in the fixtures below.
+REV="quill-backend-teaching-00285-quv"
 
 # Service JSON once the promotion has landed: Ready, newest revision is the
 # ready one, and it carries all the traffic (split across the LATEST entry
@@ -77,7 +81,7 @@ is_update_traffic() {
   [[ "$(sed -n '1p' "$calls")" == "run services update quill-backend-teaching --project=my-project --region=europe-west2 --image=image:abc123 --no-traffic --tag=rev-abc123" ]]
   [[ "$(sed -n '2p' "$calls")" == "run services describe quill-backend-teaching --project=my-project --region=europe-west2 --format=json" ]]
   [[ "$(sed -n '3p' "$calls")" == "${TAGGED_URL}/api/health" ]]
-  [[ "$(sed -n '4p' "$calls")" == "run services update-traffic quill-backend-teaching --project=my-project --region=europe-west2 --to-latest --async" ]]
+  [[ "$(sed -n '4p' "$calls")" == "run services update-traffic quill-backend-teaching --project=my-project --region=europe-west2 --to-revisions=quill-backend-teaching-00285-quv=100 --remove-tags=rev-abc123 --async" ]]
   [[ "$(sed -n '5p' "$calls")" == "run services describe quill-backend-teaching --project=my-project --region=europe-west2 --format=json" ]]
   [ "$(wc -l < "$calls")" -eq 5 ]
 }
@@ -241,39 +245,70 @@ is_update_traffic() {
 
 # ---------- promotion_settled ----------
 
-@test "promotion_settled accepts a Ready service with all traffic on the newest revision" {
-  run promotion_settled <<< "$(settled_json)"
+@test "promotion_settled accepts a Ready service with all traffic on the tested revision" {
+  run promotion_settled "$REV" <<< "$(settled_json)"
   [ "$status" -eq 0 ]
 }
 
 @test "promotion_settled rejects the stalled state — spec says LATEST, traffic still on the old revision" {
-  run promotion_settled <<< "$(stalled_json)"
+  run promotion_settled "$REV" <<< "$(stalled_json)"
   [ "$status" -ne 0 ]
 }
 
 @test "promotion_settled rejects a service whose Ready condition is not True" {
   json="$(settled_json | jq '.status.conditions[0].status = "Unknown"')"
-  run promotion_settled <<< "$json"
+  run promotion_settled "$REV" <<< "$json"
   [ "$status" -ne 0 ]
 }
 
-@test "promotion_settled rejects a newer revision that is not yet the ready one" {
-  json="$(settled_json | jq '.status.latestCreatedRevisionName = "quill-backend-teaching-00286-abc"')"
-  run promotion_settled <<< "$json"
+@test "promotion_settled is not held up by a newer, untested revision" {
+  # Changed deliberately on 2026-09-24. It used to reject this, because it
+  # asked whether the newest revision was serving. But a newer revision is
+  # exactly what a Terraform apply creates mid-deploy, and it has not been
+  # smoke-tested; the tested revision carrying all traffic is what matters.
+  json="$(settled_json | jq '.status.latestCreatedRevisionName = "quill-backend-teaching-00286-abc"
+    | .status.latestReadyRevisionName = "quill-backend-teaching-00286-abc"')"
+  run promotion_settled "$REV" <<< "$json"
+  [ "$status" -eq 0 ]
+}
+
+@test "promotion_settled rejects traffic that went to a different revision" {
+  # What --to-latest allowed: a Terraform revision taking the traffic
+  # instead of the one that passed the smoke test.
+  json="$(settled_json | jq '.status.traffic[0].revisionName = "quill-backend-teaching-00286-abc"')"
+  run promotion_settled "$REV" <<< "$json"
   [ "$status" -ne 0 ]
 }
 
 @test "promotion_settled rejects a partial traffic split" {
   json="$(settled_json | jq '.status.traffic[0].percent = 50')"
-  run promotion_settled <<< "$json"
+  run promotion_settled "$REV" <<< "$json"
   [ "$status" -ne 0 ]
 }
 
 @test "promotion_settled rejects empty or malformed status" {
-  run promotion_settled <<< '{}'
+  run promotion_settled "$REV" <<< '{}'
   [ "$status" -ne 0 ]
-  run promotion_settled <<< 'not json'
+  run promotion_settled "$REV" <<< 'not json'
   [ "$status" -ne 0 ]
+}
+
+@test "fails and does not promote when the tag names no revision" {
+  calls="${BATS_TEST_TMPDIR}/calls"
+  : > "$calls"
+
+  gcloud() {
+    echo "$*" >> "$calls"
+    if is_describe "$@"; then settled_json | jq 'del(.status.traffic[1].revisionName)'; fi
+  }
+  run_smoke_test() { echo "smoke" >> "$calls"; }
+
+  run main "quill-backend-teaching" "my-project" "europe-west2" "image:abc123" "rev-abc123" "/api/health"
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Could not resolve the revision behind rev-abc123"* ]]
+  run ! grep -q "update-traffic" "$calls"
+  run ! grep -q "smoke" "$calls"
 }
 
 @test "run_smoke_test curls directly when no job is named" {

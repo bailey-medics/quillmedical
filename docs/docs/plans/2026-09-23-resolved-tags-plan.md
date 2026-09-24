@@ -46,14 +46,14 @@ switch-reads, contract order in
 
 ## Phase 2: Add the table and write it beside the JSON
 
-- [ ] **Add an `AssessmentAnswerTag` model** in
+- [x] **Add an `AssessmentAnswerTag` model** in
       `backend/app/features/teaching/models.py`, with `answer_id` (FK
       `assessment_answers.id`, `ON DELETE CASCADE`), `tag`
       (`varchar(100)`), a unique constraint on the pair, and an index on
       `tag` for the cross-attempt questions this exists to answer. Add a
       `tags` relationship on `AssessmentAnswer`, loaded with `selectin`.
 
-- [ ] **Write rows beside the JSON in `submit_answer` and `update_answer`**
+- [x] **Write rows beside the JSON in `submit_answer` and `update_answer`**
       (`backend/app/features/teaching/router.py:1386` and `:1485`). An
       answer can be changed before the assessment is completed, and each
       change re-resolves its tags. So the rows for that answer are replaced
@@ -61,28 +61,56 @@ switch-reads, contract order in
       competencies: until completion, an answer is being edited, not
       recorded, and the completed answer is what the audit trail keeps.
 
+      `AssessmentAnswer.set_tags` keeps the rows for tags that stay and
+      swaps only the rest. Deleting everything and writing afresh would
+      collide on the unique constraint, because the unit of work inserts
+      before it deletes. `tag` is `varchar(255)`, matching
+      `selected_option`, rather than the 100 first planned: the question
+      bank validator sets no limit on a tag's length, and a longer one
+      would have failed the answer.
+
 ## Phase 3: Backfill
 
-- [ ] **Copy every answer's `resolved_tags` into rows in one hand-written
+- [x] **Copy every answer's `resolved_tags` into rows in one hand-written
       migration**, using `json_array_elements_text` guarded against a value
       that is not an array. Skip answers that already have rows, so
       anything dual-written is not copied twice. Test it against Postgres in
       the `alembic_drift_check` job, as
       `backend/tests/test_user_competency_backfill.py` does.
 
+      Written as `83c3b5af3ea7`, tested in
+      `backend/tests/test_answer_tag_backfill.py`. A tag repeated within
+      one list is copied once, as the unique constraint requires. Its
+      `downgrade()` empties the table: its rows cannot be told from the
+      ones the application wrote, and need not be, because at that
+      revision every row is a copy of `resolved_tags`, which is still
+      written and still read.
+
 ## Phase 4: Switch reads
 
-- [ ] **Build the answer dicts in `complete_assessment` from rows**
+- [x] **Build the answer dicts in `complete_assessment` from rows**
       (`router.py:1736-1743`). `evaluate_pass_criteria` keeps its signature
       and its tests in `backend/tests/test_teaching_scoring.py`, which pass
       dicts directly and need no change.
 
-- [ ] **Move `test_answer_persists_scoring_fields`**
+- [x] **Move `test_answer_persists_scoring_fields`**
       (`backend/tests/test_teaching_router.py:605`) to assert on the rows.
+      A new test in `backend/tests/test_teaching_answer_tags.py` overwrites
+      every answer's JSON and checks the result is still scored on the
+      rows, so a read left on the column would fail it.
 
 ## Phase 5: Stop writing JSON
 
-- [ ] **Remove the JSON writes** from `submit_answer` and `update_answer`.
+- [x] **Remove the JSON writes** from `submit_answer` and `update_answer`.
+
+- [x] **Take the column out of every statement, in the same change.**
+      Found while building the competency plan's contract phase: a column
+      still mapped is named in every `SELECT`, and a revision still serving
+      while the drop runs would fail on every query of `assessment_answers`.
+      `resolved_tags` is nullable with no default, so deferring it keeps it
+      out of every `SELECT`, and no longer setting it keeps it out of every
+      `INSERT`, with no migration needed. A test records every statement an
+      answer and a completion send, and fails if the column is named.
 
 ## Phase 6: Drop the column
 

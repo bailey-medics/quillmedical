@@ -20,7 +20,12 @@ setup() {
   : > "$CALLS"
   : > "$LIST_COUNTER"
   : > "$EXISTING_BODY"
-  set_list_results 0
+  # Every `gh pr list` count a run can ask for: open, finished, open again
+  # after the wait, and open once more if creation fails.
+  set_list_results 0 0 0 0
+
+  # No real waiting in tests.
+  export AUTO_PR_WAIT_SECONDS=0
 
   STUB_DIR="${BATS_TEST_TMPDIR}/bin"
   mkdir -p "$STUB_DIR"
@@ -166,7 +171,7 @@ body_arg() {
 }
 
 @test "exits cleanly when a concurrent run created the pull request" {
-  set_list_results 0 1
+  set_list_results 0 0 0 1
   set_create_status 1
 
   run bash "$SCRIPT" feature/racing
@@ -176,7 +181,7 @@ body_arg() {
 }
 
 @test "fails when creation fails and no pull request appeared" {
-  set_list_results 0 0
+  set_list_results 0 0 0 0
   set_create_status 1
 
   run bash "$SCRIPT" feature/broken
@@ -234,4 +239,30 @@ body_arg() {
   [ "$status" -eq 0 ]
   [[ "$output" == *"with a description"* ]]
   run ! grep -qx -- "--body" "$CALLS"
+}
+
+# #1033: merging a stacked pull request into a base branch that had itself
+# already merged pushed to that branch, and a fresh pull request against main
+# carried three deploy-ordered units in one lump.
+@test "opens nothing for a branch whose pull request already merged" {
+  set_list_results 0 1
+
+  run bash "$SCRIPT" feature/already-merged
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"already merged or closed"* ]]
+  run ! grep -qx -- "create" "$CALLS"
+}
+
+# #996, #998, #1014: `gh stack submit` pushes, then opens its own pull request
+# a few seconds later. Opened first, this one pointed at main.
+@test "leaves the branch to a stack that opened its pull request meanwhile" {
+  set_list_results 0 0 1
+  set_existing_body ""
+
+  run bash "$SCRIPT" feature/stacked-late
+
+  [ "$status" -eq 0 ]
+  run ! grep -qx -- "create" "$CALLS"
+  grep -qx -- "edit" "$CALLS"
 }

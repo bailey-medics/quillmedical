@@ -458,6 +458,54 @@ class TestAnEntitlementThatHasRunOut:
         assert response.status_code == 200
         assert response.json()["entitlement"]["can_write"] is True
 
+    def test_a_grant_through_an_organisation_has_no_end_to_warn_about(
+        self,
+        passport: str,
+        test_client: TestClient,
+    ) -> None:
+        """Given by the site they work at, the passport does not lapse.
+
+        So there is no date and no countdown, and writing is allowed.
+        """
+        client = _login(test_client, "holder")
+
+        response = client.get(f"/api/passport/{passport}")
+
+        assert response.status_code == 200
+        assert response.json()["entitlement"] == {
+            "ends_on": None,
+            "days_remaining": None,
+            "can_write": True,
+        }
+
+    def test_an_individual_subscription_counts_down(
+        self,
+        passport: str,
+        test_client: TestClient,
+        holder: User,
+        db_session: Session,
+    ) -> None:
+        """Bought by the holder, it runs out, and the page is told when."""
+        self._expire(db_session, holder)
+        holder.competency_grants.append(
+            UserCompetency(
+                competency_id="passport_write",
+                granted=True,
+                starts_on=datetime.now(UTC),
+                ends_on=datetime.now(UTC) + timedelta(days=30),
+                source="individual",
+            )
+        )
+        db_session.commit()
+        client = _login(test_client, "holder")
+
+        entitlement = client.get(f"/api/passport/{passport}").json()[
+            "entitlement"
+        ]
+
+        assert entitlement["can_write"] is True
+        assert entitlement["days_remaining"] in (29, 30)
+
     def test_writing_is_refused_once_it_has_ended(
         self,
         passport: str,

@@ -61,6 +61,9 @@ competencies:
   # clinician the paid feature at provisioning and make the split
   # cosmetic.
   #
+  # Given through an organisation it does not lapse. An individual
+  # subscription runs for a year.
+  #
   # It gates writing only. Reading and exporting a passport you already
   # hold are derived from owning it, never from paying, so a lapsed
   # holder keeps their record in full and loses only the ability to add

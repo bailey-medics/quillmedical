@@ -49,3 +49,17 @@ and the report is what reaches somebody who is not watching.
 The fallback says "Something went wrong" and offers a reload. It deliberately
 shows no technical detail: the user cannot act on a stack trace, and anything
 shown on screen is visible to whoever else is in the room.
+
+## Telling us what happened
+
+Beside the reload, `Tell us what happened` opens the same feedback modal the
+sidebar's `Send feedback` link does. This is the moment somebody is most
+likely to explain a fault, because they have certainly just hit one. What
+they send carries the caught error's name and code, so a submission can be
+matched to its report.
+
+Two things differ from the sidebar's modal. It is rendered from the fallback
+itself, and nothing on its send path needs the router, since the tree below
+has already failed. And it offers no link to the sender's own feedback: the
+boundary stays in its failed state whatever the address, so the link would
+lead straight back here.

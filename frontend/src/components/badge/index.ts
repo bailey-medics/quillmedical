@@ -3,6 +3,7 @@ export { default as AppointmentStatusBadge } from "./AppointmentStatusBadge";
 export { default as AssessmentResultBadge } from "./AssessmentResultBadge";
 export { default as CompetencyBadge } from "./CompetencyBadge";
 export { default as FeatureBadge } from "./FeatureBadge";
+export { default as FeedbackStatusBadge } from "./FeedbackStatusBadge";
 export { default as LetterStatusBadge } from "./LetterStatusBadge";
 export { default as NoteCategoryBadge } from "./NoteCategoryBadge";
 export { default as OnQuillBadge } from "./OnQuillBadge";

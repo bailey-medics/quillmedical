@@ -49,6 +49,18 @@ describe("entitlementWarning", () => {
     expect(entitlementWarning({})).toBeNull();
   });
 
+  it("says nothing when the grant has no end", () => {
+    // Given through a site or organisation, the passport does not lapse:
+    // writable, with no date to count down to.
+    expect(
+      entitlementWarning({
+        ends_on: null,
+        days_remaining: null,
+        can_write: true,
+      }),
+    ).toBeNull();
+  });
+
   it("says nothing while the end is far off", () => {
     expect(entitlementWarning({ days_remaining: 90 })).toBeNull();
   });

@@ -677,6 +677,10 @@ def add_org_unit_member(
         )
         status = "updated"
 
+    # Read against the profession they have now, before any change to it:
+    # asked afterwards, the new profession's competencies would all read
+    # as "not held" and be kept from them.
+    removed = person.removed_competency_ids
     additional = grant_staff_competencies(
         person, body.base_profession, body.additional_competencies
     )
@@ -687,7 +691,7 @@ def add_org_unit_member(
     sync_competency_rows(
         person,
         additional=additional,
-        removed=person.removed_competency_ids,
+        removed=removed,
         source="admin",
         granted_by=current_user.id,
         org_unit_id=unit_id,
