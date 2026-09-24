@@ -341,8 +341,9 @@ const appCssVariables = {
     "--bubble-theirs-bg": "#fae8cc",
     "--bubble-shadow": "0 1px 0 rgba(0,0,0,0.06)",
     "--bubble-border-top": "1px solid rgba(0,0,0,0.06)",
-    // Current nav link — brand amber (only ~2.7:1 contrast on white)
-    "--nav-active-colour": "var(--mantine-color-secondary-5)",
+    // Current nav link — amber, darkened to secondary.7 for light mode:
+    // the brand secondary.5 is 2.7:1 on white, secondary.7 is 5.5:1
+    "--nav-active-colour": "var(--mantine-color-secondary-7)",
     "--nav-hover-bg": "var(--mantine-color-gray-0)",
     ...statusTextVariables(statusTextColourValues.light),
   },
@@ -433,6 +434,17 @@ export const theme = createTheme({
         children: {},
       }),
     }),
+    // Mantine's modal close button is an icon with no accessible name,
+    // so a screen reader announces only "button" (axe button-name).
+    // Set once here for every modal rather than at each call site.
+    // "Close dialog" rather than "Close": several modals end on a text
+    // button that says "Close", and two buttons of one name are
+    // indistinguishable in a screen reader's list of buttons.
+    Modal: {
+      defaultProps: {
+        closeButtonProps: { "aria-label": "Close dialog" },
+      },
+    },
     Badge: {
       defaultProps: {
         size: "lg",

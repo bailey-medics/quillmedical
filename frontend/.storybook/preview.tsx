@@ -180,11 +180,12 @@ const preview: Preview = {
   parameters: {
     actions: { argTypesRegex: "^on[A-Z].*" },
     controls: { expanded: true },
-    // axe checks on every story. "todo" reports violations without failing
-    // the test-runner, so the first run produces a baseline rather than
-    // blocking every open pull request; it becomes "error" once clear.
+    // axe checks on every story, in light and (via a11y-dark-mode.ts) in
+    // dark. "error" fails the heavy tier on any violation. A story that
+    // must differ overrides parameters.a11y itself, with a comment saying
+    // why; never switch a rule off here for everyone.
     a11y: {
-      test: "todo",
+      test: "error",
       options: {
         runOnly: {
           type: "tag",

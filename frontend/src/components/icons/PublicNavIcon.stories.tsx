@@ -3,6 +3,7 @@ import { Group } from "@mantine/core";
 import PublicNavIcon from "./PublicNavIcon";
 import type { PublicNavIconName } from "./PublicNavIcon";
 import { VariantRow, VariantStack } from "@/stories/variants";
+import { NAVY_BACKDROP } from "@/stories/backdrops";
 
 const iconNames: PublicNavIconName[] = [
   "home",
@@ -25,7 +26,7 @@ const meta = {
     (Story) => (
       <div
         style={{
-          background: "var(--brand-primary)",
+          ...NAVY_BACKDROP,
           minHeight: "100vh",
           padding: "var(--mantine-spacing-xl)",
         }}

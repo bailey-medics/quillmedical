@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import PublicBodyText from "./PublicBodyText";
 import { VariantRow, VariantStack } from "@/stories/variants";
+import { NAVY_BACKDROP } from "@/stories/backdrops";
 
 const meta = {
   title: "Public/Typography/Public body text",
@@ -12,7 +13,7 @@ const meta = {
     (Story) => (
       <div
         style={{
-          background: "var(--brand-primary)",
+          ...NAVY_BACKDROP,
           minHeight: "100vh",
           padding: "var(--mantine-spacing-xl)",
         }}

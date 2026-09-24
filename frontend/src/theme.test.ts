@@ -15,6 +15,7 @@ import {
   cssVariablesResolver,
   greyScale,
   primaryScale,
+  secondaryScale,
   statusColourValues,
   statusTextColourValues,
   theme,
@@ -99,9 +100,13 @@ describe("cssVariablesResolver", () => {
     expect(vars.dark["--mantine-color-body"]).toBe("#001a36");
   });
 
-  it("colours the current nav link brand amber", () => {
+  it("colours the current nav link amber, darker in light mode", () => {
+    // secondary.5 is 2.7:1 on white, under WCAG AA; secondary.7 is 5.5:1
     expect(vars.light["--nav-active-colour"]).toBe(
-      "var(--mantine-color-secondary-5)",
+      "var(--mantine-color-secondary-7)",
+    );
+    expect(contrastRatio(secondaryScale[7], "#ffffff")).toBeGreaterThanOrEqual(
+      AA_TEXT,
     );
     expect(vars.dark["--nav-active-colour"]).toBe(
       "var(--mantine-color-secondary-5)",
