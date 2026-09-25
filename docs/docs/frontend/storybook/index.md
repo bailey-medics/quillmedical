@@ -325,14 +325,63 @@ Tests use **Vitest** with `@testing-library/react` and share test utilities to e
 
 ## Accessibility Testing
 
-**Planned**: The `@storybook/addon-a11y` addon is installed (version 10.2.10) but not yet configured in `.storybook/main.ts`. When enabled, this addon provides:
+Every story is checked against WCAG 2.2 AA by [axe-core](https://github.com/dequelabs/axe-core) through `@storybook/addon-a11y`, in light mode and again in dark mode. A violation fails the Storybook interaction tests in the heavy CI tier, which runs on pull requests that are not drafts. The wider programme, and what automation cannot see, is in the [accessibility plan](../../plans/2026-09-20-accessibility-plan.md).
 
-- WCAG violation detection
-- Colour contrast analysis
-- Keyboard navigation testing
-- Screen reader simulation
+### What runs, and where it is configured
 
-The active addon is `storybook-addon-pseudo-states`, which enables testing of CSS pseudo-states (`:hover`, `:focus`, `:active`, etc.).
+- **The rules** — `parameters.a11y` in `.storybook/preview.tsx`: the `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa` and `wcag22aa` tags, plus `target-size` (WCAG 2.5.8), which axe ships switched off. `test: "error"` makes a violation fail the test.
+- **The light pass** — the addon checks each story as it renders, which is light mode unless the story pins a scheme.
+- **The dark pass** — `.storybook/a11y-dark-mode.ts` switches the `colorScheme` global to dark after each story, waits for it to re-render, and checks it again. It is loaded as a Jest setup file by `frontend/test-runner-jest.config.js`, not as `.storybook/test-runner.ts`, because Storybook 10 loads that file in a way Jest 30.5 refuses; the reason is in the file's header.
+- **Not checked** — stories tagged `!test`, and anything a story does not render. A story that renders nothing passes, so a component gated on a competency needs the mock user in `preview.tsx` to hold it.
+
+### Running the checks locally
+
+- `just sbtci` starts Storybook, runs every story's tests including both a11y passes, and stops it. This is what CI runs.
+- `just sbt` runs the same tests against a Storybook already running from `just sb`.
+- To check a few files, run `yarn test-storybook --url http://localhost:6006 src/path/to/Thing.stories.tsx` in `frontend/`.
+- **Restart Storybook after changing `.storybook/main.ts`.** A server started before a change there does not pick it up, and the test-runner then fails every story with `ReferenceError: Cannot access 'StorybookTestRunnerError' before initialization`, which says nothing about the real cause.
+
+### Reading a failure
+
+A light-mode failure in the test output looks like this:
+
+```text
+Expected the HTML found at $('.m_220c80f2') to have no violations:
+<button class="… mantine-Modal-close …" type="button">
+Received:
+"Buttons must have discernible text (button-name)"
+Fix any of the following:
+  aria-label attribute does not exist or is empty
+  …
+```
+
+- **The rule id** is in brackets at the end of the "Received" line (`button-name`). The rule's page, linked at the foot of the message, explains the WCAG criterion and the usual fixes.
+- **The selector** after "HTML found at" is the failing element. Mantine class names such as `m_220c80f2` are not stable, so find the element by the HTML printed underneath rather than by the class.
+- **The "Fix any of the following" list** is the set of ways to pass; one is enough.
+- **Only the first failing element is printed.** Open the story's link, printed at the top of the message with `addonPanel=storybook/a11y/panel`, to see them all.
+
+A dark-mode failure is printed by the dark pass instead, as the story title with "(dark mode)" and a list of rule ids with the failing selectors. To see it in the browser, switch the **Colour scheme** toolbar button to dark.
+
+In the Storybook browser, the **Accessibility** tab under each story lists **Violations**, **Passes** and **Incomplete**. Expanding a violation and choosing **Highlight** outlines the failing elements on the canvas. "Incomplete" means axe could not decide, usually contrast over an image or gradient; it does not fail the test, but deserves a look.
+
+### When a story needs different rules
+
+Fix the component rather than the rule wherever possible: a contrast failure is usually a colour token that fails everywhere it is used, and fixing the token fixes every component at once. When a story genuinely must differ, override it on that story only, with a comment saying why:
+
+```tsx
+export const SwatchSamples: Story = {
+  parameters: {
+    a11y: {
+      // Shows the placeholder grey as a swatch; it is never used for text
+      config: { rules: [{ id: "color-contrast", enabled: false }] },
+    },
+  },
+};
+```
+
+- **Never switch a rule off in `preview.tsx`.** That removes it for every story, including the ones it would catch next.
+- **`test: "todo"` on one story** reports without failing, for a known failure being fixed in a follow-up. Say which in the comment.
+- **`disable: true`** skips the story's checks entirely, and should need a very good reason.
 
 ## Further Documentation
 
