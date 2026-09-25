@@ -16,6 +16,12 @@ from typing import Any, TypedDict
 import markdown
 import nh3
 import yaml
+from markupsafe import Markup
+
+from app.email.brand import EmailImage
+from app.email.render import EmailPartner, SendEmailArgs, send_args
+from app.email.render import render_email as render_branded_email
+from app.features.teaching.models import TeachingOrgSettings
 
 logger = logging.getLogger(__name__)
 
@@ -116,4 +122,80 @@ def render_email(
 
     return RenderedEmail(
         subject=subject, html_body=html_body, body_text=body_md.strip()
+    )
+
+
+#: The height every partner logo is shown at in an email's partner strip.
+PARTNER_LOGO_HEIGHT = 72
+
+
+def email_partner(
+    settings_row: TeachingOrgSettings | None, context: str
+) -> EmailPartner | None:
+    """The partner an organisation's teaching emails are sent for.
+
+    Args:
+        settings_row: The organisation's teaching settings, if it has any.
+        context: What the email is about, shown beside the logo: the
+            question bank's title.
+
+    Returns:
+        The partner, or ``None`` when the organisation has no settings, in
+        which case the email goes out as Quill's own.
+    """
+    if settings_row is None or not settings_row.institution_name:
+        return None
+    logo: EmailImage | None = None
+    if settings_row.email_logo and settings_row.email_logo_width:
+        logo = EmailImage(
+            src=f"/email/partners/{settings_row.email_logo}",
+            width=settings_row.email_logo_width,
+            height=PARTNER_LOGO_HEIGHT,
+            # The logo carries the name; the image's alt text names it too
+            alt=settings_row.institution_name,
+        )
+    return EmailPartner(
+        name=settings_row.institution_name,
+        context=context,
+        short_name=settings_row.email_short_name or None,
+        reply_to=settings_row.coordinator_email or None,
+        logo=logo,
+    )
+
+
+def in_branded_layout(
+    rendered: RenderedEmail,
+    *,
+    reason: str,
+    partner: EmailPartner | None,
+) -> SendEmailArgs:
+    """Place a coordinator-written email in Quill's branded layout.
+
+    The coordinator's words stay exactly as the bank's config.yaml has
+    them, already converted from Markdown and sanitised with nh3; Quill
+    supplies the header, the partner strip and the footer.
+
+    Args:
+        rendered: The email from :func:`render_email`.
+        reason: Why the recipient is getting it, for the footer.
+        partner: Who it is sent for, from :func:`email_partner`.
+
+    Returns:
+        Keyword arguments for ``send_email``, less ``to`` and attachments.
+    """
+    return send_args(
+        render_branded_email(
+            "teaching_certificate.html.j2",
+            "quill",
+            {
+                "subject": rendered["subject"],
+                "preheader": rendered["subject"],
+                # Already sanitised by nh3 in render_email, so marked safe
+                # here rather than escaped a second time.
+                "body_html": Markup(rendered["html_body"]),
+                "body_text": rendered["body_text"],
+                "reason": reason,
+            },
+            partner=partner,
+        )
     )

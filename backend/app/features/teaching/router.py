@@ -1513,7 +1513,9 @@ def _maybe_enqueue_certificate_emails(
         generate_certificate_pdf,
     )
     from app.features.teaching.email_templates import (
+        email_partner,
         extract_email_template,
+        in_branded_layout,
         render_email,
     )
 
@@ -1556,6 +1558,9 @@ def _maybe_enqueue_certificate_emails(
     ).scalar_one_or_none()
 
     display_name = user.full_name or user.username
+    # Who these emails are sent for: the organisation's name, logo and
+    # coordinator, shown in the partner strip and used as the reply-to.
+    partner = email_partner(org_settings, config_row.title)
     context: dict[str, str] = {
         "exam_title": config_row.title,
         "student_name": (
@@ -1627,9 +1632,15 @@ def _maybe_enqueue_certificate_emails(
             background_tasks.add_task(
                 send_email,
                 to=user.email,
-                subject=rendered["subject"],
-                html_body=rendered["html_body"],
                 attachments=att,
+                **in_branded_layout(
+                    rendered,
+                    reason=(
+                        "You are receiving this because you sat an "
+                        "assessment on Quill."
+                    ),
+                    partner=partner,
+                ),
             )
 
             # Coordinator (clinical lead) email — look up from site staff
@@ -1680,9 +1691,16 @@ def _maybe_enqueue_certificate_emails(
                     background_tasks.add_task(
                         send_email,
                         to=lead.email,
-                        subject=rendered["subject"],
-                        html_body=rendered["html_body"],
                         attachments=att,
+                        **in_branded_layout(
+                            rendered,
+                            reason=(
+                                "You are receiving this because you are a "
+                                "clinical lead where this assessment was "
+                                "sat."
+                            ),
+                            partner=partner,
+                        ),
                     )
 
 

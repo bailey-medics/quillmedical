@@ -310,3 +310,78 @@ class TestBoth:
             "candidate@example.test",
             "lead@example.test",
         ]
+
+
+def _sent(
+    db: Session,
+    assessment: Assessment,
+    config_row: QuestionBankConfig,
+    user: User,
+) -> list[dict[str, Any]]:
+    """Call the function and return the send_email arguments it queued."""
+    tasks = BackgroundTasks()
+    _maybe_enqueue_certificate_emails(
+        background_tasks=tasks,
+        assessment=assessment,
+        config_row=config_row,
+        user=user,
+        db=db,
+        criteria_results=[{"name": "Accuracy", "value": 0.9}],
+    )
+    return [dict(t.kwargs) for t in tasks.tasks]
+
+
+class TestTheEmailIsBranded:
+    """The coordinator's words, inside Quill's layout, sent for the partner."""
+
+    def test_without_teaching_settings_it_goes_out_as_quill(self, db_session):
+        _org_, candidate, assessment, config_row = _setup(
+            db_session, student=True
+        )
+
+        [sent] = _sent(db_session, assessment, config_row, candidate)
+        assert sent["subject"] == "You passed"
+        assert sent["from_name"] == "Quill Medical"
+        assert sent["reply_to"] is None
+        assert "Quill Medical is a trading name" in sent["html_body"]
+        assert sent["text_body"].startswith("Well done")
+
+    def test_a_partner_gets_the_strip_the_sender_line_and_replies(
+        self, db_session
+    ):
+        from app.features.teaching.models import TeachingOrgSettings
+
+        org, candidate, assessment, config_row = _setup(
+            db_session, student=True
+        )
+        db_session.add(
+            TeachingOrgSettings(
+                org_unit_id=org.id,
+                coordinator_email="coordinator@partner.example",
+                institution_name="East of England Endoscopy Training Academy",
+                email_short_name="EoEETA",
+                email_logo="eoeeta-email.png",
+                email_logo_width=162,
+            )
+        )
+        db_session.commit()
+
+        [sent] = _sent(db_session, assessment, config_row, candidate)
+        assert sent["from_name"] == "EoEETA via Quill Medical"
+        assert sent["reply_to"] == "coordinator@partner.example"
+        assert "/email/partners/eoeeta-email.png" in sent["html_body"]
+        assert 'width="162"' in sent["html_body"]
+        assert 'height="72"' in sent["html_body"]
+        assert (
+            "Sent by Quill Medical on behalf of East of England Endoscopy "
+            "Training Academy." in sent["html_body"]
+        )
+
+    def test_the_coordinators_markup_is_not_escaped_twice(self, db_session):
+        _org_, candidate, assessment, config_row = _setup(
+            db_session, student=True
+        )
+
+        [sent] = _sent(db_session, assessment, config_row, candidate)
+        assert "<p>Well done" in sent["html_body"]
+        assert "&lt;p&gt;" not in sent["html_body"]
