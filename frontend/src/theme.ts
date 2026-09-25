@@ -245,8 +245,11 @@ const appCssVariables = {
     "--brand-primary": brandColours.primary,
     "--brand-secondary": brandColours.secondary,
     "--brand-background": brandColours.background,
-    // Button interaction colours — amber button text/active states
-    "--button-text-dark": "#333",
+    // Button interaction colours — amber button text/active states.
+    // Brand navy, not #333: on the amber fill #333 was 4.75:1, and on the
+    // hover and pressed shades 3.3:1 and 3.1:1, under WCAG AA. Navy is
+    // 6.6:1 and 4.6:1, but 4.3:1 on the pressed shade, still just under.
+    "--button-text-dark": brandColours.primary,
     "--button-active-bg": "#a07728",
     "--button-outline-hover-text": "#d4a854",
     // Burger menu hover background
