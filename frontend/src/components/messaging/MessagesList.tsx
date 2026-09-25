@@ -16,7 +16,7 @@ import BodyTextClamp from "@/components/typography/BodyTextClamp";
 import BaseCard from "@/components/base-card/BaseCard";
 import StateMessage from "@/components/message-cards/StateMessage";
 import { IconMessage } from "@/components/icons/appIcons";
-import { Group, Skeleton, Stack } from "@mantine/core";
+import { Group, Skeleton, Stack, UnstyledButton } from "@mantine/core";
 
 export type MessageThread = {
   /** Unique thread identifier */
@@ -99,10 +99,13 @@ export default function MessagesList({
         />
       )}
       {threads.map((thread) => (
-        <div
+        // A button, not a clickable div, so the thread opens from the
+        // keyboard as well as the mouse.
+        <UnstyledButton
           key={thread.id}
           onClick={() => onThreadClick(thread)}
-          style={{ cursor: "pointer" }}
+          w="100%"
+          ta="left"
         >
           <BaseCard>
             <Group wrap="nowrap" align="flex-start">
@@ -135,7 +138,7 @@ export default function MessagesList({
               </div>
             </Group>
           </BaseCard>
-        </div>
+        </UnstyledButton>
       ))}
     </Stack>
   );

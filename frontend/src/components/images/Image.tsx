@@ -55,9 +55,8 @@ export default function Image({
 }: Props) {
   const resolvedSrc = src || fallback || "";
 
-  // Decorative image helper: if alt === "" treat as decorative (aria-hidden)
-  const imgProps =
-    alt === "" ? { "aria-hidden": true, role: "img", alt: "" } : { alt };
+  // Decorative when alt is empty: hidden from assistive technology.
+  const decorative = alt === "";
 
   // Convert numeric height/width to rem units in style
   const imgStyle = {
@@ -73,7 +72,8 @@ export default function Image({
   return (
     <img
       src={resolvedSrc}
-      {...imgProps}
+      alt={alt}
+      aria-hidden={decorative || undefined}
       loading={loading}
       className={className}
       style={imgStyle}

@@ -284,6 +284,10 @@ export default function MarkdownView({
   }
 
   return (
+    // Delegated handler for the links inside the rendered markdown. The
+    // links are real anchors, so Enter on one fires this click too; the
+    // div itself is not interactive.
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
     <div
       className={combinedClassName}
       onClick={handleClick}

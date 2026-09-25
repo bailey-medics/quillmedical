@@ -273,11 +273,25 @@ The pre-commit hook already runs ESLint on staged files. Adding
 they reach a story: an `ActionIcon` without a label, an `img` without alt, a
 click handler on a `div`, a positive `tabIndex`.
 
-- [ ] Add `eslint-plugin-jsx-a11y` and extend
-      `jsxA11y.flatConfigs.recommended` in `frontend/eslint.config.js`
-- [ ] Run `yarn eslint` across `src/` and fix what it finds; the rough
+- [x] Add `eslint-plugin-jsx-a11y` and extend
+      `jsxA11y.flatConfigs.recommended` in `frontend/eslint.config.js`.
+      6.10.2 declares ESLint up to 9 as its peer and this repo is on
+      ESLint 10; Yarn warns, and the rules run correctly
+- [x] Run `yarn eslint` across `src/` and fix what it finds; the rough
       counts are nine `Image`/`img` uses without `alt` and seven
-      `ActionIcon` uses without `aria-label`
+      `ActionIcon` uses without `aria-label`. It found far fewer, because
+      jsx-a11y only sees native elements: an `<Image>` or `<ActionIcon>`
+      without a label is invisible to it, which is what the next step's
+      required props are for. The real findings were one `img` whose
+      `alt` arrived through a spread (`Image.tsx`, now explicit), and
+      four clickable `div`s. The message thread cards in `MessagesList`
+      and the patient details in `TopRibbon` became `UnstyledButton`s so
+      the keyboard reaches them; double-click on the ribbon, which opens
+      the record, stays a mouse shortcut beside the side-nav link. The
+      other two, in `AppTooltip` and `MarkdownView`, are event plumbing
+      rather than controls (a delegated handler for real links, and a
+      tap that must not reach a parent), and carry a disable comment
+      saying so
 - [ ] Make `alt` a required prop on `components/images/Image.tsx` and
       `aria-label` a required prop on `components/button/IconButton.tsx`,
       so the type checker enforces what the linter only warns about
