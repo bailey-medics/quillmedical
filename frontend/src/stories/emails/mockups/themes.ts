@@ -32,9 +32,19 @@ export interface EmailTheme {
   h2Size: string;
   /** Colour for `*accented*` words in a heading, set in italic */
   headingAccent: string;
-  /** Page behind the card */
+  /**
+   * Page behind the card. White, not grey: webmail readers such as
+   * Proton and Gmail on the web put their own white margin round an
+   * email, and a grey page then shows as a grey box inside a white frame.
+   * On white, the card's border and navy bands carry the edge instead.
+   */
   background: string;
   card: string;
+  /**
+   * The card's outline. On a white page it is the only edge the card
+   * has between the navy bands, so it is a step darker than `border`.
+   */
+  cardBorder: string;
   border: string;
   header: string;
   /** CSS `border-bottom` value under the header band */
@@ -106,8 +116,10 @@ export const emailThemes: Record<EmailThemeName, EmailTheme> = {
     // secondary.6, 3.8:1 on white. The site's secondary.5 is 2.7:1 on
     // white, fine on the site's navy but too faint here.
     headingAccent: "#a87b2f",
-    background: "#f1f3f5",
+    background: "#ffffff",
     card: "#ffffff",
+    // grey.4
+    cardBorder: "#ced4da",
     border: "#dee2e6",
     // Brand navy, primary.8
     header: "#001a36",
@@ -172,8 +184,9 @@ export const emailThemes: Record<EmailThemeName, EmailTheme> = {
     h1Size: "32px",
     h2Size: "24px",
     headingAccent: "#0848a9",
-    background: "#f8f9fa",
+    background: "#ffffff",
     card: "#ffffff",
+    cardBorder: "#ced4da",
     border: "#dee2e6",
     header: "#ffffff",
     headerRule: "1px solid #dee2e6",

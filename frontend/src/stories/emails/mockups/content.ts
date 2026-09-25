@@ -242,36 +242,33 @@ export const emailMockups: Record<
     ),
   }),
 
-  certificate: (t, o) => ({
-    subject: "Your certificate: optical diagnosis of diminutive polyps",
-    preheader: "You passed. Your certificate is attached.",
-    senderName: `${EOEETA.shortName} via ${t.senderName}`,
-    replyTo: EOEETA.replyTo,
-    partnerStrip: partnerStrip(t, EOEETA, o.partnerLogo),
-    body:
-      heading(t, "Your *certificate*") +
-      paragraph("Dear Dr Sam Patel,") +
-      paragraph(
-        "Congratulations. You have passed the optical diagnosis " +
-          "assessment for diminutive colorectal polyps, with a score " +
-          "of 92%.",
-      ) +
-      paragraph(
-        "Your certificate is attached as a PDF. Keep it with your " +
-          "training records: your accreditation lead may ask to see it.",
-      ) +
-      button(t, "View your results", "https://app.quill-medical.com") +
-      small(
+  // The body is the question bank's student_email template, as a
+  // coordinator writes it in the bank's config.yaml, with its variables
+  // filled in. The score criteria and date are invented.
+  certificate: (t, o) => {
+    const exam = "Optical diagnosis of diminutive colorectal polyps";
+    return {
+      subject: `Your certificate for ${exam}`,
+      preheader: `Congratulations on passing ${exam}.`,
+      senderName: `${EOEETA.shortName} via ${t.senderName}`,
+      replyTo: EOEETA.replyTo,
+      partnerStrip: partnerStrip(t, EOEETA, o.partnerLogo),
+      body:
+        paragraph("Dear Dr Sam Patel,") +
+        paragraph(`Congratulations on passing <strong>${exam}</strong>!`) +
+        paragraph("<strong>Date</strong>: 25 September 2026") +
+        paragraph("<strong>Score summary</strong>:") +
+        paragraph("Overall accuracy: 92%, High-confidence accuracy: 95%") +
+        paragraph("Your certificate is attached to this email.") +
+        paragraph("Well done!") +
+        `<p style="margin: 0">${EOEETA.name}</p>`,
+      footer: transactionalFooter(
         t,
-        `Questions about the assessment go to ${EOEETA.shortName}: reply ` +
-          "to this email and it will reach their coordinator.",
+        `Sent by ${t.senderName} on behalf of ${EOEETA.name}. You are ` +
+          "receiving this because you sat an assessment on Quill.",
       ),
-    footer: transactionalFooter(
-      t,
-      `Sent by ${t.senderName} on behalf of ${EOEETA.name}. You are ` +
-        "receiving this because you sat an assessment on Quill.",
-    ),
-  }),
+    };
+  },
 
   newsletter: (t) => ({
     subject: "Autumn update: the clinician passport, and 2027 dates",
