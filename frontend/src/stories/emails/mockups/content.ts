@@ -25,19 +25,36 @@ export interface EmailMockup {
   footer: string;
 }
 
-function heading(t: EmailTheme, text: string): string {
-  return (
-    `<h1 style="margin: 0 0 16px; font-family: ${t.fontFamily}; ` +
-    `font-size: 26px; line-height: 1.25; font-weight: ${t.headingWeight}; ` +
-    `color: ${t.heading}">${text}</h1>`
+/**
+ * Words wrapped in `*asterisks*` become italic in the theme's accent
+ * colour, as `PublicTitle` does on the public site.
+ */
+function accented(t: EmailTheme, text: string): string {
+  return text.replace(
+    /\*([^*]+)\*/g,
+    `<em style="font-style: italic; color: ${t.headingAccent}">$1</em>`,
   );
 }
 
-function subheading(t: EmailTheme, text: string): string {
+function heading(t: EmailTheme, text: string): string {
   return (
-    `<h2 style="margin: 0 0 8px; font-family: ${t.fontFamily}; ` +
-    `font-size: 19px; line-height: 1.3; font-weight: ${t.headingWeight}; ` +
-    `color: ${t.heading}">${text}</h2>`
+    `<h1 style="margin: 0 0 20px; font-family: ${t.headingFontFamily}; ` +
+    `font-size: ${t.h1Size}; line-height: 1.2; ` +
+    `font-weight: ${t.headingWeight}; color: ${t.heading}">` +
+    `${accented(t, text)}</h1>`
+  );
+}
+
+function subheading(
+  t: EmailTheme,
+  text: string,
+  colour: string = t.heading,
+): string {
+  return (
+    `<h2 style="margin: 0 0 8px; font-family: ${t.headingFontFamily}; ` +
+    `font-size: ${t.h2Size}; line-height: 1.25; ` +
+    `font-weight: ${t.headingWeight}; color: ${colour}">` +
+    `${accented(t, text)}</h2>`
   );
 }
 
@@ -47,7 +64,7 @@ function paragraph(text: string): string {
 
 function small(t: EmailTheme, text: string): string {
   return (
-    `<p class="em-muted" style="margin: 0 0 12px; font-size: 14px; ` +
+    `<p class="em-muted" style="margin: 0 0 12px; font-size: 19px; ` +
     `color: ${t.muted}">${text}</p>`
   );
 }
@@ -59,27 +76,32 @@ function small(t: EmailTheme, text: string): string {
 function button(t: EmailTheme, label: string, href: string): string {
   return (
     `<table role="presentation" class="em-button" cellpadding="0" ` +
-    `cellspacing="0" style="margin: 8px 0 24px"><tr>` +
-    `<td style="border-radius: 6px; background-color: ${t.buttonBackground}">` +
-    `<a href="${href}" class="em-button-link" style="display: inline-block; padding: 14px 28px; ` +
-    `font-family: ${t.fontFamily}; font-size: 16px; font-weight: 700; ` +
+    `cellspacing="0" style="margin: 8px 0 24px; border-collapse: separate">` +
+    `<tr><td style="border-radius: ${t.buttonRadius}; ` +
+    `background-color: ${t.buttonBackground}">` +
+    `<a href="${href}" class="em-button-link" style="display: inline-block; ` +
+    `padding: 12px 22px; ` +
+    `font-family: ${t.fontFamily}; font-size: 19px; font-weight: 600; ` +
     `line-height: 1; color: ${t.buttonText}; text-decoration: none; ` +
-    `border-radius: 6px; text-align: center">${label}</a>` +
+    `border-radius: ${t.buttonRadius}; text-align: center">${label}</a>` +
     `</td></tr></table>`
   );
 }
 
+/** A callout, drawn like the public site's `PublicInfoCard`. */
 function panel(t: EmailTheme, inner: string): string {
   return (
     `<table role="presentation" width="100%" cellpadding="0" ` +
-    `cellspacing="0" style="margin: 8px 0 24px"><tr>` +
-    `<td class="em-panel" style="padding: 20px 24px; border-radius: 6px; ` +
-    `background-color: ${t.panel}">${inner}</td></tr></table>`
+    // Separate borders, or the base stylesheet's collapse squares the corners
+    `cellspacing="0" style="margin: 8px 0 24px; border-collapse: separate">` +
+    `<tr><td class="em-panel" style="padding: 24px 28px; border-radius: 8px; ` +
+    `border: 1px solid ${t.panelBorder}; background-color: ${t.panel}; ` +
+    `color: ${t.panelText}">${inner}</td></tr></table>`
   );
 }
 
 function tradingLine(t: EmailTheme): string {
-  return `${t.senderName} is a trading name of Bailey Medics.`;
+  return `${t.senderName} is a trading name of Bailey Medics Ltd.`;
 }
 
 function transactionalFooter(t: EmailTheme, reason: string): string {
@@ -101,7 +123,7 @@ export const emailMockups: Record<
     subject: "Reset your Quill password",
     preheader: "The link lasts 30 minutes.",
     body:
-      heading(t, "Reset your password") +
+      heading(t, "Reset your *password*") +
       paragraph("You requested a password reset for your Quill account.") +
       button(t, "Reset your password", RESET_URL) +
       small(t, "This link expires in 30 minutes.") +
@@ -121,7 +143,7 @@ export const emailMockups: Record<
     subject: "Dr Priya Shah has asked you to assess a competency",
     preheader: "Chest drain insertion, recorded in her clinician passport.",
     body:
-      heading(t, "You have been asked to assess a competency") +
+      heading(t, "You have been asked to assess a *competency*") +
       paragraph("Dear Dr James Okafor,") +
       paragraph(
         "Dr Priya Shah has asked you to assess <strong>Chest drain " +
@@ -139,7 +161,11 @@ export const emailMockups: Record<
           `professional registration before you sign anything.</p>`,
       ) +
       button(t, "Accept the invitation", INVITE_URL) +
-      small(t, "This link can be used once and expires in 14 days.") +
+      small(
+        t,
+        "You can use this link until you accept the invitation. It " +
+          "expires in 14 days.",
+      ) +
       small(
         t,
         "If you were not expecting this, you can ignore this email and " +
@@ -157,28 +183,28 @@ export const emailMockups: Record<
     preheader: "What I have been building, and when we meet next.",
     senderName: `Mark at ${t.senderName}`,
     body:
-      heading(t, "Autumn update") +
+      heading(t, "Autumn *update*") +
       paragraph("Hello,") +
       paragraph(
         "It has been a busy few months. Here is what has changed, and " +
           "what is coming next.",
       ) +
-      // Placeholder for a hero image, 1200 by 600 at 2x
+      // Placeholder for a hero image, 1640 by 720 at 2x
       `<table role="presentation" width="100%" cellpadding="0" ` +
       `cellspacing="0" style="margin: 8px 0 24px"><tr>` +
-      `<td align="center" style="height: 240px; border-radius: 6px; ` +
+      `<td align="center" style="height: 360px; border-radius: 6px; ` +
       `background-color: ${t.border}; font-family: ${t.fontFamily}; ` +
-      `font-size: 14px; color: ${t.muted}">Image, 1200 × 600</td>` +
+      `font-size: 19px; color: ${t.muted}">Image, 1640 × 720</td>` +
       `</tr></table>` +
       panel(
         t,
-        subheading(t, "The clinician passport is live") +
+        subheading(t, "The clinician passport is *live*", t.panelHeading) +
           paragraph(
             "Clinicians can now record competencies and ask a colleague " +
               "to sign them off, wherever that colleague works.",
           ) +
           `<p style="margin: 0"><a href="https://quill-medical.com" ` +
-          `style="color: ${t.link}; font-weight: 700">Read how it ` +
+          `style="color: ${t.panelLink}; font-weight: 700">Read how it ` +
           `works</a></p>`,
       ) +
       subheading(t, "Let’s Do Digital 2027: save the date") +
@@ -201,19 +227,22 @@ export const emailMockups: Record<
       `<table role="presentation" cellpadding="0" cellspacing="0"><tr>` +
       `<td align="center" style="width: 56px; height: 56px; ` +
       `border-radius: 28px; background-color: ${t.buttonBackground}; ` +
-      `font-family: ${t.fontFamily}; font-size: 18px; font-weight: 700; ` +
+      `font-family: ${t.fontFamily}; font-size: 19px; font-weight: 700; ` +
       `color: ${t.buttonText}">MB</td></tr></table></td>` +
       `<td style="vertical-align: middle">` +
       `<p style="margin: 0; font-weight: 700">Mark Bailey</p>` +
-      `<p class="em-muted" style="margin: 0; font-size: 14px; ` +
+      `<p class="em-muted" style="margin: 0; font-size: 19px; ` +
       `color: ${t.muted}">Bailey Medics</p></td>` +
       `</tr></table>`,
     footer:
       `<p style="margin: 0 0 8px">${t.newsletterReason}</p>` +
       `<p style="margin: 0 0 8px"><a href="#unsubscribe" ` +
-      `style="color: ${t.muted}; text-decoration: underline">Unsubscribe</a>` +
-      ` &middot; <a href="#preferences" style="color: ${t.muted}; ` +
+      `style="color: ${t.footerLink}; text-decoration: underline">` +
+      `Unsubscribe</a> &middot; <a href="#preferences" ` +
+      `style="color: ${t.footerLink}; ` +
       `text-decoration: underline">Update your preferences</a></p>` +
-      `<p style="margin: 0">${tradingLine(t)} [Postal address]</p>`,
+      `<p style="margin: 0">${tradingLine(t)} Company number ` +
+      `15604352. Brooklands Place, Unit 5, Brooklands Road, Sale, ` +
+      `Cheshire, M33 3SD.</p>`,
   }),
 };
