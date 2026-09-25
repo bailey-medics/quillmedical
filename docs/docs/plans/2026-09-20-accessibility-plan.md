@@ -651,9 +651,21 @@ readable by someone who cannot yet log in.
       automatically and a person checks them afterwards, so an unchecked
       video's captions may contain errors. An axe scan of both built pages
       found nothing
-- [ ] Set an annual review date for the statement and add it to the
+- [x] Set an annual review date for the statement and add it to the
       stale-incidents or a similar scheduled workflow so it cannot be
-      forgotten
+      forgotten. Built as its own workflow,
+      `.github/workflows/accessibility-review.yml`, rather than folded into
+      stale-incidents, which answers a different question. It runs every
+      Monday in September and October and reads `const REVIEWED` from the
+      statement itself; once that date is 11 months old it emails
+      <mark@quill-medical.com> a review checklist through Resend and posts
+      to Slack, weekly until the date is moved. Moving the date is what
+      stops it, so there is no issue to close: GitHub issues are rarely
+      read here, and one Slack message a year is easily lost. The Resend
+      key is read from Secret Manager at run time, not copied into GitHub,
+      which needs a `terraform apply` of the grant in
+      `infra/runtime-identities.tf`. A manual run with `force` sends it
+      whatever the date, to check it arrives
 
 ## Phase 7: Keep it green
 

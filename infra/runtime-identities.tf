@@ -105,6 +105,18 @@ resource "google_secret_manager_secret_iam_member" "runtime" {
   member    = "serviceAccount:${google_service_account.runtime[each.value.workload].email}"
 }
 
+# ---------- The CI account's one secret ----------
+# The yearly accessibility statement reminder
+# (.github/workflows/accessibility-review.yml) emails through Resend, as the
+# app does. It reads the key here at run time rather than GitHub holding a
+# second copy, so the grant is this one secret and not Secret Manager at large.
+resource "google_secret_manager_secret_iam_member" "ci_resend" {
+  project   = var.project_id
+  secret_id = module.secrets.secret_ids["resend-api-key"]
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:github-actions@${var.project_id}.iam.gserviceaccount.com"
+}
+
 # ---------- Buckets ----------
 # The backend reads published question banks. Silent when missing: an
 # unreadable bucket lists as empty, so the sync reports "No banks found".
