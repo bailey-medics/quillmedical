@@ -17,21 +17,27 @@ The outcome is one base email layout, fed by the same brand tokens as
 It takes a theme, so the same layout also carries Let's Do Digital's lighter
 look. That matters because Let's Do Digital has a list of 800+ people who
 should, over several months, come to know the work as Quill Medical, and a
-shared layout makes the switch a change of theme rather than a redesign. The look comes first: Phase 1 builds the template as static HTML and puts
-it in front of a human before any code that renders or sends it is written.
+shared layout makes the switch a change of theme rather than a redesign. The
+look comes first: Phase 1 builds the template as static HTML and puts it in
+front of a human before any code that renders or sends it is written.
 
 ## Phase 1: Design the template, with no plumbing
 
-- [ ] **Hand-write the base layout as static HTML mock-ups** in
-      `frontend/src/stories/emails/mockups/`, one file per theme: `quill` and
-      `ldd`. There is no co-branded theme: each email is one brand or the
+- [x] **Hand-write the base layout as static HTML mock-ups** in
+      `frontend/src/stories/emails/mockups/`: one `base.html` with
+      `{{placeholder}}` slots, `themes.ts` holding each theme's values, and
+      `content.ts` holding the example emails, filled in by
+      `renderMockup.ts`. That is the shape the Jinja2 renderer takes in
+      Phase 3, a base template, theme values and per-email blocks, so the
+      approved mock-up moves across without being rebuilt. Two themes,
+      `quill` and `ldd`. There is no co-branded theme: each email is one brand or the
       other, and the move between them is told in words, not in a blended
       design. Brand values are copied by hand from
       `theme.ts` for now (navy `#001a36`, amber `#C8963E`, white, Atkinson
       Hyperlegible); Phase 2 replaces the copies with shared tokens once the
       design is settled. No backend, no Jinja2, no Resend.
 
-- [ ] **Take the `ldd` theme from letsdodigital.org**, so the email looks
+- [x] **Take the `ldd` theme from letsdodigital.org**, so the email looks
       like the site and the social account people already know. The site
       is a Quarto build on Bootstrap, and its values are:
 
@@ -52,7 +58,7 @@ it in front of a human before any code that renders or sends it is written.
         Fonts as the site loads it. As with Quill's font, Apple Mail will
         use it and Gmail and Outlook will fall back to Arial.
 
-- [ ] **Build it for email clients, not browsers, from the start.** A
+- [x] **Build it for email clients, not browsers, from the start.** A
       mock-up that only works in a browser proves nothing, so it follows the
       rules the real template must: a single 600px-wide table with
       `role="presentation"`, inline styles (Gmail strips `<style>` in some
@@ -66,7 +72,7 @@ it in front of a human before any code that renders or sends it is written.
       layout must read well either way. Every image has `alt` text, because
       many clients block images until asked.
 
-- [ ] **Choose a light body under a navy header for the `quill` theme**,
+- [x] **Choose a light body under a navy header for the `quill` theme**,
       not the app's all-navy surface. Mail clients apply their own dark mode
       (Outlook and Gmail invert colours they judge to be light, Apple Mail
       honours `prefers-color-scheme`), and a fully navy email inverted by a
@@ -74,7 +80,7 @@ it in front of a human before any code that renders or sends it is written.
       `supported-color-schemes` meta tags and add a small
       `prefers-color-scheme: dark` block for the clients that honour it.
 
-- [ ] **Fill each mock with real content, not lorem ipsum.** The password
+- [x] **Fill each mock with real content, not lorem ipsum.** The password
       reset email (short, one button), the passport assessor invite (a cold
       message to somebody who has never heard of Quill) and a sample
       newsletter (long, several sections, images). Those three stretch the
@@ -86,12 +92,15 @@ it in front of a human before any code that renders or sends it is written.
       every stage of the rebrand. Transactional emails do not carry it;
       a password reset comes from Quill, not from a person.
 
-- [ ] **Show the mock-ups in Storybook** with `Emails.stories.tsx` under
+- [x] **Show the mock-ups in Storybook** with `Emails.stories.tsx` under
       `src/stories/`, beside `Colours` and `Typography`. Each mock is
       imported with Vite's `?raw` and shown in a sandboxed `iframe` at
-      600px, with a control to switch theme and a narrow-width view for
-      phones. Logos load from `frontend/public/`, which Storybook already
-      serves through `staticDirs`.
+      600px, with controls for theme, phone width and dark mode. Dark mode
+      is forced by rewriting the email's `prefers-color-scheme` query, so
+      the preview does not depend on the viewer's own setting. Logos are
+      email-sized copies in `frontend/public/email/`, which Storybook
+      already serves through `staticDirs`. The newsletter's sign-off shows
+      a placeholder circle until Mark's avatar image is added there.
 
 - [ ] **Send the mock-ups to real inboxes.** Storybook shows a browser's
       rendering; Gmail, Outlook and Apple Mail each do their own. Send each
@@ -249,6 +258,35 @@ it in front of a human before any code that renders or sends it is written.
 
 ## Phase 8: Bringing the Let's Do Digital list across
 
+- [ ] **Sort the list by what allows each address to be emailed, before
+      anything else.** Nobody on the list signed up to it: every contact
+      was added from conference and course registrations. So there is no
+      newsletter consent to carry across, and each address needs another
+      lawful basis under PECR, the UK law on marketing email. Tag every
+      contact with one of three:
+
+      - **Work address** — `nhs.net`, a trust, a university or a company
+        domain. PECR's consent rule covers individual subscribers, not
+        corporate ones, so these can be emailed, provided every email
+        names the sender and carries a working unsubscribe. UK GDPR still
+        applies: record a short legitimate interests assessment saying
+        why clinicians who came to a Let's Do Digital event would expect
+        to hear about Quill Medical.
+      - **Soft opt-in** — a personal address (Gmail, Hotmail, iCloud and
+        so on) given while booking a paid conference or course with
+        Bailey Medics, where the booking form offered a chance to opt out
+        of marketing. The soft opt-in covers similar products and services
+        from the same company, so it holds for Let's Do Digital events and
+        is arguable for Quill Medical. Check what the booking forms
+        actually said before relying on it.
+      - **No basis** — a personal address from a free event, a form with
+        no opt-out, or a source nobody can now trace. **Do not email
+        these at all, including to ask for consent.** The ICO treats an
+        email asking permission to send marketing as marketing itself, and
+        has fined companies for exactly that (Honda and Flybe, 2017).
+        Invite this group through social posts and the public signup form
+        instead, where they can opt in themselves.
+
 - [ ] **Name Bailey Medics in the privacy notice for both brands.** Let's
       Do Digital and Quill Medical are both trading names of Bailey Medics,
       so the data controller does not change and the list is not being
@@ -266,9 +304,11 @@ it in front of a human before any code that renders or sends it is written.
       files out of the repository and off shared drives; they are personal
       data, stored once, somewhere access-controlled.
 
-- [ ] **Import into a Let's Do Digital audience in Resend.** Active
-      subscribers come in as subscribed, with their signup date and source
-      as contact properties so the consent record travels with them.
+- [ ] **Import into a Let's Do Digital audience in Resend.** Only the
+      work address and soft opt-in contacts come in as subscribed, with
+      their basis, original source and date as contact properties so the
+      record of why each is on the list travels with them. The no basis
+      group is not imported as subscribed.
       Unsubscribed, bounced and complained contacts come in as
       unsubscribed, not left out: leaving them out loses the record that
       they said no, and a later import from anywhere else could then mail
@@ -294,8 +334,9 @@ it in front of a human before any code that renders or sends it is written.
       Digital is becoming Quill Medical, and from stage four it describes
       itself as Bailey Medics' account for Quill Medical. It keeps its
       handle and followers: Quill Medical has no accounts of its own, and
-      opening them waits until it is big enough to need them. Each email and post goes out in the same week, so somebody who sees
-      one sees the other saying the same thing.
+      opening them waits until it is big enough to need them. Each email
+      and post goes out in the same week, so somebody who sees one sees
+      the other saying the same thing.
 
 - [ ] **Stage one, Let's Do Digital introducing Quill.** Campaigns in the
       `ldd` theme, from the Let's Do Digital sender, that mention Quill
@@ -313,10 +354,9 @@ it in front of a human before any code that renders or sends it is written.
       about, and that nothing else changes: same people, same company,
       same data. A single, prominent unsubscribe link sits beside that
       sentence, not only in the footer. Everybody still subscribed on the
-      date moves to the Quill Medical audience. Because the sender is the
-      same company under another name, a clear notice with an easy way out
-      is enough under PECR, and asking everybody to opt in again would
-      lose most of a list that has done nothing wrong.
+      date moves to the Quill Medical audience. This goes only to contacts
+      the first step of this phase cleared, and for them the same company
+      under another name, clearly announced, is not a new sender.
 
 - [ ] **Stage four, Quill Medical only.** Campaigns in the `quill` theme
       from the marketing subdomain. The first one repeats, in one line near
@@ -342,12 +382,19 @@ it in front of a human before any code that renders or sends it is written.
   features, and getting them slightly wrong has consequences a clinical
   product does not want attached to its name.
 
-- **Notice and opt-out, not re-consent** — both brands are trading names of
-  Bailey Medics, so the controller and the relationship are unchanged and a
-  rename told clearly in advance is not a new sender. Re-consent was the
-  plan while that was unknown. It stays available if the consent wording on
-  the MailerLite forms turns out to name Let's Do Digital so narrowly that a
-  rename would surprise people.
+- **Notice and opt-out for the cleared contacts, silence for the rest** —
+  both brands are trading names of Bailey Medics, so for a work address or
+  a valid soft opt-in the controller and the relationship are unchanged,
+  and a rename told clearly in advance is not a new sender. Asking
+  everybody to opt in again is not the safe alternative it looks like:
+  nobody on the list ever gave newsletter consent, and a request for
+  consent sent by email is itself marketing, so it would break the rule
+  for the very contacts it was meant to protect.
+
+- **A smaller list over a bigger one** — the no basis group is probably a
+  large share of the 800. Losing them from email costs reach; mailing them
+  risks an ICO complaint landing on a clinical software company. Social
+  media and a proper signup form are how they come back.
 
 - **Resend send failures stay out of scope** — `send_email` has no
   exception handling around the provider call. That is already a to-do list
@@ -355,5 +402,14 @@ it in front of a human before any code that renders or sends it is written.
 
 ## Open questions
 
-- **What consent wording did people sign up under** on the Let's Do
-  Digital MailerLite forms, and was double opt-in switched on?
+- **What did the conference and course booking forms say about
+  marketing**, and did they offer an opt-out? This decides whether the
+  soft opt-in group exists at all.
+
+- **Were the events paid or free?** The soft opt-in needs a sale, or
+  negotiations towards one; a free event on its own does not give one.
+
+- **Is this worth one conversation with the ICO helpline** (0303 123
+  1113) or a data protection adviser before Phase 8 starts? The sorting
+  above follows ICO guidance, but it is not legal advice, and the no
+  basis group is where a mistake would land.
