@@ -7,6 +7,7 @@
 
 import { Box, Title, VisuallyHidden, useMantineTheme } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
+import { useDocumentTitle } from "@lib/accessibility/useDocumentTitle";
 import classes from "./PageHeader.module.css";
 
 export interface PageHeaderProps {
@@ -26,6 +27,8 @@ export default function PageHeader({
 }: PageHeaderProps) {
   const theme = useMantineTheme();
   const isDesktop = useMediaQuery(`(min-width: ${theme.breakpoints.sm})`);
+  // The page's h1 is also its document title (WCAG 2.4.2)
+  useDocumentTitle(title);
 
   if (visuallyHidden) {
     return (

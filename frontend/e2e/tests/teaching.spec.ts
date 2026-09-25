@@ -19,6 +19,8 @@ test.describe("Teaching dashboard", () => {
     await expect(
       page.getByRole("heading", { name: /teaching modules/i }),
     ).toBeVisible({ timeout: 10000 });
+    // The page's h1 names the browser tab too (WCAG 2.4.2)
+    await expect(page).toHaveTitle(/^Teaching modules – /);
 
     await scanPage("teaching-modules");
   });
