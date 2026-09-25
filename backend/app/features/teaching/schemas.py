@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 # ------------------------------------------------------------------
 # Question banks
@@ -375,10 +375,39 @@ class CiTeachingSyncOut(BaseModel):
 
 
 class TeachingOrgSettingsIn(BaseModel):
-    """Update teaching settings for an organisation."""
+    """Update teaching settings for an organisation.
+
+    The ``email_*`` fields are optional and left as they are when a request
+    omits them, so a client that does not know about them cannot wipe
+    branding somebody else set.
+    """
 
     coordinator_email: str
     institution_name: str
+    #: For the sender line, "EoEETA via Quill Medical". No quotes, angle
+    #: brackets or line breaks: it becomes part of the From header.
+    email_short_name: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=40,
+        pattern=r'^[^"<>\r\n]+$',
+    )
+    #: A file name under frontend/public/email/partners/.
+    email_logo: str | None = Field(
+        default=None, max_length=100, pattern=r"^[a-z0-9][a-z0-9-]*\.png$"
+    )
+    #: The logo's width in pixels at 72px tall.
+    email_logo_width: int | None = Field(default=None, ge=16, le=400)
+
+    @model_validator(mode="after")
+    def _logo_comes_with_its_width(self) -> TeachingOrgSettingsIn:
+        """A logo without a width cannot be drawn safely in Outlook."""
+        if (self.email_logo is None) != (self.email_logo_width is None):
+            raise ValueError(
+                "email_logo and email_logo_width are set together, or "
+                "neither is"
+            )
+        return self
 
 
 class CoordinatorEmailIn(BaseModel):
@@ -397,6 +426,9 @@ class TeachingOrgSettingsOut(BaseModel):
     org_unit_id: int | None = None
     coordinator_email: str
     institution_name: str
+    email_short_name: str | None = None
+    email_logo: str | None = None
+    email_logo_width: int | None = None
 
 
 # ------------------------------------------------------------------

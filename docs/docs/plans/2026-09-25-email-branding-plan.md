@@ -340,7 +340,7 @@ sent for them.
       can use this link until you accept the invitation", because the link
       is not single use.
 
-- [ ] **Give each teaching organisation its email branding.** The partner
+- [x] **Give each teaching organisation its email branding.** The partner
       strip needs a name, a short name for the sender line, a logo and a
       reply-to address. `TeachingOrgSettings` in
       `backend/app/features/teaching/models.py` is already one row per
@@ -356,6 +356,14 @@ sent for them.
       repository for now, reviewed in a pull request like any other asset,
       because partners are few and each needs written permission to use
       their logo anyway; an upload flow can come when there are more.
+      Two departures in the building: a third column, `email_logo_width`,
+      because Outlook needs an image's width as well as its height or it
+      shows the 2x file at full size; and no admin form, because there is
+      none for teaching settings today (`coordinator_email` and
+      `institution_name` are set through the API too), so the fields are
+      on the API and the frontend type, and a form is left for when one
+      is built. A request that leaves the branding fields out keeps what
+      was set, so an older client cannot wipe them.
 
 - [ ] **Wrap the teaching certificate emails without taking away the
       coordinators' control.** A bank's `config.yaml` supplies subject and

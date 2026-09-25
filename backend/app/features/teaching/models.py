@@ -334,6 +334,23 @@ class TeachingOrgSettings(Base):
     )
     coordinator_email: Mapped[str] = mapped_column(String(255), nullable=False)
     institution_name: Mapped[str] = mapped_column(String(500), nullable=False)
+    # How emails sent for this organisation show it: see the partner strip
+    # in backend/app/email/templates/base.html.j2. All optional. With no
+    # short name the sender stays "Quill Medical"; with no logo the strip
+    # shows institution_name in its place.
+    #: For the sender line, "EoEETA via Quill Medical".
+    email_short_name: Mapped[str | None] = mapped_column(
+        String(40), nullable=True
+    )
+    #: A file name under frontend/public/email/partners/, the logo at twice
+    #: its display size. In the repository, reviewed like any other asset,
+    #: because each partner must agree to their logo being used.
+    email_logo: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    #: The logo's width in pixels when shown 72px tall. Outlook needs both
+    #: dimensions, or it shows the 2x file at full size.
+    email_logo_width: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
 
 
 # ------------------------------------------------------------------

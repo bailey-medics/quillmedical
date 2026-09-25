@@ -2943,6 +2943,14 @@ def update_settings(
         )
         db.add(settings_row)
 
+    # Email branding changes only when the request sends it, so a client
+    # that has not heard of these fields cannot clear them.
+    if "email_short_name" in body.model_fields_set:
+        settings_row.email_short_name = body.email_short_name
+    if "email_logo" in body.model_fields_set:
+        settings_row.email_logo = body.email_logo
+        settings_row.email_logo_width = body.email_logo_width
+
     db.flush()
     db.refresh(settings_row)
     return settings_row
