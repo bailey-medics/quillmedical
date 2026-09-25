@@ -14,8 +14,13 @@ from slowapi.util import get_remote_address
 
 from app.config import settings
 
-#: Disabled in development so local work is not throttled.
+#: Off in development, so local work is not throttled, and off in testing.
+#: The end-to-end suite runs its Chromium and WebKit projects against one
+#: backend from one address, and between them their logins exceed the five
+#: a minute ``/auth/login`` allows, so a valid login in the second project
+#: was refused with a 429 and the run failed. Tests of the limiter itself
+#: force-enable it, as ``test_security_pentest.py`` does.
 limiter = Limiter(
     key_func=get_remote_address,
-    enabled=settings.BACKEND_ENV != "development",
+    enabled=settings.BACKEND_ENV not in {"development", "testing"},
 )

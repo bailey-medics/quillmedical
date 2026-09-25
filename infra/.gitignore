@@ -3,6 +3,9 @@
 *.tfstate
 *.tfstate.backup
 *.tfstate.*.backup
+# Any other state variant, such as the .pre-gcs copy terraform leaves behind
+# when state migrates to the bucket. State lives in GCS, never in git.
+*.tfstate.*
 *.tfplan
 .terraform.lock.hcl
 crash.log
