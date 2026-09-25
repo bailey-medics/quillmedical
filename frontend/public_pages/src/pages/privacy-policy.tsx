@@ -28,7 +28,7 @@ createRoot(document.getElementById("root")!).render(
       <PublicDarkBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
-            <PublicTitle title="Further details" c="white" />
+            <PublicTitle title="Further details" size="md" c="white" />
             <PublicBodyText justify="centre">
               Our complete privacy policy is currently being finalised. Please
               check back soon or contact us if you have any questions in the

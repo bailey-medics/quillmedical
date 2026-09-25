@@ -45,7 +45,7 @@ createRoot(document.getElementById("root")!).render(
               </PublicButton>
             </Group>
           </Stack>
-          <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="lg" mt="xl">
+          <SimpleGrid cols={{ base: 1, lg: 3 }} spacing="lg" mt="xl">
             <PublicInfoCard
               label="Data residency"
               heading="UK hosted"
@@ -53,8 +53,8 @@ createRoot(document.getElementById("root")!).render(
             />
             <PublicInfoCard
               label="Assessments"
-              heading="Version-locked"
-              description="Every result traceable to the questions sat"
+              heading="Traceable"
+              description="Every result tied to the exact version of the questions sat"
             />
             <PublicInfoCard
               label="Accessibility"

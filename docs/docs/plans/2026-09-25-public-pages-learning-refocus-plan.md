@@ -262,8 +262,8 @@ today.
 
 1. **Hero** — title along the lines of "Clinical learning and assessment,
    done properly", one short paragraph, `Log in` and `Talk to us` buttons.
-   The three info cards become: "UK hosted / your data stays in the UK", "Version-locked
-   / every result traceable", "Accessible / designed for low vision". Built
+   The three info cards become: "UK hosted / your data stays in the UK", "Traceable
+   / every result tied to the exact questions sat", "Accessible / designed for low vision". Built
    by clinicians already has its own section below.
 2. **Featured: EoEETA optical diagnosis** — the EoEETA headline, two
    sentences, a white light and NBI image pair (with EoEETA's permission)
@@ -394,13 +394,43 @@ page first.
 
 ## Phase 4: Check and ship
 
-- [ ] Build the public pages and click through every page and link locally,
-      at desktop and phone widths
-- [ ] Re-read every page against "What must not be claimed"
-- [ ] Check every public page with an axe browser scan and by keyboard
+- [x] Build the public pages and click through every page and link locally,
+      at desktop and phone widths. Done with a Playwright script over the
+      production build at 1280, 768 and 390 pixels wide, checking for one
+      `h1` and no horizontal scroll on every page, with screenshots of the
+      home, optical diagnosis and accessibility pages. Three findings, all
+      fixed here:
+      - **The home page's info cards overflowed at tablet width.** Their
+        large serif headings did not fit three columns at 768px:
+        "Accessible" ran out of its card. The row now stays one column up
+        to Mantine's `lg` breakpoint, and "Version-locked" became
+        "Traceable", which fits on one line
+      - **The footer's links were hidden on phones** (`display: none`
+        below `sm`), and the mobile drawer carries only the main links, so
+        About, Pricing, Accessibility, Security and the legal pages could
+        not be reached from a phone at all. The groups now show, centred
+      - **Six untouched pages had several `h1`s**: contact, company
+        information and the three legal pages, where every section heading
+        used `PublicTitle` at its default level 1 size. Their section
+        headings are now level 2
+- [x] Re-read every page against "What must not be claimed". A search of
+      the page sources for each banned claim finds none
+- [x] Check every public page with an axe browser scan and by keyboard
       alone, and fix what they find. A site that makes accessibility a main
       theme cannot fail its own check; the public pages share components
-      with the app, so fixes here help both
+      with the app, so fixes here help both. axe, with the WCAG tags from
+      `src/lib/accessibility/axeConfig.ts`, found one fault, on every page
+      at desktop and tablet width: "Log in" in the ribbon was dark blue on
+      navy, 2.5:1. Its CSS module set amber, but Mantine's own Anchor rule,
+      which the theme points at the dark-blue link token, won on
+      stylesheet order in the production build, the same trap the theme
+      notes for `TextLink`. `.login` now sets `--mantine-color-anchor`
+      on the element itself, which wins whatever the order. After the
+      fixes axe reports nothing on any page at any of the three widths.
+      A Tab walk of the home page reaches the skip link, logo, the four
+      ribbon links, "Log in" and the hero buttons in order, each with a
+      visible focus outline. The scan was a one-off script, not a test in
+      CI; see "Later"
 - [ ] Send EoEETA the preview link and ask for their written OK to be named
       on the site, kept by email. This is the one thing the deploy waits
       for, because the pages name them; if they would rather not be named,
@@ -434,6 +464,11 @@ for them:
   shape of `optical-diagnosis.tsx`
 - Quill's own teaching modules and other Quill products, added to the home
   page feature grid and navigation when they are ready to be public
+- An axe scan of every public page in CI. The Phase 4 scan was a script
+  run once; the site has no Playwright suite of its own, and the e2e stack
+  serves the app, not the public pages. A small Playwright config that
+  builds `public_pages` and serves `dist/public_pages` would let the
+  existing `e2e/fixtures/axe.ts` fixture scan every page on every change
 - Claims that become true as other plans land: a Clinical Safety
   Officer's sign-off, certificate verification, learner progress tracking
 
