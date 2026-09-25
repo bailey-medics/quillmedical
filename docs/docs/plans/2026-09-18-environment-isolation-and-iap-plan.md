@@ -1466,7 +1466,7 @@ services describe`, `run services update`, `run services
 update-traffic`, `run jobs update`, `run jobs execute`, or `auth
 configure-docker` followed by a Docker push.
 
-- [ ] **(Mark)** Create `github-deploy@quill-medical-app` with
+- [x] **(Mark)** Create `github-deploy@quill-medical-app` with
       `roles/run.developer` on the project, `roles/artifactregistry.writer`
       on the `quill` repository only, and `roles/iam.serviceAccountUser`
       on the runtime service accounts only, not on the project. A Cloud
@@ -1474,12 +1474,36 @@ configure-docker` followed by a Docker push.
       that per account rather than project-wide stops the deploy acting
       as anything else, the Terraform account included.
 
-- [ ] **(Mark)** Grant it `roles/iam.workloadIdentityUser` for
+- [x] **(Mark)** Grant it `roles/iam.workloadIdentityUser` for
       `bailey-medics/quillmedical`, and add a `GCP_APP_DEPLOY_SERVICE_ACCOUNT`
       secret to the `app` GitHub environment.
 
-- [ ] **(Claude)** Point the build and deploy jobs in `deploy.yml` at the
+      Both done by Mark on 2026-09-25, from a script Claude wrote after
+      auto mode refused the grants. Read back the same day: `run.developer`
+      on the project, `artifactregistry.writer` on `quill` alone,
+      `serviceAccountUser` on each of the five `run-*` accounts and no
+      other, and `workloadIdentityUser` for the repository's principal set.
+
+      The secret being environment-scoped does not confine the account to
+      `main`: its email is no secret, and the Workload Identity binding
+      lets any workflow run in this repository, on any branch, sign in as
+      it. Phase 3's repository-and-ref mapping is what confines it, so that
+      phase matters more for this account than for any other.
+
+- [x] **(Claude)** Point the build and deploy jobs in `deploy.yml` at the
       new secret. The build job pushes images, so it moves too.
+
+      Done on 2026-09-25: both jobs read `GCP_APP_DEPLOY_SERVICE_ACCOUNT`.
+      **Merge it only after the secret exists**, or the next deploy fails
+      to sign in. Auto mode refused the account and its grants when Claude
+      tried them at Mark's word, so the two steps above stay Mark's, as a
+      script of exactly those commands.
+
+      Left on the old account, deliberately: `public-site.yml`, which
+      uploads the landing site to its bucket, `ci.yml`,
+      `stale-incidents.yml` and `alert-route-test.yml`. Each needs
+      something the deploy account should not hold, and each belongs to a
+      later phase or its own account.
 
 - [ ] Merge a change that touches `backend/` or `frontend/`, so the
       build job actually runs, and watch the deploy pass. A workflow-only
@@ -1876,11 +1900,31 @@ GitHub starting a scheduled run late, which it does at busy times.
       so the first scheduled run on 2026-10-01 works whether or not
       that step is done by then.
 
-- [ ] **(Mark)** Give the workflow an identity holding
+- [x] **(Mark)** Give the workflow an identity holding
       `roles/logging.logWriter` and nothing else. It is the narrowest job
       any CI account does, and a natural first user of the Batch 9 split:
       either its own service account, or the deploy account from Batch 9
       Phase 1 with that one role added.
+
+      Mark chose the deploy account, on 2026-09-25. Claude pointed
+      `alert-route-test.yml` at `GCP_APP_DEPLOY_SERVICE_ACCOUNT`, which the
+      job reads from the repository, not the `app` environment, since it
+      runs in none. Two commands remain, both refused to Claude by auto
+      mode:
+
+      ```bash
+      gcloud projects add-iam-policy-binding quill-medical-app --condition=None \
+        --member serviceAccount:github-deploy@quill-medical-app.iam.gserviceaccount.com \
+        --role roles/logging.logWriter
+      gh secret set GCP_APP_DEPLOY_SERVICE_ACCOUNT \
+        --body github-deploy@quill-medical-app.iam.gserviceaccount.com
+      ```
+
+      Both before 2026-10-01, and before the workflow change merges.
+
+      Both run by Mark on 2026-09-25, and read back: the account holds
+      `logging.logWriter` beside `run.developer`, and the secret exists at
+      repository level as well as on `app`.
 
 - [ ] **(Mark)** Check the PagerDuty plan allows twelve or thirteen phone
       calls a year. The free plan limits phone and SMS notifications, and
@@ -2289,8 +2333,9 @@ lookalike names were cheap enough that waiting saved nothing.
       first.
       Superseded: Mark forwarded it on 2026-09-24. See Batch 10a Phase 3.
 
-- [ ] Set auto-renew and registrar lock on all six, with a company card
-      and a shared billing address.
+- [x] Set auto-renew and registrar lock on all six, with a company card
+      and a shared billing address. Mark confirmed on 2026-09-25 that every
+      Quill Medical domain in GoDaddy has auto-renew and domain lock on.
 
       Partly visible from outside. `quill-medical.me` already shows
       `clientTransferProhibited`, which is the registrar lock, and expires
