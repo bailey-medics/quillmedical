@@ -5,13 +5,13 @@
 # branch_rules.tf and shared across this directory.
 #
 # Clinical safety context (DCB 0129):
-#   Restricting the teaching environment to the main branch ensures that only
+#   Restricting the app environment to the main branch ensures that only
 #   reviewed, merged changes can deploy, keeping the deployment record
 #   traceable for change-control audits.
 #
 # Secret handling:
 #   Secret VALUES are never managed here — they are set out-of-band via the
-#   gh CLI (`gh secret set --env teaching ...`) so they never land in
+#   gh CLI (`gh secret set --env app ...`) so they never land in
 #   terraform.tfstate. Terraform manages only the environment resource and its
 #   deployment branch policy.
 #
@@ -20,17 +20,24 @@
 #   terraform plan -var-file=terraform.tfvars
 #   terraform apply -var-file=terraform.tfvars
 #
-#   The teaching environment already exists (created manually). If apply
-#   reports it already exists, import it first:
-#     terraform import github_repository_environment.teaching quillmedical:teaching
+#   The state is a local file, not in a bucket, so plan and apply from the
+#   checkout that holds terraform.tfstate.
 
 # ---------------------------------------------------------------------------
-# Teaching environment — deployable from main only
+# App environment — deployable from main only
 # ---------------------------------------------------------------------------
+#
+# The environment deploy.yml and terraform.yml run their main-branch jobs in,
+# holding the GCP_APP_* secrets. It replaced `teaching` here on 2026-09-25:
+# teaching's project had been deleted, and its main-only policy had drifted
+# away in GitHub while app's had been set by hand, outside Terraform. Imported
+# rather than created, so the live policy was adopted, not replaced. See
+# Batch 10a Phase 4 of
+# docs/docs/plans/2026-09-18-environment-isolation-and-iap-plan.md.
 
-resource "github_repository_environment" "teaching" {
+resource "github_repository_environment" "app" {
   repository  = var.github_repository
-  environment = "teaching"
+  environment = "app"
 
   deployment_branch_policy {
     protected_branches     = false
@@ -38,9 +45,9 @@ resource "github_repository_environment" "teaching" {
   }
 }
 
-resource "github_repository_environment_deployment_policy" "teaching_main" {
+resource "github_repository_environment_deployment_policy" "app_main" {
   repository     = var.github_repository
-  environment    = github_repository_environment.teaching.environment
+  environment    = github_repository_environment.app.environment
   branch_pattern = "main"
 }
 
