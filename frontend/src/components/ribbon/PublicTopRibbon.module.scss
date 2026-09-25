@@ -48,15 +48,15 @@
 
 /*
  * Public nav links (wide mode only). The margin from the logo is `lg` and
- * the gap between links `md`, measured rather than chosen: with five links
- * at `xl` and `lg` the row was 9px too wide for a tablet held upright
- * (768px) and wrapped onto a second line. This fits from 768px up; between
- * the `sm` breakpoint and about 750px it still wraps, as it did with four.
+ * the gap between links `sm`, measured rather than chosen: with five links
+ * and the "Log in" button, anything wider is too much for a tablet held
+ * upright (768px) and the row wraps onto a second line. This fits from
+ * 768px up; between the `sm` breakpoint and about 750px it still wraps.
  */
 .navLinks {
   flex: 1;
   margin-left: var(--mantine-spacing-lg);
-  column-gap: var(--mantine-spacing-md);
+  column-gap: var(--mantine-spacing-sm);
   color: #fff;
 }
 
@@ -72,29 +72,10 @@
 
 /*
  * "Log in", hard right. Not a nav link: it leaves the public site for the
- * application, so it reads as an action. The margin keeps it off the edge
- * the ribbon's own padding already sets.
+ * application, so it reads as an action, and it is the same PublicButton
+ * as the hero's "Log in". No margin of its own: the ribbon's padding keeps
+ * it off the edge, and at 768px the button needs every pixel.
  */
 .login {
-  /*
-   * Set through Mantine's own Anchor variable as well as `color`. Mantine's
-   * Anchor rule colours the link with --mantine-color-anchor, which the
-   * theme points at the dark-blue link token, and whether that rule or this
-   * one wins depends on stylesheet order. In the production build it won,
-   * leaving "Log in" dark blue on navy at 2.5:1. A variable set on the
-   * element itself wins whatever the order.
-   */
-  --mantine-color-anchor: var(--mantine-color-secondary-4);
-
-  font-size: 1.25rem;
-  color: var(--mantine-color-secondary-4);
-  margin-right: var(--mantine-spacing-sm);
   white-space: nowrap;
-  transition: color 0.15s ease;
-
-  &:hover {
-    --mantine-color-anchor: #fff;
-
-    color: #fff;
-  }
 }

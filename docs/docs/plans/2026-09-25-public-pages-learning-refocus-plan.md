@@ -392,6 +392,21 @@ page first.
       logo margin is now `lg` and the link gap `md`, and the row fits from
       768px up. Between 640px and about 750px it wraps to two rows, as it
       did with four links; the ribbon is still usable there, just taller
+- [x] Make the ribbon's "Log in" the same `PublicButton` as the home page
+      hero's, so the two read as one action, rather than an amber text
+      link. Asked for after the EPR link landed. The button is wider than
+      the text was, which put the row 19px over at 768px again; the link
+      gap is now `sm` and the button has no margin of its own (the
+      ribbon's padding already keeps it off the edge), measured to fit
+      from 768px up as before. The button is a Mantine `sm`, 36px tall,
+      and axe reports nothing on the ribbon at any width
+- [x] Name the accessibility journeys this plan's ribbon and navigation
+      changes touch, as `.claude/rules/plans.md` asks. None: all four
+      journeys in `docs/docs/frontend/accessibility/journeys.md` start
+      inside the app (Journey 1 opens `/login` directly), and nothing in
+      them passes through the public site's ribbon or drawer. So nothing
+      is added to the "Not yet run" list in `testing-log.md`. The public
+      ribbon's own keyboard order was walked in Phase 4
 - [x] Update `PublicTopRibbon` stories and tests, including the mobile drawer.
       The ribbon and drawer read `publicNavLinks`, so their existing tests
       cover the new links; one new test pins the order, product pages
