@@ -916,6 +916,85 @@ class TestEducatorEndpoints:
         assert data["coordinator_email"] == "coord@test.local"
         assert data["institution_name"] == "Test Institution"
 
+    def test_educator_sets_email_branding(self, test_client, db_session):
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        db_session.commit()
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        resp = test_client.put(
+            "/api/teaching/settings",
+            json={
+                "coordinator_email": "coord@test.local",
+                "institution_name": "East of England Endoscopy Training Academy",
+                "email_short_name": "EoEETA",
+                "email_logo": "eoeeta-email.png",
+                "email_logo_width": 162,
+            },
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["email_short_name"] == "EoEETA"
+        assert data["email_logo"] == "eoeeta-email.png"
+        assert data["email_logo_width"] == 162
+
+    def test_leaving_branding_out_keeps_what_was_set(
+        self, test_client, db_session
+    ):
+        # A client that predates the branding fields must not wipe them.
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        db_session.commit()
+        headers = _login(test_client, "testeducator", "Educator123!")
+        test_client.put(
+            "/api/teaching/settings",
+            json={
+                "coordinator_email": "coord@test.local",
+                "institution_name": "Academy",
+                "email_short_name": "EoEETA",
+            },
+            headers=headers,
+        )
+
+        resp = test_client.put(
+            "/api/teaching/settings",
+            json={
+                "coordinator_email": "new@test.local",
+                "institution_name": "Academy",
+            },
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["email_short_name"] == "EoEETA"
+        assert resp.json()["coordinator_email"] == "new@test.local"
+
+    def test_refuses_branding_that_could_break_an_email(
+        self, test_client, db_session
+    ):
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        db_session.commit()
+        headers = _login(test_client, "testeducator", "Educator123!")
+        base = {"coordinator_email": "c@test.local", "institution_name": "A"}
+
+        for extra in (
+            # Could end the From header early
+            {"email_short_name": 'EoEETA" <x@evil.example>'},
+            {"email_short_name": "EoEETA\r\nBcc: x@evil.example"},
+            # Not a plain file name under email/partners/
+            {"email_logo": "../secret.png", "email_logo_width": 100},
+            {"email_logo": "logo.svg", "email_logo_width": 100},
+            # A logo needs its width, for Outlook
+            {"email_logo": "logo.png"},
+        ):
+            resp = test_client.put(
+                "/api/teaching/settings",
+                json=base | extra,
+                headers=headers,
+            )
+            assert resp.status_code == 422, extra
+
         # ------------------------------------------------------------------
         # _resolve_bank_path security
         # ------------------------------------------------------------------

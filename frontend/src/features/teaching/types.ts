@@ -199,11 +199,20 @@ export interface TeachingOrgSettings {
   org_unit_id: number;
   coordinator_email: string;
   institution_name: string;
+  /** For the email sender line, "EoEETA via Quill Medical" */
+  email_short_name: string | null;
+  /** A file name under public/email/partners/, shown in emails' partner strip */
+  email_logo: string | null;
+  /** The logo's width in pixels at 72px tall */
+  email_logo_width: number | null;
 }
 
 export interface TeachingOrgSettingsInput {
   coordinator_email: string;
   institution_name: string;
+  email_short_name?: string | null;
+  email_logo?: string | null;
+  email_logo_width?: number | null;
 }
 
 // ------------------------------------------------------------------
