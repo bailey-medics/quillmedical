@@ -23,7 +23,14 @@ on:
     # but on this repo every PR is opened as a draft, so it could never do
     # that job. `ready_for_review` covers the case instead.
     types: [reopened, ready_for_review, synchronize]
-    branches: [main]
+    # Stacked pull requests as well as those on main. A pull request stacked
+    # on another targets the branch below it, and with main alone the four
+    # required gate contexts never reported on it: they sat at "Expected -
+    # Waiting for status to be reported" until it reached the bottom of the
+    # stack and was pushed to again. Neither the `opened` reasoning above nor
+    # the merge_group reasoning below depends on the base branch. See
+    # docs/docs/plans/2026-09-25-stacked-gate-approvals-plan.md.
+    branches: [main, "feature/**"]
   # A PR entering the merge queue needs these two required checks to report
   # again against the merge-group ref, or the queue hangs waiting for a
   # context that never posts (see ci.yml's merge_group trigger). They do NOT
@@ -84,6 +91,7 @@ jobs:
       breaking: ${{ steps.diff.outputs.breaking }}
       breaking_hash: ${{ steps.hash.outputs.breaking_hash }}
       breaking_summary: ${{ steps.summary.outputs.breaking_summary }}
+      change_fingerprint: ${{ steps.fingerprint.outputs.change_fingerprint }}
     steps:
       - name: Checkout PR branch
         uses: actions/checkout@v7.0.1
@@ -177,6 +185,32 @@ jobs:
         if: steps.diff.outputs.breaking == 'true'
         run: bash pr/.github/scripts/ci/compute-breaking-change-hash.sh oasdiff-report.json
 
+      # What this pull request itself changes, as a patch ID: the same after a
+      # rebase or a retarget onto main, different after any edit. The
+      # approval gate reuses an earlier human approval only for this same
+      # fingerprint. Before the validation step, which can fail the job, so
+      # a break shipped without its paperwork is still fingerprinted.
+      - name: Fingerprint this pull request's own change
+        id: fingerprint
+        if: steps.diff.outputs.breaking == 'true'
+        run: |
+          bash pr/.github/scripts/ci/compute-change-fingerprint.sh \
+            pr "${{ steps.base.outputs.base_sha }}" HEAD
+
+      # find-prior-approval.sh reads `fingerprint.txt` out of this artifact
+      # when a later run of this pull request asks whether it was approved.
+      - name: Write the fingerprint for later runs of this pull request
+        if: steps.diff.outputs.breaking == 'true'
+        run: echo "${{ steps.fingerprint.outputs.change_fingerprint }}" > fingerprint.txt
+
+      - name: Record the fingerprint for later runs of this pull request
+        if: steps.diff.outputs.breaking == 'true'
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: api-change-fingerprint
+          path: fingerprint.txt
+          if-no-files-found: error
+
       # Before the validation step on purpose: validation fails when a break
       # has no decision file, and the gate message still needs the summary to
       # quote in that case - it is the string the author must paste into
@@ -203,6 +237,51 @@ jobs:
         if: steps.diff.outputs.breaking == 'true'
         run: bash pr/.github/scripts/ci/write-breaking-changes-summary.sh oasdiff-report.json
 
+  # ---------- Has a person already approved this same change? ----------
+  # Looks through this pull request's earlier runs for an approval of the
+  # api-breaking-change-review environment, recorded by GitHub, of a change
+  # with the same fingerprint. Found, the gate below is skipped, which counts
+  # as passing; not found, or anything going wrong while looking, the gate
+  # asks. Never trusts a comment, label or commit message: see
+  # find-prior-approval.sh.
+  api_breaking_change_prior_approval:
+    name: API breaking-change earlier approval
+    needs: api_schema_diff
+    if: ${{ !cancelled() && needs.api_schema_diff.result != 'skipped' && needs.api_schema_diff.outputs.breaking == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      approved: ${{ steps.find.outputs.approved }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Look for an earlier approval of this same change
+        id: find
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # A branch name is author-controlled text, so it reaches the shell
+          # through the environment, never spliced into the script.
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          bash .github/scripts/ci/find-prior-approval.sh \
+            "${{ github.event.pull_request.number }}" \
+            "$HEAD_REF" \
+            gate-breaking.yml \
+            api-breaking-change-review \
+            api-change-fingerprint \
+            "${{ needs.api_schema_diff.outputs.change_fingerprint || 'empty' }}" \
+            "${{ github.run_id }}"
+
+      - name: Record whose approval is being reused
+        if: steps.find.outputs.approved == 'true'
+        run: |
+          {
+            echo "### Approved earlier, for this same change"
+            echo ""
+            echo "Approved by **${{ steps.find.outputs.approved_by }}** on ${{ steps.find.outputs.approved_at }}, in run [${{ steps.find.outputs.approved_run }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ steps.find.outputs.approved_run }})."
+            echo "The pull request's own code has not changed since, so the gate is not asking again."
+          } >> "$GITHUB_STEP_SUMMARY"
+
   # ---------- Human gate: required-reviewer approval for the breaking change ----------
   # Only runs when api_schema_diff found a breaking change - otherwise
   # skipped, which counts as passing for the required status check.
@@ -212,7 +291,7 @@ jobs:
   # trailer, or PR label were rejected as insufficient.
   api_breaking_change_gate:
     name: API breaking-change review gate
-    needs: api_schema_diff
+    needs: [api_schema_diff, api_breaking_change_prior_approval]
     # Two conditions, for two different reasons.
     #
     # !cancelled() rather than success(): api_schema_diff also validates the
@@ -227,7 +306,12 @@ jobs:
     # the job ran with no detection behind it, read `breaking` as empty and
     # posted an all-clear on a PR whose break was still present. Found on
     # walkthrough 3's first push.
-    if: ${{ !cancelled() && needs.api_schema_diff.result != 'skipped' && needs.api_schema_diff.outputs.breaking == 'true' }}
+    #
+    # And no earlier approval of this same change: the prior-approval job
+    # found one, so asking again would only repeat a decision already made.
+    # Anything short of an explicit 'true' - including that job failing -
+    # leaves the gate asking.
+    if: ${{ !cancelled() && needs.api_schema_diff.result != 'skipped' && needs.api_schema_diff.outputs.breaking == 'true' && needs.api_breaking_change_prior_approval.outputs.approved != 'true' }}
     runs-on: ubuntu-24.04
     environment: api-breaking-change-review
     timeout-minutes: 30
@@ -297,8 +381,9 @@ jobs:
         even when the break has no `api-compatibility/` decision file, so the
         record shows when the break appeared rather than when its paperwork
         caught up - which means you can be asked to approve a PR that is still
-        failing validation. Approving then is wasted anyway: approval is
-        scoped to the commit, so the next push re-requires it.
+        failing validation. Approving then is wasted anyway: an approval
+        covers the pull request's code as it stands, so the fix will ask
+        again. It is not asked again for a rebase or a move onto main.
 
         Found in commit ${{ github.event.pull_request.head.sha }}
       # Slack never sees this one - a risk going away does not warrant a page -
@@ -376,18 +461,25 @@ jobs:
       destructive: ${{ steps.detect.outputs.destructive }}
       report: ${{ steps.detect.outputs.report }}
       destructive_hash: ${{ steps.hash.outputs.destructive_hash }}
+      change_fingerprint: ${{ steps.fingerprint.outputs.change_fingerprint }}
     steps:
       - name: Checkout PR branch
         uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
 
-      - name: Fetch main branch ref (for the added-migrations diff)
-        run: git fetch origin main:refs/remotes/origin/main
+      # The commit the pull request was built on, rather than main: on a
+      # stacked pull request that is the branch below, and diffing against
+      # main would report the migrations of every branch underneath as this
+      # one's. api_schema_diff resolves its base the same way, for the same
+      # reason.
+      - name: Resolve the base commit the PR ref was merged onto
+        id: base
+        run: bash .github/scripts/ci/resolve-pr-base-sha.sh .
 
       - name: Detect destructive operations in added migrations
         id: detect
-        run: bash .github/scripts/ci/detect-destructive-migrations.sh origin/main
+        run: bash .github/scripts/ci/detect-destructive-migrations.sh "${{ steps.base.outputs.base_sha }}"
 
       - name: Write destructive migration summary
         if: steps.detect.outputs.destructive == 'true'
@@ -405,6 +497,67 @@ jobs:
           bash .github/scripts/ci/compute-destructive-migration-hash.sh \
             "${{ steps.detect.outputs.report }}"
 
+      # See api_schema_diff: what this pull request itself changes, which the
+      # gate reuses an earlier approval for while it stays the same.
+      - name: Fingerprint this pull request's own change
+        id: fingerprint
+        if: steps.detect.outputs.destructive == 'true'
+        run: |
+          bash .github/scripts/ci/compute-change-fingerprint.sh \
+            . "${{ steps.base.outputs.base_sha }}" HEAD
+
+      - name: Write the fingerprint for later runs of this pull request
+        if: steps.detect.outputs.destructive == 'true'
+        run: echo "${{ steps.fingerprint.outputs.change_fingerprint }}" > fingerprint.txt
+
+      - name: Record the fingerprint for later runs of this pull request
+        if: steps.detect.outputs.destructive == 'true'
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: db-change-fingerprint
+          path: fingerprint.txt
+          if-no-files-found: error
+
+  # ---------- Has a person already approved this same migration? ----------
+  # As api_breaking_change_prior_approval, for the migration gate.
+  db_destructive_migration_prior_approval:
+    name: DB destructive migration earlier approval
+    needs: db_destructive_migration_check
+    if: needs.db_destructive_migration_check.outputs.destructive == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      approved: ${{ steps.find.outputs.approved }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Look for an earlier approval of this same change
+        id: find
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # A branch name is author-controlled text, so it reaches the shell
+          # through the environment, never spliced into the script.
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          bash .github/scripts/ci/find-prior-approval.sh \
+            "${{ github.event.pull_request.number }}" \
+            "$HEAD_REF" \
+            gate-breaking.yml \
+            db-destructive-migration-review \
+            db-change-fingerprint \
+            "${{ needs.db_destructive_migration_check.outputs.change_fingerprint || 'empty' }}" \
+            "${{ github.run_id }}"
+
+      - name: Record whose approval is being reused
+        if: steps.find.outputs.approved == 'true'
+        run: |
+          {
+            echo "### Approved earlier, for this same change"
+            echo ""
+            echo "Approved by **${{ steps.find.outputs.approved_by }}** on ${{ steps.find.outputs.approved_at }}, in run [${{ steps.find.outputs.approved_run }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ steps.find.outputs.approved_run }})."
+            echo "The pull request's own code has not changed since, so the gate is not asking again."
+          } >> "$GITHUB_STEP_SUMMARY"
+
   # ---------- Human gate: destructive DB migration requires approval ----------
   # Sits downstream of the detection job and runs only when a newly-added
   # migration drops a column, table, or constraint. The `environment:` key is
@@ -414,8 +567,11 @@ jobs:
   # nothing in the diff can satisfy it.
   db_destructive_migration_gate:
     name: DB destructive migration review gate
-    needs: db_destructive_migration_check
-    if: needs.db_destructive_migration_check.outputs.destructive == 'true'
+    needs: [db_destructive_migration_check, db_destructive_migration_prior_approval]
+    # Skipped when a person already approved this same change; anything short
+    # of an explicit 'true' from the prior-approval job, including it failing,
+    # leaves the gate asking.
+    if: ${{ !cancelled() && needs.db_destructive_migration_check.outputs.destructive == 'true' && needs.db_destructive_migration_prior_approval.outputs.approved != 'true' }}
     runs-on: ubuntu-24.04
     environment: db-destructive-migration-review
     timeout-minutes: 30
@@ -462,8 +618,9 @@ jobs:
         **Check the PR's other checks are green first.** A migration still
         failing `check_migrations.py` - a missing
         `# migration-check: allow-destructive` marker, say - is not ready to
-        approve, and approving now is wasted anyway: approval is scoped to the
-        commit, so the next push re-requires it.
+        approve, and approving now is wasted anyway: an approval covers the
+        pull request's code as it stands, so the fix will ask again. It is
+        not asked again for a rebase or a move onto main.
 
         **Migrations:**
         ```

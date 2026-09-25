@@ -61,19 +61,19 @@ re-checks everything against real `main` before anything lands.
 
 ## Phase 2: Wire both gates to reuse an approval
 
-- [ ] **Record the fingerprint in both detection jobs.** In
+- [x] **Record the fingerprint in both detection jobs.** In
       `api_schema_diff` and `db_destructive_migration_check`, compute the
       fingerprint against the same base each already diffs against, and
       upload it as an artifact (`api-change-fingerprint`,
       `db-change-fingerprint`) whenever the job flags something.
 
-- [ ] **Give the destructive migration check the pull request's own
+- [x] **Give the destructive migration check the pull request's own
       base.** It diffs against `origin/main`, so on a stacked pull request
       it would report migrations belonging to the branches below. Resolve
       the base with `resolve-pr-base-sha.sh`, as `api_schema_diff` already
       does for exactly this reason.
 
-- [ ] **Add a prior-approval job before each gate.** A job with no
+- [x] **Add a prior-approval job before each gate.** A job with no
       environment runs `find-prior-approval.sh` and outputs `approved`.
       Each gate then runs only when something was flagged **and** no
       earlier approval matches. A gate skipped that way counts as passing
@@ -82,7 +82,7 @@ re-checks everything against real `main` before anything lands.
       run to its job summary, so the record of the decision stays one
       click away.
 
-- [ ] **Run the gates on stacked pull requests.** Widen the
+- [x] **Run the gates on stacked pull requests.** Widen the
       `pull_request` trigger to `branches: [main, "feature/**"]`. The
       comment above it explains why `opened` is excluded and why the gates
       do not re-run on `merge_group`; neither reason is affected, and the
@@ -91,14 +91,19 @@ re-checks everything against real `main` before anything lands.
       every branch of a stack multiplies the cost, as the
       [stacked branches plan](2026-09-14-stacked-branches-plan.md) found.
 
-- [ ] **Update the wording that says approval is per commit.** Both
+- [x] **Update the wording that says approval is per commit.** Both
       gates' PR messages say "approval is scoped to the commit, so the next
       push re-requires it", and `docs/docs/backend/api-compatibility.md`
       says "nothing left over from an earlier commit can satisfy it". Both
       become: an approval covers the pull request's change while its code
       is unchanged, checked against GitHub's approval record, and any edit
       to its code asks again. Record the change of rule in the page's
-      history rather than silently rewriting it.
+      history rather than silently rewriting it. The fingerprint artifact
+      keeps GitHub's default 90 days, so an approval older than that is
+      asked for again: the evidence of what it covered has gone, and the
+      lookup fails closed. The branch name reaches the lookup through the
+      environment rather than the script text, as `actionlint` requires of
+      author-controlled values.
 
 ## Phase 3: Verify on a real stack
 
