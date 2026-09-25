@@ -1,6 +1,7 @@
 """The email that asks somebody to come and assess a competency.
 
-One template, rendered in Python rather than loaded from YAML. The
+One fixed template, ``app/email/templates/passport_invite.html.j2``,
+rather than one loaded from a question bank's YAML. The
 teaching templates in :mod:`app.features.teaching.email_templates` are
 configurable because a question bank's coordinator writes them and they
 differ per bank. This one is not: it is a fixed transactional message
@@ -19,8 +20,9 @@ asked to do, and how long the link lasts, in that order.
 
 from __future__ import annotations
 
-from html import escape
 from typing import TypedDict
+
+from app.email.render import render_email
 
 #: Where the accept page lives in the frontend. The token travels in the
 #: query string, as the patient invite and password reset links do.
@@ -32,6 +34,7 @@ class InviteEmail(TypedDict):
 
     subject: str
     html_body: str
+    text_body: str
 
 
 def accept_url(frontend_url: str, token: str) -> str:
@@ -55,11 +58,12 @@ def render_invite(
     url: str,
     expires_in_days: int,
 ) -> InviteEmail:
-    """Render the invitation.
+    """Render the invitation, in the branded layout.
 
-    Every interpolated value is escaped. The names come from user input
-    — a holder types the assessor's name on the invite form — so a name
-    containing a bracket must not become markup in somebody's inbox.
+    The words are in ``app/email/templates/passport_invite.html.j2``.
+    Every value is escaped there: the names come from user input (a holder
+    types the assessor's name on the invite form), so a name containing a
+    bracket must not become markup in somebody's inbox.
 
     Args:
         assessor_name: Who is being invited, as the holder gave it.
@@ -73,38 +77,21 @@ def render_invite(
             whether they can leave it until after the weekend.
 
     Returns:
-        The subject and HTML body.
+        The subject, HTML body and plain-text body.
     """
-    assessor = escape(assessor_name)
-    holder = escape(holder_name)
-    link = escape(url, quote=True)
-
-    if competency_name:
-        subject = f"{holder_name} has asked you to assess a competency"
-        asking = (
-            f"<p>{holder} has asked you to assess "
-            f"<strong>{escape(competency_name)}</strong> and record the "
-            "outcome in their clinician passport.</p>"
-        )
-    else:
-        subject = f"{holder_name} has asked you to be an assessor"
-        asking = (
-            f"<p>{holder} has asked you to act as an assessor and record "
-            "outcomes in their clinician passport.</p>"
-        )
-
-    body = (
-        f"<p>Dear {assessor},</p>"
-        f"{asking}"
-        "<p>A clinician passport is a record of competencies a clinician "
-        "has been assessed as able to perform, signed by the person who "
-        "assessed them. You will be asked to confirm your professional "
-        "registration before you sign anything.</p>"
-        f'<p><a href="{link}">Accept the invitation</a></p>'
-        f"<p>This link can be used once and expires in "
-        f"{expires_in_days} days.</p>"
-        "<p>If you were not expecting this, you can ignore this email "
-        "and nothing will happen.</p>"
+    rendered = render_email(
+        "passport_invite.html.j2",
+        "quill",
+        {
+            "assessor_name": assessor_name,
+            "holder_name": holder_name,
+            "competency_name": competency_name,
+            "url": url,
+            "expires_in_days": expires_in_days,
+        },
     )
-
-    return InviteEmail(subject=subject, html_body=body)
+    return InviteEmail(
+        subject=rendered["subject"],
+        html_body=rendered["html_body"],
+        text_body=rendered["text_body"],
+    )

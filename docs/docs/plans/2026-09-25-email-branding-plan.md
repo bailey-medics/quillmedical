@@ -332,7 +332,7 @@ sent for them.
       parts through `send_args`, so the tests that patch `send_email` in
       `main.py` keep working.
 
-- [ ] **Convert the passport assessor invite, and correct its expiry
+- [x] **Convert the passport assessor invite, and correct its expiry
       line.** Its module docstring already says what it must do (name who
       is asking, what they are asked to do and how long the link lasts,
       and never mention a patient) and that stays true. The one wording

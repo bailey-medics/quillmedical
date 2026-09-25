@@ -895,6 +895,7 @@ def _email_sign_off_request(
             to=assessor_email,
             subject=message["subject"],
             html_body=message["html_body"],
+            text_body=message["text_body"],
         )
     except EmailRateLimitError:
         # 429 rather than the 502 below, because "too many already" and
