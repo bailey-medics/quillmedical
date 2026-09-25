@@ -5,16 +5,17 @@
 # and to say when it last was. NHS organisations that buy Quill are bound by
 # them, so a statement left to go stale is a finding against them.
 #
-# Schedule: every Monday in September and October at 08:00 UTC. Each run
-# checks the REVIEWED date in the statement itself and sends nothing unless
-# it is 11 months old or more, so moving that date after a review is what
+# Schedule: every Monday at 08:00 UTC, all year, because the review can
+# happen in any month and the due date moves with it. Each run checks the
+# REVIEWED date in the statement itself and sends nothing unless it is 11
+# months old or more, so moving that date after a review is what
 # stops the reminders. Until then they repeat weekly, by email and Slack,
 # because one message a year is easy to miss.
 name: Accessibility statement review
 
 on:
   schedule:
-    - cron: "0 8 * 9,10 1"
+    - cron: "0 8 * * 1"
   workflow_dispatch:
     inputs:
       force:
