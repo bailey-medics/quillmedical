@@ -530,6 +530,12 @@ a screen magnifier and Dragon. For one developer on a Mac the realistic
 first pass is below; JAWS and Dragon are licensed and can wait for a
 commissioned audit.
 
+The runs below need a person with the device and the screen reader, and
+cannot be automated. They are deferred on purpose: they will be done
+when a DTAC sign-off asks for them, and until then the automated checks
+in phases 1 to 4 are the baseline. They stay open until someone does
+them and logs the result.
+
 - [x] Write four journey scripts in
       `docs/docs/frontend/accessibility/journeys.md`: log in with 2FA, find
       and open a patient, open and complete a teaching lecture, sign off a
@@ -567,18 +573,14 @@ published on the public site, not inside the app, because it must be
 readable by someone who cannot yet log in.
 
 - [x] Replace `docs/docs/frontend/accessibility.md` with a page that says
-      only what is true: the design foundations, the checks that run in
-      CI, the testing log, and the statement's location. Remove the ADA,
-      Section 508, text size, density, phone line, timeout warning and
-      mailbox claims
-      The runs below need a person with the device and the screen reader,
-      and cannot be automated or done by an unattended build. They stay open
-      until someone does them and logs the result.. Rewritten
-      from 615 lines to one short page: the design foundations, the checks
-      that run in CI, "nothing yet" for testing by people, the known gaps,
-      and where the statement will go. Every claim on it is backed by the
-      code, a test or the testing log, and it says so where people have
-      not checked something yet
+      only what is true: the design foundations, the checks that run in CI,
+      the testing log, and the statement's location. Remove the ADA, Section
+      508, text size, density, phone line, timeout warning and mailbox
+      claims. Rewritten from 615 lines to one short page: the design
+      foundations, the checks that run in CI, "nothing yet" for testing by
+      people, the known gaps, and where the statement will go. Every claim
+      on it is backed by the code, a test or the testing log, and it says so
+      where people have not checked something yet
 - [x] Give every page its own document title (WCAG 2.4.2 Page titled).
       Found while going through the criteria for the conformance record
       below: every route kept `index.html`'s "Quill Medical", so a screen
@@ -638,18 +640,47 @@ readable by someone who cannot yet log in.
 
 ## Phase 7: Keep it green
 
-- [ ] Add to `.claude/rules/components.md`: every component story must pass
-      the a11y check; `IconButton` and `Image` are the only way to render
-      an icon button or image; per-story rule overrides need a comment
-      saying why
-- [ ] Add "re-run the phase 5 journeys" to the checklist of any plan that
-      changes a layout, the ribbon, navigation, or the login flow
-- [ ] Confirm Renovate is tracking `axe-core` transitively through
+- [x] Add to `.claude/rules/components.md`: every component story must pass
+      the a11y check; `IconButton` and `Image` are the only way to render an
+      icon button or image; per-story rule overrides need a comment saying
+      why. Added as an "Accessibility" section of the component rules, in
+      both `.github/instructions/components.instructions.md` (the source)
+      and its mirror `.claude/rules/components.md`, with three more rules
+      the work showed were needed: a story that renders nothing checks
+      nothing, anything clickable is a button or a link, and text colours
+      come from the tested tokens. The same edit corrects the `PageHeader`
+      rule, which said it was also for section headings; it is now the page
+      title only
+- [x] Add "re-run the phase 5 journeys" to the checklist of any plan that
+      changes a layout, the ribbon, navigation, or the login flow. Added to
+      `.claude/rules/plans.md`, which applies to every plan. With manual
+      testing deferred, the rule asks a plan to name the journeys it touches
+      and add them to the testing log's "not yet run" list, so the eventual
+      manual round knows what to cover
+- [x] Confirm Renovate is tracking `axe-core` transitively through
       `@storybook/addon-a11y` and `@axe-core/playwright` so rule updates
-      arrive on their own
+      arrive on their own. Confirmed in `renovate.json`:
+      `@axe-core/playwright`, `@storybook/addon-a11y` and
+      `eslint-plugin-jsx-a11y` are direct dependencies in the weekly
+      dev-dependency group, and `axe-core` itself, which both pull in, is
+      refreshed by the weekly lock-file maintenance within their ranges.
+      Nothing is ignored or pinned, so no change was needed
 - [ ] Revisit the statement's compliance status whenever the testing log
-      gains a failing entry that is not fixed within the sprint; a
-      statement that claims more than the log shows is the worst outcome
+      gains a failing entry that is not fixed within the sprint; a statement
+      that claims more than the log shows is the worst outcome. A standing
+      rule rather than a task, so it stays open; it starts to apply once the
+      statement exists
+
+- [x] Measure the CI cost of the checks now that they are all in place,
+      before deciding whether any should move to a weekly run. From the
+      runs on #1094 and #1095: Storybook interaction tests, which carry
+      the a11y checks and the dark pass, take 5 to 6 minutes, up from 4
+      to 5 before phase 1; the E2E job takes about 1.5 minutes in
+      Chromium, plus about 2 minutes to build its images. WebKit (#1100)
+      roughly doubles the E2E run. Both run only on pull requests that
+      are not drafts and in the merge queue, so nothing moves to a
+      weekly run for now; if CI time becomes a problem, the dark pass is
+      the first candidate
 
 ## Decisions
 

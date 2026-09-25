@@ -7,7 +7,7 @@ paths:
 
 - **Reuse existing components** from this `components/` folder. Always check what already exists before creating anything new.
 - Use **typography components** from `components/typography/` for **all** text — Never use raw Mantine `<Text>`, `<Title>`, or plain HTML text elements. If none of the existing typography components fit, ask a human before creating a new one.
-- Use **`<PageHeader>`** for page-level titles and component section headings displayed on pages.
+- Use **`<PageHeader>`** for the page title, and only for that: every page has exactly one, visible and at one size, and it is the page's only `h1` and its browser-tab title. Section headings within a page use **`<Heading>`**, always an `h2`. The one hidden title is `<PageHeader visuallyHidden />` on the assessment attempt, where an exam screen carries only the question.
 - Use the **`<BaseCard>`** component from `components/base-card/BaseCard.tsx` for **all** cards — never use Mantine's `<Card>` directly. BaseCard enforces consistent `shadow="sm"`, `padding="lg"`, `radius="md"`, and `withBorder`. These props are fixed and cannot be overridden.
 - Use the **`<Icon>`** component from `components/icons/Icon.tsx` to wrap **all** Tabler icons — never render Tabler icons directly in JSX (e.g. `<IconPencil />` on its own is not allowed). Always use `<Icon icon={<IconPencil />} />`. Register any new icons in `components/icons/appIcons.tsx` first.
 - If you need a new component that does not have existing atomic components to compose from, **stop and ask a human for help** — do not create new atomic components on your own.
@@ -40,6 +40,15 @@ paths:
 - **In CSS modules**: use Mantine CSS variables (e.g. `var(--mantine-color-text)`, `var(--mantine-color-primary-6)`, `var(--mantine-color-gray-0)`) — never raw colour literals.
 - **In TSX**: use Mantine colour tokens (e.g. `c="primary.7"`, `c="gray.4"`) or imports from the above modules.
 - **Dark mode borders**: all form field inputs must use `var(--mantine-color-primary-9)` for border colour in dark mode via `[data-mantine-color-scheme="dark"]` selectors in CSS modules. Exception: error state uses `var(--error-color)` (with `var(--error-focus-color)` on focus) via `[data-error]` selectors.
+
+## Accessibility
+
+- **Every story must pass the Storybook accessibility checks**, in light and in dark mode. They run axe against WCAG 2.2 AA in the heavy CI tier and fail it on any violation. How they run and how to read a failure: `docs/docs/frontend/storybook/index.md`.
+- **Icon-only buttons are `IconButton`, and images are `Image`.** Both require an accessible name (`aria-label`, `alt`) at compile time. Importing Mantine's `ActionIcon` directly is a lint warning; the few wrappers that size their own are listed as exceptions in `eslint.config.js`.
+- **A per-story rule override needs a comment saying why**, and belongs on that story's `parameters.a11y`, never in `.storybook/preview.tsx`, where it would switch the rule off for every story.
+- **A story that renders nothing passes without checking anything.** If a component is gated on a competency, the mock user in `.storybook/preview.tsx` must hold it.
+- **Anything clickable is a button or a link.** A click handler on a `div`, or a Mantine `NavLink` with no `href` and no `component`, cannot be reached from the keyboard; `NavLink` defaults to a `button` in `theme.ts` for this reason.
+- **Text colours come from the tokens in `theme.ts`**, which are tested to meet 4.5:1. Greys 4 to 6 are for icons and borders, never for text; muted text is `c="dimmed"`.
 
 ## Testing and stories
 
