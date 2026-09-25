@@ -7,6 +7,9 @@ describe("PublicNavIcon Component", () => {
     const iconNames = [
       "home",
       "teaching",
+      "learning",
+      "assessments",
+      "educators",
       "book",
       "pricing",
       "database",

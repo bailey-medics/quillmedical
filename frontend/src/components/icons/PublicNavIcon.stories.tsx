@@ -8,6 +8,9 @@ import { NAVY_BACKDROP } from "@/stories/backdrops";
 const iconNames: PublicNavIconName[] = [
   "home",
   "teaching",
+  "learning",
+  "assessments",
+  "educators",
   "book",
   "pricing",
   "database",

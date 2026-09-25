@@ -21,9 +21,13 @@ interface FooterGroup {
 
 const data: FooterGroup[] = [
   {
-    title: "Features",
+    title: "Platform",
     links: [
       { label: "Learning", link: "/learning" },
+      { label: "Assessments", link: "/assessments" },
+      { label: "For educators", link: "/for-educators" },
+      { label: "Accessibility", link: "/accessibility" },
+      { label: "Security", link: "/security" },
       { label: "Clinical records", link: "/clinical-records" },
     ],
   },
@@ -31,6 +35,7 @@ const data: FooterGroup[] = [
     title: "Company",
     links: [
       { label: "About", link: "/about" },
+      { label: "Pricing", link: "/pricing" },
       { label: "Contact", link: "/contact" },
       { label: "Careers", link: "/careers" },
       { label: "Information", link: "/company-information" },
