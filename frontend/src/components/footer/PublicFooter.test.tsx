@@ -31,9 +31,9 @@ describe("PublicFooter", () => {
 
   it("renders feature links within the Features group", () => {
     renderWithMantine(<PublicFooter />);
-    expect(screen.getByRole("link", { name: "Teaching" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Learning" })).toHaveAttribute(
       "href",
-      "/clinical-teaching",
+      "/learning",
     );
     expect(
       screen.getByRole("link", { name: "Clinical records" }),
@@ -48,6 +48,7 @@ describe("PublicFooter", () => {
       "/modular-deployment",
       "/competency-access",
       "/external-referrals",
+      "/clinical-teaching",
     ]) {
       expect(
         screen

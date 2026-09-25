@@ -358,10 +358,19 @@ page first.
       on every change because `test_security_pentest.py` is part of the
       backend unit suite CI runs on every push, as well as its own monthly
       workflow
-- [ ] Rewrite `index.tsx` as described under "Home page sections"
-- [ ] Replace `clinical-teaching.tsx` — delete it once the pages above exist
-- [ ] Rewrite `about.tsx`, `pricing.tsx` and the FHIR line in `careers.tsx`
-- [ ] Sentence case and British English throughout, and cspell clean
+- [x] Rewrite `index.tsx` as described under "Home page sections". The
+      interim "What we build" section from Phase 1 is gone, and with it the
+      home page's link to clinical records, which the plan keeps to the
+      footer and About page. The hero keeps the Quill logo above the title
+- [x] Replace `clinical-teaching.tsx` — delete it once the pages above exist.
+      Its footer link now points at `/learning` until Phase 3 lays the
+      footer out in full
+- [x] Rewrite `about.tsx`, `pricing.tsx` and the FHIR line in `careers.tsx`.
+      About drops "clinically validated", which nothing records, and links
+      `/clinical-records` in one sentence. Pricing is one short section:
+      agreed per organisation, with a contact button
+- [x] Sentence case and British English throughout, and cspell clean. The
+      exclamation marks on the old home page titles went with them
 
 ## Phase 3: Navigation
 

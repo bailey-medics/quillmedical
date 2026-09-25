@@ -27,10 +27,6 @@
     "title": "Security",
     "description": "UK hosting, security testing on every change, and strong sign-in."
   },
-  "clinical-teaching": {
-    "title": "Clinical teaching",
-    "description": "Online learning and assessment for clinicians, built by clinicians."
-  },
   "clinical-records": {
     "title": "Clinical records",
     "description": "A clinical record on open standards, in development alongside our learning and assessment platform."
@@ -41,7 +37,7 @@
   },
   "pricing": {
     "title": "Pricing",
-    "description": "Pricing for Quill Medical is agreed with each organisation. Talk to us."
+    "description": "Pricing for Quill Medical is agreed with each organisation. Tell us what you would like to teach or assess."
   },
   "careers": {
     "title": "Careers",

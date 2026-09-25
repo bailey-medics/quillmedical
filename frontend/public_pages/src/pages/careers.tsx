@@ -29,7 +29,7 @@ createRoot(document.getElementById("root")!).render(
       <PublicLightBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
-            <PublicTitle title="Why join us?" c="white" />
+            <PublicTitle title="Why join us?" size="md" c="white" />
             <PublicBodyText justify="centre">
               Quill Medical is a clinician-led company. We combine deep clinical
               knowledge with modern engineering to build tools that work the way
@@ -38,9 +38,9 @@ createRoot(document.getElementById("root")!).render(
               care about getting the details right.
             </PublicBodyText>
             <PublicBodyText justify="centre">
-              We value open standards (FHIR R4, OpenEHR), clinical safety, and
-              code quality. Every feature is carefully considered and built to
-              the standard that patients deserve.
+              We value fairness, accessibility, clinical safety and code
+              quality. Every feature is carefully considered and built to the
+              standard clinicians expect.
             </PublicBodyText>
           </Stack>
         </Container>
@@ -49,7 +49,7 @@ createRoot(document.getElementById("root")!).render(
       <PublicDarkBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
-            <PublicTitle title="Open positions" c="white" />
+            <PublicTitle title="Open positions" size="md" c="white" />
             <PublicBodyText justify="centre">
               We do not have any open positions at the moment, but we are always
               interested in hearing from talented people who share our mission.
