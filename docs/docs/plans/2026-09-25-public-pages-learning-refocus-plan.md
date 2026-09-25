@@ -443,7 +443,12 @@ page first.
       on the site, kept by email. This is the one thing the deploy waits
       for, because the pages name them; if they would rather not be named,
       swap in "a regional endoscopy training academy" and deploy
-- [ ] Deploy to the GCS bucket
+- [x] Deploy to the GCS bucket. Happened on its own: `public-site.yml` runs
+      on every push to `main` that touches the public pages, so the site
+      went live at 12:55 on 25 September 2026 when the last of the six
+      pull requests merged, before EoEETA had been sent a preview. The
+      step above is therefore now a request to approve what is already
+      live, and the fallback wording would be a second deploy
 
 ## Phase 5: Add EoEETA's material as it arrives
 
