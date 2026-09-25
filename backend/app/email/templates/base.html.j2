@@ -1,0 +1,248 @@
+{#-
+  The layout every Quill email shares, moved across from the signed-off
+  Phase 1 mock-up (frontend/src/stories/emails/mockups/base.html). If a
+  render looks different from the mock-up, this file is wrong.
+
+  A child template extends this and fills these blocks:
+    subject    the subject line (plain text)
+    preheader  the line an inbox shows after the subject
+    body       the email itself
+    reason     why the recipient is getting it, for the footer
+    text       the plain-text version, sent alongside the HTML. Not
+               placed in the layout: render_email renders it on its own.
+  and may replace `footer` altogether.
+
+  `t` is the resolved theme from shared/brand.yaml; every colour is hex.
+  `partner` is set only on an email sent for a partner.
+-#}
+<!doctype html>
+<html lang="en-GB" xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="x-apple-disable-message-reformatting" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="supported-color-schemes" content="light dark" />
+    <title>{% block subject %}{% endblock %}</title>
+    <link rel="stylesheet" href="{{ font_link }}" />
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        -webkit-text-size-adjust: 100%;
+      }
+      table {
+        border-collapse: collapse;
+      }
+      img {
+        border: 0;
+        display: block;
+        outline: none;
+        text-decoration: none;
+      }
+      a {
+        color: {{ t.link }};
+      }
+      @media (max-width: 920px) {
+        .em-container {
+          width: 100% !important;
+        }
+        .em-pad {
+          padding-left: 20px !important;
+          padding-right: 20px !important;
+        }
+        .em-button a {
+          display: block !important;
+        }
+      }
+      @media (prefers-color-scheme: dark) {
+        .em-bg {
+          background-color: {{ t.dark.background }} !important;
+        }
+        .em-card {
+          background-color: {{ t.dark.card }} !important;
+          border-color: {{ t.dark.border }} !important;
+        }
+        .em-header {
+          background-color: {{ t.dark.header }} !important;
+        }
+        .em-panel {
+          background-color: {{ t.dark.panel }} !important;
+        }
+        .em-text,
+        .em-text p,
+        .em-text h1,
+        .em-text h2 {
+          color: {{ t.dark.text }} !important;
+        }
+        .em-muted,
+        .em-muted p,
+        .em-text p.em-muted {
+          color: {{ t.dark.muted }} !important;
+        }
+        .em-footer {
+          background-color: {{ t.dark.footer }} !important;
+          border-color: {{ t.dark.border }} !important;
+        }
+        .em-footer,
+        .em-footer p,
+        .em-footer a {
+          color: {{ t.dark.muted }} !important;
+        }
+        .em-text a,
+        .em-muted a {
+          color: {{ t.dark.link }} !important;
+        }
+        /* Buttons keep their own colours: the fill does not change. */
+        .em-text a.em-button-link {
+          color: {{ t.button_text }} !important;
+        }
+      }
+    </style>
+  </head>
+  <body
+    class="em-bg"
+    style="margin: 0; padding: 0; background-color: {{ t.background }}"
+  >
+    <!-- Preheader: the line an inbox shows after the subject. Hidden in the body. -->
+    <div
+      style="display: none; max-height: 0; overflow: hidden; mso-hide: all; font-size: 1px; line-height: 1px; color: {{ t.background }}"
+    >
+      {% block preheader %}{% endblock %}&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;
+    </div>
+
+    <table
+      role="presentation"
+      class="em-bg"
+      width="100%"
+      cellpadding="0"
+      cellspacing="0"
+      style="background-color: {{ t.background }}"
+    >
+      <tr>
+        <td align="center" style="padding: 32px 12px">
+          <!--
+            Fluid up to 900px: the card fills a narrower window rather than
+            scrolling sideways, and stops growing at 900px. Classic Outlook
+            on Windows ignores max-width, so it gets a fixed 600px table
+            instead, the width that fits its reading pane.
+          -->
+          <!--[if mso]>
+          <table role="presentation" width="600" cellpadding="0" cellspacing="0" align="center"><tr><td>
+          <![endif]-->
+          <table
+            role="presentation"
+            class="em-container em-card"
+            width="100%"
+            cellpadding="0"
+            cellspacing="0"
+            style="width: 100%; max-width: 900px; background-color: {{ t.card }}; border: 1px solid {{ t.card_border }}; border-collapse: separate; border-radius: 8px; overflow: hidden"
+          >
+            <!-- Header band -->
+            <tr>
+              <td
+                class="em-header em-pad"
+                style="background-color: {{ t.header }}; padding: 24px 40px; border-bottom: {{ t.header_rule_width }} solid {{ t.header_rule }}"
+              >
+                {%- set logo = t.header_logo %}
+                {%- set logo_img %}<img src="{{ asset(logo.src) }}" width="{{ logo.width }}" height="{{ logo.height }}" alt="{{ logo.alt }}" style="width: {{ logo.width }}px; height: {{ logo.height }}px" />{% endset %}
+                {%- if t.header_name %}
+                <table role="presentation" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td style="padding-right: 14px">{{ logo_img }}</td>
+                    <td
+                      class="em-text"
+                      style="font-family: {{ t.font_family }}; font-size: 24px; color: {{ t.heading }}"
+                    >
+                      {{ t.header_name }}
+                    </td>
+                  </tr>
+                </table>
+                {%- else %}
+                {{ logo_img }}
+                {%- endif %}
+              </td>
+            </tr>
+
+            {%- if partner %}
+            <!--
+              Partner strip: who this email is sent for. White even in dark
+              mode, because partner logos have transparent backgrounds drawn
+              for white and would be lost on a dark card.
+            -->
+            <tr>
+              <td
+                class="em-pad"
+                style="padding: 20px 40px; background-color: #ffffff; border-bottom: 1px solid {{ t.border }}"
+              >
+                <table role="presentation" cellpadding="0" cellspacing="0">
+                  <tr>
+                    {%- if partner.logo %}
+                    {#- Nudged in 8px: a logo's lettering often starts flush
+                        with the image edge, and looks further left than
+                        the body text below. -#}
+                    <td style="padding: 0 24px 0 8px; vertical-align: middle">
+                      <img
+                        src="{{ asset(partner.logo.src) }}"
+                        width="{{ partner.logo.width }}"
+                        height="{{ partner.logo.height }}"
+                        alt="{{ partner.name }}"
+                        style="width: {{ partner.logo.width }}px; height: {{ partner.logo.height }}px"
+                      />
+                    </td>
+                    {%- endif %}
+                    <td
+                      style="vertical-align: middle; font-family: {{ t.font_family }}; font-size: 19px; line-height: 1.4; color: {{ t.muted }}"
+                    >
+                      {%- if partner.logo %}
+                      <p style="margin: 0">{{ partner.context }}</p>
+                      {%- else %}
+                      <p style="margin: 0; font-weight: 700; color: {{ t.heading }}">
+                        {{ partner.name }}
+                      </p>
+                      <p style="margin: 0">{{ partner.context }}</p>
+                      {%- endif %}
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            {%- endif %}
+
+            <!-- Content -->
+            <tr>
+              <td
+                class="em-text em-pad"
+                style="padding: 36px 40px 32px; font-family: {{ t.font_family }}; font-size: 19px; line-height: 1.5; color: {{ t.text }}"
+              >
+                {% block body %}{% endblock %}
+              </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td
+                class="em-footer em-pad"
+                style="padding: 28px 40px 32px; background-color: {{ t.footer_background }}; border-top: 1px solid {{ t.footer_rule }}; font-family: {{ t.font_family }}; font-size: 19px; line-height: 1.5; color: {{ t.footer_text }}"
+              >
+                {%- block footer %}
+                <p style="margin: 0 0 8px">
+                  {%- if partner %}Sent by {{ t.sender_name }} on behalf of {{ partner.name }}. {% endif -%}
+                  {%- block reason %}{% endblock -%}
+                </p>
+                <p style="margin: 0">
+                  {{ t.sender_name }} is a trading name of Bailey Medics Ltd.
+                </p>
+                {%- endblock %}
+              </td>
+            </tr>
+          </table>
+          <!--[if mso]>
+          </td></tr></table>
+          <![endif]-->
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

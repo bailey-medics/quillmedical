@@ -301,6 +301,14 @@ class Settings(BaseSettings):
         "noreply@quillmedical.com",
         description="Sender address for outgoing emails",
     )
+    EMAIL_ASSET_BASE_URL: str = Field(
+        "https://quill-medical.com",
+        description=(
+            "Where email images are served from, prefixed to every image "
+            "path in a rendered email. The public site, which stays up "
+            "while the app is deployed, not the app itself."
+        ),
+    )
     EMAIL_DRY_RUN: bool = Field(
         True,
         description=(

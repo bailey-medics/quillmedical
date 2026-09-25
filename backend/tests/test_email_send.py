@@ -423,3 +423,75 @@ class TestAllowedRecipients:
 
         assert "EMAIL_ALLOWED_RECIPIENTS" in str(caught.value)
         assert "EMAIL_ALLOWED_RECIPIENTS" in caplog.text
+
+
+class TestTextReplyToAndSenderName:
+    """The parts a branded email adds: plain text, reply-to, display name."""
+
+    @patch("app.email_send.resend")
+    @patch("app.email_send.settings")
+    def test_passes_text_reply_to_and_a_named_sender(
+        self, mock_settings: MagicMock, mock_resend: MagicMock
+    ) -> None:
+        mock_settings.EMAIL_DRY_RUN = False
+        mock_settings.EMAIL_ALLOWED_RECIPIENTS = ""
+        mock_settings.RESEND_API_KEY.get_secret_value.return_value = "re_k"
+        mock_settings.EMAIL_FROM = "info@quill-medical.com"
+
+        send_email(
+            to="trainee@example.com",
+            subject="Your certificate",
+            html_body="<p>Well done</p>",
+            text_body="Well done",
+            reply_to="coordinator@partner.example",
+            from_name="EoEETA via Quill Medical",
+        )
+
+        params = mock_resend.Emails.send.call_args[0][0]
+        assert params["text"] == "Well done"
+        assert params["reply_to"] == "coordinator@partner.example"
+        assert params["from"] == (
+            '"EoEETA via Quill Medical" <info@quill-medical.com>'
+        )
+
+    @patch("app.email_send.resend")
+    @patch("app.email_send.settings")
+    def test_leaves_them_out_when_not_given(
+        self, mock_settings: MagicMock, mock_resend: MagicMock
+    ) -> None:
+        mock_settings.EMAIL_DRY_RUN = False
+        mock_settings.EMAIL_ALLOWED_RECIPIENTS = ""
+        mock_settings.RESEND_API_KEY.get_secret_value.return_value = "re_k"
+        mock_settings.EMAIL_FROM = "info@quill-medical.com"
+
+        send_email(to="a@example.com", subject="S", html_body="<p>B</p>")
+
+        params = mock_resend.Emails.send.call_args[0][0]
+        assert "text" not in params
+        assert "reply_to" not in params
+        assert params["from"] == "info@quill-medical.com"
+
+    @pytest.mark.parametrize(
+        "name",
+        [
+            'Quill" <attacker@example.com>',
+            "Quill\r\nBcc: attacker@example.com",
+            "Quill <x>",
+            "   ",
+        ],
+    )
+    @patch("app.email_send.settings")
+    def test_refuses_a_sender_name_that_could_break_the_header(
+        self, mock_settings: MagicMock, name: str
+    ) -> None:
+        mock_settings.EMAIL_DRY_RUN = True
+        mock_settings.EMAIL_ALLOWED_RECIPIENTS = ""
+        mock_settings.EMAIL_FROM = "info@quill-medical.com"
+
+        with pytest.raises(ValueError, match="Unsafe sender name"):
+            send_email(
+                to="a@example.com",
+                subject="S",
+                html_body="<p>B</p>",
+                from_name=name,
+            )

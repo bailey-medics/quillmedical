@@ -162,12 +162,42 @@ class Attachment(TypedDict):
     content: bytes
 
 
+#: Characters that would let a display name break out of the From header.
+_UNSAFE_IN_NAME = frozenset('"<>\r\n')
+
+
+def _from_header(from_name: str | None) -> str:
+    """The From header: the sending address, with a display name if given.
+
+    Args:
+        from_name: What the recipient's inbox shows as the sender, for
+            example ``"EoEETA via Quill Medical"``. ``None`` sends from the
+            bare address.
+
+    Returns:
+        ``settings.EMAIL_FROM``, or ``"Name" <address>``.
+
+    Raises:
+        ValueError: If the name holds a quote, an angle bracket or a line
+            break. Any of them could end the header early and let the rest
+            of the name be read as another header or another address.
+    """
+    if from_name is None:
+        return settings.EMAIL_FROM
+    if not from_name.strip() or _UNSAFE_IN_NAME & set(from_name):
+        raise ValueError(f"Unsafe sender name: {from_name!r}")
+    return f'"{from_name}" <{settings.EMAIL_FROM}>'
+
+
 def send_email(
     *,
     to: str,
     subject: str,
     html_body: str,
     attachments: list[Attachment] | None = None,
+    text_body: str | None = None,
+    reply_to: str | None = None,
+    from_name: str | None = None,
 ) -> None:
     """Send a single email, or log it when in dry-run mode.
 
@@ -176,13 +206,23 @@ def send_email(
         subject: Email subject line.
         html_body: HTML content of the email body.
         attachments: Optional list of file attachments.
+        text_body: A plain-text version of the same email. Sent alongside
+            the HTML: it helps deliverability, and is what some screen
+            readers and text-only clients show.
+        reply_to: Where a reply goes, when not to the sender. Emails sent
+            for a partner set this to the partner's coordinator.
+        from_name: The sender's display name, such as
+            ``"EoEETA via Quill Medical"``. The address stays
+            ``settings.EMAIL_FROM``.
 
     Raises:
         EmailRateLimitError: If the recipient has exceeded the hourly limit.
         EmailNotAllowedError: If an allow-list is set and the recipient is
             not on it.
+        ValueError: If *from_name* could break the From header.
     """
     _check_allowed(to)
+    sender = _from_header(from_name)
     _check_rate_limit(to)
 
     attachment_names = [a["filename"] for a in (attachments or [])]
@@ -213,11 +253,15 @@ def send_email(
     ]
 
     params: resend.Emails.SendParams = {
-        "from": settings.EMAIL_FROM,
+        "from": sender,
         "to": [to],
         "subject": subject,
         "html": html_body,
     }
+    if text_body is not None:
+        params["text"] = text_body
+    if reply_to is not None:
+        params["reply_to"] = reply_to
     if resend_attachments:
         params["attachments"] = resend_attachments
 
