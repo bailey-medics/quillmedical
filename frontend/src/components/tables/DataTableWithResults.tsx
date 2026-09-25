@@ -23,6 +23,7 @@
  */
 
 import { Fragment, type ReactNode } from "react";
+import LiveStatus from "@/components/live-status";
 import { Center, Skeleton, Table, useComputedColorScheme } from "@mantine/core";
 import {
   BodyText,
@@ -67,7 +68,19 @@ export interface DataTableWithResultsProps<T> {
 // Component
 // ------------------------------------------------------------------
 
-export default function DataTableWithResults<T>({
+/** DataTableWithResults, announcing "Loading" to screen readers. */
+export default function DataTableWithResults<T>(
+  props: DataTableWithResultsProps<T>,
+) {
+  return (
+    <>
+      <LiveStatus message={props.loading ? "Loading" : ""} />
+      <DataTableWithResultsView {...props} />
+    </>
+  );
+}
+
+function DataTableWithResultsView<T>({
   data,
   columns,
   getRowKey,

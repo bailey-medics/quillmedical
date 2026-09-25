@@ -7,6 +7,7 @@
  */
 
 import type { Patient } from "@/domains/patient";
+import LiveStatus from "@/components/live-status";
 import { SkipLink, SkipLinkTarget } from "@/components/navigation/skip-link";
 import type { NavItem } from "@components/navigation/NestedNavLink";
 import NavigationDrawer from "@components/drawers/NavigationDrawer";
@@ -258,6 +259,7 @@ export default function MainLayout({
               pb={LAYOUT_PADDING_BOTTOM}
             >
               <SkipLinkTarget>
+                <LiveStatus message={isLoading ? "Loading" : ""} />
                 <Container size="lg" fluid={fluid}>
                   {isLoading ? (
                     <Stack gap="md">

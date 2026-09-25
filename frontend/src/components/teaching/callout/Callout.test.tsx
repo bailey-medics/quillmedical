@@ -9,9 +9,9 @@ describe("Callout", () => {
     expect(screen.getByText("Important note")).toBeInTheDocument();
   });
 
-  it("renders as an alert element", () => {
+  it("renders as a note, not an alert that interrupts", () => {
     renderWithMantine(<Callout type="warning">Careful here</Callout>);
-    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(screen.getByRole("note")).toBeInTheDocument();
   });
 
   it("renders info variant", () => {

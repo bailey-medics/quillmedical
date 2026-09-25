@@ -17,6 +17,7 @@
  */
 
 import type { Patient } from "@/domains/patient";
+import LiveStatus from "@/components/live-status";
 import ProfilePic from "@/components/profile-pic";
 import Demographics from "@/components/demographics";
 import { OnQuillBadge } from "@/components/badge";
@@ -51,7 +52,17 @@ type Props = {
  * @param props - Component props
  * @returns Patient list component
  */
-export default function PatientsList({
+/** PatientsList, announcing "Loading" to screen readers. */
+export default function PatientsList(props: Props) {
+  return (
+    <>
+      <LiveStatus message={props.isLoading ? "Loading patients" : ""} />
+      <PatientsListView {...props} />
+    </>
+  );
+}
+
+function PatientsListView({
   patients,
   isLoading = false,
   fhirAvailable = false,

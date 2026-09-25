@@ -200,7 +200,7 @@ describe("SlideLayoutDefault", () => {
 
   it("renders a callout when callout props are present", () => {
     renderWithMantine(<SlideLayoutDefault slide={calloutSlide} />);
-    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(screen.getByRole("note")).toBeInTheDocument();
     expect(screen.getByText(/chromoendoscopy/)).toBeInTheDocument();
   });
 });

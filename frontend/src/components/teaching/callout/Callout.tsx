@@ -41,7 +41,9 @@ const iconMap: Record<CalloutType, ReactElement> = {
 
 export default function Callout({ type, children }: CalloutProps) {
   return (
-    <BaseCard bg={statusColours[type].bg} role="alert">
+    // role="note", not "alert": a callout is part of the slide, read in
+    // order, and "alert" made screen readers interrupt with it on render.
+    <BaseCard bg={statusColours[type].bg} role="note">
       <Group gap="md" wrap="nowrap" align="center">
         <Box style={{ flexShrink: 0, transform: "translateY(4.5px)" }}>
           <Icon icon={iconMap[type]} size="lg" />
