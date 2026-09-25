@@ -270,7 +270,7 @@ sent for them.
       prefixes to image paths was added here rather than in the hosting
       step, which now follows, because the renderer needs it first.
 
-- [ ] **Serve the email images from the public site, at absolute URLs.**
+- [x] **Serve the email images from the public site, at absolute URLs.**
       Email clients cannot follow relative paths, so each image is an
       absolute URL on the public site, which stays up while the app is
       deployed. `frontend/public/` is already the public site's
@@ -279,10 +279,11 @@ sent for them.
       level and `assets/` recursively. Add a recursive sync of `email/`
       with a shorter cache lifetime than `assets/` (the file names are not
       hashed, so a replaced logo must not be cached for a year), and cover
-      it in the script's `.bats` tests. Add an `EMAIL_ASSET_BASE_URL`
-      setting to `backend/app/config.py` (`https://quill-medical.com` in
-      production, the dev public site locally) that the renderer prefixes
-      to every image path.
+      it in the script's `.bats` tests. The `EMAIL_ASSET_BASE_URL`
+      setting the renderer prefixes to every image path came in with the
+      renderer; it defaults to `https://quill-medical.com` everywhere, so a
+      development email loads the live images once they are deployed. The
+      images go live on the first public site deploy after this merges.
 
 ## Phase 4: Swap the Storybook mock-ups for real renders
 
