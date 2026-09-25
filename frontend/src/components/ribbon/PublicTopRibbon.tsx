@@ -49,7 +49,7 @@ export default function PublicTopRibbon({
               style={{ height: "1.5rem", width: "auto" }}
             />
           </a>
-          <Group component="nav" gap="lg" className={classes.navLinks}>
+          <Group component="nav" gap="md" className={classes.navLinks}>
             {publicNavLinks.map((link) =>
               link.disabled ? (
                 <span

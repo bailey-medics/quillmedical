@@ -46,10 +46,17 @@
   margin-bottom: -5px;
 }
 
-/* Public nav links (wide mode only) */
+/*
+ * Public nav links (wide mode only). The margin from the logo is `lg` and
+ * the gap between links `md`, measured rather than chosen: with five links
+ * at `xl` and `lg` the row was 9px too wide for a tablet held upright
+ * (768px) and wrapped onto a second line. This fits from 768px up; between
+ * the `sm` breakpoint and about 750px it still wraps, as it did with four.
+ */
 .navLinks {
   flex: 1;
-  margin-left: var(--mantine-spacing-xl);
+  margin-left: var(--mantine-spacing-lg);
+  column-gap: var(--mantine-spacing-md);
   color: #fff;
 }
 
