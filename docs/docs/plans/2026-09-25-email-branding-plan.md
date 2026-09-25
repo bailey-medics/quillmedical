@@ -19,7 +19,9 @@ look. That matters because Let's Do Digital has a list of 800+ people who
 should, over several months, come to know the work as Quill Medical, and a
 shared layout makes the switch a change of theme rather than a redesign. The
 look comes first: Phase 1 builds the template as static HTML and puts it in
-front of a human before any code that renders or sends it is written.
+front of a human before any code that renders or sends it is written. It
+also carries the partners Quill works for, such as EoEETA, on the emails
+sent for them.
 
 ## Phase 1: Design the template, with no plumbing
 
@@ -30,49 +32,65 @@ front of a human before any code that renders or sends it is written.
       `renderMockup.ts`. That is the shape the Jinja2 renderer takes in
       Phase 3, a base template, theme values and per-email blocks, so the
       approved mock-up moves across without being rebuilt. Two themes,
-      `quill` and `ldd`. There is no co-branded theme: each email is one brand or the
-      other, and the move between them is told in words, not in a blended
-      design. Brand values are copied by hand from
-      `theme.ts` for now (navy `#001a36`, amber `#C8963E`, white, Atkinson
-      Hyperlegible); Phase 2 replaces the copies with shared tokens once the
-      design is settled. No backend, no Jinja2, no Resend.
+      `quill` and `ldd`. There is no co-branded theme: each email is one
+      brand or the other, and the move between them is told in words, not
+      in a blended design. Brand values are copied by hand for now; Phase 2
+      replaces the copies with shared tokens. No backend, no Jinja2, no
+      Resend.
 
 - [x] **Take the `ldd` theme from letsdodigital.org**, so the email looks
       like the site and the social account people already know. The site
       is a Quarto build on Bootstrap, and its values are:
 
       - **Body** — white `#ffffff`, text `#343a40`, headings at weight 400.
-      - **Header band** — the navbar's light grey `#f8f9fa`, with a
-        `#dee2e6` rule beneath it.
+      - **Header band** — white, with a `#dee2e6` rule beneath it.
       - **Logo** — the dual face (one half a grey wire-mesh digital head,
         one half a blue human silhouette), a 714px transparent PNG at
-        `letsdodigital.org/media/ldd-logo.png`. Large enough for a 2x
-        header image, so no other copy is needed.
+        `letsdodigital.org/media/ldd-logo.png`.
       - **Accent** — the logo's own blue `#0848a9` for buttons and links.
         Not the site's Bootstrap primary `#2780e3`: white on that is
         3.97:1, under the 4.5:1 that WCAG AA needs for body-size text,
-        where the logo blue gives 8.37:1. The site's link colour `#2761e3`
-        (5.38:1) is an acceptable second choice if the darker blue reads
-        as too heavy.
-      - **Font** — `'Source Sans Pro', Arial, sans-serif`, from Google
-        Fonts as the site loads it. As with Quill's font, Apple Mail will
-        use it and Gmail and Outlook will fall back to Arial.
+        where the logo blue gives 8.37:1.
+      - **Font** — `'Source Sans 3', 'Source Sans Pro', Arial, sans-serif`
+        from Google Fonts. Apple Mail uses it; Gmail and Outlook fall back
+        to Arial.
+      - **Buttons** — 6px corners, Bootstrap's default.
+
+- [x] **Follow the public site, not the app, for the `quill` theme.**
+      Emails are how people outside Quill first meet it, which is the
+      public site's job too, so they borrow its look:
+
+      - **Headings** — Cormorant Garamond, as `PublicTitle`, in navy at
+        40px and 30px (the face runs small). Words in `*asterisks*` are set
+        in italic amber, secondary.6 `#a87b2f` (3.8:1 on white), not the
+        site's secondary.5, which is 2.7:1 on white.
+      - **Body text** — Atkinson Hyperlegible Next, and nothing in the
+        email below 19px, following GOV.UK's minimum.
+      - **Header** — the brand navy band with the "Quill Medical" wordmark
+        and a 4px amber rule beneath it.
+      - **Callout panels** — as `PublicInfoCard`: primary.7 navy, a faint
+        amber border, 8px corners, white text and amber links.
+      - **Footer** — as `PublicFooter`: brand navy, grey.4 text, white
+        links.
+      - **Buttons** — as `PublicButton`: amber with brand navy text
+        (6.6:1), 8px corners (Mantine 9's default radius), 42px tall.
+        `PublicButton` itself moved from `#333` to navy text in the same
+        round, because `#333` failed AA on its hover and pressed shades.
+      - **Body background** — white, the one deliberate difference from
+        the site, which is navy throughout.
 
 - [x] **Build it for email clients, not browsers, from the start.** A
-      mock-up that only works in a browser proves nothing, so it follows the
-      rules the real template must: a single table, fluid up to 900px wide
-      (a fixed 600px for classic Outlook on Windows, which ignores
-      `max-width`), with
-      `role="presentation"`, inline styles (Gmail strips `<style>` in some
-      views and no client understands CSS variables), `lang="en-GB"`, and a
-      hidden preheader line for the inbox preview. Regions: a header band
-      with the theme's logo, a content slot, an optional call-to-action
-      button built as a bulletproof table button so Outlook renders it, and
-      a footer saying who sent it and why the recipient is receiving it.
-      Font stack `'Atkinson Hyperlegible Next', Arial, sans-serif`: Apple
-      Mail will use the web font, Gmail and Outlook will fall back, and the
-      layout must read well either way. Every image has `alt` text, because
-      many clients block images until asked.
+      single card table, fluid up to 900px wide: it fills a narrower window
+      rather than scrolling sideways, and stops growing at 900px. Classic
+      Outlook on Windows ignores `max-width`, so an Outlook-only
+      conditional (`<!--[if mso]>`) gives it a fixed 600px table instead.
+      Inline styles throughout (Gmail strips `<style>` in some views and no
+      client understands CSS variables), `role="presentation"` tables,
+      `lang="en-GB"`, a hidden preheader line for the inbox preview, and a
+      bulletproof table button so Outlook draws it. Every image has `alt`
+      text. The page behind the card is white and the card has a grey.4
+      `#ced4da` outline drawn with `border-collapse: separate`: see the
+      inbox test below for why.
 
 - [x] **Choose a light body under a navy header for the `quill` theme**,
       not the app's all-navy surface. Mail clients apply their own dark mode
@@ -84,67 +102,118 @@ front of a human before any code that renders or sends it is written.
 
 - [x] **Fill each mock with real content, not lorem ipsum.** The password
       reset email (short, one button), the passport assessor invite (a cold
-      message to somebody who has never heard of Quill) and a sample
-      newsletter (long, several sections, images). Those three stretch the
-      layout in different directions, so a design that suits all three will
-      suit the rest. The newsletter signs off from Mark with his personal
-      avatar, the anime digital-health doctor used on his own social
-      accounts: a newsletter from a recognisable person is opened more
-      than one from a brand, and that face is the one constant through
-      every stage of the rebrand. Transactional emails do not carry it;
-      a password reset comes from Quill, not from a person.
+      message to somebody who has never heard of Quill), an EoEETA pass
+      certificate (sent for a partner, with the certificate attached) and a
+      sample newsletter (long, several sections, images). The certificate
+      body is a question bank's real `student_email` template with its
+      variables filled in. The passport invite's expiry line says the link
+      works until the invitation is accepted: the backend's "can be used
+      once" was wrong, because only `accept_assessor_invite` is single use.
+
+- [x] **Sign the newsletter off with a round logo avatar.** Mark's avatar
+      is the Quill quill in light grey `#c9c8ca` on brand navy (half as
+      dark as the landing page's `#939296`, which looked dull at 56px); the
+      Let's Do Digital newsletter uses its dual face on pale blue. Each is
+      one PNG with the circle drawn in, because Outlook ignores
+      `border-radius` and would draw a square. A 1024px copy of the Quill
+      avatar for reuse is at `frontend/public/quill-avatar-circle.png`.
+      Transactional emails carry no avatar: a password reset comes from
+      Quill, not from a person.
+
+- [x] **Show a partner on emails sent for one.** Emails that come from a
+      partner's activity (certificates, assessment invitations, results)
+      name the partner; account emails (verification, password reset) and
+      newsletters do not. Quill stays the sender, because the sending
+      domain is Quill's and a header claiming to be the partner is the
+      mismatch spam filters and careful readers look for. The partner
+      shows in three places:
+
+      - **A white strip under the header**, with their logo (72px tall, so
+        EoEETA's small lettering stays legible) and what the email is
+        about. With no logo on file, their name stands in. The strip stays
+        white in dark mode, because partner logos have transparent
+        backgrounds drawn for white.
+      - **The sender name**, "EoEETA via Quill Medical".
+      - **The reply-to**, their coordinator, so a trainee's reply reaches
+        the partner.
+
+      The footer says "Sent by Quill Medical on behalf of …". EoEETA's logo
+      is in `frontend/public/email/partners/`, with a 2x email copy.
 
 - [x] **Show the mock-ups in Storybook** with `Emails.stories.tsx` under
       `src/stories/`, beside `Colours` and `Typography`. Each mock is
-      imported with Vite's `?raw` and shown in a sandboxed `iframe` at
-      full width, with controls for theme, phone width and dark mode. Dark mode
-      is forced by rewriting the email's `prefers-color-scheme` query, so
-      the preview does not depend on the viewer's own setting. Logos are
-      email-sized copies in `frontend/public/email/`, which Storybook
-      already serves through `staticDirs`. The newsletter's sign-off shows
-      a placeholder circle until Mark's avatar image is added there.
+      imported with Vite's `?raw` and shown in a sandboxed `iframe`, with
+      controls for theme, phone width, dark mode and the partner logo. The
+      inbox line above each shows sender, subject, preheader and reply-to.
+      Dark mode is forced by rewriting the email's `prefers-color-scheme`
+      query, so the preview does not depend on the viewer's own setting.
+      Logos are email-sized copies in `frontend/public/email/`, which
+      Storybook serves through `staticDirs`.
 
-- [ ] **Send the mock-ups to real inboxes.** Storybook shows a browser's
-      rendering; Gmail, Outlook and Apple Mail each do their own. Send each
-      mock to a Gmail, an Outlook.com and an Apple Mail address, on desktop
-      and phone, with dark mode on and off, using Litmus or Email on Acid's
-      free tier or a one-off `curl` to Resend's API from the development
-      key. The logo needs an absolute URL for this, so point it at a copy
-      already served publicly; permanent hosting is Phase 3.
-      The width needs checking most: the template is 900px, wider than the
-      600px most email is built to, so check it in Outlook on the desktop
-      and in Gmail's reading pane beside the inbox list, where a narrower
-      window will push it into its phone layout or a sideways scroll.
+- [x] **Send the mock-ups to real inboxes.** The EoEETA certificate was
+      sent through Resend to Proton, Gmail and Outlook, with its images
+      attached inline by `cid:` because they are not hosted yet. What
+      that found, all now fixed in the mock-up:
 
-- [ ] **Get the design signed off before Phase 2.** Iterate on the
-      mock-ups until the look is agreed, and record here which theme
-      variants were approved. Everything after this phase turns the
-      approved mock into working code, so it should not need to reopen
-      the design.
+      - **Proton on a laptop** puts its own white margin round every
+        email, so a grey page showed as a grey box inside a white frame.
+        The page is now white.
+      - **Proton then showed no left or right edge on the card.** The
+        outline was too pale and collapsed table borders let the client
+        drop it. It is now darker and drawn separate.
+      - **Outlook scrolled sideways** at a fixed 900px. The card is now
+        fluid, with 600px for classic Outlook.
+
+      Apple Mail and each client's dark mode have not been checked in a
+      real inbox. Do that against the first real renders in Phase 5,
+      where the images will be hosted and nothing is inlined.
+
+- [x] **Get the design signed off before Phase 2.** Mark reads the
+      Foundations/Emails stories and ticks this box. Everything after this
+      phase turns the approved mock into working code, so it should not
+      need to reopen the design. **An unattended run stops here until it
+      is ticked.** Signed off by Mark on 25 September 2026, both themes,
+      with the partner strip.
 
 ## Phase 2: Shared brand tokens
 
 - [ ] **Move the brand values into `shared/brand.yaml`.** Today they live
-      only in `frontend/src/theme.ts`: `brandColours`, the `primaryScale`
-      ramp, the font stack and the type scale. The backend cannot read
-      TypeScript, so an email template built from copies of those hex
-      values would drift the first time the theme changed. The YAML holds a
-      `themes` map with `quill` and `ldd` entries, each naming
-      the colours the approved mock-ups use (header background, header
-      text, body background, body text, link, button fill and button text,
-      muted text, divider) plus the logo asset for that theme.
+      only in `frontend/src/theme.ts` (`brandColours`, the `primaryScale`
+      and `secondaryScale` ramps, the font stacks and the type scale) and,
+      for emails, as hand copies in `frontend/src/stories/emails/mockups/
+      themes.ts`. The backend cannot read TypeScript, so an email template
+      built from copies would drift the first time the theme changed. The
+      YAML holds the palette once, plus a `email_themes` map with `quill`
+      and `ldd` entries carrying every field of the mock-up's `EmailTheme`
+      interface: fonts and font links, heading sizes and accent, page,
+      card and card outline, header and header rule, text, muted, link,
+      button fill, text and radius, panel colours, footer colours, the
+      logo and avatar assets, the newsletter's "why you are receiving
+      this" line, and the dark-mode set. Theme entries name palette
+      shades where they are one (`primary.8`), so a palette change carries
+      through. HTML fragments such as the header's logo markup do not go
+      in the YAML: the template builds them from the asset fields.
 
 - [ ] **Generate the frontend's copy with `yarn generate:types`** into
       `src/generated/`, as the competency and profession YAML already are,
-      and have `theme.ts` import `brandColours` and `primaryScale` from it.
-      The `Colours` story then shows what emails use, because it is the same
-      data. Run `just uf src/theme.test.ts` and the full frontend suite:
-      this touches `theme.ts`, which every component depends on.
+      and have `theme.ts` import its brand colours and ramps from it, and
+      the mock-up's `themes.ts` read its values from it rather than its own
+      copies. The `Colours` story then shows what emails use, because it is
+      the same data. Run `just uf src/theme.test.ts`, the mock-up tests,
+      and the full frontend suite: this touches `theme.ts`, which every
+      component depends on.
 
 - [ ] **Load it in the backend** with a Pydantic model in
-      `backend/app/email/brand.py`, `extra='forbid'`, read once at import and
-      validated, so a missing colour for a theme fails at startup, not in
-      somebody's inbox.
+      `backend/app/email/brand.py`, `extra='forbid'`, read once at import
+      and validated, so a missing colour for a theme fails at startup, not
+      in somebody's inbox.
+
+- [ ] **Fix `PublicButton`'s pressed state.** With navy text,
+      `--button-active-bg` (`#a07728`) gives 4.3:1, just under WCAG AA.
+      Lighten it so it is no darker than the hover shade (secondary.6,
+      4.6:1), keeping a visible difference from hover, and extend the
+      theme test to check contrast for the resting, hover and pressed
+      fills against `--button-text-dark`.
 
 ## Phase 3: Renderer
 
@@ -156,37 +225,53 @@ front of a human before any code that renders or sends it is written.
       dependency change, so rebuild the test image with `just utr`.
 
 - [ ] **Turn the approved mock-up into `base.html.j2`.** The markup moves
-      across as it is; only the hard-coded colours become lookups into
-      `shared/brand.yaml` and the example content becomes blocks. The
-      mock-up is the reference: if the rendered template looks different
-      from it, the template is wrong.
+      across as it is, including the Outlook conditional and the partner
+      strip; only the hard-coded values become lookups into
+      `shared/brand.yaml`, and the example content becomes blocks
+      (`preheader`, `body`, `footer`, optional `partner`). The mock-up is
+      the reference: if the rendered template looks different from it,
+      the template is wrong.
 
-- [ ] **Host the logos on the public site, not the app.** Email clients
-      block SVG and relative paths, so each theme's logo is an absolute URL
-      to a PNG at 2x resolution on the GCS public site
-      (`quill-medical.com/email/…`), which stays up when the app is being
-      deployed. Start from `frontend/public/quill-logo-white.png` and
-      `quill-name-long-white-amber.png`.
+- [ ] **Serve the email images from the public site, at absolute URLs.**
+      Email clients cannot follow relative paths, so each image is an
+      absolute URL on the public site, which stays up while the app is
+      deployed. `frontend/public/` is already the public site's
+      `publicDir`, so `frontend/public/email/` is built into it, but
+      `.github/scripts/public-site/deploy-to-gcs.sh` syncs only the top
+      level and `assets/` recursively. Add a recursive sync of `email/`
+      with a shorter cache lifetime than `assets/` (the file names are not
+      hashed, so a replaced logo must not be cached for a year), and cover
+      it in the script's `.bats` tests. Add an `EMAIL_ASSET_BASE_URL`
+      setting to `backend/app/config.py` (`https://quill-medical.com` in
+      production, the dev public site locally) that the renderer prefixes
+      to every image path.
 
-- [ ] **Send a plain-text part alongside the HTML.** Extend `send_email`
-      in `backend/app/email_send.py` with an optional `text_body`, passed to
-      Resend as `text`, and have the renderer produce it from the same
-      template context. A plain-text part improves deliverability and is
-      what screen readers in some clients fall back to.
+- [ ] **Send a plain-text part and a reply-to.** Extend `send_email` in
+      `backend/app/email_send.py` with an optional `text_body`, passed to
+      Resend as `text`, and an optional `reply_to`, passed as `reply_to`.
+      The renderer produces the text from the same template context. A
+      plain-text part improves deliverability and is what some screen
+      readers fall back to; the reply-to is how a partner's email sends
+      replies to the partner.
 
 - [ ] **Expose one function, `render_email(template, theme, context)`**,
-      returning subject, HTML and text. Tests in
-      `backend/tests/test_email_render.py` cover escaping of hostile names,
-      each theme rendering with its own colours, a missing context value
-      failing loudly (`jinja2.StrictUndefined`), and the preheader and
-      footer being present.
+      returning subject, HTML, text, and the sender name and reply-to where
+      a partner is given. Tests in `backend/tests/test_email_render.py`
+      cover escaping of hostile names, each theme rendering with its own
+      colours, a missing context value failing loudly
+      (`jinja2.StrictUndefined`), the preheader and footer being present,
+      every image URL being absolute, and the partner strip appearing only
+      when a partner is passed.
 
 ## Phase 4: Swap the Storybook mock-ups for real renders
 
-- [ ] **Add a `just email-preview` recipe** that renders every template
-      with fixture data, in every theme, to
-      `frontend/src/stories/emails/rendered/*.html` inside the backend unit
-      test container. The renders are committed.
+- [ ] **Add a `just email-preview` recipe**, following
+      `.claude/rules/just.md`, that renders every template with fixture
+      data, in every theme, to `frontend/src/stories/emails/rendered/*.html`
+      inside the backend unit test container. The fixtures cover the same
+      cases the mock-ups show: password reset, passport invite, the EoEETA
+      certificate with and without a logo, and the newsletter. The renders
+      are committed, with image URLs relative so Storybook can serve them.
 
 - [ ] **Point `Emails.stories.tsx` at the renders and delete the
       mock-ups.** From here Storybook shows what the backend actually
@@ -202,23 +287,58 @@ front of a human before any code that renders or sends it is written.
 
 ## Phase 5: Move the transactional emails onto it
 
-- [ ] **Convert the `main.py` emails first** (verification, password
-      reset and invitation) into child templates of `base.html.j2`, one per
-      message. They are the most-sent and the simplest, so they prove the
-      layout before anything unusual is put in it. Keep the wording as it
-      is; this is a presentation change, and reviewing new copy at the same
-      time would hide what changed.
+- [ ] **Convert the `main.py` emails first** into child templates of
+      `base.html.j2`, one per message: email verification (sent from three
+      places, one template), password reset, and the account invitation in
+      `send_invite_email`. They are the most-sent and the simplest, so they
+      prove the layout before anything unusual is put in it. Keep the
+      wording as it is; this is a presentation change, and reviewing new
+      copy at the same time would hide what changed.
 
-- [ ] **Convert the passport assessor invite.** Its module docstring
-      already says what it must do (name who is asking, what they are asked
-      to do and how long the link lasts, and never mention a patient) and
-      that stays true. Only the markup moves.
+- [ ] **Convert the passport assessor invite, and correct its expiry
+      line.** Its module docstring already says what it must do (name who
+      is asking, what they are asked to do and how long the link lasts,
+      and never mention a patient) and that stays true. The one wording
+      change is the expiry line: "This link can be used once" becomes "You
+      can use this link until you accept the invitation", because the link
+      is not single use.
+
+- [ ] **Give each teaching organisation its email branding.** The partner
+      strip needs a name, a short name for the sender line, a logo and a
+      reply-to address. `TeachingOrgSettings` in
+      `backend/app/features/teaching/models.py` is already one row per
+      teaching `org_unit` and already holds two of them:
+      `institution_name` and `coordinator_email`. Add two nullable columns
+      to it, `email_short_name` (for "EoEETA via Quill Medical") and
+      `email_logo` (a file name under `frontend/public/email/partners/`),
+      with `just migrate`, expose them on `TeachingOrgSettingsIn` and
+      `TeachingOrgSettingsOut`, and add them to the settings form in the
+      teaching admin page. Nullable, so every existing row stays valid:
+      with no short name the sender stays "Quill Medical", and with no
+      logo the strip shows `institution_name`. Logos live in the
+      repository for now, reviewed in a pull request like any other asset,
+      because partners are few and each needs written permission to use
+      their logo anyway; an upload flow can come when there are more.
 
 - [ ] **Wrap the teaching certificate emails without taking away the
       coordinators' control.** A bank's `config.yaml` supplies subject and
       Markdown body, converted and sanitised with `nh3`. Keep that, and
       place the sanitised HTML in the base layout's content slot, so a
-      coordinator writes the words and Quill supplies the frame.
+      coordinator writes the words and Quill supplies the frame. Both the
+      student and the coordinator emails get the partner strip, the "via"
+      sender and the coordinator as reply-to, from the organisation's
+      `TeachingOrgSettings`. The certificate PDF stays an attachment.
+
+- [ ] **Check the real renders in real inboxes.** Send each converted
+      email from the development environment to Proton, Gmail, Outlook
+      and Apple Mail, with dark mode on and off, now that images come from
+      the public site rather than being inlined. Record what was found
+      here, and fix it before ticking.
+
+**An unattended run stops at the end of Phase 5.** Phases 6 to 8 are
+mostly work outside the repository (DNS, the Resend dashboard, MailerLite,
+privacy notices, social accounts) and decisions only Mark can take. The
+steps in them that are code are marked **(code)**.
 
 ## Phase 6: Sending domains
 
@@ -248,14 +368,14 @@ front of a human before any code that renders or sends it is written.
       Building them into the app would add a system holding personal data
       for no clinical purpose.
 
-- [ ] **Export the base layout as a broadcast template.** Add a
+- [ ] **(code) Export the base layout as a broadcast template.** Add a
       `just email-export <theme>` recipe that renders `base.html.j2` with
       the content slot replaced by Resend's broadcast placeholders and the
       footer carrying `{{{RESEND_UNSUBSCRIBE_URL}}}`, for pasting into
       Resend. One layout, so a newsletter and a password reset are visibly
       from the same sender.
 
-- [ ] **Point the public site's signup form at a Resend audience.** The
+- [ ] **(code) Point the public site's signup form at a Resend audience.** The
       2026-03-21 subscriptions plan designed a Cloud Function writing to
       Firestore but was never built. Revise it to add contacts to the
       Quill Medical audience through Resend's API instead, with double
@@ -402,6 +522,21 @@ front of a human before any code that renders or sends it is written.
   risks an ICO complaint landing on a clinical software company. Social
   media and a proper signup form are how they come back.
 
+- **The public site's look, not the app's** — emails reach people who
+  have not used Quill, which is the public site's audience, not the app's.
+  They borrow its serif headings, navy panels and footer, and amber
+  button, and differ only in having a white body.
+
+- **Quill sends, the partner is shown** — a partner's emails come from
+  Quill's domain with the partner in a strip, the sender name and the
+  reply-to. Sending as the partner would need their DNS and would look
+  like phishing to both filters and readers.
+
+- **Fluid up to 900px, not a fixed width** — a fixed 900px scrolled
+  sideways in Outlook and a fixed 600px wastes a wide pane. Fluid with a
+  maximum suits every client except classic Outlook on Windows, which
+  gets a fixed 600px through a conditional comment.
+
 - **Resend send failures stay out of scope** — `send_email` has no
   exception handling around the provider call. That is already a to-do list
   item and is independent of how the email looks.
@@ -414,6 +549,10 @@ front of a human before any code that renders or sends it is written.
 
 - **Were the events paid or free?** The soft opt-in needs a sale, or
   negotiations towards one; a free event on its own does not give one.
+
+- **Does each partner give written permission to use their logo** in
+  Quill's emails? EoEETA's logo is already in the repository for the
+  mock-up; no real email should carry it until they have agreed.
 
 - **Is this worth one conversation with the ICO helpline** (0303 123
   1113) or a data protection adviser before Phase 8 starts? The sorting
