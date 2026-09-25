@@ -44,6 +44,9 @@ services:
       - ./backend:/app
       - ./shared:/shared
       - ./api-compatibility:/api-compatibility
+      # The committed email previews: `just email-preview` writes them, and
+      # tests/test_email_previews.py checks they match the templates.
+      - ./frontend/src/stories/emails/rendered:/frontend/src/stories/emails/rendered
     network_mode: none
 
   frontend:

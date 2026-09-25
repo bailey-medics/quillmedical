@@ -104,9 +104,10 @@ declare module "@/generated/org-unit-types.json" {
 }
 
 declare module "@/generated/brand.json" {
-  // Generated from shared/brand.yaml. A colour in an email theme is a hex
-  // value or a palette reference such as "primary.8"; resolving it is
-  // brandPalette.ts's job, not the reader's.
+  // Generated from shared/brand.yaml. theme.ts reads the brand colours
+  // and palette. The email themes are the backend's to resolve and render
+  // (backend/app/email/); a colour in one is a hex value or a palette
+  // reference such as "primary.8".
   interface EmailFont {
     family: string;
     axes: string;

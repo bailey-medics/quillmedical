@@ -1,0 +1,56 @@
+{#-
+  An invitation to assess a competency in somebody's clinician passport.
+  The recipient may never have heard of Quill, so it says who is asking,
+  what they are asked to do and how long the link lasts, in that order.
+  Never a patient, a procedure performed on anyone, or any clinical detail
+  of the evidence. Context:
+    assessor_name    who is being invited, as the holder gave it
+    holder_name      the clinician asking to be assessed
+    competency_name  what they want signed off, or None when the
+                     invitation comes before the request
+    url              the accept link
+    expires_in_days  how long the link lasts
+-#}
+{% extends "base.html.j2" %}
+{% import "_components.html.j2" as c with context %}
+{% block subject %}
+{%- if competency_name %}{{ holder_name }} has asked you to assess a competency
+{%- else %}{{ holder_name }} has asked you to be an assessor{% endif -%}
+{% endblock %}
+{% block preheader %}
+{%- if competency_name %}{{ competency_name }}, recorded in their clinician passport.
+{%- else %}Recording outcomes in their clinician passport.{% endif -%}
+{% endblock %}
+{% block body %}
+{% if competency_name %}
+{{ c.heading("You have been asked to assess a *competency*") }}
+{% else %}
+{{ c.heading("You have been asked to be an *assessor*") }}
+{% endif %}
+{{ c.paragraph("Dear " ~ assessor_name ~ ",") }}
+{% call c.paragraph() %}
+{%- if competency_name %}{{ holder_name }} has asked you to assess <strong>{{ competency_name }}</strong> and record the outcome in their clinician passport.
+{%- else %}{{ holder_name }} has asked you to act as an assessor and record outcomes in their clinician passport.{% endif -%}
+{% endcall %}
+{% call c.panel() %}
+{{ c.paragraph("A clinician passport is a record of competencies a clinician has been assessed as able to perform, signed by the person who assessed them.") }}
+<p style="margin: 0">You will be asked to confirm your professional registration before you sign anything.</p>
+{% endcall %}
+{{ c.button("Accept the invitation", url) }}
+{{ c.small("You can use this link until you accept the invitation. It expires in " ~ expires_in_days ~ " days.") }}
+{{ c.small("If you were not expecting this, you can ignore this email and nothing will happen.") }}
+{% endblock %}
+{% block reason %}You are receiving this because {{ holder_name }} entered this address when inviting an assessor on Quill.{% endblock %}
+{% block text %}
+Dear {{ assessor_name }},
+
+{% if competency_name %}{{ holder_name }} has asked you to assess {{ competency_name }} and record the outcome in their clinician passport.{% else %}{{ holder_name }} has asked you to act as an assessor and record outcomes in their clinician passport.{% endif %}
+
+A clinician passport is a record of competencies a clinician has been assessed as able to perform, signed by the person who assessed them. You will be asked to confirm your professional registration before you sign anything.
+
+Accept the invitation: {{ url }}
+
+You can use this link until you accept the invitation. It expires in {{ expires_in_days }} days.
+
+If you were not expecting this, you can ignore this email and nothing will happen.
+{% endblock %}

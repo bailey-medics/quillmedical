@@ -1,47 +1,39 @@
 /**
  * Foundations/Emails Story
  *
- * Design-phase mock-ups of Quill's email template, in both brand themes.
- * Each story shows the inbox line (sender, subject and preheader) above the
- * email itself, rendered in a sandboxed iframe so the email's own styles
- * cannot leak into Storybook or the other way round.
- *
- * Nothing here is wired to the backend yet: see Phase 1 of
- * `docs/docs/plans/2026-09-25-email-branding-plan.md`.
+ * Every email Quill sends, as the backend renders it, in both brand
+ * themes. The renders are committed in `rendered/` by `just email-preview`
+ * and checked against the templates by a backend test, so what is shown
+ * here is what is sent. Each story shows the inbox line (sender, subject,
+ * preheader and reply-to) above the email, in a sandboxed iframe so the
+ * email's own styles cannot leak into Storybook or the other way round.
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Group, Stack, Text } from "@mantine/core";
 import { useState } from "react";
 import { StoryNote } from "@/stories/variants";
-import type { EmailMockupName } from "./mockups/content";
-import { renderMockup } from "./mockups/renderMockup";
-import type { EmailThemeName } from "./mockups/themes";
+import {
+  emailIds,
+  emailLabels,
+  renderedEmail,
+  type EmailThemeName,
+} from "./renderedEmails";
 import classes from "./Emails.module.css";
 
 type Device = "desktop" | "phone";
 type Scheme = "light" | "dark";
 
 interface EmailPreviewProps {
-  email: EmailMockupName;
+  /** Which email, by its preview id */
+  email: string;
   theme: EmailThemeName;
   device: Device;
   scheme: Scheme;
-  /** For emails sent for a partner: show their logo, or only their name */
-  partnerLogo: boolean;
 }
 
-function EmailPreview({
-  email,
-  theme,
-  device,
-  scheme,
-  partnerLogo,
-}: EmailPreviewProps) {
-  const rendered = renderMockup(theme, email, {
-    dark: scheme === "dark",
-    partnerLogo,
-  });
+function EmailPreview({ email, theme, device, scheme }: EmailPreviewProps) {
+  const rendered = renderedEmail(email, theme, scheme === "dark");
   const [height, setHeight] = useState(600);
 
   return (
@@ -49,7 +41,7 @@ function EmailPreview({
       <div>
         <Group gap="xs" wrap="nowrap">
           <Text fw={700} size="sm">
-            {rendered.senderName}
+            {rendered.fromName}
           </Text>
         </Group>
         <Text size="sm" fw={600}>
@@ -62,7 +54,7 @@ function EmailPreview({
       </div>
       <iframe
         // Remounts on every change, so the height is measured afresh
-        key={`${theme}-${email}-${device}-${scheme}-${partnerLogo}`}
+        key={`${theme}-${email}-${device}-${scheme}`}
         title={`${rendered.subject}, ${theme} theme`}
         className={`${classes.frame} ${classes[device]}`}
         height={height}
@@ -92,14 +84,8 @@ const meta: Meta<typeof EmailPreview> = {
       description: "Quill Medical, or Let's Do Digital",
     },
     email: {
-      control: "select",
-      options: ["passwordReset", "passportInvite", "certificate", "newsletter"],
-    },
-    partnerLogo: {
-      control: "boolean",
-      description:
-        "Emails sent for a partner only. Off shows the partner's name " +
-        "in place of their logo.",
+      control: { type: "select", labels: emailLabels },
+      options: emailIds,
     },
     device: {
       control: "inline-radio",
@@ -117,7 +103,6 @@ const meta: Meta<typeof EmailPreview> = {
     theme: "quill",
     device: "desktop",
     scheme: "light",
-    partnerLogo: true,
   },
 };
 
@@ -125,11 +110,11 @@ export default meta;
 type Story = StoryObj<typeof EmailPreview>;
 
 export const PasswordReset: Story = {
-  args: { email: "passwordReset" },
+  args: { email: "password-reset" },
 };
 
 export const PassportInvite: Story = {
-  args: { email: "passportInvite" },
+  args: { email: "passport-invite" },
 };
 
 /**
@@ -143,7 +128,7 @@ export const EoeetaCertificate: Story = {
 
 /** The same, for a partner with no logo on file: their name stands in. */
 export const EoeetaCertificateWithoutLogo: Story = {
-  args: { email: "certificate", partnerLogo: false },
+  args: { email: "certificate-without-logo" },
 };
 
 export const Newsletter: Story = {
@@ -155,11 +140,11 @@ export const LetsDoDigitalNewsletter: Story = {
 };
 
 export const OnAPhone: Story = {
-  args: { email: "passwordReset", device: "phone" },
+  args: { email: "password-reset", device: "phone" },
 };
 
 export const DarkMode: Story = {
-  args: { email: "passportInvite", scheme: "dark" },
+  args: { email: "passport-invite", scheme: "dark" },
 };
 
 /** Both brands side by side, for comparing the same email. */

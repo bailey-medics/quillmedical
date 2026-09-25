@@ -1,0 +1,35 @@
+{#-
+  A newsletter: from Mark, signed off with the brand's round avatar, with
+  an unsubscribe link in the footer. A campaign extends this and fills
+  `subject`, `preheader`, `body` and `text`. Context:
+    unsubscribe_url  the recipient's one-click unsubscribe link
+    preferences_url  where they choose what they receive
+-#}
+{% extends "base.html.j2" %}
+{% block body %}
+{% block content %}{% endblock %}
+{#- The avatar is one image with its circle drawn in: Outlook ignores
+    border-radius and would draw a square. -#}
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin: 16px 0 0">
+  <tr>
+    <td style="padding-right: 16px; vertical-align: middle">
+      <img src="{{ asset(t.avatar) }}" width="56" height="56" alt="" style="width: 56px; height: 56px" />
+    </td>
+    <td style="vertical-align: middle">
+      <p style="margin: 0; font-weight: 700">Mark Bailey</p>
+      <p class="em-muted" style="margin: 0; font-size: 19px; color: {{ t.muted }}">Bailey Medics</p>
+    </td>
+  </tr>
+</table>
+{% endblock %}
+{% block footer %}
+<p style="margin: 0 0 8px">{{ t.newsletter_reason }}</p>
+<p style="margin: 0 0 8px">
+  <a href="{{ unsubscribe_url }}" style="color: {{ t.footer_link }}; text-decoration: underline">Unsubscribe</a>
+  &middot;
+  <a href="{{ preferences_url }}" style="color: {{ t.footer_link }}; text-decoration: underline">Update your preferences</a>
+</p>
+<p style="margin: 0">
+  {{ t.sender_name }} is a trading name of Bailey Medics Ltd. Company number 15604352. Brooklands Place, Unit 5, Brooklands Road, Sale, Cheshire, M33 3SD.
+</p>
+{% endblock %}
