@@ -292,12 +292,21 @@ click handler on a `div`, a positive `tabIndex`.
       rather than controls (a delegated handler for real links, and a
       tap that must not reach a parent), and carry a disable comment
       saying so
-- [ ] Make `alt` a required prop on `components/images/Image.tsx` and
+- [x] Make `alt` a required prop on `components/images/Image.tsx` and
       `aria-label` a required prop on `components/button/IconButton.tsx`,
-      so the type checker enforces what the linter only warns about
-- [ ] Add a `no-restricted-imports` pattern steering `ActionIcon` imports
+      so the type checker enforces what the linter only warns about.
+      `Image` already required `alt`; `IconButton` now requires
+      `aria-label`, and every existing caller already passed one. The
+      linter is also told to treat `<Image>`, ours and Mantine's, as an
+      `img` (`settings.jsx-a11y.components`), so `alt-text` covers the
+      five Mantine `Image` uses too; all had alt text
+- [x] Add a `no-restricted-imports` pattern steering `ActionIcon` imports
       from `@mantine/core` towards `IconButton`, matching the existing
-      `MantineProvider` restriction
+      `MantineProvider` restriction. Six icon-button wrappers already use
+      `ActionIcon` at their own sizes (`BurgerButton`, `SearchButton`,
+      `EllipsisMenu`, `FilterSelect`, `InboxButton`, `SearchFields`),
+      each labelled; they are exempted by name rather than rebuilt on
+      `IconButton`'s fixed 42px, which would change how they look
 
 ## Phase 3: Fix the known gaps
 

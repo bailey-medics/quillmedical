@@ -89,4 +89,12 @@ describe("IconButton", () => {
     const button = screen.getByRole("button", { name: "Custom" });
     expect(button).toHaveClass("custom-class");
   });
+
+  it("requires an aria-label, so no icon button goes unnamed", () => {
+    // A type-level check: typecheck:all fails if aria-label ever becomes
+    // optional again, because this directive would then be unused.
+    // @ts-expect-error aria-label is required
+    const unnamed = <IconButton icon={<IconPencil />} />;
+    expect(unnamed).toBeTruthy();
+  });
 });
