@@ -11,6 +11,7 @@
 
 // Multi-step form uses Box with maw instead of Container for custom max-width
 
+import LoadingSpinner from "@/components/loading-spinner";
 import {
   Box,
   Button,
@@ -18,7 +19,6 @@ import {
   Stack,
   Alert,
   Checkbox,
-  Loader,
   Center,
 } from "@mantine/core";
 import { useState, useEffect } from "react";
@@ -628,7 +628,7 @@ export default function NewPatientPage() {
         {loading ? (
           <Center>
             <Stack align="center" gap="md">
-              <Loader size="lg" />
+              <LoadingSpinner size="lg" label="Loading patient" />
               <BodyText>Loading patient data...</BodyText>
             </Stack>
           </Center>

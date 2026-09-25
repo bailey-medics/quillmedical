@@ -17,7 +17,8 @@
  * Works in conjunction with RequireAuth — assumes the user is authenticated.
  */
 
-import { Center, Loader } from "@mantine/core";
+import { Center } from "@mantine/core";
+import LoadingSpinner from "@/components/loading-spinner";
 import { Navigate } from "react-router-dom";
 import type { ReactNode } from "react";
 import { useAuth } from "./AuthContext";
@@ -65,7 +66,7 @@ export default function RequireCompetency({
   if (state.status === "loading") {
     return (
       <Center mih="60dvh">
-        <Loader />
+        <LoadingSpinner />
       </Center>
     );
   }

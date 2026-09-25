@@ -6,7 +6,8 @@
  * completion, and early abandonment with navigation blocking.
  */
 
-import { Loader, Stack } from "@mantine/core";
+import { Stack } from "@mantine/core";
+import LoadingSpinner from "@/components/loading-spinner";
 import PageHeader from "@/components/page-header";
 import TeachingLayout from "@/components/layouts/TeachingLayout";
 import { StateMessage } from "@/components/message-cards";
@@ -328,7 +329,7 @@ export default function AssessmentAttempt() {
         will be submitted.
       </ConfirmModal>
 
-      {phase === "loading" && <Loader />}
+      {phase === "loading" && <LoadingSpinner label="Loading assessment" />}
 
       {phase === "error" && (
         <StateMessage

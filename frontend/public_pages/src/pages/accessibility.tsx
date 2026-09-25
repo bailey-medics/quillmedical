@@ -39,6 +39,17 @@ createRoot(document.getElementById("root")!).render(
               with screen readers and with people who use assistive technology
               is still to come.
             </PublicBodyText>
+            <PublicBodyText justify="centre">
+              Our{" "}
+              <Anchor
+                href="/accessibility-statement"
+                c="secondary.5"
+                underline="always"
+              >
+                accessibility statement
+              </Anchor>{" "}
+              sets out how accessible Quill is and what is not yet.
+            </PublicBodyText>
           </Stack>
         </Container>
       </PublicHeroBackground>

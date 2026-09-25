@@ -154,9 +154,9 @@ What the statuses mean:
   one of three shared layouts.
 - **3.2.4 Consistent identification (AA)** — Pass by design. Controls come
   from shared components.
-- **3.2.6 Consistent help (A)** — Partial. Feedback is in the side
-  navigation on every signed-in page. The public site offers no help route
-  yet; the accessibility statement will add one.
+- **3.2.6 Consistent help (A)** — Pass by design. Feedback is in the side
+  navigation on every signed-in page, and every public page links to the
+  accessibility statement, with its contact address, from the footer.
 - **3.3.1 Error identification (A)** — Partial. Form errors are shown in
   text beside the field and announced; not yet tested with a screen reader.
 - **3.3.2 Labels or instructions (A)** — Partial. axe finds every field

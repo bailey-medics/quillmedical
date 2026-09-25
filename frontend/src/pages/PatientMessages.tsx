@@ -7,6 +7,7 @@
  */
 
 import { MessagesList, type MessageThread } from "@/components/messaging";
+import LoadingSpinner from "@/components/loading-spinner";
 import PageHeader from "@/components/page-header";
 import NewMessageModal, {
   type NewConversationData,
@@ -20,7 +21,7 @@ import {
   fetchPatientConversations,
   type ConversationResponse,
 } from "@lib/messaging";
-import { Group, Loader, Stack } from "@mantine/core";
+import { Group, Stack } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import { notifications } from "@mantine/notifications";
 import { useCallback, useEffect, useState } from "react";
@@ -104,7 +105,7 @@ export default function PatientMessages() {
   }, [id]);
 
   if (isLoading) {
-    return <Loader />;
+    return <LoadingSpinner label="Loading messages" />;
   }
 
   return (

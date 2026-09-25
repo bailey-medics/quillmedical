@@ -7,6 +7,7 @@
  */
 
 import { useAuth } from "@/auth/AuthContext";
+import LoadingSpinner from "@/components/loading-spinner";
 import Messaging, { type Message } from "@/components/messaging/Messaging";
 import PageHeader from "@/components/page-header";
 import type { Patient } from "@/domains/patient";
@@ -19,7 +20,7 @@ import {
   type ConversationDetailResponse,
   type MessageResponse,
 } from "@lib/messaging";
-import { Loader, Stack, Text } from "@mantine/core";
+import { Stack, Text } from "@mantine/core";
 import { useCallback, useEffect, useState } from "react";
 import { useOutletContext, useParams } from "react-router-dom";
 
@@ -217,7 +218,7 @@ export default function MessageThread() {
   );
 
   if (isLoading) {
-    return <Loader />;
+    return <LoadingSpinner label="Loading messages" />;
   }
 
   if (error || !conversation) {

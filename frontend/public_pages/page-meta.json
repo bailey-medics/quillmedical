@@ -23,6 +23,10 @@
     "title": "Accessibility",
     "description": "How Quill Medical is built to be accessible, and our work towards WCAG 2.2 AA."
   },
+  "accessibility-statement": {
+    "title": "Accessibility statement",
+    "description": "How accessible Quill Medical is, what we know is not yet accessible, and how to report a problem."
+  },
   "security": {
     "title": "Security",
     "description": "UK hosting, security testing on every change, and strong sign-in."
