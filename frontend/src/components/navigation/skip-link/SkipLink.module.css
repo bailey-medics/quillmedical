@@ -1,0 +1,29 @@
+/*
+ * Skip link: off-screen until focused, then pinned to the top left above
+ * the ribbon, in the brand navy with white text (15:1).
+ */
+.link {
+  position: fixed;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 1000;
+  padding: 0.75rem 1rem;
+  background-color: var(--brand-primary);
+  color: var(--mantine-color-white);
+  font-weight: 700;
+  border-radius: var(--mantine-radius-sm);
+  transform: translateY(-200%);
+
+  &:focus,
+  &:focus-visible {
+    transform: none;
+    outline: 0.1875rem solid var(--mantine-color-text);
+    outline-offset: 0.125rem;
+  }
+}
+
+/* The target takes focus from script, not from the user tabbing to it,
+   so it shows no ring of its own around the whole page. */
+.target:focus {
+  outline: none;
+}

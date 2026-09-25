@@ -7,6 +7,7 @@
  */
 
 import type { Patient } from "@/domains/patient";
+import { SkipLink, SkipLinkTarget } from "@/components/navigation/skip-link";
 import type { NavItem } from "@components/navigation/NestedNavLink";
 import NavigationDrawer from "@components/drawers/NavigationDrawer";
 import SideNav from "@components/navigation/SideNav";
@@ -167,6 +168,7 @@ export default function MainLayout({
         paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
+      <SkipLink />
       <Box
         component="header"
         pos="sticky"
@@ -255,21 +257,23 @@ export default function MainLayout({
               pt={LAYOUT_PADDING_TOP}
               pb={LAYOUT_PADDING_BOTTOM}
             >
-              <Container size="lg" fluid={fluid}>
-                {isLoading ? (
-                  <Stack gap="md">
-                    <Skeleton height={50} radius="md" />
-                    <Skeleton height={200} radius="md" />
-                    <Skeleton height={150} radius="md" />
-                    <Skeleton height={100} radius="md" />
-                  </Stack>
-                ) : (
-                  <PageMessageProvider>
-                    <PageMessageDisplay />
-                    {children}
-                  </PageMessageProvider>
-                )}
-              </Container>
+              <SkipLinkTarget>
+                <Container size="lg" fluid={fluid}>
+                  {isLoading ? (
+                    <Stack gap="md">
+                      <Skeleton height={50} radius="md" />
+                      <Skeleton height={200} radius="md" />
+                      <Skeleton height={150} radius="md" />
+                      <Skeleton height={100} radius="md" />
+                    </Stack>
+                  ) : (
+                    <PageMessageProvider>
+                      <PageMessageDisplay />
+                      {children}
+                    </PageMessageProvider>
+                  )}
+                </Container>
+              </SkipLinkTarget>
             </Box>
             <Footer text={footerText} loading={footerLoading} />
           </Flex>

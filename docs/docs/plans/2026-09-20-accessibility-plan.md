@@ -136,7 +136,7 @@ once the addon is registered; no `test-runner.ts` hooks are needed.
       this plan. Two findings from doing it. First, a Storybook dev server
       started before the addon was registered does not load it, and the
       test-runner then fails every story with `ReferenceError: Cannot
-    access 'StorybookTestRunnerError' before initialization` rather than
+  access 'StorybookTestRunnerError' before initialization` rather than
       with a readable message; restart Storybook after changing
       `main.ts`. Second, the test-runner's failure message shows only the
       first violating element per story, which is too little to count
@@ -312,15 +312,20 @@ click handler on a `div`, a positive `tabIndex`.
 
 Things the survey found that no tool will fix on its own.
 
-- [ ] Set `focusRing: "auto"` and `respectReducedMotion: true` explicitly in
+- [x] Set `focusRing: "auto"` and `respectReducedMotion: true` explicitly in
       `frontend/src/theme.ts`. Mantine defaults `focusRing` to `auto`
       already; `respectReducedMotion` defaults to `false`, which means the
-      `prefers-reduced-motion` claim in the current docs page is untrue
-- [ ] Add a skip link ("Skip to main content") as the first focusable
+      `prefers-reduced-motion` claim in the current docs page is untrue. Both set, with a theme test pinning each
+- [x] Add a skip link ("Skip to main content") as the first focusable
       element in `MainLayout`, `TeachingLayout` and `PublicLayout`,
       targeting the existing `main` landmark. Build it as a component in
-      `components/navigation/` with a story and a test
-- [ ] Decide how a keyboard scrolls `main`. All three layouts make
+      `components/navigation/` with a story and a test. `SkipLink` and
+      `SkipLinkTarget` in `components/navigation/skip-link/`: an
+      `Anchor` hidden off-screen until focused, then pinned top left in
+      the brand navy above the ribbon; activating it moves focus rather
+      than only changing the hash, which the router would treat as
+      navigation
+- [x] Decide how a keyboard scrolls `main`. All three layouts make
       `main`, not the window, the scroll container, so a page with nothing
       focusable in it (a long slide, a long read) cannot be scrolled from
       the keyboard in Safari; axe reports `scrollable-region-focusable`
@@ -329,8 +334,21 @@ Things the survey found that no tool will fix on its own.
       focusable themselves, and `tabIndex={-1}` on `main`, tried in
       phase 1, switches that off. The candidates are `tabIndex={0}`
       with a visible focus style, or letting the document scroll
-      instead of `main`. Settle it with the skip link below, which also
-      needs a focus target in `main`
+      instead of `main`. Settle it with the skip link above, which also
+      needs a focus target in `main`. Decided with the skip
+      link: its target, `SkipLinkTarget`, is a `tabIndex={-1}` wrapper
+      _inside_ `main`, not `main` itself. Once focus is inside a scroll
+      container the arrow keys, Page Down and Space scroll it, so the
+      skip link is a keyboard route into `main` in every browser, and
+      `main` keeps no tabindex, so Chrome's and Firefox's own focusable
+      scrollers still work. Checked in Chromium with Playwright: Tab,
+      Enter, Page Down scrolls the long-read story's `main` by 1,118px.
+      Safari is not checked here (WebKit is not installed); the phase 5
+      VoiceOver and Safari run covers it. axe still reports
+      `scrollable-region-focusable` on the three `!test` long-read
+      stories, because it does not count a `tabIndex={-1}` element as a
+      way in; making `main` a tab stop would silence it at the cost of
+      an extra, invisible-feeling stop on every page, which is worse
 - [ ] Walk every page with Tab and Shift+Tab and confirm no focused element
       disappears under the sticky ribbon (2.4.11). Fix with
       `scroll-padding-top` on the scroll container where it does
