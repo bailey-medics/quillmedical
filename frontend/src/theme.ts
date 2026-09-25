@@ -32,55 +32,61 @@ import {
   type MantineColorsTuple,
 } from "@mantine/core";
 
+import brand from "@/generated/brand.json";
 import navLinkClasses from "./styles/navLink.module.css";
 
 /**
- * Brand colour tokens — single source of truth.
+ * Brand colour tokens — from shared/brand.yaml, the single source of truth
+ * shared with the backend's email renderer.
  * Exposed as CSS variables via cssVariablesResolver below.
  *
  * In TypeScript: import { brandColours } from "@/theme"
  */
-export const brandColours = {
-  primary: "#001a36",
-  secondary: "#C8963E",
-  background: "#ffffff",
-} as const;
+export const brandColours = brand.brand;
 
 /**
- * Mantine colour scales — 10-shade ramps (0 lightest → 9 darkest).
- *
- * primary: Navy scale derived from brandColours.primary (#001a36).
- *          primaryShade: 5 used for filled buttons/actions.
- *          Brand primary: shade 8 (#001a36).
- *
- * secondary: Amber scale derived from brandColours.secondary (#C8963E).
- *            Use for CTAs, highlights, and warm accents.
+ * Mantine needs exactly ten shades per colour. The YAML is a plain list,
+ * so check the length here: a ramp one shade short would otherwise shift
+ * every shade name by one without any error.
  */
-export const primaryScale: MantineColorsTuple = [
-  "#bdd2eb", // 0 — subtle backgrounds, variant="light" fills
-  "#93b4d9", // 1 — light tint, hover on light variant
-  "#6894c0", // 2 — borders, disabled states
-  "#3d6fa0", // 3 — muted/secondary indicators
-  "#245d8f", // 4 — medium prominence
-  "#143f6b", // 5 — primary actions (filled buttons) ← primaryShade
-  "#0a2f56", // 6 — card borders, dividers
-  "#042340", // 7 — hover/pressed state
-  "#001a36", // 8 — brand primary
-  "#000d1f", // 9 — deepest navy (dark mode contrast)
-];
+function toColoursTuple(name: string, shades: string[]): MantineColorsTuple {
+  const [s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, ...rest] = shades;
+  if (
+    s0 === undefined ||
+    s1 === undefined ||
+    s2 === undefined ||
+    s3 === undefined ||
+    s4 === undefined ||
+    s5 === undefined ||
+    s6 === undefined ||
+    s7 === undefined ||
+    s8 === undefined ||
+    s9 === undefined ||
+    rest.length > 0
+  ) {
+    throw new Error(
+      `shared/brand.yaml: the ${name} palette needs exactly 10 shades, ` +
+        `not ${shades.length}`,
+    );
+  }
+  return [s0, s1, s2, s3, s4, s5, s6, s7, s8, s9];
+}
 
-export const secondaryScale: MantineColorsTuple = [
-  "#fdf6ec", // 0 — subtle amber backgrounds
-  "#fae8cc", // 1 — light amber fill
-  "#f5d5a0", // 2 — amber borders
-  "#efc072", // 3 — decorative amber
-  "#e5a84a", // 4 — secondary amber
-  "#c8963e", // 5 — brand amber
-  "#a87b2f", // 6 — prominent amber
-  "#886223", // 7 — dark amber
-  "#6b4c1a", // 8 — darker amber
-  "#503813", // 9 — darkest amber
-];
+/**
+ * Mantine colour scales — 10-shade ramps (0 lightest → 9 darkest), with
+ * each shade's use noted in shared/brand.yaml.
+ *
+ * primary: Navy. Shade 5 is primaryShade, for filled buttons and actions;
+ *          shade 8 is the brand primary (#001a36).
+ * secondary: Amber. Shade 5 is the brand secondary (#C8963E). Use for
+ *            CTAs, highlights, and warm accents.
+ */
+export const primaryScale = toColoursTuple("primary", brand.palette.primary);
+
+export const secondaryScale = toColoursTuple(
+  "secondary",
+  brand.palette.secondary,
+);
 
 /**
  * Neutral grey scale — Mantine defaults (0–7).
@@ -88,16 +94,7 @@ export const secondaryScale: MantineColorsTuple = [
  * Used for table striping, dividers, placeholders, and subtle backgrounds.
  * Matches the Mantine `gray` colour key so `gray.0` === greyScale[0], etc.
  */
-export const greyScale = [
-  "#f8f9fa", // 0 — table striped rows, subtle backgrounds
-  "#f1f3f5", // 1 — light dividers, card backgrounds
-  "#e9ecef", // 2 — borders, separators
-  "#dee2e6", // 3 — disabled backgrounds
-  "#ced4da", // 4 — placeholder text
-  "#adb5bd", // 5 — icons, borders (2.1:1 on white, never text)
-  "#868e96", // 6 — icons, graphics (3.3:1 on white, never text)
-  "#495057", // 7 — muted text, `dimmed` in light mode (8.2:1 on white)
-] as const;
+export const greyScale: readonly string[] = brand.palette.grey;
 
 /**
  * Status colour tokens — semantic colours for badges, alerts, and buttons.

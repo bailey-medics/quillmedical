@@ -177,7 +177,7 @@ sent for them.
 
 ## Phase 2: Shared brand tokens
 
-- [ ] **Move the brand values into `shared/brand.yaml`.** Today they live
+- [x] **Move the brand values into `shared/brand.yaml`.** Today they live
       only in `frontend/src/theme.ts` (`brandColours`, the `primaryScale`
       and `secondaryScale` ramps, the font stacks and the type scale) and,
       for emails, as hand copies in `frontend/src/stories/emails/mockups/
@@ -193,17 +193,23 @@ sent for them.
       shades where they are one (`primary.8`), so a palette change carries
       through. HTML fragments such as the header's logo markup do not go
       in the YAML: the template builds them from the asset fields.
+      The type scale stays in `theme.ts`: emails use their own fixed sizes
+      (19px minimum, headings per theme), so nothing outside the app reads
+      it, and moving it would churn every component for no reader.
 
-- [ ] **Generate the frontend's copy with `yarn generate:types`** into
+- [x] **Generate the frontend's copy with `yarn generate:types`** into
       `src/generated/`, as the competency and profession YAML already are,
       and have `theme.ts` import its brand colours and ramps from it, and
       the mock-up's `themes.ts` read its values from it rather than its own
       copies. The `Colours` story then shows what emails use, because it is
       the same data. Run `just uf src/theme.test.ts`, the mock-up tests,
       and the full frontend suite: this touches `theme.ts`, which every
-      component depends on.
+      component depends on. The public site's build did not run
+      `generate:types`, and `theme.ts` now needs its output, so the
+      `public-pages` workspace's `pages:gen` script runs it first.
+      References resolve in `frontend/src/lib/brand/brandPalette.ts`.
 
-- [ ] **Load it in the backend** with a Pydantic model in
+- [x] **Load it in the backend** with a Pydantic model in
       `backend/app/email/brand.py`, `extra='forbid'`, read once at import
       and validated, so a missing colour for a theme fails at startup, not
       in somebody's inbox.
