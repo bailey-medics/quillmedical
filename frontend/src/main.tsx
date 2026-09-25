@@ -52,7 +52,11 @@ import {
 } from "react-router-dom";
 import type { RouteObject } from "react-router-dom";
 import { theme, cssVariablesResolver } from "./theme";
-import { wirePreloadErrorRecovery, wireUpdateChecks } from "@lib/swUpdateGate";
+import {
+  wireControllerChangeReload,
+  wirePreloadErrorRecovery,
+  wireUpdateChecks,
+} from "@lib/swUpdateGate";
 import { persistFormState } from "@lib/compat-generation";
 import { installGlobalErrorReporting } from "@lib/error-reporting/globalHandlers";
 import RouteTracking from "@lib/error-reporting/RouteTracking";
@@ -709,7 +713,7 @@ if ("serviceWorker" in navigator) {
       const reg = await navigator.serviceWorker.register(swUrl);
       console.log("SW registered:", reg);
 
-      navigator.serviceWorker.addEventListener("controllerchange", () => {
+      wireControllerChangeReload(navigator.serviceWorker, () => {
         console.log("SW controller changed → reloading");
         window.location.reload();
       });

@@ -20,6 +20,11 @@ whether a person can actually get through.
   form controls) as a real user would, not only Tab.
 - **Keyboard only.** No mouse or trackpad at all: Tab, Shift+Tab, Enter,
   Space and the arrow keys.
+- **Safari's Tab key.** By default Safari's Tab moves only between form
+  fields and buttons, not links; Option+Tab reaches links too, or turn on
+  "Press Tab to highlight each item" in Safari's Advanced settings. Record
+  which the run used. The skip link and the navigation are links, so a
+  Safari run on the default setting needs Option+Tab.
 - **Zoom.** Browser zoom at 200% and at 400%. At 400% on a 1280px window
   the page is 320px wide, which WCAG 1.4.10 Reflow requires to work with
   no horizontal scrolling.
@@ -58,7 +63,7 @@ Who walks it: clinicians and clinical administrators.
    list is not announced again.
 3. Move to a patient and activate it. Hear the patient's name; focus
    lands on the new page, not back at the top of the old one.
-4. Navigate by headings. Hear one level 1 heading, "Patient record".
+4. Navigate by headings. Hear one level 1 heading, the patient's name.
 5. Move through the cards (Messaging, Letters, Documents, Appointments,
    Notes). Each is announced with its title and is activated with Enter.
 6. Open the side navigation from the ribbon's menu button on a narrow
@@ -75,7 +80,7 @@ Who walks it: delegates on the teaching platform.
 2. Open a module and then its learning materials. Hear "Learning
    materials" (level 1) and each lecture's title; each has one button,
    "Start", "Resume" or "Review".
-3. Activate "Start". Hear the slide's title (level 2), and the slide
+3. Activate "Start". Hear the slide's title (level 1), and the slide
    progress bar as "Slide progress, 1 of N".
 4. Read the slide with the screen reader's reading command. Callouts are
    read in their place, not announced as alerts when the slide opens.

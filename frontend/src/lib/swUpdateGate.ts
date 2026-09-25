@@ -255,3 +255,35 @@ export function wireUpdateChecks(
   // tab was open before its first navigation.
   runUpdateCheck(currentHasFlash());
 }
+
+/** The parts of `navigator.serviceWorker` the reload wiring needs. */
+export interface ServiceWorkerContainerLike {
+  controller: unknown;
+  addEventListener: (type: "controllerchange", listener: () => void) => void;
+}
+
+/**
+ * Reload when a new service worker takes over, but not when the first one
+ * does.
+ *
+ * On a first visit there is no controller yet; the worker installs and
+ * claims the page a moment after it loads, which fires `controllerchange`
+ * although nothing has been updated. Reloading then wiped whatever the
+ * person had started typing, so a login form emptied itself under them
+ * (the e2e tests caught it in WebKit, where it happens every time). An
+ * update, when a controller was already in charge, still reloads, so the
+ * page never runs old code against a new worker.
+ */
+export function wireControllerChangeReload(
+  container: ServiceWorkerContainerLike,
+  reload: () => void,
+): void {
+  let hadController = container.controller !== null;
+  container.addEventListener("controllerchange", () => {
+    if (!hadController) {
+      hadController = true;
+      return;
+    }
+    reload();
+  });
+}

@@ -4,6 +4,7 @@ import {
   decidePreloadFailureAction,
   isRouteSafeForReload,
   wirePreloadErrorRecovery,
+  wireControllerChangeReload,
   wireUpdateChecks,
   HOURLY_INTERVAL_MS,
   PRELOAD_RELOAD_LOOP_WINDOW_MS,
@@ -633,6 +634,52 @@ describe("wirePreloadErrorRecovery", () => {
     });
     firePreloadError();
     firePreloadError();
+
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("wireControllerChangeReload", () => {
+  function container(controller: unknown) {
+    let listener: (() => void) | undefined;
+    return {
+      controller,
+      addEventListener: (_type: "controllerchange", fn: () => void) => {
+        listener = fn;
+      },
+      fire: () => listener?.(),
+    };
+  }
+
+  it("does not reload when the first worker takes control", () => {
+    // A first visit: the worker claims the page after it has loaded, and
+    // reloading would wipe anything already typed
+    const sw = container(null);
+    const reload = vi.fn();
+    wireControllerChangeReload(sw, reload);
+
+    sw.fire();
+
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it("reloads when a new worker replaces one already in control", () => {
+    const sw = container({});
+    const reload = vi.fn();
+    wireControllerChangeReload(sw, reload);
+
+    sw.fire();
+
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it("reloads on a later update after the first worker has claimed", () => {
+    const sw = container(null);
+    const reload = vi.fn();
+    wireControllerChangeReload(sw, reload);
+
+    sw.fire(); // first install claims the page
+    sw.fire(); // a new build takes over
 
     expect(reload).toHaveBeenCalledTimes(1);
   });

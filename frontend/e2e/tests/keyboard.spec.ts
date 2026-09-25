@@ -9,14 +9,24 @@ import { expect, test } from "../fixtures/axe";
 import { CI_TOTP_SECRET, totpCode } from "../fixtures/totp";
 
 /**
+ * The key that moves to the next control, links included. Safari's Tab
+ * skips links unless the user turns on "Press Tab to highlight each item";
+ * Option+Tab reaches them, and WebKit here behaves the same. So on WebKit
+ * the journeys use Option+Tab, as a Safari keyboard user would.
+ */
+function nextKey(browserName: string): string {
+  return browserName === "webkit" ? "Alt+Tab" : "Tab";
+}
+
+/**
  * Press Tab until `target` has focus, and return what was passed on the
  * way. Fails if it is not reached within `limit` presses, which is what
  * catches a control the keyboard cannot get to.
  */
-async function tabTo(page: Page, target: Locator, limit = 15) {
+async function tabTo(page: Page, target: Locator, key: string, limit = 15) {
   const passed: string[] = [];
   for (let i = 0; i < limit; i += 1) {
-    await page.keyboard.press("Tab");
+    await page.keyboard.press(key);
     if (await target.evaluate((el) => el === document.activeElement)) {
       return passed;
     }
@@ -38,14 +48,14 @@ test.describe("Keyboard only", () => {
   test.describe("logging in with two-factor authentication", () => {
     test.use({ storageState: { cookies: [], origins: [] } });
 
-    test("works from the keyboard alone", async ({ page }) => {
+    test("works from the keyboard alone", async ({ page, browserName }) => {
       // The login page has no layout, so no navigation to skip and no
       // skip link: the first stops are the form's own fields
       await page.goto("/login");
       await page.waitForLoadState("networkidle");
 
       const username = page.getByLabel("Username");
-      await tabTo(page, username);
+      await tabTo(page, username, nextKey(browserName));
       await page.keyboard.type("twofactor");
       await page.keyboard.press("Tab");
       await expect(
@@ -68,11 +78,12 @@ test.describe("Keyboard only", () => {
 
   test("the skip link lands in the page and past the navigation", async ({
     page,
+    browserName,
   }) => {
     await page.goto("/teaching");
     await page.waitForLoadState("networkidle");
 
-    await page.keyboard.press("Tab");
+    await page.keyboard.press(nextKey(browserName));
     await expect(
       page.getByRole("link", { name: "Skip to main content" }),
     ).toBeFocused();
@@ -87,14 +98,17 @@ test.describe("Keyboard only", () => {
     ).toBe(true);
   });
 
-  test("the side navigation reaches settings", async ({ page }) => {
+  test("the side navigation reaches settings", async ({
+    page,
+    browserName,
+  }) => {
     await page.goto("/teaching");
     await page.waitForLoadState("networkidle");
 
     const settings = page
       .getByRole("complementary")
       .getByRole("link", { name: /settings/i });
-    await tabTo(page, settings, 30);
+    await tabTo(page, settings, nextKey(browserName), 30);
     await page.keyboard.press("Enter");
 
     await expect(page).toHaveURL(/\/settings/);
