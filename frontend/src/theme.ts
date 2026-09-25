@@ -245,9 +245,13 @@ const appCssVariables = {
     // Button interaction colours — amber button text/active states.
     // Brand navy, not #333: on the amber fill #333 was 4.75:1, and on the
     // hover and pressed shades 3.3:1 and 3.1:1, under WCAG AA. Navy is
-    // 6.6:1 and 4.6:1, but 4.3:1 on the pressed shade, still just under.
+    // 6.6:1 at rest and 4.6:1 on hover.
     "--button-text-dark": brandColours.primary,
-    "--button-active-bg": "#a07728",
+    // Pressed shares the hover amber, secondary.6. The old #a07728 was one
+    // step darker and gave navy text 4.3:1; nothing darker than the hover
+    // shade keeps AA. Pressing still shows: Mantine's Button moves down a
+    // pixel while active.
+    "--button-active-bg": secondaryScale[6],
     "--button-outline-hover-text": "#d4a854",
     // Burger menu hover background
     "--burger-hover-bg": "#1e2d4a",

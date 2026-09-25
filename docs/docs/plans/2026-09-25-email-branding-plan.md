@@ -214,12 +214,15 @@ sent for them.
       and validated, so a missing colour for a theme fails at startup, not
       in somebody's inbox.
 
-- [ ] **Fix `PublicButton`'s pressed state.** With navy text,
+- [x] **Fix `PublicButton`'s pressed state.** With navy text,
       `--button-active-bg` (`#a07728`) gives 4.3:1, just under WCAG AA.
       Lighten it so it is no darker than the hover shade (secondary.6,
       4.6:1), keeping a visible difference from hover, and extend the
       theme test to check contrast for the resting, hover and pressed
-      fills against `--button-text-dark`.
+      fills against `--button-text-dark`. Done by making the pressed fill
+      the hover shade itself: nothing darker keeps AA, and Mantine's
+      Button already moves down a pixel while pressed, which is the
+      visible difference.
 
 ## Phase 3: Renderer
 
