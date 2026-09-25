@@ -23,6 +23,9 @@ const FILES_TO_GENERATE = [
   // carry their own copy of the list, which is how three of them
   // came to disagree with the backend about what exists.
   "org-unit-types.yaml",
+  // Colours for the Mantine theme and the email themes, which the
+  // backend's email renderer reads from the same file.
+  "brand.yaml",
 ];
 
 // Competencies are split across a directory by kind — clinical.yaml and

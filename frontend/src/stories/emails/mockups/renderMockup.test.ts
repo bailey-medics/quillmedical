@@ -88,3 +88,39 @@ describe("renderMockup", () => {
     );
   });
 });
+
+describe("every email theme resolves", () => {
+  for (const [name, theme] of Object.entries(emailThemes)) {
+    it(`gives the ${name} theme a hex value for every colour`, () => {
+      const colours = [
+        theme.headingAccent,
+        theme.background,
+        theme.card,
+        theme.cardBorder,
+        theme.header,
+        theme.heading,
+        theme.text,
+        theme.muted,
+        theme.link,
+        theme.buttonBackground,
+        theme.buttonText,
+        theme.panel,
+        theme.panelText,
+        theme.footerBackground,
+        theme.footerText,
+        theme.darkBackground,
+        theme.darkCard,
+        theme.darkText,
+      ];
+
+      for (const colour of colours) {
+        expect(colour).toMatch(/^#[0-9a-fA-F]{6}$/);
+      }
+    });
+  }
+
+  it("keeps Quill's header the brand navy and its rule the brand amber", () => {
+    expect(emailThemes.quill.header).toBe("#001a36");
+    expect(emailThemes.quill.headerRule).toBe("4px solid #c8963e");
+  });
+});

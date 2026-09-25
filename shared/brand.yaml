@@ -1,0 +1,200 @@
+# shared/brand.yaml
+#
+# BRAND VALUES
+#
+# One source for Quill's colours, read by the frontend's Mantine theme
+# (frontend/src/theme.ts, through frontend/src/generated/brand.json) and by
+# the backend's email renderer (backend/app/email/brand.py). Before this file
+# the hex values lived only in theme.ts, and the backend cannot read
+# TypeScript: an email template holding its own copies would drift the first
+# time the theme changed.
+#
+# COLOUR REFERENCES
+#
+# Wherever an email theme below names a colour, it may be a hex value
+# ("#343a40") or a reference into the palette: "primary.8" is shade 8 of the
+# primary ramp. A reference carries a palette change through to the email;
+# a hex value is for colours with no place in Quill's palette, such as
+# Let's Do Digital's. Both readers resolve references the same way and
+# refuse one that does not exist.
+#
+# See docs/docs/plans/2026-09-25-email-branding-plan.md.
+
+brand:
+  primary: "#001a36"
+  secondary: "#C8963E"
+  background: "#ffffff"
+
+palette:
+  # Navy, 0 lightest to 9 darkest. Shade 8 is the brand primary; shade 5
+  # is Mantine's primaryShade, used for filled buttons in the app.
+  primary:
+    - "#bdd2eb" # 0 subtle backgrounds, variant="light" fills
+    - "#93b4d9" # 1 light tint, hover on light variant
+    - "#6894c0" # 2 borders, disabled states
+    - "#3d6fa0" # 3 muted/secondary indicators
+    - "#245d8f" # 4 medium prominence
+    - "#143f6b" # 5 primary actions (filled buttons), primaryShade
+    - "#0a2f56" # 6 card borders, dividers
+    - "#042340" # 7 hover/pressed state
+    - "#001a36" # 8 brand primary
+    - "#000d1f" # 9 deepest navy (dark mode contrast)
+  # Amber, 0 lightest to 9 darkest. Shade 5 is the brand secondary.
+  secondary:
+    - "#fdf6ec" # 0 subtle amber backgrounds
+    - "#fae8cc" # 1 light amber fill
+    - "#f5d5a0" # 2 amber borders
+    - "#efc072" # 3 decorative amber
+    - "#e5a84a" # 4 secondary amber
+    - "#c8963e" # 5 brand amber
+    - "#a87b2f" # 6 prominent amber
+    - "#886223" # 7 dark amber
+    - "#6b4c1a" # 8 darker amber
+    - "#503813" # 9 darkest amber
+  # Mantine's gray defaults, 0 to 7, so gray.0 matches grey.0.
+  grey:
+    - "#f8f9fa" # 0 table striped rows, subtle backgrounds
+    - "#f1f3f5" # 1 light dividers, card backgrounds
+    - "#e9ecef" # 2 borders, separators
+    - "#dee2e6" # 3 disabled backgrounds
+    - "#ced4da" # 4 placeholder text
+    - "#adb5bd" # 5 icons, borders (2.1:1 on white, never text)
+    - "#868e96" # 6 icons, graphics (3.3:1 on white, never text)
+    - "#495057" # 7 muted text, dimmed in light mode (8.2:1 on white)
+
+# Each email theme is one brand's look for every email: the layout is the
+# same, only these values change. Signed off in Phase 1 of the plan.
+email_themes:
+  # Follows the public site rather than the app, with a white body.
+  quill:
+    sender_name: Quill Medical
+    fonts:
+      - family: Atkinson Hyperlegible Next
+        axes: "wght@400;700"
+      - family: Cormorant Garamond
+        axes: "ital,wght@0,700;1,700"
+    font_family: "'Atkinson Hyperlegible Next', Arial, sans-serif"
+    # As PublicTitle; Gmail and Outlook fall back to Georgia
+    heading_font_family: "'Cormorant Garamond', Georgia, serif"
+    heading_weight: 700
+    # Cormorant Garamond runs small, so a step up from the app's h1 and h3
+    h1_size: 40px
+    h2_size: 30px
+    # 3.8:1 on white. secondary.5 is 2.7:1 on white: fine on the site's
+    # navy, too faint here.
+    heading_accent: secondary.6
+    background: "#ffffff"
+    card: "#ffffff"
+    card_border: grey.4
+    border: grey.3
+    header: primary.8
+    header_rule_width: 4px
+    header_rule: secondary.5
+    header_logo:
+      src: /email/quill-wordmark.png
+      width: 240
+      height: 40
+      alt: Quill Medical
+    heading: primary.8
+    text: "#212b36"
+    # 8.2:1 on white
+    muted: grey.7
+    # 6.9:1 on white
+    link: primary.4
+    # As PublicButton: navy on amber, 6.6:1. White on amber is 2.7:1.
+    button_background: secondary.5
+    button_text: primary.8
+    # Mantine 9's default radius
+    button_radius: 8px
+    # As PublicInfoCard: primary.7 with amber at 20% blended onto it
+    panel: primary.7
+    panel_border: "#2b3a40"
+    # 15:1 on the panel; amber links 6.0:1
+    panel_text: grey.0
+    panel_heading: grey.0
+    panel_link: secondary.5
+    # As PublicFooter: brand navy with a 10% white rule
+    footer_background: primary.8
+    footer_rule: "#1a314a"
+    # 11.7:1 on the footer
+    footer_text: grey.4
+    footer_link: "#ffffff"
+    # The quill in light grey on navy. A 1024px copy for reuse elsewhere
+    # is frontend/public/quill-avatar-circle.png.
+    avatar: /email/quill-avatar.png
+    newsletter_reason: >-
+      You are receiving this because you asked to hear from Quill Medical.
+    dark:
+      background: primary.9
+      card: primary.7
+      header: primary.8
+      border: primary.6
+      text: grey.2
+      # 7.4:1 on the card navy
+      muted: primary.1
+      link: primary.1
+      # So the panel still stands off the dark card
+      panel: primary.6
+      footer: primary.8
+
+  # Taken from letsdodigital.org, a Quarto build on Bootstrap.
+  ldd:
+    # A straight apostrophe: this becomes the From header's display name
+    sender_name: "Let's Do Digital"
+    fonts:
+      - family: Source Sans 3
+        axes: "ital,wght@0,400;0,600;0,700;1,400"
+    font_family: "'Source Sans 3', 'Source Sans Pro', Arial, sans-serif"
+    heading_font_family: "'Source Sans 3', 'Source Sans Pro', Arial, sans-serif"
+    # The site sets its headings at 400
+    heading_weight: 400
+    h1_size: 32px
+    h2_size: 24px
+    heading_accent: "#0848a9"
+    background: "#ffffff"
+    card: "#ffffff"
+    card_border: grey.4
+    border: grey.3
+    header: "#ffffff"
+    header_rule_width: 1px
+    header_rule: grey.3
+    header_logo:
+      src: /email/ldd-logo.png
+      width: 56
+      height: 56
+      alt: ""
+    # The logo has no words, so the name sits beside it
+    header_name: "Let’s Do Digital"
+    heading: "#343a40"
+    text: "#343a40"
+    # 5.8:1 on the footer grey
+    muted: "#5c636a"
+    # The logo's blue, 8.4:1 on white. The site's #2780e3 is 4.0:1.
+    link: "#0848a9"
+    button_background: "#0848a9"
+    button_text: "#ffffff"
+    # Bootstrap's default, as the site's buttons
+    button_radius: 6px
+    panel: "#f1f5fc"
+    panel_border: grey.3
+    panel_text: "#343a40"
+    panel_heading: "#343a40"
+    panel_link: "#0848a9"
+    footer_background: grey.0
+    footer_rule: grey.3
+    footer_text: "#5c636a"
+    footer_link: "#5c636a"
+    avatar: /email/ldd-avatar.png
+    newsletter_reason: >-
+      You are receiving this because you came to a Let’s Do Digital event.
+    # The site's own dark mode
+    dark:
+      background: "#212529"
+      card: "#2b3035"
+      header: "#2b3035"
+      border: "#495057"
+      text: grey.3
+      muted: grey.5
+      link: "#6ea8fe"
+      panel: "#343a40"
+      footer: "#212529"

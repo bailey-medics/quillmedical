@@ -102,3 +102,86 @@ declare module "@/generated/org-unit-types.json" {
 
   export default data;
 }
+
+declare module "@/generated/brand.json" {
+  // Generated from shared/brand.yaml. A colour in an email theme is a hex
+  // value or a palette reference such as "primary.8"; resolving it is
+  // brandPalette.ts's job, not the reader's.
+  interface EmailFont {
+    family: string;
+    axes: string;
+  }
+
+  interface EmailImage {
+    src: string;
+    width: number;
+    height: number;
+    alt: string;
+  }
+
+  interface EmailDarkTheme {
+    background: string;
+    card: string;
+    header: string;
+    border: string;
+    text: string;
+    muted: string;
+    link: string;
+    panel: string;
+    footer: string;
+  }
+
+  interface EmailThemeSource {
+    sender_name: string;
+    fonts: EmailFont[];
+    font_family: string;
+    heading_font_family: string;
+    heading_weight: number;
+    h1_size: string;
+    h2_size: string;
+    heading_accent: string;
+    background: string;
+    card: string;
+    card_border: string;
+    border: string;
+    header: string;
+    header_rule_width: string;
+    header_rule: string;
+    header_logo: EmailImage;
+    header_name?: string;
+    heading: string;
+    text: string;
+    muted: string;
+    link: string;
+    button_background: string;
+    button_text: string;
+    button_radius: string;
+    panel: string;
+    panel_border: string;
+    panel_text: string;
+    panel_heading: string;
+    panel_link: string;
+    footer_background: string;
+    footer_rule: string;
+    footer_text: string;
+    footer_link: string;
+    avatar: string;
+    newsletter_reason: string;
+    dark: EmailDarkTheme;
+  }
+
+  const data: {
+    brand: { primary: string; secondary: string; background: string };
+    palette: {
+      primary: string[];
+      secondary: string[];
+      grey: string[];
+    };
+    email_themes: {
+      quill: EmailThemeSource;
+      ldd: EmailThemeSource;
+    };
+  };
+
+  export default data;
+}
