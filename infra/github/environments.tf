@@ -20,8 +20,8 @@
 #   terraform plan -var-file=terraform.tfvars
 #   terraform apply -var-file=terraform.tfvars
 #
-#   The state is a local file, not in a bucket, so plan and apply from the
-#   checkout that holds terraform.tfstate.
+#   State is remote (see the backend block in branch_rules.tf), so plan and
+#   apply from any checkout with `just terraform-github`.
 
 # ---------------------------------------------------------------------------
 # App environment — deployable from main only
