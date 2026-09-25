@@ -70,7 +70,7 @@ Each TSX file in `src/pages/` is a standalone React entry point, not a route. Th
 
 1. Scans `src/pages/` for `.tsx` files
 2. Reads `templates/page.html` as a template
-3. Generates a title from the filename (e.g. `pricing` → "Pricing", `not-found` → "Not Found")
+3. Takes the page's title and meta description from `page-meta.json`, and stops with an error if the page has no entry there. The title becomes "Title – Quill Medical"; the home page's is "Quill Medical" alone
 4. Writes an HTML file with the correct `<script>` entry point
 
 **When it runs:**
@@ -81,7 +81,7 @@ Each TSX file in `src/pages/` is a standalone React entry point, not a route. Th
 **Example:** Creating `src/pages/pricing.tsx` automatically generates `pricing.html` with:
 
 ```html
-<title>Pricing</title>
+<title>Pricing – Quill Medical</title>
 <script type="module" src="/src/pages/pricing.tsx"></script>
 ```
 
@@ -109,7 +109,9 @@ The production build picks the page up too: `rollupOptions.input` in `vite.confi
    );
    ```
 
-2. Run `just pup` — the HTML file is generated automatically and the dev server opens.
+2. Add a title and description for it to `frontend/public_pages/page-meta.json`, keyed by the file name without `.tsx`. The description is what a search result shows, so keep it under 160 characters; `generate-pages.test.ts` checks that.
+
+3. Run `just pup` — the HTML file is generated automatically and the dev server opens.
 
 ## PublicLayout
 

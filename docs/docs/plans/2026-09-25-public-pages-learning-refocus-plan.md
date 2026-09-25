@@ -317,21 +317,42 @@ their module in words and leave out what only EoEETA can give — the logo,
 the polyp images, a quote and the name of a standard. Those are left out
 cleanly rather than shown as placeholders, and added in Phase 5.
 
-- [ ] Rewrite `index.tsx` as described under "Home page sections"
-- [ ] Add `optical-diagnosis.tsx`
-- [ ] Add `assessments.tsx`
-- [ ] Add `learning.tsx`
+The pages are built before the home page is rewritten, because the new
+home page links to every one of them and each unit has to be safe to
+deploy on its own. Reordered from the first draft, which put the home
+page first.
+
+- [x] Set a real `<title>` and meta description per page. `titleFor` in
+      `generate-pages.cjs` made titles up from the file name
+      ("Optical Diagnosis", in title case) and every page shared one
+      description, "clinician-first digital notes". Titles and
+      descriptions now live in `frontend/public_pages/page-meta.json`,
+      one entry per page, and the generator stops the build if a page has
+      none. Titles follow the "Page – Quill Medical" pattern the app's
+      `useDocumentTitle` uses. `generate-pages.test.ts` checks every page
+      has an entry, no entry is left for a deleted page, and descriptions
+      fit a search result (160 characters). Moved to the front of the
+      phase because the new pages need it
+- [x] Add `optical-diagnosis.tsx`. Taking part is through EoEETA, so the
+      page ends with "Log in" rather than a sign-up button: there is no
+      open registration. "Bowel cancer screening programme" is written out
+      rather than as an acronym, and no standard is named
+- [x] Add `assessments.tsx`
+- [x] Add `learning.tsx`
+- [x] Build every page from existing public components (`PublicTitle`,
+      `PublicBodyText`, `PublicFeatureCard`, `PublicInfoCard`,
+      `PublicButton`, the public backgrounds). The image-pair and logo
+      components Phase 5 may need are not built yet. Six Tabler icons are
+      registered in `appIcons.ts` for the feature cards, and the new pages
+      import from there rather than from `@tabler/icons-react` directly,
+      as that file requires. Each page has one level 1 heading; section
+      headings use `PublicTitle size="md"`
 - [ ] Add `for-educators.tsx`
 - [ ] Add `accessibility.tsx`
 - [ ] Add `security.tsx`
+- [ ] Rewrite `index.tsx` as described under "Home page sections"
 - [ ] Replace `clinical-teaching.tsx` — delete it once the pages above exist
 - [ ] Rewrite `about.tsx`, `pricing.tsx` and the FHIR line in `careers.tsx`
-- [ ] Build every page from existing public components (`PublicTitle`,
-      `PublicBodyText`, `PublicFeatureCard`, `PublicInfoCard`,
-      `PublicButton`, the public backgrounds). The image-pair and logo
-      components Phase 5 may need are not built yet
-- [ ] Set a real `<title>` and meta description per page; check what
-      `titleFor` in `generate-pages.cjs` produces for the new file names
 - [ ] Sentence case and British English throughout, and cspell clean
 
 ## Phase 3: Navigation

@@ -5,10 +5,43 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const pagesDir = path.join(root, "src/pages");
 const templatePath = path.join(root, "templates/page.html");
+const metaPath = path.join(root, "page-meta.json");
 
-function titleFor(name) {
-  if (name === "index") return "Quill Medical";
-  return name.replace(/[-_]/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+const SITE_TITLE = "Quill Medical";
+
+function escapeHtml(text) {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/**
+ * The <title> and meta description for one page, from page-meta.json.
+ *
+ * Every page must have an entry: a title made up from the file name
+ * ("Clinical Records") is in title case, says nothing to a search engine,
+ * and was how every page came to share one description. So a missing entry
+ * stops the build rather than falling back.
+ *
+ * The title follows the GOV.UK pattern the app uses, "Page – Quill
+ * Medical", most specific part first, except on the home page, which is
+ * the site name alone.
+ */
+function headFor(name, meta) {
+  const entry = meta[name];
+  if (!entry || !entry.title || !entry.description) {
+    throw new Error(
+      `[pages:gen] page-meta.json has no title and description for "${name}"`,
+    );
+  }
+  const title =
+    entry.title === SITE_TITLE ? SITE_TITLE : `${entry.title} – ${SITE_TITLE}`;
+  return {
+    title: escapeHtml(title),
+    description: escapeHtml(entry.description),
+  };
 }
 
 function ensureDir(p) {
@@ -39,6 +72,7 @@ function buildOnce() {
   }
 
   const tpl = fs.readFileSync(templatePath, "utf8");
+  const meta = JSON.parse(fs.readFileSync(metaPath, "utf8"));
   const files = walk(pagesDir);
   if (files.length === 0) {
     console.warn("[pages:gen] No *.tsx pages found in src/pages");
@@ -51,8 +85,10 @@ function buildOnce() {
     const name = parsed.name; // "index" or "faq"
     const subdir = parsed.dir; // "" or "docs"
 
+    const head = headFor(name, meta);
     const html = tpl
-      .replace("<!--TITLE-->", titleFor(name))
+      .replace("<!--TITLE-->", head.title)
+      .replace("<!--DESCRIPTION-->", head.description)
       .replace(
         "<!--ENTRY-->",
         `<script type="module" src="/src/pages/${rel}"></script>`,
@@ -73,7 +109,10 @@ function buildOnce() {
   }
 }
 
-if (process.argv.includes("--watch")) {
+module.exports = { headFor };
+
+// Only generate when run as a script, not when a test imports headFor.
+if (require.main === module && process.argv.includes("--watch")) {
   buildOnce();
   fs.watch(pagesDir, { persistent: true }, (evt, filename) => {
     if (filename && filename.endsWith(".tsx")) {
@@ -86,6 +125,6 @@ if (process.argv.includes("--watch")) {
   });
   console.log(`[pages:gen] watching ${pagesDir} …`);
   process.stdin.resume();
-} else {
+} else if (require.main === module) {
   buildOnce();
 }
