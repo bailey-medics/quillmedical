@@ -16,6 +16,9 @@ on:
       - "frontend/public/**"
       - "frontend/src/components/**"
       - "frontend/src/theme.ts"
+      # theme.ts reads its colours from here, so a colour change is a
+      # site change too.
+      - "shared/brand.yaml"
       - "frontend/src/styles/**"
       # How the site is deployed, not just what is in it. Without these a
       # change to the upload script sat unused until some unrelated content

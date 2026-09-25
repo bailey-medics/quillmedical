@@ -139,6 +139,16 @@ main() {
   gsutil -m -h "Cache-Control:public, max-age=31536000, immutable" \
     rsync -r -d -x '.*\.html$' public-site/assets/ "gs://${bucket}/assets/"
 
+  # Email images: logos and avatars that sent emails load from here. Synced
+  # on their own because the pass below is not recursive. A day's cache,
+  # not the year the hashed assets get: these names are fixed, so a
+  # replaced logo would otherwise stay stale in inboxes and caches.
+  if [ -d public-site/email ]; then
+    log "Uploading email images with a one-day cache"
+    gsutil -m -h "Cache-Control:public, max-age=86400" \
+      rsync -r -d public-site/email/ "gs://${bucket}/email/"
+  fi
+
   log "Uploading remaining static files"
   gsutil -m -h "Cache-Control:public, max-age=2592000" \
     rsync -d -x '.*\.html$' public-site/ "gs://${bucket}/"

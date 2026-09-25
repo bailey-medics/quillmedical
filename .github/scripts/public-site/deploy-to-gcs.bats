@@ -134,3 +134,26 @@ make_site() {
 
   run ! grep -q "setmeta" "$CALLS"
 }
+
+@test "syncs the email images recursively with a one-day cache" {
+  # Emails load their logos from the public site. The top-level pass is not
+  # recursive, so without this the images under email/ never reach the bucket.
+  make_site about
+  mkdir -p public-site/email/partners
+  echo "png" > public-site/email/quill-wordmark.png
+  echo "png" > public-site/email/partners/eoeeta-email.png
+
+  run bash "$SCRIPT" my-project
+
+  [ "$status" -eq 0 ]
+  grep -q "Cache-Control:public, max-age=86400 rsync -r -d public-site/email/ gs://my-project-landing/email/" "$CALLS"
+}
+
+@test "skips the email pass when the build has no email images" {
+  make_site about
+
+  run bash "$SCRIPT" my-project
+
+  [ "$status" -eq 0 ]
+  run ! grep -q "gs://my-project-landing/email/" "$CALLS"
+}
