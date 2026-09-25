@@ -60,7 +60,9 @@ front of a human before any code that renders or sends it is written.
 
 - [x] **Build it for email clients, not browsers, from the start.** A
       mock-up that only works in a browser proves nothing, so it follows the
-      rules the real template must: a single 900px-wide table with
+      rules the real template must: a single table, fluid up to 900px wide
+      (a fixed 600px for classic Outlook on Windows, which ignores
+      `max-width`), with
       `role="presentation"`, inline styles (Gmail strips `<style>` in some
       views and no client understands CSS variables), `lang="en-GB"`, and a
       hidden preheader line for the inbox preview. Regions: a header band
