@@ -11,6 +11,7 @@
  */
 
 import {
+  IconAccessible,
   IconAdjustmentsHorizontal,
   IconAlertCircle,
   IconAlertCircleFilled,
@@ -54,6 +55,7 @@ import {
   IconHome,
   IconHome2,
   IconInfoCircle,
+  IconKeyboard,
   IconLock,
   IconLogin,
   IconLogout,
@@ -88,6 +90,7 @@ import {
 } from "@tabler/icons-react";
 
 export {
+  IconAccessible,
   IconAdjustmentsHorizontal,
   IconAlertCircle,
   IconAlertCircleFilled,
@@ -131,6 +134,7 @@ export {
   IconHome,
   IconHome2,
   IconInfoCircle,
+  IconKeyboard,
   IconLock,
   IconLogin,
   IconLogout,
@@ -169,6 +173,7 @@ export {
  * Used by Storybook to render the full icon grid automatically.
  */
 export const iconCatalogue = {
+  Accessible: IconAccessible,
   AdjustmentsHorizontal: IconAdjustmentsHorizontal,
   AlertCircle: IconAlertCircle,
   AlertCircleFilled: IconAlertCircleFilled,
@@ -212,6 +217,7 @@ export const iconCatalogue = {
   Home: IconHome,
   Home2: IconHome2,
   InfoCircle: IconInfoCircle,
+  Keyboard: IconKeyboard,
   Lock: IconLock,
   Login: IconLogin,
   Logout: IconLogout,

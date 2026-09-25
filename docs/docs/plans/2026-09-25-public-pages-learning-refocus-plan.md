@@ -347,9 +347,17 @@ page first.
       import from there rather than from `@tabler/icons-react` directly,
       as that file requires. Each page has one level 1 heading; section
       headings use `PublicTitle size="md"`
-- [ ] Add `for-educators.tsx`
-- [ ] Add `accessibility.tsx`
-- [ ] Add `security.tsx`
+- [x] Add `for-educators.tsx`. It carries the one mention of the future
+      the plan allows, "More modules are on the way", beside its contact
+      button
+- [x] Add `accessibility.tsx`, using the wording under "Accessible by
+      design". Problems are reported through Feedback in the app or the
+      footer's `info@quill-medical.com` address; the legally formatted
+      statement is the accessibility plan's to write
+- [x] Add `security.tsx`. The penetration tests are described as running
+      on every change because `test_security_pentest.py` is part of the
+      backend unit suite CI runs on every push, as well as its own monthly
+      workflow
 - [ ] Rewrite `index.tsx` as described under "Home page sections"
 - [ ] Replace `clinical-teaching.tsx` — delete it once the pages above exist
 - [ ] Rewrite `about.tsx`, `pricing.tsx` and the FHIR line in `careers.tsx`

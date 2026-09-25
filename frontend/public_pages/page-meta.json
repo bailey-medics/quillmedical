@@ -15,6 +15,18 @@
     "title": "Learning",
     "description": "Slide-based learning modules with captioned video, built to be read on a phone as easily as a desktop."
   },
+  "for-educators": {
+    "title": "For educators",
+    "description": "Version-locked question banks, your delegates' results in one place, and certificates emailed to the course coordinator."
+  },
+  "accessibility": {
+    "title": "Accessibility",
+    "description": "How Quill Medical is built to be accessible, and our work towards WCAG 2.2 AA."
+  },
+  "security": {
+    "title": "Security",
+    "description": "UK hosting, security testing on every change, and strong sign-in."
+  },
   "clinical-teaching": {
     "title": "Clinical teaching",
     "description": "Online learning and assessment for clinicians, built by clinicians."
