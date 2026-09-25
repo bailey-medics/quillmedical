@@ -656,7 +656,7 @@ readable by someone who cannot yet log in.
       forgotten. Built as its own workflow,
       `.github/workflows/accessibility-review.yml`, rather than folded into
       stale-incidents, which answers a different question. It runs every
-      Monday in September and October and reads `const REVIEWED` from the
+      Monday and reads `const REVIEWED` from the
       statement itself; once that date is 11 months old it emails
       <mark@quill-medical.com> a review checklist through Resend and posts
       to Slack, weekly until the date is moved. Moving the date is what
@@ -672,15 +672,15 @@ readable by someone who cannot yet log in.
       forced run on 25 September 2026 delivered both the email and the
       Slack post, proving the Secret Manager read, Resend and the Slack
       webhook end to end. With the statement reviewed on 25 September
-      2026, the first real reminder goes out on Monday 6 September 2027,
-      the first scheduled run after the review turns 11 months old.
+      2026, the first real reminder goes out on Monday 30 August 2027,
+      the first Monday after the review turns 11 months old.
 
-      Known limitation: the schedule is fixed to September and October,
-      so it only fits a review that stays in those months. A review in,
-      say, June would next be due in June, and the workflow would not
-      notice until September. If reviews move, run the schedule every
-      Monday of the year; the script already sends nothing until the
-      review is due, so the only cost is one short job a week
+      The schedule first ran only in September and October, which fitted
+      a review that stayed in those months but not one that moved: a
+      review in June would next be due in June, and nothing would fire
+      until September. It now runs every Monday of the year. The script
+      sends nothing until the review is due, so the only cost is one
+      short job a week
 
 ## Phase 7: Keep it green
 

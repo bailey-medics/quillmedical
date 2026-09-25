@@ -44,7 +44,7 @@ To review it:
 4. Check that info@quill-medical.com, the contact the statement gives, is still read.
 5. Move the REVIEWED date in frontend/public_pages/src/pages/accessibility-statement.tsx to today, and deploy the public site. That stops these reminders.
 
-This reminder is sent every Monday in September and October until the date is moved, by the accessibility-review workflow.
+This reminder is sent every Monday until the date is moved, by the accessibility-review workflow.
 TEXT
 }
 
