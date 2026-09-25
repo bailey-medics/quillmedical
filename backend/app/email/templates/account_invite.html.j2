@@ -1,0 +1,28 @@
+{#-
+  An administrator has created an account and invites its owner to set a
+  password. Context:
+    username     the new account's username
+    setup_url    the link that sets the password
+    ttl_minutes  how long the link lasts
+-#}
+{% extends "base.html.j2" %}
+{% import "_components.html.j2" as c with context %}
+{% block subject %}You're invited to Quill – set up your account{% endblock %}
+{% block preheader %}Create your password and get started.{% endblock %}
+{% block body %}
+{{ c.heading("You're invited to *Quill*") }}
+{{ c.paragraph("Hi " ~ username ~ ",") }}
+{{ c.paragraph("An administrator has invited you to set up your Quill account. Please use the link below to create your password and get started.") }}
+{{ c.button("Set up your account", setup_url) }}
+{{ c.small("This link expires in " ~ ttl_minutes ~ " minutes.") }}
+{% endblock %}
+{% block reason %}You are receiving this because an administrator created a Quill account for this address.{% endblock %}
+{% block text %}
+Hi {{ username }},
+
+An administrator has invited you to set up your Quill account. Please use the link below to create your password and get started.
+
+Set up your account: {{ setup_url }}
+
+This link expires in {{ ttl_minutes }} minutes.
+{% endblock %}

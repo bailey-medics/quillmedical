@@ -70,6 +70,7 @@ from app.ehrbase_client import (
     get_letter_composition,
     list_letters_for_patient,
 )
+from app.email.render import RenderedEmail, render_email, send_args
 from app.email_send import (
     EmailNotAllowedError,
     EmailRateLimitError,
@@ -234,6 +235,30 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 DEV_MODE = settings.BACKEND_ENV.lower().startswith("dev")
+
+
+def _verification_email(verify_url: str, *, welcome: bool) -> RenderedEmail:
+    """The email that asks somebody to verify their address.
+
+    Sent from three places: on registering (``welcome`` greets them), and
+    when a fresh link is asked for or an unverified login is refused.
+
+    Args:
+        verify_url: The verification link.
+        welcome: True on registering.
+
+    Returns:
+        The rendered email, for ``send_email(to=..., **send_args(...))``.
+    """
+    return render_email(
+        "email_verification.html.j2",
+        "quill",
+        {
+            "verify_url": verify_url,
+            "ttl_minutes": settings.EMAIL_VERIFY_TTL_MIN,
+            "welcome": welcome,
+        },
+    )
 
 
 router = APIRouter(prefix=settings.API_PREFIX)
@@ -814,14 +839,7 @@ def login(
         verify_url = f"{settings.FRONTEND_URL}/verify-email?token={token}"
         send_email(
             to=user.email,
-            subject="Verify your Quill email address",
-            html_body=(
-                "<p>Please verify your email address to activate "
-                "your Quill account.</p>"
-                f'<p><a href="{verify_url}">Verify your email</a></p>'
-                f"<p>This link expires in "
-                f"{settings.EMAIL_VERIFY_TTL_MIN} minutes.</p>"
-            ),
+            **send_args(_verification_email(verify_url, welcome=False)),
         )
         raise HTTPException(
             status_code=403,
@@ -1206,14 +1224,7 @@ def register(
     try:
         send_email(
             to=email,
-            subject="Verify your Quill email address",
-            html_body=(
-                "<p>Welcome to Quill! Please verify your email address "
-                "to activate your account.</p>"
-                f'<p><a href="{verify_url}">Verify your email</a></p>'
-                f"<p>This link expires in {settings.EMAIL_VERIFY_TTL_MIN}"
-                " minutes.</p>"
-            ),
+            **send_args(_verification_email(verify_url, welcome=True)),
         )
     except EmailRateLimitError:
         # The address has had its hour's allowance, which on this route
@@ -1316,14 +1327,7 @@ def resend_verification(
         verify_url = f"{settings.FRONTEND_URL}/verify-email?token={token}"
         send_email(
             to=email,
-            subject="Verify your Quill email address",
-            html_body=(
-                "<p>Please verify your email address to activate "
-                "your Quill account.</p>"
-                f'<p><a href="{verify_url}">Verify your email</a></p>'
-                f"<p>This link expires in "
-                f"{settings.EMAIL_VERIFY_TTL_MIN} minutes.</p>"
-            ),
+            **send_args(_verification_email(verify_url, welcome=False)),
         )
         # Always return ok to prevent account enumeration
     return DetailResponse(detail="ok")
@@ -1358,12 +1362,15 @@ def forgot_password(
         reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}"
         send_email(
             to=email,
-            subject="Reset your Quill password",
-            html_body=(
-                f"<p>You requested a password reset for your Quill account.</p>"
-                f'<p><a href="{reset_url}">Reset your password</a></p>'
-                f"<p>This link expires in {settings.PASSWORD_RESET_TTL_MIN}"
-                f" minutes. If you did not request this, ignore this email.</p>"
+            **send_args(
+                render_email(
+                    "password_reset.html.j2",
+                    "quill",
+                    {
+                        "reset_url": reset_url,
+                        "ttl_minutes": settings.PASSWORD_RESET_TTL_MIN,
+                    },
+                )
             ),
         )
         # Always return ok to prevent account enumeration
@@ -2113,15 +2120,16 @@ def send_invite_email(
     reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}"
     send_email(
         to=user.email,
-        subject="You're invited to Quill – set up your account",
-        html_body=(
-            f"<p>Hi {user.username},</p>"
-            "<p>An administrator has invited you to set up your "
-            "Quill account. Please use the link below to create "
-            "your password and get started.</p>"
-            f'<p><a href="{reset_url}">Set up your account</a></p>'
-            "<p>This link expires in "
-            f"{settings.PASSWORD_RESET_TTL_MIN} minutes.</p>"
+        **send_args(
+            render_email(
+                "account_invite.html.j2",
+                "quill",
+                {
+                    "username": user.username,
+                    "setup_url": reset_url,
+                    "ttl_minutes": settings.PASSWORD_RESET_TTL_MIN,
+                },
+            )
         ),
     )
 
