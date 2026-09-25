@@ -75,3 +75,14 @@ so its order is part of its content.
   for trade-offs that span the plan or were deliberately deferred —
   the things somebody will later ask "why did you do it that way?"
   about. Where a decision belongs to one step, it lives in that step.
+
+## Plans that change how people move around the app
+
+A plan that changes a layout, the top ribbon, the navigation or the login
+flow ends with a step naming which of the accessibility journeys in
+`docs/docs/frontend/accessibility/journeys.md` it touches, and adding
+them to the "Not yet run" list in `testing-log.md`. Those four areas are
+what every journey passes through, and the automated checks cannot tell
+whether a screen reader user can still get through them. Manual
+screen reader testing is deferred until a DTAC sign-off needs it, so the
+list is what tells that round what to re-run.
