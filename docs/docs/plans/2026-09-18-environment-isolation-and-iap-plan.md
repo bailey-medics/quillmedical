@@ -122,12 +122,12 @@ looks like a one-line change and takes the deploy pipeline down.
       answers `200` for `/` and for `/api/health`. Both services read back
       ingress `internal-and-cloud-load-balancing`.
 
-      **Still to watch: the first backend deploy through the closed
-      ingress.** The deploy of #1062 changed no application code, so it
-      skipped the backend and never ran the smoke test through
-      `quill-admin-app`. The next merge that touches `backend/` is the
-      one that proves it. If its smoke test fails, traffic stays on the
-      previous revision and the site stays up; the fix is to revert #1062.
+      **The first backend deploy through the closed ingress passed**, on
+      the merge of #1071 on 2026-09-24. Its log reads "Checking through
+      quill-admin-app, which can reach a closed ingress", the job
+      execution completed, and it promoted `quill-backend-app-00080-cob`.
+      The deploy of #1075 did the same. The deploy of #1062 itself had
+      changed no application code and skipped the backend.
 
 - [x] Verify Cloud Armor then sees the traffic — the throttle rule at
       `infra/modules/load-balancer/main.tf` should be reachable on every
@@ -2013,8 +2013,9 @@ missing MX or DKIM record fails quietly, as mail that never arrives.
       same answer, so there is no window in which a stale answer is a
       wrong one. The delegation TTL that governs the move is set by the
       `.com` registry, at 48 hours, not by either zone.
-- [ ] **(Mark)** Change the nameservers for `quill-medical.com` at
-      GoDaddy to the new set.
+- [x] **(Mark)** Change the nameservers for `quill-medical.com` at
+      GoDaddy to the new set. Done on 2026-09-24; the `.com` registry
+      listed `ns-cloud-e1…e4` within minutes.
 - [ ] Leave the old zone serving for at least 48 hours, until every
       resolver has moved. Check the site, a sent and a received email, and
       a Resend message before it goes.
@@ -2042,9 +2043,11 @@ un-deferred on 2026-09-24. Still true on that date: `quill-medical.net`,
       has no certificate for those `www.` names yet. GoDaddy issues them
       itself after forwarding is switched on, so this should clear without
       any action.
-- [ ] **(Claude)** Re-check `https://www.` on `.net`, `.me`, `.store` and
+- [x] **(Claude)** Re-check `https://www.` on `.net`, `.me`, `.store` and
       `.online` a day later. If it still fails, the fix is in GoDaddy's
-      forwarding settings, not in anything of ours.
+      forwarding settings, not in anything of ours. All four answer `301`
+      to `https://quill-medical.com/` on 2026-09-25: GoDaddy's
+      certificates arrived overnight, as expected.
 - [x] Leave `quill-medical.dev` alone. It may be served for real, as the
       `dev` environment.
 
@@ -2076,8 +2079,49 @@ un-deferred on 2026-09-24. Still true on that date: `quill-medical.net`,
       - `docs/docs/infrastructure/gcp.md` lost its production hibernation
         and restore section, and `docs/docs/cicd/index.md` its production
         promotion step.
-- [ ] **(Mark)** Delete the GitHub secrets `GCP_PROD_*` and
-      `GCP_STAGING_*`.
+- [x] **(Mark)** Delete the GitHub secrets `GCP_PROD_*` and
+      `GCP_STAGING_*`. Deleted by Claude at Mark's word on 2026-09-25, all
+      six repository secrets, after confirming no workflow on `main`
+      named them. None were set on the `production` or `staging` GitHub
+      environments, which still exist, empty.
+- [x] **(Claude)** Remove the empty `production`, `staging` and `teaching`
+      GitHub environments, and bring `app` under Terraform in their place.
+
+      Found on 2026-09-25, after the secrets went. No workflow names any
+      of the three: `deploy.yml` and `terraform.yml` use `app`, and
+      `gate-breaking.yml` the two review environments. They hold no
+      secrets and no protection rules. `production` and `staging` were
+      never in Terraform, so they are deleted with
+      `gh api -X DELETE repos/bailey-medics/quillmedical/environments/<name>`.
+
+      `teaching` is in `infra/github/environments.tf`, with a
+      main-only deployment policy, but that policy has drifted: the live
+      environment reads `deployment_branch_policy: null`. Meanwhile
+      `app`, the environment that actually guards the deploy and the
+      apply, has its main-only policy set by hand and not in Terraform
+      at all. So swap one for the other: rename the two `teaching`
+      resources to `app` and point them at the `app` environment, drop
+      the old addresses from state with `terraform state rm` (a `moved`
+      block would carry `teaching`'s state across and plan to rename the
+      live environment), `terraform import` the live `app` environment
+      and its policy, and then delete `teaching`. `infra/github` is
+      applied by hand, not by CI, so its plan must be read and applied
+      locally, and it must show no change to `app`'s main-only policy.
+
+      Done on 2026-09-25, at Mark's word. A plan of the untouched
+      configuration first showed `teaching` as the only drift. After the
+      swap and the two imports, the plan read "No changes", so nothing was
+      applied: `app` and its `main` policy (id `60587156`) were adopted as
+      they stood. The three environments were then deleted, leaving
+      `app`, the two review gates, `copilot` and `github-pages`, and a
+      final plan still read "No changes".
+
+      Found on the way: the `infra/github` state is a local file,
+      `infra/github/terraform.tfstate` in the main checkout, and not in a
+      bucket. It exists on one laptop, with no locking and no versioning.
+      Worth moving into `quill-medical-app-terraform-state` under its own
+      prefix, as a step of its own.
+
 - [ ] **(Mark)** Delete both projects, once Phase 2's 48 hours have passed.
       Their Workload Identity pools, the dead staging zone and the old state
       bucket go with them. Google keeps a deleted project recoverable for 30
@@ -2170,7 +2214,7 @@ lookalike names were cheap enough that waiting saved nothing.
       somebody else using them, not to be served. Around £18 for the first
       year, with `.net` and `.me` the only two worth much at renewal.
 
-- [ ] Forward the five defensive names to `https://quill-medical.com` at
+- [x] Forward the five defensive names to `https://quill-medical.com` at
       the registrar, using its own HTTP forwarding rather than DNS records
       of ours. The registrar supplies the certificate, so this costs
       nothing and adds no infrastructure. A typo then lands on the real
@@ -2193,7 +2237,7 @@ lookalike names were cheap enough that waiting saved nothing.
       `https://quill-medical.com` on each of the five, in GoDaddy.
 
       **Deferred by Mark on 2026-09-23.** Moved to Batch 10a Phase 3 on
-      2026-09-24, and no longer deferred.
+      2026-09-24, and done there.
 
 - [x] Do not add them to our load balancer's managed certificate.
       Holds as of 2026-09-23: `quill-cert-app-6bc99c16` lists only
@@ -2204,9 +2248,10 @@ lookalike names were cheap enough that waiting saved nothing.
       only goes active once every domain on it validates, so a name that
       fails to validate would take TLS down for the real site.
 
-- [ ] Do not forward `quill-medical.dev`. It is the one name here that
+- [x] Do not forward `quill-medical.dev`. It is the one name here that
       may be served for real later, and a redirect would have to be undone
       first.
+      Superseded: Mark forwarded it on 2026-09-24. See Batch 10a Phase 3.
 
 - [ ] Set auto-renew and registrar lock on all six, with a company card
       and a shared billing address.
