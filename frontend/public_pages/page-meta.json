@@ -1,0 +1,66 @@
+{
+  "index": {
+    "title": "Quill Medical",
+    "description": "Online learning and assessment for clinicians, built by clinicians."
+  },
+  "optical-diagnosis": {
+    "title": "Optical diagnosis",
+    "description": "An online assessment of optical diagnosis of diminutive colorectal polyps, built with the East of England Endoscopy Training Academy."
+  },
+  "assessments": {
+    "title": "Assessments",
+    "description": "Timed online assessments drawn at random from a question bank, with every result tied to the exact questions sat."
+  },
+  "learning": {
+    "title": "Learning",
+    "description": "Slide-based learning modules with captioned video, built to be read on a phone as easily as a desktop."
+  },
+  "clinical-teaching": {
+    "title": "Clinical teaching",
+    "description": "Online learning and assessment for clinicians, built by clinicians."
+  },
+  "clinical-records": {
+    "title": "Clinical records",
+    "description": "A clinical record on open standards, in development alongside our learning and assessment platform."
+  },
+  "about": {
+    "title": "About",
+    "description": "Quill Medical is a clinician-led company building online learning and assessment for clinicians."
+  },
+  "pricing": {
+    "title": "Pricing",
+    "description": "Pricing for Quill Medical is agreed with each organisation. Talk to us."
+  },
+  "careers": {
+    "title": "Careers",
+    "description": "Careers at Quill Medical, a clinician-led software company."
+  },
+  "contact": {
+    "title": "Contact",
+    "description": "Get in touch with Quill Medical."
+  },
+  "company-information": {
+    "title": "Company information",
+    "description": "Company information for Quill Medical."
+  },
+  "privacy-policy": {
+    "title": "Privacy policy",
+    "description": "How Quill Medical handles personal data."
+  },
+  "terms-of-service": {
+    "title": "Terms of service",
+    "description": "The terms of service for Quill Medical."
+  },
+  "cookie-policy": {
+    "title": "Cookie policy",
+    "description": "The cookies the Quill Medical website uses."
+  },
+  "not-found": {
+    "title": "Page not found",
+    "description": "The page you were looking for could not be found."
+  },
+  "storybook-test": {
+    "title": "Storybook test",
+    "description": "A demonstration page for the public site's components."
+  }
+}
