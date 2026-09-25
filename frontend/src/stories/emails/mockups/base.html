@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en-GB" xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="x-apple-disable-message-reformatting" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="supported-color-schemes" content="light dark" />
+    <title>{{subject}}</title>
+    <link rel="stylesheet" href="{{fontLink}}" />
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        -webkit-text-size-adjust: 100%;
+      }
+      table {
+        border-collapse: collapse;
+      }
+      img {
+        border: 0;
+        display: block;
+        outline: none;
+        text-decoration: none;
+      }
+      a {
+        color: {{link}};
+      }
+      @media (max-width: 620px) {
+        .em-container {
+          width: 100% !important;
+        }
+        .em-pad {
+          padding-left: 20px !important;
+          padding-right: 20px !important;
+        }
+        .em-button a {
+          display: block !important;
+        }
+      }
+      @media (prefers-color-scheme: dark) {
+        .em-bg {
+          background-color: {{darkBackground}} !important;
+        }
+        .em-card {
+          background-color: {{darkCard}} !important;
+          border-color: {{darkBorder}} !important;
+        }
+        .em-header {
+          background-color: {{darkHeader}} !important;
+        }
+        .em-panel {
+          background-color: {{darkPanel}} !important;
+        }
+        .em-text,
+        .em-text p,
+        .em-text h1,
+        .em-text h2 {
+          color: {{darkText}} !important;
+        }
+        .em-muted,
+        .em-muted p,
+        .em-text p.em-muted {
+          color: {{darkMuted}} !important;
+        }
+        .em-footer {
+          background-color: {{darkBackground}} !important;
+          border-color: {{darkBorder}} !important;
+        }
+        .em-text a,
+        .em-muted a {
+          color: {{darkLink}} !important;
+        }
+        /* Buttons keep their own colours: the fill does not change. */
+        .em-text a.em-button-link {
+          color: {{buttonText}} !important;
+        }
+      }
+    </style>
+  </head>
+  <body
+    class="em-bg"
+    style="margin: 0; padding: 0; background-color: {{background}}"
+  >
+    <!-- Preheader: the line an inbox shows after the subject. Hidden in the body. -->
+    <div
+      style="display: none; max-height: 0; overflow: hidden; mso-hide: all; font-size: 1px; line-height: 1px; color: {{background}}"
+    >
+      {{preheader}}&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;
+    </div>
+
+    <table
+      role="presentation"
+      class="em-bg"
+      width="100%"
+      cellpadding="0"
+      cellspacing="0"
+      style="background-color: {{background}}"
+    >
+      <tr>
+        <td align="center" style="padding: 32px 12px">
+          <table
+            role="presentation"
+            class="em-container em-card"
+            width="600"
+            cellpadding="0"
+            cellspacing="0"
+            style="width: 600px; max-width: 600px; background-color: {{card}}; border: 1px solid {{border}}; border-radius: 8px; overflow: hidden"
+          >
+            <!-- Header band -->
+            <tr>
+              <td
+                class="em-header em-pad"
+                style="background-color: {{header}}; padding: 24px 40px; border-bottom: {{headerRule}}"
+              >
+                {{headerContent}}
+              </td>
+            </tr>
+
+            <!-- Content -->
+            <tr>
+              <td
+                class="em-text em-pad"
+                style="padding: 36px 40px 32px; font-family: {{fontFamily}}; font-size: 16px; line-height: 1.6; color: {{text}}"
+              >
+                {{body}}
+              </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td
+                class="em-footer em-muted em-pad"
+                style="padding: 24px 40px 28px; background-color: {{footerBackground}}; border-top: 1px solid {{border}}; font-family: {{fontFamily}}; font-size: 13px; line-height: 1.5; color: {{muted}}"
+              >
+                {{footer}}
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
