@@ -12,6 +12,8 @@ import { emailMockups, type EmailMockupName } from "./content";
 import { emailThemes, type EmailThemeName } from "./themes";
 
 export interface RenderOptions {
+  /** Show the partner's logo in the partner strip, where there is one */
+  partnerLogo?: boolean;
   /**
    * Force the dark scheme. Rewrites the `prefers-color-scheme: dark` media
    * query to always apply, so the preview does not depend on the viewer's
@@ -24,6 +26,7 @@ export interface RenderedMockup {
   subject: string;
   preheader: string;
   senderName: string;
+  replyTo?: string;
   html: string;
 }
 
@@ -35,7 +38,9 @@ export function renderMockup(
   options: RenderOptions = {},
 ): RenderedMockup {
   const theme = emailThemes[themeName];
-  const email = emailMockups[emailName](theme);
+  const email = emailMockups[emailName](theme, {
+    partnerLogo: options.partnerLogo ?? true,
+  });
 
   const values: Record<string, string> = {
     ...Object.fromEntries(
@@ -45,6 +50,7 @@ export function renderMockup(
     preheader: email.preheader,
     body: email.body,
     footer: email.footer,
+    partnerStrip: email.partnerStrip ?? "",
   };
 
   let html = baseHtml.replace(PLACEHOLDER, (match: string, key: string) => {
@@ -63,6 +69,7 @@ export function renderMockup(
     subject: email.subject,
     preheader: email.preheader,
     senderName: email.senderName ?? theme.senderName,
+    replyTo: email.replyTo,
     html,
   };
 }

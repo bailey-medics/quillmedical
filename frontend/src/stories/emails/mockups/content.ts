@@ -13,7 +13,8 @@
 
 import type { EmailTheme } from "./themes";
 
-export type EmailMockupName = "passwordReset" | "passportInvite" | "newsletter";
+export type EmailMockupName =
+  "passwordReset" | "passportInvite" | "certificate" | "newsletter";
 
 export interface EmailMockup {
   subject: string;
@@ -21,8 +22,71 @@ export interface EmailMockup {
   preheader: string;
   /** Overrides the theme's sender name in the inbox preview */
   senderName?: string;
+  /** Where a reply goes, when it is not the sender */
+  replyTo?: string;
+  /** The partner strip under the header, for emails sent for a partner */
+  partnerStrip?: string;
   body: string;
   footer: string;
+}
+
+export interface MockupOptions {
+  /** Show the partner's logo; without it the strip shows their name */
+  partnerLogo: boolean;
+}
+
+/** A partner Quill runs an assessment or course for. */
+interface Partner {
+  name: string;
+  /** For the sender line: "EoEETA via Quill Medical" */
+  shortName: string;
+  /** What the email is about, in the partner's words */
+  context: string;
+  replyTo: string;
+  /** The logo at its display size; the file is 2x */
+  logo: { src: string; width: number; height: number };
+}
+
+const EOEETA: Partner = {
+  name: "East of England Endoscopy Training Academy",
+  shortName: "EoEETA",
+  context: "Optical diagnosis accreditation",
+  replyTo: "coordinator@eoeeta.example",
+  logo: { src: "/email/partners/eoeeta-email.png", width: 162, height: 72 },
+};
+
+/**
+ * The partner strip: a white band under the header naming who the email
+ * is for. White because most partners' logos are drawn for white, and
+ * would vanish on the navy header. With no logo, the name stands in.
+ *
+ * It stays white in dark mode too: partners' logos have transparent
+ * backgrounds drawn for white, and would be lost on a dark card.
+ */
+function partnerStrip(t: EmailTheme, p: Partner, withLogo: boolean): string {
+  // The logo carries the partner's name, so its alt text does too
+  const mark = withLogo
+    ? // Nudged in 8px: the logo's own lettering starts flush with the
+      // image edge, and looked further left than the body text below
+      `<td style="padding: 0 24px 0 8px; vertical-align: middle">` +
+      `<img src="${p.logo.src}" width="${p.logo.width}" ` +
+      `height="${p.logo.height}" alt="${p.name}" ` +
+      `style="width: ${p.logo.width}px; height: ${p.logo.height}px" /></td>`
+    : "";
+  const words = withLogo
+    ? `<p style="margin: 0">${p.context}</p>`
+    : `<p style="margin: 0; font-weight: 700; color: ${t.heading}">` +
+      `${p.name}</p><p style="margin: 0">${p.context}</p>`;
+  return (
+    `<tr><td class="em-pad" style="padding: 20px 40px; ` +
+    `background-color: #ffffff; border-bottom: 1px solid ${t.border}">` +
+    `<table role="presentation" cellpadding="0" cellspacing="0"><tr>` +
+    mark +
+    `<td style="vertical-align: middle; ` +
+    `font-family: ${t.fontFamily}; font-size: 19px; line-height: 1.4; ` +
+    `color: ${t.muted}">${words}</td>` +
+    `</tr></table></td></tr>`
+  );
 }
 
 /**
@@ -117,7 +181,7 @@ const INVITE_URL =
 
 export const emailMockups: Record<
   EmailMockupName,
-  (t: EmailTheme) => EmailMockup
+  (t: EmailTheme, o: MockupOptions) => EmailMockup
 > = {
   passwordReset: (t) => ({
     subject: "Reset your Quill password",
@@ -175,6 +239,37 @@ export const emailMockups: Record<
       t,
       "You are receiving this because Dr Priya Shah entered this address " +
         "when inviting an assessor on Quill.",
+    ),
+  }),
+
+  certificate: (t, o) => ({
+    subject: "Your certificate: optical diagnosis of diminutive polyps",
+    preheader: "You passed. Your certificate is attached.",
+    senderName: `${EOEETA.shortName} via ${t.senderName}`,
+    replyTo: EOEETA.replyTo,
+    partnerStrip: partnerStrip(t, EOEETA, o.partnerLogo),
+    body:
+      heading(t, "Your *certificate*") +
+      paragraph("Dear Dr Sam Patel,") +
+      paragraph(
+        "Congratulations. You have passed the optical diagnosis " +
+          "assessment for diminutive colorectal polyps, with a score " +
+          "of 92%.",
+      ) +
+      paragraph(
+        "Your certificate is attached as a PDF. Keep it with your " +
+          "training records: your accreditation lead may ask to see it.",
+      ) +
+      button(t, "View your results", "https://app.quill-medical.com") +
+      small(
+        t,
+        `Questions about the assessment go to ${EOEETA.shortName}: reply ` +
+          "to this email and it will reach their coordinator.",
+      ),
+    footer: transactionalFooter(
+      t,
+      `Sent by ${t.senderName} on behalf of ${EOEETA.name}. You are ` +
+        "receiving this because you sat an assessment on Quill.",
     ),
   }),
 

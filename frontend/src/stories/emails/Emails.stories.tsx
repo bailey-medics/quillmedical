@@ -27,10 +27,21 @@ interface EmailPreviewProps {
   theme: EmailThemeName;
   device: Device;
   scheme: Scheme;
+  /** For emails sent for a partner: show their logo, or only their name */
+  partnerLogo: boolean;
 }
 
-function EmailPreview({ email, theme, device, scheme }: EmailPreviewProps) {
-  const rendered = renderMockup(theme, email, { dark: scheme === "dark" });
+function EmailPreview({
+  email,
+  theme,
+  device,
+  scheme,
+  partnerLogo,
+}: EmailPreviewProps) {
+  const rendered = renderMockup(theme, email, {
+    dark: scheme === "dark",
+    partnerLogo,
+  });
   const [height, setHeight] = useState(600);
 
   return (
@@ -45,10 +56,13 @@ function EmailPreview({ email, theme, device, scheme }: EmailPreviewProps) {
           {rendered.subject}
         </Text>
         <StoryNote mt={0}>{rendered.preheader}</StoryNote>
+        {rendered.replyTo && (
+          <StoryNote mt={0}>Reply to: {rendered.replyTo}</StoryNote>
+        )}
       </div>
       <iframe
         // Remounts on every change, so the height is measured afresh
-        key={`${theme}-${email}-${device}-${scheme}`}
+        key={`${theme}-${email}-${device}-${scheme}-${partnerLogo}`}
         title={`${rendered.subject}, ${theme} theme`}
         className={`${classes.frame} ${classes[device]}`}
         height={height}
@@ -79,7 +93,13 @@ const meta: Meta<typeof EmailPreview> = {
     },
     email: {
       control: "select",
-      options: ["passwordReset", "passportInvite", "newsletter"],
+      options: ["passwordReset", "passportInvite", "certificate", "newsletter"],
+    },
+    partnerLogo: {
+      control: "boolean",
+      description:
+        "Emails sent for a partner only. Off shows the partner's name " +
+        "in place of their logo.",
     },
     device: {
       control: "inline-radio",
@@ -97,6 +117,7 @@ const meta: Meta<typeof EmailPreview> = {
     theme: "quill",
     device: "desktop",
     scheme: "light",
+    partnerLogo: true,
   },
 };
 
@@ -109,6 +130,20 @@ export const PasswordReset: Story = {
 
 export const PassportInvite: Story = {
   args: { email: "passportInvite" },
+};
+
+/**
+ * A certificate sent for a partner, here EoEETA. Quill stays the sender;
+ * the partner appears in a white strip under the header, in the sender
+ * name ("EoEETA via Quill Medical") and as the reply-to address.
+ */
+export const EoeetaCertificate: Story = {
+  args: { email: "certificate" },
+};
+
+/** The same, for a partner with no logo on file: their name stands in. */
+export const EoeetaCertificateWithoutLogo: Story = {
+  args: { email: "certificate", partnerLogo: false },
 };
 
 export const Newsletter: Story = {
