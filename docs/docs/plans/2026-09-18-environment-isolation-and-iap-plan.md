@@ -1683,7 +1683,7 @@ partway, with some resources changed and others not.
         --format="value(protoPayload.methodName,protoPayload.resourceName)"
       ```
 
-- [ ] **(Mark)** Add a specific role for each service in the audit log,
+- [x] **(Mark)** Add a specific role for each service in the audit log,
       alongside `editor`: `roles/cloudsql.admin`, `roles/storage.admin`,
       `roles/compute.loadBalancerAdmin`, `roles/compute.securityAdmin`,
       `roles/monitoring.editor`, `roles/bigquery.admin`,
@@ -1692,10 +1692,44 @@ partway, with some resources changed and others not.
       `logging.configWriter`, `servicenetworking.networksAdmin` and three
       IAM roles it already holds.
 
-- [ ] **(Mark)** Remove `editor`, then run `terraform plan` at once. A
+      **Checked again on 2026-09-25 against the resources in state, and
+      the list above missed one:** `roles/dns.admin`. The
+      `quill-medical.com` zone and its twelve records joined Terraform in
+      Batch 10a, after this list was written from the audit log. Without
+      it, removing `editor` fails the first plan on the zone. Two changes
+      of role too:
+
+      - `roles/bigquery.dataOwner` rather than `roles/bigquery.admin`.
+        Terraform manages one dataset and one dataset IAM binding, which
+        `dataOwner` covers; `admin` adds jobs, reservations and every
+        dataset in the project.
+      - `compute.securityAdmin` is needed for the three firewall rules as
+        well as the Cloud Armor policy. `compute.networkAdmin` can read
+        firewall rules but not create or change them.
+
+      `roles/iam.serviceAccountUser` stays project-wide rather than
+      narrowed to the five `run-*` accounts. Terraform creates those
+      accounts, so a sixth workload would need a new grant before its
+      first apply, and the account holds `projectIamAdmin` either way, so
+      narrowing it buys nothing.
+
+      Written as two scripts: one adds the nine roles beside `editor`,
+      which changes nothing running; the other removes `editor` and says
+      how to prove it and how to undo it.
+
+- [x] **(Mark)** Remove `editor`, then run `terraform plan` at once. A
       plan exercises every read permission without changing anything, so
       a missing read fails there safely. A missing write only shows at
       the next apply, so make the next infrastructure change a small one.
+
+      Both scripts run by Mark on 2026-09-25. Read back, `editor` is gone
+      and the account holds seventeen specific roles. A
+      `workflow_dispatch` apply from `main` straight afterwards read "No
+      changes", so every read permission the plan needs is present
+      ([run 36172478121](https://github.com/bailey-medics/quillmedical/actions/runs/36172478121)).
+      Write permissions are proven only by the next change that creates
+      or updates something; if one is missing, that apply fails on the
+      resource it names, and the fix is one more role.
 
 ### Phase 6: Give each workload its own runtime identity
 
@@ -1846,9 +1880,11 @@ are Cloud Storage and Cloud Run jobs.
       identities next time, not after a user finds the 500. This is the step
       where the frontend actually stops being able to read the secrets.
 
-- [ ] **(Mark)** Narrow the deploy account from Phase 1 to
+- [x] **(Mark)** Narrow the deploy account from Phase 1 to
       `roles/iam.serviceAccountUser` on the five runtime accounts rather
       than on the default Compute Engine one, once they exist.
+      Done from the start: `github-deploy` was created on 2026-09-25 with
+      `serviceAccountUser` on the five `run-*` accounts and nothing else.
 
 ## Batch 9a — Claude and Mark: unblock the Terraform apply
 
