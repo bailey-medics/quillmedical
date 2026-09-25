@@ -65,7 +65,10 @@ nav:
       - Public Pages: frontend/public-pages.md
       - User Workflows: frontend/workflows.md
       - Security: frontend/security.md
-      - Accessibility: frontend/accessibility.md
+      - Accessibility:
+          - Overview: frontend/accessibility.md
+          - Test journeys: frontend/accessibility/journeys.md
+          - Testing log: frontend/accessibility/testing-log.md
       - Storybook: frontend/storybook/index.md
       - Test Infrastructure: frontend/test-infrastructure-setup.md
   - Infrastructure:
