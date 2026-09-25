@@ -68,3 +68,4 @@
 - [Remove Registration Verification](2026-09-24-remove-registration-verification-plan.md)
 - [Email Branding](2026-09-25-email-branding-plan.md)
 - [Public Pages Learning Refocus](2026-09-25-public-pages-learning-refocus-plan.md)
+- [Stacked Gate Approvals](2026-09-25-stacked-gate-approvals-plan.md)
