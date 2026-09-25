@@ -17,7 +17,9 @@ describe("PublicFooter", () => {
 
   it("renders the description text", () => {
     renderWithMantine(<PublicFooter />);
-    expect(screen.getByText(/modern, secure platform/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/online learning and assessment for clinicians/i),
+    ).toBeInTheDocument();
   });
 
   it("renders link group titles", () => {
@@ -29,12 +31,30 @@ describe("PublicFooter", () => {
 
   it("renders feature links within the Features group", () => {
     renderWithMantine(<PublicFooter />);
-    expect(screen.getByText("Messaging")).toBeInTheDocument();
-    expect(screen.getByText("Records")).toBeInTheDocument();
-    expect(screen.getByText("Modules")).toBeInTheDocument();
-    expect(screen.getByText("Access")).toBeInTheDocument();
-    expect(screen.getByText("Referrals")).toBeInTheDocument();
-    expect(screen.getByText("Teaching")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Teaching" })).toHaveAttribute(
+      "href",
+      "/clinical-teaching",
+    );
+    expect(
+      screen.getByRole("link", { name: "Clinical records" }),
+    ).toHaveAttribute("href", "/clinical-records");
+  });
+
+  it("no longer links to the retired patient record pages", () => {
+    renderWithMantine(<PublicFooter />);
+    for (const retired of [
+      "/clinical-messaging",
+      "/structured-records",
+      "/modular-deployment",
+      "/competency-access",
+      "/external-referrals",
+    ]) {
+      expect(
+        screen
+          .getAllByRole("link")
+          .some((link) => link.getAttribute("href") === retired),
+      ).toBe(false);
+    }
   });
 
   it("renders links within other groups", () => {

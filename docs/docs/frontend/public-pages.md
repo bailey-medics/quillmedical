@@ -17,21 +17,16 @@ frontend/
 │   └── src/pages/
 │       ├── about.tsx
 │       ├── careers.tsx
-│       ├── clinical-messaging.tsx
+│       ├── clinical-records.tsx
 │       ├── clinical-teaching.tsx
 │       ├── company-information.tsx
-│       ├── competency-access.tsx
 │       ├── contact.tsx
 │       ├── cookie-policy.tsx
-│       ├── external-referrals.tsx
-│       ├── features.tsx
 │       ├── index.tsx           ← Home page
-│       ├── modular-deployment.tsx
 │       ├── not-found.tsx       ← 404 page
 │       ├── pricing.tsx
 │       ├── privacy-policy.tsx
 │       ├── storybook-test.tsx  ← Component demo
-│       ├── structured-records.tsx
 │       └── terms-of-service.tsx
 ├── src/
 │   ├── theme.ts            ← Shared Mantine theme
@@ -75,7 +70,7 @@ Each TSX file in `src/pages/` is a standalone React entry point, not a route. Th
 
 1. Scans `src/pages/` for `.tsx` files
 2. Reads `templates/page.html` as a template
-3. Generates a title from the filename (e.g. `features` → "Features", `not-found` → "Not Found")
+3. Generates a title from the filename (e.g. `pricing` → "Pricing", `not-found` → "Not Found")
 4. Writes an HTML file with the correct `<script>` entry point
 
 **When it runs:**
@@ -90,7 +85,7 @@ Each TSX file in `src/pages/` is a standalone React entry point, not a route. Th
 <script type="module" src="/src/pages/pricing.tsx"></script>
 ```
 
-You must also add the new page to `rollupOptions.input` in `vite.config.ts` for production builds.
+The production build picks the page up too: `rollupOptions.input` in `vite.config.ts` is built from the same `src/pages/` listing, so there is no list to keep in step by hand.
 
 ## Adding a new page
 
@@ -114,16 +109,7 @@ You must also add the new page to `rollupOptions.input` in `vite.config.ts` for 
    );
    ```
 
-2. Add the entry to `vite.config.ts` → `build.rollupOptions.input`:
-
-   ```typescript
-   input: {
-     // ... existing entries
-     "my-page": path.resolve(__dirname, "my-page.html"),
-   },
-   ```
-
-3. Run `just pup` — the HTML file is generated automatically and the dev server opens.
+2. Run `just pup` — the HTML file is generated automatically and the dev server opens.
 
 ## PublicLayout
 

@@ -12,14 +12,7 @@ import PublicBodyText from "@/components/typography/PublicBodyText";
 import { Box, Container, Group, SimpleGrid, Stack } from "@mantine/core";
 import PublicMantineProvider from "../PublicMantineProvider";
 import "../global-styles";
-import {
-  IconChalkboardTeacher,
-  IconDatabase,
-  IconMessage,
-  IconPhoneRinging,
-  IconSlice,
-  IconStack2,
-} from "@tabler/icons-react";
+import { IconChalkboardTeacher, IconDatabase } from "@tabler/icons-react";
 import { createRoot } from "react-dom/client";
 
 createRoot(document.getElementById("root")!).render(
@@ -51,14 +44,14 @@ createRoot(document.getElementById("root")!).render(
               description="HL7-compliant data layer"
             />
             <PublicInfoCard
-              label="Clinical Safety"
-              heading="DCB 0129"
-              description="Certification"
+              label="Assessments"
+              heading="Version-locked"
+              description="Every result traceable to the questions sat"
             />
             <PublicInfoCard
-              label="Data Residency"
-              heading="UK / EU"
-              description="GCP European region"
+              label="Data residency"
+              heading="UK hosted"
+              description="Your data stays in the UK"
             />
           </SimpleGrid>
         </Container>
@@ -94,52 +87,24 @@ createRoot(document.getElementById("root")!).render(
       <PublicDarkBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
-            <PublicTitle
-              title="Everything a clinic *actually* needs!"
-              c="white"
-            />
+            <PublicTitle title="What we *build*" c="white" />
             <PublicBodyText justify="centre">
-              Quill brings together patient records, clinical messaging,
-              letters, and structured documentation in a single coherent system
-              — modular by design, so you deploy only what you need.
+              Online learning and assessment for clinicians, and a clinical
+              record built on the same foundations.
             </PublicBodyText>
           </Stack>
           <PublicFeatureCardGrid>
             <PublicFeatureCard
-              icon={IconMessage}
-              title="Clinical messaging"
-              body="FHIR Communication resources underpin a secure, threaded messaging layer — with governance metadata kept cleanly separate from clinical content."
-              href="/clinical-messaging"
+              icon={IconChalkboardTeacher}
+              title="Learning and assessment"
+              body="Learning modules and fair, timed assessments, with a certificate on a pass."
+              href="/clinical-teaching"
             />
             <PublicFeatureCard
               icon={IconDatabase}
-              title="Structured clinical records"
-              body="OpenEHR archetypes ensure clinical data is semantically rich, queryable, and portable — not free-text trapped in a notes field."
-              href="/structured-records"
-            />
-            <PublicFeatureCard
-              icon={IconStack2}
-              title="Modular deployment"
-              body="Deploy Quill as a full EPR or activate only the modules your organisation needs — runtime feature gating means you grow the system alongside your workflows."
-              href="/modular-deployment"
-            />
-            <PublicFeatureCard
-              icon={IconSlice}
-              title="Competency-based access"
-              body="CBAC models real NHS clinical hierarchies — locums, trainees, and consultants — with fine-grained, auditable permissions that reflect actual clinical practice."
-              href="/competency-access"
-            />
-            <PublicFeatureCard
-              icon={IconPhoneRinging}
-              title="External referrals made easy"
-              body="Refer a patient and the receiving clinician gets immediate, structured access to their record. No faxes, no lost letters, no repeating history."
-              href="/external-referrals"
-            />
-            <PublicFeatureCard
-              icon={IconChalkboardTeacher}
-              title="Clinical teaching platform"
-              body="A structured MCQ-based learning platform for trainees across every specialty — built on the same clinical foundation as the EPR, not bolted on as an afterthought."
-              href="/clinical-teaching"
+              title="Clinical records"
+              body="A clinical record on open standards, in development. Talk to us about early access."
+              href="/clinical-records"
             />
           </PublicFeatureCardGrid>
         </Container>
