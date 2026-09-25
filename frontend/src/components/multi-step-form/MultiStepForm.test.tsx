@@ -5,6 +5,7 @@
  * progress tracking, and validation.
  */
 
+import { useState } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -544,5 +545,38 @@ describe("MultiStepForm", () => {
       }
       expect(screen.getByText("Step 2 Content")).toBeInTheDocument();
     });
+  });
+
+  it("keeps an earlier answer when the user goes back (WCAG 3.3.7)", async () => {
+    // Redundant entry: going back must show what was typed, not an empty
+    // field to fill in again. The pages hold their answers above the
+    // form, and each step reads from there, so a step can unmount and
+    // come back with its value.
+    function Harness() {
+      const [name, setName] = useState("");
+      const steps: StepConfig[] = [
+        {
+          label: "Details",
+          content: () => (
+            <label>
+              Full name
+              <input value={name} onChange={(e) => setName(e.target.value)} />
+            </label>
+          ),
+        },
+        { label: "Account", content: () => <div>Account step</div> },
+      ];
+      return <MultiStepForm steps={steps} onCancel={mockOnCancel} />;
+    }
+
+    const user = userEvent.setup();
+    renderWithMantine(<Harness />);
+
+    await user.type(screen.getByLabelText("Full name"), "Ada Lovelace");
+    await user.click(screen.getByRole("button", { name: /Next/i }));
+    expect(screen.getByText("Account step")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Back/i }));
+
+    expect(screen.getByLabelText("Full name")).toHaveValue("Ada Lovelace");
   });
 });
