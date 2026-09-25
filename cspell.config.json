@@ -120,11 +120,15 @@
     "colonoscopists",
     "ASGE",
     "BCSP",
+    "endcall",
+    "endmacro",
+    "endset",
     "ESGE",
     "fromisoformat",
     "isoformat",
     "ital",
     "monthrange",
+    "nbsp",
     "PIVI",
     "color",
     "Colorblind",
@@ -810,6 +814,7 @@
     "zaproxy",
     "zoneinfo",
     "zstd",
+    "zwnj",
     "zxcvbn"
   ],
   "ignoreWords": [

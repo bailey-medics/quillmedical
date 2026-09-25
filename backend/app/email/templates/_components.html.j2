@@ -1,0 +1,51 @@
+{#-
+  The pieces an email's body is built from, as in the Phase 1 mock-up's
+  content.ts. Import with context, so `t` (the theme) is in scope:
+
+    {% import "_components.html.j2" as c with context %}
+
+  Every style is inline: email clients ignore stylesheets often enough
+  that inline is the only thing to rely on.
+-#}
+
+{#- The main heading. Words in *asterisks* are set in the accent colour. -#}
+{% macro heading(text) -%}
+<h1 style="margin: 0 0 20px; font-family: {{ t.heading_font_family }}; font-size: {{ t.h1_size }}; line-height: 1.2; font-weight: {{ t.heading_weight }}; color: {{ t.heading }}">{{ text | accent(t.heading_accent) }}</h1>
+{%- endmacro %}
+
+{% macro subheading(text, colour=None) -%}
+<h2 style="margin: 0 0 8px; font-family: {{ t.heading_font_family }}; font-size: {{ t.h2_size }}; line-height: 1.25; font-weight: {{ t.heading_weight }}; color: {{ colour or t.heading }}">{{ text | accent(t.heading_accent) }}</h2>
+{%- endmacro %}
+
+{#- Body text. Call with a block to hold markup: {% call c.paragraph() %} -#}
+{% macro paragraph(text=None) -%}
+<p style="margin: 0 0 16px">{% if caller is defined %}{{ caller() }}{% else %}{{ text }}{% endif %}</p>
+{%- endmacro %}
+
+{#- Secondary text: link lifetimes, "if this was not you". -#}
+{% macro small(text) -%}
+<p class="em-muted" style="margin: 0 0 12px; font-size: 19px; color: {{ t.muted }}">{{ text }}</p>
+{%- endmacro %}
+
+{#-
+  A "bulletproof" button: a table cell carrying the colour, so Outlook,
+  which ignores padding on links, still draws a filled button.
+-#}
+{% macro button(label, href) -%}
+<table role="presentation" class="em-button" cellpadding="0" cellspacing="0" style="margin: 8px 0 24px; border-collapse: separate">
+  <tr>
+    <td style="border-radius: {{ t.button_radius }}; background-color: {{ t.button_background }}">
+      <a href="{{ href }}" class="em-button-link" style="display: inline-block; padding: 12px 22px; font-family: {{ t.font_family }}; font-size: 19px; font-weight: 600; line-height: 1; color: {{ t.button_text }}; text-decoration: none; border-radius: {{ t.button_radius }}; text-align: center">{{ label }}</a>
+    </td>
+  </tr>
+</table>
+{%- endmacro %}
+
+{#- A callout, drawn like the public site's PublicInfoCard. Call with a block. -#}
+{% macro panel() -%}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 8px 0 24px; border-collapse: separate">
+  <tr>
+    <td class="em-panel" style="padding: 24px 28px; border-radius: 8px; border: 1px solid {{ t.panel_border }}; background-color: {{ t.panel }}; color: {{ t.panel_text }}">{{ caller() }}</td>
+  </tr>
+</table>
+{%- endmacro %}

@@ -226,20 +226,49 @@ sent for them.
 
 ## Phase 3: Renderer
 
-- [ ] **Add Jinja2 as a backend dependency** and create
+- [x] **Add Jinja2 as a backend dependency** and create
       `backend/app/email/templates/base.html.j2` with a `jinja2.Environment`
       in `backend/app/email/render.py`, autoescaping on for `.html.j2`.
       Autoescaping replaces the hand-written `html.escape` calls scattered
       through each template, so a new email cannot forget one. This is a
-      dependency change, so rebuild the test image with `just utr`.
+      dependency change, so rebuild the test image with `just utr`. Jinja2
+      turned out to be installed already, through the docs tooling in the
+      dev group; it is now a main dependency, because emails must not
+      depend on a dev group.
 
-- [ ] **Turn the approved mock-up into `base.html.j2`.** The markup moves
+- [x] **Turn the approved mock-up into `base.html.j2`.** The markup moves
       across as it is, including the Outlook conditional and the partner
       strip; only the hard-coded values become lookups into
       `shared/brand.yaml`, and the example content becomes blocks
       (`preheader`, `body`, `footer`, optional `partner`). The mock-up is
       the reference: if the rendered template looks different from it,
-      the template is wrong.
+      the template is wrong. The mock-up's helper functions (heading,
+      paragraph, button, panel) became Jinja macros in
+      `_components.html.j2`, and each email is a child template filling
+      the `subject`, `preheader`, `body`, `reason` and `text` blocks.
+
+- [x] **Send a plain-text part and a reply-to.** Extend `send_email` in
+      `backend/app/email_send.py` with an optional `text_body`, passed to
+      Resend as `text`, and an optional `reply_to`, passed as `reply_to`.
+      The renderer produces the text from the same template context. A
+      plain-text part improves deliverability and is what some screen
+      readers fall back to; the reply-to is how a partner's email sends
+      replies to the partner. It also takes a `from_name`, the display
+      name ("EoEETA via Quill Medical"), which the plan had missed: the
+      address stays `EMAIL_FROM`. A name holding a quote, an angle
+      bracket or a line break is refused, because it could end the From
+      header early and inject another header or address.
+
+- [x] **Expose one function, `render_email(template, theme, context)`**,
+      returning subject, HTML, text, and the sender name and reply-to where
+      a partner is given. Tests in `backend/tests/test_email_render.py`
+      cover escaping of hostile names, each theme rendering with its own
+      colours, a missing context value failing loudly
+      (`jinja2.StrictUndefined`), the preheader and footer being present,
+      every image URL being absolute, and the partner strip appearing only
+      when a partner is passed. The `EMAIL_ASSET_BASE_URL` setting it
+      prefixes to image paths was added here rather than in the hosting
+      step, which now follows, because the renderer needs it first.
 
 - [ ] **Serve the email images from the public site, at absolute URLs.**
       Email clients cannot follow relative paths, so each image is an
@@ -254,23 +283,6 @@ sent for them.
       setting to `backend/app/config.py` (`https://quill-medical.com` in
       production, the dev public site locally) that the renderer prefixes
       to every image path.
-
-- [ ] **Send a plain-text part and a reply-to.** Extend `send_email` in
-      `backend/app/email_send.py` with an optional `text_body`, passed to
-      Resend as `text`, and an optional `reply_to`, passed as `reply_to`.
-      The renderer produces the text from the same template context. A
-      plain-text part improves deliverability and is what some screen
-      readers fall back to; the reply-to is how a partner's email sends
-      replies to the partner.
-
-- [ ] **Expose one function, `render_email(template, theme, context)`**,
-      returning subject, HTML, text, and the sender name and reply-to where
-      a partner is given. Tests in `backend/tests/test_email_render.py`
-      cover escaping of hostile names, each theme rendering with its own
-      colours, a missing context value failing loudly
-      (`jinja2.StrictUndefined`), the preheader and footer being present,
-      every image URL being absolute, and the partner strip appearing only
-      when a partner is passed.
 
 ## Phase 4: Swap the Storybook mock-ups for real renders
 

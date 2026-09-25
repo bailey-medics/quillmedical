@@ -38,6 +38,9 @@ pywebpush = ">=2.0.3,<3.0.0"
 cryptography = ">=50.0.0,<50.1.0"
 fhirclient = ">=4.3.2,<5.0.0"
 pyyaml = ">=6.0,<7.0"
+# Branded email templates (backend/app/email/). Already present, as a
+# dependency of the docs tooling, but emails must not rely on a dev group.
+jinja2 = ">=3.1.6,<4.0.0"
 slowapi = "^0.1.9"
 python-json-logger = "^4.0.0"
 google-cloud-storage = ">=3.14.1,<3.15.0"
