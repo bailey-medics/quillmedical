@@ -66,3 +66,4 @@
 - [Resolved Tags](2026-09-23-resolved-tags-plan.md)
 - [Passport Assessor Access](2026-09-24-passport-assessor-access-plan.md)
 - [Remove Registration Verification](2026-09-24-remove-registration-verification-plan.md)
+- [Email Branding](2026-09-25-email-branding-plan.md)

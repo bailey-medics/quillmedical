@@ -500,9 +500,28 @@ Things that look like exceptions and are not:
 - **Something genuinely important.** Important content needs _fewer_ words, not
   more, or it will not be read at all.
 
-Example of a closing summary:
+#### Open the results with `## Conclusion`
+
+**When the work is finished and the response explains what came of it, put
+that explanation under a level two heading reading `## Conclusion`.** It marks
+where the results begin, after any working-out, so they can be found without
+reading from the top.
+
+- **It comes before the TL;DR, never instead of it.** The conclusion holds the
+  prose — what was found, what changed, what is left — and the TL;DR still
+  closes the response beneath it.
+- **Only on a finished piece of work.** A quick answer to a question, or a
+  reply that stops to ask something, needs no conclusion heading; the TL;DR
+  alone is enough there.
+
+Example of a closing summary after finished work:
 
 ```markdown
+## Conclusion
+
+The rule sits under the Claude-specific section, which the Copilot sync
+never writes into, so it survives the next `/sync-copilot-config`.
+
 ## TL;DR
 
 - **Added the summary rule to CLAUDE.md.** It sits under the Claude-specific
