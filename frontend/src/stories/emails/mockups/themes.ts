@@ -59,6 +59,8 @@ export interface EmailTheme {
   footerRule: string;
   footerText: string;
   footerLink: string;
+  /** Mark's newsletter avatar: the brand's logo in a circle, as one image */
+  avatarImage: string;
   /** Why the recipient is on the mailing list, for the newsletter footer */
   newsletterReason: string;
   darkBackground: string;
@@ -138,6 +140,10 @@ export const emailThemes: Record<EmailThemeName, EmailTheme> = {
     // gray.4, 11.7:1
     footerText: "#ced4da",
     footerLink: "#ffffff",
+    // A light grey quill (#c9c8ca, half as dark as the landing page's
+    // #939296, which is too dull this small) on brand navy. A 1024px copy for
+    // reuse elsewhere is frontend/public/quill-avatar-circle.png.
+    avatarImage: "/email/quill-avatar.png",
     newsletterReason:
       "You are receiving this because you asked to hear from Quill Medical.",
     // primary.9
@@ -195,6 +201,7 @@ export const emailThemes: Record<EmailThemeName, EmailTheme> = {
     footerRule: "1px solid #dee2e6",
     footerText: "#5c636a",
     footerLink: "#5c636a",
+    avatarImage: "/email/ldd-avatar.png",
     newsletterReason:
       "You are receiving this because you came to a Let’s Do Digital event.",
     // The site's own dark mode
