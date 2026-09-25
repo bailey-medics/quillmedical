@@ -33,6 +33,9 @@ class RenderedEmail(TypedDict):
 
     subject: str
     html_body: str
+    #: The same body as plain text: the Markdown with its variables filled
+    #: in, which reads well as it is.
+    body_text: str
 
 
 def extract_email_template(
@@ -111,4 +114,6 @@ def render_email(
     body_md = Template(template["body"]).safe_substitute(context)
     html_body = nh3.clean(markdown.markdown(body_md))
 
-    return RenderedEmail(subject=subject, html_body=html_body)
+    return RenderedEmail(
+        subject=subject, html_body=html_body, body_text=body_md.strip()
+    )

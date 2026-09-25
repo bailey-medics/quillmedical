@@ -27,8 +27,10 @@ from jinja2 import (
     Environment,
     PackageLoader,
     StrictUndefined,
+    pass_context,
     select_autoescape,
 )
+from jinja2.runtime import Context
 from markupsafe import Markup, escape
 
 from app.config import settings
@@ -61,6 +63,7 @@ class RenderedEmail(TypedDict):
     """Everything :func:`app.email_send.send_email` needs for one email."""
 
     subject: str
+    preheader: str
     html_body: str
     text_body: str
     from_name: str
@@ -93,17 +96,20 @@ def accent(text: str, colour: str) -> Markup:
     )
 
 
-def asset(path: str) -> str:
+@pass_context
+def asset(context: Context, path: str) -> str:
     """An image path as the absolute URL an email client can load.
 
     Args:
+        context: The render's context, holding ``asset_base_url``.
         path: The path under the public site, such as
             ``"/email/quill-wordmark.png"``.
 
     Returns:
-        ``settings.EMAIL_ASSET_BASE_URL`` joined to *path*.
+        The render's asset base URL joined to *path*.
     """
-    return settings.EMAIL_ASSET_BASE_URL.rstrip("/") + "/" + path.lstrip("/")
+    base: str = context["asset_base_url"]
+    return base.rstrip("/") + "/" + path.lstrip("/")
 
 
 def make_environment(extra: BaseLoader | None = None) -> Environment:
@@ -165,6 +171,8 @@ def render_email(
     context: dict[str, Any],
     *,
     partner: EmailPartner | None = None,
+    from_name: str | None = None,
+    asset_base_url: str | None = None,
     env: Environment | None = None,
 ) -> RenderedEmail:
     """Render one email.
@@ -177,6 +185,12 @@ def render_email(
         partner: Set for an email sent for a partner: shows the partner
             strip, names them in the footer and sender, and sends replies
             to them.
+        from_name: The sender's display name, where it is a person
+            rather than the brand: a newsletter is "Mark at Quill
+            Medical". Otherwise the theme's name, or the partner's "via".
+        asset_base_url: Where images load from. Defaults to
+            ``settings.EMAIL_ASSET_BASE_URL``; the Storybook previews pass
+            ``""`` for relative paths Storybook can serve.
         env: Another environment, for tests; normally the module's own.
 
     Returns:
@@ -194,22 +208,31 @@ def render_email(
         "t": t,
         "font_link": _font_link(theme),
         "partner": partner,
+        "asset_base_url": (
+            settings.EMAIL_ASSET_BASE_URL
+            if asset_base_url is None
+            else asset_base_url
+        ),
     }
     compiled = environment.get_template(template)
     page = compiled.new_context(values)
 
     subject = _plain("".join(compiled.blocks["subject"](page)))
+    preheader = _plain("".join(compiled.blocks["preheader"](page)))
     text = _plain("".join(compiled.blocks["text"](page)))
     body = compiled.render(values)
 
-    from_name = t.sender_name
-    if partner is not None and partner.short_name:
-        from_name = f"{partner.short_name} via {t.sender_name}"
+    sender = t.sender_name
+    if from_name is not None:
+        sender = from_name
+    elif partner is not None and partner.short_name:
+        sender = f"{partner.short_name} via {t.sender_name}"
 
     return RenderedEmail(
         subject=subject,
+        preheader=preheader,
         html_body=body,
         text_body=text,
-        from_name=from_name,
+        from_name=sender,
         reply_to=partner.reply_to if partner is not None else None,
     )

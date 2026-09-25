@@ -1,0 +1,92 @@
+[
+  {
+    "id": "password-reset",
+    "label": "Password reset",
+    "quill": {
+      "file": "password-reset--quill.html",
+      "subject": "Reset your Quill password",
+      "preheader": "The link lasts 30 minutes.",
+      "fromName": "Quill Medical",
+      "replyTo": null
+    },
+    "ldd": {
+      "file": "password-reset--ldd.html",
+      "subject": "Reset your Quill password",
+      "preheader": "The link lasts 30 minutes.",
+      "fromName": "Let's Do Digital",
+      "replyTo": null
+    }
+  },
+  {
+    "id": "passport-invite",
+    "label": "Passport assessor invite",
+    "quill": {
+      "file": "passport-invite--quill.html",
+      "subject": "Dr Priya Shah has asked you to assess a competency",
+      "preheader": "Chest drain insertion (Seldinger), recorded in their clinician passport.",
+      "fromName": "Quill Medical",
+      "replyTo": null
+    },
+    "ldd": {
+      "file": "passport-invite--ldd.html",
+      "subject": "Dr Priya Shah has asked you to assess a competency",
+      "preheader": "Chest drain insertion (Seldinger), recorded in their clinician passport.",
+      "fromName": "Let's Do Digital",
+      "replyTo": null
+    }
+  },
+  {
+    "id": "certificate",
+    "label": "EoEETA certificate",
+    "quill": {
+      "file": "certificate--quill.html",
+      "subject": "Your certificate for Optical diagnosis of diminutive colorectal polyps",
+      "preheader": "Congratulations on passing Optical diagnosis of diminutive colorectal polyps.",
+      "fromName": "EoEETA via Quill Medical",
+      "replyTo": "coordinator@eoeeta.example"
+    },
+    "ldd": {
+      "file": "certificate--ldd.html",
+      "subject": "Your certificate for Optical diagnosis of diminutive colorectal polyps",
+      "preheader": "Congratulations on passing Optical diagnosis of diminutive colorectal polyps.",
+      "fromName": "EoEETA via Let's Do Digital",
+      "replyTo": "coordinator@eoeeta.example"
+    }
+  },
+  {
+    "id": "certificate-without-logo",
+    "label": "EoEETA certificate, no logo on file",
+    "quill": {
+      "file": "certificate-without-logo--quill.html",
+      "subject": "Your certificate for Optical diagnosis of diminutive colorectal polyps",
+      "preheader": "Congratulations on passing Optical diagnosis of diminutive colorectal polyps.",
+      "fromName": "EoEETA via Quill Medical",
+      "replyTo": "coordinator@eoeeta.example"
+    },
+    "ldd": {
+      "file": "certificate-without-logo--ldd.html",
+      "subject": "Your certificate for Optical diagnosis of diminutive colorectal polyps",
+      "preheader": "Congratulations on passing Optical diagnosis of diminutive colorectal polyps.",
+      "fromName": "EoEETA via Let's Do Digital",
+      "replyTo": "coordinator@eoeeta.example"
+    }
+  },
+  {
+    "id": "newsletter",
+    "label": "Newsletter",
+    "quill": {
+      "file": "newsletter--quill.html",
+      "subject": "Autumn update: the clinician passport, and 2027 dates",
+      "preheader": "What I have been building, and when we meet next.",
+      "fromName": "Mark at Quill Medical",
+      "replyTo": null
+    },
+    "ldd": {
+      "file": "newsletter--ldd.html",
+      "subject": "Autumn update: the clinician passport, and 2027 dates",
+      "preheader": "What I have been building, and when we meet next.",
+      "fromName": "Mark at Let's Do Digital",
+      "replyTo": null
+    }
+  }
+]

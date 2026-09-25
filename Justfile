@@ -261,6 +261,19 @@ docker-daemon-start:
     echo "Docker is running."
 
 
+alias ep := email-preview
+# Render every email with sample values, for the Storybook email previews
+email-preview:
+    #!/usr/bin/env bash
+    {{initialise}} "email-preview"
+    # In the backend unit-test container, which mounts this worktree's
+    # frontend/src/stories/emails/rendered/ for the renders to land in.
+    # Commit what changes: tests/test_email_previews.py fails while the
+    # committed renders are behind the templates.
+    docker compose -p "$(just _test-project)" -f compose.unit-tests.yml \
+        run --rm backend sh -lc "python -m app.email.previews"
+
+
 alias eb := enter-backend
 # Enter the backend container shell
 enter-backend:

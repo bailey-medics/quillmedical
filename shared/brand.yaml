@@ -15,8 +15,9 @@
 # ("#343a40") or a reference into the palette: "primary.8" is shade 8 of the
 # primary ramp. A reference carries a palette change through to the email;
 # a hex value is for colours with no place in Quill's palette, such as
-# Let's Do Digital's. Both readers resolve references the same way and
-# refuse one that does not exist.
+# Let's Do Digital's. The backend resolves references when it loads this
+# file and refuses one that does not exist; the frontend reads only the
+# palette, and sees emails as the backend renders them.
 #
 # See docs/docs/plans/2026-09-25-email-branding-plan.md.
 

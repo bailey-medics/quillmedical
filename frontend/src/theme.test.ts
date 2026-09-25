@@ -11,7 +11,9 @@
 import { DEFAULT_THEME, mergeMantineTheme } from "@mantine/core";
 import { describe, expect, it } from "vitest";
 import { AA_TEXT, contrastRatio } from "@lib/colour-contrast/contrast";
+import brand from "@/generated/brand.json";
 import {
+  brandColours,
   cssVariablesResolver,
   greyScale,
   primaryScale,
@@ -269,5 +271,19 @@ describe("PublicButton's amber fill", () => {
     expect(contrastRatio(text, pressed)).toBeGreaterThanOrEqual(
       contrastRatio(text, secondaryScale[6]),
     );
+  });
+});
+
+describe("the theme reads its colours from shared/brand.yaml", () => {
+  it("takes the brand colours and ramps from the brand file", () => {
+    expect(brandColours).toEqual(brand.brand);
+    expect([...primaryScale]).toEqual(brand.palette.primary);
+    expect([...secondaryScale]).toEqual(brand.palette.secondary);
+    expect([...greyScale]).toEqual(brand.palette.grey);
+  });
+
+  it("keeps the brand primary at shade 8 and the brand amber at shade 5", () => {
+    expect(primaryScale[8]).toBe(brandColours.primary);
+    expect(secondaryScale[5]).toBe(brandColours.secondary.toLowerCase());
   });
 });

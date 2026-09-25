@@ -2,3 +2,6 @@ dist
 build
 node_modules
 coverage
+# Rendered by the backend (`just email-preview`) and compared byte for byte
+# by tests/test_email_previews.py, so a formatter must not touch them.
+src/stories/emails/rendered

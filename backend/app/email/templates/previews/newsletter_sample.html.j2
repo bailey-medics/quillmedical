@@ -1,0 +1,37 @@
+{#- A sample newsletter, for the Storybook preview only. Invented content. -#}
+{% extends "newsletter.html.j2" %}
+{% import "_components.html.j2" as c with context %}
+{% block subject %}Autumn update: the clinician passport, and 2027 dates{% endblock %}
+{% block preheader %}What I have been building, and when we meet next.{% endblock %}
+{% block content %}
+{{ c.heading("Autumn *update*") }}
+{{ c.paragraph("Hello,") }}
+{{ c.paragraph("It has been a busy few months. Here is what has changed, and what is coming next.") }}
+{#- A placeholder for a hero image, 1640 by 720 at 2x -#}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 8px 0 24px">
+  <tr>
+    <td align="center" style="height: 360px; border-radius: 6px; background-color: {{ t.border }}; font-family: {{ t.font_family }}; font-size: 19px; color: {{ t.muted }}">Image, 1640 × 720</td>
+  </tr>
+</table>
+{% call c.panel() %}
+{{ c.subheading("The clinician passport is *live*", t.panel_heading) }}
+{{ c.paragraph("Clinicians can now record competencies and ask a colleague to sign them off, wherever that colleague works.") }}
+<p style="margin: 0"><a href="https://quill-medical.com" style="color: {{ t.panel_link }}; font-weight: 700">Read how it works</a></p>
+{% endcall %}
+{{ c.subheading("Let’s Do Digital 2027: save the date") }}
+{{ c.paragraph("The next conference is on Thursday 20 May 2027 in Bristol. Talks, workshops and plenty of time to talk to each other.") }}
+{{ c.button("Register your interest", "https://letsdodigital.org") }}
+{{ c.subheading("One thing to try") }}
+{{ c.paragraph("If your trust has an innovation fund, the deadline is often in January. A one-page summary of the problem is usually all it takes to start the conversation.") }}
+{% endblock %}
+{% block text %}
+Hello,
+
+It has been a busy few months. Here is what has changed, and what is coming next.
+
+The clinician passport is live: https://quill-medical.com
+
+Let's Do Digital 2027 is on Thursday 20 May 2027 in Bristol: https://letsdodigital.org
+
+Mark Bailey, Bailey Medics
+{% endblock %}

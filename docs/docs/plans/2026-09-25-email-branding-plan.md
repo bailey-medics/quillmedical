@@ -287,20 +287,28 @@ sent for them.
 
 ## Phase 4: Swap the Storybook mock-ups for real renders
 
-- [ ] **Add a `just email-preview` recipe**, following
+- [x] **Add a `just email-preview` recipe**, following
       `.claude/rules/just.md`, that renders every template with fixture
       data, in every theme, to `frontend/src/stories/emails/rendered/*.html`
       inside the backend unit test container. The fixtures cover the same
       cases the mock-ups show: password reset, passport invite, the EoEETA
       certificate with and without a logo, and the newsletter. The renders
       are committed, with image URLs relative so Storybook can serve them.
+      The emails the previews show needed templates first, so this unit
+      wrote `password_reset`, `passport_invite`, `teaching_certificate` and
+      `newsletter` child templates from the mock-up content; Phase 5 wires
+      them to the code that sends. The fixtures live in
+      `backend/app/email/previews.py`. The backend unit-test container
+      mounts `frontend/src/stories/emails/rendered/` so the recipe can
+      write there, and Prettier ignores that folder so a commit cannot
+      reformat a render away from what the templates produce.
 
-- [ ] **Point `Emails.stories.tsx` at the renders and delete the
+- [x] **Point `Emails.stories.tsx` at the renders and delete the
       mock-ups.** From here Storybook shows what the backend actually
       produces. Keeping the mock-ups as well would leave two versions of
       the design to drift apart.
 
-- [ ] **Add a backend test that fails when a committed render is stale**,
+- [x] **Add a backend test that fails when a committed render is stale**,
       comparing a fresh render of each fixture against the file. This is
       the same shape as the API compatibility check: CI's Storybook build
       runs without Python, so it cannot render the templates itself, and

@@ -1,0 +1,20 @@
+{#-
+  A teaching email a question bank's coordinator wrote: the pass
+  certificate to a student, or the note to the coordinator. The coordinator
+  writes the words in the bank's config.yaml, as Markdown; Quill supplies
+  the frame. Context:
+    subject    the subject, with its variables already filled in
+    preheader  the line an inbox shows after it
+    body_html  the Markdown converted and sanitised with nh3, marked safe
+               by the caller: this template does not escape it again
+    body_text  the same body as plain text
+    reason     why the recipient is getting it
+-#}
+{% extends "base.html.j2" %}
+{% block subject %}{{ subject }}{% endblock %}
+{% block preheader %}{{ preheader }}{% endblock %}
+{% block body %}
+<div style="font-size: 19px">{{ body_html }}</div>
+{% endblock %}
+{% block reason %}{{ reason }}{% endblock %}
+{% block text %}{{ body_text }}{% endblock %}
