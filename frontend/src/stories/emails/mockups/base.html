@@ -27,7 +27,7 @@
       a {
         color: {{link}};
       }
-      @media (max-width: 620px) {
+      @media (max-width: 920px) {
         .em-container {
           width: 100% !important;
         }
@@ -65,8 +65,13 @@
           color: {{darkMuted}} !important;
         }
         .em-footer {
-          background-color: {{darkBackground}} !important;
+          background-color: {{darkFooter}} !important;
           border-color: {{darkBorder}} !important;
+        }
+        .em-footer,
+        .em-footer p,
+        .em-footer a {
+          color: {{darkMuted}} !important;
         }
         .em-text a,
         .em-muted a {
@@ -103,10 +108,10 @@
           <table
             role="presentation"
             class="em-container em-card"
-            width="600"
+            width="900"
             cellpadding="0"
             cellspacing="0"
-            style="width: 600px; max-width: 600px; background-color: {{card}}; border: 1px solid {{border}}; border-radius: 8px; overflow: hidden"
+            style="width: 900px; max-width: 900px; background-color: {{card}}; border: 1px solid {{border}}; border-radius: 8px; overflow: hidden"
           >
             <!-- Header band -->
             <tr>
@@ -118,11 +123,14 @@
               </td>
             </tr>
 
+            <!-- Partner strip: only on emails sent for a partner -->
+            {{partnerStrip}}
+
             <!-- Content -->
             <tr>
               <td
                 class="em-text em-pad"
-                style="padding: 36px 40px 32px; font-family: {{fontFamily}}; font-size: 16px; line-height: 1.6; color: {{text}}"
+                style="padding: 36px 40px 32px; font-family: {{fontFamily}}; font-size: 19px; line-height: 1.5; color: {{text}}"
               >
                 {{body}}
               </td>
@@ -131,8 +139,8 @@
             <!-- Footer -->
             <tr>
               <td
-                class="em-footer em-muted em-pad"
-                style="padding: 24px 40px 28px; background-color: {{footerBackground}}; border-top: 1px solid {{border}}; font-family: {{fontFamily}}; font-size: 13px; line-height: 1.5; color: {{muted}}"
+                class="em-footer em-pad"
+                style="padding: 28px 40px 32px; background-color: {{footerBackground}}; border-top: {{footerRule}}; font-family: {{fontFamily}}; font-size: 19px; line-height: 1.5; color: {{footerText}}"
               >
                 {{footer}}
               </td>
