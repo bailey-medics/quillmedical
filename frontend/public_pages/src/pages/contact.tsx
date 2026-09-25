@@ -27,7 +27,7 @@ createRoot(document.getElementById("root")!).render(
       <PublicDarkBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
-            <PublicTitle title="Get in touch" c="white" />
+            <PublicTitle title="Get in touch" size="md" c="white" />
             <PublicBodyText justify="centre">
               A contact form is coming soon. In the meantime, you can reach us
               at{" "}

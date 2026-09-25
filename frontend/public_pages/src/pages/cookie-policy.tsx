@@ -29,7 +29,7 @@ createRoot(document.getElementById("root")!).render(
       <PublicLightBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
-            <PublicTitle title="1. access_token" c="white" />
+            <PublicTitle title="1. access_token" size="md" c="white" />
             <PublicBodyText justify="centre">
               Keeps you signed in. It proves who you are on each request, so you
               are not asked to sign in again with every click. Expires after 15
@@ -42,7 +42,7 @@ createRoot(document.getElementById("root")!).render(
       <PublicDarkBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
-            <PublicTitle title="2. refresh_token" c="white" />
+            <PublicTitle title="2. refresh_token" size="md" c="white" />
             <PublicBodyText justify="centre">
               Keeps you signed in for longer. It obtains a new access token when
               the one above expires, so a normal working session is not
@@ -56,7 +56,7 @@ createRoot(document.getElementById("root")!).render(
       <PublicLightBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
-            <PublicTitle title="3. XSRF-TOKEN" c="white" />
+            <PublicTitle title="3. XSRF-TOKEN" size="md" c="white" />
             <PublicBodyText justify="centre">
               Keeps you safe. It protects against another website making
               requests on your behalf without your knowledge. Lasts for your
@@ -69,7 +69,7 @@ createRoot(document.getElementById("root")!).render(
       <PublicDarkBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
-            <PublicTitle title="4. Cloud-CDN-Cookie" c="white" />
+            <PublicTitle title="4. Cloud-CDN-Cookie" size="md" c="white" />
             <PublicBodyText justify="centre">
               Plays a lecture. It is released when you open a teaching video,
               and allows that one module&rsquo;s video to play. Expires after 30
@@ -85,6 +85,7 @@ createRoot(document.getElementById("root")!).render(
           <Stack align="center" gap="md" py="xl">
             <PublicTitle
               title="Why we do not ask you to accept cookies"
+              size="md"
               c="white"
             />
             <PublicBodyText justify="centre">
@@ -107,7 +108,11 @@ createRoot(document.getElementById("root")!).render(
       <PublicDarkBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
-            <PublicTitle title="Measuring how the site is used" c="white" />
+            <PublicTitle
+              title="Measuring how the site is used"
+              size="md"
+              c="white"
+            />
             <PublicBodyText justify="centre">
               We do count visits, but not with cookies. Our web server keeps a
               record of requests it receives, and those records are summarised
@@ -121,7 +126,7 @@ createRoot(document.getElementById("root")!).render(
       <PublicLightBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
-            <PublicTitle title="Managing cookies" c="white" />
+            <PublicTitle title="Managing cookies" size="md" c="white" />
             <PublicBodyText justify="centre">
               Your browser can block or delete cookies, and you are free to do
               so. Because ours are all strictly necessary, blocking them will

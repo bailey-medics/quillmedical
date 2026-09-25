@@ -48,8 +48,14 @@
   flex-wrap: wrap;
   gap: var(--mantine-spacing-xl);
 
+  /*
+   * Shown on phones too. The mobile drawer carries only the main links, so
+   * hiding these left About, Pricing, Accessibility, Security and the legal
+   * pages with no way in from a phone.
+   */
   @media (max-width: $mantine-breakpoint-sm) {
-    display: none;
+    justify-content: center;
+    row-gap: var(--mantine-spacing-lg);
   }
 }
 

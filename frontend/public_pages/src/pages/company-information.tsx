@@ -27,7 +27,7 @@ createRoot(document.getElementById("root")!).render(
       <PublicLightBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
-            <PublicTitle title="Registered address" c="white" />
+            <PublicTitle title="Registered address" size="md" c="white" />
             <PublicBodyText justify="centre">
               Brooklands Place
               <br />
@@ -48,7 +48,7 @@ createRoot(document.getElementById("root")!).render(
       <PublicDarkBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
-            <PublicTitle title="Company details" c="white" />
+            <PublicTitle title="Company details" size="md" c="white" />
             <PublicBodyText justify="centre">
               Company number: 15604352
             </PublicBodyText>

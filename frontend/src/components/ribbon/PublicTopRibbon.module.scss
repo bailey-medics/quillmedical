@@ -69,6 +69,16 @@
  * the ribbon's own padding already sets.
  */
 .login {
+  /*
+   * Set through Mantine's own Anchor variable as well as `color`. Mantine's
+   * Anchor rule colours the link with --mantine-color-anchor, which the
+   * theme points at the dark-blue link token, and whether that rule or this
+   * one wins depends on stylesheet order. In the production build it won,
+   * leaving "Log in" dark blue on navy at 2.5:1. A variable set on the
+   * element itself wins whatever the order.
+   */
+  --mantine-color-anchor: var(--mantine-color-secondary-4);
+
   font-size: 1.25rem;
   color: var(--mantine-color-secondary-4);
   margin-right: var(--mantine-spacing-sm);
@@ -76,6 +86,8 @@
   transition: color 0.15s ease;
 
   &:hover {
+    --mantine-color-anchor: #fff;
+
     color: #fff;
   }
 }
