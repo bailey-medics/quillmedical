@@ -317,13 +317,20 @@ sent for them.
 
 ## Phase 5: Move the transactional emails onto it
 
-- [ ] **Convert the `main.py` emails first** into child templates of
+- [x] **Convert the `main.py` emails first** into child templates of
       `base.html.j2`, one per message: email verification (sent from three
       places, one template), password reset, and the account invitation in
       `send_invite_email`. They are the most-sent and the simplest, so they
       prove the layout before anything unusual is put in it. Keep the
       wording as it is; this is a presentation change, and reviewing new
-      copy at the same time would hide what changed.
+      copy at the same time would hide what changed. Each gains only a
+      heading and a footer saying why it was sent, which the layout
+      needs. The password reset takes the signed-off mock-up's wording,
+      "If you did not ask for this, you can ignore this email. Your
+      password will not change.", over the old "If you did not request
+      this, ignore this email.". Each call hands `send_email` the rendered
+      parts through `send_args`, so the tests that patch `send_email` in
+      `main.py` keep working.
 
 - [ ] **Convert the passport assessor invite, and correct its expiry
       line.** Its module docstring already says what it must do (name who

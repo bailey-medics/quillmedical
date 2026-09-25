@@ -18,6 +18,42 @@
     }
   },
   {
+    "id": "email-verification",
+    "label": "Email verification",
+    "quill": {
+      "file": "email-verification--quill.html",
+      "subject": "Verify your Quill email address",
+      "preheader": "The link lasts 60 minutes.",
+      "fromName": "Quill Medical",
+      "replyTo": null
+    },
+    "ldd": {
+      "file": "email-verification--ldd.html",
+      "subject": "Verify your Quill email address",
+      "preheader": "The link lasts 60 minutes.",
+      "fromName": "Let's Do Digital",
+      "replyTo": null
+    }
+  },
+  {
+    "id": "account-invite",
+    "label": "Account invitation",
+    "quill": {
+      "file": "account-invite--quill.html",
+      "subject": "You're invited to Quill – set up your account",
+      "preheader": "Create your password and get started.",
+      "fromName": "Quill Medical",
+      "replyTo": null
+    },
+    "ldd": {
+      "file": "account-invite--ldd.html",
+      "subject": "You're invited to Quill – set up your account",
+      "preheader": "Create your password and get started.",
+      "fromName": "Let's Do Digital",
+      "replyTo": null
+    }
+  },
+  {
     "id": "passport-invite",
     "label": "Passport assessor invite",
     "quill": {

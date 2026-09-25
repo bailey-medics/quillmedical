@@ -1,0 +1,29 @@
+{#-
+  Verify an email address. Sent on registering, and again when somebody
+  asks for another link or tries to log in unverified. Context:
+    verify_url   the verification link
+    ttl_minutes  how long the link lasts
+    welcome      true on registering, which greets them first
+-#}
+{% extends "base.html.j2" %}
+{% import "_components.html.j2" as c with context %}
+{% block subject %}Verify your Quill email address{% endblock %}
+{% block preheader %}The link lasts {{ ttl_minutes }} minutes.{% endblock %}
+{% block body %}
+{{ c.heading("Verify your *email address*") }}
+{% if welcome %}
+{{ c.paragraph("Welcome to Quill! Please verify your email address to activate your account.") }}
+{% else %}
+{{ c.paragraph("Please verify your email address to activate your Quill account.") }}
+{% endif %}
+{{ c.button("Verify your email", verify_url) }}
+{{ c.small("This link expires in " ~ ttl_minutes ~ " minutes.") }}
+{% endblock %}
+{% block reason %}You are receiving this because this address was used to create an account on Quill.{% endblock %}
+{% block text %}
+{% if welcome %}Welcome to Quill! Please verify your email address to activate your account.{% else %}Please verify your email address to activate your Quill account.{% endif %}
+
+Verify your email: {{ verify_url }}
+
+This link expires in {{ ttl_minutes }} minutes.
+{% endblock %}

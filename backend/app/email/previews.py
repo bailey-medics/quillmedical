@@ -128,6 +128,30 @@ def previews() -> list[Preview]:
             },
         ),
         Preview(
+            id="email-verification",
+            label="Email verification",
+            template="email_verification.html.j2",
+            context={
+                "verify_url": (
+                    "https://quill-medical.com/verify-email?token=example"
+                ),
+                "ttl_minutes": 60,
+                "welcome": True,
+            },
+        ),
+        Preview(
+            id="account-invite",
+            label="Account invitation",
+            template="account_invite.html.j2",
+            context={
+                "username": "sam.patel",
+                "setup_url": (
+                    "https://quill-medical.com/reset-password?token=example"
+                ),
+                "ttl_minutes": 30,
+            },
+        ),
+        Preview(
             id="passport-invite",
             label="Passport assessor invite",
             template="passport_invite.html.j2",

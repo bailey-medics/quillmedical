@@ -236,3 +236,35 @@ def render_email(
         from_name=sender,
         reply_to=partner.reply_to if partner is not None else None,
     )
+
+
+class SendEmailArgs(TypedDict):
+    """The parts of a rendered email :func:`app.email_send.send_email` takes.
+
+    Everything but the recipient and any attachments, so a call reads
+    ``send_email(to=address, **send_args(rendered))``.
+    """
+
+    subject: str
+    html_body: str
+    text_body: str
+    from_name: str
+    reply_to: str | None
+
+
+def send_args(rendered: RenderedEmail) -> SendEmailArgs:
+    """Pick out of *rendered* what ``send_email`` takes.
+
+    Args:
+        rendered: The result of :func:`render_email`.
+
+    Returns:
+        Keyword arguments for ``send_email``, less ``to``.
+    """
+    return SendEmailArgs(
+        subject=rendered["subject"],
+        html_body=rendered["html_body"],
+        text_body=rendered["text_body"],
+        from_name=rendered["from_name"],
+        reply_to=rendered["reply_to"],
+    )
