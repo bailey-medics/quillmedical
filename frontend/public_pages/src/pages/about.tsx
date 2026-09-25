@@ -53,10 +53,9 @@ createRoot(document.getElementById("root")!).render(
           <Stack align="center" gap="md" py="xl">
             <PublicTitle title="Our commitment" c="white" />
             <PublicBodyText justify="centre">
-              We are committed to clinical safety (DCB 0129 certified), data
-              sovereignty (UK/EU hosted on GCP European region), and open
-              standards that prevent vendor lock-in. Your data remains yours,
-              portable and interoperable.
+              We are committed to clinical safety, to keeping your data in the
+              UK, and to open standards that prevent vendor lock-in. Your data
+              remains yours, portable and interoperable.
             </PublicBodyText>
             <PublicBodyText justify="centre">
               Quill is what a clinical team builds when they refuse to settle.

@@ -23,12 +23,8 @@ const data: FooterGroup[] = [
   {
     title: "Features",
     links: [
-      { label: "Messaging", link: "/clinical-messaging" },
-      { label: "Records", link: "/structured-records" },
-      { label: "Modules", link: "/modular-deployment" },
-      { label: "Access", link: "/competency-access" },
-      { label: "Referrals", link: "/external-referrals" },
       { label: "Teaching", link: "/clinical-teaching" },
+      { label: "Clinical records", link: "/clinical-records" },
     ],
   },
   {
@@ -78,8 +74,7 @@ export default function PublicFooter() {
             className={classes.logoImage}
           />
           <PublicBodyText>
-            A modern, secure platform for patients and clinics to communicate
-            seamlessly.
+            Online learning and assessment for clinicians, built by clinicians.
           </PublicBodyText>
         </div>
         <div className={classes.groups}>{groups}</div>
