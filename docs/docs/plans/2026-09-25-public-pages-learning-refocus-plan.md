@@ -202,13 +202,15 @@ today.
 
 ### Navigation and footer
 
-- Top ribbon: `Learning`, `Assessments`, `For educators`, `Contact`.
-  Pricing moves to the footer, as there is no price to show, and so does
-  About (see Phase 3).
+- Top ribbon: `Learning`, `Assessments`, `For educators`, `EPR`,
+  `Contact`. Pricing moves to the footer, as there is no price to show, and
+  so does About (see Phase 3). `EPR` was added after the navigation unit
+  landed: it links `/clinical-records`, so the clinical record is findable
+  from the ribbon after the learning and assessment pages.
 - Footer "Features" group becomes "Platform": Learning, Assessments,
   For educators, Accessibility, Security, Clinical records. "Company" and "Legal" stay.
-- Clinical records is in the footer only — not the top ribbon and not the
-  home page — so it is findable without competing with learning and
+- Clinical records is in the footer and the ribbon, as `EPR`, but not on
+  the home page, so it is findable without competing with learning and
   assessment.
 - The `NavIconName` union in `publicNavLinks.ts` grows to cover the new
   links; any new Tabler icon is registered in `appIcons.ts` first.
@@ -376,14 +378,20 @@ page first.
 ## Phase 3: Navigation
 
 - [x] Update `publicNavLinks.ts` with the new links and icons. Departed
-      from the first draft: About moved to the footer beside Pricing,
-      leaving four links. The ribbon shows its links from the `sm`
-      breakpoint (640px) up, and five links at 1.25rem plus the logo and
-      "Log in" come to roughly 800px, so between 640px and a tablet held
-      upright the ribbon wrapped onto two lines. Four product-first links
-      fit most of that range. The icons are `learning`
+      from the first draft: About moved to the footer beside Pricing. The
+      ribbon shows its links from the `sm` breakpoint (640px) up, and the
+      estimate at the time was that five links would wrap onto a second
+      line on a tablet held upright. The icons are `learning`
       (`IconPresentation`), `assessments` (`IconCertificate`) and
       `educators` (`IconChartBar`), added to `PublicNavIcon`
+- [x] Add `EPR` to the ribbon, linking `/clinical-records`, with the
+      existing `database` icon. Asked for after the navigation unit landed.
+      Measured this time, in the production build with Playwright: with
+      four links the row fitted from about 750px up; with five at the old
+      spacing it was 9px too wide at 768px, an iPad held upright. The
+      logo margin is now `lg` and the link gap `md`, and the row fits from
+      768px up. Between 640px and about 750px it wraps to two rows, as it
+      did with four links; the ribbon is still usable there, just taller
 - [x] Update `PublicTopRibbon` stories and tests, including the mobile drawer.
       The ribbon and drawer read `publicNavLinks`, so their existing tests
       cover the new links; one new test pins the order, product pages

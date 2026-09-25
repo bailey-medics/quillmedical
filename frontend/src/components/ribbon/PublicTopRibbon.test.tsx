@@ -21,13 +21,21 @@ describe("PublicTopRibbon Component", () => {
       expect(nav).not.toHaveTextContent("Log in");
     });
 
-    it("does not offer the retired Teaching or EPR links", () => {
+    it("does not offer the retired Teaching link", () => {
       // Teaching became the log in link when app.quill-medical.com started
-      // serving it; EPR was a disabled placeholder for a product that is
-      // not built.
+      // serving it.
       renderWithMantine(<PublicTopRibbon onBurgerClick={vi.fn()} />);
       expect(screen.queryByText("Teaching")).not.toBeInTheDocument();
-      expect(screen.queryByText("EPR")).not.toBeInTheDocument();
+    });
+
+    it("links EPR to the clinical records page as a live link", () => {
+      // EPR was once a disabled placeholder; it now goes to the page that
+      // says the clinical record is in development.
+      renderWithMantine(<PublicTopRibbon onBurgerClick={vi.fn()} />);
+      expect(screen.getByRole("link", { name: "EPR" })).toHaveAttribute(
+        "href",
+        "/clinical-records",
+      );
     });
   });
 
@@ -88,6 +96,7 @@ describe("PublicTopRibbon Component", () => {
         "/learning",
         "/assessments",
         "/for-educators",
+        "/clinical-records",
         "/contact",
       ]);
     });
