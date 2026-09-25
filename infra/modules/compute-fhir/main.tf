@@ -54,11 +54,11 @@ resource "google_compute_instance" "fhir" {
   metadata = {
     # Startup script that installs Docker Compose and starts services
     startup-script = templatefile("${path.module}/startup.sh", {
-      environment                = var.environment
-      fhir_db_host               = var.fhir_db_host
-      fhir_db_password_secret    = var.fhir_db_password_secret
-      ehrbase_db_host            = var.ehrbase_db_host
-      ehrbase_db_password_secret = var.ehrbase_db_password_secret
+      environment                   = var.environment
+      fhir_db_host                  = var.fhir_db_host
+      fhir_db_password_secret       = var.fhir_db_password_secret
+      ehrbase_db_host               = var.ehrbase_db_host
+      ehrbase_db_password_secret    = var.ehrbase_db_password_secret
       ehrbase_api_password_secret   = var.ehrbase_api_password_secret
       ehrbase_admin_password_secret = var.ehrbase_admin_password_secret
     })

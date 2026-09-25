@@ -1516,12 +1516,12 @@ configure-docker` followed by a Docker push.
 same owner-equivalent token as the apply on `main`. A plan changes
 nothing, so it does not need it.
 
-- [ ] **(Mark)** Create `github-plan@quill-medical-app` with
+- [x] **(Mark)** Create `github-plan@quill-medical-app` with
       `roles/viewer` and `roles/iam.securityReviewer` on the project, the
       second because `roles/viewer` cannot read every IAM policy and
       Terraform refreshes each `*_iam_member` it manages.
 
-- [ ] **(Mark)** Grant it `roles/secretmanager.secretAccessor`. A plan
+- [x] **(Mark)** Grant it `roles/secretmanager.secretAccessor`. A plan
       refreshes the `google_secret_manager_secret_version` resources and
       reads the `alert_sms_number` and `pagerduty_service_key` data
       sources, all of which return secret payloads. That makes this
@@ -1565,6 +1565,15 @@ nothing, so it does not need it.
       the workflow change**, or the next pull request's plan cannot sign
       in.
 
+      Run by Mark on 2026-09-25, after Phase 3's script rather than
+      before it, so every pull request's plan failed for the hour between.
+      Read back: `viewer`, `iam.securityReviewer` and
+      `secretmanager.secretAccessor` on the project, `objectViewer` on
+      both buckets, and the repository secret. Not yet proven by a plan:
+      #1116 changed only workflows, and `terraform.yml` plans only pull
+      requests into `main` that touch `infra/`. The first such pull
+      request is the test.
+
 ### Phase 3: Lock the apply account to `main`
 
 The workload identity provider accepts any run from the three trusted
@@ -1572,7 +1581,7 @@ repositories, on any branch. So a workflow edited on a feature branch
 can obtain the apply account's token today. Only Mark can push, so the
 risk is small, but it is the gap this batch exists for.
 
-- [ ] **(Mark)** Add an attribute mapping that joins repository and ref,
+- [x] **(Mark)** Add an attribute mapping that joins repository and ref,
       `attribute.repo_ref = assertion.repository + '@' + assertion.ref`,
       on `github-provider` in `quill-medical-app`. The two cannot be
       bound separately: the content repositories also push to their own
@@ -1580,14 +1589,14 @@ risk is small, but it is the gap this batch exists for.
       let `eoeeta-teaching` and `respiratory-teaching` take the apply
       token.
 
-- [ ] **(Mark)** Replace the apply account's `workloadIdentityUser`
+- [x] **(Mark)** Replace the apply account's `workloadIdentityUser`
       binding on `attribute.repository/bailey-medics/quillmedical` with one
       on `attribute.repo_ref/bailey-medics/quillmedical@refs/heads/main`.
       A `workflow_dispatch` run from `main` still carries that ref, so
       manual applies keep working. Do the same for the deploy account from
       Phase 1, which also only ever runs on `main`.
 
-- [ ] Prove it both ways. A `workflow_dispatch` apply from `main` must
+- [x] Prove it both ways. A `workflow_dispatch` apply from `main` must
       authenticate; the same workflow dispatched from a feature branch
       must be refused at the authentication step.
 
@@ -1603,6 +1612,20 @@ risk is small, but it is the gap this batch exists for.
       name any commit. The provider's current mapping is
       `attribute.repository` and `google.subject` only, so the new
       mapping keeps both and adds `attribute.repo_ref`.
+
+      Done by Mark on 2026-09-25. Proven from `main` twice that day: the
+      deploy after #1116 merged signed in as `github-deploy`, and a
+      `workflow_dispatch` of `terraform.yml` from `main` signed in as
+      `github-actions` and applied "No changes". Read back, the only
+      `workloadIdentityUser` binding on either account is
+      `attribute.repo_ref/bailey-medics/quillmedical@refs/heads/main`.
+
+      Departed from the step on the feature-branch half. Dispatching the
+      apply from a branch would not reach the authentication step at all:
+      the apply job runs in the `app` GitHub environment, whose policy
+      admits `main` only, so GitHub stops it first. That is a second lock
+      in front of this one, not a test of it. The binding read-back above
+      is the direct evidence that a branch is refused.
 
 ### Phase 4: Narrow the state bucket
 
