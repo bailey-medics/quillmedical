@@ -243,3 +243,12 @@ describe("motion and focus", () => {
     expect(resolved.focusRing).toBe("auto");
   });
 });
+
+describe("anchor colour", () => {
+  it("points Mantine's anchor colour at the link token in both schemes", () => {
+    // Otherwise stylesheet order decides between Mantine's primary.4 and
+    // the link token, and the production build picked primary.4.
+    expect(vars.light["--mantine-color-anchor"]).toBe("var(--link-color)");
+    expect(vars.dark["--mantine-color-anchor"]).toBe("var(--link-color)");
+  });
+});

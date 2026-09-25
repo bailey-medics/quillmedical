@@ -1,4 +1,5 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "../fixtures/axe";
+import type { Page } from "@playwright/test";
 
 test.describe.configure({ timeout: 120_000 });
 
@@ -141,7 +142,7 @@ async function expectSuccessfulLoginRedirect(page: Page) {
 test.describe("Login page", () => {
   test.use({ storageState: { cookies: [], origins: [] } });
 
-  test("renders the login form", async ({ page }) => {
+  test("renders the login form", async ({ page, scanPage }) => {
     await page.goto("/login");
 
     await expect(
@@ -150,6 +151,8 @@ test.describe("Login page", () => {
     await expect(page.getByLabel("Username")).toBeVisible();
     await expect(page.getByRole("textbox", { name: "Password" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
+
+    await scanPage("login");
   });
 
   test("logs in with valid credentials", async ({ page }) => {

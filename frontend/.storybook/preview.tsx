@@ -11,6 +11,7 @@ import type { Preview } from "@storybook/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import React, { useEffect } from "react";
 import { theme, cssVariablesResolver } from "../src/theme";
+import { EXTRA_RULES, WCAG_TAGS } from "../src/lib/accessibility/axeConfig";
 
 // Mock the API to prevent real backend calls in Storybook
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -189,15 +190,10 @@ const preview: Preview = {
     a11y: {
       test: "error",
       options: {
-        runOnly: {
-          type: "tag",
-          values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"],
-        },
+        runOnly: { type: "tag", values: [...WCAG_TAGS] },
       },
-      // axe ships target-size (WCAG 2.5.8) disabled
-      config: {
-        rules: [{ id: "target-size", enabled: true }],
-      },
+      // Shared with the e2e page scans: src/lib/accessibility/axeConfig.ts
+      config: { rules: [...EXTRA_RULES] },
     },
     layout: "padded",
     // Ensure stories are sorted alphabetically in the sidebar

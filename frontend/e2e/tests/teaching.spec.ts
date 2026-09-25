@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../fixtures/axe";
 
 test.describe("Teaching dashboard", () => {
   test("loads the teaching page", async ({ page }) => {
@@ -11,7 +11,7 @@ test.describe("Teaching dashboard", () => {
     );
   });
 
-  test("shows teaching modules heading", async ({ page }) => {
+  test("shows teaching modules heading", async ({ page, scanPage }) => {
     await page.goto("/teaching");
     await page.waitForLoadState("networkidle");
 
@@ -19,5 +19,7 @@ test.describe("Teaching dashboard", () => {
     await expect(
       page.getByRole("heading", { name: /teaching modules/i }),
     ).toBeVisible({ timeout: 10000 });
+
+    await scanPage("teaching-modules");
   });
 });

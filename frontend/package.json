@@ -58,6 +58,7 @@
     "react-router-dom": "^7.9.1"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@eslint/js": "^10.0.0",
     "@playwright/test": "^1.60.0",
     "@storybook/addon-a11y": "10.5.10",
