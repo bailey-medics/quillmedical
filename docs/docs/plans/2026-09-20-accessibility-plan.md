@@ -131,18 +131,17 @@ once the addon is registered; no `test-runner.ts` hooks are needed.
       `test: "todo"` for the first run, `options.runOnly` set to
       `["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]`, and
       `config.rules` enabling `target-size` (axe ships it disabled)
-- [x] Run `just sbtci` locally and record the baseline: violations by rule
-      id and by component, in a `## Baseline` bullet list at the foot of
-      this plan. Two findings from doing it. First, a Storybook dev server
-      started before the addon was registered does not load it, and the
-      test-runner then fails every story with `ReferenceError: Cannot
-access 'StorybookTestRunnerError' before initialization` rather than
-      with a readable message; restart Storybook after changing
-      `main.ts`. Second, the test-runner's failure message shows only the
-      first violating element per story, which is too little to count
-      from, so the baseline was taken with a throwaway Playwright script
-      that runs axe-core 4.13 with the same tags and rules against every
-      story in both colour schemes and records every node
+- [x] Run `just sbtci` locally and record the baseline: violations by rule id
+      and by component, in a `## Baseline` bullet list at the foot of this
+      plan. Two findings from doing it. First, a Storybook dev server started
+      before the addon was registered does not load it, and the test-runner
+      then fails every story with a `ReferenceError` about
+      `StorybookTestRunnerError` rather than with a readable message; restart
+      Storybook after changing `main.ts`. Second, the test-runner's failure
+      message shows only the first violating element per story, which is too
+      little to count from, so the baseline was taken with a throwaway
+      Playwright script that runs axe-core 4.13 with the same tags and rules
+      against every story in both colour schemes and records every node
 - [x] Run the checks in dark mode as well as light: either a second
       `colorScheme` pass in the test-runner or a `Dark` story variant on
       every component with a coloured surface. Contrast failures in dark
@@ -315,7 +314,8 @@ Things the survey found that no tool will fix on its own.
 - [x] Set `focusRing: "auto"` and `respectReducedMotion: true` explicitly in
       `frontend/src/theme.ts`. Mantine defaults `focusRing` to `auto`
       already; `respectReducedMotion` defaults to `false`, which means the
-      `prefers-reduced-motion` claim in the current docs page is untrue. Both set, with a theme test pinning each
+      `prefers-reduced-motion` claim in the current docs page is untrue.
+      Both set, with a theme test pinning each
 - [x] Add a skip link ("Skip to main content") as the first focusable
       element in `MainLayout`, `TeachingLayout` and `PublicLayout`,
       targeting the existing `main` landmark. Build it as a component in
@@ -363,19 +363,21 @@ Things the survey found that no tool will fix on its own.
 - [x] Audit heading order: one `h1` per page, no skipped levels. There is
       one `order={1}` use and three `Title`s without an `order` in the
       frontend; pages composed from `BaseCard` headings are the likely
-      offenders. Twenty-five routes had no `h1`: most led
-      with a `Heading`, which is always an h2, and a few had no heading
-      at all. `Heading` gains `level={1}`, which changes the element and
-      keeps the h2 size, and the pages and page-only components whose
-      first heading is the page title now use it (the patient lists,
-      notes and letters, the login, password and verify forms, the
-      teaching results and history pages, `NotFoundLayout`,
-      `LetterView`). Pages whose content already names them to a sighted
-      reader (a patient's record, a message thread, a slide, an
-      assessment question, the patient list) get
-      `<PageHeader visuallyHidden />`, an h1 for screen readers only.
-      The layouts' own stories still show no h1 where they render demo
-      content without one; the phase 4 page scans check real routes
+      offenders. Twenty-five routes had no `h1`: most led with a `Heading`,
+      which is always an h2, and a few had no heading at all. Every page
+      title is now a `PageHeader`, the one h1, at one size, so a page names
+      itself the same way everywhere. A first attempt kept each page's old
+      look, promoting its `Heading` with a `level` prop and giving pages
+      with no visible title a hidden h1; that left two ways to write a page
+      title and titles of two sizes, so it was reversed. Titles are visible
+      on every page, as the NHS and GOV.UK design systems do: the patient
+      record is titled with the patient's name, the message pages
+      "Messages", a document with its name, and each slide's own title is
+      its page's h1. The one exception is the assessment attempt, which
+      keeps `<PageHeader visuallyHidden />` so an exam screen carries only
+      the question. `Heading` is section headings only. The layouts' own
+      stories still show no h1 where they render demo content without one;
+      the phase 4 page scans check real routes
 - [x] Loading and result states announce themselves: the eight existing
       `aria-live` and `role="status"` uses should cover the table
       skeletons, form submission, search results and the notification
@@ -421,58 +423,104 @@ Things the survey found that no tool will fix on its own.
 - [x] Session timeout: the access cookie lives fifteen minutes and refresh
       is silent, so there is no timeout prompt and 2.2.1 Timing Adjustable
       passes by design. Note this in the conformance record rather than
-      building the warning the docs page currently promises
+      building the warning the docs page currently promises. Confirmed in
+      the code: the access cookie is fifteen minutes, `api.ts` refreshes it
+      silently on a 401, and the refresh token lasts `REFRESH_TTL_DAYS`
+      (seven days), which is beyond WCAG 2.2.1's twenty-hour exception. This
+      goes into the phase 6 conformance record as a pass by design
 
 ## Phase 4: Scan whole pages in the end-to-end suite
 
 Components can each pass and still compose into a page with two `h1`s, a
 missing landmark, or a focus order that jumps. `just e2e` already brings up
 the CI stack and drives real pages; an axe scan per journey is a few lines
-on top.. Confirmed in the code: the access cookie
-is fifteen minutes, `api.ts` refreshes it silently on a 401, and
-the refresh token lasts `REFRESH_TTL_DAYS` (seven days), which is
-beyond WCAG 2.2.1's twenty-hour exception. This goes into the
-phase 6 conformance record as a pass by design
+on top.
 
-- [ ] Add `@axe-core/playwright` and a `frontend/e2e/fixtures/axe.ts`
-      fixture that builds one `AxeBuilder` with the same tags as phase 1,
-      so the WCAG baseline lives in one place
-- [ ] Scan the pages each existing spec visits (`login`, `navigation`,
-      `settings`, `teaching`, `auth-guard`) after their main assertions,
-      in both colour schemes
-- [ ] Assert on a fingerprint of `{ ruleId, selector }` pairs rather than
+- [x] Add `@axe-core/playwright` and a `frontend/e2e/fixtures/axe.ts`
+      fixture that builds one `AxeBuilder` with the same tags as phase 1, so
+      the WCAG baseline lives in one place. The tags and the `target-size`
+      rule now live in `src/lib/accessibility/axeConfig.ts`, which
+      `.storybook/preview.tsx` reads too. One trap worth knowing:
+      `AxeBuilder.options()` replaces what `withTags()` set, so using the
+      two together silently ran axe's best-practice rules as well (`region`,
+      `landmark-unique` and others that are not WCAG); the fixture passes
+      `runOnly` and `rules` in one `options()` call
+- [x] Scan the pages each existing spec visits (`login`, `navigation`,
+      `settings`, `teaching`, `auth-guard`) after their main assertions, in
+      both colour schemes. Six scans: login, login after the auth-guard
+      redirect, the teaching dashboard, the teaching modules heading,
+      settings and settings/account. Dark mode is set through Mantine's
+      stored scheme and a reload, so components that pick colours in
+      JavaScript render dark too. The scans found one real fault the
+      Storybook checks could not: in dark mode the login page's links were
+      `primary.4` on the card navy, 2.3:1, because `TextLink`'s CSS module
+      and Mantine's own `Anchor` colour tie on specificity and the
+      production build orders them the other way from Storybook. `theme.ts`
+      now points `--mantine-color-anchor` at `--link-color`, so the order no
+      longer matters. A scan also retries if the page reloads itself under
+      it, which the login page did once
+- [x] Assert on a fingerprint of `{ ruleId, selector }` pairs rather than
       the full violations array, per the Playwright guidance, so an
       unrelated markup change does not break the scan
-- [ ] Attach the full axe report to the test via `testInfo.attach` so a
-      failure in CI is diagnosable from the artefact
-- [x] Add a keyboard-only journey test for the two highest-risk flows:
-      login with 2FA, and opening a teaching lecture from the list. These
-      use Playwright's `keyboard.press("Tab")` and assert on
-      `document.activeElement`, not on axe. In
-      `e2e/tests/keyboard.spec.ts`. Login with 2FA needed a user to log
-      in as: `seed_ci.py` now seeds `twofactor`, with RFC 4226's published
-      test key as its TOTP secret, and `e2e/fixtures/totp.ts` derives the
-      current code from it. Departed from the plan for the second
-      journey: CI seeds no teaching modules, so there is no lecture to
-      open. It is replaced by two journeys over what CI does have: the
-      skip link landing inside `main`, and reaching Settings through the
-      side navigation by Tab alone. Opening a lecture stays in phase 5's
-      manual scripts until CI seeds a module. These journeys found three
-      faults that no automated check had, all fixed here: - **The side navigation could not be reached from the keyboard at
-      all.** Mantine's `NavLink` renders an `<a>`, and every nav item
-      navigated in an `onClick` with no `href`, which leaves an `<a>`
-      that is not focusable. Items with a destination are now router
-      `Link`s (`NestedNavLink`, and Home and Messages in
-      `SideNavContent`), and `theme.ts` makes every other `NavLink` a
-      `button` (Feedback, Logout, the slide list, Exit lesson). - **The closed navigation drawer stayed in the page**, only slid
-      off-screen, as an `aria-modal` dialog. With its items now
-      focusable they would have been invisible tab stops, and an
-      always-present modal tells a screen reader to ignore everything
-      else. `NavigationDrawer` is now `inert` while closed, modal only
-      while open, and named "Navigation". - **The authenticator code field appeared without focus** after the
-      server asked for a second factor. `LoginForm` now moves focus to
-      it. The login page itself has no skip link because it has no
-      layout and so nothing to skip
+- [x] Attach the full axe report to the test via `testInfo.attach` so a
+      failure in CI is diagnosable from the artefact. Each failing node is
+      also written to the log as rule, selector and axe's summary, so the
+      cause is readable in the CI output without opening the artefact
+- [x] Add a keyboard-only journey test for the two highest-risk flows: login
+      with 2FA, and opening a teaching lecture from the list. These use
+      Playwright's `keyboard.press("Tab")` and assert on
+      `document.activeElement`, not on axe. In `e2e/tests/keyboard.spec.ts`.
+      Login with 2FA needed a user to log in as: `seed_ci.py` now seeds
+      `twofactor`, with RFC 4226's published test key as its TOTP secret,
+      and `e2e/fixtures/totp.ts` derives the current code from it. Departed
+      from the plan for the second journey: CI seeds no teaching modules, so
+      there is no lecture to open. It is replaced by two journeys over what
+      CI does have: the skip link landing inside `main`, and reaching
+      Settings through the side navigation by Tab alone. Opening a lecture
+      stays in phase 5's manual scripts until CI seeds a module. These
+      journeys found three faults that no automated check had, all fixed
+      here:
+
+  - **The side navigation could not be reached from the keyboard at all.**
+    Mantine's `NavLink` renders an `<a>`, and every nav item navigated in an
+    `onClick` with no `href`, which leaves an `<a>` that is not focusable.
+    Items with a destination are now router `Link`s (`NestedNavLink`, and
+    Home and Messages in `SideNavContent`), and `theme.ts` makes every other
+    `NavLink` a `button` (Feedback, Logout, the slide list, Exit lesson).
+
+  - **The closed navigation drawer stayed in the page**, only slid
+    off-screen, as an `aria-modal` dialog. With its items now focusable they
+    would have been invisible tab stops, and an always-present modal tells a
+    screen reader to ignore everything else. `NavigationDrawer` is now
+    `inert` while closed, modal only while open, and named "Navigation".
+
+  - **The authenticator code field appeared without focus** after the server
+    asked for a second factor. `LoginForm` now moves focus to it. The login
+    page itself has no skip link because it has no layout and so nothing to
+    skip
+
+- [x] Run the end-to-end tests in WebKit, Safari's engine, as well as
+      Chromium. A second `webkit` project in `playwright.config.ts` runs
+      every spec, page scans and keyboard journeys included; the CI E2E job
+      installs WebKit, under its own browser cache key so the Storybook
+      job's Chromium-only cache is never restored in its place. It found one
+      real difference straight away: Safari's Tab key skips links unless the
+      user turns on "Press Tab to highlight each item", and WebKit behaves
+      the same, so the skip link and every navigation link are reached with
+      Option+Tab. That is Safari's default, not a fault in Quill, and the
+      keyboard journeys now press Option+Tab on WebKit as a Safari keyboard
+      user would. It is not a substitute for Safari itself: WebKit on Linux
+      is not macOS or iOS Safari and cannot drive VoiceOver, so phase 5's
+      Safari runs stand. Locally, `just e2e` needs WebKit installed once
+      with `npx playwright install webkit` WebKit also exposed an app fault,
+      not a test one: on a first visit the service worker claimed the page a
+      moment after it loaded, and `main.tsx` reloaded on every
+      `controllerchange`, so a login form emptied itself while someone was
+      typing into it (WCAG 3.2.2 On input asks for no such surprise). It is
+      what made "shows error with invalid credentials" flaky.
+      `wireControllerChangeReload` in `swUpdateGate.ts` now skips the reload
+      when no worker was in control before, and still reloads for a real
+      update
 
 ## Phase 5: Test with people and assistive technology
 
@@ -483,22 +531,22 @@ first pass is below; JAWS and Dragon are licensed and can wait for a
 commissioned audit.
 
 - [x] Write four journey scripts in
-      `docs/docs/frontend/accessibility/journeys.md`: log in with 2FA,
-      find and open a patient, open and complete a teaching lecture, sign
-      off a passport competency. Each is a numbered list of steps with the
-      expected announcement or focus position at each. Written, each with who walks it (for
-      the phase 6 journey map), and with a zoom and a wrong-input step
-      where the journey has one
-- [x] Keep the results in
-      `docs/docs/frontend/accessibility/testing-log.md`, one entry per run
-      with date, tool, browser, journey and findings. This log is the
-      evidence DTAC D1 asks for and the "preparation" section of the
-      statement cites. Created, with its entry format and the two
+      `docs/docs/frontend/accessibility/journeys.md`: log in with 2FA, find
+      and open a patient, open and complete a teaching lecture, sign off a
+      passport competency. Each is a numbered list of steps with the
+      expected announcement or focus position at each. Written, each with
+      who walks it (for the phase 6 journey map), and with a zoom and a
+      wrong-input step where the journey has one
+- [x] Keep the results in `docs/docs/frontend/accessibility/testing-log.md`,
+      one entry per run with date, tool, browser, journey and findings. This
+      log is the evidence DTAC D1 asks for and the "preparation" section of
+      the statement cites. Created, with its entry format and the two
       automated runs so far (the keyboard journeys and the focus walk) as
       its first entries, and a "not yet run" list naming every manual run
-      below, so the gap is on the record rather than implied. Both pages
-      are in the MkDocs navigation under Frontend, Accessibility. Moved up from after the runs, because the log is
-      created before the first run, not after
+      below, so the gap is on the record rather than implied. Both pages are
+      in the MkDocs navigation under Frontend, Accessibility. Moved up from
+      after the runs, because the log is created before the first run, not
+      after
 - [ ] Run each journey with VoiceOver and Safari on macOS, and with
       VoiceOver on iOS. Record pass, fail or partial per step
 - [ ] Run each journey with NVDA and Firefox in a Windows virtual machine
@@ -537,8 +585,8 @@ readable by someone who cannot yet log in.
       reader announced the same title on every page, and every tab and
       history entry read the same. `useDocumentTitle` in
       `src/lib/accessibility/` sets "Page – Quill Medical", the GOV.UK
-      pattern, and `PageHeader` and `Heading level={1}` call it, so a
-      page's h1 is also its title; phase 3 gave every page exactly one.
+      pattern, and `PageHeader` calls it, so a page's h1 is also its
+      title; phase 3 gave every page exactly one, always a `PageHeader`.
       An e2e test checks the teaching dashboard's title
 - [x] Build the DTAC D1 evidence pack in
       `docs/docs/frontend/accessibility/dtac-d1.md`: the user journey map
@@ -556,22 +604,22 @@ readable by someone who cannot yet log in.
       marked fail today, but two were until this plan's own work
       (keyboard access to the navigation, #1091, and page titles, #1094)
 - [x] Write the Accessible Information Standard note the revised DTAC
-      requires: what Quill will record (the four AIS data subsets as
-      SNOMED CT codes on the FHIR `Patient`), how a recorded need will be
-      flagged in the patient banner, and that it is designed but not built
-      because there are no live patient records. Add the data model work
-      as a checklist item in the clinical launch plan rather than here. A section of
-      `dtac-d1.md`: the four data subsets as SNOMED CT entries on the FHIR
-      `Patient`, a text-and-icon marker in the patient banner that is
-      announced to screen readers, and the reasoning for deferring. There
-      is no clinical launch plan yet, so the data model work went on the
-      project to-do list instead, beside the language preference
-      question the internationalisation plan raises
+      requires: what Quill will record (the four AIS data subsets as SNOMED
+      CT codes on the FHIR `Patient`), how a recorded need will be flagged
+      in the patient banner, and that it is designed but not built because
+      there are no live patient records. Add the data model work as a
+      checklist item in the clinical launch plan rather than here. A section
+      of `dtac-d1.md`: the four data subsets as SNOMED CT entries on the
+      FHIR `Patient`, a text-and-icon marker in the patient banner that is
+      announced to screen readers, and the reasoning for deferring. There is
+      no clinical launch plan yet, so the data model work went on the
+      project to-do list instead, beside the language preference question
+      the internationalisation plan raises
 - [ ] Choose the feedback route the statement names. A monitored email
-      address is the minimum; it must actually be read. Moved ahead of the statement, which has
-      to name it, and the evidence pack and AIS note moved ahead of both,
-      because they need neither. This is a decision for a person: the
-      address has to be one somebody reads
+      address is the minimum; it must actually be read. Moved ahead of the
+      statement, which has to name it, and the evidence pack and AIS note
+      moved ahead of both, because they need neither. This is a decision for
+      a person: the address has to be one somebody reads
 - [ ] Write the statement in the GOV.UK model format, in order: commitment
       referencing the 2018 regulations; scope (the app and the public
       site, by URL); compliance status, which will be **partially
@@ -619,10 +667,18 @@ readable by someone who cannot yet log in.
   every open PR on a backlog nobody has seen. One `todo` run produces the
   baseline; the switch to `error` is a one-line change once it is clear.
 
-- **Components first, pages second** — 656 stories in 176 files cover the
-  components, and pages are composed from them. Fixing a component fixes every page
-  that uses it. The page-level scan then only has to catch composition
-  faults, which are fewer and easier to reason about.
+- **Components first, pages second** — 656 stories in 176 files cover
+  the components, and pages are composed from them. Fixing a component
+  fixes every page that uses it. The page-level scan then only has to
+  catch composition faults, which are fewer and easier to reason about.
+
+- **WebKit in the end-to-end tests, not in Storybook** — the page scans
+  and keyboard journeys are where browser engines differ: focus, scrolling,
+  `inert` and which keys reach a link. The Storybook checks are axe rules
+  on rendered markup, which give the same answers in either engine, so a
+  second Storybook pass would double the heaviest CI job for almost
+  nothing. WebKit roughly doubles the E2E job instead, from about one
+  minute to about two.
 
 - **Keep `@storybook/test-runner`, do not add the Vitest addon** — the
   test-runner has native a11y support on Storybook 9 and later and is what

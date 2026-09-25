@@ -28,5 +28,18 @@ export default defineConfig({
       testDir: "./e2e/tests",
       dependencies: ["setup"],
     },
+    {
+      // Safari's engine. Catches focus, scrolling and `inert` differences
+      // Chromium hides; it is not Safari itself, and cannot drive
+      // VoiceOver, so the manual Safari runs in the accessibility plan's
+      // phase 5 still stand.
+      name: "webkit",
+      use: {
+        ...devices["Desktop Safari"],
+        storageState: "e2e/.auth/user.json",
+      },
+      testDir: "./e2e/tests",
+      dependencies: ["setup"],
+    },
   ],
 });

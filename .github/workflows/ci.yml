@@ -548,24 +548,27 @@ jobs:
       - name: Set up frontend
         uses: ./.github/actions/setup-frontend
 
+      # Its own cache key: the E2E tests run in WebKit as well as Chromium,
+      # and sharing the Storybook job's key would restore a cache without
+      # WebKit and skip installing it.
       - name: Cache Playwright browsers
         id: cache_playwright
         uses: actions/cache@v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package.json') }}
+          key: ${{ runner.os }}-playwright-e2e-${{ hashFiles('frontend/package.json') }}
           restore-keys: |
-            ${{ runner.os }}-playwright-
+            ${{ runner.os }}-playwright-e2e-
 
       - name: Install Playwright browsers
         if: steps.cache_playwright.outputs.cache-hit != 'true'
         working-directory: frontend
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps chromium webkit
 
       - name: Install Playwright system dependencies
         if: steps.cache_playwright.outputs.cache-hit == 'true'
         working-directory: frontend
-        run: npx playwright install-deps chromium
+        run: npx playwright install-deps chromium webkit
 
       - name: Run E2E tests
         working-directory: frontend
