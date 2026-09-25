@@ -10,15 +10,27 @@ import {
   IconHome2,
   IconChalkboardTeacher,
   IconBook,
+  IconCertificate,
+  IconChartBar,
   IconCurrencyPound,
   IconDatabase,
   IconLogin,
   IconMail,
+  IconPresentation,
 } from "@/components/icons/appIcons";
 
 /** Icon names available in public navigation */
 export type PublicNavIconName =
-  "home" | "teaching" | "book" | "pricing" | "database" | "login" | "mail";
+  | "home"
+  | "teaching"
+  | "learning"
+  | "assessments"
+  | "educators"
+  | "book"
+  | "pricing"
+  | "database"
+  | "login"
+  | "mail";
 
 /** Available icon sizes */
 type IconSize = "xs" | "sm" | "md" | "lg" | "xl";
@@ -33,6 +45,9 @@ type PublicNavIconProps = {
 const iconMap: Record<PublicNavIconName, typeof IconHome2> = {
   home: IconHome2,
   teaching: IconChalkboardTeacher,
+  learning: IconPresentation,
+  assessments: IconCertificate,
+  educators: IconChartBar,
   book: IconBook,
   pricing: IconCurrencyPound,
   database: IconDatabase,

@@ -202,8 +202,9 @@ today.
 
 ### Navigation and footer
 
-- Top ribbon: `Learning`, `Assessments`, `For educators`, `About`,
-  `Contact`. Pricing moves to the footer, as there is no price to show.
+- Top ribbon: `Learning`, `Assessments`, `For educators`, `Contact`.
+  Pricing moves to the footer, as there is no price to show, and so does
+  About (see Phase 3).
 - Footer "Features" group becomes "Platform": Learning, Assessments,
   For educators, Accessibility, Security, Clinical records. "Company" and "Legal" stay.
 - Clinical records is in the footer only — not the top ribbon and not the
@@ -374,9 +375,22 @@ page first.
 
 ## Phase 3: Navigation
 
-- [ ] Update `publicNavLinks.ts` with the new links and icons
-- [ ] Update `PublicTopRibbon` stories and tests, including the mobile drawer
-- [ ] Update the footer groups as described under "Navigation and footer"
+- [x] Update `publicNavLinks.ts` with the new links and icons. Departed
+      from the first draft: About moved to the footer beside Pricing,
+      leaving four links. The ribbon shows its links from the `sm`
+      breakpoint (640px) up, and five links at 1.25rem plus the logo and
+      "Log in" come to roughly 800px, so between 640px and a tablet held
+      upright the ribbon wrapped onto two lines. Four product-first links
+      fit most of that range. The icons are `learning`
+      (`IconPresentation`), `assessments` (`IconCertificate`) and
+      `educators` (`IconChartBar`), added to `PublicNavIcon`
+- [x] Update `PublicTopRibbon` stories and tests, including the mobile drawer.
+      The ribbon and drawer read `publicNavLinks`, so their existing tests
+      cover the new links; one new test pins the order, product pages
+      first. The `PublicNavIcon` story and test list the three new icons
+- [x] Update the footer groups as described under "Navigation and footer".
+      Company gains Pricing. The footer test checks every Platform link and
+      About and Pricing by their targets
 
 ## Phase 4: Check and ship
 

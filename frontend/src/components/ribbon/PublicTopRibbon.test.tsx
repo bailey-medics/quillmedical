@@ -78,6 +78,20 @@ describe("PublicTopRibbon Component", () => {
       }
     });
 
+    it("leads with the learning and assessment pages", () => {
+      renderWithMantine(<PublicTopRibbon onBurgerClick={vi.fn()} />);
+      const nav = screen.getByRole("navigation");
+      const hrefs = Array.from(nav.querySelectorAll("a")).map((anchor) =>
+        anchor.getAttribute("href"),
+      );
+      expect(hrefs).toEqual([
+        "/learning",
+        "/assessments",
+        "/for-educators",
+        "/contact",
+      ]);
+    });
+
     it("renders enabled nav links with correct href values", () => {
       renderWithMantine(<PublicTopRibbon onBurgerClick={vi.fn()} />);
       const enabledLinks = publicNavLinks.filter((link) => !link.disabled);
