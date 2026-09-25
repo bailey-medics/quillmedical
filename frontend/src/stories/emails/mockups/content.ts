@@ -219,16 +219,14 @@ export const emailMockups: Record<
           "in January. A one-page summary of the problem is usually " +
           "all it takes to start the conversation.",
       ) +
-      // Sign-off with Mark's avatar. The circle is a placeholder for his
-      // anime digital-health doctor picture.
+      // Sign-off with Mark's avatar: the brand's logo in a circle, as on
+      // his social accounts. The circle is part of the image, because
+      // Outlook ignores border-radius and would draw a square.
       `<table role="presentation" cellpadding="0" cellspacing="0" ` +
       `style="margin: 16px 0 0"><tr>` +
       `<td style="padding-right: 16px; vertical-align: middle">` +
-      `<table role="presentation" cellpadding="0" cellspacing="0"><tr>` +
-      `<td align="center" style="width: 56px; height: 56px; ` +
-      `border-radius: 28px; background-color: ${t.buttonBackground}; ` +
-      `font-family: ${t.fontFamily}; font-size: 19px; font-weight: 700; ` +
-      `color: ${t.buttonText}">MB</td></tr></table></td>` +
+      `<img src="${t.avatarImage}" width="56" height="56" alt="" ` +
+      `style="width: 56px; height: 56px" /></td>` +
       `<td style="vertical-align: middle">` +
       `<p style="margin: 0; font-weight: 700">Mark Bailey</p>` +
       `<p class="em-muted" style="margin: 0; font-size: 19px; ` +
