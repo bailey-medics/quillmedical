@@ -767,7 +767,11 @@ terraform-github:
     set +x
     export GITHUB_TOKEN=$(gh auth token)
     set -x
-    terraform init -input=false
+    # -reconfigure: a checkout initialised before the state moved to GCS on
+    # 2026-09-25 still records a local backend, and a plain init would stop
+    # to ask about migrating it. The state is already in the bucket, so
+    # there is nothing to migrate.
+    terraform init -input=false -reconfigure
     terraform plan -var-file=terraform.tfvars
     read -rp "Apply these changes? (yes/no): " confirm
     if [ "$confirm" = "yes" ]; then
@@ -779,7 +783,7 @@ terraform-github:
 
 alias tf := terraform-infra
 # Plan/apply the GCP infrastructure via Terraform (Cloud Run, load balancer, monitoring)
-terraform-infra env="teaching":
+terraform-infra env="app":
     #!/usr/bin/env bash
     {{initialise}} "terraform-infra"
     set -euo pipefail
@@ -790,6 +794,11 @@ terraform-infra env="teaching":
         exit 1
     fi
     terraform init -input=false
+    # Each environment's state is its own workspace. Without selecting it
+    # this planned against the empty default workspace, and so proposed
+    # creating every resource that already exists. `select` and not
+    # `select -or-create`: a mistyped name must fail, not start a new state.
+    terraform workspace select "{{env}}"
     terraform plan -var-file="$VARS"
     read -rp "Apply these changes to {{env}}? (yes/no): " confirm
     if [ "$confirm" = "yes" ]; then

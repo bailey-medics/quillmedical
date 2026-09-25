@@ -10,11 +10,8 @@
 #   The naming convention ruleset prevents ad-hoc branch names, keeping the
 #   commit graph traceable for hazard-log and incident-response audits.
 #
-# Usage:
-#   cd infra/github/
-#   terraform init
-#   terraform plan -var-file=terraform.tfvars
-#   terraform apply -var-file=terraform.tfvars
+# Usage: `just terraform-github` (alias tf-gh), from any checkout. It plans,
+# asks, then applies. State is remote, so every checkout sees the same state.
 
 # ---------------------------------------------------------------------------
 # Terraform and provider configuration
@@ -22,6 +19,16 @@
 
 terraform {
   required_version = ">= 1.6.4"
+
+  # Remote since 2026-09-25, beside the GCP state in the same bucket under its
+  # own prefix. It had been a local terraform.tfstate in one checkout: one
+  # copy, no locking, no history, and a trap whenever that checkout sat on a
+  # branch with older code here. Applies stay manual; see
+  # .github/workflows/github-rulesets.yml for why CI does not run them.
+  backend "gcs" {
+    bucket = "quill-medical-app-terraform-state"
+    prefix = "terraform/github"
+  }
 
   required_providers {
     github = {

@@ -4,20 +4,20 @@
 # that a manual `terraform apply` is needed to sync the rulesets to GitHub.
 #
 # Why no automatic apply?
-#   1. No remote backend — Terraform state is local, so CI has no prior state
-#      and would attempt to recreate resources on every run.
-#   2. Security — exposing an admin-scoped PAT to PR workflows risks token
-#      exfiltration via malicious Terraform data sources.
+#   The state has been remote since 2026-09-25 (gs://quill-medical-app-
+#   terraform-state, prefix terraform/github), so the old first reason, that
+#   CI had no state to plan against, no longer holds. The second still does,
+#   and it is enough on its own:
 #
-# When a remote backend (e.g. GCS) is configured, this workflow can be
-# extended to run plan on PRs and apply on merge to main.
+#   These files define the branch protection that decides what reaches main.
+#   Applying them needs a repository-admin token. A token CI holds for that
+#   could also switch the protection off, so a workflow able to apply this
+#   directory could weaken the checks that guard its own merge. It also
+#   exposes an admin-scoped token to every job that can read the secret.
+#   Keeping the apply with a person means changing the guard always takes a
+#   human with admin rights, not only a merged pull request.
 #
-# Manual workflow:
-#   export GITHUB_TOKEN=$(gh auth token)
-#   cd infra/github/
-#   terraform init
-#   terraform plan -var-file=terraform.tfvars
-#   terraform apply -var-file=terraform.tfvars
+# Manual workflow, from any checkout: just terraform-github
 
 name: GitHub rulesets
 
@@ -40,7 +40,7 @@ jobs:
       text: |
         *⚠️ GitHub rulesets changed — manual terraform apply required*
 
-        Files under `infra/github/` were merged to main. Branch protection rulesets will not update automatically until a remote Terraform backend is configured.
+        Files under `infra/github/` were merged to main. They are applied by a person, never by CI, because they define the branch protection that guards main. Run this from any checkout that is up to date with main; it plans first and asks before applying:
 
         *Action required:*
         ```

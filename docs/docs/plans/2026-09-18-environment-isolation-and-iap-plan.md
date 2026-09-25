@@ -2122,6 +2122,42 @@ un-deferred on 2026-09-24. Still true on that date: `quill-medical.net`,
       Worth moving into `quill-medical-app-terraform-state` under its own
       prefix, as a step of its own.
 
+- [x] **(Claude)** Move the `infra/github` state into
+      `quill-medical-app-terraform-state`, under the prefix
+      `terraform/github`, and keep its apply manual.
+
+      A `backend "gcs"` block in `infra/github/branch_rules.tf`, and the
+      local file pushed into the bucket with `terraform state push`. A plan
+      against the bucket must then read "No changes" and list the same nine
+      managed resources as the local file. `just terraform-github` gains
+      `-reconfigure`, so a checkout initialised against the old local
+      backend does not stop to ask about migrating state that has already
+      moved.
+
+      **The apply stays manual, and not only for want of state.**
+      `.github/workflows/github-rulesets.yml` gave two reasons: CI had no
+      state, and an admin-scoped token in CI is a risk. The first goes with
+      this step. The second is the one that matters: these files are the
+      branch protection that guards `main`, and a token that can apply them
+      can also switch them off. CI holding it would let a merged pull
+      request weaken the checks that let it merge. So the workflow still
+      only alerts, with its reasoning rewritten.
+
+      Fixed alongside, because it sits beside `terraform-github` in the
+      `Justfile`: `just terraform-infra` still defaulted to `teaching`, and
+      never selected a workspace, so it planned against the empty `default`
+      state and proposed creating everything that exists. It now defaults
+      to `app` and runs `terraform workspace select`.
+
+      Pushed on 2026-09-25 as
+      `terraform/github/default.tfstate`. `terraform state list` against
+      the bucket gives the nine managed resources and one data source the
+      local file held, and a plan reads "No changes".
+
+      After it merges, the old `infra/github/terraform.tfstate` in Mark's
+      main checkout is dead weight. Rename it rather than delete it, as a
+      last copy, once a plan from that checkout reads "No changes".
+
 - [ ] **(Mark)** Delete both projects, once Phase 2's 48 hours have passed.
       Their Workload Identity pools, the dead staging zone and the old state
       bucket go with them. Google keeps a deleted project recoverable for 30
