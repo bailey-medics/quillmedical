@@ -17,34 +17,121 @@ The outcome is one base email layout, fed by the same brand tokens as
 It takes a theme, so the same layout also carries Let's Do Digital's lighter
 look. That matters because Let's Do Digital has a list of 800+ people who
 should, over several months, come to know the work as Quill Medical, and a
-shared layout lets the brand shift by degrees rather than by a redesign on the
-day.
+shared layout makes the switch a change of theme rather than a redesign. The look comes first: Phase 1 builds the template as static HTML and puts
+it in front of a human before any code that renders or sends it is written.
 
-## Phase 1: Shared brand tokens
+## Phase 1: Design the template, with no plumbing
+
+- [ ] **Hand-write the base layout as static HTML mock-ups** in
+      `frontend/src/stories/emails/mockups/`, one file per theme: `quill` and
+      `ldd`. There is no co-branded theme: each email is one brand or the
+      other, and the move between them is told in words, not in a blended
+      design. Brand values are copied by hand from
+      `theme.ts` for now (navy `#001a36`, amber `#C8963E`, white, Atkinson
+      Hyperlegible); Phase 2 replaces the copies with shared tokens once the
+      design is settled. No backend, no Jinja2, no Resend.
+
+- [ ] **Take the `ldd` theme from letsdodigital.org**, so the email looks
+      like the site and the social account people already know. The site
+      is a Quarto build on Bootstrap, and its values are:
+
+      - **Body** — white `#ffffff`, text `#343a40`, headings at weight 400.
+      - **Header band** — the navbar's light grey `#f8f9fa`, with a
+        `#dee2e6` rule beneath it.
+      - **Logo** — the dual face (one half a grey wire-mesh digital head,
+        one half a blue human silhouette), a 714px transparent PNG at
+        `letsdodigital.org/media/ldd-logo.png`. Large enough for a 2x
+        header image, so no other copy is needed.
+      - **Accent** — the logo's own blue `#0848a9` for buttons and links.
+        Not the site's Bootstrap primary `#2780e3`: white on that is
+        3.97:1, under the 4.5:1 that WCAG AA needs for body-size text,
+        where the logo blue gives 8.37:1. The site's link colour `#2761e3`
+        (5.38:1) is an acceptable second choice if the darker blue reads
+        as too heavy.
+      - **Font** — `'Source Sans Pro', Arial, sans-serif`, from Google
+        Fonts as the site loads it. As with Quill's font, Apple Mail will
+        use it and Gmail and Outlook will fall back to Arial.
+
+- [ ] **Build it for email clients, not browsers, from the start.** A
+      mock-up that only works in a browser proves nothing, so it follows the
+      rules the real template must: a single 600px-wide table with
+      `role="presentation"`, inline styles (Gmail strips `<style>` in some
+      views and no client understands CSS variables), `lang="en-GB"`, and a
+      hidden preheader line for the inbox preview. Regions: a header band
+      with the theme's logo, a content slot, an optional call-to-action
+      button built as a bulletproof table button so Outlook renders it, and
+      a footer saying who sent it and why the recipient is receiving it.
+      Font stack `'Atkinson Hyperlegible Next', Arial, sans-serif`: Apple
+      Mail will use the web font, Gmail and Outlook will fall back, and the
+      layout must read well either way. Every image has `alt` text, because
+      many clients block images until asked.
+
+- [ ] **Choose a light body under a navy header for the `quill` theme**,
+      not the app's all-navy surface. Mail clients apply their own dark mode
+      (Outlook and Gmail invert colours they judge to be light, Apple Mail
+      honours `prefers-color-scheme`), and a fully navy email inverted by a
+      client comes out unreadable. Declare `color-scheme: light dark` and
+      `supported-color-schemes` meta tags and add a small
+      `prefers-color-scheme: dark` block for the clients that honour it.
+
+- [ ] **Fill each mock with real content, not lorem ipsum.** The password
+      reset email (short, one button), the passport assessor invite (a cold
+      message to somebody who has never heard of Quill) and a sample
+      newsletter (long, several sections, images). Those three stretch the
+      layout in different directions, so a design that suits all three will
+      suit the rest. The newsletter signs off from Mark with his personal
+      avatar, the anime digital-health doctor used on his own social
+      accounts: a newsletter from a recognisable person is opened more
+      than one from a brand, and that face is the one constant through
+      every stage of the rebrand. Transactional emails do not carry it;
+      a password reset comes from Quill, not from a person.
+
+- [ ] **Show the mock-ups in Storybook** with `Emails.stories.tsx` under
+      `src/stories/`, beside `Colours` and `Typography`. Each mock is
+      imported with Vite's `?raw` and shown in a sandboxed `iframe` at
+      600px, with a control to switch theme and a narrow-width view for
+      phones. Logos load from `frontend/public/`, which Storybook already
+      serves through `staticDirs`.
+
+- [ ] **Send the mock-ups to real inboxes.** Storybook shows a browser's
+      rendering; Gmail, Outlook and Apple Mail each do their own. Send each
+      mock to a Gmail, an Outlook.com and an Apple Mail address, on desktop
+      and phone, with dark mode on and off, using Litmus or Email on Acid's
+      free tier or a one-off `curl` to Resend's API from the development
+      key. The logo needs an absolute URL for this, so point it at a copy
+      already served publicly; permanent hosting is Phase 3.
+
+- [ ] **Get the design signed off before Phase 2.** Iterate on the
+      mock-ups until the look is agreed, and record here which theme
+      variants were approved. Everything after this phase turns the
+      approved mock into working code, so it should not need to reopen
+      the design.
+
+## Phase 2: Shared brand tokens
 
 - [ ] **Move the brand values into `shared/brand.yaml`.** Today they live
-      only in `frontend/src/theme.ts` — `brandColours` (navy `#001a36`, amber
-      `#C8963E`, white), the `primaryScale` ramp, the font stack and the type
-      scale. The backend cannot read TypeScript, so an email template built
-      from copies of those hex values would drift the first time the theme
-      changed. The YAML holds a `themes` map with `quill` and `ldd` entries,
-      each naming the colours an email needs — header background, header
+      only in `frontend/src/theme.ts`: `brandColours`, the `primaryScale`
+      ramp, the font stack and the type scale. The backend cannot read
+      TypeScript, so an email template built from copies of those hex
+      values would drift the first time the theme changed. The YAML holds a
+      `themes` map with `quill` and `ldd` entries, each naming
+      the colours the approved mock-ups use (header background, header
       text, body background, body text, link, button fill and button text,
-      muted text, divider — plus the logo asset for that theme.
+      muted text, divider) plus the logo asset for that theme.
 
 - [ ] **Generate the frontend's copy with `yarn generate:types`** into
       `src/generated/`, as the competency and profession YAML already are,
       and have `theme.ts` import `brandColours` and `primaryScale` from it.
       The `Colours` story then shows what emails use, because it is the same
-      data. Run `just uf src/theme.test.ts` and the full frontend suite: this
-      touches `theme.ts`, which every component depends on.
+      data. Run `just uf src/theme.test.ts` and the full frontend suite:
+      this touches `theme.ts`, which every component depends on.
 
 - [ ] **Load it in the backend** with a Pydantic model in
       `backend/app/email/brand.py`, `extra='forbid'`, read once at import and
       validated, so a missing colour for a theme fails at startup, not in
       somebody's inbox.
 
-## Phase 2: Base layout and renderer
+## Phase 3: Renderer
 
 - [ ] **Add Jinja2 as a backend dependency** and create
       `backend/app/email/templates/base.html.j2` with a `jinja2.Environment`
@@ -53,34 +140,18 @@ day.
       through each template, so a new email cannot forget one. This is a
       dependency change, so rebuild the test image with `just utr`.
 
-- [ ] **Build the layout for email clients, not browsers.** A single
-      600px-wide table with `role="presentation"`, inline styles (Gmail
-      strips `<style>` in some views and no client understands CSS
-      variables), `lang="en-GB"`, and a hidden preheader line for the inbox
-      preview. Regions: a header band with the theme's logo, a content
-      slot, an optional call-to-action button built as a bulletproof table
-      button so Outlook renders it, and a footer saying who sent it and why
-      the recipient is receiving it. Font stack `'Atkinson Hyperlegible
-      Next', Arial, sans-serif`: Apple Mail will use the web font, Gmail and
-      Outlook will fall back, and the layout must read well either way.
-
-- [ ] **Choose a light body under a navy header for the `quill` theme**,
-      not the app's all-navy surface. Mail clients apply their own dark mode
-      — Outlook and Gmail invert colours they judge to be light, Apple Mail
-      honours `prefers-color-scheme` — and a fully navy email inverted by a
-      client comes out unreadable. Declare `color-scheme: light dark` and
-      `supported-color-schemes` meta tags and add a small
-      `prefers-color-scheme: dark` block for the clients that honour it.
-      Test in Litmus or Email on Acid's free tier, or failing that by
-      sending to Gmail, Outlook.com and Apple Mail by hand.
+- [ ] **Turn the approved mock-up into `base.html.j2`.** The markup moves
+      across as it is; only the hard-coded colours become lookups into
+      `shared/brand.yaml` and the example content becomes blocks. The
+      mock-up is the reference: if the rendered template looks different
+      from it, the template is wrong.
 
 - [ ] **Host the logos on the public site, not the app.** Email clients
       block SVG and relative paths, so each theme's logo is an absolute URL
       to a PNG at 2x resolution on the GCS public site
       (`quill-medical.com/email/…`), which stays up when the app is being
       deployed. Start from `frontend/public/quill-logo-white.png` and
-      `quill-name-long-white-amber.png`. Every image has `alt` text, because
-      many clients block images until asked.
+      `quill-name-long-white-amber.png`.
 
 - [ ] **Send a plain-text part alongside the HTML.** Extend `send_email`
       in `backend/app/email_send.py` with an optional `text_body`, passed to
@@ -95,32 +166,17 @@ day.
       failing loudly (`jinja2.StrictUndefined`), and the preheader and
       footer being present.
 
-## Phase 3: Move the transactional emails onto it
-
-- [ ] **Convert the `main.py` emails first** — verification, password
-      reset and invitation — into child templates of `base.html.j2`, one
-      per message. They are the most-sent and the simplest, so they prove
-      the layout before anything unusual is put in it. Keep the wording as
-      it is; this is a presentation change, and reviewing new copy at the
-      same time would hide what changed.
-
-- [ ] **Convert the passport assessor invite.** Its module docstring
-      already says what it must do — name who is asking, what they are asked
-      to do and how long the link lasts, and never mention a patient — and
-      that stays true. Only the markup moves.
-
-- [ ] **Wrap the teaching certificate emails without taking away the
-      coordinators' control.** A bank's `config.yaml` supplies subject and
-      Markdown body, converted and sanitised with `nh3`. Keep that, and
-      place the sanitised HTML in the base layout's content slot, so a
-      coordinator writes the words and Quill supplies the frame.
-
-## Phase 4: Previews in Storybook
+## Phase 4: Swap the Storybook mock-ups for real renders
 
 - [ ] **Add a `just email-preview` recipe** that renders every template
-      with fixture data, in both themes, to
+      with fixture data, in every theme, to
       `frontend/src/stories/emails/rendered/*.html` inside the backend unit
       test container. The renders are committed.
+
+- [ ] **Point `Emails.stories.tsx` at the renders and delete the
+      mock-ups.** From here Storybook shows what the backend actually
+      produces. Keeping the mock-ups as well would leave two versions of
+      the design to drift apart.
 
 - [ ] **Add a backend test that fails when a committed render is stale**,
       comparing a fresh render of each fixture against the file. This is
@@ -129,13 +185,27 @@ day.
       the test is what stops the previews silently lagging behind the
       templates.
 
-- [ ] **Add `Emails.stories.tsx`** under `src/stories/`, beside `Colours`
-      and `Typography`, importing each render with Vite's `?raw` and showing
-      it in a sandboxed `iframe` at 600px, with a theme toggle. This is how
-      the emails join the Storybook catalogue without the backend depending
-      on Node.
+## Phase 5: Move the transactional emails onto it
 
-## Phase 5: Sending domains
+- [ ] **Convert the `main.py` emails first** (verification, password
+      reset and invitation) into child templates of `base.html.j2`, one per
+      message. They are the most-sent and the simplest, so they prove the
+      layout before anything unusual is put in it. Keep the wording as it
+      is; this is a presentation change, and reviewing new copy at the same
+      time would hide what changed.
+
+- [ ] **Convert the passport assessor invite.** Its module docstring
+      already says what it must do (name who is asking, what they are asked
+      to do and how long the link lasts, and never mention a patient) and
+      that stays true. Only the markup moves.
+
+- [ ] **Wrap the teaching certificate emails without taking away the
+      coordinators' control.** A bank's `config.yaml` supplies subject and
+      Markdown body, converted and sanitised with `nh3`. Keep that, and
+      place the sanitised HTML in the base layout's content slot, so a
+      coordinator writes the words and Quill supplies the frame.
+
+## Phase 6: Sending domains
 
 - [ ] **Split transactional and marketing mail onto separate
       subdomains** in Resend — for example `mail.quill-medical.com` for
@@ -145,11 +215,14 @@ day.
       DMARC policy for each, in Terraform where the DNS lives, and update
       `EMAIL_FROM` in `backend/app/config.py` and the deployed environments.
 
-- [ ] **Add the Let's Do Digital domain to Resend as a third sender**, with
-      its own SPF and DKIM, so early campaigns can go out under the name
-      subscribers signed up to.
+- [ ] **Add the Let's Do Digital domain to Resend as a sender**, so early
+      campaigns can go out under the name subscribers signed up to. It is
+      authenticated with MailerLite today, which sends the list now, so
+      Resend's DKIM record is added beside MailerLite's rather than in place
+      of it, and the SPF record includes both. MailerLite's records come out
+      only once the last MailerLite send is done (Phase 8).
 
-## Phase 6: Mailing lists
+## Phase 7: Mailing lists
 
 - [ ] **Run lists in Resend Audiences and Broadcasts, not in Quill.**
       Bulk mail carries obligations transactional mail does not: consent
@@ -174,39 +247,88 @@ day.
       opt-in, so consent is recorded where the mail is sent from and there
       is no second list to reconcile.
 
-## Phase 7: Bringing the Let's Do Digital list across
+## Phase 8: Bringing the Let's Do Digital list across
 
-- [ ] **Import the 800+ contacts into a Let's Do Digital audience**, with
-      whatever consent record the current provider holds (date, source,
-      wording). Drop anyone already unsubscribed or bounced there; carrying
-      them across would breach their choice and damage the new domain's
-      reputation on the first send.
+- [ ] **Name Bailey Medics in the privacy notice for both brands.** Let's
+      Do Digital and Quill Medical are both trading names of Bailey Medics,
+      so the data controller does not change and the list is not being
+      handed to anybody new. That only holds for subscribers if they can
+      see it: the privacy notice linked from the Let's Do Digital signup
+      forms and emails, and Quill Medical's, should each say "Bailey Medics,
+      trading as Let's Do Digital and Quill Medical" before any email
+      mentions the move.
 
-- [ ] **Warm the new sending domain gradually.** Send the first campaigns
-      in batches — a hundred or so, then larger — to the most engaged
-      subscribers first. A new domain sending 800 emails on its first day
-      looks like spam to mailbox providers.
+- [ ] **Export the list from MailerLite.** The 800+ contacts live there
+      today. Export active subscribers and, separately, the unsubscribed,
+      bounced and complained groups, each with the fields MailerLite holds
+      about consent: subscription date, signup source or form, and the
+      double opt-in confirmation date where there is one. Keep the export
+      files out of the repository and off shared drives; they are personal
+      data, stored once, somewhere access-controlled.
+
+- [ ] **Import into a Let's Do Digital audience in Resend.** Active
+      subscribers come in as subscribed, with their signup date and source
+      as contact properties so the consent record travels with them.
+      Unsubscribed, bounced and complained contacts come in as
+      unsubscribed, not left out: leaving them out loses the record that
+      they said no, and a later import from anywhere else could then mail
+      them again. Check the audience's counts against MailerLite's before
+      sending anything.
+
+- [ ] **Warm the sending domains gradually.** Moving to Resend means
+      sending from different servers than MailerLite used, and the Quill
+      Medical subdomain has no history at all. The first campaigns from
+      each, stage one for Let's Do Digital and stage four for Quill Medical,
+      go out in batches, a hundred or so and then larger, to the
+      subscribers who opened most recently in MailerLite first. A domain
+      suddenly sending to the whole list from new servers looks like spam
+      to mailbox providers.
+
+- [ ] **Line the social accounts up with the email stages.** There are
+      two: Mark's own (the anime digital-health doctor) and Let's Do
+      Digital's (the dual face). Mark's account is the bridge, since it
+      belongs to neither brand and so needs no rebrand: it introduces Quill
+      Medical from stage one and carries the story throughout. The Let's
+      Do Digital account follows the email stages, its bio and pinned post
+      changing at each: stage one mentions Quill, stage two says Let's Do
+      Digital is becoming Quill Medical, and from stage four it describes
+      itself as Bailey Medics' account for Quill Medical. It keeps its
+      handle and followers: Quill Medical has no accounts of its own, and
+      opening them waits until it is big enough to need them. Each email and post goes out in the same week, so somebody who sees
+      one sees the other saying the same thing.
 
 - [ ] **Stage one, Let's Do Digital introducing Quill.** Campaigns in the
       `ldd` theme, from the Let's Do Digital sender, that mention Quill
       Medical as the work Bailey Medics is building. Social posts run
       alongside.
 
-- [ ] **Stage two, co-branded.** A `transition` treatment of the layout —
-      Let's Do Digital's light body with the Quill logo beside its own —
-      saying plainly that Let's Do Digital is becoming Quill Medical, with a
-      visible unsubscribe.
+- [ ] **Stage two, announcing the change.** Still in the `ldd` theme and
+      from the Let's Do Digital sender, saying plainly that Let's Do
+      Digital is becoming Quill Medical, with a visible unsubscribe. The
+      email stays wholly Let's Do Digital in look, so subscribers meet the
+      Quill theme only once the move has been announced.
 
-- [ ] **Stage three, re-consent.** One email asking subscribers to confirm
-      they want to hear from Quill Medical. Those who confirm move to the
-      Quill Medical audience; those who do not are not mailed as Quill
-      Medical. Consent under PECR is given to a sender the person
-      recognises, and a smaller list that chose Quill is worth more than
-      a larger one that did not.
+- [ ] **Stage three, notice of the move.** One email saying that from a
+      named date the newsletter comes from Quill Medical, what it will be
+      about, and that nothing else changes: same people, same company,
+      same data. A single, prominent unsubscribe link sits beside that
+      sentence, not only in the footer. Everybody still subscribed on the
+      date moves to the Quill Medical audience. Because the sender is the
+      same company under another name, a clear notice with an easy way out
+      is enough under PECR, and asking everybody to opt in again would
+      lose most of a list that has done nothing wrong.
 
 - [ ] **Stage four, Quill Medical only.** Campaigns in the `quill` theme
-      from the marketing subdomain. Retire the Let's Do Digital audience
-      once a final notice has gone to anyone who did not re-consent.
+      from the marketing subdomain. The first one repeats, in one line near
+      the top, that this is Let's Do Digital's newsletter under its new
+      name, for anyone who missed stage three. Retire the Let's Do Digital
+      audience once everybody on it has moved or unsubscribed.
+
+- [ ] **Close the MailerLite account** once the first Resend campaign has
+      gone out cleanly: delete the list there, remove MailerLite's DKIM and
+      SPF entries from the Let's Do Digital domain, and cancel any
+      subscription. Two copies of the same personal data in two services is
+      one more than needed.
 
 ## Decisions
 
@@ -220,10 +342,12 @@ day.
   features, and getting them slightly wrong has consequences a clinical
   product does not want attached to its name.
 
-- **Re-consent before rebranding the list** — the conservative reading of
-  PECR. Whether it is strictly required depends on whether Let's Do Digital
-  and Quill Medical are trading names of the same legal entity; even if they
-  are, a list that opted in to the new name will complain less.
+- **Notice and opt-out, not re-consent** — both brands are trading names of
+  Bailey Medics, so the controller and the relationship are unchanged and a
+  rename told clearly in advance is not a new sender. Re-consent was the
+  plan while that was unknown. It stays available if the consent wording on
+  the MailerLite forms turns out to name Let's Do Digital so narrowly that a
+  rename would surprise people.
 
 - **Resend send failures stay out of scope** — `send_email` has no
   exception handling around the provider call. That is already a to-do list
@@ -231,12 +355,5 @@ day.
 
 ## Open questions
 
-- **Where does the Let's Do Digital list live today**, and what consent
-  wording did people sign up under?
-
-- **Are Let's Do Digital and Quill Medical the same legal entity**, both
-  trading names of Bailey Medics? This decides how much of Phase 7 is legal
-  necessity and how much is good practice.
-
-- **What are Let's Do Digital's brand assets** — logo, colours, fonts — for
-  the `ldd` theme in `shared/brand.yaml`?
+- **What consent wording did people sign up under** on the Let's Do
+  Digital MailerLite forms, and was double opt-in switched on?
