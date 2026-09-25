@@ -38,6 +38,7 @@ describe("PublicFooter", () => {
     ["Clinical records", "/clinical-records"],
     ["About", "/about"],
     ["Pricing", "/pricing"],
+    ["Accessibility statement", "/accessibility-statement"],
   ])("links %s to %s", (name, href) => {
     renderWithMantine(<PublicFooter />);
     expect(screen.getByRole("link", { name })).toHaveAttribute("href", href);

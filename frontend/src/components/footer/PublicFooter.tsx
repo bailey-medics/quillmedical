@@ -47,6 +47,10 @@ const data: FooterGroup[] = [
       { label: "Privacy policy", link: "/privacy-policy" },
       { label: "Terms of service", link: "/terms-of-service" },
       { label: "Cookie policy", link: "/cookie-policy" },
+      // The statement the accessibility regulations require, beside the
+      // other legal pages. The Platform group's "Accessibility" is the
+      // overview; getByRole with an exact name tells the two apart.
+      { label: "Accessibility statement", link: "/accessibility-statement" },
     ],
   },
 ];

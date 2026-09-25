@@ -8,7 +8,8 @@
  * Works in conjunction with RequireAuth — assumes user is already authenticated.
  */
 
-import { Center, Loader } from "@mantine/core";
+import { Center } from "@mantine/core";
+import LoadingSpinner from "@/components/loading-spinner";
 import type { ReactNode } from "react";
 import { useAuth } from "./AuthContext";
 import { useHasFeature } from "@lib/features";
@@ -41,7 +42,7 @@ export function RequireFeature({
   if (state.status === "loading") {
     return (
       <Center h="100vh">
-        <Loader />
+        <LoadingSpinner />
       </Center>
     );
   }

@@ -183,10 +183,10 @@ export const Overview: Story = {
         <StoryNote>
           Used in badges, alerts, and form validation to communicate state. Each
           status has two colours. The fill (<code>bg</code>, left) is dark
-          enough for white text and is the same in both schemes. The word (
-          <code>fg</code>, middle) is for the status written as text with no
-          fill behind it, and changes with the scheme: a darker shade in light
-          mode, a pale one in dark. Never use <code>bg</code> for text.
+          enough for white text and is the same in both schemes. The word, in
+          the middle (<code>fg</code>), is for the status written as text with
+          no fill behind it, and changes with the scheme: a darker shade in
+          light mode, a pale one in dark. Never use <code>bg</code> for text.
         </StoryNote>
         <Stack gap="sm" mt="xl">
           {statusEntries.map(([name, config]) => (

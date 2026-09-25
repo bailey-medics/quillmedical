@@ -72,7 +72,7 @@ export default function ButtonPairRed({
       >
         {acceptLoading ? (
           <Group gap="xs" wrap="nowrap">
-            <Loader size="xs" color="white" />
+            <Loader size="xs" color="white" aria-hidden="true" />
             {submittingLabel ?? acceptLabel}
           </Group>
         ) : (

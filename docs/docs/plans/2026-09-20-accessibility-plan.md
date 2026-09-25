@@ -617,23 +617,40 @@ readable by someone who cannot yet log in.
       no clinical launch plan yet, so the data model work went on the
       project to-do list instead, beside the language preference question
       the internationalisation plan raises
-- [ ] Choose the feedback route the statement names. A monitored email
+- [x] Choose the feedback route the statement names. A monitored email
       address is the minimum; it must actually be read. Moved ahead of the
       statement, which has to name it, and the evidence pack and AIS note
       moved ahead of both, because they need neither. This is a decision for
-      a person: the address has to be one somebody reads
-- [ ] Write the statement in the GOV.UK model format, in order: commitment
-      referencing the 2018 regulations; scope (the app and the public
-      site, by URL); compliance status, which will be **partially
-      compliant** until phase 5 is done and must stay honest after it;
-      non-accessible content under the three mandated headings
-      (non-compliance, disproportionate burden, out of scope); preparation
-      date, evaluation method and last review date; a feedback route; the
-      EHRC and EASS enforcement paragraph
-- [ ] Publish it at `/accessibility` on the public site
-      (`frontend/public_pages/`) and link it from the public footer and
-      from the app's ribbon or settings, so 3.2.6 Consistent help is met
-      in the same change
+      a person: the address has to be one somebody reads. Chosen:
+      <info@quill-medical.com>, named in the statement, on the accessibility
+      docs page and in Settings
+- [x] Write the statement in the GOV.UK model format, in order: commitment
+      referencing the 2018 regulations; scope (the app and the public site,
+      by URL); compliance status, which will be **partially compliant**
+      until phase 5 is done and must stay honest after it; non-accessible
+      content under the three mandated headings (non-compliance,
+      disproportionate burden, out of scope); preparation date, evaluation
+      method and last review date; a feedback route; the EHRC and EASS
+      enforcement paragraph.
+      `frontend/public_pages/src/pages/accessibility-statement.tsx`, in the
+      model's order. It lists two non-compliances honestly, the Safari
+      keyboard scrolling (marked as "may", because Safari itself has not
+      been tested) and automatically generated captions not yet checked by a
+      person, and one out-of-scope item, YouTube's own player. It gives no
+      reply time, because none has been agreed; add one when it has
+- [x] Publish it at `/accessibility` on the public site
+      (`frontend/public_pages/`) and link it from the public footer and from
+      the app's ribbon or settings, so 3.2.6 Consistent help is met in the
+      same change. Departed from the plan on the address: while this was
+      being built, `/accessibility` became the public site's accessibility
+      overview, a marketing page, so the statement is at
+      `/accessibility-statement`, the name GOV.UK and NHS sites use. The
+      overview links to it, the footer's Legal group lists it as
+      "Accessibility statement", and the app links it from Settings. Its
+      caption item says what is true of hosted video: captions are generated
+      automatically and a person checks them afterwards, so an unchecked
+      video's captions may contain errors. An axe scan of both built pages
+      found nothing
 - [ ] Set an annual review date for the statement and add it to the
       stale-incidents or a similar scheduled workflow so it cannot be
       forgotten

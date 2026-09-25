@@ -6,7 +6,8 @@
  * while authentication is being checked.
  */
 
-import { Center, Loader } from "@mantine/core";
+import { Center } from "@mantine/core";
+import LoadingSpinner from "@/components/loading-spinner";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 import type { ReactNode } from "react";
@@ -37,7 +38,7 @@ export default function RequireAuth({ children }: { children: ReactNode }) {
   if (state.status === "loading") {
     return (
       <Center mih="60dvh">
-        <Loader />
+        <LoadingSpinner />
       </Center>
     );
   }

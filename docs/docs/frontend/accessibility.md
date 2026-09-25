@@ -75,13 +75,21 @@ and the ones not yet done.
 - No screen reader, zoom or magnifier testing has been done yet.
 - On a page with nothing focusable, Safari cannot scroll the content from
   the keyboard until the skip link has been used. Chrome and Firefox can.
-- No accessibility statement has been published yet. It will be, at
-  `/accessibility` on the public site, in the format the Public Sector
-  Bodies Accessibility Regulations 2018 set out, and will say "partially
-  compliant" until the testing above is done.
+- Two known issues are listed in the accessibility statement: keyboard
+  scrolling in Safari before the skip link is used, and automatically
+  generated video captions that a person has not yet checked.
+
+## Accessibility statement
+
+The statement is published at
+[quill-medical.com/accessibility-statement](https://quill-medical.com/accessibility-statement),
+in the format the Public Sector Bodies Accessibility Regulations 2018 set
+out. It says Quill is partially compliant with WCAG 2.2 AA, and will until
+the testing by people above is done. It is linked from the public site's
+footer, from the public accessibility page at `/accessibility`, and from
+Settings in the app.
 
 ## Reporting a problem
 
-Use **Feedback** in the side navigation to report an accessibility
-problem. A dedicated contact for people who cannot log in will be given
-in the accessibility statement.
+Email <info@quill-medical.com>, or use **Feedback** in the side navigation
+if you are signed in.
