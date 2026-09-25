@@ -1528,7 +1528,7 @@ nothing, so it does not need it.
       account less read-only than its name; it is still unable to change
       anything.
 
-- [ ] **(Claude)** Decide how the plan takes the state lock. `terraform
+- [x] **(Claude)** Decide how the plan takes the state lock. `terraform
       plan` writes a lock object to the state bucket, so a strictly
       read-only account fails there. Either run PR plans with
       `-lock=false`, accepting that two concurrent plans are harmless
@@ -1536,8 +1536,34 @@ nothing, so it does not need it.
       and delete on the lock file alone. The first is simpler and the
       recommendation; write the reasoning into the workflow comment.
 
-- [ ] **(Claude)** Point the `plan` job in `terraform.yml` at the new
+      Decided on 2026-09-25: `-lock=false`, reasoned in the comment on the
+      plan step in `terraform.yml`. The lock exists to stop two runs
+      writing state at once, and a plan writes none. The worst overlap is
+      a plan read while the apply on `main` runs, which shows a change
+      already being made; the next push re-plans. A write grant on the
+      lock file would guard against a harm that cannot happen.
+
+- [x] **(Claude)** Point the `plan` job in `terraform.yml` at the new
       account through a `GCP_APP_PLAN_SERVICE_ACCOUNT` secret.
+
+      Done on 2026-09-25, with two additions the steps above missed:
+
+      - **The plan also reads the state bucket.** Since Batch 10a moved it,
+        `quill-medical-app-terraform-state` grants only the apply account,
+        so `github-plan` needs `roles/storage.objectViewer` there or
+        `terraform init` fails before planning anything. The plan job's
+        `workspace select -or-create` also became `workspace select`: the
+        workspace exists, and a read-only account could not create one.
+      - **`ci.yml` moves too.** Its "Published teaching content still
+        validates" job runs on every branch and reads `quill-images-app`
+        as the apply account. Phase 3 would lock it out. It now uses
+        `github-plan`, which gains `roles/storage.objectViewer` on that
+        bucket for it.
+
+      Mark's two steps above, with those two bucket grants and the
+      repository-level secret, are one script. **Run it before merging
+      the workflow change**, or the next pull request's plan cannot sign
+      in.
 
 ### Phase 3: Lock the apply account to `main`
 
@@ -1564,6 +1590,19 @@ risk is small, but it is the gap this batch exists for.
 - [ ] Prove it both ways. A `workflow_dispatch` apply from `main` must
       authenticate; the same workflow dispatched from a feature branch
       must be refused at the authentication step.
+
+      **Only after Phase 2 has merged and a pull request's plan has passed
+      as `github-plan`.** Until then the plan job still signs in as the
+      apply account, from a pull-request ref, and this phase would refuse
+      it. Checked on 2026-09-25 that nothing else signs in as either
+      account off `main`: the apply, `public-site.yml`, `deploy.yml`,
+      `stale-incidents.yml` and `alert-route-test.yml` all run on pushes
+      to `main` or on a schedule, which GitHub runs from `main`. One
+      consequence to accept: `deploy.yml`'s `workflow_dispatch` must now
+      be started from `main`, though its `manual_commit` input can still
+      name any commit. The provider's current mapping is
+      `attribute.repository` and `google.subject` only, so the new
+      mapping keeps both and adds `attribute.repo_ref`.
 
 ### Phase 4: Narrow the state bucket
 
