@@ -40,14 +40,15 @@ _EOEETA_NAME = "East of England Endoscopy Training Academy"
 #: placeholder address.
 _EOEETA = EmailPartner(
     name=_EOEETA_NAME,
-    context="Optical diagnosis accreditation",
+    # What the teaching router passes: the question bank's title
+    context="Optical diagnosis of diminutive colorectal polyps",
     short_name="EoEETA",
     reply_to="coordinator@eoeeta.example",
     logo=EmailImage(
         src="/email/partners/eoeeta-email.png",
         width=162,
         height=72,
-        alt="",
+        alt=_EOEETA_NAME,
     ),
 )
 
@@ -84,9 +85,9 @@ def _certificate_context() -> dict[str, Any]:
     )
     return {
         "subject": rendered["subject"],
-        "preheader": (
-            f"Congratulations on passing {_CERTIFICATE_VALUES['exam_title']}."
-        ),
+        # As the teaching router sends it: the subject doubles as the
+        # preheader, since the coordinator writes no separate one.
+        "preheader": rendered["subject"],
         "body_html": Markup(rendered["html_body"]),
         "body_text": rendered["body_text"],
         "reason": "You are receiving this because you sat an assessment on Quill.",

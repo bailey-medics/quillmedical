@@ -365,7 +365,7 @@ sent for them.
       is built. A request that leaves the branding fields out keeps what
       was set, so an older client cannot wipe them.
 
-- [ ] **Wrap the teaching certificate emails without taking away the
+- [x] **Wrap the teaching certificate emails without taking away the
       coordinators' control.** A bank's `config.yaml` supplies subject and
       Markdown body, converted and sanitised with `nh3`. Keep that, and
       place the sanitised HTML in the base layout's content slot, so a
@@ -373,6 +373,10 @@ sent for them.
       student and the coordinator emails get the partner strip, the "via"
       sender and the coordinator as reply-to, from the organisation's
       `TeachingOrgSettings`. The certificate PDF stays an attachment.
+      The strip's line beside the logo is the question bank's title, the
+      one piece of context the router has; the preheader is the subject,
+      since a coordinator writes no separate one. An organisation with no
+      teaching settings sends as Quill's own, with no strip.
 
 - [ ] **Check the real renders in real inboxes.** Send each converted
       email from the development environment to Proton, Gmail, Outlook

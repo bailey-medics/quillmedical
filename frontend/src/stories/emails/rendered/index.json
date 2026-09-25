@@ -77,14 +77,14 @@
     "quill": {
       "file": "certificate--quill.html",
       "subject": "Your certificate for Optical diagnosis of diminutive colorectal polyps",
-      "preheader": "Congratulations on passing Optical diagnosis of diminutive colorectal polyps.",
+      "preheader": "Your certificate for Optical diagnosis of diminutive colorectal polyps",
       "fromName": "EoEETA via Quill Medical",
       "replyTo": "coordinator@eoeeta.example"
     },
     "ldd": {
       "file": "certificate--ldd.html",
       "subject": "Your certificate for Optical diagnosis of diminutive colorectal polyps",
-      "preheader": "Congratulations on passing Optical diagnosis of diminutive colorectal polyps.",
+      "preheader": "Your certificate for Optical diagnosis of diminutive colorectal polyps",
       "fromName": "EoEETA via Let's Do Digital",
       "replyTo": "coordinator@eoeeta.example"
     }
@@ -95,14 +95,14 @@
     "quill": {
       "file": "certificate-without-logo--quill.html",
       "subject": "Your certificate for Optical diagnosis of diminutive colorectal polyps",
-      "preheader": "Congratulations on passing Optical diagnosis of diminutive colorectal polyps.",
+      "preheader": "Your certificate for Optical diagnosis of diminutive colorectal polyps",
       "fromName": "EoEETA via Quill Medical",
       "replyTo": "coordinator@eoeeta.example"
     },
     "ldd": {
       "file": "certificate-without-logo--ldd.html",
       "subject": "Your certificate for Optical diagnosis of diminutive colorectal polyps",
-      "preheader": "Congratulations on passing Optical diagnosis of diminutive colorectal polyps.",
+      "preheader": "Your certificate for Optical diagnosis of diminutive colorectal polyps",
       "fromName": "EoEETA via Let's Do Digital",
       "replyTo": "coordinator@eoeeta.example"
     }
