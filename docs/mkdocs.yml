@@ -69,6 +69,7 @@ nav:
           - Overview: frontend/accessibility.md
           - Test journeys: frontend/accessibility/journeys.md
           - Testing log: frontend/accessibility/testing-log.md
+          - DTAC D1 evidence: frontend/accessibility/dtac-d1.md
       - Storybook: frontend/storybook/index.md
       - Test Infrastructure: frontend/test-infrastructure-setup.md
   - Infrastructure:
