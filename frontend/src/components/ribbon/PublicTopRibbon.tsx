@@ -6,6 +6,7 @@
  */
 
 import BurgerButton from "@/components/button/BurgerButton";
+import PublicButton from "@/components/button/PublicButton";
 import { Anchor, Group } from "@mantine/core";
 import classes from "./PublicTopRibbon.module.scss";
 import publicNavLinks, { LOGIN_URL } from "./publicNavLinks";
@@ -49,7 +50,7 @@ export default function PublicTopRibbon({
               style={{ height: "1.5rem", width: "auto" }}
             />
           </a>
-          <Group component="nav" gap="md" className={classes.navLinks}>
+          <Group component="nav" gap="sm" className={classes.navLinks}>
             {publicNavLinks.map((link) =>
               link.disabled ? (
                 <span
@@ -76,16 +77,15 @@ export default function PublicTopRibbon({
           {/*
             Outside the nav group, hard right. Logging in leaves the public
             site for the application, so it is an action rather than another
-            page, and a returning visitor looks for it in the corner.
+            page, and a returning visitor looks for it in the corner. It is
+            the same PublicButton as the "Log in" in the home page hero, so
+            the two read as one action.
           */}
-          <Anchor
-            href={LOGIN_URL}
-            className={classes.login}
-            underline="never"
-            fw={600}
-          >
-            Log in
-          </Anchor>
+          <div className={classes.login}>
+            <PublicButton href={LOGIN_URL} size="sm">
+              Log in
+            </PublicButton>
+          </div>
         </>
       )}
     </div>
