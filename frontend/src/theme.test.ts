@@ -252,3 +252,22 @@ describe("anchor colour", () => {
     expect(vars.dark["--mantine-color-anchor"]).toBe("var(--link-color)");
   });
 });
+
+describe("PublicButton's amber fill", () => {
+  const text = vars.variables["--button-text-dark"];
+  const pressed = vars.variables["--button-active-bg"];
+
+  it("keeps the navy text at WCAG AA at rest, on hover and when pressed", () => {
+    expect(text).toBe(primaryScale[8]);
+    // Resting is secondary.5, hover secondary.6, as PublicButton.module.css
+    for (const fill of [secondaryScale[5], secondaryScale[6], pressed]) {
+      expect(contrastRatio(text, fill)).toBeGreaterThanOrEqual(AA_TEXT);
+    }
+  });
+
+  it("is never darker when pressed than on hover", () => {
+    expect(contrastRatio(text, pressed)).toBeGreaterThanOrEqual(
+      contrastRatio(text, secondaryScale[6]),
+    );
+  });
+});
