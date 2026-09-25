@@ -16,16 +16,21 @@ frontend/
 │   │   └── generate-pages.cjs  ← Generates HTML from TSX
 │   └── src/pages/
 │       ├── about.tsx
+│       ├── accessibility.tsx
+│       ├── assessments.tsx
 │       ├── careers.tsx
 │       ├── clinical-records.tsx
-│       ├── clinical-teaching.tsx
 │       ├── company-information.tsx
 │       ├── contact.tsx
 │       ├── cookie-policy.tsx
+│       ├── for-educators.tsx
 │       ├── index.tsx           ← Home page
+│       ├── learning.tsx
 │       ├── not-found.tsx       ← 404 page
+│       ├── optical-diagnosis.tsx
 │       ├── pricing.tsx
 │       ├── privacy-policy.tsx
+│       ├── security.tsx
 │       ├── storybook-test.tsx  ← Component demo
 │       └── terms-of-service.tsx
 ├── src/

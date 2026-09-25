@@ -4,7 +4,7 @@ import PublicLightBackground from "@/components/background/PublicLightBackground
 import PublicLayout from "@/components/layouts/PublicLayout";
 import PublicTitle from "@/components/typography/PublicTitle";
 import PublicBodyText from "@/components/typography/PublicBodyText";
-import { Container, Stack } from "@mantine/core";
+import { Anchor, Container, Stack } from "@mantine/core";
 import PublicMantineProvider from "../PublicMantineProvider";
 import "../global-styles";
 import { createRoot } from "react-dom/client";
@@ -17,11 +17,10 @@ createRoot(document.getElementById("root")!).render(
           <Stack align="center" gap="md" py="xl">
             <PublicTitle title="About Quill Medical" />
             <PublicBodyText justify="centre">
-              Quill Medical is a clinician-led software company building the
-              tools that clinical teams actually need. We started because we
-              believed healthcare technology could be better — more thoughtful,
-              more aligned with how clinicians really work, and built on open
-              standards that put patients and providers first.
+              Quill Medical is a clinician-led software company building online
+              learning and assessment for clinicians. We started because we
+              believed clinical software could be better: more thoughtful, and
+              more aligned with how clinicians really learn and work.
             </PublicBodyText>
           </Stack>
         </Container>
@@ -30,19 +29,22 @@ createRoot(document.getElementById("root")!).render(
       <PublicLightBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
-            <PublicTitle title="Built by clinicians" c="white" />
+            <PublicTitle title="Built by clinicians" size="md" c="white" />
             <PublicBodyText justify="centre">
               Our team brings genuine clinical experience to every line of code.
-              We have trained, examined, referred, prescribed, and taught. We
-              know the frustration of systems that slow you down when you need
-              to move fast, and the quiet satisfaction of a tool that just works
-              at the bedside.
+              We have trained, examined and taught, and we know what a fair,
+              trustworthy assessment looks like from both sides of the desk.
             </PublicBodyText>
             <PublicBodyText justify="centre">
-              That clinical insight shapes every decision — from the data
-              architecture (FHIR R4, OpenEHR) to the access model
-              (competency-based, not role-based) to the deployment philosophy
-              (modular, so you only run what you need).
+              The same team is building a{" "}
+              <Anchor
+                href="/clinical-records"
+                c="secondary.5"
+                underline="always"
+              >
+                clinical record
+              </Anchor>{" "}
+              on open standards, alongside the learning and assessment platform.
             </PublicBodyText>
           </Stack>
         </Container>
@@ -51,16 +53,15 @@ createRoot(document.getElementById("root")!).render(
       <PublicDarkBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
-            <PublicTitle title="Our commitment" c="white" />
+            <PublicTitle title="Our commitment" size="md" c="white" />
             <PublicBodyText justify="centre">
-              We are committed to clinical safety, to keeping your data in the
-              UK, and to open standards that prevent vendor lock-in. Your data
-              remains yours, portable and interoperable.
+              We are committed to assessments that are fair to every candidate,
+              to accessibility, and to keeping your data in the UK.
             </PublicBodyText>
             <PublicBodyText justify="centre">
               Quill is what a clinical team builds when they refuse to settle.
-              Every feature is carefully considered, clinically validated, and
-              built to the standard that patients deserve and clinicians expect.
+              Every feature is carefully considered and built to the standard
+              clinicians expect.
             </PublicBodyText>
           </Stack>
         </Container>

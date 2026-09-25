@@ -23,7 +23,7 @@ const data: FooterGroup[] = [
   {
     title: "Features",
     links: [
-      { label: "Teaching", link: "/clinical-teaching" },
+      { label: "Learning", link: "/learning" },
       { label: "Clinical records", link: "/clinical-records" },
     ],
   },
