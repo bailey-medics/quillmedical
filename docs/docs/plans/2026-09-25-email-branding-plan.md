@@ -60,7 +60,7 @@ front of a human before any code that renders or sends it is written.
 
 - [x] **Build it for email clients, not browsers, from the start.** A
       mock-up that only works in a browser proves nothing, so it follows the
-      rules the real template must: a single 600px-wide table with
+      rules the real template must: a single 900px-wide table with
       `role="presentation"`, inline styles (Gmail strips `<style>` in some
       views and no client understands CSS variables), `lang="en-GB"`, and a
       hidden preheader line for the inbox preview. Regions: a header band
@@ -95,7 +95,7 @@ front of a human before any code that renders or sends it is written.
 - [x] **Show the mock-ups in Storybook** with `Emails.stories.tsx` under
       `src/stories/`, beside `Colours` and `Typography`. Each mock is
       imported with Vite's `?raw` and shown in a sandboxed `iframe` at
-      600px, with controls for theme, phone width and dark mode. Dark mode
+      full width, with controls for theme, phone width and dark mode. Dark mode
       is forced by rewriting the email's `prefers-color-scheme` query, so
       the preview does not depend on the viewer's own setting. Logos are
       email-sized copies in `frontend/public/email/`, which Storybook
@@ -109,6 +109,10 @@ front of a human before any code that renders or sends it is written.
       free tier or a one-off `curl` to Resend's API from the development
       key. The logo needs an absolute URL for this, so point it at a copy
       already served publicly; permanent hosting is Phase 3.
+      The width needs checking most: the template is 900px, wider than the
+      600px most email is built to, so check it in Outlook on the desktop
+      and in Gmail's reading pane beside the inbox list, where a narrower
+      window will push it into its phone layout or a sideways scroll.
 
 - [ ] **Get the design signed off before Phase 2.** Iterate on the
       mock-ups until the look is agreed, and record here which theme

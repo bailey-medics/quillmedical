@@ -5,9 +5,11 @@
   background-color: #fff;
 }
 
+/* Roughly an inbox reading pane: the 900px email sits centred in it,
+   as it would in Gmail or Outlook on a laptop. */
 .desktop {
   width: 100%;
-  max-width: 680px;
+  max-width: 1020px;
 }
 
 .phone {
