@@ -665,7 +665,22 @@ readable by someone who cannot yet log in.
       key is read from Secret Manager at run time, not copied into GitHub,
       which needs a `terraform apply` of the grant in
       `infra/runtime-identities.tf`. A manual run with `force` sends it
-      whatever the date, to check it arrives
+      whatever the date, to check it arrives.
+
+      Landed in #1130. The grant was applied by the Terraform workflow on
+      merge, as every `infra/` change is, so no manual apply was needed. A
+      forced run on 25 September 2026 delivered both the email and the
+      Slack post, proving the Secret Manager read, Resend and the Slack
+      webhook end to end. With the statement reviewed on 25 September
+      2026, the first real reminder goes out on Monday 6 September 2027,
+      the first scheduled run after the review turns 11 months old.
+
+      Known limitation: the schedule is fixed to September and October,
+      so it only fits a review that stays in those months. A review in,
+      say, June would next be due in June, and the workflow would not
+      notice until September. If reviews move, run the schedule every
+      Monday of the year; the script already sends nothing until the
+      review is due, so the only cost is one short job a week
 
 ## Phase 7: Keep it green
 
