@@ -6,10 +6,11 @@
  */
 
 import { Group, Stack } from "@mantine/core";
+import PageHeader from "@/components/page-header";
 import BaseCard from "@components/base-card/BaseCard";
 import { EmailField, EMAIL_PATTERN } from "@components/form";
 import { QuillLogo } from "@components/images";
-import { BodyText, Heading, TextLink } from "@components/typography";
+import { BodyText, TextLink } from "@components/typography";
 import StateMessage from "@components/message-cards/StateMessage";
 import { IconWifiOff } from "@/components/icons/appIcons";
 import { useConnectivity } from "@lib/connectivity";
@@ -37,7 +38,7 @@ function ForgotPasswordFields() {
 
   return (
     <Stack>
-      <Heading>Forgot password</Heading>
+      <PageHeader title="Forgot password" />
       {!isOnline && (
         <StateMessage
           icon={<IconWifiOff />}

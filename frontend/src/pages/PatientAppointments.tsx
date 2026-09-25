@@ -6,9 +6,9 @@
  */
 
 import { AppointmentsList } from "@/components/appointments";
+import PageHeader from "@/components/page-header";
 import { fakeAppointments } from "@/data/fakeAppointments";
 import { usePatientLoader } from "@/hooks/usePatientLoader";
-import { Heading } from "@/components/typography";
 import { Stack } from "@mantine/core";
 import { useEffect } from "react";
 import { useParams } from "react-router-dom";
@@ -28,7 +28,7 @@ export default function PatientAppointments() {
 
   return (
     <Stack gap="lg">
-      <Heading>Appointments</Heading>
+      <PageHeader title="Appointments" />
       <AppointmentsList appointments={fakeAppointments} />
     </Stack>
   );

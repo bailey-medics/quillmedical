@@ -9,7 +9,7 @@
 // Auth pages use centred form layout, not Container
 
 import { Center, Stack } from "@mantine/core";
-import { Heading } from "@components/typography";
+import PageHeader from "@/components/page-header";
 import { QuillLogo } from "@components/images";
 import BaseCard from "@components/base-card/BaseCard";
 import { SelectField, TextField } from "@components/form";
@@ -41,7 +41,7 @@ function TeachingRegisterFields({
     <Stack gap="md">
       <Stack align="center" gap="md">
         <QuillLogo />
-        <Heading>Register for Quill Teaching</Heading>
+        <PageHeader title="Register for Quill Teaching" />
       </Stack>
       <FormStatus />
       <Controller

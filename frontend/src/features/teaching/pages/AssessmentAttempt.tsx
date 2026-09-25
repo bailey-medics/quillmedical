@@ -7,6 +7,7 @@
  */
 
 import { Loader, Stack } from "@mantine/core";
+import PageHeader from "@/components/page-header";
 import TeachingLayout from "@/components/layouts/TeachingLayout";
 import { StateMessage } from "@/components/message-cards";
 import { IconAlertCircle } from "@/components/icons/appIcons";
@@ -313,6 +314,7 @@ export default function AssessmentAttempt() {
 
   return (
     <TeachingLayout>
+      <PageHeader title="Assessment" visuallyHidden />
       {/* Blocker modal — warns when navigating away during active exam */}
       <ConfirmModal
         opened={blocker.state === "blocked"}

@@ -6,10 +6,11 @@
  */
 
 import { Badge, Button, Group, Skeleton, Stack, Table } from "@mantine/core";
+import PageHeader from "@/components/page-header";
 import TeachingLayout from "@/components/layouts/TeachingLayout";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { Heading, EmptyState } from "@/components/typography";
+import { EmptyState } from "@/components/typography";
 import { StateMessage } from "@/components/message-cards";
 import { IconAlertCircle } from "@/components/icons/appIcons";
 import SelectField from "@/components/form/SelectField";
@@ -113,7 +114,7 @@ export default function AllResults() {
     <TeachingLayout>
       <Stack gap="lg">
         <Group justify="space-between" align="center">
-          <Heading>All results</Heading>
+          <PageHeader title="All results" />
           {results.length > 0 && (
             <Button variant="light" onClick={() => exportCsv(results)}>
               Export CSV

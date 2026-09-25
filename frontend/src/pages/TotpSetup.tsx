@@ -7,9 +7,10 @@
  */
 
 import { Stack } from "@mantine/core";
+import PageHeader from "@/components/page-header";
 import BaseCard from "@/components/base-card/BaseCard";
 import TextField from "@/components/form/TextField";
-import { BodyText, Heading } from "@/components/typography";
+import { BodyText } from "@/components/typography";
 import {
   Form,
   FormStatus,
@@ -106,7 +107,7 @@ export default function TotpSetup() {
   return (
     <BaseCard maw={480} mx="auto">
       <Stack>
-        <Heading>Set up two-factor authentication</Heading>
+        <PageHeader title="Set up two-factor authentication" />
         <div>
           <BodyText>
             Scan the QR code below with your authenticator app (or copy the

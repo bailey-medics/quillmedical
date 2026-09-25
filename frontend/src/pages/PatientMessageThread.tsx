@@ -6,6 +6,7 @@
  */
 
 import { useAuth } from "@/auth/AuthContext";
+import PageHeader from "@/components/page-header";
 import Messaging, { type Message } from "@/components/messaging/Messaging";
 import { usePatientLoader } from "@/hooks/usePatientLoader";
 import {
@@ -122,6 +123,7 @@ export default function PatientMessageThread() {
 
   return (
     <div className={classes.threadContainer}>
+      <PageHeader title="Messages" />
       <Stack gap="sm" className={classes.threadStack}>
         <div className={classes.messagingWrapper}>
           <Messaging

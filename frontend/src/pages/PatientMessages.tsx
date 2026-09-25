@@ -7,6 +7,7 @@
  */
 
 import { MessagesList, type MessageThread } from "@/components/messaging";
+import PageHeader from "@/components/page-header";
 import NewMessageModal, {
   type NewConversationData,
 } from "@/components/messaging/NewMessageModal";
@@ -108,6 +109,7 @@ export default function PatientMessages() {
 
   return (
     <Stack gap="lg">
+      <PageHeader title="Messages" />
       <Group justify="flex-end">
         <AddButton label="New message" onClick={() => setModalOpen(true)} />
       </Group>

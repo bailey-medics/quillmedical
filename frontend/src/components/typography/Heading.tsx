@@ -1,8 +1,9 @@
 /**
  * Heading Component
  *
- * Secondary heading (h2) component for section titles within a page.
- * Renders at the theme's large title size with optional colour and alignment.
+ * Section heading (h2) for titles within a page, at the theme's large
+ * title size with optional colour and alignment. Never the page's own
+ * title: that is always `PageHeader`, the one h1 on every page.
  */
 
 import { Title } from "@mantine/core";

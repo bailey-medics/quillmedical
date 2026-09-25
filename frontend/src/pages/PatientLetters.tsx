@@ -6,9 +6,9 @@
  */
 
 import { LetterList, type LetterSummary } from "@/components/letters";
+import PageHeader from "@/components/page-header";
 import { fakeLetters } from "@/data/fakeLetters";
 import { usePatientLoader } from "@/hooks/usePatientLoader";
-import { Heading } from "@/components/typography";
 import { Stack } from "@mantine/core";
 import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -29,7 +29,7 @@ export default function PatientLetters() {
 
   return (
     <Stack gap="lg">
-      <Heading>Clinical letters</Heading>
+      <PageHeader title="Clinical letters" />
 
       <LetterList
         letters={fakeLetters}

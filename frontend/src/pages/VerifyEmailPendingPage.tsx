@@ -8,10 +8,11 @@
 // Auth pages use centred form layout, not Container
 
 import { useState } from "react";
+import PageHeader from "@/components/page-header";
 import { Center, Stack } from "@mantine/core";
 import { useLocation } from "react-router-dom";
 import { api } from "@/lib/api";
-import { Heading, BodyText, TextLink } from "@components/typography";
+import { BodyText, TextLink } from "@components/typography";
 import IconTextButton from "@components/button/IconTextButton";
 
 export default function VerifyEmailPendingPage() {
@@ -36,7 +37,7 @@ export default function VerifyEmailPendingPage() {
   return (
     <Center mih="100vh">
       <Stack align="center" gap="md" maw={420}>
-        <Heading>Check your email</Heading>
+        <PageHeader title="Check your email" />
         <BodyText justify="centre">
           We&apos;ve sent a verification link to{" "}
           {email ? <strong>{email}</strong> : "your email address"}. Please

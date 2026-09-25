@@ -5,17 +5,35 @@
  * on desktop and smaller on mobile, using the sm breakpoint threshold.
  */
 
-import { Box, Title, useMantineTheme } from "@mantine/core";
+import { Box, Title, VisuallyHidden, useMantineTheme } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import classes from "./PageHeader.module.css";
 
 export interface PageHeaderProps {
   title: string;
+  /**
+   * Keep the h1 for screen readers but do not show it. For pages whose
+   * content already makes the title obvious to a sighted reader (a
+   * patient's record, a message thread), but which still need one h1
+   * for a screen reader user navigating by heading.
+   */
+  visuallyHidden?: boolean;
 }
 
-export default function PageHeader({ title }: PageHeaderProps) {
+export default function PageHeader({
+  title,
+  visuallyHidden = false,
+}: PageHeaderProps) {
   const theme = useMantineTheme();
   const isDesktop = useMediaQuery(`(min-width: ${theme.breakpoints.sm})`);
+
+  if (visuallyHidden) {
+    return (
+      <VisuallyHidden>
+        <Title order={1}>{title}</Title>
+      </VisuallyHidden>
+    );
+  }
 
   return (
     <Box>

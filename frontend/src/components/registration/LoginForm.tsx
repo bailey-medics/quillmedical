@@ -6,10 +6,11 @@
  */
 
 import { Group, Stack } from "@mantine/core";
+import PageHeader from "@/components/page-header";
 import BaseCard from "@components/base-card/BaseCard";
 import { PasswordField, TextField } from "@components/form";
 import { QuillLogo } from "@components/images";
-import { Heading, TextLink } from "@components/typography";
+import { TextLink } from "@components/typography";
 import StateMessage from "@components/message-cards/StateMessage";
 import { IconWifiOff } from "@/components/icons/appIcons";
 import { useConnectivity } from "@lib/connectivity";
@@ -62,7 +63,7 @@ function LoginFields({
 
   return (
     <Stack>
-      <Heading>{title}</Heading>
+      <PageHeader title={title} />
       {!isOnline && (
         <StateMessage
           icon={<IconWifiOff />}

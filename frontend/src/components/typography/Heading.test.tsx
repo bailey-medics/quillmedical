@@ -17,4 +17,11 @@ describe("Heading", () => {
     renderWithMantine(<Heading>Heading</Heading>);
     expect(screen.getByText("Heading").tagName).toBe("H2");
   });
+
+  it("is always an h2: the page's h1 is PageHeader", () => {
+    renderWithMantine(<Heading>Section</Heading>);
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Section" }),
+    ).toBeInTheDocument();
+  });
 });
