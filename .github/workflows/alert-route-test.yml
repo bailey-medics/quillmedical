@@ -34,16 +34,19 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
 
-      # The app project's CI account, until Batch 9 of
-      # docs/docs/plans/2026-09-18-environment-isolation-and-iap-plan.md
-      # gives this job an identity holding roles/logging.logWriter and
-      # nothing else. Writing one log line is the narrowest thing any CI
-      # job does here.
+      # The deploy account, which holds roles/logging.logWriter for this
+      # job and nothing else beyond deploying. Writing one log line is the
+      # narrowest thing any CI job does here, so it has no business with
+      # the Terraform account, which can grant itself any role. Batch 10 of
+      # docs/docs/plans/2026-09-18-environment-isolation-and-iap-plan.md.
+      #
+      # The repository-level copy of the secret, because this job runs in
+      # no GitHub environment and so cannot read the `app` one.
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v3.0.0
         with:
           workload_identity_provider: ${{ secrets.GCP_APP_WIF_PROVIDER }}
-          service_account: ${{ secrets.GCP_APP_SERVICE_ACCOUNT }}
+          service_account: ${{ secrets.GCP_APP_DEPLOY_SERVICE_ACCOUNT }}
 
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@v3.0.1
