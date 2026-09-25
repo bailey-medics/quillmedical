@@ -1,0 +1,107 @@
+# Yearly reminder to review the accessibility statement.
+#
+# The Public Sector Bodies Accessibility Regulations 2018 require the
+# statement at /accessibility-statement to be reviewed at least once a year
+# and to say when it last was. NHS organisations that buy Quill are bound by
+# them, so a statement left to go stale is a finding against them.
+#
+# Schedule: every Monday in September and October at 08:00 UTC. Each run
+# checks the REVIEWED date in the statement itself and sends nothing unless
+# it is 11 months old or more, so moving that date after a review is what
+# stops the reminders. Until then they repeat weekly, by email and Slack,
+# because one message a year is easy to miss.
+name: Accessibility statement review
+
+on:
+  schedule:
+    - cron: "0 8 * 9,10 1"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: >-
+          Send the reminder whatever the review date, to check the email and
+          Slack message arrive.
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  id-token: write # Workload Identity Federation, to read the Resend key
+
+concurrency:
+  group: accessibility-review
+  cancel-in-progress: true
+
+env:
+  RECIPIENT: mark@quill-medical.com
+  # The address the app sends from, on the domain Resend verifies
+  SENDER: info@quill-medical.com
+
+jobs:
+  check:
+    name: Is the review due?
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      due: ${{ steps.check.outputs.due }}
+      reviewed: ${{ steps.check.outputs.reviewed }}
+      due_by: ${{ steps.check.outputs.due_by }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Read the statement's review date
+        id: check
+        run: bash .github/scripts/accessibility-review/statement-review.sh "${{ inputs.force || 'false' }}"
+
+  email:
+    name: Email the reminder
+    needs: check
+    if: ${{ needs.check.outputs.due == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v3.0.0
+        with:
+          workload_identity_provider: ${{ secrets.GCP_APP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_APP_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v3.0.1
+
+      # The key is read at run time from Secret Manager, where the app's
+      # own copy lives, rather than kept as a GitHub secret as well. It is
+      # read and used in one step so it never becomes a step output.
+      - name: Send the reminder
+        env:
+          GCP_PROJECT: ${{ secrets.GCP_APP_PROJECT_ID }}
+        run: |
+          RESEND_API_KEY="$(gcloud secrets versions access latest \
+            --secret=resend-api-key --project="$GCP_PROJECT")"
+          echo "::add-mask::$RESEND_API_KEY"
+          export RESEND_API_KEY
+          bash .github/scripts/accessibility-review/send-reminder.sh \
+            "$RECIPIENT" "$SENDER" \
+            "${{ needs.check.outputs.reviewed }}" \
+            "${{ needs.check.outputs.due_by }}"
+
+  slack:
+    name: Post the reminder to Slack
+    needs: check
+    if: ${{ needs.check.outputs.due == 'true' }}
+    uses: ./.github/workflows/slack-notify.yml
+    with:
+      channel: teaching
+      text: |
+        *📋 Accessibility statement review due by ${{ needs.check.outputs.due_by }}*
+
+        The regulations require a yearly review of
+        https://quill-medical.com/accessibility-statement (last reviewed
+        ${{ needs.check.outputs.reviewed }}). Check it is still true, then move
+        the REVIEWED date in accessibility-statement.tsx and deploy the public
+        site; that stops these reminders. The checklist is in the email to
+        mark@quill-medical.com.
+    secrets: inherit
