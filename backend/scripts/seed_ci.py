@@ -20,6 +20,11 @@ from app.models import OrgUnit, OrgUnitFeature, User  # noqa: E402
 from app.organisations import add_org_unit_member  # noqa: E402
 from app.security import hash_password  # noqa: E402
 
+# Base32 of RFC 4226's test key "12345678901234567890". Public, and only
+# ever seeded into the throwaway CI database; see the BACKEND_ENV guard.
+# cspell:disable-next-line
+CI_TOTP_SECRET = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"
+
 
 def seed() -> None:
     """Create test users and organisation for E2E."""
@@ -59,6 +64,31 @@ def seed() -> None:
             print("Created educator user")
         else:
             print("Educator user already exists")
+
+            # 2b. A user with two-factor authentication on, for the
+        # keyboard-only login journey in e2e/tests/keyboard.spec.ts. The
+        # secret is RFC 4226's published example, not a real one; the
+        # test derives the current code from it.
+        two_factor = (
+            db.query(User).filter(User.username == "twofactor").first()
+        )
+        if not two_factor:
+            two_factor = User(
+                username="twofactor",
+                email="twofactor@ci.local",
+                password_hash=hash_password("twofactor123"),
+                platform_role="standard",
+                base_profession="teaching_admin",
+                is_active=True,
+                email_verified=True,
+                totp_secret=CI_TOTP_SECRET,
+                is_totp_enabled=True,
+            )
+            db.add(two_factor)
+            db.flush()
+            print("Created two-factor user")
+        else:
+            print("Two-factor user already exists")
 
             # 3. Create teaching organisation
         org = (
@@ -105,6 +135,8 @@ def seed() -> None:
         # It is idempotent, which is why there is no membership check.
         add_org_unit_member(db, org.id, educator.id, "staff")
         print("Added educator to organisation")
+        add_org_unit_member(db, org.id, two_factor.id, "staff")
+        print("Added two-factor user to organisation")
 
         db.commit()
         print("CI seed complete")

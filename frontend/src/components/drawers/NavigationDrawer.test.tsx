@@ -200,4 +200,30 @@ describe("NavigationDrawer Component", () => {
       expect(paper).toHaveStyle({ position: "absolute" });
     });
   });
+
+  describe("when closed", () => {
+    it("takes its links out of the tab order and the accessibility tree", () => {
+      // Closed, it is only slid off-screen; inert stops its links being
+      // invisible tab stops.
+      renderWithMantine(
+        <NavigationDrawer opened={false} onClose={vi.fn()}>
+          <a href="/settings">Settings</a>
+        </NavigationDrawer>,
+      );
+      const drawer = document.getElementById("app-navbar");
+      expect(drawer).toHaveAttribute("inert");
+      expect(drawer).not.toHaveAttribute("aria-modal");
+    });
+
+    it("is a named modal dialog only while open", () => {
+      renderWithMantine(
+        <NavigationDrawer opened onClose={vi.fn()}>
+          <a href="/settings">Settings</a>
+        </NavigationDrawer>,
+      );
+      const drawer = screen.getByRole("dialog", { name: "Navigation" });
+      expect(drawer).toHaveAttribute("aria-modal", "true");
+      expect(drawer).not.toHaveAttribute("inert");
+    });
+  });
 });

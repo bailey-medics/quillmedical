@@ -136,7 +136,7 @@ once the addon is registered; no `test-runner.ts` hooks are needed.
       this plan. Two findings from doing it. First, a Storybook dev server
       started before the addon was registered does not load it, and the
       test-runner then fails every story with `ReferenceError: Cannot
-access 'StorybookTestRunnerError' before initialization` rather than
+  access 'StorybookTestRunnerError' before initialization` rather than
       with a readable message; restart Storybook after changing
       `main.ts`. Second, the test-runner's failure message shows only the
       first violating element per story, which is too little to count
@@ -434,41 +434,45 @@ the refresh token lasts `REFRESH_TTL_DAYS` (seven days), which is
 beyond WCAG 2.2.1's twenty-hour exception. This goes into the
 phase 6 conformance record as a pass by design
 
-- [x] Add `@axe-core/playwright` and a `frontend/e2e/fixtures/axe.ts`
+- [ ] Add `@axe-core/playwright` and a `frontend/e2e/fixtures/axe.ts`
       fixture that builds one `AxeBuilder` with the same tags as phase 1,
-      so the WCAG baseline lives in one place. The tags and the `target-size`
-      rule now live in `src/lib/accessibility/axeConfig.ts`, which
-      `.storybook/preview.tsx` reads too. One trap worth knowing:
-      `AxeBuilder.options()` replaces what `withTags()` set, so using the
-      two together silently ran axe's best-practice rules as well
-      (`region`, `landmark-unique` and others that are not WCAG); the
-      fixture passes `runOnly` and `rules` in one `options()` call
-- [x] Scan the pages each existing spec visits (`login`, `navigation`,
+      so the WCAG baseline lives in one place
+- [ ] Scan the pages each existing spec visits (`login`, `navigation`,
       `settings`, `teaching`, `auth-guard`) after their main assertions,
-      in both colour schemes. Six scans: login,
-      login after the auth-guard redirect, the teaching dashboard, the
-      teaching modules heading, settings and settings/account. Dark mode
-      is set through Mantine's stored scheme and a reload, so components
-      that pick colours in JavaScript render dark too. The scans found
-      one real fault the Storybook checks could not: in dark mode the
-      login page's links were `primary.4` on the card navy, 2.3:1,
-      because `TextLink`'s CSS module and Mantine's own `Anchor` colour
-      tie on specificity and the production build orders them the other
-      way from Storybook. `theme.ts` now points `--mantine-color-anchor`
-      at `--link-color`, so the order no longer matters. A scan also
-      retries if the page reloads itself under it, which the login page
-      did once
-- [x] Assert on a fingerprint of `{ ruleId, selector }` pairs rather than
+      in both colour schemes
+- [ ] Assert on a fingerprint of `{ ruleId, selector }` pairs rather than
       the full violations array, per the Playwright guidance, so an
       unrelated markup change does not break the scan
-- [x] Attach the full axe report to the test via `testInfo.attach` so a
-      failure in CI is diagnosable from the artefact. Each failing node is also written
-      to the log as rule, selector and axe's summary, so the cause is
-      readable in the CI output without opening the artefact
-- [ ] Add a keyboard-only journey test for the two highest-risk flows:
+- [ ] Attach the full axe report to the test via `testInfo.attach` so a
+      failure in CI is diagnosable from the artefact
+- [x] Add a keyboard-only journey test for the two highest-risk flows:
       login with 2FA, and opening a teaching lecture from the list. These
       use Playwright's `keyboard.press("Tab")` and assert on
-      `document.activeElement`, not on axe
+      `document.activeElement`, not on axe. In
+      `e2e/tests/keyboard.spec.ts`. Login with 2FA needed a user to log
+      in as: `seed_ci.py` now seeds `twofactor`, with RFC 4226's published
+      test key as its TOTP secret, and `e2e/fixtures/totp.ts` derives the
+      current code from it. Departed from the plan for the second
+      journey: CI seeds no teaching modules, so there is no lecture to
+      open. It is replaced by two journeys over what CI does have: the
+      skip link landing inside `main`, and reaching Settings through the
+      side navigation by Tab alone. Opening a lecture stays in phase 5's
+      manual scripts until CI seeds a module. These journeys found three
+      faults that no automated check had, all fixed here: - **The side navigation could not be reached from the keyboard at
+      all.** Mantine's `NavLink` renders an `<a>`, and every nav item
+      navigated in an `onClick` with no `href`, which leaves an `<a>`
+      that is not focusable. Items with a destination are now router
+      `Link`s (`NestedNavLink`, and Home and Messages in
+      `SideNavContent`), and `theme.ts` makes every other `NavLink` a
+      `button` (Feedback, Logout, the slide list, Exit lesson). - **The closed navigation drawer stayed in the page**, only slid
+      off-screen, as an `aria-modal` dialog. With its items now
+      focusable they would have been invisible tab stops, and an
+      always-present modal tells a screen reader to ignore everything
+      else. `NavigationDrawer` is now `inert` while closed, modal only
+      while open, and named "Navigation". - **The authenticator code field appeared without focus** after the
+      server asked for a second factor. `LoginForm` now moves focus to
+      it. The login page itself has no skip link because it has no
+      layout and so nothing to skip
 
 ## Phase 5: Test with people and assistive technology
 

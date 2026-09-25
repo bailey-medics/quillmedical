@@ -9,7 +9,7 @@
  */
 
 import { NavLink } from "@mantine/core";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import NavIcon from "../icons/NavIcon";
 // Taken from `NavIcon` rather than restated. This was a copy of that
 // list and had fallen a name behind: `passport` was missing, so a
@@ -135,15 +135,31 @@ export default function NestedNavLink({
 
   return (
     <>
-      <NavLink
-        label={item.label}
-        styles={nestedStyles}
-        active={isActive}
-        onClick={handleClick}
-        leftSection={
-          showIcons && item.icon ? <NavIcon name={item.icon} /> : undefined
-        }
-      />
+      {item.href ? (
+        // A real link: focusable, announced as a link, and it opens in a
+        // new tab like any other
+        <NavLink
+          component={Link}
+          to={item.href}
+          label={item.label}
+          styles={nestedStyles}
+          active={isActive}
+          onClick={() => onNavigate?.()}
+          leftSection={
+            showIcons && item.icon ? <NavIcon name={item.icon} /> : undefined
+          }
+        />
+      ) : (
+        <NavLink
+          label={item.label}
+          styles={nestedStyles}
+          active={isActive}
+          onClick={handleClick}
+          leftSection={
+            showIcons && item.icon ? <NavIcon name={item.icon} /> : undefined
+          }
+        />
+      )}
       {hasChildren && shouldExpand && (
         <>
           {item.children!.map((child) => (

@@ -438,6 +438,11 @@ export const theme = createTheme({
   components: {
     /** Current nav link — amber label and icon, no fill (see navLink.module.css) */
     NavLink: NavLink.extend({
+      // A button unless a caller says otherwise. Mantine renders an <a>,
+      // and an <a> with no href is not focusable, so every NavLink that
+      // navigated in an onClick (the whole side navigation) could not be
+      // reached from the keyboard. Links pass `component={Link}`.
+      defaultProps: { component: "button" },
       classNames: navLinkClasses,
       vars: () => ({
         root: {
