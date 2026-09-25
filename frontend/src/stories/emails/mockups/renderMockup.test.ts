@@ -54,6 +54,33 @@ describe("renderMockup", () => {
     );
   });
 
+  it("shows a partner strip only on an email sent for a partner", () => {
+    expect(renderMockup("quill", "certificate").html).toContain(
+      "East of England Endoscopy Training Academy",
+    );
+    expect(renderMockup("quill", "passwordReset").html).not.toContain(
+      "Endoscopy",
+    );
+  });
+
+  it("sends a partner's email as Quill, with replies to the partner", () => {
+    const rendered = renderMockup("quill", "certificate");
+
+    expect(rendered.senderName).toBe("EoEETA via Quill Medical");
+    expect(rendered.replyTo).toBe("coordinator@eoeeta.example");
+  });
+
+  it("names the partner in place of a logo when there is none", () => {
+    const withLogo = renderMockup("quill", "certificate").html;
+    const without = renderMockup("quill", "certificate", {
+      partnerLogo: false,
+    }).html;
+
+    expect(withLogo).toContain("/email/partners/eoeeta-email.png");
+    expect(without).not.toContain("/email/partners/eoeeta-email.png");
+    expect(without).toContain("East of England Endoscopy Training Academy");
+  });
+
   it("offers an unsubscribe link only in the newsletter", () => {
     expect(renderMockup("quill", "newsletter").html).toContain("Unsubscribe");
     expect(renderMockup("quill", "passwordReset").html).not.toContain(
