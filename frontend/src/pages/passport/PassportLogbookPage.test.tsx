@@ -8,7 +8,7 @@
  */
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import { Component as PassportLogbookPage } from "./PassportLogbookPage";
@@ -116,9 +116,11 @@ describe("PassportLogbookPage", () => {
     });
     renderWithRouter(<PassportLogbookPage />);
 
-    expect(
-      await screen.findByRole("button", { name: "Add an entry" }),
-    ).toHaveAttribute("aria-disabled", "true");
+    // The button is drawn before the passport has loaded, enabled until
+    // the entitlement arrives. Waiting only for the button found it in
+    // that gap on a slow CI runner, so wait for the disabled state itself.
+    const add = await screen.findByRole("button", { name: "Add an entry" });
+    await waitFor(() => expect(add).toHaveAttribute("aria-disabled", "true"));
   });
 
   it("leaves the filter usable where the passport is read-only", async () => {
