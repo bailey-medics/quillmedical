@@ -378,7 +378,7 @@ sent for them.
       since a coordinator writes no separate one. An organisation with no
       teaching settings sends as Quill's own, with no strip.
 
-- [ ] **Check the real renders in real inboxes.** Send each converted
+- [x] **Check the real renders in real inboxes.** Send each converted
       email from the development environment to Proton, Gmail, Outlook
       and Apple Mail, with dark mode on and off, now that images come from
       the public site rather than being inlined. Record what was found
@@ -387,8 +387,13 @@ sent for them.
       images: every transactional email (password reset, verification,
       account invitation, passport invite, and the EoEETA certificate with
       and without its logo), rendered with live image links, to Proton and
-      Gmail. Waiting on Mark's check in each, light and dark, before this
-      is ticked.
+      Gmail. Mark checked them on 26 September 2026 and they looked right,
+      apart from one thing left as it is: in Outlook for Mac (16.113) dark
+      mode, Outlook recolours the navy header to `#455270` itself. Two
+      fixes were tried and made no difference, a one-colour
+      `linear-gradient` background and repeating the dark colours under
+      Outlook's `data-ogsb`/`data-ogsc` markers, so both were removed.
+      Proton shows the colours as designed.
 
 **An unattended run stops at the end of Phase 5.** Phases 6 to 8 are
 mostly work outside the repository (DNS, the Resend dashboard, MailerLite,
