@@ -92,9 +92,21 @@ who could each be equally lazy.
   sole reviewer. "Prevent self-review" stays **off** — by design, see the
   accountability reasoning above. Approving is a distinct action in the
   GitHub Actions UI/mobile app — less reachable from an agent's
-  terminal/editor session — and it is scoped to the exact commit SHA of
-  that workflow run, so a new push always requires a fresh approval;
-  nothing left over from an earlier commit can satisfy it.
+  terminal/editor session. An approval covers the pull request's own change
+  while that change is unchanged: a later run skips the gate only when
+  GitHub's approval record shows a person approved this environment in an
+  earlier run of the same pull request, for a change with the same
+  fingerprint (the patch ID of the pull request's own diff,
+  `compute-change-fingerprint.sh`, checked by `find-prior-approval.sh`). A
+  rebase, or a move onto `main` once the branch below merges, keeps the
+  fingerprint and does not ask again; any edit to the pull request's code
+  changes it and does. Nothing an agent can write, a comment, label or
+  commit message, counts as the approval.
+
+  _Until 25 September 2026 an approval covered one commit, and every push
+  asked again. On a stack that meant approving the same change after each
+  rebase, and the gate did not run on stacked pull requests at all. See
+  [Stacked gate approvals](../plans/2026-09-25-stacked-gate-approvals-plan.md)._
 - **Notification**: a breaking-change finding posts to Slack (via the
   reusable `.github/workflows/slack-notify.yml`, `channel: teaching`) with
   the `oasdiff` change lines under **Breaking changes:**, so the approval
@@ -108,9 +120,9 @@ who could each be equally lazy.
   therefore produces a red check plus the ordinary gate message — not a
   second, separate alert.
 - **One message per distinct set of breaks**:
-  `api_breaking_change_gate` re-requires approval on every commit —
-  deliberately, see above — but re-sending an identical Slack ping on every
-  one of those commits is just noise, not a safety property.
+  the gate asks for approval whenever the pull request's code changes, see
+  above, but re-sending an identical Slack ping on every one of those
+  commits is just noise, not a safety property.
   `api_breaking_change_gate_notify` hashes the set of breaking
   changes (`compute-breaking-change-hash.sh`, sorted so ordering doesn't
   affect the hash) and asks whether any comment on the PR already carries
@@ -135,8 +147,8 @@ who could each be equally lazy.
   timeline shows the break arriving *and* going. Slack is not told — the notify
   job is gated on `oasdiff` having found something as well as on
   `should_notify` — and a PR that never had a break stays silent. The gate's
-  fresh-approval requirement is unaffected throughout: it re-blocks on every
-  push for as long as a break is present.
+  approval requirement is unaffected throughout: it asks again whenever the
+  pull request's code changes, for as long as a break is present.
 - **Outside `ci.yml`, deliberately**: all of the above lives in
   `.github/workflows/gate-breaking.yml`, because `ci.yml` cancels its runs when
   a newer commit arrives. Right for expensive tests, wrong here — two commits
