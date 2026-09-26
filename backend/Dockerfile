@@ -109,6 +109,16 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload
 
 # ---------- Prod target (no reload) ----------
 FROM base AS prod
+# git: the passport's Cloud Storage backend stores each passport as a
+# `git bundle` and shells out to git to write and read it, because libgit2
+# has no bundle support (see app/features/passport/gcs_store.py). Without
+# it every passport create fails with a 500. Deliberately not in `base`,
+# so the admin and transcode jobs stay without it.
+USER root
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends git \
+ && rm -rf /var/lib/apt/lists/*
+USER appuser
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2", "--proxy-headers", "--forwarded-allow-ips", "*"]
 

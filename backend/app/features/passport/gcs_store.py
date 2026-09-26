@@ -39,11 +39,11 @@ rest of this package uses pygit2 deliberately, and :mod:`.store` says so.
 libgit2 has no bundle support — pygit2 1.20 exposes ``PackBuilder`` and
 nothing that reads or writes the bundle format — so there is no
 in-process route to the one format that holds a full history as a single
-object. The binary is already in the backend image for the teaching
-version-lock tests, so this costs no new dependency, and the calls are
-fixed argument lists with no shell, so nothing a caller supplies is
-interpreted. Writing a bundle by hand instead would mean implementing a
-git format to avoid a subprocess, which is the worse trade.
+object. The binary is installed in both the ``dev`` and ``prod`` stages
+of the backend image, and the calls are fixed argument lists with no
+shell, so nothing a caller supplies is interpreted. Writing a bundle by
+hand instead would mean implementing a git format to avoid a
+subprocess, which is the worse trade.
 
 The bucket is passed in rather than read from settings: every module in
 this package must import without ``app.config``, so that a passport on
