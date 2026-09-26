@@ -28,9 +28,8 @@ from app.features.passport.models import (
     Passport,
     PassportAssessorInvite,
     PassportSignOffRequest,
-    SiteCommonCompetency,
 )
-from app.models import Base, OrgUnit, User
+from app.models import Base, User
 
 PASSPORT_ID = "3f2a8c1e4b7d49f0a6c2e8b1d5a7f309"
 OTHER_ID = "a1b2c3d4e5f60718293a4b5c6d7e8f90"
@@ -59,6 +58,16 @@ class TestWhatTheDatabaseDoesNotHold:
         assert "passport_sign_off" not in tables
         assert "passport_signoff" not in tables
         assert "sign_off" not in tables
+
+    def test_there_is_no_site_shortlist_table(self) -> None:
+        """The holder's specialty orders the picker, not a site's list.
+
+        ``site_common_competency`` was built for a per-site shortlist
+        that nothing ever wrote to. Two ways of ordering one picker would
+        clash, so a site wanting its own order gets a specialty list in
+        ``shared/passport-specialties/`` instead.
+        """
+        assert "site_common_competency" not in set(Base.metadata.tables)
 
     def test_there_is_no_cached_status_or_progress_table(self) -> None:
         tables = set(Base.metadata.tables)
@@ -169,95 +178,6 @@ class TestSignOffRequest:
         assert request.status == "open"
         assert request.status in REQUEST_STATUSES
         assert request.resolved_at is None
-
-
-class TestSiteCommonCompetency:
-    def test_a_shortlist_belongs_to_a_place(self, db_session: Session) -> None:
-        """One column, so "exactly one place" needs no constraint.
-
-        This carried ``site_id`` and ``organisation_id`` with a check
-        constraint policing the pair. A trust is a place, so a
-        trust-wide list is the organisation's own row in the tree and a
-        ward's is the ward's — the same column either way.
-        """
-        organisation = OrgUnit(name="A trust", type="hospital_team")
-        db_session.add(organisation)
-        db_session.flush()
-
-        db_session.add(
-            SiteCommonCompetency(
-                org_unit_id=organisation.id,
-                competency_id="prescribe_sact",
-            )
-        )
-        db_session.flush()
-
-        db_session.add(
-            SiteCommonCompetency(competency_id="perform_cannulation")
-        )
-
-        with pytest.raises(IntegrityError):
-            db_session.flush()
-
-    def test_a_competency_appears_once_per_place(
-        self, db_session: Session
-    ) -> None:
-        organisation = OrgUnit(name="Another trust", type="hospital_team")
-        db_session.add(organisation)
-        db_session.flush()
-
-        for _ in range(2):
-            db_session.add(
-                SiteCommonCompetency(
-                    org_unit_id=organisation.id,
-                    competency_id="prescribe_sact",
-                )
-            )
-
-        with pytest.raises(IntegrityError):
-            db_session.flush()
-
-    def test_a_ward_and_its_trust_keep_separate_lists(
-        self, db_session: Session
-    ) -> None:
-        """The property the old pair existed for, in one column.
-
-        A ward's shortlist and the trust's are two rows naming two
-        places, rather than two columns on rows of one table.
-        """
-        organisation = OrgUnit(name="A third trust", type="hospital_team")
-        db_session.add(organisation)
-        db_session.flush()
-        ward = OrgUnit(name="Ward 9", type="ward", parent_id=organisation.id)
-        db_session.add(ward)
-        db_session.flush()
-
-        db_session.add(
-            SiteCommonCompetency(
-                org_unit_id=organisation.id,
-                competency_id="prescribe_sact",
-            )
-        )
-        db_session.add(
-            SiteCommonCompetency(
-                org_unit_id=ward.id,
-                competency_id="prescribe_sact",
-            )
-        )
-
-        db_session.flush()
-
-    def test_it_gates_nothing(self) -> None:
-        """Interface furniture. Nothing reads it when deciding what a
-        person may do or be signed off for, so it carries no flag that
-        could be mistaken for permission.
-        """
-        columns = {
-            column.name for column in inspect(SiteCommonCompetency).columns
-        }
-
-        for permissive in ("required", "mandatory", "enabled", "allowed"):
-            assert permissive not in columns
 
 
 class TestAssessorInvite:

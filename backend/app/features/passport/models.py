@@ -24,7 +24,6 @@ Tables:
 - ``Passport`` — the pointer to one holder's repository.
 - ``PassportSignOffRequest`` — an open ask, closed when resolved.
 - ``PassportAssessorInvite`` — an outside assessor being brought in.
-- ``SiteCommonCompetency`` — an admin-curated shortlist for the picker.
 
 Until when somebody may add to their own passport is not a table here: it
 is the ``ends_on`` of their ``passport_write`` row in ``user_competency``.
@@ -305,56 +304,6 @@ class PassportAssessorInvite(Base):
         ForeignKey("users.id", ondelete="RESTRICT"),
         nullable=True,
         index=True,
-    )
-
-
-class SiteCommonCompetency(Base):
-    """A competency an admin has put near the top of the picker.
-
-    Interface furniture, and nothing more. It never gates anything: the
-    picker shows these first and a full search beneath reaches every
-    competency in the catalogue, so a shortlist can suggest without
-    quietly becoming a syllabus. Nothing reads this table when deciding
-    what a person may do or be signed off for.
-
-    It lives outside the passport for the same reason: an exported record
-    must not carry one trust's opinion of what matters into another.
-
-    **One org_unit column, not a pair.** This carried ``site_id`` and
-    ``organisation_id`` with a check constraint saying exactly one was
-    set — a ward list, with the trust's as a fallback. A trust is a
-    org_unit now, so the two collapse: the fallback is the parent's row in
-    the same tree, and "exactly one" is what a single column says by
-    existing.
-    """
-
-    __tablename__ = "site_common_competency"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-
-    #: Whose shortlist this is — a ward, or an organisation's own row in
-    #: the tree for a list that covers the whole trust.
-    org_unit_id: Mapped[int] = mapped_column(
-        ForeignKey("org_unit.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
-
-    competency_id: Mapped[str] = mapped_column(String(100), nullable=False)
-
-    #: Where it sits in the list. An integer rather than an implicit
-    #: ordering, so an admin can put the three things their centre
-    #: actually does at the top.
-    position: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default="0"
-    )
-
-    __table_args__ = (
-        UniqueConstraint(
-            "org_unit_id",
-            "competency_id",
-            name="uq_site_common_competency_place",
-        ),
     )
 
 

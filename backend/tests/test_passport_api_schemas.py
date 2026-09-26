@@ -32,7 +32,6 @@ from app.features.passport import schemas as record_schemas
 from app.schemas import passport as api_schemas
 from app.schemas.passport import (
     CertificateIn,
-    CommonCompetenciesIn,
     CompetencyStateOut,
     CpdEntryIn,
     LogbookEntryIn,
@@ -54,7 +53,6 @@ REQUEST_MODELS = [
     LogbookEntryIn,
     ReflectionIn,
     CpdEntryIn,
-    CommonCompetenciesIn,
 ]
 
 #: Words that would mean the API had formed a view on whether somebody
@@ -204,23 +202,6 @@ class TestNothingJudgesSufficiency:
             f"{offending} would have the API judge sufficiency, which is "
             "the assessor's call and not the software's."
         )
-
-    def test_a_shortlist_cannot_be_marked_required(self) -> None:
-        """A curated shortlist suggests; it never restricts.
-
-        The field is named ``commonly_used_here`` rather than
-        ``required`` deliberately: the wording matters as much as the
-        behaviour, since a list presented as the set that matters
-        quietly becomes a syllabus.
-        """
-        fields = set(api_schemas.CompetencyOptionOut.model_fields)
-
-        assert "commonly_used_here" in fields
-        assert not [
-            name
-            for name in fields
-            if any(word in name.lower() for word in JUDGEMENT_WORDS)
-        ]
 
 
 class TestIdentifiersTravelWithLabels:
