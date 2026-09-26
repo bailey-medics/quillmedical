@@ -261,6 +261,20 @@ docker-daemon-start:
     echo "Docker is running."
 
 
+alias ebx := email-export
+# Export the newsletter layout for Resend, as email-broadcast-<theme>.html
+email-export theme="quill":
+    #!/usr/bin/env bash
+    {{initialise}} "email-export"
+    # Rendered in the backend unit-test container, printed, and written here
+    # at the repository root (gitignored). Paste the file into a Resend
+    # broadcast's HTML editor, then replace the marked campaign content.
+    out="email-broadcast-{{theme}}.html"
+    docker compose -p "$(just _test-project)" -f compose.unit-tests.yml \
+        run --rm -T backend sh -lc "python -m app.email.broadcast {{theme}}" > "$out"
+    echo "Wrote $out"
+
+
 alias ep := email-preview
 # Render every email with sample values, for the Storybook email previews
 email-preview:

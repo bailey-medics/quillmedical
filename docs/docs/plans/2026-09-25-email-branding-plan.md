@@ -383,6 +383,12 @@ sent for them.
       and Apple Mail, with dark mode on and off, now that images come from
       the public site rather than being inlined. Record what was found
       here, and fix it before ticking.
+      Sent on 26 September 2026, once the public site had deployed the
+      images: every transactional email (password reset, verification,
+      account invitation, passport invite, and the EoEETA certificate with
+      and without its logo), rendered with live image links, to Proton and
+      Gmail. Waiting on Mark's check in each, light and dark, before this
+      is ticked.
 
 **An unattended run stops at the end of Phase 5.** Phases 6 to 8 are
 mostly work outside the repository (DNS, the Resend dashboard, MailerLite,
@@ -417,12 +423,18 @@ steps in them that are code are marked **(code)**.
       Building them into the app would add a system holding personal data
       for no clinical purpose.
 
-- [ ] **(code) Export the base layout as a broadcast template.** Add a
+- [x] **(code) Export the base layout as a broadcast template.** Add a
       `just email-export <theme>` recipe that renders `base.html.j2` with
       the content slot replaced by Resend's broadcast placeholders and the
       footer carrying `{{{RESEND_UNSUBSCRIBE_URL}}}`, for pasting into
       Resend. One layout, so a newsletter and a password reset are visibly
-      from the same sender.
+      from the same sender. Built ahead of the Resend setup above it, since
+      it needs none: `just email-export <theme>` renders
+      `newsletter_broadcast.html.j2`, the newsletter layout with a marked
+      campaign-content block and live image links, to
+      `email-broadcast-<theme>.html` at the repository root (gitignored).
+      Resend's unsubscribe page also manages topics, so the "update your
+      preferences" link goes there too.
 
 - [ ] **(code) Point the public site's signup form at a Resend audience.** The
       2026-03-21 subscriptions plan designed a Cloud Function writing to

@@ -1,0 +1,24 @@
+{#-
+  The newsletter layout as a Resend broadcast template, for
+  `just email-export <theme>`. Pasted into Resend's HTML editor, it is the
+  frame; the campaign's words replace the marked paragraph below.
+
+  Resend fills the triple-brace placeholders when it sends:
+    {{{RESEND_UNSUBSCRIBE_URL}}}  the recipient's own unsubscribe link,
+                                  which also serves the one-click
+                                  List-Unsubscribe header Gmail and Yahoo
+                                  require of bulk senders
+  Jinja leaves them alone: they are plain text inside a string value.
+-#}
+{% extends "newsletter.html.j2" %}
+{% import "_components.html.j2" as c with context %}
+{% block subject %}Newsletter{% endblock %}
+{% block preheader %}{% endblock %}
+{% block content %}
+<!-- CAMPAIGN CONTENT: replace from here to the end marker. Use a heading,
+     paragraphs, panels and buttons as in the Storybook newsletter story. -->
+{{ c.heading("Newsletter *title*") }}
+{{ c.paragraph("Write the campaign here.") }}
+<!-- END CAMPAIGN CONTENT -->
+{% endblock %}
+{% block text %}{% endblock %}
