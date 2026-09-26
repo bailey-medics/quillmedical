@@ -818,7 +818,10 @@
     "zoneinfo",
     "zstd",
     "zwnj",
-    "zxcvbn"
+    "zxcvbn",
+    "appinstalled",
+    "beforeinstallprompt",
+    "infobar"
   ],
   "ignoreWords": [
     "Exampletown",
