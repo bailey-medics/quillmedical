@@ -14,7 +14,7 @@ import {
   IconMoon,
   IconUser,
 } from "@/components/icons/appIcons";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/auth/AuthContext";
 import ActionCard from "@/components/action-card";
@@ -25,6 +25,10 @@ import SolidSwitch from "@/components/form/SolidSwitch";
 import { BodyText, Heading } from "@/components/typography";
 import { api } from "@/lib/api";
 import { appFeatureFlags } from "@/lib/featureFlags";
+import { useHasFeature } from "@/lib/features";
+import { useHasCompetency } from "@/lib/cbac/hooks";
+import PassportSpecialtyCard from "@/components/passport/PassportSpecialtyCard";
+import { fetchMyPassport, setPassportSpecialties } from "@lib/passport";
 import { hasOptedOut, setOptedOut } from "@/lib/page-views/optOut";
 import { layoutTokens } from "@/theme";
 import classes from "./Settings.module.css";
@@ -63,6 +67,58 @@ export default function Settings() {
   const [notificationState, setNotificationState] = useState<
     "idle" | "busy" | "ok" | "denied" | "err"
   >("idle");
+
+  // The passport specialty card, for somebody who has a passport. Asked
+  // only of those who could reach one, the same test the side navigation
+  // uses; a 404 then means they have not created one, and there is no
+  // card rather than an error.
+  const passportEnabled = useHasFeature("passport");
+  const canReachPassport = useHasCompetency("assess_clinician_passport");
+  const [passport, setPassport] = useState<{
+    id: string;
+    specialties: string[];
+    canWrite: boolean;
+  } | null>(null);
+  const [specialtyError, setSpecialtyError] = useState<string | undefined>();
+
+  useEffect(() => {
+    if (!passportEnabled || !canReachPassport) return;
+    let cancelled = false;
+
+    fetchMyPassport()
+      .then((detail) => {
+        if (cancelled) return;
+        setPassport({
+          id: detail.passport.passport_id,
+          specialties: detail.passport.specialties.map((s) => s.id),
+          canWrite: detail.entitlement?.can_write !== false,
+        });
+      })
+      .catch(() => {
+        /* no passport, or none reachable: no card */
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [passportEnabled, canReachPassport]);
+
+  function saveSpecialties(next: string[]) {
+    if (passport === null) return;
+    const previous = passport.specialties;
+
+    // Shown at once, and put back if the save fails, so the field never
+    // claims a specialty the record does not hold.
+    setPassport({ ...passport, specialties: next });
+    setSpecialtyError(undefined);
+
+    setPassportSpecialties(passport.id, next).catch(() => {
+      setPassport((current) =>
+        current ? { ...current, specialties: previous } : current,
+      );
+      setSpecialtyError("Your specialty could not be saved. Please try again.");
+    });
+  }
 
   async function enableNotifications() {
     try {
@@ -128,6 +184,15 @@ export default function Settings() {
           buttonLabel="Manage account"
           buttonUrl="/settings/account"
         />
+
+        {passport && (
+          <PassportSpecialtyCard
+            value={passport.specialties}
+            onChange={saveSpecialties}
+            disabled={!passport.canWrite}
+            error={specialtyError}
+          />
+        )}
 
         {state.status === "authenticated" &&
           !state.user.clinical_services_enabled && (

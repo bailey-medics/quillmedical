@@ -62,6 +62,32 @@ no declaration and no assessor, and a test pins that it never will.
 picked would allow a progression to be recorded as a correction, quietly
 implying an earlier assessor had been wrong.
 
+## Which competencies, and in what order
+
+A passport records skills, never software permissions. Two separate
+mechanisms decide what a holder is offered, and only the first refuses
+anything.
+
+- **`assessable: true` on a competency** in `shared/competency-definitions/`
+  says somebody could watch it being done and sign it off. It is opt-in,
+  so a permission such as `manage_users` stays out unless somebody decides
+  otherwise. `ASSESSABLE_COMPETENCY_IDS` holds the active ones, and
+  `definitions.assessable_ref` refuses anything else when a record is
+  created: a sign-off request, logbook entry, certificate, reflection or
+  CPD entry. Amending an existing record keeps the looser check, and
+  reading never checks at all, so a competency withdrawn later leaves old
+  records intact.
+- **A holder's specialties** order the competency picker and do nothing
+  else. Each specialty is one file in `shared/passport-specialties/`
+  listing its common competencies in order, loaded and checked at startup
+  by `specialties.py`: every listed id must exist, be assessable and not
+  be retired. The holder's choice lives in `profile.yaml` as `{id, name}`
+  pairs, so an export reads correctly with no Quill. An empty list is
+  Generic, meaning no specialty order, and a specialty id Quill no longer
+  knows is kept rather than refused on read.
+
+See the [passport specialties plan](../../plans/2026-09-26-passport-specialties-plan.md).
+
 ## Evidence is addressed by its own hash
 
 A blob lives at `files/sha256/ab/cd/<64-hex>` and the record referring to it

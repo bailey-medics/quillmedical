@@ -96,6 +96,8 @@ export function Component() {
   // asking again. False only where the server said so, so a response
   // built before the field existed still offers the button.
   const [canWrite, setCanWrite] = useState(true);
+  // The holder's specialties, which order the competency picker.
+  const [specialties, setSpecialties] = useState<string[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -105,6 +107,9 @@ export function Component() {
         const id = detail.passport.passport_id;
         if (cancelled) return;
         setPassportId(id);
+        setSpecialties(
+          (detail.passport.specialties ?? []).map((specialty) => specialty.id),
+        );
         setCanWrite(detail.entitlement?.can_write !== false);
         return fetchWholeLogbook(id);
       })
@@ -215,6 +220,7 @@ export function Component() {
               Inside the form rather than above the page, because this
               is the only moment it is asked anything. */}
           <CompetencyPicker
+            specialties={specialties}
             value={competencyId}
             onChange={setCompetencyId}
             label="Which competency?"

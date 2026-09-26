@@ -19,6 +19,7 @@ import PageHeader from "@/components/page-header";
 import ActionCard from "@/components/action-card";
 import AddButton from "@/components/button/AddButton";
 import InboxButton from "@/components/passport/InboxButton";
+import SpecialtyField from "@/components/passport/SpecialtyField";
 import CompetencySummary from "@/components/passport/CompetencySummary";
 import StateMessage from "@/components/message-cards/StateMessage";
 import ErrorState from "@/components/error-state/ErrorState";
@@ -142,6 +143,9 @@ export function Component() {
   // page on the way to your own.
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  // Asked before the passport is made, with nothing preselected: `null`
+  // until answered, `[]` for Generic. Only orders the competency picker.
+  const [specialties, setSpecialties] = useState<string[] | null>(null);
   // How many sign-off requests name this person as assessor. Fetched
   // separately from the passport because it is separate: an external
   // assessor has a queue and may have no passport at all, so a failed
@@ -220,10 +224,12 @@ export function Component() {
   }, []);
 
   const handleCreate = () => {
+    if (specialties === null) return;
+
     setCreating(true);
     setError(null);
 
-    createPassport()
+    createPassport(specialties)
       .then(() => applyResult(fetchMyPassport(), () => false))
       .catch(() => {
         setError("Your passport could not be created. Please try again.");
@@ -294,11 +300,16 @@ export function Component() {
             " and track your progress over time."
           }
         />
+        <SpecialtyField
+          value={specialties}
+          onChange={setSpecialties}
+          required
+        />
         <Group justify="flex-end">
           <AddButton
             label="Create my passport"
             onClick={handleCreate}
-            disabled={creating}
+            disabled={creating || specialties === null}
           />
         </Group>
       </Stack>

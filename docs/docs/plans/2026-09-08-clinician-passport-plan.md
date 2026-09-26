@@ -556,6 +556,10 @@ nothing else.
   used here" rather than "required", or a convenience list quietly
   becomes a syllabus, which is the sufficiency judgement the passport
   deliberately refuses to make.
+  _Superseded on 26 September 2026: the shortlist was never used and has
+  been removed, and the holder's own specialty now orders the picker under
+  the same rule. See the
+  [passport specialties plan](2026-09-26-passport-specialties-plan.md)._
 
 - **The passport does not grant CBAC competencies** — a signed-off
   passport competency is evidence an administrator may act on, not an
@@ -4642,6 +4646,10 @@ close them off, and so nobody builds them before there is a need.
   is asserting. So the shortlist is interface furniture in Postgres,
   outside the passport, and every competency stays reachable through
   search. This is the same line as counting without comparing.
+  _Superseded on 26 September 2026: the shortlist was never used and has
+  been removed, and the holder's own specialty now orders the picker under
+  the same rule. See the
+  [passport specialties plan](2026-09-26-passport-specialties-plan.md)._
 
 - **The passport counts evidence but never judges sufficiency** — it
   reports thirty-eight logged procedures and stops there. No target,

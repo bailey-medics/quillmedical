@@ -22,6 +22,30 @@ export const Default: Story = {
   },
 };
 
+/**
+ * An oncologist: the oncology list first, in its file's order, then
+ * every other assessable competency. Nothing is hidden.
+ */
+export const OncologySpecialty: Story = {
+  args: {
+    value: null,
+    onChange: fn(),
+    specialties: ["oncology"],
+  },
+};
+
+/**
+ * Two specialties, each under its own heading. A competency on both
+ * lists appears once, under the first.
+ */
+export const TwoSpecialties: Story = {
+  args: {
+    value: null,
+    onChange: fn(),
+    specialties: ["general_medicine", "general_surgery"],
+  },
+};
+
 export const WithDescription: Story = {
   args: {
     value: null,

@@ -6,7 +6,8 @@ import { describe, it, expect, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@test/test-utils";
-import CompetencyPicker from "./CompetencyPicker";
+import CompetencyPicker, { EVERYTHING_ELSE_GROUP } from "./CompetencyPicker";
+import { specialtyGroup } from "./specialtyChoice";
 
 describe("CompetencyPicker", () => {
   describe("The list", () => {
@@ -39,7 +40,7 @@ describe("CompetencyPicker", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("renders one flat list, with no group headings", async () => {
+    it("renders one flat list for Generic, with no group headings", async () => {
       // A heading such as "Commonly used here" came from a site
       // shortlist that has been removed.
       const user = userEvent.setup();
@@ -50,6 +51,93 @@ describe("CompetencyPicker", () => {
 
       expect(screen.queryByText("Commonly used here")).not.toBeInTheDocument();
       expect(screen.queryByText("All competencies")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Ordered by specialty", () => {
+    it("puts the specialty's common competencies first", async () => {
+      const user = userEvent.setup();
+      renderWithMantine(
+        <CompetencyPicker
+          value={null}
+          onChange={vi.fn()}
+          specialties={["oncology"]}
+        />,
+      );
+
+      await user.click(screen.getByRole("combobox"));
+
+      expect(await screen.findByText("Common in oncology")).toBeInTheDocument();
+      const options = screen.getAllByRole("option");
+      expect(options[0]).toHaveTextContent(
+        "Review and prescribe systemic anti-cancer therapy",
+      );
+    });
+
+    it("still offers every other assessable competency beneath", async () => {
+      // A specialty orders the list; it never hides anything, so an
+      // oncologist can still log a cannula.
+      const user = userEvent.setup();
+      renderWithMantine(
+        <CompetencyPicker
+          value={null}
+          onChange={vi.fn()}
+          specialties={["oncology"]}
+        />,
+      );
+
+      await user.click(screen.getByRole("combobox"));
+
+      expect(
+        await screen.findByText(EVERYTHING_ELSE_GROUP),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("Insert Intravenous Cannula"),
+      ).toBeInTheDocument();
+    });
+
+    it("lists a competency common to two specialties once", async () => {
+      // Consent is on both the medicine and surgery lists.
+      const user = userEvent.setup();
+      renderWithMantine(
+        <CompetencyPicker
+          value={null}
+          onChange={vi.fn()}
+          specialties={["general_medicine", "general_surgery"]}
+        />,
+      );
+
+      await user.click(screen.getByRole("combobox"));
+      await screen.findByText("Common in general medicine");
+
+      const consent = screen
+        .getAllByRole("option")
+        .filter((option) => /consent/i.test(option.textContent ?? ""));
+      const names = consent.map((option) => option.textContent);
+      expect(new Set(names).size).toBe(names.length);
+    });
+
+    it("ignores a specialty that no longer exists", async () => {
+      const user = userEvent.setup();
+      renderWithMantine(
+        <CompetencyPicker
+          value={null}
+          onChange={vi.fn()}
+          specialties={["cardiology"]}
+        />,
+      );
+
+      await user.click(screen.getByRole("combobox"));
+      await screen.findByText("Insert Intravenous Cannula");
+
+      expect(screen.queryByText(EVERYTHING_ELSE_GROUP)).not.toBeInTheDocument();
+    });
+
+    it("says common, never required", () => {
+      // "Required" would assert a sufficiency judgement the passport
+      // deliberately refuses to make.
+      expect(specialtyGroup("Oncology")).toBe("Common in oncology");
+      expect(specialtyGroup("Oncology")).not.toMatch(/required/i);
     });
   });
 

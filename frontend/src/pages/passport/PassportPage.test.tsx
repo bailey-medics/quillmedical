@@ -314,12 +314,50 @@ describe("PassportPage", () => {
 
     renderWithRouter(<PassportPage />);
 
+    await user.click(await screen.findByRole("combobox"));
+    await user.click(await screen.findByText("Oncology"));
     await user.click(
       await screen.findByRole("button", { name: "Create my passport" }),
     );
 
-    expect(createPassport).toHaveBeenCalledTimes(1);
+    expect(createPassport).toHaveBeenCalledWith(["oncology"]);
     expect(await screen.findByText("Perform bronchoscopy")).toBeInTheDocument();
+  });
+
+  it("asks for a specialty before the passport can be created", async () => {
+    // Nothing is preselected, so Generic is a choice rather than a
+    // default somebody missed.
+    const user = userEvent.setup();
+    fetchMyPassport.mockRejectedValue(httpError(404));
+    renderWithRouter(<PassportPage />);
+
+    const create = await screen.findByRole("button", {
+      name: "Create my passport",
+    });
+
+    // AddButton stays focusable when disabled, so it says so with
+    // aria-disabled rather than the disabled attribute.
+    expect(create).toHaveAttribute("aria-disabled", "true");
+    await user.click(create);
+    expect(createPassport).not.toHaveBeenCalled();
+    expect(screen.getByText("Your specialty")).toBeInTheDocument();
+  });
+
+  it("creates a Generic passport when Generic is chosen", async () => {
+    const user = userEvent.setup();
+    fetchMyPassport.mockRejectedValueOnce(httpError(404));
+    createPassport.mockResolvedValue(detail.passport);
+    fetchMyPassport.mockResolvedValueOnce(detail);
+
+    renderWithRouter(<PassportPage />);
+
+    await user.click(await screen.findByRole("combobox"));
+    await user.click(await screen.findByText("Generic (no specialty order)"));
+    await user.click(
+      await screen.findByRole("button", { name: "Create my passport" }),
+    );
+
+    expect(createPassport).toHaveBeenCalledWith([]);
   });
 
   it("explains a failed creation rather than leaving the button silent", async () => {
@@ -329,6 +367,8 @@ describe("PassportPage", () => {
 
     renderWithRouter(<PassportPage />);
 
+    await user.click(await screen.findByRole("combobox"));
+    await user.click(await screen.findByText("Oncology"));
     await user.click(
       await screen.findByRole("button", { name: "Create my passport" }),
     );
