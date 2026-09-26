@@ -169,13 +169,15 @@ export default function SlideReader() {
           onVideoProgress={handleVideoProgress}
         />
 
-        {isSm && (
-          <PreviousNextButton
-            onPrevious={isFirst ? undefined : goPrevious}
-            onNext={goNext}
-            nextLabel={isLast ? "Finish" : "Next"}
-          />
-        )}
+        {/* On every screen size, not only phones: the side list and the
+            arrow keys move between slides too, but a learner looks for
+            Next at the foot of the slide, and Finish gives the lesson an
+            end that "Exit lesson" does not */}
+        <PreviousNextButton
+          onPrevious={isFirst ? undefined : goPrevious}
+          onNext={goNext}
+          nextLabel={isLast ? "Finish" : "Next"}
+        />
       </Stack>
     </TeachingLayout>
   );

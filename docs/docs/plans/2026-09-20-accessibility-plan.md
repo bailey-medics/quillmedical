@@ -477,7 +477,11 @@ on top.
       there is no lecture to open. It is replaced by two journeys over what
       CI does have: the skip link landing inside `main`, and reaching
       Settings through the side navigation by Tab alone. Opening a lecture
-      stays in phase 5's manual scripts until CI seeds a module. These
+      stays in phase 5's manual scripts until CI seeds a module. (CI now
+      does, from 2026-09-26: `.github/scripts/ci/fetch-e2e-teaching.sh`
+      fetches a pinned `respiratory-teaching` and `seed_ci.py` opens its
+      module, and "a lecture opens from the dashboard" is the journey the
+      plan asked for.) These
       journeys found three faults that no automated check had, all fixed
       here:
 
