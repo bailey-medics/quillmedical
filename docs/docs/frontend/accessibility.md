@@ -86,8 +86,7 @@ The statement is published at
 in the format the Public Sector Bodies Accessibility Regulations 2018 set
 out. It says Quill is partially compliant with WCAG 2.2 AA, and will until
 the testing by people above is done. It is linked from the public site's
-footer, from the public accessibility page at `/accessibility`, and from
-Settings in the app.
+footer and from the public accessibility page at `/accessibility`.
 
 ## Reporting a problem
 

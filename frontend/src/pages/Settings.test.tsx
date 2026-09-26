@@ -83,19 +83,3 @@ describe("the page-view opt-out", () => {
     ).toBeInTheDocument();
   });
 });
-
-describe("accessibility help", () => {
-  it("links to the accessibility statement and the feedback address", () => {
-    renderWithRouter(<Settings />);
-
-    expect(
-      screen.getByRole("link", { name: "accessibility statement" }),
-    ).toHaveAttribute(
-      "href",
-      "https://quill-medical.com/accessibility-statement",
-    );
-    expect(
-      screen.getByRole("link", { name: "info@quill-medical.com" }),
-    ).toHaveAttribute("href", "mailto:info@quill-medical.com");
-  });
-});
