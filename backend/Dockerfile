@@ -113,7 +113,7 @@ FROM base AS prod
 # `git bundle` and shells out to git to write and read it, because libgit2
 # has no bundle support (see app/features/passport/gcs_store.py). Without
 # it every passport create fails with a 500. Deliberately not in `base`,
-# so the admin and transcode jobs stay without it.
+# so the transcode job stays without it.
 USER root
 RUN apt-get update \
  && apt-get install -y --no-install-recommends git \
@@ -124,6 +124,15 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--worker
 
 # ---------- Admin target (Cloud Run Job for admin tasks) ----------
 FROM base AS admin
+# git, for the same reason as `prod`: `delete-passport` reads a test
+# holder's passport out of its `git bundle` to report what it holds before
+# anything is deleted. Without it the dry run fails with "No such file or
+# directory: 'git'".
+USER root
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends git \
+ && rm -rf /var/lib/apt/lists/*
+USER appuser
 COPY --chown=appuser:appuser backend/scripts/admin_cli.py ./scripts/admin_cli.py
 CMD ["python", "scripts/admin_cli.py"]
 
