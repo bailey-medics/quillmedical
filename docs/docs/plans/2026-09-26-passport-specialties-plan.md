@@ -13,7 +13,9 @@ an opt-in flag that the backend enforces. Which assessable competencies matter
 most to a holder is a property of the holder, so they choose a specialty when
 they create their passport, and it changes only the order of the picker, never
 what it offers. The first release offers Oncology, General medicine, General
-surgery and Generic, the last meaning no specialty order.
+surgery and Generic, the last meaning no specialty order. Testing all of this
+on teaching also needs a way to delete a test holder's passport and start
+again, which phases 6 to 9 add without it ever reaching a real clinician's.
 
 ## Phase 1: Drop the site shortlist
 
@@ -254,6 +256,106 @@ surgery and Generic, the last meaning no specialty order.
       plan point to this plan, and `docs/docs/backend/passport/index.md`
       describes the assessable flag and specialties.
 
+## Phase 6: Archiving a passport in the stores
+
+- [x] **Archive functions in `backend/app/features/passport/archive.py`**:
+      `archive_local` and `archive_bucket`. Each copies the repository and
+      its evidence blobs to the destination, checks every copy against its
+      original (file sizes on disk, CRC32C in the bucket), then removes the
+      originals. Copy before remove, so a failure part way leaves the
+      passport where it was. **Departed from the first draft of this step**,
+      which put an `archive` method on `PassportStore`: the two backends
+      archive to different kinds of place, and the evidence belongs to the
+      blob stores, so one function per backend moving the passport's whole
+      shard is simpler than a method with a differently typed destination on
+      each class. Its bucket protocol is its own, so the stores and their
+      test fakes gain nothing they never use.
+
+- [x] **The passport bucket keeps its noncurrent versions.** The bucket is
+      versioned and nothing removes versions, so removing the live objects
+      leaves their bytes recoverable indefinitely. That is acceptable for a
+      test passport, and is recorded here rather than worked around: making
+      deletion real would mean a lifecycle rule on a bucket designed never to
+      have one.
+
+- [x] **Tests** for both stores: archiving copies everything, removes the
+      originals, refuses an unknown passport, and leaves the passport intact
+      when the copy fails.
+
+## Phase 7: The admin command
+
+- [x] **Add a `delete-passport` action to `backend/scripts/admin_cli.py`**,
+      reading `ADMIN_USERNAME` and an optional `CONFIRM`.
+
+- [x] **Without `CONFIRM`, report and stop.** Print the holder's username and
+      user id, the passport id, and counts of sign-offs, logbook entries,
+      certificates, CPD entries, reflections and open requests, whether the
+      holder is on the allow-list, and the `CONFIRM` value to pass back. This
+      is also how the ids for phase 9 are found, since it reads without
+      changing anything. Evidence files are not counted, since that means
+      listing the bucket; the confirmed run reports how many objects it
+      moved instead.
+
+- [x] **With `CONFIRM`, act only if every check passes**, refusing with a
+      message naming the one that failed:
+      - the holder's user id is in `PASSPORT_DELETABLE_USER_IDS`, a
+        comma-separated list, where unset or empty means nobody
+      - `CONFIRM` equals the passport id exactly
+      - the holder has exactly one passport, which a unique constraint
+        already guarantees
+
+- [x] **Then archive, then remove the rows.** Archive to
+      `deleted/<date>/` in the archive bucket, keeping each object's name, and
+      delete the `passport`, `passport_signoff_request` and
+      `passport_assessor_invite` rows in one transaction that commits only
+      once the archive has succeeded. The dependent rows are deleted by name
+      rather than left to the foreign keys' cascade, so the command does not
+      rely on the database enforcing it. Entitlements in `user_competency`
+      and any assessor memberships stay: they describe the person, not the
+      record. The one gap left, the archive succeeding and the commit then
+      failing, is reported as exactly that, with where the files went.
+
+- [x] **One passport per run.** No list, no pattern, and no "all".
+
+- [x] **Tests** covering each refusal (not listed, wrong id, empty list,
+      unset list), the dry run changing nothing, and a confirmed run
+      archiving and removing exactly one passport.
+
+## Phase 8: The recipe
+
+- [x] **Add `just passport-delete env username confirm=""`**, following
+      `.claude/rules/just.md` and the existing `add-role` recipe: it executes
+      the admin job with `ADMIN_ACTION=delete-passport`, and passes `CONFIRM`
+      only when given. Because the job prints to Cloud Logging rather than
+      the terminal, the recipe reads that execution's log back, so the dry
+      run's report appears where it was asked for. It refuses a username or
+      confirmation containing anything but the expected characters, since
+      both go into a comma-separated list of variables.
+
+## Phase 9: Terraform
+
+- [ ] **An archive bucket, `quill-passports-deleted-{env}`**, in
+      `infra/modules/passport-storage/`, with a lifecycle rule deleting
+      objects after 30 days, versioning off and public access prevented. A
+      separate bucket rather than a prefix, because the passport bucket's own
+      comment rules out any lifecycle rule there, and that decision stands.
+
+- [ ] **Grant the admin job's identity** object access on both buckets, in
+      `infra/runtime-identities.tf`. It has none today.
+
+- [ ] **Add `passport_deletable_user_ids`**, a `list(number)` defaulting to
+      empty, to `infra/variables.tf`, and pass it to the admin job as
+      `PASSPORT_DELETABLE_USER_IDS` in `infra/main.tf`, beside
+      `CORE_DB_HOST`. Found while building phase 7: the admin job also needs
+      `PASSPORT_GCS_BUCKET` and `PASSPORT_ARCHIVE_GCS_BUCKET`, which it does
+      not have today. Without the first it would look for passports on its
+      own disk, find none, and refuse.
+
+- [ ] **List the three test holders** in
+      `infra/environments/app/terraform.tfvars`, by id, each with a comment
+      naming the account. Find the ids with the phase 7 dry run:
+      `mark.bailey.superadmin`, `mark.bailey.admin` and `mark.bailey`.
+
 ## Decisions
 
 - **A specialty, not a "passport type"** — "type" suggests a different kind of
@@ -276,3 +378,26 @@ surgery and Generic, the last meaning no specialty order.
   question in the clinician passport plan, and deliberately not a specialty
   list. A specialty list orders; a required list would report against an
   outside body's stated requirement, which needs deciding on its own.
+
+- **Deletion is impossible until phase 9** — the command refuses every
+  holder while `PASSPORT_DELETABLE_USER_IDS` is unset or empty, so phases 6
+  to 8 are safe to deploy before the Terraform list names anybody.
+
+- **An admin job, never a route** — anything reachable from the web app is
+  one stolen session or one bug away from being used. Running the job needs
+  gcloud permission on the project, and Cloud Audit Logs record who ran it.
+
+- **Holders named by user id, in Terraform** — a username can be changed by
+  an admin, and an invited assessor chooses their own, so a pattern such as
+  `mark.bailey.*` could come to match a real clinician. An id means one
+  account for good, and adding one is a reviewed change to `infra/` that
+  applies on merge.
+
+- **Not decided by what a passport contains** — a check refusing passports
+  signed off by somebody else was considered and dropped, because testing
+  means signing off your own passport from other addresses, which makes a
+  test passport look real.
+
+- **`mark.bailey` is listed too** — that account's passport is deletable
+  while it is on the list. Acceptable while nobody uses production; once a
+  real record matters there, take it off in its own pull request.

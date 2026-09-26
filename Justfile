@@ -2086,6 +2086,60 @@ migrate-remote env:
         --wait
 
 
+alias psd := passport-delete
+# Delete a test holder's passport, archived for 30 days (dry run unless confirm is the passport id)
+passport-delete env username confirm="":
+    #!/usr/bin/env bash
+    {{initialise}} "passport-delete ({{env}})"
+    set -euo pipefail
+
+    PROJECT=$(just _gcp_env_project "{{env}}")
+    REGION="europe-west2"
+
+    # Only holders listed in PASSPORT_DELETABLE_USER_IDS, set in Terraform,
+    # can be deleted. Without confirm this only reports, and prints the
+    # passport id to pass back. See delete_passport() in
+    # backend/scripts/admin_cli.py.
+    # Checked here because both go into a comma-separated list of
+    # variables, where a stray comma would set something else.
+    if ! [[ "{{username}}" =~ ^[A-Za-z0-9._@+-]+$ ]]; then
+        echo "✗ '{{username}}' is not a username" >&2
+        exit 1
+    fi
+    if [ -n "{{confirm}}" ] && ! [[ "{{confirm}}" =~ ^[0-9a-f]{32}$ ]]; then
+        echo "✗ confirm must be the 32-character passport id from a dry run" >&2
+        exit 1
+    fi
+
+    VARS="ADMIN_ACTION=delete-passport,ADMIN_USERNAME={{username}}"
+    if [ -n "{{confirm}}" ]; then
+        VARS="${VARS},CONFIRM={{confirm}}"
+        echo "Delete {{username}}'s passport on ${PROJECT}"
+    else
+        echo "Dry run: {{username}}'s passport on ${PROJECT}"
+    fi
+    echo "─────────────────────────────────"
+
+    EXECUTION=$(gcloud run jobs execute "quill-admin-{{env}}" \
+        --project="$PROJECT" \
+        --region="$REGION" \
+        --update-env-vars "$VARS" \
+        --wait \
+        --format='value(metadata.name)') || STATUS=$?
+
+    # The job prints to Cloud Logging rather than to this terminal, so
+    # its report is read back from there.
+    if [ -n "${EXECUTION:-}" ]; then
+        gcloud logging read \
+            "resource.type=cloud_run_job AND labels.\"run.googleapis.com/execution_name\"=${EXECUTION}" \
+            --project="$PROJECT" \
+            --order=asc \
+            --freshness=1h \
+            --format='value(textPayload)'
+    fi
+    exit "${STATUS:-0}"
+
+
 alias na := notifier-app
 # Build the Quill-branded macOS notifier used by the Stop-hook banner (macOS only, one-off)
 notifier-app:

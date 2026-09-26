@@ -24,10 +24,12 @@ switch at all, so the passport has only the bucket name.
 
 from __future__ import annotations
 
+from datetime import date
 from functools import lru_cache
 from pathlib import Path
 
 from app.config import settings
+from app.features.passport import archive
 from app.features.passport.blobs import BlobStore
 from app.features.passport.gcs_store import (
     GcsBlobStore,
@@ -98,3 +100,55 @@ def reset_caches() -> None:
     """
     get_passport_store.cache_clear()
     get_blob_store.cache_clear()
+
+
+def archive_passport(
+    passport_id: str,
+    day: date,
+    *,
+    archive_bucket: str | None,
+    archive_root: str | None,
+) -> list[str]:
+    """Move one passport, evidence included, into the archive.
+
+    Only the admin command ``delete-passport`` calls this. The archive
+    location is passed in rather than read from settings, because only the
+    admin job is given one: the web application has no archive to write to.
+
+    Args:
+        passport_id: Whose passport.
+        day: The date to file it under, as ``deleted/<day>/``.
+        archive_bucket: The archive bucket, required when passports live in
+            a bucket.
+        archive_root: The archive directory for the local backend. Defaults
+            to a ``-deleted`` sibling of ``PASSPORT_LOCAL_ROOT``.
+
+    Returns:
+        Every object or file moved.
+
+    Raises:
+        ValueError: If passports live in a bucket and no archive bucket is
+            named. Refusing is the point: with nowhere to copy to, the only
+            way to delete would be to destroy.
+    """
+    prefix = f"deleted/{day.isoformat()}"
+    source_bucket = settings.PASSPORT_GCS_BUCKET
+
+    if source_bucket:
+        if not archive_bucket:
+            raise ValueError(
+                "PASSPORT_ARCHIVE_GCS_BUCKET is not set, so there is nowhere "
+                "to archive the passport to."
+            )
+        return archive.archive_bucket(
+            archive.build_bucket(source_bucket),
+            archive.build_bucket(archive_bucket),
+            passport_id,
+            prefix,
+        )
+
+    root = Path(settings.PASSPORT_LOCAL_ROOT)
+    destination = (
+        Path(archive_root) if archive_root else Path(f"{root}-deleted")
+    )
+    return archive.archive_local(root, destination / prefix, passport_id)
