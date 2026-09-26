@@ -9,11 +9,17 @@ not available.
 Environment Variables:
     ADMIN_ACTION:     Required.  One of: create-superadmin, add-role,
                       verify-email, run-migrations,
-                      check-competency-seeding.
+                      check-competency-seeding, delete-passport.
     ADMIN_USERNAME:   Required.  Target username.
     ADMIN_EMAIL:      Required for create-superadmin.
     ADMIN_PASSWORD:   Required for create-superadmin.
     ADMIN_ROLE:       Required for add-role (e.g. "System Administrator").
+    CONFIRM:          delete-passport only. The passport id, pasted back
+                      from a dry run. Without it the action only reports.
+
+    delete-passport also reads PASSPORT_DELETABLE_USER_IDS, a
+    comma-separated list of user ids set in Terraform, and
+    PASSPORT_ARCHIVE_GCS_BUCKET. See delete_passport().
 
     run-migrations takes no ADMIN_* variables — it runs `alembic upgrade
     head` against the standard CORE_DB_* connection settings, as a
@@ -349,6 +355,206 @@ def check_competency_seeding() -> int:
     return 1
 
 
+def _deletable_user_ids() -> set[int]:
+    """The holders whose passports may be deleted, from Terraform.
+
+    Unset or empty means nobody. An entry that is not a whole number is
+    refused rather than skipped, so a typo in Terraform stops the command
+    instead of quietly narrowing the list.
+    """
+    raw = os.environ.get("PASSPORT_DELETABLE_USER_IDS", "").strip()
+    if not raw:
+        return set()
+    ids: set[int] = set()
+    for part in raw.split(","):
+        part = part.strip()
+        if not part.isdigit():
+            raise ValueError(
+                f"PASSPORT_DELETABLE_USER_IDS holds {part!r}, which is not "
+                "a user id."
+            )
+        ids.add(int(part))
+    return ids
+
+
+def _passport_counts(passport_id: str) -> dict[str, int]:
+    """How many of each record a passport holds, for the dry run."""
+    from pathlib import PurePosixPath
+
+    from app.features.passport import paths
+    from app.passport_storage import get_passport_store
+
+    store = get_passport_store()
+
+    def entries(folder: PurePosixPath) -> int:
+        return len(store.list_dir(passport_id, folder))
+
+    def nested(folder: PurePosixPath) -> int:
+        return sum(entries(sub) for sub in store.list_dir(passport_id, folder))
+
+    return {
+        "sign-offs": entries(paths.SIGN_OFFS),
+        "logbook entries": nested(paths.LOGBOOK),
+        "certificates": entries(paths.CERTIFICATES),
+        "CPD entries": nested(paths.CPD),
+        "reflections": entries(paths.REFLECTIONS),
+    }
+
+
+def delete_passport() -> int:
+    """Delete one test holder's passport, archiving it for 30 days.
+
+    For testing on teaching, where a holder needs to start again. Never
+    reachable from the web application, and guarded four ways:
+
+    - **Only holders named in Terraform.** ``PASSPORT_DELETABLE_USER_IDS``
+      lists user ids, so adding somebody is a reviewed change to
+      ``infra/``. Unset means nobody.
+    - **A dry run first.** Without ``CONFIRM`` it reports what it would
+      delete and stops. With it, ``CONFIRM`` must equal the passport id.
+    - **One passport per run**, named by its holder's username.
+    - **Archived, not destroyed.** The repository and evidence are copied
+      to the archive bucket, which clears itself after 30 days, before
+      anything is removed.
+
+    See Phases 6 to 9 of docs/docs/plans/2026-09-26-passport-specialties-plan.md.
+    """
+    env = _require_env("ADMIN_USERNAME")
+    username = env["ADMIN_USERNAME"]
+    confirm = os.environ.get("CONFIRM", "").strip()
+
+    from datetime import UTC, datetime
+
+    from sqlalchemy import delete, func, select
+
+    from app.db.core_db import CoreSessionLocal
+    from app.features.passport.models import (
+        Passport,
+        PassportAssessorInvite,
+        PassportSignOffRequest,
+    )
+    from app.models import User
+    from app.passport_storage import archive_passport
+
+    try:
+        deletable = _deletable_user_ids()
+    except ValueError as exc:
+        print(f"✗ {exc}", file=sys.stderr)
+        return 1
+
+    db = CoreSessionLocal()
+    try:
+        user = db.scalar(select(User).where(User.username == username))
+        if user is None:
+            print(f"✗ User '{username}' not found", file=sys.stderr)
+            return 1
+
+        passport = db.scalar(
+            select(Passport).where(Passport.user_id == user.id)
+        )
+        if passport is None:
+            print(
+                f"✗ '{username}' (user {user.id}) has no passport",
+                file=sys.stderr,
+            )
+            return 1
+
+        listed = user.id in deletable
+        open_requests = db.scalar(
+            select(func.count())
+            .select_from(PassportSignOffRequest)
+            .where(
+                PassportSignOffRequest.passport_id == passport.id,
+                PassportSignOffRequest.status == "open",
+            )
+        )
+
+        if not confirm:
+            print(f"Holder:   {username} (user {user.id})")
+            print(f"Passport: {passport.id}")
+            for label, count in _passport_counts(passport.id).items():
+                print(f"  {count:4d} {label}")
+            print(f"  {open_requests or 0:4d} open sign-off requests")
+            print(
+                "Deletable: "
+                + (
+                    "yes"
+                    if listed
+                    else "no, not in PASSPORT_DELETABLE_USER_IDS"
+                )
+            )
+            print(
+                "Nothing was changed. To delete it, run again with "
+                f"CONFIRM={passport.id}"
+            )
+            return 0
+
+        if not listed:
+            print(
+                f"✗ '{username}' (user {user.id}) is not in "
+                "PASSPORT_DELETABLE_USER_IDS. Holders are added in "
+                "Terraform, in infra/.",
+                file=sys.stderr,
+            )
+            return 1
+
+        if confirm != passport.id:
+            print(
+                f"✗ CONFIRM does not match '{username}''s passport. Nothing "
+                "was changed.",
+                file=sys.stderr,
+            )
+            return 1
+
+        # The rows go in the same transaction the archive runs inside, and
+        # are committed only once the archive has succeeded, so a failed
+        # archive leaves both the files and the rows where they were. The
+        # requests and invitations are deleted by name rather than left to
+        # the foreign keys' cascade, so the command does not depend on the
+        # database enforcing it.
+        passport_id = passport.id
+        for model in (PassportSignOffRequest, PassportAssessorInvite):
+            db.execute(delete(model).where(model.passport_id == passport_id))
+        db.delete(passport)
+        db.flush()
+
+        day = datetime.now(UTC).date()
+        moved = archive_passport(
+            passport_id,
+            day,
+            archive_bucket=os.environ.get("PASSPORT_ARCHIVE_GCS_BUCKET"),
+            archive_root=os.environ.get("PASSPORT_ARCHIVE_LOCAL_ROOT"),
+        )
+
+        try:
+            db.commit()
+        except Exception as exc:
+            # The one gap copy-then-remove cannot close: the files have
+            # moved and the row has not. Said plainly, with where to find
+            # them, rather than as "nothing was deleted".
+            db.rollback()
+            print(
+                f"✗ The passport was archived under deleted/{day} but its "
+                f"row could not be removed: {exc}. Copy it back to "
+                "restore it.",
+                file=sys.stderr,
+            )
+            return 1
+
+        print(
+            f"✓ Deleted {username}'s passport {passport_id}: {len(moved)} "
+            "objects archived for 30 days"
+        )
+        return 0
+
+    except Exception as exc:
+        db.rollback()
+        print(f"✗ Nothing was deleted: {exc}", file=sys.stderr)
+        return 1
+    finally:
+        db.close()
+
+
 ACTIONS: dict[str, tuple[Callable[[], int], str]] = {
     "check-competency-seeding": (
         check_competency_seeding,
@@ -369,6 +575,10 @@ ACTIONS: dict[str, tuple[Callable[[], int], str]] = {
     "run-migrations": (
         run_migrations,
         "Apply all pending Alembic migrations (alembic upgrade head)",
+    ),
+    "delete-passport": (
+        delete_passport,
+        "Delete a test holder's passport, archived for 30 days",
     ),
     "smoke-test": (
         smoke_test,

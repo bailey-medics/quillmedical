@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Iterator
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -533,3 +535,242 @@ class TestCheckCompetencySeeding:
         err = capsys.readouterr().err
         assert f"user {user.id}: access_own_patient_records" in err
         assert "unseeded" not in err
+
+
+PASSPORT_ID = "3f2a8c1e4b7d49f0a6c2e8b1d5a7f309"
+
+
+class TestDeletePassport:
+    """Tests for the delete-passport action.
+
+    Every refusal is its own test, because each is one of the guards that
+    keep this away from a real clinician's record.
+    """
+
+    @pytest.fixture
+    def roots(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> Iterator[tuple[Path, Path]]:
+        """Local passport storage, and where its archive goes."""
+        from app import passport_storage
+        from app.config import settings
+
+        root = tmp_path / "passports"
+        archive_root = tmp_path / "archive"
+        monkeypatch.setattr(settings, "PASSPORT_GCS_BUCKET", None)
+        monkeypatch.setattr(settings, "PASSPORT_LOCAL_ROOT", str(root))
+        passport_storage.reset_caches()
+        yield root, archive_root
+        passport_storage.reset_caches()
+
+    @pytest.fixture
+    def holder(self, db_session: Session, roots: tuple[Path, Path]) -> User:
+        """A holder with a passport and one open sign-off request."""
+        from app.features.passport import service
+        from app.features.passport.commits import Actor
+        from app.features.passport.models import (
+            Passport,
+            PassportSignOffRequest,
+        )
+        from app.features.passport.store import LocalPassportStore
+
+        user = User(
+            username="mark.bailey.test",
+            email="test@example.com",
+            password_hash=hash_password("Pass123!"),
+        )
+        db_session.add(user)
+        db_session.flush()
+
+        service.create_passport(
+            LocalPassportStore(roots[0]),
+            PASSPORT_ID,
+            Actor(
+                name="Dr Test",
+                role="specialty_trainee_3_plus",
+                email="test@example.com",
+            ),
+            user_id=str(user.id),
+        )
+        db_session.add(Passport(id=PASSPORT_ID, user_id=user.id))
+        db_session.flush()
+        db_session.add(
+            PassportSignOffRequest(
+                passport_id=PASSPORT_ID,
+                signoff_id="20260314T143207.000Z-abc",
+                competency_id="perform_cannulation",
+                assessor_email="assessor@example.com",
+            )
+        )
+        db_session.commit()
+        return user
+
+    def _run(self, env: dict[str, str], roots: tuple[Path, Path]) -> int:
+        from scripts.admin_cli import delete_passport
+
+        full = {
+            "ADMIN_ACTION": "delete-passport",
+            "PASSPORT_ARCHIVE_LOCAL_ROOT": str(roots[1]),
+            **env,
+        }
+        cleared = {"CONFIRM": "", "PASSPORT_DELETABLE_USER_IDS": ""}
+        with patch.dict(os.environ, {**cleared, **full}, clear=False):
+            return delete_passport()
+
+    def _exists(self, db_session: Session, roots: tuple[Path, Path]) -> bool:
+        from app.features.passport.models import Passport
+        from app.features.passport.store import LocalPassportStore
+
+        db_session.expire_all()
+        row = db_session.get(Passport, PASSPORT_ID)
+        on_disk = LocalPassportStore(roots[0]).exists(PASSPORT_ID)
+        assert (row is not None) == on_disk, "row and files disagree"
+        return on_disk
+
+    @pytest.mark.usefixtures("_patch_session")
+    def test_a_dry_run_reports_and_changes_nothing(
+        self,
+        db_session: Session,
+        holder: User,
+        roots: tuple[Path, Path],
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        result = self._run(
+            {
+                "ADMIN_USERNAME": holder.username,
+                "PASSPORT_DELETABLE_USER_IDS": str(holder.id),
+            },
+            roots,
+        )
+
+        assert result == 0
+        output = capsys.readouterr().out
+        assert PASSPORT_ID in output
+        assert "open sign-off requests" in output
+        assert f"CONFIRM={PASSPORT_ID}" in output
+        assert self._exists(db_session, roots)
+
+    @pytest.mark.usefixtures("_patch_session")
+    def test_a_confirmed_run_archives_and_removes_the_passport(
+        self, db_session: Session, holder: User, roots: tuple[Path, Path]
+    ) -> None:
+        from app.features.passport.models import PassportSignOffRequest
+
+        result = self._run(
+            {
+                "ADMIN_USERNAME": holder.username,
+                "PASSPORT_DELETABLE_USER_IDS": f"999, {holder.id}",
+                "CONFIRM": PASSPORT_ID,
+            },
+            roots,
+        )
+
+        assert result == 0
+        assert not self._exists(db_session, roots)
+        assert db_session.query(PassportSignOffRequest).count() == 0
+        archived = list((roots[1] / "deleted").glob(f"*/3f/2a/{PASSPORT_ID}"))
+        assert len(archived) == 1
+
+    @pytest.mark.usefixtures("_patch_session")
+    def test_refuses_a_holder_not_on_the_list(
+        self, db_session: Session, holder: User, roots: tuple[Path, Path]
+    ) -> None:
+        result = self._run(
+            {
+                "ADMIN_USERNAME": holder.username,
+                "PASSPORT_DELETABLE_USER_IDS": "999",
+                "CONFIRM": PASSPORT_ID,
+            },
+            roots,
+        )
+
+        assert result == 1
+        assert self._exists(db_session, roots)
+
+    @pytest.mark.usefixtures("_patch_session")
+    def test_an_empty_list_deletes_nobody(
+        self, db_session: Session, holder: User, roots: tuple[Path, Path]
+    ) -> None:
+        result = self._run(
+            {"ADMIN_USERNAME": holder.username, "CONFIRM": PASSPORT_ID},
+            roots,
+        )
+
+        assert result == 1
+        assert self._exists(db_session, roots)
+
+    @pytest.mark.usefixtures("_patch_session")
+    def test_refuses_a_confirmation_that_does_not_match(
+        self, db_session: Session, holder: User, roots: tuple[Path, Path]
+    ) -> None:
+        result = self._run(
+            {
+                "ADMIN_USERNAME": holder.username,
+                "PASSPORT_DELETABLE_USER_IDS": str(holder.id),
+                "CONFIRM": "a1b2c3d4e5f60718293a4b5c6d7e8f90",
+            },
+            roots,
+        )
+
+        assert result == 1
+        assert self._exists(db_session, roots)
+
+    @pytest.mark.usefixtures("_patch_session")
+    def test_refuses_a_list_entry_that_is_not_an_id(
+        self, db_session: Session, holder: User, roots: tuple[Path, Path]
+    ) -> None:
+        """A pattern such as mark.bailey.* is refused, never matched."""
+        result = self._run(
+            {
+                "ADMIN_USERNAME": holder.username,
+                "PASSPORT_DELETABLE_USER_IDS": "mark.bailey.*",
+                "CONFIRM": PASSPORT_ID,
+            },
+            roots,
+        )
+
+        assert result == 1
+        assert self._exists(db_session, roots)
+
+    @pytest.mark.usefixtures("_patch_session")
+    def test_a_failed_archive_keeps_the_row(
+        self,
+        db_session: Session,
+        holder: User,
+        roots: tuple[Path, Path],
+    ) -> None:
+        # An archive already holding this passport makes the copy refuse.
+        from datetime import UTC, datetime
+
+        day = datetime.now(UTC).date().isoformat()
+        (roots[1] / "deleted" / day / "3f" / "2a" / PASSPORT_ID).mkdir(
+            parents=True
+        )
+
+        result = self._run(
+            {
+                "ADMIN_USERNAME": holder.username,
+                "PASSPORT_DELETABLE_USER_IDS": str(holder.id),
+                "CONFIRM": PASSPORT_ID,
+            },
+            roots,
+        )
+
+        assert result == 1
+        assert self._exists(db_session, roots)
+
+    @pytest.mark.usefixtures("_patch_session")
+    def test_a_user_without_a_passport_is_refused(
+        self, db_session: Session, roots: tuple[Path, Path]
+    ) -> None:
+        user = User(
+            username="no-passport",
+            email="none@example.com",
+            password_hash=hash_password("Pass123!"),
+        )
+        db_session.add(user)
+        db_session.commit()
+
+        result = self._run({"ADMIN_USERNAME": "no-passport"}, roots)
+
+        assert result == 1
