@@ -51,3 +51,40 @@ resource "google_storage_bucket" "passports" {
 # smallest standard role covering create and overwrite. A Cloud Run service
 # account does not inherit object-level access from project editor, so without
 # that grant the first request fails with a 403 on `storage.objects.list`.
+
+# ---------- Archive: deleted test passports, for 30 days ----------
+# Where the admin job's `delete-passport` action copies a test holder's
+# passport before removing it, so a mistake can be undone within a month.
+# See Phases 6 to 9 of docs/docs/plans/2026-09-26-passport-specialties-plan.md.
+#
+# A bucket of its own rather than a `deleted/` prefix in the one above,
+# because that bucket must never carry a lifecycle rule, for the reasons at
+# the top of this file. Here expiry is the whole point: nothing lands in this
+# bucket except what somebody chose to delete, and it clears itself.
+resource "google_storage_bucket" "archive" {
+  project  = var.project_id
+  name     = "quill-passports-deleted-${var.environment}"
+  location = var.region
+
+  # Expiring is its job, and there is nothing here worth refusing a destroy
+  # over: everything in it is already on its way out.
+  force_destroy = true
+
+  uniform_bucket_level_access = true
+  public_access_prevention    = "enforced"
+
+  # Off, so an expired object is gone rather than kept as a noncurrent
+  # version nothing would ever remove.
+  versioning {
+    enabled = false
+  }
+
+  lifecycle_rule {
+    condition {
+      age = 30
+    }
+    action {
+      type = "Delete"
+    }
+  }
+}

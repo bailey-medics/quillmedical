@@ -157,3 +157,15 @@ variable "manage_dns_zone" {
   type        = bool
   default     = false
 }
+
+variable "passport_deletable_user_ids" {
+  description = <<-EOT
+    User ids whose clinician passport the admin job's `delete-passport`
+    action may delete, for testing. Exact ids rather than a username
+    pattern, because a username can be changed and an invited assessor
+    chooses their own. Empty, the default, means nobody: the command
+    refuses every holder. See backend/scripts/admin_cli.py.
+  EOT
+  type        = list(number)
+  default     = []
+}

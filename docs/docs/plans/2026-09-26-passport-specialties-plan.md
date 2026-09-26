@@ -334,16 +334,16 @@ again, which phases 6 to 9 add without it ever reaching a real clinician's.
 
 ## Phase 9: Terraform
 
-- [ ] **An archive bucket, `quill-passports-deleted-{env}`**, in
+- [x] **An archive bucket, `quill-passports-deleted-{env}`**, in
       `infra/modules/passport-storage/`, with a lifecycle rule deleting
       objects after 30 days, versioning off and public access prevented. A
       separate bucket rather than a prefix, because the passport bucket's own
       comment rules out any lifecycle rule there, and that decision stands.
 
-- [ ] **Grant the admin job's identity** object access on both buckets, in
+- [x] **Grant the admin job's identity** object access on both buckets, in
       `infra/runtime-identities.tf`. It has none today.
 
-- [ ] **Add `passport_deletable_user_ids`**, a `list(number)` defaulting to
+- [x] **Add `passport_deletable_user_ids`**, a `list(number)` defaulting to
       empty, to `infra/variables.tf`, and pass it to the admin job as
       `PASSPORT_DELETABLE_USER_IDS` in `infra/main.tf`, beside
       `CORE_DB_HOST`. Found while building phase 7: the admin job also needs
@@ -355,6 +355,11 @@ again, which phases 6 to 9 add without it ever reaching a real clinician's.
       `infra/environments/app/terraform.tfvars`, by id, each with a comment
       naming the account. Find the ids with the phase 7 dry run:
       `mark.bailey.superadmin`, `mark.bailey.admin` and `mark.bailey`.
+      **A change of its own, after the rest of this phase is deployed**: the
+      dry run needs the admin job to have `PASSPORT_GCS_BUCKET`, which only
+      the step above gives it, so the ids cannot be looked up any sooner.
+      Until then `passport_deletable_user_ids = []` is set explicitly in the
+      tfvars, with a comment naming the three accounts to add.
 
 ## Decisions
 

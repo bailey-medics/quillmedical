@@ -134,6 +134,22 @@ resource "google_storage_bucket_iam_member" "runtime_backend_passports" {
   member = "serviceAccount:${google_service_account.runtime["backend"].email}"
 }
 
+# The admin job's `delete-passport` action reads a test holder's passport,
+# copies it to the archive, then removes it. Object admin on both, because
+# it creates in one and deletes in the other. It acts only on holders named
+# in var.passport_deletable_user_ids; see backend/scripts/admin_cli.py.
+resource "google_storage_bucket_iam_member" "runtime_admin_passports" {
+  bucket = module.passport_storage.bucket_name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${google_service_account.runtime["admin"].email}"
+}
+
+resource "google_storage_bucket_iam_member" "runtime_admin_passport_archive" {
+  bucket = module.passport_storage.archive_bucket_name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${google_service_account.runtime["admin"].email}"
+}
+
 # The backend writes uploaded lecture masters; the transcode job reads them.
 resource "google_storage_bucket_iam_member" "runtime_backend_video_source" {
   count = local.is_teaching_product ? 1 : 0
