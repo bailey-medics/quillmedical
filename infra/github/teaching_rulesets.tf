@@ -19,6 +19,7 @@
 locals {
   teaching_repos = [
     "eoeeta-teaching",
+    "eoeeta-teaching-testing",
     "respiratory-teaching",
   ]
 }
