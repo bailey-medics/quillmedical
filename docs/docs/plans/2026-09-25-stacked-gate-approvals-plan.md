@@ -19,8 +19,9 @@ re-checks everything against real `main` before anything lands.
 
 ## Phase 1: Recognise an unchanged change
 
-- [ ] **Fingerprint a pull request's own change with `git patch-id`.** Add
-      `.github/scripts/ci/compute-change-fingerprint.sh <base> <head>`,
+- [x] **Fingerprint a pull request's own change with `git patch-id`.** Add
+      `.github/scripts/ci/compute-change-fingerprint.sh <repo-dir> <base>
+      <head>`,
       printing `git diff <base>...<head> | git patch-id --stable` and
       writing it to `GITHUB_OUTPUT` as `change_fingerprint`. A patch ID is
       Git's own identity for "the same change": it ignores line numbers and
@@ -34,9 +35,10 @@ re-checks everything against real `main` before anything lands.
       missing ref. Follow the `main()` and source-guard convention in
       `.claude/rules/workflows.md`, so the tests can source it.
 
-- [ ] **Find an earlier human approval of the same change.** Add
-      `.github/scripts/ci/find-prior-approval.sh <pr-number> <environment>
-      <artifact-name> <fingerprint>`, which:
+- [x] **Find an earlier human approval of the same change.** Add
+      `.github/scripts/ci/find-prior-approval.sh`, taking the pull request
+      number and head branch, the workflow file, the environment, the
+      artifact name, the fingerprint and the current run's id, which:
 
       - lists this workflow's earlier `pull_request` runs for the pull
         request, newest first, excluding the current run;
