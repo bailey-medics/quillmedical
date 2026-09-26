@@ -30,6 +30,9 @@ export interface Competency {
   /** Present only where a competency is signed off against a scale. */
   levels?: CompetencyLevel[];
   expires_after_months?: number;
+  /** Whether the clinician passport may record something against it.
+   *  Opt-in: absent means a software permission, not a skill. */
+  assessable?: boolean;
 }
 export type BaseProfessionId =
   (typeof baseProfessionsData.base_professions)[number]["id"];
@@ -69,6 +72,19 @@ export const ALL_COMPETENCIES: Competency[] =
  */
 export const ACTIVE_COMPETENCIES: Competency[] = ALL_COMPETENCIES.filter(
   (competency) => competency.retired_on === undefined,
+);
+
+/**
+ * The competencies the clinician passport may record something new
+ * against: active, and marked `assessable`.
+ *
+ * The passport's pickers use this, so nobody is offered `manage_users`
+ * to be signed off on. The API refuses anything else when a record is
+ * created. Mirrors `ASSESSABLE_COMPETENCY_IDS` in
+ * `backend/app/cbac/competencies.py`.
+ */
+export const ASSESSABLE_COMPETENCIES: Competency[] = ACTIVE_COMPETENCIES.filter(
+  (competency) => competency.assessable === true,
 );
 
 // Profession lookup

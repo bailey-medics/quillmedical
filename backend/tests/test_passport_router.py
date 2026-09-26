@@ -45,7 +45,7 @@ from sqlalchemy.orm import Session
 from app import main
 from app.config import settings
 from app.email_send import EmailNotAllowedError, EmailRateLimitError
-from app.features.passport import router
+from app.features.passport import definitions, router
 from app.features.passport.blobs import BlobStore
 from app.features.passport.models import (
     Passport,
@@ -3170,3 +3170,169 @@ class TestFeatureGate:
         response = client.post("/api/passport")
 
         assert response.status_code == 403
+
+
+class TestOnlyAssessableCompetencies:
+    """A passport records skills, never software permissions.
+
+    ``manage_users`` stands in for every competency not marked
+    ``assessable``: nobody could watch somebody "manage users" and sign
+    it off, so no route creating a record accepts it.
+    """
+
+    PERMISSION = "manage_users"
+
+    def test_a_sign_off_request_is_refused_before_any_email(
+        self,
+        holder_client: TestClient,
+        assessor: User,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Nothing can be unsent, so the check comes before the mail."""
+        passport_id = _create_passport(holder_client)
+        sent: list[object] = []
+        monkeypatch.setattr(
+            router, "send_email", lambda **kwargs: sent.append(kwargs)
+        )
+
+        response = holder_client.post(
+            f"/api/passport/{passport_id}/competencies/"
+            f"{self.PERMISSION}/requests",
+            json={
+                "assessor_email": assessor.email,
+                "observed_on": "2026-03-14",
+            },
+        )
+
+        assert response.status_code == 400, response.text
+        assert self.PERMISSION in response.json()["detail"]
+        assert sent == []
+
+    def test_an_unknown_competency_sends_no_email_either(
+        self,
+        holder_client: TestClient,
+        assessor: User,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+        sent: list[object] = []
+        monkeypatch.setattr(
+            router, "send_email", lambda **kwargs: sent.append(kwargs)
+        )
+
+        response = holder_client.post(
+            f"/api/passport/{passport_id}/competencies/not_a_competency"
+            "/requests",
+            json={
+                "assessor_email": assessor.email,
+                "observed_on": "2026-03-14",
+            },
+        )
+
+        assert response.status_code == 404
+        assert sent == []
+
+    def test_a_logbook_entry_is_refused(
+        self, holder_client: TestClient
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+
+        response = holder_client.post(
+            f"/api/passport/{passport_id}/logbook/{self.PERMISSION}",
+            json={"performed_on": "2026-03-14"},
+        )
+
+        assert response.status_code == 400, response.text
+
+    @pytest.mark.parametrize(
+        ("path", "body"),
+        [
+            (
+                "/certificates",
+                {
+                    "title": "Advanced life support",
+                    "issuer": "Resuscitation Council UK",
+                    "awarded_on": "2026-03-14",
+                },
+            ),
+            (
+                "/reflections",
+                {
+                    "title": "A difficult airway",
+                    "written_on": "2026-03-14",
+                    "body": "What I would do differently next time.",
+                    "anonymised_confirmed": True,
+                },
+            ),
+            (
+                "/cpd",
+                {
+                    "activity_on": "2026-03-14",
+                    "title": "Regional oncology day",
+                    "activity_type": "teaching day",
+                },
+            ),
+        ],
+    )
+    def test_a_record_naming_one_is_refused(
+        self,
+        holder_client: TestClient,
+        path: str,
+        body: dict[str, object],
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+
+        response = holder_client.post(
+            f"/api/passport/{passport_id}{path}",
+            json={**body, "competencies": [self.PERMISSION]},
+        )
+
+        assert response.status_code == 400, response.text
+
+    def test_an_assessable_competency_is_accepted(
+        self, holder_client: TestClient
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+
+        response = holder_client.post(
+            f"/api/passport/{passport_id}/logbook/perform_cannulation",
+            json={"performed_on": "2026-03-14"},
+        )
+
+        assert response.status_code == 201, response.text
+
+    def test_a_record_stays_readable_after_its_competency_is_withdrawn(
+        self,
+        holder_client: TestClient,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Marking a competency not assessable refuses new records only.
+
+        A record written while it was assessable must still list and
+        export, or changing one line of YAML would lose somebody's work.
+        """
+        passport_id = _create_passport(holder_client)
+        written = holder_client.post(
+            f"/api/passport/{passport_id}/logbook/perform_cannulation",
+            json={"performed_on": "2026-03-14"},
+        )
+        assert written.status_code == 201, written.text
+
+        monkeypatch.setattr(
+            definitions,
+            "ASSESSABLE_COMPETENCY_IDS",
+            tuple(
+                competency_id
+                for competency_id in definitions.ASSESSABLE_COMPETENCY_IDS
+                if competency_id != "perform_cannulation"
+            ),
+        )
+
+        logbook = holder_client.get(f"/api/passport/{passport_id}/logbook")
+        exported = holder_client.get(f"/api/passport/{passport_id}/export.md")
+
+        assert logbook.status_code == 200, logbook.text
+        assert [
+            group["competency"] for group in logbook.json()["competencies"]
+        ] == ["perform_cannulation"]
+        assert exported.status_code == 200, exported.text

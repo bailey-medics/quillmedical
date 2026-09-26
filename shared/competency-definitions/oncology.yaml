@@ -60,6 +60,7 @@ competencies:
 
   - id: prescribe_sact
     display_name: "Review and prescribe systemic anti-cancer therapy"
+    assessable: true
     levels:
       - id: observation_only
         name: "Observation only"
@@ -72,9 +73,11 @@ competencies:
 
   - id: assess_sact_toxicity
     display_name: "Assess and grade SACT toxicity"
+    assessable: true
 
   - id: manage_sact_complications
     display_name: "Manage complications of systemic anti-cancer therapy"
+    assessable: true
 
   # ==========================================================================
   # RADIOTHERAPY
@@ -85,6 +88,7 @@ competencies:
 
   - id: define_radiotherapy_target_volume
     display_name: "Interpret imaging for target volume and organ-at-risk definition"
+    assessable: true
     levels:
       - id: observe_only
         name: "Entrusted to observe only"
@@ -97,6 +101,7 @@ competencies:
 
   - id: deliver_radical_radiotherapy
     display_name: "Deliver and manage radical and combined modality radiotherapy"
+    assessable: true
     levels:
       - id: observe_only
         name: "Entrusted to observe only"
@@ -109,6 +114,7 @@ competencies:
 
   - id: deliver_palliative_radiotherapy
     display_name: "Deliver and manage palliative radiotherapy"
+    assessable: true
     levels:
       - id: observe_only
         name: "Entrusted to observe only"
@@ -121,6 +127,7 @@ competencies:
 
   - id: deliver_radioisotope_therapy
     display_name: "Deliver unsealed source radioisotope therapy"
+    assessable: true
     levels:
       - id: observe_only
         name: "Entrusted to observe only"
@@ -133,6 +140,7 @@ competencies:
 
   - id: manage_brachytherapy_patients
     display_name: "Manage patients treated with brachytherapy"
+    assessable: true
     levels:
       - id: observe_only
         name: "Entrusted to observe only"
@@ -152,6 +160,7 @@ competencies:
 
   - id: manage_oncological_emergency
     display_name: "Manage an oncological emergency"
+    assessable: true
     levels:
       - id: observe_only
         name: "Entrusted to observe only"
@@ -164,12 +173,15 @@ competencies:
 
   - id: deliver_acute_oncology_take
     display_name: "Deliver the acute oncology take"
+    assessable: true
 
   - id: manage_neutropenic_sepsis
     display_name: "Recognise and manage neutropenic sepsis"
+    assessable: true
 
   - id: manage_metastatic_cord_compression
     display_name: "Recognise and manage metastatic spinal cord compression"
+    assessable: true
 
   # ==========================================================================
   # ONCOLOGY PRACTICE
@@ -177,12 +189,16 @@ competencies:
 
   - id: contribute_to_tumour_mdt
     display_name: "Contribute expert opinion to a tumour site-specific MDT"
+    assessable: true
 
   - id: consent_for_sact
     display_name: "Take consent for systemic anti-cancer therapy"
+    assessable: true
 
   - id: consent_for_radiotherapy
     display_name: "Take consent for radiotherapy"
+    assessable: true
 
   - id: manage_end_of_life_care
     display_name: "Manage palliative and end-of-life care needs"
+    assessable: true

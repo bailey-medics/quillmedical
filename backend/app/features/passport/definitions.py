@@ -27,6 +27,7 @@ the opposite of how a registry usually gets used, and is deliberate.
 from __future__ import annotations
 
 from app.cbac.competencies import (
+    ASSESSABLE_COMPETENCY_IDS,
     CompetencyEntry,
     get_competency_details,
 )
@@ -40,6 +41,15 @@ class UnknownCompetencyError(ValueError):
     Its own type so a route can turn it into a 400 naming the id, rather
     than a 500. Distinct from a *retired* competency, which is known and
     readable but refused for new sign-offs.
+    """
+
+
+class NotAssessableError(ValueError):
+    """A competency the passport may not record anything new against.
+
+    Either it is a software permission rather than a skill, so nobody
+    could watch it and sign it off, or it has been retired. Its own type
+    so a route can answer 400 naming the id, where an unknown id is 404.
     """
 
 
@@ -91,6 +101,36 @@ def competency_ref(competency_id: str) -> CompetencyRef:
     """
     entry = _entry(competency_id)
     return CompetencyRef(id=entry.id, name=entry.display_name)
+
+
+def assessable_ref(competency_id: str) -> CompetencyRef:
+    """The id and display name, for a record being written now.
+
+    The write-time twin of :func:`competency_ref`. Reading an old record
+    never comes through here, so a record holding a competency that has
+    since been retired or marked not assessable stays readable.
+
+    Args:
+        competency_id: The competency id.
+
+    Returns:
+        Both halves, ready to store.
+
+    Raises:
+        UnknownCompetencyError: If the id is not in the catalogue.
+        NotAssessableError: If it is not marked ``assessable``, or has
+            been retired.
+    """
+    ref = competency_ref(competency_id)
+
+    if competency_id not in ASSESSABLE_COMPETENCY_IDS:
+        raise NotAssessableError(
+            f"{ref.name} ({competency_id}) cannot be recorded in a "
+            "passport. Only competencies somebody can be assessed on are "
+            "offered."
+        )
+
+    return ref
 
 
 def has_levels(competency_id: str) -> bool:

@@ -3,9 +3,10 @@
  *
  * Chooses a competency from one searchable, alphabetical list.
  *
- * **Nothing is hidden and nothing is refused.** Every competency the
- * catalogue offers stays reachable, so somebody signed off on something
- * unusual can still find it.
+ * **Only competencies somebody can be assessed on.** `manage_users` is a
+ * software permission, not a skill, so it is never offered; the API
+ * refuses it too. Among the assessable ones nothing is hidden, so
+ * somebody signed off on something unusual can still find it.
  *
  * **The catalogue comes from the generated bundle, for now.** There is
  * no endpoint serving competency definitions; `GET
@@ -26,7 +27,7 @@
 
 import { useMemo } from "react";
 import { SelectField } from "@components/form";
-import { ACTIVE_COMPETENCIES } from "@/types/cbac";
+import { ASSESSABLE_COMPETENCIES } from "@/types/cbac";
 
 /** One competency, as the generated catalogue holds it. */
 interface CatalogueEntry {
@@ -62,10 +63,9 @@ export default function CompetencyPicker({
 }: CompetencyPickerProps) {
   const data = useMemo(
     () =>
-      // Current only: a retired competency cannot be signed off
-      // against, and the API refuses it at the write boundary.
+      // Active and assessable only, matching what the API accepts.
       // Alphabetical, since no other order means anything to a reader.
-      (ACTIVE_COMPETENCIES as CatalogueEntry[])
+      (ASSESSABLE_COMPETENCIES as CatalogueEntry[])
         .map((entry) => ({ value: entry.id, label: entry.display_name }))
         .sort((a, b) => a.label.localeCompare(b.label)),
     [],

@@ -250,7 +250,7 @@ describe("PassportSignOffsPage", () => {
       await screen.findByRole("button", { name: "Ask for a sign-off" }),
     );
     await user.click(await screen.findByRole("combobox"));
-    await user.click(await screen.findByText("Manage User Accounts"));
+    await user.click(await screen.findByText("Insert Intravenous Cannula"));
 
     await user.type(
       await screen.findByRole("textbox", { name: /Who should assess this/ }),
@@ -278,7 +278,7 @@ describe("PassportSignOffsPage", () => {
       await screen.findByRole("button", { name: "Ask for a sign-off" }),
     );
     await user.click(await screen.findByRole("combobox"));
-    await user.click(await screen.findByText("Manage User Accounts"));
+    await user.click(await screen.findByText("Insert Intravenous Cannula"));
 
     await user.type(
       await screen.findByRole("textbox", { name: /Who should assess this/ }),

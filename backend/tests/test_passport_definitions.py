@@ -17,6 +17,7 @@ import pytest
 
 from app.features.passport import definitions
 from app.features.passport.definitions import (
+    NotAssessableError,
     UnknownCompetencyError,
     UnknownLevelError,
 )
@@ -42,6 +43,43 @@ class TestCompetencyRef:
             UnknownCompetencyError, match="competency-definitions"
         ):
             definitions.competency_ref("made_up_thing")
+
+
+class TestAssessableRef:
+    """What a record being written now may name.
+
+    ``manage_users`` is the permission chosen to demonstrate the refusal
+    because it is the one nobody could mistake for a skill.
+    """
+
+    def test_returns_the_id_and_name_of_an_assessable_competency(
+        self,
+    ) -> None:
+        ref = definitions.assessable_ref(NO_SCALE)
+
+        assert ref.id == NO_SCALE
+        assert ref.name
+
+    def test_refuses_a_software_permission(self) -> None:
+        with pytest.raises(NotAssessableError, match="manage_users"):
+            definitions.assessable_ref("manage_users")
+
+    def test_refuses_a_retired_competency(self) -> None:
+        with pytest.raises(NotAssessableError):
+            definitions.assessable_ref("access_clinician_passport")
+
+    def test_an_unknown_id_is_unknown_rather_than_not_assessable(
+        self,
+    ) -> None:
+        """Two refusals, so a route can answer 404 for one and 400 for
+        the other."""
+        with pytest.raises(UnknownCompetencyError):
+            definitions.assessable_ref("made_up_thing")
+
+    def test_a_not_assessable_competency_stays_readable(self) -> None:
+        """Only new writes are refused. An old record naming it still
+        resolves its name."""
+        assert definitions.competency_ref("manage_users").name
 
 
 class TestLevels:
@@ -161,3 +199,12 @@ class TestSharedVocabulary:
             for level in entry.levels or []:
                 resolved = definitions.level_ref(entry.id, level.id)
                 assert resolved.name == level.name
+
+    def test_every_assessable_competency_can_be_written(self) -> None:
+        from app.cbac.competencies import ASSESSABLE_COMPETENCY_IDS
+
+        assert ASSESSABLE_COMPETENCY_IDS
+        for competency_id in ASSESSABLE_COMPETENCY_IDS:
+            assert definitions.assessable_ref(competency_id).id == (
+                competency_id
+            )

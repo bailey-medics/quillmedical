@@ -18,6 +18,23 @@
 # resolve_user_competencies() in backend/app/cbac/base_professions.py
 # for how base_profession + additional + removed combine into a user's
 # final competency list.
+#
+# ASSESSABLE
+#
+# `assessable: true` lets the clinician passport record a sign-off,
+# logbook entry, certificate, reflection or CPD activity against a
+# competency. It is opt-in, and absent means false: the access_* ids,
+# modify_patient_records and everything governing Quill itself are
+# software permissions rather than skills nobody could watch and sign
+# off. CBAC ignores the flag.
+#
+# Decided on 26 September 2026 to leave these without it for now, as
+# clinical governance calls rather than engineering ones:
+# request_plain_xray, request_ct_scan and request_mri_scan (an IR(ME)R
+# entitlement may make them genuinely assessable), admit_patient,
+# discharge_without_review, refer_specialty and approve_clinical_letters.
+# Each is one line to change. See
+# docs/docs/plans/2026-09-26-passport-specialties-plan.md.
 
 competencies:
   # ==========================================================================
@@ -26,12 +43,15 @@ competencies:
 
   - id: prescribe_non_controlled
     display_name: "Prescribe Non-Controlled Medications"
+    assessable: true
 
   - id: prescribe_controlled_schedule_2
     display_name: "Prescribe Schedule 2 Controlled Drugs"
+    assessable: true
 
   - id: prescribe_controlled_schedule_3_4_5
     display_name: "Prescribe Schedule 3/4/5 Controlled Drugs"
+    assessable: true
 
   # ==========================================================================
   # CERTIFICATION & DEATH COMPETENCIES
@@ -39,15 +59,19 @@ competencies:
 
   - id: certify_death
     display_name: "Certify Death"
+    assessable: true
 
   - id: certify_cremation
     display_name: "Certify Cremation (Cremation Form 4/5)"
+    assessable: true
 
   - id: certify_fitness_to_work
     display_name: "Certify Fitness to Work (Fit Notes)"
+    assessable: true
 
   - id: certify_fitness_to_drive
     display_name: "Certify Fitness to Drive"
+    assessable: true
 
   # ==========================================================================
   # CLINICAL PROCEDURES
@@ -55,18 +79,23 @@ competencies:
 
   - id: perform_venepuncture
     display_name: "Perform Venepuncture"
+    assessable: true
 
   - id: perform_cannulation
     display_name: "Insert Intravenous Cannula"
+    assessable: true
 
   - id: perform_lumbar_puncture
     display_name: "Perform Lumbar Puncture"
+    assessable: true
 
   - id: perform_chest_drain
     display_name: "Insert Chest Drain"
+    assessable: true
 
   - id: perform_advanced_airway
     display_name: "Perform Advanced Airway Management"
+    assessable: true
 
   # ==========================================================================
   # PATIENT MANAGEMENT
@@ -87,12 +116,15 @@ competencies:
 
   - id: take_informed_consent
     display_name: "Take Informed Consent"
+    assessable: true
 
   - id: assess_mental_capacity
     display_name: "Assess Mental Capacity"
+    assessable: true
 
   - id: apply_deprivation_of_liberty
     display_name: "Apply Deprivation of Liberty Safeguards (DoLS)"
+    assessable: true
 
   # ==========================================================================
   # IMAGING & DIAGNOSTICS
@@ -153,9 +185,12 @@ competencies:
 
   - id: manage_diabetes
     display_name: "Manage Diabetes (Specialty)"
+    assessable: true
 
   - id: manage_anticoagulation
     display_name: "Manage Anticoagulation Therapy"
+    assessable: true
 
   - id: interpret_ecg
     display_name: "Interpret ECGs Independently"
+    assessable: true

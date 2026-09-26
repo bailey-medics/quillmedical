@@ -38,14 +38,14 @@ surgery and Generic, the last meaning no specialty order.
 
 ## Phase 2: The assessable flag
 
-- [ ] **Add `assessable: bool = False` to `CompetencyEntry`** in
+- [x] **Add `assessable: bool = False` to `CompetencyEntry`** in
       `backend/app/cbac/competencies.py`. Opt-in, so anything added for access
       control stays out of the passport until somebody decides otherwise, and
       adding a permission can never quietly widen what can be signed off. The
       model forbids extra fields, so the YAML cannot carry the flag until the
       model does.
 
-- [ ] **Mark the assessable competencies** in `clinical.yaml` and
+- [x] **Mark the assessable competencies** in `clinical.yaml` and
       `oncology.yaml`. Clearly assessable: the `perform_*` procedures,
       `take_informed_consent`, `assess_mental_capacity`,
       `apply_deprivation_of_liberty`, `interpret_ecg`, the prescribing and
@@ -54,28 +54,42 @@ surgery and Generic, the last meaning no specialty order.
       `modify_patient_records`, and everything in `admin.yaml`,
       `clinical-admin.yaml`, `teaching.yaml` and `passport.yaml`.
 
-- [ ] **Decide the borderline ones by hand**: `request_ct_scan`,
+- [x] **Decide the borderline ones by hand**: `request_ct_scan`,
       `request_mri_scan` and `request_plain_xray`, where IR(ME)R entitlement
       may make them genuinely assessable, and `discharge_without_review`,
       `approve_clinical_letters`, `admit_patient` and `refer_specialty`. A
-      clinical governance call, not an engineering one.
+      clinical governance call, not an engineering one. **Decided before the
+      build: all seven left not assessable for now**, the safe default since
+      nothing can be signed off against them in the meantime and each is one
+      line to change. The reasoning sits in a comment at the top of
+      `clinical.yaml`, where the next person to change one will see it.
 
-- [ ] **Expose `ASSESSABLE_COMPETENCY_IDS`** beside `ACTIVE_COMPETENCY_IDS`,
+- [x] **Expose `ASSESSABLE_COMPETENCY_IDS`** beside `ACTIVE_COMPETENCY_IDS`,
       meaning active and assessable.
 
-- [ ] **Refuse a non-assessable competency at the write boundary**, not just
-      in the picker. Sign-off requests, logbook entries and certificates
-      return 400 naming the id, alongside the existing unknown and retired
-      checks in `features/passport/definitions.py`. A sign-off for "access
-      own patient records" means nothing, so there is no reason to let an API
-      call record one. Existing records against a competency later marked not
-      assessable stay readable, as retired ones already do.
+- [x] **Refuse a non-assessable competency at the write boundary**, not just
+      in the picker. A sign-off for "access own patient records" means
+      nothing, so there is no reason to let an API call record one.
+      `assessable_ref` in `features/passport/definitions.py` raises
+      `NotAssessableError`, and the router answers 400 naming the id, where
+      an unknown id stays 404. Found while building: there was no retired
+      check on these routes, contrary to what this step first said, and
+      `ASSESSABLE_COMPETENCY_IDS` excludes retired ids, so this adds one.
+      It covers every route creating a record: sign-off requests, logbook
+      entries and certificates as planned, and reflections and CPD entries
+      too, since they name competencies the same way. On a sign-off request
+      the check runs **before the email**, which also fixes an existing gap:
+      an unknown competency used to reach the assessor's inbox before the
+      404. The amend routes keep the looser existence check, so an old
+      record naming a competency since marked not assessable can still have
+      its date corrected. Existing records stay readable, as retired ones
+      already do.
 
-- [ ] **Carry `assessable` through `generate-json-from-yaml.ts`**, add an
+- [x] **Carry `assessable` through `generate-json-from-yaml.ts`**, add an
       `ASSESSABLE_COMPETENCIES` helper to `frontend/src/types/cbac.ts` next to
       `ACTIVE_COMPETENCIES`, and have `CompetencyPicker` offer only those.
 
-- [ ] **Tests.** The backend refuses a non-assessable id on each write route;
+- [x] **Tests.** The backend refuses a non-assessable id on each write route;
       a record already holding one still renders and exports; the picker
       never offers `manage_users` or `access_own_patient_records`.
 
