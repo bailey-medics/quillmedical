@@ -31,6 +31,7 @@ vi.mock("@components/ribbon/TopRibbon", () => ({
   default: ({
     patient,
     showSearch,
+    isNarrow,
   }: {
     onBurgerClick?: () => void;
     isLoading: boolean;
@@ -43,6 +44,7 @@ vi.mock("@components/ribbon/TopRibbon", () => ({
       data-testid="top-ribbon"
       data-patient={patient}
       data-show-search={showSearch}
+      data-narrow={isNarrow}
     />
   ),
 }));
@@ -123,6 +125,21 @@ vi.mock("@/auth/AuthContext", async () => {
   };
 });
 
+// Screen width in px, answered per query: the layout asks about `sm`
+// (40em) and `md` (62em) separately. Desktop by default.
+const mockWidth: { value: number } = { value: 1280 };
+
+vi.mock("@mantine/hooks", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@mantine/hooks")>();
+  return {
+    ...actual,
+    useMediaQuery: (query: string) => {
+      const em = Number(/max-width: ([\d.]+)em/.exec(query)?.[1] ?? 0);
+      return mockWidth.value <= em * 16;
+    },
+  };
+});
+
 describe("TeachingLayout", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -130,6 +147,57 @@ describe("TeachingLayout", () => {
     mockConnectivity.isReconnected = false;
     mockConnectivity.lastSyncedAt = null;
     mockForcedReload.phase = "idle";
+    mockWidth.value = 1280;
+  });
+
+  describe("on an upright tablet", () => {
+    // A Galaxy Tab S9 FE+ in portrait: wider than sm, narrower than md
+    beforeEach(() => {
+      mockWidth.value = 800;
+    });
+
+    it("folds the sidebar into the drawer and narrows the ribbon", () => {
+      renderWithMantine(
+        <TeachingLayout sidebar={<div data-testid="sidebar">Nav</div>}>
+          <div>Content</div>
+        </TeachingLayout>,
+      );
+
+      // Only the drawer's copy, none beside the page
+      expect(screen.getAllByTestId("sidebar")).toHaveLength(1);
+      expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
+      expect(screen.getByTestId("top-ribbon")).toHaveAttribute(
+        "data-narrow",
+        "true",
+      );
+    });
+
+    it("keeps the full ribbon on a page with no sidebar to fold", () => {
+      renderWithMantine(
+        <TeachingLayout>
+          <div>Content</div>
+        </TeachingLayout>,
+      );
+
+      expect(screen.getByTestId("top-ribbon")).toHaveAttribute(
+        "data-narrow",
+        "false",
+      );
+    });
+  });
+
+  it("shows the sidebar beside the page on a tablet held sideways", () => {
+    renderWithMantine(
+      <TeachingLayout sidebar={<div data-testid="sidebar">Nav</div>}>
+        <div>Content</div>
+      </TeachingLayout>,
+    );
+
+    expect(screen.getByRole("complementary")).toBeInTheDocument();
+    expect(screen.getByTestId("top-ribbon")).toHaveAttribute(
+      "data-narrow",
+      "false",
+    );
   });
 
   it("renders children", () => {

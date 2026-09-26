@@ -114,13 +114,23 @@ vi.mock("react-router-dom", () => ({
   useLocation: () => mockLocation,
 }));
 
-const mockIsSm: { value: boolean } = { value: false };
+// Screen width in px, answered per query: the layout asks about `sm`
+// (40em) and `md` (62em) separately. Desktop by default.
+const mockWidth: { value: number } = { value: 1280 };
+const mockIsSm = {
+  set value(isSm: boolean) {
+    mockWidth.value = isSm ? 400 : 1280;
+  },
+};
 
 vi.mock("@mantine/hooks", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@mantine/hooks")>();
   return {
     ...actual,
-    useMediaQuery: () => mockIsSm.value,
+    useMediaQuery: (query: string) => {
+      const em = Number(/max-width: ([\d.]+)em/.exec(query)?.[1] ?? 0);
+      return mockWidth.value <= em * 16;
+    },
   };
 });
 
@@ -406,6 +416,53 @@ describe("MainLayout", () => {
   });
 
   describe("Responsive behavior", () => {
+    it("folds the side bar behind the hamburger on an upright tablet", () => {
+      // A Galaxy Tab S9 FE+ in portrait: wider than sm, narrower than md
+      mockWidth.value = 800;
+      renderWithMantine(
+        <MainLayout patient={null}>
+          <div>Content</div>
+        </MainLayout>,
+      );
+
+      // Only the drawer's copy of the navigation, none beside the page
+      expect(screen.getAllByTestId("side-nav")).toHaveLength(1);
+      expect(screen.getByTestId("top-ribbon")).toHaveAttribute(
+        "data-narrow",
+        "true",
+      );
+    });
+
+    it("keeps the side bar on a tablet held sideways", () => {
+      mockWidth.value = 1280;
+      renderWithMantine(
+        <MainLayout patient={null}>
+          <div>Content</div>
+        </MainLayout>,
+      );
+
+      expect(screen.getAllByTestId("side-nav")).toHaveLength(2);
+      expect(screen.getByTestId("top-ribbon")).toHaveAttribute(
+        "data-narrow",
+        "false",
+      );
+    });
+
+    it("puts search in the drawer when the side bar is folded away", () => {
+      mockWidth.value = 800;
+      mockLocation.pathname = "/messages";
+      renderWithMantine(
+        <MainLayout patient={null}>
+          <div>Content</div>
+        </MainLayout>,
+      );
+
+      expect(screen.getByTestId("side-nav")).toHaveAttribute(
+        "data-show-search",
+        "true",
+      );
+    });
+
     it("renders side navigation for desktop", () => {
       renderWithMantine(
         <MainLayout patient={null}>

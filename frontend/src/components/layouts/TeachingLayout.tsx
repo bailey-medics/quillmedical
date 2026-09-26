@@ -31,6 +31,7 @@ import {
   LAYOUT_PADDING_X,
   LAYOUT_SIDEBAR_WIDTH,
 } from "./layoutConstants";
+import { useNavCollapsed } from "./useNavCollapsed";
 
 export interface TeachingLayoutProps {
   /** Optional sidebar content (e.g. LearningNav). No sidebar when omitted */
@@ -51,6 +52,7 @@ export default function TeachingLayout({
 }: TeachingLayoutProps) {
   const theme = useMantineTheme();
   const isSm = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
+  const navCollapsed = useNavCollapsed();
   const [opened, { toggle, close }] = useDisclosure(false);
   const { state } = useAuth();
   const mainRef = useRef<HTMLDivElement>(null);
@@ -107,7 +109,9 @@ export default function TeachingLayout({
           isLoading={false}
           patient={null}
           navOpen={opened}
-          isNarrow={isSm}
+          // A page with no side bar has nothing to fold away, so a tablet
+          // keeps the Quill name; only a phone narrows the ribbon for it
+          isNarrow={hasSidebar ? navCollapsed : isSm}
           showSearch={false}
         />
       </Box>
@@ -133,7 +137,7 @@ export default function TeachingLayout({
           </NavigationDrawer>
         )}
 
-        {!isSm && hasSidebar && (
+        {!navCollapsed && hasSidebar && (
           <Box
             component="aside"
             w={LAYOUT_SIDEBAR_WIDTH}
