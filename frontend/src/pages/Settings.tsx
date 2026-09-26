@@ -6,13 +6,7 @@
  * to sub-settings.
  */
 
-import {
-  Anchor,
-  Group,
-  SimpleGrid,
-  Stack,
-  useMantineColorScheme,
-} from "@mantine/core";
+import { Group, SimpleGrid, Stack, useMantineColorScheme } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import {
   IconBell,
@@ -199,21 +193,6 @@ export default function Settings() {
           </Stack>
         </BaseCard>
       </SimpleGrid>
-
-      <BodyText>
-        Read our{" "}
-        <Anchor
-          href="https://quill-medical.com/accessibility-statement"
-          underline="always"
-        >
-          accessibility statement
-        </Anchor>
-        , or report an accessibility problem to{" "}
-        <Anchor href="mailto:info@quill-medical.com" underline="always">
-          info@quill-medical.com
-        </Anchor>
-        .
-      </BodyText>
     </Stack>
   );
 }
