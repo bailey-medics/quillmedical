@@ -25,6 +25,12 @@ brand:
   primary: "#001a36"
   secondary: "#C8963E"
   background: "#ffffff"
+  # The quill on a navy tile: the email avatar (frontend/public/email/
+  # quill-avatar.png) and the installed app's icon. Light grey rather than
+  # white, so the mark sits back from the navy instead of glaring. Not in
+  # the grey ramp: those are surfaces and borders on white, this is a mark
+  # on navy.
+  mark: "#c9c8ca"
 
 palette:
   # Navy, 0 lightest to 9 darkest. Shade 8 is the brand primary; shade 5
