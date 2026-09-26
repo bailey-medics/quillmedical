@@ -30,7 +30,17 @@ from app.cbac.competencies import (
 )
 from app.paths import SHARED_DIR
 
+from .schemas import SpecialtyRef
+
 SPECIALTIES_DIR: Path = SHARED_DIR / "passport-specialties"
+
+
+class UnknownSpecialtyError(ValueError):
+    """A specialty id with no file in ``shared/passport-specialties/``.
+
+    Raised only when a holder chooses one. Reading a profile that names
+    a specialty since removed never raises: it simply orders nothing.
+    """
 
 
 class Specialty(BaseModel):
@@ -162,3 +172,34 @@ def get_specialty(specialty_id: str) -> Specialty | None:
         if specialty.id == specialty_id:
             return specialty
     return None
+
+
+def specialty_refs(specialty_ids: list[str]) -> list[SpecialtyRef]:
+    """The id and name of each chosen specialty, to store in a profile.
+
+    An empty list is Generic, meaning no specialty order.
+
+    Args:
+        specialty_ids: What the holder chose, in their order.
+
+    Returns:
+        One reference per id, in the same order.
+
+    Raises:
+        UnknownSpecialtyError: If an id has no file, or appears twice.
+    """
+    if len(set(specialty_ids)) != len(specialty_ids):
+        raise UnknownSpecialtyError("Each specialty can be chosen once.")
+
+    refs: list[SpecialtyRef] = []
+    for specialty_id in specialty_ids:
+        specialty = get_specialty(specialty_id)
+        if specialty is None:
+            raise UnknownSpecialtyError(
+                f"There is no specialty {specialty_id!r}. The choices are: "
+                + ", ".join(SPECIALTY_IDS)
+                + "."
+            )
+        refs.append(SpecialtyRef(id=specialty.id, name=specialty.display_name))
+
+    return refs

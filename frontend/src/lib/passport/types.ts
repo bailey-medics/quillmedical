@@ -47,10 +47,7 @@ export type IsoDateTime = string;
  * of the history rather than a row that vanishes.
  */
 export type SignOffStatus =
-  | "requested"
-  | "signed_off"
-  | "declined"
-  | "superseded";
+  "requested" | "signed_off" | "declined" | "superseded";
 
 /**
  * Why a later sign-off exists. Only `correction` supersedes anything:
@@ -58,30 +55,21 @@ export type SignOffStatus =
  * had got something wrong when they had not.
  */
 export type SignOffKind =
-  | "initial"
-  | "progression"
-  | "reassessment"
-  | "correction";
+  "initial" | "progression" | "reassessment" | "correction";
 
 /**
  * What the assessor actually did. Three clinically different acts, and a
  * record that does not say which one happened is weaker than it looks.
  */
 export type SignOffMeaning =
-  | "directly observed"
-  | "reviewed evidence"
-  | "countersigned";
+  "directly observed" | "reviewed evidence" | "countersigned";
 
 /** Whether a logged procedure was supervised, from the holder's own view. */
 export type Supervision = "supervised" | "independent";
 
 /** What a CPD activity was. */
 export type CpdActivityType =
-  | "conference"
-  | "grand round"
-  | "teaching day"
-  | "course"
-  | "other";
+  "conference" | "grand round" | "teaching day" | "course" | "other";
 
 // ---------------------------------------------------------------------------
 // Shared pieces
@@ -106,6 +94,17 @@ export interface LevelRef {
 export interface Registration {
   body: string;
   number: string;
+}
+
+/**
+ * A specialty the holder chose, with its name as stored in their record.
+ *
+ * It orders their competency picker and nothing else. An empty list on
+ * a passport means Generic: no specialty order.
+ */
+export interface Specialty {
+  id: string;
+  name: string;
 }
 
 /**
@@ -153,6 +152,7 @@ export interface Passport {
   holder_user_id: string;
   holder_name: string;
   registrations: Registration[];
+  specialties: Specialty[];
   created_at: IsoDate;
   head_commit: string | null;
 }

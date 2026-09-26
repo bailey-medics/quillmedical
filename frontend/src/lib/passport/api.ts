@@ -101,6 +101,7 @@ export const PASSPORT_PATHS = [
   "/passport/{passport_id}/sign-offs/{signoff_id}/sign-off",
   "/passport/{passport_id}/sign-offs/{signoff_id}/verify",
   "/passport/{passport_id}/sign-offs/{signoff_id}/withdraw",
+  "/passport/{passport_id}/specialties",
 ] as const;
 
 /**
@@ -120,9 +121,28 @@ function segment(value: string | number): string {
 // Passport
 // ---------------------------------------------------------------------------
 
-/** Creates the caller's own passport. */
-export function createPassport(): Promise<Passport> {
-  return api.post<Passport>("/passport");
+/**
+ * Creates the caller's own passport.
+ *
+ * `specialties` orders their competency picker; an empty list is
+ * Generic, meaning no specialty order.
+ */
+export function createPassport(specialties: string[] = []): Promise<Passport> {
+  return api.post<Passport>("/passport", { specialties });
+}
+
+/**
+ * Changes the holder's specialties. An empty list is Generic.
+ *
+ * Needs the right to write, like any other change to the record.
+ */
+export function setPassportSpecialties(
+  passportId: string,
+  specialties: string[],
+): Promise<Passport> {
+  return api.put<Passport>(`/passport/${segment(passportId)}/specialties`, {
+    specialties,
+  });
 }
 
 /** The caller's own passport, with derived state per competency. */

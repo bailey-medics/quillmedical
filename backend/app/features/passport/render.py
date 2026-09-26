@@ -113,6 +113,13 @@ def _front_page(profile: Profile, index: Index) -> str:
             )
         lines.append("")
 
+    if profile.specialties:
+        lines.append(
+            "Specialty: "
+            + ", ".join(specialty.name for specialty in profile.specialties)
+        )
+        lines.append("")
+
     lines.extend(
         [
             f"Generated {index.generated_at.date().isoformat()}.",

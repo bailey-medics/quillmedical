@@ -103,6 +103,7 @@ from app.schemas.passport import (
     LogbookEntryIn,
     LogbookEntryOut,
     LogbookOut,
+    PassportCreateIn,
     PassportDetailOut,
     PassportOut,
     RecordResultOut,
@@ -114,6 +115,8 @@ from app.schemas.passport import (
     SignOffOut,
     SignOffRequestIn,
     SignOffResultOut,
+    SpecialtiesIn,
+    SpecialtyOut,
     VerificationOut,
     WholeLogbookOut,
 )
@@ -136,6 +139,7 @@ from . import (
     records,
     render,
     service,
+    specialties,
 )
 from .blobs import (
     BlobConflictError,
@@ -160,6 +164,7 @@ from .schemas import (
     Profile,
     Reflection,
     SignOff,
+    SpecialtyRef,
 )
 from .serialise import from_yaml, reflection_from_markdown
 from .store import PassportNotFoundError, PassportStore
@@ -566,6 +571,10 @@ def _passport_out(row: Passport, profile: Profile) -> PassportOut:
             )
             for registration in profile.registrations
         ],
+        specialties=[
+            SpecialtyOut(id=specialty.id, name=specialty.name)
+            for specialty in profile.specialties
+        ],
         created_at=row.created_at.date(),
         head_commit=row.head_commit,
     )
@@ -644,6 +653,7 @@ def _detail(
     ],
 )
 def create_passport(
+    body: PassportCreateIn | None = None,
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
@@ -653,11 +663,17 @@ def create_passport(
     One per person, enforced by a unique constraint on the row as well as
     checked here: a second would mean two records of the same career,
     each incomplete.
+
+    The body is optional. A holder's specialties only order their
+    competency picker, so a passport created without any is Generic
+    rather than incomplete; the page asks, and the API does not insist.
     """
     existing = db.scalar(select(Passport).where(Passport.user_id == user.id))
 
     if existing is not None:
         raise HTTPException(409, "You already have a passport")
+
+    chosen = _specialty_refs(body.specialties if body is not None else [])
 
     passport_id = ids.new_passport_id()
 
@@ -669,6 +685,7 @@ def create_passport(
         _actor(user),
         user_id=str(user.id),
         registrations=list(_registration_dicts(user)),
+        specialties=chosen,
     )
 
     row = Passport(id=passport_id, user_id=user.id, head_commit=commit)
@@ -678,6 +695,47 @@ def create_passport(
     profile = _read_profile(store, passport_id)
 
     return _passport_out(row, profile)
+
+
+def _specialty_refs(specialty_ids: list[str]) -> list[SpecialtyRef]:
+    """Resolve chosen specialty ids, or refuse with a 400 naming them.
+
+    Raises:
+        HTTPException: 400 if an id has no file, or appears twice.
+    """
+    try:
+        return specialties.specialty_refs(specialty_ids)
+    except specialties.UnknownSpecialtyError as error:
+        raise HTTPException(400, str(error)) from None
+
+
+@passport_router.put(
+    "/{passport_id}/specialties",
+    response_model=PassportOut,
+    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+)
+def set_specialties(
+    passport_id: str,
+    body: SpecialtiesIn,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+    store: PassportStore = _DEP_STORE,
+) -> PassportOut:
+    """Change the holder's specialties, which order their picker.
+
+    Behind ``_require_writer`` like every other change to the record:
+    without the right to write there is nothing to pick a competency for,
+    so there is nothing for the order to affect. An empty list is
+    Generic.
+    """
+    row = _require_writer(db, passport_id, user, store)
+    chosen = _specialty_refs(body.specialties)
+
+    commit = records.set_specialties(store, row.id, _actor(user), chosen)
+    row.head_commit = commit
+    db.flush()
+
+    return _passport_out(row, _read_profile(store, row.id))
 
 
 @passport_router.get(

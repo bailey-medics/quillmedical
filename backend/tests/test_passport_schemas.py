@@ -25,6 +25,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.features.passport import schemas
+from app.features.passport.serialise import from_yaml, to_yaml
 
 
 def _assessor() -> schemas.Assessor:
@@ -424,3 +425,27 @@ class TestManifestAndProfile:
         # marries.
         assert "holder" not in schemas.SignOff.model_fields
         assert "holder_name" not in schemas.SignOff.model_fields
+
+    def test_a_profile_written_before_specialties_still_loads(self) -> None:
+        """Every passport created before specialties existed has a
+        profile with no such key, and ``profile.yaml`` is validated on
+        read. It reads as Generic."""
+        profile = from_yaml(
+            schemas.Profile,
+            "user_id: u-2\nname: Dr Sam Reeve\nregistrations: []\n",
+        )
+
+        assert profile.specialties == []
+
+    def test_a_profile_keeps_each_specialty_s_name(self) -> None:
+        profile = schemas.Profile(
+            user_id="u-2",
+            name="Dr Sam Reeve",
+            specialties=[schemas.SpecialtyRef(id="oncology", name="Oncology")],
+        )
+
+        assert from_yaml(schemas.Profile, to_yaml(profile)) == profile
+
+    def test_a_specialty_needs_its_name(self) -> None:
+        with pytest.raises(ValidationError):
+            schemas.SpecialtyRef(id="oncology")  # type: ignore[call-arg]

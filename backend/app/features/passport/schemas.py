@@ -181,6 +181,18 @@ class LevelRef(PassportModel):
     name: NonEmptyText
 
 
+class SpecialtyRef(PassportModel):
+    """A specialty the holder chose, as it read at the time.
+
+    The name is stored beside the id for the same reason a competency's
+    is: an export must read correctly with no Quill, and a specialty
+    renamed or removed later must not leave a bare id behind.
+    """
+
+    id: CompetencyIdField
+    name: NonEmptyText
+
+
 class Assessor(PassportModel):
     """Who signed, frozen as they were at the moment of signing.
 
@@ -241,6 +253,11 @@ class Profile(PassportModel):
     user_id: NonEmptyText
     name: NonEmptyText
     registrations: list[Registration] = Field(default_factory=list)
+    #: The holder's specialties, which order their competency picker and
+    #: nothing else. Empty means Generic: no specialty order. Optional
+    #: because every passport written before specialties existed has no
+    #: such key, and ``profile.yaml`` is validated on read.
+    specialties: list[SpecialtyRef] = Field(default_factory=list)
 
 
 class EvidenceSnapshot(PassportModel):
