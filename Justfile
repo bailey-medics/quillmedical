@@ -69,6 +69,8 @@ _e2e-up:
     set -euo pipefail
     project=$(just _e2e-project)
     compose="docker compose -p ${project} -f compose.ci.yml"
+    # The module seed_ci.py syncs, pinned so a local run tests what CI does
+    .github/scripts/ci/fetch-e2e-teaching.sh >&2
     E2E_PORT=0 ${compose} up --build --wait --wait-timeout 120 >&2
     # The prod image does not migrate on start-up, so the fresh database
     # needs the schema applied before it is seeded — as in ci.yml.

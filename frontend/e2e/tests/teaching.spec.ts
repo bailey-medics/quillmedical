@@ -24,4 +24,22 @@ test.describe("Teaching dashboard", () => {
 
     await scanPage("teaching-modules");
   });
+
+  // .github/scripts/ci/fetch-e2e-teaching.sh fetches this module from
+  // respiratory-teaching, and seed_ci.py opens it for the CI organisation
+  test("opens a module from the dashboard", async ({ page, scanPage }) => {
+    await page.goto("/teaching");
+
+    await page.getByRole("link", { name: "View module" }).first().click();
+
+    await expect(page).toHaveURL(/\/teaching\/chest-xray-interpretation-test$/);
+    await expect(
+      page.getByRole("heading", { name: /chest x-ray interpretation/i }),
+    ).toBeVisible({ timeout: 10000 });
+    await expect(
+      page.getByRole("button", { name: "Start learning" }),
+    ).toBeVisible();
+
+    await scanPage("teaching-module");
+  });
 });

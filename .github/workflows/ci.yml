@@ -538,6 +538,10 @@ jobs:
           docker tag "$CI_IMAGE_BACKEND" quillmedical-ci_backend:latest
           docker tag "$CI_IMAGE_FRONTEND" quillmedical-ci_frontend:latest
 
+      # A module for the teaching tests to open. seed_ci.py syncs it.
+      - name: Fetch E2E teaching content
+        run: .github/scripts/ci/fetch-e2e-teaching.sh
+
       - name: Start CI stack
         run: docker compose -f compose.ci.yml up --wait --wait-timeout 120
 

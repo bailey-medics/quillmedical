@@ -6,6 +6,7 @@
 
 import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "../fixtures/axe";
+import { pressToSlide } from "../fixtures/slides";
 import { CI_TOTP_SECRET, totpCode } from "../fixtures/totp";
 
 /**
@@ -90,12 +91,34 @@ test.describe("Keyboard only", () => {
     await page.keyboard.press("Enter");
 
     // Focus is on the content wrapper inside main, past the ribbon and
-    // the side navigation. (The CI teaching dashboard has nothing to
-    // focus inside main, so the next Tab rightly leaves it.)
+    // the side navigation
     await expect(page.locator("#main-content")).toBeFocused();
     expect(
       await page.evaluate(() => !!document.activeElement?.closest("main")),
     ).toBe(true);
+  });
+
+  test("a lecture opens from the dashboard", async ({ page, browserName }) => {
+    await page.goto("/teaching");
+    await page.waitForLoadState("networkidle");
+    const key = nextKey(browserName);
+
+    // The module seed_ci.py opens, fetched by
+    // .github/scripts/ci/fetch-e2e-teaching.sh
+    await tabTo(page, page.getByRole("link", { name: "View module" }), key, 30);
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/teaching\/chest-xray-interpretation-test$/);
+
+    const startLearning = page.getByRole("button", { name: "Start learning" });
+    await expect(startLearning).toBeVisible({ timeout: 10_000 });
+    await tabTo(page, startLearning, key, 30);
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(
+      /\/learn\/chest-xray-interpretation-test\/slide\/0$/,
+    );
+
+    // The slides turn with the arrow keys as well as their buttons
+    await pressToSlide(page, "ArrowRight", /\/slide\/1$/);
   });
 
   test("the side navigation reaches settings", async ({

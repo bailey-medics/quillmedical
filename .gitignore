@@ -23,6 +23,8 @@ site/
 
 # Teaching content repos (cloned locally)
 teaching-repos/
+# Teaching content for the end-to-end tests (.github/scripts/ci/fetch-e2e-teaching.sh)
+.e2e-teaching/
 
 .venv
 __pycache__/
