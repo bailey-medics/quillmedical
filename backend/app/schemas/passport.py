@@ -598,43 +598,18 @@ class EvidenceUploadOut(BaseModel):
 
 
 class CompetencyOptionOut(BaseModel):
-    """One competency a holder may request a sign-off for.
-
-    ``commonly_used_here`` marks a site's curated shortlist. It suggests
-    and never gates: every competency is reachable, nothing is hidden,
-    and the wording matters as much as the behaviour — "required" would
-    quietly turn a convenience list into a syllabus, which is the
-    sufficiency judgement the passport refuses to make.
-    """
+    """One competency a holder may request a sign-off for."""
 
     id: CompetencyIdField
     name: NonEmptyText
     levels: list[LevelOptionOut] = Field(default_factory=list)
     expires_after_months: int | None = None
-    commonly_used_here: bool = False
 
 
 class CompetencyCatalogueOut(BaseModel):
-    """Every competency, shortlist first."""
+    """Every competency a holder may request a sign-off for."""
 
     competencies: list[CompetencyOptionOut] = Field(default_factory=list)
-
-
-class CommonCompetenciesIn(_In):
-    """An admin curating a site's shortlist.
-
-    Interface furniture only. Nothing reads it when deciding what a
-    person may do or be signed off for.
-    """
-
-    competency_ids: list[CompetencyIdField] = Field(default_factory=list)
-
-
-class CommonCompetenciesOut(BaseModel):
-    """A site's curated shortlist, in the order an admin set."""
-
-    site_id: int
-    competency_ids: list[CompetencyIdField] = Field(default_factory=list)
 
 
 # --------------------------------------------------------------------
