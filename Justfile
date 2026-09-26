@@ -2127,6 +2127,17 @@ passport-delete env username confirm="":
         --wait \
         --format='value(metadata.name)') || STATUS=$?
 
+    # A failed execution prints nothing to stdout, so its name is looked
+    # up instead: the failure is exactly when the report matters most.
+    if [ -z "${EXECUTION:-}" ]; then
+        EXECUTION=$(gcloud run jobs executions list \
+            --job="quill-admin-{{env}}" \
+            --project="$PROJECT" \
+            --region="$REGION" \
+            --limit=1 \
+            --format='value(metadata.name)' || true)
+    fi
+
     # The job prints to Cloud Logging rather than to this terminal, so
     # its report is read back from there.
     if [ -n "${EXECUTION:-}" ]; then
