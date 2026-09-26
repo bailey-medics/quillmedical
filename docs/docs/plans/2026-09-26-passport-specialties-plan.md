@@ -215,7 +215,7 @@ surgery and Generic, the last meaning no specialty order.
 
 ## Phase 5: The frontend
 
-- [ ] **Ask for the specialty when a passport is first created**, on the
+- [x] **Ask for the specialty when a passport is first created**, on the
       create step of `PassportPage`. The question is always shown and must be
       answered before the create button is enabled, with nothing preselected,
       so Generic is a choice somebody made rather than a default they missed.
@@ -224,26 +224,33 @@ surgery and Generic, the last meaning no specialty order.
       already ticked, and ticking a specialty clears Generic, because the two
       contradict each other. The helper text says the choice only changes the
       order competencies are listed in, and can be changed later in settings.
+      Built as `SpecialtyField`, composed from `MultiSelectField` rather than
+      from scratch, with three states: `null` unanswered, `[]` Generic, or
+      the chosen ids.
 
-- [ ] **`CompetencyPicker` orders by the holder's specialties**, on the
+- [x] **`CompetencyPicker` orders by the holder's specialties**, on the
       logbook and sign-off pages. Each specialty's common competencies come
-      first, in its file's order, under "Common in" followed by the specialty's name; everything
-      else follows alphabetically under "All competencies". A competency
+      first, in its file's order, under "Common in" followed by the
+      specialty's name; everything else follows alphabetically under "All competencies". A competency
       common to two chosen specialties appears once, under the first. Never
       "Required" and never a count, so an ordering cannot turn into a
       syllabus.
 
-- [ ] **A passport specialty action card on `Settings.tsx`**, offering the
+- [x] **A passport specialty action card on `Settings.tsx`**, offering the
       same choices as creation, Generic included. Shown only when the user
       has a passport, not merely the competency to read one, and disabled
-      when a write would be refused, matching the create buttons.
+      when a write would be refused, matching the create buttons. Built as
+      `PassportSpecialtyCard`, an `ActionCard` holding a `SpecialtyField`,
+      saving on each change. The page asks for the passport only when the
+      user has the `passport` feature and `assess_clinician_passport`, the
+      same test the side navigation uses, and a 404 means no card.
 
-- [ ] **Stories and tests** for the picker with Generic, one specialty and two;
+- [x] **Stories and tests** for the picker with Generic, one specialty and two;
       for the create step refusing to submit until a choice is made, and
       Generic and a specialty clearing each other; and for the settings card
       present, absent and disabled.
 
-- [ ] **Update the docs.** The shortlist decisions in the clinician passport
+- [x] **Update the docs.** The shortlist decisions in the clinician passport
       plan point to this plan, and `docs/docs/backend/passport/index.md`
       describes the assessable flag and specialties.
 

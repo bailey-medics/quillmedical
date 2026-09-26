@@ -219,6 +219,26 @@ describe("PassportSignOffsPage", () => {
     expect(screen.queryByText(/Request sign-off for/)).not.toBeInTheDocument();
   });
 
+  it("lists the holder's specialty competencies first", async () => {
+    const user = userEvent.setup();
+    const detail = detailWith([]);
+    fetchMyPassport.mockResolvedValue({
+      ...detail,
+      passport: {
+        ...detail.passport,
+        specialties: [{ id: "oncology", name: "Oncology" }],
+      },
+    });
+    renderWithRouter(<PassportSignOffsPage />);
+
+    await user.click(
+      await screen.findByRole("button", { name: "Ask for a sign-off" }),
+    );
+    await user.click(await screen.findByRole("combobox"));
+
+    expect(await screen.findByText("Common in oncology")).toBeInTheDocument();
+  });
+
   it("does not count logbook entries beside a sign-off", async () => {
     // A logbook entry is evidence towards a competency, not something
     // an assessor signs. Counting them here read as though they were

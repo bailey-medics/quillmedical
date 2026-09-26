@@ -92,5 +92,7 @@ export type {
   Specialty,
 } from "./types";
 
+export { PASSPORT_SPECIALTIES, getPassportSpecialty } from "./specialties";
+export type { PassportSpecialtyDefinition } from "./specialties";
 export { registrationAuthorities } from "./registrationAuthorities";
 export type { RegistrationAuthorityOption } from "./registrationAuthorities";

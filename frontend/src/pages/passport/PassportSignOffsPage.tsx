@@ -113,6 +113,8 @@ export function Component() {
   // sign-off goes through `_require_writer`, the same gate as adding a
   // logbook entry, so the button has to answer the same question.
   const [canWrite, setCanWrite] = useState(true);
+  // The holder's specialties, which order the competency picker.
+  const [specialties, setSpecialties] = useState<string[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -122,6 +124,9 @@ export function Component() {
         if (cancelled) return;
         setCompetencies(detail.competencies);
         setPassportId(detail.passport.passport_id);
+        setSpecialties(
+          (detail.passport.specialties ?? []).map((specialty) => specialty.id),
+        );
         setCanWrite(detail.entitlement?.can_write !== false);
       })
       .catch(() => {
@@ -215,6 +220,7 @@ export function Component() {
       {asking ? (
         <Stack gap="lg">
           <CompetencyPicker
+            specialties={specialties}
             value={chosen}
             onChange={setChosen}
             label="Which competency?"
