@@ -40,11 +40,16 @@ class _Strict(BaseModel):
 
 
 class BrandColours(_Strict):
-    """The three brand colours the app's CSS variables are built from."""
+    """The brand colours the app's CSS variables are built from.
+
+    ``mark`` is the quill on a navy tile, as on the email avatar and the
+    app icon; the rest are the app's own surfaces.
+    """
 
     primary: str
     secondary: str
     background: str
+    mark: str
 
 
 class Palette(_Strict):

@@ -97,6 +97,7 @@ describe("cssVariablesResolver", () => {
 
   it("keeps the app's own variables", () => {
     expect(vars.variables["--brand-primary"]).toBeDefined();
+    expect(vars.variables["--brand-mark"]).toBe(brand.brand.mark);
     expect(vars.variables["--success-color"]).toBeDefined();
     expect(vars.light["--mantine-color-text"]).toBe("#143f6b");
     expect(vars.dark["--mantine-color-body"]).toBe("#001a36");

@@ -70,6 +70,12 @@ class TestTheRealFile:
     def test_brand_primary_is_shade_8_of_the_navy_ramp(self) -> None:
         assert BRAND.palette.primary[8] == BRAND.brand.primary
 
+    def test_the_mark_is_a_light_grey_outside_the_grey_ramp(self) -> None:
+        # The quill on the email avatar and the app icon. A mark on navy,
+        # not a surface on white, so it is deliberately not a ramp shade.
+        assert HEX.match(BRAND.brand.mark)
+        assert BRAND.brand.mark not in BRAND.palette.grey
+
     def test_keeps_hex_values_that_are_not_in_the_palette(self) -> None:
         assert email_theme("ldd").link == "#0848a9"
 

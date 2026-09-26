@@ -175,7 +175,12 @@ declare module "@/generated/brand.json" {
   }
 
   const data: {
-    brand: { primary: string; secondary: string; background: string };
+    brand: {
+      primary: string;
+      secondary: string;
+      background: string;
+      mark: string;
+    };
     palette: {
       primary: string[];
       secondary: string[];

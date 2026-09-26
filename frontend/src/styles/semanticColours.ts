@@ -5,7 +5,7 @@
  * This file re-exports them for TypeScript consumers and adds status/text tokens.
  *
  * Organised into:
- * - Brand: primary and secondary brand colours (from theme.ts)
+ * - Brand: primary, secondary, background and mark colours (from theme.ts)
  * - Status: state-communicating colours (badges, alerts, validation)
  * - Text: typography colour tokens
  *

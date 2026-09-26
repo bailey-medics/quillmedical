@@ -242,6 +242,7 @@ const appCssVariables = {
     "--brand-primary": brandColours.primary,
     "--brand-secondary": brandColours.secondary,
     "--brand-background": brandColours.background,
+    "--brand-mark": brandColours.mark,
     // Button interaction colours — amber button text/active states.
     // Brand navy, not #333: on the amber fill #333 was 4.75:1, and on the
     // hover and pressed shades 3.3:1 and 3.1:1, under WCAG AA. Navy is
