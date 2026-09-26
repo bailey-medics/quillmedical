@@ -1,0 +1,36 @@
+# shared/passport-specialties/oncology.yaml
+#
+# Oncology: the competencies common in this specialty, in the
+# order the clinician passport's competency picker should list them.
+#
+# This orders a list. It requires nothing, hides nothing and judges
+# nothing: a holder who chooses this specialty sees these first under
+# "Common in oncology", and every other assessable competency below
+# them, so they can log or be signed off for anything. Never read it as a
+# syllabus.
+#
+# Each id must exist in shared/competency-definitions/, be marked
+# `assessable: true` and not be retired, and may appear once. The
+# filename must match `id`. The backend refuses to start on a list that
+# breaks any of this, and tests/test_passport_specialties.py names the
+# problem in CI. See docs/docs/plans/2026-09-26-passport-specialties-plan.md.
+
+id: oncology
+display_name: "Oncology"
+common_competencies:
+  - prescribe_sact
+  - assess_sact_toxicity
+  - manage_sact_complications
+  - consent_for_sact
+  - define_radiotherapy_target_volume
+  - deliver_radical_radiotherapy
+  - deliver_palliative_radiotherapy
+  - deliver_radioisotope_therapy
+  - manage_brachytherapy_patients
+  - consent_for_radiotherapy
+  - manage_oncological_emergency
+  - deliver_acute_oncology_take
+  - manage_neutropenic_sepsis
+  - manage_metastatic_cord_compression
+  - contribute_to_tumour_mdt
+  - manage_end_of_life_care
