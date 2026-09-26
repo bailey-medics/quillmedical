@@ -35,3 +35,6 @@ __pycache__/
 
 # eslint
 .eslintcache
+
+# `just email-export` output, pasted into Resend rather than committed
+email-broadcast-*.html
