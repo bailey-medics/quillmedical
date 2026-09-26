@@ -436,12 +436,18 @@ steps in them that are code are marked **(code)**.
       Resend's unsubscribe page also manages topics, so the "update your
       preferences" link goes there too.
 
-- [ ] **(code) Point the public site's signup form at a Resend audience.** The
+- [x] **(code) Point the public site's signup form at a Resend audience.** The
       2026-03-21 subscriptions plan designed a Cloud Function writing to
       Firestore but was never built. Revise it to add contacts to the
       Quill Medical audience through Resend's API instead, with double
       opt-in, so consent is recorded where the mail is sent from and there
-      is no second list to reconcile.
+      is no second list to reconcile. Done as a plan revision, which is what
+      this step asked for:
+      [Public site email subscriptions](2026-03-21-subscriptions.md) is
+      rewritten around the backend sending the confirmation and adding the
+      contact to Resend. Writing it found that Resend has replaced
+      Audiences with contacts in segments, plus topics a contact opts in
+      to; wherever this plan says "audience", read "segment".
 
 ## Phase 8: Bringing the Let's Do Digital list across
 
