@@ -170,7 +170,7 @@ surgery and Generic, the last meaning no specialty order.
 
 ## Phase 4: The specialty on the profile
 
-- [ ] **Add `specialties` to `Profile`** in `features/passport/schemas.py`: a
+- [x] **Add `specialties` to `Profile`** in `features/passport/schemas.py`: a
       list of `{id, name}`, defaulting to empty. It lives in `profile.yaml`
       because it is the holder's own statement about themselves, so it
       belongs in their record and travels with the export. The name is stored
@@ -178,7 +178,7 @@ surgery and Generic, the last meaning no specialty order.
       export stays readable with no Quill. Optional, because `profile.yaml` is
       validated on read and no existing passport has the field.
 
-- [ ] **Generic is the empty list, not a specialty.** Foundation doctors and
+- [x] **Generic is the empty list, not a specialty.** Foundation doctors and
       GP trainees have no specialty yet, and Generic means no ordering: one
       alphabetical list. Storing it as an empty list means no `generic.yaml`
       to keep empty and nothing for the loader to special-case, and an
@@ -186,26 +186,29 @@ surgery and Generic, the last meaning no specialty order.
       more than one specialty, since acute oncology and general medicine
       together is ordinary.
 
-- [ ] **An unknown specialty id is kept and shown on read, never refused.**
+- [x] **An unknown specialty id is kept and shown on read, never refused.**
       It stops ordering the picker and nothing else, so a renamed or removed
       specialty never makes a passport unreadable. On write, an unknown id is
       refused.
 
-- [ ] **Accept specialties at creation.** `POST /passport` takes an optional
+- [x] **Accept specialties at creation.** `POST /passport` takes an optional
       body with `specialties`, defaulting to Generic. An added optional
       request body is additive, so no compatibility entry is needed. The API
       defaults rather than requiring the field; asking the question is the
       frontend's job, in phase 5.
 
-- [ ] **A holder-only route to change them**, writing a new `profile.yaml`
+- [x] **A holder-only route to change them**, writing a new `profile.yaml`
       with a `passport:profile:` commit. Behind `_require_writer`, like every
       other write: without the write entitlement there is nothing to pick a
-      competency for.
+      competency for. Built as `PUT /api/passport/{passport_id}/specialties`,
+      returning the passport, with `setPassportSpecialties` in the frontend
+      client beside it so the contract tests comparing the two route lists
+      stay in step.
 
-- [ ] **Render the specialty** in the profile section of the Markdown and PDF
+- [x] **Render the specialty** in the profile section of the Markdown and PDF
       exports.
 
-- [ ] **Tests.** An old `profile.yaml` with no `specialties` still loads;
+- [x] **Tests.** An old `profile.yaml` with no `specialties` still loads;
       creation with Generic and with Oncology; an unknown id refused on write
       and kept on read; changing specialty makes one commit; a holder without
       the write entitlement is refused.

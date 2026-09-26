@@ -255,6 +255,17 @@ def _front_page(
             )
         )
 
+    if profile.specialties:
+        story.append(
+            Paragraph(
+                "Specialty: "
+                + ", ".join(
+                    _text(specialty.name) for specialty in profile.specialties
+                ),
+                styles["body"],
+            )
+        )
+
     story.extend(
         [
             Spacer(1, 4 * mm),

@@ -33,7 +33,14 @@ from pathlib import PurePosixPath
 from . import ids, index, paths, serialise
 from .commits import Actor, CommitAction
 from .commits import build as build_message
-from .schemas import Certificate, CpdEntry, LogbookEntry, Reflection
+from .schemas import (
+    Certificate,
+    CpdEntry,
+    LogbookEntry,
+    Profile,
+    Reflection,
+    SpecialtyRef,
+)
 from .store import PassportHead, PassportNotFoundError, PassportStore
 
 
@@ -541,6 +548,65 @@ def remove_logbook_entry(
         {},
         competency=competency,
         delete=(path,),
+        now=now,
+    )
+
+
+# --- Profile --------------------------------------------------------------
+
+
+def set_specialties(
+    store: PassportStore,
+    passport_id: str,
+    actor: Actor,
+    specialties: list[SpecialtyRef],
+    *,
+    now: datetime | None = None,
+) -> str:
+    """Rewrite the holder's specialties in ``profile.yaml``.
+
+    A commit like any other change to the record, so the history says
+    when the holder changed specialty. Everything else in the profile is
+    kept as it was.
+
+    Args:
+        store: Where the passport lives.
+        passport_id: Whose passport.
+        actor: The holder.
+        specialties: What they chose, or an empty list for Generic.
+        now: For tests.
+
+    Returns:
+        The commit id.
+    """
+    profile = serialise.from_yaml(
+        Profile, store.read(passport_id, paths.PROFILE)
+    )
+    updated = profile.model_copy(update={"specialties": specialties})
+    # A git subject holds 72 characters, so several specialties are
+    # counted rather than listed; the file itself names them.
+    if not specialties:
+        summary = "set specialty to generic"
+    elif len(specialties) == 1 and len(specialties[0].id) <= 32:
+        summary = f"set specialty to {specialties[0].id}"
+    else:
+        summary = f"set {len(specialties)} specialties"
+
+    return _write(
+        store,
+        passport_id,
+        actor,
+        "amend",
+        summary,
+        {
+            paths.PROFILE: serialise.to_yaml(
+                updated,
+                comment=(
+                    "Who this passport belongs to. Regenerated when their "
+                    "details change."
+                ),
+            )
+        },
         now=now,
     )
 

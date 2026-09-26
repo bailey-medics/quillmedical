@@ -42,6 +42,7 @@ import {
   requestSignOff,
   searchAssessors,
   revokeAssessorMembership,
+  setPassportSpecialties,
   signOff,
   verifySignOff,
   withdrawSignOff,
@@ -52,6 +53,7 @@ vi.mock("@lib/api", () => ({
   api: {
     get: vi.fn().mockResolvedValue({}),
     post: vi.fn().mockResolvedValue({}),
+    put: vi.fn().mockResolvedValue({}),
     patch: vi.fn().mockResolvedValue({}),
     del: vi.fn().mockResolvedValue({}),
   },
@@ -100,6 +102,7 @@ describe("passport paths", () => {
       "/api/passport/{passport_id}/sign-offs/{signoff_id}/sign-off",
       "/api/passport/{passport_id}/sign-offs/{signoff_id}/verify",
       "/api/passport/{passport_id}/sign-offs/{signoff_id}/withdraw",
+      "/api/passport/{passport_id}/specialties",
     ].map((path) => path.replace(/^\/api/, ""));
 
     expect([...PASSPORT_PATHS].sort()).toEqual(backendPaths.sort());
@@ -107,9 +110,24 @@ describe("passport paths", () => {
 });
 
 describe("passport", () => {
-  it("creates a passport", async () => {
+  it("creates a Generic passport when no specialty is given", async () => {
     await createPassport();
-    expect(api.post).toHaveBeenCalledWith("/passport");
+    expect(api.post).toHaveBeenCalledWith("/passport", { specialties: [] });
+  });
+
+  it("creates a passport with the chosen specialties", async () => {
+    await createPassport(["oncology"]);
+    expect(api.post).toHaveBeenCalledWith("/passport", {
+      specialties: ["oncology"],
+    });
+  });
+
+  it("changes the holder's specialties", async () => {
+    await setPassportSpecialties(PASSPORT_ID, ["general_surgery"]);
+    expect(api.put).toHaveBeenCalledWith(
+      `/passport/${PASSPORT_ID}/specialties`,
+      { specialties: ["general_surgery"] },
+    );
   });
 
   it("fetches the caller's own passport", async () => {

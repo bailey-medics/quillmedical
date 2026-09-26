@@ -182,3 +182,26 @@ class TestTheModel:
 
         with pytest.raises(ValidationError):
             specialty.id = "b"  # type: ignore[misc]
+
+
+class TestSpecialtyRefs:
+    def test_carries_the_id_and_name_in_the_order_chosen(self) -> None:
+        refs = specialties.specialty_refs(["oncology", "general_medicine"])
+
+        assert [(r.id, r.name) for r in refs] == [
+            ("oncology", "Oncology"),
+            ("general_medicine", "General medicine"),
+        ]
+
+    def test_no_choice_is_generic(self) -> None:
+        assert specialties.specialty_refs([]) == []
+
+    def test_an_unknown_specialty_is_refused_by_name(self) -> None:
+        with pytest.raises(
+            specialties.UnknownSpecialtyError, match="cardiology"
+        ):
+            specialties.specialty_refs(["cardiology"])
+
+    def test_a_specialty_chosen_twice_is_refused(self) -> None:
+        with pytest.raises(specialties.UnknownSpecialtyError):
+            specialties.specialty_refs(["oncology", "oncology"])

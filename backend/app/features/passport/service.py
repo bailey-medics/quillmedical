@@ -50,6 +50,7 @@ from .schemas import (
     Manifest,
     Profile,
     SignOff,
+    SpecialtyRef,
 )
 from .store import PassportNotFoundError, PassportStore
 
@@ -102,6 +103,7 @@ def create_passport(
     *,
     user_id: str,
     registrations: list[object] | None = None,
+    specialties: list[SpecialtyRef] | None = None,
     now: datetime | None = None,
 ) -> str:
     """Create a passport with its manifest, profile and empty index.
@@ -112,6 +114,7 @@ def create_passport(
         actor: The holder, who is creating their own.
         user_id: Their Quill user id.
         registrations: Their professional registrations, as declared.
+        specialties: The specialties they chose, or none for Generic.
         now: For tests.
 
     Returns:
@@ -129,6 +132,7 @@ def create_passport(
         user_id=user_id,
         name=actor.name,
         registrations=registrations or [],  # type: ignore[arg-type]
+        specialties=specialties or [],
     )
     empty = Index(
         schema_version=SCHEMA_VERSION, generated_at=moment, competencies=[]

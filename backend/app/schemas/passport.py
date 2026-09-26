@@ -104,6 +104,13 @@ class RegistrationOut(BaseModel):
     number: NonEmptyText
 
 
+class SpecialtyOut(BaseModel):
+    """A specialty the holder chose, with its name as stored."""
+
+    id: CompetencyIdField
+    name: NonEmptyText
+
+
 class AttachmentIn(_In):
     """Evidence a record is about to name.
 
@@ -177,8 +184,27 @@ class PassportOut(BaseModel):
     holder_user_id: NonEmptyText
     holder_name: NonEmptyText
     registrations: list[RegistrationOut] = Field(default_factory=list)
+    #: Orders the holder's competency picker. Empty means Generic.
+    specialties: list[SpecialtyOut] = Field(default_factory=list)
     created_at: date
     head_commit: str | None = None
+
+
+class PassportCreateIn(_In):
+    """Creating a passport, optionally with the holder's specialties.
+
+    Optional as a whole, and ``specialties`` defaults to none, meaning
+    Generic. The page always asks; the API does not insist, so a client
+    that sends no body still gets a passport.
+    """
+
+    specialties: list[CompetencyIdField] = Field(default_factory=list)
+
+
+class SpecialtiesIn(_In):
+    """Changing the holder's specialties. An empty list is Generic."""
+
+    specialties: list[CompetencyIdField] = Field(default_factory=list)
 
 
 class CompetencyStateOut(BaseModel):

@@ -40,6 +40,7 @@ export {
   requestSignOff,
   searchAssessors,
   revokeAssessorMembership,
+  setPassportSpecialties,
   signOff,
   verifySignOff,
   withdrawSignOff,
@@ -88,6 +89,7 @@ export type {
   SignOffStatus,
   Supervision,
   Verification,
+  Specialty,
 } from "./types";
 
 export { registrationAuthorities } from "./registrationAuthorities";

@@ -45,7 +45,7 @@ from sqlalchemy.orm import Session
 from app import main
 from app.config import settings
 from app.email_send import EmailNotAllowedError, EmailRateLimitError
-from app.features.passport import definitions, router
+from app.features.passport import definitions, paths, router, specialties
 from app.features.passport.blobs import BlobStore
 from app.features.passport.models import (
     Passport,
@@ -3336,3 +3336,191 @@ class TestOnlyAssessableCompetencies:
             group["competency"] for group in logbook.json()["competencies"]
         ] == ["perform_cannulation"]
         assert exported.status_code == 200, exported.text
+
+
+class TestSpecialties:
+    """A holder's specialties order their competency picker, nothing else.
+
+    Stored in ``profile.yaml``, so they travel with the record. An empty
+    list is Generic: no specialty order.
+    """
+
+    def test_a_passport_created_with_no_body_is_generic(
+        self, holder_client: TestClient
+    ) -> None:
+        response = holder_client.post("/api/passport")
+
+        assert response.status_code == 201, response.text
+        assert response.json()["specialties"] == []
+
+    def test_a_passport_can_be_created_with_a_specialty(
+        self, holder_client: TestClient
+    ) -> None:
+        response = holder_client.post(
+            "/api/passport", json={"specialties": ["oncology"]}
+        )
+
+        assert response.status_code == 201, response.text
+        assert response.json()["specialties"] == [
+            {"id": "oncology", "name": "Oncology"}
+        ]
+
+    def test_the_specialty_is_written_into_the_profile(
+        self,
+        holder_client: TestClient,
+        passport_store: LocalPassportStore,
+    ) -> None:
+        """The name travels with the id, so an export reads with no
+        Quill."""
+        created = holder_client.post(
+            "/api/passport",
+            json={"specialties": ["general_medicine", "oncology"]},
+        ).json()
+
+        profile = passport_store.read(
+            created["passport_id"], paths.PROFILE
+        ).decode()
+
+        assert "general_medicine" in profile
+        assert "General medicine" in profile
+        assert "Oncology" in profile
+
+    def test_an_unknown_specialty_is_refused_at_creation(
+        self, holder_client: TestClient
+    ) -> None:
+        response = holder_client.post(
+            "/api/passport", json={"specialties": ["cardiology"]}
+        )
+
+        assert response.status_code == 400, response.text
+        assert "cardiology" in response.json()["detail"]
+
+    def test_a_specialty_chosen_twice_is_refused(
+        self, holder_client: TestClient
+    ) -> None:
+        response = holder_client.post(
+            "/api/passport",
+            json={"specialties": ["oncology", "oncology"]},
+        )
+
+        assert response.status_code == 400, response.text
+
+    def test_the_holder_can_change_them_in_one_commit(
+        self,
+        holder_client: TestClient,
+        passport_store: LocalPassportStore,
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+        before = passport_store.head(passport_id).commit
+
+        response = holder_client.put(
+            f"/api/passport/{passport_id}/specialties",
+            json={"specialties": ["general_surgery"]},
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json()["specialties"] == [
+            {"id": "general_surgery", "name": "General surgery"}
+        ]
+        after = passport_store.head(passport_id).commit
+        assert after != before
+        assert response.json()["head_commit"] == after
+
+    def test_changing_back_to_generic_empties_the_list(
+        self, holder_client: TestClient
+    ) -> None:
+        created = holder_client.post(
+            "/api/passport", json={"specialties": ["oncology"]}
+        ).json()
+
+        response = holder_client.put(
+            f"/api/passport/{created['passport_id']}/specialties",
+            json={"specialties": []},
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json()["specialties"] == []
+
+    def test_an_unknown_specialty_is_refused_on_change(
+        self, holder_client: TestClient
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+
+        response = holder_client.put(
+            f"/api/passport/{passport_id}/specialties",
+            json={"specialties": ["cardiology"]},
+        )
+
+        assert response.status_code == 400, response.text
+
+    def test_a_removed_specialty_is_kept_on_read(
+        self,
+        holder_client: TestClient,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Deleting a specialty file must never make a passport
+        unreadable. It stops ordering the picker, and nothing else."""
+        created = holder_client.post(
+            "/api/passport", json={"specialties": ["oncology"]}
+        ).json()
+        monkeypatch.setattr(specialties, "SPECIALTIES", ())
+
+        response = holder_client.get("/api/passport/me")
+
+        assert response.status_code == 200, response.text
+        assert response.json()["passport"]["specialties"] == [
+            {"id": "oncology", "name": "Oncology"}
+        ]
+        assert (
+            created["passport_id"]
+            == response.json()["passport"]["passport_id"]
+        )
+
+    def test_somebody_else_cannot_change_them(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        bystander: User,
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+        client = _login(test_client, "bystander")
+
+        response = client.put(
+            f"/api/passport/{passport_id}/specialties",
+            json={"specialties": ["oncology"]},
+        )
+
+        assert response.status_code == 404, response.text
+
+    def test_a_holder_whose_entitlement_lapsed_cannot_change_them(
+        self,
+        holder_client: TestClient,
+        holder: User,
+        db_session: Session,
+    ) -> None:
+        """Without the right to write there is nothing to pick a
+        competency for, so nothing for the order to affect."""
+        passport_id = _create_passport(holder_client)
+        lapse(holder, "passport_write")
+        db_session.commit()
+
+        response = holder_client.put(
+            f"/api/passport/{passport_id}/specialties",
+            json={"specialties": ["oncology"]},
+        )
+
+        assert response.status_code == 403, response.text
+
+    def test_the_markdown_export_names_the_specialty(
+        self, holder_client: TestClient
+    ) -> None:
+        created = holder_client.post(
+            "/api/passport", json={"specialties": ["oncology"]}
+        ).json()
+
+        exported = holder_client.get(
+            f"/api/passport/{created['passport_id']}/export.md"
+        )
+
+        assert exported.status_code == 200, exported.text
+        assert "Specialty: Oncology" in exported.text
