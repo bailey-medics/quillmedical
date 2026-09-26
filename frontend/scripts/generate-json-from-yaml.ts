@@ -90,6 +90,43 @@ function generateCompetenciesJson(): void {
   console.log(`  ✓ Generated ${outputPath} (${files.length} files merged)`);
 }
 
+// One file per specialty, merged into one passport-specialties.json in
+// filename order. Mirrors load_specialties() in
+// backend/app/features/passport/specialties.py, which also checks every
+// listed competency; this only copies, since the backend refuses to start
+// on a bad list and CI runs its tests.
+const PASSPORT_SPECIALTIES_DIR = path.join(SHARED_DIR, "passport-specialties");
+
+function generatePassportSpecialtiesJson(): void {
+  console.log("  Processing passport-specialties/...");
+
+  const files = fs
+    .readdirSync(PASSPORT_SPECIALTIES_DIR)
+    .filter((file) => file.endsWith(".yaml"))
+    .sort();
+
+  if (files.length === 0) {
+    throw new Error(
+      `No passport specialties found in ${PASSPORT_SPECIALTIES_DIR}`,
+    );
+  }
+
+  const specialties = files.map((file) =>
+    yaml.load(
+      fs.readFileSync(path.join(PASSPORT_SPECIALTIES_DIR, file), "utf8"),
+    ),
+  );
+
+  ensureDirectoryExists(FRONTEND_GENERATED_DIR);
+  const outputPath = path.join(
+    FRONTEND_GENERATED_DIR,
+    "passport-specialties.json",
+  );
+  fs.writeFileSync(outputPath, JSON.stringify({ specialties }, null, 2));
+
+  console.log(`  ✓ Generated ${outputPath} (${files.length} files merged)`);
+}
+
 function ensureDirectoryExists(dir: string): void {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
@@ -128,6 +165,13 @@ function main(): void {
     generateCompetenciesJson();
   } catch (error) {
     console.error("  ✗ Error processing competency-definitions/:", error);
+    process.exit(1);
+  }
+
+  try {
+    generatePassportSpecialtiesJson();
+  } catch (error) {
+    console.error("  ✗ Error processing passport-specialties/:", error);
     process.exit(1);
   }
 

@@ -95,7 +95,7 @@ surgery and Generic, the last meaning no specialty order.
 
 ## Phase 3: The specialty files
 
-- [ ] **Create `shared/passport-specialties/`, one file per specialty**, each
+- [x] **Create `shared/passport-specialties/`, one file per specialty**, each
       with an `id`, a `display_name` and an ordered `common_competencies`
       list, and a header comment saying the list orders the picker and
       requires nothing. The specialty lists its competencies, rather than
@@ -112,7 +112,7 @@ surgery and Generic, the last meaning no specialty order.
     - assess_sact_toxicity
   ```
 
-- [ ] **Start with three specialties**: `oncology.yaml`,
+- [x] **Start with three specialties**: `oncology.yaml`,
       `general_medicine.yaml` and `general_surgery.yaml`, so the first
       choices are Oncology, General medicine, General surgery and Generic.
       The option with no ordering is called Generic rather than General
@@ -152,7 +152,7 @@ surgery and Generic, the last meaning no specialty order.
     Adding surgical definitions is a separate piece of clinical content work,
     not part of this plan; each one then joins this list as one line.
 
-- [ ] **A loader in `backend/app/features/passport/specialties.py`**, with a
+- [x] **A loader in `backend/app/features/passport/specialties.py`**, with a
       `Specialty` model (`extra="forbid"`), refusing at load so a bad list
       stops the application starting. The rules: every listed id exists in
       `shared/competency-definitions/`, is `assessable: true` and is not
@@ -161,11 +161,11 @@ surgery and Generic, the last meaning no specialty order.
       `competency-definitions/`. It must import without `app.config`, like
       the rest of the feature package.
 
-- [ ] **`test_passport_specialties.py`**, so CI names the problem as well as
+- [x] **`test_passport_specialties.py`**, so CI names the problem as well as
       the loader refusing it: one fixture directory breaking each rule, and
       one test loading the real folder.
 
-- [ ] **Carry the specialties through `generate-json-from-yaml.ts`** into
+- [x] **Carry the specialties through `generate-json-from-yaml.ts`** into
       `src/generated/`, so the frontend reads the same lists.
 
 ## Phase 4: The specialty on the profile

@@ -1,0 +1,33 @@
+# shared/passport-specialties/general_surgery.yaml
+#
+# General surgery: the competencies common in this specialty, in the
+# order the clinician passport's competency picker should list them.
+#
+# This orders a list. It requires nothing, hides nothing and judges
+# nothing: a holder who chooses this specialty sees these first under
+# "Common in general surgery", and every other assessable competency below
+# them, so they can log or be signed off for anything. Never read it as a
+# syllabus.
+#
+# Each id must exist in shared/competency-definitions/, be marked
+# `assessable: true` and not be retired, and may appear once. The
+# filename must match `id`. The backend refuses to start on a list that
+# breaks any of this, and tests/test_passport_specialties.py names the
+# problem in CI. See docs/docs/plans/2026-09-26-passport-specialties-plan.md.
+#
+# Thin for now: the catalogue has no surgical procedures yet, so this
+# holds the shared ward competencies. Each surgical definition added to
+# shared/competency-definitions/ joins this list as one line.
+
+id: general_surgery
+display_name: "General surgery"
+common_competencies:
+  - take_informed_consent
+  - perform_venepuncture
+  - perform_cannulation
+  - perform_chest_drain
+  - prescribe_non_controlled
+  - prescribe_controlled_schedule_2
+  - manage_anticoagulation
+  - assess_mental_capacity
+  - certify_death

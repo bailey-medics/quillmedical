@@ -189,3 +189,19 @@ declare module "@/generated/brand.json" {
 
   export default data;
 }
+
+declare module "@/generated/passport-specialties.json" {
+  // Merged from every file in shared/passport-specialties/ by
+  // scripts/generate-json-from-yaml.ts, in filename order. A specialty
+  // orders the passport's competency picker and nothing else.
+  interface PassportSpecialty {
+    id: string;
+    display_name: string;
+    common_competencies: string[];
+  }
+
+  const data: {
+    specialties: PassportSpecialty[];
+  };
+  export default data;
+}
