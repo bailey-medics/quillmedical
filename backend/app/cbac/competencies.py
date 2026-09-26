@@ -65,6 +65,13 @@ class CompetencyEntry(BaseModel):
             revisiting, or None where nothing expires. Recorded and
             shown; nothing acts on it, because what a lapsed sign-off
             implies is a clinical decision rather than a technical one.
+        assessable: Whether somebody can watch this being done and sign
+            it off, so whether the clinician passport may record it.
+            Opt-in, and false unless the definition says otherwise:
+            ``manage_users`` or ``access_own_patient_records`` is a
+            software permission, not a skill, and anything added for
+            access control stays out of the passport until somebody
+            decides it belongs there. CBAC ignores it.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -74,6 +81,7 @@ class CompetencyEntry(BaseModel):
     retired_on: date | None = None
     levels: list[CompetencyLevel] | None = None
     expires_after_months: int | None = None
+    assessable: bool = False
 
 
 # Load competencies from every YAML file in the definitions directory.
@@ -170,6 +178,13 @@ ACTIVE_COMPETENCY_IDS: tuple[str, ...] = tuple(
 
 RETIRED_COMPETENCY_IDS: tuple[str, ...] = tuple(
     c.id for c in COMPETENCIES if c.retired_on is not None
+)
+
+# The ids the clinician passport may record something new against:
+# active, and marked assessable. A record already holding an id outside
+# this set stays readable; only new writes are refused.
+ASSESSABLE_COMPETENCY_IDS: tuple[str, ...] = tuple(
+    c.id for c in COMPETENCIES if c.retired_on is None and c.assessable
 )
 
 # Create Literal type for type hints

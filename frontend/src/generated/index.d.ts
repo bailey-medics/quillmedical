@@ -23,6 +23,9 @@ declare module "@/generated/competencies.json" {
     // both of these, since holding a competency is a yes or no.
     levels?: CompetencyLevel[];
     expires_after_months?: number;
+    // Whether the clinician passport may record something against it.
+    // Opt-in: absent means a software permission rather than a skill.
+    assessable?: boolean;
   }
 
   const data: {

@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 import {
   ALL_COMPETENCIES,
   ACTIVE_COMPETENCIES,
+  ASSESSABLE_COMPETENCIES,
   getCompetencyDetails,
 } from "./cbac";
 
@@ -58,5 +59,37 @@ describe("The competency catalogue", () => {
     expect(ids).toContain("assess_clinician_passport");
     expect(ids).toContain("passport_write");
     expect(ids).not.toContain("access_clinician_passport");
+  });
+});
+
+describe("The competencies the passport may record", () => {
+  const ids = ASSESSABLE_COMPETENCIES.map((competency) => competency.id);
+
+  it("offers clinical skills somebody can be assessed on", () => {
+    expect(ids).toContain("perform_cannulation");
+    expect(ids).toContain("prescribe_sact");
+  });
+
+  it("never offers a software permission", () => {
+    // Nobody watches somebody "manage users" and signs it off.
+    expect(ids).not.toContain("manage_users");
+    expect(ids).not.toContain("access_own_patient_records");
+    expect(ids).not.toContain("passport_write");
+  });
+
+  it("is opt-in, so an entry without the flag is left out", () => {
+    const unflagged = ASSESSABLE_COMPETENCIES.filter(
+      (competency) => competency.assessable !== true,
+    );
+
+    expect(unflagged).toEqual([]);
+  });
+
+  it("never offers a retired competency", () => {
+    const retired = ASSESSABLE_COMPETENCIES.filter(
+      (competency) => competency.retired_on !== undefined,
+    );
+
+    expect(retired).toEqual([]);
   });
 });

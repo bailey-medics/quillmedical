@@ -22,6 +22,23 @@ describe("CompetencyPicker", () => {
       ).toBeInTheDocument();
     });
 
+    it("never offers a software permission", async () => {
+      // manage_users is a permission in Quill, not a skill anybody could
+      // be assessed on, so the passport does not offer it.
+      const user = userEvent.setup();
+      renderWithMantine(<CompetencyPicker value={null} onChange={vi.fn()} />);
+
+      await user.click(screen.getByRole("combobox"));
+      await user.type(screen.getByRole("combobox"), "Manage User");
+
+      expect(
+        await screen.findByText("No competency found"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("Manage User Accounts"),
+      ).not.toBeInTheDocument();
+    });
+
     it("renders one flat list, with no group headings", async () => {
       // A heading such as "Commonly used here" came from a site
       // shortlist that has been removed.

@@ -1056,6 +1056,11 @@ def request_sign_off(
     """
     row = _require_writer(db, passport_id, user, store)
 
+    # Before the email, since nothing can be unsent: a request for a
+    # competency that does not exist, or that nobody can be assessed on,
+    # must not reach an assessor's inbox.
+    _assessable_refs([competency_id])
+
     assessor_email = body.assessor_email.strip().lower()
 
     if assessor_email == user.email.strip().lower():
@@ -1462,6 +1467,27 @@ def _competency_refs(ids_given: list[str]) -> list[CompetencyRef]:
         raise HTTPException(404, str(error)) from None
 
 
+def _assessable_refs(ids_given: list[str]) -> list[CompetencyRef]:
+    """Resolve competency ids for a record being created.
+
+    Stricter than :func:`_competency_refs`: each id must also be one the
+    passport may record, so ``manage_users`` cannot be logged or signed
+    off. Amending keeps the looser check, so an old record naming a
+    competency since marked not assessable can still have its date put
+    right.
+
+    Raises:
+        HTTPException: 404 if any id is not in the catalogue, 400 if one
+            is not assessable.
+    """
+    try:
+        return [definitions.assessable_ref(given) for given in ids_given]
+    except definitions.UnknownCompetencyError as error:
+        raise HTTPException(404, str(error)) from None
+    except definitions.NotAssessableError as error:
+        raise HTTPException(400, str(error)) from None
+
+
 def _attachments(
     blobs: BlobStore | GcsBlobStore,
     passport_id: str,
@@ -1679,7 +1705,7 @@ def add_certificate(
         issuer=body.issuer,
         awarded_on=body.awarded_on,
         expires_on=body.expires_on,
-        competencies=_competency_refs(body.competencies),
+        competencies=_assessable_refs(body.competencies),
         description=body.description,
         attachments=_attachments(blobs, row.id, body.attachments),
     )
@@ -1833,7 +1859,7 @@ def add_logbook_entry(
     lives inside the file.
     """
     row = _require_writer(db, passport_id, user, store)
-    _competency_refs([competency_id])
+    _assessable_refs([competency_id])
 
     entry = LogbookEntry(
         performed_on=body.performed_on,
@@ -2075,7 +2101,7 @@ def add_reflection(
     reflection = Reflection(
         title=body.title,
         written_on=body.written_on,
-        competencies=_competency_refs(body.competencies),
+        competencies=_assessable_refs(body.competencies),
         attachments=_attachments(blobs, row.id, body.attachments),
     )
 
@@ -2223,7 +2249,7 @@ def add_cpd_entry(
         title=body.title,
         activity_type=body.activity_type,
         points=body.points,
-        competencies=_competency_refs(body.competencies),
+        competencies=_assessable_refs(body.competencies),
         certificate=body.certificate,
         notes=body.notes,
         attachments=_attachments(blobs, row.id, body.attachments),

@@ -17,9 +17,11 @@ import pytest
 from pydantic import ValidationError
 
 from app.cbac.competencies import (
+    ASSESSABLE_COMPETENCY_IDS,
     COMPETENCIES,
     COMPETENCY_DEFINITIONS_DIR,
     COMPETENCY_IDS,
+    RETIRED_COMPETENCY_IDS,
     CompetencyEntry,
     _load_competencies,
     get_competency_details,
@@ -221,3 +223,25 @@ def test_competency_entry_rejects_extra_fields() -> None:
 def test_competency_entry_rejects_missing_display_name() -> None:
     with pytest.raises(ValidationError):
         CompetencyEntry(id="x")  # type: ignore[call-arg]
+
+
+def test_competency_entry_is_not_assessable_unless_it_says_so() -> None:
+    """Opt-in, so a permission added for access control stays out of
+    the passport until somebody decides it belongs there."""
+    assert CompetencyEntry(id="x", display_name="X").assessable is False
+
+
+def test_assessable_ids_hold_skills_and_no_permissions() -> None:
+    assert "perform_cannulation" in ASSESSABLE_COMPETENCY_IDS
+    assert "prescribe_sact" in ASSESSABLE_COMPETENCY_IDS
+    for permission in (
+        "manage_users",
+        "access_own_patient_records",
+        "passport_write",
+        "assess_clinician_passport",
+    ):
+        assert permission not in ASSESSABLE_COMPETENCY_IDS
+
+
+def test_assessable_ids_are_all_active() -> None:
+    assert not set(ASSESSABLE_COMPETENCY_IDS) & set(RETIRED_COMPETENCY_IDS)
