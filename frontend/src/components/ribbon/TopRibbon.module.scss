@@ -12,7 +12,9 @@
   background: var(--brand-primary);
   min-height: 60px;
   color: white;
-  border-bottom: 1px solid var(--card-border, var(--mantine-color-gray-2));
+
+  /* Brand amber, matching the header rule on Quill emails (shared/brand.yaml) */
+  border-bottom: 4px solid var(--brand-secondary);
 }
 
 /* Optional outer wrapper for stickiness so we don't tie queries to viewport */
