@@ -23,7 +23,7 @@
    just initial-install
    ```
 
-   This discovers all `*-teaching` repos in the `bailey-medics` organisation and clones them into `teaching-repos/`. Safe to re-run at any time — existing repos are pulled, new ones are cloned.
+   This discovers all `*-teaching` and `*-teaching-testing` repos in the `bailey-medics` organisation and clones them into `teaching-repos/`. Safe to re-run at any time — existing repos are pulled, new ones are cloned.
 
 3. Start the Docker stack:
 
@@ -76,16 +76,19 @@ in the Claude Code docs.
 
 Teaching content (MCQ question banks and learning modules) lives in separate repos, one per organisation:
 
-| Repo                   | Content                       | Visibility         |
-| ---------------------- | ----------------------------- | ------------------ |
-| `eoeeta-teaching`      | Colonoscopy optical diagnosis | Private            |
-| `respiratory-teaching` | Chest X-ray interpretation    | Public (reference) |
+| Repo                      | Content                                         | Visibility         |
+| ------------------------- | ----------------------------------------------- | ------------------ |
+| `eoeeta-teaching`         | Colonoscopy optical diagnosis                   | Private            |
+| `eoeeta-teaching-testing` | Colonoscopy test bank, for dev and prod testing | Private            |
+| `respiratory-teaching`    | Chest X-ray interpretation                      | Public (reference) |
 
 These are cloned into `teaching-repos/` (git-ignored by the parent repo). Each has its own CI/CD that validates and deploys content to GCS.
 
 The validator and the reusable pipeline those repos run live in Quill, under `backend/app/features/teaching/tooling/` and `.github/workflows/teaching-pipeline.yml`. Nothing extra needs cloning.
 
-To add a new teaching organisation, create a repo named `<org>-teaching` in `bailey-medics` — `just initial-install` will pick it up automatically.
+To add a new teaching organisation, create a repo named `<org>-teaching` in `bailey-medics` — `just initial-install` will pick it up automatically. Add it to `teaching_repos` in `infra/github/teaching_rulesets.tf` as well, so its `main` branch is protected.
+
+**Module ids must be unique across every content repo.** All repos deploy into one bucket under `modules/<moduleId>/`, and the sync puts every module in the same organisation, so two repos with the same `moduleId` overwrite each other. `eoeeta-teaching-testing` holds `colonoscopy-optical-diagnosis-test`; remove that module from `eoeeta-teaching` when its real content goes in.
 
 ## Useful commands
 

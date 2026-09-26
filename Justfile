@@ -183,7 +183,7 @@ initial-install:
     mkdir -p "$DEST"
 
     echo "Discovering teaching repos in ${ORG}..."
-    REPOS=$(gh repo list "$ORG" --json name --jq '.[].name' | grep -- '-teaching$' || true)
+    REPOS=$(gh repo list "$ORG" --json name --jq '.[].name' | grep -E -- '-teaching(-testing)?$' || true)
 
     if [ -z "$REPOS" ]; then
         echo "No *-teaching repos found in ${ORG}."
