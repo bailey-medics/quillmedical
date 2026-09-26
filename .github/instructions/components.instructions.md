@@ -21,7 +21,7 @@ applyTo: "frontend/src/components/**"
 
 - **No inline styles** — use Mantine component props or CSS modules only.
 - **Use `rem` instead of `px`** in CSS modules for component dimensions (padding, margins, widths, font-sizes). Breakpoints use `em` via the theme — don't hardcode those.
-- **Responsive**: always use `theme.breakpoints.sm` (`40em` / 640px) for mobile/desktop splits via `useMediaQuery`. Exception: two-column ActionCard grids use `actionCardTwoColumnMinWidth` (`60rem`) from the theme's `layoutTokens`.
+- **Responsive**: always use `theme.breakpoints.sm` (`40em` / 640px) for mobile/desktop splits via `useMediaQuery`. Exceptions: two-column ActionCard grids use `actionCardTwoColumnMinWidth` (`60rem`) from the theme's `layoutTokens`, and the side navigation folds away below `md` through `useNavCollapsed()` in `components/layouts/`.
 - **Button layout**:
   - Use `ButtonPair` / `ButtonPairRed` for action pairs (submit/cancel, confirm/dismiss) — they handle right-alignment on desktop and full-width stacking on mobile automatically.
   - For standalone buttons, wrap in `<Group justify="flex-end">` to right-align.

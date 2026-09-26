@@ -43,6 +43,7 @@ import {
   LAYOUT_PADDING_X,
   LAYOUT_SIDEBAR_WIDTH,
 } from "./layoutConstants";
+import { useNavCollapsed } from "./useNavCollapsed";
 
 /**
  * MainLayout Props
@@ -85,6 +86,7 @@ export default function MainLayout({
   const [opened, { toggle, close }] = useDisclosure(false);
   const theme = useMantineTheme();
   const isSm = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
+  const navCollapsed = useNavCollapsed();
   const { state } = useAuth();
   const { showSearch } = useSearch();
   const navigate = useNavigate();
@@ -185,7 +187,7 @@ export default function MainLayout({
           isLoading={isLoading}
           patient={patient}
           navOpen={opened}
-          isNarrow={isSm}
+          isNarrow={navCollapsed}
           onPatientClick={handlePatientClick}
           onPatientDoubleClick={handlePatientDoubleClick}
           examMode={examMode}
@@ -219,7 +221,7 @@ export default function MainLayout({
           >
             <div style={{ width: LAYOUT_SIDEBAR_WIDTH }}>
               <SideNav
-                showSearch={isSm && !isSearchDisabledRoute}
+                showSearch={navCollapsed && !isSearchDisabledRoute}
                 showIcons
                 onNavigate={close}
                 patientNav={patientNav}
@@ -229,7 +231,7 @@ export default function MainLayout({
         )}
 
         <Flex style={{ flex: 1, height: "100%" }}>
-          {!isSm && !examMode && (
+          {!navCollapsed && !examMode && (
             <Box
               component="aside"
               w={LAYOUT_SIDEBAR_WIDTH}

@@ -96,7 +96,8 @@ See the `Justfile` if you want to know more.
 - **Responsive**: ALWAYS use `theme.breakpoints.sm` for responsive behaviour
   - Import: `const theme = useMantineTheme();` from `@mantine/core`
   - Mobile/Desktop split: `useMediaQuery(\`(max-width: ${theme.breakpoints.sm})\`)`
-  - Standard breakpoint: `sm = "40em"` (640px) - matches navigation drawer toggle
+  - Standard breakpoint: `sm = "40em"` (640px)
+  - Exception, the side navigation: it folds behind the hamburger below `md` (`62em`, 992px), through `useNavCollapsed()` in `components/layouts/`, so an upright tablet gets the hamburger too. The ribbon narrows with it: the hamburger and the Quill name never show together
   - Use in all components that need responsive layout/sizing decisions
 
 ### Component reuse hierarchy (Storybook-first)
