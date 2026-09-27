@@ -21,13 +21,16 @@ from app.models import OrgUnit, OrgUnitFeature, User
 from app.organisations import add_org_unit_member
 from app.security import hash_password
 from tests.competencies import withhold
+from tests.places import administers
 from tests.registrations import declare
 
 ALPHABETICAL = ["general_medicine", "general_surgery", "oncology"]
 
 
-def _make_user(db: Session, username: str) -> User:
-    """A consultant, who holds ``assess_clinician_passport`` by profession."""
+def _make_user(
+    db: Session, username: str, *, profession: str = "consultant"
+) -> User:
+    """By default a consultant, who holds ``assess_clinician_passport``."""
     user = User(
         username=username,
         email=f"{username}@example.nhs.uk",
@@ -35,7 +38,7 @@ def _make_user(db: Session, username: str) -> User:
         password_hash=hash_password("PassportPassword123!"),
         is_active=True,
         email_verified=True,
-        base_profession="consultant",
+        base_profession=profession,
     )
     declare(user, {"GMC": "1234567"})
     db.add(user)
@@ -179,11 +182,15 @@ class TestTheOrder:
 
 
 def _login(client: TestClient, username: str) -> TestClient:
+    """Sign in and carry the CSRF token on every later request."""
     response = client.post(
         "/api/auth/login",
         json={"username": username, "password": "PassportPassword123!"},
     )
     assert response.status_code == 200, response.text
+    csrf = client.cookies.get("XSRF-TOKEN")
+    if csrf:
+        client.headers["X-CSRF-Token"] = csrf
     return client
 
 
@@ -226,3 +233,169 @@ class TestTheRoute:
         response = client.get("/api/passport/specialties")
 
         assert response.status_code == 403, response.text
+
+
+def _admin_of(db: Session, org: OrgUnit, username: str = "admin") -> User:
+    """Somebody with ``manage_users``, authorised to administer *org*."""
+    admin = _make_user(db, username, profession="system_administrator")
+    add_org_unit_member(db, org.id, admin.id, "staff")
+    administers(db, admin.id, org.id)
+    db.commit()
+    return admin
+
+
+def _leads_url(org: OrgUnit) -> str:
+    return f"/api/org-units/{org.id}/passport-specialties"
+
+
+class TestTheOrganisationRoutes:
+    def test_an_admin_sets_the_leads_and_reads_them_back(
+        self, db_session: Session, test_client: TestClient
+    ) -> None:
+        org = _organisation(db_session, "Oncology Department")
+        _admin_of(db_session, org)
+        client = _login(test_client, "admin")
+
+        put = client.put(_leads_url(org), json={"specialty_ids": ["oncology"]})
+        got = client.get(_leads_url(org))
+
+        assert put.status_code == 200, put.text
+        assert put.json() == {"specialty_ids": ["oncology"]}
+        assert got.json() == {"specialty_ids": ["oncology"]}
+
+    def test_what_an_admin_sets_leads_their_peoples_list(
+        self, db_session: Session, test_client: TestClient
+    ) -> None:
+        """The whole point, end to end."""
+        holder = _make_user(db_session, "holder")
+        org = _organisation(
+            db_session, "Oncology Department", members=(holder,)
+        )
+        _admin_of(db_session, org)
+        client = _login(test_client, "admin")
+
+        client.put(_leads_url(org), json={"specialty_ids": ["oncology"]})
+
+        assert _ids(db_session, holder)[0] == "oncology"
+
+    def test_a_new_list_replaces_the_old_one(
+        self, db_session: Session, test_client: TestClient
+    ) -> None:
+        org = _organisation(
+            db_session, "Surgical Trust", "oncology", "general_surgery"
+        )
+        _admin_of(db_session, org)
+        client = _login(test_client, "admin")
+
+        response = client.put(
+            _leads_url(org),
+            json={"specialty_ids": ["general_surgery", "general_medicine"]},
+        )
+
+        assert response.json() == {
+            "specialty_ids": ["general_surgery", "general_medicine"]
+        }
+
+    def test_an_empty_list_clears_them(
+        self, db_session: Session, test_client: TestClient
+    ) -> None:
+        org = _organisation(db_session, "Oncology Department", "oncology")
+        _admin_of(db_session, org)
+        client = _login(test_client, "admin")
+
+        response = client.put(_leads_url(org), json={"specialty_ids": []})
+
+        assert response.json() == {"specialty_ids": []}
+        assert client.get(_leads_url(org)).json() == {"specialty_ids": []}
+
+    def test_an_admin_elsewhere_is_told_nothing(
+        self, db_session: Session, test_client: TestClient
+    ) -> None:
+        """404, not 403, so a refusal does not confirm the place exists."""
+        theirs = _organisation(db_session, "Their Trust")
+        other = _organisation(db_session, "Other Trust")
+        _admin_of(db_session, theirs)
+        client = _login(test_client, "admin")
+
+        put = client.put(
+            _leads_url(other), json={"specialty_ids": ["oncology"]}
+        )
+        got = client.get(_leads_url(other))
+
+        assert put.status_code == 404, put.text
+        assert got.status_code == 404, got.text
+
+    def test_somebody_without_manage_users_is_refused(
+        self, db_session: Session, test_client: TestClient
+    ) -> None:
+        member = _make_user(db_session, "member")
+        org = _organisation(db_session, "Plain Trust", members=(member,))
+        client = _login(test_client, "member")
+
+        put = client.put(_leads_url(org), json={"specialty_ids": ["oncology"]})
+
+        assert put.status_code == 403, put.text
+
+    def test_a_ward_is_refused(
+        self, db_session: Session, test_client: TestClient
+    ) -> None:
+        """Leads sit where features do: an organisation, never a ward."""
+        org = _organisation(db_session, "Plain Trust")
+        ward = OrgUnit(name="Ward 9", type="ward", parent_id=org.id)
+        db_session.add(ward)
+        db_session.commit()
+        admin = _admin_of(db_session, org)
+        administers(db_session, admin.id, ward.id)
+        db_session.commit()
+        client = _login(test_client, "admin")
+
+        response = client.put(
+            _leads_url(ward), json={"specialty_ids": ["oncology"]}
+        )
+
+        assert response.status_code == 422, response.text
+        assert "does not carry features" in response.json()["detail"]
+
+    def test_the_change_needs_csrf(
+        self, db_session: Session, test_client: TestClient
+    ) -> None:
+        org = _organisation(db_session, "Oncology Department")
+        _admin_of(db_session, org)
+        client = _login(test_client, "admin")
+        del client.headers["X-CSRF-Token"]
+
+        response = client.put(
+            _leads_url(org), json={"specialty_ids": ["oncology"]}
+        )
+
+        assert response.status_code == 403, response.text
+
+    def test_an_unknown_specialty_is_refused(
+        self, db_session: Session, test_client: TestClient
+    ) -> None:
+        org = _organisation(db_session, "Oncology Department")
+        _admin_of(db_session, org)
+        client = _login(test_client, "admin")
+
+        response = client.put(
+            _leads_url(org), json={"specialty_ids": ["cardiology"]}
+        )
+
+        assert response.status_code == 422, response.text
+        assert "Unknown specialty" in response.json()["detail"]
+        # The caller's own text is not echoed back
+        assert "cardiology" not in response.json()["detail"]
+
+    def test_a_specialty_named_twice_is_refused(
+        self, db_session: Session, test_client: TestClient
+    ) -> None:
+        org = _organisation(db_session, "Oncology Department")
+        _admin_of(db_session, org)
+        client = _login(test_client, "admin")
+
+        response = client.put(
+            _leads_url(org), json={"specialty_ids": ["oncology", "oncology"]}
+        )
+
+        assert response.status_code == 422, response.text
+        assert client.get(_leads_url(org)).json() == {"specialty_ids": []}
