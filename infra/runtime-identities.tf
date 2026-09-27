@@ -137,7 +137,7 @@ resource "google_storage_bucket_iam_member" "runtime_backend_passports" {
 # The admin job's `delete-passport` action reads a test holder's passport,
 # copies it to the archive, then removes it. Object admin on both, because
 # it creates in one and deletes in the other. It acts only on holders named
-# in var.passport_deletable_user_ids; see backend/scripts/admin_cli.py.
+# in var.passport_deletable_usernames; see backend/scripts/admin_cli.py.
 resource "google_storage_bucket_iam_member" "runtime_admin_passports" {
   bucket = module.passport_storage.bucket_name
   role   = "roles/storage.objectAdmin"

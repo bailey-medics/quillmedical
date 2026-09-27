@@ -455,9 +455,9 @@ module "cloud_run_admin_job" {
     # For `delete-passport`: where passports live, where a deleted one is
     # archived, and whose may be deleted at all. The last is empty unless
     # the environment's tfvars names somebody.
-    PASSPORT_GCS_BUCKET         = module.passport_storage.bucket_name
-    PASSPORT_ARCHIVE_GCS_BUCKET = module.passport_storage.archive_bucket_name
-    PASSPORT_DELETABLE_USER_IDS = join(",", var.passport_deletable_user_ids)
+    PASSPORT_GCS_BUCKET          = module.passport_storage.bucket_name
+    PASSPORT_ARCHIVE_GCS_BUCKET  = module.passport_storage.archive_bucket_name
+    PASSPORT_DELETABLE_USERNAMES = join(",", var.passport_deletable_usernames)
   }
 
   secret_env_vars = local.admin_secret_env_vars

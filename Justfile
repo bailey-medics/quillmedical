@@ -2096,7 +2096,7 @@ passport-delete env username confirm="":
     PROJECT=$(just _gcp_env_project "{{env}}")
     REGION="europe-west2"
 
-    # Only holders listed in PASSPORT_DELETABLE_USER_IDS, set in Terraform,
+    # Only holders listed in PASSPORT_DELETABLE_USERNAMES, set in Terraform,
     # can be deleted. Without confirm this only reports, and prints the
     # passport id to pass back. See delete_passport() in
     # backend/scripts/admin_cli.py.

@@ -613,7 +613,7 @@ class TestDeletePassport:
             "PASSPORT_ARCHIVE_LOCAL_ROOT": str(roots[1]),
             **env,
         }
-        cleared = {"CONFIRM": "", "PASSPORT_DELETABLE_USER_IDS": ""}
+        cleared = {"CONFIRM": "", "PASSPORT_DELETABLE_USERNAMES": ""}
         with patch.dict(os.environ, {**cleared, **full}, clear=False):
             return delete_passport()
 
@@ -638,7 +638,7 @@ class TestDeletePassport:
         result = self._run(
             {
                 "ADMIN_USERNAME": holder.username,
-                "PASSPORT_DELETABLE_USER_IDS": str(holder.id),
+                "PASSPORT_DELETABLE_USERNAMES": holder.username,
             },
             roots,
         )
@@ -659,7 +659,7 @@ class TestDeletePassport:
         result = self._run(
             {
                 "ADMIN_USERNAME": holder.username,
-                "PASSPORT_DELETABLE_USER_IDS": f"999, {holder.id}",
+                "PASSPORT_DELETABLE_USERNAMES": f"someone.else, {holder.username}",
                 "CONFIRM": PASSPORT_ID,
             },
             roots,
@@ -678,7 +678,7 @@ class TestDeletePassport:
         result = self._run(
             {
                 "ADMIN_USERNAME": holder.username,
-                "PASSPORT_DELETABLE_USER_IDS": "999",
+                "PASSPORT_DELETABLE_USERNAMES": "someone.else",
                 "CONFIRM": PASSPORT_ID,
             },
             roots,
@@ -706,7 +706,7 @@ class TestDeletePassport:
         result = self._run(
             {
                 "ADMIN_USERNAME": holder.username,
-                "PASSPORT_DELETABLE_USER_IDS": str(holder.id),
+                "PASSPORT_DELETABLE_USERNAMES": holder.username,
                 "CONFIRM": "a1b2c3d4e5f60718293a4b5c6d7e8f90",
             },
             roots,
@@ -716,14 +716,14 @@ class TestDeletePassport:
         assert self._exists(db_session, roots)
 
     @pytest.mark.usefixtures("_patch_session")
-    def test_refuses_a_list_entry_that_is_not_an_id(
+    def test_refuses_a_list_entry_that_is_a_pattern(
         self, db_session: Session, holder: User, roots: tuple[Path, Path]
     ) -> None:
         """A pattern such as mark.bailey.* is refused, never matched."""
         result = self._run(
             {
                 "ADMIN_USERNAME": holder.username,
-                "PASSPORT_DELETABLE_USER_IDS": "mark.bailey.*",
+                "PASSPORT_DELETABLE_USERNAMES": "mark.bailey.*",
                 "CONFIRM": PASSPORT_ID,
             },
             roots,
@@ -750,7 +750,7 @@ class TestDeletePassport:
         result = self._run(
             {
                 "ADMIN_USERNAME": holder.username,
-                "PASSPORT_DELETABLE_USER_IDS": str(holder.id),
+                "PASSPORT_DELETABLE_USERNAMES": holder.username,
                 "CONFIRM": PASSPORT_ID,
             },
             roots,
