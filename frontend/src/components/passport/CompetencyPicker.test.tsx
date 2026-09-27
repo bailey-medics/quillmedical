@@ -50,7 +50,7 @@ describe("CompetencyPicker", () => {
       await screen.findByText("Insert Intravenous Cannula");
 
       expect(screen.queryByText("Commonly used here")).not.toBeInTheDocument();
-      expect(screen.queryByText("All competencies")).not.toBeInTheDocument();
+      expect(screen.queryByText(EVERYTHING_ELSE_GROUP)).not.toBeInTheDocument();
     });
   });
 
@@ -67,7 +67,7 @@ describe("CompetencyPicker", () => {
 
       await user.click(screen.getByRole("combobox"));
 
-      expect(await screen.findByText("Common in oncology")).toBeInTheDocument();
+      expect(await screen.findByText("Oncology")).toBeInTheDocument();
       const options = screen.getAllByRole("option");
       expect(options[0]).toHaveTextContent(
         "Review and prescribe systemic anti-cancer therapy",
@@ -108,7 +108,7 @@ describe("CompetencyPicker", () => {
       );
 
       await user.click(screen.getByRole("combobox"));
-      await screen.findByText("Common in general medicine");
+      await screen.findByText("General medicine");
 
       const consent = screen
         .getAllByRole("option")
@@ -133,10 +133,10 @@ describe("CompetencyPicker", () => {
       expect(screen.queryByText(EVERYTHING_ELSE_GROUP)).not.toBeInTheDocument();
     });
 
-    it("says common, never required", () => {
+    it("names the specialty, never required", () => {
       // "Required" would assert a sufficiency judgement the passport
       // deliberately refuses to make.
-      expect(specialtyGroup("Oncology")).toBe("Common in oncology");
+      expect(specialtyGroup("Oncology")).toBe("Oncology");
       expect(specialtyGroup("Oncology")).not.toMatch(/required/i);
     });
   });

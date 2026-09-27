@@ -239,7 +239,8 @@ they choose, so an oncology department can put Oncology at the top.
       specialty's name; everything else follows alphabetically under "All competencies". A competency
       common to two chosen specialties appears once, under the first. Never
       "Required" and never a count, so an ordering cannot turn into a
-      syllabus.
+      syllabus. Renamed on 27 September at Mark's request: each group is
+      headed by the specialty's own name, and the rest by "Others".
 
 - [x] **A passport specialty action card on `Settings.tsx`**, offering the
       same choices as creation, Generic included. Shown only when the user

@@ -14,11 +14,12 @@ export const GENERIC_LABEL = "Generic";
 
 /**
  * The heading a specialty's common competencies sit under in the picker:
- * "common", never "required", because a list presented as the set that
+ * the specialty's own name. It says where the list comes from and nothing
+ * more; never "required", because a list presented as the set that
  * matters becomes a syllabus.
  */
 export function specialtyGroup(displayName: string): string {
-  return `Common in ${displayName.toLowerCase()}`;
+  return displayName;
 }
 
 /**

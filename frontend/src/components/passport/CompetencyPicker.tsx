@@ -5,12 +5,11 @@
  * specialties' common competencies first.
  *
  * **A specialty orders, it never restricts.** Each chosen specialty's
- * common competencies come first under "Common in <specialty>", in the
+ * common competencies come first under the specialty's name, in the
  * order its file lists them, and every other assessable competency
- * follows alphabetically under "All competencies". The heading says
- * "common" rather than "required": a list presented as the set that
- * matters becomes a syllabus, which is the sufficiency judgement the
- * passport refuses to make. With no specialty, Generic, there is one
+ * follows alphabetically under "Others". No heading says "required": a
+ * list presented as the set that matters becomes a syllabus, which is
+ * the sufficiency judgement the passport refuses to make. With no specialty, Generic, there is one
  * flat alphabetical list.
  *
  * **Only competencies somebody can be assessed on.** `manage_users` is a
@@ -52,7 +51,7 @@ interface CatalogueEntry {
 }
 
 /** The heading everything outside the holder's specialties sits under. */
-export const EVERYTHING_ELSE_GROUP = "All competencies";
+export const EVERYTHING_ELSE_GROUP = "Others";
 
 export interface CompetencyPickerProps {
   /** The chosen competency id, or null */

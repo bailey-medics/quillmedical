@@ -12,6 +12,24 @@ const meta: Meta<typeof MultiSelectField> = {
 export default meta;
 type Story = StoryObj<typeof MultiSelectField>;
 
+/** Options in groups, as the competency picker has them. */
+const groupedData = [
+  {
+    group: "Oncology",
+    items: [
+      { value: "prescribe_sact", label: "Prescribe SACT" },
+      { value: "assess_sact_toxicity", label: "Assess SACT toxicity" },
+    ],
+  },
+  {
+    group: "Others",
+    items: [
+      { value: "perform_cannulation", label: "Perform cannulation" },
+      { value: "perform_venepuncture", label: "Perform venepuncture" },
+    ],
+  },
+];
+
 const staffData = [
   { value: "1", label: "Dr Corbett" },
   { value: "2", label: "Nurse Adams" },
@@ -150,4 +168,29 @@ export const DarkMode: Story = {
       </BaseCard>
     </Stack>
   ),
+};
+
+/**
+ * Groups, with the dropdown open: each heading is a divider, centred and
+ * navy between two rules at the options' own size, so it cannot be
+ * mistaken for an option.
+ */
+export const Grouped: Story = {
+  args: {
+    label: "Competency",
+    placeholder: "Search competencies",
+    data: groupedData,
+    defaultDropdownOpened: true,
+    // Tall enough to show every group without scrolling. At Mantine's
+    // default 250px the list scrolls, and axe flags a scroll region with
+    // no focusable content (scrollable-region-focusable), though the
+    // arrow keys drive it through the combobox.
+    maxDropdownHeight: 400,
+  },
+};
+
+/** The same in dark mode, where the heading turns pale navy. */
+export const GroupedDarkMode: Story = {
+  ...Grouped,
+  globals: { colorScheme: "dark" },
 };
