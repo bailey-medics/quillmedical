@@ -85,6 +85,15 @@ anything.
   pairs, so an export reads correctly with no Quill. An empty list is
   Generic, meaning no specialty order, and a specialty id Quill no longer
   knows is kept rather than refused on read.
+- **An organisation's lead specialties** order the specialty question
+  itself, on the create step and the Settings card. An admin with
+  `manage_users` names them on the organisation's features page, and they
+  come first for everybody the organisation reaches; everything else
+  follows alphabetically. `specialty_order_for` in `specialties.py` works
+  out the order for one holder, combining several organisations in name
+  order, and `GET /api/passport/specialties` hands it to the frontend.
+  They live in `org_unit_passport_specialty`, because they are an
+  organisation's setting rather than anything in a holder's record.
 
 See the [passport specialties plan](../../plans/2026-09-26-passport-specialties-plan.md).
 
