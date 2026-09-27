@@ -6,7 +6,7 @@
  */
 
 import { Stack } from "@mantine/core";
-import { PageHeader } from "@/components/typography";
+import { PageHeader, TextLink } from "@/components/typography";
 import { ResultMessage } from "@/components/message-cards";
 import ActionCard from "@/components/action-card/ActionCard";
 import { ButtonPair } from "@/components/button";
@@ -23,6 +23,8 @@ interface AssessmentResultProps {
   bankTitle?: string;
   /** Assessment ID — required when showCertificate is true */
   assessmentId?: number;
+  /** Where the results question by question are; no link when omitted */
+  questionResultsHref?: string;
   /** Show certificate download section */
   showCertificate?: boolean;
   /** Show "Try again" button (only when failed and retry allowed) */
@@ -40,6 +42,7 @@ export function AssessmentResult({
   criteria,
   bankTitle,
   assessmentId,
+  questionResultsHref,
   showCertificate = false,
   showTryAgain = false,
   showBackToDashboard = false,
@@ -74,6 +77,10 @@ export function AssessmentResult({
       />
 
       <ScoreBreakdown criteria={criteria} />
+
+      {questionResultsHref && (
+        <TextLink to={questionResultsHref}>View results by question</TextLink>
+      )}
 
       {showCertificate && assessmentId && (
         <ActionCard

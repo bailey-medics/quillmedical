@@ -56,6 +56,8 @@ import { api } from "@/lib/api";
 import TeachingDashboard from "./TeachingDashboard";
 import LearningDashboard from "./LearningDashboard";
 import SyncStatus from "./SyncStatus";
+import AssessmentResultPage from "./AssessmentResultPage";
+import AssessmentQuestionResultsPage from "./AssessmentQuestionResultsPage";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -205,5 +207,164 @@ describe("LearningDashboard", () => {
       expect(screen.getByText("Error loading modules")).toBeTruthy();
     });
     expect(document.querySelector(".mantine-Skeleton-root")).toBeFalsy();
+  });
+});
+
+describe("AssessmentResultPage", () => {
+  const assessment = {
+    id: 7,
+    question_bank_id: "test-bank",
+    bank_version: 2,
+    started_at: "2026-09-27T09:00:00Z",
+    completed_at: "2026-09-27T10:00:00Z",
+    time_limit_minutes: 60,
+    total_items: 3,
+    is_passed: false,
+    score_breakdown: { criteria: [] },
+  };
+
+  function mockResult() {
+    (api.get as Mock).mockImplementation((path: string) =>
+      path.startsWith("/teaching/assessments/")
+        ? Promise.resolve(assessment)
+        : Promise.resolve({
+            title: "Test Bank",
+            config_yaml: {},
+            is_live: true,
+          }),
+    );
+  }
+
+  it("shows the teaching side navigation", async () => {
+    mockResult();
+    renderWithRouter(<AssessmentResultPage />, {
+      routePath: "/teaching/assessment/:id/result",
+      initialRoute: "/teaching/assessment/7/result",
+    });
+
+    expect((await screen.findAllByText("Passport")).length).toBeGreaterThan(0);
+  });
+
+  it("shows the side navigation while loading", () => {
+    (api.get as Mock).mockReturnValue(new Promise(() => {}));
+    renderWithRouter(<AssessmentResultPage />, {
+      routePath: "/teaching/assessment/:id/result",
+      initialRoute: "/teaching/assessment/7/result",
+    });
+
+    expect(screen.getAllByText("Passport").length).toBeGreaterThan(0);
+  });
+
+  it("links to the results by question", async () => {
+    mockResult();
+    renderWithRouter(<AssessmentResultPage />, {
+      routePath: "/teaching/assessment/:id/result",
+      initialRoute: "/teaching/assessment/7/result",
+    });
+
+    const link = await screen.findByRole("link", {
+      name: "View results by question",
+    });
+    expect(link).toHaveAttribute(
+      "href",
+      "/teaching/assessment/7/question-results",
+    );
+  });
+});
+
+describe("AssessmentQuestionResultsPage", () => {
+  const results = {
+    assessment_id: 7,
+    question_bank_id: "test-bank",
+    bank_version: 2,
+    bank_title: "Test Bank",
+    exam_ref: "EX-0007",
+    completed_at: "2026-09-27T10:00:00Z",
+    is_passed: false,
+    questions: [
+      {
+        question_number: 1,
+        question_ref: "question_001",
+        display_order: 3,
+        answered: true,
+        is_correct: true,
+        answered_at: "2026-09-27T09:10:00Z",
+      },
+      {
+        question_number: 2,
+        question_ref: "question_002",
+        display_order: 1,
+        answered: true,
+        is_correct: false,
+        answered_at: "2026-09-27T09:05:00Z",
+      },
+    ],
+  };
+
+  function renderPage() {
+    return renderWithRouter(<AssessmentQuestionResultsPage />, {
+      routePath: "/teaching/assessment/:id/question-results",
+      initialRoute: "/teaching/assessment/7/question-results",
+    });
+  }
+
+  it("asks for this attempt's results", async () => {
+    (api.get as Mock).mockResolvedValue(results);
+    renderPage();
+
+    await screen.findAllByText("Question 1");
+    expect(api.get).toHaveBeenCalledWith(
+      "/teaching/assessments/7/question-results",
+    );
+  });
+
+  it("shows the bank version, exam reference and outcome", async () => {
+    (api.get as Mock).mockResolvedValue(results);
+    renderPage();
+
+    expect(
+      await screen.findByText("Question bank version: 2"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Exam reference: EX-0007")).toBeInTheDocument();
+    expect(screen.getByText("Overall: Not passed")).toBeInTheDocument();
+    expect(screen.getByText("Test Bank")).toBeInTheDocument();
+  });
+
+  it("lists each question by its number", async () => {
+    (api.get as Mock).mockResolvedValue(results);
+    renderPage();
+
+    expect((await screen.findAllByText("Question 1")).length).toBeGreaterThan(
+      0,
+    );
+    expect(screen.getAllByText("Question 2").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Pass").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Fail").length).toBeGreaterThan(0);
+  });
+
+  it("shows no exam reference line when there is none", async () => {
+    (api.get as Mock).mockResolvedValue({ ...results, exam_ref: null });
+    renderPage();
+
+    await screen.findByText("Question bank version: 2");
+    expect(screen.queryByText(/Exam reference/)).not.toBeInTheDocument();
+  });
+
+  it("shows an error when the attempt cannot be loaded", async () => {
+    (api.get as Mock).mockRejectedValue(
+      new Error("Assessment is not complete"),
+    );
+    renderPage();
+
+    expect(
+      await screen.findByText("Assessment is not complete"),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the teaching side navigation", async () => {
+    (api.get as Mock).mockResolvedValue(results);
+    renderPage();
+
+    expect((await screen.findAllByText("Passport")).length).toBeGreaterThan(0);
   });
 });
