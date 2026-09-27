@@ -88,7 +88,7 @@ The validator and the reusable pipeline those repos run live in Quill, under `ba
 
 To add a new teaching organisation, create a repo named `<org>-teaching` in `bailey-medics` — `just initial-install` will pick it up automatically. Add it to `teaching_repos` in `infra/github/teaching_rulesets.tf` as well, so its `main` branch is protected.
 
-**Module ids must be unique across every content repo.** All repos deploy into one bucket under `modules/<moduleId>/`, and the sync puts every module in the same organisation, so two repos with the same `moduleId` overwrite each other. `eoeeta-teaching-testing` holds `colonoscopy-optical-diagnosis-test`; remove that module from `eoeeta-teaching` when its real content goes in.
+**Module ids must be unique across every content repo.** All repos deploy into one bucket under `modules/<moduleId>/`, and the sync puts every module in the same organisation, so two repos with the same `moduleId` overwrite each other. `eoeeta-teaching` holds `colonoscopy-optical-diagnosis` and `eoeeta-teaching-testing` holds `colonoscopy-optical-diagnosis-test`, so the two deploy side by side. A module renamed in a content repo starts as a new bank, not live until it is switched on in the teaching admin; the old one stays in the bucket and the database.
 
 ## Useful commands
 

@@ -1652,6 +1652,7 @@ def _maybe_enqueue_certificate_emails(
     from app.email_send import Attachment as EmailAttachment
     from app.email_send import send_email
     from app.features.teaching.certificate import (
+        certificate_pass_summary,
         download_certificate_background_from_gcs,
         generate_certificate_pdf,
     )
@@ -1740,16 +1741,11 @@ def _maybe_enqueue_certificate_emails(
         bg = tmp_bg
 
     if bg:
-        pass_text = (
-            "Pass\n" + "\n".join(score_summary.split(", "))
-            if score_summary
-            else "Pass"
-        )
         pdf_bytes = generate_certificate_pdf(
             background_path=bg,
             exam_title=config_row.title,
             candidate_name=user.full_name or user.username,
-            pass_summary=pass_text,
+            pass_summary=certificate_pass_summary(criteria_results),
             completion_date=completion_date,
             exam_ref=exam_ref,
         )
@@ -1969,6 +1965,7 @@ def download_certificate(
     """Generate and return a PDF certificate for a passed assessment."""
     from app.config import settings
     from app.features.teaching.certificate import (
+        certificate_pass_summary,
         download_certificate_background_from_gcs,
         generate_certificate_pdf,
         parse_certificate_style,
@@ -2030,15 +2027,8 @@ def download_certificate(
             404, "No certificate background found for this bank"
         )
 
-        # Build pass summary from score breakdown
+    # The scores the certificate lists, as saved at completion
     criteria = (assessment.score_breakdown or {}).get("criteria", [])
-    summary_parts: list[str] = []
-    for c in criteria:
-        pct = round(c.get("value", 0) * 100)
-        summary_parts.append(f"{c.get('name', '')}: {pct}%")
-    pass_summary = (
-        "Pass\n" + "\n".join(summary_parts) if summary_parts else "Pass"
-    )
 
     # Format date
     completion_date = assessment.completed_at.strftime("%-d %B %Y")
@@ -2062,7 +2052,7 @@ def download_certificate(
         background_path=bg,
         exam_title=config_row.title,
         candidate_name=candidate_name,
-        pass_summary=pass_summary,
+        pass_summary=certificate_pass_summary(criteria),
         completion_date=completion_date,
         style=style,
         exam_ref=exam_ref,

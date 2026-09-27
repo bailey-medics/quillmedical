@@ -1,7 +1,7 @@
 """Tests for teaching certificate generation.
 
 Covers: PDF generation, find_certificate_background, style parsing,
-and the download_certificate endpoint.
+the pass summary wording, and the download_certificate endpoint.
 """
 
 from __future__ import annotations
@@ -19,6 +19,7 @@ from app.features.teaching.certificate import (
     CertificateStyle,
     TextFieldStyle,
     _wrap_text,
+    certificate_pass_summary,
     find_certificate_background,
     generate_certificate_pdf,
     parse_certificate_style,
@@ -457,3 +458,31 @@ class TestResolvedFont:
         """Direct construction is strict; only parsing is forgiving."""
         with pytest.raises(ValidationError):
             TextFieldStyle(font="NotAFont")  # type: ignore[arg-type]
+
+
+# ------------------------------------------------------------------
+# certificate_pass_summary
+# ------------------------------------------------------------------
+
+
+class TestCertificatePassSummary:
+    """The lines under the candidate's name."""
+
+    def test_says_passed_then_each_score(self) -> None:
+        """Reads on from "This certifies that <name>"."""
+        summary = certificate_pass_summary(
+            [
+                {"name": "High confidence rate", "value": 1.0},
+                {"name": "High confidence accuracy", "value": 0.9167},
+            ]
+        )
+
+        assert summary.split("\n") == [
+            "Passed",
+            "High confidence rate: 100%",
+            "High confidence accuracy: 92%",
+        ]
+
+    def test_says_passed_alone_with_no_criteria(self) -> None:
+        """Once, not "Pass" twice as the emailed copy used to."""
+        assert certificate_pass_summary([]) == "Passed"
