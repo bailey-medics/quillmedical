@@ -60,6 +60,7 @@ import type {
   SignOffRequestInput,
   WholeLogbook,
   SignOffResult,
+  SpecialtyChoice,
   Verification,
 } from "./types";
 
@@ -78,6 +79,7 @@ export const PASSPORT_PATHS = [
   "/passport/assessor-invites/preview",
   "/passport/assessors/{assessor_user_id}/membership",
   "/passport/requests/inbox",
+  "/passport/specialties",
   "/passport/{passport_id}",
   "/passport/{passport_id}/assessor-invites",
   "/passport/{passport_id}/certificates",
@@ -143,6 +145,15 @@ export function setPassportSpecialties(
   return api.put<Passport>(`/passport/${segment(passportId)}/specialties`, {
     specialties,
   });
+}
+
+/**
+ * Every specialty the caller may choose, in the order to offer them: their
+ * organisations' lead specialties first, then the rest alphabetically.
+ * The backend decides the order, so every page offering the choice agrees.
+ */
+export function fetchPassportSpecialties(): Promise<SpecialtyChoice[]> {
+  return api.get<SpecialtyChoice[]>("/passport/specialties");
 }
 
 /** The caller's own passport, with derived state per competency. */

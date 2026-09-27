@@ -378,20 +378,22 @@ they choose, so an oncology department can put Oncology at the top.
 
 ## Phase 10: Lead specialties per organisation, the backend
 
-- [ ] **A table, `org_unit_passport_specialty`**, in
+- [x] **A table, `org_unit_passport_specialty`**, in
       `features/passport/models.py`: `org_unit_id` (a foreign key to
       `org_unit.id`, deleted with it), `specialty_id`, `position` (from 1),
       `set_by` (a foreign key to `users.id`, set null) and `set_at`. Unique on
       `(org_unit_id, specialty_id)` and on `(org_unit_id, position)`. One row
       per lead specialty, not a list in a column: see Decisions. Migration via
       `just migrate "add organisation passport lead specialties"`; read the
-      generated `upgrade()` and `downgrade()` before committing.
+      generated `upgrade()` and `downgrade()` before committing. Built as
+      `OrgUnitPassportSpecialty`, with a check that `position` is at least 1;
+      migration `79a6ba344abb`.
 
 - [ ] **Only an org_unit that carries features holds them**, checked with
       `type_can_hold_features`, the rule the passport feature switch already
       uses. An organisation, never a ward.
 
-- [ ] **The order for one holder, worked out in one place**:
+- [x] **The order for one holder, worked out in one place**:
       `specialty_order_for(db, user)` in `features/passport/specialties.py`.
       First the lead specialties of every organisation the holder reaches
       (`get_reachable_org_unit_ids`), organisations taken in name order and
@@ -399,12 +401,19 @@ they choose, so an oncology department can put Oncology at the top.
       other specialty, alphabetically by display name. A lead naming a
       specialty whose file has since been removed is skipped, the same way a
       profile keeps an unknown id without it ordering anything. With no leads
-      anywhere the result is plain alphabetical.
+      anywhere the result is plain alphabetical. Organisation names are
+      compared without case, and sorted in Python rather than SQL, so SQLite in
+      the tests and Postgres in production agree.
 
-- [ ] **`GET /api/passport/specialties`**, returning
+- [x] **`GET /api/passport/specialties`**, returning
       `[{id, display_name, lead}]` in that order, behind the passport feature
       like the other passport routes. The create step and the settings card
-      both read it, so the frontend never decides the order itself.
+      both read it, so the frontend never decides the order itself. Declared
+      before `/{passport_id}`, which would otherwise take "specialties" for a
+      passport id and answer 404. Needs no passport, since the create step asks
+      before there is one. `fetchPassportSpecialties` in the frontend client
+      comes with it, so the contract tests comparing the two route lists stay
+      in step.
 
 - [ ] **`GET` and `PUT /api/org-units/{unit_id}/passport-specialties`**, the
       organisation's lead specialty ids in order. `PUT` replaces the whole list
