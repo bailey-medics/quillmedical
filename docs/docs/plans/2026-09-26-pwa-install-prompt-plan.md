@@ -99,7 +99,7 @@ someone can install it whenever they choose.
 
 ## Phase 2: Decide when to ask
 
-- [ ] **Store the schedule on the device**, in
+- [x] **Store the schedule on the device**, in
       `frontend/src/lib/pwa/installPromptSchedule.ts`, under one
       `localStorage` key, `quill.installPrompt`. It holds a small versioned
       object: `firstSeenAt`, `asksShown` (0, 1 or 2), `lastAskedAt` and
@@ -109,9 +109,12 @@ someone can install it whenever they choose.
       read, and anything malformed is treated as a new device. This is
       per-device, not per-user, on purpose: installing is something a device
       does. A user who installed on their phone should still be asked on
-      their laptop.
+      their laptop. Times are stored as epoch milliseconds. The module also
+      exports `markInstallFinished()`, which `main.tsx` passes to the
+      Phase 1 `appinstalled` listener, and `isInstallFinished()`, which the
+      Settings card in Phase 4 reads.
 
-- [ ] **Encode the rule as a pure function** `isAskDue(state, now)` beside
+- [x] **Encode the rule as a pure function** `isAskDue(state, now)` beside
       it, so the timing is tested with plain dates rather than fake timers:
 
       - **First ask** — due once `now` is at least 24 hours after
@@ -131,13 +134,13 @@ someone can install it whenever they choose.
       completed install, or finding that the app is installed, sets
       `finished`.
 
-- [ ] **Fail closed when storage is unavailable.** A private window or blocked
+- [x] **Fail closed when storage is unavailable.** A private window or blocked
       site data means `localStorage` throws. Without somewhere to record that
       an ask was shown, "ask twice, then never" becomes "ask on every page
       load". So if the schedule cannot be read, or the first-seen timestamp
       cannot be written, the modal is never shown.
 
-- [ ] **Unit test the schedule** in `installPromptSchedule.test.ts`: the
+- [x] **Unit test the schedule** in `installPromptSchedule.test.ts`: the
       boundaries at exactly 24 hours and exactly seven days, the late
       returner above, a malformed stored value, storage that throws on read
       and on write, and `finished` winning over everything. Run with
