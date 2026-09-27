@@ -66,27 +66,34 @@ table component, one page and a link to it from the result page.
 
 ## Phase 2: Frontend table component
 
-- [ ] **Add the types** `AssessmentQuestionResult` and
+- [x] **Add the types** `AssessmentQuestionResult` and
       `AssessmentQuestionResults` to `frontend/src/features/teaching/types.ts`,
       mirroring the schemas.
 
-- [ ] **Build `QuestionResultsTable`** in
+- [x] **Build `QuestionResultsTable`** in
       `frontend/src/components/teaching/question-results-table/`, composed
       from `DataTable` / `Column` (`@components/tables/DataTable`) the way
-      `AssessmentHistoryTable` is, with `AssessmentResultBadge` for the
-      outcome. Columns: question number (falling back to `question_ref`),
-      result (correct, incorrect, not answered), and the position it was
-      shown at, labelled as such so nobody mistakes it for the question
-      number. On mobile (`theme.breakpoints.sm`) drop the shown-at column.
-      This is a new component, so per the Storybook-first rule it needs
-      Mark's review; built under `/st-follow-the-plan-document`, that review
-      happens on its own pull request rather than before building.
+      `AssessmentHistoryTable` is. Columns: question number (falling back to
+      `question_ref`), result, and the position it was shown at, headed
+      "Position shown in exam" so nobody mistakes it for the question
+      number. The result is `AssessmentResultBadge` reading "Pass" or
+      "Fail", the words the request used, and plain "Not answered" for an
+      unanswered question rather than stretching the badge's "Incomplete"
+      to mean something else. Found while building: `DataTable` already
+      turns rows into cards on mobile and shows every column there on
+      purpose, so the shown-at column is kept at every width rather than
+      dropped below `sm`. This is a new component, so per the
+      Storybook-first rule it needs Mark's review; built under
+      `/st-follow-the-plan-document`, that review happens on its own pull
+      request rather than before building.
 
-- [ ] **Stories and tests**: `QuestionResultsTable.stories.tsx` (all correct,
-      mixed, some unanswered, a bank with no numbers, loading) and
-      `QuestionResultsTable.test.tsx` covering each outcome, the fallback
-      label and the empty list. Run with
-      `just uf src/components/teaching/question-results-table/QuestionResultsTable.test.tsx`.
+- [x] **Stories and tests**: `QuestionResultsTable.stories.tsx` (mixed, all
+      passed, some unanswered, a bank with no numbers, loading, empty, dark)
+      and `QuestionResultsTable.test.tsx` covering each outcome, that rows
+      keep the bank order whatever the shown-at order, the fallback label,
+      the empty list, loading and error. Run with
+      `just uf src/components/teaching/question-results-table/QuestionResultsTable.test.tsx`:
+      9 passed.
 
 ## Phase 3: Page, route and link
 

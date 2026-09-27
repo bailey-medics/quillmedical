@@ -1,0 +1,1 @@
+export { QuestionResultsTable } from "./QuestionResultsTable";
