@@ -138,6 +138,44 @@ table component, one page and a link to it from the result page.
       list in `testing-log.md`. An assessment journey would be worth
       writing before the next screen reader round.
 
+## Phase 4: The answer given, and a card for the link
+
+- [x] **Move "View results by question" into an action card** at the bottom of
+      the result page, after the certificate card and above "Back to dashboard"
+      and "Try again", instead of a text link under the score breakdown. Asked
+      for on 27 September. `AssessmentResult` renders it as an `ActionCard`
+      titled "Results by question", with the same full-width style as the
+      certificate card.
+
+- [x] **Return the answer given**: `selected_answer` on
+      `AssessmentQuestionResultOut`, the label of the option the candidate
+      chose as they saw it, from the bank's config for a uniform bank or the
+      item for a variable one, by `chosen_option_label` in `router.py`. It
+      falls back to the option's id if the bank no longer lists it, so an
+      answered question is never blank, and is null when nothing was chosen. An
+      added optional field, so additive. The correct option is still never
+      returned.
+
+- [x] **Show it in the table and drop the shown-at position**:
+      `QuestionResultsTable` now has three columns, Question, Answer given and
+      Result. "Position shown in exam" is gone; `display_order` stays in the
+      API for anybody reconciling a dispute.
+
+- [x] **Show the pass criteria in the top card**, such as "High confidence
+      rate: 78.0%" and "High confidence accuracy: 66.7%", to one decimal place
+      as the result page's score breakdown shows them. `criteria` on
+      `AssessmentQuestionResultsOut`, read from the stored score breakdown by
+      `scored_criteria` in `router.py`, which leaves out an entry of the wrong
+      shape rather than failing the page. An added field with a default, so
+      additive; the page treats it as absent from an older backend.
+
+- [x] **Tests**: the endpoint gives the chosen label and no correct-option
+      field; `chosen_option_label` falls back to the id; the endpoint gives the
+      criteria as scored, and none for an attempt never scored;
+      `scored_criteria` skips a malformed entry; the table's columns and middle
+      column; the page shows each criterion's percentage; the result page's
+      card sits after the certificate.
+
 ## Decisions
 
 - **Correctness only, never the right answer.** The view says whether each
@@ -163,3 +201,11 @@ table component, one page and a link to it from the result page.
   `GET /teaching/results`, and is left for a later phase once there is a
   routed educator results page to hang it from; `AllResults.tsx` exists but
   is not routed.
+
+- **Superseded on 27 September 2026: the candidate's own answer is shown, and
+  the shown-at position is not.** Mark decided the page should show what each
+  question was answered with, which reverses "Correctness only" above in part:
+  the correct option is still never sent, but wherever the candidate was right
+  their answer is the correct one, so a candidate who retries learns those. The
+  "Position shown in exam" column was dropped at the same time, reversing "The
+  shown-at position is kept". See Phase 4.

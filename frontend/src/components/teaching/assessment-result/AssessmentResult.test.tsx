@@ -68,12 +68,34 @@ describe("AssessmentResult", () => {
     ).toHaveAttribute("href", "/teaching/assessment/7/question-results");
   });
 
+  it("puts the results by question in their own card, after the certificate", () => {
+    renderWithRouter(
+      <AssessmentResult
+        isPassed={true}
+        criteria={passCriteria}
+        assessmentId={7}
+        showCertificate
+        questionResultsHref="/teaching/assessment/7/question-results"
+      />,
+    );
+
+    const card = screen.getByRole("heading", { name: "Results by question" });
+    const certificate = screen.getByRole("heading", { name: "Certificate" });
+    expect(
+      certificate.compareDocumentPosition(card) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it("shows no results by question link without an href", () => {
     renderWithMantine(
       <AssessmentResult isPassed={true} criteria={passCriteria} />,
     );
     expect(
       screen.queryByRole("link", { name: "View results by question" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Results by question" }),
     ).not.toBeInTheDocument();
   });
 

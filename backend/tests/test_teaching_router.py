@@ -22,8 +22,10 @@ from app.features.teaching.models import (
     QuestionBankOrgStatus,
 )
 from app.features.teaching.router import (
+    chosen_option_label,
     question_number_of,
     resolve_visible_module,
+    scored_criteria,
 )
 from app.models import (
     OrgUnit,
@@ -880,7 +882,8 @@ class TestAssessmentQuestionResults:
         assert [q["is_correct"] for q in questions] == [True, False, True]
         assert all(q["answered"] for q in questions)
 
-    def test_never_includes_the_answer_key(self, test_client, db_session):
+    def test_gives_the_criteria_as_scored(self, test_client, db_session):
+        """Every answer was high confidence, and two of three right."""
         assessment_id, headers = self._start(test_client, db_session)
         self._answer(test_client, assessment_id, headers, 3)
         test_client.post(
@@ -892,15 +895,51 @@ class TestAssessmentQuestionResults:
             f"/api/teaching/assessments/{assessment_id}/question-results",
         )
         assert resp.status_code == 200
-        for question in resp.json()["questions"]:
+        assert resp.json()["criteria"] == [
+            {
+                "name": "High confidence rate",
+                "value": 1.0,
+                "threshold": 0.6,
+                "passed": True,
+            },
+            {
+                "name": "High confidence accuracy",
+                "value": 0.6667,
+                "threshold": 0.8,
+                "passed": False,
+            },
+        ]
+
+    def test_gives_the_answer_chosen_never_the_key(
+        self, test_client, db_session
+    ):
+        """The chosen option by the label the candidate saw, and no field
+        naming the correct option."""
+        assessment_id, headers = self._start(test_client, db_session)
+        self._answer(test_client, assessment_id, headers, 3)
+        test_client.post(
+            f"/api/teaching/assessments/{assessment_id}/complete",
+            headers=headers,
+        )
+
+        resp = test_client.get(
+            f"/api/teaching/assessments/{assessment_id}/question-results",
+        )
+        assert resp.status_code == 200
+        questions = resp.json()["questions"]
+        for question in questions:
             assert set(question) == {
                 "question_number",
                 "question_ref",
                 "display_order",
                 "answered",
+                "selected_answer",
                 "is_correct",
                 "answered_at",
             }
+        # Every answer was "high_a", whose label is "High A"; wrong on
+        # question 2 as well as right on 1 and 3
+        assert [q["selected_answer"] for q in questions] == ["High A"] * 3
 
     def test_unanswered_question_is_reported_as_such(
         self, test_client, db_session
@@ -918,9 +957,12 @@ class TestAssessmentQuestionResults:
             f"/api/teaching/assessments/{assessment_id}/question-results",
         )
         assert resp.status_code == 200
+        # Completed by hand, so never scored
+        assert resp.json()["criteria"] == []
         first = resp.json()["questions"][0]
         assert first["question_number"] == 1
         assert first["answered"] is False
+        assert first["selected_answer"] is None
         assert first["is_correct"] is None
         assert first["answered_at"] is None
 
@@ -4367,3 +4409,56 @@ class TestLocalMediaUpload:
         )
 
         assert resp.status_code == 404
+
+
+class TestChosenOptionLabel:
+    """The answer given, as the candidate saw it."""
+
+    OPTIONS = [
+        {"id": "a", "label": "Adenoma"},
+        {"id": "b", "label": "Serrated"},
+        {"id": "c"},
+    ]
+
+    def test_is_the_label_of_the_option_chosen(self) -> None:
+        assert chosen_option_label(self.OPTIONS, "b") == "Serrated"
+
+    def test_is_none_when_nothing_was_chosen(self) -> None:
+        assert chosen_option_label(self.OPTIONS, None) is None
+
+    def test_falls_back_to_the_id_for_an_option_with_no_label(self) -> None:
+        assert chosen_option_label(self.OPTIONS, "c") == "c"
+
+    def test_falls_back_to_the_id_for_an_option_the_bank_no_longer_has(
+        self,
+    ) -> None:
+        """Never blank: the candidate did answer."""
+        assert chosen_option_label(self.OPTIONS, "z") == "z"
+
+
+class TestScoredCriteria:
+    """The pass criteria read back from a stored score breakdown."""
+
+    RATE = {
+        "name": "High confidence rate",
+        "value": 0.78,
+        "threshold": 0.7,
+        "passed": True,
+    }
+
+    def test_reads_each_criterion(self) -> None:
+        results = scored_criteria({"criteria": [self.RATE]})
+
+        assert [r.model_dump() for r in results] == [self.RATE]
+
+    def test_is_empty_for_an_attempt_never_scored(self) -> None:
+        assert scored_criteria(None) == []
+        assert scored_criteria({}) == []
+
+    def test_leaves_out_a_malformed_entry(self) -> None:
+        """A stored document, so one bad entry does not fail the page."""
+        results = scored_criteria(
+            {"criteria": [{"name": "Broken"}, self.RATE]}
+        )
+
+        assert [r.name for r in results] == ["High confidence rate"]

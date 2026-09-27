@@ -2,11 +2,12 @@
  * AssessmentResult Component
  *
  * Displays the overall pass/fail result with config-driven score breakdown,
- * optional certificate download, and navigation buttons.
+ * optional certificate download, an optional card linking to the results
+ * question by question, and navigation buttons.
  */
 
 import { Stack } from "@mantine/core";
-import { PageHeader, TextLink } from "@/components/typography";
+import { PageHeader } from "@/components/typography";
 import { ResultMessage } from "@/components/message-cards";
 import ActionCard from "@/components/action-card/ActionCard";
 import { ButtonPair } from "@/components/button";
@@ -78,16 +79,23 @@ export function AssessmentResult({
 
       <ScoreBreakdown criteria={criteria} />
 
-      {questionResultsHref && (
-        <TextLink to={questionResultsHref}>View results by question</TextLink>
-      )}
-
       {showCertificate && assessmentId && (
         <ActionCard
           title="Certificate"
           subtitle="You have passed this assessment. Download your certificate below as a PDF to keep for your records."
           buttonLabel="Download certificate"
           onClick={handleDownload}
+          fullWidth
+          buttonVariant="filled"
+        />
+      )}
+
+      {questionResultsHref && (
+        <ActionCard
+          title="Results by question"
+          subtitle="See how you did on each question in this attempt."
+          buttonLabel="View results by question"
+          buttonUrl={questionResultsHref}
           fullWidth
           buttonVariant="filled"
         />

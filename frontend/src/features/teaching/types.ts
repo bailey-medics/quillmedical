@@ -111,6 +111,8 @@ export interface AssessmentQuestionResult {
   /** The 1-based position it was shown at during the attempt */
   display_order: number;
   answered: boolean;
+  /** The label of the option chosen, as the candidate saw it; null if none */
+  selected_answer: string | null;
   is_correct: boolean | null;
   answered_at: string | null;
 }
@@ -124,6 +126,9 @@ export interface AssessmentQuestionResults {
   exam_ref: string | null;
   completed_at: string;
   is_passed: boolean | null;
+  /** Each pass criterion as scored at completion, such as the high
+   *  confidence rate. Empty for an attempt never scored. */
+  criteria: CriterionResult[];
   questions: AssessmentQuestionResult[];
 }
 

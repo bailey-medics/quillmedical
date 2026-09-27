@@ -12,6 +12,12 @@ function question(
     question_ref: `question_${String(n).padStart(3, "0")}`,
     display_order: shownAt,
     answered: outcome !== "unanswered",
+    selected_answer:
+      outcome === "unanswered"
+        ? null
+        : outcome === "pass"
+          ? "High confidence adenoma"
+          : "Low confidence serrated",
     is_correct: outcome === "unanswered" ? null : outcome === "pass",
     answered_at: outcome === "unanswered" ? null : "2026-09-27T10:00:00Z",
   };

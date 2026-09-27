@@ -2,9 +2,10 @@
  * QuestionResultsTable Component
  *
  * One row per question of a finished assessment, in the order of the
- * question bank rather than the shuffled order it was shown in, with
- * whether each was passed. For audit, so the correct option is never
- * shown: only the outcome.
+ * question bank rather than the shuffled order it was shown in, with the
+ * answer given and whether it was right. The correct option is never
+ * shown, only the candidate's own answer; where that was right it is the
+ * correct one too, which the product owner accepted on 27 September 2026.
  */
 
 import AssessmentResultBadge from "@components/badge/AssessmentResultBadge";
@@ -27,6 +28,10 @@ const columns: Column<AssessmentQuestionResult>[] = [
     render: questionLabel,
   },
   {
+    header: "Answer given",
+    render: (q) => q.selected_answer ?? "Not answered",
+  },
+  {
     header: "Result",
     render: (q) =>
       !q.answered || q.is_correct === null ? (
@@ -34,10 +39,6 @@ const columns: Column<AssessmentQuestionResult>[] = [
       ) : (
         <AssessmentResultBadge result={q.is_correct ? "pass" : "fail"} />
       ),
-  },
-  {
-    header: "Position shown in exam",
-    render: (q) => q.display_order,
   },
 ];
 

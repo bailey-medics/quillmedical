@@ -184,12 +184,14 @@ class AssessmentWithFirstItem(BaseModel):
 
 
 class AssessmentQuestionResultOut(BaseModel):
-    """Whether one question of a finished attempt was answered correctly.
+    """One question of a finished attempt: the answer given, and whether
+    it was right.
 
     Identified by its number in the bank, not the shuffled position it
-    was shown at. Neither the correct option nor the one chosen is
-    included: the answer key must stay unseen for a retry to mean
-    anything, and an audit of the mark needs only right or wrong.
+    was shown at. The option the candidate chose is included, by the
+    label they saw; the correct option never is. Where the chosen answer
+    was right it is the correct one too, which the product owner accepted
+    on 27 September 2026 so a candidate can see what they answered.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -202,6 +204,9 @@ class AssessmentQuestionResultOut(BaseModel):
     #: The 1-based position it was shown at during the attempt.
     display_order: int
     answered: bool
+    #: The label of the option chosen, as the candidate saw it. Null when
+    #: nothing was chosen.
+    selected_answer: str | None = None
     is_correct: bool | None
     answered_at: datetime | None
 
@@ -218,6 +223,9 @@ class AssessmentQuestionResultsOut(BaseModel):
     exam_ref: str | None
     completed_at: datetime
     is_passed: bool | None
+    #: Each pass criterion as scored when the attempt was completed, such
+    #: as the high confidence rate. Empty for an attempt with no score.
+    criteria: list[CriterionResult] = []
     questions: list[AssessmentQuestionResultOut]
 
 

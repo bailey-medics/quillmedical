@@ -281,12 +281,27 @@ describe("AssessmentQuestionResultsPage", () => {
     exam_ref: "EX-0007",
     completed_at: "2026-09-27T10:00:00Z",
     is_passed: false,
+    criteria: [
+      {
+        name: "High confidence rate",
+        value: 0.78,
+        threshold: 0.7,
+        passed: true,
+      },
+      {
+        name: "High confidence accuracy",
+        value: 0.6667,
+        threshold: 0.8,
+        passed: false,
+      },
+    ],
     questions: [
       {
         question_number: 1,
         question_ref: "question_001",
         display_order: 3,
         answered: true,
+        selected_answer: "High confidence adenoma",
         is_correct: true,
         answered_at: "2026-09-27T09:10:00Z",
       },
@@ -295,6 +310,7 @@ describe("AssessmentQuestionResultsPage", () => {
         question_ref: "question_002",
         display_order: 1,
         answered: true,
+        selected_answer: "Low confidence serrated",
         is_correct: false,
         answered_at: "2026-09-27T09:05:00Z",
       },
@@ -340,6 +356,26 @@ describe("AssessmentQuestionResultsPage", () => {
     expect(screen.getAllByText("Question 2").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Pass").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Fail").length).toBeGreaterThan(0);
+  });
+
+  it("shows the percentage scored on each pass criterion", async () => {
+    (api.get as Mock).mockResolvedValue(results);
+    renderPage();
+
+    expect(
+      await screen.findByText("High confidence rate: 78.0%"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("High confidence accuracy: 66.7%"),
+    ).toBeInTheDocument();
+  });
+
+  it("shows no criteria for an attempt never scored", async () => {
+    (api.get as Mock).mockResolvedValue({ ...results, criteria: [] });
+    renderPage();
+
+    await screen.findByText("Question bank version: 2");
+    expect(screen.queryByText(/High confidence rate/)).not.toBeInTheDocument();
   });
 
   it("shows no exam reference line when there is none", async () => {

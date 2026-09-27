@@ -15,6 +15,7 @@ from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.responses import Response
+from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -1224,6 +1225,44 @@ def question_number_of(source_dir: str) -> int | None:
     return int(match.group(1)) if match else None
 
 
+def chosen_option_label(
+    options: list[dict[str, Any]], selected_option: str | None
+) -> str | None:
+    """The label of the option a candidate chose, as they were shown it.
+
+    Falls back to the option's id when the bank no longer lists it or
+    gives it no label, so an answer is never shown blank. ``None`` only
+    when nothing was chosen.
+    """
+    if selected_option is None:
+        return None
+    for option in options:
+        if option.get("id") == selected_option:
+            label = option.get("label")
+            return str(label) if label else selected_option
+    return selected_option
+
+
+def scored_criteria(
+    score_breakdown: dict[str, Any] | None,
+) -> list[CriterionResult]:
+    """The pass criteria as scored at completion, from the stored breakdown.
+
+    The breakdown is a stored document, so an entry that does not have
+    the shape ``evaluate_pass_criteria`` writes is left out rather than
+    failing the whole page.
+    """
+    if not score_breakdown:
+        return []
+    results: list[CriterionResult] = []
+    for criterion in score_breakdown.get("criteria", []):
+        try:
+            results.append(CriterionResult.model_validate(criterion))
+        except ValidationError:
+            logger.warning("Skipped a malformed stored pass criterion")
+    return results
+
+
 @teaching_router.get(
     "/assessments/{assessment_id}/question-results",
     response_model=AssessmentQuestionResultsOut,
@@ -1233,7 +1272,7 @@ def get_assessment_question_results(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
 ) -> AssessmentQuestionResultsOut:
-    """A finished attempt's right and wrong answers, by question number.
+    """A finished attempt's answers, right and wrong, by question number.
 
     For audit: each question is named by its number in the bank rather
     than the shuffled position it was shown at, alongside the bank
@@ -1260,15 +1299,31 @@ def get_assessment_question_results(
         .first()
     )
 
+    # A uniform bank lists its options once, in its config; a variable
+    # bank lists them on each item, as the candidate view reads them.
+    uniform_options: list[dict[str, Any]] | None = (
+        config_row.config_yaml.get("options", [])
+        if config_row is not None and config_row.type == "uniform"
+        else None
+    )
+
     questions: list[AssessmentQuestionResultOut] = []
     for answer in assessment.answers:
         source_dir = str(answer.item.metadata_json.get("_source_dir", ""))
+        options = (
+            uniform_options
+            if uniform_options is not None
+            else (answer.item.options or [])
+        )
         questions.append(
             AssessmentQuestionResultOut(
                 question_number=question_number_of(source_dir),
                 question_ref=source_dir,
                 display_order=answer.display_order,
                 answered=answer.selected_option is not None,
+                selected_answer=chosen_option_label(
+                    options, answer.selected_option
+                ),
                 is_correct=answer.is_correct,
                 answered_at=answer.answered_at,
             )
@@ -1291,6 +1346,7 @@ def get_assessment_question_results(
         exam_ref=assessment.exam_ref,
         completed_at=assessment.completed_at,
         is_passed=assessment.is_passed,
+        criteria=scored_criteria(assessment.score_breakdown),
         questions=questions,
     )
 
