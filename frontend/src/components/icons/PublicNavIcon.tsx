@@ -18,6 +18,7 @@ import {
   IconMail,
   IconPresentation,
 } from "@/components/icons/appIcons";
+import { PUBLIC_ICON_STROKE } from "@/components/icons/publicIconStroke";
 
 /** Icon names available in public navigation */
 export type PublicNavIconName =
@@ -75,7 +76,7 @@ export default function PublicNavIcon({
       <Icon
         size={iconPixelSize}
         color="var(--mantine-color-secondary-4)"
-        stroke={2.5}
+        stroke={PUBLIC_ICON_STROKE}
       />
     </ThemeIcon>
   );

@@ -14,9 +14,15 @@ interface BurgerButtonProps {
   navOpen: boolean;
   /** Callback when the button is clicked */
   onClick: () => void;
+  /** Stroke width of the menu icon (default: 2.5) */
+  stroke?: number;
 }
 
-export default function BurgerButton({ navOpen, onClick }: BurgerButtonProps) {
+export default function BurgerButton({
+  navOpen,
+  onClick,
+  stroke = 2.5,
+}: BurgerButtonProps) {
   return (
     <ActionIcon
       variant="subtle"
@@ -31,7 +37,7 @@ export default function BurgerButton({ navOpen, onClick }: BurgerButtonProps) {
         "--ai-hover-color": secondaryScale[5],
       }}
     >
-      <IconMenu2 size={32} stroke={2.5} />
+      <IconMenu2 size={32} stroke={stroke} />
     </ActionIcon>
   );
 }

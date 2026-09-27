@@ -30,7 +30,6 @@ export interface PublicNavLink {
  * "EPR" is short enough to fit where "About" was not.
  */
 const publicNavLinks: PublicNavLink[] = [
-  { label: "Learning", href: "/learning", icon: "learning" },
   { label: "Assessments", href: "/assessments", icon: "assessments" },
   { label: "For educators", href: "/for-educators", icon: "educators" },
   { label: "EPR", href: "/clinical-records", icon: "database" },

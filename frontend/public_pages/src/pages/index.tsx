@@ -9,7 +9,7 @@ import {
   IconArrowsShuffle,
   IconCertificate,
   IconChartBar,
-  IconPresentation,
+  IconDeviceMobile,
   IconShieldCheck,
 } from "@/components/icons/appIcons";
 import PublicInfoCard from "@/components/info-card/PublicInfoCard";
@@ -131,10 +131,10 @@ createRoot(document.getElementById("root")!).render(
               href="/assessments"
             />
             <PublicFeatureCard
-              icon={IconPresentation}
-              title="Learning modules"
-              body="Slide-based learning with captioned video, beside the assessment it prepares for."
-              href="/learning"
+              icon={IconDeviceMobile}
+              title="Any device"
+              body="Installs like an app on a Mac, a Windows PC, a tablet or a smartphone, straight from the browser."
+              href="/any-device"
             />
             <PublicFeatureCard
               icon={IconAccessible}

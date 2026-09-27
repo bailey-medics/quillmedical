@@ -4,9 +4,9 @@ import PublicButton from "@/components/button/PublicButton";
 import { PublicFeatureCard } from "@/components/feature-card/PublicFeatureCard";
 import PublicFeatureCardGrid from "@/components/feature-card/PublicFeatureCardGrid";
 import {
-  IconBadgeCc,
+  IconDeviceLaptop,
   IconDeviceMobile,
-  IconPresentation,
+  IconMoon,
 } from "@/components/icons/appIcons";
 import PublicLayout from "@/components/layouts/PublicLayout";
 import PublicTitle from "@/components/typography/PublicTitle";
@@ -22,10 +22,12 @@ createRoot(document.getElementById("root")!).render(
       <PublicHeroBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
-            <PublicTitle title="Learning that sits *beside* the assessment" />
+            <PublicTitle title="Install it on *any* device" />
             <PublicBodyText justify="centre">
-              Each module pairs its assessment with the learning that prepares
-              for it, so a candidate can study and sit it in one place.
+              Quill Medical runs in the web browser, and installs like an app on
+              a Mac, a Windows PC, a tablet or a smartphone. There is no app
+              store to go through, and nothing to download beyond the browser
+              you already have.
             </PublicBodyText>
           </Stack>
         </Container>
@@ -35,29 +37,28 @@ createRoot(document.getElementById("root")!).render(
         <Container size="lg" py="xl">
           <PublicFeatureCardGrid>
             <PublicFeatureCard
-              icon={IconPresentation}
-              title="Slide-based modules"
-              body="Figures, callouts and video, read one slide at a time with buttons, the arrow keys or a swipe."
-            />
-            <PublicFeatureCard
-              icon={IconBadgeCc}
-              title="Hosted, captioned video"
-              body="Videos play smoothly, carry captions, and are served privately to signed-in learners on the module, not posted publicly."
+              icon={IconDeviceLaptop}
+              title="Mac and Windows"
+              body="Install it from Chrome, Edge or Safari, and it opens in its own window from the dock or Start menu."
             />
             <PublicFeatureCard
               icon={IconDeviceMobile}
-              title="Works on a phone"
-              body="Install it like an app, and read in light or dark mode."
+              title="Phones and tablets"
+              body="Add it to the home screen on an iPhone, iPad or Android device, and it opens full screen like any other app."
+            />
+            <PublicFeatureCard
+              icon={IconMoon}
+              title="Light or dark"
+              body="Read in light or dark mode, on a large screen or a small one."
             />
           </PublicFeatureCardGrid>
           <Stack align="center" gap="md" py="xl">
             <PublicBodyText justify="centre">
-              See it in use in our first module, optical diagnosis of small
-              colorectal polyps.
+              Sign in from any device to get started.
             </PublicBodyText>
             <Group justify="center">
-              <PublicButton href="/optical-diagnosis">
-                Optical diagnosis
+              <PublicButton href="https://app.quill-medical.com">
+                Log in
               </PublicButton>
             </Group>
           </Stack>

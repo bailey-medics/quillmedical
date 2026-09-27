@@ -30,7 +30,7 @@ describe("PublicFooter", () => {
   });
 
   it.each([
-    ["Learning", "/learning"],
+    ["Any device", "/any-device"],
     ["Assessments", "/assessments"],
     ["For educators", "/for-educators"],
     ["Accessibility", "/accessibility"],

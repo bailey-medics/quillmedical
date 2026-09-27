@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { renderWithMantine } from "@test/test-utils";
 import PublicNavIcon from "./PublicNavIcon";
+import { PUBLIC_ICON_STROKE } from "./publicIconStroke";
 
 describe("PublicNavIcon Component", () => {
   describe("Icon rendering", () => {
@@ -67,6 +68,14 @@ describe("PublicNavIcon Component", () => {
         ".mantine-ThemeIcon-root",
       ) as HTMLElement;
       expect(themeIcon).toHaveAttribute("data-variant", "transparent");
+    });
+
+    it("draws at the public site's icon stroke", () => {
+      const { container } = renderWithMantine(<PublicNavIcon name="home" />);
+      expect(container.querySelector("svg")).toHaveAttribute(
+        "stroke-width",
+        String(PUBLIC_ICON_STROKE),
+      );
     });
 
     it("applies amber icon colour via CSS variable", () => {

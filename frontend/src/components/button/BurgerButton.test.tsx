@@ -25,6 +25,20 @@ describe("BurgerButton", () => {
       const svg = screen.getByRole("button").querySelector("svg");
       expect(svg).toBeInTheDocument();
     });
+
+    it("draws the menu icon at stroke 2.5 by default", () => {
+      renderWithMantine(<BurgerButton navOpen={false} onClick={vi.fn()} />);
+      const svg = screen.getByRole("button").querySelector("svg");
+      expect(svg).toHaveAttribute("stroke-width", "2.5");
+    });
+
+    it("draws the menu icon at the stroke it is given", () => {
+      renderWithMantine(
+        <BurgerButton navOpen={false} onClick={vi.fn()} stroke={1.5} />,
+      );
+      const svg = screen.getByRole("button").querySelector("svg");
+      expect(svg).toHaveAttribute("stroke-width", "1.5");
+    });
   });
 
   describe("Aria attributes", () => {

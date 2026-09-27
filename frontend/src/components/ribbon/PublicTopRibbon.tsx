@@ -6,6 +6,7 @@
  */
 
 import BurgerButton from "@/components/button/BurgerButton";
+import { PUBLIC_ICON_STROKE } from "@/components/icons/publicIconStroke";
 import PublicButton from "@/components/button/PublicButton";
 import { Anchor, Group } from "@mantine/core";
 import classes from "./PublicTopRibbon.module.scss";
@@ -29,7 +30,11 @@ export default function PublicTopRibbon({
     <div className={classes.cq}>
       {isNarrow ? (
         <div className={classes.left}>
-          <BurgerButton navOpen={navOpen} onClick={onBurgerClick} />
+          <BurgerButton
+            navOpen={navOpen}
+            onClick={onBurgerClick}
+            stroke={PUBLIC_ICON_STROKE}
+          />
         </div>
       ) : (
         <>
