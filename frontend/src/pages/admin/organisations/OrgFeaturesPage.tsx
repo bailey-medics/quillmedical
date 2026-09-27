@@ -6,11 +6,13 @@
  * listing what will change.
  *
  * While the passport is on, a second card sets the organisation's lead
- * passport specialties. It saves as it changes rather than through the
- * form, because it only reorders a list and removes nobody's access.
+ * passport specialties. It sits above the form's buttons, so they close
+ * the page, but it saves as it changes rather than through them: it only
+ * reorders a list and removes nobody's access, so it needs no
+ * confirmation.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Group, Stack, Skeleton } from "@mantine/core";
 import { Controller } from "react-hook-form";
@@ -104,7 +106,14 @@ function ConfirmContent({
   );
 }
 
-function FeatureFields({ orgId }: { orgId: string }) {
+function FeatureFields({
+  orgId,
+  afterFeatures,
+}: {
+  orgId: string;
+  /** Shown between the feature switches and the buttons */
+  afterFeatures?: ReactNode;
+}) {
   const navigate = useNavigate();
   const { methods, formState } = useFormContext();
 
@@ -145,6 +154,8 @@ function FeatureFields({ orgId }: { orgId: string }) {
           ))}
         </Stack>
       </BaseCard>
+
+      {afterFeatures}
 
       <SubmitButton
         onCancel={() => navigate(`/admin/organisations/${orgId}`)}
@@ -298,18 +309,21 @@ export default function OrgFeaturesPage() {
           children: <ConfirmContent orgName={orgName} savedKeys={savedKeys} />,
         }}
       >
-        <FeatureFields orgId={id!} />
-      </Form>
-
-      {passportOn && (
-        <PassportLeadSpecialtiesCard
-          options={PASSPORT_SPECIALTIES}
-          value={leads ?? []}
-          onChange={saveLeads}
-          disabled={leads === null}
-          error={leadsError}
+        <FeatureFields
+          orgId={id!}
+          afterFeatures={
+            passportOn && (
+              <PassportLeadSpecialtiesCard
+                options={PASSPORT_SPECIALTIES}
+                value={leads ?? []}
+                onChange={saveLeads}
+                disabled={leads === null}
+                error={leadsError}
+              />
+            )
+          }
         />
-      )}
+      </Form>
     </Stack>
   );
 }

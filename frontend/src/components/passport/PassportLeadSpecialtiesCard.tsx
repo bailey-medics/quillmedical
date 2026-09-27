@@ -15,6 +15,11 @@
  * A saved lead naming a specialty that is no longer offered is still
  * shown, so an admin can see it and remove it.
  *
+ * **Enter never submits a surrounding form.** The features page puts this
+ * card inside its form, above the buttons, and Enter in the field would
+ * otherwise save the feature switches. Choosing an option with Enter
+ * still works: the dropdown handles that before this refusal.
+ *
  * @example
  * ```tsx
  * <PassportLeadSpecialtiesCard
@@ -84,6 +89,9 @@ export default function PassportLeadSpecialtiesCard({
           data={data}
           value={value}
           onChange={onChange}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") event.preventDefault();
+          }}
           error={error}
           disabled={disabled}
         />

@@ -361,7 +361,7 @@ describe("PassportPage", () => {
       "Oncology",
       "General medicine",
       "General surgery",
-      "Generic (no specialty order)",
+      "Generic",
     ]);
   });
 
@@ -394,7 +394,7 @@ describe("PassportPage", () => {
     renderWithRouter(<PassportPage />);
 
     await user.click(await screen.findByRole("combobox"));
-    await user.click(await screen.findByText("Generic (no specialty order)"));
+    await user.click(await screen.findByText("Generic"));
     await user.click(
       await screen.findByRole("button", { name: "Create my passport" }),
     );

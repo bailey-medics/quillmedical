@@ -417,6 +417,44 @@ describe("OrgFeaturesPage", () => {
       expect(get).toHaveBeenCalledWith("/org-units/3/passport-specialties");
     });
 
+    it("sits above the save and cancel buttons", async () => {
+      getWithLeads(["passport"], ["oncology"]);
+      renderPage();
+
+      const card = await screen.findByText("Passport specialties");
+      const save = screen.getByTestId("submit-button");
+
+      expect(
+        card.compareDocumentPosition(save) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    });
+
+    it("does not submit the feature switches when Enter is pressed in it", async () => {
+      // It sits inside the features form now, so a stray Enter must not
+      // open the confirmation or save anything
+      const user = userEvent.setup();
+      getWithLeads(["passport"], ["oncology"]);
+      const put = vi.spyOn(apiLib.api, "put");
+      const { container } = renderPage();
+      await waitFor(() => expect(pills(container)).toEqual(["Oncology"]));
+      // An unsaved switch change, so the form could submit if asked
+      await user.click(
+        screen.getByRole("switch", { name: "Toggle Messaging" }),
+      );
+
+      await user.click(screen.getByRole("combobox"));
+      await user.keyboard("{Escape}");
+      await user.keyboard("{Enter}");
+
+      expect(
+        screen.queryByText("Confirm feature changes"),
+      ).not.toBeInTheDocument();
+      expect(put).not.toHaveBeenCalledWith(
+        expect.stringContaining("/features/"),
+        expect.anything(),
+      );
+    });
+
     it("saves a picked specialty straight away, at the end", async () => {
       const user = userEvent.setup();
       getWithLeads(["passport"], ["oncology"]);

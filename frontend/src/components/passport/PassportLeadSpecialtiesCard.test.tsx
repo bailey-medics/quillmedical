@@ -76,6 +76,45 @@ describe("PassportLeadSpecialtiesCard", () => {
     expect(onChange).toHaveBeenCalledWith(["oncology", "general_surgery"]);
   });
 
+  it("still chooses a specialty with the keyboard", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    renderWithMantine(
+      <PassportLeadSpecialtiesCard
+        options={PASSPORT_SPECIALTIES}
+        value={[]}
+        onChange={onChange}
+      />,
+    );
+
+    await user.click(screen.getByRole("combobox"));
+    await screen.findByRole("option", { name: "General medicine" });
+    await user.keyboard("{ArrowDown}{Enter}");
+
+    expect(onChange).toHaveBeenCalledWith(["general_medicine"]);
+  });
+
+  it("does not submit a surrounding form on Enter", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn((event: { preventDefault: () => void }) =>
+      event.preventDefault(),
+    );
+    renderWithMantine(
+      <form onSubmit={onSubmit}>
+        <PassportLeadSpecialtiesCard
+          options={PASSPORT_SPECIALTIES}
+          value={["oncology"]}
+          onChange={vi.fn()}
+        />
+      </form>,
+    );
+
+    await user.click(screen.getByRole("combobox"));
+    await user.keyboard("{Escape}{Enter}");
+
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
   it("keeps a saved lead that is no longer offered, so it can be removed", () => {
     const { container } = renderWithMantine(
       <PassportLeadSpecialtiesCard
