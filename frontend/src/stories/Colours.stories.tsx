@@ -19,6 +19,7 @@ import { primaryScale, secondaryScale, greyScale } from "@/theme";
 import { StoryNote } from "@/stories/variants";
 import PageHeader from "@components/page-header";
 import Image from "@components/images/Image";
+import publicAsset from "@lib/publicAsset";
 
 const meta: Meta = {
   title: "Foundations/Colours",
@@ -251,7 +252,7 @@ export const Overview: Story = {
         </StoryNote>
         <Stack gap="md" mt="xl">
           <LogoSwatch
-            src="/android-chrome-512x512.png"
+            src={publicAsset("/android-chrome-512x512.png")}
             alt="Grey quill mark on a navy tile"
             height={6}
             inset={0}
@@ -261,7 +262,7 @@ export const Overview: Story = {
             usage="the installed app's icon, and the email avatar (/email/quill-avatar.png, the same in a circle)"
           />
           <LogoSwatch
-            src="/quill-logo.png"
+            src={publicAsset("/quill-logo.png")}
             alt="Navy quill mark"
             height={4.5}
             background={brand.background}
@@ -270,7 +271,7 @@ export const Overview: Story = {
             usage='login, register and password pages in light mode (QuillLogo colour="default")'
           />
           <LogoSwatch
-            src="/quill-logo-white.png"
+            src={publicAsset("/quill-logo-white.png")}
             alt="White quill mark"
             height={4.5}
             background={brand.primary}
@@ -279,7 +280,7 @@ export const Overview: Story = {
             usage='the same pages in dark mode (QuillLogo colour="white")'
           />
           <LogoSwatch
-            src="/quill-logo-light-grey.png"
+            src={publicAsset("/quill-logo-light-grey.png")}
             alt="Light grey quill mark"
             height={4.5}
             background={brand.background}
@@ -288,7 +289,7 @@ export const Overview: Story = {
             usage='QuillLogo colour="light-grey"; no page uses it today'
           />
           <LogoSwatch
-            src="/quill-name-white.png"
+            src={publicAsset("/quill-name-white.png")}
             alt="White Quill Medical wordmark"
             height={3}
             width={10}
@@ -298,7 +299,7 @@ export const Overview: Story = {
             usage="the app's top ribbon (QuillName)"
           />
           <LogoSwatch
-            src="/quill-name.png"
+            src={publicAsset("/quill-name.png")}
             alt="Navy Quill Medical wordmark"
             height={3}
             width={10}
@@ -308,7 +309,7 @@ export const Overview: Story = {
             usage="the file exists; no page uses it today"
           />
           <LogoSwatch
-            src="/quill-name-long-white-amber.png"
+            src={publicAsset("/quill-name-long-white-amber.png")}
             alt="Quill Medical wordmark in white and amber"
             height={3}
             width={20}

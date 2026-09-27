@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { DocumentThumbnail } from "./DocumentThumbnail";
+import publicAsset from "@lib/publicAsset";
 
 const meta: Meta<typeof DocumentThumbnail> = {
   title: "Documents/Document thumbnail",
@@ -10,7 +11,9 @@ type Story = StoryObj<typeof DocumentThumbnail>;
 
 export const Default: Story = {
   args: {
-    src: "/mock-documents/thumbnails/1_external_clinical_letter.pdf.png",
+    src: publicAsset(
+      "/mock-documents/thumbnails/1_external_clinical_letter.pdf.png",
+    ),
     alt: "External clinical letter",
   },
 };

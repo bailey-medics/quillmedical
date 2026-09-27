@@ -10,6 +10,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import QuillName from "./QuillName";
 import Image from "@components/images/Image";
+import publicAsset from "@lib/publicAsset";
 
 const meta: Meta<typeof QuillName> = {
   title: "Images/Quill name",
@@ -68,7 +69,7 @@ export const DarkFont: Story = {
   ],
   render: () => (
     <Image
-      src="/quill-name.png"
+      src={publicAsset("/quill-name.png")}
       alt="Quill Medical"
       height={5}
       style={{ marginRight: "0.5rem" }}

@@ -6,7 +6,7 @@
  */
 
 import Image from "@components/images/Image";
-import detectStorybook from "@lib/urlUpdate";
+import publicAsset from "@lib/publicAsset";
 import { useComputedColorScheme } from "@mantine/core";
 import React from "react";
 
@@ -51,7 +51,7 @@ export default function QuillLogo({
   const colorScheme = useComputedColorScheme("light");
   const resolved: Exclude<LogoColour, "auto"> =
     colour === "auto" ? (colorScheme === "dark" ? "white" : "default") : colour;
-  const src = detectStorybook(logoFileMap[resolved]);
+  const src = publicAsset(logoFileMap[resolved]);
 
   return (
     <Image

@@ -6,7 +6,7 @@
  */
 
 import Image from "@components/images/Image";
-import detectStorybook from "@lib/urlUpdate";
+import publicAsset from "@lib/publicAsset";
 import React from "react";
 
 /**
@@ -38,7 +38,7 @@ export default function QuillName({
   className,
   style = { marginRight: "0.5rem" },
 }: Props) {
-  const src = detectStorybook("/quill-name-white.png");
+  const src = publicAsset("/quill-name-white.png");
 
   return (
     <Image

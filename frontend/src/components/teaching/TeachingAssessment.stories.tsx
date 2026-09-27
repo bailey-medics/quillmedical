@@ -12,6 +12,7 @@ import { AssessmentIntro } from "./assessment-intro/AssessmentIntro";
 import { QuestionView } from "./question-view/QuestionView";
 import { AssessmentResult } from "./assessment-result/AssessmentResult";
 import type { CandidateItem } from "@/features/teaching/types";
+import publicAsset from "@lib/publicAsset";
 
 const meta: Meta = {
   title: "Teaching/Layouts/Assessment complete",
@@ -46,12 +47,12 @@ const demoItem: CandidateItem = {
     {
       key: "image_1",
       label: "White light (WLI)",
-      url: "/storybook/white-light-polyp.png",
+      url: publicAsset("/storybook/white-light-polyp.png"),
     },
     {
       key: "image_2",
       label: "Narrow band imaging (NBI)",
-      url: "/storybook/nbi-polyp.png",
+      url: publicAsset("/storybook/nbi-polyp.png"),
     },
   ],
   options: [
@@ -102,7 +103,7 @@ const chestXrayItem: CandidateItem = {
     {
       key: "image_1",
       label: "PA chest X-ray",
-      url: "/storybook/chest-xray-pneumothorax.png",
+      url: publicAsset("/storybook/chest-xray-pneumothorax.png"),
     },
   ],
   options: [

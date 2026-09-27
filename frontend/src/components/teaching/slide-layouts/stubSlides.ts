@@ -5,6 +5,7 @@
  */
 
 import type { CompiledSlide } from "@/features/teaching/types";
+import publicAsset from "@lib/publicAsset";
 
 /** Complete set of stub slides for a module */
 export const stubSlides: CompiledSlide[] = [
@@ -31,7 +32,7 @@ export const stubSlides: CompiledSlide[] = [
     slideIndex: 3,
     layout: "image-slide",
     title: "Paris classification overview",
-    imageSrc: "/storybook/paris-classification.png",
+    imageSrc: publicAsset("/storybook/paris-classification.png"),
     imageAlt:
       "Paris classification diagram showing polyp morphology categories",
     imageCaption: "Figure 1: The Paris classification of superficial neoplasms",
@@ -41,8 +42,9 @@ export const stubSlides: CompiledSlide[] = [
     layout: "text-with-figure",
     title: "Polyp morphology",
     body: "Polypoid (0-I) versus non-polypoid (0-II) is the primary axis of the Paris classification. The distinction matters because non-polypoid lesions are harder to detect and have different malignancy risks.",
-    imageSrc:
+    imageSrc: publicAsset(
       "/storybook/macroscopic-classification-of-superficial-colorectal-neoplasms.png",
+    ),
     imageAlt: "Comparison of polypoid and non-polypoid lesions",
     imageCaption: "Figure 2: Polypoid vs non-polypoid morphology",
   },

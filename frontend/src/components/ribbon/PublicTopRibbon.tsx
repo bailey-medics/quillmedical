@@ -11,6 +11,7 @@ import PublicButton from "@/components/button/PublicButton";
 import { Anchor, Group } from "@mantine/core";
 import classes from "./PublicTopRibbon.module.scss";
 import publicNavLinks, { LOGIN_URL } from "./publicNavLinks";
+import publicAsset from "@lib/publicAsset";
 
 type Props = {
   /** Callback when hamburger menu is clicked (opens drawer) */
@@ -48,7 +49,7 @@ export default function PublicTopRibbon({
             }}
           >
             <img
-              src="/quill-name-long-white-amber.png"
+              src={publicAsset("/quill-name-long-white-amber.png")}
               alt="Quill Medical"
               width={143}
               height={24}
