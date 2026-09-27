@@ -821,7 +821,11 @@
     "zxcvbn",
     "appinstalled",
     "beforeinstallprompt",
-    "infobar"
+    "infobar",
+    "FBAN",
+    "FBAV",
+    "KHTML",
+    "unwire"
   ],
   "ignoreWords": [
     "Exampletown",

@@ -23,7 +23,7 @@ someone can install it whenever they choose.
 
 ## Phase 1: Work out what this device can do
 
-- [ ] **Capture `beforeinstallprompt` as soon as the page loads**, in a new
+- [x] **Capture `beforeinstallprompt` as soon as the page loads**, in a new
       `frontend/src/lib/pwa/installPromptEvent.ts`. Chromium fires it once,
       often before React has mounted, and it is lost unless something is
       already listening. So the listener is added from `main.tsx` at module
@@ -37,9 +37,12 @@ someone can install it whenever they choose.
       including through the browser's own menu. TypeScript's DOM library has
       no type for the event, so the module declares a small
       `BeforeInstallPromptEvent` interface with `prompt()` and `userChoice`
-      rather than casting.
+      rather than casting. The store is made by a factory,
+      `createInstallPromptCapture()`, so each test gets its own, and
+      `wire()` takes an `onInstalled` callback that Phase 2 points at the
+      schedule's `finished` flag.
 
-- [ ] **Classify the device into one install route**, as a pure function
+- [x] **Classify the device into one install route**, as a pure function
       `detectInstallRoute(env)` in `frontend/src/lib/pwa/installRoute.ts`.
       It takes an `env` object (user agent, `maxTouchPoints`, whether the
       deferred event exists, the `display-mode` media query result,
@@ -58,14 +61,27 @@ someone can install it whenever they choose.
         `maxTouchPoints > 1` counts as iPad.
       - **`macos-safari`** — Safari 17 or later on a Mac: File, then "Add to
         Dock".
-      - **`android-firefox`** — Firefox on Android: the menu, then "Install".
+      - **`android-firefox`** — Firefox on Android: the menu, then "Add app
+        to Home screen". Mozilla's help says the same item reads "Install"
+        on some sites, so the steps name both.
+      - **`windows-firefox`** — Firefox 143 or later on Windows: "Add tab to
+        taskbar" in the address bar. Added while building: Firefox 143
+        (September 2025) brought back web apps on Windows only, as "taskbar
+        tabs", so Firefox on Windows is no longer `unsupported`. Firefox on
+        a Mac or Linux still is.
       - **`chromium-manual`** — a Chromium browser with no deferred event.
         That happens when the user dismissed Chrome's own prompt recently, or
         Chrome's engagement rules have not been met. The browser menu still
         offers "Install Quill", so the modal explains that instead.
-      - **`unsupported`** — Firefox on desktop, which cannot install web
-        apps, and in-app browsers (a link opened inside Gmail, Outlook or
-        Teams), which cannot either. The automatic ask is not shown and
+      - **`unsupported`** — Firefox on a Mac or Linux, which cannot install
+        web apps, Safari before 17 on a Mac, and in-app browsers (a link
+        opened inside Gmail, Outlook or Teams), which cannot either. In-app
+        browsers are recognised by Android's `; wv)` web view marker, by an
+        app naming itself (`FBAN`, `Instagram`, `GSA/` for the Google app),
+        or on iOS by the missing `Safari/` token that every real iOS browser
+        sends. An app that opens links in Apple's `SFSafariViewController`
+        sends Safari's own user agent and cannot be told apart, so it gets
+        the iOS steps; that is accepted. The automatic ask is not shown and
         none is used up, so someone who later opens Quill in a browser that
         can install it is still asked.
 
@@ -73,7 +89,7 @@ someone can install it whenever they choose.
       exists to test. The user agent is used only to tell apart the manual
       routes, where no feature gives the answer.
 
-- [ ] **Unit test both modules**, in `installRoute.test.ts` and
+- [x] **Unit test both modules**, in `installRoute.test.ts` and
       `installPromptEvent.test.ts` beside them. Cover one realistic user agent
       per route, including iPadOS on a desktop-class user agent, an in-app
       browser, and a Chromium user agent with and without the deferred event.
