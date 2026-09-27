@@ -3,6 +3,7 @@ import { screen } from "@testing-library/react";
 import { renderWithMantine } from "@/test/test-utils";
 import { PublicFeatureCard } from "./PublicFeatureCard";
 import { IconMessage } from "@/components/icons/appIcons";
+import { PUBLIC_ICON_STROKE } from "@/components/icons/publicIconStroke";
 
 describe("PublicFeatureCard", () => {
   const defaultProps = {
@@ -16,6 +17,13 @@ describe("PublicFeatureCard", () => {
     expect(
       screen.getByTestId("feature-card").querySelector("svg"),
     ).toBeInTheDocument();
+  });
+
+  it("draws the icon at the public site's icon stroke", () => {
+    renderWithMantine(<PublicFeatureCard {...defaultProps} />);
+    expect(
+      screen.getByTestId("feature-card").querySelector("svg"),
+    ).toHaveAttribute("stroke-width", String(PUBLIC_ICON_STROKE));
   });
 
   it("renders the title", () => {

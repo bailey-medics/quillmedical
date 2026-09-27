@@ -11,9 +11,9 @@
     "title": "Assessments",
     "description": "Timed online assessments drawn at random from a question bank, with every result tied to the exact questions sat."
   },
-  "learning": {
-    "title": "Learning",
-    "description": "Slide-based learning modules with captioned video, built to be read on a phone as easily as a desktop."
+  "any-device": {
+    "title": "Any device",
+    "description": "Quill Medical installs like an app on a Mac, a Windows PC, a tablet or a smartphone, straight from the browser."
   },
   "for-educators": {
     "title": "For educators",

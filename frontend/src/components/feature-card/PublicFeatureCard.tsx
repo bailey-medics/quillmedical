@@ -7,11 +7,12 @@
 
 import type { ComponentType } from "react";
 import Icon from "@/components/icons/Icon";
+import { PUBLIC_ICON_STROKE } from "@/components/icons/publicIconStroke";
 import classes from "./PublicFeatureCard.module.css";
 
 export interface PublicFeatureCardProps {
   /** Tabler icon component displayed at the top */
-  icon: ComponentType;
+  icon: ComponentType<{ stroke?: number }>;
   /** Card title */
   title: string;
   /** Card body text */
@@ -29,7 +30,7 @@ export function PublicFeatureCard({
   const content = (
     <>
       <div className={classes.icon}>
-        <Icon icon={<IconComponent />} size="xl" />
+        <Icon icon={<IconComponent stroke={PUBLIC_ICON_STROKE} />} size="xl" />
       </div>
       <div className={classes.title}>{title}</div>
       <div className={classes.body}>{body}</div>

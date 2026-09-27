@@ -800,7 +800,10 @@ terraform-github:
     # 2026-09-25 still records a local backend, and a plain init would stop
     # to ask about migrating it. The state is already in the bucket, so
     # there is nothing to migrate.
-    terraform init -input=false -reconfigure
+    # -upgrade: the lock file is gitignored, so each checkout keeps whichever
+    # provider it first downloaded. State written by a newer provider from
+    # another checkout or from CI then refuses to load in an older one.
+    terraform init -input=false -reconfigure -upgrade
     terraform plan -var-file=terraform.tfvars
     read -rp "Apply these changes? (yes/no): " confirm
     if [ "$confirm" = "yes" ]; then
@@ -822,7 +825,9 @@ terraform-infra env="app":
         echo "No tfvars for environment '{{env}}' at infra/$VARS" >&2
         exit 1
     fi
-    terraform init -input=false
+    # -upgrade: see terraform-github; the lock file is not committed, so an
+    # older checkout cannot read state a newer provider wrote.
+    terraform init -input=false -upgrade
     # Each environment's state is its own workspace. Without selecting it
     # this planned against the empty default workspace, and so proposed
     # creating every resource that already exists. `select` and not

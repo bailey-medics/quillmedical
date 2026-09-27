@@ -23,7 +23,7 @@ const data: FooterGroup[] = [
   {
     title: "Platform",
     links: [
-      { label: "Learning", link: "/learning" },
+      { label: "Any device", link: "/any-device" },
       { label: "Assessments", link: "/assessments" },
       { label: "For educators", link: "/for-educators" },
       { label: "Accessibility", link: "/accessibility" },

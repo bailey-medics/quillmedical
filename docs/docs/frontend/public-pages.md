@@ -17,6 +17,7 @@ frontend/
 │   └── src/pages/
 │       ├── about.tsx
 │       ├── accessibility.tsx
+│       ├── any-device.tsx
 │       ├── assessments.tsx
 │       ├── careers.tsx
 │       ├── clinical-records.tsx
@@ -25,7 +26,6 @@ frontend/
 │       ├── cookie-policy.tsx
 │       ├── for-educators.tsx
 │       ├── index.tsx           ← Home page
-│       ├── learning.tsx
 │       ├── not-found.tsx       ← 404 page
 │       ├── optical-diagnosis.tsx
 │       ├── pricing.tsx

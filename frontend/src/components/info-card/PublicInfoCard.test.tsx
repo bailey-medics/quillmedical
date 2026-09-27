@@ -15,6 +15,13 @@ describe("PublicInfoCard", () => {
     expect(screen.getByText("Clinical letters")).toBeInTheDocument();
   });
 
+  it("sets the label in medium weight", () => {
+    renderWithMantine(<PublicInfoCard {...defaultProps} />);
+    expect(screen.getByText("Clinical letters")).toHaveStyle({
+      fontWeight: "500",
+    });
+  });
+
   it("renders the heading text", () => {
     renderWithMantine(<PublicInfoCard {...defaultProps} />);
     expect(screen.getByRole("heading", { name: "42" })).toBeInTheDocument();

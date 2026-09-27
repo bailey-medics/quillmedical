@@ -4,6 +4,7 @@ import { renderWithMantine } from "@test/test-utils";
 import userEvent from "@testing-library/user-event";
 import PublicTopRibbon from "./PublicTopRibbon";
 import publicNavLinks, { LOGIN_URL } from "./publicNavLinks";
+import { PUBLIC_ICON_STROKE } from "@/components/icons/publicIconStroke";
 
 describe("PublicTopRibbon Component", () => {
   describe("Log in", () => {
@@ -86,14 +87,13 @@ describe("PublicTopRibbon Component", () => {
       }
     });
 
-    it("leads with the learning and assessment pages", () => {
+    it("leads with the assessment pages", () => {
       renderWithMantine(<PublicTopRibbon onBurgerClick={vi.fn()} />);
       const nav = screen.getByRole("navigation");
       const hrefs = Array.from(nav.querySelectorAll("a")).map((anchor) =>
         anchor.getAttribute("href"),
       );
       expect(hrefs).toEqual([
-        "/learning",
         "/assessments",
         "/for-educators",
         "/clinical-records",
@@ -133,6 +133,14 @@ describe("PublicTopRibbon Component", () => {
     it("renders burger button", () => {
       renderWithMantine(<PublicTopRibbon onBurgerClick={vi.fn()} isNarrow />);
       expect(screen.getByRole("button")).toBeInTheDocument();
+    });
+
+    it("draws the burger at the public site's icon stroke", () => {
+      renderWithMantine(<PublicTopRibbon onBurgerClick={vi.fn()} isNarrow />);
+      expect(screen.getByRole("button").querySelector("svg")).toHaveAttribute(
+        "stroke-width",
+        String(PUBLIC_ICON_STROKE),
+      );
     });
 
     it("calls onBurgerClick when burger is clicked", async () => {

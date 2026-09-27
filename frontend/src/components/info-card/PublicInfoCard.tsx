@@ -27,7 +27,13 @@ export default function PublicInfoCard({
 }: PublicInfoCardProps) {
   return (
     <Box data-testid="public-info-card" p="xl" className={classes.card}>
-      <Text fz="1.4rem" className={classes.label} mb="xs" tt="uppercase">
+      <Text
+        fz="1.4rem"
+        fw={500}
+        className={classes.label}
+        mb="xs"
+        tt="uppercase"
+      >
         {label}
       </Text>
       <Title
