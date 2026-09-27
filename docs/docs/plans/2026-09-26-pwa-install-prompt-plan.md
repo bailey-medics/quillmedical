@@ -231,7 +231,7 @@ and 3 but not the schedule. Building it first gives the modal a real page to
 live on, and every platform's steps can be checked on a device straight away,
 without faking dates.
 
-- [ ] **Add a `useInstallRoute` hook** in `frontend/src/lib/pwa/` that
+- [x] **Add a `useInstallRoute` hook** in `frontend/src/lib/pwa/` that
       wraps Phase 1 for React. It returns the current `route` and an
       `install()` that runs `prompt()` on the deferred event and resolves to
       the user's choice. It subscribes to `installPromptEvent.ts`, so a
@@ -243,9 +243,12 @@ without faking dates.
       the flag the tab would drop to `chromium-manual` and offer steps for
       an install that has already happened. `install()` sets `finished`
       when the outcome is `accepted`. Test it with `renderHook` and a fake
-      deferred event, in `useInstallRoute.test.ts`.
+      deferred event, in `useInstallRoute.test.ts`. The store, the
+      environment reader and the `finished` flag are passed in as optional
+      arguments, defaulting to the real ones, so the tests need no module
+      mocks. The prompt store is read through `useSyncExternalStore`.
 
-- [ ] **Add an "Install app" `ActionCard` to `pages/Settings.tsx`**, in the
+- [x] **Add an "Install app" `ActionCard` to `pages/Settings.tsx`**, in the
       existing `SimpleGrid` after the Account card. It uses `IconDownload`,
       already registered in `components/icons/appIcons.ts`, the subtitle
       "Open Quill full screen from its own icon, and get notifications", and
@@ -266,7 +269,7 @@ without faking dates.
       ask: the user went looking for it. A completed install from the card
       sets `finished`, which stops the automatic ask as well.
 
-- [ ] **Cover the card in `pages/Settings.test.tsx`**: hidden when
+- [x] **Cover the card in `pages/Settings.test.tsx`**: hidden when
       installed, shown otherwise, the `prompt` route calling `install()`
       without a modal, a manual route opening the modal with that route's
       steps, and `unsupported` opening the explanation. Run with
@@ -280,6 +283,9 @@ without faking dates.
       and the home-screen app keep separate storage, so a Safari tab still
       shows the card after installing. Its steps then lead to an app the
       user already has, which does no harm.
+
+      Left for a human: the unattended run could not reach a device. Do this
+      alongside the Phase 3 step review.
 
 ## Phase 5: Ask automatically
 
