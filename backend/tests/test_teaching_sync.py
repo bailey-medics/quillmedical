@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.features.teaching.models import (
     QuestionBankConfig,
     QuestionBankItem,
+    QuestionBankOrgStatus,
     QuestionBankSync,
 )
 from app.features.teaching.sync import (
@@ -658,3 +659,83 @@ class TestSyncStoresCoverImage:
         assert db_config.title == "Module With Cover"
         assert db_config.description == "Has a cover image"
         assert db_config.cover_image_filename == "cover.png"
+
+
+class TestSyncServesTheNewestVersion:
+    """The app always serves the most recent version of a bank.
+
+    Decided on 27 September 2026: a merged revision reaches learners at
+    the next sync, rather than waiting for somebody to promote it.
+    """
+
+    def _sync(self, bank, organisation, admin_user, db_session) -> None:
+        validation, _ = sync_question_bank(
+            bank,
+            org_unit_id=organisation.id,
+            user_id=admin_user.id,
+            db=db_session,
+            module_status="live",
+        )
+        assert validation.is_valid
+
+    def _bump(self, bank: Path, version: int) -> None:
+        config = yaml.safe_load((bank / "config.yaml").read_text())
+        config["version"] = version
+        (bank / "config.yaml").write_text(yaml.dump(config))
+
+    def _switch_on(self, db_session, organisation, version: int):
+        status = QuestionBankOrgStatus(
+            org_unit_id=organisation.id,
+            question_bank_id="test-bank",
+            is_live=True,
+            active_version=version,
+        )
+        db_session.add(status)
+        db_session.commit()
+        return status
+
+    def test_a_new_version_is_served_at_once(
+        self, db_session, organisation, admin_user, tmp_path: Path
+    ) -> None:
+        bank = _make_bank(tmp_path)
+        self._sync(bank, organisation, admin_user, db_session)
+        status = self._switch_on(db_session, organisation, 1)
+
+        self._bump(bank, 2)
+        self._sync(bank, organisation, admin_user, db_session)
+
+        db_session.refresh(status)
+        assert status.active_version == 2
+        assert status.active_version_set_by == admin_user.id
+        assert status.active_version_set_at is not None
+
+    def test_a_version_synced_earlier_is_served_at_the_next_sync(
+        self, db_session, organisation, admin_user, tmp_path: Path
+    ) -> None:
+        """A bank left on an old version catches up without a bump.
+
+        The live site had version 7 synced but version 5 served, from
+        before this rule; the next sync of the same version fixes it.
+        """
+        bank = _make_bank(tmp_path)
+        self._sync(bank, organisation, admin_user, db_session)
+        self._bump(bank, 2)
+        self._sync(bank, organisation, admin_user, db_session)
+        status = self._switch_on(db_session, organisation, 1)
+
+        self._sync(bank, organisation, admin_user, db_session)
+
+        db_session.refresh(status)
+        assert status.active_version == 2
+
+    def test_a_bank_not_switched_on_stays_that_way(
+        self, db_session, organisation, admin_user, tmp_path: Path
+    ) -> None:
+        """Opening a bank to learners is still somebody's decision."""
+        bank = _make_bank(tmp_path)
+
+        self._sync(bank, organisation, admin_user, db_session)
+
+        assert (
+            db_session.execute(select(QuestionBankOrgStatus)).first() is None
+        )

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Sync all local question banks into the DB, auto-publish items and serve
-# the newest synced version (local dev only; production promotes by hand).
+# Sync all local question banks into the DB and auto-publish items. Sync
+# itself serves the newest version of each bank that is switched on.
 # Called by: just sync-teaching
 set -euo pipefail
 
@@ -12,14 +12,9 @@ from pathlib import Path
 from app.config import settings
 from app.db import CoreSessionLocal
 from app.features.teaching.sync import sync_question_bank
-from datetime import UTC, datetime
-from app.features.teaching.models import (
-    QuestionBankConfig,
-    QuestionBankItem,
-    QuestionBankOrgStatus,
-)
+from app.features.teaching.models import QuestionBankItem
 from app.models import OrgUnitFeature, User
-from sqlalchemy import func, select
+from sqlalchemy import select
 
 base = settings.TEACHING_QUESTION_BANK_PATH
 if not base or not Path(base).is_dir():
@@ -70,28 +65,6 @@ try:
         for item in items:
             item.status = 'published'
 
-        # Local dev only: serve the newest synced version at once, as the
-        # items above are published at once, so an edit shows on the next
-        # reload. In production advancing a version is a separate,
-        # deliberate act. A bank not yet switched on for the organisation
-        # has no status row, and is left that way.
-        newest = db.execute(
-            select(func.max(QuestionBankConfig.version)).where(
-                QuestionBankConfig.org_unit_id == org_id,
-                QuestionBankConfig.question_bank_id == bank_id,
-            )
-        ).scalar_one_or_none()
-        status = db.execute(
-            select(QuestionBankOrgStatus).where(
-                QuestionBankOrgStatus.org_unit_id == org_id,
-                QuestionBankOrgStatus.question_bank_id == bank_id,
-            )
-        ).scalars().first()
-        if status and newest is not None and status.active_version != newest:
-            print(f'  Now serving version {newest}, was {status.active_version}')
-            status.active_version = newest
-            status.active_version_set_by = user.id
-            status.active_version_set_at = datetime.now(UTC)
         db.commit()
         print(f'  Synced and published {len(items)} items')
         synced += 1

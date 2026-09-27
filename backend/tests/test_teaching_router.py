@@ -1774,11 +1774,12 @@ class TestAdminViewsShowBothVersions:
 
 
 class TestCandidateQueriesFollowThePointer:
-    """Candidates get the version their organisation promoted.
+    """Candidates get the version their organisation is pointed at.
 
-    Syncing a revision imports it but must not put it in front of anyone.
-    Without this the newest version won a race nobody entered, changing an
-    assessment mid-cohort.
+    Sync moves the pointer to the newest version (see
+    ``TestSyncServesTheNewestVersion``), but the candidate queries must
+    still follow the pointer rather than take the newest row, so that an
+    earlier version promoted by hand is what is served until then.
     """
 
     def _add_version(self, db_session, org, educator, version: int) -> None:

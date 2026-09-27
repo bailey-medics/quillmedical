@@ -924,7 +924,8 @@ they are ready. That also gives a rollback, which does not exist today.
         between organisations; the pointer is not.
       - `active_version_set_by` and `active_version_set_at` record who moved it. `SET NULL`
         rather than a cascade, so the fact a promotion happened survives the person leaving.
-- [ ] **Admin UI** — surface the two version numbers and a promote control on the existing
+- [x] **Admin UI** — dropped on 27 September 2026, see "Follow-up: always serve the newest
+      version". Was: surface the two version numbers and a promote control on the existing
       admin teaching page, which already carries the live/closed toggle.
 
 ### Order of work, and where this pauses
@@ -938,7 +939,8 @@ they are ready. That also gives a rollback, which does not exist today.
       code, so nothing rots while it waits, and it answers a question this phase had to work
       around. Finish it there: settle where a request's context comes from, what becomes of
       `system_permissions`, and how the staff and patient namespaces meet.
-- [ ] **Come back for the admin interface.** It is the only teaching item left, it depends on
+- [x] **Come back for the admin interface.** Dropped on 27 September 2026, as above. Was:
+      it is the only teaching item left, it depends on
       no unanswered question, and by then the promotion endpoint it drives will have been in
       use through the API.
 
@@ -1337,6 +1339,48 @@ shape, different place and a different naming convention.
 
 Best done when no breaking-change pull request is in flight, since it moves the ground
 under the gate that would be judging it.
+
+## Follow-up: always serve the newest version
+
+Supersedes part of Phase 8. On 27 September 2026 the product owner decided the app should
+always serve the most recent version of a bank. Phase 8 made sync import new versions
+without moving the pointer, and the admin control to promote one was never built, so every
+version bump sat unused. On the live site, the eoeeta testing bank had version 7 synced
+while learners were still served version 5, with its old title.
+
+- [x] **Sync moves the pointer to the newest synced version.** `_serve_newest_version` in
+      `backend/app/features/teaching/sync.py` runs at the end of every sync: the full import
+      of a new version, and the metadata-only update of a live bank whose version has not
+      changed. The second is what moves a bank left behind before this rule, without waiting
+      for a version bump.
+- [x] **Opening a bank stays a separate act.** A bank with no `QuestionBankOrgStatus` row
+      for the organisation gains none, so a new bank still waits for an admin to switch it
+      on.
+- [x] **What still holds from Phase 8.** A candidate part way through an attempt finishes
+      on the version they started, because `Assessment.bank_version` pins it. The candidate
+      queries still follow the pointer, and the promotion endpoint still works for a
+      rollback, until the next sync moves the pointer forward again.
+- [x] **The pointer moves only for the organisation being synced.** `promote_bank_version`
+      refuses a version another organisation synced, so sync does the same. Every bank on
+      the live site is synced into one organisation today.
+- [x] **Local dev needs nothing of its own.** `dev-scripts/sync-teaching-data.sh` briefly
+      moved the pointer itself; that went once sync did it.
+- [x] **Tests** in `backend/tests/test_teaching_sync.py`: a new version is served at once,
+      a lagging bank catches up on the next sync, and a bank not switched on stays closed.
+
+**No second gate in the live app.** Decided by the product owner on 27 September 2026:
+the GitHub pull request review and merge on the content repository is the gate for
+teaching content, and nothing in Quill asks for approval again afterwards. The merge is
+already a deliberate decision to change live content, backed by the version lock and CI
+validation, and a second step after it left `main` and the live site disagreeing with
+nothing to show why. Any sign-off a content change needs belongs on that pull request, for
+example a required reviewer on the content repositories.
+
+- [x] **The Phase 8 Admin UI item is dropped.** There is no promotion to surface. A rollback
+      is a revert in the content repository with a version bump, merged like any other
+      change.
+- [x] **A per-organisation "hold at this version" switch was considered and not taken.** It
+      would be a second gate by another name.
 
 ## Related
 
