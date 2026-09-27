@@ -17,7 +17,9 @@ install (Chrome, Edge and Samsung Internet, through `beforeinstallprompt`), a
 "yes" hands straight over to the browser's own install confirmation. Where it
 does not (Safari on iPhone, iPad and Mac, Firefox on Android), the modal
 explains the steps for that platform. Where installing is not possible at all,
-it does not ask.
+it does not ask. The same process is also on the Settings page, as an "Install
+app" action card shown on any device where Quill is not yet installed, so
+someone can install it whenever they choose.
 
 ## Phase 1: Work out what this device can do
 
@@ -63,9 +65,9 @@ it does not ask.
         offers "Install Quill", so the modal explains that instead.
       - **`unsupported`** — Firefox on desktop, which cannot install web
         apps, and in-app browsers (a link opened inside Gmail, Outlook or
-        Teams), which cannot either. The modal is not shown and no ask is
-        used up, so someone who later opens Quill in a browser that can
-        install it is still asked.
+        Teams), which cannot either. The automatic ask is not shown and
+        none is used up, so someone who later opens Quill in a browser that
+        can install it is still asked.
 
       Feature detection is preferred to user agent parsing wherever a feature
       exists to test. The user agent is used only to tell apart the manual
@@ -146,6 +148,12 @@ it does not ask.
         ("Share", "Add to Home Screen", "Add to Dock", "Install"), with its
         icon where Tabler has one. The icons are registered in
         `components/icons/appIcons.ts` first, as the icon rule requires.
+      - **`unsupported`** — "This browser cannot install Quill", naming the
+        browsers that can (Chrome, Edge, or Safari on Apple devices), with a
+        single "Got it" button. The automatic ask never shows this variant,
+        but the Settings card in Phase 4 can, because a user who goes looking
+        for the option should be told why it is not there rather than find
+        nothing.
 
       The copy is in sentence case and British English. The platform steps
       are data, a map from route to steps, not branches in the JSX, so adding
@@ -166,19 +174,74 @@ it does not ask.
       actually run. Change the steps in the stories until they match what
       the devices show.
 
-## Phase 4: Show it in the app
+## Phase 4: Add the install card to Settings
 
-- [ ] **Add a `useInstallPrompt` hook** in `frontend/src/lib/pwa/` that ties
-      Phases 1 and 2 together. It records `firstSeenAt` on first use, works
-      out the route, and returns `opened`, `route`, `install()` and
-      `dismiss()`. It marks the schedule `finished` and never opens when the
-      route is `installed`. It does not open for `unsupported`. It waits
-      about three seconds after mounting before deciding, so a
+The Settings card comes before the automatic ask because it needs Phases 1
+and 3 but not the schedule. Building it first gives the modal a real page to
+live on, and every platform's steps can be checked on a device straight away,
+without faking dates.
+
+- [ ] **Add a `useInstallRoute` hook** in `frontend/src/lib/pwa/` that
+      wraps Phase 1 for React. It returns the current `route` and an
+      `install()` that runs `prompt()` on the deferred event and resolves to
+      the user's choice. It subscribes to `installPromptEvent.ts`, so a
+      `beforeinstallprompt` that arrives after the page has rendered moves
+      the route from `chromium-manual` to `prompt` without a reload. It also
+      reads the `finished` flag from Phase 2 and reports `installed` when it
+      is set. That matters in a normal browser tab after installing: Chrome
+      stops firing `beforeinstallprompt` once Quill is installed, so without
+      the flag the tab would drop to `chromium-manual` and offer steps for
+      an install that has already happened. `install()` sets `finished`
+      when the outcome is `accepted`. Test it with `renderHook` and a fake
+      deferred event, in `useInstallRoute.test.ts`.
+
+- [ ] **Add an "Install app" `ActionCard` to `pages/Settings.tsx`**, in the
+      existing `SimpleGrid` after the Account card. It uses `IconDownload`,
+      already registered in `components/icons/appIcons.ts`, the subtitle
+      "Open Quill full screen from its own icon, and get notifications", and
+      the button label "Install app". It is hidden when `useInstallRoute`
+      reports `installed`, and shown for every other route.
+
+      What the button does depends on the route:
+
+      - **`prompt`** — calls `install()` directly, with no modal first.
+        Pressing "Install app" is already the user saying yes, and the
+        browser's own confirmation follows, so a modal asking "Install Quill
+        on this device?" in between would be a third tap asking the same
+        question.
+      - **Every other route** — opens `InstallAppModal` with that route, so
+        the user gets their platform's steps, or the `unsupported` message.
+
+      The card does not touch the Phase 2 schedule and does not count as an
+      ask: the user went looking for it. A completed install from the card
+      sets `finished`, which stops the automatic ask as well.
+
+- [ ] **Cover the card in `pages/Settings.test.tsx`**: hidden when
+      installed, shown otherwise, the `prompt` route calling `install()`
+      without a modal, a manual route opening the modal with that route's
+      steps, and `unsupported` opening the explanation. Run with
+      `just uf src/pages/Settings.test.tsx`.
+
+- [ ] **Check the card on real devices**: Chrome on Android, Chrome and Edge
+      on desktop, Safari on iPhone and iPad, Safari on a Mac, and Firefox on
+      desktop. On each, the card shows, its button installs Quill or shows
+      the right steps, and the card is gone when Quill is opened as the
+      installed app. One case cannot be fixed and is expected: on iOS, Safari
+      and the home-screen app keep separate storage, so a Safari tab still
+      shows the card after installing. Its steps then lead to an app the
+      user already has, which does no harm.
+
+## Phase 5: Ask automatically
+
+- [ ] **Add a `useInstallPrompt` hook** in `frontend/src/lib/pwa/`, built on
+      `useInstallRoute` from Phase 4 and the Phase 2 schedule. It records
+      `firstSeenAt` on first use, and returns `opened`, `route`, `install()`
+      and `dismiss()`. It never opens for `installed` or `unsupported`. It
+      waits about three seconds after mounting before deciding, so a
       `beforeinstallprompt` that arrives just after load is used and the
-      user does not get the manual steps by mistake. `install()` records
-      the ask, runs the browser prompt, and sets `finished` if the outcome
-      is `accepted`. Test it with `renderHook` against a mocked
-      `localStorage` and a fake deferred event.
+      user does not get the manual steps by mistake. Opening records the
+      ask. Test it with `renderHook` against a mocked `localStorage` and a
+      fake deferred event.
 
 - [ ] **Only open it on a page where interrupting is safe.** A modal over a
       half-completed form, or during an assessment attempt, costs the user
@@ -200,15 +263,17 @@ it does not ask.
       layout's existing test to show the modal is mounted and stays closed
       when nothing is due.
 
-- [ ] **Check it on real devices** before leaving draft, because
+- [ ] **Check the timing on real devices** before leaving draft, because
       `beforeinstallprompt` cannot be driven from Playwright in any useful
-      way. Set `firstSeenAt` back by hand in devtools to make an ask due.
-      Then go through Chrome on Android, Chrome and Edge on desktop, Safari
-      on iPhone and iPad, and Safari on a Mac: the modal appears, "Install"
-      or the steps work, and neither shows again once installed. Record
-      what was checked in the PR description.
+      way. The steps themselves were checked through the Settings card in
+      Phase 4, so this is about when the modal appears. Set `firstSeenAt`
+      back by hand in devtools to make an ask due, on Chrome on Android and
+      Safari on iPhone at least. Check the modal appears once for each ask,
+      not at all after the second, and not at all after installing from
+      either the modal or the Settings card. Record what was checked in the
+      PR description.
 
-## Phase 5: Accessibility and documentation
+## Phase 6: Accessibility and documentation
 
 - [ ] **Add the modal to the accessibility testing list.** It appears inside
       both signed-in layouts, so it can show up in Journey 2 (find and open a
@@ -221,7 +286,7 @@ it does not ask.
 - [ ] **Document the behaviour** in a new `docs/docs/frontend/pwa.md`,
       added to the Frontend section of `docs/mkdocs.yml`. There are no
       frontend PWA docs yet, so this page starts them. Cover the schedule,
-      the routes, how to force an ask in development, and the
+      the Settings card, the routes, how to force an ask in development, and the
       `quill.installPrompt` key, so support can explain why someone was or
       was not asked.
 
