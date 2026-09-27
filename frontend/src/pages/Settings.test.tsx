@@ -126,6 +126,21 @@ describe("the passport specialty card", () => {
     expect(await screen.findByText("Passport specialty")).toBeInTheDocument();
   });
 
+  it("comes last, after the cards everybody sees", async () => {
+    vi.mocked(fetchMyPassport).mockResolvedValue(detail);
+    renderWithRouter(<Settings />);
+
+    const card = await screen.findByText("Passport specialty");
+    const lastEverybodyCard = screen.getByText(
+      "Two-factor authentication (TOTP)",
+    );
+
+    expect(
+      lastEverybodyCard.compareDocumentPosition(card) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it("is absent for somebody who has not created one", async () => {
     vi.mocked(fetchMyPassport).mockRejectedValue({ status: 404 });
     renderWithRouter(<Settings />);

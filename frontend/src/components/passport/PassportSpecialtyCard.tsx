@@ -3,9 +3,10 @@
  *
  * The settings card for changing a passport holder's specialties.
  *
- * A composition of `ActionCard` and `SpecialtyField`: the card says what
- * a specialty does, and the field changes it. Only rendered for somebody
- * who has a passport; the settings page decides that.
+ * A composition of `ActionCard` and `SpecialtyField`: the card is titled,
+ * and the field changes the specialty, its helper text saying what that
+ * does. Only rendered for somebody who has a passport; the settings page
+ * decides that.
  *
  * **Changing it never leaves the question unanswered.** Clearing every
  * choice in the field is ignored rather than saved, because "no answer"
@@ -47,10 +48,6 @@ export default function PassportSpecialtyCard({
     <ActionCard
       icon={<IconFileText />}
       title="Passport specialty"
-      subtitle={
-        "Your specialty's common competencies are listed first when you " +
-        "log a procedure or ask for a sign-off. Nothing is hidden."
-      }
       action={
         <SpecialtyField
           label="Specialty"

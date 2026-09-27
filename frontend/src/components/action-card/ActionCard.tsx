@@ -21,8 +21,8 @@ interface ActionCardProps {
   iconSize?: IconSize;
   /** Card title */
   title: string;
-  /** Card subtitle/description */
-  subtitle: string;
+  /** Card subtitle/description. Omit it when the title and action say enough */
+  subtitle?: string;
   /** Button label text (required unless action is provided) */
   buttonLabel?: string;
   /** Button destination URL */
@@ -81,7 +81,7 @@ export default function ActionCard({
         ) : (
           <Heading>{title}</Heading>
         )}
-        <BodyText>{subtitle}</BodyText>
+        {subtitle && <BodyText>{subtitle}</BodyText>}
         <div
           style={{
             marginTop: "auto",

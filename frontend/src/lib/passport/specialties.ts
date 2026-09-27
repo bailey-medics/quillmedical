@@ -20,9 +20,20 @@ export interface PassportSpecialtyDefinition {
   common_competencies: string[];
 }
 
-/** Every specialty a holder may choose, in filename order. */
-export const PASSPORT_SPECIALTIES: PassportSpecialtyDefinition[] =
-  specialtiesData.specialties;
+/**
+ * Every specialty a holder may choose, alphabetically by display name.
+ *
+ * Alphabetical because it is the default for everybody: no specialty is
+ * put first for all organisations because one organisation wants it
+ * first. An organisation's own lead specialties go on top of this order.
+ */
+export const PASSPORT_SPECIALTIES: PassportSpecialtyDefinition[] = [
+  ...specialtiesData.specialties,
+].sort((a, b) =>
+  a.display_name.localeCompare(b.display_name, "en-GB", {
+    sensitivity: "base",
+  }),
+);
 
 /** The specialty with this id, or undefined if there is no such file. */
 export function getPassportSpecialty(

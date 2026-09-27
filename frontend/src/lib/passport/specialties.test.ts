@@ -15,6 +15,16 @@ describe("PASSPORT_SPECIALTIES", () => {
     ]);
   });
 
+  it("lists them alphabetically by display name", () => {
+    const names = PASSPORT_SPECIALTIES.map((s) => s.display_name);
+
+    expect(names).toEqual(
+      [...names].sort((a, b) =>
+        a.localeCompare(b, "en-GB", { sensitivity: "base" }),
+      ),
+    );
+  });
+
   it("names only competencies the passport can record", () => {
     // The backend refuses to start otherwise; this catches the frontend
     // bundle drifting from it.

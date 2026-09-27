@@ -49,6 +49,21 @@ export const Default: Story = {
 };
 
 /**
+ * Without subtitle
+ *
+ * The title and the action say enough, as on the passport specialty card,
+ * whose field carries its own helper text.
+ */
+export const WithoutSubtitle: Story = {
+  args: {
+    icon: <IconUserPlus />,
+    title: "Add User",
+    buttonLabel: "Add New User",
+    buttonUrl: "/admin/users/new",
+  },
+};
+
+/**
  * Long Content
  *
  * ActionCard with longer title and subtitle text.
