@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import os
 import shutil
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import google.cloud as _gc
@@ -16,6 +18,8 @@ from app.features.teaching.storage import (
     get_storage_backend,
     list_bank_images_in_gcs,
     list_banks_in_gcs,
+    local_cover_image_url,
+    local_media_response,
 )
 
 
@@ -636,3 +640,80 @@ class TestDeleteMediaObject:
 
         with pytest.raises(ValueError):
             delete_media_object("src-bucket", org_id, module_id, asset_id)
+
+
+class TestLocalMediaResponse:
+    """Files served from a local teaching repo on the dev stack."""
+
+    def test_asks_the_browser_to_check_back_every_time(
+        self, tmp_path: Path
+    ) -> None:
+        """So an edited cover image shows on the next reload."""
+        cover = tmp_path / "cover.png"
+        cover.write_bytes(b"png")
+
+        response = local_media_response(cover)
+
+        assert response.headers["cache-control"] == "no-cache"
+
+    def test_names_the_type_from_the_extension(self, tmp_path: Path) -> None:
+        video = tmp_path / "intro.mp4"
+        video.write_bytes(b"mp4")
+
+        assert local_media_response(video).media_type == "video/mp4"
+
+    def test_falls_back_to_bytes_for_an_unknown_extension(
+        self, tmp_path: Path
+    ) -> None:
+        odd = tmp_path / "notes.qqq"
+        odd.write_bytes(b"?")
+
+        response = local_media_response(odd)
+
+        assert response.media_type == "application/octet-stream"
+
+
+class TestLocalCoverImageUrl:
+    """The cover address on the dev stack, which changes with the file."""
+
+    def _module(self, base: Path) -> Path:
+        module_dir = base / "some-teaching" / "modules" / "polyps"
+        module_dir.mkdir(parents=True)
+        (module_dir / "module.yaml").write_text("moduleId: polyps\n")
+        return module_dir
+
+    def test_carries_the_files_modification_time(self, tmp_path: Path) -> None:
+        cover = self._module(tmp_path) / "cover.png"
+        cover.write_bytes(b"png")
+
+        url = local_cover_image_url(str(tmp_path), "polyps", "cover.png")
+
+        assert url == (
+            "/api/teaching/images/cover/polyps/cover.png"
+            f"?v={cover.stat().st_mtime_ns}"
+        )
+
+    def test_changes_when_the_cover_is_replaced(self, tmp_path: Path) -> None:
+        """So a browser cannot keep showing the old picture."""
+        cover = self._module(tmp_path) / "cover.png"
+        cover.write_bytes(b"old")
+        before = local_cover_image_url(str(tmp_path), "polyps", "cover.png")
+
+        cover.write_bytes(b"new")
+        stat = cover.stat()
+        os.utime(cover, ns=(stat.st_atime_ns, stat.st_mtime_ns + 1_000))
+
+        after = local_cover_image_url(str(tmp_path), "polyps", "cover.png")
+        assert after != before
+
+    def test_is_the_plain_address_with_no_file_to_read(
+        self, tmp_path: Path
+    ) -> None:
+        self._module(tmp_path)
+
+        assert local_cover_image_url(str(tmp_path), "polyps", "cover.png") == (
+            "/api/teaching/images/cover/polyps/cover.png"
+        )
+        assert local_cover_image_url(
+            str(tmp_path), "missing", "cover.png"
+        ) == ("/api/teaching/images/cover/missing/cover.png")

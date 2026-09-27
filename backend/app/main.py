@@ -5021,8 +5021,6 @@ app.include_router(router)
 
 # --- Conditional static file serving for local dev ---
 if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
-    import mimetypes
-
     from starlette.responses import FileResponse
 
     _qb_base = settings.TEACHING_QUESTION_BANK_PATH
@@ -5038,7 +5036,10 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
         filename: str,
     ) -> FileResponse:
         """Serve question bank images from local teaching-repos."""
-        from app.features.teaching.storage import resolve_local_bank
+        from app.features.teaching.storage import (
+            local_media_response,
+            resolve_local_bank,
+        )
 
         _ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
 
@@ -5060,10 +5061,7 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
         if not file_path.is_file():
             raise HTTPException(404, "Image not found")
 
-        content_type = (
-            mimetypes.guess_type(filename)[0] or "application/octet-stream"
-        )
-        return FileResponse(file_path, media_type=content_type)
+        return local_media_response(file_path)
 
         # api-schema-check: allow-opaque-permanent
 
@@ -5073,7 +5071,10 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
         filename: str,
     ) -> FileResponse:
         """Serve module cover images from local teaching-repos."""
-        from app.features.teaching.storage import resolve_module_dir
+        from app.features.teaching.storage import (
+            local_media_response,
+            resolve_module_dir,
+        )
 
         _ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
 
@@ -5095,10 +5096,7 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
         if not file_path.is_file():
             raise HTTPException(404, "Image not found")
 
-        content_type = (
-            mimetypes.guess_type(filename)[0] or "application/octet-stream"
-        )
-        return FileResponse(file_path, media_type=content_type)
+        return local_media_response(file_path)
 
         # api-schema-check: allow-opaque-permanent
 
@@ -5108,7 +5106,10 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
         filename: str,
     ) -> FileResponse:
         """Serve learning content images from local teaching-repos."""
-        from app.features.teaching.storage import resolve_module_dir
+        from app.features.teaching.storage import (
+            local_media_response,
+            resolve_module_dir,
+        )
 
         _ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
 
@@ -5130,10 +5131,7 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
         if not file_path.is_file():
             raise HTTPException(404, "Image not found")
 
-        content_type = (
-            mimetypes.guess_type(filename)[0] or "application/octet-stream"
-        )
-        return FileResponse(file_path, media_type=content_type)
+        return local_media_response(file_path)
 
         # api-schema-check: allow-opaque-permanent
 
@@ -5160,7 +5158,10 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
         Starlette's ``FileResponse`` honours ``Range``, so seeking works
         locally without anything further.
         """
-        from app.features.teaching.storage import resolve_module_dir
+        from app.features.teaching.storage import (
+            local_media_response,
+            resolve_module_dir,
+        )
 
         # Deliberately separate from the image allow-list rather than a
         # widened copy of it: an image route that will serve .mp4 is a
@@ -5187,7 +5188,4 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
         if not file_path.is_file():
             raise HTTPException(404, "Video not found")
 
-        content_type = (
-            mimetypes.guess_type(filename)[0] or "application/octet-stream"
-        )
-        return FileResponse(file_path, media_type=content_type)
+        return local_media_response(file_path)

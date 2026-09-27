@@ -721,6 +721,58 @@ describe("SideNavContent Component", () => {
       expect(screen.getByText("Inbox")).toBeInTheDocument();
     });
 
+    it.each([
+      ["/passport/sign-offs", "Sign-offs"],
+      ["/passport/logbook", "Logbook"],
+      ["/passport/cpd", "CPD"],
+      ["/passport/certificates", "Certificates"],
+      ["/passport/reflections", "Reflections"],
+      ["/passport/download", "Download"],
+    ])(
+      "hangs the open page under Passport, and marks it: %s",
+      async (route, label) => {
+        renderWithAuth(<SideNavContent />, "passport_holder", {
+          initialRoute: route,
+        });
+
+        await waitFor(() => {
+          expect(screen.getByText("Passport")).toBeInTheDocument();
+        });
+
+        const child = screen.getByText(label).closest("a");
+        expect(child).toHaveAttribute("href", route);
+        expect(child).toHaveAttribute("data-active", "true");
+      },
+    );
+
+    it("keeps CPD under Passport on a single CPD activity", async () => {
+      // An activity sits beneath the CPD page, so the side navigation
+      // says CPD rather than dropping back to Passport alone.
+      renderWithAuth(<SideNavContent />, "passport_holder", {
+        initialRoute: "/passport/cpd/2026/course",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("CPD")).toBeInTheDocument();
+      });
+    });
+
+    it("hangs only the open page, not every passport page", async () => {
+      // The passport page links to the rest; the side navigation says
+      // where somebody is, not everywhere they could go.
+      renderWithAuth(<SideNavContent />, "passport_holder", {
+        initialRoute: "/passport/logbook",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("Logbook")).toBeInTheDocument();
+      });
+
+      for (const other of ["Sign-offs", "CPD", "Certificates", "Inbox"]) {
+        expect(screen.queryByText(other)).not.toBeInTheDocument();
+      }
+    });
+
     it("drops Inbox again once the holder is on their passport", async () => {
       // The passport is a destination, not a heading, so landing on it
       // should not reveal a page the person did not ask for.
