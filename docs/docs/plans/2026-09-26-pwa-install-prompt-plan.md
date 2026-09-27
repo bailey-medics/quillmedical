@@ -148,7 +148,7 @@ someone can install it whenever they choose.
 
 ## Phase 3: Build the modal, and show it for review
 
-- [ ] **Build `InstallAppModal`** in
+- [x] **Build `InstallAppModal`** in
       `frontend/src/components/install-app-modal/`, composed from the same
       parts as `OfflineModal` and `ConfirmModal`: Mantine `Modal`, `Heading`,
       `BodyText`, `Icon` and `ButtonPair`. No new atomic component is needed.
@@ -176,9 +176,34 @@ someone can install it whenever they choose.
 
       The copy is in sentence case and British English. The platform steps
       are data, a map from route to steps, not branches in the JSX, so adding
-      a platform is one entry.
+      a platform is one entry. The map lives in its own `installSteps.tsx`,
+      because the React fast-refresh lint rule allows a component file to
+      export only components. `IconShare2`, `IconSquarePlus` and
+      `IconDotsVertical` are registered for the steps.
 
-- [ ] **Write `InstallAppModal.stories.tsx` and `InstallAppModal.test.tsx`.**
+      The wording comes from each vendor's current instructions, checked in
+      September 2026:
+
+      - **iOS** — since iOS 26, Safari no longer shows the Share button
+        straight away: it is inside the "···" menu beside the address bar
+        (Apple's iPhone User Guide, "Bookmark a website in Safari on
+        iPhone"). The step says it "may be" there, because Chrome and Edge
+        on iOS still show Share directly. The add dialog then has an "Open
+        as Web App" switch, on by default, which the last step names.
+      - **Safari on a Mac** — File, then "Add to Dock", or the Share button
+        (Apple Support, "Use Safari web apps on Mac"). Only the menu route
+        is given, as it is the one that does not move between versions.
+      - **Firefox on Android** — the menu, then "Add app to Home screen";
+        Mozilla notes the item reads "Install" on some sites, so both are
+        named.
+      - **Firefox on Windows** — "Add tab to taskbar" in the address bar,
+        from Firefox 143 (Mozilla, "Use web apps in Firefox for Windows").
+      - **Chrome and Edge without a prompt** — the browser menu, then
+        "Install Quill", or "Add to Home screen" on a phone. Desktop Chrome
+        moved it under "Cast, save and share" in 2024, which the step
+        mentions.
+
+- [x] **Write `InstallAppModal.stories.tsx` and `InstallAppModal.test.tsx`.**
       One story per route, in light and dark, so every variant goes through
       the Storybook axe checks. Tests cover each route's text and buttons,
       `onInstall` and `onClose` being called, the loading state, and Escape
@@ -192,6 +217,12 @@ someone can install it whenever they choose.
       for example, so the steps have to match the iOS version people
       actually run. Change the steps in the stories until they match what
       the devices show.
+
+      Not done before Phase 4: the plan was built in one unattended run, so
+      this review moves to the Phase 3 pull request, before it merges. The
+      steps are the only part a review is likely to change, and they are
+      data in `installSteps.tsx`, so a change there does not reach into the
+      phases built on top.
 
 ## Phase 4: Add the install card to Settings
 
