@@ -22,7 +22,7 @@ import io
 import logging
 import tempfile
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 
 from pydantic import ValidationError
 from reportlab.lib.pagesizes import (  # type: ignore[import-untyped]
@@ -225,6 +225,26 @@ def download_certificate_background_from_gcs(
     tmp.close()
     logger.info("Downloaded certificate background from GCS to %s", tmp.name)
     return Path(tmp.name)
+
+
+# ------------------------------------------------------------------
+# Wording
+# ------------------------------------------------------------------
+
+
+def certificate_pass_summary(criteria: list[dict[str, Any]]) -> str:
+    """The pass line on a certificate, then each criterion's score.
+
+    Reads on from "This certifies that" and the candidate's name, so it
+    says "Passed" rather than "Pass". *criteria* are the scored results
+    ``evaluate_pass_criteria`` returns, each on its own line as a whole
+    percentage.
+    """
+    lines = ["Passed"]
+    for criterion in criteria:
+        percentage = round(criterion.get("value", 0) * 100)
+        lines.append(f"{criterion.get('name', '')}: {percentage}%")
+    return "\n".join(lines)
 
 
 # ------------------------------------------------------------------
