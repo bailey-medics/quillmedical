@@ -87,7 +87,7 @@ it does not ask.
       object: `firstSeenAt`, `asksShown` (0, 1 or 2), `lastAskedAt` and
       `finished`. Follow `frontend/src/lib/page-views/optOut.ts` for the
       shape: every read and write in `try`/`catch`, and a module comment
-      saying why the value is stored on the device. The value is checked on
+      giving the PECR reasoning recorded under Decisions. The value is checked on
       read, and anything malformed is treated as a new device. This is
       per-device, not per-user, on purpose: installing is something a device
       does. A user who installed on their phone should still be asked on
@@ -245,12 +245,14 @@ it does not ask.
   something only this browser can act on. The cost is that clearing site data
   resets the schedule, which at worst means two more asks.
 
-- **Open question: storage consent** — `optOut.ts` records that Quill claims
-  the Privacy and Electronic Communications Regulations exemption for storing
-  on the device only for settings that are strictly necessary. The
-  `quill.installPrompt` value contains no identifier and never leaves the
-  device. But it supports a nudge, not a service the user asked for, so it
-  may not qualify for that exemption. Whoever owns Quill's cookie and storage
-  position should decide before Phase 2 is merged. The fallback is to keep
-  the schedule in `sessionStorage` plus the one `finished` flag. That would
-  weaken the "seven days" rule, which is why the question is asked first.
+- **Storing the schedule counts as strictly necessary** — decided by the
+  product owner on 2026-09-27. The Privacy and Electronic Communications
+  Regulations (PECR) allow storing on the device without consent only when
+  it is strictly necessary, and `optOut.ts` records Quill relying on that
+  exemption. Installing Quill as an app is an essential part of using it
+  well: it opens full screen from its own icon, and on iOS it is the only
+  way to get notifications. The `quill.installPrompt` value is kept as small
+  as the rule allows. It holds no identifier, never leaves the device, and
+  mostly records the user's own answers ("Not now", installed), which is the
+  same footing `optOut.ts` stands on. The module comment in Phase 2 states
+  this reasoning so it sits next to the code it covers.
