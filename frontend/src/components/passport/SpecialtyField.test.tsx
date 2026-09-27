@@ -85,12 +85,24 @@ describe("SpecialtyField", () => {
     expect(onChange).toHaveBeenCalledWith([]);
   });
 
-  it("says the choice only changes the order", () => {
+  it("shows no helper text unless given one", () => {
     renderWithMantine(<SpecialtyField value={null} onChange={vi.fn()} />);
 
     expect(
-      screen.getByText(/only changes the order competencies are listed in/),
-    ).toBeInTheDocument();
+      document.querySelector(".mantine-InputWrapper-description"),
+    ).toBeNull();
+  });
+
+  it("shows the helper text it is given", () => {
+    renderWithMantine(
+      <SpecialtyField
+        value={null}
+        onChange={vi.fn()}
+        description="Choose the one you work in"
+      />,
+    );
+
+    expect(screen.getByText("Choose the one you work in")).toBeInTheDocument();
   });
 
   it("shows an error when given", () => {

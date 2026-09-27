@@ -303,6 +303,7 @@ export function Component() {
         <SpecialtyField
           value={specialties}
           onChange={setSpecialties}
+          description="Choose one or more"
           required
         />
         <Group justify="flex-end">

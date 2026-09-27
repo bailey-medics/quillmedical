@@ -341,6 +341,7 @@ describe("PassportPage", () => {
     await user.click(create);
     expect(createPassport).not.toHaveBeenCalled();
     expect(screen.getByText("Your specialty")).toBeInTheDocument();
+    expect(screen.getByText("Choose one or more")).toBeInTheDocument();
   });
 
   it("creates a Generic passport when Generic is chosen", async () => {

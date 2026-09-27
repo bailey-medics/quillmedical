@@ -15,7 +15,9 @@ they create their passport, and it changes only the order of the picker, never
 what it offers. The first release offers Oncology, General medicine, General
 surgery and Generic, the last meaning no specialty order. Testing all of this
 on teaching also needs a way to delete a test holder's passport and start
-again, which phases 6 to 9 add without it ever reaching a real clinician's.
+again, which phases 6 to 9 add without it ever reaching a real clinician's. Phases
+10 and 11 let an organisation name the specialties its people see first when
+they choose, so an oncology department can put Oncology at the top.
 
 ## Phase 1: Drop the site shortlist
 
@@ -224,8 +226,9 @@ again, which phases 6 to 9 add without it ever reaching a real clinician's.
       The options are every file in `shared/passport-specialties/`, plus
       "Generic (no specialty order)". Choosing Generic clears any specialty
       already ticked, and ticking a specialty clears Generic, because the two
-      contradict each other. The helper text says the choice only changes the
-      order competencies are listed in, and can be changed later in settings.
+      contradict each other. The helper text on the create step reads "Choose
+      one or more"; the earlier text saying the choice only changes the order
+      was dropped as noise.
       Built as `SpecialtyField`, composed from `MultiSelectField` rather than
       from scratch, with three states: `null` unanswered, `[]` Generic, or
       the chosen ids.
@@ -372,6 +375,81 @@ again, which phases 6 to 9 add without it ever reaching a real clinician's.
       `mark.bailey.superadmin` holds passport
       `e42b42defd7443c782ace79fb5ee1f7a`.
 
+## Phase 10: Lead specialties per organisation, the backend
+
+- [ ] **A table, `org_unit_passport_specialty`**, in
+      `features/passport/models.py`: `org_unit_id` (a foreign key to
+      `org_unit.id`, deleted with it), `specialty_id`, `position` (from 1),
+      `set_by` (a foreign key to `users.id`, set null) and `set_at`. Unique on
+      `(org_unit_id, specialty_id)` and on `(org_unit_id, position)`. One row
+      per lead specialty, not a list in a column: see Decisions. Migration via
+      `just migrate "add organisation passport lead specialties"`; read the
+      generated `upgrade()` and `downgrade()` before committing.
+
+- [ ] **Only an org_unit that carries features holds them**, checked with
+      `type_can_hold_features`, the rule the passport feature switch already
+      uses. An organisation, never a ward.
+
+- [ ] **The order for one holder, worked out in one place**:
+      `specialty_order_for(db, user)` in `features/passport/specialties.py`.
+      First the lead specialties of every organisation the holder reaches
+      (`get_reachable_org_unit_ids`), organisations taken in name order and
+      each one's leads in `position` order, with repeats dropped. Then every
+      other specialty, alphabetically by display name. A lead naming a
+      specialty whose file has since been removed is skipped, the same way a
+      profile keeps an unknown id without it ordering anything. With no leads
+      anywhere the result is plain alphabetical.
+
+- [ ] **`GET /api/passport/specialties`**, returning
+      `[{id, display_name, lead}]` in that order, behind the passport feature
+      like the other passport routes. The create step and the settings card
+      both read it, so the frontend never decides the order itself.
+
+- [ ] **`GET` and `PUT /api/org-units/{unit_id}/passport-specialties`**, the
+      organisation's lead specialty ids in order. `PUT` replaces the whole list
+      and carries `DEP_REQUIRE_CSRF` and `DEP_REQUIRE_MANAGE_USERS`, scoped
+      with `_require_visible` exactly as `set_org_unit_feature` is. It refuses
+      with a 422 an org_unit that cannot carry features, an unknown specialty
+      id, and an id listed twice. An empty list clears the leads. Both routes
+      are new, so additive, with no compatibility entry.
+
+- [ ] **Tests.** The ordering: no leads is alphabetical; one organisation's
+      leads come first; two organisations combine in name order without
+      repeats; a removed specialty is skipped. The routes: a `manage_users`
+      holder at the organisation can set and clear the leads; one at another
+      organisation, or without the competency, is refused; a ward is refused;
+      the `PUT` needs CSRF; unknown and repeated ids are refused.
+
+## Phase 11: Lead specialties per organisation, the frontend
+
+- [ ] **`SpecialtyField` takes its options, in order, as a prop**, instead of
+      reading `PASSPORT_SPECIALTIES` itself. The create step of `PassportPage`
+      and `PassportSpecialtyCard` fetch them from
+      `GET /api/passport/specialties`. If that call fails they fall back to the
+      alphabetical list in the generated bundle, so the question can always be
+      answered. Generic stays last.
+
+- [ ] **A "Passport specialties" card on `OrgFeaturesPage`**, under the feature
+      switches and shown while the passport feature is on for that
+      organisation. A `MultiSelectField` of every specialty, where the order
+      they are picked in is the order they lead; removing one and picking it
+      again moves it to the end. Drag to reorder is deferred until an
+      organisation names more than two or three. The helper text says it
+      changes only the order of the specialty list for people at this
+      organisation.
+
+- [ ] **Set the oncology department's lead to Oncology** on app, through that
+      card, once deployed. It is data, not code, so nothing in this repository
+      names the organisation.
+
+- [ ] **Stories and tests** for `SpecialtyField` with a given order and with
+      the fallback; for the create step using the fetched order; and for the
+      card shown and hidden with the passport feature, saving a new order, and
+      a refused save.
+
+- [ ] **Update the docs.** `docs/docs/backend/passport/index.md` describes lead
+      specialties.
+
 ## Decisions
 
 - **A specialty, not a "passport type"** — "type" suggests a different kind of
@@ -418,3 +496,23 @@ again, which phases 6 to 9 add without it ever reaching a real clinician's.
 - **`mark.bailey` is listed too** — that account's passport is deletable
   while it is on the list. Acceptable while nobody uses production; once a
   real record matters there, take it off in its own pull request.
+
+- **Lead specialties, not a full order** — an organisation names the
+  specialties to list first, and everything else follows the default order. A
+  new specialty then needs no change to any organisation's setting. Mark's
+  decision, 27 September 2026.
+
+- **The default order is alphabetical, not a platform-wide order** — an
+  `order:` field in each specialty file was tried and dropped, because it put
+  one organisation's preference, Oncology first, in front of everybody. Mark's
+  decision, 27 September 2026.
+
+- **A holder in several organisations gets their leads combined** — each
+  organisation's leads, organisations in name order, without repeats. Somebody
+  in one oncology department simply sees Oncology first. Mark's decision, 27
+  September 2026.
+
+- **A table, not a list in a column** — each row names one specialty at one
+  organisation, and the ordering reads rows rather than a document, so it is a
+  relationship. The specialty id is a string rather than a foreign key because
+  specialties live in YAML files, not a table, exactly as they do on a profile.

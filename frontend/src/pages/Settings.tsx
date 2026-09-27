@@ -185,15 +185,6 @@ export default function Settings() {
           buttonUrl="/settings/account"
         />
 
-        {passport && (
-          <PassportSpecialtyCard
-            value={passport.specialties}
-            onChange={saveSpecialties}
-            disabled={!passport.canWrite}
-            error={specialtyError}
-          />
-        )}
-
         {state.status === "authenticated" &&
           !state.user.clinical_services_enabled && (
             <ActionCard
@@ -257,6 +248,17 @@ export default function Settings() {
             </Group>
           </Stack>
         </BaseCard>
+
+        {/* Last: only passport holders see it, so it follows the cards
+            everybody has rather than shifting them around */}
+        {passport && (
+          <PassportSpecialtyCard
+            value={passport.specialties}
+            onChange={saveSpecialties}
+            disabled={!passport.canWrite}
+            error={specialtyError}
+          />
+        )}
       </SimpleGrid>
     </Stack>
   );

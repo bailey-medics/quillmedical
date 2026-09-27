@@ -5,8 +5,8 @@
  *
  * **It orders, and nothing else.** A specialty moves its common
  * competencies to the top of the competency picker. It hides nothing and
- * requires nothing, so the helper text says so rather than letting the
- * choice feel like enrolling on a programme.
+ * requires nothing. There is no helper text by default; a caller that
+ * needs one passes `description`.
  *
  * **Three states, not two.** `null` means not yet answered, `[]` means
  * Generic and a list of ids means those specialties. Keeping "not
@@ -53,8 +53,7 @@ export default function SpecialtyField({
   value,
   onChange,
   label = "Your specialty",
-  description = "This only changes the order competencies are listed in. " +
-    "Everything stays available, and you can change it later in settings.",
+  description,
   error,
   required = false,
   disabled = false,

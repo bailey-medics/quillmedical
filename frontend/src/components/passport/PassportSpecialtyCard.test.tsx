@@ -10,13 +10,18 @@ import PassportSpecialtyCard from "./PassportSpecialtyCard";
 import { GENERIC_LABEL } from "./specialtyChoice";
 
 describe("PassportSpecialtyCard", () => {
-  it("says what a specialty does, and that nothing is hidden", () => {
+  it("is titled, with the field's helper text and no subtitle", () => {
     renderWithMantine(
       <PassportSpecialtyCard value={["oncology"]} onChange={vi.fn()} />,
     );
 
     expect(screen.getByText("Passport specialty")).toBeInTheDocument();
-    expect(screen.getByText(/Nothing is hidden/)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "This only changes the order competencies are listed in.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Nothing is hidden/)).not.toBeInTheDocument();
   });
 
   // The chosen values show as pills; the same words also sit in the

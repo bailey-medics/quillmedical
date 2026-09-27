@@ -209,6 +209,15 @@ describe("ActionCard", () => {
       expect(screen.getByText("Download your certificate")).toBeInTheDocument();
     });
 
+    it("renders no subtitle when none is given", () => {
+      renderWithRouter(
+        <ActionCard title="Certificate" buttonLabel="Download" fullWidth />,
+      );
+      expect(screen.getByText("Certificate")).toBeInTheDocument();
+      // Only the title and the button: no empty paragraph between them
+      expect(document.querySelectorAll("p")).toHaveLength(0);
+    });
+
     it("renders filled button variant when specified", () => {
       const { container } = renderWithRouter(
         <ActionCard
