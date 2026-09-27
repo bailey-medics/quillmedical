@@ -5,16 +5,35 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import { fn } from "storybook/test";
+import { PASSPORT_SPECIALTIES } from "@lib/passport/specialties";
 import SpecialtyField from "./SpecialtyField";
 
 const meta: Meta<typeof SpecialtyField> = {
   title: "Passport/Specialty field",
   component: SpecialtyField,
   parameters: { layout: "padded" },
+  // The alphabetical default, which every story starts from
+  args: { options: PASSPORT_SPECIALTIES },
 };
 
 export default meta;
 type Story = StoryObj<typeof SpecialtyField>;
+
+/**
+ * An organisation's lead specialty first: an oncology department puts
+ * Oncology at the top, and the rest follow alphabetically.
+ */
+export const OrganisationLeadFirst: Story = {
+  args: {
+    options: [
+      { id: "oncology", display_name: "Oncology" },
+      { id: "general_medicine", display_name: "General medicine" },
+      { id: "general_surgery", display_name: "General surgery" },
+    ],
+    value: null,
+    onChange: fn(),
+  },
+};
 
 /** Not yet answered: nothing is preselected. */
 export const Unanswered: Story = {
@@ -70,6 +89,13 @@ export const Disabled: Story = {
 export const Interactive: Story = {
   render: function InteractiveStory() {
     const [value, setValue] = useState<string[] | null>(null);
-    return <SpecialtyField value={value} onChange={setValue} required />;
+    return (
+      <SpecialtyField
+        options={PASSPORT_SPECIALTIES}
+        value={value}
+        onChange={setValue}
+        required
+      />
+    );
   },
 };

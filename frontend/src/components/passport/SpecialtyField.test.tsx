@@ -6,6 +6,7 @@ import { describe, it, expect, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@test/test-utils";
+import { PASSPORT_SPECIALTIES } from "@lib/passport/specialties";
 import SpecialtyField from "./SpecialtyField";
 import {
   GENERIC_CHOICE,
@@ -41,22 +42,63 @@ describe("nextSpecialtyValue", () => {
   });
 });
 
+/** The alphabetical default, as the bundle holds it. */
+const OPTIONS = PASSPORT_SPECIALTIES;
+
+/** What the options read, top to bottom, once the dropdown is open. */
+function optionLabels(): string[] {
+  return screen.getAllByRole("option").map((o) => o.textContent ?? "");
+}
+
 describe("SpecialtyField", () => {
   it("offers every specialty and Generic", async () => {
     const user = userEvent.setup();
-    renderWithMantine(<SpecialtyField value={null} onChange={vi.fn()} />);
+    renderWithMantine(
+      <SpecialtyField options={OPTIONS} value={null} onChange={vi.fn()} />,
+    );
 
     await user.click(screen.getByRole("combobox"));
 
-    expect(await screen.findByText("Oncology")).toBeInTheDocument();
-    expect(screen.getByText("General medicine")).toBeInTheDocument();
-    expect(screen.getByText("General surgery")).toBeInTheDocument();
-    expect(screen.getByText(GENERIC_LABEL)).toBeInTheDocument();
+    await screen.findByText("Oncology");
+    expect(optionLabels()).toEqual([
+      "General medicine",
+      "General surgery",
+      "Oncology",
+      GENERIC_LABEL,
+    ]);
+  });
+
+  it("offers the specialties in the order it is given, Generic last", async () => {
+    // An oncology department's lead specialty, as the backend orders it
+    const user = userEvent.setup();
+    renderWithMantine(
+      <SpecialtyField
+        options={[
+          { id: "oncology", display_name: "Oncology" },
+          { id: "general_medicine", display_name: "General medicine" },
+          { id: "general_surgery", display_name: "General surgery" },
+        ]}
+        value={null}
+        onChange={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("combobox"));
+    await screen.findByText("Oncology");
+
+    expect(optionLabels()).toEqual([
+      "Oncology",
+      "General medicine",
+      "General surgery",
+      GENERIC_LABEL,
+    ]);
   });
 
   it("starts with nothing chosen", () => {
     // Nothing preselected, so Generic is a choice rather than a default.
-    renderWithMantine(<SpecialtyField value={null} onChange={vi.fn()} />);
+    renderWithMantine(
+      <SpecialtyField options={OPTIONS} value={null} onChange={vi.fn()} />,
+    );
 
     expect(
       screen.getByPlaceholderText("Choose a specialty"),
@@ -66,7 +108,9 @@ describe("SpecialtyField", () => {
   it("reports a chosen specialty", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
-    renderWithMantine(<SpecialtyField value={null} onChange={onChange} />);
+    renderWithMantine(
+      <SpecialtyField options={OPTIONS} value={null} onChange={onChange} />,
+    );
 
     await user.click(screen.getByRole("combobox"));
     await user.click(await screen.findByText("Oncology"));
@@ -77,7 +121,9 @@ describe("SpecialtyField", () => {
   it("reports Generic as an empty list", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
-    renderWithMantine(<SpecialtyField value={null} onChange={onChange} />);
+    renderWithMantine(
+      <SpecialtyField options={OPTIONS} value={null} onChange={onChange} />,
+    );
 
     await user.click(screen.getByRole("combobox"));
     await user.click(await screen.findByText(GENERIC_LABEL));
@@ -86,7 +132,9 @@ describe("SpecialtyField", () => {
   });
 
   it("shows no helper text unless given one", () => {
-    renderWithMantine(<SpecialtyField value={null} onChange={vi.fn()} />);
+    renderWithMantine(
+      <SpecialtyField options={OPTIONS} value={null} onChange={vi.fn()} />,
+    );
 
     expect(
       document.querySelector(".mantine-InputWrapper-description"),
@@ -96,6 +144,7 @@ describe("SpecialtyField", () => {
   it("shows the helper text it is given", () => {
     renderWithMantine(
       <SpecialtyField
+        options={OPTIONS}
         value={null}
         onChange={vi.fn()}
         description="Choose the one you work in"
@@ -108,6 +157,7 @@ describe("SpecialtyField", () => {
   it("shows an error when given", () => {
     renderWithMantine(
       <SpecialtyField
+        options={OPTIONS}
         value={null}
         onChange={vi.fn()}
         error="Choose a specialty, or Generic"
@@ -121,7 +171,12 @@ describe("SpecialtyField", () => {
 
   it("can be disabled", () => {
     renderWithMantine(
-      <SpecialtyField value={[]} onChange={vi.fn()} disabled />,
+      <SpecialtyField
+        options={OPTIONS}
+        value={[]}
+        onChange={vi.fn()}
+        disabled
+      />,
     );
 
     expect(screen.getByRole("combobox")).toBeDisabled();

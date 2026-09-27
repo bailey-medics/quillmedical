@@ -31,6 +31,7 @@ import { useHasFeature } from "@/lib/features";
 import { useHasCompetency } from "@/lib/cbac/hooks";
 import PassportSpecialtyCard from "@/components/passport/PassportSpecialtyCard";
 import { fetchMyPassport, setPassportSpecialties } from "@lib/passport";
+import { useSpecialtyChoices } from "@lib/passport/useSpecialtyChoices";
 import { hasOptedOut, setOptedOut } from "@/lib/page-views/optOut";
 import { useInstallRoute } from "@lib/pwa/useInstallRoute";
 import { layoutTokens } from "@/theme";
@@ -87,6 +88,8 @@ export default function Settings() {
     canWrite: boolean;
   } | null>(null);
   const [specialtyError, setSpecialtyError] = useState<string | undefined>();
+  // Fetched only once the card is showing, for somebody with a passport.
+  const specialtyOptions = useSpecialtyChoices(passport !== null);
 
   useEffect(() => {
     if (!passportEnabled || !canReachPassport) return;
@@ -275,6 +278,7 @@ export default function Settings() {
             everybody has rather than shifting them around */}
         {passport && (
           <PassportSpecialtyCard
+            options={specialtyOptions}
             value={passport.specialties}
             onChange={saveSpecialties}
             disabled={!passport.canWrite}

@@ -5,12 +5,15 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import { fn } from "storybook/test";
+import { PASSPORT_SPECIALTIES } from "@lib/passport/specialties";
 import PassportSpecialtyCard from "./PassportSpecialtyCard";
 
 const meta: Meta<typeof PassportSpecialtyCard> = {
   title: "Passport/Passport specialty card",
   component: PassportSpecialtyCard,
   parameters: { layout: "padded" },
+  // The alphabetical default, which every story starts from
+  args: { options: PASSPORT_SPECIALTIES },
 };
 
 export default meta;
@@ -40,6 +43,12 @@ export const SaveFailed: Story = {
 export const Interactive: Story = {
   render: function InteractiveStory() {
     const [value, setValue] = useState<string[]>(["oncology"]);
-    return <PassportSpecialtyCard value={value} onChange={setValue} />;
+    return (
+      <PassportSpecialtyCard
+        options={PASSPORT_SPECIALTIES}
+        value={value}
+        onChange={setValue}
+      />
+    );
   },
 };

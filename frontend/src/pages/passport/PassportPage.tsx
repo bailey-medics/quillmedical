@@ -35,6 +35,7 @@ import {
 import { layoutTokens } from "@/theme";
 import { createPassport, fetchInbox, fetchMyPassport } from "@lib/passport";
 import { entitlementWarning } from "@lib/passport/entitlementWarning";
+import { useSpecialtyChoices } from "@lib/passport/useSpecialtyChoices";
 import type { PassportDetail } from "@lib/passport";
 
 /**
@@ -146,6 +147,9 @@ export function Component() {
   // Asked before the passport is made, with nothing preselected: `null`
   // until answered, `[]` for Generic. Only orders the competency picker.
   const [specialties, setSpecialties] = useState<string[] | null>(null);
+  // Fetched only once the create step is showing, the one place here
+  // that asks the question.
+  const specialtyOptions = useSpecialtyChoices(absent);
   // How many sign-off requests name this person as assessor. Fetched
   // separately from the passport because it is separate: an external
   // assessor has a queue and may have no passport at all, so a failed
@@ -301,6 +305,7 @@ export function Component() {
           }
         />
         <SpecialtyField
+          options={specialtyOptions}
           value={specialties}
           onChange={setSpecialties}
           description="Choose one or more"

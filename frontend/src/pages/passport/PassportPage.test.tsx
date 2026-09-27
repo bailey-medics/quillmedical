@@ -9,6 +9,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
+import { PASSPORT_SPECIALTIES } from "@lib/passport/specialties";
 import { Component as PassportPage } from "./PassportPage";
 import { competencies } from "@/components/passport/fixtures";
 
@@ -16,11 +17,33 @@ const fetchMyPassport = vi.fn();
 const createPassport = vi.fn();
 const fetchInbox = vi.fn();
 
+// The specialty order comes from the API through this hook; each test
+// sets what it returns, and useSpecialtyChoices.test.ts covers the fetch.
+const specialtyChoices = vi.fn();
+vi.mock("@lib/passport/useSpecialtyChoices", () => ({
+  useSpecialtyChoices: (enabled: boolean) => specialtyChoices(enabled),
+}));
+
 vi.mock("@lib/passport", () => ({
   fetchMyPassport: (...args: unknown[]) => fetchMyPassport(...args),
   createPassport: (...args: unknown[]) => createPassport(...args),
   fetchInbox: (...args: unknown[]) => fetchInbox(...args),
 }));
+
+const ONCOLOGY_FIRST = [
+  { id: "oncology", display_name: "Oncology" },
+  { id: "general_medicine", display_name: "General medicine" },
+  { id: "general_surgery", display_name: "General surgery" },
+];
+
+beforeEach(() => {
+  specialtyChoices.mockReturnValue(PASSPORT_SPECIALTIES);
+});
+
+/** What the specialty options read, top to bottom, once open. */
+function optionLabels(): string[] {
+  return screen.getAllByRole("option").map((o) => o.textContent ?? "");
+}
 
 /** The shape `api.ts` throws: an Error carrying the HTTP status. */
 function httpError(status: number): Error & { status: number } {
@@ -322,6 +345,24 @@ describe("PassportPage", () => {
 
     expect(createPassport).toHaveBeenCalledWith(["oncology"]);
     expect(await screen.findByText("Perform bronchoscopy")).toBeInTheDocument();
+  });
+
+  it("offers the specialties in the order the API gives", async () => {
+    const user = userEvent.setup();
+    specialtyChoices.mockReturnValue(ONCOLOGY_FIRST);
+    fetchMyPassport.mockRejectedValue(httpError(404));
+    renderWithRouter(<PassportPage />);
+
+    await screen.findByText("You do not have a passport yet");
+    expect(specialtyChoices).toHaveBeenLastCalledWith(true);
+    await user.click(screen.getByRole("combobox"));
+
+    expect(optionLabels()).toEqual([
+      "Oncology",
+      "General medicine",
+      "General surgery",
+      "Generic (no specialty order)",
+    ]);
   });
 
   it("asks for a specialty before the passport can be created", async () => {

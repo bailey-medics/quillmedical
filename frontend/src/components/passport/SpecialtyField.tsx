@@ -17,15 +17,24 @@
  * **Generic and a specialty contradict each other**, so choosing one
  * clears the other.
  *
+ * **It offers the specialties in the order it is given**, with Generic
+ * last. The caller fetches that order with `useSpecialtyChoices`, which
+ * puts the holder's organisations' lead specialties first.
+ *
  * @example
  * ```tsx
- * <SpecialtyField value={specialties} onChange={setSpecialties} required />
+ * <SpecialtyField
+ *   options={useSpecialtyChoices(true)}
+ *   value={specialties}
+ *   onChange={setSpecialties}
+ *   required
+ * />
  * ```
  */
 
 import { useMemo } from "react";
 import { MultiSelectField } from "@components/form";
-import { PASSPORT_SPECIALTIES } from "@lib/passport/specialties";
+import type { SpecialtyOption } from "@lib/passport/specialties";
 import {
   GENERIC_CHOICE,
   GENERIC_LABEL,
@@ -33,6 +42,8 @@ import {
 } from "./specialtyChoice";
 
 export interface SpecialtyFieldProps {
+  /** The specialties to offer, in order; Generic is added last */
+  options: SpecialtyOption[];
   /** `null` until answered, `[]` for Generic, or the chosen ids */
   value: string[] | null;
   /** Called with the new answer, in the same three states */
@@ -50,6 +61,7 @@ export interface SpecialtyFieldProps {
 }
 
 export default function SpecialtyField({
+  options,
   value,
   onChange,
   label = "Your specialty",
@@ -60,13 +72,13 @@ export default function SpecialtyField({
 }: SpecialtyFieldProps) {
   const data = useMemo(
     () => [
-      ...PASSPORT_SPECIALTIES.map((specialty) => ({
+      ...options.map((specialty) => ({
         value: specialty.id,
         label: specialty.display_name,
       })),
       { value: GENERIC_CHOICE, label: GENERIC_LABEL },
     ],
-    [],
+    [options],
   );
 
   // The select shows Generic as a pill of its own, so an empty answer
