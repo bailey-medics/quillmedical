@@ -14,6 +14,7 @@ import VideoPlayerV10 from "./VideoPlayerV10";
 import VideoPlayer from "@/components/teaching/video-player/VideoPlayer";
 import { Heading } from "@/components/typography";
 import { StoryNote } from "@/stories/variants";
+import publicAsset from "@lib/publicAsset";
 
 /** The sample clip in `public/teaching/`, served by Storybook's staticDirs. */
 const SAMPLE = "/teaching/sample/ltd-transition.mp4";
@@ -81,7 +82,7 @@ export const YoutubeVideo: Story = {
 export const WithPoster: Story = {
   args: {
     src: SAMPLE,
-    posterUrl: "/teaching/colonoscopy-optical-diagnosis-test.png",
+    posterUrl: publicAsset("/teaching/colonoscopy-optical-diagnosis-test.png"),
   },
   render: (args) => (
     <Stack gap="sm">

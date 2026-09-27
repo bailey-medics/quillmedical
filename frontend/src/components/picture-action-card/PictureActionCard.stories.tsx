@@ -7,6 +7,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { SimpleGrid } from "@mantine/core";
 import PictureActionCard from "./PictureActionCard";
+import publicAsset from "@lib/publicAsset";
 
 const meta = {
   title: "Action card/Picture action card",
@@ -29,7 +30,7 @@ export const Default: Story = {
     title: "Colorectal Polyps",
     description:
       "Morphology categories of superficial lesions, clinical implications, and standardised reporting using the Paris classification.",
-    imageSrc: "/storybook/paris-classification.png",
+    imageSrc: publicAsset("/storybook/paris-classification.png"),
     imageAlt: "Paris classification of superficial neoplasms",
     buttonLabel: "View module",
     buttonUrl: "/teaching/colorectal-polyps",
@@ -46,7 +47,7 @@ export const Grid: Story = {
   args: {
     title: "Colorectal Polyps",
     description: "Morphology categories of superficial lesions.",
-    imageSrc: "/storybook/paris-classification.png",
+    imageSrc: publicAsset("/storybook/paris-classification.png"),
     imageAlt: "Paris classification of superficial neoplasms",
     buttonLabel: "View module",
     buttonUrl: "/teaching/colorectal-polyps",
@@ -56,7 +57,7 @@ export const Grid: Story = {
       <PictureActionCard
         title="Colorectal Polyps"
         description="Morphology categories of superficial lesions, clinical implications, and standardised reporting using the Paris classification."
-        imageSrc="/storybook/paris-classification.png"
+        imageSrc={publicAsset("/storybook/paris-classification.png")}
         imageAlt="Paris classification of superficial neoplasms"
         buttonLabel="View module"
         buttonUrl="/teaching/colorectal-polyps"
@@ -64,7 +65,7 @@ export const Grid: Story = {
       <PictureActionCard
         title="Chest X-ray Interpretation"
         description="Systematic approach to interpreting chest radiographs, common pathologies, and structured reporting."
-        imageSrc="/storybook/chest-xray-pneumothorax.png"
+        imageSrc={publicAsset("/storybook/chest-xray-pneumothorax.png")}
         imageAlt="Chest X-ray showing pneumothorax"
         buttonLabel="View module"
         buttonUrl="/teaching/chest-xray-interpretation"

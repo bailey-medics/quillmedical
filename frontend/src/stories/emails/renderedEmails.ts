@@ -8,6 +8,7 @@
  * shows is what the backend sends.
  */
 
+import publicAsset from "@lib/publicAsset";
 import index from "./rendered/index.json";
 
 export type EmailThemeName = "quill" | "ldd";
@@ -53,6 +54,10 @@ export interface RenderedEmail extends RenderedEmailEntry {
  * `dark` rewrites the email's `prefers-color-scheme: dark` query to always
  * apply, so the preview shows what a mail client in dark mode shows,
  * whatever the viewer's own setting.
+ *
+ * The renders point their images at the site root (`/email/...`), which is
+ * right for a sent email but not for the published Storybook under a
+ * sub-path, so each `src` is resolved through `publicAsset`.
  */
 export function renderedEmail(
   id: string,
@@ -68,10 +73,14 @@ export function renderedEmail(
   if (html === undefined) {
     throw new Error(`Missing render ${meta.file}. Run just email-preview.`);
   }
+  const withAssets = html.replace(
+    /src="(\/[^"]*)"/g,
+    (_match, path: string) => `src="${publicAsset(path)}"`,
+  );
   return {
     ...meta,
     html: dark
-      ? html.replace("@media (prefers-color-scheme: dark)", "@media all")
-      : html,
+      ? withAssets.replace("@media (prefers-color-scheme: dark)", "@media all")
+      : withAssets,
   };
 }

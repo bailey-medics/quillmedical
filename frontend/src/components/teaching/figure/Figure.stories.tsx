@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import Figure from "./Figure";
+import publicAsset from "@lib/publicAsset";
 
 const meta: Meta<typeof Figure> = {
   title: "Teaching/Figure",
@@ -11,7 +12,7 @@ type Story = StoryObj<typeof Figure>;
 
 export const WithCaption: Story = {
   args: {
-    src: "/storybook/paris-classification.png",
+    src: publicAsset("/storybook/paris-classification.png"),
     alt: "Overview of polyp morphology categories",
     caption: "Figure 1: Paris classification overview",
   },
@@ -19,7 +20,7 @@ export const WithCaption: Story = {
 
 export const WithoutCaption: Story = {
   args: {
-    src: "/storybook/paris-classification.png",
+    src: publicAsset("/storybook/paris-classification.png"),
     alt: "Clinical image of colorectal polyp",
   },
 };

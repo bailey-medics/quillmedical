@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Document } from "./Document";
+import publicAsset from "@lib/publicAsset";
 
 const meta: Meta<typeof Document> = {
   title: "Documents/Document",
@@ -13,7 +14,7 @@ export const PDF: Story = {
   args: {
     name: "External clinical letter",
     type: "pdf",
-    url: "/mock-documents/1_external_clinical_letter.pdf",
+    url: publicAsset("/mock-documents/1_external_clinical_letter.pdf"),
   },
 };
 

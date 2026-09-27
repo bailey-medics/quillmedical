@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { emailIds, renderedEmail } from "./renderedEmails";
 
 describe("renderedEmail", () => {
@@ -28,6 +28,17 @@ describe("renderedEmail", () => {
     expect(certificate.fromName).toBe("EoEETA via Quill Medical");
     expect(certificate.replyTo).toBe("coordinator@eoeeta.example");
     expect(certificate.html).toContain("/email/partners/eoeeta-email.png");
+  });
+
+  it("resolves image paths against the base URL", () => {
+    vi.stubEnv("BASE_URL", "./");
+    try {
+      const html = renderedEmail("certificate", "quill").html;
+      expect(html).toContain('src="./email/quill-wordmark.png"');
+      expect(html).not.toContain('src="/email/');
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("refuses an id it has no render for", () => {

@@ -8,6 +8,7 @@
 import { Container, Group } from "@mantine/core";
 import PublicBodyText from "@/components/typography/PublicBodyText";
 import classes from "./PublicFooter.module.css";
+import publicAsset from "@lib/publicAsset";
 
 interface FooterLink {
   label: string;
@@ -78,7 +79,7 @@ export default function PublicFooter() {
       <Container className={classes.inner} size="lg">
         <div className={classes.logo}>
           <img
-            src="/quill-name-long-white-amber.png"
+            src={publicAsset("/quill-name-long-white-amber.png")}
             alt="Quill Medical"
             className={classes.logoImage}
           />

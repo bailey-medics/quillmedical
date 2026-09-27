@@ -4,6 +4,7 @@ import { useState } from "react";
 import { QuestionView } from "./QuestionView";
 import TopRibbon from "@/components/ribbon/TopRibbon";
 import type { CandidateItem } from "@/features/teaching/types";
+import publicAsset from "@lib/publicAsset";
 
 const uniformItem: CandidateItem = {
   answer_id: 1,
@@ -13,12 +14,12 @@ const uniformItem: CandidateItem = {
     {
       key: "image_1",
       label: "White light (WLI)",
-      url: "/storybook/white-light-polyp.png",
+      url: publicAsset("/storybook/white-light-polyp.png"),
     },
     {
       key: "image_2",
       label: "Narrow band imaging (NBI)",
-      url: "/storybook/nbi-polyp.png",
+      url: publicAsset("/storybook/nbi-polyp.png"),
     },
   ],
   options: [
@@ -42,7 +43,7 @@ const variableItem: CandidateItem = {
   images: [
     {
       key: "lesion",
-      url: "/storybook/chest-xray-pneumothorax.png",
+      url: publicAsset("/storybook/chest-xray-pneumothorax.png"),
     },
   ],
   text: "A 65-year-old patient presents with a 3mm sessile polyp in the sigmoid colon.",
