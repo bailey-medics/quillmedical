@@ -173,7 +173,7 @@ describe("the passport specialty card", () => {
       "Oncology",
       "General medicine",
       "General surgery",
-      "Generic (no specialty order)",
+      "Generic",
     ]);
   });
 
@@ -228,7 +228,7 @@ describe("the passport specialty card", () => {
     await user.click(screen.getByRole("combobox"));
     await user.click(
       await screen.findByRole("option", {
-        name: "Generic (no specialty order)",
+        name: "Generic",
       }),
     );
 

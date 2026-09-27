@@ -10,7 +10,7 @@
 export const GENERIC_CHOICE = "__generic__";
 
 /** What Generic is called on screen. */
-export const GENERIC_LABEL = "Generic (no specialty order)";
+export const GENERIC_LABEL = "Generic";
 
 /**
  * The heading a specialty's common competencies sit under in the picker:
