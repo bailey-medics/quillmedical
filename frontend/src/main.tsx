@@ -60,6 +60,7 @@ import {
 import { persistFormState } from "@lib/compat-generation";
 import { installGlobalErrorReporting } from "@lib/error-reporting/globalHandlers";
 import RouteTracking from "@lib/error-reporting/RouteTracking";
+import { installPromptCapture } from "@lib/pwa/installPromptEvent";
 
 import RootLayout from "./RootLayout";
 import ErrorBoundary from "@/components/error-boundary/ErrorBoundary";
@@ -703,6 +704,11 @@ wirePreloadErrorRecovery({
   persist: persistFormState,
   reload: () => window.location.reload(),
 });
+
+// The browser's install prompt fires once, often before React mounts, and is
+// lost unless something is already listening. Held here until Quill decides
+// to ask; see installPromptEvent.ts.
+installPromptCapture.wire(window);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", async () => {
