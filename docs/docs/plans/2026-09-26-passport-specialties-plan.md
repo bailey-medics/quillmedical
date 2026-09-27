@@ -365,7 +365,7 @@ they choose, so an oncology department can put Oncology at the top.
       not have today. Without the first it would look for passports on its
       own disk, find none, and refuse.
 
-- [ ] **List the test holders** in
+- [x] **List the test holders** in
       `infra/environments/app/terraform.tfvars`: `mark.bailey.superadmin`,
       `mark.bailey.admin` and `mark.bailey`. A change of its own, after the
       rest of this phase was deployed. **Changed from user ids to
@@ -373,7 +373,8 @@ they choose, so an oncology department can put Oncology at the top.
       account could not match, but they needed a dry run per account to look
       up, and exact usernames are specific enough. The first dry run found
       `mark.bailey.superadmin` holds passport
-      `e42b42defd7443c782ace79fb5ee1f7a`.
+      `e42b42defd7443c782ace79fb5ee1f7a`. #1179 made the switch, and on
+      2026-09-27 the first confirmed run archived and removed that passport.
 
 ## Phase 10: Lead specialties per organisation, the backend
 
