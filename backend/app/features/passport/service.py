@@ -47,6 +47,7 @@ from .schemas import (
     Attachment,
     EvidenceSnapshot,
     Index,
+    LevelRef,
     Manifest,
     Profile,
     SignOff,
@@ -84,6 +85,22 @@ class DeclarationNotConfirmedError(SignOffError):
     no trace: a half-made sign-off would be worse than none, because the
     record would exist without the act that gives it meaning.
     """
+
+
+class LevelReasonMissingError(SignOffError):
+    """An assessor changed the level without saying why.
+
+    Signing at a different level from the one asked for is allowed, and
+    is ordinary clinical judgement. Doing it without a word is not: the
+    holder would find a smaller thing than they asked for with nothing
+    to learn from, which is the case the read-only level once guarded
+    against.
+    """
+
+
+#: Shown to the holder, so plain English and no ids. The ids go to the
+#: logs, where they are what somebody fixing it needs.
+LEVEL_REQUIRED_MESSAGE = "Choose the level you are asking to be signed off at."
 
 
 class SignOffStateError(SignOffError):
@@ -161,6 +178,39 @@ def create_passport(
     )
 
 
+def check_request(competency_id: str, level_id: str | None) -> LevelRef | None:
+    """Refuse a sign-off request that could never be saved.
+
+    The route calls this before it emails anybody, since an email cannot
+    be unsent: an assessor must never be asked about a request that is
+    then refused. :func:`request_sign_off` calls it too, so the two
+    cannot drift apart.
+
+    Args:
+        competency_id: What the holder is asking to be signed off for.
+        level_id: The level they ask for, where the competency has a
+            scale.
+
+    Returns:
+        The level to record, or ``None`` for a competency with no scale.
+
+    Raises:
+        UnknownCompetencyError: If the competency is not in the catalogue.
+        UnknownLevelError: If the level is not one it declares, or a
+            level was given for a competency with no scale.
+        SignOffError: If it has a scale and no level was given.
+    """
+    definitions.competency_ref(competency_id)
+
+    if level_id is not None:
+        return definitions.level_ref(competency_id, level_id)
+
+    if definitions.has_levels(competency_id):
+        raise SignOffError(LEVEL_REQUIRED_MESSAGE)
+
+    return None
+
+
 def request_sign_off(
     store: PassportStore,
     passport_id: str,
@@ -203,17 +253,7 @@ def request_sign_off(
     """
     moment = now if now is not None else datetime.now(UTC)
     competency = definitions.competency_ref(competency_id)
-
-    level = None
-    if level_id is not None:
-        level = definitions.level_ref(competency_id, level_id)
-    elif definitions.has_levels(competency_id):
-        raise SignOffError(
-            f"Competency {competency_id!r} is signed off against a scale, "
-            "so a level must be named. Its levels are: "
-            + ", ".join(lvl.id for lvl in definitions.levels(competency_id))
-            + "."
-        )
+    level = check_request(competency_id, level_id)
 
     existing = _existing_for(store, passport_id, competency_id)
     kind = _kind_for(competency_id, level_id, existing)
@@ -223,7 +263,10 @@ def request_sign_off(
         competency=competency,
         kind=kind,
         status="requested",
+        # Both, for now: until it is signed, what is on the record is
+        # what was asked for.
         level=level,
+        requested_level=level,
         observed_on=observed_on,
         comments=comments,
         attachments=attachments or [],
@@ -327,16 +370,47 @@ def sign_off(
             "cannot be signed."
         )
 
+    # What was asked for. A record from before `requested_level` existed
+    # still holds the request in `level`, since nothing has signed it.
+    requested = (
+        record.requested_level
+        if record.requested_level is not None
+        else record.level
+    )
+
     level = record.level
     if level_id is not None:
         level = definitions.level_ref(record.competency.id, level_id)
+
+    changed = (
+        level is not None
+        and requested is not None
+        and level.id != requested.id
+    )
+    if changed and not (comments and comments.strip()):
+        raise LevelReasonMissingError(
+            "Say why you are signing off at a different level from the one "
+            "asked for. The holder will see your comment beside both levels."
+        )
+
+    # From the level signed, not the one asked for: a holder who asked
+    # for "unsupervised" and was signed at "direct supervision" has not
+    # progressed, whatever the request said. The record being signed is
+    # still "requested", so it does not count towards its own kind.
+    kind = _kind_for(
+        record.competency.id,
+        level.id if level is not None else None,
+        _existing_for(store, passport_id, record.competency.id),
+    )
 
     expires_on = _expiry(record.competency.id, moment.date())
 
     signed = record.model_copy(
         update={
             "status": "signed_off",
+            "kind": kind if record.kind != "correction" else record.kind,
             "level": level,
+            "requested_level": requested,
             "signed_at": moment,
             "expires_on": expires_on,
             "meaning": meaning,

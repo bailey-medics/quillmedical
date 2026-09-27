@@ -423,6 +423,91 @@ resource "google_monitoring_alert_policy" "server_errors" {
     auto_close = "1800s" # 30 minutes
   }
 }
+
+# ---------- Alert policy — any backend error ----------
+#
+# One error is enough. The 5xx policy above waits for more than
+# server_error_threshold responses in five minutes, which suits an outage
+# and misses a single person being failed. On 27 September 2026 a holder's
+# sign-off request failed twice with a 502, because every email had been
+# failing since the Resend key was stored with a trailing newline six days
+# earlier, and nobody knew until the holder said so. Nothing fired: two 502s
+# is under the threshold, and a refused request (a 400) is not a 5xx at all.
+#
+# So this matches every entry the backend logs at ERROR or above: an
+# unhandled exception, a logger.exception around an external call, and the
+# refusals the passport logs at error because the form should never send
+# them. Rate limited to one notification in five minutes, which log-based
+# policies may be and metric ones may not, so a burst is one message.
+#
+# First tier only, like the browser-error policy: a single error is worth
+# reading the same day, not worth a phone call.
+
+resource "google_monitoring_alert_policy" "backend_errors" {
+  count = length(var.cloud_run_services) > 0 ? 1 : 0
+
+  project      = var.project_id
+  display_name = "Backend error logged (${var.environment})"
+  combiner     = "OR"
+
+  documentation {
+    mime_type = "text/markdown"
+    subject   = "Backend error: $${log.extracted_label.message}"
+    content   = <<-EOT
+      **$${resource.label.service_name}** logged an error:
+
+      > $${log.extracted_label.message}
+
+      Somebody using the app has probably just been failed. The message is
+      what the code logged, which never carries patient information; the
+      full entry, with its traceback, is in the logs:
+
+      ```
+      resource.type="cloud_run_revision"
+      resource.labels.service_name="$${resource.label.service_name}"
+      severity>=ERROR
+      ```
+
+      Logs: https://console.cloud.google.com/logs/query?project=$${project}
+
+      Only the first error in any five minutes is sent, so check the logs
+      for others close to it.
+    EOT
+  }
+
+  conditions {
+    display_name = "Error logged by the backend"
+
+    condition_matched_log {
+      # Browser reports are excluded: the ingest endpoint writes them from
+      # the backend at error, and the browser-error policy below already
+      # counts them against a threshold of its own.
+      filter = <<-EOT
+        resource.type = "cloud_run_revision"
+        (${join(" OR ", [for s in var.cloud_run_services : "resource.labels.service_name = \"${s}\""])})
+        severity >= ERROR
+        NOT jsonPayload."@type" = "type.googleapis.com/google.devtools.clouderrorreporting.v1beta1.ReportedErrorEvent"
+      EOT
+
+      # The logged message, so the alert says what went wrong without
+      # opening anything. A request-log entry for a 5xx has no message,
+      # so the label is empty there and the logs link is the way in.
+      label_extractors = {
+        message = "EXTRACT(jsonPayload.message)"
+      }
+    }
+  }
+
+  notification_channels = local.notification_channels
+
+  alert_strategy {
+    auto_close = "1800s" # 30 minutes
+    notification_rate_limit {
+      period = "300s" # At most one notification per 5 minutes
+    }
+  }
+}
+
 # ---------- Alert policy — browser errors ----------
 #
 # The half of "where are things going wrong" that no server-side signal sees.

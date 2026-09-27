@@ -21,6 +21,9 @@ import StateMessage from "@/components/message-cards/StateMessage";
 import { IconFileText } from "@/components/icons/appIcons";
 import AddButton from "@/components/button/AddButton";
 import { fetchMyPassport, requestSignOff } from "@lib/passport";
+// Direct, not through the barrel, so page tests that mock the API
+// client still get the real catalogue.
+import { levelsFor } from "@lib/passport/levels";
 import type {
   CompetencyState,
   PassportDetail,
@@ -82,6 +85,7 @@ export function Component() {
       {competency && requesting ? (
         <SignOffRequestForm
           competency={competency}
+          levels={levelsFor(competency.id)}
           holderEmail={state.user?.email}
           holderUsername={state.user?.username}
           onSubmit={handleRequest}

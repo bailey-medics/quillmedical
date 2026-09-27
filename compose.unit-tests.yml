@@ -38,6 +38,10 @@ services:
       CORE_DB_PASSWORD: test_auth_password
       CLINICAL_SERVICES_ENABLED: "false"
       EMAIL_DRY_RUN: "true"
+      # Empty, so a development backend/.env limiting who may be emailed
+      # does not refuse the addresses the tests use. CI has no .env and
+      # passed; locally every passport request test failed with a 400.
+      EMAIL_ALLOWED_RECIPIENTS: ""
       TEACHING_STORAGE_BACKEND: local
     working_dir: /app
     volumes:

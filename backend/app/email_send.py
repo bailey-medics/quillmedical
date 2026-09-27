@@ -38,6 +38,21 @@ class EmailNotAllowedError(Exception):
     pass
 
 
+class EmailSendError(RuntimeError):
+    """Raised when the mail provider refuses a send or cannot be reached.
+
+    Carries the provider's message with the API key taken out, and not
+    the exception it came from: the ``requests`` error for a malformed
+    header quotes the header, key and all, so anything that logged the
+    original traceback would write the key into the logs.
+    """
+
+
+def _redact(message: str, secret: str) -> str:
+    """*message* with every copy of *secret* replaced."""
+    return message.replace(secret, "[redacted]") if secret else message
+
+
 def _check_allowed(recipient: str) -> None:
     """Refuse an address a development machine may not write to.
 
@@ -242,7 +257,11 @@ def send_email(
         logger.error("Cannot send email: RESEND_API_KEY is not configured")
         return
 
-    resend.api_key = api_key.get_secret_value()
+    # Stripped because a key stored with a trailing newline, as `echo`
+    # leaves one, makes `requests` refuse the Authorization header, and
+    # every send fails. Found in production on 27 September 2026.
+    key = api_key.get_secret_value().strip()
+    resend.api_key = key
 
     resend_attachments: list[resend.Attachment | resend.RemoteAttachment] = [
         resend.Attachment(
@@ -265,7 +284,12 @@ def send_email(
     if resend_attachments:
         params["attachments"] = resend_attachments
 
-    resend.Emails.send(params)
+    try:
+        resend.Emails.send(params)
+    except Exception as exc:
+        # `from None`, so the original exceptions, which may quote the
+        # key, are not attached to the one callers log.
+        raise EmailSendError(_redact(str(exc), key)) from None
 
     _record_send(to)
 

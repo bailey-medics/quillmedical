@@ -9,6 +9,7 @@ from app.email_send import (
     Attachment,
     EmailNotAllowedError,
     EmailRateLimitError,
+    EmailSendError,
     _rate_log,
     send_email,
 )
@@ -495,3 +496,53 @@ class TestTextReplyToAndSenderName:
                 html_body="<p>B</p>",
                 from_name=name,
             )
+
+
+class TestTheApiKey:
+    """The Resend key, as it arrives from Secret Manager."""
+
+    def setup_method(self) -> None:
+        _rate_log.clear()
+
+    @patch("app.email_send.resend")
+    @patch("app.email_send.settings")
+    def test_a_trailing_newline_is_ignored(
+        self, mock_settings: MagicMock, mock_resend: MagicMock
+    ) -> None:
+        """Stored with `echo`, the key ends in a newline, which `requests`
+        refuses in a header. Every production email failed this way."""
+        mock_settings.EMAIL_DRY_RUN = False
+        mock_settings.EMAIL_ALLOWED_RECIPIENTS = ""
+        mock_settings.RESEND_API_KEY.get_secret_value.return_value = (
+            "re_test_key\n"
+        )
+        mock_settings.EMAIL_FROM = "noreply@quillmedical.com"
+
+        send_email(to="a@example.com", subject="Hi", html_body="<p>x</p>")
+
+        assert mock_resend.api_key == "re_test_key"
+
+    @patch("app.email_send.resend.Emails.send")
+    @patch("app.email_send.settings")
+    def test_a_failed_send_never_carries_the_key(
+        self, mock_settings: MagicMock, mock_send: MagicMock
+    ) -> None:
+        """The error callers log must not quote the key, and must not
+        carry the original exception, whose message does."""
+        mock_settings.EMAIL_DRY_RUN = False
+        mock_settings.EMAIL_ALLOWED_RECIPIENTS = ""
+        mock_settings.RESEND_API_KEY = MagicMock()
+        mock_settings.RESEND_API_KEY.get_secret_value.return_value = (
+            "re_secret_value"
+        )
+        mock_send.side_effect = RuntimeError(
+            "Invalid header value: 'Bearer re_secret_value'"
+        )
+
+        with pytest.raises(EmailSendError) as raised:
+            send_email(to="a@example.com", subject="Hi", html_body="<p>x</p>")
+
+        assert "re_secret_value" not in str(raised.value)
+        assert "[redacted]" in str(raised.value)
+        assert raised.value.__cause__ is None
+        assert raised.value.__suppress_context__

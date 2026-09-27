@@ -422,6 +422,58 @@ describe("SignOffRequestForm", () => {
       expect(screen.getAllByRole("combobox")).toHaveLength(1);
     });
 
+    it("labels the level as the holder's ask, not the outcome", () => {
+      renderForm({ levels });
+      expect(
+        screen.getByRole("combobox", {
+          name: /Level you are asking to be signed off at/,
+        }),
+      ).toBeInTheDocument();
+    });
+
+    it("will not send a request for a scaled competency without a level", async () => {
+      // What happened on the live site on 27 September 2026: the form
+      // sent no level, and the server refused after emailing the assessor.
+      const user = userEvent.setup();
+      renderForm({ levels });
+
+      await typeAssessorEmail(user);
+      await user.type(
+        screen.getByRole("textbox", { name: /Observed on/ }),
+        "14/03/2026",
+      );
+
+      expect(
+        screen.getByRole("button", { name: "Request sign-off" }),
+      ).toHaveAttribute("aria-disabled", "true");
+    });
+
+    it("sends the level chosen", async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn();
+      renderForm({ levels, onSubmit });
+
+      await typeAssessorEmail(user);
+      await user.type(
+        screen.getByRole("textbox", { name: /Observed on/ }),
+        "14/03/2026",
+      );
+      await user.click(
+        screen.getByRole("combobox", { name: /Level you are asking/ }),
+      );
+      await user.click(await screen.findByText("Can perform independently"));
+      await user.click(
+        screen.getByRole("button", { name: "Request sign-off" }),
+      );
+      await user.click(
+        await screen.findByRole("button", { name: "Send request" }),
+      );
+
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ level_id: "unsupervised" }),
+      );
+    });
+
     it("shows no picker at all when there are no levels", () => {
       // The assessor is a plain email field now, so a combobox on this
       // form can only be the level picker.

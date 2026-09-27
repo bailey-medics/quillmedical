@@ -25,6 +25,17 @@ export const Requested: Story = {
   args: { signOff: requested },
 };
 
+/** Signed off at a different level from the one asked for. */
+export const SignedAtADifferentLevel: Story = {
+  args: {
+    signOff: {
+      ...signedOff,
+      requested_level: { id: "teach", name: "Can teach others" },
+      comments: "Not yet teaching it; independent, yes.",
+    },
+  },
+};
+
 export const ThreeClocks: Story = {
   render: () => (
     <Stack gap="sm">

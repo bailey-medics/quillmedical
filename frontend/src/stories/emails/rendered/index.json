@@ -72,6 +72,24 @@
     }
   },
   {
+    "id": "passport-invite-with-level",
+    "label": "Passport assessor invite, at a level",
+    "quill": {
+      "file": "passport-invite-with-level--quill.html",
+      "subject": "Dr Priya Shah has asked you to assess a competency",
+      "preheader": "Interpret imaging for target volume and organ-at-risk definition, recorded in their clinician passport.",
+      "fromName": "Quill Medical",
+      "replyTo": null
+    },
+    "ldd": {
+      "file": "passport-invite-with-level--ldd.html",
+      "subject": "Dr Priya Shah has asked you to assess a competency",
+      "preheader": "Interpret imaging for target volume and organ-at-risk definition, recorded in their clinician passport.",
+      "fromName": "Let's Do Digital",
+      "replyTo": null
+    }
+  },
+  {
     "id": "certificate",
     "label": "EoEETA certificate",
     "quill": {

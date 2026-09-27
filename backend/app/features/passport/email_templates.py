@@ -57,6 +57,7 @@ def render_invite(
     competency_name: str | None,
     url: str,
     expires_in_days: int,
+    level_name: str | None = None,
 ) -> InviteEmail:
     """Render the invitation, in the branded layout.
 
@@ -73,6 +74,8 @@ def render_invite(
             request: a holder may bring an assessor in first and choose
             the competency afterwards.
         url: The accept link, from :func:`accept_url`.
+        level_name: The level asked for, where the competency has a
+            scale, so the assessor knows what they are judging.
         expires_in_days: How long the link lasts, so the recipient knows
             whether they can leave it until after the weekend.
 
@@ -86,6 +89,7 @@ def render_invite(
             "assessor_name": assessor_name,
             "holder_name": holder_name,
             "competency_name": competency_name,
+            "level_name": level_name,
             "url": url,
             "expires_in_days": expires_in_days,
         },

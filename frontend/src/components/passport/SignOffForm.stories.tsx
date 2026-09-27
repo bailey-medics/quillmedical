@@ -26,6 +26,30 @@ export const Default: Story = {
   },
 };
 
+/**
+ * A request for a competency on the RCR entrustment scale. The level
+ * asked for is chosen to start with; choosing another turns the caveats
+ * field into a required "Why a different level?".
+ */
+export const OnAScale: Story = {
+  args: {
+    signOff: {
+      ...requested,
+      competency: {
+        id: "define_radiotherapy_target_volume",
+        name: "Interpret imaging for target volume and organ-at-risk definition",
+      },
+      level: { id: "unsupervised", name: "Entrusted to act unsupervised" },
+      requested_level: {
+        id: "unsupervised",
+        name: "Entrusted to act unsupervised",
+      },
+    },
+    onSubmit: fn(),
+    onCancel: fn(),
+  },
+};
+
 export const Submitting: Story = {
   args: {
     signOff: requested,

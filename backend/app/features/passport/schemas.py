@@ -288,6 +288,11 @@ class SignOff(PassportModel):
     kind: SignOffKind
     status: SignOffStatus
     level: LevelRef | None = None
+    #: The level the holder asked for, set once at request and never
+    #: changed. ``level`` is what the assessor signed, which may differ.
+    #: Absent on records written before 27 September 2026, whose
+    #: ``level`` still holds the request until they are signed.
+    requested_level: LevelRef | None = None
     observed_on: date
     signed_at: datetime | None = None
     expires_on: date | None = None
@@ -476,6 +481,12 @@ class IndexEntry(PassportModel):
     name: NonEmptyText
     status: SignOffStatus
     level: LevelRef | None = None
+    #: What the holder asked for on the latest sign-off. Differs from
+    #: ``level`` only where the assessor signed a different level.
+    requested_level: LevelRef | None = None
+    #: The assessor's comment, carried only where they signed a different
+    #: level from the one asked for, so the holder sees why beside it.
+    level_change_reason: str | None = None
     signed_on: date | None = None
     signed_off_by: str | None = None
     expires_on: date | None = None

@@ -160,6 +160,23 @@ def previews() -> list[Preview]:
                 "assessor_name": "Dr James Okafor",
                 "holder_name": "Dr Priya Shah",
                 "competency_name": "Chest drain insertion (Seldinger)",
+                "level_name": None,
+                "url": "https://quill-medical.com/passport/assessors/accept?token=example",
+                "expires_in_days": 14,
+            },
+        ),
+        Preview(
+            id="passport-invite-with-level",
+            label="Passport assessor invite, at a level",
+            template="passport_invite.html.j2",
+            context={
+                "assessor_name": "Dr James Okafor",
+                "holder_name": "Dr Priya Shah",
+                "competency_name": (
+                    "Interpret imaging for target volume and organ-at-risk "
+                    "definition"
+                ),
+                "level_name": "Entrusted to act unsupervised",
                 "url": "https://quill-medical.com/passport/assessors/accept?token=example",
                 "expires_in_days": 14,
             },

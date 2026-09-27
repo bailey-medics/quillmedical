@@ -20,6 +20,7 @@ from app.features.passport import (
     blobs,
     commits,
     hashing,
+    index,
     paths,
     service,
     store,
@@ -31,6 +32,7 @@ from app.features.passport.blobs import (
 )
 from app.features.passport.service import (
     DeclarationNotConfirmedError,
+    LevelReasonMissingError,
     SelfSignOffError,
     SignOffError,
     SignOffStateError,
@@ -324,14 +326,18 @@ class TestLevels:
     def test_a_scaled_competency_needs_a_level(
         self, passport: store.LocalPassportStore, holder: commits.Actor
     ) -> None:
-        with pytest.raises(SignOffError, match="a level must be named"):
+        with pytest.raises(SignOffError, match="Choose the level"):
             _request(passport, holder, competency_id=SCALED)
 
-    def test_the_refusal_names_the_available_levels(
+    def test_the_refusal_is_plain_english_without_ids(
         self, passport: store.LocalPassportStore, holder: commits.Actor
     ) -> None:
-        with pytest.raises(SignOffError, match="observation_only"):
+        """The holder reads it. The route logs the ids for the team."""
+        with pytest.raises(SignOffError) as raised:
             _request(passport, holder, competency_id=SCALED)
+
+        assert "observation_only" not in str(raised.value)
+        assert SCALED not in str(raised.value)
 
     def test_an_unscaled_competency_needs_none(
         self, passport: store.LocalPassportStore, holder: commits.Actor
@@ -454,6 +460,241 @@ class TestKind:
         earlier = service.read_sign_off(passport, PASSPORT_ID, first)
         assert earlier.status == "signed_off"
         assert earlier.corrects is None
+
+
+class TestTheAssessorDecidesTheLevel:
+    """The holder asks for a level; the assessor signs the one they judge.
+
+    Decided on 27 September 2026, reversing the read-only level. See
+    docs/docs/plans/2026-09-27-passport-sign-off-levels-plan.md.
+    """
+
+    def _asked_for_first_cycle_after_review(
+        self,
+        passport: store.LocalPassportStore,
+        holder: commits.Actor,
+        assessor: commits.Actor,
+    ) -> str:
+        """Signed at review_and_authorise, now asking for a higher level."""
+        first = _request(
+            passport,
+            holder,
+            competency_id=SCALED,
+            level_id="review_and_authorise",
+        )
+        _sign(passport, assessor, first)
+        return _request(
+            passport,
+            holder,
+            competency_id=SCALED,
+            level_id="prescribe_first_cycle",
+            observed_on=date(2026, 9, 1),
+        )
+
+    def test_the_request_keeps_the_level_asked_for(
+        self, passport: store.LocalPassportStore, holder: commits.Actor
+    ) -> None:
+        name = _request(
+            passport, holder, competency_id=SCALED, level_id="observation_only"
+        )
+
+        record = service.read_sign_off(passport, PASSPORT_ID, name)
+        assert record.requested_level is not None
+        assert record.requested_level.id == "observation_only"
+
+    def test_signing_without_naming_a_level_signs_the_one_asked_for(
+        self,
+        passport: store.LocalPassportStore,
+        holder: commits.Actor,
+        assessor: commits.Actor,
+    ) -> None:
+        name = self._asked_for_first_cycle_after_review(
+            passport, holder, assessor
+        )
+        _sign(passport, assessor, name)
+
+        record = service.read_sign_off(passport, PASSPORT_ID, name)
+        assert record.level is not None
+        assert record.level.id == "prescribe_first_cycle"
+        assert record.kind == "progression"
+
+    def test_a_lower_level_is_signed_and_the_ask_is_kept(
+        self,
+        passport: store.LocalPassportStore,
+        holder: commits.Actor,
+        assessor: commits.Actor,
+    ) -> None:
+        name = self._asked_for_first_cycle_after_review(
+            passport, holder, assessor
+        )
+        _sign(
+            passport,
+            assessor,
+            name,
+            level_id="review_and_authorise",
+            comments="Not yet the first cycle on your own.",
+        )
+
+        record = service.read_sign_off(passport, PASSPORT_ID, name)
+        assert record.level is not None
+        assert record.level.id == "review_and_authorise"
+        assert record.requested_level is not None
+        assert record.requested_level.id == "prescribe_first_cycle"
+
+    def test_the_index_tells_the_holder_why_the_level_changed(
+        self,
+        passport: store.LocalPassportStore,
+        holder: commits.Actor,
+        assessor: commits.Actor,
+    ) -> None:
+        name = self._asked_for_first_cycle_after_review(
+            passport, holder, assessor
+        )
+        _sign(
+            passport,
+            assessor,
+            name,
+            level_id="review_and_authorise",
+            comments="Not yet the first cycle on your own.",
+        )
+
+        entry = next(
+            e
+            for e in index.build(passport, PASSPORT_ID).competencies
+            if e.id == SCALED
+        )
+        assert entry.level is not None
+        assert entry.level.id == "review_and_authorise"
+        assert entry.requested_level is not None
+        assert entry.requested_level.id == "prescribe_first_cycle"
+        assert (
+            entry.level_change_reason == "Not yet the first cycle on your own."
+        )
+
+    def test_the_index_carries_no_reason_when_the_level_was_kept(
+        self,
+        passport: store.LocalPassportStore,
+        holder: commits.Actor,
+        assessor: commits.Actor,
+    ) -> None:
+        name = self._asked_for_first_cycle_after_review(
+            passport, holder, assessor
+        )
+        _sign(passport, assessor, name, comments="Well done.")
+
+        entry = next(
+            e
+            for e in index.build(passport, PASSPORT_ID).competencies
+            if e.id == SCALED
+        )
+        assert entry.level_change_reason is None
+
+    def test_kind_follows_the_level_signed_not_the_one_asked_for(
+        self,
+        passport: store.LocalPassportStore,
+        holder: commits.Actor,
+        assessor: commits.Actor,
+    ) -> None:
+        """Asked for as a progression, signed at the level already held:
+        a reassessment, not a progression they never made."""
+        name = self._asked_for_first_cycle_after_review(
+            passport, holder, assessor
+        )
+        assert (
+            service.read_sign_off(passport, PASSPORT_ID, name).kind
+            == "progression"
+        )
+
+        _sign(
+            passport,
+            assessor,
+            name,
+            level_id="review_and_authorise",
+            comments="Same level as before.",
+        )
+
+        assert (
+            service.read_sign_off(passport, PASSPORT_ID, name).kind
+            == "reassessment"
+        )
+
+    def test_a_higher_level_than_asked_for_is_a_progression(
+        self,
+        passport: store.LocalPassportStore,
+        holder: commits.Actor,
+        assessor: commits.Actor,
+    ) -> None:
+        first = _request(
+            passport,
+            holder,
+            competency_id=SCALED,
+            level_id="review_and_authorise",
+        )
+        _sign(passport, assessor, first)
+        second = _request(
+            passport,
+            holder,
+            competency_id=SCALED,
+            level_id="review_and_authorise",
+            observed_on=date(2026, 9, 1),
+        )
+
+        _sign(
+            passport,
+            assessor,
+            second,
+            level_id="prescribe_first_cycle",
+            comments="Well beyond what you asked for.",
+        )
+
+        assert (
+            service.read_sign_off(passport, PASSPORT_ID, second).kind
+            == "progression"
+        )
+
+    def test_a_changed_level_needs_a_comment(
+        self,
+        passport: store.LocalPassportStore,
+        holder: commits.Actor,
+        assessor: commits.Actor,
+    ) -> None:
+        name = self._asked_for_first_cycle_after_review(
+            passport, holder, assessor
+        )
+
+        with pytest.raises(LevelReasonMissingError):
+            _sign(passport, assessor, name, level_id="review_and_authorise")
+        with pytest.raises(LevelReasonMissingError):
+            _sign(
+                passport,
+                assessor,
+                name,
+                level_id="review_and_authorise",
+                comments="   ",
+            )
+
+        # Nothing written: still waiting to be signed.
+        assert (
+            service.read_sign_off(passport, PASSPORT_ID, name).status
+            == "requested"
+        )
+
+    def test_keeping_the_level_needs_no_comment(
+        self,
+        passport: store.LocalPassportStore,
+        holder: commits.Actor,
+        assessor: commits.Actor,
+    ) -> None:
+        name = self._asked_for_first_cycle_after_review(
+            passport, holder, assessor
+        )
+
+        _sign(passport, assessor, name, level_id="prescribe_first_cycle")
+
+        assert (
+            service.read_sign_off(passport, PASSPORT_ID, name).status
+            == "signed_off"
+        )
 
 
 class TestDeclineWithdrawSupersede:

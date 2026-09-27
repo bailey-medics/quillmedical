@@ -37,6 +37,18 @@ export const Requested: Story = {
   args: { competency: requestedCompetency, onSelect: undefined },
 };
 
+/** Signed off at a different level from the one asked for, with why. */
+export const SignedAtADifferentLevel: Story = {
+  args: {
+    competency: {
+      ...signedOffCompetency,
+      requested_level: { id: "teach", name: "Can teach others" },
+      level_change_reason: "Not yet teaching it; independent, yes.",
+    },
+    onSelect: undefined,
+  },
+};
+
 export const Declined: Story = {
   args: { competency: declinedCompetency, onSelect: undefined },
 };

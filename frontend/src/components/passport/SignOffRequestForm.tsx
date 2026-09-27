@@ -2,7 +2,13 @@
  * SignOffRequestForm Component
  *
  * The holder's half of a sign-off: naming an assessor, saying when the
- * work was observed, and optionally adding a reflection.
+ * work was observed, choosing the level they ask for where the competency
+ * has a scale, and optionally adding a reflection.
+ *
+ * **The level is required wherever there is a scale.** The server refuses
+ * a scaled request without one, and before this was enforced here the
+ * field was never even shown, so no such request could succeed. The
+ * holder asks; the assessor decides, and may sign a different level.
  *
  * **The assessor is named by email address, not picked from a list.**
  * The consultant who observed the work is often at another trust, or
@@ -41,6 +47,7 @@ import {
   SelectField,
   TextAreaField,
 } from "@components/form";
+import type { LevelOption } from "@lib/passport/levels";
 import { BodyText, Heading } from "@/components/typography";
 import ButtonPair from "@/components/button/ButtonPair";
 import ConfirmModal from "@/components/confirm-modal/ConfirmModal";
@@ -52,11 +59,7 @@ import type {
   SignOffRequestInput,
 } from "@lib/passport";
 
-/** A level the competency offers, where it declares any. */
-export interface LevelOption {
-  id: string;
-  name: string;
-}
+export type { LevelOption };
 
 export interface SignOffRequestFormProps {
   /** The competency being requested */
@@ -92,8 +95,9 @@ export interface SignOffRequestFormProps {
 /**
  * SignOffRequestForm
  *
- * Renders the request. Submission is refused until an assessor is named
- * and an observed date given.
+ * Renders the request. Submission is refused until an assessor is named,
+ * an observed date given and, where the competency has a scale, a level
+ * chosen.
  */
 export default function SignOffRequestForm({
   competency,
@@ -182,7 +186,13 @@ export default function SignOffRequestForm({
 
   const namesSomebody = !isSelf && (found !== null || looksLikeEmail);
 
-  const canSubmit = namesSomebody && observedOn !== null && !isSubmitting;
+  const needsLevel = (levels?.length ?? 0) > 0;
+
+  const canSubmit =
+    namesSomebody &&
+    observedOn !== null &&
+    (!needsLevel || levelId !== null) &&
+    !isSubmitting;
 
   // Asking is the last moment the holder can catch naming the wrong
   // person, so the form stops here and shows who it found before
@@ -252,9 +262,10 @@ export default function SignOffRequestForm({
 
         {levels && levels.length > 0 && (
           <SelectField
-            label="Level"
-            description="What you are asking to be signed off for."
+            label="Level you are asking to be signed off at"
+            description="Your assessor decides, and may sign off a different level."
             placeholder="Choose a level"
+            required
             data={levels.map((level) => ({
               value: level.id,
               label: level.name,

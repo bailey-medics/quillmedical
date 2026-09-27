@@ -21,6 +21,37 @@ describe("CompetencyRow", () => {
       expect(screen.getByText("Can perform independently")).toBeInTheDocument();
     });
 
+    it("says what was asked for, and why, when the assessor signed a different level", () => {
+      renderWithMantine(
+        <CompetencyRow
+          competency={{
+            ...signedOffCompetency,
+            requested_level: {
+              id: "unsupervised_plus",
+              name: "Can teach others",
+            },
+            level_change_reason: "Not yet teaching it.",
+          }}
+        />,
+      );
+      expect(
+        screen.getByText("You asked for: Can teach others"),
+      ).toBeInTheDocument();
+      expect(screen.getByText(/Not yet teaching it\./)).toBeInTheDocument();
+    });
+
+    it("says nothing extra when the level signed is the one asked for", () => {
+      renderWithMantine(
+        <CompetencyRow
+          competency={{
+            ...signedOffCompetency,
+            requested_level: signedOffCompetency.level,
+          }}
+        />,
+      );
+      expect(screen.queryByText(/You asked for/)).not.toBeInTheDocument();
+    });
+
     it("names the assessor and the date signed", () => {
       renderWithMantine(<CompetencyRow competency={signedOffCompetency} />);
       expect(screen.getByText(/Dr Amara Okonkwo/)).toBeInTheDocument();
