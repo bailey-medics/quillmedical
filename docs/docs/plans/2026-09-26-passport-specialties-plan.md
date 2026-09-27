@@ -290,16 +290,22 @@ again, which phases 6 to 9 add without it ever reaching a real clinician's.
 - [x] **Without `CONFIRM`, report and stop.** Print the holder's username and
       user id, the passport id, and counts of sign-offs, logbook entries,
       certificates, CPD entries, reflections and open requests, whether the
-      holder is on the allow-list, and the `CONFIRM` value to pass back. This
-      is also how the ids for phase 9 are found, since it reads without
-      changing anything. Evidence files are not counted, since that means
+      holder is on the allow-list, and the `CONFIRM` value to pass back. It
+      reads without changing anything. Evidence files are not counted, since that means
       listing the bucket; the confirmed run reports how many objects it
-      moved instead.
+      moved instead. **Found on the first run on teaching:** the counts
+      read the passport out of its `git bundle`, and the admin image had no
+      `git`, so the dry run failed with "No such file or directory: 'git'".
+      The `prod` image had gained `git` for the same reason earlier that
+      day, with a comment keeping it out of the admin image. #1175 adds it
+      to the `admin` stage of `backend/Dockerfile` too. The confirmed run
+      does not need it, since archiving only copies objects.
 
 - [x] **With `CONFIRM`, act only if every check passes**, refusing with a
       message naming the one that failed:
-      - the holder's user id is in `PASSPORT_DELETABLE_USER_IDS`, a
-        comma-separated list, where unset or empty means nobody
+      - the holder's username is in `PASSPORT_DELETABLE_USERNAMES`, a
+        comma-separated list of exact names, where unset or empty means
+        nobody and an entry holding a wildcard is refused
       - `CONFIRM` equals the passport id exactly
       - the holder has exactly one passport, which a unique constraint
         already guarantees
@@ -330,7 +336,12 @@ again, which phases 6 to 9 add without it ever reaching a real clinician's.
       the terminal, the recipe reads that execution's log back, so the dry
       run's report appears where it was asked for. It refuses a username or
       confirmation containing anything but the expected characters, since
-      both go into a comma-separated list of variables.
+      both go into a comma-separated list of variables. **Found on the
+      first run on teaching:** a failed execution prints no name, so the
+      recipe had no log to read back and showed only "The execution
+      failed". #1174 looks up the job's latest execution instead. The run
+      that found this had simply come before the deploy: the job was still
+      the old image, which did not know `delete-passport`.
 
 ## Phase 9: Terraform
 
@@ -343,23 +354,23 @@ again, which phases 6 to 9 add without it ever reaching a real clinician's.
 - [x] **Grant the admin job's identity** object access on both buckets, in
       `infra/runtime-identities.tf`. It has none today.
 
-- [x] **Add `passport_deletable_user_ids`**, a `list(number)` defaulting to
+- [x] **Add `passport_deletable_usernames`**, a `list(string)` defaulting to
       empty, to `infra/variables.tf`, and pass it to the admin job as
-      `PASSPORT_DELETABLE_USER_IDS` in `infra/main.tf`, beside
+      `PASSPORT_DELETABLE_USERNAMES` in `infra/main.tf`, beside
       `CORE_DB_HOST`. Found while building phase 7: the admin job also needs
       `PASSPORT_GCS_BUCKET` and `PASSPORT_ARCHIVE_GCS_BUCKET`, which it does
       not have today. Without the first it would look for passports on its
       own disk, find none, and refuse.
 
-- [ ] **List the three test holders** in
-      `infra/environments/app/terraform.tfvars`, by id, each with a comment
-      naming the account. Find the ids with the phase 7 dry run:
-      `mark.bailey.superadmin`, `mark.bailey.admin` and `mark.bailey`.
-      **A change of its own, after the rest of this phase is deployed**: the
-      dry run needs the admin job to have `PASSPORT_GCS_BUCKET`, which only
-      the step above gives it, so the ids cannot be looked up any sooner.
-      Until then `passport_deletable_user_ids = []` is set explicitly in the
-      tfvars, with a comment naming the three accounts to add.
+- [ ] **List the test holders** in
+      `infra/environments/app/terraform.tfvars`: `mark.bailey.superadmin`,
+      `mark.bailey.admin` and `mark.bailey`. A change of its own, after the
+      rest of this phase was deployed. **Changed from user ids to
+      usernames** in the same change: ids were chosen first, so a renamed
+      account could not match, but they needed a dry run per account to look
+      up, and exact usernames are specific enough. The first dry run found
+      `mark.bailey.superadmin` holds passport
+      `e42b42defd7443c782ace79fb5ee1f7a`.
 
 ## Decisions
 
@@ -385,18 +396,19 @@ again, which phases 6 to 9 add without it ever reaching a real clinician's.
   outside body's stated requirement, which needs deciding on its own.
 
 - **Deletion is impossible until phase 9** — the command refuses every
-  holder while `PASSPORT_DELETABLE_USER_IDS` is unset or empty, so phases 6
+  holder while `PASSPORT_DELETABLE_USERNAMES` is unset or empty, so phases 6
   to 8 are safe to deploy before the Terraform list names anybody.
 
 - **An admin job, never a route** — anything reachable from the web app is
   one stolen session or one bug away from being used. Running the job needs
   gcloud permission on the project, and Cloud Audit Logs record who ran it.
 
-- **Holders named by user id, in Terraform** — a username can be changed by
-  an admin, and an invited assessor chooses their own, so a pattern such as
-  `mark.bailey.*` could come to match a real clinician. An id means one
-  account for good, and adding one is a reviewed change to `infra/` that
-  applies on merge.
+- **Holders named by exact username, in Terraform** — never a pattern, since
+  `mark.bailey.*` could come to match a real clinician's chosen username.
+  Ids were used first and dropped: they needed a lookup per account, and an
+  exact username is specific enough while one person administers every
+  account. Adding one is a reviewed change to `infra/` that applies on
+  merge.
 
 - **Not decided by what a passport contains** — a check refusing passports
   signed off by somebody else was considered and dropped, because testing

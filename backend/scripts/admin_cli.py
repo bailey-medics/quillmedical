@@ -17,8 +17,8 @@ Environment Variables:
     CONFIRM:          delete-passport only. The passport id, pasted back
                       from a dry run. Without it the action only reports.
 
-    delete-passport also reads PASSPORT_DELETABLE_USER_IDS, a
-    comma-separated list of user ids set in Terraform, and
+    delete-passport also reads PASSPORT_DELETABLE_USERNAMES, a
+    comma-separated list of usernames set in Terraform, and
     PASSPORT_ARCHIVE_GCS_BUCKET. See delete_passport().
 
     run-migrations takes no ADMIN_* variables — it runs `alembic upgrade
@@ -355,26 +355,27 @@ def check_competency_seeding() -> int:
     return 1
 
 
-def _deletable_user_ids() -> set[int]:
+def _deletable_usernames() -> set[str]:
     """The holders whose passports may be deleted, from Terraform.
 
-    Unset or empty means nobody. An entry that is not a whole number is
-    refused rather than skipped, so a typo in Terraform stops the command
-    instead of quietly narrowing the list.
+    Unset or empty means nobody. Each entry is an exact username. One
+    holding a wildcard or a space is refused rather than skipped, so a
+    pattern such as ``mark.bailey.*`` stops the command instead of being
+    mistaken for a name.
     """
-    raw = os.environ.get("PASSPORT_DELETABLE_USER_IDS", "").strip()
+    raw = os.environ.get("PASSPORT_DELETABLE_USERNAMES", "").strip()
     if not raw:
         return set()
-    ids: set[int] = set()
+    names: set[str] = set()
     for part in raw.split(","):
         part = part.strip()
-        if not part.isdigit():
+        if not part or any(c in part for c in "*?[] "):
             raise ValueError(
-                f"PASSPORT_DELETABLE_USER_IDS holds {part!r}, which is not "
-                "a user id."
+                f"PASSPORT_DELETABLE_USERNAMES holds {part!r}, which is "
+                "not an exact username."
             )
-        ids.add(int(part))
-    return ids
+        names.add(part)
+    return names
 
 
 def _passport_counts(passport_id: str) -> dict[str, int]:
@@ -407,8 +408,8 @@ def delete_passport() -> int:
     For testing on teaching, where a holder needs to start again. Never
     reachable from the web application, and guarded four ways:
 
-    - **Only holders named in Terraform.** ``PASSPORT_DELETABLE_USER_IDS``
-      lists user ids, so adding somebody is a reviewed change to
+    - **Only holders named in Terraform.** ``PASSPORT_DELETABLE_USERNAMES``
+      lists exact usernames, so adding somebody is a reviewed change to
       ``infra/``. Unset means nobody.
     - **A dry run first.** Without ``CONFIRM`` it reports what it would
       delete and stops. With it, ``CONFIRM`` must equal the passport id.
@@ -437,7 +438,7 @@ def delete_passport() -> int:
     from app.passport_storage import archive_passport
 
     try:
-        deletable = _deletable_user_ids()
+        deletable = _deletable_usernames()
     except ValueError as exc:
         print(f"✗ {exc}", file=sys.stderr)
         return 1
@@ -459,7 +460,7 @@ def delete_passport() -> int:
             )
             return 1
 
-        listed = user.id in deletable
+        listed = user.username in deletable
         open_requests = db.scalar(
             select(func.count())
             .select_from(PassportSignOffRequest)
@@ -480,7 +481,7 @@ def delete_passport() -> int:
                 + (
                     "yes"
                     if listed
-                    else "no, not in PASSPORT_DELETABLE_USER_IDS"
+                    else "no, not in PASSPORT_DELETABLE_USERNAMES"
                 )
             )
             print(
@@ -492,7 +493,7 @@ def delete_passport() -> int:
         if not listed:
             print(
                 f"✗ '{username}' (user {user.id}) is not in "
-                "PASSPORT_DELETABLE_USER_IDS. Holders are added in "
+                "PASSPORT_DELETABLE_USERNAMES. Holders are added in "
                 "Terraform, in infra/.",
                 file=sys.stderr,
             )

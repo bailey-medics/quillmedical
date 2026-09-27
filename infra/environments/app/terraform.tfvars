@@ -85,8 +85,9 @@ enable_sms_channel       = true
 enable_pagerduty_channel = true
 
 # Whose passport the admin job's `delete-passport` action may delete, for
-# testing. Empty means nobody. Filled in once the dry run
-# (`just passport-delete app <username>`) has shown each account's id:
-# mark.bailey.superadmin, mark.bailey.admin and mark.bailey. Exact ids, one
-# per line with a comment naming the account.
-passport_deletable_user_ids = []
+# testing. Exact usernames, never a pattern.
+passport_deletable_usernames = [
+  "mark.bailey.superadmin",
+  "mark.bailey.admin",
+  "mark.bailey",
+]
