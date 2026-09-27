@@ -2,12 +2,13 @@
  * AssessmentResultPage
  *
  * Displays pass/fail result after completing an assessment. Shows score
- * breakdown, pass criteria results, and provides certificate download
- * for passed assessments.
+ * breakdown, pass criteria results, a link to the results question by
+ * question, and certificate download for passed assessments.
  */
 
 import { Skeleton, Stack } from "@mantine/core";
 import TeachingLayout from "@/components/layouts/TeachingLayout";
+import TeachingMainNav from "@/components/navigation/teaching/TeachingMainNav";
 import { ResultMessage, StateMessage } from "@/components/message-cards";
 import { IconAlertCircle } from "@/components/icons/appIcons";
 import { PageHeader } from "@/components/typography";
@@ -53,9 +54,11 @@ export default function AssessmentResultPage() {
     load();
   }, [id]);
 
+  const sidebarNav = <TeachingMainNav />;
+
   if (loading) {
     return (
-      <TeachingLayout>
+      <TeachingLayout sidebar={sidebarNav} drawerContent={sidebarNav}>
         <Stack gap="lg">
           <Skeleton height={60} />
           <Skeleton height={200} />
@@ -67,7 +70,7 @@ export default function AssessmentResultPage() {
 
   if (error || !assessment) {
     return (
-      <TeachingLayout>
+      <TeachingLayout sidebar={sidebarNav} drawerContent={sidebarNav}>
         <StateMessage
           icon={<IconAlertCircle />}
           title="Error loading data"
@@ -80,7 +83,7 @@ export default function AssessmentResultPage() {
 
   if (!assessment.completed_at || assessment.is_passed === null) {
     return (
-      <TeachingLayout>
+      <TeachingLayout sidebar={sidebarNav} drawerContent={sidebarNav}>
         <Stack gap="lg">
           <PageHeader title="Incomplete" />
           <ResultMessage
@@ -102,13 +105,14 @@ export default function AssessmentResultPage() {
     assessment.is_passed && config?.results?.certificate_download === true;
 
   return (
-    <TeachingLayout>
+    <TeachingLayout sidebar={sidebarNav} drawerContent={sidebarNav}>
       <Stack gap="lg">
         <AssessmentResult
           isPassed={assessment.is_passed}
           criteria={criteria}
           bankTitle={bankDetail?.title}
           assessmentId={assessment.id}
+          questionResultsHref={`/teaching/assessment/${assessment.id}/question-results`}
           showCertificate={!!showCertificate}
           showTryAgain={
             fromExam && allowRetry && bankIsLive && !assessment.is_passed

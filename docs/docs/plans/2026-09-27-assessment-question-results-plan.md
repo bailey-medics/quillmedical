@@ -97,29 +97,33 @@ table component, one page and a link to it from the result page.
 
 ## Phase 3: Page, route and link
 
-- [ ] **Add `AssessmentQuestionResultsPage`** in
+- [x] **Add `AssessmentQuestionResultsPage`** in
       `frontend/src/features/teaching/pages/`, calling the new endpoint through
       `api`. A `PageHeader` with the bank title, then the audit facts above
       the table: question bank version, exam reference when there is one,
-      completed date and time, and overall pass or fail. Loading skeleton,
-      and a `StateMessage` for the 404 and 409 cases. `<Stack gap="lg">`, no
+      completed date and time, and overall pass or fail, in a `BaseCard` of
+      `BodyText` lines. Loading skeleton, and a `StateMessage` carrying the
+      API's own message for the 404 and 409 cases. `<Stack gap="lg">`, no
       `Container`.
 
-- [ ] **Route it** in `frontend/src/main.tsx` as
+- [x] **Route it** in `frontend/src/main.tsx` as
       `assessment/:id/question-results` under `/teaching`, next to the result
       route, with `handle: { safeForReload: true }`. Unlike the result page
       it reads nothing from `location.state`, so a reload or a bookmarked
       link rebuilds it from the URL, which is what an audit link needs.
 
-- [ ] **Link to it from the result page**: add an optional
-      `questionResultsHref` prop to `AssessmentResult` and render a link
+- [x] **Link to it from the result page**: add an optional
+      `questionResultsHref` prop to `AssessmentResult` and render a `TextLink`
       beneath `ScoreBreakdown` when it is set, labelled "View results by
       question". `AssessmentResultPage` passes it only for a completed
       attempt. Update `AssessmentResult.stories.tsx` and
-      `AssessmentResult.test.tsx` for the new prop, and add a page test for
-      `AssessmentQuestionResultsPage` in `pages.test.tsx`.
+      `AssessmentResult.test.tsx` for the new prop, and add page tests for
+      `AssessmentResultPage` and `AssessmentQuestionResultsPage` in
+      `pages.test.tsx`. Run with
+      `just uf src/features/teaching/pages/pages.test.tsx src/components/teaching/assessment-result/AssessmentResult.test.tsx`:
+      34 passed.
 
-- [ ] **Put the teaching side navigation back on the result page**, asked
+- [x] **Put the teaching side navigation back on the result page**, asked
       for while this plan was being built. `AssessmentResultPage` renders
       `TeachingLayout` with no `sidebar`, so the result page has no
       navigation and the burger does nothing; pass `TeachingMainNav` as
@@ -127,9 +131,12 @@ table component, one page and a link to it from the result page.
       incomplete, result), as `TeachingDashboard` does. The new question
       results page gets the same. The attempt page itself keeps no sidebar,
       since leaving an exam mid-way by a nav link is what that layout avoids.
-      This changes navigation, so name the accessibility journeys in
-      `docs/docs/frontend/accessibility/journeys.md` that reach the result
-      page and add them to the "Not yet run" list in `testing-log.md`.
+      This changes navigation, so the accessibility journeys in
+      `docs/docs/frontend/accessibility/journeys.md` were checked: none of
+      the four reaches an assessment result (journey 3 is a teaching
+      lecture, not an assessment), so nothing is added to the "Not yet run"
+      list in `testing-log.md`. An assessment journey would be worth
+      writing before the next screen reader round.
 
 ## Decisions
 

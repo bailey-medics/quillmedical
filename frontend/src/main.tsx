@@ -136,6 +136,7 @@ import HomeRedirect from "./pages/HomeRedirect";
 import TeachingDashboard from "./features/teaching/pages/TeachingDashboard";
 import AssessmentAttempt from "./features/teaching/pages/AssessmentAttempt";
 import AssessmentResultPage from "./features/teaching/pages/AssessmentResultPage";
+import AssessmentQuestionResultsPage from "./features/teaching/pages/AssessmentQuestionResultsPage";
 import SyncStatus from "./features/teaching/pages/SyncStatus";
 import AdminTeachingPage from "./pages/admin/teaching/AdminTeachingPage";
 import AdminTeachingDashboard from "./pages/admin/teaching/AdminTeachingDashboard";
@@ -629,6 +630,11 @@ const routes: RouteObject[] = [
       { path: "assessment/:id", element: <AssessmentAttempt /> },
       // Reads location.state.fromExam - not reconstructible from URL alone.
       { path: "assessment/:id/result", element: <AssessmentResultPage /> },
+      {
+        path: "assessment/:id/question-results",
+        element: <AssessmentQuestionResultsPage />,
+        handle: { safeForReload: true },
+      },
       {
         path: "sync",
         element: <SyncStatus />,

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { renderWithMantine } from "@test/test-utils";
+import { renderWithMantine, renderWithRouter } from "@test/test-utils";
 import { AssessmentResult } from "./AssessmentResult";
 
 describe("AssessmentResult", () => {
@@ -53,6 +53,28 @@ describe("AssessmentResult", () => {
     );
     expect(screen.getByText("Score breakdown")).toBeInTheDocument();
     expect(screen.getByText("High confidence rate")).toBeInTheDocument();
+  });
+
+  it("links to the results by question when given where they are", () => {
+    renderWithRouter(
+      <AssessmentResult
+        isPassed={false}
+        criteria={failCriteria}
+        questionResultsHref="/teaching/assessment/7/question-results"
+      />,
+    );
+    expect(
+      screen.getByRole("link", { name: "View results by question" }),
+    ).toHaveAttribute("href", "/teaching/assessment/7/question-results");
+  });
+
+  it("shows no results by question link without an href", () => {
+    renderWithMantine(
+      <AssessmentResult isPassed={true} criteria={passCriteria} />,
+    );
+    expect(
+      screen.queryByRole("link", { name: "View results by question" }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows certificate download when showCertificate is true", () => {
