@@ -205,6 +205,38 @@ describe("what a place carries", () => {
     expect(mocked.get).toHaveBeenCalledWith("/org-units/6/features");
   });
 
+  it("reads the lead passport specialties, in order", async () => {
+    mocked.get.mockResolvedValue({ specialty_ids: ["oncology"] });
+
+    expect(await orgUnits.passportSpecialties(6)).toEqual(["oncology"]);
+    expect(mocked.get).toHaveBeenCalledWith(
+      "/org-units/6/passport-specialties",
+    );
+  });
+
+  it("reads no lead specialties from a reply without the list", async () => {
+    mocked.get.mockResolvedValue({});
+
+    expect(await orgUnits.passportSpecialties(6)).toEqual([]);
+  });
+
+  it("replaces the lead passport specialties", async () => {
+    mocked.put.mockResolvedValue({
+      specialty_ids: ["general_surgery", "oncology"],
+    });
+
+    const saved = await orgUnits.setPassportSpecialties(6, [
+      "general_surgery",
+      "oncology",
+    ]);
+
+    expect(mocked.put).toHaveBeenCalledWith(
+      "/org-units/6/passport-specialties",
+      { specialty_ids: ["general_surgery", "oncology"] },
+    );
+    expect(saved).toEqual(["general_surgery", "oncology"]);
+  });
+
   it("switches one on", async () => {
     mocked.put.mockResolvedValue({ status: "enabled" });
 

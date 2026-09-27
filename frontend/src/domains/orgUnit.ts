@@ -171,6 +171,7 @@ type PractisingCompetenciesResponse = {
   practising_competencies: PractisingCompetency[];
 };
 type FeaturesResponse = { features: OrgUnitFeature[] };
+type PassportSpecialtiesResponse = { specialty_ids: string[] };
 type LinksResponse = { links: OrgUnitLink[] };
 type StatusResponse = { status: string };
 
@@ -321,6 +322,31 @@ export const orgUnits = {
     api.put<StatusResponse>(`/org-units/${id}/features/${featureKey}`, {
       enabled,
     }),
+
+  /**
+   * An organisation's lead passport specialties, in order: the ones its
+   * people see first when they choose their own.
+   */
+  passportSpecialties: async (id: number): Promise<string[]> => {
+    const data = await api.get<PassportSpecialtiesResponse>(
+      `/org-units/${id}/passport-specialties`,
+    );
+    return Array.isArray(data?.specialty_ids) ? data.specialty_ids : [];
+  },
+
+  /** Replace the lead passport specialties; an empty list clears them. */
+  setPassportSpecialties: async (
+    id: number,
+    specialtyIds: string[],
+  ): Promise<string[]> => {
+    const data = await api.put<PassportSpecialtiesResponse>(
+      `/org-units/${id}/passport-specialties`,
+      { specialty_ids: specialtyIds },
+    );
+    return Array.isArray(data?.specialty_ids)
+      ? data.specialty_ids
+      : specialtyIds;
+  },
 
   /** Record that an org_unit is responsible for a patient. */
   addPatient: (id: number, patientId: string) =>

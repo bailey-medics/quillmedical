@@ -370,4 +370,90 @@ describe("OrgFeaturesPage", () => {
       screen.queryByRole("heading", { name: "Features" }),
     ).not.toBeInTheDocument();
   });
+
+  describe("the passport lead specialties card", () => {
+    // The org_unit, and its lead specialties, answered by URL
+    function getWithLeads(features: string[], leads: string[]) {
+      return vi
+        .spyOn(apiLib.api, "get")
+        .mockImplementation((url: string) =>
+          Promise.resolve(
+            url.endsWith("/passport-specialties")
+              ? { specialty_ids: leads }
+              : { ...mockOrg, features },
+          ),
+        );
+    }
+
+    function pills(container: HTMLElement): string[] {
+      return Array.from(container.querySelectorAll(".mantine-Pill-label")).map(
+        (pill) => pill.textContent ?? "",
+      );
+    }
+
+    function renderPage() {
+      return renderWithRouter(<OrgFeaturesPage />, {
+        routePath: "/admin/organisations/:id/features",
+        initialRoute: "/admin/organisations/3/features",
+      });
+    }
+
+    it("is hidden while the passport is off", async () => {
+      getWithLeads(["teaching"], []);
+      renderPage();
+
+      await screen.findByRole("heading", { name: "Features" });
+      expect(
+        screen.queryByText("Passport specialties"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows the saved leads while the passport is on", async () => {
+      const get = getWithLeads(["passport"], ["oncology"]);
+      const { container } = renderPage();
+
+      await screen.findByText("Passport specialties");
+      await waitFor(() => expect(pills(container)).toEqual(["Oncology"]));
+      expect(get).toHaveBeenCalledWith("/org-units/3/passport-specialties");
+    });
+
+    it("saves a picked specialty straight away, at the end", async () => {
+      const user = userEvent.setup();
+      getWithLeads(["passport"], ["oncology"]);
+      const put = vi.spyOn(apiLib.api, "put").mockResolvedValue({
+        specialty_ids: ["oncology", "general_surgery"],
+      });
+      const { container } = renderPage();
+      await waitFor(() => expect(pills(container)).toEqual(["Oncology"]));
+
+      await user.click(screen.getByRole("combobox"));
+      await user.click(
+        await screen.findByRole("option", { name: "General surgery" }),
+      );
+
+      expect(put).toHaveBeenCalledWith("/org-units/3/passport-specialties", {
+        specialty_ids: ["oncology", "general_surgery"],
+      });
+    });
+
+    it("puts the leads back, and says so, when a save fails", async () => {
+      const user = userEvent.setup();
+      getWithLeads(["passport"], ["oncology"]);
+      vi.spyOn(apiLib.api, "put").mockRejectedValue(new Error("network"));
+      const { container } = renderPage();
+      await waitFor(() => expect(pills(container)).toEqual(["Oncology"]));
+
+      await user.click(screen.getByRole("combobox"));
+      await user.click(
+        await screen.findByRole("option", { name: "General surgery" }),
+      );
+
+      expect(
+        await screen.findByText(
+          "The lead specialties could not be saved. Please try again.",
+        ),
+      ).toBeInTheDocument();
+      expect(pills(container)).toEqual(["Oncology"]);
+    });
+  });
 });

@@ -4,6 +4,10 @@
  * Admin page to enable/disable features on an organisation.
  * Toggles are managed by React Hook Form. Save requires confirmation
  * listing what will change.
+ *
+ * While the passport is on, a second card sets the organisation's lead
+ * passport specialties. It saves as it changes rather than through the
+ * form, because it only reorders a list and removes nobody's access.
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -30,6 +34,8 @@ import type { FormSubmitResult } from "@/components/form/Form";
 import { useAuth } from "@/auth/AuthContext";
 import { orgUnits } from "@/domains/orgUnit";
 import ErrorState from "@/components/error-state/ErrorState";
+import PassportLeadSpecialtiesCard from "@/components/passport/PassportLeadSpecialtiesCard";
+import { PASSPORT_SPECIALTIES } from "@lib/passport/specialties";
 
 /** Known features that can be toggled on an organisation. */
 const AVAILABLE_FEATURES: {
@@ -154,6 +160,45 @@ export default function OrgFeaturesPage() {
   const [savedKeys, setSavedKeys] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // The saved lead specialties; null until loaded
+  const [leads, setLeads] = useState<string[] | null>(null);
+  const [leadsError, setLeadsError] = useState<string | undefined>();
+  const passportOn = savedKeys.has("passport");
+
+  useEffect(() => {
+    if (!id || !passportOn) return;
+    let cancelled = false;
+    orgUnits
+      .passportSpecialties(Number(id))
+      .then((ids) => {
+        if (!cancelled) setLeads(ids);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLeadsError("The lead specialties could not be loaded.");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, passportOn]);
+
+  function saveLeads(next: string[]) {
+    if (!id || leads === null) return;
+    const previous = leads;
+
+    // Shown at once, and put back if the save fails, so the card never
+    // claims an order the organisation does not hold.
+    setLeads(next);
+    setLeadsError(undefined);
+
+    orgUnits.setPassportSpecialties(Number(id), next).catch(() => {
+      setLeads(previous);
+      setLeadsError(
+        "The lead specialties could not be saved. Please try again.",
+      );
+    });
+  }
 
   useEffect(() => {
     async function fetchData() {
@@ -255,6 +300,16 @@ export default function OrgFeaturesPage() {
       >
         <FeatureFields orgId={id!} />
       </Form>
+
+      {passportOn && (
+        <PassportLeadSpecialtiesCard
+          options={PASSPORT_SPECIALTIES}
+          value={leads ?? []}
+          onChange={saveLeads}
+          disabled={leads === null}
+          error={leadsError}
+        />
+      )}
     </Stack>
   );
 }

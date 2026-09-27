@@ -450,25 +450,31 @@ they choose, so an oncology department can put Oncology at the top.
       the API's order when it arrives, and fetches only once the page is
       showing the question.
 
-- [ ] **A "Passport specialties" card on `OrgFeaturesPage`**, under the feature
+- [x] **A "Passport specialties" card on `OrgFeaturesPage`**, under the feature
       switches and shown while the passport feature is on for that
       organisation. A `MultiSelectField` of every specialty, where the order
       they are picked in is the order they lead; removing one and picking it
       again moves it to the end. Drag to reorder is deferred until an
       organisation names more than two or three. The helper text says it
       changes only the order of the specialty list for people at this
-      organisation.
+      organisation. Built as `PassportLeadSpecialtiesCard`, an `ActionCard`
+      holding a `MultiSelectField`, below the feature form rather than inside
+      it: it saves as it changes, putting the old list back if a save fails,
+      where the switches wait for "Save changes" and a confirmation, because
+      turning a feature off removes access and reordering a list does not. A
+      saved lead whose specialty file has gone shows as "no longer offered", so
+      it can be removed.
 
 - [ ] **Set the oncology department's lead to Oncology** on app, through that
       card, once deployed. It is data, not code, so nothing in this repository
       names the organisation.
 
-- [ ] **Stories and tests** for `SpecialtyField` with a given order and with
+- [x] **Stories and tests** for `SpecialtyField` with a given order and with
       the fallback; for the create step using the fetched order; and for the
       card shown and hidden with the passport feature, saving a new order, and
       a refused save.
 
-- [ ] **Update the docs.** `docs/docs/backend/passport/index.md` describes lead
+- [x] **Update the docs.** `docs/docs/backend/passport/index.md` describes lead
       specialties.
 
 ## Decisions
