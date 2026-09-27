@@ -102,6 +102,31 @@ export interface Assessment {
   score_breakdown: Record<string, unknown> | null;
 }
 
+/** One question of a finished attempt: right, wrong or unanswered. */
+export interface AssessmentQuestionResult {
+  /** Its number in the bank, from the directory name; null if none */
+  question_number: number | null;
+  /** The item's directory name in the bank, e.g. "question_007" */
+  question_ref: string;
+  /** The 1-based position it was shown at during the attempt */
+  display_order: number;
+  answered: boolean;
+  is_correct: boolean | null;
+  answered_at: string | null;
+}
+
+/** A finished attempt's results question by question, for audit. */
+export interface AssessmentQuestionResults {
+  assessment_id: number;
+  question_bank_id: string;
+  bank_version: number;
+  bank_title: string | null;
+  exam_ref: string | null;
+  completed_at: string;
+  is_passed: boolean | null;
+  questions: AssessmentQuestionResult[];
+}
+
 export interface AssessmentWithFirstItem {
   assessment: Assessment;
   first_item: CandidateItem | null;

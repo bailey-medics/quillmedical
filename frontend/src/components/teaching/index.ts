@@ -1,5 +1,6 @@
 export { AssessmentClosing } from "./assessment-closing";
 export { AssessmentHistoryTable } from "./assessment-history-table";
+export { QuestionResultsTable } from "./question-results-table";
 export { AssessmentIntro } from "./assessment-intro";
 export { TeachingProgressBar } from "./teaching-progress-bar";
 export { AssessmentResult } from "./assessment-result";
