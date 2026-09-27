@@ -71,3 +71,4 @@
 - [Stacked Gate Approvals](2026-09-25-stacked-gate-approvals-plan.md)
 - [Passport Specialties](2026-09-26-passport-specialties-plan.md)
 - [PWA Install Prompt](2026-09-26-pwa-install-prompt-plan.md)
+- [Assessment Question Results](2026-09-27-assessment-question-results-plan.md)

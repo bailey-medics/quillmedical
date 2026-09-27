@@ -183,6 +183,44 @@ class AssessmentWithFirstItem(BaseModel):
     first_item: CandidateItemOut | None
 
 
+class AssessmentQuestionResultOut(BaseModel):
+    """Whether one question of a finished attempt was answered correctly.
+
+    Identified by its number in the bank, not the shuffled position it
+    was shown at. Neither the correct option nor the one chosen is
+    included: the answer key must stay unseen for a retry to mean
+    anything, and an audit of the mark needs only right or wrong.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    #: From the item's directory name, ``question_007`` giving 7. Null
+    #: only if the name carries no number.
+    question_number: int | None
+    #: The item's directory name in the bank, which sync matches on.
+    question_ref: str
+    #: The 1-based position it was shown at during the attempt.
+    display_order: int
+    answered: bool
+    is_correct: bool | None
+    answered_at: datetime | None
+
+
+class AssessmentQuestionResultsOut(BaseModel):
+    """A finished attempt's results question by question, for audit."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    assessment_id: int
+    question_bank_id: str
+    bank_version: int
+    bank_title: str | None
+    exam_ref: str | None
+    completed_at: datetime
+    is_passed: bool | None
+    questions: list[AssessmentQuestionResultOut]
+
+
 # ------------------------------------------------------------------
 # Answers
 # ------------------------------------------------------------------
