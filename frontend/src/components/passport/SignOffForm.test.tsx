@@ -202,4 +202,106 @@ describe("SignOffForm", () => {
 
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
+
+  describe("The level", () => {
+    // A request for a scaled competency. `levelsFor` reads the real
+    // catalogue, so this uses a competency that has the RCR scale.
+    const scaled = {
+      ...requested,
+      competency: {
+        id: "define_radiotherapy_target_volume",
+        name: "Interpret imaging for target volume and organ-at-risk definition",
+      },
+      level: {
+        id: "unsupervised",
+        name: "Entrusted to act unsupervised",
+      },
+      requested_level: {
+        id: "unsupervised",
+        name: "Entrusted to act unsupervised",
+      },
+    };
+
+    async function chooseBasisAndConfirm(
+      user: ReturnType<typeof userEvent.setup>,
+    ) {
+      await user.click(
+        screen.getByRole("combobox", { name: /What did you do/ }),
+      );
+      await user.click(await screen.findByText("Directly observed"));
+      await user.click(screen.getByRole("checkbox"));
+    }
+
+    async function chooseLevel(
+      user: ReturnType<typeof userEvent.setup>,
+      name: string,
+    ) {
+      await user.click(screen.getByRole("combobox", { name: /^Level/ }));
+      await user.click(await screen.findByText(name));
+    }
+
+    it("starts on the level asked for, and says it was asked for", () => {
+      renderWithMantine(<SignOffForm signOff={scaled} onSubmit={vi.fn()} />);
+
+      expect(screen.getByRole("combobox", { name: /^Level/ })).toHaveValue(
+        "Entrusted to act unsupervised",
+      );
+      expect(
+        screen.getByText(/Asked for: Entrusted to act unsupervised/),
+      ).toBeInTheDocument();
+    });
+
+    it("signs the level asked for without asking why", async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn();
+      renderWithMantine(<SignOffForm signOff={scaled} onSubmit={onSubmit} />);
+
+      await chooseBasisAndConfirm(user);
+      await user.click(
+        screen.getByRole("button", { name: "Sign off competency" }),
+      );
+
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ level_id: "unsupervised" }),
+      );
+    });
+
+    it("needs a reason before signing a different level", async () => {
+      const user = userEvent.setup();
+      renderWithMantine(<SignOffForm signOff={scaled} onSubmit={vi.fn()} />);
+
+      await chooseBasisAndConfirm(user);
+      await chooseLevel(user, "Entrusted to act with direct supervision");
+
+      expect(
+        screen.getByRole("textbox", { name: /Why a different level/ }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Sign off competency" }),
+      ).toHaveAttribute("aria-disabled", "true");
+    });
+
+    it("sends the different level with the reason", async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn();
+      renderWithMantine(<SignOffForm signOff={scaled} onSubmit={onSubmit} />);
+
+      await chooseBasisAndConfirm(user);
+      await chooseLevel(user, "Entrusted to act with direct supervision");
+      await user.type(
+        screen.getByRole("textbox", { name: /Why a different level/ }),
+        "Not yet contouring alone.",
+      );
+      await user.click(
+        screen.getByRole("button", { name: "Sign off competency" }),
+      );
+
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          level_id: "direct_supervision",
+          comments: "Not yet contouring alone.",
+        }),
+      );
+    });
+  });
 });

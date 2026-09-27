@@ -161,6 +161,7 @@ from .schemas import (
     CompetencyRef,
     CpdEntry,
     Index,
+    LevelRef,
     LogbookEntry,
     Profile,
     Reflection,
@@ -892,6 +893,38 @@ def _requests_today(db: Session, passport_id: str) -> int:
     )
 
 
+def _checked_request(
+    competency_id: str, level_id: str | None
+) -> LevelRef | None:
+    """Refuse, before anybody is emailed, a request that cannot be saved.
+
+    Each refusal is logged at error, not warning, because the request
+    form should never send one: arriving here means the form and the
+    server disagree, as they did when the form had no level field, and
+    an error is what reaches the team. The message to the holder is
+    plain English; the ids are in the log.
+
+    Returns:
+        The level to record, or ``None`` for a competency with no scale.
+    """
+    try:
+        return service.check_request(competency_id, level_id)
+    except definitions.UnknownCompetencyError:
+        raise HTTPException(404, "Unknown competency") from None
+    except definitions.UnknownLevelError as error:
+        logger.error("sign-off request refused: %s", error)
+        raise HTTPException(
+            400, "That level is not one this competency is signed off at."
+        ) from None
+    except service.SignOffError as error:
+        logger.error(
+            "sign-off request refused: %s (competency %r, no level named)",
+            error,
+            competency_id,
+        )
+        raise HTTPException(400, str(error)) from None
+
+
 def _email_sign_off_request(
     *,
     holder: User,
@@ -901,6 +934,7 @@ def _email_sign_off_request(
     passport_id: str,
     invited_by_user_id: int,
     db: Session,
+    level_name: str | None = None,
 ) -> None:
     """Tell the assessor they have been asked, whoever they are.
 
@@ -973,6 +1007,7 @@ def _email_sign_off_request(
         ),
         holder_name=holder.full_name or holder.username,
         competency_name=competency_name,
+        level_name=level_name,
         url=url,
         expires_in_days=expires_in_days,
     )
@@ -1145,8 +1180,11 @@ def request_sign_off(
 
     # Before the email, since nothing can be unsent: a request for a
     # competency that does not exist, or that nobody can be assessed on,
-    # must not reach an assessor's inbox.
+    # must not reach an assessor's inbox. Nor may one the service would
+    # then refuse, such as a scaled competency asked for with no level,
+    # which is what an assessor was once emailed about on the live site.
     _assessable_refs([competency_id])
+    requested_level = _checked_request(competency_id, body.level_id)
 
     assessor_email = body.assessor_email.strip().lower()
 
@@ -1194,6 +1232,7 @@ def request_sign_off(
         assessor_email=assessor_email,
         assessor=assessor,
         competency_id=competency_id,
+        level_name=requested_level.name if requested_level else None,
         passport_id=row.id,
         invited_by_user_id=user.id,
         db=db,
@@ -1210,12 +1249,21 @@ def request_sign_off(
             comments=body.comments,
             reflection=body.reflection,
         )
-    except definitions.UnknownCompetencyError:
-        raise HTTPException(404, "Unknown competency") from None
-    except definitions.UnknownLevelError as error:
-        raise HTTPException(400, str(error)) from None
-    except service.SignOffError as error:
-        raise HTTPException(400, str(error)) from None
+    except (
+        definitions.UnknownCompetencyError,
+        definitions.UnknownLevelError,
+        service.SignOffError,
+    ) as error:
+        # `_checked_request` refused all of these before the email went,
+        # so arriving here means the two checks disagree, and the
+        # assessor has been emailed about a request that will not exist.
+        logger.error(
+            "sign-off request refused after its email was sent: %s", error
+        )
+        raise HTTPException(
+            500,
+            "Your request could not be saved. The team has been told.",
+        ) from None
 
     db.add(
         PassportSignOffRequest(
@@ -1324,8 +1372,16 @@ def sign_off(
         raise HTTPException(
             400, "The declaration must be confirmed before signing."
         ) from None
-    except definitions.UnknownLevelError as error:
+    except service.LevelReasonMissingError as error:
         raise HTTPException(400, str(error)) from None
+    except definitions.UnknownLevelError as error:
+        # The form offers only the competency's own levels, so this means
+        # the form and the server disagree: logged at error to reach the
+        # team, with the ids, and said plainly to the assessor.
+        logger.error("sign-off refused: %s", error)
+        raise HTTPException(
+            400, "That level is not one this competency is signed off at."
+        ) from None
     except service.SignOffStateError as error:
         raise HTTPException(409, str(error)) from None
 

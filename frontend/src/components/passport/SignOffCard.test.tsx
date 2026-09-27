@@ -16,6 +16,20 @@ describe("SignOffCard", () => {
       expect(screen.getByText("Can perform independently")).toBeInTheDocument();
     });
 
+    it("names the level asked for when a different one was signed", () => {
+      renderWithMantine(
+        <SignOffCard
+          signOff={{
+            ...signedOff,
+            requested_level: { id: "teach", name: "Can teach others" },
+          }}
+        />,
+      );
+      expect(
+        screen.getByText("Asked for: Can teach others"),
+      ).toBeInTheDocument();
+    });
+
     it("renders the status badge", () => {
       renderWithMantine(<SignOffCard signOff={signedOff} />);
       expect(screen.getByText("Signed off")).toBeInTheDocument();

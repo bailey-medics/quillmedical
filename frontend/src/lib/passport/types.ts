@@ -181,6 +181,10 @@ export interface CompetencyState {
   name: string;
   status: SignOffStatus;
   level: LevelRef | null;
+  /** What was asked for on the latest sign-off */
+  requested_level?: LevelRef | null;
+  /** The assessor's reason, only where they signed a different level */
+  level_change_reason?: string | null;
   signed_on: IsoDate | null;
   signed_off_by: string | null;
   expires_on: IsoDate | null;
@@ -239,7 +243,10 @@ export interface SignOff {
   competency: CompetencyRef;
   kind: SignOffKind;
   status: SignOffStatus;
+  /** What the assessor signed, or while requested, what was asked for */
   level: LevelRef | null;
+  /** What the holder asked for. Null on records from before 27 Sep 2026 */
+  requested_level?: LevelRef | null;
   observed_on: IsoDate;
   signed_at: IsoDateTime | null;
   expires_on: IsoDate | null;

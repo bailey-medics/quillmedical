@@ -70,6 +70,12 @@ NON_CONTRIBUTING: dict[str, str] = {
         "Rewording a display name must not look like tampering."
     ),
     "level.name": "A convenience copy of level.id, which does contribute.",
+    "requested_level": (
+        "What the holder asked for, which is context. What the assessor "
+        "attested is level.id, which does contribute. Adding it would "
+        "also change the payload of every record already signed, so none "
+        "of them would verify."
+    ),
     "signed_off_by.name": (
         "People are renamed — marriage, correction of a typo — and none "
         "of that changes what was decided."

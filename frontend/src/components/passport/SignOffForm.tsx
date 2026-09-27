@@ -23,6 +23,14 @@
  *   writes nothing.
  * - **The button names the act** — "Sign off competency", not "Save".
  *
+ * **The assessor decides the level.** The holder's request is chosen to
+ * start with, and the assessor may sign a different level on the scale,
+ * higher or lower, but must then say why: the holder sees the reason
+ * beside both levels. This replaced a read-only level on 27 September
+ * 2026, which made an assessor decline rather than say "not unsupervised
+ * yet, but indirect supervision, yes". The API refuses a changed level
+ * with no reason too.
+ *
  * @example
  * ```tsx
  * <SignOffForm signOff={signOff} onSubmit={submit} onCancel={close} />
@@ -38,6 +46,7 @@ import {
   TextAreaField,
   TextField,
 } from "@components/form";
+import { levelsFor } from "@lib/passport/levels";
 import { Heading } from "@/components/typography";
 import ButtonPair from "@/components/button/ButtonPair";
 import AssessorDeclaration from "./AssessorDeclaration";
@@ -78,17 +87,29 @@ export default function SignOffForm({
   isSubmitting = false,
 }: SignOffFormProps) {
   const [meaning, setMeaning] = useState<SignOffMeaning | null>(null);
-  // The level is the holder's request, shown read-only rather than
-  // chosen here: the assessor accepts or declines what was asked for.
-  const levelId = signOff.level?.id ?? null;
+  // What the holder asked for. A record from before `requested_level`
+  // existed still holds the request in `level`, since nobody signed it.
+  const requested = signOff.requested_level ?? signOff.level ?? null;
+  const levels = levelsFor(signOff.competency.id);
+  const [levelId, setLevelId] = useState<string | null>(requested?.id ?? null);
   const [comments, setComments] = useState("");
   const [assessment, setAssessment] = useState("");
   const [confirmed, setConfirmed] = useState(false);
 
-  // Both are required: the basis because three clinically different acts
-  // cannot be left ambiguous, and the declaration because it is what the
-  // assessor is putting their name to.
-  const canSubmit = meaning !== null && confirmed && !isSubmitting;
+  const changed =
+    requested !== null && levelId !== null && levelId !== requested.id;
+  const needsReason = changed && comments.trim() === "";
+
+  // Required: the basis because three clinically different acts cannot
+  // be left ambiguous, the declaration because it is what the assessor
+  // is putting their name to, a level wherever there is a scale, and a
+  // reason wherever the level differs from the one asked for.
+  const canSubmit =
+    meaning !== null &&
+    confirmed &&
+    (levels.length === 0 || levelId !== null) &&
+    !needsReason &&
+    !isSubmitting;
 
   function handleSubmit() {
     if (!canSubmit || meaning === null) return;
@@ -117,18 +138,44 @@ export default function SignOffForm({
           required
         />
 
-        {signOff.level && (
-          <TextField
+        {levels.length > 0 ? (
+          <SelectField
             label="Level"
-            value={signOff.level.name}
-            readOnly
-            description="Requested by the holder."
+            description={
+              requested
+                ? `Asked for: ${requested.name}. Choose another level if that is your judgement.`
+                : "The level you are signing off."
+            }
+            placeholder="Choose a level"
+            data={levels.map((level) => ({
+              value: level.id,
+              label: level.name,
+            }))}
+            value={levelId}
+            onChange={setLevelId}
+            required
           />
+        ) : (
+          // A level on the record with no scale in the catalogue: the
+          // scale has changed since the request. Shown, not offered.
+          signOff.level && (
+            <TextField
+              label="Level"
+              value={signOff.level.name}
+              readOnly
+              description="Requested by the holder."
+            />
+          )
         )}
 
         <TextAreaField
-          label="Caveats"
-          description="Anything qualifying this sign-off. Optional."
+          label={changed ? "Why a different level?" : "Caveats"}
+          description={
+            changed
+              ? "Required when you sign off a different level from the one asked for. The holder sees this beside both levels."
+              : "Anything qualifying this sign-off. Optional."
+          }
+          required={changed}
           value={comments}
           onChange={(event) => setComments(event.currentTarget.value)}
           autosize

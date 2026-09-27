@@ -60,12 +60,31 @@ function CompetencyDetail({
   competency: CompetencyState;
   showLogbookCount?: boolean;
 }) {
-  const { level, signed_off_by, signed_on, expires_on, logbook_entries } =
-    competency;
+  const {
+    level,
+    requested_level,
+    level_change_reason,
+    signed_off_by,
+    signed_on,
+    expires_on,
+    logbook_entries,
+  } = competency;
+
+  // The holder must never find a different level from the one they asked
+  // for without being told, and why.
+  const levelChanged =
+    level != null && requested_level != null && level.id !== requested_level.id;
 
   return (
     <Stack gap={2}>
       {level && <BodyTextInline>{level.name}</BodyTextInline>}
+
+      {levelChanged && (
+        <BodyText c="dimmed">You asked for: {requested_level.name}</BodyText>
+      )}
+      {levelChanged && level_change_reason && (
+        <BodyText c="dimmed">&ldquo;{level_change_reason}&rdquo;</BodyText>
+      )}
 
       {signed_off_by && signed_on && (
         <BodyText c="dimmed">

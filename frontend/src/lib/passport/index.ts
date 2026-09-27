@@ -96,5 +96,7 @@ export type {
 
 export { PASSPORT_SPECIALTIES, getPassportSpecialty } from "./specialties";
 export type { PassportSpecialtyDefinition } from "./specialties";
+export { levelsFor } from "./levels";
+export type { LevelOption } from "./levels";
 export { registrationAuthorities } from "./registrationAuthorities";
 export type { RegistrationAuthorityOption } from "./registrationAuthorities";

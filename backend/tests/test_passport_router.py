@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+import logging
 import zipfile
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
@@ -536,6 +537,103 @@ class TestRequestSignOff:
         assert db_session.scalars(select(PassportSignOffRequest)).all() == []
         assert passport_store.head(passport_id).commit == before
 
+    def test_a_scaled_competency_with_no_level_is_refused_before_any_email(
+        self,
+        holder_client: TestClient,
+        assessor: User,
+        db_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """What happened on the live site on 27 September 2026: the form
+        sent no level, the assessor was emailed, then the request was
+        refused and never saved."""
+        passport_id = _create_passport(holder_client)
+        mailed: list[str] = []
+        monkeypatch.setattr(
+            router, "send_email", lambda **kw: mailed.append(str(kw["to"]))
+        )
+
+        with caplog.at_level(logging.ERROR, logger=router.logger.name):
+            response = holder_client.post(
+                f"/api/passport/{passport_id}/competencies/{COMPETENCY}"
+                "/requests",
+                json={
+                    "assessor_email": assessor.email,
+                    "observed_on": "2026-03-14",
+                },
+            )
+
+        assert response.status_code == 400, response.text
+        assert response.json()["detail"] == (
+            "Choose the level you are asking to be signed off at."
+        )
+        assert mailed == []
+        assert db_session.scalars(select(PassportAssessorInvite)).all() == []
+        # Logged at error, which is what reaches the team: the form
+        # should never send this, so it means the two disagree.
+        assert any(
+            record.levelno == logging.ERROR
+            and COMPETENCY in record.getMessage()
+            for record in caplog.records
+        )
+
+    def test_an_unknown_level_is_refused_before_any_email(
+        self,
+        holder_client: TestClient,
+        assessor: User,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+        mailed: list[str] = []
+        monkeypatch.setattr(
+            router, "send_email", lambda **kw: mailed.append(str(kw["to"]))
+        )
+
+        response = holder_client.post(
+            f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
+            json={
+                "assessor_email": assessor.email,
+                "observed_on": "2026-03-14",
+                "level_id": "not_a_level",
+            },
+        )
+
+        assert response.status_code == 400, response.text
+        assert "not_a_level" not in response.json()["detail"]
+        assert mailed == []
+
+    def test_the_email_names_the_level_asked_for(
+        self,
+        holder_client: TestClient,
+        assessor: User,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+        bodies: list[str] = []
+        monkeypatch.setattr(
+            router,
+            "send_email",
+            lambda **kw: bodies.append(str(kw["text_body"])),
+        )
+
+        response = holder_client.post(
+            f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
+            json={
+                "assessor_email": assessor.email,
+                "observed_on": "2026-03-14",
+                "level_id": LEVEL,
+            },
+        )
+
+        assert response.status_code == 201, response.text
+        level_name = next(
+            level.name
+            for level in definitions.levels(COMPETENCY)
+            if level.id == LEVEL
+        )
+        assert level_name in bodies[0]
+
     def test_a_rate_limited_address_is_a_429(
         self,
         holder_client: TestClient,
@@ -685,6 +783,47 @@ class TestSignOff:
 
         assert response.status_code == 200, response.text
         assert response.json()["status"] == "signed_off"
+
+    def test_the_assessor_can_sign_a_different_level_with_a_reason(
+        self, test_client: TestClient, requested: tuple[str, str]
+    ) -> None:
+        passport_id, name = requested
+        client = _login(test_client, "assessor")
+
+        response = client.post(
+            f"/api/passport/{passport_id}/sign-offs/{name}/sign-off",
+            json={
+                "meaning": "directly observed",
+                "declaration_confirmed": True,
+                "level_id": "observation_only",
+                "comments": "Watched me do it; not yet reviewing alone.",
+            },
+        )
+        assert response.status_code == 200, response.text
+
+        record = client.get(
+            f"/api/passport/{passport_id}/sign-offs/{name}"
+        ).json()
+        assert record["level"]["id"] == "observation_only"
+        assert record["requested_level"]["id"] == LEVEL
+
+    def test_a_different_level_without_a_reason_is_refused(
+        self, test_client: TestClient, requested: tuple[str, str]
+    ) -> None:
+        passport_id, name = requested
+        client = _login(test_client, "assessor")
+
+        response = client.post(
+            f"/api/passport/{passport_id}/sign-offs/{name}/sign-off",
+            json={
+                "meaning": "directly observed",
+                "declaration_confirmed": True,
+                "level_id": "observation_only",
+            },
+        )
+
+        assert response.status_code == 400, response.text
+        assert "different level" in response.json()["detail"]
 
     def test_the_assessor_never_needs_the_sold_competency(
         self,

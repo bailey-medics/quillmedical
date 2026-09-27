@@ -253,6 +253,17 @@ class TestWhatMustNotMoveTheHash:
             )
         ) == hashing.content_hash(_sign_off())
 
+    def test_the_level_that_was_asked_for(self) -> None:
+        """Context, not the attestation, and absent from every record
+        signed before it existed: counting it would break all of them."""
+        assert hashing.content_hash(
+            _sign_off(
+                requested_level=schemas.LevelRef(
+                    id="direct_supervision", name="Direct supervision"
+                )
+            )
+        ) == hashing.content_hash(_sign_off())
+
     def test_a_level_display_name(self) -> None:
         assert hashing.content_hash(
             _sign_off(

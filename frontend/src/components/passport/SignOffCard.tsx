@@ -71,6 +71,7 @@ export default function SignOffCard({ signOff }: SignOffCardProps) {
     status,
     kind,
     level,
+    requested_level,
     observed_on,
     signed_at,
     expires_on,
@@ -89,6 +90,9 @@ export default function SignOffCard({ signOff }: SignOffCardProps) {
           <Stack gap={2}>
             <Heading>{competency.name}</Heading>
             {level && <BodyTextInline>{level.name}</BodyTextInline>}
+            {level && requested_level && requested_level.id !== level.id && (
+              <BodyText c="dimmed">Asked for: {requested_level.name}</BodyText>
+            )}
           </Stack>
           <SignOffStatusBadge status={status} />
         </Group>

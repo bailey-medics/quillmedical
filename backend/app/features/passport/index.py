@@ -194,11 +194,21 @@ def _entry(
     )
     signed_on = latest.signed_at.date() if latest.signed_at else None
 
+    # The holder must never find a different level from the one they
+    # asked for without the assessor's reason beside it.
+    changed = (
+        latest.level is not None
+        and latest.requested_level is not None
+        and latest.level.id != latest.requested_level.id
+    )
+
     return IndexEntry(
         id=competency_id,
         name=latest.competency.name,
         status=latest.status,
         level=latest.level,
+        requested_level=latest.requested_level,
+        level_change_reason=latest.comments if changed else None,
         signed_on=signed_on,
         signed_off_by=assessor,
         expires_on=latest.expires_on,

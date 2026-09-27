@@ -232,6 +232,10 @@ class CompetencyStateOut(BaseModel):
     name: NonEmptyText
     status: SignOffStatus
     level: LevelRefOut | None = None
+    #: What was asked for on the latest sign-off.
+    requested_level: LevelRefOut | None = None
+    #: The assessor's reason, only where they signed a different level.
+    level_change_reason: str | None = None
     signed_on: date | None = None
     signed_off_by: str | None = None
     expires_on: date | None = None
@@ -302,6 +306,9 @@ class SignOffOut(BaseModel):
     kind: SignOffKind
     status: SignOffStatus
     level: LevelRefOut | None = None
+    #: What the holder asked for. May differ from ``level``, which is
+    #: what the assessor signed. Null on records from before it existed.
+    requested_level: LevelRefOut | None = None
     observed_on: date
     signed_at: datetime | None = None
     expires_on: date | None = None
