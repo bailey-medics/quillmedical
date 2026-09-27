@@ -1,5 +1,6 @@
 /**
- * Settings page — the page-view opt-out and the passport specialty card
+ * Settings page — the page-view opt-out, the passport specialty card and
+ * the install app card
  *
  * The rest of Settings — notifications, two-factor, dark mode — is
  * untested here and was before these changes too.
@@ -27,6 +28,16 @@ vi.mock("@/auth/AuthContext", () => ({
   useAuth: () => ({
     state: { status: "authenticated", user: authUser },
   }),
+}));
+
+// Mutable, so a test can put the page on any install route.
+const installRouteState = vi.hoisted(() => ({
+  route: "chromium-manual" as string,
+  install: vi.fn(),
+}));
+
+vi.mock("@lib/pwa/useInstallRoute", () => ({
+  useInstallRoute: () => installRouteState,
 }));
 
 vi.mock("@lib/passport", () => ({
@@ -199,5 +210,63 @@ describe("the passport specialty card", () => {
 
     await screen.findByText("Passport specialty");
     expect(screen.getByRole("combobox")).toBeDisabled();
+  });
+});
+
+describe("the install app card", () => {
+  beforeEach(() => {
+    installRouteState.route = "chromium-manual";
+    installRouteState.install = vi.fn(() => Promise.resolve("accepted"));
+  });
+
+  const card = () => screen.queryByRole("button", { name: "Install app" });
+
+  it("is hidden once Quill is installed", () => {
+    installRouteState.route = "installed";
+    renderWithRouter(<Settings />);
+    expect(card()).not.toBeInTheDocument();
+  });
+
+  it("is shown wherever Quill is not installed", () => {
+    renderWithRouter(<Settings />);
+    expect(card()).toBeInTheDocument();
+  });
+
+  it("starts the browser's install straight away when it can", async () => {
+    const user = userEvent.setup();
+    installRouteState.route = "prompt";
+    renderWithRouter(<Settings />);
+
+    await user.click(screen.getByRole("button", { name: "Install app" }));
+
+    expect(installRouteState.install).toHaveBeenCalledTimes(1);
+    expect(
+      screen.queryByText("Install Quill on this device?"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("opens the steps for this platform when it cannot", async () => {
+    const user = userEvent.setup();
+    installRouteState.route = "ios";
+    renderWithRouter(<Settings />);
+
+    await user.click(screen.getByRole("button", { name: "Install app" }));
+
+    expect(
+      await screen.findByText("Scroll down and tap Add to Home Screen."),
+    ).toBeInTheDocument();
+    expect(installRouteState.install).not.toHaveBeenCalled();
+  });
+
+  it("explains an unsupported browser rather than showing nothing", async () => {
+    const user = userEvent.setup();
+    installRouteState.route = "unsupported";
+    renderWithRouter(<Settings />);
+
+    await user.click(screen.getByRole("button", { name: "Install app" }));
+
+    expect(
+      await screen.findByText("This browser cannot install Quill"),
+    ).toBeInTheDocument();
   });
 });

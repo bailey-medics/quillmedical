@@ -11,6 +11,7 @@ import { useMediaQuery } from "@mantine/hooks";
 import {
   IconBell,
   IconChartBar,
+  IconDownload,
   IconMoon,
   IconUser,
 } from "@/components/icons/appIcons";
@@ -22,6 +23,7 @@ import PageHeader from "@/components/page-header";
 import BaseCard from "@/components/base-card/BaseCard";
 import IconTextButton from "@/components/button/IconTextButton";
 import SolidSwitch from "@/components/form/SolidSwitch";
+import { InstallAppModal } from "@/components/install-app-modal";
 import { BodyText, Heading } from "@/components/typography";
 import { api } from "@/lib/api";
 import { appFeatureFlags } from "@/lib/featureFlags";
@@ -30,6 +32,7 @@ import { useHasCompetency } from "@/lib/cbac/hooks";
 import PassportSpecialtyCard from "@/components/passport/PassportSpecialtyCard";
 import { fetchMyPassport, setPassportSpecialties } from "@lib/passport";
 import { hasOptedOut, setOptedOut } from "@/lib/page-views/optOut";
+import { useInstallRoute } from "@lib/pwa/useInstallRoute";
 import { layoutTokens } from "@/theme";
 import classes from "./Settings.module.css";
 
@@ -64,6 +67,10 @@ export default function Settings() {
   const useTwoColumnActionCards = useMediaQuery(
     `(min-width: ${layoutTokens.actionCardTwoColumnMinWidth})`,
   );
+  // Shown wherever Quill is not yet installed. It ignores the automatic
+  // ask's schedule: somebody who comes here to install has already chosen to.
+  const { route: installRoute, install } = useInstallRoute();
+  const [installModalOpened, setInstallModalOpened] = useState(false);
   const [notificationState, setNotificationState] = useState<
     "idle" | "busy" | "ok" | "denied" | "err"
   >("idle");
@@ -185,6 +192,21 @@ export default function Settings() {
           buttonUrl="/settings/account"
         />
 
+        {installRoute !== "installed" && (
+          <ActionCard
+            icon={<IconDownload />}
+            title="Install app"
+            subtitle="Open Quill full screen from its own icon, and get notifications"
+            buttonLabel="Install app"
+            onClick={() => {
+              // Pressing the button is already the yes, and the browser
+              // shows its own confirmation, so no modal asks again first.
+              if (installRoute === "prompt") void install();
+              else setInstallModalOpened(true);
+            }}
+          />
+        )}
+
         {state.status === "authenticated" &&
           !state.user.clinical_services_enabled && (
             <ActionCard
@@ -260,6 +282,17 @@ export default function Settings() {
           />
         )}
       </SimpleGrid>
+
+      {installRoute !== "installed" && (
+        <InstallAppModal
+          opened={installModalOpened}
+          route={installRoute}
+          onInstall={async () => {
+            await install();
+          }}
+          onClose={() => setInstallModalOpened(false)}
+        />
+      )}
     </Stack>
   );
 }
