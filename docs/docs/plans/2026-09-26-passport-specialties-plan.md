@@ -439,12 +439,16 @@ they choose, so an oncology department can put Oncology at the top.
 
 ## Phase 11: Lead specialties per organisation, the frontend
 
-- [ ] **`SpecialtyField` takes its options, in order, as a prop**, instead of
+- [x] **`SpecialtyField` takes its options, in order, as a prop**, instead of
       reading `PASSPORT_SPECIALTIES` itself. The create step of `PassportPage`
       and `PassportSpecialtyCard` fetch them from
       `GET /api/passport/specialties`. If that call fails they fall back to the
       alphabetical list in the generated bundle, so the question can always be
-      answered. Generic stays last.
+      answered. Generic stays last. Both pages get them from
+      `useSpecialtyChoices` in `lib/passport/`, which starts with the
+      alphabetical list so the question can be answered at once, switches to
+      the API's order when it arrives, and fetches only once the page is
+      showing the question.
 
 - [ ] **A "Passport specialties" card on `OrgFeaturesPage`**, under the feature
       switches and shown while the passport feature is on for that

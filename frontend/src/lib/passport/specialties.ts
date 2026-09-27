@@ -35,6 +35,15 @@ export const PASSPORT_SPECIALTIES: PassportSpecialtyDefinition[] = [
   }),
 );
 
+/**
+ * One specialty as the specialty field offers it: an id and the name to
+ * show. Both the bundle's definitions and the API's choices fit it.
+ */
+export type SpecialtyOption = Pick<
+  PassportSpecialtyDefinition,
+  "id" | "display_name"
+>;
+
 /** The specialty with this id, or undefined if there is no such file. */
 export function getPassportSpecialty(
   id: string,

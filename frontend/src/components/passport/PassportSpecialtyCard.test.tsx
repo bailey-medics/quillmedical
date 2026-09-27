@@ -6,13 +6,18 @@ import { describe, it, expect, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@test/test-utils";
+import { PASSPORT_SPECIALTIES } from "@lib/passport/specialties";
 import PassportSpecialtyCard from "./PassportSpecialtyCard";
 import { GENERIC_LABEL } from "./specialtyChoice";
 
 describe("PassportSpecialtyCard", () => {
   it("is titled, with the field's helper text and no subtitle", () => {
     renderWithMantine(
-      <PassportSpecialtyCard value={["oncology"]} onChange={vi.fn()} />,
+      <PassportSpecialtyCard
+        options={PASSPORT_SPECIALTIES}
+        value={["oncology"]}
+        onChange={vi.fn()}
+      />,
     );
 
     expect(screen.getByText("Passport specialty")).toBeInTheDocument();
@@ -34,7 +39,11 @@ describe("PassportSpecialtyCard", () => {
 
   it("shows the current specialty", () => {
     const { container } = renderWithMantine(
-      <PassportSpecialtyCard value={["oncology"]} onChange={vi.fn()} />,
+      <PassportSpecialtyCard
+        options={PASSPORT_SPECIALTIES}
+        value={["oncology"]}
+        onChange={vi.fn()}
+      />,
     );
 
     expect(pills(container)).toEqual(["Oncology"]);
@@ -42,7 +51,11 @@ describe("PassportSpecialtyCard", () => {
 
   it("shows Generic when there is no specialty", () => {
     const { container } = renderWithMantine(
-      <PassportSpecialtyCard value={[]} onChange={vi.fn()} />,
+      <PassportSpecialtyCard
+        options={PASSPORT_SPECIALTIES}
+        value={[]}
+        onChange={vi.fn()}
+      />,
     );
 
     expect(pills(container)).toEqual([GENERIC_LABEL]);
@@ -52,7 +65,11 @@ describe("PassportSpecialtyCard", () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     renderWithMantine(
-      <PassportSpecialtyCard value={["oncology"]} onChange={onChange} />,
+      <PassportSpecialtyCard
+        options={PASSPORT_SPECIALTIES}
+        value={["oncology"]}
+        onChange={onChange}
+      />,
     );
 
     await user.click(screen.getByRole("combobox"));
@@ -69,7 +86,11 @@ describe("PassportSpecialtyCard", () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     renderWithMantine(
-      <PassportSpecialtyCard value={["oncology"]} onChange={onChange} />,
+      <PassportSpecialtyCard
+        options={PASSPORT_SPECIALTIES}
+        value={["oncology"]}
+        onChange={onChange}
+      />,
     );
 
     await user.click(screen.getByRole("combobox"));
@@ -80,7 +101,12 @@ describe("PassportSpecialtyCard", () => {
 
   it("is disabled, and says why, while the passport is read-only", () => {
     renderWithMantine(
-      <PassportSpecialtyCard value={[]} onChange={vi.fn()} disabled />,
+      <PassportSpecialtyCard
+        options={PASSPORT_SPECIALTIES}
+        value={[]}
+        onChange={vi.fn()}
+        disabled
+      />,
     );
 
     expect(screen.getByRole("combobox")).toBeDisabled();
@@ -90,6 +116,7 @@ describe("PassportSpecialtyCard", () => {
   it("shows why a change was not saved", () => {
     renderWithMantine(
       <PassportSpecialtyCard
+        options={PASSPORT_SPECIALTIES}
         value={[]}
         onChange={vi.fn()}
         error="Your specialty could not be saved."

@@ -11,6 +11,7 @@ import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import { fetchMyPassport, setPassportSpecialties } from "@lib/passport";
 import { hasOptedOut, setOptedOut } from "@/lib/page-views/optOut";
+import { PASSPORT_SPECIALTIES } from "@lib/passport/specialties";
 import Settings from "./Settings";
 
 vi.mock("@/lib/api", () => ({ api: { post: vi.fn(), get: vi.fn() } }));
@@ -40,10 +41,32 @@ vi.mock("@lib/pwa/useInstallRoute", () => ({
   useInstallRoute: () => installRouteState,
 }));
 
+// The specialty order comes from the API through this hook; each test
+// sets what it returns, and useSpecialtyChoices.test.ts covers the fetch.
+const specialtyChoices = vi.fn();
+vi.mock("@lib/passport/useSpecialtyChoices", () => ({
+  useSpecialtyChoices: (enabled: boolean) => specialtyChoices(enabled),
+}));
+
 vi.mock("@lib/passport", () => ({
   fetchMyPassport: vi.fn(),
   setPassportSpecialties: vi.fn(),
 }));
+
+const ONCOLOGY_FIRST = [
+  { id: "oncology", display_name: "Oncology" },
+  { id: "general_medicine", display_name: "General medicine" },
+  { id: "general_surgery", display_name: "General surgery" },
+];
+
+beforeEach(() => {
+  specialtyChoices.mockReturnValue(PASSPORT_SPECIALTIES);
+});
+
+/** What the specialty options read, top to bottom, once open. */
+function optionLabels(): string[] {
+  return screen.getAllByRole("option").map((o) => o.textContent ?? "");
+}
 
 describe("the page-view opt-out", () => {
   beforeEach(() => {
@@ -135,6 +158,32 @@ describe("the passport specialty card", () => {
     renderWithRouter(<Settings />);
 
     expect(await screen.findByText("Passport specialty")).toBeInTheDocument();
+  });
+
+  it("offers the specialties in the order the API gives", async () => {
+    const user = userEvent.setup();
+    specialtyChoices.mockReturnValue(ONCOLOGY_FIRST);
+    vi.mocked(fetchMyPassport).mockResolvedValue(detail);
+    renderWithRouter(<Settings />);
+
+    await screen.findByText("Passport specialty");
+    await user.click(screen.getByRole("combobox"));
+
+    expect(optionLabels()).toEqual([
+      "Oncology",
+      "General medicine",
+      "General surgery",
+      "Generic (no specialty order)",
+    ]);
+  });
+
+  it("asks for the order only once the card is showing", async () => {
+    vi.mocked(fetchMyPassport).mockResolvedValue(detail);
+    renderWithRouter(<Settings />);
+
+    expect(specialtyChoices).toHaveBeenCalledWith(false);
+    await screen.findByText("Passport specialty");
+    expect(specialtyChoices).toHaveBeenLastCalledWith(true);
   });
 
   it("comes last, after the cards everybody sees", async () => {

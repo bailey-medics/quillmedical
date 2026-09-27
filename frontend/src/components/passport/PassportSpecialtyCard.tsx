@@ -16,6 +16,7 @@
  * @example
  * ```tsx
  * <PassportSpecialtyCard
+ *   options={useSpecialtyChoices(true)}
  *   value={specialties}
  *   onChange={saveSpecialties}
  *   disabled={!canWrite}
@@ -25,9 +26,12 @@
 
 import ActionCard from "@/components/action-card";
 import { IconFileText } from "@/components/icons/appIcons";
+import type { SpecialtyOption } from "@lib/passport/specialties";
 import SpecialtyField from "./SpecialtyField";
 
 export interface PassportSpecialtyCardProps {
+  /** The specialties to offer, in order; Generic is added last */
+  options: SpecialtyOption[];
   /** The holder's specialty ids; `[]` is Generic */
   value: string[];
   /** Called with a new answer, never with an unanswered one */
@@ -39,6 +43,7 @@ export interface PassportSpecialtyCardProps {
 }
 
 export default function PassportSpecialtyCard({
+  options,
   value,
   onChange,
   disabled = false,
@@ -50,6 +55,7 @@ export default function PassportSpecialtyCard({
       title="Passport specialty"
       action={
         <SpecialtyField
+          options={options}
           label="Specialty"
           description={
             disabled
