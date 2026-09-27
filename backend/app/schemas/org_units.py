@@ -12,7 +12,7 @@ org_unit ids, which is what makes them different surfaces rather than one
 surface with two names.
 """
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.cbac.base_professions import PROFESSION_IDS
 from app.cbac.competencies import validate_competency_ids
@@ -300,6 +300,31 @@ class OrgUnitFeaturesOut(BaseModel):
     """
 
     features: list[OrgUnitFeatureItem]
+
+
+class OrgUnitPassportSpecialtiesOut(BaseModel):
+    """An organisation's lead passport specialties, in order.
+
+    Attributes:
+        specialty_ids: The specialties its people see first when choosing
+            their own, the first leading. Empty when it names none.
+    """
+
+    specialty_ids: list[str]
+
+
+class SetOrgUnitPassportSpecialtiesIn(BaseModel):
+    """Replacing an organisation's lead passport specialties.
+
+    Attributes:
+        specialty_ids: The new list, in order. Empty clears it. Each id
+            is checked against ``shared/passport-specialties/`` by the
+            route, which knows the loaded files.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    specialty_ids: list[str] = Field(default_factory=list, max_length=100)
 
 
 class ToggleOrgUnitFeatureIn(BaseModel):

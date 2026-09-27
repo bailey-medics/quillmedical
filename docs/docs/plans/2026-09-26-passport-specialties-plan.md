@@ -389,9 +389,10 @@ they choose, so an oncology department can put Oncology at the top.
       `OrgUnitPassportSpecialty`, with a check that `position` is at least 1;
       migration `79a6ba344abb`.
 
-- [ ] **Only an org_unit that carries features holds them**, checked with
+- [x] **Only an org_unit that carries features holds them**, checked with
       `type_can_hold_features`, the rule the passport feature switch already
-      uses. An organisation, never a ward.
+      uses. An organisation, never a ward. Checked in the `PUT` below, the only
+      thing that writes rows.
 
 - [x] **The order for one holder, worked out in one place**:
       `specialty_order_for(db, user)` in `features/passport/specialties.py`.
@@ -415,20 +416,26 @@ they choose, so an oncology department can put Oncology at the top.
       comes with it, so the contract tests comparing the two route lists stay
       in step.
 
-- [ ] **`GET` and `PUT /api/org-units/{unit_id}/passport-specialties`**, the
+- [x] **`GET` and `PUT /api/org-units/{unit_id}/passport-specialties`**, the
       organisation's lead specialty ids in order. `PUT` replaces the whole list
       and carries `DEP_REQUIRE_CSRF` and `DEP_REQUIRE_MANAGE_USERS`, scoped
       with `_require_visible` exactly as `set_org_unit_feature` is. It refuses
       with a 422 an org_unit that cannot carry features, an unknown specialty
       id, and an id listed twice. An empty list clears the leads. Both routes
-      are new, so additive, with no compatibility entry.
+      are new, so additive, with no compatibility entry. Both carry
+      `{specialty_ids: [...]}`. The `GET` returns every row as stored, one
+      naming a removed specialty included, so an admin can see and clear it;
+      the holder's own list skips such a row. Neither error repeats the ids
+      that were sent, so a caller's own text is never echoed back.
 
-- [ ] **Tests.** The ordering: no leads is alphabetical; one organisation's
+- [x] **Tests.** The ordering: no leads is alphabetical; one organisation's
       leads come first; two organisations combine in name order without
       repeats; a removed specialty is skipped. The routes: a `manage_users`
       holder at the organisation can set and clear the leads; one at another
       organisation, or without the competency, is refused; a ward is refused;
-      the `PUT` needs CSRF; unknown and repeated ids are refused.
+      the `PUT` needs CSRF; unknown and repeated ids are refused. In
+      `backend/tests/test_passport_lead_specialties.py`, with one end-to-end
+      case: what an admin sets leads the list of a holder at that organisation.
 
 ## Phase 11: Lead specialties per organisation, the frontend
 
