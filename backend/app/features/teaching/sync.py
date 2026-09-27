@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.features.teaching.models import (
@@ -24,6 +24,7 @@ from app.features.teaching.models import (
     SYNC_ACTOR_USER,
     QuestionBankConfig,
     QuestionBankItem,
+    QuestionBankOrgStatus,
     QuestionBankSync,
 )
 from app.features.teaching.tooling.validate import (
@@ -161,6 +162,57 @@ def _actor_for(user_id: int | None) -> str:
     return SYNC_ACTOR_USER if user_id is not None else SYNC_ACTOR_DEPLOY_BOT
 
 
+def _serve_newest_version(
+    db: Session, org_unit_id: int, bank_id: str, user_id: int | None
+) -> bool:
+    """Point the organisation at the newest version synced for a bank.
+
+    The app always serves the most recent version, so a merged revision
+    reaches learners at the next sync without anybody promoting it: the
+    product owner's decision of 27 September 2026. A candidate part way
+    through an attempt keeps the version they started on, because
+    ``Assessment.bank_version`` pins it.
+
+    A bank not yet switched on for the organisation has no status row and
+    gains none here, so opening a bank stays a separate act. Promoting an
+    earlier version by hand still works, until the next sync moves it on
+    again. Returns whether the pointer moved.
+    """
+    # The version just added must count, and the session may not flush
+    # on its own before a query.
+    db.flush()
+    newest = db.execute(
+        select(func.max(QuestionBankConfig.version)).where(
+            QuestionBankConfig.org_unit_id == org_unit_id,
+            QuestionBankConfig.question_bank_id == bank_id,
+        )
+    ).scalar_one_or_none()
+    status = (
+        db.execute(
+            select(QuestionBankOrgStatus).where(
+                QuestionBankOrgStatus.org_unit_id == org_unit_id,
+                QuestionBankOrgStatus.question_bank_id == bank_id,
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if status is None or newest is None or status.active_version == newest:
+        return False
+
+    logger.info(
+        "Bank '%s' now serves v%d at place %d, was v%s",
+        bank_id,
+        newest,
+        org_unit_id,
+        status.active_version,
+    )
+    status.active_version = newest
+    status.active_version_set_by = user_id
+    status.active_version_set_at = datetime.now(UTC)
+    return True
+
+
 def sync_question_bank(
     bank_dir: Path,
     org_unit_id: int,
@@ -268,13 +320,16 @@ def sync_question_bank(
                 existing_config.synced_at = datetime.now(UTC)
                 existing_config.synced_by = user_id
                 existing_config.synced_by_actor = _actor_for(user_id)
-                db.commit()
                 logger.info(
                     "Updated metadata only for live bank '%s' v%d "
                     "(no version bump)",
                     bank_id,
                     stored,
                 )
+            # Also here, not only after a new version: a version synced
+            # before this rule existed is served at the next sync.
+            _serve_newest_version(db, org_unit_id, bank_id, user_id)
+            db.commit()
             return validation, None
 
     # Create sync record
@@ -424,5 +479,6 @@ def sync_question_bank(
     sync_record.warnings = [w.to_dict() for w in validation.warnings]
     sync_record.completed_at = datetime.now(UTC)
 
+    _serve_newest_version(db, org_unit_id, bank_id, user_id)
     db.commit()
     return validation, sync_record
