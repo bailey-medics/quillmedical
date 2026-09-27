@@ -10,12 +10,10 @@ import {
 } from "./specialtyChoice";
 
 describe("specialtyGroup", () => {
-  it("says common, never required", () => {
+  it("is the specialty's own name, never required", () => {
     // "Required" would assert a sufficiency judgement the passport
     // deliberately refuses to make.
-    expect(specialtyGroup("General medicine")).toBe(
-      "Common in general medicine",
-    );
+    expect(specialtyGroup("General medicine")).toBe("General medicine");
     expect(specialtyGroup("Oncology")).not.toMatch(/required/i);
   });
 });

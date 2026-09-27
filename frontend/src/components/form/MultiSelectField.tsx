@@ -12,6 +12,7 @@ import { ErrorMessage } from "@components/typography";
 import FieldDescription from "@components/typography/FieldDescription";
 import SortChevron from "@components/sort/SortChevron";
 import classes from "./MultiSelectField.module.css";
+import dropdownClasses from "./dropdownGroupLabel.module.css";
 
 const fieldStyles = {
   label: {
@@ -48,6 +49,7 @@ export default function MultiSelectField({
         inputField: classes.inputField,
         pill: disabled ? classes.disabledPill : classes.pill,
         option: classes.option,
+        groupLabel: dropdownClasses.groupLabel,
       }}
     />
   );

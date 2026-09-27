@@ -8,7 +8,7 @@
  */
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import { Component as PassportSignOffsPage } from "./PassportSignOffsPage";
@@ -236,7 +236,11 @@ describe("PassportSignOffsPage", () => {
     );
     await user.click(await screen.findByRole("combobox"));
 
-    expect(await screen.findByText("Common in oncology")).toBeInTheDocument();
+    // The group headings, inside the dropdown: the page names the holder's
+    // specialty elsewhere too
+    const listbox = await screen.findByRole("listbox");
+    expect(within(listbox).getByText("Oncology")).toBeInTheDocument();
+    expect(within(listbox).getByText("Others")).toBeInTheDocument();
   });
 
   it("does not count logbook entries beside a sign-off", async () => {

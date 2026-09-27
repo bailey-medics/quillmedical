@@ -10,6 +10,7 @@ import { Select, type SelectProps } from "@mantine/core";
 import { ErrorMessage } from "@components/typography";
 import FieldDescription from "@components/typography/FieldDescription";
 import classes from "./SelectField.module.css";
+import dropdownClasses from "./dropdownGroupLabel.module.css";
 
 const fieldStyles = {
   label: {
@@ -44,7 +45,11 @@ export default function SelectField({
       error={error ? <ErrorMessage>{error}</ErrorMessage> : undefined}
       size="md"
       styles={fieldStyles}
-      classNames={{ root: classes.root, section: classes.section }}
+      classNames={{
+        root: classes.root,
+        section: classes.section,
+        groupLabel: dropdownClasses.groupLabel,
+      }}
     />
   );
 }
