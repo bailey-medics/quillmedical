@@ -427,9 +427,12 @@ def list_question_banks(
                     bucket, c.question_bank_id, c.cover_image_filename
                 )
             else:
-                cover_image_url = (
-                    f"/api/teaching/images/cover/"
-                    f"{c.question_bank_id}/{c.cover_image_filename}"
+                from app.features.teaching.storage import (
+                    local_cover_image_url,
+                )
+
+                cover_image_url = local_cover_image_url(
+                    base_path, c.question_bank_id, c.cover_image_filename
                 )
 
         results.append(

@@ -29,6 +29,30 @@ import { useHasCompetency } from "@/lib/cbac/hooks";
 import type { NavItem } from "./NestedNavLink";
 
 /**
+ * The passport's own pages, each shown as a child of Passport while it is
+ * open. Named as the side navigation should say them, which is shorter
+ * than some page titles: "CPD" rather than "Continuing professional
+ * development". A page beneath one of these, such as a single CPD
+ * activity, keeps its section's link.
+ */
+const PASSPORT_PAGES: readonly NavItem[] = [
+  { label: "Sign-offs", href: "/passport/sign-offs" },
+  { label: "Logbook", href: "/passport/logbook" },
+  { label: "CPD", href: "/passport/cpd" },
+  { label: "Certificates", href: "/passport/certificates" },
+  { label: "Reflections", href: "/passport/reflections" },
+  { label: "Download", href: "/passport/download" },
+  { label: "Inbox", href: "/passport/inbox" },
+];
+
+/** The passport page this address is, or sits beneath, if any. */
+function passportPageAt(pathname: string): NavItem | undefined {
+  return PASSPORT_PAGES.find(
+    (page) => pathname === page.href || pathname.startsWith(`${page.href}/`),
+  );
+}
+
+/**
  * The feature entries this user may see, in the order they appear.
  *
  * Every hook is called unconditionally and the results combined
@@ -42,8 +66,8 @@ export function useFeatureNavItems(): NavItem[] {
   // worse experience than not offering the link at all.
   const hasAdminAccess = useHasCompetency("manage_users");
 
-  // Where the user is, so the passport entry can hang its Inbox child
-  // only while the inbox is open. See the comment on that child.
+  // Where the user is, so the passport entry can hang the page that is
+  // open beneath it. See the comment on those children.
   const { pathname } = useLocation();
 
   const hasTeaching = useHasFeature("teaching");
@@ -83,31 +107,31 @@ export function useFeatureNavItems(): NavItem[] {
   }
 
   if (hasPassport) {
+    const openPage = passportPageAt(pathname);
     items.push({
       label: assessesOnly ? "Sign-off requests" : "Passport",
       href: assessesOnly ? "/passport/inbox" : "/passport",
       icon: "passport",
-      // Only for somebody with a passport of their own, and only while
-      // they are on the inbox. An assessor without a passport already
-      // lands on the inbox — it is the whole of their top-level link —
-      // so hanging the same address beneath itself would offer them the
-      // page twice.
+      // The one passport page that is open, so the side navigation
+      // says where in the passport somebody is without listing every
+      // page all the time: the passport page itself links to them.
       //
-      // A holder reaches `/passport` instead, and their inbox is the
-      // requests naming them as an assessor. That is not a thing they
-      // have no use for: a trainee who assesses a more junior colleague
-      // is ordinary, and until now the page had no way in for them
-      // short of typing the address.
+      // Only for somebody with a passport of their own. An assessor
+      // without one lands on the inbox, which is the whole of their
+      // top-level link, so hanging the same address beneath itself
+      // would offer them the page twice.
+      //
+      // A holder's inbox is the requests naming them as an assessor. A
+      // trainee who assesses a more junior colleague is ordinary, and
+      // without this child the page had no way in short of typing the
+      // address.
       //
       // Attached by route rather than left to the nav to expand,
       // because `isActiveOrParent` expands a branch when the parent's
       // own address matches. That is right for Admin, where landing on
       // `/admin` should reveal what is under it, and wrong here, where
       // the passport itself is a destination rather than a heading.
-      children:
-        !assessesOnly && pathname.startsWith("/passport/inbox")
-          ? [{ label: "Inbox", href: "/passport/inbox" }]
-          : undefined,
+      children: !assessesOnly && openPage ? [openPage] : undefined,
     });
   }
 

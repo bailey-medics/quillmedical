@@ -416,7 +416,7 @@ seed-teaching:
 
 
 alias syt := sync-teaching
-# Sync all local question banks into the DB (no restart needed)
+# Sync all local question banks into the DB and serve the newest version of each (no restart needed)
 sync-teaching:
     #!/usr/bin/env bash
     {{initialise}} "sync-teaching"

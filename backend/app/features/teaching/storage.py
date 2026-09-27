@@ -10,10 +10,13 @@ YAML files from GCS to a local temporary directory.
 from __future__ import annotations
 
 import logging
+import mimetypes
 import tempfile
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
+
+from starlette.responses import FileResponse
 
 from app.config import settings
 
@@ -236,6 +239,26 @@ def resolve_local_bank(base_path: str, bank_id: str) -> Path | None:
     return None
 
 
+def local_media_response(file_path: Path) -> FileResponse:
+    """Serve a file from a local teaching repo, for the dev stack only.
+
+    ``no-cache`` makes the browser check back on every load rather than
+    keep its own copy for a while, so an author who edits a cover image
+    or a slide under a running stack sees it on the next reload. An
+    unchanged file still costs only a 304, because ``FileResponse`` sends
+    an ETag. Production never comes here: it serves from GCS through
+    signed URLs.
+    """
+    content_type = (
+        mimetypes.guess_type(file_path.name)[0] or "application/octet-stream"
+    )
+    return FileResponse(
+        file_path,
+        media_type=content_type,
+        headers={"Cache-Control": "no-cache"},
+    )
+
+
 def resolve_module_dir(base_path: str, module_id: str) -> Path | None:
     """Resolve a module_id to its top-level module directory.
 
@@ -255,6 +278,27 @@ def resolve_module_dir(base_path: str, module_id: str) -> Path | None:
             return module_dir
 
     return None
+
+
+def local_cover_image_url(
+    base_path: str, module_id: str, filename: str
+) -> str:
+    """The dev stack's address for a module's cover image.
+
+    Carries the file's modification time, so a replaced cover gets a new
+    address and no browser can go on showing a copy it kept of the old
+    one. Without a file to read, the plain address: the route answers
+    404 for it either way.
+    """
+    url = f"/api/teaching/images/cover/{module_id}/{filename}"
+    module_dir = resolve_module_dir(base_path, module_id)
+    if module_dir is None:
+        return url
+    try:
+        modified = (module_dir / filename).stat().st_mtime_ns
+    except OSError:
+        return url
+    return f"{url}?v={modified}"
 
 
 def has_learning_content(base_path: str, module_id: str) -> bool:
