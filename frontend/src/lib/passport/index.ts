@@ -30,6 +30,7 @@ export {
   fetchWholeLogbook,
   fetchMyPassport,
   fetchPassport,
+  fetchPassportSpecialties,
   fetchReflections,
   fetchSignOff,
   previewAssessorInvite,
@@ -90,6 +91,7 @@ export type {
   Supervision,
   Verification,
   Specialty,
+  SpecialtyChoice,
 } from "./types";
 
 export { PASSPORT_SPECIALTIES, getPassportSpecialty } from "./specialties";

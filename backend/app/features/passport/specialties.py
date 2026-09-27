@@ -17,8 +17,9 @@ opens the picker. See ``docs/docs/plans/2026-09-26-passport-specialties-plan.md`
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import yaml
 from pydantic import BaseModel, ConfigDict
@@ -31,6 +32,9 @@ from app.cbac.competencies import (
 from app.paths import SHARED_DIR
 
 from .schemas import SpecialtyRef
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
 
 SPECIALTIES_DIR: Path = SHARED_DIR / "passport-specialties"
 
@@ -203,3 +207,79 @@ def specialty_refs(specialty_ids: list[str]) -> list[SpecialtyRef]:
         refs.append(SpecialtyRef(id=specialty.id, name=specialty.display_name))
 
     return refs
+
+
+@dataclass(frozen=True)
+class SpecialtyChoice:
+    """One specialty, at its place in the order a holder is offered them.
+
+    Attributes:
+        specialty: Its definition.
+        lead: True when one of the holder's organisations named it to
+            come first.
+    """
+
+    specialty: Specialty
+    lead: bool
+
+
+def specialty_order_for(db: Session, user_id: int) -> list[SpecialtyChoice]:
+    """Every specialty, in the order this holder should be offered them.
+
+    First the lead specialties of every organisation the holder reaches,
+    organisations taken in name order and each one's leads in position
+    order, with repeats dropped. Then every other specialty,
+    alphabetically by display name. So somebody in one oncology
+    department sees Oncology first, and somebody whose organisations name
+    nothing sees a plain alphabetical list.
+
+    A lead naming a specialty whose file has since been removed is
+    skipped, the same way a profile keeps an unknown id without it
+    ordering anything.
+
+    Args:
+        db: Core database session.
+        user_id: The holder, or would-be holder, being offered the list.
+
+    Returns:
+        Every loaded specialty exactly once, leads first.
+    """
+    # Imported here rather than at the top, so reading the specialty
+    # files stays independent of the database and the org_unit tree.
+    from sqlalchemy import select
+
+    from app.models import OrgUnit
+    from app.organisations import get_reachable_org_unit_ids
+
+    from .models import OrgUnitPassportSpecialty
+
+    org_unit_ids = get_reachable_org_unit_ids(db, user_id)
+
+    lead_ids: list[str] = []
+    if org_unit_ids:
+        rows = db.execute(
+            select(
+                OrgUnit.name,
+                OrgUnit.id,
+                OrgUnitPassportSpecialty.position,
+                OrgUnitPassportSpecialty.specialty_id,
+            )
+            .join(OrgUnit, OrgUnit.id == OrgUnitPassportSpecialty.org_unit_id)
+            .where(OrgUnitPassportSpecialty.org_unit_id.in_(org_unit_ids))
+        ).all()
+        # Sorted here rather than in SQL, so name order ignores case the
+        # same way on SQLite in tests as on Postgres in production.
+        for _name, _id, _position, specialty_id in sorted(
+            rows, key=lambda row: (row[0].casefold(), row[1], row[2])
+        ):
+            if specialty_id in SPECIALTY_IDS and specialty_id not in lead_ids:
+                lead_ids.append(specialty_id)
+
+    by_id = {specialty.id: specialty for specialty in SPECIALTIES}
+    rest = sorted(
+        (s for s in SPECIALTIES if s.id not in lead_ids),
+        key=lambda s: s.display_name.casefold(),
+    )
+    return [SpecialtyChoice(by_id[i], lead=True) for i in lead_ids] + [
+        SpecialtyChoice(s, lead=False) for s in rest
+    ]

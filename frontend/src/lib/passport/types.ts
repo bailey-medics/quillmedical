@@ -108,6 +108,17 @@ export interface Specialty {
 }
 
 /**
+ * A specialty a holder may choose, at its place in the order to offer it.
+ *
+ * `lead` is true when one of their organisations named it to come first.
+ */
+export interface SpecialtyChoice {
+  id: string;
+  display_name: string;
+  lead: boolean;
+}
+
+/**
  * One piece of evidence, named by the hash of its own bytes. The hash is
  * the only pointer; the filename is data, never a path.
  */

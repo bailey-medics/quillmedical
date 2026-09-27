@@ -207,6 +207,18 @@ class SpecialtiesIn(_In):
     specialties: list[CompetencyIdField] = Field(default_factory=list)
 
 
+class SpecialtyChoiceOut(BaseModel):
+    """One specialty a holder may choose, at its place in the order.
+
+    ``lead`` is true when one of the holder's organisations named it to
+    come first, so a page can tell the two groups apart if it wants to.
+    """
+
+    id: CompetencyIdField
+    display_name: NonEmptyText
+    lead: bool
+
+
 class CompetencyStateOut(BaseModel):
     """One competency's state, from the derived index.
 

@@ -116,6 +116,7 @@ from app.schemas.passport import (
     SignOffRequestIn,
     SignOffResultOut,
     SpecialtiesIn,
+    SpecialtyChoiceOut,
     SpecialtyOut,
     VerificationOut,
     WholeLogbookOut,
@@ -755,6 +756,34 @@ def get_my_passport(
         raise HTTPException(404, "You do not have a passport yet")
 
     return _detail(db, row, store)
+
+
+# Declared before ``/{passport_id}``, which would otherwise take
+# "specialties" for a passport id and answer 404.
+@passport_router.get(
+    "/specialties",
+    response_model=list[SpecialtyChoiceOut],
+    dependencies=[_DEP_PASSPORT],
+)
+def list_specialties(
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+) -> list[SpecialtyChoiceOut]:
+    """Every specialty the caller may choose, in the order to offer them.
+
+    Their organisations' lead specialties first, then the rest
+    alphabetically, worked out by ``specialties.specialty_order_for`` so
+    the create step and the settings card agree without either deciding.
+    Needs no passport: the create step asks before there is one.
+    """
+    return [
+        SpecialtyChoiceOut(
+            id=choice.specialty.id,
+            display_name=choice.specialty.display_name,
+            lead=choice.lead,
+        )
+        for choice in specialties.specialty_order_for(db, user.id)
+    ]
 
 
 @passport_router.get(

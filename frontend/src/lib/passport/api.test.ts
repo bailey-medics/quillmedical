@@ -32,6 +32,7 @@ import {
   fetchLogbook,
   fetchMyPassport,
   fetchPassport,
+  fetchPassportSpecialties,
   fetchReflections,
   fetchSignOff,
   previewAssessorInvite,
@@ -79,6 +80,7 @@ describe("passport paths", () => {
       "/api/passport/assessor-invites/preview",
       "/api/passport/assessors/{assessor_user_id}/membership",
       "/api/passport/requests/inbox",
+      "/api/passport/specialties",
       "/api/passport/{passport_id}",
       "/api/passport/{passport_id}/assessor-invites",
       "/api/passport/{passport_id}/certificates",
@@ -120,6 +122,11 @@ describe("passport", () => {
     expect(api.post).toHaveBeenCalledWith("/passport", {
       specialties: ["oncology"],
     });
+  });
+
+  it("fetches the specialties in the order to offer them", async () => {
+    await fetchPassportSpecialties();
+    expect(api.get).toHaveBeenCalledWith("/passport/specialties");
   });
 
   it("changes the holder's specialties", async () => {
