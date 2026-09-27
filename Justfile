@@ -2105,20 +2105,24 @@ passport-delete env username confirm="":
     # can be deleted. Without confirm this only reports, and prints the
     # passport id to pass back. See delete_passport() in
     # backend/scripts/admin_cli.py.
+    # The dry run ends "run again with CONFIRM=<id>", so that form is
+    # accepted as well as the bare id.
+    CONFIRM="{{confirm}}"
+    CONFIRM="${CONFIRM#CONFIRM=}"
     # Checked here because both go into a comma-separated list of
     # variables, where a stray comma would set something else.
     if ! [[ "{{username}}" =~ ^[A-Za-z0-9._@+-]+$ ]]; then
         echo "✗ '{{username}}' is not a username" >&2
         exit 1
     fi
-    if [ -n "{{confirm}}" ] && ! [[ "{{confirm}}" =~ ^[0-9a-f]{32}$ ]]; then
+    if [ -n "$CONFIRM" ] && ! [[ "$CONFIRM" =~ ^[0-9a-f]{32}$ ]]; then
         echo "✗ confirm must be the 32-character passport id from a dry run" >&2
         exit 1
     fi
 
     VARS="ADMIN_ACTION=delete-passport,ADMIN_USERNAME={{username}}"
-    if [ -n "{{confirm}}" ]; then
-        VARS="${VARS},CONFIRM={{confirm}}"
+    if [ -n "$CONFIRM" ]; then
+        VARS="${VARS},CONFIRM=${CONFIRM}"
         echo "Delete {{username}}'s passport on ${PROJECT}"
     else
         echo "Dry run: {{username}}'s passport on ${PROJECT}"
