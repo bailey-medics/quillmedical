@@ -4,7 +4,8 @@
  * A finished assessment's results question by question, for audit. Each
  * question is named by its number in the question bank, not the shuffled
  * position it was shown at, and the bank version the attempt was sat
- * against is shown above the table. Reads nothing from location state, so
+ * against is shown above the table with the percentage scored on each
+ * pass criterion. Reads nothing from location state, so
  * a reload or a bookmarked link rebuilds it from the URL alone.
  */
 
@@ -29,6 +30,11 @@ function formatDateTime(iso: string): string {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+/** One decimal place, as the score breakdown on the result page shows it. */
+function formatPercentage(value: number): string {
+  return `${(value * 100).toFixed(1)}%`;
 }
 
 function outcomeLabel(isPassed: boolean | null): string {
@@ -103,6 +109,12 @@ export default function AssessmentQuestionResultsPage() {
               Completed: {formatDateTime(results.completed_at)}
             </BodyText>
             <BodyText>Overall: {outcomeLabel(results.is_passed)}</BodyText>
+            {/* Absent from a backend older than this page, mid-deploy */}
+            {(results.criteria ?? []).map((c) => (
+              <BodyText key={c.name}>
+                {c.name}: {formatPercentage(c.value)}
+              </BodyText>
+            ))}
           </Stack>
         </BaseCard>
         <QuestionResultsTable questions={results.questions} />

@@ -13,6 +13,7 @@ function question(
     question_ref: "question_001",
     display_order: 1,
     answered: true,
+    selected_answer: "High confidence adenoma",
     is_correct: true,
     answered_at: "2026-09-27T10:00:00Z",
     ...overrides,
@@ -29,6 +30,7 @@ const questions: AssessmentQuestionResult[] = [
     question_number: 2,
     question_ref: "question_002",
     display_order: 1,
+    selected_answer: "Low confidence serrated",
     is_correct: false,
   }),
   question({
@@ -36,6 +38,7 @@ const questions: AssessmentQuestionResult[] = [
     question_ref: "question_003",
     display_order: 2,
     answered: false,
+    selected_answer: null,
     is_correct: null,
     answered_at: null,
   }),
@@ -68,9 +71,31 @@ describe("QuestionResultsTable", () => {
     expect(
       rows.map((r) => within(r).getAllByRole("cell")[0].textContent),
     ).toEqual(["Question 1", "Question 2", "Question 3"]);
+  });
+
+  it("shows the answer given in the middle column", () => {
+    renderWithMantine(<QuestionResultsTable questions={questions} />);
+
+    const table = screen.getByRole("table");
+    const rows = within(table).getAllByRole("row").slice(1);
     expect(
-      rows.map((r) => within(r).getAllByRole("cell")[2].textContent),
-    ).toEqual(["3", "1", "2"]);
+      rows.map((r) => within(r).getAllByRole("cell")[1].textContent),
+    ).toEqual([
+      "High confidence adenoma",
+      "Low confidence serrated",
+      "Not answered",
+    ]);
+  });
+
+  it("has columns for the question, the answer and the result, and no shown-at position", () => {
+    renderWithMantine(<QuestionResultsTable questions={questions} />);
+
+    const table = screen.getByRole("table");
+    expect(
+      within(table)
+        .getAllByRole("columnheader")
+        .map((h) => h.textContent),
+    ).toEqual(["Question", "Answer given", "Result"]);
   });
 
   it("shows the empty message with no questions", () => {
