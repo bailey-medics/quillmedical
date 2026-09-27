@@ -21,7 +21,10 @@ from app.features.teaching.models import (
     QuestionBankItem,
     QuestionBankOrgStatus,
 )
-from app.features.teaching.router import resolve_visible_module
+from app.features.teaching.router import (
+    question_number_of,
+    resolve_visible_module,
+)
 from app.models import (
     OrgUnit,
     OrgUnitFeature,
@@ -797,6 +800,262 @@ class TestDownloadCertificate:
         # ------------------------------------------------------------------
         # Assessment history
         # ------------------------------------------------------------------
+
+
+class TestAssessmentQuestionResults:
+    """GET /assessments/{id}/question-results, the per-question audit view."""
+
+    def _start(self, test_client, db_session) -> tuple[int, dict[str, str]]:
+        """Seed a three-item bank, log the learner in, start an attempt.
+
+        The display order is then reversed, so question 1 is shown third:
+        what the audit view must undo.
+        """
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        _make_learner(db_session, org)
+        db_session.commit()
+
+        headers = _login(test_client, "testlearner", "Learner123!")
+        resp = test_client.post(
+            "/api/teaching/assessments",
+            json={"question_bank_id": "test-bank"},
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        assessment_id = resp.json()["assessment"]["id"]
+
+        answers = (
+            db_session.query(AssessmentAnswer)
+            .filter(AssessmentAnswer.assessment_id == assessment_id)
+            .all()
+        )
+        for answer in answers:
+            source_dir = answer.item.metadata_json["_source_dir"]
+            answer.display_order = 4 - int(source_dir.split("_")[1])
+        db_session.commit()
+        return assessment_id, headers
+
+    def _answer(self, test_client, assessment_id, headers, n: int) -> None:
+        for _ in range(n):
+            resp = test_client.post(
+                f"/api/teaching/assessments/{assessment_id}/answer",
+                json={"selected_option": "high_a"},
+                headers=headers,
+            )
+            assert resp.status_code == 200
+
+    def test_lists_questions_by_number_not_shown_order(
+        self, test_client, db_session
+    ):
+        assessment_id, headers = self._start(test_client, db_session)
+        self._answer(test_client, assessment_id, headers, 3)
+        resp = test_client.post(
+            f"/api/teaching/assessments/{assessment_id}/complete",
+            headers=headers,
+        )
+        assert resp.status_code == 200
+
+        resp = test_client.get(
+            f"/api/teaching/assessments/{assessment_id}/question-results",
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["assessment_id"] == assessment_id
+        assert data["question_bank_id"] == "test-bank"
+        assert data["bank_version"] == 1
+        assert data["bank_title"] == "Test Bank"
+        assert data["completed_at"] is not None
+        questions = data["questions"]
+        assert [q["question_number"] for q in questions] == [1, 2, 3]
+        assert [q["question_ref"] for q in questions] == [
+            "question_1",
+            "question_2",
+            "question_3",
+        ]
+        assert [q["display_order"] for q in questions] == [3, 2, 1]
+        # Items alternate adenoma, serrated, adenoma; every answer was
+        # "high_a", an adenoma.
+        assert [q["is_correct"] for q in questions] == [True, False, True]
+        assert all(q["answered"] for q in questions)
+
+    def test_never_includes_the_answer_key(self, test_client, db_session):
+        assessment_id, headers = self._start(test_client, db_session)
+        self._answer(test_client, assessment_id, headers, 3)
+        test_client.post(
+            f"/api/teaching/assessments/{assessment_id}/complete",
+            headers=headers,
+        )
+
+        resp = test_client.get(
+            f"/api/teaching/assessments/{assessment_id}/question-results",
+        )
+        assert resp.status_code == 200
+        for question in resp.json()["questions"]:
+            assert set(question) == {
+                "question_number",
+                "question_ref",
+                "display_order",
+                "answered",
+                "is_correct",
+                "answered_at",
+            }
+
+    def test_unanswered_question_is_reported_as_such(
+        self, test_client, db_session
+    ):
+        assessment_id, headers = self._start(test_client, db_session)
+        # Shown order is 3, 2, 1, so answering two leaves question 1.
+        self._answer(test_client, assessment_id, headers, 2)
+        assessment = db_session.get(Assessment, assessment_id)
+        assert assessment is not None
+        assessment.completed_at = datetime.now(UTC)
+        assessment.is_passed = False
+        db_session.commit()
+
+        resp = test_client.get(
+            f"/api/teaching/assessments/{assessment_id}/question-results",
+        )
+        assert resp.status_code == 200
+        first = resp.json()["questions"][0]
+        assert first["question_number"] == 1
+        assert first["answered"] is False
+        assert first["is_correct"] is None
+        assert first["answered_at"] is None
+
+    def test_reports_the_version_sat_not_the_current_one(
+        self, test_client, db_session
+    ):
+        assessment_id, headers = self._start(test_client, db_session)
+        self._answer(test_client, assessment_id, headers, 3)
+        test_client.post(
+            f"/api/teaching/assessments/{assessment_id}/complete",
+            headers=headers,
+        )
+
+        # The bank moves on to version 2 after the attempt.
+        assessment = db_session.get(Assessment, assessment_id)
+        assert assessment is not None
+        db_session.add(
+            QuestionBankConfig(
+                org_unit_id=assessment.org_unit_id,
+                question_bank_id="test-bank",
+                version=2,
+                title="Test Bank v2",
+                description="Second version.",
+                type="uniform",
+                config_yaml={**SAMPLE_CONFIG_YAML, "version": 2},
+            )
+        )
+        db_session.execute(
+            update(QuestionBankOrgStatus)
+            .where(QuestionBankOrgStatus.question_bank_id == "test-bank")
+            .values(active_version=2)
+        )
+        db_session.commit()
+
+        resp = test_client.get(
+            f"/api/teaching/assessments/{assessment_id}/question-results",
+        )
+        assert resp.status_code == 200
+        assert resp.json()["bank_version"] == 1
+        assert resp.json()["bank_title"] == "Test Bank"
+
+    def test_in_progress_attempt_is_refused(self, test_client, db_session):
+        assessment_id, headers = self._start(test_client, db_session)
+        self._answer(test_client, assessment_id, headers, 1)
+
+        resp = test_client.get(
+            f"/api/teaching/assessments/{assessment_id}/question-results",
+        )
+        assert resp.status_code == 409
+
+    def test_another_users_attempt_is_not_found(self, test_client, db_session):
+        assessment_id, headers = self._start(test_client, db_session)
+        self._answer(test_client, assessment_id, headers, 3)
+        test_client.post(
+            f"/api/teaching/assessments/{assessment_id}/complete",
+            headers=headers,
+        )
+        assessment = db_session.get(Assessment, assessment_id)
+        assert assessment is not None
+        other = User(
+            username="other_learner",
+            email="other@test.local",
+            password_hash=hash_password("Other123!"),
+            is_active=True,
+            email_verified=True,
+            base_profession="teaching_delegate",
+        )
+        db_session.add(other)
+        db_session.flush()
+        add_org_unit_member(
+            db_session, assessment.org_unit_id, other.id, "trainee"
+        )
+        db_session.commit()
+
+        _login(test_client, "other_learner", "Other123!")
+        resp = test_client.get(
+            f"/api/teaching/assessments/{assessment_id}/question-results",
+        )
+        assert resp.status_code == 404
+
+    def test_missing_attempt_is_not_found(self, test_client, db_session):
+        org = _make_teaching_org(db_session)
+        _make_learner(db_session, org)
+        db_session.commit()
+        _login(test_client, "testlearner", "Learner123!")
+
+        resp = test_client.get(
+            "/api/teaching/assessments/999999/question-results",
+        )
+        assert resp.status_code == 404
+
+    def test_requires_auth(self, test_client):
+        resp = test_client.get(
+            "/api/teaching/assessments/1/question-results",
+        )
+        assert resp.status_code == 401
+
+    @pytest.mark.parametrize(
+        ("source_dir", "expected"),
+        [
+            ("question_001", 1),
+            ("question_12", 12),
+            ("question_", None),
+            ("", None),
+        ],
+    )
+    def test_question_number_of(self, source_dir, expected):
+        assert question_number_of(source_dir) == expected
+
+    def test_numbers_sort_numerically(self, test_client, db_session):
+        """Question 10 follows 9, not 1, whatever the name sorts as."""
+        assessment_id, headers = self._start(test_client, db_session)
+        self._answer(test_client, assessment_id, headers, 3)
+        test_client.post(
+            f"/api/teaching/assessments/{assessment_id}/complete",
+            headers=headers,
+        )
+        item = (
+            db_session.query(QuestionBankItem)
+            .filter(QuestionBankItem.question_bank_id == "test-bank")
+            .order_by(QuestionBankItem.id)
+            .first()
+        )
+        assert item is not None
+        item.metadata_json = {
+            **item.metadata_json,
+            "_source_dir": "question_10",
+        }
+        db_session.commit()
+
+        resp = test_client.get(
+            f"/api/teaching/assessments/{assessment_id}/question-results",
+        )
+        numbers = [q["question_number"] for q in resp.json()["questions"]]
+        assert numbers == [2, 3, 10]
 
 
 class TestAssessmentHistory:

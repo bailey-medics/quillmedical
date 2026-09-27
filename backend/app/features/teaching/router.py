@@ -38,6 +38,8 @@ from app.features.teaching.schemas import (
     AnswerResultOut,
     AssessmentHistoryOut,
     AssessmentOut,
+    AssessmentQuestionResultOut,
+    AssessmentQuestionResultsOut,
     AssessmentWithFirstItem,
     BankOrgRow,
     CandidateItemOut,
@@ -1206,6 +1208,91 @@ def get_assessment(
     if not assessment or assessment.user_id != user.id:
         raise HTTPException(404, "Assessment not found")
     return assessment
+
+
+_QUESTION_NUMBER = re.compile(r"(\d+)$")
+
+
+def question_number_of(source_dir: str) -> int | None:
+    """The question's number in its bank, from its directory name.
+
+    Sync only accepts directories named ``question_<digits>``, so
+    ``question_007`` gives 7. Anything without trailing digits gives
+    ``None`` rather than a guess.
+    """
+    match = _QUESTION_NUMBER.search(source_dir)
+    return int(match.group(1)) if match else None
+
+
+@teaching_router.get(
+    "/assessments/{assessment_id}/question-results",
+    response_model=AssessmentQuestionResultsOut,
+)
+def get_assessment_question_results(
+    assessment_id: int,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+) -> AssessmentQuestionResultsOut:
+    """A finished attempt's right and wrong answers, by question number.
+
+    For audit: each question is named by its number in the bank rather
+    than the shuffled position it was shown at, alongside the bank
+    version the attempt was sat against. Only the candidate may see it,
+    and only once the attempt is complete, since mid-exam it would say
+    which answers so far are right.
+    """
+    assessment = db.get(Assessment, assessment_id)
+    if not assessment or assessment.user_id != user.id:
+        raise HTTPException(404, "Assessment not found")
+    if assessment.completed_at is None:
+        raise HTTPException(409, "Assessment is not complete")
+
+    config_row = (
+        db.execute(
+            select(QuestionBankConfig).where(
+                QuestionBankConfig.org_unit_id == assessment.org_unit_id,
+                QuestionBankConfig.question_bank_id
+                == assessment.question_bank_id,
+                QuestionBankConfig.version == assessment.bank_version,
+            )
+        )
+        .scalars()
+        .first()
+    )
+
+    questions: list[AssessmentQuestionResultOut] = []
+    for answer in assessment.answers:
+        source_dir = str(answer.item.metadata_json.get("_source_dir", ""))
+        questions.append(
+            AssessmentQuestionResultOut(
+                question_number=question_number_of(source_dir),
+                question_ref=source_dir,
+                display_order=answer.display_order,
+                answered=answer.selected_option is not None,
+                is_correct=answer.is_correct,
+                answered_at=answer.answered_at,
+            )
+        )
+    # Numerically, so question 10 follows 9 rather than 1; anything
+    # without a number goes last, by name.
+    questions.sort(
+        key=lambda q: (
+            q.question_number is None,
+            q.question_number or 0,
+            q.question_ref,
+        )
+    )
+
+    return AssessmentQuestionResultsOut(
+        assessment_id=assessment.id,
+        question_bank_id=assessment.question_bank_id,
+        bank_version=assessment.bank_version,
+        bank_title=config_row.title if config_row else None,
+        exam_ref=assessment.exam_ref,
+        completed_at=assessment.completed_at,
+        is_passed=assessment.is_passed,
+        questions=questions,
+    )
 
 
 @teaching_router.get(
