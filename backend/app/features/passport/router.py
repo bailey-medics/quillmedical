@@ -70,6 +70,7 @@ from app.models import (
     OrgUnitFeature,
     ProfessionalRegistration,
     User,
+    UserCompetency,
     org_unit_member,
 )
 from app.org_units.tree import descendant_ids
@@ -893,6 +894,83 @@ def _requests_today(db: Session, passport_id: str) -> int:
     )
 
 
+def _join_as_external(
+    db: Session, user_id: int, place: str, org_unit_id: int
+) -> None:
+    """Make somebody an external member where the holder is, unless they
+    already belong there in any capacity."""
+    if place == "site":
+        already = db.scalar(
+            select(org_unit_member.c.user_id).where(
+                org_unit_member.c.org_unit_id == org_unit_id,
+                org_unit_member.c.user_id == user_id,
+            )
+        )
+        if already is None:
+            db.execute(
+                org_unit_member.insert().values(
+                    org_unit_id=org_unit_id,
+                    user_id=user_id,
+                    capacity="external",
+                )
+            )
+    else:
+        already = db.scalar(
+            select(organisation_org_unit_member.c.user_id).where(
+                organisation_org_unit_member.c.org_unit_id == org_unit_id,
+                organisation_org_unit_member.c.user_id == user_id,
+            )
+        )
+        if already is None:
+            add_org_unit_member(db, org_unit_id, user_id, "external")
+
+
+def _let_existing_account_assess(
+    db: Session, assessor: User, passport_id: str, holder: User
+) -> None:
+    """Give an existing account what it needs to open the request.
+
+    Somebody new to Quill gets this by accepting the invitation: the
+    `external_assessor` profession, which carries
+    `assess_clinician_passport`, and an external membership where the
+    holder is, which reaches the passport feature. An existing account is
+    sent no invitation, so it got neither, on the assumption that every
+    existing account asked to assess is a clinician at an organisation
+    with the passport. A teaching delegate asked on 28 September 2026 was
+    neither, and met a 404 on the page and a 403 from the API.
+
+    So it gets the same two things here: the membership, and the
+    competency as a grant of its own, leaving its profession alone. What
+    it may act on is still only the requests that name it. Runs before
+    the email, in the same transaction, so a failed send takes it back.
+    """
+    try:
+        place, org_unit_id = _holder_org_unit(db, passport_id)
+    except HTTPException as error:
+        if error.status_code != 409:
+            raise
+        # Said to the holder here, where `_holder_org_unit` speaks to the
+        # person accepting an invitation.
+        raise HTTPException(
+            409,
+            "You do not belong to a site or organisation, so your "
+            "assessor cannot be given access to your request.",
+        ) from None
+    _join_as_external(db, assessor.id, place, org_unit_id)
+
+    if "assess_clinician_passport" not in assessor.get_final_competencies():
+        assessor.competency_grants.append(
+            UserCompetency(
+                competency_id="assess_clinician_passport",
+                starts_on=_now(),
+                source="sign_off_request",
+                org_unit_id=org_unit_id,
+                granted_by=holder.id,
+            )
+        )
+    db.flush()
+
+
 def _checked_request(
     competency_id: str, level_id: str | None
 ) -> LevelRef | None:
@@ -966,8 +1044,10 @@ def _email_sign_off_request(
 
     if assessor is not None:
         # They can already sign in, so no invitation and no token: the
-        # request is waiting in their inbox when they arrive.
-        url = f"{settings.FRONTEND_URL.rstrip('/')}/passport/requests"
+        # request is waiting in their inbox when they arrive. The page is
+        # `/passport/inbox`; this once linked `/passport/requests`, which
+        # is only half the address of the API behind it, and was a 404.
+        url = f"{settings.FRONTEND_URL.rstrip('/')}/passport/inbox"
         expires_in_days = PASSPORT_INVITE_TTL_DAYS
     else:
         invite = PassportAssessorInvite(
@@ -1216,6 +1296,8 @@ def request_sign_off(
     assessor = db.scalar(
         select(User).where(func.lower(User.email) == assessor_email)
     )
+    if assessor is not None:
+        _let_existing_account_assess(db, assessor, row.id, user)
 
     # The mail goes before the record, which is the whole shape of this
     # route. A failed send must leave nothing behind, and only the
@@ -3032,31 +3114,7 @@ def accept_assessor_invite(
         status = "registered"
 
     place, org_unit_id = _holder_org_unit(db, invite.passport_id)
-
-    if place == "site":
-        already = db.scalar(
-            select(org_unit_member.c.user_id).where(
-                org_unit_member.c.org_unit_id == org_unit_id,
-                org_unit_member.c.user_id == user.id,
-            )
-        )
-        if already is None:
-            db.execute(
-                org_unit_member.insert().values(
-                    org_unit_id=org_unit_id,
-                    user_id=user.id,
-                    capacity="external",
-                )
-            )
-    else:
-        already = db.scalar(
-            select(organisation_org_unit_member.c.user_id).where(
-                organisation_org_unit_member.c.org_unit_id == org_unit_id,
-                organisation_org_unit_member.c.user_id == user.id,
-            )
-        )
-        if already is None:
-            add_org_unit_member(db, org_unit_id, user.id, "external")
+    _join_as_external(db, user.id, place, org_unit_id)
 
     invite.accepted_at = _now()
     invite.accepted_user_id = user.id

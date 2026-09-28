@@ -137,13 +137,19 @@ grant the same thing and the inbox link stays direct.
 
 ## Phase 1: The dead link
 
-- [ ] **Change `/passport/requests` to `/passport/inbox`** in
+- [x] **Change `/passport/requests` to `/passport/inbox`** in
       `_email_sign_off_request`, `backend/app/features/passport/router.py`.
       One word, and it is wrong for every assessor who already has an account.
+      Done on 28 September 2026, after a teaching delegate asked to assess on
+      a development stack met the 404. `TestAnExistingAccountAskedToAssess`
+      checks the email names `/passport/inbox`.
 
 - [ ] **Add a test that the emailed URL names a real route.** A literal string
       in a template cannot be typechecked, so the test asserts the path
-      against the route table rather than against another literal.
+      against the route table rather than against another literal. Still
+      open: the backend unit-test container mounts `backend/` and `shared/`
+      but not `frontend/`, so it cannot read the route table in `main.tsx`.
+      For now the test above asserts against a literal.
 
 ## Phase 2: The three competencies
 
@@ -228,8 +234,19 @@ makes renaming cheaper now than it will ever be again.
       `read_own_clinician_passport`, and keep `assessesOnly` for the inbox entry, so
       somebody with neither sees no passport entry at all.
 
-- [ ] **Grant an existing account what it needs at the moment of asking**,
+- [x] **Grant an existing account what it needs at the moment of asking**,
       in `request_sign_off`, rather than sending it through the accept page.
+
+      Done on 28 September 2026, ahead of phase 2, because the missing access
+      was stopping real sign-offs. So it grants today's id,
+      `assess_clinician_passport`, not `review_clinician_passport`, and phase
+      2's rename has to rename these grants with the rest.
+      `_let_existing_account_assess` runs before the email, in the same
+      transaction, so a failed send takes it back. It appends the grant row
+      directly rather than through `sync_competency_rows`, which rewrites a
+      person's whole list, with a new source, `sign_off_request`, rather than
+      `invitation`: an existing account is sent no invitation. The accept
+      flow's membership insert became `_join_as_external`, shared by both.
 
       `_email_sign_off_request` already looks up whether the address matches a
       `users` row, and sends an existing account straight to `/passport/inbox`.
