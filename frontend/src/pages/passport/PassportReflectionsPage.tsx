@@ -10,7 +10,7 @@
  */
 
 import { useEffect, useState } from "react";
-import { Stack } from "@mantine/core";
+import { Group, Stack } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import BaseCard from "@/components/base-card/BaseCard";
 import ReflectionEditor from "@/components/passport/ReflectionEditor";
@@ -85,18 +85,6 @@ export function Component() {
 
       {error && <ErrorState message={error} />}
 
-      {/* Above the editor rather than below the list: on an empty page
-          this says what reflections are for, which is what somebody
-          deciding whether to write one needs before they start. */}
-      {reflections.length === 0 && (
-        <StateMessage
-          colour="update"
-          icon={<IconFileText />}
-          title="Nothing written yet"
-          description="Reflections are yours alone — no assessor or administrator can read them."
-        />
-      )}
-
       {writing ? (
         <ReflectionEditor
           onSubmit={handleSubmit}
@@ -104,10 +92,23 @@ export function Component() {
           isSubmitting={submitting}
         />
       ) : (
-        <AddButton
-          label="Write a reflection"
-          onClick={() => setWriting(true)}
-          disabled={!canWrite}
+        <Group justify="flex-end">
+          <AddButton
+            label="Write a reflection"
+            onClick={() => setWriting(true)}
+            disabled={!canWrite}
+          />
+        </Group>
+      )}
+
+      {/* Below the add button, as on every passport page, and above
+          the list: on an empty page this says what reflections are for. */}
+      {reflections.length === 0 && (
+        <StateMessage
+          colour="update"
+          icon={<IconFileText />}
+          title="Nothing written yet"
+          description="Reflections are yours alone — no assessor or administrator can read them."
         />
       )}
 

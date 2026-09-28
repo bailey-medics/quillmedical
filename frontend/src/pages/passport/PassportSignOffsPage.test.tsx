@@ -89,6 +89,17 @@ describe("PassportSignOffsPage", () => {
     searchAssessors.mockResolvedValue({ matches: [] });
   });
 
+  it("puts the add button above the message on an empty page", async () => {
+    fetchMyPassport.mockResolvedValue(detailWith([]));
+    renderWithRouter(<PassportSignOffsPage />);
+
+    const message = await screen.findByText("No sign-offs yet");
+    const add = screen.getByRole("button", { name: "Ask for a sign-off" });
+    expect(
+      add.compareDocumentPosition(message) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it("disables asking for a sign-off where the passport is read-only", async () => {
     // Requesting one goes through `_require_writer` on the server, the
     // same gate as adding a logbook entry, so a read-only holder was

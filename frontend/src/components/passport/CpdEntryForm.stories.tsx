@@ -24,6 +24,26 @@ export const Default: Story = {
   },
 };
 
+/** Correcting an activity: filled in from it, saving rather than recording. */
+export const Editing: Story = {
+  args: {
+    initial: {
+      filename: "2026-09-28-062503",
+      year: 2026,
+      activity_on: "2026-09-12",
+      title: "Advanced life support",
+      activity_type: "course",
+      points: 6,
+      competencies: [],
+      certificate: null,
+      notes: "Recertification.",
+      attachments: [],
+    },
+    onSubmit: fn(),
+    onCancel: fn(),
+  },
+};
+
 export const Submitting: Story = {
   args: {
     onSubmit: fn(),

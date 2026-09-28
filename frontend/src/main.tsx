@@ -260,6 +260,11 @@ const routes: RouteObject[] = [
             handle: { safeForReload: true },
           },
           {
+            path: "/passport/logbook/:competencyId/:stem",
+            lazy: () => import("./pages/passport/PassportLogbookEntryPage"),
+            handle: { safeForReload: true },
+          },
+          {
             path: "/passport/cpd",
             lazy: () => import("./pages/passport/PassportCpdPage"),
             handle: { safeForReload: true },

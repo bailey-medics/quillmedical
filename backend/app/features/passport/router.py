@@ -2231,9 +2231,24 @@ def amend_logbook_entry(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
+    blobs: BlobStore | GcsBlobStore = _DEP_BLOBS,
 ) -> RecordResultOut:
-    """Correct a logged procedure."""
+    """Correct a logged procedure.
+
+    Attachments given replace the entry's; none given keeps the ones it
+    has. This once wrote an empty list whatever was sent, so correcting
+    a date on the edit page, which sends no attachments, would have
+    deleted every file attached to the entry.
+    """
     row = _require_writer(db, passport_id, user, store)
+
+    try:
+        existing = from_yaml(
+            LogbookEntry,
+            store.read(row.id, paths.logbook_entry(competency_id, stem)),
+        )
+    except (PassportNotFoundError, paths.PassportPathError):
+        raise HTTPException(404, "Logbook entry not found") from None
 
     entry = LogbookEntry(
         performed_on=body.performed_on,
@@ -2244,7 +2259,11 @@ def amend_logbook_entry(
         outcome=body.outcome,
         notes=body.notes,
         also_counts_towards=body.also_counts_towards,
-        attachments=[],
+        attachments=(
+            _attachments(blobs, row.id, body.attachments)
+            if body.attachments
+            else existing.attachments
+        ),
     )
 
     try:
@@ -2540,9 +2559,23 @@ def amend_cpd_entry(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
+    blobs: BlobStore | GcsBlobStore = _DEP_BLOBS,
 ) -> RecordResultOut:
-    """Correct a CPD activity."""
+    """Correct a CPD activity.
+
+    Attachments given replace the activity's; none given keeps the ones
+    it has, as for a logbook entry. It once wrote an empty list whatever
+    was sent, so correcting a title from the edit page would have
+    deleted every file attached.
+    """
     row = _require_writer(db, passport_id, user, store)
+
+    try:
+        existing = from_yaml(
+            CpdEntry, store.read(row.id, paths.cpd_entry(year, stem))
+        )
+    except (PassportNotFoundError, paths.PassportPathError):
+        raise HTTPException(404, "CPD entry not found") from None
 
     entry = CpdEntry(
         activity_on=body.activity_on,
@@ -2552,7 +2585,11 @@ def amend_cpd_entry(
         competencies=_competency_refs(body.competencies),
         certificate=body.certificate,
         notes=body.notes,
-        attachments=[],
+        attachments=(
+            _attachments(blobs, row.id, body.attachments)
+            if body.attachments
+            else existing.attachments
+        ),
     )
 
     try:

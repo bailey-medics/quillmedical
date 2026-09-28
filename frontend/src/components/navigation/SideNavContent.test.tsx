@@ -757,6 +757,40 @@ describe("SideNavContent Component", () => {
       });
     });
 
+    it.each([
+      ["/passport/cpd/2026/2026-09-28-062503", "CPD", "Activity"],
+      [
+        "/passport/logbook/perform_cannulation/20260314T1432",
+        "Logbook",
+        "Entry",
+      ],
+    ])(
+      "nests the record's own link under its section on %s",
+      async (route, section, record) => {
+        renderWithAuth(<SideNavContent />, "passport_holder", {
+          initialRoute: route,
+        });
+
+        await waitFor(() => {
+          expect(screen.getByText(section)).toBeInTheDocument();
+        });
+        const child = screen.getByText(record).closest("a");
+        expect(child).toHaveAttribute("href", route);
+        expect(child).toHaveAttribute("data-active", "true");
+      },
+    );
+
+    it("shows no record link on the section's own page", async () => {
+      renderWithAuth(<SideNavContent />, "passport_holder", {
+        initialRoute: "/passport/cpd",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("CPD")).toBeInTheDocument();
+      });
+      expect(screen.queryByText("Activity")).not.toBeInTheDocument();
+    });
+
     it("hangs only the open page, not every passport page", async () => {
       // The passport page links to the rest; the side navigation says
       // where somebody is, not everywhere they could go.

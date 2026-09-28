@@ -23,6 +23,16 @@ vi.mock("@lib/passport", () => ({
   addLogbookEntry: (...args: unknown[]) => addLogbookEntry(...args),
 }));
 
+const navigate = vi.fn();
+
+vi.mock("react-router-dom", async () => {
+  const actual =
+    await vi.importActual<typeof import("react-router-dom")>(
+      "react-router-dom",
+    );
+  return { ...actual, useNavigate: () => navigate };
+});
+
 const detail = {
   passport: {
     passport_id: "3f2a8c1e",
@@ -85,6 +95,43 @@ describe("PassportLogbookPage", () => {
     renderWithRouter(<PassportLogbookPage />);
 
     expect(await screen.findByText("Nothing logged yet")).toBeInTheDocument();
+  });
+
+  it("opens an entry on its own page when it is chosen", async () => {
+    const user = userEvent.setup();
+    fetchWholeLogbook.mockResolvedValue({
+      count: 1,
+      competencies: [
+        {
+          competency: "certify_death",
+          count: 1,
+          entries: [
+            {
+              filename: "20260302T0900",
+              competency: "certify_death",
+              performed_on: "2026-03-02",
+            },
+          ],
+        },
+      ],
+    });
+    renderWithRouter(<PassportLogbookPage />);
+
+    await user.click(await screen.findByText(/2 Mar 2026/));
+
+    expect(navigate).toHaveBeenCalledWith(
+      "/passport/logbook/certify_death/20260302T0900",
+    );
+  });
+
+  it("puts the add button above the message on an empty logbook", async () => {
+    renderWithRouter(<PassportLogbookPage />);
+
+    const message = await screen.findByText("Nothing logged yet");
+    const add = screen.getByRole("button", { name: "Add an entry" });
+    expect(
+      add.compareDocumentPosition(message) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("keeps the picker out of the way until an entry is being added", async () => {

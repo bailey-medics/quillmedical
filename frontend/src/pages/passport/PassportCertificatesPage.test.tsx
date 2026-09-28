@@ -66,6 +66,17 @@ describe("PassportCertificatesPage", () => {
     expect(screen.getByText("Resuscitation Council UK")).toBeInTheDocument();
   });
 
+  it("puts the add button above the message on an empty page", async () => {
+    fetchCertificates.mockResolvedValue([]);
+    renderWithRouter(<PassportCertificatesPage />);
+
+    const message = await screen.findByText("Nothing recorded yet");
+    const add = screen.getByRole("button", { name: "Record a certificate" });
+    expect(
+      add.compareDocumentPosition(message) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it("asks the API for the passport before its certificates", async () => {
     // The certificates endpoint is addressed by passport id, so the
     // order matters.

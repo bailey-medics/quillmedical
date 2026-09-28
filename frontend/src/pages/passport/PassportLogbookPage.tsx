@@ -17,6 +17,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Group, Stack } from "@mantine/core";
+import { useNavigate } from "react-router-dom";
 import PageHeader from "@/components/page-header";
 import AddButton from "@/components/button/AddButton";
 import CompetencyPicker from "@/components/passport/CompetencyPicker";
@@ -78,6 +79,7 @@ function competencyForForm(
 }
 
 export function Component() {
+  const navigate = useNavigate();
   const [passportId, setPassportId] = useState<string | null>(null);
   // What the view is narrowed to. Empty means everything, which is what
   // a holder opening their logbook wants to see first.
@@ -190,30 +192,6 @@ export function Component() {
 
       {error && <ErrorState message={error} />}
 
-      {whole.count === 0 && (
-        <StateMessage
-          colour="update"
-          icon={<IconFileText />}
-          title="Nothing logged yet"
-          description="Procedures you record appear here, grouped by the competency they count towards."
-        />
-      )}
-
-      {/* Narrowing the view, which is reading. Offered whatever the
-          entitlement says, and only where there is more than one
-          competency to choose between. */}
-      {whole.competencies.length > 1 && (
-        <Group justify="flex-end">
-          <FilterSelect
-            data={filterOptions}
-            value={shown}
-            onChange={setShown}
-            label="Competency"
-            aria-label="Filter the logbook by competency"
-          />
-        </Group>
-      )}
-
       {adding ? (
         <Stack gap="md">
           {/* Choosing what the entry counts towards, which is writing.
@@ -251,11 +229,42 @@ export function Component() {
         </Group>
       )}
 
+      {whole.count === 0 && (
+        <StateMessage
+          colour="update"
+          icon={<IconFileText />}
+          title="Nothing logged yet"
+          description="Procedures you record appear here, grouped by the competency they count towards."
+        />
+      )}
+
+      {/* Narrowing the view, which is reading. Offered whatever the
+          entitlement says, and only where there is more than one
+          competency to choose between. */}
+      {whole.competencies.length > 1 && (
+        <Group justify="flex-end">
+          <FilterSelect
+            data={filterOptions}
+            value={shown}
+            onChange={setShown}
+            label="Competency"
+            aria-label="Filter the logbook by competency"
+          />
+        </Group>
+      )}
+
       {groups.map((group) => (
         <LogbookTable
           key={group.competency}
           logbook={group}
           competencyName={nameOf(group.competency)}
+          // Each entry opens on a page of its own, to read in full and
+          // correct.
+          onSelect={(entry) =>
+            navigate(
+              `/passport/logbook/${encodeURIComponent(group.competency)}/${encodeURIComponent(entry.filename)}`,
+            )
+          }
         />
       ))}
     </Stack>

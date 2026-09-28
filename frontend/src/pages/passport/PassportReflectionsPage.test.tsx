@@ -56,6 +56,17 @@ describe("PassportReflectionsPage", () => {
     expect(await screen.findByText("Difficult airway")).toBeInTheDocument();
   });
 
+  it("puts the add button above the message on an empty page", async () => {
+    fetchReflections.mockResolvedValue([]);
+    renderWithRouter(<PassportReflectionsPage />);
+
+    const message = await screen.findByText("Nothing written yet");
+    const add = screen.getByRole("button", { name: "Write a reflection" });
+    expect(
+      add.compareDocumentPosition(message) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it("says reflections are private when there are none", async () => {
     fetchReflections.mockResolvedValue([]);
     renderWithRouter(<PassportReflectionsPage />);
