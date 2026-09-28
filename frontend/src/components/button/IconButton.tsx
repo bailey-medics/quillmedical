@@ -3,11 +3,17 @@
  *
  * Wrapper around Mantine's ActionIcon that automatically sizes the container
  * to match the Icon component's md size.
- * Provides consistent icon button sizing across the application.
+ * Provides consistent icon button sizing across the application: 42px
+ * square, or 48px below the sm breakpoint so it clears the 44px touch
+ * target (WCAG 2.5.5, NHS) and matches the md button's phone height.
+ * The icon keeps the same share of the button at both widths: md (28px)
+ * on desktop, lg on a phone, where Icon shrinks every size and lg is
+ * 32px. md there would be 20px, lost in the larger button.
  */
 
 import type { ReactElement, MouseEventHandler } from "react";
-import { ActionIcon } from "@mantine/core";
+import { ActionIcon, useMantineTheme } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 import type { MantineColor } from "@mantine/core";
 import Icon from "@/components/icons";
 
@@ -61,9 +67,16 @@ export default function IconButton({
   icon,
   ...actionIconProps
 }: IconButtonProps) {
+  const theme = useMantineTheme();
+  const isMobile = useMediaQuery(
+    `(max-width: ${theme.breakpoints.sm})`,
+    false,
+    { getInitialValueInEffect: false },
+  );
+
   return (
-    <ActionIcon {...actionIconProps} size={42}>
-      <Icon icon={icon} size="md" />
+    <ActionIcon {...actionIconProps} size={isMobile ? 48 : 42}>
+      <Icon icon={icon} size={isMobile ? "lg" : "md"} />
     </ActionIcon>
   );
 }
