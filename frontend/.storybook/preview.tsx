@@ -7,6 +7,7 @@ import "@mantine/dates/styles.css";
 import "@mantine/notifications/styles.css";
 import "../src/styles/typography.css";
 import "../src/styles/dark-overrides.css";
+import "../src/styles/touch-targets.css";
 import type { Preview } from "@storybook/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import React, { useEffect } from "react";
