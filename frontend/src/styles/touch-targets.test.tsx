@@ -12,6 +12,8 @@ import { screen } from "@testing-library/react";
 import { Modal } from "@mantine/core";
 import { renderWithMantine } from "@test/test-utils";
 import FormStatus from "@/components/form/Form/FormStatus";
+import PasswordField from "@/components/form/PasswordField";
+import TextField from "@/components/form/TextField";
 
 describe("touch-targets.css selectors", () => {
   it("reaches the modal close button", () => {
@@ -30,5 +32,18 @@ describe("touch-targets.css selectors", () => {
     );
     const dismiss = screen.getByRole("button", { name: "Dismiss" });
     expect(dismiss).toHaveClass("mantine-CloseButton-root");
+  });
+
+  it("reaches the wrapper of a form text field", () => {
+    renderWithMantine(<TextField label="Name" />);
+    const wrapper = screen.getByLabelText("Name").parentElement;
+    expect(wrapper).toHaveClass("mantine-Input-wrapper");
+  });
+
+  it("reaches the password visibility toggle", () => {
+    const { container } = renderWithMantine(<PasswordField label="Password" />);
+    expect(
+      container.querySelector(".mantine-PasswordInput-visibilityToggle"),
+    ).toBeInTheDocument();
   });
 });

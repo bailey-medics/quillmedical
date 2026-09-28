@@ -12,6 +12,7 @@ import { ActionIcon, TextInput } from "@mantine/core";
 import { IconX } from "@/components/icons/appIcons";
 import SearchButton from "@/components/button/SearchButton";
 import { typographyTokens } from "@/theme";
+import classes from "./SearchFields.module.css";
 
 interface SearchFieldProps {
   /** Controlled value — when provided, component is controlled */
@@ -83,12 +84,16 @@ export default function SearchField({
       value={currentValue}
       onChange={(e) => handleChange(e.currentTarget.value)}
       rightSection={
-        <ActionIcon aria-label="Close search" onClick={handleClose}>
+        <ActionIcon
+          aria-label="Close search"
+          onClick={handleClose}
+          className={classes.close}
+        >
           <IconX size={16} />
         </ActionIcon>
       }
       styles={{
-        root: { width: 220, height: 42, display: "flex", alignItems: "center" },
+        root: { width: 220, display: "flex", alignItems: "center" },
         input: {
           transition: "width 0.2s ease",
           width: 220,

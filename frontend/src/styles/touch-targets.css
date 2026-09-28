@@ -14,6 +14,12 @@
  * (the clear ✕ of a select) is left alone, because it has to fit the
  * input's right section.
  *
+ * The md text input, used by every form field component, is drawn 44px
+ * tall rather than 42px, and the section at its right end, where the
+ * password eye and the close-search ✕ sit, is as wide as the input is
+ * tall rather than 2px narrower. The password eye then fills that 44px
+ * square instead of sitting at 28px inside it. Its icon stays 22px.
+ *
  * Mantine sets its size variables on each component's own class, so these
  * override them there; this file loads after Mantine's stylesheet and wins
  * on source order at equal specificity.
@@ -26,5 +32,14 @@
   .mantine-CloseButton-root {
     --cb-size-md: calc(2.75rem * var(--mantine-scale));
     --cb-icon-size: calc(1.5rem * var(--mantine-scale));
+  }
+
+  .mantine-Input-wrapper {
+    --input-height-md: calc(2.75rem * var(--mantine-scale));
+    --input-right-section-width: var(--input-height);
+  }
+
+  .mantine-PasswordInput-visibilityToggle {
+    --psi-button-size: var(--input-height);
   }
 }
