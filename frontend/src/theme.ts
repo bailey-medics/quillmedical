@@ -329,6 +329,10 @@ const appCssVariables = {
     "--nav-active-colour": "var(--mantine-color-secondary-5)",
     // Nav link hover — Mantine's own non-active hover shade
     "--nav-hover-bg": "var(--mantine-color-dark-6)",
+    // Current nav link fill. The hover shade rather than dark.5: amber
+    // secondary.5 is 5.2:1 on dark.6 and only 4.3:1 on dark.5, under AA
+    // for 19px body text.
+    "--nav-active-bg": "var(--mantine-color-dark-6)",
     ...statusTextVariables(statusTextColourValues.dark),
   },
   light: {
@@ -356,6 +360,10 @@ const appCssVariables = {
     // the brand secondary.5 is 2.7:1 on white, secondary.7 is 5.5:1
     "--nav-active-colour": "var(--mantine-color-secondary-7)",
     "--nav-hover-bg": "var(--mantine-color-gray-0)",
+    // Current nav link fill: a mild grey, one step darker than the hover
+    // so the current link still reads as current under the pointer.
+    // secondary.7 is 4.9:1 on gray.1.
+    "--nav-active-bg": "var(--mantine-color-gray-1)",
     ...statusTextVariables(statusTextColourValues.light),
   },
 };
@@ -441,7 +449,7 @@ export const theme = createTheme({
   },
 
   components: {
-    /** Current nav link — amber label and icon, no fill (see navLink.module.css) */
+    /** Current nav link — amber label and icon on a mild grey fill (see navLink.module.css) */
     NavLink: NavLink.extend({
       // A button unless a caller says otherwise. Mantine renders an <a>,
       // and an <a> with no href is not focusable, so every NavLink that
@@ -452,9 +460,13 @@ export const theme = createTheme({
       vars: () => ({
         root: {
           "--nl-color": "var(--nav-active-colour)",
-          // No fill on the current link; hover matches the other links
-          "--nl-bg": "transparent",
-          "--nl-hover": "var(--nav-hover-bg)",
+          // A mild grey fill on the current link, there without hovering,
+          // and the same under the pointer: hovering the page you are on
+          // changes nothing, so it should not look as if it would. The
+          // fill was taken out on 24 September 2026 with the amber label,
+          // and put back on 28 September at the product owner's request.
+          "--nl-bg": "var(--nav-active-bg)",
+          "--nl-hover": "var(--nav-active-bg)",
         },
         children: {},
       }),

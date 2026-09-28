@@ -116,6 +116,17 @@ describe("cssVariablesResolver", () => {
     );
   });
 
+  it("fills the current nav link with a mild grey the amber still reads on", () => {
+    expect(vars.light["--nav-active-bg"]).toBe("var(--mantine-color-gray-1)");
+    expect(
+      contrastRatio(secondaryScale[7], greyScale[1]),
+    ).toBeGreaterThanOrEqual(AA_TEXT);
+    expect(vars.dark["--nav-active-bg"]).toBe("var(--mantine-color-dark-6)");
+    expect(
+      contrastRatio(secondaryScale[5], DEFAULT_THEME.colors.dark[6]),
+    ).toBeGreaterThanOrEqual(AA_TEXT);
+  });
+
   it("lets app overrides win over Mantine's values", () => {
     // Mantine's resolver sets --mantine-color-error to a red shade; the
     // app overrides it with its accessible error token.
