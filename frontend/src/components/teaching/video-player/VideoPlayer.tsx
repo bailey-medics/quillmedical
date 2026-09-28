@@ -195,6 +195,7 @@ export default function VideoPlayer({
         <Box className={classes.qualityBar}>
           <SegmentedControl
             size="xs"
+            classNames={{ label: classes.qualityLabel }}
             value={quality}
             onChange={handleQualityChange}
             data={[

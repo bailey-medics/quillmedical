@@ -146,19 +146,25 @@ remember.
 
 ## Phase 6: Compact buttons and the video quality toggle
 
-- [ ] **`xs` and `sm` buttons are 44px tall on phones**, in
+- [x] **`xs` and `sm` buttons are 44px tall on phones**, in
       `touch-targets.css`, by setting `--button-height-xs` and
       `--button-height-sm` next to the `md` rule. They are used for the
       action buttons on messages (`frontend/src/components/messaging/Messaging.tsx:252`
       and `:346`) and the Deactivate and Activate buttons in the patient
       admin tables (`DeactivatePatientPage.tsx:246`,
-      `ActivatePatientPage.tsx:263`). One rule also covers any compact button added later.
+      `ActivatePatientPage.tsx:263`). They keep their smaller text and
+      padding, and stay 4px shorter than the 48px `md` button, so they
+      still read as secondary. One rule also covers any compact button
+      added later. The `compact-*` sizes are not covered, because nothing
+      uses them.
 
-- [ ] **The video quality toggle is 44px tall on phones**, in
+- [x] **The video quality toggle is 44px tall on phones**, in
       `frontend/src/components/teaching/video-player/VideoPlayer.tsx:196`.
-      It is a `SegmentedControl` set to `xs`, about 30px. Give its labels a
-      44px `min-height` below 40em in `VideoPlayer.module.css`, rather than
-      changing `size`, so the text stays small under the video.
+      It is a `SegmentedControl` set to `xs`, about 30px. A `qualityLabel`
+      class on its labels gives them a 44px `min-height` below 40em in
+      `VideoPlayer.module.css`, rather than changing `size`, so the text
+      stays small under the video. Mantine measures the labels to place
+      the sliding indicator, so the indicator grows with them.
 
 ## Phase 7: Table pagination
 

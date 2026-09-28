@@ -9,7 +9,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
-import { Modal } from "@mantine/core";
+import { Button, Modal } from "@mantine/core";
 import { renderWithMantine } from "@test/test-utils";
 import FormStatus from "@/components/form/Form/FormStatus";
 import PasswordField from "@/components/form/PasswordField";
@@ -45,5 +45,12 @@ describe("touch-targets.css selectors", () => {
     expect(
       container.querySelector(".mantine-PasswordInput-visibilityToggle"),
     ).toBeInTheDocument();
+  });
+
+  it("reaches a compact xs button", () => {
+    renderWithMantine(<Button size="xs">Deactivate</Button>);
+    expect(screen.getByRole("button", { name: "Deactivate" })).toHaveClass(
+      "mantine-Button-root",
+    );
   });
 });

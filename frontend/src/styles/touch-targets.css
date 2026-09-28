@@ -7,6 +7,11 @@
  * height changes: the label stays centred, with the same font size and
  * side padding.
  *
+ * The xs and sm buttons, used for row actions in tables and on messages,
+ * are drawn 44px tall rather than 30px and 36px. They stay 4px shorter
+ * than the md button, and keep their smaller text and padding, so they
+ * still read as secondary.
+ *
  * The md close button, Mantine's default and the ✕ on every modal,
  * drawer, notification and FormStatus message, is drawn 44px rather than
  * 28px. Its ✕ grows from 20px to 24px rather than keeping Mantine's 70%,
@@ -26,6 +31,8 @@
  */
 @media (width <= 40em) {
   .mantine-Button-root {
+    --button-height-xs: calc(2.75rem * var(--mantine-scale));
+    --button-height-sm: calc(2.75rem * var(--mantine-scale));
     --button-height-md: calc(3rem * var(--mantine-scale));
   }
 

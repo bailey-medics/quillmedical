@@ -78,3 +78,17 @@
   justify-content: flex-end;
   margin-top: var(--mantine-spacing-xs);
 }
+
+/*
+ * On a phone each quality option is at least 44px tall, up from about
+ * 30px, while the text stays at the xs size so the control does not
+ * compete with the video above it.
+ */
+@media (width <= 40em) {
+  .qualityLabel {
+    min-height: 2.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}

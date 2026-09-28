@@ -188,6 +188,17 @@ describe("VideoPlayer", () => {
       expect(getByLabelText("Video quality")).toBeInTheDocument();
     });
 
+    it("gives each quality option the class that makes it 44px tall on phones", async () => {
+      const { findByTestId, getByText } = renderWithMantine(
+        <VideoPlayer src={SRC_720} src1080p={SRC_1080} />,
+      );
+
+      await findByTestId("react-player");
+      expect(getByText("1080p").closest("label")?.className).toMatch(
+        /qualityLabel/,
+      );
+    });
+
     it("offers no control for YouTube, which has its own", async () => {
       const { findByTestId, queryByLabelText } = renderWithMantine(
         <VideoPlayer youtubeId="abc123" src1080p={SRC_1080} />,
