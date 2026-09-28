@@ -5,6 +5,19 @@ import userEvent from "@testing-library/user-event";
 import NavigationDrawer from "./NavigationDrawer";
 
 describe("NavigationDrawer Component", () => {
+  describe("Touch rows", () => {
+    it("gives the panel the class that draws nav links 48px tall", () => {
+      renderWithMantine(
+        <NavigationDrawer opened={true} onClose={vi.fn()}>
+          <div>Links</div>
+        </NavigationDrawer>,
+      );
+      expect(
+        screen.getByRole("dialog", { name: "Navigation" }).className,
+      ).toMatch(/panel/);
+    });
+  });
+
   describe("Basic rendering", () => {
     it("renders children when opened", () => {
       renderWithMantine(

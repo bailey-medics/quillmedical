@@ -1,0 +1,12 @@
+/*
+ * Links in the drawer are drawn at least 48px tall, where the desktop
+ * side navigation keeps Mantine's compact 38px. The drawer is what a
+ * phone or tablet sees, and 48px clears the 44px touch target (WCAG
+ * 2.5.5, NHS) while matching the app's phone buttons. A minimum height
+ * rather than padding, so a label wrapping to two lines grows from 48px
+ * instead of stacking extra padding on top. The label and icon stay
+ * centred at their usual size.
+ */
+.panel :global(.mantine-NavLink-root) {
+  min-height: 3rem;
+}
