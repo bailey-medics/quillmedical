@@ -2,8 +2,9 @@
  * NavLink theme override tests
  *
  * The theme points the current link's colour at the amber
- * `--nav-active-colour` token and tags each NavLink with the classes
- * that recolour its icon.
+ * `--nav-active-colour` token, fills it with the mild grey
+ * `--nav-active-bg`, and tags each NavLink with the classes that recolour
+ * its icon.
  */
 
 import { NavLink } from "@mantine/core";
@@ -25,15 +26,15 @@ describe("NavLink theme override", () => {
     );
   });
 
-  it("gives the current link no background fill", () => {
+  it("gives the current link a mild grey fill, unchanged on hover", () => {
     renderWithMantine(<NavLink label="Home" active />);
 
     const root = screen.getByText("Home").closest("[data-active]");
     expect((root as HTMLElement).style.getPropertyValue("--nl-bg")).toBe(
-      "transparent",
+      "var(--nav-active-bg)",
     );
     expect((root as HTMLElement).style.getPropertyValue("--nl-hover")).toBe(
-      "var(--nav-hover-bg)",
+      "var(--nav-active-bg)",
     );
   });
 
