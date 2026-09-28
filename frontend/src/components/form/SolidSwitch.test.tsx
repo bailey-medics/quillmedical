@@ -1,8 +1,19 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@test/test-utils";
 import SolidSwitch from "./SolidSwitch";
+
+const media = vi.hoisted(() => ({ isMobile: false }));
+
+vi.mock("@mantine/hooks", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@mantine/hooks")>();
+  return { ...actual, useMediaQuery: () => media.isMobile };
+});
+
+beforeEach(() => {
+  media.isMobile = false;
+});
 
 describe("SolidSwitch", () => {
   describe("Rendering", () => {
@@ -66,6 +77,42 @@ describe("SolidSwitch", () => {
       );
       const root = container.querySelector(".custom-root");
       expect(root).toBeInTheDocument();
+    });
+  });
+
+  describe("Touch target", () => {
+    it("pads the tappable body at size xl", () => {
+      const { container } = renderWithMantine(
+        <SolidSwitch label="Toggle" size="xl" />,
+      );
+      expect(
+        container.querySelector("label[class*='bodyXl']"),
+      ).toBeInTheDocument();
+    });
+
+    it("defaults to xl below the sm breakpoint", () => {
+      media.isMobile = true;
+      const { container } = renderWithMantine(<SolidSwitch label="Toggle" />);
+      expect(
+        container.querySelector("label[class*='bodyXl']"),
+      ).toBeInTheDocument();
+    });
+
+    it("keeps an explicit size below the sm breakpoint", () => {
+      media.isMobile = true;
+      const { container } = renderWithMantine(
+        <SolidSwitch label="Toggle" size="sm" />,
+      );
+      expect(
+        container.querySelector("[class*='bodyXl']"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("leaves the body unpadded at the desktop default", () => {
+      const { container } = renderWithMantine(<SolidSwitch label="Toggle" />);
+      expect(
+        container.querySelector("[class*='bodyXl']"),
+      ).not.toBeInTheDocument();
     });
   });
 

@@ -20,3 +20,12 @@
   color: var(--mantine-color-text);
   margin-bottom: 0.25rem;
 }
+
+/*
+ * xl is the touch size: its 36px track plus 4px above and below makes a
+ * 44px tap target (WCAG 2.5.5, NHS). The body is the <label> bound to the
+ * input, so its padding is tappable without enlarging the switch drawn.
+ */
+.bodyXl {
+  padding-block: 4px;
+}

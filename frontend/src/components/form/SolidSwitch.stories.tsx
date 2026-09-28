@@ -60,7 +60,16 @@ export const AllSizes: Story = {
   render: () => (
     <VariantStack>
       {(["xs", "sm", "md", "lg", "xl"] as const).map((size) => (
-        <VariantRow key={size} label={size === "lg" ? "lg (default)" : size}>
+        <VariantRow
+          key={size}
+          label={
+            size === "md"
+              ? "md (desktop default)"
+              : size === "xl"
+                ? "xl (phone default, 44px tap target)"
+                : size
+          }
+        >
           <SolidSwitch label="Toggle" size={size} />
           <SolidSwitch label="Toggle" size={size} checked />
         </VariantRow>
