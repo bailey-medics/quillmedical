@@ -21,8 +21,9 @@ export const SignedOff: Story = {
   args: { signOff: signedOff },
 };
 
+/** The holder's view of an open request, naming who it was sent to. */
 export const Requested: Story = {
-  args: { signOff: requested },
+  args: { signOff: { ...requested, assessor_email: "a.okonkwo@nhs.net" } },
 };
 
 /** Signed off at a different level from the one asked for. */

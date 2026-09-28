@@ -25,11 +25,12 @@ export const SignedOff: Story = {
   args: { signOff: signedOff, onSelect: undefined },
 };
 
-/** Awaiting the assessor, so it says what was asked for. */
+/** Awaiting the assessor, so it says what was asked for and of whom. */
 export const Requested: Story = {
   args: {
     signOff: {
       ...requested,
+      assessor_email: "a.okonkwo@nhs.net",
       requested_level: {
         id: "supervised",
         name: "Can perform under supervision",

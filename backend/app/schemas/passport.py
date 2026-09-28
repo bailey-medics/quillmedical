@@ -319,6 +319,12 @@ class SignOffOut(BaseModel):
     evidence: EvidenceSnapshotOut | None = None
     attachments: list[AttachmentOut] = Field(default_factory=list)
     content_hash: str | None = None
+    #: Who the holder asked, as they typed it. Not part of the signed
+    #: record, which names only who signed: it comes from the request
+    #: row, and only on the holder's own sign-off routes. Null where
+    #: there is no request row, such as a record imported from before
+    #: requests were kept.
+    assessor_email: str | None = None
 
 
 class InboxItemOut(BaseModel):

@@ -895,35 +895,22 @@ def _requests_today(db: Session, passport_id: str) -> int:
     )
 
 
-def _join_as_external(
-    db: Session, user_id: int, place: str, org_unit_id: int
-) -> None:
-    """Make somebody an external member where the holder is, unless they
-    already belong there in any capacity."""
-    if place == "site":
-        already = db.scalar(
-            select(org_unit_member.c.user_id).where(
-                org_unit_member.c.org_unit_id == org_unit_id,
-                org_unit_member.c.user_id == user_id,
-            )
+def _join_as_external(db: Session, user_id: int, org_unit_id: int) -> None:
+    """Make somebody an external member of an org_unit, unless they
+    already belong there in any capacity.
+
+    Checked first because writing a membership that exists changes its
+    capacity, and a staff member asked to assess must not be demoted to
+    external at the org_unit they work for.
+    """
+    already = db.scalar(
+        select(org_unit_member.c.user_id).where(
+            org_unit_member.c.org_unit_id == org_unit_id,
+            org_unit_member.c.user_id == user_id,
         )
-        if already is None:
-            db.execute(
-                org_unit_member.insert().values(
-                    org_unit_id=org_unit_id,
-                    user_id=user_id,
-                    capacity="external",
-                )
-            )
-    else:
-        already = db.scalar(
-            select(organisation_org_unit_member.c.user_id).where(
-                organisation_org_unit_member.c.org_unit_id == org_unit_id,
-                organisation_org_unit_member.c.user_id == user_id,
-            )
-        )
-        if already is None:
-            add_org_unit_member(db, org_unit_id, user_id, "external")
+    )
+    if already is None:
+        add_org_unit_member(db, org_unit_id, user_id, "external")
 
 
 def _let_existing_account_assess(
@@ -946,7 +933,7 @@ def _let_existing_account_assess(
     the email, in the same transaction, so a failed send takes it back.
     """
     try:
-        place, org_unit_id = _holder_org_unit(db, passport_id)
+        org_unit_id = _holder_org_unit(db, passport_id)
     except HTTPException as error:
         if error.status_code != 409:
             raise
@@ -954,10 +941,10 @@ def _let_existing_account_assess(
         # person accepting an invitation.
         raise HTTPException(
             409,
-            "You do not belong to a site or organisation, so your "
-            "assessor cannot be given access to your request.",
+            "You do not belong anywhere on Quill, so your assessor "
+            "cannot be given access to your request.",
         ) from None
-    _join_as_external(db, assessor.id, place, org_unit_id)
+    _join_as_external(db, assessor.id, org_unit_id)
 
     if "assess_clinician_passport" not in assessor.get_final_competencies():
         assessor.competency_grants.append(
@@ -1407,7 +1394,32 @@ def list_sign_offs(
 
     found.sort(key=lambda pair: (pair[1].observed_on, pair[0]), reverse=True)
 
-    return [_sign_off_out(name, record) for name, record in found]
+    asked = _assessor_emails(db, row.id)
+
+    return [
+        _sign_off_out(name, record).model_copy(
+            update={"assessor_email": asked.get(name)}
+        )
+        for name, record in found
+    ]
+
+
+def _assessor_emails(db: Session, passport_id: str) -> dict[str, str]:
+    """Who each of a passport's sign-offs was asked of, by sign-off name.
+
+    Kept in the request row rather than the signed record, which names
+    only who signed. So a request nobody has answered can still say who
+    it is waiting on. An empty address, the column's default on rows
+    from before it was kept, counts as not known.
+    """
+    rows = db.execute(
+        select(
+            PassportSignOffRequest.signoff_id,
+            PassportSignOffRequest.assessor_email,
+        ).where(PassportSignOffRequest.passport_id == passport_id)
+    ).all()
+
+    return {signoff_id: email for signoff_id, email in rows if email}
 
 
 @passport_router.get(
@@ -1430,7 +1442,16 @@ def get_sign_off(
     except (PassportNotFoundError, paths.PassportPathError):
         raise HTTPException(404, "Sign-off not found") from None
 
-    return _sign_off_out(signoff_id, record)
+    out = _sign_off_out(signoff_id, record)
+
+    # Only for the holder. An assessor reading the request they were
+    # sent already knows it went to them.
+    if row.user_id != user.id:
+        return out
+
+    return out.model_copy(
+        update={"assessor_email": _assessor_emails(db, row.id).get(signoff_id)}
+    )
 
 
 @passport_router.post(
@@ -3011,15 +3032,26 @@ def _decoded_invite(
     return invite, str(payload["email"])
 
 
-def _holder_org_unit(db: Session, passport_id: str) -> tuple[str, int]:
-    """Where the assessor should become a member, and at what level.
+def _holder_org_unit(db: Session, passport_id: str) -> int:
+    """The org_unit an assessor should join to reach this passport.
 
-    The narrowest org_unit the holder belongs to: a site if they have one,
-    otherwise the organisation. A holder who sits only at organisation
-    level is the ordinary case for a rotating trainee, not an exception.
+    One of the holder's own org_units where the passport is switched on,
+    so joining it gives the assessor the access they need. What kind of
+    org_unit it is does not matter: the tree has one kind of node, and a
+    type says what a node is, never whether it may be chosen here.
+
+    This once had two branches, one for a site and one for an
+    organisation, and only the site branch looked for the passport. A
+    holder whose only passport org_unit was an organisation had an
+    assessor put in their first organisation instead, which on 28
+    September 2026 was a teaching one: the assessor was granted the
+    competency and still could not see the passport.
+
+    Where several qualify, the lowest id. That is arbitrary, but stable,
+    and any of them reaches the feature.
 
     Returns:
-        ``("site", id)`` or ``("organisation", id)``, both org_unit ids.
+        The org_unit id.
 
     Raises:
         HTTPException: 409 if the holder belongs nowhere. Nothing can be
@@ -3031,14 +3063,7 @@ def _holder_org_unit(db: Session, passport_id: str) -> tuple[str, int]:
     if passport is None:
         raise HTTPException(400, "This invitation is no longer valid.")
 
-        # An org_unit *inside* an organisation. Organisations are rows in the
-        # same table now, and a membership of one is a row here too, so
-        # without this every holder would look as though they had a site and
-        # the organisation branch below would never be reached.
-    # Every org_unit the holder belongs to, narrowest first. A holder can
-    # be in several: a rotating trainee sits at the hospital they are
-    # at now, one they were at before, and the trust above both.
-    member_ids = [
+    member_ids = sorted(
         int(row)
         for row in db.execute(
             select(org_unit_member.c.org_unit_id).where(
@@ -3047,22 +3072,16 @@ def _holder_org_unit(db: Session, passport_id: str) -> tuple[str, int]:
         )
         .scalars()
         .all()
-    ]
+    )
 
-    # Only those that reach an organisation where the passport is
-    # switched on. Adding the assessor anywhere else leaves them a
-    # member of a real org_unit that still cannot open a passport, which
-    # is the failure this resolves: `requires_feature` rolls a member
-    # up to their root organisations and looks for the feature there.
+    # The same walk `requires_feature` makes: up to the root org_units
+    # and look for the feature there, so one that passes here is one the
+    # gate will accept.
     with_feature = [
         unit_id
         for unit_id in member_ids
         if db.scalar(
             select(OrgUnitFeature.id).where(
-                # The same walk `requires_feature` makes, so an org_unit that
-                # passes here is one the gate will accept. Anything else
-                # leaves the assessor a member of a real org_unit that still
-                # cannot open a passport.
                 OrgUnitFeature.org_unit_id.in_(
                     organisation_org_units_of(db, [unit_id])
                 ),
@@ -3072,35 +3091,19 @@ def _holder_org_unit(db: Session, passport_id: str) -> tuple[str, int]:
         is not None
     ]
 
+    # A holder always reaches the passport, or they could not have asked,
+    # so `with_feature` is empty only for data the gate would already
+    # refuse. Falling back to any membership keeps that case as it was.
     usable = with_feature or member_ids
 
-    site_id = db.scalar(
-        select(org_unit_member.c.org_unit_id).where(
-            org_unit_member.c.user_id == passport.user_id,
-            org_unit_member.c.org_unit_id.in_(usable),
-            org_unit_member.c.org_unit_id.in_(
-                select(OrgUnit.id).where(OrgUnit.type.notin_(ROOT_TYPE_IDS))
-            ),
-        )
-    )
-
-    if site_id is not None:
-        return "site", int(site_id)
-
-    organisation_org_unit_id = db.scalar(
-        select(organisation_org_unit_member.c.org_unit_id).where(
-            organisation_org_unit_member.c.user_id == passport.user_id
-        )
-    )
-
-    if organisation_org_unit_id is not None:
-        return "organisation", int(organisation_org_unit_id)
+    if usable:
+        return usable[0]
 
     raise HTTPException(
         409,
         (
-            "The clinician who invited you does not belong to a site or "
-            "organisation, so there is nowhere to add you."
+            "The clinician who invited you does not belong anywhere on "
+            "Quill, so there is nowhere to add you."
         ),
     )
 
@@ -3280,8 +3283,8 @@ def accept_assessor_invite(
         db.flush()
         status = "registered"
 
-    place, org_unit_id = _holder_org_unit(db, invite.passport_id)
-    _join_as_external(db, user.id, place, org_unit_id)
+    org_unit_id = _holder_org_unit(db, invite.passport_id)
+    _join_as_external(db, user.id, org_unit_id)
 
     invite.accepted_at = _now()
     invite.accepted_user_id = user.id
@@ -3290,9 +3293,25 @@ def accept_assessor_invite(
     return AssessorInviteAcceptOut(
         status=status,
         user_id=user.id,
-        place=place,
-        place_id=org_unit_id,
+        place=_place_word(db, org_unit_id),
         org_unit_id=org_unit_id,
+    )
+
+
+def _place_word(db: Session, org_unit_id: int) -> str:
+    """``site`` or ``organisation``, for the ``place`` response field.
+
+    Kept only because removing a required field is a breaking change,
+    and an older client may still read it. Nothing here decides anything
+    by it any more: which org_unit an assessor joins is chosen without
+    regard to type. Drop the field in a contract step once no client
+    reads it.
+    """
+    unit = db.get(OrgUnit, org_unit_id)
+    return (
+        "organisation"
+        if unit is not None and unit.type in ROOT_TYPE_IDS
+        else "site"
     )
 
 

@@ -30,6 +30,21 @@ describe("SignOffCard", () => {
       ).toBeInTheDocument();
     });
 
+    it("says who the request was sent to, where it is known", () => {
+      renderWithMantine(
+        <SignOffCard
+          signOff={{ ...requested, assessor_email: "okonkwo@nhs.net" }}
+        />,
+      );
+      expect(screen.getByText("Sent to")).toBeInTheDocument();
+      expect(screen.getByText("okonkwo@nhs.net")).toBeInTheDocument();
+    });
+
+    it("leaves out who was asked where it is not known", () => {
+      renderWithMantine(<SignOffCard signOff={requested} />);
+      expect(screen.queryByText("Sent to")).not.toBeInTheDocument();
+    });
+
     it("renders the status badge", () => {
       renderWithMantine(<SignOffCard signOff={signedOff} />);
       expect(screen.getByText("Signed off")).toBeInTheDocument();

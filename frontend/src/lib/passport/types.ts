@@ -257,6 +257,11 @@ export interface SignOff {
   evidence: EvidenceSnapshot | null;
   attachments: Attachment[];
   content_hash: string | null;
+  /**
+   * Who the holder asked, as they typed it. Sent only to the holder, on
+   * their own sign-off routes, and absent where no request was kept.
+   */
+  assessor_email?: string | null;
 }
 
 /**
