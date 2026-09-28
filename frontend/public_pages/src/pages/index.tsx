@@ -58,8 +58,8 @@ createRoot(document.getElementById("root")!).render(
             />
             <PublicInfoCard
               label="Accessibility"
-              heading="Accessible"
-              description="Designed for low vision, and working towards WCAG 2.2 AA"
+              heading="Inclusive"
+              description="Built for accessibility, and working towards WCAG 2.2 AA"
             />
           </SimpleGrid>
         </Container>
@@ -139,7 +139,7 @@ createRoot(document.getElementById("root")!).render(
             <PublicFeatureCard
               icon={IconAccessible}
               title="Accessibility"
-              body="A typeface designed for low vision, strong contrast and full keyboard use, with automated checks on every change."
+              body="Accessible by design: a clear typeface, strong contrast and full keyboard use, with automated checks on every change."
               href="/accessibility"
             />
             <PublicFeatureCard
