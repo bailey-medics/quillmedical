@@ -33,6 +33,7 @@ export {
   fetchPassportSpecialties,
   fetchReflections,
   fetchSignOff,
+  fetchSignOffs,
   previewAssessorInvite,
   removeCertificate,
   removeCpdEntry,

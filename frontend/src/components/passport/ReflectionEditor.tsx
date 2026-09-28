@@ -40,7 +40,7 @@ import { Heading } from "@/components/typography";
 import StateMessage from "@/components/message-cards/StateMessage";
 import { IconShieldCheck } from "@/components/icons/appIcons";
 import ButtonPair from "@/components/button/ButtonPair";
-import type { ReflectionInput } from "@lib/passport";
+import type { Reflection, ReflectionInput } from "@lib/passport";
 
 /**
  * The anonymisation declaration, exported so a test can assert the
@@ -62,16 +62,25 @@ export interface ReflectionEditorProps {
   onCancel?: () => void;
   /** Disables submission while a request is in flight */
   isSubmitting?: boolean;
+  /**
+   * A reflection already written, to rewrite. The editor starts filled
+   * in from it. The anonymisation tick does not: it is a declaration
+   * about the words being saved, so it is made again for the new ones.
+   */
+  initial?: Reflection;
 }
 
 export default function ReflectionEditor({
   onSubmit,
   onCancel,
   isSubmitting = false,
+  initial,
 }: ReflectionEditorProps) {
-  const [title, setTitle] = useState("");
-  const [writtenOn, setWrittenOn] = useState<string | null>(null);
-  const [body, setBody] = useState("");
+  const [title, setTitle] = useState(initial?.title ?? "");
+  const [writtenOn, setWrittenOn] = useState<string | null>(
+    initial?.written_on ?? null,
+  );
+  const [body, setBody] = useState(initial?.body ?? "");
   const [anonymised, setAnonymised] = useState(false);
 
   // The tick is required, exactly as the API requires it. Nothing is
@@ -97,7 +106,9 @@ export default function ReflectionEditor({
   return (
     <BaseCard data-testid="reflection-editor">
       <Stack gap="md">
-        <Heading>Write a reflection</Heading>
+        <Heading>
+          {initial ? "Edit this reflection" : "Write a reflection"}
+        </Heading>
 
         <StateMessage
           icon={<IconShieldCheck />}
@@ -142,7 +153,7 @@ export default function ReflectionEditor({
         />
 
         <ButtonPair
-          acceptLabel="Save reflection"
+          acceptLabel={initial ? "Save changes" : "Save reflection"}
           acceptDisabled={!canSubmit}
           acceptLoading={isSubmitting}
           onAccept={handleSubmit}

@@ -93,6 +93,7 @@ EXPECTED_PATHS = {
     "/api/passport/{passport_id}/logbook/{competency_id}/{stem}",
     "/api/passport/{passport_id}/reflections",
     "/api/passport/{passport_id}/reflections/{name}",
+    "/api/passport/{passport_id}/sign-offs",
     "/api/passport/{passport_id}/sign-offs/{signoff_id}",
     "/api/passport/{passport_id}/sign-offs/{signoff_id}/decline",
     "/api/passport/{passport_id}/sign-offs/{signoff_id}/sign-off",

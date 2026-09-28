@@ -10,9 +10,11 @@
  */
 
 import type {
+  Certificate,
   CompetencyState,
   CpdEntry,
   Logbook,
+  Reflection,
   Registration,
   InboxItem,
   SignOff,
@@ -134,6 +136,26 @@ export const requested: SignOff = {
   attachments: [],
   content_hash: null,
 };
+
+/**
+ * A request the assessor declined, for the same competency as
+ * `signedOff` and observed earlier: the history a competency row hides,
+ * because it shows only the latest.
+ */
+export const declined: SignOff = {
+  ...requested,
+  name: "2026-02-10-perform-bronchoscopy",
+  id: "20260210T101500.000Z-5c9e2b40",
+  competency: signedOff.competency,
+  status: "declined",
+  level: { id: "supervised", name: "Can perform under supervision" },
+  requested_level: { id: "supervised", name: "Can perform under supervision" },
+  observed_on: "2026-02-09",
+  comments: "Not yet ready for this level.",
+};
+
+/** One of each, newest first, as the sign-offs route returns them. */
+export const signOffs: SignOff[] = [requested, signedOff, declined];
 
 /**
  * One open request as the assessor's inbox returns it: the sign-off,
@@ -296,6 +318,55 @@ export const cpdEntries: CpdEntry[] = [
     competencies: [],
     certificate: null,
     notes: "No points claimed.",
+    attachments: [],
+  },
+];
+
+/** Certificates, deliberately out of date order, so a test can tell the
+ * table sorts newest first rather than keeping the server's order. */
+export const certificates: Certificate[] = [
+  {
+    name: "2024-05-20-als",
+    id: "cert-als",
+    title: "Advanced life support",
+    issuer: "Resuscitation Council UK",
+    awarded_on: "2024-05-20",
+    expires_on: "2028-05-20",
+    competencies: [],
+    description: "Four-yearly recertification.",
+    attachments: [],
+  },
+  {
+    name: "2025-11-04-bronchoscopy-course",
+    id: "cert-bronchoscopy",
+    title: "Bronchoscopy course",
+    issuer: "British Thoracic Society",
+    awarded_on: "2025-11-04",
+    expires_on: null,
+    competencies: [
+      { id: "perform_bronchoscopy", name: "Perform bronchoscopy" },
+    ],
+    description: null,
+    attachments: [],
+  },
+];
+
+/** Reflections, deliberately out of date order, as for certificates. */
+export const reflections: Reflection[] = [
+  {
+    name: "2026-01-12-difficult-airway",
+    title: "Difficult airway",
+    written_on: "2026-01-12",
+    body: "What happened, and what I would do differently next time.",
+    competencies: [],
+    attachments: [],
+  },
+  {
+    name: "2026-06-03-breaking-bad-news",
+    title: "Breaking bad news",
+    written_on: "2026-06-03",
+    body: "A conversation that went better than I expected.",
+    competencies: [],
     attachments: [],
   },
 ];

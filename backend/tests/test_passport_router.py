@@ -1236,6 +1236,87 @@ class TestDeclineAndWithdraw:
         assert response.status_code == 404
 
 
+class TestListingSignOffs:
+    """Every sign-off, one row each, rather than one per competency."""
+
+    def _ask(
+        self, client: TestClient, passport_id: str, email: str, on: str
+    ) -> str:
+        response = client.post(
+            f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
+            json={
+                "assessor_email": email,
+                "observed_on": on,
+                "level_id": LEVEL,
+            },
+        )
+        assert response.status_code == 201, response.text
+        return str(response.json()["name"])
+
+    def test_a_declined_request_and_the_one_after_are_both_listed(
+        self,
+        test_client: TestClient,
+        passport_store: LocalPassportStore,
+        org: OrgUnit,
+        assessor: User,
+    ) -> None:
+        """The competency list would show only the second of these."""
+        holder = _login(test_client, "holder")
+        passport_id = _create_passport(holder)
+        first = self._ask(holder, passport_id, assessor.email, "2026-03-14")
+
+        declined = _login(test_client, "assessor").post(
+            f"/api/passport/{passport_id}/sign-offs/{first}/decline",
+            json={"reason": "Not yet ready for this level."},
+        )
+        assert declined.status_code == 200, declined.text
+
+        holder = _login(test_client, "holder")
+        second = self._ask(holder, passport_id, assessor.email, "2026-04-02")
+
+        response = holder.get(f"/api/passport/{passport_id}/sign-offs")
+
+        assert response.status_code == 200, response.text
+        listed = response.json()
+        assert [item["name"] for item in listed] == [second, first]
+        assert [item["status"] for item in listed] == [
+            "requested",
+            "declined",
+        ]
+
+    def test_an_empty_passport_lists_nothing(
+        self,
+        test_client: TestClient,
+        passport_store: LocalPassportStore,
+        org: OrgUnit,
+    ) -> None:
+        holder = _login(test_client, "holder")
+        passport_id = _create_passport(holder)
+
+        response = holder.get(f"/api/passport/{passport_id}/sign-offs")
+
+        assert response.status_code == 200, response.text
+        assert response.json() == []
+
+    def test_the_assessor_cannot_list_them(
+        self,
+        test_client: TestClient,
+        passport_store: LocalPassportStore,
+        org: OrgUnit,
+        assessor: User,
+    ) -> None:
+        """Named on one request, which is not the whole record."""
+        holder = _login(test_client, "holder")
+        passport_id = _create_passport(holder)
+        self._ask(holder, passport_id, assessor.email, "2026-03-14")
+
+        response = _login(test_client, "assessor").get(
+            f"/api/passport/{passport_id}/sign-offs"
+        )
+
+        assert response.status_code == 404
+
+
 class TestInbox:
     def test_an_assessor_sees_what_they_were_asked(
         self,
@@ -2854,6 +2935,60 @@ class TestEvidence:
         ).json()[0]
         assert entry["title"] == "Advanced airway course"
         assert [a["hash"] for a in entry["attachments"]] == [uploaded["hash"]]
+
+    def test_correcting_a_reflection_keeps_its_attachments(
+        self, holder_client: TestClient
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+        uploaded = self._upload(holder_client, passport_id).json()
+        created = holder_client.post(
+            f"/api/passport/{passport_id}/reflections",
+            json={
+                "title": "Difficult airway",
+                "written_on": "2026-03-12",
+                "body": "What I would do differently.",
+                "anonymised_confirmed": True,
+                "attachments": [uploaded],
+            },
+        )
+        assert created.status_code == 201, created.text
+        name = created.json()["name"]
+
+        response = holder_client.patch(
+            f"/api/passport/{passport_id}/reflections/{name}",
+            json={
+                "title": "A difficult airway",
+                "written_on": "2026-03-12",
+                "body": "What I would do differently.",
+                "anonymised_confirmed": True,
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        reflection = holder_client.get(
+            f"/api/passport/{passport_id}/reflections"
+        ).json()[0]
+        assert reflection["title"] == "A difficult airway"
+        assert [a["hash"] for a in reflection["attachments"]] == [
+            uploaded["hash"]
+        ]
+
+    def test_correcting_a_missing_reflection_is_a_404(
+        self, holder_client: TestClient
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+
+        response = holder_client.patch(
+            f"/api/passport/{passport_id}/reflections/nothing-here",
+            json={
+                "title": "Nothing",
+                "written_on": "2026-03-12",
+                "body": "Nothing.",
+                "anonymised_confirmed": True,
+            },
+        )
+
+        assert response.status_code == 404, response.text
 
     def test_correcting_a_missing_logbook_entry_is_a_404(
         self, holder_client: TestClient

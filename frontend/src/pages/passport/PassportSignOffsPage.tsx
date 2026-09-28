@@ -1,18 +1,20 @@
 /**
  * Passport Sign-offs Page
  *
- * Every competency the holder has evidence for, grouped by where its
- * sign-off stands.
+ * Every sign-off the holder has asked for, one row each, grouped by where
+ * it stands. Each opens on a page of its own.
  *
  * **This is the holder's own record, not an assessor's queue.** What
  * somebody has been asked to judge for other people lives apart, and
  * deliberately so: an external assessor may have a queue and no passport
  * at all. See the plan's note on naming that queue.
  *
- * Nothing is fetched that the passport page does not already fetch. A
- * competency's status is part of `fetchMyPassport`, so this page is a
- * grouping of what is already known rather than a new question asked of
- * the API.
+ * **One row per sign-off, not per competency.** This page used to group
+ * the passport's competency list, which carries only each competency's
+ * latest sign-off. A competency declined and then signed off showed as
+ * one row, the declined request was not shown anywhere, and a competency
+ * with only a logbook entry sat under "Awaiting sign-off" when nobody
+ * had been asked. It now reads `fetchSignOffs`, every sign-off in full.
  *
  * Exports `Component` rather than a default, because React Router's
  * `lazy` looks for that name. See the route definition in `main.tsx`.
@@ -25,19 +27,20 @@ import { useAuth } from "@/auth/AuthContext";
 import PageHeader from "@/components/page-header";
 import AddButton from "@/components/button/AddButton";
 import CompetencyPicker from "@/components/passport/CompetencyPicker";
-import CompetencySummary from "@/components/passport/CompetencySummary";
+import SignOffList from "@/components/passport/SignOffList";
 import SignOffRequestForm from "@/components/passport/SignOffRequestForm";
 import ErrorState from "@/components/error-state/ErrorState";
 import ResultMessage from "@/components/message-cards/ResultMessage";
 import StateMessage from "@/components/message-cards/StateMessage";
 import { IconFileText } from "@/components/icons/appIcons";
 import competenciesData from "@/generated/competencies.json";
-import { fetchMyPassport, requestSignOff } from "@lib/passport";
+import { fetchMyPassport, fetchSignOffs, requestSignOff } from "@lib/passport";
 // Direct, not through the barrel, so page tests that mock the API
 // client still get the real catalogue.
 import { levelsFor } from "@lib/passport/levels";
 import type {
   CompetencyState,
+  SignOff,
   SignOffRequestInput,
   SignOffStatus,
 } from "@lib/passport";
@@ -89,20 +92,24 @@ function competencyForForm(
  * record proper. Declined after that, because it is rare and reading it
  * first would make an ordinary passport look troubled.
  *
- * `superseded` is deliberately absent. A superseded sign-off has been
- * replaced by a newer one, so listing it beside the live record would
- * show the same competency twice and invite reading the stale half.
+ * Superseded last, under its own heading: a sign-off an assessor later
+ * corrected is still part of the record, but it is not what the holder
+ * is signed off for, so it sits apart from the live ones.
  */
 const GROUPS: { status: SignOffStatus; title: string }[] = [
   { status: "requested", title: "Awaiting sign-off" },
   { status: "signed_off", title: "Signed off" },
   { status: "declined", title: "Declined" },
+  { status: "superseded", title: "Replaced by a correction" },
 ];
 
 export function Component() {
   const navigate = useNavigate();
   const { state } = useAuth();
+  // The passport's competencies, which the request form reads to name
+  // one it already knows. Never listed: the rows below are sign-offs.
   const [competencies, setCompetencies] = useState<CompetencyState[]>([]);
+  const [signOffs, setSignOffs] = useState<SignOff[]>([]);
   const [passportId, setPassportId] = useState<string | null>(null);
   // The passport could not be loaded, so there is no page to show.
   const [error, setError] = useState<string | null>(null);
@@ -129,13 +136,19 @@ export function Component() {
     fetchMyPassport()
       .then((detail) => {
         if (cancelled) return;
+        const id = detail.passport.passport_id;
         setCompetencies(detail.competencies);
-        setLoaded(true);
-        setPassportId(detail.passport.passport_id);
+        setPassportId(id);
         setSpecialties(
           (detail.passport.specialties ?? []).map((specialty) => specialty.id),
         );
         setCanWrite(detail.entitlement?.can_write !== false);
+        return fetchSignOffs(id);
+      })
+      .then((result) => {
+        if (cancelled || !result) return;
+        setSignOffs(result);
+        setLoaded(true);
       })
       .catch(() => {
         if (!cancelled) {
@@ -159,7 +172,12 @@ export function Component() {
     setSubmitting(true);
     try {
       await requestSignOff(passportId, chosen, data);
-      setCompetencies((await fetchMyPassport()).competencies);
+      const [detail, listed] = await Promise.all([
+        fetchMyPassport(),
+        fetchSignOffs(passportId),
+      ]);
+      setCompetencies(detail.competencies);
+      setSignOffs(listed);
       setAsking(false);
       setChosen(null);
       setRefusal(null);
@@ -188,14 +206,7 @@ export function Component() {
     );
   }
 
-  // What the page can actually show, not what the passport holds. A
-  // competency whose only sign-off is superseded belongs to no group,
-  // so counting it would suppress the empty state and leave the page
-  // blank — headings gone, nothing in their org_unit.
-  const shown = competencies.filter((competency) =>
-    GROUPS.some((group) => group.status === competency.status),
-  );
-  const hasAny = shown.length > 0;
+  const hasAny = signOffs.length > 0;
 
   return (
     <Stack gap="lg">
@@ -265,34 +276,20 @@ export function Component() {
         />
       )}
 
-      {hasAny &&
-        GROUPS.map((group) => {
-          const inGroup = competencies.filter(
-            (competency) => competency.status === group.status,
-          );
-
-          // An empty group is left out rather than shown as a heading
-          // over nothing. While loading every group is empty, so the
-          // page draws no groups at all until the answer arrives —
-          // which is right: a heading with nothing under it says less
-          // than no heading.
-          if (inGroup.length === 0) return null;
-
-          return (
-            <CompetencySummary
-              key={group.status}
-              title={group.title}
-              competencies={inGroup}
-              // A logbook entry is evidence towards a competency, not
-              // something an assessor signs. Counting them here, beside
-              // a sign-off status, read as though they were part of it.
-              showLogbookCount={false}
-              onSelect={(competencyId) =>
-                navigate(`/passport/competency/${competencyId}`)
-              }
-            />
-          );
-        })}
+      {/* An empty group renders nothing, so only the groups with
+          sign-offs in them appear. */}
+      {GROUPS.map((group) => (
+        <SignOffList
+          key={group.status}
+          title={group.title}
+          signOffs={signOffs.filter(
+            (signOff) => signOff.status === group.status,
+          )}
+          onSelect={(name) =>
+            navigate(`/passport/sign-offs/${encodeURIComponent(name)}`)
+          }
+        />
+      ))}
     </Stack>
   );
 }

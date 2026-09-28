@@ -98,6 +98,7 @@ export const PASSPORT_PATHS = [
   "/passport/{passport_id}/logbook/{competency_id}/{stem}",
   "/passport/{passport_id}/reflections",
   "/passport/{passport_id}/reflections/{name}",
+  "/passport/{passport_id}/sign-offs",
   "/passport/{passport_id}/sign-offs/{signoff_id}",
   "/passport/{passport_id}/sign-offs/{signoff_id}/decline",
   "/passport/{passport_id}/sign-offs/{signoff_id}/sign-off",
@@ -211,6 +212,14 @@ export function requestSignOff(
     `/passport/${segment(passportId)}/competencies/${segment(competencyId)}/requests`,
     data,
   );
+}
+
+/**
+ * Every sign-off in the passport, newest first: one per request, where
+ * the passport's competency list carries only each competency's latest.
+ */
+export function fetchSignOffs(passportId: string): Promise<SignOff[]> {
+  return api.get<SignOff[]>(`/passport/${segment(passportId)}/sign-offs`);
 }
 
 /** One sign-off in full. */

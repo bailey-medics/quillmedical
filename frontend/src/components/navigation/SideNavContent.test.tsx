@@ -764,6 +764,17 @@ describe("SideNavContent Component", () => {
         "Logbook",
         "Entry",
       ],
+      ["/passport/sign-offs/2026-03-14-bronchoscopy", "Sign-offs", "Sign-off"],
+      [
+        "/passport/certificates/2025-11-04-bronchoscopy-course",
+        "Certificates",
+        "Certificate",
+      ],
+      [
+        "/passport/reflections/2026-01-12-difficult-airway",
+        "Reflections",
+        "Reflection",
+      ],
     ])(
       "nests the record's own link under its section on %s",
       async (route, section, record) => {

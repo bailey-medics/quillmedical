@@ -1367,6 +1367,49 @@ def request_sign_off(
 
 
 @passport_router.get(
+    "/{passport_id}/sign-offs",
+    response_model=list[SignOffOut],
+    dependencies=[_DEP_PASSPORT],
+)
+def list_sign_offs(
+    passport_id: str,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+    store: PassportStore = _DEP_STORE,
+) -> list[SignOffOut]:
+    """Every sign-off in the passport, newest first.
+
+    One per request, not one per competency. The passport's competency
+    list carries only each competency's latest sign-off, so a page built
+    from it showed a declined request and the sign-off that followed as
+    a single row, and never showed the declined one at all.
+
+    The holder alone, as for the whole passport: an assessor may read
+    the one sign-off they were asked about, never the others.
+    """
+    row = _require_reader(db, passport_id, user)
+
+    found: list[tuple[str, SignOff]] = []
+
+    for folder in store.list_dir(row.id, paths.SIGN_OFFS):
+        try:
+            found.append(
+                (
+                    folder.name,
+                    service.read_sign_off(store, row.id, folder.name),
+                )
+            )
+        except PassportNotFoundError:
+            # A folder with no sign-off.yaml is not a sign-off, as the
+            # index treats it too.
+            continue
+
+    found.sort(key=lambda pair: (pair[1].observed_on, pair[0]), reverse=True)
+
+    return [_sign_off_out(name, record) for name, record in found]
+
+
+@passport_router.get(
     "/{passport_id}/sign-offs/{signoff_id}",
     response_model=SignOffOut,
     dependencies=[_DEP_PASSPORT],
@@ -2409,8 +2452,15 @@ def amend_reflection(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
+    blobs: BlobStore | GcsBlobStore = _DEP_BLOBS,
 ) -> RecordResultOut:
-    """Rewrite a reflection."""
+    """Rewrite a reflection.
+
+    Attachments given replace the reflection's; none given keeps the
+    ones it has, as for a logbook entry. It once wrote an empty list
+    whatever was sent, so correcting a title from the edit page would
+    have deleted every file attached.
+    """
     row = _require_writer(db, passport_id, user, store)
 
     if not body.anonymised_confirmed:
@@ -2420,11 +2470,22 @@ def amend_reflection(
             "passport holds no patient data.",
         )
 
+    try:
+        existing, _ = reflection_from_markdown(
+            store.read(row.id, paths.reflection_file(name))
+        )
+    except (PassportNotFoundError, paths.PassportPathError):
+        raise HTTPException(404, "Reflection not found") from None
+
     reflection = Reflection(
         title=body.title,
         written_on=body.written_on,
         competencies=_competency_refs(body.competencies),
-        attachments=[],
+        attachments=(
+            _attachments(blobs, row.id, body.attachments)
+            if body.attachments
+            else existing.attachments
+        ),
     )
 
     try:

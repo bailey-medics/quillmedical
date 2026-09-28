@@ -21,6 +21,16 @@ vi.mock("@lib/passport", () => ({
   addReflection: (...args: unknown[]) => addReflection(...args),
 }));
 
+const navigate = vi.fn();
+
+vi.mock("react-router-dom", async () => {
+  const actual =
+    await vi.importActual<typeof import("react-router-dom")>(
+      "react-router-dom",
+    );
+  return { ...actual, useNavigate: () => navigate };
+});
+
 const detail = {
   passport: {
     passport_id: "3f2a8c1e",
@@ -54,6 +64,18 @@ describe("PassportReflectionsPage", () => {
     renderWithRouter(<PassportReflectionsPage />);
 
     expect(await screen.findByText("Difficult airway")).toBeInTheDocument();
+  });
+
+  it("opens a reflection on its own page", async () => {
+    const user = userEvent.setup();
+    fetchReflections.mockResolvedValue([reflection]);
+    renderWithRouter(<PassportReflectionsPage />);
+
+    await user.click(await screen.findByText("Difficult airway"));
+
+    expect(navigate).toHaveBeenCalledWith(
+      `/passport/reflections/${reflection.name}`,
+    );
   });
 
   it("says nothing is here only once the list has arrived", async () => {
