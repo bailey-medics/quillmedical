@@ -3,9 +3,12 @@
  *
  * Hamburger menu toggle for opening/closing the mobile navigation drawer.
  * Renders an accessible ActionIcon with aria-controls and aria-expanded.
+ * 34px, or 44px below the sm breakpoint for a finger; the icon is a
+ * fixed 32px either way.
  */
 
-import { ActionIcon } from "@mantine/core";
+import { ActionIcon, useMantineTheme } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 import { IconMenu2 } from "@/components/icons/appIcons";
 import { secondaryScale } from "@/theme";
 
@@ -23,10 +26,16 @@ export default function BurgerButton({
   onClick,
   stroke = 2.5,
 }: BurgerButtonProps) {
+  const theme = useMantineTheme();
+  const isMobile = useMediaQuery(
+    `(max-width: ${theme.breakpoints.sm})`,
+    false,
+    { getInitialValueInEffect: false },
+  );
   return (
     <ActionIcon
       variant="subtle"
-      size="lg"
+      size={isMobile ? 44 : "lg"}
       onClick={onClick}
       aria-controls="app-navbar"
       aria-label={navOpen ? "Close navigation" : "Open navigation"}

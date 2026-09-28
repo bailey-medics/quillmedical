@@ -3,11 +3,12 @@
  *
  * A filter icon button that opens a popover with a grouped
  * multi-select dropdown. Shows a count indicator when filters
- * are active.
+ * are active. The trigger is 34px, or 44px below the sm breakpoint for
+ * a finger; the icon is a fixed 32px either way.
  */
 
-import { ActionIcon, Popover } from "@mantine/core";
-import { useClickOutside, useDisclosure } from "@mantine/hooks";
+import { ActionIcon, Popover, useMantineTheme } from "@mantine/core";
+import { useClickOutside, useDisclosure, useMediaQuery } from "@mantine/hooks";
 import type { ComboboxParsedItemGroup } from "@mantine/core";
 import { IconFilter2 } from "@components/icons/appIcons";
 import { BodyText } from "@components/typography";
@@ -38,6 +39,12 @@ export default function FilterSelect({
   "aria-label": ariaLabel = "Filter",
 }: FilterSelectProps) {
   const [opened, { toggle, close }] = useDisclosure(false);
+  const theme = useMantineTheme();
+  const isMobile = useMediaQuery(
+    `(max-width: ${theme.breakpoints.sm})`,
+    false,
+    { getInitialValueInEffect: false },
+  );
   const dropdownRef = useClickOutside<HTMLDivElement>(close, [
     "mousedown",
     "touchstart",
@@ -59,7 +66,7 @@ export default function FilterSelect({
         <Popover.Target>
           <ActionIcon
             variant="subtle"
-            size="lg"
+            size={isMobile ? 44 : "lg"}
             onClick={toggle}
             aria-label={ariaLabel}
           >

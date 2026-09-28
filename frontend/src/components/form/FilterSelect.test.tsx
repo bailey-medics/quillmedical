@@ -1,8 +1,19 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@test/test-utils";
 import FilterSelect from "./FilterSelect";
+
+const media = vi.hoisted(() => ({ isMobile: false }));
+
+vi.mock("@mantine/hooks", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@mantine/hooks")>();
+  return { ...actual, useMediaQuery: () => media.isMobile };
+});
+
+beforeEach(() => {
+  media.isMobile = false;
+});
 
 const options = [
   {
@@ -15,6 +26,26 @@ const options = [
 ];
 
 describe("FilterSelect", () => {
+  describe("Touch target", () => {
+    it("is 34px (Mantine lg) on desktop", () => {
+      renderWithMantine(
+        <FilterSelect data={options} value={[]} onChange={() => {}} />,
+      );
+      const button = screen.getByRole("button", { name: "Filter" });
+      expect(button.style.getPropertyValue("--ai-size")).toBe(
+        "var(--ai-size-lg)",
+      );
+    });
+
+    it("is 44px below the sm breakpoint", () => {
+      media.isMobile = true;
+      renderWithMantine(
+        <FilterSelect data={options} value={[]} onChange={() => {}} />,
+      );
+      const button = screen.getByRole("button", { name: "Filter" });
+      expect(button.style.getPropertyValue("--ai-size")).toContain("2.75rem");
+    });
+  });
   it("renders a filter button", () => {
     renderWithMantine(
       <FilterSelect
