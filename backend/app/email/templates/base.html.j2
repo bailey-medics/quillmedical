@@ -143,8 +143,13 @@
             <tr>
               <td
                 class="em-header em-pad"
-                style="background-color: {{ t.header }}; padding: 24px 40px; border-bottom: {{ t.header_rule_width }} solid {{ t.header_rule }}"
+                style="background-color: {{ t.header }}; padding: {{ '24px 40px' if t.header_name else '28px 40px 20px' }}; border-bottom: {{ t.header_rule_width }} solid {{ t.header_rule }}"
               >
+                {#- A wordmark on its own sits 4px below centre, with the
+                    band's height unchanged: its letters carry no
+                    descenders, so a truly centred wordmark reads as riding
+                    high in the band. A logo with a name beside it is
+                    centred as usual. #}
                 {%- set logo = t.header_logo %}
                 {%- set logo_img %}<img src="{{ asset(logo.src) }}" width="{{ logo.width }}" height="{{ logo.height }}" alt="{{ logo.alt }}" style="width: {{ logo.width }}px; height: {{ logo.height }}px" />{% endset %}
                 {%- if t.header_name %}

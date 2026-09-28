@@ -17,7 +17,11 @@
       "Bash(sed -i '' 's/classes\\\\.item}/classes.touchItem}/' EllipsisMenu.tsx)",
       "Bash(sed -i '' 's/^  \\\\.item {/  .touchItem {/' EllipsisMenu.module.css)",
       "Bash(sed -i '' 's#\\).toMatch\\(/item/\\);#\\).toMatch\\(/touchItem/\\);#' EllipsisMenu.test.tsx)",
-      "Bash(grep -v \"^--$\")"
+      "Bash(grep -v \"^--$\")",
+      "Bash(gh pr *)",
+      "Bash(gh run *)",
+      "Bash(grep -v \"^\\\\s*$\")",
+      "Bash(just email-preview *)"
     ],
     "deny": [
       "Bash(gh pr merge:*)",
