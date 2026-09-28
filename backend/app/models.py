@@ -1223,6 +1223,11 @@ COMPETENCY_GRANT_SOURCES: tuple[str, ...] = (
     # table used.
     "organisation",
     "individual",
+    # A passport holder asked this existing account to sign off one of
+    # their competencies, which is what lets it open the request. Someone
+    # new to Quill gets the same by accepting the invitation, as the
+    # `external_assessor` profession.
+    "sign_off_request",
     # Copied from the JSON columns and the entitlement table when this
     # table was introduced.
     "migrated",

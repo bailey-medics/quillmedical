@@ -741,6 +741,151 @@ class TestRequestSignOff:
         assert response.status_code == 404
 
 
+class TestAnExistingAccountAskedToAssess:
+    """An existing account asked to assess gets what a new assessor gets.
+
+    Somebody new to Quill accepts an invitation and becomes an
+    `external_assessor`, an external member where the holder is. An
+    existing account is sent no invitation, so until 28 September 2026 it
+    got neither: a teaching delegate asked to assess met a 404 on the
+    passport pages and a 403 from the API.
+    """
+
+    @pytest.fixture
+    def learner(self, db_session: Session) -> User:
+        """An account on Quill with no passport access: a teaching
+        delegate, in no organisation with the passport switched on."""
+        return _make_user(
+            db_session, "learner", profession="teaching_delegate"
+        )
+
+    def _ask(
+        self,
+        holder_client: TestClient,
+        email: str,
+        monkeypatch: pytest.MonkeyPatch,
+        send: object = None,
+    ) -> tuple[Response, list[dict[str, str]]]:
+        sent: list[dict[str, str]] = []
+
+        def capture(**kw: object) -> None:
+            sent.append({"to": str(kw["to"]), "text": str(kw["text_body"])})
+
+        monkeypatch.setattr(router, "send_email", send or capture)
+        passport_id = _create_passport(holder_client)
+        response = holder_client.post(
+            f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
+            json={
+                "assessor_email": email,
+                "observed_on": "2026-03-14",
+                "level_id": LEVEL,
+            },
+        )
+        return response, sent
+
+    def _capacity(self, db: Session, org: OrgUnit, user: User) -> str | None:
+        return db.scalar(
+            select(org_unit_member.c.capacity).where(
+                org_unit_member.c.org_unit_id == org.id,
+                org_unit_member.c.user_id == user.id,
+            )
+        )
+
+    def test_they_are_given_the_assessor_competency_and_a_membership(
+        self,
+        holder_client: TestClient,
+        learner: User,
+        holder: User,
+        org: OrgUnit,
+        db_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        response, _ = self._ask(holder_client, learner.email, monkeypatch)
+
+        assert response.status_code == 201, response.text
+        db_session.refresh(learner)
+        assert "assess_clinician_passport" in learner.get_final_competencies()
+        grant = next(
+            g
+            for g in learner.competency_grants
+            if g.competency_id == "assess_clinician_passport"
+        )
+        assert grant.source == "sign_off_request"
+        assert grant.granted_by == holder.id
+        assert self._capacity(db_session, org, learner) == "external"
+        # The profession is left alone.
+        assert learner.base_profession == "teaching_delegate"
+
+    def test_they_can_then_open_their_inbox(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        learner: User,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        self._ask(holder_client, learner.email, monkeypatch)
+
+        client = _login(test_client, "learner")
+        response = client.get("/api/passport/requests/inbox")
+
+        assert response.status_code == 200, response.text
+        assert len(response.json()) == 1
+
+    def test_the_email_links_to_the_inbox_page(
+        self,
+        holder_client: TestClient,
+        learner: User,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """`/passport/inbox` is the page; `/passport/requests` was a 404."""
+        _, sent = self._ask(holder_client, learner.email, monkeypatch)
+
+        assert "/passport/inbox" in sent[0]["text"]
+        assert "/passport/requests" not in sent[0]["text"]
+
+    def test_a_failed_email_gives_them_nothing(
+        self,
+        holder_client: TestClient,
+        learner: User,
+        org: OrgUnit,
+        db_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        def _explode(**_kwargs: object) -> None:
+            raise RuntimeError("mail server unreachable")
+
+        response, _ = self._ask(
+            holder_client, learner.email, monkeypatch, send=_explode
+        )
+
+        assert response.status_code == 502, response.text
+        db_session.expire_all()
+        reloaded = db_session.get(User, learner.id)
+        assert reloaded is not None
+        assert (
+            "assess_clinician_passport"
+            not in reloaded.get_final_competencies()
+        )
+        assert self._capacity(db_session, org, learner) is None
+
+    def test_a_clinician_already_there_is_left_as_they_were(
+        self,
+        holder_client: TestClient,
+        assessor: User,
+        org: OrgUnit,
+        db_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        before = len(assessor.competency_grants)
+
+        response, _ = self._ask(holder_client, assessor.email, monkeypatch)
+
+        assert response.status_code == 201, response.text
+        db_session.refresh(assessor)
+        assert len(assessor.competency_grants) == before
+        assert self._capacity(db_session, org, assessor) == "trainee"
+
+
 class TestSignOff:
     @pytest.fixture
     def requested(
