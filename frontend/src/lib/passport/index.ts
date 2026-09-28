@@ -14,6 +14,7 @@ export {
   addLogbookEntry,
   addReflection,
   amendCertificate,
+  certificateAttachmentUrl,
   amendCpdEntry,
   amendLogbookEntry,
   amendReflection,

@@ -22,6 +22,8 @@ vi.mock("@lib/passport", () => ({
   fetchMyPassport: (...args: unknown[]) => fetchMyPassport(...args),
   fetchCertificates: (...args: unknown[]) => fetchCertificates(...args),
   amendCertificate: (...args: unknown[]) => amendCertificate(...args),
+  certificateAttachmentUrl: (passportId: string, name: string, hash: string) =>
+    `/api/passport/${passportId}/certificates/${name}/attachments/${hash}`,
 }));
 
 // The record the page is opened on: the second fixture, which carries a
@@ -44,6 +46,20 @@ function detail(canWrite = true) {
   };
 }
 
+/** The fixtures, with one file attached to the certificate opened. */
+function certificatesWith(attachment: {
+  hash: string;
+  filename: string;
+  size_bytes: number;
+  media_type: string;
+}) {
+  fetchCertificates.mockResolvedValue(
+    certificates.map((item) =>
+      item.name === opened.name ? { ...item, attachments: [attachment] } : item,
+    ),
+  );
+}
+
 describe("PassportCertificatePage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -61,6 +77,54 @@ describe("PassportCertificatePage", () => {
       }),
     ).toBeInTheDocument();
     expect(screen.getByTestId("passport-record-card")).toBeInTheDocument();
+  });
+
+  it("shows an attached PDF in the browser's viewer", async () => {
+    certificatesWith({
+      hash: "sha256:ab12",
+      filename: "als.pdf",
+      size_bytes: 1024,
+      media_type: "application/pdf",
+    });
+    renderWithRouter(<PassportCertificatePage />);
+
+    const frame = await screen.findByTitle("als.pdf");
+    expect(frame).toHaveAttribute(
+      "src",
+      expect.stringContaining(
+        `/api/passport/3f2a8c1e/certificates/${opened.name}/attachments/sha256:ab12`,
+      ),
+    );
+  });
+
+  it("shows an attached image as an image", async () => {
+    certificatesWith({
+      hash: "sha256:cd34",
+      filename: "als.png",
+      size_bytes: 1024,
+      media_type: "image/png",
+    });
+    renderWithRouter(<PassportCertificatePage />);
+
+    expect(await screen.findByRole("img", { name: "als.png" })).toHaveAttribute(
+      "src",
+      `/api/passport/3f2a8c1e/certificates/${opened.name}/attachments/sha256:cd34`,
+    );
+  });
+
+  it("offers a HEIC photograph as a download, since few browsers draw one", async () => {
+    certificatesWith({
+      hash: "sha256:ef56",
+      filename: "als.heic",
+      size_bytes: 1024,
+      media_type: "image/heic",
+    });
+    renderWithRouter(<PassportCertificatePage />);
+
+    expect(
+      await screen.findByText("Document preview not available"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Download" })).toBeInTheDocument();
   });
 
   it("says so when the certificate is not there", async () => {

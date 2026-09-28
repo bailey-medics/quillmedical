@@ -2877,6 +2877,90 @@ class TestEvidence:
 
         assert response.status_code == 201, response.text
 
+    def _certificate_with(
+        self, client: TestClient, passport_id: str, uploaded: dict[str, object]
+    ) -> str:
+        response = client.post(
+            f"/api/passport/{passport_id}/certificates",
+            json={
+                "title": "Advanced life support",
+                "issuer": "Resuscitation Council UK",
+                "awarded_on": "2026-03-14",
+                "attachments": [uploaded],
+            },
+        )
+        assert response.status_code == 201, response.text
+        return str(response.json()["name"])
+
+    def test_a_certificate_sends_its_attachment_to_show_inline(
+        self, holder_client: TestClient
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+        uploaded = self._upload(holder_client, passport_id).json()
+        name = self._certificate_with(holder_client, passport_id, uploaded)
+
+        response = holder_client.get(
+            f"/api/passport/{passport_id}/certificates/{name}"
+            f"/attachments/{uploaded['hash']}"
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.content == b"%PDF-1.4 a scanned certificate"
+        assert response.headers["content-type"] == "application/pdf"
+        assert response.headers["content-disposition"] == "inline"
+        assert response.headers["x-content-type-options"] == "nosniff"
+        # The uploaded filename may name a patient, so it is never sent.
+        assert "certificate.pdf" not in str(response.headers)
+
+    def test_a_hash_the_certificate_does_not_name_is_a_404(
+        self, holder_client: TestClient
+    ) -> None:
+        """The bytes exist, but belong to no record reached this way."""
+        passport_id = _create_passport(holder_client)
+        uploaded = self._upload(holder_client, passport_id).json()
+        other = self._upload(
+            holder_client,
+            passport_id,
+            content=b"%PDF-1.4 something else entirely",
+        ).json()
+        name = self._certificate_with(holder_client, passport_id, uploaded)
+
+        response = holder_client.get(
+            f"/api/passport/{passport_id}/certificates/{name}"
+            f"/attachments/{other['hash']}"
+        )
+
+        assert response.status_code == 404
+
+    def test_a_missing_certificate_has_no_attachments(
+        self, holder_client: TestClient
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+        uploaded = self._upload(holder_client, passport_id).json()
+
+        response = holder_client.get(
+            f"/api/passport/{passport_id}/certificates/nothing-here"
+            f"/attachments/{uploaded['hash']}"
+        )
+
+        assert response.status_code == 404
+
+    def test_nobody_but_the_holder_can_read_an_attachment(
+        self,
+        test_client: TestClient,
+        holder_client: TestClient,
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+        uploaded = self._upload(holder_client, passport_id).json()
+        name = self._certificate_with(holder_client, passport_id, uploaded)
+
+        response = _login(test_client, "assessor").get(
+            f"/api/passport/{passport_id}/certificates/{name}"
+            f"/attachments/{uploaded['hash']}"
+        )
+
+        assert response.status_code == 404
+
     def test_correcting_a_logbook_entry_keeps_its_attachments(
         self, holder_client: TestClient
     ) -> None:

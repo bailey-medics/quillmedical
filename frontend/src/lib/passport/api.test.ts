@@ -85,6 +85,7 @@ describe("passport paths", () => {
       "/api/passport/{passport_id}/assessor-invites",
       "/api/passport/{passport_id}/certificates",
       "/api/passport/{passport_id}/certificates/{name}",
+      "/api/passport/{passport_id}/certificates/{name}/attachments/{blob_digest}",
       "/api/passport/{passport_id}/competencies/{competency_id}",
       "/api/passport/{passport_id}/competencies/{competency_id}/requests",
       "/api/passport/{passport_id}/cpd",

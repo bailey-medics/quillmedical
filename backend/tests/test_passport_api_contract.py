@@ -64,6 +64,12 @@ DOWNLOAD_MEDIA_TYPES = frozenset(
         "text/markdown",
         "application/pdf",
         "application/zip",
+        # A certificate's attached evidence, sent back to show on its
+        # page: the image types `ALLOWED_EVIDENCE_TYPES` admits.
+        "image/jpeg",
+        "image/png",
+        "image/heic",
+        "image/webp",
     }
 )
 
@@ -79,6 +85,7 @@ EXPECTED_PATHS = {
     "/api/passport/{passport_id}",
     "/api/passport/{passport_id}/certificates",
     "/api/passport/{passport_id}/certificates/{name}",
+    "/api/passport/{passport_id}/certificates/{name}/attachments/{blob_digest}",
     "/api/passport/{passport_id}/competencies/{competency_id}",
     "/api/passport/{passport_id}/competencies/{competency_id}/requests",
     "/api/passport/{passport_id}/cpd",

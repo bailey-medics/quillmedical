@@ -146,6 +146,7 @@ from . import (
 from .blobs import (
     BlobConflictError,
     BlobError,
+    BlobNotFoundError,
     BlobStore,
 )
 from .commits import Actor
@@ -2056,6 +2057,74 @@ def amend_certificate(
     db.flush()
 
     return RecordResultOut(name=name, commit=commit)
+
+
+# api-schema-check: allow-opaque-permanent
+@passport_router.get(
+    "/{passport_id}/certificates/{name}/attachments/{blob_digest}",
+    dependencies=[_DEP_PASSPORT],
+    response_class=Response,
+    responses={
+        200: {
+            "content": {
+                media_type: {} for media_type in ALLOWED_EVIDENCE_TYPES
+            }
+        }
+    },
+)
+def get_certificate_attachment(
+    passport_id: str,
+    name: str,
+    blob_digest: str,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+    store: PassportStore = _DEP_STORE,
+    blobs: BlobStore | GcsBlobStore = _DEP_BLOBS,
+) -> Response:
+    """One file attached to a certificate, to show on its page.
+
+    **Reached through the certificate, not by hash alone.** The record
+    is what says a file belongs to it and what kind of file it is: the
+    blob store keeps bytes and nothing else. So a hash the certificate
+    does not name is a 404 even where the bytes exist, and the type sent
+    is the one checked at upload, never a guess from the bytes.
+
+    Holder only, as every certificate route is. Sent ``inline`` so the
+    page can show it, with ``nosniff`` so a browser cannot decide an
+    image is something else, and ``private`` so no shared cache keeps a
+    copy.
+    """
+    row = _require_holder(db, passport_id, user)
+    certificate = _existing_certificate(store, row.id, name)
+
+    attachment = next(
+        (item for item in certificate.attachments if item.hash == blob_digest),
+        None,
+    )
+    if attachment is None or attachment.media_type not in (
+        ALLOWED_EVIDENCE_TYPES
+    ):
+        raise HTTPException(404, "Attachment not found")
+
+    try:
+        data = blobs.get(row.id, attachment.hash)
+    except BlobNotFoundError:
+        raise HTTPException(404, "Attachment not found") from None
+    except BlobError:
+        raise HTTPException(500, "That file could not be read") from None
+
+    return Response(
+        content=data,
+        media_type=attachment.media_type,
+        headers={
+            # No filename: the one uploaded may carry a patient
+            # identifier, and it must not reach a header any more than a
+            # URL.
+            "Content-Disposition": "inline",
+            "X-Content-Type-Options": "nosniff",
+            "Cache-Control": "private, max-age=3600",
+        },
+    )
 
 
 def _existing_certificate(
