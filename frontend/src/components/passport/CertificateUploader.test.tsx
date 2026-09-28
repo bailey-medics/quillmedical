@@ -1,11 +1,10 @@
 /**
  * CertificateUploader Tests
  *
- * What matters here is the failure path. A successful upload is visible
- * the moment the filename appears on the form; a failed one is silent
- * unless the component says so, and a doctor who thinks their scan is
- * attached when it is not has a worse record than one who knows it is
- * missing.
+ * What matters here is that every outcome is visible. A doctor who
+ * thinks their scan is attached when it is not has a worse record than
+ * one who knows it is missing, and one who cannot tell that it worked
+ * uploads it again.
  */
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
@@ -104,5 +103,32 @@ describe("CertificateUploader", () => {
       await screen.findByText(/could not be uploaded/),
     ).toBeInTheDocument();
     expect(onUploaded).not.toHaveBeenCalled();
+  });
+
+  it("says which file is attached once it is uploaded", async () => {
+    uploadEvidence.mockResolvedValue(stored);
+    const { container } = renderWithMantine(
+      <CertificateUploader passportId="3f2a8c1e" onUploaded={vi.fn()} />,
+    );
+
+    drop(container, new File(["scan"], "als.pdf", { type: "application/pdf" }));
+
+    expect(
+      await screen.findByText("Attached: als-certificate.pdf"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Drop another to replace it")).toBeInTheDocument();
+  });
+
+  it("says so when the file is the wrong type", async () => {
+    const { container } = renderWithMantine(
+      <CertificateUploader passportId="3f2a8c1e" onUploaded={vi.fn()} />,
+    );
+
+    drop(container, new File(["notes"], "notes.txt", { type: "text/plain" }));
+
+    expect(
+      await screen.findByText(/That file cannot be attached/),
+    ).toBeInTheDocument();
+    expect(uploadEvidence).not.toHaveBeenCalled();
   });
 });
