@@ -98,12 +98,6 @@ export default function MainLayout({
     mainRef.current?.scrollTo?.(0, 0);
   }, [location.pathname]);
 
-  // Search isn't hooked up to settings/admin pages yet — hide the mobile
-  // nav drawer's search field there.
-  const isSearchDisabledRoute =
-    location.pathname.startsWith("/settings") ||
-    location.pathname.startsWith("/admin");
-
   // Connectivity state for offline strip/modal
   const {
     isOnline,
@@ -221,7 +215,11 @@ export default function MainLayout({
           >
             <div style={{ width: LAYOUT_SIDEBAR_WIDTH }}>
               <SideNav
-                showSearch={navCollapsed && !isSearchDisabledRoute}
+                // The same rule as the ribbon's search: shown only where a
+                // page has turned search on. It had been shown on every
+                // page but settings and admin, including the passport,
+                // where there is nothing for it to search.
+                showSearch={navCollapsed && showSearch}
                 showIcons
                 onNavigate={close}
                 patientNav={patientNav}

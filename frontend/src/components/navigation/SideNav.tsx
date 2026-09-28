@@ -6,6 +6,7 @@
  */
 
 import { Stack, TextInput } from "@mantine/core";
+import { useSearch } from "@lib/search";
 import Divider from "@/components/divider/Divider";
 import { IconSearch } from "@/components/icons/appIcons";
 import type { NavItem } from "./NestedNavLink";
@@ -40,6 +41,10 @@ export default function SideNav({
   showIcons,
   patientNav,
 }: Props) {
+  // The same query the ribbon's search field sets, so searching from the
+  // drawer on a narrow screen filters what the page shows.
+  const search = useSearch();
+
   return (
     <nav
       role="navigation"
@@ -52,6 +57,8 @@ export default function SideNav({
             <TextInput
               aria-label="Search"
               placeholder="Search…"
+              value={search.query}
+              onChange={(event) => search.setQuery(event.currentTarget.value)}
               rightSectionPointerEvents="none"
               rightSection={<IconSearch size={16} />}
               style={{ paddingRight: "0.9375rem" }}
