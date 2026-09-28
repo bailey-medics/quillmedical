@@ -6,7 +6,7 @@
  */
 
 import { screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   IconPencil,
   IconUserPlus,
@@ -14,6 +14,15 @@ import {
 } from "@/components/icons/appIcons";
 import { renderWithMantine } from "@test/test-utils";
 import Icon from "./Icon";
+
+// Whether the screen is phone width, which the Icon reads through
+// `useMediaQuery`. Real by default; the phone tests set it.
+const phone = vi.hoisted(() => ({ value: false }));
+
+vi.mock("@mantine/hooks", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@mantine/hooks")>();
+  return { ...actual, useMediaQuery: () => phone.value };
+});
 
 describe("Icon Component", () => {
   it("renders with default md size (28px)", () => {
@@ -145,5 +154,27 @@ describe("Icon Component", () => {
     expect(screen.getByTestId("no-container-icon")).toBeInTheDocument();
     const themeIcon = container.querySelector(".mantine-ThemeIcon-root");
     expect(themeIcon).not.toBeInTheDocument();
+  });
+});
+
+describe("Icon on a phone", () => {
+  it("keeps an icon that is the whole control at 36px", () => {
+    // Something to press does not get smaller where it is pressed with
+    // a finger. At 28px the passport inbox button was hard to hit.
+    phone.value = true;
+    renderWithMantine(
+      <Icon icon={<IconPencil data-testid="icon" />} size="mlg" />,
+    );
+    phone.value = false;
+
+    expect(screen.getByTestId("icon")).toHaveAttribute("width", "36");
+  });
+
+  it("still shrinks the other sizes", () => {
+    phone.value = true;
+    renderWithMantine(<Icon icon={<IconPencil data-testid="icon" />} />);
+    phone.value = false;
+
+    expect(screen.getByTestId("icon")).toHaveAttribute("width", "20");
   });
 });
