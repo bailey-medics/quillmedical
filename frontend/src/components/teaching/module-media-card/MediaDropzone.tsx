@@ -28,6 +28,11 @@ import classes from "./MediaDropzone.module.css";
 export interface MediaDropzoneProps {
   /** Called with the first accepted file. */
   onDrop: (file: File) => void;
+  /**
+   * Called when a file is refused, most often for its type. Without it
+   * a refused file vanishes and the box looks as if it did nothing.
+   */
+  onReject?: () => void;
   /** Disables the control while another upload is in flight. */
   disabled?: boolean;
   /** MIME types to accept. Defaults to the teaching video types. */
@@ -38,6 +43,7 @@ export interface MediaDropzoneProps {
 
 export default function MediaDropzone({
   onDrop,
+  onReject,
   disabled = false,
   accept = ACCEPTED_VIDEO_TYPES,
   label = "Drop a video or click to browse",
@@ -47,6 +53,7 @@ export default function MediaDropzone({
       onDrop={(files) => {
         if (files[0]) onDrop(files[0]);
       }}
+      onReject={() => onReject?.()}
       accept={accept}
       disabled={disabled}
       multiple={false}

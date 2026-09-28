@@ -26,10 +26,12 @@
  */
 
 import { useState } from "react";
-import { Stack } from "@mantine/core";
+import { Group, Stack } from "@mantine/core";
 import MediaDropzone from "@/components/teaching/module-media-card/MediaDropzone";
 import ErrorState from "@/components/error-state/ErrorState";
-import { FieldDescription } from "@/components/typography";
+import Icon from "@/components/icons/Icon";
+import { IconCircleCheck } from "@/components/icons/appIcons";
+import { BodyTextInline, FieldDescription } from "@/components/typography";
 import { uploadEvidence } from "@lib/passport";
 import type { AttachmentInput } from "@lib/passport";
 import { ACCEPTED_EVIDENCE_TYPES } from "./evidenceFormat";
@@ -47,13 +49,20 @@ export default function CertificateUploader({
 }: CertificateUploaderProps) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Shown here, beside the box that was used, rather than left to the
+  // form below. The form's own line sits under the description field,
+  // off-screen on a phone, so an upload that worked looked like a press
+  // that did nothing.
+  const [attached, setAttached] = useState<string | null>(null);
 
   async function handleDrop(file: File) {
     setUploading(true);
     setError(null);
 
     try {
-      onUploaded(await uploadEvidence(passportId, file));
+      const stored = await uploadEvidence(passportId, file);
+      setAttached(stored.filename);
+      onUploaded(stored);
     } catch {
       // Deliberately not the thrown message: a storage failure's own
       // wording is about buckets and hashes, which tells a doctor
@@ -68,12 +77,28 @@ export default function CertificateUploader({
     <Stack gap="xs">
       <MediaDropzone
         onDrop={handleDrop}
+        onReject={() =>
+          setError(
+            "That file cannot be attached. Use a PDF, JPEG, PNG, HEIC or WebP.",
+          )
+        }
         disabled={uploading}
         accept={ACCEPTED_EVIDENCE_TYPES}
         label={
-          uploading ? "Uploading…" : "Drop a certificate or click to browse"
+          uploading
+            ? "Uploading…"
+            : attached
+              ? "Drop another to replace it"
+              : "Drop a certificate or click to browse"
         }
       />
+
+      {attached && !uploading && (
+        <Group gap="xs" wrap="nowrap">
+          <Icon icon={<IconCircleCheck />} />
+          <BodyTextInline>Attached: {attached}</BodyTextInline>
+        </Group>
+      )}
 
       <FieldDescription>
         A scan or photograph of the certificate. PDF, JPEG, PNG, HEIC or WebP.

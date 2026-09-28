@@ -6,7 +6,7 @@
  * allow-list when it mints the URL. If they disagree, an admin learns
  * their file was wrong only after sending several hundred megabytes.
  */
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { renderWithMantine } from "@test/test-utils";
 import MediaDropzone from "./MediaDropzone";
@@ -71,5 +71,25 @@ describe("MediaDropzone", () => {
     );
 
     expect(container.querySelector("[data-disabled]")).toBeTruthy();
+  });
+
+  it("reports a file of the wrong type rather than dropping it", async () => {
+    const onDrop = vi.fn();
+    const onReject = vi.fn();
+    const { container } = renderWithMantine(
+      <MediaDropzone onDrop={onDrop} onReject={onReject} />,
+    );
+
+    const input = container.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
+    const file = new File(["notes"], "notes.txt", { type: "text/plain" });
+    Object.defineProperty(input, "files", { value: [file] });
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+
+    await waitFor(() => {
+      expect(onReject).toHaveBeenCalled();
+    });
+    expect(onDrop).not.toHaveBeenCalled();
   });
 });
