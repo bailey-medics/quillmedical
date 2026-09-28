@@ -91,7 +91,11 @@ export default function RadioField({
               label={opt.label}
               disabled={disabled}
               styles={radioStyles}
-              classNames={{ radio: classes.radio }}
+              classNames={{
+                radio: classes.radio,
+                inner: classes.inner,
+                label: classes.label,
+              }}
             />
           </div>
         ))}

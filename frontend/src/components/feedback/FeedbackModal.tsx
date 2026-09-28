@@ -75,12 +75,15 @@ interface FeedbackFormValues {
 function YourFeedbackLink({
   onClose,
   children,
+  standalone = false,
 }: {
   onClose: () => void;
   children: string;
+  /** On its own line rather than in a sentence; see TextLink */
+  standalone?: boolean;
 }) {
   return (
-    <TextLink to={YOUR_FEEDBACK_PATH} onClick={onClose}>
+    <TextLink to={YOUR_FEEDBACK_PATH} onClick={onClose} standalone={standalone}>
       {children}
     </TextLink>
   );
@@ -136,7 +139,7 @@ function FeedbackFields({
       <FormStatusNarrow />
       <SubmitButton onCancel={onClose} cancelLabel="Cancel" />
       {showLinks && (
-        <YourFeedbackLink onClose={onClose}>
+        <YourFeedbackLink onClose={onClose} standalone>
           Your previous feedback
         </YourFeedbackLink>
       )}

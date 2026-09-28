@@ -3,8 +3,26 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@test/test-utils";
 import TextLink from "./TextLink";
+import classes from "./TextLink.module.css";
 
 describe("TextLink", () => {
+  it("is 44px tall on phones when it stands on its own line", () => {
+    renderWithRouter(
+      <TextLink to="/forgot" standalone>
+        Forgot password?
+      </TextLink>,
+    );
+    expect(screen.getByRole("link", { name: "Forgot password?" })).toHaveClass(
+      classes.standalone,
+    );
+  });
+
+  it("keeps its line height inside a sentence", () => {
+    renderWithRouter(<TextLink to="/about">Learn more</TextLink>);
+    expect(screen.getByRole("link", { name: "Learn more" })).not.toHaveClass(
+      classes.standalone,
+    );
+  });
   it("renders children text", () => {
     renderWithRouter(<TextLink to="/register">Register</TextLink>);
     expect(screen.getByText("Register")).toBeInTheDocument();

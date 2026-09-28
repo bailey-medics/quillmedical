@@ -59,7 +59,11 @@ export default function CheckboxField({
       }
       error={error ? <ErrorMessage>{error}</ErrorMessage> : undefined}
       size="md"
-      classNames={{ root: classes.root, label: classes.label }}
+      classNames={{
+        root: classes.root,
+        inner: classes.inner,
+        label: classes.label,
+      }}
     />
   );
 }

@@ -15,9 +15,9 @@
  * The md close button, Mantine's default and the ✕ on every modal,
  * drawer, notification and FormStatus message, is drawn 44px rather than
  * 28px. Its ✕ grows from 20px to 24px rather than keeping Mantine's 70%,
- * which at 44px would be a heavy 31px. The sm close button inside inputs
- * (the clear ✕ of a select) is left alone, because it has to fit the
- * input's right section.
+ * which at 44px would be a heavy 31px. The clear ✕ of a clearable select
+ * is a different component, InputClearButton, and is left alone: it shares
+ * the input's right section with the chevron.
  *
  * The md text input, used by every form field component, is drawn 44px
  * tall rather than 42px, and the section at its right end, where the

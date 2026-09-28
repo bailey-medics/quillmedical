@@ -94,6 +94,30 @@ describe("TablePagination", () => {
     });
   });
 
+  describe("Touch target", () => {
+    it("gives both arrows the class that makes them 44px on phones", () => {
+      renderWithMantine(
+        <TablePagination>
+          <TablePagination.Nav total={5} value={2} onChange={() => {}} />
+        </TablePagination>,
+      );
+      for (const name of ["Previous page", "Next page"]) {
+        expect(screen.getByRole("button", { name }).className).toMatch(/arrow/);
+      }
+    });
+
+    it("gives the page-size picker the class that makes it 44px on phones", () => {
+      renderWithMantine(
+        <TablePagination>
+          <TablePagination.PageSize value={10} onChange={() => {}} />
+        </TablePagination>,
+      );
+      expect(screen.getByText("10").closest("button")?.className).toMatch(
+        /pageSizeButton/,
+      );
+    });
+  });
+
   describe("PageSize", () => {
     it("renders page size button", () => {
       renderWithMantine(

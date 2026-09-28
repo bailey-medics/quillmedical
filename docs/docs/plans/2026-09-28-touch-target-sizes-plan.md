@@ -168,42 +168,69 @@ remember.
 
 ## Phase 7: Table pagination
 
-- [ ] **Pagination arrows are 44px on phones**, in
-      `frontend/src/components/tables/TablePagination.tsx` and its CSS
-      module. The arrows use Mantine's default 32px control with a 30px
-      icon forced by `.arrow svg`. Set `--pagination-control-size` below
-      40em.
+- [x] **Pagination arrows are 44px on phones**, in
+      `frontend/src/components/tables/TablePagination.module.css`. The
+      arrows used Mantine's default 32px control with a 30px icon forced by
+      `.arrow svg`. `--pagination-control-size` is set on `.arrow` itself
+      below 40em, because Mantine writes the pagination root's value in an
+      inline style. The icons stay 30px.
 
-- [ ] **The page-size picker has a 44px tap area on phones**, in the
-      `.pageSizeButton` rule in the same CSS module. Today it is only
+- [x] **The page-size picker is at least 44px tall on phones**, in the
+      `.pageSizeButton` rule in the same CSS module. It had only
       `0.25rem 0.5rem` of padding around the text.
 
-## Phase 8: Check the rest on a real phone
+## Phase 8: The rest, found by reading the code
 
-- [ ] **Checkboxes and radios**, `frontend/src/components/form/CheckboxField.tsx`
-      and `RadioField.tsx`. The box is 24px, but Mantine makes the label
-      tappable too, so the real tap area is the whole row. Check on an
-      iPhone that the row is at least 44px tall. Only change it if it is
-      not.
+These were first listed as "check on a real phone". Reading the components
+answered each one, so they are done here rather than left for a device.
 
-- [ ] **The clear ✕ on the results filter**, `clearable` in
-      `frontend/src/features/teaching/pages/AllResults.tsx:129`. It is small
-      but used once. Phase 3's taller inputs may already fix it.
+- [x] **Checkboxes**, in `frontend/src/components/form/CheckboxField.tsx`.
+      Mantine makes the label tappable, but the label is only one line of
+      text, about 22px, so the row was not 44px after all. On phones the
+      label gets 11px of padding above and below, which makes it at least
+      44px, and the box moves down by the same 11px so it stays level with
+      the first line of a long declaration. `NewPatientPage.tsx:196` uses
+      a raw Mantine `Checkbox` rather than `CheckboxField`, so it does not
+      get this.
 
-- [ ] **Text links used as standalone controls**, such as "Forgot
-      password" on the login page. Where a link is the only thing on its
-      line, check that its line is at least 44px tall.
+- [x] **Radios**, in `frontend/src/components/form/RadioField.tsx`. Each
+      option was already drawn in a 44px row, but the padding was on a
+      `div` around the radio, which cannot be tapped, so only the 22px line
+      of text worked. On phones the padding moves from the `div` into the
+      label, in the same way as the checkboxes.
+
+- [x] **The clear ✕ on a clearable select**, `AllResults.tsx:129`: left as
+      it is. It is not a `CloseButton` but Mantine's `InputClearButton`,
+      which shares the input's right section with the chevron, so a 44px ✕
+      would not fit beside it. Mantine also hides it from screen readers
+      and the keyboard. There is another way to clear the filter anyway:
+      Mantine's `Select` deselects when the chosen option is tapped again,
+      and those options are full-width rows. (The Phase 2 pull request,
+      #1222, said this ✕ was an `sm` close button. That was wrong, and the
+      comment in `touch-targets.css` is corrected here.)
+
+- [x] **Text links on their own line**, through a new `standalone` prop on
+      `frontend/src/components/typography/TextLink.tsx`. On phones a
+      standalone link is at least 44px tall. WCAG 2.5.8 exempts links
+      inside a sentence, and they keep their line height, so the prop is
+      opt-in. It is set on the eight links that stand alone: "Forgot
+      password?" and "Register" on the login form, "Back to sign in" on the
+      forgot and reset password forms, the two links on the verify email
+      page, "Back to login" on the verify email pending page, "Back to
+      patient list", and "Your previous feedback" in the feedback modal.
+      The "Your feedback" link inside the sentence after sending feedback
+      stays inline.
 
 ## Phase 9: Accessibility journeys
 
-- [ ] **Record which journeys this touches**, in
+- [x] **Record which journeys this touches**, in
       `docs/docs/frontend/accessibility/testing-log.md`. Phases 1 and 4
       change the navigation drawer and the top ribbon, which every journey
       goes through, and Phase 3 changes every form field, including the
-      login form. So journeys 1 to 4 are all affected. They are already on
-      the "Not yet run" list, so confirm they are still there, and add a
-      line noting that the next round should include TalkBack and VoiceOver
-      on a phone, where these sizes apply.
+      login form. So journeys 1 to 4 are all affected. They were already on
+      the "Not yet run" list for VoiceOver and TalkBack, and a new line
+      there asks for those runs to be done on a phone too, checking the
+      44px minimum.
 
 ## Decisions
 

@@ -24,6 +24,15 @@ export const ShortLink: Story = {
   },
 };
 
+/** On its own line: at least 44px tall below 640px, for a finger. */
+export const Standalone: Story = {
+  args: {
+    to: "/forgot-password",
+    children: "Forgot password?",
+    standalone: true,
+  },
+};
+
 export const DarkMode: Story = {
   ...Default,
   globals: { colorScheme: "dark" },

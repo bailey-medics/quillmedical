@@ -56,3 +56,10 @@ evidence the NHS DTAC's accessibility section (D1) asks for, and the
 - **Journey 3 with people with access needs** — a screen reader user and
   someone with a motor impairment or cognitive difference.
 - **JAWS and Dragon** — deferred to a commissioned audit.
+- **Journeys 1 to 4 on a phone, by touch** — the
+  [touch target sizes plan](../../plans/2026-09-28-touch-target-sizes-plan.md)
+  enlarged the navigation drawer, the top ribbon's buttons and every form
+  field below 640px, which all four journeys pass through. The VoiceOver
+  and TalkBack runs above should be done on a phone as well as a desktop,
+  so that they cover these sizes, and checked for the 44px minimum of
+  WCAG 2.5.5.

@@ -57,7 +57,9 @@ export default function VerifyEmailPendingPage() {
           />
         )}
         {resent && <BodyText c="green">Verification email resent.</BodyText>}
-        <TextLink to="/login">Back to login</TextLink>
+        <TextLink standalone to="/login">
+          Back to login
+        </TextLink>
       </Stack>
     </Center>
   );
