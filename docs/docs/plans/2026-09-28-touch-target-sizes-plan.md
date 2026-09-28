@@ -111,25 +111,25 @@ remember.
 
 ## Phase 4: The ribbon and page-header icon buttons
 
-- [ ] **Search, filter and hamburger are 44px on phones**, in
+- [x] **Search, filter and hamburger are 44px on phones**, in
       `frontend/src/components/button/SearchButton.tsx`,
       `frontend/src/components/form/FilterSelect.tsx` and
-      `frontend/src/components/button/BurgerButton.tsx`. All three are
+      `frontend/src/components/button/BurgerButton.tsx`. All three were
       `ActionIcon size="lg"`, which is 34px, with fixed 30 to 32px icons
       drawn directly rather than through `Icon`. So the icons do not shrink
-      on phones and are already big enough; only the button needs to grow.
-      Use `useMediaQuery` at `theme.breakpoints.sm` with
-      `getInitialValueInEffect: false`, as `IconButton` does. Check the top
-      ribbon still fits the burger, the Quill mark and the search at 320px
-      wide. Also check `FilterSelect`'s count badge, which is positioned
-      against the button's edge in `FilterSelect.module.css`.
+      on phones and are already big enough; only the button grows, to 44px
+      below `theme.breakpoints.sm`. They use `useMediaQuery` with
+      `getInitialValueInEffect: false`, as `IconButton` does, so the first
+      render is already the right size. The ribbon already leaves room: its
+      avatar placeholder is 48px, and the search button is hidden on narrow
+      screens anyway. `FilterSelect`'s count badge is positioned from the
+      right edge of its wrapper, so it moves out with the bigger button.
 
-- [ ] **The inbox envelope is 44px on phones**, in
-      `frontend/src/components/passport/InboxButton.module.css`. The button
-      shrink-wraps a 28px `mlg` icon with 4px padding, about 36px in all.
-      A 44px `min-width` and `min-height` below 40em would keep the icon
-      centred. Check first whether the `navigation-inbox-button-full-size-on-phones`
-      branch has already changed this file.
+- [x] **The inbox envelope is 44px on phones**, already done by #1212
+      ("Navigation: inbox button full size on phones") in another worktree.
+      That kept `Icon`'s `mlg` step at 36px on phones instead of shrinking
+      it to 28px, and with `InboxButton`'s 4px of padding that makes 44px.
+      Nothing more to do here.
 
 ## Phase 5: The ellipsis menu on table rows
 

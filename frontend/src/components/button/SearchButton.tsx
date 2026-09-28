@@ -4,9 +4,12 @@
  * Transparent icon button for the search toggle on the top ribbon.
  * Renders a white magnifying glass on a lighter navy hover area.
  * Designed to sit on the primary navy ribbon background.
+ * 34px, or 44px below the sm breakpoint for a finger; the icon is a
+ * fixed 30px either way.
  */
 
-import { ActionIcon } from "@mantine/core";
+import { ActionIcon, useMantineTheme } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 import { IconSearch } from "@/components/icons/appIcons";
 
 interface SearchButtonProps {
@@ -21,11 +24,17 @@ export default function SearchButton({
   variant = "dark",
 }: SearchButtonProps) {
   const isDark = variant === "dark";
+  const theme = useMantineTheme();
+  const isMobile = useMediaQuery(
+    `(max-width: ${theme.breakpoints.sm})`,
+    false,
+    { getInitialValueInEffect: false },
+  );
 
   return (
     <ActionIcon
       variant="subtle"
-      size="lg"
+      size={isMobile ? 44 : "lg"}
       onClick={onClick}
       aria-label="Open search"
       style={{

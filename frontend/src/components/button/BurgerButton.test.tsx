@@ -7,13 +7,40 @@
  * - Open/closed state labels
  */
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@test/test-utils";
 import BurgerButton from "./BurgerButton";
 
+const media = vi.hoisted(() => ({ isMobile: false }));
+
+vi.mock("@mantine/hooks", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@mantine/hooks")>();
+  return { ...actual, useMediaQuery: () => media.isMobile };
+});
+
+beforeEach(() => {
+  media.isMobile = false;
+});
+
 describe("BurgerButton", () => {
+  describe("Touch target", () => {
+    it("is 34px (Mantine lg) on desktop", () => {
+      renderWithMantine(<BurgerButton navOpen={false} onClick={vi.fn()} />);
+      const button = screen.getByRole("button", { name: "Open navigation" });
+      expect(button.style.getPropertyValue("--ai-size")).toBe(
+        "var(--ai-size-lg)",
+      );
+    });
+
+    it("is 44px below the sm breakpoint", () => {
+      media.isMobile = true;
+      renderWithMantine(<BurgerButton navOpen={false} onClick={vi.fn()} />);
+      const button = screen.getByRole("button", { name: "Open navigation" });
+      expect(button.style.getPropertyValue("--ai-size")).toContain("2.75rem");
+    });
+  });
   describe("Rendering", () => {
     it("renders as a button", () => {
       renderWithMantine(<BurgerButton navOpen={false} onClick={vi.fn()} />);
