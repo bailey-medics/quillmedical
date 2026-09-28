@@ -133,14 +133,16 @@ remember.
 
 ## Phase 5: The ellipsis menu on table rows
 
-- [ ] **`EllipsisMenu` is 44px with an `md` icon on phones**, in
-      `frontend/src/components/ellipsis-menu/EllipsisMenu.tsx`. Today it is
-      30px with an `sm` icon, which drops to 16px on a phone. It is on every
-      row of the tables that use it (4 places), so it is tapped often and
-      sits close to other things. Desktop stays 30px, because a 44px
-      trigger would make every table row taller. The `Menu.Item`s in the
-      dropdown are about 36px, so give them a 44px `min-height` on phones
-      in `EllipsisMenu.module.css` at the same time.
+- [x] **`EllipsisMenu` is 44px with an `md` icon on phones**, in
+      `frontend/src/components/ellipsis-menu/EllipsisMenu.tsx`. It was 30px
+      with an `sm` icon, which drops to 16px on a phone. It is on every row
+      of the tables that use it (4 places), so it is tapped often and sits
+      close to other things. Desktop stays 30px with its 20px icon, because
+      a 44px trigger would make every table row taller. On a phone the
+      icon is `md`, which `Icon` draws at 20px there, so the three dots
+      look the same size as on desktop. The `Menu.Item`s in the dropdown
+      were about 36px, and a `touchItem` class in `EllipsisMenu.module.css`
+      gives them a 44px `min-height` on phones.
 
 ## Phase 6: Compact buttons and the video quality toggle
 

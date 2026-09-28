@@ -4,14 +4,59 @@
  * Tests for the EllipsisMenu dropdown action menu.
  */
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@test/test-utils";
 import { IconTrash, IconPencil } from "@/components/icons/appIcons";
 import EllipsisMenu from "./EllipsisMenu";
 
+const media = vi.hoisted(() => ({ isMobile: false }));
+
+vi.mock("@mantine/hooks", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@mantine/hooks")>();
+  return { ...actual, useMediaQuery: () => media.isMobile };
+});
+
+beforeEach(() => {
+  media.isMobile = false;
+});
+
 describe("EllipsisMenu", () => {
+  describe("Touch target", () => {
+    const renderMenu = () =>
+      renderWithMantine(
+        <EllipsisMenu
+          aria-label="Actions"
+          items={[{ label: "Edit", onClick: vi.fn() }]}
+        />,
+      );
+
+    it("keeps a 30px trigger with a 20px icon on desktop", () => {
+      renderMenu();
+      const trigger = screen.getByRole("button", { name: "Actions" });
+      expect(trigger.style.getPropertyValue("--ai-size")).toContain("1.875rem");
+      expect(trigger.querySelector("svg")).toHaveAttribute("width", "20");
+    });
+
+    it("has a 44px trigger with a 20px icon below the sm breakpoint", () => {
+      media.isMobile = true;
+      renderMenu();
+      const trigger = screen.getByRole("button", { name: "Actions" });
+      expect(trigger.style.getPropertyValue("--ai-size")).toContain("2.75rem");
+      expect(trigger.querySelector("svg")).toHaveAttribute("width", "20");
+    });
+
+    it("gives each item the class that makes it 44px tall on phones", async () => {
+      const user = userEvent.setup();
+      renderMenu();
+      await user.click(screen.getByRole("button", { name: "Actions" }));
+      expect(
+        (await screen.findByRole("menuitem", { name: "Edit" })).className,
+      ).toMatch(/touchItem/);
+    });
+  });
+
   it("renders the trigger button with aria-label", () => {
     renderWithMantine(
       <EllipsisMenu

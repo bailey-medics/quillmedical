@@ -13,7 +13,10 @@
       "Bash(cd /Users/markbailey/github/quillmedical-3/frontend/src && cat components/layouts/layoutConstants.ts | grep -v \"^ \\\\*\\\\|^/\\\\*\"; grep -rn \"ActionIcon\" ../eslint.config.js | head -5; grep -rln \"EllipsisMenu\" . | grep -v -E \"stories|test|ellipsis-menu\" | wc -l; grep -rln \"FilterSelect\\\\b\" . | grep -v -E \"stories|test|form/FilterSelect\" | wc -l)",
       "Read(//Users/markbailey/github/**)",
       "Bash(npx --no-install markdownlint-cli2 docs/docs/plans/2026-09-28-touch-target-sizes-plan.md)",
-      "Bash(git rev-list *)"
+      "Bash(git rev-list *)",
+      "Bash(sed -i '' 's/classes\\\\.item}/classes.touchItem}/' EllipsisMenu.tsx)",
+      "Bash(sed -i '' 's/^  \\\\.item {/  .touchItem {/' EllipsisMenu.module.css)",
+      "Bash(sed -i '' 's#\\).toMatch\\(/item/\\);#\\).toMatch\\(/touchItem/\\);#' EllipsisMenu.test.tsx)"
     ],
     "deny": [
       "Bash(gh pr merge:*)",
