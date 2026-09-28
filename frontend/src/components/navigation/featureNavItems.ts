@@ -32,24 +32,37 @@ import type { NavItem } from "./NestedNavLink";
  * The passport's own pages, each shown as a child of Passport while it is
  * open. Named as the side navigation should say them, which is shorter
  * than some page titles: "CPD" rather than "Continuing professional
- * development". A page beneath one of these, such as a single CPD
- * activity, keeps its section's link.
+ * development".
+ *
+ * A page with a `detail` label also has pages of one record beneath it,
+ * a single CPD activity or logbook entry. On one of those the section's
+ * link gains a child of its own, so the navigation reads Passport, CPD,
+ * Activity rather than stopping at CPD.
  */
-const PASSPORT_PAGES: readonly NavItem[] = [
+const PASSPORT_PAGES: readonly (NavItem & { detail?: string })[] = [
   { label: "Sign-offs", href: "/passport/sign-offs" },
-  { label: "Logbook", href: "/passport/logbook" },
-  { label: "CPD", href: "/passport/cpd" },
+  { label: "Logbook", href: "/passport/logbook", detail: "Entry" },
+  { label: "CPD", href: "/passport/cpd", detail: "Activity" },
   { label: "Certificates", href: "/passport/certificates" },
   { label: "Reflections", href: "/passport/reflections" },
   { label: "Download", href: "/passport/download" },
   { label: "Inbox", href: "/passport/inbox" },
 ];
 
-/** The passport page this address is, or sits beneath, if any. */
+/**
+ * The passport page this address is, or sits beneath, if any, with the
+ * record's own link beneath it on the page of one record.
+ */
 function passportPageAt(pathname: string): NavItem | undefined {
-  return PASSPORT_PAGES.find(
-    (page) => pathname === page.href || pathname.startsWith(`${page.href}/`),
+  const page = PASSPORT_PAGES.find(
+    (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
   );
+  if (!page) return undefined;
+
+  const { detail, ...link } = page;
+  return detail && pathname !== page.href
+    ? { ...link, children: [{ label: detail, href: pathname }] }
+    : link;
 }
 
 /**

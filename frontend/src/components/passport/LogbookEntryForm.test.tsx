@@ -123,4 +123,61 @@ describe("LogbookEntryForm", () => {
 
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
+
+  describe("Editing an entry", () => {
+    const initial = {
+      filename: "20260314T1432",
+      competency: signedOffCompetency.id,
+      performed_on: "2026-03-14",
+      setting: "Bronchoscopy suite",
+      supervision: "supervised" as const,
+      supervisor: "Dr Okonkwo",
+      indication: null,
+      outcome: "Biopsies taken",
+      notes: null,
+      also_counts_towards: [],
+      attachments: [],
+    };
+
+    it("starts filled in, and says it is saving rather than adding", () => {
+      renderWithMantine(
+        <LogbookEntryForm
+          competency={signedOffCompetency}
+          initial={initial}
+          onSubmit={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByText(/^Edit this .* entry$/)).toBeInTheDocument();
+      expect(screen.getByRole("textbox", { name: /Outcome/ })).toHaveValue(
+        "Biopsies taken",
+      );
+      expect(
+        screen.getByRole("button", { name: "Save changes" }),
+      ).toBeInTheDocument();
+    });
+
+    it("sends the entry as corrected", async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn();
+      renderWithMantine(
+        <LogbookEntryForm
+          competency={signedOffCompetency}
+          initial={initial}
+          onSubmit={onSubmit}
+        />,
+      );
+
+      await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          performed_on: "2026-03-14",
+          setting: "Bronchoscopy suite",
+          supervision: "supervised",
+          outcome: "Biopsies taken",
+        }),
+      );
+    });
+  });
 });

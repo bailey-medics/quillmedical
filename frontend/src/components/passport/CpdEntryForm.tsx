@@ -38,7 +38,7 @@ import {
 } from "@components/form";
 import { Heading } from "@/components/typography";
 import ButtonPair from "@/components/button/ButtonPair";
-import type { CpdActivityType, CpdEntryInput } from "@lib/passport";
+import type { CpdActivityType, CpdEntry, CpdEntryInput } from "@lib/passport";
 
 /**
  * What the activity was. Open enough to cover what people actually
@@ -59,20 +59,30 @@ export interface CpdEntryFormProps {
   onCancel?: () => void;
   /** Disables submission while a request is in flight */
   isSubmitting?: boolean;
+  /**
+   * An activity to correct. The form starts filled in from it, and says
+   * so in its heading and button; without it the form records a new one.
+   */
+  initial?: CpdEntry;
 }
 
 export default function CpdEntryForm({
   onSubmit,
   onCancel,
   isSubmitting = false,
+  initial,
 }: CpdEntryFormProps) {
-  const [activityOn, setActivityOn] = useState<string | null>(null);
-  const [title, setTitle] = useState("");
-  const [activityType, setActivityType] = useState<CpdActivityType | null>(
-    null,
+  const [activityOn, setActivityOn] = useState<string | null>(
+    initial?.activity_on ?? null,
   );
-  const [points, setPoints] = useState("");
-  const [notes, setNotes] = useState("");
+  const [title, setTitle] = useState(initial?.title ?? "");
+  const [activityType, setActivityType] = useState<CpdActivityType | null>(
+    initial?.activity_type ?? null,
+  );
+  const [points, setPoints] = useState(
+    initial?.points != null ? String(initial.points) : "",
+  );
+  const [notes, setNotes] = useState(initial?.notes ?? "");
 
   // A date, a title and a type: the three things that make an entry
   // readable a year later at appraisal. Points are genuinely optional —
@@ -100,7 +110,9 @@ export default function CpdEntryForm({
   return (
     <BaseCard data-testid="cpd-entry-form">
       <Stack gap="md">
-        <Heading>Record a CPD activity</Heading>
+        <Heading>
+          {initial ? "Edit this CPD activity" : "Record a CPD activity"}
+        </Heading>
 
         <DateField
           label="Date"
@@ -149,7 +161,7 @@ export default function CpdEntryForm({
         />
 
         <ButtonPair
-          acceptLabel="Record activity"
+          acceptLabel={initial ? "Save changes" : "Record activity"}
           acceptDisabled={!canSubmit}
           acceptLoading={isSubmitting}
           onAccept={handleSubmit}

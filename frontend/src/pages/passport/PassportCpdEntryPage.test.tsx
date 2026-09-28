@@ -7,16 +7,19 @@
  */
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import { Component as PassportCpdEntryPage } from "./PassportCpdEntryPage";
 
 const fetchMyPassport = vi.fn();
 const fetchCpdYear = vi.fn();
+const amendCpdEntry = vi.fn();
 
 vi.mock("@lib/passport", () => ({
   fetchMyPassport: (...args: unknown[]) => fetchMyPassport(...args),
   fetchCpdYear: (...args: unknown[]) => fetchCpdYear(...args),
+  amendCpdEntry: (...args: unknown[]) => amendCpdEntry(...args),
 }));
 
 vi.mock("react-router-dom", async () => {
@@ -91,5 +94,73 @@ describe("PassportCpdEntryPage", () => {
     expect(
       screen.queryByText("That activity is not here"),
     ).not.toBeInTheDocument();
+  });
+
+  describe("Editing", () => {
+    const stored = {
+      ...entry("als-course", "Advanced life support"),
+      competencies: [{ id: "perform_cannulation", name: "Cannulation" }],
+      certificate: "als-2026",
+    };
+
+    it("turns the card into the CPD form, filled in", async () => {
+      const user = userEvent.setup();
+      fetchCpdYear.mockResolvedValue([stored]);
+      renderWithRouter(<PassportCpdEntryPage />);
+
+      await user.click(
+        await screen.findByRole("button", { name: "Edit activity" }),
+      );
+
+      expect(screen.getByText("Edit this CPD activity")).toBeInTheDocument();
+      expect(screen.getByRole("textbox", { name: /What was it/ })).toHaveValue(
+        "Advanced life support",
+      );
+    });
+
+    it("saves the change without losing what the form does not show", async () => {
+      // The competencies and certificate are not on the form. Leaving
+      // them out of the save would have cleared them.
+      const user = userEvent.setup();
+      fetchCpdYear.mockResolvedValue([stored]);
+      amendCpdEntry.mockResolvedValue({ name: "als-course", commit: "c1" });
+      renderWithRouter(<PassportCpdEntryPage />);
+
+      await user.click(
+        await screen.findByRole("button", { name: "Edit activity" }),
+      );
+      const title = screen.getByRole("textbox", { name: /What was it/ });
+      await user.clear(title);
+      await user.type(title, "ALS refresher");
+      await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+      await waitFor(() => expect(amendCpdEntry).toHaveBeenCalled());
+      expect(amendCpdEntry).toHaveBeenCalledWith(
+        "3f2a8c1e",
+        2026,
+        "als-course",
+        expect.objectContaining({
+          title: "ALS refresher",
+          competencies: ["perform_cannulation"],
+          certificate: "als-2026",
+        }),
+      );
+    });
+
+    it("offers no edit where the holder may no longer write", async () => {
+      fetchMyPassport.mockResolvedValue({
+        ...detail,
+        entitlement: { can_write: false },
+      });
+      fetchCpdYear.mockResolvedValue([stored]);
+      renderWithRouter(<PassportCpdEntryPage />);
+
+      const button = await screen.findByRole("button", {
+        name: "Edit activity",
+      });
+      // IconTextButton disables through aria-disabled, so it stays
+      // focusable and a screen reader can still say why it is off.
+      expect(button).toHaveAttribute("aria-disabled", "true");
+    });
   });
 });

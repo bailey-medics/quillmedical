@@ -16,7 +16,7 @@
  */
 
 import { useEffect, useState } from "react";
-import { Stack } from "@mantine/core";
+import { Group, Stack } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import BaseCard from "@/components/base-card/BaseCard";
 import CertificateForm from "@/components/passport/CertificateForm";
@@ -100,19 +100,6 @@ export function Component() {
 
       {error && <ErrorState message={error} />}
 
-      {/* Above the form rather than below the list: on an empty page
-          this says what a certificate record is and that nobody
-          countersigns it, which is worth knowing before recording one
-          rather than after. */}
-      {certificates.length === 0 && (
-        <StateMessage
-          colour="update"
-          icon={<IconFileText />}
-          title="Nothing recorded yet"
-          description="Courses, qualifications and awards you are claiming. Nobody countersigns these."
-        />
-      )}
-
       {recording ? (
         <>
           {passportId && (
@@ -130,10 +117,24 @@ export function Component() {
           />
         </>
       ) : (
-        <AddButton
-          label="Record a certificate"
-          onClick={() => setRecording(true)}
-          disabled={!canWrite}
+        <Group justify="flex-end">
+          <AddButton
+            label="Record a certificate"
+            onClick={() => setRecording(true)}
+            disabled={!canWrite}
+          />
+        </Group>
+      )}
+
+      {/* Below the add button, as on every passport page, and above
+          the list: on an empty page this says what a certificate record
+          is and that nobody countersigns it. */}
+      {certificates.length === 0 && (
+        <StateMessage
+          colour="update"
+          icon={<IconFileText />}
+          title="Nothing recorded yet"
+          description="Courses, qualifications and awards you are claiming. Nobody countersigns these."
         />
       )}
 

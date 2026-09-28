@@ -2796,6 +2796,77 @@ class TestEvidence:
 
         assert response.status_code == 201, response.text
 
+    def test_correcting_a_logbook_entry_keeps_its_attachments(
+        self, holder_client: TestClient
+    ) -> None:
+        """The edit page sends no attachments. The route once wrote an
+        empty list regardless, so fixing a date deleted every file."""
+        passport_id = _create_passport(holder_client)
+        uploaded = self._upload(holder_client, passport_id).json()
+        created = holder_client.post(
+            f"/api/passport/{passport_id}/logbook/{COMPETENCY}",
+            json={"performed_on": "2026-03-12", "attachments": [uploaded]},
+        )
+        assert created.status_code == 201, created.text
+        stem = created.json()["name"]
+
+        response = holder_client.patch(
+            f"/api/passport/{passport_id}/logbook/{COMPETENCY}/{stem}",
+            json={"performed_on": "2026-03-13", "outcome": "Successful"},
+        )
+
+        assert response.status_code == 200, response.text
+        entry = holder_client.get(
+            f"/api/passport/{passport_id}/logbook/{COMPETENCY}"
+        ).json()["entries"][0]
+        assert entry["performed_on"] == "2026-03-13"
+        assert [a["hash"] for a in entry["attachments"]] == [uploaded["hash"]]
+
+    def test_correcting_a_cpd_activity_keeps_its_attachments(
+        self, holder_client: TestClient
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+        uploaded = self._upload(holder_client, passport_id).json()
+        created = holder_client.post(
+            f"/api/passport/{passport_id}/cpd",
+            json={
+                "activity_on": "2026-03-12",
+                "title": "Airway course",
+                "activity_type": "course",
+                "attachments": [uploaded],
+            },
+        )
+        assert created.status_code == 201, created.text
+        stem = created.json()["name"]
+
+        response = holder_client.patch(
+            f"/api/passport/{passport_id}/cpd/2026/{stem}",
+            json={
+                "activity_on": "2026-03-12",
+                "title": "Advanced airway course",
+                "activity_type": "course",
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        entry = holder_client.get(
+            f"/api/passport/{passport_id}/cpd/2026"
+        ).json()[0]
+        assert entry["title"] == "Advanced airway course"
+        assert [a["hash"] for a in entry["attachments"]] == [uploaded["hash"]]
+
+    def test_correcting_a_missing_logbook_entry_is_a_404(
+        self, holder_client: TestClient
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+
+        response = holder_client.patch(
+            f"/api/passport/{passport_id}/logbook/{COMPETENCY}/nothing-here",
+            json={"performed_on": "2026-03-13"},
+        )
+
+        assert response.status_code == 404, response.text
+
     def test_a_record_cannot_relabel_evidence_as_another_type(
         self, holder_client: TestClient
     ) -> None:

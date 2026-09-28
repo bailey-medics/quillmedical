@@ -1,13 +1,16 @@
 /**
  * Passport CPD Entry Page
  *
- * One continuing professional development activity, in full.
+ * One continuing professional development activity, in full, with an
+ * edit button that turns the card into the CPD form filled in from it.
  *
- * **Read-only for now.** Amending an entry is a separate piece of work:
- * the endpoint exists, but a form that edits a record whose whole claim
- * is that it can be checked years later wants more thought than a text
- * box — what an amendment looks like in the history, and whether the
- * original stays readable, are questions this page does not answer.
+ * **An edit is a correction on the record, not a rewrite of it.** Every
+ * amendment is a commit in the passport's own history, so what the
+ * activity said before stays readable there. What the form does not
+ * show, the competencies it counts towards, its certificate and its
+ * attachments, is sent back unchanged or left alone by the server, so
+ * correcting a title cannot lose them. This page was read-only until
+ * 28 September 2026.
  *
  * Reads the year rather than the single entry, because the API files
  * CPD by year and has no route for one activity. The year is in the URL
@@ -18,37 +21,52 @@
  * `lazy` looks for that name. See the route definition in `main.tsx`.
  */
 
-import { useEffect, useState } from "react";
-import { Stack } from "@mantine/core";
+import { useCallback, useEffect, useState } from "react";
+import { Group, Stack } from "@mantine/core";
 import { useParams } from "react-router-dom";
 import PageHeader from "@/components/page-header";
 import BaseCard from "@/components/base-card/BaseCard";
+import IconTextButton from "@/components/button/IconTextButton";
+import CpdEntryForm from "@/components/passport/CpdEntryForm";
 import ErrorState from "@/components/error-state/ErrorState";
 import StateMessage from "@/components/message-cards/StateMessage";
 import FormattedDate from "@/components/data/Date";
 import { IconFileText } from "@/components/icons/appIcons";
 import { BodyText, BodyTextBold, Heading } from "@/components/typography";
-import { fetchCpdYear, fetchMyPassport } from "@lib/passport";
-import type { CpdEntry } from "@lib/passport";
+import { amendCpdEntry, fetchCpdYear, fetchMyPassport } from "@lib/passport";
+import type { CpdEntry, CpdEntryInput } from "@lib/passport";
 
 export function Component() {
   const { year, stem } = useParams<{ year: string; stem: string }>();
+  const [passportId, setPassportId] = useState<string | null>(null);
   const [entry, setEntry] = useState<CpdEntry | null>(null);
+  const [canWrite, setCanWrite] = useState(true);
   const [missing, setMissing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(
+    async (id: string) => {
+      if (!year || !stem) return;
+      const entries = await fetchCpdYear(id, Number(year));
+      const found = entries.find((item) => item.filename === stem);
+      if (found) setEntry(found);
+      else setMissing(true);
+    },
+    [year, stem],
+  );
 
   useEffect(() => {
-    if (!year || !stem) return;
-
     let cancelled = false;
 
     fetchMyPassport()
-      .then((detail) => fetchCpdYear(detail.passport.passport_id, Number(year)))
-      .then((entries) => {
+      .then((detail) => {
         if (cancelled) return;
-        const found = entries.find((item) => item.filename === stem);
-        if (found) setEntry(found);
-        else setMissing(true);
+        const id = detail.passport.passport_id;
+        setPassportId(id);
+        setCanWrite(detail.entitlement?.can_write !== false);
+        return load(id);
       })
       .catch(() => {
         if (!cancelled) {
@@ -59,9 +77,32 @@ export function Component() {
     return () => {
       cancelled = true;
     };
-  }, [year, stem]);
+  }, [load]);
 
-  if (error) {
+  async function handleSave(data: CpdEntryInput) {
+    if (!passportId || !year || !stem || !entry) return;
+
+    setSaving(true);
+    try {
+      await amendCpdEntry(passportId, Number(year), stem, {
+        ...data,
+        // Not on the form, so sent back as they were rather than cleared.
+        competencies: entry.competencies.map((competency) => competency.id),
+        certificate: entry.certificate,
+      });
+      await load(passportId);
+      setEditing(false);
+      setError(null);
+    } catch {
+      setError("Your changes could not be saved. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // Only a failed load replaces the page. A failed save keeps the
+  // activity on screen, with the message above it.
+  if (error && !entry) {
     return (
       <Stack gap="lg">
         <PageHeader title="Activity" />
@@ -91,7 +132,31 @@ export function Component() {
     <Stack gap="lg">
       <PageHeader title={entry?.title ?? "Activity"} />
 
-      {entry && (
+      {error && <ErrorState message={error} />}
+
+      {entry && editing && (
+        <CpdEntryForm
+          initial={entry}
+          onSubmit={handleSave}
+          onCancel={() => setEditing(false)}
+          isSubmitting={saving}
+        />
+      )}
+
+      {entry && !editing && (
+        <Group justify="flex-end">
+          {/* Disabled where the server says a write would be refused,
+              rather than offering a control that fails on save. */}
+          <IconTextButton
+            icon="pencil"
+            label="Edit activity"
+            onClick={() => setEditing(true)}
+            disabled={!canWrite}
+          />
+        </Group>
+      )}
+
+      {entry && !editing && (
         <BaseCard>
           <Stack gap="xs">
             <Heading>{entry.title}</Heading>

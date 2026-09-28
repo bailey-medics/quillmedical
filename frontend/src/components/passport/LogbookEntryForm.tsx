@@ -39,6 +39,7 @@ import { Heading } from "@/components/typography";
 import ButtonPair from "@/components/button/ButtonPair";
 import type {
   CompetencyState,
+  LogbookEntry,
   LogbookEntryInput,
   Supervision,
 } from "@lib/passport";
@@ -62,6 +63,11 @@ export interface LogbookEntryFormProps {
   onCancel?: () => void;
   /** Disables submission while a request is in flight */
   isSubmitting?: boolean;
+  /**
+   * An entry to correct. The form starts filled in from it, and says so
+   * in its heading and button; without it the form adds a new entry.
+   */
+  initial?: LogbookEntry;
 }
 
 /**
@@ -75,14 +81,19 @@ export default function LogbookEntryForm({
   onSubmit,
   onCancel,
   isSubmitting = false,
+  initial,
 }: LogbookEntryFormProps) {
-  const [performedOn, setPerformedOn] = useState<string | null>(null);
-  const [setting, setSetting] = useState("");
-  const [supervision, setSupervision] = useState<Supervision | null>(null);
-  const [supervisor, setSupervisor] = useState("");
-  const [indication, setIndication] = useState("");
-  const [outcome, setOutcome] = useState("");
-  const [notes, setNotes] = useState("");
+  const [performedOn, setPerformedOn] = useState<string | null>(
+    initial?.performed_on ?? null,
+  );
+  const [setting, setSetting] = useState(initial?.setting ?? "");
+  const [supervision, setSupervision] = useState<Supervision | null>(
+    initial?.supervision ?? null,
+  );
+  const [supervisor, setSupervisor] = useState(initial?.supervisor ?? "");
+  const [indication, setIndication] = useState(initial?.indication ?? "");
+  const [outcome, setOutcome] = useState(initial?.outcome ?? "");
+  const [notes, setNotes] = useState(initial?.notes ?? "");
 
   const canSubmit = performedOn !== null && !isSubmitting;
 
@@ -103,7 +114,11 @@ export default function LogbookEntryForm({
   return (
     <BaseCard data-testid="logbook-entry-form">
       <Stack gap="md">
-        <Heading>Add a {competency.name} entry</Heading>
+        <Heading>
+          {initial
+            ? `Edit this ${competency.name} entry`
+            : `Add a ${competency.name} entry`}
+        </Heading>
 
         <DateField
           label="Performed on"
@@ -162,7 +177,7 @@ export default function LogbookEntryForm({
         />
 
         <ButtonPair
-          acceptLabel="Add entry"
+          acceptLabel={initial ? "Save changes" : "Add entry"}
           acceptDisabled={!canSubmit}
           acceptLoading={isSubmitting}
           onAccept={handleSubmit}

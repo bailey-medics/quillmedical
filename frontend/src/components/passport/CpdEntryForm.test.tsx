@@ -134,4 +134,48 @@ describe("CpdEntryForm", () => {
 
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
+
+  describe("Editing an activity", () => {
+    const initial = {
+      filename: "2026-09-28-062503",
+      year: 2026,
+      activity_on: "2026-09-12",
+      title: "Advanced life support",
+      activity_type: "course" as const,
+      points: 6,
+      competencies: [],
+      certificate: null,
+      notes: "Recertification.",
+      attachments: [],
+    };
+
+    it("starts filled in, and says it is saving rather than recording", () => {
+      renderForm({ initial });
+
+      expect(screen.getByText("Edit this CPD activity")).toBeInTheDocument();
+      expect(screen.getByRole("textbox", { name: /What was it/ })).toHaveValue(
+        "Advanced life support",
+      );
+      expect(
+        screen.getByRole("button", { name: "Save changes" }),
+      ).toBeInTheDocument();
+    });
+
+    it("sends the activity as corrected, points included", async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn();
+      renderForm({ initial, onSubmit });
+
+      await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          activity_on: "2026-09-12",
+          title: "Advanced life support",
+          activity_type: "course",
+          points: 6,
+        }),
+      );
+    });
+  });
 });

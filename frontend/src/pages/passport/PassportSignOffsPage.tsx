@@ -196,19 +196,6 @@ export function Component() {
     <Stack gap="lg">
       <PageHeader title="Sign-offs" />
 
-      {/* Before the groups, so a holder with nothing yet is told how a
-          sign-off comes about rather than reading three empty lists.
-          Not held back until the fetch returns: the words are the same
-          either way, so waiting only made the panel appear late. */}
-      {!hasAny && (
-        <StateMessage
-          colour="update"
-          icon={<IconFileText />}
-          title="No sign-offs yet"
-          description="Start a sign-off request to have an assessor review a competency."
-        />
-      )}
-
       {/* A refused ask, said where the asking happened. Not ErrorState:
           that replaces the view, which would throw away the form and
           the competency already chosen, and its "Something went wrong"
@@ -257,6 +244,20 @@ export function Component() {
             disabled={!canWrite}
           />
         </Group>
+      )}
+
+      {/* Below the add button, as on every passport page, and before
+          the groups, so a holder with nothing yet is told how a
+          sign-off comes about rather than reading three empty lists.
+          Not held back until the fetch returns: the words are the same
+          either way, so waiting only made the panel appear late. */}
+      {!hasAny && (
+        <StateMessage
+          colour="update"
+          icon={<IconFileText />}
+          title="No sign-offs yet"
+          description="Start a sign-off request to have an assessor review a competency."
+        />
       )}
 
       {hasAny &&

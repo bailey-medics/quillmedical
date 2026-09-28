@@ -26,6 +26,28 @@ export const Default: Story = {
   },
 };
 
+/** Correcting an entry: filled in from it, saving rather than adding. */
+export const Editing: Story = {
+  args: {
+    competency: signedOffCompetency,
+    initial: {
+      filename: "20260314T1432",
+      competency: signedOffCompetency.id,
+      performed_on: "2026-03-14",
+      setting: "Bronchoscopy suite",
+      supervision: "supervised",
+      supervisor: "Dr Okonkwo",
+      indication: "Suspected lung cancer",
+      outcome: "Biopsies taken",
+      notes: null,
+      also_counts_towards: [],
+      attachments: [],
+    },
+    onSubmit: fn(),
+    onCancel: fn(),
+  },
+};
+
 export const Submitting: Story = {
   args: {
     competency: signedOffCompetency,
