@@ -49,6 +49,7 @@ function SignOffDetail({ signOff }: { signOff: SignOff }) {
     signed_at,
     signed_off_by,
     expires_on,
+    assessor_email,
   } = signOff;
 
   // While requested, `level` is what was asked for; once decided, it is
@@ -72,6 +73,12 @@ function SignOffDetail({ signOff }: { signOff: SignOff }) {
       <BodyText c="dimmed">
         Observed <FormattedDate date={observed_on} format="medium" />
       </BodyText>
+
+      {/* Who was asked, which the signed record does not say: until
+          somebody signs, it is the only name the row has. */}
+      {assessor_email && (
+        <BodyText c="dimmed">Sent to {assessor_email}</BodyText>
+      )}
 
       {signed_off_by && signed_at && (
         <BodyText c="dimmed">

@@ -816,6 +816,50 @@ class TestAnExistingAccountAskedToAssess:
         # The profession is left alone.
         assert learner.base_profession == "teaching_delegate"
 
+    def test_they_join_the_organisation_with_the_passport(
+        self,
+        holder_client: TestClient,
+        learner: User,
+        holder: User,
+        org: OrgUnit,
+        db_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Not the holder's first organisation, which may not have it.
+
+        The holder here belongs to a teaching organisation as well as the
+        passport one, and the learner is already in the teaching one. The
+        organisation lookup once ignored which had the passport, took the
+        teaching one, found the learner already there, and added nothing:
+        the competency was granted and the passport stayed out of reach.
+        """
+        # Out of the fixture's trust, so the only passport organisation
+        # the holder has is the one made here.
+        db_session.execute(
+            org_unit_member.delete().where(
+                org_unit_member.c.org_unit_id == org.id,
+                org_unit_member.c.user_id == holder.id,
+            )
+        )
+        teaching = OrgUnit(name="Teaching Academy", type="organisation")
+        passport_org = OrgUnit(name="Passport Trust", type="organisation")
+        db_session.add_all([teaching, passport_org])
+        db_session.commit()
+        db_session.add(
+            OrgUnitFeature(org_unit_id=passport_org.id, feature_key="passport")
+        )
+        # The teaching organisation first, so it is the one an unfiltered
+        # lookup finds.
+        add_org_unit_member(db_session, teaching.id, holder.id, "staff")
+        add_org_unit_member(db_session, passport_org.id, holder.id, "staff")
+        add_org_unit_member(db_session, teaching.id, learner.id, "trainee")
+        db_session.commit()
+
+        response, _ = self._ask(holder_client, learner.email, monkeypatch)
+
+        assert response.status_code == 201, response.text
+        assert self._capacity(db_session, passport_org, learner) == "external"
+
     def test_they_can_then_open_their_inbox(
         self,
         holder_client: TestClient,
@@ -1283,6 +1327,46 @@ class TestListingSignOffs:
             "requested",
             "declined",
         ]
+
+    def test_each_sign_off_says_who_was_asked(
+        self,
+        test_client: TestClient,
+        passport_store: LocalPassportStore,
+        org: OrgUnit,
+        assessor: User,
+    ) -> None:
+        """The signed record names only who signed, so a request nobody
+        has answered said nothing about who it was waiting on."""
+        holder = _login(test_client, "holder")
+        passport_id = _create_passport(holder)
+        name = self._ask(holder, passport_id, assessor.email, "2026-03-14")
+
+        listed = holder.get(f"/api/passport/{passport_id}/sign-offs").json()
+        one = holder.get(
+            f"/api/passport/{passport_id}/sign-offs/{name}"
+        ).json()
+
+        assert listed[0]["assessor_email"] == assessor.email
+        assert one["assessor_email"] == assessor.email
+
+    def test_the_assessor_is_not_sent_the_address_back(
+        self,
+        test_client: TestClient,
+        passport_store: LocalPassportStore,
+        org: OrgUnit,
+        assessor: User,
+    ) -> None:
+        """It is the holder's note of who they asked, not the assessor's."""
+        holder = _login(test_client, "holder")
+        passport_id = _create_passport(holder)
+        name = self._ask(holder, passport_id, assessor.email, "2026-03-14")
+
+        response = _login(test_client, "assessor").get(
+            f"/api/passport/{passport_id}/sign-offs/{name}"
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json()["assessor_email"] is None
 
     def test_an_empty_passport_lists_nothing(
         self,
@@ -1991,6 +2075,35 @@ class TestAcceptingAnInvitation:
         )
         assert capacity == "external"
 
+    def test_of_several_passport_org_units_the_lowest_id_is_joined(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        db_session: Session,
+        holder: User,
+        org: OrgUnit,
+        sent: list[dict[str, str]],
+    ) -> None:
+        """Arbitrary but stable, and never decided by type.
+
+        The holder is at the trust and at a ward inside it, and both reach
+        the passport. The trust was created first, so it has the lower id
+        and is joined, though the ward is the narrower of the two.
+        """
+        ward = OrgUnit(name="Ward 10", type="ward", parent_id=org.id)
+        db_session.add(ward)
+        db_session.commit()
+        add_org_unit_member(db_session, ward.id, holder.id, "trainee")
+        db_session.commit()
+
+        passport_id = _create_passport(holder_client)
+        self._invite(holder_client, passport_id)
+
+        body = self._accept(test_client, self._token(sent)).json()
+
+        assert org.id < ward.id
+        assert body["org_unit_id"] == org.id
+
     def test_a_sited_holder_yields_a_site_membership(
         self,
         holder_client: TestClient,
@@ -2000,7 +2113,13 @@ class TestAcceptingAnInvitation:
         org: OrgUnit,
         sent: list[dict[str, str]],
     ) -> None:
-        """The narrowest place the holder holds, so a site over its org."""
+        """A holder at a ward alone gives the assessor a ward membership.
+
+        This once preferred a site over an organisation whenever the
+        holder had both. Which org_unit is chosen no longer depends on
+        type (see the lowest-id test below), so the holder here is at the
+        ward only.
+        """
         site = OrgUnit(name="Ward 9", type="ward")
         db_session.add(site)
         db_session.commit()
@@ -2015,6 +2134,15 @@ class TestAcceptingAnInvitation:
                 org_unit_id=site.id,
                 user_id=holder.id,
                 capacity="trainee",
+            )
+        )
+        db_session.commit()
+        # The holder's only org_unit is the ward, so the ward is the one
+        # the assessor joins, whatever its type.
+        db_session.execute(
+            org_unit_member.delete().where(
+                org_unit_member.c.org_unit_id == org.id,
+                org_unit_member.c.user_id == holder.id,
             )
         )
         db_session.commit()
@@ -2295,6 +2423,16 @@ class TestTheGateResolvesForAnAcceptedAssessor:
                 org_unit_id=site.id,
                 user_id=holder.id,
                 capacity="trainee",
+            )
+        )
+        db_session.commit()
+
+        # The holder's only org_unit is the ward, so the ward is the one
+        # the assessor joins, whatever its type.
+        db_session.execute(
+            org_unit_member.delete().where(
+                org_unit_member.c.org_unit_id == org.id,
+                org_unit_member.c.user_id == holder.id,
             )
         )
         db_session.commit()

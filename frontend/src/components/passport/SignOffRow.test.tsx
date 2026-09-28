@@ -63,6 +63,20 @@ describe("SignOffRow", () => {
     expect(screen.queryByText(/asked for/i)).not.toBeInTheDocument();
   });
 
+  it("says who the request was sent to", () => {
+    renderWithMantine(
+      <SignOffRow
+        signOff={{ ...requested, assessor_email: "okonkwo@nhs.net" }}
+      />,
+    );
+    expect(screen.getByText("Sent to okonkwo@nhs.net")).toBeInTheDocument();
+  });
+
+  it("says nothing about who was asked where that is not known", () => {
+    renderWithMantine(<SignOffRow signOff={requested} />);
+    expect(screen.queryByText(/Sent to/)).not.toBeInTheDocument();
+  });
+
   it("shows a declined sign-off as declined", () => {
     renderWithMantine(<SignOffRow signOff={declined} />);
     expect(screen.getByText("Declined")).toBeInTheDocument();

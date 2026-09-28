@@ -81,6 +81,7 @@ export default function SignOffCard({ signOff }: SignOffCardProps) {
     evidence,
     attachments,
     content_hash,
+    assessor_email,
   } = signOff;
 
   return (
@@ -114,6 +115,10 @@ export default function SignOffCard({ signOff }: SignOffCardProps) {
             </Field>
           )}
         </Group>
+
+        {/* Who the holder asked. Present only on the holder's own
+            view: the assessor's copy of a request leaves it out. */}
+        {assessor_email && <Field label="Sent to">{assessor_email}</Field>}
 
         {/* What the assessor actually did. Three clinically different
             acts, and a record that does not say which is weaker than it
