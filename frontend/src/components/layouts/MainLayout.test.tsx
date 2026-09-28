@@ -12,6 +12,7 @@ import { renderWithMantine } from "@/test/test-utils";
 import MainLayout from "./MainLayout";
 import type { Patient } from "@/domains/patient";
 import type { User } from "@/auth/AuthContext";
+import { SearchContext } from "@lib/search/searchContext";
 
 // Mock child components
 vi.mock("@components/drawers/NavigationDrawer", () => ({
@@ -449,12 +450,23 @@ describe("MainLayout", () => {
     });
 
     it("puts search in the drawer when the side bar is folded away", () => {
+      // On a page that has asked for search: the drawer carries it once
+      // the ribbon has no room, at tablet width as well as phone width.
       mockWidth.value = 800;
       mockLocation.pathname = "/messages";
       renderWithMantine(
-        <MainLayout patient={null}>
-          <div>Content</div>
-        </MainLayout>,
+        <SearchContext.Provider
+          value={{
+            query: "",
+            setQuery: vi.fn(),
+            showSearch: true,
+            setShowSearch: vi.fn(),
+          }}
+        >
+          <MainLayout patient={null}>
+            <div>Content</div>
+          </MainLayout>
+        </SearchContext.Provider>,
       );
 
       expect(screen.getByTestId("side-nav")).toHaveAttribute(
@@ -489,22 +501,11 @@ describe("MainLayout", () => {
       expect(hasDesktopNav).toBe(true);
     });
 
-    it("shows mobile nav search on ordinary pages", () => {
-      mockIsSm.value = true;
-      mockLocation.pathname = "/messages";
-      renderWithMantine(
-        <MainLayout patient={null}>
-          <div>Content</div>
-        </MainLayout>,
-      );
-
-      const sideNav = screen.getByTestId("side-nav");
-      expect(sideNav).toHaveAttribute("data-show-search", "true");
-    });
-
-    it.each(["/settings", "/settings/account", "/admin", "/admin/users"])(
-      "hides mobile nav search on %s (not yet wired up)",
+    it.each(["/passport", "/messages", "/settings", "/admin/users"])(
+      "shows no drawer search on %s, where no page has asked for it",
       (pathname) => {
+        // It was shown on every page but settings and admin, including the
+        // passport, where it searched nothing.
         mockIsSm.value = true;
         mockLocation.pathname = pathname;
         renderWithMantine(
@@ -517,6 +518,28 @@ describe("MainLayout", () => {
         expect(sideNav).toHaveAttribute("data-show-search", "false");
       },
     );
+
+    it("shows the drawer search on a narrow screen when the page asks for it", () => {
+      mockIsSm.value = true;
+      mockLocation.pathname = "/admin/users";
+      renderWithMantine(
+        <SearchContext.Provider
+          value={{
+            query: "",
+            setQuery: vi.fn(),
+            showSearch: true,
+            setShowSearch: vi.fn(),
+          }}
+        >
+          <MainLayout patient={null}>
+            <div>Content</div>
+          </MainLayout>
+        </SearchContext.Provider>,
+      );
+
+      const sideNav = screen.getByTestId("side-nav");
+      expect(sideNav).toHaveAttribute("data-show-search", "true");
+    });
   });
 
   describe("Content rendering", () => {

@@ -7,12 +7,22 @@
  * - Patient navigation hierarchy
  */
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { SearchProvider } from "@lib/search";
 import SideNav from "./SideNav";
 import { demoPatientsList } from "@/demo-data/patients/demoPatients";
 
 const meta = {
   title: "Navigation/Side nav",
   component: SideNav,
+  // The search field is bound to the shared search query, so it needs
+  // the provider the app wraps every page in to be typed into.
+  decorators: [
+    (Story) => (
+      <SearchProvider>
+        <Story />
+      </SearchProvider>
+    ),
+  ],
 } satisfies Meta<typeof SideNav>;
 export default meta;
 

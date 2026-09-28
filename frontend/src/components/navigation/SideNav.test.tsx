@@ -3,6 +3,8 @@ import { screen, waitFor } from "@testing-library/react";
 import { renderWithRouter, remToPx } from "@test/test-utils";
 import userEvent from "@testing-library/user-event";
 import SideNav from "./SideNav";
+import { SearchProvider } from "@lib/search";
+import { SearchContext } from "@lib/search/searchContext";
 
 // Mock useAuth to return authenticated state so SideNavContent renders
 vi.mock("@/auth/AuthContext", () => ({
@@ -45,6 +47,28 @@ describe("SideNav Component", () => {
       expect(screen.getByPlaceholderText(/search/i)).toBeInTheDocument();
     });
 
+    it("types into the shared search query", async () => {
+      // So searching from the drawer on a narrow screen filters the page,
+      // rather than being a box that searched nothing.
+      const setQuery = vi.fn();
+      renderNav(
+        <SearchContext.Provider
+          value={{
+            query: "",
+            setQuery,
+            showSearch: true,
+            setShowSearch: vi.fn(),
+          }}
+        >
+          <SideNav showSearch={true} />
+        </SearchContext.Provider>,
+      );
+
+      await userEvent.type(screen.getByLabelText("Search"), "a");
+
+      expect(setQuery).toHaveBeenCalledWith("a");
+    });
+
     it("renders search with correct aria-label", () => {
       renderNav(<SideNav showSearch={true} />);
       const searchInput = screen.getByLabelText(/search/i);
@@ -74,7 +98,11 @@ describe("SideNav Component", () => {
 
     it("allows typing in search input", async () => {
       const user = userEvent.setup();
-      renderNav(<SideNav showSearch={true} />);
+      renderNav(
+        <SearchProvider>
+          <SideNav showSearch={true} />
+        </SearchProvider>,
+      );
       const input = screen.getByPlaceholderText(/search/i);
 
       await user.type(input, "test query");
