@@ -3,11 +3,13 @@
  *
  * Mobile slide-out navigation drawer with overlay backdrop. Displays
  * navigation content in a panel that slides in from the left side.
- * Includes focus trap for accessibility.
+ * Includes focus trap for accessibility. Nav links inside it are drawn
+ * at least 48px tall, for touch.
  */
 
 // src/components/navigation/InlineDrawer.tsx
 import { FocusTrap, Overlay, Paper } from "@mantine/core";
+import classes from "./NavigationDrawer.module.css";
 
 /**
  * NavigationDrawer Props
@@ -74,6 +76,7 @@ export default function NavigationDrawer({
           role="dialog"
           aria-modal={opened ? "true" : undefined}
           aria-label="Navigation"
+          className={classes.panel}
           inert={!opened}
           shadow="md"
           p="xs"
