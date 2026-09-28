@@ -34,7 +34,11 @@ import { BodyTextInline, Heading } from "@/components/typography";
 import Icon from "@/components/icons/Icon";
 import { IconFileText } from "@/components/icons/appIcons";
 import ButtonPair from "@/components/button/ButtonPair";
-import type { AttachmentInput, CertificateInput } from "@lib/passport";
+import type {
+  AttachmentInput,
+  Certificate,
+  CertificateInput,
+} from "@lib/passport";
 
 export interface CertificateFormProps {
   /** Called with the completed certificate */
@@ -45,6 +49,11 @@ export interface CertificateFormProps {
   attachment?: AttachmentInput | null;
   /** Disables submission while a request is in flight */
   isSubmitting?: boolean;
+  /**
+   * A certificate already recorded, to correct. The form starts filled
+   * in from it and says it is editing rather than recording.
+   */
+  initial?: Certificate;
 }
 
 export default function CertificateForm({
@@ -52,12 +61,17 @@ export default function CertificateForm({
   onCancel,
   attachment = null,
   isSubmitting = false,
+  initial,
 }: CertificateFormProps) {
-  const [title, setTitle] = useState("");
-  const [issuer, setIssuer] = useState("");
-  const [awardedOn, setAwardedOn] = useState<string | null>(null);
-  const [expiresOn, setExpiresOn] = useState<string | null>(null);
-  const [description, setDescription] = useState("");
+  const [title, setTitle] = useState(initial?.title ?? "");
+  const [issuer, setIssuer] = useState(initial?.issuer ?? "");
+  const [awardedOn, setAwardedOn] = useState<string | null>(
+    initial?.awarded_on ?? null,
+  );
+  const [expiresOn, setExpiresOn] = useState<string | null>(
+    initial?.expires_on ?? null,
+  );
+  const [description, setDescription] = useState(initial?.description ?? "");
 
   // What it was, who gave it and when: the three things that make a
   // certificate mean anything to somebody reading it later. Expiry and
@@ -85,7 +99,9 @@ export default function CertificateForm({
   return (
     <BaseCard data-testid="certificate-form">
       <Stack gap="md">
-        <Heading>Record a certificate</Heading>
+        <Heading>
+          {initial ? "Edit this certificate" : "Record a certificate"}
+        </Heading>
 
         <TextField
           label="What is it?"
@@ -135,7 +151,7 @@ export default function CertificateForm({
         )}
 
         <ButtonPair
-          acceptLabel="Record certificate"
+          acceptLabel={initial ? "Save changes" : "Record certificate"}
           acceptDisabled={!canSubmit}
           acceptLoading={isSubmitting}
           onAccept={handleSubmit}

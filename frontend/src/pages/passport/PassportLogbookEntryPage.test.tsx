@@ -99,6 +99,17 @@ describe("PassportLogbookEntryPage", () => {
     );
   });
 
+  it("names the section, then the competency, in the title", async () => {
+    fetchLogbook.mockResolvedValue(
+      logbook(entry("20260314T1432", "First pass")),
+    );
+    renderWithRouter(<PassportLogbookEntryPage />);
+
+    expect(
+      await screen.findByRole("heading", { level: 1, name: /^Logbook: / }),
+    ).toBeInTheDocument();
+  });
+
   it("says plainly when the entry is not there", async () => {
     fetchLogbook.mockResolvedValue(logbook(entry("something-else", "x")));
     renderWithRouter(<PassportLogbookEntryPage />);

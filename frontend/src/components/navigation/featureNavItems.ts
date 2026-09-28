@@ -34,17 +34,22 @@ import type { NavItem } from "./NestedNavLink";
  * than some page titles: "CPD" rather than "Continuing professional
  * development".
  *
- * A page with a `detail` label also has pages of one record beneath it,
- * a single CPD activity or logbook entry. On one of those the section's
- * link gains a child of its own, so the navigation reads Passport, CPD,
- * Activity rather than stopping at CPD.
+ * A page with a `detail` label also has pages of one record beneath it:
+ * a single sign-off, logbook entry, CPD activity, certificate or
+ * reflection. On one of those the section's link gains a child of its
+ * own, so the navigation reads Passport, CPD, Activity rather than
+ * stopping at CPD.
  */
 const PASSPORT_PAGES: readonly (NavItem & { detail?: string })[] = [
-  { label: "Sign-offs", href: "/passport/sign-offs" },
+  { label: "Sign-offs", href: "/passport/sign-offs", detail: "Sign-off" },
   { label: "Logbook", href: "/passport/logbook", detail: "Entry" },
   { label: "CPD", href: "/passport/cpd", detail: "Activity" },
-  { label: "Certificates", href: "/passport/certificates" },
-  { label: "Reflections", href: "/passport/reflections" },
+  {
+    label: "Certificates",
+    href: "/passport/certificates",
+    detail: "Certificate",
+  },
+  { label: "Reflections", href: "/passport/reflections", detail: "Reflection" },
   { label: "Download", href: "/passport/download" },
   { label: "Inbox", href: "/passport/inbox" },
 ];

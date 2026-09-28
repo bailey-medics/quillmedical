@@ -19,14 +19,12 @@ import { useCallback, useEffect, useState } from "react";
 import { Group, Stack } from "@mantine/core";
 import { useParams } from "react-router-dom";
 import PageHeader from "@/components/page-header";
-import BaseCard from "@/components/base-card/BaseCard";
 import IconTextButton from "@/components/button/IconTextButton";
 import ErrorState from "@/components/error-state/ErrorState";
 import StateMessage from "@/components/message-cards/StateMessage";
-import FormattedDate from "@/components/data/Date";
 import LogbookEntryForm from "@/components/passport/LogbookEntryForm";
+import PassportRecordCard from "@/components/passport/PassportRecordCard";
 import { IconFileText } from "@/components/icons/appIcons";
-import { BodyText, BodyTextBold, Heading } from "@/components/typography";
 import competenciesData from "@/generated/competencies.json";
 import {
   amendLogbookEntry,
@@ -66,17 +64,6 @@ function competencyForForm(competencyId: string): CompetencyState {
     logbook_entries: 0,
     certificates: [],
   };
-}
-
-/** One labelled fact, shown only where the holder recorded it. */
-function Detail({ label, value }: { label: string; value: string | null }) {
-  if (!value) return null;
-  return (
-    <Stack gap={2}>
-      <BodyTextBold>{label}</BodyTextBold>
-      <BodyText>{value}</BodyText>
-    </Stack>
-  );
 }
 
 export function Component() {
@@ -145,12 +132,26 @@ export function Component() {
     }
   }
 
-  const title = competencyId ? competencyName(competencyId) : "Logbook entry";
+  // "Logbook:" first, as every record page names its section, then the
+  // competency: a logbook entry has no title of its own, and the date
+  // heads the card beneath.
+  const title = `Logbook: ${competencyId ? competencyName(competencyId) : "entry"}`;
+
+  // Only a failed load replaces the page. A failed save keeps the entry
+  // on screen, with the message above it.
+  if (error && !entry) {
+    return (
+      <Stack gap="lg">
+        <PageHeader title={title} />
+        <ErrorState message={error} />
+      </Stack>
+    );
+  }
 
   if (missing) {
     return (
       <Stack gap="lg">
-        <PageHeader title="Logbook entry" />
+        <PageHeader title={title} />
         <StateMessage
           colour="update"
           icon={<IconFileText />}
@@ -190,28 +191,25 @@ export function Component() {
             />
           </Group>
 
-          <BaseCard>
-            <Stack gap="md">
-              <Heading>
-                <FormattedDate date={entry.performed_on} format="medium" />
-              </Heading>
-              <Detail label="Setting" value={entry.setting} />
-              <Detail
-                label="Supervision"
-                value={
+          <PassportRecordCard
+            date={entry.performed_on}
+            facts={[
+              { label: "Setting", value: entry.setting },
+              {
+                label: "Supervision",
+                value:
                   entry.supervision === "supervised"
                     ? "Supervised"
                     : entry.supervision === "independent"
                       ? "Independent"
-                      : null
-                }
-              />
-              <Detail label="Supervisor" value={entry.supervisor} />
-              <Detail label="Indication" value={entry.indication} />
-              <Detail label="Outcome" value={entry.outcome} />
-              <Detail label="Notes" value={entry.notes} />
-            </Stack>
-          </BaseCard>
+                      : null,
+              },
+              { label: "Supervisor", value: entry.supervisor },
+              { label: "Indication", value: entry.indication },
+              { label: "Outcome", value: entry.outcome },
+              { label: "Notes", value: entry.notes, prose: true },
+            ]}
+          />
         </>
       )}
     </Stack>

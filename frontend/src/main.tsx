@@ -250,6 +250,11 @@ const routes: RouteObject[] = [
             handle: { safeForReload: true },
           },
           {
+            path: "/passport/sign-offs/:name",
+            lazy: () => import("./pages/passport/PassportSignOffDetailPage"),
+            handle: { safeForReload: true },
+          },
+          {
             path: "/passport/download",
             lazy: () => import("./pages/passport/PassportDownloadPage"),
             handle: { safeForReload: true },
@@ -280,8 +285,18 @@ const routes: RouteObject[] = [
             handle: { safeForReload: true },
           },
           {
+            path: "/passport/reflections/:name",
+            lazy: () => import("./pages/passport/PassportReflectionPage"),
+            handle: { safeForReload: true },
+          },
+          {
             path: "/passport/certificates",
             lazy: () => import("./pages/passport/PassportCertificatesPage"),
+            handle: { safeForReload: true },
+          },
+          {
+            path: "/passport/certificates/:name",
+            lazy: () => import("./pages/passport/PassportCertificatePage"),
             handle: { safeForReload: true },
           },
           {

@@ -99,6 +99,7 @@ describe("passport paths", () => {
       "/api/passport/{passport_id}/export.pdf",
       "/api/passport/{passport_id}/export.zip",
       "/api/passport/{passport_id}/reflections/{name}",
+      "/api/passport/{passport_id}/sign-offs",
       "/api/passport/{passport_id}/sign-offs/{signoff_id}",
       "/api/passport/{passport_id}/sign-offs/{signoff_id}/decline",
       "/api/passport/{passport_id}/sign-offs/{signoff_id}/sign-off",

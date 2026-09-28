@@ -121,13 +121,6 @@ export function Component() {
 
       {error && <ErrorState message={error} />}
 
-      <SelectField
-        label="Year"
-        data={recentYears()}
-        value={year}
-        onChange={(value) => value && setYear(value)}
-      />
-
       {adding ? (
         <CpdEntryForm
           onSubmit={handleSubmit}
@@ -143,6 +136,15 @@ export function Component() {
           />
         </Group>
       )}
+
+      {/* Below the add button, as every passport section has its
+          filter: adding comes first on each of them. */}
+      <SelectField
+        label="Year"
+        data={recentYears()}
+        value={year}
+        onChange={(value) => value && setYear(value)}
+      />
 
       {/* Clicking an activity opens it in full. The year is in the
           URL alongside the filename, so the link can be followed cold

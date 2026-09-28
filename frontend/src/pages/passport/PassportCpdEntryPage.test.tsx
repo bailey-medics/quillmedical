@@ -75,6 +75,20 @@ describe("PassportCpdEntryPage", () => {
     expect(screen.queryByText("Journal club")).not.toBeInTheDocument();
   });
 
+  it("names the section, then the activity, in the title", async () => {
+    fetchCpdYear.mockResolvedValue([
+      entry("als-course", "Advanced life support"),
+    ]);
+    renderWithRouter(<PassportCpdEntryPage />);
+
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "CPD: Advanced life support",
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("says plainly when the activity is not there", async () => {
     // A link to something removed, or a mistyped one. Distinct from a
     // failed load: only one of the two is worth retrying.

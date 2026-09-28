@@ -25,14 +25,12 @@ import { useCallback, useEffect, useState } from "react";
 import { Group, Stack } from "@mantine/core";
 import { useParams } from "react-router-dom";
 import PageHeader from "@/components/page-header";
-import BaseCard from "@/components/base-card/BaseCard";
 import IconTextButton from "@/components/button/IconTextButton";
 import CpdEntryForm from "@/components/passport/CpdEntryForm";
+import PassportRecordCard from "@/components/passport/PassportRecordCard";
 import ErrorState from "@/components/error-state/ErrorState";
 import StateMessage from "@/components/message-cards/StateMessage";
-import FormattedDate from "@/components/data/Date";
 import { IconFileText } from "@/components/icons/appIcons";
-import { BodyText, BodyTextBold, Heading } from "@/components/typography";
 import { amendCpdEntry, fetchCpdYear, fetchMyPassport } from "@lib/passport";
 import type { CpdEntry, CpdEntryInput } from "@lib/passport";
 
@@ -105,7 +103,7 @@ export function Component() {
   if (error && !entry) {
     return (
       <Stack gap="lg">
-        <PageHeader title="Activity" />
+        <PageHeader title="CPD: activity" />
         <ErrorState message={error} />
       </Stack>
     );
@@ -117,7 +115,7 @@ export function Component() {
   if (missing) {
     return (
       <Stack gap="lg">
-        <PageHeader title="Activity" />
+        <PageHeader title="CPD: activity" />
         <StateMessage
           colour="update"
           icon={<IconFileText />}
@@ -130,7 +128,8 @@ export function Component() {
 
   return (
     <Stack gap="lg">
-      <PageHeader title={entry?.title ?? "Activity"} />
+      {/* "CPD:" first, as every record page names its section. */}
+      <PageHeader title={`CPD: ${entry?.title ?? "activity"}`} />
 
       {error && <ErrorState message={error} />}
 
@@ -157,35 +156,26 @@ export function Component() {
       )}
 
       {entry && !editing && (
-        <BaseCard>
-          <Stack gap="xs">
-            <Heading>{entry.title}</Heading>
-
-            <BodyTextBold>
-              <FormattedDate date={entry.activity_on} format="medium" />
-            </BodyTextBold>
-
-            <BodyText>{entry.activity_type}</BodyText>
-
-            {/* Only where there are points. An activity without them is
-                an ordinary one, not an incomplete record, so a line
-                reading "no points" would be inventing a shortfall. */}
-            {entry.points !== null && (
-              <BodyText>
-                {entry.points} {entry.points === 1 ? "point" : "points"}
-              </BodyText>
-            )}
-
-            {entry.competencies.length > 0 && (
-              <BodyText>
-                Counts towards{" "}
-                {entry.competencies.map((c) => c.name).join(", ")}
-              </BodyText>
-            )}
-
-            {entry.notes && <BodyText>{entry.notes}</BodyText>}
-          </Stack>
-        </BaseCard>
+        <PassportRecordCard
+          date={entry.activity_on}
+          facts={[
+            { label: "Type", value: entry.activity_type },
+            // Only where there are points. An activity without them is
+            // an ordinary one, not an incomplete record.
+            {
+              label: "Points",
+              value: entry.points === null ? null : String(entry.points),
+            },
+            {
+              label: "Counts towards",
+              value:
+                entry.competencies.length > 0
+                  ? entry.competencies.map((c) => c.name).join(", ")
+                  : null,
+            },
+            { label: "Notes", value: entry.notes, prose: true },
+          ]}
+        />
       )}
     </Stack>
   );

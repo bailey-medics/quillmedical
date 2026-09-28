@@ -25,6 +25,16 @@ vi.mock("@lib/passport", () => ({
   uploadEvidence: (...args: unknown[]) => uploadEvidence(...args),
 }));
 
+const navigate = vi.fn();
+
+vi.mock("react-router-dom", async () => {
+  const actual =
+    await vi.importActual<typeof import("react-router-dom")>(
+      "react-router-dom",
+    );
+  return { ...actual, useNavigate: () => navigate };
+});
+
 const detail = {
   passport: {
     passport_id: "3f2a8c1e",
@@ -64,6 +74,18 @@ describe("PassportCertificatesPage", () => {
       await screen.findByText("Advanced life support"),
     ).toBeInTheDocument();
     expect(screen.getByText("Resuscitation Council UK")).toBeInTheDocument();
+  });
+
+  it("opens a certificate on its own page", async () => {
+    const user = userEvent.setup();
+    fetchCertificates.mockResolvedValue([certificate]);
+    renderWithRouter(<PassportCertificatesPage />);
+
+    await user.click(await screen.findByText("Advanced life support"));
+
+    expect(navigate).toHaveBeenCalledWith(
+      `/passport/certificates/${certificate.name}`,
+    );
   });
 
   it("says nothing is here only once the list has arrived", async () => {

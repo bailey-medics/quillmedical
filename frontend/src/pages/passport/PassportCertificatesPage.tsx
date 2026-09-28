@@ -17,15 +17,14 @@
 
 import { useEffect, useState } from "react";
 import { Group, Stack } from "@mantine/core";
+import { useNavigate } from "react-router-dom";
 import PageHeader from "@/components/page-header";
-import BaseCard from "@/components/base-card/BaseCard";
+import CertificateTable from "@/components/passport/CertificateTable";
 import CertificateForm from "@/components/passport/CertificateForm";
 import CertificateUploader from "@/components/passport/CertificateUploader";
 import ErrorState from "@/components/error-state/ErrorState";
 import StateMessage from "@/components/message-cards/StateMessage";
-import FormattedDate from "@/components/data/Date";
 import { IconFileText } from "@/components/icons/appIcons";
-import { BodyText, BodyTextBold, Heading } from "@/components/typography";
 import AddButton from "@/components/button/AddButton";
 import {
   addCertificate,
@@ -39,6 +38,7 @@ import type {
 } from "@lib/passport";
 
 export function Component() {
+  const navigate = useNavigate();
   const [passportId, setPassportId] = useState<string | null>(null);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [recording, setRecording] = useState(false);
@@ -145,21 +145,18 @@ export function Component() {
         />
       )}
 
-      {certificates.length > 0 &&
-        certificates.map((certificate) => (
-          <BaseCard key={certificate.name}>
-            <Stack gap="xs">
-              <Heading>{certificate.title}</Heading>
-              <BodyTextBold>{certificate.issuer}</BodyTextBold>
-              <BodyText>
-                <FormattedDate date={certificate.awarded_on} format="medium" />
-              </BodyText>
-              {certificate.description && (
-                <BodyText>{certificate.description}</BodyText>
-              )}
-            </Stack>
-          </BaseCard>
-        ))}
+      {/* Each certificate opens on a page of its own, to read in full
+          and correct. */}
+      {certificates.length > 0 && (
+        <CertificateTable
+          certificates={certificates}
+          onSelect={(certificate) =>
+            navigate(
+              `/passport/certificates/${encodeURIComponent(certificate.name)}`,
+            )
+          }
+        />
+      )}
     </Stack>
   );
 }

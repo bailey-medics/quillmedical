@@ -11,14 +11,13 @@
 
 import { useEffect, useState } from "react";
 import { Group, Stack } from "@mantine/core";
+import { useNavigate } from "react-router-dom";
 import PageHeader from "@/components/page-header";
-import BaseCard from "@/components/base-card/BaseCard";
+import ReflectionTable from "@/components/passport/ReflectionTable";
 import ReflectionEditor from "@/components/passport/ReflectionEditor";
 import ErrorState from "@/components/error-state/ErrorState";
 import StateMessage from "@/components/message-cards/StateMessage";
-import FormattedDate from "@/components/data/Date";
 import { IconFileText } from "@/components/icons/appIcons";
-import { BodyText, BodyTextBold, Heading } from "@/components/typography";
 import AddButton from "@/components/button/AddButton";
 import {
   addReflection,
@@ -28,6 +27,7 @@ import {
 import type { Reflection, ReflectionInput } from "@lib/passport";
 
 export function Component() {
+  const navigate = useNavigate();
   const [passportId, setPassportId] = useState<string | null>(null);
   const [reflections, setReflections] = useState<Reflection[]>([]);
   const [writing, setWriting] = useState(false);
@@ -119,18 +119,18 @@ export function Component() {
         />
       )}
 
-      {reflections.length > 0 &&
-        reflections.map((reflection) => (
-          <BaseCard key={reflection.name}>
-            <Stack gap="xs">
-              <Heading>{reflection.title}</Heading>
-              <BodyTextBold>
-                <FormattedDate date={reflection.written_on} format="medium" />
-              </BodyTextBold>
-              <BodyText>{reflection.body}</BodyText>
-            </Stack>
-          </BaseCard>
-        ))}
+      {/* Each reflection opens on a page of its own, to read in full
+          and rewrite. The table shows titles and dates only. */}
+      {reflections.length > 0 && (
+        <ReflectionTable
+          reflections={reflections}
+          onSelect={(reflection) =>
+            navigate(
+              `/passport/reflections/${encodeURIComponent(reflection.name)}`,
+            )
+          }
+        />
+      )}
     </Stack>
   );
 }

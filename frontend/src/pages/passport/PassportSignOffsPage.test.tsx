@@ -1,10 +1,11 @@
 /**
  * Passport Sign-offs Page Tests
  *
- * The page groups what the passport already knows, so what is worth
- * testing is the grouping: that a competency lands under the right
- * heading, that empty groups stay out of the way, and that a passport
- * with nothing in it explains itself rather than showing three blanks.
+ * The page lists every sign-off, one row each, grouped by status. What
+ * is worth testing is the grouping: that a sign-off lands under the
+ * right heading, that one competency asked about twice is two rows, that
+ * empty groups stay out of the way, and that a passport with nothing in
+ * it explains itself rather than showing blanks.
  */
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
@@ -12,17 +13,29 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import { Component as PassportSignOffsPage } from "./PassportSignOffsPage";
-import type { CompetencyState, SignOffStatus } from "@lib/passport";
+import { requested as requestedFixture } from "@/components/passport/fixtures";
+import type { CompetencyState, SignOff, SignOffStatus } from "@lib/passport";
 
 const fetchMyPassport = vi.fn();
+const fetchSignOffs = vi.fn();
+const navigate = vi.fn();
 const requestSignOff = vi.fn();
 const searchAssessors = vi.fn();
 
 vi.mock("@lib/passport", () => ({
   fetchMyPassport: (...args: unknown[]) => fetchMyPassport(...args),
+  fetchSignOffs: (...args: unknown[]) => fetchSignOffs(...args),
   requestSignOff: (...args: unknown[]) => requestSignOff(...args),
   searchAssessors: (...args: unknown[]) => searchAssessors(...args),
 }));
+
+vi.mock("react-router-dom", async () => {
+  const actual =
+    await vi.importActual<typeof import("react-router-dom")>(
+      "react-router-dom",
+    );
+  return { ...actual, useNavigate: () => navigate };
+});
 
 // The page asks for users directly to fill the assessor list, since
 // there is no passport endpoint that lists them.
@@ -62,6 +75,20 @@ function competency(
   };
 }
 
+/** One sign-off, named for its competency so rows can be found by it. */
+function signOff(
+  name: string,
+  competencyName: string,
+  status: SignOffStatus,
+): SignOff {
+  return {
+    ...requestedFixture,
+    name,
+    competency: { id: name, name: competencyName },
+    status,
+  };
+}
+
 function detailWith(
   competencies: CompetencyState[],
   entitlement?: { can_write?: boolean },
@@ -87,6 +114,7 @@ describe("PassportSignOffsPage", () => {
     // Nobody on Quill by default, which is the ordinary case: the
     // request form then accepts the address as typed.
     searchAssessors.mockResolvedValue({ matches: [] });
+    fetchSignOffs.mockResolvedValue([]);
   });
 
   it("says nothing is here only once the passport has arrived", async () => {
@@ -120,6 +148,9 @@ describe("PassportSignOffsPage", () => {
         can_write: false,
       }),
     );
+    fetchSignOffs.mockResolvedValue([
+      signOff("a", "Perform bronchoscopy", "requested"),
+    ]);
     renderWithRouter(<PassportSignOffsPage />);
 
     await screen.findByText("Perform bronchoscopy");
@@ -135,6 +166,9 @@ describe("PassportSignOffsPage", () => {
         can_write: true,
       }),
     );
+    fetchSignOffs.mockResolvedValue([
+      signOff("a", "Perform bronchoscopy", "requested"),
+    ]);
     renderWithRouter(<PassportSignOffsPage />);
 
     await screen.findByText("Perform bronchoscopy");
@@ -144,46 +178,52 @@ describe("PassportSignOffsPage", () => {
     ).not.toHaveAttribute("aria-disabled");
   });
 
-  it("puts each competency under the heading for its status", async () => {
-    fetchMyPassport.mockResolvedValue(
-      detailWith([
-        competency("a", "Perform bronchoscopy", "signed_off"),
-        competency("b", "Insert a chest drain", "requested"),
-        competency("c", "Prescribe chemotherapy", "declined"),
-      ]),
-    );
+  it("puts each sign-off under the heading for its status", async () => {
+    fetchMyPassport.mockResolvedValue(detailWith([]));
+    fetchSignOffs.mockResolvedValue([
+      signOff("a", "Perform bronchoscopy", "signed_off"),
+      signOff("b", "Insert a chest drain", "requested"),
+      signOff("c", "Prescribe chemotherapy", "declined"),
+      signOff("d", "Assess toxicity", "superseded"),
+    ]);
     renderWithRouter(<PassportSignOffsPage />);
 
-    // Wait on a competency name, not a heading. Every heading is drawn
-    // during the loading render too, so waiting on one can return while
-    // the page is still skeletons. A name only ever appears once the
-    // passport has arrived.
     expect(await screen.findByText("Perform bronchoscopy")).toBeInTheDocument();
 
-    expect(
-      screen.getByRole("heading", { name: "Awaiting sign-off" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: "Signed off" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: "Declined" }),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Insert a chest drain")).toBeInTheDocument();
+    for (const [heading, name] of [
+      ["Awaiting sign-off", "Insert a chest drain"],
+      ["Signed off", "Perform bronchoscopy"],
+      ["Declined", "Prescribe chemotherapy"],
+      ["Replaced by a correction", "Assess toxicity"],
+    ]) {
+      const card = screen
+        .getByRole("heading", { name: heading })
+        .closest("[data-testid='sign-off-list']");
+      expect(card).not.toBeNull();
+      expect(within(card as HTMLElement).getByText(name)).toBeInTheDocument();
+    }
+  });
+
+  it("lists one competency twice when it was asked about twice", async () => {
+    // The page used to list competencies, carrying only the latest
+    // sign-off each, so the declined request here was never shown.
+    fetchMyPassport.mockResolvedValue(detailWith([]));
+    fetchSignOffs.mockResolvedValue([
+      signOff("second", "Perform bronchoscopy", "signed_off"),
+      signOff("first", "Perform bronchoscopy", "declined"),
+    ]);
+    renderWithRouter(<PassportSignOffsPage />);
+
+    expect(await screen.findAllByText("Perform bronchoscopy")).toHaveLength(2);
   });
 
   it("leaves out a group with nothing in it", async () => {
-    // Three headings above three empty cards would say nothing while
-    // taking up the whole page.
-    fetchMyPassport.mockResolvedValue(
-      detailWith([competency("a", "Perform bronchoscopy", "signed_off")]),
-    );
+    fetchMyPassport.mockResolvedValue(detailWith([]));
+    fetchSignOffs.mockResolvedValue([
+      signOff("a", "Perform bronchoscopy", "signed_off"),
+    ]);
     renderWithRouter(<PassportSignOffsPage />);
 
-    // The loading render draws all three headings, so waiting on
-    // "Signed off" can return before the passport has arrived and leave
-    // the other two still on the page. A competency name only shows once
-    // it has.
     await screen.findByText("Perform bronchoscopy");
 
     expect(
@@ -194,17 +234,39 @@ describe("PassportSignOffsPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("hides a superseded sign-off", async () => {
-    // It has been replaced by a newer one, so listing it would show the
-    // same competency twice and invite reading the stale half.
+  it("does not list a competency that has only logbook entries", async () => {
+    // The passport reports such a competency as "requested", the nearest
+    // of its statuses to "evidence and no assessment". Listed here, it
+    // sat under "Awaiting sign-off" when nobody had been asked.
     fetchMyPassport.mockResolvedValue(
-      detailWith([competency("a", "Perform bronchoscopy", "superseded")]),
+      detailWith([
+        {
+          ...competency("a", "Assess toxicity", "requested"),
+          logbook_entries: 1,
+        },
+      ]),
     );
     renderWithRouter(<PassportSignOffsPage />);
 
-    await screen.findByText(/No sign-offs yet/);
+    expect(await screen.findByText(/No sign-offs yet/)).toBeInTheDocument();
+    expect(screen.queryByText("Assess toxicity")).not.toBeInTheDocument();
+  });
 
-    expect(screen.queryByText("Perform bronchoscopy")).not.toBeInTheDocument();
+  it("opens a sign-off on its own page", async () => {
+    const user = userEvent.setup();
+    fetchMyPassport.mockResolvedValue(detailWith([]));
+    fetchSignOffs.mockResolvedValue([
+      signOff("2026-03-14-bronchoscopy", "Perform bronchoscopy", "signed_off"),
+    ]);
+    renderWithRouter(<PassportSignOffsPage />);
+
+    await user.click(
+      await screen.findByRole("button", { name: "Perform bronchoscopy" }),
+    );
+
+    expect(navigate).toHaveBeenCalledWith(
+      "/passport/sign-offs/2026-03-14-bronchoscopy",
+    );
   });
 
   it("says how a sign-off comes about when there is nothing yet", async () => {
@@ -263,25 +325,6 @@ describe("PassportSignOffsPage", () => {
     const listbox = await screen.findByRole("listbox");
     expect(within(listbox).getByText("Oncology")).toBeInTheDocument();
     expect(within(listbox).getByText("Others")).toBeInTheDocument();
-  });
-
-  it("does not count logbook entries beside a sign-off", async () => {
-    // A logbook entry is evidence towards a competency, not something
-    // an assessor signs. Counting them here read as though they were
-    // part of the sign-off.
-    fetchMyPassport.mockResolvedValue(
-      detailWith([
-        {
-          ...competency("a", "Assess toxicity", "requested"),
-          logbook_entries: 1,
-        },
-      ]),
-    );
-    renderWithRouter(<PassportSignOffsPage />);
-
-    await screen.findByText("Assess toxicity");
-
-    expect(screen.queryByText(/logbook/)).not.toBeInTheDocument();
   });
 
   it("refuses the holder's own address before anything is sent", async () => {
