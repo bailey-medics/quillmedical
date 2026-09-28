@@ -8,7 +8,7 @@
  */
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import { Component as PassportCertificatesPage } from "./PassportCertificatesPage";
@@ -64,6 +64,16 @@ describe("PassportCertificatesPage", () => {
       await screen.findByText("Advanced life support"),
     ).toBeInTheDocument();
     expect(screen.getByText("Resuscitation Council UK")).toBeInTheDocument();
+  });
+
+  it("says nothing is here only once the list has arrived", async () => {
+    // The page starts with an empty list, so it used to flash its empty
+    // message over a full record while the fetch was still out.
+    fetchCertificates.mockReturnValue(new Promise(() => {}));
+    renderWithRouter(<PassportCertificatesPage />);
+
+    await waitFor(() => expect(fetchCertificates).toHaveBeenCalled());
+    expect(screen.queryByText("Nothing recorded yet")).not.toBeInTheDocument();
   });
 
   it("puts the add button above the message on an empty page", async () => {

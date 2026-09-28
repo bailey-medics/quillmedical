@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import { Component as PassportReflectionsPage } from "./PassportReflectionsPage";
@@ -54,6 +54,16 @@ describe("PassportReflectionsPage", () => {
     renderWithRouter(<PassportReflectionsPage />);
 
     expect(await screen.findByText("Difficult airway")).toBeInTheDocument();
+  });
+
+  it("says nothing is here only once the list has arrived", async () => {
+    // The page starts with an empty list, so it used to flash its empty
+    // message over a full record while the fetch was still out.
+    fetchReflections.mockReturnValue(new Promise(() => {}));
+    renderWithRouter(<PassportReflectionsPage />);
+
+    await waitFor(() => expect(fetchReflections).toHaveBeenCalled());
+    expect(screen.queryByText("Nothing written yet")).not.toBeInTheDocument();
   });
 
   it("puts the add button above the message on an empty page", async () => {

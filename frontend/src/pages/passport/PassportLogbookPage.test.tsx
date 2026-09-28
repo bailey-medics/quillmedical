@@ -124,6 +124,16 @@ describe("PassportLogbookPage", () => {
     );
   });
 
+  it("says nothing is here only once the list has arrived", async () => {
+    // The page starts with an empty list, so it used to flash its empty
+    // message over a full logbook while the fetch was still out.
+    fetchWholeLogbook.mockReturnValue(new Promise(() => {}));
+    renderWithRouter(<PassportLogbookPage />);
+
+    await waitFor(() => expect(fetchWholeLogbook).toHaveBeenCalled());
+    expect(screen.queryByText("Nothing logged yet")).not.toBeInTheDocument();
+  });
+
   it("puts the add button above the message on an empty logbook", async () => {
     renderWithRouter(<PassportLogbookPage />);
 

@@ -106,6 +106,10 @@ export function Component() {
   const [passportId, setPassportId] = useState<string | null>(null);
   // The passport could not be loaded, so there is no page to show.
   const [error, setError] = useState<string | null>(null);
+  // Set once the passport has arrived. Until then the page cannot tell an
+  // empty passport from one still loading, and saying "nothing yet"
+  // before the answer flashed the empty message over a full passport.
+  const [loaded, setLoaded] = useState(false);
   // One ask was refused. Everything else on the page is fine, and the
   // holder needs the form they filled in to still be there.
   const [refusal, setRefusal] = useState<string | null>(null);
@@ -126,6 +130,7 @@ export function Component() {
       .then((detail) => {
         if (cancelled) return;
         setCompetencies(detail.competencies);
+        setLoaded(true);
         setPassportId(detail.passport.passport_id);
         setSpecialties(
           (detail.passport.specialties ?? []).map((specialty) => specialty.id),
@@ -249,9 +254,9 @@ export function Component() {
       {/* Below the add button, as on every passport page, and before
           the groups, so a holder with nothing yet is told how a
           sign-off comes about rather than reading three empty lists.
-          Not held back until the fetch returns: the words are the same
-          either way, so waiting only made the panel appear late. */}
-      {!hasAny && (
+          Held back until the fetch returns: shown any earlier, it
+          flashed over a passport that did have sign-offs. */}
+      {loaded && !hasAny && (
         <StateMessage
           colour="update"
           icon={<IconFileText />}
