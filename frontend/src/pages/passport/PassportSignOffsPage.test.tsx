@@ -8,7 +8,7 @@
  */
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import { Component as PassportSignOffsPage } from "./PassportSignOffsPage";
@@ -87,6 +87,17 @@ describe("PassportSignOffsPage", () => {
     // Nobody on Quill by default, which is the ordinary case: the
     // request form then accepts the address as typed.
     searchAssessors.mockResolvedValue({ matches: [] });
+  });
+
+  it("says nothing is here only once the passport has arrived", async () => {
+    // The page starts with no competencies, so it used to flash "No
+    // sign-offs yet" over a passport that had some while the fetch was
+    // still out.
+    fetchMyPassport.mockReturnValue(new Promise(() => {}));
+    renderWithRouter(<PassportSignOffsPage />);
+
+    await waitFor(() => expect(fetchMyPassport).toHaveBeenCalled());
+    expect(screen.queryByText("No sign-offs yet")).not.toBeInTheDocument();
   });
 
   it("puts the add button above the message on an empty page", async () => {

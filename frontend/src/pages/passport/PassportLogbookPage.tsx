@@ -92,6 +92,10 @@ export function Component() {
     count: 0,
   });
   const [error, setError] = useState<string | null>(null);
+  // Set once the list has arrived. Until then the page cannot tell an
+  // empty logbook from one still loading, and saying "nothing yet"
+  // before the answer flashed the empty message over a full logbook.
+  const [loaded, setLoaded] = useState(false);
   const [adding, setAdding] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   // Read from the passport this page already fetches, rather than
@@ -116,7 +120,10 @@ export function Component() {
         return fetchWholeLogbook(id);
       })
       .then((result) => {
-        if (!cancelled && result) setWhole(result);
+        if (!cancelled && result) {
+          setWhole(result);
+          setLoaded(true);
+        }
       })
       .catch(() => {
         if (!cancelled) {
@@ -229,7 +236,7 @@ export function Component() {
         </Group>
       )}
 
-      {whole.count === 0 && (
+      {loaded && whole.count === 0 && (
         <StateMessage
           colour="update"
           icon={<IconFileText />}

@@ -45,6 +45,10 @@ export function Component() {
   const [attachment, setAttachment] = useState<AttachmentInput | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Set once the list has arrived. Until then the page cannot tell an
+  // empty record from one still loading, and saying "nothing yet"
+  // before the answer flashed the empty message over a full record.
+  const [loaded, setLoaded] = useState(false);
   // Read from the passport this page already fetches. False only where
   // the server said so, so a response built before the field existed
   // still offers the button.
@@ -62,7 +66,10 @@ export function Component() {
         return fetchCertificates(id);
       })
       .then((result) => {
-        if (!cancelled && result) setCertificates(result);
+        if (!cancelled && result) {
+          setCertificates(result);
+          setLoaded(true);
+        }
       })
       .catch(() => {
         if (!cancelled) {
@@ -129,7 +136,7 @@ export function Component() {
       {/* Below the add button, as on every passport page, and above
           the list: on an empty page this says what a certificate record
           is and that nobody countersigns it. */}
-      {certificates.length === 0 && (
+      {loaded && certificates.length === 0 && (
         <StateMessage
           colour="update"
           icon={<IconFileText />}
