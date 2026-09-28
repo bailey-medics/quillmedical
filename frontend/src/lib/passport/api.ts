@@ -84,6 +84,7 @@ export const PASSPORT_PATHS = [
   "/passport/{passport_id}/assessor-invites",
   "/passport/{passport_id}/certificates",
   "/passport/{passport_id}/certificates/{name}",
+  "/passport/{passport_id}/certificates/{name}/attachments/{blob_digest}",
   "/passport/{passport_id}/competencies/{competency_id}",
   "/passport/{passport_id}/competencies/{competency_id}/requests",
   "/passport/{passport_id}/cpd",
@@ -386,6 +387,22 @@ export function amendCertificate(
     `/passport/${segment(passportId)}/certificates/${segment(name)}`,
     data,
   );
+}
+
+/**
+ * Where a certificate's attached file can be shown from.
+ *
+ * A URL rather than a fetch, because the page hands it to an `img` or an
+ * `iframe`, which load it themselves with the session cookie. Holder
+ * only, like every certificate route. The API names the file by the
+ * certificate and its hash, never by its uploaded filename.
+ */
+export function certificateAttachmentUrl(
+  passportId: string,
+  name: string,
+  blobDigest: string,
+): string {
+  return `/api/passport/${segment(passportId)}/certificates/${segment(name)}/attachments/${segment(blobDigest)}`;
 }
 
 /** Removes a certificate the holder entered in error. */

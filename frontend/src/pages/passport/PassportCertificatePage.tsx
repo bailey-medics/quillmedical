@@ -9,6 +9,11 @@
  * record's name as the title, the edit button on the right, then the
  * record card or, while editing, the form in its place.
  *
+ * Beneath the card, each attached file is shown by `Document`, the
+ * viewer clinic letters use: a PDF in the browser's own viewer, an image
+ * as it is. The file comes from the API through the certificate, never
+ * by its hash alone.
+ *
  * Read from the list of certificates rather than a route of its own, as
  * the logbook and CPD record pages read theirs. What the form does not
  * show, the competencies the certificate supports and its attachments,
@@ -27,15 +32,29 @@ import IconTextButton from "@/components/button/IconTextButton";
 import ErrorState from "@/components/error-state/ErrorState";
 import StateMessage from "@/components/message-cards/StateMessage";
 import FormattedDate from "@/components/data/Date";
+import { Document } from "@/components/documents";
 import CertificateForm from "@/components/passport/CertificateForm";
 import PassportRecordCard from "@/components/passport/PassportRecordCard";
 import { IconFileText } from "@/components/icons/appIcons";
 import {
   amendCertificate,
+  certificateAttachmentUrl,
   fetchCertificates,
   fetchMyPassport,
 } from "@lib/passport";
-import type { Certificate, CertificateInput } from "@lib/passport";
+import type { Attachment, Certificate, CertificateInput } from "@lib/passport";
+
+/**
+ * How `Document` should show an attachment. HEIC, the format iPhones
+ * save photographs in, is left to `Document`'s download link, because
+ * only Safari can draw one.
+ */
+function documentType(attachment: Attachment): "pdf" | "image" | "other" {
+  if (attachment.media_type === "application/pdf") return "pdf";
+  if (attachment.media_type === "image/heic") return "other";
+  if (attachment.media_type.startsWith("image/")) return "image";
+  return "other";
+}
 
 export function Component() {
   const { name } = useParams<{ name: string }>();
@@ -181,15 +200,25 @@ export function Component() {
                 value: certificate.description,
                 prose: true,
               },
-              {
-                label: "Attached",
-                value:
-                  certificate.attachments.length > 0
-                    ? certificate.attachments.map((a) => a.filename).join(", ")
-                    : null,
-              },
             ]}
           />
+
+          {/* The certificate itself, beneath what was recorded about it:
+              a PDF in the browser's own viewer, an image as it is. */}
+          {passportId &&
+            name &&
+            certificate.attachments.map((attachment) => (
+              <Document
+                key={attachment.hash}
+                name={attachment.filename}
+                type={documentType(attachment)}
+                url={certificateAttachmentUrl(
+                  passportId,
+                  name,
+                  attachment.hash,
+                )}
+              />
+            ))}
         </>
       )}
     </Stack>
