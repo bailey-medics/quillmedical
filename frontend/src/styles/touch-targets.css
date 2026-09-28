@@ -1,0 +1,18 @@
+/**
+ * Touch targets
+ *
+ * Below the sm breakpoint (40em) the md button, the size used throughout
+ * the app, is drawn 48px tall rather than Mantine's 42px, clearing the
+ * 44px touch target of WCAG 2.5.5 and the NHS service manual. Only the
+ * height changes: the label stays centred, with the same font size and
+ * side padding.
+ *
+ * Mantine sets its size heights on the button class itself, so this
+ * overrides them there; it loads after Mantine's stylesheet and wins on
+ * source order at equal specificity.
+ */
+@media (width <= 40em) {
+  .mantine-Button-root {
+    --button-height-md: calc(3rem * var(--mantine-scale));
+  }
+}
