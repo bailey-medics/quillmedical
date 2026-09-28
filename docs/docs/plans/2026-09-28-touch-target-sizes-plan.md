@@ -80,27 +80,34 @@ remember.
 
 ## Phase 3: Inputs 44px tall on phones, and the controls inside them
 
-- [ ] **Make `md` text inputs 44px tall on phones**, in `touch-targets.css`,
+- [x] **Make `md` text inputs 44px tall on phones**, in `touch-targets.css`,
       by setting `--input-height-md` on `.mantine-Input-wrapper` below 40em.
-      Inputs are tap targets too, at 42px today, just short of the target. Doing this first matters: Mantine sets
-      the width of an input's right section from the input's height. So the
-      two controls in the next steps only have room to grow once the input
-      does. Check `TextField`, `PasswordField`, `SelectField` and the date
-      fields in `frontend/src/components/form/` together, as one visual
-      change.
+      Inputs are tap targets too, at 42px today, just short of the target.
+      Doing this first matters: Mantine sets the width of an input's right
+      section from the input's height, 2px narrower. The same rule sets
+      `--input-right-section-width` to the full input height, so the right
+      section becomes a 44px square and the two controls in the next steps
+      have room to fill it. Every field component in
+      `frontend/src/components/form/` uses `size="md"`, so they all change
+      together.
 
-- [ ] **The close-search ✕ fills the right section of the search input**,
-      in `frontend/src/components/search/SearchFields.tsx:86`. It is a raw
-      `ActionIcon` at the default 28px with a 16px icon, the smallest
-      control found. It also hard-codes `height: 42` on the input root in an
-      inline style, which has to go for the input to reach 44px. Swap it
-      for `IconButton` if that sits cleanly in the right section, which
-      also removes a raw `ActionIcon` that `eslint.config.js` warns about.
+- [x] **The close-search ✕ fills the right section of the search input**,
+      in `frontend/src/components/search/SearchFields.tsx:86`. It was a raw
+      `ActionIcon` at the default 28px with a 16px icon. `IconButton` did
+      not fit, because its fixed 42px and 48px sizes do not match the
+      section, so it stays an `ActionIcon` with a class in the new
+      `SearchFields.module.css` that makes it fill the section on phones.
+      The inline `height: 42` on the input root is removed, so the input
+      can reach 44px.
 
-- [ ] **The password show/hide eye fills its right section**, in
-      `frontend/src/components/form/PasswordField.tsx`, through
-      `visibilityToggleButtonProps`. Mantine sizes it at about 28px for an
-      `md` input.
+- [x] **The password show/hide eye fills its right section**, by setting
+      `--psi-button-size` on `.mantine-PasswordInput-visibilityToggle` in
+      `touch-targets.css`. Mantine sized it at 28px for an `md` input. The
+      variable is set on the button itself rather than on the input root,
+      because Mantine writes the root's value in an inline style. The eye
+      icon stays 22px. Tests in `frontend/src/styles/touch-targets.test.tsx`
+      check that a `TextField` wrapper and the password toggle still carry
+      the classes these rules select.
 
 ## Phase 4: The ribbon and page-header icon buttons
 

@@ -63,6 +63,13 @@ describe("SearchField Component", () => {
     });
   });
 
+  describe("Touch target", () => {
+    it("gives the close button the class that fills the right section on phones", () => {
+      renderWithMantine(<SearchField value="query" onChange={vi.fn()} />);
+      expect(screen.getByLabelText("Close search").className).toMatch(/close/);
+    });
+  });
+
   describe("Collapse behavior", () => {
     it("collapses when close button is clicked", async () => {
       const user = userEvent.setup();
