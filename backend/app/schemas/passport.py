@@ -738,10 +738,7 @@ class AssessorRevokeOut(BaseModel):
     """
 
     user_id: int
-    place: NonEmptyText
-    #: The org_unit the membership was held at, whichever kind ``org_unit``
-    #: says. It used to hold the organisation's own id when ``org_unit``
-    #: was ``organisation``, which the name never said.
+    #: The org_unit the membership was held at, of whatever type.
     org_unit_id: int
     sign_offs_kept: int
 
@@ -758,6 +755,5 @@ class AssessorInviteAcceptOut(BaseModel):
 
     status: NonEmptyText
     user_id: int
-    place: NonEmptyText
     #: The org_unit the assessor now holds a membership at.
     org_unit_id: int

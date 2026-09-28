@@ -593,7 +593,6 @@ export interface AssessorInviteAcceptInput {
 export interface AssessorInviteAccept {
   status: string;
   user_id: number;
-  place: string;
   /** The org_unit the assessor now holds a membership at. */
   org_unit_id: number;
 }
@@ -607,12 +606,7 @@ export interface AssessorInviteAccept {
  */
 export interface AssessorRevoke {
   user_id: number;
-  place: string;
-  /**
-   * The org_unit the membership was held at, whichever kind `org_unit`
-   * says. It used to hold the organisation's own id when `org_unit` was
-   * `organisation`, which the name never said.
-   */
+  /** The org_unit the membership was held at, of whatever type. */
   org_unit_id: number;
   sign_offs_kept: number;
 }

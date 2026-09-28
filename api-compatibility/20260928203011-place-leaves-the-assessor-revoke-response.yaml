@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "response-required-property-removed DELETE /api/passport/assessors/{assessor_user_id}/membership removed the required property `place` from the response with the `200` status"
+reason: "place leaves the assessor-revoke response, for the same reason it leaves invite acceptance: the route no longer looks for a site and then an organisation, but for the assessor's external membership anywhere in the admin's org_unit, and org_unit_id says which. No client reads place. A stale tab is unaffected. No forced reload."

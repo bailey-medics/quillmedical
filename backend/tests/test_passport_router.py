@@ -2062,9 +2062,10 @@ class TestAcceptingAnInvitation:
         response = self._accept(test_client, self._token(sent))
         body = response.json()
 
-        assert body["place"] == "organisation"
-        # ``place_id`` has gone; ``org_unit_id`` is the only name now.
+        # ``place`` and ``place_id`` have gone: an org_unit's type is not
+        # something a caller needs told, and ``org_unit_id`` says where.
         assert body["org_unit_id"] == org.id
+        assert "place" not in body
         assert "place_id" not in body
 
         capacity = db_session.scalar(
@@ -2153,9 +2154,8 @@ class TestAcceptingAnInvitation:
         response = self._accept(test_client, self._token(sent))
         body = response.json()
 
-        assert body["place"] == "site"
         assert body["org_unit_id"] == site.id
-        assert "place_id" not in body
+        assert "place" not in body
 
         capacity = db_session.scalar(
             select(org_unit_member.c.capacity).where(
@@ -2649,6 +2649,54 @@ class TestAdminRevoke:
             )
         )
         assert remaining is None
+
+    def test_revoking_finds_a_membership_inside_the_admins_org_unit(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        db_session: Session,
+        holder: User,
+        admin: User,
+        org: OrgUnit,
+        sent: list[dict[str, str]],
+    ) -> None:
+        """An assessor who joined at a ward inside the admin's trust.
+
+        Found by where it is, not by its type: the route once looked for
+        a site and then an organisation, the same split joining no longer
+        makes.
+        """
+        ward = OrgUnit(name="Ward 12", type="ward", parent_id=org.id)
+        db_session.add(ward)
+        db_session.commit()
+        add_org_unit_member(db_session, ward.id, holder.id, "trainee")
+        db_session.execute(
+            org_unit_member.delete().where(
+                org_unit_member.c.org_unit_id == org.id,
+                org_unit_member.c.user_id == holder.id,
+            )
+        )
+        db_session.commit()
+        assessor_id = self._accept_an_assessor(
+            holder_client, test_client, sent
+        )
+
+        response = _login(test_client, "orgadmin").delete(
+            f"/api/passport/assessors/{assessor_id}/membership"
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json()["org_unit_id"] == ward.id
+        assert "place" not in response.json()
+        assert (
+            db_session.scalar(
+                select(org_unit_member.c.user_id).where(
+                    org_unit_member.c.org_unit_id == ward.id,
+                    org_unit_member.c.user_id == assessor_id,
+                )
+            )
+            is None
+        )
 
     def test_revoking_leaves_the_sign_offs_they_made_intact(
         self,
