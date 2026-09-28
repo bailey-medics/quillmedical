@@ -24,7 +24,7 @@ import { useMediaQuery } from "@mantine/hooks";
  * Mobile (<640px):
  * - sm: 16px
  * - md: 20px
- * - mlg: 28px
+ * - mlg: 36px, unchanged: see below
  * - lg: 32px
  * - xl: 48px
  *
@@ -35,6 +35,12 @@ import { useMediaQuery } from "@mantine/hooks";
  * content, so `lg` is too big. Every such icon wants the same size,
  * which is why this is a named step rather than a measurement repeated
  * in each component.
+ *
+ * **It does not shrink on a phone.** The other steps get smaller there
+ * to save room, but `mlg` is something to press, and a phone is where it
+ * is pressed with a finger. At 28px the passport's inbox button was hard
+ * to hit on an iPhone; at 36px, with the button's own padding, it is a
+ * 44px target, the size Apple recommends for touch.
  */
 export type IconSize = "sm" | "md" | "mlg" | "lg" | "xl";
 
@@ -66,7 +72,7 @@ const desktopSizeMap: Record<IconSize, number> = {
 const mobileSizeMap: Record<IconSize, number> = {
   sm: 16,
   md: 20,
-  mlg: 28,
+  mlg: 36,
   lg: 32,
   xl: 48,
 };
