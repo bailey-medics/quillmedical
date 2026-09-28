@@ -8,8 +8,7 @@ ellipsis "…" menu on table rows, and the `xs` buttons in tables and
 messages. A clinician using a phone at the bedside hits the wrong control,
 or has to tap twice. In clinical software, either one is a safety problem.
 
-The goal is a tap area of at least 44px on phones, and 48px wherever the
-control can grow to it, matching the standard buttons. Desktop stays as it
+The goal is a tap area of at least 44px on phones. Desktop stays as it
 is. Where a control is a Mantine component, the size is set once for the
 whole app, in the theme or in `frontend/src/styles/touch-targets.css`, not
 at every place it is used. So future uses get it without anyone having to
@@ -57,27 +56,33 @@ remember.
 
 ## Phase 2: Every close button, once
 
-- [ ] **Make Mantine's `CloseButton` 48px on phones**, in
+- [x] **Make Mantine's `CloseButton` 44px on phones**, in
       `touch-targets.css`. `CloseButton` defaults to `md`, which is 28px.
       Mantine uses it inside `Modal` (6 modals, with `closeButtonProps`
       already set in `frontend/src/theme.ts:468`), `Drawer` and
       `Notification`. It is also used directly as the dismiss ✕ in
-      `frontend/src/components/form/Form/FormStatus.tsx:163`. A single rule
-      setting `--cb-size` on `.mantine-CloseButton-root` below 40em covers
-      all of them, the same way the `md` button rule works. Check the icon
-      grows with it: `CloseButton` sizes its ✕ from `--cb-icon-size`, which
-      needs setting at the same time.
+      `frontend/src/components/form/Form/FormStatus.tsx:163`. One rule on
+      `.mantine-CloseButton-root` below 40em sets `--cb-size-md` to 44px,
+      the same way the `md` button rule works. Only `md` is overridden: the
+      clear ✕ inside a select or other input is Mantine's `sm` close button,
+      and it has to fit the input's right section. The ✕ itself goes from
+      20px to 24px by setting `--cb-icon-size`. Mantine's default is 70% of
+      the button, which at 44px would be a heavy 31px. A test in
+      `frontend/src/styles/touch-targets.test.tsx` checks that the modal
+      close and the `FormStatus` dismiss still carry the class the rule
+      selects, since jsdom cannot apply the media query itself.
 
-- [ ] **Check the modal header on a phone**. A 48px close button makes the
-      header taller than the title. Check that it does not push the title
+- [ ] **Check the modal header on a phone**, left for the reviewer: it
+      needs eyes on a narrow Storybook window, which an unattended run
+      cannot give. A 44px close button makes the header taller than the
+      title. Check that it does not push the title
       onto two lines on a 320px-wide screen.
 
-## Phase 3: Inputs 48px tall on phones, and the controls inside them
+## Phase 3: Inputs 44px tall on phones, and the controls inside them
 
-- [ ] **Make `md` text inputs 48px tall on phones**, in `touch-targets.css`,
+- [ ] **Make `md` text inputs 44px tall on phones**, in `touch-targets.css`,
       by setting `--input-height-md` on `.mantine-Input-wrapper` below 40em.
-      Inputs are tap targets too, at 42px today, and they sit beside the
-      48px buttons in the same forms. Doing this first matters: Mantine sets
+      Inputs are tap targets too, at 42px today, just short of the target. Doing this first matters: Mantine sets
       the width of an input's right section from the input's height. So the
       two controls in the next steps only have room to grow once the input
       does. Check `TextField`, `PasswordField`, `SelectField` and the date
@@ -88,7 +93,7 @@ remember.
       in `frontend/src/components/search/SearchFields.tsx:86`. It is a raw
       `ActionIcon` at the default 28px with a 16px icon, the smallest
       control found. It also hard-codes `height: 42` on the input root in an
-      inline style, which has to go for the input to reach 48px. Swap it
+      inline style, which has to go for the input to reach 44px. Swap it
       for `IconButton` if that sits cleanly in the right section, which
       also removes a raw `ActionIcon` that `eslint.config.js` warns about.
 
@@ -99,7 +104,7 @@ remember.
 
 ## Phase 4: The ribbon and page-header icon buttons
 
-- [ ] **Search, filter and hamburger are 48px on phones**, in
+- [ ] **Search, filter and hamburger are 44px on phones**, in
       `frontend/src/components/button/SearchButton.tsx`,
       `frontend/src/components/form/FilterSelect.tsx` and
       `frontend/src/components/button/BurgerButton.tsx`. All three are
@@ -112,22 +117,22 @@ remember.
       wide. Also check `FilterSelect`'s count badge, which is positioned
       against the button's edge in `FilterSelect.module.css`.
 
-- [ ] **The inbox envelope is 48px on phones**, in
+- [ ] **The inbox envelope is 44px on phones**, in
       `frontend/src/components/passport/InboxButton.module.css`. The button
       shrink-wraps a 28px `mlg` icon with 4px padding, about 36px in all.
-      A 48px `min-width` and `min-height` below 40em would keep the icon
+      A 44px `min-width` and `min-height` below 40em would keep the icon
       centred. Check first whether the `navigation-inbox-button-full-size-on-phones`
       branch has already changed this file.
 
 ## Phase 5: The ellipsis menu on table rows
 
-- [ ] **`EllipsisMenu` is 48px with an `md` icon on phones**, in
+- [ ] **`EllipsisMenu` is 44px with an `md` icon on phones**, in
       `frontend/src/components/ellipsis-menu/EllipsisMenu.tsx`. Today it is
       30px with an `sm` icon, which drops to 16px on a phone. It is on every
       row of the tables that use it (4 places), so it is tapped often and
-      sits close to other things. Desktop stays 30px, because a 48px
+      sits close to other things. Desktop stays 30px, because a 44px
       trigger would make every table row taller. The `Menu.Item`s in the
-      dropdown are about 36px, so give them a 48px `min-height` on phones
+      dropdown are about 36px, so give them a 44px `min-height` on phones
       in `EllipsisMenu.module.css` at the same time.
 
 ## Phase 6: Compact buttons and the video quality toggle
@@ -138,9 +143,7 @@ remember.
       action buttons on messages (`frontend/src/components/messaging/Messaging.tsx:252`
       and `:346`) and the Deactivate and Activate buttons in the patient
       admin tables (`DeactivatePatientPage.tsx:246`,
-      `ActivatePatientPage.tsx:263`). 44px, not 48px, so they still look
-      smaller than a main action, which is why someone chose a small size.
-      One rule also covers any compact button added later.
+      `ActivatePatientPage.tsx:263`). One rule also covers any compact button added later.
 
 - [ ] **The video quality toggle is 44px tall on phones**, in
       `frontend/src/components/teaching/video-player/VideoPlayer.tsx:196`.
@@ -150,7 +153,7 @@ remember.
 
 ## Phase 7: Table pagination
 
-- [ ] **Pagination arrows are 48px on phones**, in
+- [ ] **Pagination arrows are 44px on phones**, in
       `frontend/src/components/tables/TablePagination.tsx` and its CSS
       module. The arrows use Mantine's default 32px control with a 30px
       icon forced by `.arrow svg`. Set `--pagination-control-size` below
@@ -189,10 +192,10 @@ remember.
 
 ## Decisions
 
-- **48px where a control can grow, 44px as the floor** — 44px is the
-  WCAG AAA and NHS figure. 48px matches Material's guidance and gives a
-  little room for error. Compact buttons and the video toggle stop at 44px
-  so they still look smaller than the main actions.
+- **44px from Phase 2 onwards** — 44px is the WCAG AAA and NHS figure,
+  and it is enough. The work in Phase 1 went to 48px, following Material's
+  guidance, before this was settled. It has shipped and stays as it is:
+  48px is above the floor, so lowering it would only be for consistency.
 
 - **Phones only, except the drawer** — desktop is used with a mouse, where
   the current sizes are fine and denser tables are worth having. The

@@ -7,12 +7,24 @@
  * height changes: the label stays centred, with the same font size and
  * side padding.
  *
- * Mantine sets its size heights on the button class itself, so this
- * overrides them there; it loads after Mantine's stylesheet and wins on
- * source order at equal specificity.
+ * The md close button, Mantine's default and the ✕ on every modal,
+ * drawer, notification and FormStatus message, is drawn 44px rather than
+ * 28px. Its ✕ grows from 20px to 24px rather than keeping Mantine's 70%,
+ * which at 44px would be a heavy 31px. The sm close button inside inputs
+ * (the clear ✕ of a select) is left alone, because it has to fit the
+ * input's right section.
+ *
+ * Mantine sets its size variables on each component's own class, so these
+ * override them there; this file loads after Mantine's stylesheet and wins
+ * on source order at equal specificity.
  */
 @media (width <= 40em) {
   .mantine-Button-root {
     --button-height-md: calc(3rem * var(--mantine-scale));
+  }
+
+  .mantine-CloseButton-root {
+    --cb-size-md: calc(2.75rem * var(--mantine-scale));
+    --cb-icon-size: calc(1.5rem * var(--mantine-scale));
   }
 }
