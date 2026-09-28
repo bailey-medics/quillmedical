@@ -57,7 +57,9 @@ function ResetPasswordFields() {
       <FormStatusNarrow />
       <SubmitButton />
       <Group justify="flex-end">
-        <TextLink to="/login">Back to sign in</TextLink>
+        <TextLink standalone to="/login">
+          Back to sign in
+        </TextLink>
       </Group>
     </Stack>
   );

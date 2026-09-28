@@ -3,6 +3,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@test/test-utils";
 import RadioField from "./RadioField";
+import classes from "./RadioField.module.css";
 
 const options = [
   { value: "a", label: "Option A" },
@@ -11,6 +12,16 @@ const options = [
 ];
 
 describe("RadioField", () => {
+  it("pads each tappable label and moves the radio with it on phones", () => {
+    const { container } = renderWithMantine(
+      <RadioField options={options} value={null} onChange={() => {}} />,
+    );
+    const labels = container.querySelectorAll(".mantine-Radio-label");
+    const inners = container.querySelectorAll(".mantine-Radio-inner");
+    expect(labels).toHaveLength(3);
+    labels.forEach((label) => expect(label).toHaveClass(classes.label));
+    inners.forEach((inner) => expect(inner).toHaveClass(classes.inner));
+  });
   it("renders all options", () => {
     renderWithMantine(
       <RadioField options={options} value={null} onChange={() => {}} />,

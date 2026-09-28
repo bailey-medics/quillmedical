@@ -18,6 +18,13 @@ interface TextLinkProps {
   children: ReactNode;
   /** Called when the link is followed, e.g. to close the modal it sits in */
   onClick?: () => void;
+  /**
+   * The link stands on its own line rather than inside a sentence, such
+   * as "Forgot password?" under the login form. On a phone it is then at
+   * least 44px tall, so it is easy to tap. WCAG exempts links inside a
+   * sentence, which keep their line height.
+   */
+  standalone?: boolean;
 }
 
 /**
@@ -27,14 +34,21 @@ interface TextLinkProps {
  * @param props - Component props
  * @returns Styled anchor element wrapping a React Router Link
  */
-export default function TextLink({ to, children, onClick }: TextLinkProps) {
+export default function TextLink({
+  to,
+  children,
+  onClick,
+  standalone = false,
+}: TextLinkProps) {
   return (
     <Anchor
       component={Link}
       to={to}
       size="md"
       underline="always"
-      className={classes.link}
+      className={
+        standalone ? `${classes.link} ${classes.standalone}` : classes.link
+      }
       onClick={onClick}
     >
       {children}

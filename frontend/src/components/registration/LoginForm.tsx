@@ -101,7 +101,9 @@ function LoginFields({
       />
       {forgotPasswordPath && (
         <Group justify="flex-end">
-          <TextLink to={forgotPasswordPath}>Forgot password?</TextLink>
+          <TextLink standalone to={forgotPasswordPath}>
+            Forgot password?
+          </TextLink>
         </Group>
       )}
       {requireTotp && (
@@ -122,7 +124,7 @@ function LoginFields({
       <SubmitButton />
       {registerPath && (
         <Group justify="flex-end">
-          <TextLink to={registerPath}>
+          <TextLink standalone to={registerPath}>
             Don&apos;t have an account? Register
           </TextLink>
         </Group>

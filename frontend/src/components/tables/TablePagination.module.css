@@ -28,3 +28,21 @@
     var(--mantine-color-primary-5)
   );
 }
+
+/*
+ * On a phone the previous and next arrows are 44px rather than Mantine's
+ * 32px, and the page-size picker is at least 44px tall. The arrow icons
+ * stay 30px. The size is set on the arrow itself because Mantine writes
+ * the pagination root's value in an inline style.
+ */
+@media (width <= 40em) {
+  .arrow {
+    --pagination-control-size: 2.75rem;
+  }
+
+  .pageSizeButton {
+    min-height: 2.75rem;
+    display: flex;
+    align-items: center;
+  }
+}

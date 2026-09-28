@@ -34,7 +34,9 @@ export default function Patient() {
     return (
       <BaseCard>
         <ErrorMessage>{error}</ErrorMessage>
-        <TextLink to="/">← Back to patient list</TextLink>
+        <TextLink standalone to="/">
+          ← Back to patient list
+        </TextLink>
       </BaseCard>
     );
   }

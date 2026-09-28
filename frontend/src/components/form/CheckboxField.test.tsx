@@ -3,8 +3,18 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@test/test-utils";
 import CheckboxField from "./CheckboxField";
+import classes from "./CheckboxField.module.css";
 
 describe("CheckboxField", () => {
+  it("pads the tappable label and moves the box with it on phones", () => {
+    const { container } = renderWithMantine(
+      <CheckboxField label="I confirm this declaration" />,
+    );
+    expect(container.querySelector("label")).toHaveClass(classes.label);
+    expect(container.querySelector(".mantine-Checkbox-inner")).toHaveClass(
+      classes.inner,
+    );
+  });
   it("renders with a label", () => {
     renderWithMantine(<CheckboxField label="I confirm this declaration" />);
     expect(

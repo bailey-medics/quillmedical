@@ -55,7 +55,9 @@ export default function VerifyEmailPage() {
         <Stack align="center" gap="md">
           <ResultMessage variant="success" title="Email verified" />
           <BodyText>Your email has been verified. You can now log in.</BodyText>
-          <TextLink to="/login">Go to login</TextLink>
+          <TextLink standalone to="/login">
+            Go to login
+          </TextLink>
         </Stack>
       </Center>
     );
@@ -71,7 +73,7 @@ export default function VerifyEmailPage() {
           description="This link is invalid or has expired. Please request a new verification email."
           colour="alert"
         />
-        <TextLink to="/verify-email-pending">
+        <TextLink standalone to="/verify-email-pending">
           Resend verification email
         </TextLink>
       </Stack>

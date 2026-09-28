@@ -30,3 +30,23 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/*
+ * On a phone the row's padding moves from the option wrapper into the
+ * label, so the whole 44px row can be tapped rather than only the 22px
+ * line of text in its middle. The radio moves down by the same amount to
+ * stay level with the text.
+ */
+@media (width <= 40em) {
+  .option {
+    padding-block: 0;
+  }
+
+  .label {
+    padding-block: 0.6875rem;
+  }
+
+  .inner {
+    margin-top: 0.6875rem;
+  }
+}
