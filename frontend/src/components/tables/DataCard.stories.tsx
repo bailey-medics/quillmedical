@@ -129,6 +129,15 @@ export const LongText: Story = {
  *
  * Shows skeleton placeholders while data is being fetched.
  */
+/** A footer beneath the fields: how `DataTableWithResults` shows a
+ * row's result detail on a phone. */
+export const WithFooter: Story = {
+  args: {
+    ...Default.args,
+    footer: "Version mismatch: the module was built for an older schema.",
+  },
+};
+
 export const Loading: Story = {
   args: {
     row: { id: 0, username: "", email: "" },

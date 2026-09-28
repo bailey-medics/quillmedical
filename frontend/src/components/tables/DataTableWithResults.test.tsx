@@ -2,11 +2,22 @@
  * DataTableWithResults Component Tests
  */
 import { screen } from "@testing-library/react";
-import { describe, it, expect } from "vitest";
+import { beforeEach, describe, it, expect, vi } from "vitest";
 import { renderWithMantine } from "@test/test-utils";
 import DataTableWithResults, {
   type ResultColumn,
 } from "./DataTableWithResults";
+
+const media = vi.hoisted(() => ({ isMobile: false }));
+
+vi.mock("@mantine/hooks", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@mantine/hooks")>();
+  return { ...actual, useMediaQuery: () => media.isMobile };
+});
+
+beforeEach(() => {
+  media.isMobile = false;
+});
 
 interface TestRow {
   id: string;
@@ -140,5 +151,51 @@ describe("DataTableWithResults", () => {
       container.querySelectorAll(".mantine-Skeleton-root").length,
     ).toBeGreaterThan(0);
     expect(screen.getByRole("table")).toBeInTheDocument();
+  });
+
+  describe("On a phone", () => {
+    beforeEach(() => {
+      media.isMobile = true;
+    });
+
+    it("draws a card per row rather than a table", () => {
+      renderWithMantine(
+        <DataTableWithResults
+          data={rows}
+          columns={columns}
+          getRowKey={(r) => r.id}
+        />,
+      );
+
+      expect(screen.queryByRole("table")).not.toBeInTheDocument();
+      expect(screen.getByText("Module A")).toBeInTheDocument();
+      expect(screen.getAllByText("Name:")).toHaveLength(3);
+    });
+
+    it("puts a row's result detail inside its card", () => {
+      renderWithMantine(
+        <DataTableWithResults
+          data={rows}
+          columns={columns}
+          getRowKey={(r) => r.id}
+          getSubRow={(r) => (r.reason ? r.reason : null)}
+        />,
+      );
+
+      expect(screen.getByText("Version mismatch")).toBeInTheDocument();
+    });
+
+    it("shows card skeletons while loading", () => {
+      renderWithMantine(
+        <DataTableWithResults
+          data={[]}
+          columns={columns}
+          getRowKey={(r) => r.id}
+          loading
+        />,
+      );
+
+      expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    });
   });
 });
