@@ -1,15 +1,24 @@
 /**
  * Passport CPD Page
  *
- * A year's continuing professional development activities.
+ * The holder's continuing professional development activities, totalled
+ * over one of their CPD date ranges at a time.
  *
- * The year is chosen here and passed to the API, which files entries by
- * year on disk. The declared appraisal period is not yet served by the
- * API – `appraisal_periods` is a recorded decision without an
- * implementation – so `CpdTable` falls back to naming its convention.
+ * **The ranges are the holder's own**, the `appraisal_periods` they set
+ * on the CPD date ranges page, because appraisal years rarely start in
+ * January or June and move when somebody changes post. With none set,
+ * the page falls back to June to June years, and the table says that is
+ * a convention rather than their actual cycle.
+ *
+ * **Nothing falls through a gap.** An activity between two ranges, or
+ * from before the first, is in none of them, so a final option lists
+ * those, shown only when there are any.
+ *
+ * The API files CPD by calendar year, which no range respects, so the
+ * page asks for every activity at once and sorts them into ranges here.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Group, Stack } from "@mantine/core";
 import PageHeader from "@/components/page-header";
@@ -18,23 +27,42 @@ import { SelectField } from "@components/form";
 import CpdEntryForm from "@/components/passport/CpdEntryForm";
 import CpdTable from "@/components/passport/CpdTable";
 import ErrorState from "@/components/error-state/ErrorState";
-import { addCpdEntry, fetchCpdYear, fetchMyPassport } from "@lib/passport";
-import type { CpdEntry, CpdEntryInput } from "@lib/passport";
+import {
+  addCpdEntry,
+  fetchAllCpd,
+  fetchAppraisalPeriods,
+  fetchMyPassport,
+  juneToJuneYears,
+  labelPeriods,
+  newestFirst,
+  periodContains,
+  periodKey,
+} from "@lib/passport";
+import type { AppraisalPeriod, CpdEntry, CpdEntryInput } from "@lib/passport";
 
-/** The current year and the four before it, newest first. */
-function recentYears(): { value: string; label: string }[] {
-  const thisYear = new Date().getFullYear();
-  return Array.from({ length: 5 }, (_, offset) => {
-    const year = thisYear - offset;
-    return { value: String(year), label: String(year) };
-  });
+/** The select value for activities outside every declared range. */
+const OUTSIDE = "outside";
+
+/** Today as an ISO date, in the holder's own timezone. */
+function todayIso(): string {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${month}-${day}`;
+}
+
+/** The select value for the range holding `isoDate`, if one does. */
+function rangeHolding(ranges: AppraisalPeriod[], isoDate: string) {
+  const found = ranges.find((range) => periodContains(range, isoDate));
+  return found ? periodKey(found) : null;
 }
 
 export function Component() {
   const navigate = useNavigate();
   const [passportId, setPassportId] = useState<string | null>(null);
-  const [year, setYear] = useState<string>(String(new Date().getFullYear()));
+  const [declared, setDeclared] = useState<AppraisalPeriod[]>([]);
   const [entries, setEntries] = useState<CpdEntry[]>([]);
+  const [selected, setSelected] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -44,39 +72,61 @@ export function Component() {
   // still offers the button.
   const [canWrite, setCanWrite] = useState(true);
 
+  // Declared ranges when there are any, otherwise June to June years
+  // reaching back to the oldest activity. Newest first either way.
+  const convention = declared.length === 0;
+  const ranges = useMemo(
+    () =>
+      convention
+        ? juneToJuneYears(todayIso(), entries[0]?.activity_on)
+        : newestFirst(declared),
+    [convention, declared, entries],
+  );
+
+  const outside = useMemo(
+    () =>
+      convention
+        ? []
+        : entries.filter(
+            (entry) =>
+              !declared.some((range) =>
+                periodContains(range, entry.activity_on),
+              ),
+          ),
+    [convention, declared, entries],
+  );
+
+  const options = useMemo(() => {
+    const labels = labelPeriods(ranges);
+    const listed = ranges.map((range) => ({
+      value: periodKey(range),
+      label: labels.get(periodKey(range)) ?? periodKey(range),
+    }));
+    return outside.length > 0
+      ? [...listed, { value: OUTSIDE, label: "Outside your date ranges" }]
+      : listed;
+  }, [ranges, outside]);
+
   useEffect(() => {
     let cancelled = false;
 
     fetchMyPassport()
       .then((detail) => {
         if (cancelled) return;
-        setPassportId(detail.passport.passport_id);
+        const id = detail.passport.passport_id;
+        setPassportId(id);
         setCanWrite(detail.entitlement?.can_write !== false);
+        return Promise.all([fetchAppraisalPeriods(id), fetchAllCpd(id)]);
       })
-      .catch(() => {
-        if (!cancelled) {
-          setError("Your passport could not be loaded. Please try again.");
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (passportId === null) return;
-
-    let cancelled = false;
-
-    fetchCpdYear(passportId, Number(year))
       .then((result) => {
-        if (!cancelled) setEntries(result);
+        if (cancelled || !result) return;
+        const [periods, all] = result;
+        setDeclared(periods);
+        setEntries(all);
       })
       .catch(() => {
         if (!cancelled) {
-          setError("That year could not be loaded. Please try again.");
+          setError("Your CPD could not be loaded. Please try again.");
         }
       })
       .finally(() => {
@@ -86,7 +136,32 @@ export function Component() {
     return () => {
       cancelled = true;
     };
-  }, [passportId, year]);
+  }, []);
+
+  // The holder's choice while it is still an option; otherwise the
+  // range holding today, or the newest if none does. Derived rather
+  // than set in an effect, so the select and the table never disagree
+  // for a render.
+  const current =
+    selected !== null && options.some((option) => option.value === selected)
+      ? selected
+      : loading
+        ? null
+        : (rangeHolding(ranges, todayIso()) ?? options[0]?.value ?? null);
+
+  const selectedRange =
+    current === OUTSIDE
+      ? undefined
+      : ranges.find((range) => periodKey(range) === current);
+
+  const shown =
+    current === OUTSIDE
+      ? outside
+      : selectedRange
+        ? entries.filter((entry) =>
+            periodContains(selectedRange, entry.activity_on),
+          )
+        : [];
 
   async function handleSubmit(data: CpdEntryInput) {
     if (passportId === null) return;
@@ -94,17 +169,17 @@ export function Component() {
     setSubmitting(true);
     try {
       await addCpdEntry(passportId, data);
+      setEntries(await fetchAllCpd(passportId));
 
-      // The API files an entry by its own date, which need not be the
-      // year on screen. Showing that year means the new entry is in
-      // view rather than apparently lost – and when it matches, this is
-      // simply the reload it would have been anyway.
-      const filedUnder = String(new Date(data.activity_on).getFullYear());
-      if (filedUnder !== year) {
-        setYear(filedUnder);
-      } else {
-        setEntries(await fetchCpdYear(passportId, Number(year)));
-      }
+      // Show the range the new activity falls in, so it is in view
+      // rather than apparently lost in another one. Worked out from the
+      // activity's date rather than from `ranges`, which a new oldest
+      // activity is about to extend.
+      setSelected(
+        convention
+          ? periodKey(juneToJuneYears(data.activity_on, undefined, 1)[0])
+          : (rangeHolding(declared, data.activity_on) ?? OUTSIDE),
+      );
 
       setAdding(false);
       setError(null);
@@ -140,17 +215,20 @@ export function Component() {
       {/* Below the add button, as every passport section has its
           filter: adding comes first on each of them. */}
       <SelectField
-        label="Year"
-        data={recentYears()}
-        value={year}
-        onChange={(value) => value && setYear(value)}
+        label="Date range"
+        data={options}
+        value={current}
+        onChange={(value) => value && setSelected(value)}
+        disabled={loading}
       />
 
       {/* Clicking an activity opens it in full. The year is in the
           URL alongside the filename, so the link can be followed cold
           rather than only from this table. */}
       <CpdTable
-        entries={entries}
+        entries={shown}
+        period={selectedRange}
+        convention={convention}
         isLoading={loading}
         onSelect={(entry) =>
           navigate(`/passport/cpd/${entry.year}/${entry.filename}`)

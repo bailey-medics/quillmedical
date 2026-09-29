@@ -27,6 +27,7 @@ import {
   createPassport,
   declineSignOff,
   fetchCertificates,
+  fetchAllCpd,
   fetchAppraisalPeriods,
   fetchCpdYear,
   fetchInbox,
@@ -140,6 +141,11 @@ describe("passport", () => {
       `/passport/${PASSPORT_ID}/specialties`,
       { specialties: ["general_surgery"] },
     );
+  });
+
+  it("fetches every CPD activity at once", async () => {
+    await fetchAllCpd(PASSPORT_ID);
+    expect(api.get).toHaveBeenCalledWith(`/passport/${PASSPORT_ID}/cpd`);
   });
 
   it("fetches the holder's CPD date ranges", async () => {

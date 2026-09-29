@@ -1180,6 +1180,7 @@ class TestSignOff:
             "",
             "/certificates",
             "/logbook",
+            "/cpd",
             "/cpd/2026",
         ):
             refused = client.get(f"/api/passport/{passport_id}{path}")
@@ -4501,6 +4502,69 @@ class TestAppraisalPeriods:
 
         response = _login(test_client, "assessor").get(
             f"/api/passport/{passport_id}/appraisal-periods"
+        )
+
+        assert response.status_code == 404
+
+
+class TestCpdList:
+    """Every CPD activity at once, for totalling over date ranges."""
+
+    def _add(
+        self, client: TestClient, passport_id: str, activity_on: str
+    ) -> None:
+        response = client.post(
+            f"/api/passport/{passport_id}/cpd",
+            json={
+                "activity_on": activity_on,
+                "title": f"Grand round {activity_on}",
+                "activity_type": "grand round",
+                "points": 1,
+            },
+        )
+        assert response.status_code == 201, response.text
+
+    def test_a_new_passport_has_none(self, holder_client: TestClient) -> None:
+        passport_id = _create_passport(holder_client)
+
+        response = holder_client.get(f"/api/passport/{passport_id}/cpd")
+
+        assert response.status_code == 200, response.text
+        assert response.json() == []
+
+    def test_it_spans_every_year_oldest_first(
+        self, holder_client: TestClient
+    ) -> None:
+        """A date range from August to July crosses a calendar year, so
+        the page needs both years' activities in one list."""
+        passport_id = _create_passport(holder_client)
+        self._add(holder_client, passport_id, "2026-02-10")
+        self._add(holder_client, passport_id, "2024-11-03")
+        self._add(holder_client, passport_id, "2025-09-15")
+
+        response = holder_client.get(f"/api/passport/{passport_id}/cpd")
+
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert [e["activity_on"] for e in body] == [
+            "2024-11-03",
+            "2025-09-15",
+            "2026-02-10",
+        ]
+        # Each still says the year it is filed under, which its own
+        # address needs.
+        assert [e["year"] for e in body] == [2024, 2025, 2026]
+
+    def test_an_assessor_cannot_read_it(
+        self,
+        test_client: TestClient,
+        holder_client: TestClient,
+        assessor: User,
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+
+        response = _login(test_client, "assessor").get(
+            f"/api/passport/{passport_id}/cpd"
         )
 
         assert response.status_code == 404

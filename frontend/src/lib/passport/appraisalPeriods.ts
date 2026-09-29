@@ -56,3 +56,106 @@ export function newestFirst(periods: AppraisalPeriod[]): AppraisalPeriod[] {
 export function samePeriod(a: AppraisalPeriod, b: AppraisalPeriod): boolean {
   return a.starts_on === b.starts_on && a.ends_on === b.ends_on;
 }
+
+// ---------------------------------------------------------------------------
+// Labels and membership, for totalling CPD over the periods
+// ---------------------------------------------------------------------------
+
+const MONTH_AND_YEAR = new Intl.DateTimeFormat("en-GB", {
+  month: "long",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+const DAY_MONTH_AND_YEAR = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+/** Midnight UTC on an ISO date, so formatting cannot shift the day. */
+function atUtcMidnight(isoDate: string): Date {
+  return new Date(`${isoDate}T00:00:00Z`);
+}
+
+/** "1 October 2025". */
+export function formatDay(isoDate: string): string {
+  return DAY_MONTH_AND_YEAR.format(atUtcMidnight(isoDate));
+}
+
+/** A value naming one period, for a select option or a React key. */
+export function periodKey(period: AppraisalPeriod): string {
+  return `${period.starts_on}_${period.ends_on}`;
+}
+
+/**
+ * Each period's label, keyed by `periodKey`: the months it starts and
+ * ends in, "October 2025 – September 2026", with the spaced en dash.
+ *
+ * Where two periods would read the same, such as two short ones in one
+ * month, both are given their full dates instead, so no two options in
+ * a list look alike.
+ */
+export function labelPeriods(periods: AppraisalPeriod[]): Map<string, string> {
+  const byMonth = (period: AppraisalPeriod) =>
+    `${MONTH_AND_YEAR.format(atUtcMidnight(period.starts_on))} – ${MONTH_AND_YEAR.format(atUtcMidnight(period.ends_on))}`;
+
+  const counts = new Map<string, number>();
+  for (const period of periods) {
+    const label = byMonth(period);
+    counts.set(label, (counts.get(label) ?? 0) + 1);
+  }
+
+  const labels = new Map<string, string>();
+  for (const period of periods) {
+    const label = byMonth(period);
+    labels.set(
+      periodKey(period),
+      (counts.get(label) ?? 0) > 1
+        ? `${formatDay(period.starts_on)} – ${formatDay(period.ends_on)}`
+        : label,
+    );
+  }
+  return labels;
+}
+
+/** Whether an ISO date falls in a period, both ends included. */
+export function periodContains(
+  period: AppraisalPeriod,
+  isoDate: string,
+): boolean {
+  return period.starts_on <= isoDate && isoDate <= period.ends_on;
+}
+
+/** The June to June year starting in June of `year`. */
+function juneToJune(year: number): AppraisalPeriod {
+  return { starts_on: `${year}-06-01`, ends_on: `${year + 1}-05-31` };
+}
+
+/** The year whose June the June to June year holding `isoDate` began in. */
+function juneYearOf(isoDate: string): number {
+  const { year, month } = parts(isoDate);
+  return month >= 6 ? year : year - 1;
+}
+
+/**
+ * The June to June years CPD falls back to while no period is declared,
+ * newest first: the one holding `today`, back to the one holding
+ * `oldest` (the earliest activity), and never fewer than `minimum`.
+ */
+export function juneToJuneYears(
+  today: string,
+  oldest?: string,
+  minimum = 5,
+): AppraisalPeriod[] {
+  const newestYear = juneYearOf(today);
+  const oldestYear = oldest
+    ? Math.min(juneYearOf(oldest), newestYear)
+    : newestYear;
+  const count = Math.max(minimum, newestYear - oldestYear + 1);
+
+  return Array.from({ length: count }, (_, offset) =>
+    juneToJune(newestYear - offset),
+  );
+}

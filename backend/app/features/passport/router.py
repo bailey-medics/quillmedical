@@ -2751,6 +2751,65 @@ def add_cpd_entry(
     return RecordResultOut(name=stem, commit=commit)
 
 
+def _cpd_year_out(
+    store: PassportStore, passport_id: str, year: int
+) -> list[CpdEntryOut]:
+    """One year's CPD activities as served, in no particular order.
+
+    Raises:
+        paths.PassportPathError: If *year* is not four digits.
+    """
+    found: list[CpdEntryOut] = []
+
+    for path in store.list_dir(passport_id, paths.cpd_dir(year)):
+        raw = store.read(passport_id, path)
+        entry = from_yaml(CpdEntry, raw)
+        found.append(
+            CpdEntryOut.model_validate(
+                {
+                    "filename": path.stem,
+                    "year": year,
+                    **entry.model_dump(mode="json"),
+                }
+            )
+        )
+
+    return found
+
+
+@passport_router.get(
+    "/{passport_id}/cpd",
+    response_model=list[CpdEntryOut],
+    dependencies=[_DEP_PASSPORT],
+)
+def list_cpd(
+    passport_id: str,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+    store: PassportStore = _DEP_STORE,
+) -> list[CpdEntryOut]:
+    """Every CPD activity in the record, sorted by when it happened.
+
+    The CPD page totals activities over the holder's own date ranges,
+    which cross calendar years, and it must also show what falls outside
+    every range. Both need the whole record rather than one year of it.
+    """
+    row = _require_reader(db, passport_id, user)
+
+    found: list[CpdEntryOut] = []
+
+    for directory in store.list_dir(row.id, paths.CPD):
+        # Only year directories. Anything else under cpd/ is not a year
+        # this route could address, so it is not an activity either.
+        if not (directory.name.isdigit() and len(directory.name) == 4):
+            continue
+        found.extend(_cpd_year_out(store, row.id, int(directory.name)))
+
+    found.sort(key=lambda item: item.activity_on)
+
+    return found
+
+
 @passport_router.get(
     "/{passport_id}/cpd/{year}",
     response_model=list[CpdEntryOut],
@@ -2766,25 +2825,10 @@ def get_cpd_year(
     """One year's CPD activities, sorted by when they happened."""
     row = _require_reader(db, passport_id, user)
 
-    found: list[CpdEntryOut] = []
-
     try:
-        listing = store.list_dir(row.id, paths.cpd_dir(year))
+        found = _cpd_year_out(store, row.id, year)
     except paths.PassportPathError:
         raise HTTPException(404, "Not a valid year") from None
-
-    for path in listing:
-        raw = store.read(row.id, path)
-        entry = from_yaml(CpdEntry, raw)
-        found.append(
-            CpdEntryOut.model_validate(
-                {
-                    "filename": path.stem,
-                    "year": year,
-                    **entry.model_dump(mode="json"),
-                }
-            )
-        )
 
     found.sort(key=lambda item: item.activity_on)
 
