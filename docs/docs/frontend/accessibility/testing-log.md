@@ -63,3 +63,11 @@ evidence the NHS DTAC's accessibility section (D1) asks for, and the
   and TalkBack runs above should be done on a phone as well as a desktop,
   so that they cover these sizes, and checked for the 44px minimum of
   WCAG 2.5.5.
+- **Journeys 2 and 3, the side navigation** – the
+  [appraisal periods plan](../../plans/2026-09-29-appraisal-periods-plan.md)
+  gave Settings its first nested link, "CPD date ranges", shown while
+  `/settings/cpd-date-ranges` is open. Journey 2 opens the side navigation
+  from the ribbon, and journey 3 uses the teaching sidebar, which renders
+  the same Settings entry. Check that the nested link is announced as
+  inside Settings and as the current page, and that the navigation
+  drawer's focus trap still holds with it there.
