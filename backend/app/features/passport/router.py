@@ -66,7 +66,6 @@ from app.email_send import (
 )
 from app.features.gating import requires_feature
 from app.models import (
-    OrgUnit,
     OrgUnitFeature,
     ProfessionalRegistration,
     User,
@@ -74,12 +73,10 @@ from app.models import (
     org_unit_member,
 )
 from app.org_units.tree import descendant_ids
-from app.org_units.types import ROOT_TYPE_IDS
 from app.organisations import (
     add_org_unit_member,
     get_member_org_unit_ids,
     get_reachable_org_unit_ids,
-    organisation_org_unit_member,
     organisation_org_units_of,
     remove_org_unit_member,
 )
@@ -2908,65 +2905,37 @@ def revoke_assessor_membership(
         or 0
     )
 
-    # A site membership first: the accept endpoint prefers the narrowest
-    # org_unit, so that is where an invited assessor usually sits.
-    site_id = db.scalar(
-        select(org_unit_member.c.org_unit_id).where(
+    # Only an ``external`` membership is removable here. Revoking a
+    # ``staff`` row would let a passport route quietly sack somebody from
+    # the trust they actually work for.
+    #
+    # Anywhere in the admin's org_unit or beneath it, of any kind. Which
+    # org_unit an assessor joins is chosen without regard to its type, so
+    # finding it is too. The lowest id, as joining chooses.
+    within = {organisation_org_unit_id} | descendant_ids(
+        db, [organisation_org_unit_id]
+    )
+    held_at = db.scalar(
+        select(org_unit_member.c.org_unit_id)
+        .where(
             org_unit_member.c.user_id == assessor_user_id,
             org_unit_member.c.capacity == "external",
-            org_unit_member.c.org_unit_id.in_(
-                descendant_ids(db, [organisation_org_unit_id])
-            ),
+            org_unit_member.c.org_unit_id.in_(within),
         )
+        .order_by(org_unit_member.c.org_unit_id)
     )
 
-    if site_id is not None:
-        db.execute(
-            org_unit_member.delete().where(
-                org_unit_member.c.org_unit_id == site_id,
-                org_unit_member.c.user_id == assessor_user_id,
-            )
-        )
-        db.flush()
-
-        return AssessorRevokeOut(
-            user_id=assessor_user_id,
-            place="site",
-            place_id=int(site_id),
-            org_unit_id=int(site_id),
-            sign_offs_kept=int(sign_offs_kept),
-        )
-
-        # Only an ``external`` membership is removable here. Revoking a
-        # ``staff`` row would let a passport route quietly sack somebody from
-        # the trust they actually work for.
-        #
-        # Looked up before deleting rather than by inspecting the delete's
-        # result: ``rowcount`` belongs to the cursor rather than to what
-        # ``Session.execute`` is typed to return, and a select says what is
-        # meant anyway.
-    external = db.scalar(
-        select(organisation_org_unit_member.c.user_id).where(
-            organisation_org_unit_member.c.org_unit_id
-            == organisation_org_unit_id,
-            organisation_org_unit_member.c.user_id == assessor_user_id,
-            organisation_org_unit_member.c.capacity == "external",
-        )
-    )
-
-    if external is None:
+    if held_at is None:
         raise HTTPException(
             404, "That person has no external assessor access here."
         )
 
-    remove_org_unit_member(db, organisation_org_unit_id, assessor_user_id)
+    remove_org_unit_member(db, int(held_at), assessor_user_id)
     db.flush()
 
     return AssessorRevokeOut(
         user_id=assessor_user_id,
-        place="organisation",
-        place_id=organisation_org_unit_id,
-        org_unit_id=organisation_org_unit_id,
+        org_unit_id=int(held_at),
         sign_offs_kept=int(sign_offs_kept),
     )
 
@@ -3293,25 +3262,7 @@ def accept_assessor_invite(
     return AssessorInviteAcceptOut(
         status=status,
         user_id=user.id,
-        place=_place_word(db, org_unit_id),
         org_unit_id=org_unit_id,
-    )
-
-
-def _place_word(db: Session, org_unit_id: int) -> str:
-    """``site`` or ``organisation``, for the ``place`` response field.
-
-    Kept only because removing a required field is a breaking change,
-    and an older client may still read it. Nothing here decides anything
-    by it any more: which org_unit an assessor joins is chosen without
-    regard to type. Drop the field in a contract step once no client
-    reads it.
-    """
-    unit = db.get(OrgUnit, org_unit_id)
-    return (
-        "organisation"
-        if unit is not None and unit.type in ROOT_TYPE_IDS
-        else "site"
     )
 
 

@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "response-required-property-removed POST /api/passport/assessor-invites/accept removed the required property `place` from the response with the `200` status"
+reason: "place leaves the invite-acceptance response. It said whether the assessor joined a site or an organisation, a split the org_unit tree no longer makes: the org_unit an assessor joins is chosen without regard to its type, and org_unit_id already says where. No client reads place; the accept page uses only status. A stale tab is unaffected. No forced reload."
