@@ -52,15 +52,15 @@ export default function PassportSpecialtyCard({
   return (
     <ActionCard
       icon={<IconFileText />}
-      title="Passport specialty"
+      title="Passport specialities"
       action={
         <SpecialtyField
           options={options}
-          label="Specialty"
+          label="Specialities"
           description={
             disabled
               ? "Your passport is read-only at the moment, so this cannot be changed."
-              : "This only changes the order competencies are listed in."
+              : "Choose one or more"
           }
           value={value}
           onChange={(next) => {

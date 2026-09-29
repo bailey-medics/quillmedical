@@ -20,12 +20,10 @@ describe("PassportSpecialtyCard", () => {
       />,
     );
 
-    expect(screen.getByText("Passport specialty")).toBeInTheDocument();
     expect(
-      screen.getByText(
-        "This only changes the order competencies are listed in.",
-      ),
+      screen.getByRole("heading", { name: "Passport specialities" }),
     ).toBeInTheDocument();
+    expect(screen.getByText("Choose one or more")).toBeInTheDocument();
     expect(screen.queryByText(/Nothing is hidden/)).not.toBeInTheDocument();
   });
 
