@@ -30,7 +30,12 @@ from app.features.teaching.storage import (  # noqa: E402
     resolve_local_bank,
 )
 from app.features.teaching.sync import sync_question_bank  # noqa: E402
-from app.models import OrgUnit, OrgUnitFeature, User  # noqa: E402
+from app.models import (  # noqa: E402
+    OrgUnit,
+    OrgUnitFeature,
+    PractisingCompetency,
+    User,
+)
 from app.organisations import add_org_unit_member  # noqa: E402
 from app.security import hash_password  # noqa: E402
 
@@ -152,6 +157,12 @@ def seed() -> None:
         add_org_unit_member(db, org.id, two_factor.id, "staff")
         print("Added two-factor user to organisation")
 
+        # 5b. A user manager and two people for them to manage, for the
+        # member practice journey in e2e/tests/member-practice.spec.ts.
+        # One person per browser project, so chromium and webkit never
+        # change the same member's competencies.
+        seed_member_practice(db, org.id)
+
         db.commit()
 
         # 6. Open every teaching module mounted at /teaching-repos
@@ -164,6 +175,65 @@ def seed() -> None:
         sys.exit(1)
     finally:
         db.close()
+
+
+def _ensure_user(
+    db: Session, username: str, base_profession: str | None = None
+) -> User:
+    """Return the user called *username*, creating them if missing.
+
+    The password is the username followed by ``123``, as for every other
+    CI user.
+    """
+    user = db.query(User).filter(User.username == username).first()
+    if user is not None:
+        return user
+    user = User(
+        username=username,
+        email=f"{username}@ci.local",
+        password_hash=hash_password(f"{username}123"),
+        platform_role="standard",
+        base_profession=base_profession,
+        is_active=True,
+        email_verified=True,
+    )
+    db.add(user)
+    db.flush()
+    print(f"Created {username} user")
+    return user
+
+
+def seed_member_practice(db: Session, org_unit_id: int) -> None:
+    """Seed a user manager, and the members they manage, at one org_unit.
+
+    ``usermanager`` holds ``manage_users`` and
+    ``manage_practising_competencies`` through ``teaching_manager``, and
+    administers the org_unit through a ``practising_competency`` row
+    carrying ``manage_users``, which is what makes it theirs to administer.
+    """
+    manager = _ensure_user(db, "usermanager", "teaching_manager")
+    add_org_unit_member(db, org_unit_id, manager.id, "staff")
+    administers = db.scalar(
+        select(PractisingCompetency.id).where(
+            PractisingCompetency.user_id == manager.id,
+            PractisingCompetency.org_unit_id == org_unit_id,
+            PractisingCompetency.competency == "manage_users",
+        )
+    )
+    if administers is None:
+        db.add(
+            PractisingCompetency(
+                user_id=manager.id,
+                org_unit_id=org_unit_id,
+                competency="manage_users",
+            )
+        )
+
+    for username in ("practice_chromium", "practice_webkit"):
+        member = _ensure_user(db, username)
+        add_org_unit_member(db, org_unit_id, member.id, "staff")
+    db.flush()
+    print("Seeded the member practice journey")
 
 
 def seed_teaching(db: Session, org_unit_id: int, admin_id: int) -> None:

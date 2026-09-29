@@ -242,6 +242,30 @@ def _names_of(db: Session, user_ids: set[int]) -> dict[int, str]:
     }
 
 
+def _authorised_counts(db: Session, unit_id: int) -> dict[int, int]:
+    """How many competencies each person may practise at one org_unit.
+
+    Rows beyond somebody's ceiling authorise nothing, so only rows within
+    it are counted. Users are loaded only where they hold a row here, so
+    a large staff list with few authorisations stays cheap.
+    """
+    by_user: dict[int, set[str]] = {}
+    for user_id, competency in db.execute(
+        select(
+            PractisingCompetency.user_id, PractisingCompetency.competency
+        ).where(PractisingCompetency.org_unit_id == unit_id)
+    ).all():
+        by_user.setdefault(user_id, set()).add(competency)
+    if not by_user:
+        return {}
+
+    users = db.scalars(select(User).where(User.id.in_(by_user))).unique().all()
+    return {
+        user.id: len(by_user[user.id] & set(user.get_final_competencies()))
+        for user in users
+    }
+
+
 def _members_of(db: Session, unit_id: int) -> OrgUnitMembersOut:
     """Return everybody at one org_unit, by username."""
     rows = db.execute(
@@ -256,6 +280,7 @@ def _members_of(db: Session, unit_id: int) -> OrgUnitMembersOut:
         .where(org_unit_member.c.org_unit_id == unit_id)
         .order_by(User.username)
     ).all()
+    counts = _authorised_counts(db, unit_id)
     return OrgUnitMembersOut(
         members=[
             {
@@ -264,6 +289,7 @@ def _members_of(db: Session, unit_id: int) -> OrgUnitMembersOut:
                 "email": row.email,
                 "full_name": row.full_name or "",
                 "capacity": row.capacity,
+                "authorised_here": counts.get(row.id, 0),
             }
             for row in rows
         ]

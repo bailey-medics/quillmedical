@@ -140,6 +140,10 @@ class OrgUnitMemberItem(BaseModel):
         email: Their email address.
         full_name: Their name, possibly empty.
         capacity: What they are here – staff, trainee, external, patient.
+        authorised_here: How many competencies they may practise at this
+            org_unit: rows here that fall within their ceiling. A row for
+            something they do not hold authorises nothing, so it is not
+            counted.
     """
 
     id: int
@@ -147,6 +151,7 @@ class OrgUnitMemberItem(BaseModel):
     email: str
     full_name: str
     capacity: str
+    authorised_here: int = 0
 
 
 class OrgUnitMembersOut(BaseModel):

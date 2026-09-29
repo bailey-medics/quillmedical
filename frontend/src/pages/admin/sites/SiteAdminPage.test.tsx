@@ -9,6 +9,7 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import SiteAdminPage from "./SiteAdminPage";
 import * as authContext from "@/auth/AuthContext";
@@ -114,5 +115,59 @@ describe("SiteAdminPage clinical lead", () => {
     const field = await clinicalLeadField();
     expect(within(field).getByText("Not assigned")).toBeInTheDocument();
     expect(within(field).queryByText("Dr Ada Lead")).not.toBeInTheDocument();
+  });
+});
+
+describe("SiteAdminPage staff members", () => {
+  function signedIn(competencies: string[]) {
+    vi.spyOn(authContext, "useAuth").mockReturnValue({
+      state: {
+        status: "authenticated",
+        user: { ...mockAdminUser, competencies } as User,
+      },
+      login: vi.fn(),
+      logout: vi.fn(),
+      reload: vi.fn(),
+    });
+  }
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    mockNavigate.mockClear();
+    vi.spyOn(apiLib.api, "get").mockResolvedValue({
+      ...site(null),
+      members: [{ ...lead, authorised_here: 3 }],
+    });
+  });
+
+  it("shows how many competencies each may practise here", async () => {
+    signedIn([]);
+
+    renderWithRouter(<SiteAdminPage />, { initialRoute: "/admin/sites/1" });
+
+    const row = (await screen.findByText("dr.lead")).closest("tr");
+    expect(row).not.toBeNull();
+    expect(within(row as HTMLElement).getByText("3")).toBeInTheDocument();
+    expect(screen.getByText("Authorised here")).toBeInTheDocument();
+  });
+
+  it("opens the member's page for somebody who may authorise practice", async () => {
+    signedIn(["manage_practising_competencies"]);
+    const user = userEvent.setup();
+
+    renderWithRouter(<SiteAdminPage />, { initialRoute: "/admin/sites/1" });
+    await user.click(await screen.findByText("dr.lead"));
+
+    expect(mockNavigate).toHaveBeenCalledWith("/admin/sites/1/members/7");
+  });
+
+  it("opens nothing for anybody else, as before", async () => {
+    signedIn([]);
+    const user = userEvent.setup();
+
+    renderWithRouter(<SiteAdminPage />, { initialRoute: "/admin/sites/1" });
+    await user.click(await screen.findByText("dr.lead"));
+
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 });

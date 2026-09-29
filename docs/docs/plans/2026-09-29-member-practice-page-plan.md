@@ -149,25 +149,40 @@ to the same two facts.
 
 ## Phase 3: Wire it in and remove the card
 
-- [ ] **Staff table rows open the new page**, on both `OrganisationAdminPage`
+- [x] **Staff table rows open the new page**, on both `OrganisationAdminPage`
       and `SiteAdminPage`, when the viewer holds
       `manage_practising_competencies`. Otherwise they keep going to the
-      user page, so nobody loses a link they had.
+      user page, so nobody loses a link they had. The site staff table had
+      no row link at all, so there it gains one for those viewers only.
 
-- [ ] **Add an "Authorised here" column** to both staff tables, the count
+- [x] **Add an "Authorised here" column** to both staff tables, the count
       of live authorisations (within ceiling) for that person at this place,
       so the overview the card gave survives. Decided in Phase 1: an
       additive `authorised_here` field on each entry of the existing
       `GET /{unit_id}/members` response, counted within the member's
-      ceiling, rather than one extra request per page.
+      ceiling, rather than one extra request per page. The organisation
+      and site pages read their members from `GET /{unit_id}`, which
+      builds its list the same way, so both carry it.
 
-- [ ] **Delete `PractisingCompetenciesCard`**, its story, its test and its
+- [x] **Delete `PractisingCompetenciesCard`**, its story, its test and its
       barrel export, and remove it from both pages. The list route
       `GET /{unit_id}/practising-competencies` stays, since the API is
       additive-only and appointing to a position may want it.
 
-- [ ] **E2E**: extend the organisation admin spec to open a member, switch a
-      competency on and off, and grant one they lacked.
+- [x] **E2E**: extend the organisation admin spec to open a member, switch a
+      competency on and off, and grant one they lacked. There was no
+      organisation admin spec, and the CI seed had nobody who could
+      administer an organisation, so this is a new
+      `frontend/e2e/tests/member-practice.spec.ts` and `seed_ci.py` gains a
+      `usermanager` (`teaching_manager`, with a `manage_users` row at the
+      CI organisation) and one member per browser project, so chromium and
+      webkit never change the same person.
+
+- [x] **Accessibility journeys**: the side navigation gained a child link
+      in Phase 2, but only on the new member page. None of the four
+      journeys in `docs/docs/frontend/accessibility/journeys.md` passes
+      through the organisation or site admin pages, so nothing is added to
+      the "Not yet run" list in `testing-log.md`.
 
 ## Open questions
 

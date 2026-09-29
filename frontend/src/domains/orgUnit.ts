@@ -78,6 +78,12 @@ export type OrgUnitMember = {
   full_name: string;
   /** staff, trainee, external or patient. */
   capacity: string;
+  /**
+   * How many competencies they may practise here: rows at this org_unit
+   * within their ceiling. A row for something they do not hold is not
+   * counted, because it authorises nothing.
+   */
+  authorised_here: number;
 };
 
 /**
