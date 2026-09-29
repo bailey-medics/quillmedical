@@ -190,11 +190,13 @@ over those ranges, and fall back to June to June only where none is declared.
 
 ## Phase 5: Accessibility journeys
 
-- [ ] **This plan changes the navigation**, by adding the first child link
-      under Settings. Name the journeys in
+- [x] **This plan changes the navigation**, by adding the first child link
+      under Settings. The journeys in
       `docs/docs/frontend/accessibility/journeys.md` that pass through the
-      side navigation, and add them to the "Not yet run" list in
-      `testing-log.md`.
+      side navigation are journey 2 (step 6, the navigation drawer from the
+      ribbon) and journey 3 (step 8, the teaching sidebar, which renders
+      the same Settings entry from `featureNavItems.ts`). Both are on the
+      "Not yet run" list in `testing-log.md`.
 
 ## Decisions
 
