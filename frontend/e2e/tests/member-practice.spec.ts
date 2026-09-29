@@ -50,29 +50,23 @@ test.describe("Member practice", () => {
     await expect(page).toHaveURL(/\/admin\/organisations\/\d+\/members\/\d+$/);
 
     await expect(
-      page.getByRole("heading", { name: "Competencies held" }),
+      page.getByRole("columnheader", { name: "May practise here" }),
     ).toBeVisible();
     const toggle = page.getByRole("switch", {
       name: `${COMPETENCY}: may practise here`,
     });
 
-    // Grant it from the other competencies, unless a retry already did.
-    // "Other competencies" is the last table on the page, so its search
-    // is the last one; the catalogue is long enough to page.
+    // Grant it through the modal, unless a retry already did.
     if (!(await toggle.isVisible())) {
-      await page.getByRole("button", { name: "Open search" }).last().click();
-      await page.getByRole("textbox", { name: "Search" }).fill(COMPETENCY);
-      await page
-        .getByRole("row", { name: new RegExp(COMPETENCY) })
-        .getByRole("button", { name: "Grant and authorise" })
-        .click();
-      // Both confirm modals stay mounted, so pick this one by its text.
+      await page.getByRole("button", { name: "Grant competency" }).click();
       const dialog = page
         .getByRole("dialog")
-        .filter({ hasText: "applies everywhere they work" });
+        .filter({ hasText: "everywhere they work" });
       await expect(dialog).toBeVisible();
+      await dialog.getByRole("combobox").fill(COMPETENCY);
+      await page.getByRole("option", { name: COMPETENCY }).click();
       await dialog.getByRole("button", { name: "Grant and authorise" }).click();
-      await expect(page.getByText("Granted and authorised")).toBeVisible();
+      await expect(dialog).toBeHidden();
     }
 
     await expect(toggle).toBeChecked();

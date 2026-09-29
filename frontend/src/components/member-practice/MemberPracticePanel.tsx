@@ -7,17 +7,17 @@
  * competency they hold gets a switch for the second, which is the only
  * choice an organisation or site has to make about them.
  *
- * A viewer who may also change somebody's competencies sees the rest of
- * the catalogue, and can grant one and authorise it here in one step.
- * That grant applies everywhere the person works, so it asks first and
- * says so.
+ * A viewer who may also change somebody's competencies gets a "Grant
+ * competency" button, which gives them one and authorises it here in one
+ * step. That grant applies everywhere the person works, so it is kept to
+ * a modal that says so, apart from the switches, which reach only here.
  *
  * Shared by the organisation and site pages: both are org_units, and
  * nothing here depends on which kind.
  */
 
 import { useMemo, useState } from "react";
-import { Stack } from "@mantine/core";
+import { Group, Stack } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import { BodyText, Heading } from "@/components/typography";
 import { ConfirmModal } from "@/components/confirm-modal";
@@ -30,6 +30,7 @@ import type { Column } from "@/components/tables/DataTable";
 import DataTableControlled from "@/components/tables/DataTableControlled";
 import type { MemberPractice } from "@/domains/orgUnit";
 import { ACTIVE_COMPETENCIES, ALL_COMPETENCIES } from "@/types/cbac";
+import GrantCompetencyModal from "./GrantCompetencyModal";
 
 /** Props for {@link MemberPracticePanel}. */
 export interface MemberPracticePanelProps {
@@ -43,7 +44,7 @@ export interface MemberPracticePanelProps {
   onGrantAndAuthorise: (competency: string) => Promise<void>;
 }
 
-/** One row in any of the three tables: a competency and its name. */
+/** One row in either table: a competency and its name. */
 interface CompetencyRow {
   id: string;
   name: string;
@@ -75,7 +76,10 @@ export default function MemberPracticePanel({
 }: MemberPracticePanelProps) {
   const [busy, setBusy] = useState<string | null>(null);
   const [withdrawing, setWithdrawing] = useState<CompetencyRow | null>(null);
-  const [granting, setGranting] = useState<CompetencyRow | null>(null);
+  // Undefined while closed; otherwise the competency to start with, if any.
+  const [granting, setGranting] = useState<string | null | undefined>(
+    undefined,
+  );
 
   const name = practice.full_name || practice.username;
 
@@ -98,15 +102,16 @@ export default function MemberPracticePanel({
     () => rowsFor([...authorisedIds].filter((id) => !qualifiedIds.has(id))),
     [authorisedIds, qualifiedIds],
   );
-  // Active only: a retired competency can no longer be granted.
-  const notHeld = useMemo(
+  // What could be granted: active only, since a retired competency can
+  // no longer be given, and not already held.
+  const offered = useMemo(
     () =>
       rowsFor(
         ACTIVE_COMPETENCIES.map((entry) => entry.id).filter(
-          (id) => !qualifiedIds.has(id) && !authorisedIds.has(id),
+          (id) => !qualifiedIds.has(id),
         ),
       ),
-    [qualifiedIds, authorisedIds],
+    [qualifiedIds],
   );
 
   async function toggle(row: CompetencyRow, on: boolean) {
@@ -155,7 +160,7 @@ export default function MemberPracticePanel({
       render: (row) => (
         <Stack gap="xs" align="flex-end">
           {practice.may_grant && (
-            <AddButton label="Grant" onClick={() => setGranting(row)} />
+            <AddButton label="Grant" onClick={() => setGranting(row.id)} />
           )}
           <IconButton
             icon={<Icon icon={<IconTrash />} />}
@@ -167,33 +172,18 @@ export default function MemberPracticePanel({
     },
   ];
 
-  const notHeldColumns: Column<CompetencyRow>[] = [
-    {
-      header: "Competency",
-      render: (row) => row.name,
-      accessor: (row) => row.name,
-    },
-    {
-      header: "",
-      width: "180px",
-      render: (row) => (
-        <AddButton
-          label="Grant and authorise"
-          onClick={() => setGranting(row)}
-        />
-      ),
-    },
-  ];
-
   return (
     <Stack gap="lg">
       <BaseCard>
         <Stack gap="md">
-          <Heading>Competencies held</Heading>
-          <BodyText>
-            What {name} is qualified for. Switch one on to let them practise it
-            at {practice.org_unit_name}.
-          </BodyText>
+          {practice.may_grant && (
+            <Group justify="flex-end">
+              <AddButton
+                label="Grant competency"
+                onClick={() => setGranting(null)}
+              />
+            </Group>
+          )}
           <DataTableControlled<CompetencyRow>
             data={qualified}
             columns={qualifiedColumns}
@@ -221,25 +211,6 @@ export default function MemberPracticePanel({
         </BaseCard>
       )}
 
-      {practice.may_grant && (
-        <BaseCard>
-          <Stack gap="md">
-            <Heading>Other competencies</Heading>
-            <BodyText>
-              Competencies {name} does not hold. Granting one gives it to them
-              everywhere they work, and authorises it here.
-            </BodyText>
-            <DataTableControlled<CompetencyRow>
-              data={notHeld}
-              columns={notHeldColumns}
-              getRowKey={(row) => row.id}
-              emptyMessage="They hold every competency"
-              searchFields={(row) => [row.name]}
-            />
-          </Stack>
-        </BaseCard>
-      )}
-
       <ConfirmModal
         opened={withdrawing !== null}
         onClose={() => setWithdrawing(null)}
@@ -258,24 +229,18 @@ export default function MemberPracticePanel({
         anywhere else.
       </ConfirmModal>
 
-      <ConfirmModal
-        opened={granting !== null}
-        onClose={() => setGranting(null)}
-        onAccept={async () => {
-          if (!granting) return;
-          await onGrantAndAuthorise(granting.id);
-          setGranting(null);
-        }}
-        title="Grant and authorise"
-        acceptLabel="Grant and authorise"
-        submittingLabel="Granting…"
-        destructive={false}
-      >
-        Give <strong>{practice.username}</strong> the competency{" "}
-        <strong>{granting?.name}</strong>? It applies everywhere they work, not
-        only at {practice.org_unit_name}, and they will be authorised to
-        practise it here.
-      </ConfirmModal>
+      {/* Mounted only while open, so each opening starts afresh. */}
+      {granting !== undefined && (
+        <GrantCompetencyModal
+          opened
+          onClose={() => setGranting(undefined)}
+          options={offered}
+          username={practice.username}
+          orgUnitName={practice.org_unit_name}
+          initial={granting}
+          onGrant={onGrantAndAuthorise}
+        />
+      )}
     </Stack>
   );
 }

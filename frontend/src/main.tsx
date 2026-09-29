@@ -476,7 +476,7 @@ const routes: RouteObject[] = [
             path: "organisations/:id/members/:userId",
             element: (
               <RequireCompetency competency="manage_practising_competencies">
-                <MemberPracticePage backTo="organisations" />
+                <MemberPracticePage />
               </RequireCompetency>
             ),
             handle: { safeForReload: true },
@@ -532,7 +532,7 @@ const routes: RouteObject[] = [
                 path: "sites/:id/members/:userId",
                 element: (
                   <RequireCompetency competency="manage_practising_competencies">
-                    <MemberPracticePage backTo="sites" />
+                    <MemberPracticePage />
                   </RequireCompetency>
                 ),
                 handle: { safeForReload: true },

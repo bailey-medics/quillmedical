@@ -14,3 +14,24 @@
   font-size: 2.5rem !important;
   color: var(--mantine-color-text);
 }
+
+/*
+ * Title and action on one row, wrapping on a narrow screen. The action's
+ * auto start margin pushes it right on the title's line and on a line of
+ * its own alike, which `justify-content: space-between` cannot: it has
+ * nothing to space a lone item against.
+ */
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--mantine-spacing-md);
+
+  &[data-align="center"] {
+    align-items: center;
+  }
+}
+
+.action {
+  margin-inline-start: auto;
+}

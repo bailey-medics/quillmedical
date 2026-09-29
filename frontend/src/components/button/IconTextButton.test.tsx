@@ -13,6 +13,14 @@ import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@test/test-utils";
 import IconTextButton from "./IconTextButton";
 
+// Whether the screen is phone width, as the Icon reads it.
+const phone = vi.hoisted(() => ({ value: false }));
+
+vi.mock("@mantine/hooks", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@mantine/hooks")>();
+  return { ...actual, useMediaQuery: () => phone.value };
+});
+
 describe("IconTextButton", () => {
   describe("Rendering", () => {
     it("renders with label text", () => {
@@ -27,6 +35,18 @@ describe("IconTextButton", () => {
       const button = screen.getByRole("button");
       const svg = button.querySelector("svg");
       expect(svg).toBeInTheDocument();
+    });
+
+    it("keeps its icon the same size on a phone", () => {
+      // The button's own height does not shrink, so neither does its icon.
+      phone.value = true;
+      renderWithMantine(
+        <IconTextButton icon="user" label="Their user account" />,
+      );
+      phone.value = false;
+
+      const svg = screen.getByRole("button").querySelector("svg");
+      expect(svg).toHaveAttribute("width", "20");
     });
   });
 

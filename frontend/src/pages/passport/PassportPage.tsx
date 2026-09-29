@@ -129,10 +129,11 @@ function PassportHeader({
   onInbox: () => void;
 }) {
   return (
-    <Group justify="space-between" align="center">
-      <PageHeader title="My passport" />
-      <InboxButton count={waiting} onClick={onInbox} />
-    </Group>
+    <PageHeader
+      title="My passport"
+      action={<InboxButton count={waiting} onClick={onInbox} />}
+      actionAlign="center"
+    />
   );
 }
 
