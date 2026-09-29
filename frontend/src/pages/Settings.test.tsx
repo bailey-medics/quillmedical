@@ -1,8 +1,8 @@
 /**
- * Settings page – the page-view opt-out, the passport specialty card, the
- * install app card and the two-factor card
+ * Settings page: the page-view opt-out, the passport specialty card, the
+ * install app card and the two-factor card.
  *
- * The rest of Settings – notifications, dark mode – is untested here and
+ * The rest of Settings (notifications, dark mode) is untested here and
  * was before these changes too.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
