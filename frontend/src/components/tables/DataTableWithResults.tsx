@@ -34,11 +34,8 @@ import {
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import DataCard from "./DataCard";
-import {
-  BodyText,
-  BodyTextBold,
-  BodyTextInline,
-} from "@/components/typography";
+import CellContent from "./CellContent";
+import { BodyText, BodyTextBold } from "@/components/typography";
 
 // ------------------------------------------------------------------
 // Types
@@ -209,7 +206,7 @@ function DataTableWithResultsView<T>({
                     style={{ verticalAlign: "middle" }}
                     pb={subRowContent ? 0 : undefined}
                   >
-                    <BodyTextInline>{column.render(row)}</BodyTextInline>
+                    <CellContent>{column.render(row)}</CellContent>
                   </Table.Td>
                 ))}
               </Table.Tr>

@@ -8,7 +8,8 @@
  */
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Stack } from "@mantine/core";
-import MediaDropzone from "./MediaDropzone";
+import DataTable, { type Column } from "@/components/tables/DataTable";
+import MediaDropzone, { type MediaDropzoneProps } from "./MediaDropzone";
 import { ACCEPTED_VIDEO_TYPES } from "./mediaFormat";
 import { StoryNote } from "@/stories/variants";
 
@@ -31,19 +32,67 @@ export default meta;
 
 type Story = StoryObj<typeof MediaDropzone>;
 
-export const Default: Story = {};
+interface Lecture {
+  id: string;
+  title: string;
+}
+
+const lectures: Lecture[] = [
+  { id: "intro", title: "Introduction to optical diagnosis" },
+  { id: "polyps", title: "Classifying small polyps" },
+  { id: "resect", title: "Resect and discard in practice" },
+];
+
+/**
+ * The box on its own, then in a table row as the teaching media card
+ * shows it, one per lecture waiting for its video.
+ */
+function OnItsOwnAndInATable({
+  args,
+  note,
+}: {
+  args: MediaDropzoneProps;
+  note?: string;
+}) {
+  const columns: Column<Lecture>[] = [
+    { header: "Lecture", render: (lecture) => lecture.title },
+    { header: "Video", render: () => <MediaDropzone {...args} /> },
+  ];
+
+  return (
+    <Stack gap="lg">
+      <Stack gap="sm">
+        <StoryNote>Neat drop zone button</StoryNote>
+        <MediaDropzone {...args} />
+        {note && <StoryNote>{note}</StoryNote>}
+      </Stack>
+      <Stack gap="sm">
+        <StoryNote>Drop zone inside a table</StoryNote>
+        <DataTable
+          data={lectures}
+          columns={columns}
+          getRowKey={(lecture) => lecture.id}
+        />
+      </Stack>
+    </Stack>
+  );
+}
+
+export const Default: Story = {
+  render: (args) => <OnItsOwnAndInATable args={args} />,
+};
 
 export const Disabled: Story = {
   args: { disabled: true },
   render: (args) => (
-    <Stack gap="sm">
-      <MediaDropzone {...args} />
-      <StoryNote>While another upload is in flight.</StoryNote>
-    </Stack>
+    <OnItsOwnAndInATable
+      args={args}
+      note="While another upload is in flight."
+    />
   ),
 };
 
-/** On the dark theme: the resting fill is the input navy, darker on hover. */
+/** On the dark theme: a lighter blue fill, so it shows on striped rows. */
 export const DarkMode: Story = {
   ...Default,
   globals: { colorScheme: "dark" },

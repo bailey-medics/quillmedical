@@ -35,16 +35,13 @@ import {
   useComputedColorScheme,
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
-import {
-  BodyText,
-  BodyTextInline,
-  BodyTextBold,
-} from "@/components/typography";
+import { BodyText, BodyTextBold } from "@/components/typography";
 import { StateMessage } from "@/components/message-cards";
 import { IconAlertCircle } from "@/components/icons/appIcons";
 import SortHeader, { type SortDirection } from "./SortHeader";
 import TablePagination from "./TablePagination";
 import DataCard from "./DataCard";
+import CellContent from "./CellContent";
 import classes from "./DataTable.module.css";
 
 /**
@@ -58,8 +55,8 @@ export interface Column<T> {
    *
    * Return plain text (string/number) or a simple component (Badge,
    * FormattedDate, ActiveStatusBadge, etc.). Do NOT wrap output in Text or
-   * other typography components — cells are already styled via
-   * BodyTextInline.
+   * other typography components: text is styled for you, and a control is
+   * rendered as it is, centred in the row. See `CellContent`.
    */
   render: (row: T) => React.ReactNode;
   /** Optional: custom width */
@@ -379,7 +376,7 @@ function DataTableView<T>({
                   className={classes.cell}
                   style={{ verticalAlign: "middle" }}
                 >
-                  <BodyTextInline>{column.render(row)}</BodyTextInline>
+                  <CellContent>{column.render(row)}</CellContent>
                 </Table.Td>
               ))}
             </Table.Tr>

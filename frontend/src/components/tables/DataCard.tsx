@@ -31,7 +31,8 @@
 import type { ReactNode } from "react";
 import { Group, Skeleton, Stack } from "@mantine/core";
 import Divider from "@/components/divider/Divider";
-import { BodyTextInline, BodyTextBold } from "@/components/typography";
+import { BodyTextBold } from "@/components/typography";
+import CellContent from "./CellContent";
 import type { Column } from "./DataTable";
 import BaseCard from "@/components/base-card/BaseCard";
 import classes from "./DataCard.module.css";
@@ -104,11 +105,7 @@ export default function DataCard<T>({
               <span className={classes.header}>
                 <BodyTextBold>{column.header}:</BodyTextBold>
               </span>
-              {typeof content === "string" || typeof content === "number" ? (
-                <BodyTextInline>{content}</BodyTextInline>
-              ) : (
-                content
-              )}
+              <CellContent>{content}</CellContent>
             </Group>
             {index < fields.length - 1 && <Divider mt="sm" />}
           </div>
