@@ -25,7 +25,7 @@ interface ResetPasswordFormValues {
 }
 
 export interface ResetPasswordFormProps {
-  /** Called when the form is submitted — should return a FormSubmitResult */
+  /** Called when the form is submitted – should return a FormSubmitResult */
   onSubmit: (newPassword: string) => Promise<FormSubmitResult>;
 }
 

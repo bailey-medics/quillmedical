@@ -69,7 +69,7 @@ interface NewMessageModalProps {
   opened: boolean;
   /** Called when the modal is closed */
   onClose: () => void;
-  /** Called when the user submits the form — should return a FormSubmitResult */
+  /** Called when the user submits the form – should return a FormSubmitResult */
   onSubmit: (data: NewConversationData) => Promise<FormSubmitResult>;
   /** Pre-selected patient ID (locks the patient selector) */
   patientId?: string;
@@ -79,7 +79,7 @@ interface NewMessageModalProps {
   isPatientView?: boolean;
 }
 
-/** Inner form fields — uses Form context to wire to RHF */
+/** Inner form fields – uses Form context to wire to RHF */
 function NewMessageFields({
   patients,
   users,

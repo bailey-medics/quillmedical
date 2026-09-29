@@ -2,7 +2,7 @@
 
 A tree is one parent each *and* no cycles. The column gives the first for
 nothing, because one column cannot hold two parents. The second has to be
-checked on every move, or the tree quietly stops being one — and until
+checked on every move, or the tree quietly stops being one – and until
 scoping walked the column, nothing noticed: a place under its own ward
 was accepted and simply never followed.
 

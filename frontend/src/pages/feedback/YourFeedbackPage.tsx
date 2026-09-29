@@ -7,7 +7,7 @@
  * reason to report the next one.
  *
  * Read-only. There is no reply channel yet; the status is the answer.
- * Reached from links in the feedback modal, not the sidebar — sending is
+ * Reached from links in the feedback modal, not the sidebar – sending is
  * the sidebar's job, and it happens far more often than checking.
  */
 

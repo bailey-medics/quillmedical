@@ -5,7 +5,7 @@
  *
  * Like the organisation staff picker, the list is unfiltered: there is
  * no rank left to filter on, and any filter would hide the patient
- * becoming a healthcare assistant — the case the picker most needs to
+ * becoming a healthcare assistant – the case the picker most needs to
  * support. So selecting somebody who holds nothing a member of staff
  * would opens a confirmation, and offers to grant them a profession and
  * competencies in the same act as the membership. The grant is additive
@@ -167,7 +167,7 @@ function AddStaffFields({
                   <SelectField
                     label="Base profession"
                     description="Grants that profession's competencies. What they already hold is kept."
-                    placeholder="Optional — select base profession"
+                    placeholder="Optional – select base profession"
                     data={professionOptions}
                     value={field.value as string | null}
                     onChange={field.onChange}
@@ -183,7 +183,7 @@ function AddStaffFields({
                   <MultiSelectField
                     label="Additional competencies"
                     description="Anything beyond the profession's defaults"
-                    placeholder="Optional — select competencies"
+                    placeholder="Optional – select competencies"
                     data={competencyOptions}
                     value={field.value as string[]}
                     onChange={field.onChange}
@@ -257,14 +257,14 @@ export default function AddStaffToSitePage() {
     selectedUser !== undefined &&
     !holdsStaffLikeCompetency(selectedUser.competencies ?? []);
 
-  // Undefined submits straight through — `Form` only gates when this is
+  // Undefined submits straight through – `Form` only gates when this is
   // set, so the question is asked for exactly the people it is about.
   const confirm: FormConfirmConfig | undefined = needsConfirmation
     ? {
         title: "Add as a staff member?",
         acceptLabel: "Add as staff",
         submittingLabel: "Adding…",
-        children: `${selectedUser.username} holds nothing a member of staff would — only access to patient records as a patient or advocate. Adding them here makes them staff of this site.`,
+        children: `${selectedUser.username} holds nothing a member of staff would – only access to patient records as a patient or advocate. Adding them here makes them staff of this site.`,
       }
     : undefined;
 

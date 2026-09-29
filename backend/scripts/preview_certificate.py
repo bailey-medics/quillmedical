@@ -9,7 +9,7 @@ Or with a specific bank background:
     docker exec quill_backend python -m scripts.preview_certificate \
         --bank colonoscopy-optical-diagnosis-test
 
-The PDF is written to /tmp/certificate-preview.pdf — copy it to the
+The PDF is written to /tmp/certificate-preview.pdf – copy it to the
 host to view:
 
     docker cp quill_backend:/tmp/certificate-preview.pdf .
@@ -34,7 +34,7 @@ from app.features.teaching.certificate import (
 _DEFAULT_BANK_PATH = Path("/question-banks/questions")
 _OUTPUT_PATH = Path("/tmp/certificate-preview.pdf")  # noqa: S108
 
-# Dummy data for preview — tweak these to test different lengths
+# Dummy data for preview – tweak these to test different lengths
 _EXAM_TITLE = "Optical Diagnosis of Diminutive Colorectal Polyps MCQ Online"
 _CANDIDATE_NAME = "Dr Alexandra Hamilton-Fairfax"
 _PASS_SUMMARY = (

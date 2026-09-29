@@ -109,7 +109,7 @@ export default function MainLayout({
   } = useConnectivity();
 
   // Forced-reload state for the fallback strip (blocking overlay renders
-  // at the app root, unaffected by layout — see ForcedReloadGate).
+  // at the app root, unaffected by layout – see ForcedReloadGate).
   const { phase } = useForcedReload();
 
   // Clear reconnected strip on route change

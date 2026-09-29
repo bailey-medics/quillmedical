@@ -133,7 +133,7 @@ def evaluate_pass_criteria(
             )
 
         else:
-            # Unknown rule type — fail-safe: treat as not passed
+            # Unknown rule type – fail-safe: treat as not passed
             results.append(
                 {
                     "name": name,

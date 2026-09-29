@@ -100,7 +100,7 @@ export const MiddleStep: Story = {
 /**
  * Last step
  *
- * Form on the final review step — no "Next" button shown
+ * Form on the final review step – no "Next" button shown
  */
 export const LastStep: Story = {
   tags: ["!test"],

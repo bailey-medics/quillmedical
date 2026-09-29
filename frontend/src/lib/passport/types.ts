@@ -1,7 +1,7 @@
 /**
  * Passport API types.
  *
- * Mirrors the Pydantic schemas in `backend/app/schemas/passport.py` —
+ * Mirrors the Pydantic schemas in `backend/app/schemas/passport.py` –
  * the API contract, deliberately separate from the record model in
  * `backend/app/features/passport/schemas.py` that describes what a
  * passport *file* holds. The two look alike today and are expected to
@@ -22,7 +22,7 @@
  * Dates and timestamps arrive as ISO strings, not `Date`. Pydantic
  * serialises `date` as `YYYY-MM-DD` and `datetime` as ISO 8601; parsing
  * them here would guess at a timezone the backend did not state. Fields
- * typed `IsoDate` carry no time of day at all — `performed_on` is a day
+ * typed `IsoDate` carry no time of day at all – `performed_on` is a day
  * because nobody recalls whether a procedure was at 09:30 or 11:00.
  */
 
@@ -43,7 +43,7 @@ export type IsoDateTime = string;
 
 /**
  * What a sign-off can be. `requested` exists because the record is written
- * when the holder asks, not when the assessor signs — the request is part
+ * when the holder asks, not when the assessor signs – the request is part
  * of the history rather than a row that vanishes.
  */
 export type SignOffStatus =
@@ -144,7 +144,7 @@ export interface Assessor {
 
 /**
  * What was in front of the assessor when they decided. Not a threshold
- * that was met — the passport never judges sufficiency — but a record of
+ * that was met – the passport never judges sufficiency – but a record of
  * what the evidence looked like at that moment.
  */
 export interface EvidenceSnapshot {
@@ -281,7 +281,7 @@ export interface InboxItem {
  *
  * `assessor_email` names who is being asked. An address rather than an
  * account, because the assessor who observed the work may have no Quill
- * account yet — they are emailed, and sign in or register to sign. The
+ * account yet – they are emailed, and sign in or register to sign. The
  * holder chooses, because the judgement about who is appropriate
  * belongs to them and their supervisor. The one rule the API enforces
  * is that it may not be the holder themselves.
@@ -567,12 +567,12 @@ export interface InvitePreview {
  * Finishing registration, which is what consumes the invitation.
  *
  * `username` and `password` are required only when the invitation
- * resolves to somebody without an account — see `needs_account` on the
+ * resolves to somebody without an account – see `needs_account` on the
  * preview. An assessor who already uses Quill sends the token alone.
  *
  * So are the name and registration, and for the same reason. The holder
  * asking for a sign-off gives an address and nothing else, so nobody
- * has told Quill who this person is until they say so — and a
+ * has told Quill who this person is until they say so – and a
  * registration number is worth more from its holder than from somebody
  * who half-remembered it. An assessor who already has an account has
  * these on it already.

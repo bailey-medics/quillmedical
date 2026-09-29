@@ -11,7 +11,7 @@ renderer drops an offending key and falls back to a default so a
 certificate download never returns a 500.  The recovery logic therefore
 stays in ``certificate.py``; only the schema lives here.
 
-Only the standard library and ``pydantic`` may be imported — see the
+Only the standard library and ``pydantic`` may be imported – see the
 package docstring.
 """
 

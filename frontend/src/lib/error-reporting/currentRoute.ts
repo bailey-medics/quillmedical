@@ -42,7 +42,7 @@ export function resetCurrentRouteForTests(): void {
  * React Router does not hand out the pattern that matched, but it does hand
  * out the values it captured, and replacing each value with its name gives the
  * pattern back. Working from the captured values means an identifier is
- * removed because the router said it was one — not because it looked like one.
+ * removed because the router said it was one – not because it looked like one.
  */
 export function toRoutePattern(
   pathname: string,

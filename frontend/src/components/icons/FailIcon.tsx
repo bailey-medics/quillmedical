@@ -1,7 +1,7 @@
 /**
  * FailIcon Component
  *
- * Atomic fail/error indicator — red circle with a white cross.
+ * Atomic fail/error indicator – red circle with a white cross.
  * Uses the alert status colour for consistency across the app.
  */
 

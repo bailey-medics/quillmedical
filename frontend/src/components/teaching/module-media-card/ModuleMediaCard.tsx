@@ -7,7 +7,7 @@
  *
  * Rendered only when the module's content references media, so a module
  * of pure text never shows it. Whether media is needed is derived from
- * the content itself, never from a flag an author sets — a boolean in a
+ * the content itself, never from a flag an author sets – a boolean in a
  * file nobody reopens is a second source of truth that can disagree
  * with the slides.
  *
@@ -180,8 +180,8 @@ export default function ModuleMediaCard({
 
                 // Nothing uploaded and nothing on its way.
                 if (!row.asset && percent === undefined) {
-                  // A failed upload leaves nothing behind — no partial
-                  // file, no half-made asset — so the dropzone below is
+                  // A failed upload leaves nothing behind – no partial
+                  // file, no half-made asset – so the dropzone below is
                   // a genuine clean slate. What it is not is
                   // self-explanatory: an empty row looks the same
                   // whether the upload failed or was never attempted,
@@ -190,7 +190,7 @@ export default function ModuleMediaCard({
                     <Stack gap={4}>
                       {failed ? (
                         <BodyTextInline c="var(--alert-text-color)">
-                          {failed} Nothing was saved — try again.
+                          {failed} Nothing was saved – try again.
                         </BodyTextInline>
                       ) : null}
                       <MediaDropzone
@@ -218,7 +218,7 @@ export default function ModuleMediaCard({
                 // inferring it from the stage count: a stalled job is
                 // on its last stage and is not finished, and a video
                 // whose captions have not started is idle without being
-                // done. Two states set it — captions signed off, and,
+                // done. Two states set it – captions signed off, and,
                 // where no transcode job is configured, an upload that
                 // plays as it is. The review timestamp is still read
                 // here so an older backend, which sends no `is_final`,
@@ -242,7 +242,7 @@ export default function ModuleMediaCard({
                         on, it does not tell two videos apart the way
                         the name does, and it competed with the status
                         line beneath it. Size still appears where it
-                        decides something — the message refusing a file
+                        decides something – the message refusing a file
                         too large to upload. */}
                     <BodyTextInline>
                       {row.asset?.original_filename ??
@@ -361,7 +361,7 @@ export default function ModuleMediaCard({
         icon={<IconAlertTriangle />}
       >
         {/* ConfirmModal wraps children in a <p>, so everything here
-            must stay inline — a block element nested inside it is
+            must stay inline – a block element nested inside it is
             invalid HTML and React warns about it at runtime. */}
         <>
           {pendingDelete?.original_filename} will be removed permanently.

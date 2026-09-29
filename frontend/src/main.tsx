@@ -9,11 +9,11 @@
  *
  * Routes use one of two layouts:
  *
- * 1. **RootLayout → MainLayout** — the default for most authenticated pages.
+ * 1. **RootLayout → MainLayout** – the default for most authenticated pages.
  *    RootLayout renders MainLayout (side-nav, top ribbon, patient context) and
  *    exposes `useOutletContext<LayoutCtx>()` to child routes.
  *
- * 2. **TeachingLayout** — a standalone full-screen layout for teaching/learning
+ * 2. **TeachingLayout** – a standalone full-screen layout for teaching/learning
  *    pages. Each teaching page wraps itself in `<TeachingLayout>` (with optional
  *    sidebar/drawer props). These routes live OUTSIDE RootLayout's children
  *    array and supply their own `<RequireAuth>` + `<RequireFeature>` guards.
@@ -22,7 +22,7 @@
  *
  * Add to the "Teaching routes" `children` array below RootLayout. The page
  * component must wrap its content in `<TeachingLayout>`. The shared layout
- * route provides `<RequireAuth>` + `<RequireFeature>` guards once — individual
+ * route provides `<RequireAuth>` + `<RequireFeature>` guards once – individual
  * children do not need them.
  *
  * ## Route structure
@@ -151,7 +151,7 @@ import LearningDashboard from "./features/teaching/pages/LearningDashboard";
 import SlideReader from "./features/teaching/pages/SlideReader";
 
 const routes: RouteObject[] = [
-  // Public routes (login, register) — placed before protected routes so
+  // Public routes (login, register) – placed before protected routes so
   // they are matched directly and not captured by the authenticated
   // parent route.
   {
@@ -221,7 +221,7 @@ const routes: RouteObject[] = [
     children: [
       { path: "/", element: <HomeRedirect /> },
 
-      // Passport — lazily loaded, and gated twice: the organisation
+      // Passport – lazily loaded, and gated twice: the organisation
       // feature and the CBAC competency. Most people who download the
       // app can never open these, which is why this subtree is the
       // pilot for code splitting rather than the largest one.
@@ -237,11 +237,6 @@ const routes: RouteObject[] = [
           {
             path: "/passport",
             lazy: () => import("./pages/passport/PassportPage"),
-            handle: { safeForReload: true },
-          },
-          {
-            path: "/passport/competency/:id",
-            lazy: () => import("./pages/passport/PassportCompetencyPage"),
             handle: { safeForReload: true },
           },
           {
@@ -313,7 +308,7 @@ const routes: RouteObject[] = [
         ],
       },
 
-      // Clinical routes — require FHIR/EHRbase connectivity
+      // Clinical routes – require FHIR/EHRbase connectivity
       {
         // Everything under here is patient data, and is deliberately not
         // counted. Declared on the subtree root rather than each leaf so a
@@ -382,7 +377,7 @@ const routes: RouteObject[] = [
         ],
       },
 
-      // Admin routes — require the competency the API itself requires
+      // Admin routes – require the competency the API itself requires
       {
         path: "/admin",
         element: (
@@ -598,7 +593,7 @@ const routes: RouteObject[] = [
     ],
   },
 
-  // Teaching routes — all use TeachingLayout (not MainLayout).
+  // Teaching routes – all use TeachingLayout (not MainLayout).
   // Shared layout route provides RequireAuth + RequireFeature guards once.
   {
     path: "/teaching",
@@ -664,7 +659,7 @@ const routes: RouteObject[] = [
     ],
   },
 
-  // Passport — the app's first lazily-loaded subtree.
+  // Passport – the app's first lazily-loaded subtree.
   //
   // Two routes sit out here rather than inside RequireAuth: the invite
   // landing, which somebody with no Quill account at all must be able to
@@ -694,7 +689,7 @@ const routes: RouteObject[] = [
 // Every tree hangs off one pathless route, so recording which screen is
 // showing happens once rather than once per layout. It was previously done in
 // RootLayout, which sits inside RequireAuth and therefore missed the sign-in
-// pages, the 404 and the whole /teaching tree — those reported errors with no
+// pages, the 404 and the whole /teaching tree – those reported errors with no
 // route at all. Declared here, a tree added later inherits it.
 const router = createBrowserRouter([
   { element: <RouteTracking />, children: routes },

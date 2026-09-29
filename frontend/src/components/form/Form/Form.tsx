@@ -77,13 +77,13 @@ export interface FormConfirmConfig {
 export interface FormProps<T extends FieldValues> {
   /** Default form values */
   defaultValues?: DefaultValues<T>;
-  /** Async submit handler — receives validated data, returns result */
+  /** Async submit handler – receives validated data, returns result */
   onSubmit: (data: T) => Promise<FormSubmitResult>;
   /** Label for the submit button (defaults to "Save") */
   submitLabel?: string;
   /** Label shown during submission (defaults to "Saving…") */
   submittingLabel?: string;
-  /** Timeout in milliseconds — triggers timeout state (defaults to 30000) */
+  /** Timeout in milliseconds – triggers timeout state (defaults to 30000) */
   timeoutMs?: number;
   /** When true, submit button is disabled until the form is dirty (defaults to false) */
   disableWhenClean?: boolean;

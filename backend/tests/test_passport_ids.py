@@ -68,7 +68,7 @@ class TestTimestampIdGenerator:
         """The bug this test exists for.
 
         Bumping a previous id that landed on .999 by a millisecond cannot
-        be done by replacing the microsecond field — it overflows. Only
+        be done by replacing the microsecond field – it overflows. Only
         date arithmetic carries into the next second.
         """
         generator = ids.TimestampIdGenerator()
@@ -156,7 +156,7 @@ class TestIsTimestampId:
 
     def test_accepts_an_implausible_but_well_formed_date(self) -> None:
         """A validator that refused a surprising date would refuse to read
-        a passport written by a machine with a bad clock — which is
+        a passport written by a machine with a bad clock – which is
         exactly when the record matters most."""
         assert ids.is_timestamp_id("19700101T000000.000Z-" + "0" * 32)
 

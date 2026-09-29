@@ -9,7 +9,7 @@ default:
 
 - **Only a correction corrects.** Letting a progression set ``corrects``
   would imply an earlier assessor had got something wrong when they had
-  not — a statement about a named person, made by a field default.
+  not – a statement about a named person, made by a field default.
 - **A signed record says who signed it.** A ``signed_off`` status with
   nobody attached is the one state that must not be representable, since
   the whole value of the record is a second named person.
@@ -274,7 +274,7 @@ class TestSignedOffRecords:
 
 class TestEvidenceSnapshot:
     def test_records_what_was_in_view(self) -> None:
-        """Not a threshold that was met — what the assessor could see."""
+        """Not a threshold that was met – what the assessor could see."""
         snapshot = schemas.EvidenceSnapshot(
             logbook_entries=38,
             logbook_digest="sha256:" + "a" * 64,

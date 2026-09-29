@@ -1,7 +1,7 @@
 /**
  * BodyTextBold Storybook Stories
  *
- * Demonstrates the BodyTextBold component — bold body copy styling with black text.
+ * Demonstrates the BodyTextBold component – bold body copy styling with black text.
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";

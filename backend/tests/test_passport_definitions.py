@@ -6,7 +6,7 @@ A fixture would pass while the shared files said something else.
 
 The competencies named below are chosen for what they demonstrate:
 ``prescribe_sact`` has the UK SACT Board's four levels, and
-``perform_cannulation`` deliberately has no scale — it is signed off or
+``perform_cannulation`` deliberately has no scale – it is signed off or
 it is not. If either changes in ``shared/competency-definitions/`` these tests
 should be updated to name others with the same shape, not loosened.
 """

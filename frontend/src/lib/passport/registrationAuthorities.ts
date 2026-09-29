@@ -23,6 +23,6 @@ export function registrationAuthorities(): RegistrationAuthorityOption[] {
 
   return registrations.map((registration) => ({
     value: registration.id,
-    label: `${registration.id} — ${registration.display_name}`,
+    label: `${registration.id} – ${registration.display_name}`,
   }));
 }

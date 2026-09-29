@@ -1,8 +1,8 @@
 """Where teaching objects live in a bucket, and nothing else.
 
 Deliberately importable without configuration. Every function here is
-pure — arguments in, a string out, no settings, no network, no database
-— and this module imports nothing from :mod:`app.config`, so the Cloud
+pure – arguments in, a string out, no settings, no network, no database
+– and this module imports nothing from :mod:`app.config`, so the Cloud
 Run jobs can compute an object key without holding credentials they have
 no use for.
 
@@ -10,7 +10,7 @@ That is not a stylistic preference. ``storage.py`` imports ``settings``
 at module scope, because most of it genuinely needs a bucket name or a
 signing credential. Importing *anything* from it therefore constructs
 the whole ``Settings`` object, which requires ``JWT_SECRET`` and
-``CORE_DB_PASSWORD`` — and the transcode job, which wants one five-line
+``CORE_DB_PASSWORD`` – and the transcode job, which wants one five-line
 path helper, crashed on startup demanding a JWT signing key it should
 never be given:
 
@@ -19,7 +19,7 @@ never be given:
     config.py:393:    ValidationError: JWT_SECRET, CORE_DB_PASSWORD
 
 The same reasoning put ``requires_feature`` in ``app.features.gating``
-rather than in ``app/features/__init__.py`` — see that package's
+rather than in ``app/features/__init__.py`` – see that package's
 docstring, which names the same two settings.
 
 ``storage.py`` imports these names and re-exports them, so its own

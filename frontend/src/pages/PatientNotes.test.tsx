@@ -49,7 +49,7 @@ describe("PatientNotes", () => {
 
     expect(screen.getByText("Gastro clinic consultation")).toBeInTheDocument();
     expect(
-      screen.getByText("Telephone consultation — dietary guidance follow-up"),
+      screen.getByText("Telephone consultation – dietary guidance follow-up"),
     ).toBeInTheDocument();
     expect(screen.getByText("Annual health review")).toBeInTheDocument();
   });

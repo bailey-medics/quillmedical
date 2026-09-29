@@ -5,9 +5,9 @@ version bump.  Runs in CI against the branch, comparing to ``origin/main``.
 
 Rules by module status on main:
 
-- ``draft`` — version must remain 1
-- ``retired`` — no changes allowed (permanently frozen)
-- ``live`` — assessment changes require version +1
+- ``draft`` – version must remain 1
+- ``retired`` – no changes allowed (permanently frozen)
+- ``live`` – assessment changes require version +1
 
 Usage::
 
@@ -18,7 +18,7 @@ Exit codes: 0 when every module passes, 1 when any violation is found.
 
 from __future__ import annotations
 
-import subprocess  # noqa: S404 — git plumbing, fixed argv, never shell
+import subprocess  # noqa: S404 – git plumbing, fixed argv, never shell
 import sys
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -28,7 +28,7 @@ import yaml
 
 from app.features.teaching.tooling.module_schema import ModuleStatus
 
-#: Status progression — only forward transitions are allowed.
+#: Status progression – only forward transitions are allowed.
 STATUS_ORDER: dict[ModuleStatus, int] = {
     "draft": 0,
     "live": 1,
@@ -114,7 +114,7 @@ def _git_diff_names(ref: str, path: str) -> list[str]:
 
 
 # ------------------------------------------------------------------
-# YAML reading — narrow untyped input at the boundary
+# YAML reading – narrow untyped input at the boundary
 # ------------------------------------------------------------------
 
 
@@ -263,7 +263,7 @@ def check_module(
         ref, f"{modules_rel_path}/{module_id}/module.yaml"
     )
     if main_module_content is None:
-        # New module — nothing to protect.
+        # New module – nothing to protect.
         result.modules_skipped += 1
         return
 
@@ -317,7 +317,7 @@ def check_module(
         )
         return
 
-    # Unrecognised status — skipped; validate.py reports the schema error.
+    # Unrecognised status – skipped; validate.py reports the schema error.
     result.modules_skipped += 1
 
 
@@ -325,7 +325,7 @@ def _repo_relative_path(modules_dir: Path) -> str | None:
     """Path of *modules_dir* relative to its git repository root.
 
     Returns None when there is no repository, or when the directory sits
-    outside the one git reports — validating a tree downloaded from GCS, for
+    outside the one git reports – validating a tree downloaded from GCS, for
     instance.  Callers report that rather than letting it raise: a traceback
     is a poor way to tell someone they wanted ``--skip-version-lock``.
     """
@@ -374,7 +374,7 @@ def check_version_lock(
         result.add_violation(
             "(root)",
             f"{modules_dir} is not inside a git repository, so version lock "
-            "cannot compare against a ref — pass --skip-version-lock when "
+            "cannot compare against a ref – pass --skip-version-lock when "
             "validating content that has no git history",
         )
         return result

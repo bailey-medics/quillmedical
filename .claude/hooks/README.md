@@ -18,8 +18,8 @@ different lifetimes.
 | Survives into later sessions | Yes, as a filesystem snapshot | No |
 
 After the setup script finishes, the filesystem is snapshotted and reused as the
-starting point for later sessions. The snapshot keeps **files** — installed
-packages, pulled images, built layers — but not **processes**. So anything that
+starting point for later sessions. The snapshot keeps **files** – installed
+packages, pulled images, built layers – but not **processes**. So anything that
 has to be downloaded belongs in the setup script, and anything that has to be
 running belongs in the hook.
 
@@ -31,12 +31,12 @@ running stack is still just a snapshot of its files.
 
 Claude Code on the web opens every session on a branch it names
 `claude/<task>-<hash>`. There is no setting, in the environment or in
-`.claude/settings.json`, that changes that prefix — the name is chosen when the
+`.claude/settings.json`, that changes that prefix – the name is chosen when the
 session is created, before any repository configuration is read. Branch
 protection here only accepts `feature/*`, so a push of the session branch is
 rejected outright.
 
-The hook therefore renames the branch — `claude/x` becomes `feature/x` — before
+The hook therefore renames the branch – `claude/x` becomes `feature/x` – before
 the session has made a commit, and prints the new name to stdout, which is how a
 `SessionStart` hook adds text to the session's context. `CLAUDE.md` carries the
 matching instruction under **Claude-specific**, so Claude pushes to the renamed
@@ -51,7 +51,7 @@ warns rather than overwriting.
 
 One consequence is worth knowing. The web UI tracks a session by the branch it
 created, and the renamed branch is the only one ever pushed, so prefer opening
-pull requests from inside the session — ask Claude to open one — over the UI's
+pull requests from inside the session – ask Claude to open one – over the UI's
 **Create PR** button.
 
 ## Tooling the hook installs
@@ -76,10 +76,10 @@ blobs themselves from a CDN. The **Trusted** network access level allows the
 former but names only `production.cloudflare.docker.com` for the latter, and
 Docker Hub now redirects blob requests to `production.cloudfront.docker.com`.
 Every pull therefore authenticates, resolves the manifest, and then fails on the
-first blob with `Forbidden` — including `docker pull hello-world`.
+first blob with `Forbidden` – including `docker pull hello-world`.
 
-Because every image this repository uses comes from Docker Hub — `python`,
-`node`, `caddy`, `postgres`, `hapiproject/hapi` and `ehrbase/ehrbase` — nothing
+Because every image this repository uses comes from Docker Hub – `python`,
+`node`, `caddy`, `postgres`, `hapiproject/hapi` and `ehrbase/ehrbase` – nothing
 containerised works until that host is allowed. In practice that means no
 `just ub` and no `just uf`, since both run inside `quill_backend` and
 `quill_frontend`.
@@ -133,7 +133,7 @@ cost into the snapshot too, but a cold `yarn install` in the frontend image can
 push the script past that five-minute budget. Add it only if the snapshot still
 builds.
 
-The `clinical` profile services — HAPI FHIR, EHRbase and their databases — are
+The `clinical` profile services – HAPI FHIR, EHRbase and their databases – are
 excluded on purpose. They are the slowest images by a wide margin and the unit
 tests do not touch them. Prefix the pull with `COMPOSE_PROFILES=clinical` if you
 want them cached as well.

@@ -41,7 +41,7 @@ jobs:
           rules_file_name: ".zap/rules.tsv"
           cmd_options: "-a"  # Include alpha passive scan rules
           allow_issue_writing: true
-          fail_action: false  # Don't fail the workflow — report only
+          fail_action: false  # Don't fail the workflow – report only
 
       - name: Upload ZAP report
         if: always()
@@ -79,6 +79,6 @@ jobs:
       text: |
         *❌ Weekly ZAP scan failed (teaching)*
 
-        The scan job did not complete — the security control may not have run.
+        The scan job did not complete – the security control may not have run.
         *Logs:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>
     secrets: inherit

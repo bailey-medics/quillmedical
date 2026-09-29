@@ -1,4 +1,4 @@
-# outputs.tf — Root-level outputs
+# outputs.tf – Root-level outputs
 
 output "lb_ip" {
   description = "Global load balancer IP address (point DNS A records here)"

@@ -40,7 +40,7 @@ type Story = StoryObj<typeof NewMessageModal>;
 /** Default modal with patient selector visible */
 export const Default: Story = {};
 
-/** Patient pre-selected — shows patient name, selector hidden */
+/** Patient pre-selected – shows patient name, selector hidden */
 export const WithLockedPatient: Story = {
   args: {
     patientId: "p-1",
@@ -48,7 +48,7 @@ export const WithLockedPatient: Story = {
   },
 };
 
-/** Patient user view — patient field and toggle hidden */
+/** Patient user view – patient field and toggle hidden */
 export const PatientView: Story = {
   args: {
     isPatientView: true,
@@ -57,7 +57,7 @@ export const PatientView: Story = {
   },
 };
 
-/** Error state — submits and shows inline error via FormStatusNarrow */
+/** Error state – submits and shows inline error via FormStatusNarrow */
 export const WithError: Story = {
   args: {
     isPatientView: true,

@@ -2,11 +2,11 @@
 """Non-interactive caption CLI for Cloud Run Job execution.
 
 Transcribes one transcoded lecture and writes WebVTT beside its
-renditions, so the player can offer captions — a WCAG 2.1 AA requirement
+renditions, so the player can offer captions – a WCAG 2.1 AA requirement
 for the learning centre.
 
 Environment variables only, with no arguments and no prompts, because a
-Cloud Run Job has no terminal — the same shape as ``transcode_cli.py``.
+Cloud Run Job has no terminal – the same shape as ``transcode_cli.py``.
 
 Environment Variables:
     CAPTION_ORG_ID:     Required.  Organisation that owns the upload.
@@ -20,7 +20,7 @@ Environment Variables:
 
 Both callback variables are optional together: unset means development,
 where there is no backend to tell. Set in teaching, where the report is
-what turns ``has_captions`` true — the player composes the track's URL
+what turns ``has_captions`` true – the player composes the track's URL
 from that column, so a WebVTT nobody recorded is never offered.
 
 Usage (Cloud Run Job):
@@ -60,7 +60,7 @@ if proj_root not in sys.path:
     sys.path.insert(0, proj_root)
 
 #: Cloud CDN caches what it is told to cache. An object written without
-#: this is revalidated on every request and the CDN buys us nothing —
+#: this is revalidated on every request and the CDN buys us nothing –
 #: the same constant the transcode job writes, for the same reason.
 CACHE_CONTROL = "public, max-age=86400"
 
@@ -97,8 +97,8 @@ def _report_captions(org_id: int, module_id: str, asset_id: str) -> None:
         return
 
     # `urllib`, not `httpx`. This image carries its own three pinned
-    # packages rather than `poetry.lock` — Whisper pulls torch, which has
-    # no business in the API image — and `httpx` was not among them. The
+    # packages rather than `poetry.lock` – Whisper pulls torch, which has
+    # no business in the API image – and `httpx` was not among them. The
     # captions were written, verified and then never recorded:
     #
     #   ERROR: caption callback failed (No module named 'httpx')
@@ -212,11 +212,11 @@ def to_webvtt(segments: list[dict[str, Any]]) -> str:
 def transcribe(path: Path, model_name: str) -> list[dict[str, Any]]:
     """Run Whisper over one audio or video file.
 
-    Imported inside the function so the module can be imported — and its
-    formatting tested — on a machine with no torch installed, which is
+    Imported inside the function so the module can be imported – and its
+    formatting tested – on a machine with no torch installed, which is
     every machine but this job's own image.
     """
-    # Not installed outside the caption image, by design — see
+    # Not installed outside the caption image, by design – see
     # Dockerfile.caption. The ignore is what lets this module be imported
     # and its formatting tested anywhere else.
     import whisper  # type: ignore[import-not-found]
@@ -242,7 +242,7 @@ def caption() -> int:
     from google.cloud import storage  # type: ignore[import-untyped]
 
     # `object_paths`, not `storage`: the latter imports `settings` at
-    # module scope, which requires JWT_SECRET and CORE_DB_PASSWORD —
+    # module scope, which requires JWT_SECRET and CORE_DB_PASSWORD –
     # credentials a transcription job has no use for.
     from app.features.teaching.object_paths import media_object_path
 

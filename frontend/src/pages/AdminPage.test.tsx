@@ -3,7 +3,7 @@
  *
  * The retry loop exists because FHIR takes time to come up, so a failed
  * request normally means "not ready yet". In a teaching deployment
- * there is no FHIR at all and `/patients` answers 503 permanently — and
+ * there is no FHIR at all and `/patients` answers 503 permanently – and
  * the catch cannot tell those apart, so one tab left open polled every
  * five seconds until it was closed.
  */

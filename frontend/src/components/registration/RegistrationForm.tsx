@@ -45,9 +45,9 @@ interface RegistrationFormValues {
 }
 
 export interface RegistrationFormProps {
-  /** Available organisations for the dropdown — omit to hide the field */
+  /** Available organisations for the dropdown – omit to hide the field */
   organisations?: { value: string; label: string }[];
-  /** Called when the form is submitted with valid data — should return a FormSubmitResult */
+  /** Called when the form is submitted with valid data – should return a FormSubmitResult */
   onSubmit: (data: RegistrationFormData) => Promise<FormSubmitResult>;
 }
 

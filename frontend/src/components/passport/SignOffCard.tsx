@@ -1,8 +1,8 @@
 /**
  * SignOffCard Component
  *
- * One sign-off in full: what was assessed, who signed it, when, on what
- * evidence, and with what caveats.
+ * One sign-off in full: what was assessed, who signed it, when, and with
+ * what caveats.
  *
  * A sign-off is the one thing in a passport that is not the holder's own
  * claim. Certificates, logbook entries, reflections and CPD are things
@@ -15,7 +15,7 @@
  * `observed_on` is when the work was watched, `signed_at` is when the
  * assessor signed, and the commit timestamp is not shown here at all.
  * Consultants often sign days or weeks after observing, so the gap is
- * ordinary — the card shows both and draws no conclusion from the
+ * ordinary – the card shows both and draws no conclusion from the
  * distance between them.
  *
  * @example
@@ -64,7 +64,7 @@ function Field({
 /**
  * SignOffCard
  *
- * Renders the sign-off, its assessor snapshot and its evidence.
+ * Renders the sign-off and its assessor snapshot.
  */
 export default function SignOffCard({ signOff }: SignOffCardProps) {
   const {
@@ -79,7 +79,6 @@ export default function SignOffCard({ signOff }: SignOffCardProps) {
     signed_off_by,
     meaning,
     comments,
-    evidence,
     attachments,
     assessor_email,
   } = signOff;
@@ -137,7 +136,7 @@ export default function SignOffCard({ signOff }: SignOffCardProps) {
           <Stack gap="xs">
             <BodyTextBold>Signed off by</BodyTextBold>
             <BodyText>
-              {signed_off_by.name} — {signed_off_by.role}
+              {signed_off_by.name} – {signed_off_by.role}
             </BodyText>
             {signed_off_by.care_location && (
               <BodyText c="dimmed">{signed_off_by.care_location}</BodyText>
@@ -153,18 +152,11 @@ export default function SignOffCard({ signOff }: SignOffCardProps) {
 
         {comments && <Field label="Comments">{comments}</Field>}
 
-        {/* What was in front of the assessor when they decided — a record
-            of the evidence, never a threshold that was met. */}
-        {evidence && (
-          <Field label="Evidence at signing">
-            {evidence.logbook_entries} logbook{" "}
-            {evidence.logbook_entries === 1 ? "entry" : "entries"}
-            {evidence.certificates.length > 0 &&
-              `, ${evidence.certificates.length} certificate${
-                evidence.certificates.length === 1 ? "" : "s"
-              }`}
-          </Field>
-        )}
+        {/* No "Evidence at signing" line. How many logbook entries
+            existed when the assessor signed is kept in the record, for the
+            day a sign-off is questioned, but shown beside the judgement it
+            read as part of what was signed. The sign-offs list dropped its
+            logbook count for the same reason. */}
 
         {attachments.length > 0 && (
           <Stack gap="xs">

@@ -64,7 +64,7 @@ describe("BaseCard", () => {
 
   it("lets an explicit text colour override that default", () => {
     // White was forced on any coloured card, which made a pale
-    // background unreadable — the text vanished into it. The default
+    // background unreadable – the text vanished into it. The default
     // stays for saturated fills; a caller that knows better wins.
     renderWithMantine(
       <BaseCard

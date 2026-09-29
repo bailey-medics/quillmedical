@@ -5,7 +5,7 @@
  * deployment), otherwise renders the patient-list Home page.
  */
 
-// Routing wrapper — delegates layout to Home component
+// Routing wrapper – delegates layout to Home component
 
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";

@@ -2,7 +2,7 @@
  * Holds a video access grant for one module, and renews it silently.
  *
  * The backend mints a Cloud CDN cookie scoped to a single module's URL
- * prefix and sets it `HttpOnly`, so nothing here can read it — which is
+ * prefix and sets it `HttpOnly`, so nothing here can read it – which is
  * the point. This hook only tracks *where* video for the module lives
  * and *when* the grant lapses, so the player can build asset URLs and
  * the renewal can happen before a learner notices.
@@ -36,7 +36,7 @@ export interface VideoAccess {
 /**
  * Request access to a module's video, renewing until unmounted.
  *
- * Pass `null` to hold off — on a slide with no video, for instance —
+ * Pass `null` to hold off – on a slide with no video, for instance –
  * so a module that never plays anything asks for nothing.
  */
 export function useVideoAccess(moduleId: string | null): VideoAccess {
@@ -91,7 +91,7 @@ export function useVideoAccess(moduleId: string | null): VideoAccess {
       } catch {
         if (!active) return;
         // A refusal and a network failure look the same to the learner,
-        // and the remedy — reload — is the same for both.
+        // and the remedy – reload – is the same for both.
         setError(true);
         setBaseUrl(null);
       } finally {

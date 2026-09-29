@@ -4,7 +4,7 @@
  * Desktop: thin full-width strip in normal layout flow, matching the
  * previous OfflineStrip/UpdatingBanner precedent.
  *
- * Mobile: compact horizontal badge — several strips render as
+ * Mobile: compact horizontal badge – several strips render as
  * consecutive inline-flex badges that wrap onto new lines rather than
  * each consuming a full row.
  */

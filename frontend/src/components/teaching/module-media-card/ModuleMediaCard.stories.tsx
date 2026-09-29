@@ -136,7 +136,7 @@ export const UploadInProgress: Story = {
       <StoryNote>
         Uploading is the first of the same four stages the processing states
         below use, so one bar of one shape carries the whole job from the first
-        byte to finished captions — and it sits under the file it is working on,
+        byte to finished captions – and it sits under the file it is working on,
         rather than in a column of its own to read across to.
       </StoryNote>
       <StoryNote>
@@ -203,7 +203,7 @@ export const NoMediaReferenced: Story = {
     <Stack gap="sm">
       <ModuleMediaCard {...args} />
       <StoryNote>
-        The page renders no card at all in this case — shown here only to pin
+        The page renders no card at all in this case – shown here only to pin
         the empty state.
       </StoryNote>
     </Stack>
@@ -241,7 +241,7 @@ export const OneRowsUploadFailed: Story = {
     },
     uploadErrors: {
       "lecture-01":
-        "The server could not accept the upload (500). This is not a problem with your file — try again shortly.",
+        "The server could not accept the upload (500). This is not a problem with your file – try again shortly.",
     },
   },
   render: (args) => (
@@ -249,8 +249,8 @@ export const OneRowsUploadFailed: Story = {
       <ModuleMediaCard {...args} />
       <StoryNote>
         The row that failed is the row that says so, and the dropzone stays
-        beneath it. A failed upload leaves nothing behind — no partial file and
-        no half-made asset — so trying again is a clean slate rather than a
+        beneath it. A failed upload leaves nothing behind – no partial file and
+        no half-made asset – so trying again is a clean slate rather than a
         resume. The second row is untouched, which is the point of keeping this
         per reference key rather than one message for the card.
       </StoryNote>
@@ -283,7 +283,7 @@ export const Loading: Story = {
 // Processing states
 //
 // The card used to say "No captions" for every one of these, which
-// states absence where the truth was usually "not yet" — and had
+// states absence where the truth was usually "not yet" – and had
 // someone re-upload a video that was working perfectly.
 // ------------------------------------------------------------------
 
@@ -302,7 +302,7 @@ const processing = (
  *
  * The labels are copied verbatim from `describe_progress` in
  * `backend/app/features/teaching/media.py`, which is the only org_unit
- * that decides them — so if the wording here looks wrong, it is the
+ * that decides them – so if the wording here looks wrong, it is the
  * wording an admin actually sees.
  *
  * Stacked in one table on purpose: the fault this column was built to
@@ -342,7 +342,7 @@ export const EveryProgressState: Story = {
               // the row is finished and shows no bar.
               stage: 1,
               total_stages: 4,
-              label: "Uploaded — plays without processing",
+              label: "Uploaded – plays without processing",
               in_progress: false,
               stalled: false,
               is_final: true,
@@ -357,7 +357,7 @@ export const EveryProgressState: Story = {
             progress: {
               stage: 1,
               total_stages: 4,
-              label: "Uploaded — processing has not started",
+              label: "Uploaded – processing has not started",
               in_progress: false,
               stalled: false,
             },
@@ -399,7 +399,7 @@ export const EveryProgressState: Story = {
             progress: {
               stage: 2,
               total_stages: 4,
-              label: "Video ready — captions have not started",
+              label: "Video ready – captions have not started",
               in_progress: false,
               stalled: false,
             },
@@ -413,7 +413,7 @@ export const EveryProgressState: Story = {
             progress: {
               stage: 2,
               total_stages: 4,
-              label: "Video ready — captions seem to have failed",
+              label: "Video ready – captions seem to have failed",
               in_progress: false,
               stalled: true,
             },
@@ -429,7 +429,7 @@ export const EveryProgressState: Story = {
             progress: {
               stage: 3,
               total_stages: 4,
-              label: "Captions need checking — hidden from learners until then",
+              label: "Captions need checking – hidden from learners until then",
               in_progress: false,
               stalled: false,
             },
@@ -445,7 +445,7 @@ export const EveryProgressState: Story = {
             progress: {
               stage: 4,
               total_stages: 4,
-              label: "Ready — captions checked",
+              label: "Ready – captions checked",
               in_progress: false,
               stalled: false,
             },
@@ -478,7 +478,7 @@ export const EveryProgressState: Story = {
  *
  * The bar used to size itself to whatever else was in the cell, so a
  * long file name gave a full-width bar and a short one a half-width
- * bar — two lengths in one column, neither meaning anything.
+ * bar – two lengths in one column, neither meaning anything.
  */
 export const NarrowScreen: Story = {
   ...EveryProgressState,
@@ -543,7 +543,7 @@ export const CaptionsNeverStarted: Story = {
     media: processing("lecture-01", {
       stage: 2,
       total_stages: 4,
-      label: "Video ready — captions have not started",
+      label: "Video ready – captions have not started",
       in_progress: false,
     }),
   },

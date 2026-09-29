@@ -39,7 +39,7 @@ on:
   # and the approval is scoped to the PR's own head SHA and already gated
   # entry to the queue in the first place. So api_schema_diff and
   # db_destructive_migration_check are scoped to explicitly skip on
-  # merge_group below, which cascades to the gate jobs skipping too — and a
+  # merge_group below, which cascades to the gate jobs skipping too – and a
   # skipped required check counts as passing (see api_breaking_change_gate's
   # comment). This is a deliberate scope limit: it trusts the PR-level
   # decision rather than re-detecting a breaking change that only appears

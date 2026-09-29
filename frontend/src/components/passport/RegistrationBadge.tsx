@@ -1,7 +1,7 @@
 /**
  * RegistrationBadge Component
  *
- * Shows a professional registration — GMC, NMC, GPhC, HCPC — as the
+ * Shows a professional registration – GMC, NMC, GPhC, HCPC – as the
  * person declared it.
  *
  * The honesty is the point. Quill checks no register, so the badge says

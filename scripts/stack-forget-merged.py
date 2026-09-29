@@ -5,7 +5,7 @@
 request, which is the half that frees the name. It does not remove the
 branch's entry from the stack, so a stack that has been landing units for
 a few days draws more merged rows than live ones, and every one of them
-has nothing left behind it — the branch is already gone.
+has nothing left behind it – the branch is already gone.
 
 Worse, those entries are not only noise. `gh stack rebase` walks the chain
 from the bottom, and an entry whose branch cannot be checked out costs it

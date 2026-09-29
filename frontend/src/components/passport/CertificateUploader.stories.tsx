@@ -6,8 +6,8 @@
  * must not cost somebody a filled-in form, so the page composes the two
  * rather than nesting them.
  *
- * The stories do not upload anything — `uploadEvidence` would need a
- * backend — so what they show is the resting state and the wording.
+ * The stories do not upload anything – `uploadEvidence` would need a
+ * backend – so what they show is the resting state and the wording.
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";

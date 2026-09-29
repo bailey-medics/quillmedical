@@ -1,7 +1,7 @@
 """Administrative routes ask membership, not reach.
 
 `get_reachable_org_unit_ids` answers *can this person get here*, and a site
-trainee reaches the organisations their site is linked to — that is why a
+trainee reaches the organisations their site is linked to – that is why a
 delegate sees the trust's teaching content. Administrative routes must
 ask the narrower question: *is this person a member of this
 organisation*.
@@ -9,7 +9,7 @@ organisation*.
 The two were one function until recently, and the call sites all said
 `get_user_org_ids`, a name that answers neither question out loud. They
 now say `get_member_org_unit_ids`. That rename is behaviour-preserving, so
-these tests do not pin the rename — they pin the thing the rename exists
+these tests do not pin the rename – they pin the thing the rename exists
 to protect, which no test covered: that a site trainee cannot administer
 the trust above their site.
 
@@ -81,7 +81,7 @@ def site(db_session: Session, org: OrgUnit) -> OrgUnit:
 def site_only_admin(db_session: Session, site: OrgUnit) -> User:
     """Holds ``manage_users`` at a site, and no organisation row.
 
-    They reach the trust — the site is linked to it — so a route asking
+    They reach the trust – the site is linked to it – so a route asking
     reach would admit them. Every route below asks membership, and must
     not.
     """

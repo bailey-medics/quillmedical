@@ -155,7 +155,7 @@ describe("OrgFeaturesPage", () => {
 
     await user.click(screen.getByRole("button", { name: "Cancel" }));
 
-    // Should have navigated away — the features page content is gone
+    // Should have navigated away – the features page content is gone
     await waitFor(() => {
       expect(
         screen.queryByRole("heading", { name: "Features" }),

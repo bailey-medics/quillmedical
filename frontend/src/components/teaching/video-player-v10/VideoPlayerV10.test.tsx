@@ -1,8 +1,8 @@
 /**
  * VideoPlayerV10 Component Tests
  *
- * These pin this component's own logic — which source it composes, and
- * that a caption track reaches the player — not Video.js itself. The
+ * These pin this component's own logic – which source it composes, and
+ * that a caption track reaches the player – not Video.js itself. The
  * library is mocked for the same reason `react-player` is in the sibling
  * suite: booting a real player in jsdom tests the library, not us.
  */

@@ -1,4 +1,4 @@
-# modules/cloud-run-job/main.tf — Cloud Run Job for one-off admin tasks
+# modules/cloud-run-job/main.tf – Cloud Run Job for one-off admin tasks
 
 resource "google_cloud_run_v2_job" "job" {
   project  = var.project_id

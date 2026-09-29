@@ -3,7 +3,7 @@
  *
  * An org_unit is one org_unit in the governance tree. A trust is one, and so
  * is a ward; what tells them apart is the `type`, never the position. The
- * tree answers governance questions — who is accountable for this org_unit,
+ * tree answers governance questions – who is accountable for this org_unit,
  * whose rules apply here, who may administer it.
  *
  * The backend serves every org_unit from one address, `/api/org-units`. The
@@ -30,7 +30,7 @@ export const placeTypeOptions = orgUnitTypesData.org_unit_types
   .map((type) => ({ value: type.id, label: type.display_name }));
 
 /**
- * The kinds of organisation — the org_units that stand at the top of a tree.
+ * The kinds of organisation – the org_units that stand at the top of a tree.
  *
  * These used to be a list of their own on two screens, and a column on a
  * table that is going. A kind that the server does not know is a kind the
@@ -51,7 +51,7 @@ export type OrgUnit = {
   /** What a person is shown for the type. */
   type_display_name: string;
   /**
-   * Whether it is the top of a tree — an organisation.
+   * Whether it is the top of a tree – an organisation.
    *
    * Declared by the type, never worked out from having no parent above
    * it. That is what lets something sit above today's organisations one

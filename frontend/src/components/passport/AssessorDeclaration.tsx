@@ -4,15 +4,15 @@
  * The fixed statement an assessor confirms before signing.
  *
  * This is what makes signing a deliberate act rather than a click. Quill
- * asks for no step-up authentication at the moment of signing — no code,
- * no re-entered password — because a consultant fishing out a phone five
+ * asks for no step-up authentication at the moment of signing – no code,
+ * no re-entered password – because a consultant fishing out a phone five
  * times after a clinic is friction landing exactly where adoption is most
  * fragile. What stands in its org_unit is this: somebody reads a statement
  * and puts their name to it, which is what a wet signature has always
  * been.
  *
  * The wording is fixed and lives here rather than being passed in. A
- * declaration a caller could vary is not a declaration — the whole value
+ * declaration a caller could vary is not a declaration – the whole value
  * is that every assessor confirmed the same words, and a record can say
  * which words those were.
  *

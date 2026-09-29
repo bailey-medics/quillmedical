@@ -19,7 +19,7 @@ on:
   workflow_dispatch:
     inputs:
       manual_commit:
-        description: "Commit to build and deploy (also accepts a branch or tag — for hotfixes)"
+        description: "Commit to build and deploy (also accepts a branch or tag – for hotfixes)"
         required: false
         default: ""
 
@@ -74,7 +74,7 @@ jobs:
             # image: the prod stage copies `caddy/prod/Caddyfile`, which
             # is why this Dockerfile takes the repository root as its
             # build context. Without it listed here a Caddy-only change
-            # skips the build, deploys nothing, and reports success —
+            # skips the build, deploys nothing, and reports success –
             # which is how a CSP fix reached `main` and never reached
             # production. Every security header the app serves lives in
             # that file, so the failure is silent and security-shaped.
@@ -203,7 +203,7 @@ jobs:
         with:
           ref: ${{ needs.prepare.outputs.sha }}
 
-      # actions/checkout must run before auth — it cleans $GITHUB_WORKSPACE,
+      # actions/checkout must run before auth – it cleans $GITHUB_WORKSPACE,
       # which would otherwise wipe the credential file auth just wrote there.
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v3.0.0
@@ -227,7 +227,7 @@ jobs:
             ${{ matrix.environment }}
 
       # Runs once against the shared core DB, before the new backend revision
-      # is created — removes the multi-instance migration race and gives a
+      # is created – removes the multi-instance migration race and gives a
       # clean pass/fail signal separate from app boot (see
       # docs/docs/backend/alembic-migration-safety.md).
       - name: Run database migrations
@@ -240,18 +240,18 @@ jobs:
             ${{ env.AR_REGISTRY }}/${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }}/quill/admin:${{ needs.prepare.outputs.sha }}
 
       # A Cloud Run job cannot be created without naming some image, and at
-      # `terraform apply` time ours has not been built yet — so every image
+      # `terraform apply` time ours has not been built yet – so every image
       # variable in this repository starts as `gcr.io/cloudrun/hello` and CI
       # replaces it. The job module sets `ignore_changes` on the image so a
       # later apply does not revert what CI put there.
       #
       # This step is the replacement half, and until now it was missing for
       # the transcode job alone: backend and frontend are replaced below,
-      # admin by run-migrations.sh, and transcode by nothing — so it has
+      # admin by run-migrations.sh, and transcode by nothing – so it has
       # been running Google's hello-world container since the day it was
       # created, looking perfectly healthy in the console.
       #
-      # `jobs update`, not `jobs execute --image` — there is no such flag,
+      # `jobs update`, not `jobs execute --image` – there is no such flag,
       # and the Python client's ContainerOverride carries name, args, env
       # and clear_args but no image, so the image cannot be chosen per
       # execution. It is a property of the job, set here once per deploy.
@@ -306,7 +306,7 @@ jobs:
             --image=${{ env.AR_REGISTRY }}/${{ secrets[format('GCP_{0}_PROJECT_ID', matrix.environment)] }}/quill/frontend:${{ needs.prepare.outputs.sha }}
 
       # Public-edge check, complementing (not replacing) the tagged-revision
-      # smoke test above — confirms the live edge is serving correctly too.
+      # smoke test above – confirms the live edge is serving correctly too.
       - name: Smoke test
         env:
           HOSTNAME: app.quill-medical.com

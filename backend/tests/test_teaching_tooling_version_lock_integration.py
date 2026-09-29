@@ -14,7 +14,7 @@ from app.features.teaching.tooling.check_version_lock import (
 
 # These build real repositories and shell out to git. The dev image installs
 # git for exactly this reason, and CI runs pytest on the runner where it is
-# already present — so a skip here means an environment problem, not a gap in
+# already present – so a skip here means an environment problem, not a gap in
 # the suite.
 pytestmark = pytest.mark.skipif(
     shutil.which("git") is None,

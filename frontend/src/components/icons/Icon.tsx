@@ -29,7 +29,7 @@ import { useMediaQuery } from "@mantine/hooks";
  * - xl: 48px
  *
  * `mlg` exists for an icon that is the entire control rather than
- * decoration beside a label — the sort that sits in a page heading and
+ * decoration beside a label – the sort that sits in a page heading and
  * leads somewhere. It needs to be easy to press and easy to notice, so
  * `md` is too small, but it should not compete with the page's own
  * content, so `lg` is too big. Every such icon wants the same size,
@@ -49,7 +49,7 @@ interface IconProps {
   icon: ReactElement;
   /** Size variant - defaults to md */
   size?: IconSize;
-  /** Icon colour — any valid CSS colour value */
+  /** Icon colour – any valid CSS colour value */
   colour?: string;
   /** Optional class name for additional styling */
   className?: string;

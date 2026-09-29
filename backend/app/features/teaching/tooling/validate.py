@@ -59,8 +59,8 @@ REQUIRED_CERTIFICATE_FIELDS = (
 CERTIFICATE_BACKGROUND = "certificate-blank.png"
 
 #: Leading bytes each accepted image format must start with. Checked
-#: instead of the file size because the failure this guards against — a
-#: Git LFS pointer — is a ~132-byte text file, not an empty one.
+#: instead of the file size because the failure this guards against – a
+#: Git LFS pointer – is a ~132-byte text file, not an empty one.
 #: Exported so tests can build a file that passes this check without
 #: restating the bytes.
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
@@ -155,7 +155,7 @@ class ValidationResult:
             if self.warnings:
                 parts.append(f"  {len(self.warnings)} warning(s)")
             parts.append(
-                "  VALID" if self.is_valid else "  INVALID — sync blocked"
+                "  VALID" if self.is_valid else "  INVALID – sync blocked"
             )
             return "\n".join(parts)
 
@@ -174,7 +174,7 @@ class ValidationResult:
 
 
 # ------------------------------------------------------------------
-# YAML reading — narrow untyped input at the boundary
+# YAML reading – narrow untyped input at the boundary
 # ------------------------------------------------------------------
 
 
@@ -187,7 +187,7 @@ def _files_in(
     """Filenames present in *directory*.
 
     With an inventory the listing comes from it rather than the disk,
-    because in GCS mode the images were never downloaded — fetching them
+    because in GCS mode the images were never downloaded – fetching them
     just to check a name would mean paying for the bytes twice.
     """
     if inventory is not None:
@@ -214,7 +214,7 @@ def _image_problem(path: Path) -> str | None:
 
     if header.startswith(_LFS_POINTER_PREFIX):
         return (
-            "is a Git LFS pointer, not an image — the checkout did not "
+            "is a Git LFS pointer, not an image – the checkout did not "
             "fetch LFS objects"
         )
 
@@ -344,7 +344,7 @@ def _validate_config(
     if bank_type and bank_type not in VALID_ASSESSMENT_TYPES:
         result.add_error(
             rel_config,
-            f"invalid type '{bank_type}' — must be one of "
+            f"invalid type '{bank_type}' – must be one of "
             f"{sorted(VALID_ASSESSMENT_TYPES)}",
         )
 
@@ -432,7 +432,7 @@ def _check_image_naming(
         if not IMAGE_FILENAME_PATTERN.match(Path(name).stem):
             result.add_error(
                 rel_q,
-                f"image '{name}' has invalid name — use only letters, "
+                f"image '{name}' has invalid name – use only letters, "
                 f"digits, hyphens, and underscores",
             )
 
@@ -577,7 +577,7 @@ def _validate_variable_images_declared(
         if not IMAGE_FILENAME_PATTERN.match(Path(key).stem):
             result.add_error(
                 f"{rel_q}/question.yaml",
-                f"image key '{key}' has invalid name — use only letters, "
+                f"image key '{key}' has invalid name – use only letters, "
                 f"digits, hyphens, and underscores",
             )
         if key not in present:
@@ -918,7 +918,7 @@ def _validate_certificate(
 
     Only applies when the bank turns certificate download on.  Until this
     ran at merge time, a malformed certificate block reached GCS and failed
-    silently at sync — the gap this consolidation exists to close.
+    silently at sync – the gap this consolidation exists to close.
     """
     if not certificate_enabled(config):
         return
@@ -1069,7 +1069,7 @@ def _validate_module(
 
     Retired modules are skipped entirely. ``check_version_lock`` freezes
     them permanently, so they can never be brought into line with a
-    stricter validator — and the deploy re-uploads every module regardless
+    stricter validator – and the deploy re-uploads every module regardless
     of status, so one retired module would otherwise make every future
     deploy fail with nothing anyone is allowed to fix.
 
@@ -1138,7 +1138,7 @@ def validate_module_metadata(module_dir: Path) -> ValidationResult:
     The complement of :func:`validate_assessment_dir`.  Sync validates the
     assessment against a GCS inventory, which a module directory cannot
     supply, so the two halves are checked from whichever source can see
-    them — together covering everything exactly once.
+    them – together covering everything exactly once.
 
     Retired modules are skipped, for the reason given on
     :func:`_validate_module`.

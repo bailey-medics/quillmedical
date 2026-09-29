@@ -30,6 +30,16 @@ vi.mock("@lib/passport", () => ({
   fetchInbox: (...args: unknown[]) => fetchInbox(...args),
 }));
 
+const navigate = vi.fn();
+
+vi.mock("react-router-dom", async () => {
+  const actual =
+    await vi.importActual<typeof import("react-router-dom")>(
+      "react-router-dom",
+    );
+  return { ...actual, useNavigate: () => navigate };
+});
+
 const ONCOLOGY_FIRST = [
   { id: "oncology", display_name: "Oncology" },
   { id: "general_medicine", display_name: "General medicine" },
@@ -119,6 +129,37 @@ describe("PassportPage", () => {
       await screen.findByText("Perform bronchoscopy");
       expect(screen.queryByText(/read-only/)).not.toBeInTheDocument();
     });
+  });
+
+  it("opens a competency's latest sign-off from its row", async () => {
+    // It used to open /passport/competency/<id>, an older page that
+    // showed little and has since been removed.
+    const user = userEvent.setup();
+    fetchMyPassport.mockResolvedValue(detail);
+    renderWithRouter(<PassportPage />);
+
+    await user.click(
+      await screen.findByRole("button", { name: competencies[0].name }),
+    );
+
+    expect(navigate).toHaveBeenCalledWith(
+      `/passport/sign-offs/${competencies[0].sign_off}`,
+    );
+  });
+
+  it("opens the logbook for a competency with no sign-off yet", async () => {
+    const user = userEvent.setup();
+    fetchMyPassport.mockResolvedValue({
+      ...detail,
+      competencies: [{ ...competencies[0], sign_off: null }],
+    });
+    renderWithRouter(<PassportPage />);
+
+    await user.click(
+      await screen.findByRole("button", { name: competencies[0].name }),
+    );
+
+    expect(navigate).toHaveBeenCalledWith("/passport/logbook");
   });
 
   it("renders the holder's competencies once loaded", async () => {
@@ -225,7 +266,7 @@ describe("PassportPage", () => {
   it("offers a way into the assessor's queue", async () => {
     // `/passport/inbox` was built and tested and nothing linked to it,
     // so a request to assess somebody sat where only a typed URL
-    // reached it — and the person who asked could not tell.
+    // reached it – and the person who asked could not tell.
     fetchMyPassport.mockResolvedValue(detail);
     renderWithRouter(<PassportPage />);
 
@@ -292,7 +333,7 @@ describe("PassportPage", () => {
     // 404 is the ordinary state of everybody who has never pressed the
     // button, not a fault. It was reported as a failed load until
     // somebody opened the page on a fresh account and was told to try
-    // again — advice that could never have worked.
+    // again – advice that could never have worked.
     fetchMyPassport.mockRejectedValue(httpError(404));
     renderWithRouter(<PassportPage />);
 

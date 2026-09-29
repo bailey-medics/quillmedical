@@ -412,7 +412,7 @@ def test_report_ignores_alter_column_only(tmp_path: Path) -> None:
 
 
 def test_report_includes_marked_migration(tmp_path: Path) -> None:
-    """The marker must never suppress detection — that is the point."""
+    """The marker must never suppress detection – that is the point."""
     _write(
         tmp_path,
         "a.py",

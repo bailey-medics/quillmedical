@@ -19,7 +19,7 @@ import {
  *
  * Committed deliberately: the player's controls cannot be styled against
  * a placeholder, and every alternative needs a running backend. Keep it
- * small — it lives in git.
+ * small – it lives in git.
  */
 const SAMPLE_VIDEO_BASE = "/teaching/sample";
 
@@ -64,7 +64,7 @@ export const HostedVideoLoading: Story = {
       <StoryNote>
         While the access grant is in flight: a skeleton rather than an empty
         frame, so the slide does not look broken on a slow connection. Held open
-        deliberately here — in the app it lasts one network call.
+        deliberately here – in the app it lasts one network call.
       </StoryNote>
     </Stack>
   ),

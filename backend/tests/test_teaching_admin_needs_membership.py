@@ -2,8 +2,8 @@
 
 ``_get_user_org_id`` resolved through ``_get_user_org_ids``, which
 answers *reach*. All eighteen of its call sites are administrative routes
-behind ``manage_teaching_content`` — syncing items, linking and deleting
-media, writing captions, reading results — so a ``teaching_admin`` whose
+behind ``manage_teaching_content`` – syncing items, linking and deleting
+media, writing captions, reading results – so a ``teaching_admin`` whose
 only membership was a ward linked to the trust resolved to the trust and
 administered it.
 

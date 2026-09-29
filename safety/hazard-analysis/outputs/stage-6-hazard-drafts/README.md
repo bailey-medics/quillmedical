@@ -51,7 +51,7 @@ Each hazard log contains the following standardised sections:
 
 ### Risk Assessment
 
-- **Residual hazard risk assessment:** TBC — awaiting initial controls implementation.
+- **Residual hazard risk assessment:** TBC – awaiting initial controls implementation.
 
 ### Administrative
 

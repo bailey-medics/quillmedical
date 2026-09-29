@@ -25,7 +25,7 @@ do it here". Those are different claims, made by different people, on different
 evidence.
 
 An assessor judges a clinician's practice. An organisation decides who may act
-in its systems — with local credentialing, indemnity, supervision arrangements
+in its systems – with local credentialing, indemnity, supervision arrangements
 and its own risk appetite in view. A trust may reasonably decline access to
 somebody demonstrably competent, and often does.
 
@@ -38,8 +38,8 @@ One competency registry, `shared/competency-definitions/`, used by both.
 
 A competency id means the same thing everywhere: `prescribe_sact` is one
 identifier whether it appears in a user's CBAC competencies or a passport
-sign-off. The passport adds optional fields to those definitions — levels,
-expiry guidance — rather than introducing a parallel framework registry. One
+sign-off. The passport adds optional fields to those definitions – levels,
+expiry guidance – rather than introducing a parallel framework registry. One
 name, nothing to drift, no second schema to maintain.
 
 What a passport contains is whatever its holder has evidence for. Which
@@ -48,9 +48,9 @@ deliberately not encoded centrally.
 
 ## Reaching the passport at all
 
-- **The `passport` feature flag** — is this switched on for the holder's
+- **The `passport` feature flag** – is this switched on for the holder's
   organisation or site?
-- **The `assess_clinician_passport` competency** — a CBAC competency, so CBAC
+- **The `assess_clinician_passport` competency** – a CBAC competency, so CBAC
   does gate *reaching* the passport even though the passport never writes back
   to CBAC.
 
@@ -73,7 +73,7 @@ profession, never sold, and never lapses for payment.
 passport and add to it. No base profession carries it: it reaches a person
 either through an organisation that pays, granted at onboarding, or through an
 individual subscription. Most clinicians at a paying organisation hold both
-competencies, and neither implies the other is beneath it — a consultant of
+competencies, and neither implies the other is beneath it – a consultant of
 thirty years still gets signed off on new things.
 
 **An entitlement ends on a date**, recorded in `passport_write_entitlement`
@@ -98,9 +98,9 @@ Two consequences follow, both deliberate:
 
 ## The deferred idea
 
-An automatic grant — a signed-off passport competency raising a request to add
+An automatic grant – a signed-off passport competency raising a request to add
 the matching id to a user's `additional_competencies`, subject to
-administrator approval — is recorded as a future item.
+administrator approval – is recorded as a future item.
 
 It is deferred rather than rejected. The distinction worth preserving is that
 approval stays a human act: a request an administrator approves is still an

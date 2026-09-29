@@ -26,7 +26,7 @@ Training is available through NHS England's Digital Clinical Safety Programme. T
 
 Non-NHS staff can purchase e-learning for £35+VAT. Courses are accessed via the e-LfH (e-Learning for Healthcare) platform.
 
-The CSO should undertake refresher training regularly — at least annually is good practice (the Concentric Health example documents annual refresher training).
+The CSO should undertake refresher training regularly – at least annually is good practice (the Concentric Health example documents annual refresher training).
 
 ## Responsibilities
 
@@ -47,7 +47,7 @@ The CSO is responsible for:
 
 ## Quill Medical CSO Arrangement
 
-The Quill Medical CSO is a clinician-developer — a GMC-registered consultant who is also the product's architect and developer. This is a recognised and common arrangement, particularly for early-stage healthtech companies (cf. Concentric Health, where the GMC-registered co-founder/CEO acts as CSO).
+The Quill Medical CSO is a clinician-developer – a GMC-registered consultant who is also the product's architect and developer. This is a recognised and common arrangement, particularly for early-stage healthtech companies (cf. Concentric Health, where the GMC-registered co-founder/CEO acts as CSO).
 
 ### Strengths of this arrangement
 
@@ -59,19 +59,19 @@ The Quill Medical CSO is a clinician-developer — a GMC-registered consultant w
 
 There is an inherent tension between the developer role (ship features, meet deadlines) and the CSO role (objectively assess risk, potentially block releases). To manage this:
 
-- Hazard identification workshops must always be **multidisciplinary** — even the CSO acting alone is insufficient. Involve other clinicians, end-users, and technical contributors.
+- Hazard identification workshops must always be **multidisciplinary** – even the CSO acting alone is insufficient. Involve other clinicians, end-users, and technical contributors.
 - Document safety decisions transparently, including any trade-offs.
 - As the product scales, plan to bring in an **external, independent CSO** to add objectivity and credibility. This can be via consultancy retainer (typical cost £5,000–£15,000/year depending on complexity and release frequency).
-- Deploying organisations' CSOs will scrutinise the arrangement — be prepared to explain the governance structure and how independence is maintained.
+- Deploying organisations' CSOs will scrutinise the arrangement – be prepared to explain the governance structure and how independence is maintained.
 
 ## Outsourced CSO Services
 
 Several UK consultancies specialise in providing outsourced CSO services for health IT manufacturers:
 
-- **8fold Governance** — 8foldgovernance.com
-- **Safehand** — safehand.co.uk
-- **AbedGraham Group** — abedgraham.com
-- **Kaleidoscope Consultants** — kaleidoscopeconsultants.com
-- **Naq Cyber** — naqcyber.com (combined clinical safety and cybersecurity compliance)
+- **8fold Governance** – 8foldgovernance.com
+- **Safehand** – safehand.co.uk
+- **AbedGraham Group** – abedgraham.com
+- **Kaleidoscope Consultants** – kaleidoscopeconsultants.com
+- **Naq Cyber** – naqcyber.com (combined clinical safety and cybersecurity compliance)
 
 These typically provide: named CSO, hazard workshop facilitation, documentation production and maintenance, DTAC portal hosting, procurement support, and incident management.

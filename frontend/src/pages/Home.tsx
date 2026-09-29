@@ -237,8 +237,8 @@ export default function Home() {
       })
       .catch((err: Error & { error_code?: string }) => {
         if (cancelled) return;
-        // The backend's detail is authored — every one of them is, since the
-        // endpoints stopped returning raw exception text — so it is worth
+        // The backend's detail is authored – every one of them is, since the
+        // endpoints stopped returning raw exception text – so it is worth
         // showing. The fallback covers a dropped connection, which produces
         // no detail at all.
         setError({

@@ -113,7 +113,7 @@ export default function OrganisationAdminPage() {
     // effect body runs. Matches the pattern in `SiteAdminPage`: the lint
     // rule analyses one function at a time and cannot see that
     // `fetchOrganisationData` awaits before touching state, so the wrapper
-    // makes the deferral explicit — and the floating promise with it.
+    // makes the deferral explicit – and the floating promise with it.
     void (async () => {
       await fetchOrganisationData();
     })();
@@ -280,7 +280,7 @@ export default function OrganisationAdminPage() {
     {
       header: "Clinical lead",
       width: "160px",
-      render: (site) => site.clinical_lead_name || "\u2014",
+      render: (site) => site.clinical_lead_name || "\u2013",
       accessor: (site) => site.clinical_lead_name || "",
     },
     {

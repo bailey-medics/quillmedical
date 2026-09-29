@@ -31,7 +31,7 @@ describe("CompetencySummary", () => {
 
   describe("Counts, never totals", () => {
     it("shows no denominator, percentage or progress bar", () => {
-      // A passport is not a defined set of competencies — membership is
+      // A passport is not a defined set of competencies – membership is
       // local policy, so a denominator would invent one.
       renderWithMantine(<CompetencySummary competencies={competencies} />);
       expect(screen.queryByText(/of 3/)).not.toBeInTheDocument();
@@ -62,7 +62,7 @@ describe("CompetencySummary", () => {
       // There was a loading state here, showing three grey bars that
       // were then replaced by this fixed message. The words are the
       // same whatever the fetch returns, so the panel changed shape
-      // for no information — which read as a flicker on every first
+      // for no information – which read as a flicker on every first
       // visit.
       renderWithMantine(<CompetencySummary competencies={[]} />);
 

@@ -186,7 +186,7 @@ export const changedVerification: Verification = {
 
 /**
  * A competency's logbook. The entries are deliberately out of clinical
- * order — logged in one sitting, performed across three weeks — so a
+ * order – logged in one sitting, performed across three weeks – so a
  * test can tell whether the table sorts by `performed_on` rather than by
  * the order the server returned them.
  *
@@ -232,7 +232,7 @@ export const logbook: Logbook = {
       supervision: null,
       supervisor: null,
       indication: null,
-      outcome: "Abandoned — patient could not tolerate the procedure.",
+      outcome: "Abandoned – patient could not tolerate the procedure.",
       notes: "Rebooked with sedation.",
       also_counts_towards: [],
       attachments: [],
@@ -259,7 +259,7 @@ export const emptyLogbook: Logbook = {
 export const appraisalPeriod = { from: "2025-08-01", to: "2026-07-31" };
 
 /**
- * A shortened period — moved post, appraisal brought forward. The reason
+ * A shortened period – moved post, appraisal brought forward. The reason
  * `appraisal_periods` is a history rather than one current month: the
  * same points across four months read very differently from twelve, and
  * only the stated range tells a reader which they are seeing.

@@ -91,7 +91,7 @@ function ConfirmContent({
       <Stack gap={4} mt="xs" align="center">
         {changes.map((change) => (
           <BodyText key={change.key}>
-            <strong>{change.label}</strong> —{" "}
+            <strong>{change.label}</strong> –{" "}
             {values[change.key] ? "enable" : "disable"}
           </BodyText>
         ))}

@@ -12,7 +12,7 @@
  *
  * **Entries sort by when the procedure happened**, not by when they were
  * logged. The server names each file for the moment it was written, so
- * the raw directory listing is in logging order — but a holder reading
+ * the raw directory listing is in logging order – but a holder reading
  * their own logbook thinks in clinical dates, and five logged on a
  * Friday evening should not read as five procedures on a Friday.
  *
@@ -36,7 +36,7 @@ import type { Logbook, LogbookEntry } from "@lib/passport";
 function supervisionLabel(entry: LogbookEntry): string {
   if (entry.supervision === "supervised") return "Supervised";
   if (entry.supervision === "independent") return "Independent";
-  return "—";
+  return "–";
 }
 
 const columns: Column<LogbookEntry>[] = [
@@ -49,7 +49,7 @@ const columns: Column<LogbookEntry>[] = [
   },
   {
     header: "Setting",
-    render: (entry) => entry.setting ?? "—",
+    render: (entry) => entry.setting ?? "–",
     accessor: (entry) => entry.setting,
   },
   {
@@ -59,11 +59,11 @@ const columns: Column<LogbookEntry>[] = [
   },
   {
     header: "Indication",
-    render: (entry) => entry.indication ?? "—",
+    render: (entry) => entry.indication ?? "–",
   },
   {
     header: "Outcome",
-    render: (entry) => entry.outcome ?? "—",
+    render: (entry) => entry.outcome ?? "–",
   },
 ];
 

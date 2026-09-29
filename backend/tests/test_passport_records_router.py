@@ -403,7 +403,7 @@ class TestLogbook:
             f"/api/passport/{passport_id}/logbook/{COMPETENCY}",
             json={
                 "performed_on": "2026-03-12",
-                "outcome": "Abandoned — patient could not tolerate",
+                "outcome": "Abandoned – patient could not tolerate",
             },
         )
 

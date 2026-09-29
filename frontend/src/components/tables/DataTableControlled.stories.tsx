@@ -125,7 +125,7 @@ export const Default: Story = {
 };
 
 /**
- * Search only — no filter dropdown.
+ * Search only – no filter dropdown.
  */
 export const SearchOnly: Story = {
   render: () => (

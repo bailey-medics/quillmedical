@@ -1,1 +1,1 @@
-"""Teaching feature — config-driven MCQ assessment engine."""
+"""Teaching feature – config-driven MCQ assessment engine."""

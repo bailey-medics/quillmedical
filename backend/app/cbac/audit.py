@@ -5,7 +5,7 @@ going stale: a competency removed from ``shared/competency-definitions/`` leaves
 every row that referenced it pointing at nothing, and no foreign key exists
 to refuse the removal.
 
-So this walks the other way — over what is stored — and reports anything the
+So this walks the other way – over what is stored – and reports anything the
 catalogue no longer recognises. Read-only, and it changes nothing itself:
 what to do about a stale id is a decision, not a cleanup.
 """
@@ -50,7 +50,7 @@ def _current_ids_by_user(db: Session) -> dict[int, list[str]]:
     """Every competency id on a current ``user_competency`` row, per user.
 
     Grants and removals alike, since a stale id on a removal is as
-    misleading as one on a grant — it silently removes nothing. Closed rows
+    misleading as one on a grant – it silently removes nothing. Closed rows
     are left out: they record what somebody could once do, and mislead
     nobody about what they can do now.
 

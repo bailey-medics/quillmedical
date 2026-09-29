@@ -23,23 +23,23 @@ See the `Justfile` if you want to know more.
 ## Testing Requirements
 
 - **ALWAYS create/update tests** when changing code
-- **ALWAYS run backend and frontend unit tests inside Docker containers** — never run them directly on the host
+- **ALWAYS run backend and frontend unit tests inside Docker containers** – never run them directly on the host
   - Backend: `just ub` (all unit tests) or `just ub -k "test_name"` (targeted)
   - Frontend: `just uf` (all unit tests) or `just uf src/path/to/file.test.tsx` (targeted)
   - Both run in a throwaway container from `compose.unit-tests.yml` that mounts the current worktree, so they work from any worktree and do not need the dev stack running
-- **Test tiers — test what you touched locally; CI tests everything.** Each tier is wider and slower than the one before, and each only adds what the previous one cannot see:
+- **Test tiers – test what you touched locally; CI tests everything.** Each tier is wider and slower than the one before, and each only adds what the previous one cannot see:
   - **Local, while developing**: only the tests for the code being changed (`just ub -k "..."`, `just uf src/path/to/file.test.tsx`). Seconds, run as often as useful.
   - **Pre-commit, automatic**: lint, format, typecheck and spelling on the staged files, via the husky and pre-commit hooks.
   - **CI fast tier**: the full backend and frontend unit suites plus Storybook build, on every push. The merge queue re-runs them against current `main` before anything lands.
   - **CI heavy tier**: Storybook interaction tests, Semgrep and E2E, once the PR leaves draft.
 - **Do not run the full unit suite locally before committing or pushing** (`just ub` or `just uf` with no filter). It duplicates the fast tier and costs minutes per push. The only times it is justified:
-  - CI is red and you are iterating on the fix — each CI round trip is then slower than a local run
+  - CI is red and you are iterating on the fix – each CI round trip is then slower than a local run
   - a rebase onto `main` hit conflicts
   - the change touches a shared module with wide blast radius: `models.py`, `conftest.py`, `api.ts`, `shared/` YAML and its generated types, a dependency bump
 - **Never claim a suite passed that was not run.** Name the exact commands that were run; "tests pass" on its own is not a report
-- Storybook: runs on the host — `just sb` (dev server), `just sbt` (tests), `just sbtci` (CI mode)
-- E2E: `just e2e` brings up a fresh per-worktree `compose.ci.yml` stack (the CI one) on a free port, runs Playwright against it and tears it down — never the dev stack
-- **Never run Storybook tests and `just e2e` at the same time** — both saturate the machine, and the Storybook runner then times out loading its own pages and reports mass failures that pass on their own
+- Storybook: runs on the host – `just sb` (dev server), `just sbt` (tests), `just sbtci` (CI mode)
+- E2E: `just e2e` brings up a fresh per-worktree `compose.ci.yml` stack (the CI one) on a free port, runs Playwright against it and tears it down – never the dev stack
+- **Never run Storybook tests and `just e2e` at the same time** – both saturate the machine, and the Storybook runner then times out loading its own pages and reports mass failures that pass on their own
 - Backend: pytest with fixtures from `conftest.py`
 - Frontend: vitest + @testing-library/react with `renderWithMantine`/`renderWithRouter`
 - Cover: props variations, edge cases, null/undefined, interactions, loading/error states
@@ -50,6 +50,12 @@ See the `Justfile` if you want to know more.
 
 - **British English** for all docs, comments, UI text, and code identifiers where appropriate
 - Exceptions: External APIs, libraries, CSS properties, HTTP headers
+- **Never write an em dash (—)**, in code, comments, docs, UI text, commit
+  messages or pull requests. It is American typography. Use a comma, colon,
+  full stop or brackets, or where a dash is genuinely wanted, the British
+  spaced en dash ( – ). Frozen text is the one exception: merged migration
+  docstrings and `api-compatibility/` decision files are never edited, so
+  any em dash already in them stays
 
 ### UI Text Casing
 
@@ -66,25 +72,25 @@ See the `Justfile` if you want to know more.
 - **Settings**: `pydantic-settings` with `SecretStr`, env vars via Docker Compose
 - **Linting**: Ruff (E, F, W, I, UP, B) + Black (line-length 79)
 - **API**: All routes under `/api`. Standard FastAPI dependency constants:
-  - `DEP_GET_SESSION` — DB session (via `get_core_db`)
-  - `DEP_CURRENT_USER` — Authenticated user from JWT cookie
-  - `DEP_REQUIRE_ROLES_CLINICIAN` — Clinician role gate
-  - `DEP_REQUIRE_CSRF` — CSRF token validation (mutating endpoints)
+  - `DEP_GET_SESSION` – DB session (via `get_core_db`)
+  - `DEP_CURRENT_USER` – Authenticated user from JWT cookie
+  - `DEP_REQUIRE_ROLES_CLINICIAN` – Clinician role gate
+  - `DEP_REQUIRE_CSRF` – CSRF token validation (mutating endpoints)
 - **API changes**: additive-only; breaking changes need the expand-contract
-  two-deploy pattern — see `backend.instructions.md`
+  two-deploy pattern – see `backend.instructions.md`
 
 ### Frontend (React + TypeScript)
 
-- **API**: Use `api.ts` client for all backend calls (auto-retry on 401, CSRF, credentials) — never raw `fetch` (sole exception: `checkHealth()` in `ConnectivityContext.tsx`)
+- **API**: Use `api.ts` client for all backend calls (auto-retry on 401, CSRF, credentials) – never raw `fetch` (sole exception: `checkHealth()` in `ConnectivityContext.tsx`)
 - **Auth**: `AuthContext.tsx` provides `state`, `login`, `logout`, `reload`
 - **Routing**: React Router v7 with `createBrowserRouter` in `src/main.tsx`
 - **Protection**: `<RequireAuth>` for authenticated routes, `<GuestOnly>` for login/register, `<RequireOperator>` for Quill-operator routes, `<RequireCompetency competency="manage_users">` for CBAC-gated routes, `<RequireClinical>` for FHIR/EHRbase-dependent routes, `<RequireFeature feature="teaching">` for feature-gated routes (all in `src/auth/`). All default to a 404 rather than a 403, hiding a route from somebody who may not use it.
-- **Path aliases**: Defined in `frontend/tsconfig.json` under `compilerOptions.paths` — always use `@/`, `@lib/`, `@components/`, `@test/`, `@domains/` prefixes instead of relative paths
+- **Path aliases**: Defined in `frontend/tsconfig.json` under `compilerOptions.paths` – always use `@/`, `@lib/`, `@components/`, `@test/`, `@domains/` prefixes instead of relative paths
 - **Styling**: Mantine 8.3 + CSS modules, no inline styles
-- **Button alignment**: Right-justify buttons on desktop (`<Group justify="flex-end">`). Action pairs (submit/cancel) go full-width stacked on mobile — use `ButtonPair`/`ButtonPairRed` which handle this via CSS. Page-header actions (`AddButton`) stay fixed-width at all sizes.
+- **Button alignment**: Right-justify buttons on desktop (`<Group justify="flex-end">`). Action pairs (submit/cancel) go full-width stacked on mobile – use `ButtonPair`/`ButtonPairRed` which handle this via CSS. Page-header actions (`AddButton`) stay fixed-width at all sizes.
 - **Testing**: Use `renderWithMantine` or `renderWithRouter` from `@test/test-utils`
 - **Storybook**: all components must have associated `.stories.tsx` and `.test.tsx` files
-- **Page Layout**: MainLayout provides `<Container size="lg">` around all page content — pages should NOT add their own Container wrapper
+- **Page Layout**: MainLayout provides `<Container size="lg">` around all page content – pages should NOT add their own Container wrapper
   - Standard page pattern: `<Stack gap="lg">...</Stack>` (no Container needed)
   - Ensures consistent content width (1140px) across all pages
   - To go full-width, call `setFluid(true)` from the page via `useOutletContext<LayoutCtx>()`
@@ -99,9 +105,9 @@ See the `Justfile` if you want to know more.
 
 When building UI, follow this priority order:
 
-1. **Reuse existing Storybook components** — always check the catalogue below first
-2. **Compose new components from existing ones** — combine Storybook components together
-3. **Build from scratch** — only when no existing component fits; build a plan to create a new component with `.stories.tsx` and `.test.tsx` and then present it to a human for review before implementation.
+1. **Reuse existing Storybook components** – always check the catalogue below first
+2. **Compose new components from existing ones** – combine Storybook components together
+3. **Build from scratch** – only when no existing component fits; build a plan to create a new component with `.stories.tsx` and `.test.tsx` and then present it to a human for review before implementation.
 
 All reusable UI must live in `frontend/src/components/` with Storybook stories. Pages consume components; pages do not contain reusable UI inline.
 
@@ -130,11 +136,11 @@ import { VariantRow, VariantStack } from "@/stories/variants";
 
 #### Cards
 
-All cards MUST use the `<BaseCard>` component from `components/base-card/` — never use Mantine's `<Card>` directly. BaseCard enforces consistent `shadow="sm"`, `padding="lg"`, `radius="md"`, and `withBorder` across the app. These props are fixed and cannot be overridden.
+All cards MUST use the `<BaseCard>` component from `components/base-card/` – never use Mantine's `<Card>` directly. BaseCard enforces consistent `shadow="sm"`, `padding="lg"`, `radius="md"`, and `withBorder` across the app. These props are fixed and cannot be overridden.
 
 #### Icons
 
-All icons come from `@tabler/icons-react` and MUST be wrapped in the `<Icon>` component for consistent sizing. The allowed icon set is defined in `components/icons/appIcons.ts` — when using a new Tabler icon anywhere in the app, register it there first. The Icon stories display this list automatically.
+All icons come from `@tabler/icons-react` and MUST be wrapped in the `<Icon>` component for consistent sizing. The allowed icon set is defined in `components/icons/appIcons.ts` – when using a new Tabler icon anywhere in the app, register it there first. The Icon stories display this list automatically.
 
 ### Healthcare
 
@@ -147,11 +153,11 @@ All icons come from `@tabler/icons-react` and MUST be wrapped in the `<Icon>` co
 
 Three layers control access, and they answer different questions:
 
-- **Platform role** — *may this person operate Quill itself?* One value,
+- **Platform role** – *may this person operate Quill itself?* One value,
   `superadmin`, and its absence. True everywhere or nowhere.
-- **Competencies (CBAC)** — *what is this person qualified to do at all?*
+- **Competencies (CBAC)** – *what is this person qualified to do at all?*
   A set resolved per user. This is the ceiling.
-- **Practising competencies** — *where may they do it?* One row per person,
+- **Practising competencies** – *where may they do it?* One row per person,
   place and competency.
 
 What somebody may actually do at a place is the **intersection** of the last
@@ -160,7 +166,7 @@ what you are qualified for, then what you are authorised to do here.
 
 #### Platform role
 
-`User.platform_role` is `superadmin` or absent — operating the deployment, not
+`User.platform_role` is `superadmin` or absent – operating the deployment, not
 administering any organisation. Its one consumer sends a test push to every
 subscribed client, which no organisation bounds.
 
@@ -178,7 +184,7 @@ module, no `check_permission_level`, no `RequirePermission` guard and no
 `default_system_permission` on a base profession. See
 `docs/docs/plans/2026-09-09-platform-role-plan.md`.
 
-**Administering a place is not this question** — that is the `manage_users`
+**Administering a place is not this question** – that is the `manage_users`
 competency.
 
 #### CBAC (competency-based access control)
@@ -187,14 +193,14 @@ Controls all data access and actions, clinical and feature admin alike.
 Resolution per user: `(base_profession_competencies + additional) − removed`,
 via `resolve_user_competencies` behind `User.get_final_competencies`.
 
-- **Catalogue**: `shared/competency-definitions/` — `clinical.yaml`,
+- **Catalogue**: `shared/competency-definitions/` – `clinical.yaml`,
   `clinical-admin.yaml`, `admin.yaml`, `oncology.yaml`, `teaching.yaml`,
   `passport.yaml`. All merged into one catalogue at load, so **ids must be
   unique across the directory**, not just within a file. Which file an entry
   lives in carries no meaning to the code; it is for the reader.
-- **Professions**: `shared/base-professions.yaml` — `id`, `display_name`,
+- **Professions**: `shared/base-professions.yaml` – `id`, `display_name`,
   `description`, `requires_clinical_services`, `base_competencies`
-- **Backend**: `backend/app/cbac/` — `has_competency("competency_id")` from
+- **Backend**: `backend/app/cbac/` – `has_competency("competency_id")` from
   `app.deps` as a FastAPI dependency
 - **Frontend**: types at `src/types/cbac.ts`, hooks at `src/lib/cbac/hooks.ts`
   (`useHasCompetency`, `useHasAnyCompetency`, `useHasAllCompetencies`), guard
@@ -208,26 +214,26 @@ need *where* scope separately on membership. A route guard has no place to
 scope to, so it gates on the competency alone and lets the API refuse
 anything out of scope.
 
-**`manage_users` is the root competency — grant it rarely.** Because
+**`manage_users` is the root competency – grant it rarely.** Because
 `update_user` writes `additional_competencies` wholesale with no check on
 which ids are granted, a holder can mint any competency in the catalogue,
 including `manage_users` itself. That is accepted rather than overlooked; the
 reasoning is in `admin.yaml`.
 
-#### Practising competencies — where
+#### Practising competencies – where
 
 `backend/app/cbac/scoped.py` over the `practising_competency` table. Every
 read of a place goes through this module.
 
-- `competencies_at(db, user, org_unit_id=...)` — what they may practise there,
+- `competencies_at(db, user, org_unit_id=...)` – what they may practise there,
   narrowed to their ceiling
-- `can_practise_at(db, user, competency, org_unit_id=...)` — the single check
-- `who_can_practise_at(db, competency, org_unit_id=...)` — the other direction.
+- `can_practise_at(db, user, competency, org_unit_id=...)` – the single check
+- `who_can_practise_at(db, competency, org_unit_id=...)` – the other direction.
   It deliberately does **not** apply ceilings, because that would mean loading
   every user; it is a candidate list, so check `can_practise_at` before acting
   on a name from it.
 
-- **A row means authorised. There is no boolean** — absence is the
+- **A row means authorised. There is no boolean** – absence is the
   unauthorised state, so practice cannot be withdrawn without removing the row
   that says who authorised it.
 - **Nothing is inherited.** A row at an organisation says nothing about its
@@ -236,16 +242,16 @@ read of a place goes through this module.
   could this person do that?" is answered by one row rather than by replaying
   a hierarchy.
 - **A row beyond somebody's ceiling has no effect**, so a lapsed
-  qualification narrows every place at once without a row being touched — and
+  qualification narrows every place at once without a row being touched – and
   a ceiling with no row behind it authorises nothing.
 
-#### Org units — one tree for every place
+#### Org units – one tree for every place
 
 `OrgUnit` in `models.py` is one node of the governance tree: a trust, a site,
 a ward. There is no separate `Organisation` or `Site` model, and no
 `organisation_site` or `site_staff_member` table.
 
-**An org unit's `type` is the only thing that says what it is — never its
+**An org unit's `type` is the only thing that says what it is – never its
 position in the tree.** An organisation is a node whose type says
 "organisation", not a node that happens to have no parent.
 
@@ -260,7 +266,7 @@ position in the tree.** An organisation is a node whose type says
   Nobody is clinical lead of room four.
 - **Membership**: `org_unit_member` and `org_unit_patient_member`, with a
   capacity from `MEMBER_CAPACITIES` (`staff`, `trainee`, `external`,
-  `patient`). A capacity is never a ranking and never a permission check — it
+  `patient`). A capacity is never a ranking and never a permission check – it
   says only how somebody comes to be at a place.
 - **Reach flows downward**, and is distinct from membership: organisation
   membership reaches the organisation and its sites, site membership reaches
@@ -279,7 +285,7 @@ A position is a slot a place has, in `models.py` as `Position` and
   competency: "this site has no clinical lead" is a state worth chasing,
   where a competency nobody holds is simply absent.
 - **Holding is dated rows, not a column**, so the post outlives its holders
-  and its history stays queryable — "who was Caldicott Guardian in March?"
+  and its history stays queryable – "who was Caldicott Guardian in March?"
 - **Appointment checks `can_practise_at`**: holding a competency somewhere is
   not enough, it must be authorised where the post is. A post with no place
   fails closed.
@@ -288,7 +294,7 @@ A position is a slot a place has, in `models.py` as `Position` and
   being covered for.
 ### Web Push notifications
 
-- Backend: `push.py` (subscription management), `push_send.py` (notification sending) — VAPID keys via `just vapid-key`
+- Backend: `push.py` (subscription management), `push_send.py` (notification sending) – VAPID keys via `just vapid-key`
 - Frontend: `EnableNotificationsButton` component in `components/notifications/`
 - Note, this has not yet been built out fully and tested.
 
@@ -316,7 +322,7 @@ A position is a slot a place has, in `models.py` as `Position` and
 
 #### Input Validation
 
-- **Validate all inputs before any business logic** — check every parameter and precondition at the top of a function (fail-fast guard clauses), so no work runs on unvalidated data
+- **Validate all inputs before any business logic** – check every parameter and precondition at the top of a function (fail-fast guard clauses), so no work runs on unvalidated data
 - Never trust user input: validate at API boundaries (Pydantic/Zod)
 - Sanitise data, enforce length limits, validate types/ranges/formats
 - Use Pydantic `extra='forbid'` to reject unexpected fields
@@ -340,7 +346,7 @@ A position is a slot a place has, in `models.py` as `Position` and
 #### Security-First
 
 - Whitelist over blacklist, least privilege, audit logging (no PHI in logs)
-- Explicit auth decision on all endpoints — no endpoint unprotected by accident (health, login, register are intentionally public)
+- Explicit auth decision on all endpoints – no endpoint unprotected by accident (health, login, register are intentionally public)
 - Authorisation checks (system permissions + CBAC), rate limiting
 
 #### Healthcare-Specific
@@ -354,11 +360,11 @@ A position is a slot a place has, in `models.py` as `Position` and
 
 **New API endpoint**: Route in `backend/app/main.py` under `@router`, Pydantic schemas in `backend/app/schemas/`
 
-**CBAC-protected endpoint**: Add `Depends(has_competency("competency_id"))` to route params — raises 403 if user lacks competency
+**CBAC-protected endpoint**: Add `Depends(has_competency("competency_id"))` to route params – raises 403 if user lacks competency
 
-**Operator-only endpoint**: Add `DEP_REQUIRE_OPERATOR` to the route params — gates on `platform_role`, for operating Quill itself
+**Operator-only endpoint**: Add `DEP_REQUIRE_OPERATOR` to the route params – gates on `platform_role`, for operating Quill itself
 
-**Place-administration endpoint**: Add `Depends(has_competency("manage_users"))`, then scope to the caller's own org units in the route body — the competency says *what*, membership says *where*
+**Place-administration endpoint**: Add `Depends(has_competency("manage_users"))`, then scope to the caller's own org units in the route body – the competency says *what*, membership says *where*
 
 **Frontend API**: Use `api` from `@/lib/api.ts` (never raw `fetch`)
 
@@ -374,7 +380,7 @@ A position is a slot a place has, in `models.py` as `Position` and
 - `backend/app/config.py`: Pydantic Settings (DB URLs, JWT config, FHIR/EHRbase URLs)
 - `backend/app/db/`: Database session management (`get_core_db`)
 - `backend/app/cbac/`: Competency-based access control module
-- `backend/app/org_units/`: the place tree — router, and type capability flags
+- `backend/app/org_units/`: the place tree – router, and type capability flags
 - `backend/app/cbac/scoped.py`: what somebody may practise at one place
 - `backend/app/schemas/`: Pydantic request/response models (`auth.py`, `cbac.py`)
 - `frontend/src/main.tsx`: Router config with `createBrowserRouter` and all route definitions
@@ -408,15 +414,15 @@ A position is a slot a place has, in `models.py` as `Position` and
 - Enforce RBAC + CBAC at API, DB and application level
 - Use `SecretStr` for secrets, never commit `.env` files
 - **Secrets live where they are used, not where they pass through.** A secret
-  GitHub Actions genuinely consumes — the Slack webhook it posts to, the
-  Workload Identity provider it authenticates with — belongs in GitHub. A
+  GitHub Actions genuinely consumes – the Slack webhook it posts to, the
+  Workload Identity provider it authenticates with – belongs in GitHub. A
   secret GitHub only relays onward, setting `TF_VAR_*` for Terraform to hand
   to another system untouched, belongs in that system's own store: GCP Secret
   Manager, read by a `google_secret_manager_secret_version` data source. The
   test is whether anything in the workflow opens the envelope, or merely
   carries it. Relaying makes GitHub a second custodian for no benefit, and an
   organisation secret is readable by every repository it is visible to
-  — including public ones and any a content author can push a workflow to.
+  – including public ones and any a content author can push a workflow to.
 - **Scope organisation secrets to the repositories that need them.** Default
   `ALL` visibility is almost never right. Justify it or narrow it.
 - Prefer identifiers to credentials in continuous integration. Workload
@@ -426,10 +432,10 @@ A position is a slot a place has, in `models.py` as `Position` and
 ### Git
 
 - NEVER auto-commit/push - always ask permission first
-- **NEVER merge pull requests — merging is solely a human responsibility**
+- **NEVER merge pull requests – merging is solely a human responsibility**
 - Stop after fixing issues, report, and wait for instruction
 - **Branch naming**: `feature/*`
-- `main` requires a pull request — never push directly
+- `main` requires a pull request – never push directly
 
 ### Markdown
 

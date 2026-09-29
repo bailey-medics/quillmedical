@@ -25,7 +25,7 @@ export const WithContext: Story = {
       <AssessorDeclaration />
       <StoryNote>
         The wording is fixed and cannot be passed in. Signing asks for no
-        step-up authentication — what makes it deliberate is that somebody reads
+        step-up authentication – what makes it deliberate is that somebody reads
         this statement and puts their name to it, which is what a wet signature
         has always been. The confirming checkbox belongs to the form that
         submits it, not to this component.

@@ -3,7 +3,7 @@
 These exist solely to re-exercise the oasdiff/api-compatibility CI chain
 (fixed in PR #379) on demand, without ever touching a real production
 endpoint again. Only registered when ``TEST_API_ENDPOINTS_ENABLED`` is true
-— always false in real deployments, set true by CI when dumping OpenAPI
+– always false in real deployments, set true by CI when dumping OpenAPI
 specs for the breaking-change check. See item 19 of
 ``docs/docs/plans/2026-08-09-alembic-review-and-revisions-plan.md``.
 """
@@ -14,7 +14,7 @@ from pydantic import BaseModel
 test_api_router = APIRouter(prefix="/test", tags=["test"])
 
 # Flip any of these to True in a test PR to remove that property from its
-# response — a genuine response-property-removed breaking change for
+# response – a genuine response-property-removed breaking change for
 # oasdiff to catch. MUTATE_REMOVE_MESSAGE_1/_DETAIL_1 share endpoint 1 (two
 # breaking changes at once), MUTATE_REMOVE_SUMMARY_2 is on endpoint 2 (one
 # breaking change spread across two endpoints). Flip back to False before
@@ -73,7 +73,7 @@ def breaking_api() -> TestBreakingResponse1:
 @test_api_router.get("/breaking-api-2")
 def breaking_api_2() -> TestBreakingResponse2:
     """Second endpoint whose schema is deliberately mutated per test
-    scenario, independently of ``breaking_api`` above — lets one commit
+    scenario, independently of ``breaking_api`` above – lets one commit
     exercise a single breaking change spread across two endpoints."""
     body: dict[str, str] = {}
     if not MUTATE_REMOVE_SUMMARY_2:

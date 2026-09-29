@@ -128,7 +128,7 @@ class ResendVerificationIn(BaseModel):
 class UpdateProfileIn(BaseModel):
     """Profile update request payload.
 
-    All fields are optional — only provided fields are updated.
+    All fields are optional – only provided fields are updated.
 
     Attributes:
         full_name: Updated display name.
@@ -290,7 +290,7 @@ class ValidateClinicalLeadOut(BaseModel):
     Attributes:
         valid: Whether the email is a clinical lead for the bank.
         site_name: Name of the site if valid, else None.
-        org_unit_id: The organisation, as an org_unit id — what the
+        org_unit_id: The organisation, as an org_unit id – what the
             registration that follows sends back.
         site_id: ID of the site if valid, else None. Already an org_unit id:
             a site is an org_unit.
@@ -353,7 +353,7 @@ class UserSummaryItem(BaseModel):
     platform_role: str
     # So a staff picker can tell whether this person holds anything a
     # member of staff would. Adding somebody who holds nothing staff-like
-    # is a real progression — a patient becoming a healthcare assistant —
+    # is a real progression – a patient becoming a healthcare assistant –
     # and the interface asks rather than refusing, which it cannot do
     # without knowing what they hold.
     competencies: list[str]

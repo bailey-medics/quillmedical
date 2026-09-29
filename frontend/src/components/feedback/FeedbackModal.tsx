@@ -9,8 +9,8 @@
  * described, and people describe better what they can still see behind
  * the modal.
  *
- * The message may well contain patient data — somebody describing a bug
- * pastes what they were looking at — so the field says not to, and the
+ * The message may well contain patient data – somebody describing a bug
+ * pastes what they were looking at – so the field says not to, and the
  * server treats what arrives as though it might anyway.
  *
  * Sending is the caller's `onSubmit`, so the modal knows nothing of the
@@ -89,7 +89,7 @@ function YourFeedbackLink({
   );
 }
 
-/** Inner fields — needs the Form context to reach React Hook Form. */
+/** Inner fields – needs the Form context to reach React Hook Form. */
 function FeedbackFields({
   onClose,
   showLinks,

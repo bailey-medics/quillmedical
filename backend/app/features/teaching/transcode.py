@@ -4,7 +4,7 @@ The backend is the trigger rather than Eventarc: ``link_module_media``
 already knows the moment the bytes landed, already holds credentials,
 and already has the three ids the job needs. Eventarc would survive an
 upload whose link call never happens, but costs a new API, a service
-agent and IAM that this repository does not otherwise use — see the
+agent and IAM that this repository does not otherwise use – see the
 trigger decision in the video auth gate plan.
 
 The consequence is that **the backend records completion**, not the job.
@@ -22,8 +22,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 #: Outputs the job writes, and the link column each one sets. The names
-#: are deterministic — the player addresses them directly rather than
-#: listing the bucket — so this is the one org_unit the mapping lives.
+#: are deterministic – the player addresses them directly rather than
+#: listing the bucket – so this is the one org_unit the mapping lives.
 RENDITION_FLAGS: tuple[tuple[str, str], ...] = (
     ("has_1080p", "-1080p.mp4"),
     ("has_poster", "-poster.jpg"),
@@ -43,7 +43,7 @@ def start_caption(
     not exist until the transcode job has written it. Firing at upload
     would race a job that takes minutes, and lose.
 
-    Returns the execution name, or None where no job is configured —
+    Returns the execution name, or None where no job is configured –
     the normal development case. A module then has no captions until
     someone writes them in the admin editor, which is a real workflow
     rather than a broken one.
@@ -120,7 +120,7 @@ def start_transcode(
 ) -> str | None:
     """Fire the transcode job for one uploaded asset.
 
-    Returns the execution name, or None where no job is configured —
+    Returns the execution name, or None where no job is configured –
     which is the normal development case, not an error. A developer
     uploading through the admin card gets their file stored and no
     renditions, and the module stays incomplete, which is the same safe

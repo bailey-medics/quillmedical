@@ -128,7 +128,7 @@ The split is by kind, for the reader: `clinical.yaml` holds what may be
 done in the care of a patient, `feature-admin.yaml` what may be done to
 Quill itself. The code sees one catalogue and the id is what everything
 references, so moving an entry between files changes nothing. **Ids must
-be unique across the whole directory**, not merely within a file — a
+be unique across the whole directory**, not merely within a file – a
 duplicate is refused at load, and in CI.
 
 **Structure**:

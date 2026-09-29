@@ -88,8 +88,8 @@ def test_existing_site_vocabulary_is_covered() -> None:
 def test_the_roots_are_the_kinds_of_organisation() -> None:
     """The two-level shape comes from the flags, not a rule about roots.
 
-    There is more than one kind of organisation — a practice and a
-    teaching establishment are both tops of trees — so what makes
+    There is more than one kind of organisation – a practice and a
+    teaching establishment are both tops of trees – so what makes
     something a root is the flag rather than one name.
     """
     assert ORGANISATION_TYPE in ROOT_TYPE_IDS

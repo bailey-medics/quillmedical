@@ -23,7 +23,7 @@ export default meta;
 
 type Story = StoryObj<typeof OfflineModal>;
 
-/** Default — modal open with offline message */
+/** Default – modal open with offline message */
 export const Default: Story = {
   args: {
     opened: true,

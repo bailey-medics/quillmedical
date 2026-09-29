@@ -468,7 +468,7 @@ function Step4Review({
           </Group>
           {/*
             The badge marks operators and renders nothing otherwise, so
-            the plain text carries the standard case — a label pointing
+            the plain text carries the standard case – a label pointing
             at an empty space reads as a fault rather than as an answer.
           */}
           <Group justify="space-between">

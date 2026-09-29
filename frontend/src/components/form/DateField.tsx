@@ -7,7 +7,7 @@
  *
  * **Values are `YYYY-MM-DD` strings, never `Date` objects.** Mantine 9's
  * DateInput works in strings natively, and so does every date the backend
- * sends or accepts — `observed_on`, `performed_on`, `awarded_on`. Passing
+ * sends or accepts – `observed_on`, `performed_on`, `awarded_on`. Passing
  * `Date` through would mean parsing and re-serialising at both ends,
  * which is where a timezone silently shifts a clinical date by a day.
  *

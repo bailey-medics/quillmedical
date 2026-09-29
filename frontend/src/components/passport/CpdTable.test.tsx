@@ -2,7 +2,7 @@
  * CpdTable Component Tests
  *
  * Most of these guard the rule that every total states the range it
- * covers — the thing that stops an honest short period reading as a poor
+ * covers – the thing that stops an honest short period reading as a poor
  * year.
  */
 
@@ -35,7 +35,7 @@ describe("CpdTable", () => {
     it("names the fallback as a convention when no period is declared", () => {
       renderWithMantine(<CpdTable entries={cpdEntries} />);
       expect(
-        screen.getByText(/June to June — you have not set an appraisal period/),
+        screen.getByText(/June to June – you have not set an appraisal period/),
       ).toBeInTheDocument();
     });
   });
@@ -93,7 +93,7 @@ describe("CpdTable", () => {
       renderWithMantine(
         <CpdTable entries={cpdEntries} period={appraisalPeriod} />,
       );
-      expect(screen.getAllByText("—").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("–").length).toBeGreaterThan(0);
     });
   });
 

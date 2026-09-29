@@ -10,7 +10,7 @@
  * client, which is otherwise the rule for talking to the backend. `sendBeacon`
  * is fire-and-forget: it cannot reject, it has no retry behaviour to inherit,
  * it does not fire the connectivity events the client dispatches, and the
- * browser keeps the request alive after the page goes away — so an error
+ * browser keeps the request alive after the page goes away – so an error
  * thrown while the user is navigating off a broken page still arrives. The
  * `api` client is right for calls whose answer matters; here there is no
  * answer worth having.
@@ -47,7 +47,7 @@ const MAX_USER_AGENT = 300;
  * anywhere else on the device. That is a deliberate constraint rather than an
  * oversight: storing it would be storage on the user's device, which engages
  * the Privacy and Electronic Communications Regulations, and error reporting
- * is not plausibly "strictly necessary" — so it would need a consent banner.
+ * is not plausibly "strictly necessary" – so it would need a consent banner.
  * A refresh therefore starts a new identifier, which is the accepted cost.
  *
  * It groups a cascade of errors into one visit without saying whose. On a
@@ -79,8 +79,8 @@ function makeSessionId(): string {
  *
  * Exported so user feedback captures it the same way error reports do.
  *
- * The server constrains this to two short runs of digits, so anything odd —
- * a zero-sized window during teardown, a fractional value under zoom — is
+ * The server constrains this to two short runs of digits, so anything odd –
+ * a zero-sized window during teardown, a fractional value under zoom – is
  * dropped rather than sent in a shape that would be rejected.
  */
 export function readViewport(): string {
@@ -117,7 +117,7 @@ export type ReportOptions = {
   /** React's component stack, which only an error boundary has. */
   componentStack?: string | undefined;
   /**
-   * The matched route pattern — `/patients/:id` — never a resolved URL.
+   * The matched route pattern – `/patients/:id` – never a resolved URL.
    *
    * Defaults to whatever the router last recorded, which is what the error
    * boundary and the window listeners rely on: neither can be handed one.
@@ -179,7 +179,7 @@ export function reportError(
     // Swallowed by design: throwing here would raise an error inside whatever
     // was already failing, which is the loop this whole module exists to
     // avoid. Said aloud in development only, because a catch this broad hides
-    // ordinary mistakes as readily as it absorbs genuine failures — a missing
+    // ordinary mistakes as readily as it absorbs genuine failures – a missing
     // build constant left this silently sending nothing at all, and the
     // silence was the hard part to notice.
     if (import.meta.env.DEV) {

@@ -38,17 +38,17 @@ Past medical history:
 Nil significant. No previous gastrointestinal investigations.
 
 Medications:
-Antacids (over-the-counter) \u2014 partial relief only.
+Antacids (over-the-counter) \u2013 partial relief only.
 
 Examination:
 Abdomen soft, non-tender. No organomegaly or masses palpable. Bowel sounds normal. No signs of anaemia or jaundice.
 
 Impression:
-Functional dyspepsia \u2014 likely acid-related. No red flag symptoms to suggest serious pathology at this stage.
+Functional dyspepsia \u2013 likely acid-related. No red flag symptoms to suggest serious pathology at this stage.
 
 Plan:
 1. Commence omeprazole 20mg once daily, taken 30 minutes before breakfast.
-2. Dietary modification advice given \u2014 avoid known triggers (spicy foods, caffeine, alcohol, fatty meals). Patient to keep a food diary for 14 days.
+2. Dietary modification advice given \u2013 avoid known triggers (spicy foods, caffeine, alcohol, fatty meals). Patient to keep a food diary for 14 days.
 3. Follow-up in 3 weeks to review response to PPI therapy.
 4. If symptoms fail to improve, will arrange upper GI endoscopy (OGD) for further evaluation.
 
@@ -59,7 +59,7 @@ Riverside Health Centre`,
   },
   {
     id: "letter-2",
-    title: "GP referral letter \u2014 gastroenterology",
+    title: "GP referral letter \u2013 gastroenterology",
     date: "2026-02-25",
     author: "Dr Emily Williams",
     authorRole: "General Practitioner",
@@ -77,9 +77,9 @@ Relevant history:
 No significant past medical history. No family history of gastrointestinal malignancy. Non-smoker. Alcohol intake within recommended limits. No NSAID use.
 
 Investigations to date:
-Full blood count \u2014 normal. No anaemia.
-Liver function tests \u2014 within normal limits.
-H. pylori stool antigen \u2014 awaiting result (will forward when available).
+Full blood count \u2013 normal. No anaemia.
+Liver function tests \u2013 within normal limits.
+H. pylori stool antigen \u2013 awaiting result (will forward when available).
 
 Current medications:
 Nil regular. Over-the-counter antacids as required.
@@ -99,7 +99,7 @@ Riverside Medical Practice`,
     authorRole: "General Practitioner",
     status: "final",
     summary:
-      "Dear Patient, Thank you for attending your annual routine health review on 10 January 2026. Observations: Blood pressure: 124/78 mmHg (normal). BMI: 26.2 (slightly above normal range \u2014 healthy lifestyle advice discussed). Heart rate: 72 bpm, regular\u2026",
+      "Dear Patient, Thank you for attending your annual routine health review on 10 January 2026. Observations: Blood pressure: 124/78 mmHg (normal). BMI: 26.2 (slightly above normal range \u2013 healthy lifestyle advice discussed). Heart rate: 72 bpm, regular\u2026",
     body: `Dear Patient,
 
 Thank you for attending your annual routine health review on 10 January 2026.
@@ -108,14 +108,14 @@ Results summary:
 
 Observations:
 - Blood pressure: 124/78 mmHg (normal)
-- BMI: 26.2 (slightly above normal range \u2014 healthy lifestyle advice discussed)
+- BMI: 26.2 (slightly above normal range \u2013 healthy lifestyle advice discussed)
 - Heart rate: 72 bpm, regular
 
 Blood tests:
 - Full blood count (FBC): Within normal limits. No anaemia.
 - Urea & electrolytes (U&E): Normal renal function.
 - Liver function tests (LFTs): Within normal limits.
-- HbA1c: 38 mmol/mol (normal \u2014 no evidence of diabetes)
+- HbA1c: 38 mmol/mol (normal \u2013 no evidence of diabetes)
 - Total cholesterol: 4.8 mmol/L (within acceptable range)
 
 Assessment:

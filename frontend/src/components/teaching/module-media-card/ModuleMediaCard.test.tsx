@@ -201,7 +201,7 @@ describe("ModuleMediaCard", () => {
                 progress: {
                   stage: 4,
                   total_stages: 4,
-                  label: "Ready — captions checked",
+                  label: "Ready – captions checked",
                   in_progress: false,
                   stalled: false,
                 },
@@ -218,7 +218,7 @@ describe("ModuleMediaCard", () => {
     expect(screen.queryByText("4 of 4")).toBeNull();
     // The row is not left blank: the line stays, so the admin can
     // still see the video has captions and that someone read them.
-    expect(screen.getByText("Ready — captions checked")).toBeInTheDocument();
+    expect(screen.getByText("Ready – captions checked")).toBeInTheDocument();
   });
 
   it("says everything about a file in one column", () => {
@@ -277,7 +277,7 @@ describe("ModuleMediaCard", () => {
 
   it("drops the bar where the upload plays without processing", () => {
     // Development, where no transcode job is configured. Nothing
-    // further is coming, so the row is finished and carries no bar —
+    // further is coming, so the row is finished and carries no bar –
     // the same treatment a video whose captions have been signed off
     // gets, and for the same reason.
     renderWithMantine(
@@ -292,7 +292,7 @@ describe("ModuleMediaCard", () => {
                 progress: {
                   stage: 1,
                   total_stages: 4,
-                  label: "Uploaded — plays without processing",
+                  label: "Uploaded – plays without processing",
                   in_progress: false,
                   stalled: false,
                   is_final: true,
@@ -313,7 +313,7 @@ describe("ModuleMediaCard", () => {
     ).not.toBeInTheDocument();
     expect(
       within(cell as HTMLElement).getByText(
-        "Uploaded — plays without processing",
+        "Uploaded – plays without processing",
       ),
     ).toBeInTheDocument();
   });
@@ -336,7 +336,7 @@ describe("ModuleMediaCard", () => {
                   stage: 3,
                   total_stages: 4,
                   label:
-                    "Captions need checking — hidden from learners until then",
+                    "Captions need checking – hidden from learners until then",
                   in_progress: false,
                   stalled: false,
                 },
@@ -352,7 +352,7 @@ describe("ModuleMediaCard", () => {
     expect(screen.getByRole("progressbar")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Captions need checking — hidden from learners until then",
+        "Captions need checking – hidden from learners until then",
       ),
     ).toBeInTheDocument();
     // No "3 of 4": the stages are our own machinery, and the words
@@ -421,7 +421,7 @@ describe("ModuleMediaCard", () => {
 
   it("says the upload failed on the row it failed on", async () => {
     // Without this the row simply returns to an empty dropzone, which
-    // looks the same as never having tried — and the admin is left
+    // looks the same as never having tried – and the admin is left
     // guessing whether anything happened.
     renderWithMantine(
       <ModuleMediaCard
@@ -461,7 +461,7 @@ describe("ModuleMediaCard", () => {
 
   it("shows what went wrong", () => {
     // An upload that fails silently is indistinguishable from a button
-    // that does nothing — which is exactly how a 503 from an
+    // that does nothing – which is exactly how a 503 from an
     // unconfigured deployment presented before this.
     renderWithMantine(
       <ModuleMediaCard
@@ -482,8 +482,8 @@ describe("ModuleMediaCard", () => {
   });
 
   it("shows an error and a missing-media warning together", () => {
-    // They answer different questions — what is absent, and what just
-    // failed — so one must not hide the other.
+    // They answer different questions – what is absent, and what just
+    // failed – so one must not hide the other.
     renderWithMantine(
       <ModuleMediaCard media={incomplete} error="Upload failed" />,
     );

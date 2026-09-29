@@ -5,7 +5,7 @@ Runs every check a content repo's CI needs, in one invocation::
     python -m app.features.teaching.tooling.cli <modules-directory>
 
 Pass ``--skip-version-lock`` where there is no git history to compare
-against — validating a tree downloaded from GCS, for instance, rather than
+against – validating a tree downloaded from GCS, for instance, rather than
 a checked-out branch.
 
 Exit codes: 0 when everything passes, 1 when any check fails.

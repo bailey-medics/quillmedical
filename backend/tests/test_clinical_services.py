@@ -130,7 +130,7 @@ class TestRequireFeatureDependency:
         add_org_unit_member(db_session, org.id, user.id, "trainee")
         db_session.commit()
 
-        # No features enabled on the org — the guard should reject
+        # No features enabled on the org – the guard should reject
 
         # We test via a quick mock-endpoint approach by calling the
         # dependency function directly

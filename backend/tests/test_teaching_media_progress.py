@@ -1,7 +1,7 @@
 """Tests for what the admin card says about an upload in progress.
 
 The card used to show "No captions" from the moment a file landed until
-Whisper finished — a statement of absence where the truth was "not yet".
+Whisper finished – a statement of absence where the truth was "not yet".
 It sent someone re-uploading a video that was processing perfectly, and
 it said the same thing for two days while the caption job was
 unconfigured and nothing at all was coming.

@@ -22,7 +22,7 @@ git checkout -b feature/test-api-compat
 ## Step 1: Trigger a breaking change with the built-in test harness
 
 Don't touch any real endpoint. The repo has a permanent, flag-gated test
-harness purpose-built for this — `backend/app/test_api_endpoints.py`,
+harness purpose-built for this – `backend/app/test_api_endpoints.py`,
 registered only when `TEST_API_ENDPOINTS_ENABLED=true` (always false in real
 deployments; CI sets it true only when dumping specs for this check). It
 exposes `GET /api/test/non-breaking-api` (a control endpoint, never mutated)
@@ -34,7 +34,7 @@ constants near the top from `False` to `True`:
 
 ```python
 # Flip any of these to True in a test PR to remove that property from its
-# response — a genuine response-property-removed breaking change for
+# response – a genuine response-property-removed breaking change for
 # oasdiff to catch.
 MUTATE_REMOVE_MESSAGE_1 = True   # ← was False
 MUTATE_REMOVE_DETAIL_1 = False
@@ -44,7 +44,7 @@ MUTATE_REMOVE_SUMMARY_2 = False
 Each constant removes one field from the corresponding response model
 (`TestBreakingResponse1.message`, `TestBreakingResponse1.detail`, or
 `TestBreakingResponse2.summary`) via the `if not MUTATE_...:` guards already
-in the model/handler bodies — no other code changes needed. Flipping
+in the model/handler bodies – no other code changes needed. Flipping
 `MUTATE_REMOVE_MESSAGE_1` and `MUTATE_REMOVE_DETAIL_1` together produces two
 breaking changes on the same endpoint at once, useful for testing partial
 decision-file coverage.
@@ -60,10 +60,10 @@ git push origin feature/test-api-compat
 ## Step 2: Trigger CI and observe the breaking-change detection
 
 Pushing a `feature/**` branch triggers `.github/workflows/auto-pr.yml`, which
-auto-creates the PR as a **draft** — by design, this holds back the heavy
+auto-creates the PR as a **draft** – by design, this holds back the heavy
 tier (including `heavy_api_schema_diff`) entirely; a draft PR shows no
 schema-diff check at all, not even a pending one. Click **Ready for review**
-on the PR before continuing — that's what actually fires the heavy tier
+on the PR before continuing – that's what actually fires the heavy tier
 (`pull_request.ready_for_review`), not the initial push.
 
 The CI workflow will:
@@ -184,7 +184,7 @@ python backend/scripts/new_compat_decision.py
 Enter the oasdiff change ID + operation + path exactly as it appears in the error:
 > response-required-property-removed GET /api/test/breaking-api
 
-Enter forces_reload (true/false) — does this breaking change require every open
+Enter forces_reload (true/false) – does this breaking change require every open
 tab to reload immediately?
 
   - true: if a tab's cached data depends on the removed field and will crash or
@@ -200,7 +200,7 @@ Enter a reason (for the safety/audit trail):
   docs/docs/plans/2026-08-09-alembic-review-and-revisions-plan.md, item 19,
   Phase 2). MUTATE_REMOVE_MESSAGE_1 removes the "message" field from the
   disposable /api/test/breaking-api endpoint, which is never called by the
-  real app — no client, real or stale, depends on it.
+  real app – no client, real or stale, depends on it.
 
 ```
 
@@ -211,7 +211,7 @@ The script generates a file like:
 generation: 3
 forces_reload: false
 change: "response-required-property-removed GET /api/test/breaking-api"
-reason: 'Test scenario for the api-compatibility CI harness (see docs/docs/plans/2026-08-09-alembic-review-and-revisions-plan.md, item 19, Phase 2). MUTATE_REMOVE_MESSAGE_1 removes the "message" field from the disposable /api/test/breaking-api endpoint, which is never called by the real app — no client, real or stale, depends on it.'
+reason: 'Test scenario for the api-compatibility CI harness (see docs/docs/plans/2026-08-09-alembic-review-and-revisions-plan.md, item 19, Phase 2). MUTATE_REMOVE_MESSAGE_1 removes the "message" field from the disposable /api/test/breaking-api endpoint, which is never called by the real app – no client, real or stale, depends on it.'
 ```
 
 ## Step 6: Run validation again (expect pass)
@@ -257,14 +257,14 @@ CI runs and validation fails. You'll see:
 
 - `api_schema_diff` job **fails** (the validation step exits non-zero)
 - the gate **still** comments, still posts to Slack and still asks for
-  approval — the break is recorded when it appears, not when its paperwork
+  approval – the break is recorded when it appears, not when its paperwork
   catches up
 - that Slack message carries the `oasdiff` change string under **Breaking
   changes:**, which is exactly what you paste back into
   `new_compat_decision.py` to fix it
 - the failing check keeps the PR blocked regardless of the approval
 
-There is **one** Slack message per gate, sent when a break needs approval —
+There is **one** Slack message per gate, sent when a break needs approval –
 the same rule as the destructive-migration gate. A validation failure on its
 own shows as a red check and nothing more.
 
@@ -280,7 +280,7 @@ git branch -D feature/test-api-compat
 git push origin --delete feature/test-api-compat
 ```
 
-Also flip the mutation constant(s) in `test_api_endpoints.py` back to `False` on `main`, and delete the decision file(s) created for the test round, so the harness stays reusable for future demos. Deleting a decision file requires a temporary bypass of the `validate_no_deletions` CI rule (comment out its call in `validate-compat-files.sh`'s `main()`), restored again in an immediate follow-up PR — see [the Alembic review plan](../plans/2026-08-09-alembic-review-and-revisions-plan.md) for the worked example from the Phase 2 test round.
+Also flip the mutation constant(s) in `test_api_endpoints.py` back to `False` on `main`, and delete the decision file(s) created for the test round, so the harness stays reusable for future demos. Deleting a decision file requires a temporary bypass of the `validate_no_deletions` CI rule (comment out its call in `validate-compat-files.sh`'s `main()`), restored again in an immediate follow-up PR – see [the Alembic review plan](../plans/2026-08-09-alembic-review-and-revisions-plan.md) for the worked example from the Phase 2 test round.
 
 ## Common errors and fixes
 
@@ -304,8 +304,8 @@ reason: "<non-empty explanation for audit trail>"
 ```
 
 - **`generation`**: assigned by `new_compat_decision.py`; auto-increments; on `forces_reload: true` files, must be globally unique (CI enforces this).
-- **`forces_reload`**: human's judgement call — does a stale tab **need** to force-reload, or is the background update sufficient?
+- **`forces_reload`**: human's judgement call – does a stale tab **need** to force-reload, or is the background update sufficient?
 - **`change`**: copied verbatim from oasdiff output or CI log; no typos or rewording.
-- **`reason`**: compliance artefact — explains the reasoning, not just the outcome.
+- **`reason`**: compliance artefact – explains the reasoning, not just the outcome.
 
 Once merged to `main`, the `generation`, `forces_reload`, and `change` fields become immutable (for audit trail integrity). The `reason` field may be edited later via another PR if needed.

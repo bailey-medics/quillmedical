@@ -3,7 +3,7 @@
  *
  * An error boundary only catches what is thrown while React renders. It never
  * sees a rejected promise, an error thrown from a timer or an event listener,
- * or anything raised before the tree mounts — which in an application built on
+ * or anything raised before the tree mounts – which in an application built on
  * API calls is most of what goes wrong. These two listeners cover that gap.
  *
  * Both are deliberately quiet. They do not preventDefault, so the browser
@@ -33,7 +33,7 @@ function isScriptError(event: ErrorEvent): boolean {
  * Start reporting unhandled rejections and errors outside React's tree.
  *
  * Safe to call more than once; only the first call takes effect. Returns a
- * function that removes the listeners again, which is what tests use — nothing
+ * function that removes the listeners again, which is what tests use – nothing
  * in the application needs to stop reporting.
  */
 export function installGlobalErrorReporting(): () => void {

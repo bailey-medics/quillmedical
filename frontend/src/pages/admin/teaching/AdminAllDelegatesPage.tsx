@@ -40,18 +40,18 @@ const columns: Column<Delegate>[] = [
   { header: "Name", render: (d) => d.name, accessor: (d) => d.name },
   {
     header: "Site",
-    render: (d) => d.site_name ?? "—",
+    render: (d) => d.site_name ?? "–",
     accessor: (d) => d.site_name ?? "",
   },
   {
     header: "Clinical lead",
-    render: (d) => d.clinical_lead ?? "—",
+    render: (d) => d.clinical_lead ?? "–",
     accessor: (d) => d.clinical_lead ?? "",
   },
   {
     header: "Learning",
     render: (d) => {
-      if (d.learning_completed === null) return "—";
+      if (d.learning_completed === null) return "–";
       return d.learning_completed ? "Complete" : "In progress";
     },
     accessor: (d) =>
@@ -60,7 +60,7 @@ const columns: Column<Delegate>[] = [
   {
     header: "Assessment",
     render: (d) => {
-      if (!d.assessment_result) return "—";
+      if (!d.assessment_result) return "–";
       return <AssessmentResultBadge result={d.assessment_result} />;
     },
     accessor: (d) => d.assessment_result ?? "",
@@ -68,7 +68,7 @@ const columns: Column<Delegate>[] = [
   {
     header: "Date",
     render: (d) => {
-      if (!d.assessment_date) return "—";
+      if (!d.assessment_date) return "–";
       return <FormattedDate date={d.assessment_date} />;
     },
     accessor: (d) => d.assessment_date ?? "",

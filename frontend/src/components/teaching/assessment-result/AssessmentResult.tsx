@@ -22,7 +22,7 @@ interface AssessmentResultProps {
   criteria: CriterionResult[];
   /** Question bank title */
   bankTitle?: string;
-  /** Assessment ID — required when showCertificate is true */
+  /** Assessment ID – required when showCertificate is true */
   assessmentId?: number;
   /** Where the results question by question are; no link when omitted */
   questionResultsHref?: string;

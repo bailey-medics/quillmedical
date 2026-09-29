@@ -102,9 +102,9 @@ export const PRELOAD_RELOAD_LOOP_WINDOW_MS = 60 * 1000;
 /**
  * What to do about a lazy chunk this tab could not fetch.
  *
- * - `reload` — the route is safe to reload, so fetch the current build and
+ * - `reload` – the route is safe to reload, so fetch the current build and
  *   let the navigation complete against it.
- * - `defer` — reloading here would destroy work the user cannot get back,
+ * - `defer` – reloading here would destroy work the user cannot get back,
  *   so leave the tab where it is. The navigation has already failed; the
  *   caller decides what to show.
  */
@@ -122,7 +122,7 @@ export interface PreloadFailureOptions {
  * Decides how to recover from `vite:preloadError`.
  *
  * A tab holds the bundle it downloaded until it reloads, and a long-lived
- * session can outlive the container that served it — rotating refresh
+ * session can outlive the container that served it – rotating refresh
  * tokens mean it never re-logs-in. Once the router loads routes on demand,
  * that tab asks for a chunk hash the container stopped serving weeks ago
  * and the *navigation* throws. JavaScript is not in the precache manifest

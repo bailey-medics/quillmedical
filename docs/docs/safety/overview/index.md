@@ -6,13 +6,13 @@ Quill Medical is a Health IT System as defined by DCB 0129 and DCB 0160. Complia
 
 ## Contents
 
-- [Regulatory Framework](./regulatory-framework.md) — DCB 0129, DCB 0160, DTAC, and related standards
-- [Clinical Safety Officer](./clinical-safety-officer.md) — The CSO role, qualifications, responsibilities, and training
-- [Risk Management System](./risk-management-system.md) — The Clinical Risk Management System and its core deliverables
-- [Hazard Log Guide](./hazard-log.md) — Hazard identification, the risk matrix, and assessment process
-- [EPR-Specific Hazards](./epr-hazards.md) — Hazard categories specific to an Electronic Patient Record
-- [Development Integration](./development-integration.md) — Embedding clinical safety in the development lifecycle
-- [Resources](./resources.md) — Key links, training, templates, and consultancies
+- [Regulatory Framework](./regulatory-framework.md) – DCB 0129, DCB 0160, DTAC, and related standards
+- [Clinical Safety Officer](./clinical-safety-officer.md) – The CSO role, qualifications, responsibilities, and training
+- [Risk Management System](./risk-management-system.md) – The Clinical Risk Management System and its core deliverables
+- [Hazard Log Guide](./hazard-log.md) – Hazard identification, the risk matrix, and assessment process
+- [EPR-Specific Hazards](./epr-hazards.md) – Hazard categories specific to an Electronic Patient Record
+- [Development Integration](./development-integration.md) – Embedding clinical safety in the development lifecycle
+- [Resources](./resources.md) – Key links, training, templates, and consultancies
 
 ## Key Documents (Produced Under This Framework)
 

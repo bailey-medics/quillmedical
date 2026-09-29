@@ -4,7 +4,7 @@
  * The caller's open sign-off requests, as an assessor.
  *
  * **This is the one passport page an external assessor reaches.** They
- * see exactly the requests naming them and nothing else — not the
+ * see exactly the requests naming them and nothing else – not the
  * holder's passport, not other holders. The API resolves that from
  * `passport_signoff_request` rows, so no extra gate is needed here.
  */

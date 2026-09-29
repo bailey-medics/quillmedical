@@ -4,7 +4,7 @@ The composition point for :mod:`app.features.passport`. It sits here
 rather than inside that package for one reason, and the reason is
 enforced by a test: every module under ``app.features.passport`` must
 import without ``app.config``, so that a passport on disk stays readable
-by tooling that has no application around it — no settings, no database,
+by tooling that has no application around it – no settings, no database,
 no FastAPI. See ``tests/test_features_import_boundary.py``.
 
 So the package takes a bucket or a directory as an argument, and this

@@ -4,7 +4,7 @@
  * One procedure, as the holder recorded it.
  *
  * **This is a self-declared record and nobody countersigns it.** A
- * logbook proves activity, not competence — two hundred bronchoscopies
+ * logbook proves activity, not competence – two hundred bronchoscopies
  * are still two hundred bronchoscopies, and it is the sign-off that
  * turns evidence into a conclusion. The form must never imply otherwise,
  * so there is no declaration here, no assessor, and no target to work
@@ -73,7 +73,7 @@ export interface LogbookEntryFormProps {
 /**
  * LogbookEntryForm
  *
- * Renders the entry. Only the date is required — the rest is detail the
+ * Renders the entry. Only the date is required – the rest is detail the
  * holder adds where it is worth adding.
  */
 export default function LogbookEntryForm({

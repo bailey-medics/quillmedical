@@ -1,4 +1,4 @@
-# modules/cloud-run/main.tf — Cloud Run service
+# modules/cloud-run/main.tf – Cloud Run service
 
 resource "google_cloud_run_v2_service" "service" {
   project  = var.project_id
@@ -62,7 +62,7 @@ resource "google_cloud_run_v2_service" "service" {
         }
       }
 
-      # Startup probe — give container time to boot
+      # Startup probe – give container time to boot
       startup_probe {
         http_get {
           path = var.health_check_path

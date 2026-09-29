@@ -106,7 +106,7 @@ the one that finished.
 `-execute` stores a command with the notification and runs it when the
 banner is clicked. `scripts/notification-focus.sh` then raises the window
 whose title contains the worktree's directory name: VS Code titles a window
-`<file> — <folder>`, so the folder name finds it. It uses `AXRaise` through
+`<file> – <folder>`, so the folder name finds it. It uses `AXRaise` through
 System Events, which **needs Accessibility permission**, under System
 Settings, Privacy and Security, Accessibility.
 

@@ -213,7 +213,7 @@ class TestListingMembersOfAnOrganisation:
 
         Left that way on purpose. Narrowing it would change what every
         existing caller means in a single edit, and the admin user
-        listing genuinely wants everybody at the organisation — a
+        listing genuinely wants everybody at the organisation – a
         trainee an admin cannot see is a trainee they cannot administer.
         The name is wrong; the fix is callers moving to the explicit
         function below, not a silent change under them.

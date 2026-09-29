@@ -1,4 +1,4 @@
-# branch_rules.tf — GitHub branch protection via Repository Rulesets
+# branch_rules.tf – GitHub branch protection via Repository Rulesets
 #
 # This file manages branch protection for the quillmedical repository using
 # GitHub Rulesets (the modern replacement for classic branch protection rules).
@@ -79,7 +79,7 @@ variable "merge_queue_enabled" {
 }
 
 # ---------------------------------------------------------------------------
-# Ruleset 1 — Protected branches (main only)
+# Ruleset 1 – Protected branches (main only)
 # ---------------------------------------------------------------------------
 # Purpose:
 #   Prevents direct pushes, force pushes, and branch deletion on the main
@@ -106,7 +106,7 @@ resource "github_repository_ruleset" "protected_branches" {
 
   rules {
     # Require a pull request before merging (0 approvals while solo developer;
-    # increase to 1+ when additional team members join — see docs/docs/plans/todo.md)
+    # increase to 1+ when additional team members join – see docs/docs/plans/todo.md)
     pull_request {
       required_approving_review_count   = 0
       dismiss_stale_reviews_on_push     = true
@@ -163,7 +163,7 @@ resource "github_repository_ruleset" "protected_branches" {
         context = "E2E (Playwright)"
       }
 
-      # API compatibility (item 15 — see docs/docs/backend/api-compatibility.md)
+      # API compatibility (item 15 – see docs/docs/backend/api-compatibility.md)
       required_check {
         context = "API breaking-change check"
       }
@@ -188,8 +188,8 @@ resource "github_repository_ruleset" "protected_branches" {
         context = "DB migration immutability check"
       }
       # A competency is retired, never deleted. Deleting one from the shared
-      # catalogue revokes nothing — everyone holding it keeps the access, it
-      # merely stops being describable — and it destroys the vocabulary the
+      # catalogue revokes nothing – everyone holding it keeps the access, it
+      # merely stops being describable – and it destroys the vocabulary the
       # audit trail needs. Like the check above, no approval path: there is
       # no legitimate case to approve.
       required_check {
@@ -203,7 +203,7 @@ resource "github_repository_ruleset" "protected_branches" {
     # Block branch deletion
     deletion = true
 
-    # Merge queue — replaces the old manual "rebase, wait for CI, merge,
+    # Merge queue – replaces the old manual "rebase, wait for CI, merge,
     # repeat" loop. GitHub builds a temporary merge-group ref (PR + latest
     # main) and re-runs the required checks above against it before merging,
     # so a PR is always tested against current main without anyone force-
@@ -238,11 +238,11 @@ resource "github_repository_ruleset" "protected_branches" {
     # check_response_timeout_minutes is how long the queue waits for the
     # required checks to report before dropping the entry. The slowest chain
     # is heavy_e2e_images -> heavy_e2e (20 min timeout each), so 60 leaves
-    # headroom for runner queueing but not a huge amount — if entries start
+    # headroom for runner queueing but not a huge amount – if entries start
     # being dequeued for no obvious reason, raise this first.
     #
     # Wrapped in a dynamic block so the queue can be switched off without
-    # deleting its configuration — see var.merge_queue_enabled.
+    # deleting its configuration – see var.merge_queue_enabled.
     dynamic "merge_queue" {
       for_each = var.merge_queue_enabled ? [1] : []
 
@@ -260,7 +260,7 @@ resource "github_repository_ruleset" "protected_branches" {
 }
 
 # ---------------------------------------------------------------------------
-# Ruleset 2 — Branch naming convention
+# Ruleset 2 – Branch naming convention
 # ---------------------------------------------------------------------------
 # Targets: all branches EXCEPT main and the merge queue's own refs
 #
@@ -290,7 +290,7 @@ resource "github_repository_ruleset" "branch_naming" {
         # naming rule rejects that branch at creation time, so the merge group
         # is never built, no merge_group event fires, no required check
         # reports, and GitHub drops the entry with "removed from the merge
-        # queue due to failing Branch Protection rules" — with nothing in the
+        # queue due to failing Branch Protection rules" – with nothing in the
         # Actions tab to explain it. Seen on PR #503.
         #
         # Both spellings are listed because a bare `**` alone did not match

@@ -1,7 +1,7 @@
 /**
  * Heading Storybook Stories
  *
- * Demonstrates the Heading component — bold, prominent text
+ * Demonstrates the Heading component – bold, prominent text
  * for card titles and section headings.
  */
 

@@ -6,7 +6,7 @@
  * `UpdateFallbackBanner` components, which had converged on the same
  * shape (icon + short message, `role="status"`, `aria-live="polite"`).
  *
- * Always rendered in normal layout flow directly below `TopRibbon` —
+ * Always rendered in normal layout flow directly below `TopRibbon` –
  * never fixed/overlay positioned. Non-dismissible: this is status
  * information, not a flash message, and stays visible until its
  * underlying condition clears. When more than one condition is true at
@@ -15,7 +15,7 @@
  *
  * Responsive: below `theme.breakpoints.sm`, a strip only switches to a
  * compact horizontal badge (icon + short label only) when `multiple`
- * other strips are also showing at once — so two or three simultaneous
+ * other strips are also showing at once – so two or three simultaneous
  * strips stay usable on a phone screen, but a single strip always stays
  * full-width, even on mobile.
  */
@@ -39,12 +39,12 @@ export type StatusStripVariant =
 export interface StatusStripProps {
   /** Which status condition this strip represents. */
   variant: StatusStripVariant;
-  /** Time of the last successful sync — used in the offline variant's message. */
+  /** Time of the last successful sync – used in the offline variant's message. */
   lastSyncedAt?: Date;
   /**
    * Whether more than one StatusStrip is rendering at the same time.
    * Only when this is true does the strip switch to the compact badge
-   * layout on narrow screens — a lone strip always stays full-width, even
+   * layout on narrow screens – a lone strip always stays full-width, even
    * on mobile. Defaults to false.
    */
   multiple?: boolean;
@@ -70,7 +70,7 @@ function getVariantContent(
       return {
         icon: <IconWifiOff />,
         message: lastSyncedAt
-          ? `Offline \u2014 last synced at ${formatLastSynced(lastSyncedAt)}`
+          ? `Offline \u2013 last synced at ${formatLastSynced(lastSyncedAt)}`
           : "Offline",
         badgeLabel: "Offline",
       };
@@ -102,8 +102,8 @@ function getVariantContent(
 /**
  * Status Strip
  *
- * Renders a single status condition as a full-width strip, or — only on
- * narrow screens when `multiple` other strips are also showing — a
+ * Renders a single status condition as a full-width strip, or – only on
+ * narrow screens when `multiple` other strips are also showing – a
  * compact badge. Consumers render one instance per active condition;
  * multiple instances stack naturally in normal layout flow.
  */

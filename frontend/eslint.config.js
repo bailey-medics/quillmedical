@@ -72,7 +72,7 @@ export default tseslint.config(
               {
                 group: ["@/stories/*"],
                 message:
-                  "Storybook helpers (StoryNote, VariantRow, etc.) are for stories only — never import in app code.",
+                  "Storybook helpers (StoryNote, VariantRow, etc.) are for stories only – never import in app code.",
               },
             ],
           },

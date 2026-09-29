@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# Tests for validate-channel.sh — the Slack notifier's channel/webhook check.
+# Tests for validate-channel.sh – the Slack notifier's channel/webhook check.
 #
 # Only the pure validation logic (validate_channel) is unit-tested here.
 

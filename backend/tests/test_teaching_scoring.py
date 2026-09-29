@@ -1,4 +1,4 @@
-"""Tests for the teaching feature — scoring engine."""
+"""Tests for the teaching feature – scoring engine."""
 
 from __future__ import annotations
 

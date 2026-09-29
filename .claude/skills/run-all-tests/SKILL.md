@@ -25,4 +25,4 @@ This covers:
 
 The E2E tests require the dev Docker stack to be running (`just st` or `just st`). The script runs `cd frontend && npx playwright test` for E2E.
 
-If any check fails, report which checks failed and the relevant error output. Do not attempt to fix failures automatically — just report the results.
+If any check fails, report which checks failed and the relevant error output. Do not attempt to fix failures automatically – just report the results.

@@ -1,4 +1,4 @@
-# modules/passport-storage/main.tf — clinician passport repositories
+# modules/passport-storage/main.tf – clinician passport repositories
 #
 # One bucket holding every passport: each as a `git bundle` object, with its
 # evidence blobs as objects beside it. Cloud Run has no durable disk, so this
@@ -36,7 +36,7 @@ resource "google_storage_bucket" "passports" {
   public_access_prevention = "enforced"
 
   # The backstop for a history rewrite. The application refuses any
-  # non-fast-forward update, so a rewrite cannot arrive through it — but a
+  # non-fast-forward update, so a rewrite cannot arrive through it – but a
   # bundle replaced directly in the bucket would leave no trace without this.
   # Object versions are that trace, and nothing removes them.
   versioning {

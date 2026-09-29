@@ -48,12 +48,12 @@ graph LR
 | `hotfix/*`   | Urgent fixes                      | CI checks only                         |
 | `copilot/*`  | AI-generated branches             | CI checks only                         |
 | `renovate/*` | Automated dependency updates      | CI checks only                         |
-| `main`       | Trunk — single protected branch   | Teaching (auto), Production (approved) |
+| `main`       | Trunk – single protected branch   | Teaching (auto), Production (approved) |
 
 ### Rules
 
 - All development happens on `feature/*`, `hotfix/*`, or `copilot/*` branches
-- `main` requires a pull request — never push directly
+- `main` requires a pull request – never push directly
 - Branch names must match `^(feature|hotfix|copilot|renovate)/.+` (enforced at creation time)
 - Use `hotfix/*` only for urgent production fixes; `feature/*` for everything else
 
@@ -73,7 +73,7 @@ The `infra/github/` Terraform uses a **local state backend**. Merging `.tf` chan
 
     The GCP infrastructure Terraform (`infra/`) uses a remote backend and is applied automatically via the Terraform CI workflow.
 
-### Ruleset 1 — Protected branches (quillmedical)
+### Ruleset 1 – Protected branches (quillmedical)
 
 **Targets:** `main`
 
@@ -81,24 +81,24 @@ The `infra/github/` Terraform uses a **local state backend**. Merging `.tf` chan
 | ----------------------------- | ------------------------------------------------------ |
 | Pull request required         | Yes (0 approvals while solo; increase when team grows) |
 | Dismiss stale reviews on push | Yes                                                    |
-| Required status checks        | All 11 CI checks (strict — branch must be up-to-date)  |
+| Required status checks        | All 11 CI checks (strict – branch must be up-to-date)  |
 | Force push                    | Blocked                                                |
 | Branch deletion               | Blocked                                                |
 | Bypass actors                 | None (applies to admins too)                           |
 
-### Ruleset 2 — Branch naming (quillmedical)
+### Ruleset 2 – Branch naming (quillmedical)
 
 **Targets:** All branches except `main`
 
-Pattern: `^(feature|hotfix|copilot|renovate)/.+` — branches that don't match are rejected at creation time.
+Pattern: `^(feature|hotfix|copilot|renovate)/.+` – branches that don't match are rejected at creation time.
 
-### Ruleset 3 — Protected branches (quill-question-bank)
+### Ruleset 3 – Protected branches (quill-question-bank)
 
 **Targets:** `main`
 
 Same PR and force-push rules as quillmedical, but no required status checks (no CI pipeline on the data repo).
 
-### Ruleset 4 — Branch naming (quill-question-bank)
+### Ruleset 4 – Branch naming (quill-question-bank)
 
 Same `^(feature|hotfix|copilot|renovate)/.+` pattern as quillmedical.
 
@@ -159,13 +159,13 @@ GitHub Actions secrets are configured per-environment. Never commit tokens or ke
 | `GCP_PROD_SERVICE_ACCOUNT`     | Production service account _(not yet active)_ |
 | `GCP_PROD_PROJECT_ID`          | Production GCP project ID _(not yet active)_  |
 
-Authentication to GCP uses **Workload Identity Federation** — no long-lived service account keys.
+Authentication to GCP uses **Workload Identity Federation** – no long-lived service account keys.
 
 ## Learnings
 
 ### GitHub Enterprise is required for branch naming enforcement
 
-The Team plan supports repository rulesets but only evaluates metadata restrictions (branch naming patterns) in "evaluate" mode — violations are logged but not blocked. Upgrading to Enterprise enables "active" enforcement, which rejects non-conforming branch names at creation time.
+The Team plan supports repository rulesets but only evaluates metadata restrictions (branch naming patterns) in "evaluate" mode – violations are logged but not blocked. Upgrading to Enterprise enables "active" enforcement, which rejects non-conforming branch names at creation time.
 
 ### Terraform rulesets use local state for GitHub
 
@@ -173,7 +173,7 @@ The `infra/github/` Terraform manages GitHub rulesets (branch protection, naming
 
 ### All 11 status checks should be required
 
-Initially only 5 "lean" checks were configured (Python styling, Python unit, eslint, typecheck, unit tests). This was expanded to all 11 checks including prettier, stylelint, storybook build, storybook tests, Semgrep, and E2E because in a healthcare application, bad UX can lead to patient harm — every check catches a different class of issue.
+Initially only 5 "lean" checks were configured (Python styling, Python unit, eslint, typecheck, unit tests). This was expanded to all 11 checks including prettier, stylelint, storybook build, storybook tests, Semgrep, and E2E because in a healthcare application, bad UX can lead to patient harm – every check catches a different class of issue.
 
 ### Auto-PR creation on feature and Copilot push
 

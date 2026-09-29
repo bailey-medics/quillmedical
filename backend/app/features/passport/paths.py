@@ -18,11 +18,11 @@ Two naming rules run through the layout, and they look inconsistent
 until the reason is clear:
 
 - **Where a directory is a competency, it is named by the competency id
-  verbatim** — ``logbook/perform_bronchoscopy/``. A logbook entry is
+  verbatim** – ``logbook/perform_bronchoscopy/``. A logbook entry is
   about one procedure, so "show me my bronchoscopy logbook" should be
   one directory.
 - **Where a directory is a human label, it is named for reading and the
-  authoritative id lives inside the file** — ``sign-offs/
+  authoritative id lives inside the file** – ``sign-offs/
   2026-03-14-perform-bronchoscopy/``. Sign-offs and certificates
   legitimately span several competencies at once, so the competency
   cannot be the directory.
@@ -40,7 +40,7 @@ from pathlib import PurePosixPath
 #: passport years from now.
 MANIFEST = PurePosixPath("manifest.yaml")
 
-#: Who the passport belongs to — the holder's name and current
+#: Who the passport belongs to – the holder's name and current
 #: registrations, regenerated whenever they change. The one org_unit the
 #: passport says whose it is, which is why no record repeats it.
 PROFILE = PurePosixPath("profile.yaml")
@@ -83,7 +83,7 @@ REFLECTION_FILE = PurePosixPath("reflection.md")
 ASSESSMENT_FILE = PurePosixPath("assessment.md")
 
 # A competency id, as the identifier rules allow it: lower-case words
-# joined by underscores, and deliberately no "/" — a path-shaped id would
+# joined by underscores, and deliberately no "/" – a path-shaped id would
 # bake a taxonomy into every stored record.
 _COMPETENCY_ID = re.compile(r"^[a-z0-9]+(?:_[a-z0-9]+)*$")
 
@@ -120,7 +120,7 @@ def _check(value: str, pattern: re.Pattern[str], what: str) -> str:
     Raises:
         PassportPathError: If it does not match, if it is empty, or if it
             could escape the repository. Path traversal is caught by the
-            patterns — none of them admit ``.`` or ``/`` — but the
+            patterns – none of them admit ``.`` or ``/`` – but the
             explicit check states the intent, so a later loosening of a
             pattern cannot silently permit ``../``.
     """

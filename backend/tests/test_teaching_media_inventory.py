@@ -21,7 +21,7 @@ from app.models import OrgUnit
 def transcode_configured(monkeypatch: pytest.MonkeyPatch) -> None:
     """A deployment that has a transcode job, as teaching does.
 
-    The settings default is None, which is development — and there an
+    The settings default is None, which is development – and there an
     upload is servable on its own, because nothing is coming to
     transcode it. These tests are about the gate that waits, so they
     have to say which of the two environments they are in rather than
@@ -51,7 +51,7 @@ def _upload(
     """An upload, transcoded by default.
 
     Default true so the existing tests keep asserting what they were
-    written to assert — that a *usable* upload completes a module. The
+    written to assert – that a *usable* upload completes a module. The
     window this parameter opens is the new one: uploaded, linked, and
     not yet playable.
     """
@@ -133,7 +133,7 @@ class TestMediaInventory:
     ):
         """Completeness is per organisation, like liveness.
 
-        B uploading a file must not make A's module look complete —
+        B uploading a file must not make A's module look complete –
         that would serve A's learners a video their organisation never
         uploaded, and break the cookie prefix the access design rests
         on.
@@ -203,7 +203,7 @@ class TestServableVersusComplete:
         The playback resolver already falls back to serving the original
         upload where ``transcoded_at`` is null. Before this, the gate hid
         the module first, so that fallback could not run on the only
-        machines it was written for — an uploaded video sat at
+        machines it was written for – an uploaded video sat at
         "Preparing the video" forever.
         """
         monkeypatch.setattr("app.config.settings.TEACHING_TRANSCODE_JOB", None)
@@ -261,7 +261,7 @@ class TestServableVersusComplete:
     def test_a_missing_upload_is_neither(self, db_session: Session):
         """And is not reported as awaiting a transcode.
 
-        The remedies differ — upload it, versus wait for it — so a key
+        The remedies differ – upload it, versus wait for it – so a key
         with no file at all must not appear in the waiting list.
         """
         org = _org(db_session, "Trust Empty")
@@ -305,7 +305,7 @@ class TestModuleMediaIsComplete:
     """The learner gate: is every ``<Video ref>`` backed by a file?
 
     Separated from ``MediaInventory`` because the gate adds two things
-    the inventory has no opinion about — that a module referencing no
+    the inventory has no opinion about – that a module referencing no
     media is complete, and that the answer is asked per organisation.
     """
 

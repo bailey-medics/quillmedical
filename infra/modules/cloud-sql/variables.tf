@@ -49,7 +49,7 @@ variable "database_version" {
 }
 
 variable "enable_ha" {
-  description = "Enable high availability (regional) — roughly doubles cost"
+  description = "Enable high availability (regional) – roughly doubles cost"
   type        = bool
   default     = false
 }

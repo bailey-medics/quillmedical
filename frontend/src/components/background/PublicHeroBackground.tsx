@@ -19,10 +19,10 @@ export default function PublicHeroBackground({
 }: PublicHeroBackgroundProps) {
   return (
     <Box data-testid="hero-background" pb="3rem" className={classes.root}>
-      {/* Layer 1 — radial glow */}
+      {/* Layer 1 – radial glow */}
       <Box data-testid="hero-glow" className={classes.glow} />
 
-      {/* Layer 2 — grid lines */}
+      {/* Layer 2 – grid lines */}
       <Box data-testid="hero-grid" className={classes.grid} />
 
       {/* Content slot */}

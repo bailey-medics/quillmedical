@@ -122,7 +122,7 @@ Clinical Risk Management
 
 ## Residual hazard risk assessment
 
-TBC — awaiting initial controls implementation.
+TBC – awaiting initial controls implementation.
 
 ---
 

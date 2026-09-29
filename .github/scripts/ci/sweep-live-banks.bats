@@ -2,8 +2,8 @@
 # Tests for sweep-live-banks.sh
 #
 # gcloud and the validator are both stubbed: what matters here is the
-# script's own decisions — whether it fails when published content would be
-# rejected, and whether the report survives to be read — not that gcloud
+# script's own decisions – whether it fails when published content would be
+# rejected, and whether the report survives to be read – not that gcloud
 # downloads or that the validator validates, both of which have their own
 # tests.
 

@@ -18,7 +18,7 @@ createRoot(document.getElementById("root")!).render(
             <PublicBodyText justify="centre">
               Whether you are a clinician interested in early access, an
               organisation exploring clinical software options, or just curious
-              about what we are building — we would love to hear from you.
+              about what we are building – we would love to hear from you.
             </PublicBodyText>
           </Stack>
         </Container>

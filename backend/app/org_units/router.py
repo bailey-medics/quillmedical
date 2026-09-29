@@ -6,8 +6,8 @@ tables. There is one table now, so there is one surface: every route here
 takes an org_unit id, and what an org_unit *is* comes from its ``type``.
 
 The two older surfaces stay until the frontend has moved across. They are
-not views over this one — they answer in organisation ids and site ids,
-which are different numbers — so both are served side by side and the old
+not views over this one – they answer in organisation ids and site ids,
+which are different numbers – so both are served side by side and the old
 pair is retired once nothing reads it.
 
 **Nothing here is inherited.** A ward does not take on its trust's
@@ -575,7 +575,7 @@ def delete_org_unit(
     # The column says ``SET NULL``, so deleting a ward would leave its
     # rooms belonging nowhere: invisible to every list, reachable by
     # nobody, and impossible to tell from rooms that were always loose.
-    # Saying so is the kinder answer, and it is reversible — move them or
+    # Saying so is the kinder answer, and it is reversible – move them or
     # delete them first.
     children = db.scalar(
         select(func.count())
@@ -820,7 +820,7 @@ def list_practising_competencies(
 
     The rows as stored, not narrowed to anybody's ceiling. A row beyond
     somebody's ceiling authorises nothing, but it is still a row somebody
-    wrote and the person reviewing authorisations here needs to see it —
+    wrote and the person reviewing authorisations here needs to see it –
     narrowing silently would hide an authorisation that looks live in the
     database.
 

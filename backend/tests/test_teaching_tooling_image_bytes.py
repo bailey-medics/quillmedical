@@ -137,7 +137,7 @@ class TestSyncIsNotSubjectToThis:
     def test_even_a_pointer_passes_the_sync_path(self, tmp_path: Path) -> None:
         """Not an oversight: sync cannot tell, so it must not pretend to.
 
-        A pointer never reaches the bucket anyway — the merge gate above
+        A pointer never reaches the bucket anyway – the merge gate above
         rejects it before deploy.
         """
         modules = _module(tmp_path, LFS_POINTER)

@@ -82,7 +82,7 @@ describe("RegistrationForm", () => {
     await user.type(screen.getByLabelText(/^Password/), "pass1234");
     await user.type(screen.getByLabelText(/Confirm password/), "pass1234");
 
-    // Organisation not selected — button should be disabled
+    // Organisation not selected – button should be disabled
     expect(screen.getByTestId("submit-button")).toHaveAttribute(
       "aria-disabled",
       "true",

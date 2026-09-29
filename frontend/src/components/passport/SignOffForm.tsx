@@ -7,7 +7,7 @@
  *
  * **The declaration is the signature.** There is no drawn scribble and
  * no uploaded image, because both look more official than a tick and
- * prove less — anyone can draw anyone's name, and an uploaded image is a
+ * prove less – anyone can draw anyone's name, and an uploaded image is a
  * reusable credential that can be pasted onto anything. A confirmed box
  * behind an authenticated session is a valid simple electronic signature
  * under UK law, and it is what NES Turas, Kaizen and the RCP ePortfolio
@@ -21,7 +21,7 @@
  * - **`declaration_confirmed` starts false and must be ticked.** Never
  *   pre-ticked, never defaulted true. The route refuses without it and
  *   writes nothing.
- * - **The button names the act** — "Sign off competency", not "Save".
+ * - **The button names the act** – "Sign off competency", not "Save".
  *
  * **The assessor decides the level.** The holder's request is chosen to
  * start with, and the assessor may sign a different level on the scale,

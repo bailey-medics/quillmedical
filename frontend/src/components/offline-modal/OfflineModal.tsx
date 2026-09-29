@@ -5,7 +5,7 @@
  * while offline. Wraps the OfflineOverlay card content in a Mantine
  * Modal with a single dismiss button.
  *
- * Pure presentational — visibility controlled by parent via `opened`.
+ * Pure presentational – visibility controlled by parent via `opened`.
  */
 
 import { Modal, Stack } from "@mantine/core";
@@ -25,7 +25,7 @@ export interface OfflineModalProps {
  * Offline Modal
  *
  * Informs the user that their action could not be completed because
- * the app is offline. Single "OK" button to dismiss — the blocked
+ * the app is offline. Single "OK" button to dismiss – the blocked
  * action is not retried.
  */
 export default function OfflineModal({ opened, onClose }: OfflineModalProps) {

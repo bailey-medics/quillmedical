@@ -28,8 +28,8 @@ const FILES_TO_GENERATE = [
   "brand.yaml",
 ];
 
-// Competencies are split across a directory by kind — clinical.yaml and
-// feature-admin.yaml — and merged back into one competencies.json here,
+// Competencies are split across a directory by kind – clinical.yaml and
+// feature-admin.yaml – and merged back into one competencies.json here,
 // so consumers see one flat catalogue and never need to know how the
 // definitions are filed. Mirrors _load_competencies() in
 // backend/app/cbac/competencies.py, including the sort: both sides must

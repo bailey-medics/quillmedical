@@ -21,7 +21,7 @@ async function fillAndSubmit(canvasElement: HTMLElement) {
   const body = within(document.body);
   await userEvent.type(canvas.getByLabelText("Username *"), "testuser");
   await userEvent.type(canvas.getByLabelText("Email *"), "test@example.com");
-  // Select organisation — dropdown renders in a portal outside canvasElement
+  // Select organisation – dropdown renders in a portal outside canvasElement
   await userEvent.click(
     canvas.getByPlaceholderText("Select your organisation"),
   );

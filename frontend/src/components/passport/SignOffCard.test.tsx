@@ -53,7 +53,7 @@ describe("SignOffCard", () => {
     it("renders the assessor's name and role", () => {
       renderWithMantine(<SignOffCard signOff={signedOff} />);
       expect(
-        screen.getByText(/Dr Amara Okonkwo — Consultant respiratory physician/),
+        screen.getByText(/Dr Amara Okonkwo – Consultant respiratory physician/),
       ).toBeInTheDocument();
     });
 
@@ -112,11 +112,14 @@ describe("SignOffCard", () => {
   });
 
   describe("Evidence", () => {
-    it("reports what was in front of the assessor, with no target", () => {
+    it("does not show the evidence count beside the judgement", () => {
+      // Kept in the record, but shown here it read as part of what was
+      // signed. The sign-offs list dropped its logbook count likewise.
       renderWithMantine(<SignOffCard signOff={signedOff} />);
+      expect(screen.queryByText("Evidence at signing")).not.toBeInTheDocument();
       expect(
-        screen.getByText(/38 logbook entries, 1 certificate/),
-      ).toBeInTheDocument();
+        screen.queryByText(/logbook (entry|entries)/),
+      ).not.toBeInTheDocument();
       expect(screen.queryByText(/%/)).not.toBeInTheDocument();
       expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
     });
@@ -126,9 +129,8 @@ describe("SignOffCard", () => {
       expect(screen.getByText("dops-form.pdf")).toBeInTheDocument();
     });
 
-    it("omits the evidence and attachment sections when there are none", () => {
+    it("omits the attachment section when there are none", () => {
       renderWithMantine(<SignOffCard signOff={requested} />);
-      expect(screen.queryByText("Evidence at signing")).not.toBeInTheDocument();
       expect(screen.queryByText("Attachments")).not.toBeInTheDocument();
     });
   });

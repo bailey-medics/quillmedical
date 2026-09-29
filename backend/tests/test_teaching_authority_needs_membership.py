@@ -16,8 +16,8 @@ close a bank, for the whole organisation above them. They now ask
 ``get_member_org_unit_ids``.
 
 **This narrows, which is the opposite direction to the rest of the
-walk.** The plan names the walk's risk as widening — reach adds
-site-linked organisations to a set that held only direct memberships — so
+walk.** The plan names the walk's risk as widening – reach adds
+site-linked organisations to a set that held only direct memberships – so
 a narrowing needs its own evidence that nobody legitimate is locked out.
 That is what ``TestAnOrganisationMemberIsUnaffected`` is for.
 
@@ -175,8 +175,8 @@ class TestAnOrganisationMemberIsUnaffected:
     """The narrowing must refuse only the people it is about.
 
     Neither route reaches its 403 for a member, so a refusal here would
-    mean the place check had become too strict. What happens afterwards —
-    a missing bank, a missing version — is not this test's business, so
+    mean the place check had become too strict. What happens afterwards –
+    a missing bank, a missing version – is not this test's business, so
     only the 403 is asserted against.
     """
 

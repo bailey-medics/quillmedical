@@ -1,4 +1,4 @@
-# modules/teaching-video-pipeline/main.tf — hosted video for the learning centre
+# modules/teaching-video-pipeline/main.tf – hosted video for the learning centre
 #
 # Two buckets and a CDN-backed path on the existing load balancer. The access
 # decision stays in FastAPI: it mints a Cloud CDN signed cookie scoped to one
@@ -6,7 +6,7 @@
 # fetch. Neither bucket is ever public.
 #
 # See docs/docs/plans/2026-08-31-gcp-video-auth-gate-plan.md, Phase 1. Phase 0
-# proved the mechanism this module relies on — that Cloud CDN can serve a
+# proved the mechanism this module relies on – that Cloud CDN can serve a
 # private bucket through the load balancer via the fill service account.
 
 # ---------- Source bucket: raw uploads ----------
@@ -34,7 +34,7 @@ resource "google_storage_bucket" "source" {
   # The browser uploads straight here rather than through Cloud Run, so
   # the request is cross-origin from the app and the browser sends a
   # preflight first. A bucket with no CORS policy refuses that, and the
-  # upload fails before a byte is sent — with nothing in our logs, since
+  # upload fails before a byte is sent – with nothing in our logs, since
   # the request never reaches us.
   #
   # POST begins a resumable upload and PUT sends the chunks to the
@@ -95,7 +95,7 @@ resource "google_compute_backend_bucket" "videos" {
   }
 }
 
-# A backend bucket is not immediately referenceable by a URL map — Phase 0 hit
+# A backend bucket is not immediately referenceable by a URL map – Phase 0 hit
 # `resourceNotReady` doing exactly that, and Terraform's graph does not model
 # the wait. The URL map consumes the output below rather than the resource, so
 # this sits between them.

@@ -6,7 +6,7 @@ the property this module exists for: that importing it does not
 construct ``Settings``.
 
 That property is not decoration. The transcode job holds no JWT secret
-and no database password, and should hold neither — it encodes video and
+and no database password, and should hold neither – it encodes video and
 talks to one bucket. It crashed on startup for want of them, twenty
 seconds in, because the five-line path helper it needed lived in a
 module that imports ``settings`` at scope. Nothing local caught it: the
@@ -31,7 +31,7 @@ from app.features.teaching.object_paths import (
 
 #: Derived, never hardcoded. The suite runs both in a container at
 #: ``/app`` and on a bare CI runner under a workspace path, and a
-#: literal ``/app`` passes locally while failing everywhere else —
+#: literal ``/app`` passes locally while failing everywhere else –
 #: which is exactly how this test first went red.
 _BACKEND_ROOT = Path(__file__).resolve().parent.parent
 
@@ -55,7 +55,7 @@ class TestImportsWithoutConfiguration:
             "assert 'app.config' not in sys.modules, 'app.config loaded'\n"
             "print(media_object_path(7, 'mod', 'abc'))\n"
         )
-        # PATH only — deliberately no JWT_SECRET or CORE_DB_PASSWORD, so
+        # PATH only – deliberately no JWT_SECRET or CORE_DB_PASSWORD, so
         # a chain that reaches `app.config` fails loudly rather than
         # passing on the runner's own environment. The same shape as
         # `test_features_import_boundary.py`, which guards the sibling

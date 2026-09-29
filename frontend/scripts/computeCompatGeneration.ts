@@ -5,7 +5,7 @@
 // `compute_required_client_generation` in `backend/app/api_compatibility.py`
 // exactly (same formula, same folder, same commit) so both sides of a build
 // always agree. Imported by vite.config.ts / vitest.config.ts (Node context,
-// evaluated at config-load time) — never bundled into the browser build.
+// evaluated at config-load time) – never bundled into the browser build.
 
 import fs from "fs";
 import path from "path";
@@ -14,7 +14,7 @@ import yaml from "js-yaml";
 /**
  * required_client_generation = max(generation for forces_reload: true files)
  * or 1 if none exist. Malformed/non-mapping files are skipped rather than
- * thrown on — CI's `validate-compat-files.sh` is the authority on
+ * thrown on – CI's `validate-compat-files.sh` is the authority on
  * well-formedness.
  */
 export function computeRequiredClientGeneration(compatDir: string): number {

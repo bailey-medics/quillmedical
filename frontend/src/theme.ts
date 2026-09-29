@@ -4,7 +4,7 @@
  * Centralized theme for consistent typography and styling across the app.
  * All font sizes, spacing, and other design tokens should be defined here.
  *
- * Font Size System (4 sizes — fixed, accessibility-focused):
+ * Font Size System (4 sizes – fixed, accessibility-focused):
  * - xs/sm: 1rem (16px) - Small text, captions, metadata
  * - md:    1.1875rem (19px) - Body text (accessible standard)
  * - lg:    1.5rem (24px) - Subheadings, section titles
@@ -36,7 +36,7 @@ import brand from "@/generated/brand.json";
 import navLinkClasses from "./styles/navLink.module.css";
 
 /**
- * Brand colour tokens — from shared/brand.yaml, the single source of truth
+ * Brand colour tokens – from shared/brand.yaml, the single source of truth
  * shared with the backend's email renderer.
  * Exposed as CSS variables via cssVariablesResolver below.
  *
@@ -73,7 +73,7 @@ function toColoursTuple(name: string, shades: string[]): MantineColorsTuple {
 }
 
 /**
- * Mantine colour scales — 10-shade ramps (0 lightest → 9 darkest), with
+ * Mantine colour scales – 10-shade ramps (0 lightest → 9 darkest), with
  * each shade's use noted in shared/brand.yaml.
  *
  * primary: Navy. Shade 5 is primaryShade, for filled buttons and actions;
@@ -89,7 +89,7 @@ export const secondaryScale = toColoursTuple(
 );
 
 /**
- * Neutral grey scale — Mantine defaults (0–7).
+ * Neutral grey scale – Mantine defaults (0–7).
  *
  * Used for table striping, dividers, placeholders, and subtle backgrounds.
  * Matches the Mantine `gray` colour key so `gray.0` === greyScale[0], etc.
@@ -97,10 +97,10 @@ export const secondaryScale = toColoursTuple(
 export const greyScale: readonly string[] = brand.palette.grey;
 
 /**
- * Status colour tokens — semantic colours for badges, alerts, and buttons.
+ * Status colour tokens – semantic colours for badges, alerts, and buttons.
  *
  * Registered as CSS variables (e.g. `var(--success-color)`) via
- * cssVariablesResolver. Shared across light and dark modes — these are
+ * cssVariablesResolver. Shared across light and dark modes – these are
  * used as filled backgrounds with white/dark text.
  *
  * Every fill that takes white text is dark enough for WCAG AA, 4.5:1,
@@ -115,23 +115,23 @@ export const greyScale: readonly string[] = brand.palette.grey;
  * is for status badges, destructive buttons, and notifications.
  */
 export const statusColourValues = {
-  success: "#087f5b", // Teal — active, completed, pass (Mantine teal.9, 5.0:1)
-  warning: "#0b7285", // Cyan — draft, pending (Mantine cyan.9, 5.6:1)
-  outstanding: "#d6336c", // Pink — deactivated, cancelled, fail (Mantine pink.7, 4.6:1)
-  info: "#1971c2", // Blue — upcoming, informational (Mantine blue.8, 5.0:1)
-  neutral: "#ffd43b", // Yellow — staff, default (Mantine yellow.4, dark text)
-  accent: "#7950f2", // Violet — incomplete, special states (Mantine violet.6, 5.0:1)
-  alert: "#c92a2a", // Red — no-show, patient, attention (Mantine red.9, 5.5:1)
+  success: "#087f5b", // Teal – active, completed, pass (Mantine teal.9, 5.0:1)
+  warning: "#0b7285", // Cyan – draft, pending (Mantine cyan.9, 5.6:1)
+  outstanding: "#d6336c", // Pink – deactivated, cancelled, fail (Mantine pink.7, 4.6:1)
+  info: "#1971c2", // Blue – upcoming, informational (Mantine blue.8, 5.0:1)
+  neutral: "#ffd43b", // Yellow – staff, default (Mantine yellow.4, dark text)
+  accent: "#7950f2", // Violet – incomplete, special states (Mantine violet.6, 5.0:1)
+  alert: "#c92a2a", // Red – no-show, patient, attention (Mantine red.9, 5.5:1)
   // The odd one out, deliberately: a pale wash rather than a saturated
   // fill, and the only status colour that takes dark text. The others
   // report that something has happened; this one says something has
   // not happened yet, or invites the reader to act. A solid fill made
   // an empty passport look like a warning about an ordinary situation.
-  update: "#e7f5ff", // Very light blue — nothing yet, gentle prompts (Mantine blue.0)
+  update: "#e7f5ff", // Very light blue – nothing yet, gentle prompts (Mantine blue.0)
 } as const;
 
 /**
- * Status colours used as text — the word itself in the status colour,
+ * Status colours used as text – the word itself in the status colour,
  * with no fill behind it ("Fail" in red in a results table, "Updating" in
  * blue in the status strip).
  *
@@ -177,7 +177,7 @@ function statusTextVariables(
 }
 
 /**
- * Typography tokens — single source of truth for all font sizes.
+ * Typography tokens – single source of truth for all font sizes.
  *
  * All sizes are fixed (no responsive scaling). Font sizes remain constant
  * across all screen widths for maximum readability and consistency.
@@ -191,7 +191,7 @@ export const typographyTokens = {
   fontSizes: {
     xs: "1rem", // 16px
     sm: "1rem", // 16px
-    md: "1.1875rem", // 19px — body text standard
+    md: "1.1875rem", // 19px – body text standard
     lg: "1.5rem", // 24px
     xl: "2rem", // 32px
   },
@@ -206,7 +206,7 @@ export const typographyTokens = {
 } as const;
 
 /**
- * Layout tokens — shared responsive sizing thresholds.
+ * Layout tokens – shared responsive sizing thresholds.
  */
 export const layoutTokens = {
   /**
@@ -243,7 +243,7 @@ const appCssVariables = {
     "--brand-secondary": brandColours.secondary,
     "--brand-background": brandColours.background,
     "--brand-mark": brandColours.mark,
-    // Button interaction colours — amber button text/active states.
+    // Button interaction colours – amber button text/active states.
     // Brand navy, not #333: on the amber fill #333 was 4.75:1, and on the
     // hover and pressed shades 3.3:1 and 3.1:1, under WCAG AA. Navy is
     // 6.6:1 at rest and 4.6:1 on hover.
@@ -256,13 +256,13 @@ const appCssVariables = {
     "--button-outline-hover-text": "#d4a854",
     // Burger menu hover background
     "--burger-hover-bg": "#1e2d4a",
-    // Typography — fixed font sizes (applied on :root in typography.css)
+    // Typography – fixed font sizes (applied on :root in typography.css)
     "--typo-xs": typographyTokens.fontSizes.xs,
     "--typo-sm": typographyTokens.fontSizes.sm,
     "--typo-md": typographyTokens.fontSizes.md,
     "--typo-lg": typographyTokens.fontSizes.lg,
     "--typo-xl": typographyTokens.fontSizes.xl,
-    // Status colours — semantic design tokens
+    // Status colours – semantic design tokens
     "--success-color": statusColourValues.success,
     "--warning-color": statusColourValues.warning,
     "--alert-color": statusColourValues.alert,
@@ -278,33 +278,33 @@ const appCssVariables = {
     "--status-text-dark": "#1a1a1a",
   },
   dark: {
-    // Text — light grey on dark background (placeholder values, to be refined)
+    // Text – light grey on dark background (placeholder values, to be refined)
     "--mantine-color-text": "#c9d1d9",
     // Muted text (`c="dimmed"`). Mantine's default is `dark-2`, which this
     // theme repurposes as a navy surface, leaving dimmed text at 1.2:1.
     // primary.1 is at least 6.3:1 on the body, card and input navies.
     "--mantine-color-dimmed": primaryScale[1],
     "--mantine-color-placeholder": "#5c6370",
-    // Body background — primary colour (#001a36, shade 8)
+    // Body background – primary colour (#001a36, shade 8)
     "--mantine-color-body": "#001a36",
     "--brand-background": "#001a36",
-    // Card/surface background — primary shade 7 (one lighter than body)
+    // Card/surface background – primary shade 7 (one lighter than body)
     "--card-bg": "#042340",
     "--card-border": "#0a2f56",
     "--card-border-color": "transparent",
-    // Input background — Mantine dark uses --mantine-color-dark-6 for inputs
+    // Input background – Mantine dark uses --mantine-color-dark-6 for inputs
     "--mantine-color-default": "#0a2f56",
     "--mantine-color-dark-6": "#0a2f56",
-    // Input border — deepest navy (shade 9)
+    // Input border – deepest navy (shade 9)
     "--mantine-color-dark-4": "#000d1f",
-    // Pill (multi-select tags) — text and background
+    // Pill (multi-select tags) – text and background
     "--mantine-color-dark-0": "#c9d1d9",
     "--mantine-color-dark-7": "#0a2f56",
     // Dimmed text / input arrows
     "--mantine-color-dark-2": "#0a2f56",
     // Stepper inactive circles, outline separator
     "--mantine-color-dark-5": "#042340",
-    // Error text/border — accessible orange-red for colour-blind users.
+    // Error text/border – accessible orange-red for colour-blind users.
     // A light coral in dark mode: 5.8:1 on the input navy, where the
     // light-mode value is 3.9:1.
     "--mantine-color-error": "var(--error-color)",
@@ -325,9 +325,9 @@ const appCssVariables = {
     "--bubble-theirs-bg": "#0a2f56",
     "--bubble-shadow": "none",
     "--bubble-border-top": "1px solid #0a2f56",
-    // Current nav link — brand amber, ample contrast on navy
+    // Current nav link – brand amber, ample contrast on navy
     "--nav-active-colour": "var(--mantine-color-secondary-5)",
-    // Nav link hover — Mantine's own non-active hover shade
+    // Nav link hover – Mantine's own non-active hover shade
     "--nav-hover-bg": "var(--mantine-color-dark-6)",
     // Current nav link fill. The hover shade rather than dark.5: amber
     // secondary.5 is 5.2:1 on dark.6 and only 4.3:1 on dark.5, under AA
@@ -342,7 +342,7 @@ const appCssVariables = {
     // white and 6.9:1 on gray.2.
     "--mantine-color-dimmed": greyScale[7],
     "--mantine-color-placeholder": "var(--mantine-color-gray-4)",
-    // Error text/border — accessible orange-red for colour-blind users.
+    // Error text/border – accessible orange-red for colour-blind users.
     // The same hue as before, darkened: the old #f55142 was 3.4:1 on
     // white, #c4320a is 5.5:1 on white and 4.7:1 on gray.2.
     "--mantine-color-error": "var(--error-color)",
@@ -356,7 +356,7 @@ const appCssVariables = {
     "--bubble-theirs-bg": "#fae8cc",
     "--bubble-shadow": "0 1px 0 rgba(0,0,0,0.06)",
     "--bubble-border-top": "1px solid rgba(0,0,0,0.06)",
-    // Current nav link — amber, darkened to secondary.7 for light mode:
+    // Current nav link – amber, darkened to secondary.7 for light mode:
     // the brand secondary.5 is 2.7:1 on white, secondary.7 is 5.5:1
     "--nav-active-colour": "var(--mantine-color-secondary-7)",
     "--nav-hover-bg": "var(--mantine-color-gray-0)",
@@ -372,17 +372,17 @@ export const cssVariablesResolver: CSSVariablesResolver = (mantineTheme) =>
   deepMerge(v8CssVariablesResolver(mantineTheme), appCssVariables);
 
 export const theme = createTheme({
-  /** App font — Atkinson Hyperlegible Next (Braille Institute) */
+  /** App font – Atkinson Hyperlegible Next (Braille Institute) */
   fontFamily: "'Atkinson Hyperlegible Next Variable', sans-serif",
 
-  /** Monospace font — for code blocks, inline code, and technical data */
+  /** Monospace font – for code blocks, inline code, and technical data */
   fontFamilyMonospace:
     "'SF Mono', SFMono-Regular, ui-monospace, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
 
-  /** Default text colour — brand navy instead of pure black */
+  /** Default text colour – brand navy instead of pure black */
   black: "#143f6b",
 
-  /** Colour scales — primary (navy) and secondary (amber) */
+  /** Colour scales – primary (navy) and secondary (amber) */
   colors: {
     primary: primaryScale,
     secondary: secondaryScale,
@@ -402,11 +402,11 @@ export const theme = createTheme({
   respectReducedMotion: true,
 
   /**
-   * Font sizes — handled in typography.css via CSS custom properties.
+   * Font sizes – handled in typography.css via CSS custom properties.
    * Fixed across all screen widths (no responsive scaling).
    */
 
-  /** Heading sizes — fixed values from typographyTokens */
+  /** Heading sizes – fixed values from typographyTokens */
   headings: {
     sizes: {
       h1: {
@@ -449,7 +449,7 @@ export const theme = createTheme({
   },
 
   components: {
-    /** Current nav link — amber label and icon on a mild grey fill (see navLink.module.css) */
+    /** Current nav link – amber label and icon on a mild grey fill (see navLink.module.css) */
     NavLink: NavLink.extend({
       // A button unless a caller says otherwise. Mantine renders an <a>,
       // and an <a> with no href is not focusable, so every NavLink that
@@ -487,7 +487,7 @@ export const theme = createTheme({
         size: "lg",
       },
       styles: {
-        label: { fontSize: "1.1875rem" }, // 19px — GOV.UK minimum
+        label: { fontSize: "1.1875rem" }, // 19px – GOV.UK minimum
       },
     },
   },

@@ -6,7 +6,7 @@
  * The passport id is not in the route: an assessor reaching this page
  * knows the sign-off id from their inbox, and the inbox says which
  * passport each request belongs to. That keeps the URL from implying an
- * assessor may address a passport directly — they may reach exactly the
+ * assessor may address a passport directly – they may reach exactly the
  * requests naming them, which is what the inbox returns.
  */
 

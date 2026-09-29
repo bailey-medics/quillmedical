@@ -34,7 +34,7 @@ type Story = StoryObj<typeof FeedbackModal>;
 /** The empty form */
 export const Default: Story = {};
 
-/** Sent — the confirmation replaces the form */
+/** Sent – the confirmation replaces the form */
 export const Sent: Story = {
   play: async () => {
     // The modal renders in a portal, so query from document.body
@@ -48,7 +48,7 @@ export const Sent: Story = {
   },
 };
 
-/** The send failed — the message stays so it can be tried again */
+/** The send failed – the message stays so it can be tried again */
 export const WithError: Story = {
   args: {
     onSubmit: async () => {

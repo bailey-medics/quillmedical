@@ -1,4 +1,4 @@
-# GitHub rulesets — change trigger and Slack notification
+# GitHub rulesets – change trigger and Slack notification
 #
 # This workflow fires when infra/github/** files change. It alerts via Slack
 # that a manual `terraform apply` is needed to sync the rulesets to GitHub.
@@ -38,7 +38,7 @@ jobs:
     with:
       channel: teaching
       text: |
-        *⚠️ GitHub rulesets changed — manual terraform apply required*
+        *⚠️ GitHub rulesets changed – manual terraform apply required*
 
         Files under `infra/github/` were merged to main. They are applied by a person, never by CI, because they define the branch protection that guards main. Run this from any checkout that is up to date with main; it plans first and asks before applying:
 

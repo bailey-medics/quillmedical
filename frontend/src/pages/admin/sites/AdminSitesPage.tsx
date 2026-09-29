@@ -8,7 +8,7 @@
  *
  * One request fetches every org_unit the person may administer, and the
  * organisations among them are used to name each site's owner. Asking
- * twice — once for the sites, once for the organisations — would cost a
+ * twice – once for the sites, once for the organisations – would cost a
  * round trip to say the same thing.
  */
 
@@ -42,7 +42,7 @@ export default function AdminSitesPage() {
   }, []);
 
   // The organisations are here to name owners, not to be listed
-  // themselves — they have their own page.
+  // themselves – they have their own page.
   const sites = useMemo(
     () => places.filter((place) => !place.is_root),
     [places],

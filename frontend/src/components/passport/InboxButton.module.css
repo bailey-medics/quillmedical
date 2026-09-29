@@ -13,7 +13,7 @@
    * The badge is positioned at `left: 100%` of this box, so the box has
    * to be the width of the icon and nothing more. A flex column parent
    * stretches its children by default, which made the wrapper span the
-   * page and threw the number to the far side of it — the icon at one
+   * page and threw the number to the far side of it – the icon at one
    * edge, its count at the other.
    *
    * `fit-content` rather than `align-self: flex-start`, which would fix

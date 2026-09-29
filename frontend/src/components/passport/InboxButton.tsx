@@ -11,7 +11,7 @@
  * is waiting on an answer that is not coming.
  *
  * The badge follows `FilterSelect`, which is where the app already puts
- * a number beside an icon button — same offsets, same cap at "9+", so
+ * a number beside an icon button – same offsets, same cap at "9+", so
  * the two read as one idea. Above nine the exact figure stops mattering:
  * what a reader does about eleven and about forty is the same.
  *

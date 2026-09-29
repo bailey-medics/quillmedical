@@ -178,7 +178,7 @@ class DemographicsIn(BaseModel):
     """Demographics upsert request payload.
 
     Mirrors the specific, fixed set of keys ``update_fhir_patient``
-    actually reads (``app/fhir_client.py``) — not an arbitrary FHIR
+    actually reads (``app/fhir_client.py``) – not an arbitrary FHIR
     resource fragment, despite this endpoint's original docstring.
 
     Attributes:
@@ -252,7 +252,7 @@ class LetterOut(BaseModel):
     Attributes:
         patient_id: The patient ID the letter belongs to.
         composition_uid: The OpenEHR composition UID.
-        data: The complete OpenEHR Composition structure — left dynamic
+        data: The complete OpenEHR Composition structure – left dynamic
             since it mirrors an arbitrary openEHR archetype, not a fixed
             Quill-defined shape.
     """
@@ -267,7 +267,7 @@ class LettersListOut(BaseModel):
 
     Attributes:
         patient_id: The patient ID letters were listed for.
-        letters: Letter metadata rows from the EHRbase AQL query — left
+        letters: Letter metadata rows from the EHRbase AQL query – left
             dynamic since the row shape depends on the AQL response
             format.
     """

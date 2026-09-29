@@ -8,7 +8,7 @@ default:
 # Read SB_MAX_WORKERS out of the root .env, if it is set there.
 #
 # Scoped deliberately rather than `set dotenv-load`: that would export
-# every line of .env — the Postgres and EHRbase credentials included —
+# every line of .env – the Postgres and EHRbase credentials included –
 # into the environment of every recipe. One tuning knob does not justify
 # handing eight secrets to recipes that have no use for them.
 #
@@ -73,7 +73,7 @@ _e2e-up:
     .github/scripts/ci/fetch-e2e-teaching.sh >&2
     E2E_PORT=0 ${compose} up --build --wait --wait-timeout 120 >&2
     # The prod image does not migrate on start-up, so the fresh database
-    # needs the schema applied before it is seeded — as in ci.yml.
+    # needs the schema applied before it is seeded – as in ci.yml.
     ${compose} exec -T backend alembic upgrade head >&2
     ${compose} exec -T backend python scripts/seed_ci.py >&2
     port=$(${compose} port caddy 80 | sed 's/.*://')
@@ -131,7 +131,7 @@ _worktree-guard container:
     fi
     owner=$(dirname "${mount}")
     # Docker Desktop reports a bind mount's source with a `/host_mnt`
-    # prefix — the path as the VM sees it, not as the host wrote it. The
+    # prefix – the path as the VM sees it, not as the host wrote it. The
     # two name the same directory, so a raw string comparison refused
     # every guarded recipe on a Mac with the stack serving this very
     # worktree.
@@ -192,7 +192,7 @@ initial-install:
     else
         for REPO in $REPOS; do
             if [ -d "$DEST/$REPO" ]; then
-                echo "✓ $REPO already cloned — pulling latest..."
+                echo "✓ $REPO already cloned – pulling latest..."
                 git -C "$DEST/$REPO" pull --ff-only || echo "  ⚠ pull failed (check for local changes)"
             else
                 echo "Cloning $REPO..."
@@ -376,7 +376,7 @@ question-bank-clone:
     #!/usr/bin/env bash
     {{initialise}} "question-bank-clone"
     if [ -d "question-bank/.git" ]; then
-        echo "question-bank/ already exists — use 'just question-bank-pull' to update"
+        echo "question-bank/ already exists – use 'just question-bank-pull' to update"
         exit 1
     fi
     git clone https://github.com/bailey-medics/quill-question-bank.git question-bank
@@ -389,7 +389,7 @@ question-bank-pull:
     #!/usr/bin/env bash
     {{initialise}} "question-bank-pull"
     if [ ! -d "question-bank/.git" ]; then
-        echo "question-bank/ not found — run 'just question-bank-clone' first"
+        echo "question-bank/ not found – run 'just question-bank-clone' first"
         exit 1
     fi
     git -C question-bank pull
@@ -401,7 +401,7 @@ question-bank-push:
     #!/usr/bin/env bash
     {{initialise}} "question-bank-push"
     if [ ! -d "question-bank/.git" ]; then
-        echo "question-bank/ not found — run 'just question-bank-clone' first"
+        echo "question-bank/ not found – run 'just question-bank-clone' first"
         exit 1
     fi
     git -C question-bank push
@@ -512,7 +512,7 @@ migrate-local:
     set -euo pipefail
     # The step `just migrate` deliberately does not do. That recipe
     # compares models against a throwaway database and drops it, so a
-    # migration it writes — or one that arrived from `main` — has never
+    # migration it writes – or one that arrived from `main` – has never
     # touched the database the dev stack is actually serving. Without
     # this the symptom is a column or table that exists in the models
     # and not in Postgres, which surfaces as a 500 far from its cause.
@@ -528,7 +528,7 @@ migrate-local:
 #
 # Shared by `migrate-local` and by `start-teaching`, so the two cannot
 # drift: one is the same step run on demand rather than at start-up.
-# Deliberately without the worktree guard — `start-teaching` has just
+# Deliberately without the worktree guard – `start-teaching` has just
 # brought this very stack up, so there is nothing to disagree with, and
 # `migrate-local` checks before calling this.
 _migrate-running-stack:
@@ -549,7 +549,7 @@ _migrate-running-stack:
     # nothing to do, and a silent success is indistinguishable from a
     # command that did not run.
     if [ "${before}" = "${after}" ]; then
-        echo "Database already at ${after} — nothing to apply."
+        echo "Database already at ${after} – nothing to apply."
     else
         echo "Database migrated ${before} → ${after}"
     fi
@@ -601,12 +601,12 @@ worktree-create branch="":
     git -C "$ROOT" fetch origin --quiet
 
     if git -C "$ROOT" show-ref --verify --quiet "refs/heads/{{branch}}"; then
-        echo "Branch {{branch}} already exists locally — checking it out."
+        echo "Branch {{branch}} already exists locally – checking it out."
         git -C "$ROOT" worktree add "$DEST" "{{branch}}"
     elif git -C "$ROOT" show-ref --verify --quiet "refs/remotes/origin/{{branch}}"; then
         # Resuming work that already exists on the remote. Branching from
         # main here would silently discard every commit on it.
-        echo "Branch {{branch}} exists on origin — resuming it."
+        echo "Branch {{branch}} exists on origin – resuming it."
         git -C "$ROOT" worktree add -b "{{branch}}" "$DEST" "origin/{{branch}}"
         git -C "$DEST" branch --set-upstream-to="origin/{{branch}}" "{{branch}}"
     else
@@ -635,12 +635,12 @@ worktree-create branch="":
     # Each worktree gets its own venv. The env var is what forces it:
     # Poetry keys cached environments on the project name, which is
     # "backend" in every worktree, so without this they all silently
-    # share one — and installing a dependency on one branch changes the
+    # share one – and installing a dependency on one branch changes the
     # others, which is exactly what a worktree is meant to prevent.
     echo "Creating the backend virtual environment..."
     # `env -u VIRTUAL_ENV` matters as much as the in-project flag. If a
-    # venv is already active in the calling shell — which it is whenever
-    # you run this from a worktree you have been working in — Poetry
+    # venv is already active in the calling shell – which it is whenever
+    # you run this from a worktree you have been working in – Poetry
     # honours that over everything else and installs into it, so the new
     # worktree silently shares its parent's environment.
     (cd "$DEST/backend" \
@@ -656,7 +656,7 @@ worktree-create branch="":
 
     # No hook setup is needed. core.hooksPath lives in the shared git config
     # and is the relative `.husky`, which git resolves against the root of
-    # the worktree that is committing — so this worktree runs its own
+    # the worktree that is committing – so this worktree runs its own
     # branch's tracked hook from the moment it exists.
     echo ""
     echo "Worktree ready at $DEST on {{branch}}"
@@ -714,7 +714,7 @@ prune-branches scope="":
             # and made against the right branch. A branch with no upstream
             # sends `git branch -d` to compare against HEAD instead of main,
             # so pruning from a feature branch made it refuse every branch
-            # whose commits main has but that branch does not — which is all
+            # whose commits main has but that branch does not – which is all
             # of them. It failed the whole recipe on the last one.
             echo $MERGED_UNTRACKED | xargs git branch -D
         fi
@@ -727,7 +727,7 @@ prune-branches scope="":
     if [ "{{scope}}" = "a" ]; then
         if ! compgen -G "$ROOT/teaching-repos/*/.git" > /dev/null; then
             echo ""
-            echo "No teaching content repos cloned — run 'just clone-teaching' first."
+            echo "No teaching content repos cloned – run 'just clone-teaching' first."
         else
             for REPO in "$ROOT"/teaching-repos/*/; do
                 # A directory without .git is content someone dropped in by
@@ -750,7 +750,7 @@ rebase:
     {{initialise}} "rebase"
     BRANCH=$(git rev-parse --abbrev-ref HEAD)
     if [ "$BRANCH" = "main" ]; then
-        echo "On main — pulling latest..."
+        echo "On main – pulling latest..."
         git pull
     else
         echo "Updating main and rebasing $BRANCH onto it..."
@@ -889,7 +889,7 @@ show-dev-containers:
 # Prefix a bare name with feature/, leaving an already-prefixed one alone.
 #
 # Branch protection rejects anything outside feature/*, hotfix/*, copilot/*
-# and renovate/*, and it rejects it at creation time — so a stack branch
+# and renovate/*, and it rejects it at creation time – so a stack branch
 # named without the prefix fails at the push, once the commits already
 # exist. Cheaper to add it here than to unpick a branch by hand.
 _stack-branch-name name:
@@ -912,7 +912,7 @@ _stack-branch-name name:
 # Given a branch checked out elsewhere it prints the git error, skips the
 # branch, and still exits 0 (github/gh-stack#35, reproduced here on
 # 2026-09-14). Anything chaining `rebase && submit` would then push a stack
-# it believed was rebased and was not — the silent-success failure the
+# it believed was rebased and was not – the silent-success failure the
 # worktree notes in CLAUDE.md already record once.
 _stack-guard:
     #!/usr/bin/env bash
@@ -957,7 +957,7 @@ stack-checkout target="":
     #!/usr/bin/env bash
     {{initialise}} "stack-checkout"
     set -euo pipefail
-    # The recovery path when a stack's local state is gone — a removed
+    # The recovery path when a stack's local state is gone – a removed
     # worktree takes .git/worktrees/<name>/gh-stack with it. This fetches
     # the stack back from GitHub, which works once two or more pull
     # requests exist. With no argument it opens a picker of every stack.
@@ -996,7 +996,7 @@ stack-help:
     # has forgotten the command.
     #
     # `--list` prints "  name args   # description [alias: x]". Only the part
-    # before the comment is wanted — this is a reminder of the exact wording
+    # before the comment is wanted – this is a reminder of the exact wording
     # and argument order, not documentation; `just --list` already carries the
     # descriptions for anyone who wants them.
     #
@@ -1010,7 +1010,7 @@ stack-help:
     # theme, so it could not. A terminal with only 256 colours degrades this
     # to the nearest entry, 179, which is close enough not to detect.
     # The arguments are coloured separately from the name, so the shape of a
-    # command — what it is, and what it wants — reads at a glance. The alias
+    # command – what it is, and what it wants – reads at a glance. The alias
     # takes the recipe colour, because it is the same thing said shorter:
     # colouring it differently would suggest a difference that is not there.
     if [ -t 1 ]; then
@@ -1090,7 +1090,7 @@ stack-help:
 
 
 alias stl := stack-log
-# Show the current stack (fast, local only — no network)
+# Show the current stack (fast, local only – no network)
 stack-log:
     #!/usr/bin/env bash
     # Trace off before `initialise`, not after: this recipe exists to draw a
@@ -1122,7 +1122,7 @@ stack-log-long:
     # "is this one green yet" without opening a browser.
     #
     # The two tiers are reported as two marks, fast then heavy, always in
-    # that order: `✓ –`. They answer different questions — the fast tier
+    # that order: `✓ –`. They answer different questions – the fast tier
     # runs on every push, while the heavy tier is gated on the pull
     # request not being a draft and so on a stack usually has not run at
     # all. One combined tick would hide that, and a dash is not a failure:
@@ -1138,7 +1138,7 @@ stack-move direction="":
     set -euo pipefail
     # `gh stack switch` with no argument opens an interactive picker; the
     # named directions are the cheap ones. Wrapped together because they
-    # are the same act — going somewhere else in the stack — and because
+    # are the same act – going somewhere else in the stack – and because
     # redrawing afterwards is what makes the move legible.
     case "{{direction}}" in
         "")               gh stack switch ;;
@@ -1149,7 +1149,7 @@ stack-move direction="":
         trunk|main)       gh stack trunk ;;
         *)
             echo "✗ Unknown direction: {{direction}}" >&2
-            echo "  Use: up, down, top, bottom, trunk — or none for a picker." >&2
+            echo "  Use: up, down, top, bottom, trunk – or none for a picker." >&2
             exit 1
             ;;
     esac
@@ -1181,7 +1181,7 @@ stack-new name message:
     fi
     # -A stages everything, untracked files included, to match `stack-add`.
     # Splitting a dirty tree across branches is done by committing what is
-    # ready and leaving the rest for the branch above — not by naming files
+    # ready and leaving the rest for the branch above – not by naming files
     # here, which only moved the bookkeeping into the command line.
     git add -A
     git commit -m "{{message}}"
@@ -1197,7 +1197,7 @@ stack-ready:
     just _stack-guard
     # Marking ready is what starts the heavy CI tier (Storybook interaction
     # tests, Semgrep, E2E): it fires on ready_for_review, never on opened. So
-    # this starts it on every branch at once — do not run it alongside
+    # this starts it on every branch at once – do not run it alongside
     # `just e2e` or `just sbt` locally, which compete for the same machine.
     #
     # Bottom to top, the order `gh stack view` lists them, so the branch
@@ -1258,7 +1258,7 @@ stack-refresh:
     # commits" from that point, and nothing refreshes it as the branches
     # below merge. Once it is stale, everything merged into main since
     # then looks like unpushed work of yours, and the rebase replays it
-    # onto a main that already has it — conflicting against history in
+    # onto a main that already has it – conflicting against history in
     # files the branch never touched. Measured here at 75 commits stale
     # on a live stack and 144 on an older one.
     #
@@ -1294,7 +1294,7 @@ stack-refresh:
     restore() {
         if [ ! -s "${record}" ] && [ -s "${backup}" ]; then
             cp "${backup}" "${record}"
-            echo "✗ Refresh failed — the stack record was restored." >&2
+            echo "✗ Refresh failed – the stack record was restored." >&2
         fi
         rm -f "${backup}"
     }
@@ -1317,7 +1317,7 @@ stack-submit:
     set -euo pipefail
     # Rebase first, every time. A stack is submitted over and over as the
     # units above it are revised, and trunk moves underneath it while that
-    # happens — 22 commits in one afternoon, the first time this was used.
+    # happens – 22 commits in one afternoon, the first time this was used.
     # Submitting without rebasing pushes branches whose pull requests then
     # sit behind main, which the merge queue has to sort out later.
     #
@@ -1356,7 +1356,7 @@ stack-sync scope="":
         local status=0
         python3 scripts/stack-status.py --check >/dev/null 2>&1 || status=$?
         if [ "${status}" -eq 1 ]; then
-            echo "  No stack here — nothing to sync."
+            echo "  No stack here – nothing to sync."
             return 0
         fi
         if [ "${status}" -eq 2 ]; then
@@ -1379,21 +1379,21 @@ stack-sync scope="":
         fi
 
         # `--prune` deletes the local branch of a merged pull request, which is
-        # the half that frees the name — but it leaves the branch's entry in
+        # the half that frees the name – but it leaves the branch's entry in
         # the stack. Those entries are not only clutter: an entry whose branch
         # is gone costs `gh stack rebase` the base it should be rebasing onto,
         # and it replays the trunk's own history instead. So the record is
         # tidied here, where the branches were just deleted, rather than left
         # to surprise the next rebase.
         #
-        # The record is per worktree — stack-forget-merged.py resolves it with
-        # `git rev-parse --git-path gh-stack` — so this tidies the checkout it
+        # The record is per worktree – stack-forget-merged.py resolves it with
+        # `git rev-parse --git-path gh-stack` – so this tidies the checkout it
         # is run from and no other. That is exactly why a sweep has to visit
         # each one rather than tidying up centrally.
         python3 scripts/stack-forget-merged.py || return 1
 
         # Exit 1 means "no stack here". That is the ordinary ending for a sync
-        # — the last branch merging deletes the stack, so the run that tidies
+        # – the last branch merging deletes the stack, so the run that tidies
         # it up is the one guaranteed to find nothing left to draw. The
         # script's own message advises starting a new stack, which is not the
         # point here, so its output is held back and the outcome is reported
@@ -1404,7 +1404,7 @@ stack-sync scope="":
         if [ "${draw_status}" -eq 0 ]; then
             printf '%s\n' "${drawn}"
         elif [ "${draw_status}" -eq 1 ]; then
-            echo "  Stack fully merged — nothing left to draw."
+            echo "  Stack fully merged – nothing left to draw."
         else
             printf '%s\n' "${drawn}" >&2
             return "${draw_status}"
@@ -1442,7 +1442,7 @@ stack-sync scope="":
 
     if [ "${failed}" -ne 0 ]; then
         echo ""
-        echo "✗ At least one worktree did not sync cleanly — see above." >&2
+        echo "✗ At least one worktree did not sync cleanly – see above." >&2
         exit 1
     fi
 
@@ -1454,7 +1454,7 @@ stack-update message="":
     {{initialise}} "stack-update"
     set -euo pipefail
     # The counterpart to stack-new and stack-add, which both create a branch.
-    # This one revises the branch already checked out — the ordinary case when
+    # This one revises the branch already checked out – the ordinary case when
     # a review comment, or a second pass over generated code, changes a unit
     # that already exists.
     #
@@ -1471,12 +1471,12 @@ stack-update message="":
     #
     # No stack guard: amending the branch you have checked out touches nothing
     # another worktree holds. `stack-submit` runs the guard when this work is
-    # pushed — and pushes with --force-with-lease, which an amended branch
+    # pushed – and pushes with --force-with-lease, which an amended branch
     # needs and a stack does on every submit anyway.
     if git diff --quiet && git diff --cached --quiet && \
        [ -z "$(git ls-files --others --exclude-standard)" ] && \
        [ -z "{{message}}" ]; then
-        echo "Nothing to fold in — the working tree is clean." >&2
+        echo "Nothing to fold in – the working tree is clean." >&2
         echo "  Pass a message to reword the last commit on its own." >&2
         exit 1
     fi
@@ -1493,8 +1493,8 @@ stack-update message="":
     fi
 
     # Amending rewrote this branch's commit, so every branch above it now sits
-    # on a commit that no longer exists. Rebasing is not optional afterwards —
-    # it is the other half of the same operation — so it runs here rather than
+    # on a commit that no longer exists. Rebasing is not optional afterwards –
+    # it is the other half of the same operation – so it runs here rather than
     # being left as something to remember. `stack-rebase` carries the worktree
     # guard and the check that catches a rebase which reported success and
     # silently skipped a branch.
@@ -1683,7 +1683,7 @@ start-teaching build="":
     # database happened to have. A migration that arrived from `main`,
     # or one written in another worktree, had never touched it, and the
     # symptom was a 500 from a column that exists in the models and not
-    # in Postgres — a long way from its cause.
+    # in Postgres – a long way from its cause.
     # shellcheck disable=SC2086
     CLINICAL_SERVICES_ENABLED=false docker compose -f compose.dev.yml up \
         --detach --wait --wait-timeout 180 ${build_args}
@@ -1766,8 +1766,8 @@ test-scripts *ARGS:
 
     just _start-docker-daemon
 
-    # Nothing from the repository is needed to build the image — it is mounted at
-    # run time — so the Dockerfile goes in on stdin with no build context at all.
+    # Nothing from the repository is needed to build the image – it is mounted at
+    # run time – so the Dockerfile goes in on stdin with no build context at all.
     # Rebuilds are a cache hit unless the Dockerfile itself changes.
     docker build --quiet --tag quill-shell-tests - < .github/Dockerfile
 
@@ -1793,7 +1793,7 @@ e2e *ARGS:
     #!/usr/bin/env bash
     {{initialise}} "e2e"
     # Playwright runs on the host, but the app it drives is this worktree's
-    # own compose.ci.yml stack on a free port — not the dev stack — so this
+    # own compose.ci.yml stack on a free port – not the dev stack – so this
     # works from any worktree and matches what CI runs. See `_e2e-up`.
     just _e2e-run {{ARGS}}
 
@@ -1982,7 +1982,7 @@ build-transcode env:
 
     # Terraform owns these names and sets the same two variables on the job
     # it manages. Spelled out again here because this recipe deploys the job
-    # directly, without reading Terraform state — the naming pattern is fixed
+    # directly, without reading Terraform state – the naming pattern is fixed
     # in the pipeline module, so the two agree as long as that does.
     SOURCE_BUCKET="quill-teaching-videos-source-{{env}}"
     PROCESSED_BUCKET="quill-teaching-videos-processed-{{env}}"

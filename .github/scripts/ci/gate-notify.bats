@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# Tests for gate-notify.sh — the "does this PR still need messages?" step.
+# Tests for gate-notify.sh – the "does this PR still need messages?" step.
 #
 # Covers both the API breaking-change and destructive-migration marker keys,
 # proving each gate reads only its own record on a PR that trips both.

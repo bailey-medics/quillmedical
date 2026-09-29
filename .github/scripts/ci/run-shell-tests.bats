@@ -1,8 +1,8 @@
 #!/usr/bin/env bats
 # Tests for run-shell-tests.sh
 #
-# bats itself is stubbed, so these exercise the wrapper's own decisions —
-# which output it treats as a failure — without recursively running the
+# bats itself is stubbed, so these exercise the wrapper's own decisions –
+# which output it treats as a failure – without recursively running the
 # real suite.
 
 setup() {

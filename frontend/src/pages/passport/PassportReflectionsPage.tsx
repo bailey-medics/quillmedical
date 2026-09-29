@@ -3,7 +3,7 @@
  *
  * The holder's own reflections, and the editor for writing a new one.
  *
- * **Holder-only.** Nobody else may read these — not an assessor, not an
+ * **Holder-only.** Nobody else may read these – not an assessor, not an
  * organisation admin. The API enforces it; this page states it, because
  * somebody deciding how frankly to write deserves to be told rather than
  * left to infer it.
@@ -115,7 +115,7 @@ export function Component() {
           colour="update"
           icon={<IconFileText />}
           title="Nothing written yet"
-          description="Reflections are yours alone — no assessor or administrator can read them."
+          description="Reflections are yours alone – no assessor or administrator can read them."
         />
       )}
 

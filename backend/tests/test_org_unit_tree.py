@@ -7,7 +7,7 @@ is accountable for it.
 ``TestTheTwoIdSequencesStayApart`` used to close this file, checking
 that an organisation's id and its place id were different numbers so
 that nothing confusing the two could pass here and fail everywhere
-else. There is one sequence now — an organisation *is* a place — so
+else. There is one sequence now – an organisation *is* a place – so
 there is nothing left for it to guard, and nothing left to keep a
 paired row in step with either.
 
@@ -58,7 +58,7 @@ class TestWhatMakesAPlaceAnOrganisation:
     """Its type, not its lack of a parent.
 
     This class used to check that creating an organisation created a
-    paired row in the tree and kept it in step — a name, a type and a
+    paired row in the tree and kept it in step – a name, a type and a
     location copied across by a listener, with an unknown kind falling
     back to the plain one. There is one row now, so none of that can
     come apart. What is left is the question those rows existed to
@@ -210,7 +210,7 @@ class TestNamingTheOrganisationForManyPlaces:
     def test_a_detached_ward_is_not_an_organisation(self, db_session):
         """It is its own root, which is not the same thing.
 
-        What makes a place an organisation is its type — the kinds that
+        What makes a place an organisation is its type – the kinds that
         need no parent are the kinds a tree starts with. Reading "root"
         as "organisation" would give a detached ward's members the run
         of somewhere nobody is accountable for.
@@ -260,7 +260,7 @@ class TestEachWalkIsOneQuery:
     """Scoping runs on every admin request, so depth must not cost trips.
 
     A walk that asks the database once per level is fine on a two-level
-    tree and quietly gets worse as the tree grows — which is exactly the
+    tree and quietly gets worse as the tree grows – which is exactly the
     kind of cost nobody notices until the day a third level is added.
     """
 

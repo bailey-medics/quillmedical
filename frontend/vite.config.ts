@@ -10,7 +10,7 @@ import { computeRequiredClientGeneration } from "./scripts/computeCompatGenerati
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Baked in at build time from the repo-root api-compatibility/ decision
-// files — must always match the backend's REQUIRED_CLIENT_GENERATION,
+// files – must always match the backend's REQUIRED_CLIENT_GENERATION,
 // since both are built from the same commit. See
 // frontend/src/lib/compat-generation/compatGeneration.ts.
 const COMPAT_GENERATION = computeRequiredClientGeneration(
@@ -21,7 +21,7 @@ const COMPAT_GENERATION = computeRequiredClientGeneration(
 // Cloud Error Reporting groups on serviceContext.version, which is what
 // separates a fault in the current deploy from one in a tab left open across
 // two of them. The environment variable takes precedence so a build without
-// the git history — a Docker build from a copied tree — can still be
+// the git history – a Docker build from a copied tree – can still be
 // identified; "dev" is the honest answer when neither is available.
 //
 // The full revision rather than the short one, so a local build and a deployed
@@ -52,15 +52,15 @@ export default defineConfig({
         // Keep function names through minification, so an error report names
         // `ErrorFallback` rather than `bj`. Without it a production stack is
         // entirely mangled identifiers and says nothing about this
-        // application — see the reports from the /boom verification.
+        // application – see the reports from the /boom verification.
         //
         // Measured on this app: 892,697 bytes gzipped without, 930,826 with.
         // That is 37 KB, or 4.3%, paid on every fresh load and nothing on a
         // repeat visit, since the service worker holds the bundle.
         //
         // This is the permanent answer, not a stopgap. Source maps would be
-        // better — the original file and line as well as the name, and no
-        // download cost, since the browser never receives them — but they
+        // better – the original file and line as well as the name, and no
+        // download cost, since the browser never receives them – but they
         // have been deliberately deferred: the cost is the private bucket,
         // the retention policy, the upload step, the resolver and the rule
         // that a map is never served, all against a fault rate in single

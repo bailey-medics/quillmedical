@@ -267,7 +267,7 @@ router.include_router(analytics_router)
 router.include_router(feedback_router)
 router.include_router(push_router)
 
-# Permanent API-compatibility test harness (item 19) — always false in real
+# Permanent API-compatibility test harness (item 19) – always false in real
 # deployments; CI sets this true only when dumping OpenAPI specs for the
 # breaking-change check.
 if settings.TEST_API_ENDPOINTS_ENABLED:
@@ -294,9 +294,9 @@ MAX_REQUEST_BODY_BYTES = 10 * 1024 * 1024  # 10 MB
 
 # The local media upload is the one route a whole file travels through
 # this application, so the general limit would block the only endpoint
-# designed to exceed it. It is development-only — it refuses outright
+# designed to exceed it. It is development-only – it refuses outright
 # wherever a media bucket is configured, because in a real deployment
-# the browser uploads straight to GCS and the bytes never come here —
+# the browser uploads straight to GCS and the bytes never come here –
 # and it streams to disk in chunks rather than holding a lecture in
 # memory. A ceiling is still set rather than none at all, so a runaway
 # or mistaken upload cannot fill a developer's disk unbounded.
@@ -751,7 +751,7 @@ DEP_REQUIRE_CSRF = Depends(require_csrf)
 #: Administering the users of an org_unit. Replaces the
 #: ``system_permissions in ("admin", "superadmin")`` string comparisons,
 #: which said what someone is on the platform rather than what they may
-#: do — a rank that was global in the column and scoped in practice.
+#: do – a rank that was global in the column and scoped in practice.
 #:
 #: It answers *what*, never *where*. Every route carrying it keeps the
 #: org_unit check beside it: ``_require_shared_org_with_user``,
@@ -782,7 +782,7 @@ DEP_REQUIRE_MANAGE_STAFF_MEMBERSHIP = Depends(
 #: both. One competency over both would be authority over two unrelated
 #: populations.
 #:
-#: It grants no access to a patient's record — that is
+#: It grants no access to a patient's record – that is
 #: ``access_patient_records``. Like the rest it answers *what*, never
 #: *where*, so the routes carrying it keep their org_unit check.
 DEP_REQUIRE_MANAGE_PATIENT_MEMBERSHIP = Depends(
@@ -892,7 +892,7 @@ def list_organisations_public(
     exposes the minimum fields needed.
 
     An organisation is an org_unit at the top of a tree, so the id is a
-    org_unit id — the same number the registration this feeds sends back.
+    org_unit id – the same number the registration this feeds sends back.
 
     Returns:
         dict with key ``organisations`` containing a list of
@@ -1030,7 +1030,7 @@ def validate_clinical_lead(
         return ValidateClinicalLeadOut(valid=False)
 
     # Every org_unit beneath them, at any depth. The offering org_units are
-    # organisations' own rows, so they are roots and excluded — a lead
+    # organisations' own rows, so they are roots and excluded – a lead
     # holds their post at a ward, not at the trust.
     site_ids = sorted(descendant_ids(db, offering))
     if not site_ids:
@@ -1192,8 +1192,8 @@ def register(
             )
         # Verify the org_unit exists AND sits beneath the organisation given
         site = db.get(OrgUnit, payload.site_id)
-        # There is more than one kind of organisation — a practice and a
-        # teaching establishment are both tops of trees — so the test is
+        # There is more than one kind of organisation – a practice and a
+        # teaching establishment are both tops of trees – so the test is
         # the flag, not one name.
         if site is None or site.type in ROOT_TYPE_IDS:
             raise HTTPException(status_code=400, detail="Site not found")
@@ -1772,7 +1772,7 @@ def update_user(
 
     # Nobody awards themselves competencies. Ask another holder of
     # `manage_users` to do it, so the person granting and the person
-    # gaining are never the same — which is what stops the competency
+    # gaining are never the same – which is what stops the competency
     # becoming the key to its own lock. The same separation the NHS
     # Registration Authority model relies on: an administrator records
     # access that somebody else verified.
@@ -1851,7 +1851,7 @@ def update_user(
         # A profession is a template, not state: `additional` and
         # `removed` exist precisely so reality can diverge from it. So
         # changing one *adds* what the new profession grants and keeps
-        # what the person has already become — a patient who becomes a
+        # what the person has already become – a patient who becomes a
         # healthcare assistant keeps the competency for their own
         # record, rather than losing it by being given a clinical role.
         #
@@ -2468,7 +2468,7 @@ def update_profile(
     email_verified is reset to False. Username cannot be changed.
 
     Args:
-        data: Profile update payload (full_name, email — both optional).
+        data: Profile update payload (full_name, email – both optional).
         current_user: Currently authenticated user (with CSRF validation).
         db: Database session for updating user.
 
@@ -2928,7 +2928,7 @@ def list_patients(
         # Determine which patients are accessible.
         #
         # Seeing every patient in the deployment is not an administrative
-        # act at an org_unit — it is reach unbounded by any org_unit, which is
+        # act at an org_unit – it is reach unbounded by any org_unit, which is
         # what the platform role records. An admin at one trust is
         # confined to the patients they share an organisation with, the
         # same as anyone else.
@@ -3741,7 +3741,7 @@ async def update_my_competencies(
     edit "a user's" competencies. It never was, and reading it that way
     hides what the admin gate below actually permits: an admin granting
     themselves any competency, clinical ones included. That is deliberate
-    for now and is to be revisited with end-to-end tests — see
+    for now and is to be revisited with end-to-end tests – see
     ``docs/docs/plans/2026-09-09-platform-role-plan.md``.
 
     Args:
@@ -3994,7 +3994,7 @@ def accept_invite(
     body: AcceptInviteIn,
     db: Session = DEP_GET_SESSION,
 ) -> AcceptInviteOut:
-    """Accept an invite — register or grant access to existing user.
+    """Accept an invite – register or grant access to existing user.
 
     If the email matches an existing user, access is granted
     immediately. Otherwise a new user is created with the fields
@@ -4144,7 +4144,7 @@ def list_external_access(
     Returns:
         dict: ``grants`` list with user info and access details.
     """
-    # The patient themselves, or someone who administers patients here —
+    # The patient themselves, or someone who administers patients here –
     # the same pair as the invite route above.
     is_own = (
         current_user.fhir_patient_id is not None
@@ -4574,8 +4574,8 @@ def join_conversation_endpoint(
     """Join a conversation as staff of one of its organisations.
 
     Staff can self-join any conversation at an organisation they are
-    staff of. Everyone else — patients, and trainees who reach the
-    organisation through a site — must be added by a participant.
+    staff of. Everyone else – patients, and trainees who reach the
+    organisation through a site – must be added by a participant.
 
     Args:
         conversation_id: ID of the conversation.
@@ -4723,7 +4723,7 @@ def ci_teaching_sync(
             synced=[], errors=[], message="No banks found"
         )
 
-        # Resolve the org_unit to sync into — the one an existing bank is
+        # Resolve the org_unit to sync into – the one an existing bank is
         # already held by, or the first organisation in the system.
         #
         # It used to fall back to the literal 1, which was a guess that
@@ -4763,7 +4763,7 @@ def ci_teaching_sync(
         try:
             # Module metadata and learning content. The assessment is
             # validated inside sync_question_bank against the GCS
-            # inventory, which a module directory cannot supply — together
+            # inventory, which a module directory cannot supply – together
             # the two cover everything exactly once.
             from app.features.teaching.tooling.validate import (
                 validate_module_metadata,
@@ -4794,7 +4794,7 @@ def ci_teaching_sync(
                     CiSyncErrorItem(
                         bank_id=bank_id,
                         error=(
-                            "module directory not found — "
+                            "module directory not found – "
                             "cannot validate module metadata"
                         ),
                     )
@@ -4813,7 +4813,7 @@ def ci_teaching_sync(
                 bank_path,
                 org_id,
                 # No user: the deploy pipeline did this. Recorded as
-                # synced_by_actor="deploy_bot" rather than a fabricated id —
+                # synced_by_actor="deploy_bot" rather than a fabricated id –
                 # 0 was passed here and violated the users foreign key, so
                 # every CI sync failed while the endpoint still returned 200.
                 None,
@@ -4853,8 +4853,8 @@ def ci_teaching_sync(
     # organisation and nothing for that gate to resolve through.
     #
     # This closes the one gap that kept the pipeline from working end to end.
-    # The backend fires the transcode job and deliberately does not wait —
-    # encoding takes minutes and an admin's request cannot hold open for it —
+    # The backend fires the transcode job and deliberately does not wait –
+    # encoding takes minutes and an admin's request cannot hold open for it –
     # so without this report nothing ever learns the job finished,
     # `transcoded_at` stays null, and the availability gate hides a module
     # whose renditions are sitting in the bucket.
@@ -4939,7 +4939,7 @@ def ci_transcode_complete(
     #
     # Never allowed to fail this request. The renditions are what was
     # being recorded here, and losing `transcoded_at` over an
-    # unreachable caption job would keep the module hidden — a missing
+    # unreachable caption job would keep the module hidden – a missing
     # subtitle track is a smaller fault than a video nobody can watch.
     if any(name.endswith("-720p.mp4") for name in names):
         # Recorded before firing, as the transcode invocation is: a card
@@ -4971,8 +4971,8 @@ def ci_caption_complete(
     """Record that a caption track exists for one asset.
 
     Shares the transcode callback's token: both are the same trust
-    boundary — a Cloud Run Job in this project reporting on work the
-    backend asked it to do — and a second secret would be two things to
+    boundary – a Cloud Run Job in this project reporting on work the
+    backend asked it to do – and a second secret would be two things to
     rotate for one guarantee.
     """
     from app.features.teaching.models import ModuleMediaLink
@@ -5000,7 +5000,7 @@ def ci_caption_complete(
         raise HTTPException(404, "No such media asset")
 
         # This column only. `captions_reviewed_at` is a human's statement
-        # that they read the text, and a job re-running must not erase it —
+        # that they read the text, and a job re-running must not erase it –
         # nor claim it, which is why this never sets it either.
     link.has_captions = True
     db.flush()
@@ -5143,7 +5143,7 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
         """Serve learning video from local teaching-repos.
 
         The development counterpart to Cloud CDN. There is no bucket,
-        no signature and no cookie here — the video access endpoint
+        no signature and no cookie here – the video access endpoint
         returns a base URL pointing at this route and sets no cookie,
         so the frontend runs the same code path in both environments.
 
@@ -5181,7 +5181,7 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
         if not module_dir:
             # A developer with no content repo cloned has no
             # teaching-repos directory at all, which is the normal
-            # starting state — so this is a 404, not a crash.
+            # starting state – so this is a 404, not a crash.
             raise HTTPException(404, "Module not found")
 
         file_path = module_dir / "learning" / filename

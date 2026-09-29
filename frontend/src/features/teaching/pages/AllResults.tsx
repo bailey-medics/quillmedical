@@ -154,7 +154,7 @@ export default function AllResults() {
               {results.map((r) => (
                 <Table.Tr key={r.id}>
                   <Table.Td>
-                    {r.completed_at ? formatDate(r.completed_at) : "—"}
+                    {r.completed_at ? formatDate(r.completed_at) : "–"}
                   </Table.Td>
                   <Table.Td>{r.user_id}</Table.Td>
                   <Table.Td>{r.question_bank_id}</Table.Td>

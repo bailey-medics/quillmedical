@@ -5,7 +5,7 @@ The Pydantic model lives here rather than beside the validators so that
 whole validation module.
 
 Only the standard library, ``pydantic`` and ``pyyaml`` may be imported here
-— see the package docstring.
+– see the package docstring.
 """
 
 from __future__ import annotations
@@ -34,7 +34,7 @@ QUESTION_DIR_RE = re.compile(r"^question_(\d+)$")
 ALLOWED_IMAGE_EXTENSIONS = frozenset({".png", ".jpg", ".jpeg", ".webp"})
 
 #: Top-level fields every assessment config must carry.
-#: Named for the file, not the ``assessment:`` block inside it — the two
+#: Named for the file, not the ``assessment:`` block inside it – the two
 #: were both called REQUIRED_ASSESSMENT_FIELDS before the merge, meaning
 #: different things in each validator.
 REQUIRED_CONFIG_FIELDS = frozenset({"version", "title", "description", "type"})

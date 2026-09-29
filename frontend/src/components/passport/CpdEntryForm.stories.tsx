@@ -61,7 +61,7 @@ export const PointsAreNotTotalled: Story = {
       <CpdEntryForm {...args} />
       <StoryNote>
         A form records one activity. What a period adds up to belongs to the
-        table, which states the appraisal range it covers — a running total here
+        table, which states the appraisal range it covers – a running total here
         would pre-empt that. One point is one hour, and points are optional
         because not every activity is claimed.
       </StoryNote>

@@ -6,7 +6,7 @@ has no clinical lead" is a state worth chasing, where a competency nobody
 holds is simply absent.
 
 Holding is recorded as dated rows rather than a column on the position, so
-the post outlives its holders and its history stays queryable — "who was
+the post outlives its holders and its history stays queryable – "who was
 Caldicott Guardian in March?" is a question about the slot over time.
 
 Appointment is checked against the person's competency at that org_unit, using
@@ -227,7 +227,7 @@ def clinical_lead_post(db: Session, site: OrgUnit) -> Position:
     """Return a site's clinical lead post, creating it if absent.
 
     Created on demand rather than with every site, because a post nobody
-    has ever tried to fill is not a vacancy anyone is chasing — and
+    has ever tried to fill is not a vacancy anyone is chasing – and
     creating one for every site would fill the table with posts no
     organisation asked for.
 

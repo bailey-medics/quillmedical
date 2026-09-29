@@ -2,9 +2,9 @@
 """What one org_unit can be to another, short of owning it.
 
 Ownership is the parent column and nothing else: one parent each, no
-cycles, and one answer to every governance question. Everything else — a
+cycles, and one answer to every governance question. Everything else – a
 medical school teaching on a trust's wards, two trusts running a service
-between them — is a typed link, so that a second relationship never turns
+between them – is a typed link, so that a second relationship never turns
 into a second owner.
 
 The vocabulary is small and deliberately close to the NHS ODS relationship
@@ -31,7 +31,7 @@ class OrgUnitRelation(NamedTuple):
         display_name: What a person is shown.
         description: What the link means, in a sentence.
         grants_reach: Whether the link is expected to make the target
-            reachable from the source — visible, and not anomalous — once
+            reachable from the source – visible, and not anomalous – once
             reach is wired up. Never admin rights, and never membership.
     """
 
@@ -74,7 +74,7 @@ ORG_UNIT_RELATIONS: tuple[OrgUnitRelation, ...] = (
         id="shares_service",
         display_name="Shares service",
         description=(
-            "The two run one service between them — a shared pathology "
+            "The two run one service between them – a shared pathology "
             "laboratory, an out-of-hours rota."
         ),
         grants_reach=False,
@@ -105,7 +105,7 @@ def validate_org_unit_relation(value: str) -> str:
     """Return the relation unchanged, or raise naming the known ones.
 
     Kept in code rather than as a database enum, so adding a relation
-    needs no migration — the same choice ``MEMBER_CAPACITIES`` made.
+    needs no migration – the same choice ``MEMBER_CAPACITIES`` made.
 
     Args:
         value: The relation to check.

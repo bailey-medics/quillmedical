@@ -5,7 +5,7 @@
  * to the application. Listens for browser online/offline events and custom
  * DOM events dispatched by api.ts. Polls /api/health for recovery when offline.
  *
- * No offline functionality — the app requires connectivity. This context
+ * No offline functionality – the app requires connectivity. This context
  * simply surfaces the state so the UI can block navigation and mutations.
  */
 
