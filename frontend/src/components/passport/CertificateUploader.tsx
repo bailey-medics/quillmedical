@@ -41,11 +41,18 @@ export interface CertificateUploaderProps {
   passportId: string;
   /** Called with the stored file, to be named in the record. */
   onUploaded: (attachment: AttachmentInput) => void;
+  /**
+   * Whether a second file joins the first rather than replacing it,
+   * which is what editing a certificate does. Only the wording changes:
+   * what happens to the file is the page's to decide.
+   */
+  adds?: boolean;
 }
 
 export default function CertificateUploader({
   passportId,
   onUploaded,
+  adds = false,
 }: CertificateUploaderProps) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -88,7 +95,9 @@ export default function CertificateUploader({
           uploading
             ? "Uploading…"
             : attached
-              ? "Drop another to replace it"
+              ? adds
+                ? "Drop another to add it"
+                : "Drop another to replace it"
               : "Drop a certificate or click to browse"
         }
       />

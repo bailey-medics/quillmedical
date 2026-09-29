@@ -31,6 +31,7 @@ import { BodyText, BodyTextInline, Heading } from "@/components/typography";
 import { TeachingProgressBar } from "@/components/teaching/teaching-progress-bar";
 import type { MediaAsset, ModuleMedia } from "@/features/teaching/types";
 import MediaDropzone from "./MediaDropzone";
+import { ACCEPTED_VIDEO_TYPES } from "./mediaFormat";
 
 export interface ModuleMediaCardProps {
   /** References and uploads for one module, from the media endpoint. */
@@ -194,6 +195,8 @@ export default function ModuleMediaCard({
                       ) : null}
                       <MediaDropzone
                         onDrop={(file) => onUpload?.(row.key, file)}
+                        accept={ACCEPTED_VIDEO_TYPES}
+                        label="Drop a video or click to browse"
                       />
                     </Stack>
                   );

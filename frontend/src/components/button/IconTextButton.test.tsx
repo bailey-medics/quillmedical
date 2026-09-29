@@ -95,5 +95,19 @@ describe("IconTextButton", () => {
       renderWithMantine(<IconTextButton icon="arrowLeft" label="Back" />);
       expect(screen.getByRole("button", { name: /back/i })).toBeInTheDocument();
     });
+
+    it("takes a fuller name for screen readers, keeping the label", () => {
+      renderWithMantine(
+        <IconTextButton
+          icon="trash"
+          label="Remove file"
+          aria-label="Remove als.pdf"
+        />,
+      );
+      expect(
+        screen.getByRole("button", { name: "Remove als.pdf" }),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Remove file")).toBeInTheDocument();
+    });
   });
 });

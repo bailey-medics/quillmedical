@@ -36,6 +36,12 @@ interface IconTextButtonProps {
   variant?: "filled" | "light" | "outline";
   /** Stretch button to fill parent width */
   fullWidth?: boolean;
+  /**
+   * A fuller name for screen readers, where several buttons share one
+   * label: three "Remove file" buttons need to say which file each one
+   * removes. The visible label is unchanged.
+   */
+  "aria-label"?: string;
 }
 
 /**
@@ -54,6 +60,7 @@ export default function IconTextButton({
   color,
   variant = "filled",
   fullWidth = false,
+  "aria-label": ariaLabel,
 }: IconTextButtonProps) {
   return (
     <Button
@@ -64,6 +71,7 @@ export default function IconTextButton({
       color={color}
       fullWidth={fullWidth}
       aria-disabled={disabled || undefined}
+      aria-label={ariaLabel}
       loading={loading}
       classNames={{ root: classes.root }}
       styles={{

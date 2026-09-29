@@ -104,7 +104,7 @@ describe("CertificateForm", () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
     renderWithMantine(
-      <CertificateForm onSubmit={onSubmit} attachment={uploaded} />,
+      <CertificateForm onSubmit={onSubmit} attachments={[uploaded]} />,
     );
 
     await fillRequired(user);
@@ -134,7 +134,7 @@ describe("CertificateForm", () => {
 
   it("shows the holder which file is attached", () => {
     renderWithMantine(
-      <CertificateForm onSubmit={vi.fn()} attachment={uploaded} />,
+      <CertificateForm onSubmit={vi.fn()} attachments={[uploaded]} />,
     );
 
     expect(screen.getByText("als-certificate.pdf")).toBeInTheDocument();
@@ -198,24 +198,73 @@ describe("CertificateForm", () => {
       renderWithMantine(
         <CertificateForm
           onSubmit={vi.fn()}
-          attachment={uploaded}
+          attachments={[uploaded]}
           onRemoveAttachment={onRemoveAttachment}
         />,
       );
 
-      await user.click(screen.getByRole("button", { name: "Remove file" }));
+      await user.click(
+        screen.getByRole("button", { name: "Remove als-certificate.pdf" }),
+      );
 
-      expect(onRemoveAttachment).toHaveBeenCalled();
+      expect(onRemoveAttachment).toHaveBeenCalledWith(uploaded.hash);
+    });
+
+    it("lists every file, each with its own remove button", async () => {
+      const user = userEvent.setup();
+      const onRemoveAttachment = vi.fn();
+      const second: AttachmentInput = {
+        ...uploaded,
+        hash: "sha256:" + "cd".repeat(32),
+        filename: "als-transcript.pdf",
+      };
+      renderWithMantine(
+        <CertificateForm
+          onSubmit={vi.fn()}
+          attachments={[uploaded, second]}
+          onRemoveAttachment={onRemoveAttachment}
+        />,
+      );
+
+      expect(screen.getByText("als-certificate.pdf")).toBeInTheDocument();
+      expect(screen.getByText("als-transcript.pdf")).toBeInTheDocument();
+
+      await user.click(
+        screen.getByRole("button", { name: "Remove als-transcript.pdf" }),
+      );
+
+      expect(onRemoveAttachment).toHaveBeenCalledWith(second.hash);
     });
 
     it("offers no remove button when nobody handles it", () => {
       renderWithMantine(
-        <CertificateForm onSubmit={vi.fn()} attachment={uploaded} />,
+        <CertificateForm onSubmit={vi.fn()} attachments={[uploaded]} />,
       );
 
       expect(
-        screen.queryByRole("button", { name: "Remove file" }),
+        screen.queryByRole("button", { name: /Remove/ }),
       ).not.toBeInTheDocument();
+    });
+
+    it("shows an upload box at the foot, above the file", () => {
+      renderWithMantine(
+        <CertificateForm
+          onSubmit={vi.fn()}
+          attachments={[uploaded]}
+          uploader={<div>Upload box</div>}
+        />,
+      );
+
+      const box = screen.getByText("Upload box");
+      const file = screen.getByText("als-certificate.pdf");
+      const description = screen.getByRole("textbox", { name: /Description/ });
+      expect(
+        description.compareDocumentPosition(box) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(
+        box.compareDocumentPosition(file) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
     });
   });
 });

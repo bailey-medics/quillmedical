@@ -8,28 +8,58 @@
  */
 .dropzone {
   display: inline-flex;
+  align-items: center;
+
+  /* Only as wide as its label, wherever it is placed. In a flex column,
+     such as a Mantine Stack, it was otherwise stretched to full width:
+     the certificate uploader and the Disabled story both showed it so. */
+  align-self: flex-start;
   border: none;
   border-radius: 999px;
 
-  /* Transparent at rest so the row reads as text, and the pill only
-     appears under the pointer. */
-  background: transparent;
+  /* As tall as an md button, the size used beside it across the app:
+     Mantine's 42px, and 48px on a phone as `touch-targets.css` draws
+     the button there. Written out rather than read from the button's
+     variable, which Mantine sets on the button alone. */
+  height: calc(2.625rem * var(--mantine-scale));
+
+  /* A light fill at rest, so the box is visible as something to drop
+     on before the pointer finds it. Transparent, it read as plain text
+     and was easy to miss (29 September 2026). */
+  background: light-dark(
+    var(--mantine-color-gray-2),
+    var(--mantine-color-dark-6)
+  );
   transition: background-color 150ms ease;
 }
 
+/* Never squeezed. On a very narrow screen the label cannot wrap in its
+   row, and without this the browser shrank the icon to make room. */
+.icon {
+  flex-shrink: 0;
+}
+
+@media (width <= 40em) {
+  .dropzone {
+    height: calc(3rem * var(--mantine-scale));
+  }
+}
+
 /*
- * Darker on hover in both themes, so the affordance is the same
+ * Darker than the resting fill on hover in both themes, so the
+ * affordance is the same
  * gesture either way rather than lightening in one and darkening in
  * the other.
  *
- * Note the dark pair looks inverted and is not: this theme overrides
- * Mantine's scale, so dark-5 (#042340) is darker than dark-7
- * (#0a2f56). Picking by number alone would lighten this on hover.
+ * Note the dark numbers look inverted and are not: this theme overrides
+ * Mantine's scale, so dark-6 (#0a2f56, the input navy) is the lightest
+ * of these and dark-4 (#000d1f) the deepest. dark-5 (#042340) is the
+ * card colour, so a hover in it vanished into any card the box sat on.
  */
 .dropzone:hover:not([data-disabled]) {
   background: light-dark(
     var(--mantine-color-gray-3),
-    var(--mantine-color-dark-5)
+    var(--mantine-color-dark-4)
   );
 }
 

@@ -12,9 +12,15 @@ import { renderWithMantine } from "@test/test-utils";
 import MediaDropzone from "./MediaDropzone";
 import { ACCEPTED_VIDEO_TYPES } from "./mediaFormat";
 
+/** The teaching card's settings: video, named as such. */
+const video = {
+  accept: ACCEPTED_VIDEO_TYPES,
+  label: "Drop a video or click to browse",
+};
+
 describe("MediaDropzone", () => {
   it("invites a file", () => {
-    renderWithMantine(<MediaDropzone onDrop={vi.fn()} />);
+    renderWithMantine(<MediaDropzone onDrop={vi.fn()} {...video} />);
     expect(
       screen.getByText("Drop a video or click to browse"),
     ).toBeInTheDocument();
@@ -32,7 +38,9 @@ describe("MediaDropzone", () => {
 
   it("takes a file through the hidden input", async () => {
     const onDrop = vi.fn();
-    const { container } = renderWithMantine(<MediaDropzone onDrop={onDrop} />);
+    const { container } = renderWithMantine(
+      <MediaDropzone onDrop={onDrop} {...video} />,
+    );
 
     const input = container.querySelector('input[type="file"]');
     expect(input).toHaveAttribute(
@@ -44,8 +52,8 @@ describe("MediaDropzone", () => {
 
   it("accepts another allow-list when given one", async () => {
     // The passport uploads scanned certificates through the same box.
-    // Defaulting to video keeps every existing caller unchanged; passing
-    // `accept` is what makes one component serve both.
+    // There is no default list: each caller names its own, so one
+    // component serves both without either inheriting the other's.
     const { container } = renderWithMantine(
       <MediaDropzone
         onDrop={vi.fn()}
@@ -67,7 +75,7 @@ describe("MediaDropzone", () => {
     // Mantine marks the wrapper rather than the input, so the data
     // attribute is what carries the state.
     const { container } = renderWithMantine(
-      <MediaDropzone onDrop={vi.fn()} disabled />,
+      <MediaDropzone onDrop={vi.fn()} disabled {...video} />,
     );
 
     expect(container.querySelector("[data-disabled]")).toBeTruthy();
@@ -77,7 +85,7 @@ describe("MediaDropzone", () => {
     const onDrop = vi.fn();
     const onReject = vi.fn();
     const { container } = renderWithMantine(
-      <MediaDropzone onDrop={onDrop} onReject={onReject} />,
+      <MediaDropzone onDrop={onDrop} onReject={onReject} {...video} />,
     );
 
     const input = container.querySelector(
