@@ -769,6 +769,85 @@ describe("OrganisationAdminPage", () => {
     });
   });
 
+  describe("Staff members", () => {
+    const orgWithStaff = {
+      id: 3,
+      name: "Test Hospital",
+      members: [
+        {
+          id: 10,
+          username: "alice",
+          full_name: "Alice Smith",
+          email: "alice@example.com",
+          capacity: "staff",
+          authorised_here: 2,
+        },
+      ],
+    };
+
+    function signedIn(competencies: string[]) {
+      vi.spyOn(authContext, "useAuth").mockReturnValue({
+        state: {
+          status: "authenticated",
+          user: { ...mockAdminUser, competencies } as User,
+        },
+        login: vi.fn(),
+        logout: vi.fn(),
+        reload: vi.fn(),
+      });
+    }
+
+    function renderPage() {
+      renderWithRouter(<OrganisationAdminPage />, {
+        routePath: "/admin/organisations/:id",
+        initialRoute: "/admin/organisations/3",
+      });
+    }
+
+    it("shows how many competencies each may practise here", async () => {
+      mockOrgApi(orgWithStaff);
+      renderPage();
+
+      const row = (await screen.findByText("alice")).closest("tr");
+      expect(row).not.toBeNull();
+      expect(row?.textContent).toContain("2");
+      expect(screen.getByText("Authorised here")).toBeInTheDocument();
+    });
+
+    it("opens the member's page for somebody who may authorise practice", async () => {
+      const user = userEvent.setup();
+      signedIn(["manage_practising_competencies"]);
+      mockOrgApi(orgWithStaff);
+      renderPage();
+
+      await user.click(await screen.findByText("alice"));
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        "/admin/organisations/3/members/10",
+      );
+    });
+
+    it("keeps the user page for anybody else", async () => {
+      const user = userEvent.setup();
+      mockOrgApi(orgWithStaff);
+      renderPage();
+
+      await user.click(await screen.findByText("alice"));
+
+      expect(mockNavigate).toHaveBeenCalledWith("/admin/users/10");
+    });
+
+    it("no longer carries the who may practise here card", async () => {
+      mockOrgApi(orgWithStaff);
+      renderPage();
+
+      await screen.findByText("alice");
+      expect(
+        screen.queryByText("Who may practise here"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe("Remove staff member", () => {
     const orgWithStaff = {
       id: 3,

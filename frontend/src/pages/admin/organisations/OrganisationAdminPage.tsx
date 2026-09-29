@@ -11,7 +11,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Stack, Group, Skeleton } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
-import { PractisingCompetenciesCard } from "@/components/practising-competencies";
 import {
   BodyTextInline,
   BodyTextBold,
@@ -35,6 +34,7 @@ import FeatureBadge from "@/components/badge/FeatureBadge";
 import ActiveStatusBadge from "@/components/badge/ActiveStatusBadge";
 import NotFoundLayout from "@/components/layouts/NotFoundLayout";
 import { useAuth } from "@/auth/AuthContext";
+import { useHasCompetency } from "@/lib/cbac/hooks";
 import {
   orgUnits,
   type OrgUnitChild,
@@ -80,6 +80,9 @@ export default function OrganisationAdminPage() {
   const isOperator =
     state.status === "authenticated" &&
     state.user.platform_role === "superadmin";
+  // Somebody who may authorise practice here opens a member's page for
+  // this organisation; anybody else keeps the link to the user page.
+  const mayManagePractice = useHasCompetency("manage_practising_competencies");
   const [org, setOrg] = useState<OrgUnitDetail | null>(null);
   const [enabledFeatures, setEnabledFeatures] = useState<string[]>([]);
   // Without an id there is nothing to fetch, so the page does not begin in
@@ -242,6 +245,12 @@ export default function OrganisationAdminPage() {
       accessor: (member) => member.email,
     },
     {
+      header: "Authorised here",
+      width: "140px",
+      render: (member) => member.authorised_here,
+      accessor: (member) => member.authorised_here,
+    },
+    {
       header: "",
       width: "50px",
       render: (member) => (
@@ -355,7 +364,13 @@ export default function OrganisationAdminPage() {
           <DataTableControlled<OrgUnitMember>
             data={staffMembers}
             columns={staffColumns}
-            onRowClick={(member) => navigate(`/admin/users/${member.id}`)}
+            onRowClick={(member) =>
+              navigate(
+                mayManagePractice
+                  ? `/admin/organisations/${id}/members/${member.id}`
+                  : `/admin/users/${member.id}`,
+              )
+            }
             getRowKey={(member) => member.id}
             emptyMessage="No staff members assigned"
             searchFields={(m) => [m.full_name, m.username, m.email]}
@@ -389,16 +404,6 @@ export default function OrganisationAdminPage() {
           </Stack>
         </BaseCard>
       )}
-      {/* Who may practise here */}
-      <PractisingCompetenciesCard
-        orgUnitId={Number(id)}
-        members={org.members}
-        onChanged={(title) => {
-          showMessage({ variant: "success", title });
-          void fetchOrganisationData();
-        }}
-        onError={(title) => showMessage({ variant: "error", title })}
-      />
       {/* Enabled Features */}
       <BaseCard>
         <Stack gap="md">

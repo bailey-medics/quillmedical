@@ -10,7 +10,6 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Stack, Group, Skeleton } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
-import { PractisingCompetenciesCard } from "@/components/practising-competencies";
 import { BodyTextInline, BodyTextBold, Heading } from "@/components/typography";
 import { IconPencil, IconUserMinus } from "@components/icons/appIcons";
 import PageHeader from "@/components/page-header";
@@ -22,6 +21,7 @@ import type { Column } from "@/components/tables/DataTable";
 import DataTableControlled from "@/components/tables/DataTableControlled";
 import { ConfirmModal } from "@/components/confirm-modal";
 import { usePageMessage } from "@/components/page-message";
+import { useHasCompetency } from "@/lib/cbac/hooks";
 import {
   orgUnits,
   type OrgUnitDetail,
@@ -33,6 +33,10 @@ export default function SiteAdminPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { showMessage } = usePageMessage();
+  // Somebody who may authorise practice here opens a member's page for
+  // this site. Nobody else had a row link on this table before, and
+  // nobody else gains one.
+  const mayManagePractice = useHasCompetency("manage_practising_competencies");
   const [site, setSite] = useState<OrgUnitDetail | null>(null);
   // Without an id there is nothing to fetch, so the page does not begin in a
   // loading state and the effect below has nothing to do.
@@ -134,6 +138,12 @@ export default function SiteAdminPage() {
       accessor: (member) => member.email,
     },
     {
+      header: "Authorised here",
+      width: "140px",
+      render: (member) => member.authorised_here,
+      accessor: (member) => member.authorised_here,
+    },
+    {
       header: "",
       width: "50px",
       render: (member) => (
@@ -229,6 +239,12 @@ export default function SiteAdminPage() {
           <DataTableControlled<OrgUnitMember>
             data={site.members}
             columns={staffColumns}
+            onRowClick={
+              mayManagePractice
+                ? (member) =>
+                    navigate(`/admin/sites/${id}/members/${member.id}`)
+                : undefined
+            }
             getRowKey={(member) => member.id}
             pageSize={10}
             emptyMessage="No staff assigned"
@@ -236,17 +252,6 @@ export default function SiteAdminPage() {
           />
         </Stack>
       </BaseCard>
-
-      {/* Who may practise here */}
-      <PractisingCompetenciesCard
-        orgUnitId={Number(id)}
-        members={site.members}
-        onChanged={(title) => {
-          showMessage({ variant: "success", title });
-          void fetchSite();
-        }}
-        onError={(title) => showMessage({ variant: "error", title })}
-      />
 
       <ConfirmModal
         opened={removingStaff !== null}

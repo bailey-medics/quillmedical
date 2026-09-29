@@ -403,3 +403,79 @@ class TestWhoMayGrant:
         )
 
         assert resp.status_code == 403
+
+
+class TestAuthorisedHereCount:
+    def _count(self, client: object, unit_id: int, user_id: int) -> int:
+        members = client.get(  # type: ignore[attr-defined]
+            f"/api/org-units/{unit_id}/members"
+        ).json()["members"]
+        return next(m for m in members if m["id"] == user_id)[
+            "authorised_here"
+        ]
+
+    def test_counts_rows_within_the_ceiling(
+        self, authenticated_admin_client, db_session, ward, surgeon
+    ):
+        db_session.add_all(
+            [
+                PractisingCompetency(
+                    user_id=surgeon.id, org_unit_id=ward.id, competency=HELD
+                ),
+                PractisingCompetency(
+                    user_id=surgeon.id,
+                    org_unit_id=ward.id,
+                    competency="certify_death",
+                ),
+            ]
+        )
+        db_session.commit()
+
+        assert (
+            self._count(authenticated_admin_client, ward.id, surgeon.id) == 2
+        )
+
+    def test_a_row_beyond_the_ceiling_is_not_counted(
+        self, authenticated_admin_client, db_session, ward, surgeon
+    ):
+        db_session.add(
+            PractisingCompetency(
+                user_id=surgeon.id, org_unit_id=ward.id, competency=NOT_HELD
+            )
+        )
+        db_session.commit()
+
+        assert (
+            self._count(authenticated_admin_client, ward.id, surgeon.id) == 0
+        )
+
+    def test_rows_at_another_place_are_not_counted(
+        self, authenticated_admin_client, db_session, own_org, ward, surgeon
+    ):
+        db_session.add(
+            PractisingCompetency(
+                user_id=surgeon.id, org_unit_id=own_org.id, competency=HELD
+            )
+        )
+        db_session.commit()
+
+        assert (
+            self._count(authenticated_admin_client, ward.id, surgeon.id) == 0
+        )
+
+    def test_the_place_itself_carries_the_count(
+        self, authenticated_admin_client, db_session, ward, surgeon
+    ):
+        db_session.add(
+            PractisingCompetency(
+                user_id=surgeon.id, org_unit_id=ward.id, competency=HELD
+            )
+        )
+        db_session.commit()
+
+        members = authenticated_admin_client.get(
+            f"/api/org-units/{ward.id}"
+        ).json()["members"]
+
+        mine = next(m for m in members if m["id"] == surgeon.id)
+        assert mine["authorised_here"] == 1
